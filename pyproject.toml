@@ -142,8 +142,8 @@ llamaindex = [
     # Use for: Knowledge bases, document ingestion, semantic search
     # Docs: https://docs.llamaindex.ai | GitHub: https://github.com/run-llama/llama_index
     "llama-index-core~=0.14.0",
-    "llama-index-embeddings-ollama~=0.3.0",
-    "llama-index-llms-ollama~=0.3.0",
+    "llama-index-embeddings-ollama~=0.4.0",
+    "llama-index-llms-ollama~=0.4.0",
 ]
 
 agno = [
