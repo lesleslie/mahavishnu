@@ -1,0 +1,17 @@
+# Local Mahavishnu Configuration (gitignored)
+# Override settings for local development
+
+server_name: "Mahavishnu Local Development"
+log_level: DEBUG
+
+# Authentication (for local testing)
+auth:
+  enabled: true  # Enable auth for local testing
+  # Set MAHAVISHNU_AUTH_SECRET environment variable with a strong secret
+  algorithm: "HS256"
+  expire_minutes: 120  # Longer for local development
+
+# Observability
+observability:
+  metrics_enabled: false
+  tracing_enabled: false

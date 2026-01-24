@@ -1,0 +1,220 @@
+"""Core configuration module for Mahavishnu using Oneiric patterns.
+
+This module provides type-safe configuration management using Pydantic models,
+following Oneiric's configuration loading patterns with layered configuration
+support (defaults -> committed YAML -> local YAML -> environment variables).
+"""
+
+from pathlib import Path
+from typing import Any
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings
+
+from ..terminal.config import TerminalSettings
+
+
+class MahavishnuSettings(BaseSettings):
+    """Mahavishnu configuration extending MCPServerSettings.
+
+    Configuration loading order (later overrides earlier):
+    1. Default values (below)
+    2. settings/mahavishnu.yaml (committed to git)
+    3. settings/local.yaml (gitignored, for development)
+    4. Environment variables: MAHAVISHNU_{FIELD}
+
+    Example YAML (settings/mahavishnu.yaml):
+        server_name: "Mahavishnu Orchestrator"
+        cache_root: .oneiric_cache
+        health_ttl_seconds: 60.0
+        log_level: INFO
+        repos_path: ~/repos.yaml
+        adapters:
+            airflow: true
+            crewai: true
+            langgraph: true
+            agno: true
+        qc:
+            enabled: true
+            min_score: 80
+            checks:
+                - linting
+                - type_checking
+                - security_scan
+    """
+
+    # Repository configuration
+    repos_path: str = Field(
+        default="repos.yaml",
+        description="Path to repos.yaml repository manifest",
+    )
+
+    # Concurrency configuration
+    max_concurrent_workflows: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum number of concurrent workflows (1-100)",
+    )
+
+    # Adapter configuration
+    prefect_enabled: bool = Field(
+        default=True,  # Enabled by default - core orchestration
+        description="Enable Prefect adapter for high-level orchestration",
+    )
+    llamaindex_enabled: bool = Field(
+        default=True,  # Enabled by default - RAG pipelines
+        description="Enable LlamaIndex adapter for RAG and knowledge bases",
+    )
+    agno_enabled: bool = Field(
+        default=True,  # Enabled by default - fast agents
+        description="Enable Agno adapter for agent-based workflows",
+    )
+
+    # LLM configuration for LlamaIndex and Agno
+    llm_model: str = Field(
+        default="nomic-embed-text",  # Ollama embedding model
+        description="LLM model name for Ollama (e.g., nomic-embed-text, llama2)",
+    )
+    ollama_base_url: str = Field(
+        default="http://localhost:11434",
+        description="Ollama API endpoint for local LLM access",
+    )
+
+    # Quality control
+    qc_enabled: bool = Field(
+        default=True,
+        description="Enable Crackerjack QC",
+    )
+    qc_min_score: int = Field(
+        default=80,
+        ge=0,
+        le=100,
+        description="Minimum QC score threshold (0-100)",
+    )
+
+    # Session management
+    session_enabled: bool = Field(
+        default=True,
+        description="Enable Session-Buddy checkpoints",
+    )
+    checkpoint_interval: int = Field(
+        default=60,
+        ge=10,
+        le=600,
+        description="Checkpoint interval in seconds (10-600)",
+    )
+
+    # Resilience
+    retry_max_attempts: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Maximum retry attempts (1-10)",
+    )
+    retry_base_delay: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=60.0,
+        description="Base retry delay in seconds (0.1-60)",
+    )
+    circuit_breaker_threshold: int = Field(
+        default=5,
+        ge=1,
+        le=100,
+        description="Consecutive failures before circuit opens (1-100)",
+    )
+    timeout_per_repo: int = Field(
+        default=300,
+        ge=30,
+        le=3600,
+        description="Timeout per repo in seconds (30-3600)",
+    )
+
+    # Observability
+    metrics_enabled: bool = Field(
+        default=True,
+        description="Enable OpenTelemetry metrics",
+    )
+    tracing_enabled: bool = Field(
+        default=True,
+        description="Enable distributed tracing",
+    )
+    otlp_endpoint: str = Field(
+        default="http://localhost:4317",
+        description="OTLP endpoint for metrics/traces",
+    )
+
+    # Authentication (optional)
+    auth_enabled: bool = Field(
+        default=False,
+        description="Enable JWT authentication",
+    )
+    auth_secret: str | None = Field(
+        default=None,
+        description="JWT secret (must be set via environment if auth enabled)",
+    )
+    auth_algorithm: str = Field(
+        default="HS256",
+        description="JWT algorithm (HS256 or RS256)",
+    )
+    auth_expire_minutes: int = Field(
+        default=60,
+        ge=5,
+        le=1440,
+        description="JWT token expiration in minutes (5-1440)",
+    )
+
+    # Subscription authentication (for Claude Code, etc.)
+    subscription_auth_enabled: bool = Field(
+        default=False,
+        description="Enable subscription-based authentication (e.g., Claude Code)",
+    )
+    subscription_auth_secret: str | None = Field(
+        default=None,
+        description="Subscription auth secret (must be set via environment if subscription auth enabled)",
+    )
+    subscription_auth_algorithm: str = Field(
+        default="HS256",
+        description="Subscription auth algorithm (HS256 or RS256)",
+    )
+    subscription_auth_expire_minutes: int = Field(
+        default=60,
+        ge=5,
+        le=1440,
+        description="Subscription token expiration in minutes (5-1440)",
+    )
+
+    # Terminal management
+    terminal: TerminalSettings = Field(
+        default_factory=TerminalSettings,
+        description="Terminal session management settings",
+    )
+
+    @field_validator("auth_secret")
+    @classmethod
+    def validate_auth_secret(cls, v: str | None, info) -> str | None:
+        """Validate auth secret is set if auth is enabled."""
+        if info.data.get("auth_enabled") and not v:
+            raise ValueError(
+                "auth_secret must be set via MAHAVISHNU_AUTH_SECRET "
+                "environment variable when auth_enabled is true"
+            )
+        return v
+
+    @field_validator("subscription_auth_secret")
+    @classmethod
+    def validate_subscription_auth_secret(cls, v: str | None, info) -> str | None:
+        """Validate subscription auth secret is set if subscription auth is enabled."""
+        if info.data.get("subscription_auth_enabled") and not v:
+            raise ValueError(
+                "subscription_auth_secret must be set via MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET "
+                "environment variable when subscription_auth_enabled is true"
+            )
+        return v
+
+    @field_validator("repos_path")
+    @classmethod
+    def validate_repos_path(cls, v: str) -> str:
+        """Expand user path (~) in repos_path."""
+        return str(Path(v).expanduser())

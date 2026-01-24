@@ -1,0 +1,105 @@
+repos:
+  # Quality Control & Testing
+  - name: "crackerjack"
+    package: "crackerjack"
+    path: "/Users/les/Projects/crackerjack"
+    tags: ["qc", "testing", "python"]
+    description: "Quality control and testing framework"
+    mcp: "native"
+
+  # Session Management
+  - name: "session-buddy"
+    package: "session_buddy"
+    path: "/Users/les/Projects/session-buddy"
+    tags: ["session", "management", "python"]
+    description: "Session management and checkpointing utility"
+    mcp: "native"
+
+  # UI Components
+  - name: "fastblocks"
+    package: "fastblocks"
+    path: "/Users/les/Projects/fastblocks"
+    tags: ["blocks", "ui", "python", "htmx"]
+    description: "Fast UI building blocks with HTMX"
+
+  # Standalone Utilities
+  - name: "splashstand"
+    package: "splashstand"
+    path: "/Users/les/Projects/splashstand"
+    tags: ["splash", "stand", "python"]
+    description: "SplashStand"
+
+  # MCP Infrastructure
+  - name: "mcp-common"
+    package: "mcp_common"
+    path: "/Users/les/Projects/mcp-common"
+    tags: ["mcp", "common", "protocol", "python"]
+    description: "Common MCP protocol utilities and base classes"
+
+  # Configuration & Logging
+  - name: "oneiric"
+    package: "oneiric"
+    path: "/Users/les/Projects/oneiric"
+    tags: ["config", "logging", "framework", "python"]
+    description: "Configuration and logging framework with adapter system"
+
+  # Template Engines
+  - name: "jinja2-async-environment"
+    package: "jinja2_async_environment"
+    path: "/Users/les/Projects/jinja2-async-environment"
+    tags: ["jinja2", "async", "template", "python"]
+    description: "Async Jinja2 environment for non-blocking templates"
+
+  - name: "starlette-async-jinja"
+    package: "starlette_async_jinja"
+    path: "/Users/les/Projects/starlette-async-jinja"
+    tags: ["starlette", "async", "jinja", "python"]
+    description: "Async Jinja templating integration for Starlette"
+
+  # Documentation
+  - name: "mdinject"
+    package: "mdinject"
+    path: "/Users/les/Projects/mdinject"
+    tags: ["documentation", "markdown", "python"]
+    description: "Markdown documentation injection and processing"
+    mcp: "native"
+
+  # Diagram Integration
+  - name: "excalidraw-mcp"
+    package: "excalidraw_mcp"
+    path: "/Users/les/Projects/excalidraw-mcp"
+    tags: ["mcp", "diagram", "collaboration", "python"]
+    description: "Excalidraw diagram integration via MCP"
+    mcp: "integration"
+
+  # Bookmark Integration
+  - name: "raindropio-mcp"
+    package: "raindropio_mcp"
+    path: "/Users/les/Projects/raindropio-mcp"
+    tags: ["mcp", "bookmarks", "integration", "python"]
+    description: "Raindrop.io bookmark management via MCP"
+    mcp: "integration"
+
+  # Cloud Integration
+  - name: "opera-cloud-mcp"
+    package: "opera_cloud_mcp"
+    path: "/Users/les/Projects/opera-cloud-mcp"
+    tags: ["mcp", "cloud", "integration", "python"]
+    description: "Opera Cloud services integration via MCP"
+    mcp: "integration"
+
+  # Email Integration
+  - name: "mailgun-mcp"
+    package: "mailgun_mcp"
+    path: "/Users/les/Projects/mailgun-mcp"
+    tags: ["mcp", "email", "integration", "python"]
+    description: "Mailgun email service integration via MCP"
+    mcp: "integration"
+
+  # Network Integration
+  - name: "unifi-mcp"
+    package: "unifi_mcp"
+    path: "/Users/les/Projects/unifi-mcp"
+    tags: ["mcp", "network", "integration", "python"]
+    description: "UniFi network management via MCP"
+    mcp: "integration"

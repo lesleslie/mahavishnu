@@ -1,0 +1,80 @@
+"""Custom exceptions for Mahavishnu.
+
+Provides specific exception types for different error scenarios,
+enabling better error handling and user feedback.
+"""
+
+from typing import Any
+
+
+class MahavishnuError(Exception):
+    """Base exception for all Mahavishnu errors."""
+
+    def __init__(
+        self,
+        message: str,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        """Initialize Mahavishnu error.
+
+        Args:
+            message: Error message
+            details: Additional error details
+        """
+        self.message = message
+        self.details = details or {}
+        super().__init__(self.message)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert error to dictionary for API responses.
+
+        Returns:
+            Dictionary with error information
+        """
+        return {
+            "error_type": self.__class__.__name__,
+            "message": self.message,
+            "details": self.details,
+        }
+
+
+class ConfigurationError(MahavishnuError):
+    """Raised when configuration is invalid or missing."""
+
+    pass
+
+
+class ValidationError(MahavishnuError):
+    """Raised when input validation fails."""
+
+    pass
+
+
+class RepositoryError(MahavishnuError):
+    """Raised when repository operations fail."""
+
+    pass
+
+
+class AdapterError(MahavishnuError):
+    """Raised when adapter operations fail."""
+
+    pass
+
+
+class WorkflowError(MahavishnuError):
+    """Raised when workflow execution fails."""
+
+    pass
+
+
+class AuthenticationError(MahavishnuError):
+    """Raised when authentication fails."""
+
+    pass
+
+
+class AuthorizationError(MahavishnuError):
+    """Raised when authorization fails."""
+
+    pass
