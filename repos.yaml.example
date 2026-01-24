@@ -1,0 +1,144 @@
+# Mahavishnu Repository Manifest
+#
+# This file defines all repositories managed by Mahavishnu.
+# Each repository must have: name, package, path, tags, description
+# Optional field: mcp (for MCP-related repositories)
+
+repos:
+  # ==================== MCP Native Servers ====================
+  # These repositories have native MCP server implementations
+
+  - name: "crackerjack"
+    package: "crackerjack"
+    path: "/Users/les/Projects/crackerjack"
+    tags: ["qc", "testing", "python"]
+    description: "Quality control and testing framework"
+    mcp: "native"
+
+  - name: "session-buddy"
+    package: "session_buddy"
+    path: "/Users/les/Projects/session-buddy"
+    tags: ["session", "management", "python"]
+    description: "Session management and checkpointing utility"
+    mcp: "native"
+
+  # ==================== MCP Integration Servers ====================
+  # These repositories integrate external services via MCP
+
+  - name: "excalidraw-mcp"
+    package: "excalidraw_mcp"
+    path: "/Users/les/Projects/excalidraw-mcp"
+    tags: ["mcp", "diagram", "collaboration", "python"]
+    description: "Excalidraw diagram integration via MCP"
+    mcp: "integration"
+
+  - name: "raindropio-mcp"
+    package: "raindropio_mcp"
+    path: "/Users/les/Projects/raindropio-mcp"
+    tags: ["mcp", "bookmarks", "integration", "python"]
+    description: "Raindrop.io bookmark management via MCP"
+    mcp: "integration"
+
+  - name: "opera-cloud-mcp"
+    package: "opera_cloud_mcp"
+    path: "/Users/les/Projects/opera-cloud-mcp"
+    tags: ["mcp", "cloud", "integration", "python"]
+    description: "Opera Cloud services integration via MCP"
+    mcp: "integration"
+
+  - name: "mailgun-mcp"
+    package: "mailgun_mcp"
+    path: "/Users/les/Projects/mailgun-mcp"
+    tags: ["mcp", "email", "integration", "python"]
+    description: "Mailgun email service integration via MCP"
+    mcp: "integration"
+
+  - name: "unifi-mcp"
+    package: "unifi_mcp"
+    path: "/Users/les/Projects/unifi-mcp"
+    tags: ["mcp", "network", "integration", "python"]
+    description: "UniFi network management via MCP"
+    mcp: "integration"
+
+  # ==================== Infrastructure Libraries ====================
+  # Core libraries used by Mahavishnu and managed repositories
+
+  - name: "mcp-common"
+    package: "mcp_common"
+    path: "/Users/les/Projects/mcp-common"
+    tags: ["mcp", "common", "protocol", "python"]
+    description: "Common MCP protocol utilities and base classes"
+
+  - name: "oneiric"
+    package: "oneiric"
+    path: "/Users/les/Projects/oneiric"
+    tags: ["config", "logging", "framework", "python"]
+    description: "Configuration and logging framework with adapter system"
+
+  # ==================== Template Engines ====================
+  # Async template rendering libraries
+
+  - name: "jinja2-async-environment"
+    package: "jinja2_async_environment"
+    path: "/Users/les/Projects/jinja2-async-environment"
+    tags: ["jinja2", "async", "template", "python"]
+    description: "Async Jinja2 environment for non-blocking templates"
+
+  - name: "starlette-async-jinja"
+    package: "starlette_async_jinja"
+    path: "/Users/les/Projects/starlette-async-jinja"
+    tags: ["starlette", "async", "jinja", "python"]
+    description: "Async Jinja templating integration for Starlette"
+
+  # ==================== Documentation ====================
+  - name: "mdinject"
+    package: "mdinject"
+    path: "/Users/les/Projects/mdinject"
+    tags: ["documentation", "markdown", "python"]
+    description: "Markdown documentation injection and processing"
+    mcp: "native"
+
+  # ==================== UI Components ====================
+  # User interface building blocks and utilities
+
+  - name: "fastblocks"
+    package: "fastblocks"
+    path: "/Users/les/Projects/fastblocks"
+    tags: ["blocks", "ui", "python", "htmx"]
+    description: "Fast UI building blocks with HTMX"
+
+  - name: "splashstand"
+    package: "splashstand"
+    path: "/Users/les/Projects/splashstand"
+    tags: ["splash", "stand", "python"]
+    description: "Splash screen standalone utility"
+
+# ==================== FIELD REFERENCE ====================
+#
+# Required Fields:
+#   name:        Human-readable repository name
+#   package:     Python package name (use underscores, not hyphens)
+#   path:        Absolute path to repository
+#   tags:        List of category tags for filtering
+#   description: Brief description of repository purpose
+#
+# Optional Fields:
+#   mcp:         MCP server type (see values below)
+#
+# MCP Field Values:
+#   "native"      - Repository has its own MCP server implementation
+#   "integration" - Repository integrates external service via MCP
+#   null/omit     - Repository is not MCP-related
+#
+# Tag Guidelines:
+#   - Use lowercase alphanumeric
+#   - Hyphens and underscores allowed
+#   - Common tags: python, mcp, integration, ui, testing, qc
+#
+# Example:
+#   - name: "my-repo"
+#     package: "my_repo"
+#     path: "/Users/me/Projects/my-repo"
+#     tags: ["python", "utility"]
+#     description: "My utility repository"
+#     mcp: null

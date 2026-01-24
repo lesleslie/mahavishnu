@@ -1,0 +1,39 @@
+# Mahavishnu Configuration with Terminal Management
+
+# Repository manifest path
+repos_path: repos.yaml
+
+# Concurrency settings
+max_concurrent_workflows: 10
+
+# Adapter configuration - Core Components
+# Prefect: High-level orchestration with dynamic flows
+prefect_enabled: true
+# LlamaIndex: RAG pipelines for ingesting repos/docs, embedding with Ollama
+llamaindex_enabled: true
+# Agno: Fast, scalable single/multi-agents with memory and tools
+agno_enabled: true
+
+# LLM configuration for LlamaIndex and Agno
+# llm_model: nomic-embed-text  # Ollama embedding model
+# ollama_base_url: http://localhost:11434  # Ollama API endpoint
+
+# Quality control
+qc_enabled: true
+qc_min_score: 80
+
+# Session management
+session_enabled: true
+checkpoint_interval: 60
+
+# Terminal management
+terminal:
+  enabled: false  # Set to true to enable
+  default_columns: 120
+  default_rows: 40
+  capture_lines: 100
+  poll_interval: 0.5
+  max_concurrent_sessions: 20
+  # Adapter preference: "auto" (detect iTerm2, fallback to mcpretentious),
+  # "iterm2" (native iTerm2 Python API), or "mcpretentious" (PTY-based)
+  adapter_preference: "auto"

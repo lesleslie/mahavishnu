@@ -1,0 +1,364 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mahavishnu"
+version = "0.1.0"
+description = "Global orchestrator package for development workflows"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.13"
+dependencies = [
+    # CLI
+    "typer~=0.20.0",
+
+    # Oneiric ecosystem
+    "oneiric~=0.3.0",
+    "mcp-common~=0.3.0",
+
+    # MCP server
+    "fastmcp>=2.13.2",  # Compatible with crackerjack
+    "uvicorn[standard]~=0.38.0",  # Websocket support for MCP
+
+    # Configuration
+    "pydantic~=2.12.0",
+    "pyyaml~=6.0",
+    "tomli~=2.2.0",
+    "aiofiles>=25.1.0",  # Async file I/O for config loading (compatible with crackerjack)
+
+    # Observability
+    "opentelemetry-api~=1.38.0",
+    "opentelemetry-sdk~=1.38.0",
+    "opentelemetry-instrumentation~=0.41b0",
+    "opentelemetry-exporter-otlp-proto-grpc~=1.38.0",
+    "structlog~=25.5.0",
+
+    # Resilience
+    "tenacity~=9.1.0",
+
+    # Quality control (optional)
+    "crackerjack>=0.48.0",
+
+    # Session management (optional)
+    # Session-Buddy MCP: Development session tracking & quality metrics
+    # Local-first privacy (ONNX embeddings, no external APIs)
+    # See: docs/LIBRARY_EVALUATION_2025.md for memory system comparison
+    "session-buddy>=0.11.0",
+
+    # Git operations
+    "gitpython~=3.1.0",
+
+    # Terminal management
+    "iterm2~=2.6",  # iTerm2 Python API (optional, for iTerm2 adapter)
+]
+
+[project.scripts]
+mahavishnu = "mahavishnu.cli:app"
+
+# =============================================================================
+# ORCHESTRATION ADAPTERS - Core Components
+# =============================================================================
+# Simplified Architecture (2025-2026):
+#   - Prefect: High-level orchestration with dynamic flows
+#   - LlamaIndex: RAG pipelines for ingesting repos/docs, embedding with Ollama
+#   - Agno: Fast, scalable single/multi-agents with memory and tools
+#   - Oneiric: Foundational package for config, logging, and pluggable adapters
+#
+# Removed (2025-01-23):
+#   - Airflow: Legacy data pipelines (use Prefect instead)
+#   - CrewAI: Multi-agent framework (use Agno instead)
+#   - LangGraph: Stateful AI agent workflows (use Agno instead)
+# =============================================================================
+
+# CORE COMPONENTS (All enabled by default)
+# =============================================================================
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest~=9.0.0",
+    "pytest-asyncio~=1.3.0",
+    "pytest-cov~=7.0.0",
+    "pytest-xdist~=3.8.0",  # Parallel test execution
+    "pytest-mock~=3.15.0",
+    "hypothesis~=6.148.0",  # Property-based testing
+    "pytest-timeout~=2.4.0",  # Test timeout protection
+
+    # Code quality
+    "ruff~=0.14.0",  # Fast Python linter (replaces black/flake8/isort)
+    "pyright>=1.1.0",  # Type checking fallback
+    "pylint~=3.0.0",  # Additional linting perspectives
+    # Note: We use Crackerjack for QC, not pre-commit
+
+    # Security & dependency management
+    "bandit~=1.9.0",  # Security linting
+    "safety~=2.3.0",  # Dependency vulnerability scanning
+    "creosote~=4.1.0",  # Detect unused dependencies
+
+    # Code modernization & complexity
+    "refurb~=2.2.0",  # Modern Python suggestions
+    "codespell~=2.4.0",  # Typo detection
+    "complexipy~=5.1.0",  # Complexity checking
+
+    # Documentation
+    "zensical>=0.1.0",
+
+    # Crackerjack integration
+    "crackerjack>=0.48.0",
+]
+
+# All core components (simplified stack)
+all = [
+    "mahavishnu[prefect,llamaindex,agno,dev]",
+]
+
+# Core components (recommended)
+core = [
+    "mahavishnu[prefect,llamaindex,agno,dev]",
+]
+
+# RAG and knowledge base focus
+rag = [
+    "mahavishnu[llamaindex,agno,prefect,dev]",
+]
+
+prefect = [
+    # Prefect: High-level orchestration with dynamic flows
+    # License: Apache 2.0 (100% free OSS)
+    # Benefits: Pure Python, lightweight, scheduling, state management
+    # Use for: Production workflows, scheduling, coordination
+    # Docs: https://docs.prefect.io | GitHub: https://github.com/PrefectHQ/prefect
+    "prefect>=3.4.0",
+]
+
+llamaindex = [
+    # LlamaIndex: RAG pipelines for ingesting repos/docs
+    # License: MIT (100% free OSS)
+    # Benefits: Vector embeddings, Ollama integration, RAG queries
+    # Use for: Knowledge bases, document ingestion, semantic search
+    # Docs: https://docs.llamaindex.ai | GitHub: https://github.com/run-llama/llama_index
+    "llama-index-core~=0.14.0",
+    "llama-index-embeddings-ollama~=0.3.0",
+    "llama-index-llms-ollama~=0.3.0",
+]
+
+agno = [
+    # Agno: Fast, scalable single/multi-agents
+    # License: MPL 2.0 (fully open-source)
+    # Benefits: Memory, tools, teams, multi-LLM routing (Ollama, Claude, Qwen)
+    # Use for: AI agent workflows, reasoning, execution
+    # Docs: https://docs.agno.com | GitHub: https://github.com/agno-agi/agno
+    "agno~=0.1.0",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+# Crackerjack Ruff Configuration (fast linter replacing black/isort/flake8)
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+extend-select = [
+    "I",   # Import sorting
+    "N",   # PEP8 naming
+    "UP",  # Pyupgrade
+    "B",   # Bugbear
+    "C4",  # Comprehensions
+    "SIM", # Simplify
+    "TCH", # Type checking
+]
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    "build",
+    "dist",
+    ".eggs",
+    "*.egg-info",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["mahavishnu"]
+force-sort-within-sections = true
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 100
+
+[tool.ruff.lint.pylint]
+max-args = 10
+max-branches = 15
+max-returns = 6
+max-statements = 55
+
+# mypy configuration
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+follow_imports = "normal"
+strict_optional = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+# Crackerjack pytest configuration with extended markers
+[tool.pytest]
+minversion = "7.0"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+python_classes = ["Test*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+    "--cov=mahavishnu",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-fail-under=80",
+    "-n", "auto",  # Auto-detect parallel workers
+]
+markers = [
+    "unit: Unit tests (fast, isolated)",
+    "integration: Integration tests (slower, may use external services)",
+    "e2e: End-to-end tests (slowest, full workflow)",
+    "property: Property-based tests using Hypothesis",
+    "slow: Mark test as slow (skip with -m 'not slow')",
+    "timeout: Mark test with custom timeout duration",
+    "ci: Tests that must pass in CI",
+    "crackerjack: Tests that run in Crackerjack QC",
+    "prefect: Tests for Prefect adapter",
+    "llamaindex: Tests for LlamaIndex adapter",
+    "agno: Tests for Agno adapter",
+    "mcp: Tests for MCP server functionality",
+    "requires_network: Tests requiring network access",
+    "requires_auth: Tests requiring authentication credentials",
+]
+timeout = "300"  # 5 minutes default
+timeout_method = "thread"
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["mahavishnu"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+precision = 2
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+# Bandit configuration
+[tool.bandit]
+exclude_dirs = [".venv", "tests", "test_*.py"]
+skips = ["B101"]  # Skip assert_used warnings
+
+# Pyright configuration (type checking fallback)
+[tool.pyright]
+include = ["mahavishnu"]
+exclude = ["**/test*", "**/__pycache__"]
+reportMissingImports = "error"
+reportMissingTypeStubs = "warning"
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+
+# Pylint configuration
+[tool.pylint.messages_control]
+disable = [
+    "C0111",  # missing-docstring
+    "C0103",  # invalid-name
+    "R0903",  # too-few-public-methods
+]
+
+[tool.pylint.format]
+max-line-length = 100
+
+# Creosote configuration (detect unused dependencies)
+[tool.creosote]
+paths = ["mahavishnu"]
+exclude = [
+    "tests",
+    "__pycache__",
+    "*.egg-info",
+]
+extensions = [".py"]
+ignore_files = []
+
+# Refurb configuration (modern Python suggestions)
+[tool.refurb]
+enable_all = false
+ignore = [
+    "FURB101",  # Pathlib usage
+    "FURB103",  # Print usage
+]
+
+# Codespell configuration (typo detection)
+[tool.codespell]
+ignore-words-list = ["assertIn", "import"]
+skip = '.git,*.egg-info,*cache,.venv,build,dist'
+
+# Complexipy configuration (complexity checking)
+[tool.complexipy]
+max_complexity = 15
+ignore = ["tests"]# Zensical configuration (documentation generator)
+[tool.zensical]
+site_name = "Mahavishnu Documentation"
+source_dir = "docs/src"
+output_dir = "docs/dist"
+theme = "default"
+markdown_extensions = [
+    "extra",
+    "codehilite",
+    "toc(permalink=true)",
+]
+plugins = [
+    "search",
+]
+nav = [
+    "index.md",
+    "installation.md",
+    "configuration.md",
+    "usage.md",
+    "adapters/index.md",
+    "adapters/langgraph.md",
+    "adapters/prefect.md",
+    "adapters/agno.md",
+    "mcp-server.md",
+    "security.md",
+    "production.md",
+    "api-reference.md",
+    "troubleshooting.md",
+]
