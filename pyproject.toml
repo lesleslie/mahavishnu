@@ -21,7 +21,7 @@ dependencies = [
     "mcp-common~=0.3.0",
 
     # MCP server
-    "fastmcp>=2.13.2",  # Compatible with crackerjack
+    "fastmcp>=3.0.0b1",  # Compatible with crackerjack (pre-release for httpx compatibility)
     "uvicorn[standard]~=0.38.0",  # Websocket support for MCP
 
     # Configuration
@@ -105,7 +105,7 @@ dev = [
     "complexipy~=5.1.0",  # Complexity checking
 
     # Documentation
-    "zensical>=0.1.0",
+    "zensical~=0.0.18",
 
     # Crackerjack integration
     "crackerjack>=0.48.0",
@@ -113,18 +113,20 @@ dev = [
 
 # All core components (simplified stack)
 all = [
-    "mahavishnu[prefect,llamaindex,agno,dev]",
+    "mahavishnu[prefect,agno,dev]",
 ]
 
 # Core components (recommended)
 core = [
-    "mahavishnu[prefect,llamaindex,agno,dev]",
+    "mahavishnu[prefect,agno,dev]",
 ]
 
-# RAG and knowledge base focus
-rag = [
-    "mahavishnu[llamaindex,agno,prefect,dev]",
-]
+# RAG and knowledge base focus (optional - has httpx conflicts with fastmcp)
+# NOTE: Currently disabled due to httpx version conflict between fastmcp and llama-index-embeddings-ollama
+# Install separately with: uv sync --extra llamaindex (may require httpx pinning)
+# rag = [
+#     "mahavishnu[llamaindex,agno,prefect,dev]",
+# ]
 
 prefect = [
     # Prefect: High-level orchestration with dynamic flows
@@ -135,16 +137,20 @@ prefect = [
     "prefect>=3.4.0",
 ]
 
-llamaindex = [
-    # LlamaIndex: RAG pipelines for ingesting repos/docs
-    # License: MIT (100% free OSS)
-    # Benefits: Vector embeddings, Ollama integration, RAG queries
-    # Use for: Knowledge bases, document ingestion, semantic search
-    # Docs: https://docs.llamaindex.ai | GitHub: https://github.com/run-llama/llama_index
-    "llama-index-core~=0.14.0",
-    "llama-index-embeddings-ollama~=0.4.0",
-    "llama-index-llms-ollama~=0.4.0",
-]
+# NOTE: llamaindex extras disabled due to httpx version conflict with fastmcp
+# The llama-index-embeddings-ollama package requires httpx<0.28.0
+# while fastmcp requires httpx>=0.28.1
+# This needs to be resolved upstream before llamaindex can be re-enabled
+# llamaindex = [
+#     # LlamaIndex: RAG pipelines for ingesting repos/docs
+#     # License: MIT (100% free OSS)
+#     # Benefits: Vector embeddings, Ollama integration, RAG queries
+#     # Use for: Knowledge bases, document ingestion, semantic search
+#     # Docs: https://docs.llamaindex.ai | GitHub: https://github.com/run-llama/llama_index
+#     "llama-index-core>=0.12.0,<0.13.0",
+#     "llama-index-embeddings-ollama>=0.4.0,<0.5.0",
+#     "llama-index-llms-ollama>=0.4.0,<0.5.0",
+# ]
 
 agno = [
     # Agno: Fast, scalable single/multi-agents
