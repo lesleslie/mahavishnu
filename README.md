@@ -1,23 +1,57 @@
-# Mahavishnu - Global Orchestrator Package
+# Mahavishnu - Multi-Engine Orchestration Platform
 
-Mahavishnu is a modular orchestration platform that provides unified interfaces for managing workflows across multiple repositories. It supports high-level orchestration with Prefect, RAG pipelines with LlamaIndex, and fast AI agents with Agno—all integrated with a unified memory system for intelligent knowledge management.
+Mahavishnu is a modular orchestration platform that provides unified interfaces for managing workflows across multiple repositories. It currently supports Prefect for high-level orchestration, with planned support for LangGraph and Agno for AI agent workflows.
 
-## Features
+## Current Status
+
+**Implementation Phase**: Phase 1 Complete (Foundation + Core Architecture)
+
+**Completed**:
+- Security hardening (JWT auth, Claude Code + Qwen support)
+- Async base adapter architecture
+- FastMCP-based MCP server with terminal management
+- Configuration system using Oneiric patterns
+- CLI with authentication framework
+- Repository management (9 repos configured)
+- Test infrastructure (11 test files)
+
+**Partially Complete**:
+- Adapter implementations (stubs/skeleton only - actual orchestration logic not implemented)
+- MCP tools (terminal tools complete, core orchestration tools missing)
+
+**Not Started**:
+- Actual adapter logic (Prefect, LangGraph, Agno)
+- LLM provider integrations
+- Production error recovery patterns
+- Full observability implementation
+- Crackerjack QC integration
+- Session-Buddy checkpoint integration
+
+See [UNIFIED_IMPLEMENTATION_STATUS.md](UNIFIED_IMPLEMENTATION_STATUS.md) for detailed progress tracking.
+
+## Architecture
+
+Mahavishnu follows a modular architecture with the following components:
 
 ### Core Components
-- **Prefect Integration**: High-level orchestration with dynamic flows, scheduling, and state management
-- **LlamaIndex RAG**: Repository/document ingestion, embedding with Ollama, vector stores for semantic search
-- **Agno Agents**: Fast, scalable single/multi-agents with memory, tools, and multi-LLM routing
-- **Unified Memory**: Integration with Session-Buddy for project memory, global insights, and cross-project intelligence
 
-### Platform Features
-- **Repository Management**: Organize and operate on repositories using tags
-- **CLI Interface**: Intuitive command-line interface powered by Typer
-- **MCP Server**: Machine Learning Communication Protocol server for tool integration
-- **Configurable**: Flexible configuration via Oneiric framework
-- **Secure**: JWT authentication and path validation
-- **Observable**: Built-in metrics and tracing with OpenTelemetry
-- **Resilient**: Circuit breaker and retry patterns
+- **Adapter Architecture**: Async base adapter interface for orchestration engines
+- **Configuration System**: Oneiric-based layered configuration (defaults -> YAML -> env vars)
+- **Error Handling**: Custom exception hierarchy with circuit breaker patterns
+- **Repository Management**: YAML-based repository manifest with tag filtering
+
+### Platform Services
+
+- **CLI**: Typer-based command-line interface with authentication
+- **MCP Server**: FastMCP-based server for tool integration
+- **Terminal Management**: Multi-terminal session management (10+ concurrent sessions)
+- **Security**: JWT authentication with multiple providers (Claude Code, Qwen, custom)
+
+### Technology Stack
+
+- **Configuration**: Oneiric framework for layered config and logging
+- **Authentication**: JWT with configurable secrets and multiple providers
+- **Observability**: OpenTelemetry metrics and tracing (framework defined, not fully instrumented)
 
 ## Installation
 
@@ -28,6 +62,8 @@ source .venv/bin/activate
 uv pip install -e .
 
 # Or using pip
+python -m venv .venv
+source .venv/bin/activate
 pip install -e .
 ```
 
@@ -47,6 +83,17 @@ repos:
     mcp: "native"
 ```
 
+Mahavishnu currently includes 9 configured repositories:
+- crackerjack
+- session-buddy
+- mcp-common
+- fastblocks
+- mahavishnu
+- excalidraw-mcp
+- mermaid-mcp
+- acb
+- bevy
+
 ### 2. Configure Mahavishnu
 
 Create `settings/mahavishnu.yaml` for your configuration:
@@ -58,22 +105,15 @@ health_ttl_seconds: 60.0
 log_level: INFO
 repos_path: "~/repos.yaml"
 
-# Core Components (Simplified Architecture)
+# Adapters (currently stub/skeleton implementations)
 adapters:
-  prefect: true       # High-level orchestration with dynamic flows
+  prefect: true       # High-level orchestration
   llamaindex: true    # RAG pipelines for knowledge bases
   agno: true          # Fast, scalable AI agents
 
 # LLM Configuration (for LlamaIndex and Agno)
 llm_model: "nomic-embed-text"  # Ollama embedding model
 ollama_base_url: "http://localhost:11434"  # Ollama API endpoint
-
-# Memory Integration (NEW)
-memory_service:
-  enabled: true
-  enable_rag_search: true
-  enable_agent_memory: true
-  enable_reflection_search: true
 
 qc:
   enabled: true
@@ -103,11 +143,7 @@ auth:
 
 ### 3. Usage
 
-Perform an AI sweep across repositories with the 'agent' tag using LangGraph:
-
-```bash
-mahavishnu sweep --tag agent --adapter langgraph
-```
+**Note**: Adapter implementations are currently stubs/skeletons. Actual workflow execution is not yet implemented.
 
 List all repositories:
 
@@ -142,186 +178,124 @@ Mahavishnu uses a layered configuration system:
 - `MAHAVISHNU_LLM_API_KEY`: API key for LLM provider
 - `MAHAVISHNU_REPOS_PATH`: Path to repos.yaml file
 
-## Core Components
+## Adapters
 
 ### Prefect: Workflow Orchestration
 
+**Status**: Stub implementation (143 lines)
+
 Prefect provides high-level orchestration with dynamic flows:
 
-**Use Cases:**
+**Use Cases**:
 - Production workflows with scheduling requirements
 - State management and flow coordination
 - Deployment pipelines and batch processing
 
-**Example:**
-```bash
-# Trigger Prefect workflow
-mahavishnu workflow trigger --name etl_pipeline --adapter prefect
-```
+**Current Implementation**: Returns simulated results, not real orchestration
+
+**Planned Features**:
+- Dynamic flow creation from task specifications
+- Hybrid execution support (local, cloud, containers)
+- State management and checkpointing
 
 ### LlamaIndex: RAG & Knowledge Bases
 
+**Status**: Stub implementation (348 lines)
+
 LlamaIndex powers RAG (Retrieval-Augmented Generation) pipelines:
 
-**Features:**
+**Features**:
 - Repository/document ingestion from `repos.yaml`
 - Vector embeddings with Ollama (local models)
 - Semantic search across codebases
-- Integration with Agno agents for knowledge bases
+- Integration with AI agents for knowledge bases
 
-**Example:**
-```bash
-# Ingest repository into RAG knowledge base
-mahavishnu ingest --repo /path/to/repo --adapter llamaindex
+**Current Implementation**: Returns simulated results, not real RAG
 
-# Query knowledge base
-mahavishnu query --query "authentication patterns" --adapter llamaindex
-```
+**Planned Features**:
+- Vector embeddings with Ollama
+- Document chunking and indexing
+- Semantic search queries
 
 ### Agno: AI Agents
 
+**Status**: Stub implementation (116 lines)
+
 Agno provides fast, scalable AI agent workflows:
 
-**Features:**
+**Features**:
 - Single and multi-agent systems
 - Memory and tools for agents
 - Multi-LLM routing (Ollama, Claude, Qwen)
 - High-performance agent execution
 
-**Example:**
-```bash
-# Run agent workflow
-mahavishnu workflow sweep --tag backend --adapter agno
-```
+**Current Implementation**: Returns simulated results, not real agent orchestration
 
-## Memory Architecture
+**Planned Features**:
+- Agent lifecycle management
+- Tool integration
+- Multi-LLM routing
 
-Mahavishnu features a **unified memory system** that integrates multiple storage backends:
+## MCP Server
 
-### Memory Systems
+Mahavishnu includes a FastMCP-based MCP server for tool integration.
 
-**1. Session-Buddy Integration (Project Memory + Global Intelligence)**
-- **Reflection Database**: DuckDB-based storage at `~/.claude/data/reflection.duckdb`
-- **Project Memory**: Mahavishnu workflow executions and orchestration patterns
-- **Global Memory**: Insights shared across all projects
-- **Cross-Project Search**: Dependency-aware result ranking
-- **Automatic Insights Capture**: Extracts learnings from `★ Insight ─────` patterns
+### Terminal Management (Implemented)
 
-**2. AgentDB + PostgreSQL (Agent Memory)**
-- **High-Volume Storage**: Scales for frequent agent operations
-- **Agent Conversations**: Chat history and context tracking
-- **Tool Usage History**: Agent tool invocations and results
-- **Reasoning Traces**: Agent decision processes
-- **Persistent Storage**: PostgreSQL-backed for durability
+**Status**: Complete (11,453 lines of terminal tools)
 
-**3. LlamaIndex + AgentDB (RAG Knowledge Base)**
-- **Vector Embeddings**: Ollama-powered local embeddings
-- **Document Chunks**: Intelligent text splitting for retrieval
-- **Semantic Search**: High-quality RAG retrieval
-- **Large-Scale**: Handles millions of documents
+Terminal management tools are fully implemented:
+- `terminal_launch`: Launch terminal sessions
+- `terminal_type`: Type commands in terminals
+- `terminal_read`: Read terminal output
+- `terminal_close`: Close terminal sessions
+- `terminal_list`: List active terminals
 
-### Unified Memory Search
+**Features**:
+- Launch 10+ concurrent terminal sessions
+- Hot-swappable adapters (iTerm2 <-> mcpretentious)
+- Connection pooling for reduced overhead
+- iTerm2 profile support
 
-Search across all memory systems with a single query:
+### Core Orchestration Tools (Not Implemented)
 
-```python
-from mahavishnu.core.memory_integration import UnifiedMemoryQuery
+**Status**: Not yet implemented
 
-# Search across all memory systems
-results = await memory.unified_search(
-    UnifiedMemoryQuery(
-        query="orchestration patterns for microservices",
-        sources=["session_buddy", "agentdb", "llamaindex"],
-        limit=20
-    )
-)
-```
+The following tools are specified but not yet implemented:
+- `list_repos`: List repositories with tag filtering
+- `trigger_workflow`: Trigger workflow execution
+- `get_workflow_status`: Check workflow status
+- `cancel_workflow`: Cancel running workflow
+- `list_adapters`: List available adapters
 
-### Cross-Project Intelligence
-
-Mahavishnu integrates with Session-Buddy's cross-project features:
-
-- **Project Groups**: Related projects coordinated by Mahavishnu
-- **Dependency Tracking**: Repos know they're orchestrated by Mahavishnu
-- **Knowledge Sharing**: Solutions found in one project help in related projects
-- **Dependency-Aware Search**: Results ranked by project relationships
-
-**Example:**
-When fixing an authentication issue in `auth-service`, the solution automatically becomes discoverable in `user-service` (which depends on `auth-service`) via Mahavishnu's cross-project memory.
-
-For detailed architecture documentation, see [MEMORY_ARCHITECTURE_PLAN.md](MEMORY_ARCHITECTURE_PLAN.md).
+See [docs/MCP_TOOLS_SPECIFICATION.md](docs/MCP_TOOLS_SPECIFICATION.md) for complete tool specifications.
 
 ## Security
 
-Mahavishnu implements several security measures:
+Mahavishnu implements comprehensive security measures:
 
-- JWT authentication for API access
-- Path validation to prevent directory traversal
-- Secrets management via environment variables
-- Configuration validation
+### Authentication
 
-To enable authentication, set `auth.enabled: true` in your configuration and provide a `MAHAVISHNU_AUTH_SECRET` environment variable with at least 32 characters.
+- **JWT Authentication**: Multiple provider support
+  - Claude Code subscription authentication
+  - Qwen free service authentication
+  - Custom JWT tokens
+- **Path Validation**: Prevents directory traversal attacks
+- **Environment-Based Secrets**: No API keys in configuration files
+- **Auth Secret Strength Validation**: Minimum 32 characters required
 
-## Architecture
+### Configuration
 
-Mahavishnu follows a modular architecture with the following components:
+To enable authentication, set `auth.enabled: true` in your configuration:
 
-### Core Components
-
-- **Prefect Adapter**: High-level orchestration with dynamic flows and scheduling
-- **LlamaIndex Adapter**: RAG pipelines for knowledge bases and semantic search
-- **Agno Adapter**: Fast, scalable AI agents with memory and tools
-
-### Memory Integration
-
-- **Session-Buddy Integration**: Project memory, global insights, cross-project intelligence
-- **AgentDB + PostgreSQL**: High-volume agent memory storage
-- **LlamaIndex RAG**: Vector embeddings and semantic search
-- **Unified Memory Service**: Single interface to all memory systems
-
-### Platform Services
-
-- **CLI**: Typer-based command-line interface
-- **MCP Server**: Machine Learning Communication Protocol server
-- **Terminal Management**: Multi-terminal session management (10+ concurrent sessions)
-- **Integrations**: Hooks for Crackerjack (QC) and Session-Buddy
-
-### Technology Stack
-
-- **Configuration**: Oneiric framework for layered config and logging
-- **Embeddings**: Ollama (local models, no external APIs)
-- **Vector Storage**: AgentDB with PostgreSQL backend
-- **Authentication**: JWT with configurable secrets
-- **Observability**: OpenTelemetry metrics and tracing
-
-## Terminal Management
-
-Mahavishnu includes advanced terminal management capabilities for launching and controlling multiple terminal sessions concurrently.
-
-**Key Features:**
-- Launch 10+ concurrent terminal sessions
-- Hot-swappable adapters (iTerm2 ↔ mcpretentious)
-- Connection pooling for reduced overhead
-- iTerm2 profile support
-- Command injection and output capture
-
-**Quick Start:**
 ```yaml
-# settings/mahavishnu.yaml
-terminal:
+auth:
   enabled: true
-  adapter_preference: "auto"  # Auto-detect iTerm2, fallback to mcpretentious
+  algorithm: "HS256"
+  expire_minutes: 60
 ```
 
-```bash
-# Launch 3 Qwen sessions
-mahavishnu terminal launch "qwen" --count 3
-
-# Or via MCP tools (when server is running)
-await mcp.call_tool("terminal_launch", {"command": "qwen", "count": 3})
-```
-
-For full documentation, see [docs/TERMINAL_MANAGEMENT.md](docs/TERMINAL_MANAGEMENT.md).
+Provide a `MAHAVISHNU_AUTH_SECRET` environment variable with at least 32 characters.
 
 ## Development
 
@@ -353,6 +327,33 @@ Run integration tests:
 ```bash
 pytest tests/integration/
 ```
+
+Run with coverage:
+
+```bash
+pytest --cov=mahavishnu --cov-report=html
+```
+
+## Documentation
+
+- [Implementation Status](UNIFIED_IMPLEMENTATION_STATUS.md) - Detailed progress tracking
+- [Architecture Decision Records](docs/adr/) - Technical decisions and rationale
+- [MCP Tools Specification](docs/MCP_TOOLS_SPECIFICATION.md) - Complete tool API documentation
+- [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md) - Modernization notes (Prefect vs Airflow, LangGraph vs CrewAI)
+- [Terminal Management](docs/TERMINAL_MANAGEMENT.md) - Terminal feature documentation
+
+## Project Status
+
+**Roadmap**:
+- Phase 0: Security Hardening (Complete)
+- Phase 1: Foundation Architecture (Complete)
+- Phase 2: MCP Server (Partial - terminal tools complete, core tools missing)
+- Phase 3: Adapter Implementation (Not Started - 6-9 weeks estimated)
+- Phase 4: Production Features (Not Started - error recovery, observability, QC integration)
+- Phase 5: Testing & Documentation (Not Started - comprehensive test suite, user docs)
+- Phase 6: Production Readiness (Not Started - security audit, performance benchmarking)
+
+**Estimated Time to Production**: 10 weeks from current state
 
 ## License
 
