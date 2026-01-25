@@ -194,6 +194,88 @@ results = await adapter.query_documents(query="authentication patterns")
 
 ---
 
+## Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "User Interface"
+        CLI[Cli.Typer]
+        MCP[McpServer.FastMCP]
+        Desktop[Claude Desktop]
+    end
+
+    subgraph "Core Application"
+        App[MahavishnuApp]
+        Config[Config.Oneiric]
+        Logging[Logging.Structlog]
+        Auth[Auth.JWT]
+    end
+
+    subgraph "Adapters"
+        LlamaIndex[LlamaIndexAdapter<br/>✅ Fully Implemented<br/>348 lines]
+        Prefect[PrefectAdapter<br/>🟡 Stub Only<br/>143 lines]
+        Agno[AgnoAdapter<br/>🟡 Stub Only<br/>116 lines]
+    end
+
+    subgraph "Terminal Management"
+        Terminal[TerminalManager]
+        Mcpretentious[Mcpretentious]
+        ITerm2[ITerm2.Adapter]
+    end
+
+    subgraph "Repository Layer"
+        Repos[Repos.Yaml]
+        Manager[RepoManager]
+    end
+
+    subgraph "Quality & Operations"
+        QC[Crackerjack]
+        Session[Session-Buddy]
+        Metrics[OpenTelemetry]
+    end
+
+    %% User Interface connections
+    CLI --> App
+    MCP --> App
+    Desktop --> MCP
+
+    %% App to Core
+    App --> Config
+    App --> Logging
+    App --> Auth
+
+    %% App to Adapters
+    App --> LlamaIndex
+    App --> Prefect
+    App --> Agno
+
+    %% Terminal Management
+    App --> Terminal
+    Terminal --> Mcpretentious
+    Terminal --> ITerm2
+
+    %% Repository Management
+    App --> Manager
+    Manager --> Repos
+
+    %% Quality & Operations
+    App --> QC
+    App --> Session
+    App --> Metrics
+
+    %% Styling
+    style LlamaIndex fill:#90EE90,stroke:#2E7D32,stroke-width:3px
+    style Prefect fill:#FFD700,stroke:#B8860B,stroke-width:2px,stroke-dasharray: 5 5
+    style Agno fill:#FFD700,stroke:#B8860B,stroke-width:2px,stroke-dasharray: 5 5
+```
+
+**Legend**:
+- ✅ **Green**: Fully implemented and functional
+- 🟡 **Yellow**: Stub implementation (framework skeleton only)
+- ❌ **Red**: Not implemented (deprecated)
+
+---
+
 ## Configuration System
 
 ### Oneiric Integration
