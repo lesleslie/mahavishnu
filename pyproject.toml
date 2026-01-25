@@ -14,45 +14,49 @@ license = {text = "MIT"}
 requires-python = ">=3.13"
 dependencies = [
     # CLI
-    "typer~=0.20.0",
+    "typer>=0.20.1",
 
     # Oneiric ecosystem
-    "oneiric~=0.3.0",
+    "oneiric>=0.3.12",
+
+    # Shared infrastructure (mcp-common)
+    # Condition 1: Add mcp-common dependency for code graph and messaging types
+    "mcp-common>=0.4.0",
 
     # MCP server
     "fastmcp>=3.0.0b1",  # Compatible with crackerjack (pre-release for httpx compatibility)
-    "uvicorn[standard]~=0.38.0",  # Websocket support for MCP
+    "uvicorn[standard]>=0.38.0",  # Websocket support for MCP
 
     # Configuration
-    "pydantic~=2.12.0",
-    "pyyaml~=6.0",
-    "tomli~=2.2.0",
+    "pydantic>=2.12.5",
+    "pyyaml>=6.0.3",
+    "tomli>=2.2.1",
     "aiofiles>=25.1.0",  # Async file I/O for config loading (compatible with crackerjack)
 
     # Observability
-    "opentelemetry-api~=1.38.0",
-    "opentelemetry-sdk~=1.38.0",
-    "opentelemetry-instrumentation~=0.41b0",
-    "opentelemetry-exporter-otlp-proto-grpc~=1.38.0",
-    "structlog~=25.5.0",
+    "opentelemetry-api>=1.38.0",
+    "opentelemetry-sdk>=1.38.0",
+    "opentelemetry-instrumentation>=0.59b0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.38.0",
+    "structlog>=25.5.0",
 
     # Resilience
-    "tenacity~=9.1.0",
+    "tenacity>=9.1.2",
 
     # Quality control (optional)
-    "crackerjack>=0.48.0",
+    "crackerjack>=0.50.1",
 
     # Session management (optional)
     # Session-Buddy MCP: Development session tracking & quality metrics
     # Local-first privacy (ONNX embeddings, no external APIs)
     # See: docs/LIBRARY_EVALUATION_2025.md for memory system comparison
-    "session-buddy>=0.11.0",
+    "session-buddy>=0.11.1",
 
     # Git operations
-    "gitpython~=3.1.0",
+    "gitpython>=3.1.46",
 
     # Terminal management
-    "iterm2~=2.6",  # iTerm2 Python API (optional, for iTerm2 adapter)
+    "iterm2>=2.13",  # iTerm2 Python API (optional, for iTerm2 adapter)
 ]
 
 [project.scripts]
@@ -79,35 +83,35 @@ mahavishnu = "mahavishnu.cli:app"
 [project.optional-dependencies]
 dev = [
     # Testing
-    "pytest~=9.0.0",
-    "pytest-asyncio~=1.3.0",
-    "pytest-cov~=7.0.0",
-    "pytest-xdist~=3.8.0",  # Parallel test execution
-    "pytest-mock~=3.15.0",
-    "hypothesis~=6.148.0",  # Property-based testing
-    "pytest-timeout~=2.4.0",  # Test timeout protection
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "pytest-xdist>=3.8.0",  # Parallel test execution
+    "pytest-mock>=3.15.1",
+    "hypothesis>=6.148.13",  # Property-based testing
+    "pytest-timeout>=2.4.0",  # Test timeout protection
 
     # Code quality
-    "ruff~=0.14.0",  # Fast Python linter (replaces black/flake8/isort)
-    "pyright>=1.1.0",  # Type checking fallback
-    "pylint~=3.0.0",  # Additional linting perspectives
+    "ruff>=0.14.14",  # Fast Python linter (replaces black/flake8/isort)
+    "pyright>=1.1.408",  # Type checking fallback
+    "pylint>=3.0.4",  # Additional linting perspectives
     # Note: We use Crackerjack for QC, not pre-commit
 
     # Security & dependency management
-    "bandit~=1.9.0",  # Security linting
-    "safety~=2.3.0",  # Dependency vulnerability scanning
-    "creosote~=4.1.0",  # Detect unused dependencies
+    "bandit>=1.9.3",  # Security linting
+    "safety>=2.3.4",  # Dependency vulnerability scanning
+    "creosote>=4.1.0",  # Detect unused dependencies
 
     # Code modernization & complexity
-    "refurb~=2.2.0",  # Modern Python suggestions
-    "codespell~=2.4.0",  # Typo detection
-    "complexipy~=5.1.0",  # Complexity checking
+    "refurb>=2.2.0",  # Modern Python suggestions
+    "codespell>=2.4.1",  # Typo detection
+    "complexipy>=5.1.0",  # Complexity checking
 
     # Documentation
-    "zensical~=0.0.18",
+    "zensical>=0.0.19",
 
     # Crackerjack integration
-    "crackerjack>=0.48.0",
+    "crackerjack>=0.50.1",
 ]
 
 # All core components (simplified stack)
@@ -133,7 +137,7 @@ prefect = [
     # Benefits: Pure Python, lightweight, scheduling, state management
     # Use for: Production workflows, scheduling, coordination
     # Docs: https://docs.prefect.io | GitHub: https://github.com/PrefectHQ/prefect
-    "prefect>=3.4.0",
+    "prefect>=3.6.13",
 ]
 
 # NOTE: llamaindex extras disabled due to httpx version conflict with fastmcp
@@ -157,7 +161,7 @@ agno = [
     # Benefits: Memory, tools, teams, multi-LLM routing (Ollama, Claude, Qwen)
     # Use for: AI agent workflows, reasoning, execution
     # Docs: https://docs.agno.com | GitHub: https://github.com/agno-agi/agno
-    "agno~=0.1.0",
+    "agno>=0.1.7",
 ]
 
 [tool.hatch.metadata]
@@ -366,4 +370,10 @@ nav = [
     "production.md",
     "api-reference.md",
     "troubleshooting.md",
+]
+
+[dependency-groups]
+dev = [
+    "crackerjack>=0.50.1",
+    "session-buddy>=0.11.1",
 ]
