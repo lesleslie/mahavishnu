@@ -24,7 +24,7 @@ def sample_repos_path(tmp_path: Path) -> Path:
                 "name": "test-repo-1",
                 "package": "test_repo_1",
                 "path": "/tmp/test1",
-                "tags": ["python", "testing"],
+                "tags": ["python-testing", "unit-test"],
                 "description": "Test repository 1",
                 "mcp": "native",
                 "metadata": {
@@ -37,9 +37,9 @@ def sample_repos_path(tmp_path: Path) -> Path:
                 "name": "test-repo-2",
                 "package": "test_repo_2",
                 "path": "/tmp/test2",
-                "tags": ["python", "mcp"],
+                "tags": ["python-mcp", "integration"],
                 "description": "Test repository 2",
-                "mcp": "integration",
+                "mcp": "3rd-party",
             },
         ],
     }
@@ -69,7 +69,7 @@ async def test_get_by_tag(sample_repos_path: Path) -> None:
     manager = RepositoryManager(sample_repos_path)
     await manager.load()
 
-    python_repos = manager.get_by_tag("python")
+    python_repos = manager.get_by_tag("python-testing")
     assert len(python_repos) == 2
     assert "test_repo_1" in python_repos
     assert "test_repo_2" in python_repos
@@ -167,18 +167,18 @@ async def test_cache_invalidation(sample_repos_path: Path) -> None:
     await manager.load()
 
     # First call - cache miss
-    result1 = manager.get_by_tag("python")
+    result1 = manager.get_by_tag("python-testing")
     assert len(result1) == 2
 
     # Second call - cache hit
-    result2 = manager.get_by_tag("python")
+    result2 = manager.get_by_tag("python-testing")
     assert len(result2) == 2
 
     # Invalidate cache
     manager.invalidate_cache()
 
     # Third call - cache miss again
-    result3 = manager.get_by_tag("python")
+    result3 = manager.get_by_tag("python-testing")
     assert len(result3) == 2
 
 

@@ -1,0 +1,72 @@
+# Mahavishnu Configuration with Terminal Management and OpenSearch Integration
+
+# Server settings
+server_name: "Mahavishnu Orchestrator"
+cache_root: .oneiric_cache
+health_ttl_seconds: 60.0
+
+# Logging
+log_level: INFO
+
+# Repository manifest path
+repos_path: settings/repos.yaml
+
+# Concurrency settings
+max_concurrent_workflows: 10
+
+# Circuit breaker settings
+circuit_breaker_threshold: 5
+retry_base_delay: 1.0
+
+# Adapter configuration - Core Components
+# Prefect: High-level orchestration with dynamic flows
+prefect_enabled: true
+# LlamaIndex: RAG pipelines for ingesting repos/docs, embedding with Ollama
+llamaindex_enabled: true
+# Agno: Fast, scalable single/multi-agents with memory and tools
+agno_enabled: true
+
+# LLM configuration for LlamaIndex and Agno
+llm_model: nomic-embed-text  # Ollama embedding model
+ollama_base_url: http://localhost:11434  # Ollama API endpoint
+
+# OpenSearch configuration for vector storage and observability
+opensearch:
+  endpoint: https://localhost:9200  # HTTPS endpoint for security
+  index_name: mahavishnu_code
+  verify_certs: true
+  ca_certs: null  # Path to CA certificate file if using self-signed certs
+  use_ssl: true
+  ssl_assert_hostname: true
+  ssl_show_warn: true
+
+# Quality control
+qc_enabled: true
+qc_min_score: 80
+qc_checks:
+  - linting
+  - type_checking
+  - security_scan
+
+# Session management
+session_enabled: true
+checkpoint_interval: 60
+
+# Authentication settings
+auth:
+  enabled: false  # Set to true in production
+  algorithm: "HS256"
+  expire_minutes: 60
+  # Set MAHAVISHNU_AUTH_SECRET environment variable with at least 32 characters
+
+# Terminal management
+terminal:
+  enabled: false  # Set to true to enable
+  default_columns: 120
+  default_rows: 40
+  capture_lines: 100
+  poll_interval: 0.5
+  max_concurrent_sessions: 20
+  # Adapter preference: "auto" (detect iTerm2, fallback to mcpretentious),
+  # "iterm2" (native iTerm2 Python API), or "mcpretentious" (PTY-based)
+  adapter_preference: "auto"

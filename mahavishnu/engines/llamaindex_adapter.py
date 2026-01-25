@@ -19,9 +19,14 @@ try:
     from llama_index.embeddings.ollama import OllamaEmbedding
     from llama_index.llms.ollama import Ollama
     from llama_index.core.settings import Settings
+    from llama_index.vector_stores.opensearch import OpensearchVectorStore
+    from llama_index.core.storage.storage_context import StorageContext
     LLAMAINDEX_AVAILABLE = True
 except ImportError:
     LLAMAINDEX_AVAILABLE = False
+
+# Import code graph analyzer
+from mcp_common.code_graph import CodeGraphAnalyzer
 
 from ..core.adapters.base import OrchestratorAdapter
 
@@ -84,9 +89,26 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             separator=" "
         )
 
+        # Initialize OpenSearch vector store with security settings
+        try:
+            self.vector_store = OpensearchVectorStore(
+                endpoint=getattr(config, 'opensearch_endpoint', 'https://localhost:9200'),
+                index_name=getattr(config, 'opensearch_index_name', 'mahavishnu_code'),
+                dim=1536,  # Standard for text-embedding-ada-002
+                verify_certs=getattr(config, 'opensearch_verify_certs', True),
+                ca_certs=getattr(config, 'opensearch_ca_certs', None),
+                use_ssl=getattr(config, 'opensearch_use_ssl', True),
+                ssl_assert_hostname=getattr(config, 'opensearch_ssl_assert_hostname', True),
+                ssl_show_warn=getattr(config, 'opensearch_ssl_show_warn', True)
+            )
+        except Exception as e:
+            print(f"Warning: Could not initialize OpenSearch vector store: {e}")
+            print("Falling back to in-memory vector store")
+            self.vector_store = None
+
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
     async def _ingest_repository(self, repo_path: str, task_params: Dict[str, Any]) -> Dict[str, Any]:
-        """Ingest a repository into LlamaIndex.
+        """Ingest a repository into LlamaIndex with code graph context.
 
         Args:
             repo_path: Path to repository
@@ -105,6 +127,10 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     "error": f"Repository path does not exist: {repo_path}",
                     "task_id": task_params.get("id", "unknown")
                 }
+
+            # Use code graph analyzer to extract structural information
+            graph_analyzer = CodeGraphAnalyzer(repo)
+            graph_stats = await graph_analyzer.analyze_repository(repo_path)
 
             # Get file types to include (default: common code/doc files)
             file_types = task_params.get(
@@ -136,16 +162,44 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                         "operation": "ingest",
                         "documents_ingested": 0,
                         "index_id": None,
-                        "message": "No matching documents found"
+                        "message": "No matching documents found",
+                        "graph_stats": graph_stats
                     },
                     "task_id": task_params.get("id", "unknown")
                 }
 
+            # Enhance documents with code graph context
+            for doc in documents:
+                file_path = Path(doc.metadata.get('file_path', ''))
+                if file_path.exists():
+                    # Add code graph context to document metadata
+                    file_functions = [
+                        node for node_id, node in graph_analyzer.nodes.items()
+                        if hasattr(node, 'file_id') and Path(node.file_id) == file_path
+                    ]
+
+                    # Get context for the document
+                    context = await self._get_document_context(graph_analyzer, file_path)
+
+                    doc.metadata.update({
+                        "code_graph": context,
+                        "functions": context.get("functions", []),
+                        "classes": context.get("classes", []),
+                        "functions_count": len([n for n in file_functions if hasattr(n, 'name')]),
+                        "related_files": await graph_analyzer.find_related_files(str(file_path))
+                    })
+
             # Parse documents into nodes
             nodes = self.node_parser.get_nodes_from_documents(documents)
 
-            # Create vector store index
-            index = VectorStoreIndex(nodes)
+            # Create storage context with OpenSearch vector store if available
+            if self.vector_store:
+                storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
+                # Create index with persistent OpenSearch storage
+                index = VectorStoreIndex(nodes, storage_context=storage_context)
+            else:
+                # Fallback to in-memory storage
+                index = VectorStoreIndex(nodes)
 
             # Store index for querying
             index_id = f"{repo.name}_{len(self.indices)}"
@@ -160,7 +214,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     "documents_ingested": len(documents),
                     "nodes_created": len(nodes),
                     "index_id": index_id,
-                    "embedding_model": getattr(self.config, 'llm_model', 'nomic-embed-text')
+                    "embedding_model": getattr(self.config, 'llm_model', 'nomic-embed-text'),
+                    "graph_stats": graph_stats,
+                    "vector_backend": "opensearch" if self.vector_store else "memory"
                 },
                 "task_id": task_params.get("id", "unknown")
             }
@@ -173,13 +229,61 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 "task_id": task_params.get("id", "unknown")
             }
 
+    async def _get_document_context(self, graph_analyzer: CodeGraphAnalyzer, file_path: Path) -> dict:
+        """Get context for a document from the code graph analyzer."""
+        # Get all nodes associated with this file
+        file_nodes = [
+            node for node_id, node in graph_analyzer.nodes.items()
+            if hasattr(node, 'file_id') and Path(node.file_id) == file_path
+        ]
+
+        # Separate nodes by type
+        functions = [
+            {
+                "name": node.name,
+                "start_line": getattr(node, 'start_line', 0),
+                "end_line": getattr(node, 'end_line', 0),
+                "is_export": getattr(node, 'is_export', False),
+                "calls": getattr(node, 'calls', [])
+            }
+            for node in file_nodes
+            if hasattr(node, 'start_line') and hasattr(node, 'name')
+        ]
+
+        classes = [
+            {
+                "name": node.name,
+                "methods": getattr(node, 'methods', []),
+                "inherits_from": getattr(node, 'inherits_from', [])
+            }
+            for node in file_nodes
+            if hasattr(node, 'methods') and hasattr(node, 'name')
+        ]
+
+        imports = [
+            {
+                "name": node.name,
+                "imported_from": getattr(node, 'imported_from', ''),
+                "alias": getattr(node, 'alias', None)
+            }
+            for node in file_nodes
+            if hasattr(node, 'imported_from')
+        ]
+
+        return {
+            "functions": functions,
+            "classes": classes,
+            "imports": imports,
+            "total_nodes": len(file_nodes)
+        }
+
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
     async def _query_index(
         self,
         repo_path: str,
         task_params: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Query a LlamaIndex vector store.
+        """Query a LlamaIndex vector store with code graph context.
 
         Args:
             repo_path: Path to repository (used to find index)
@@ -226,6 +330,30 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             # Execute query
             response = query_engine.query(query_text)
 
+            # Process sources with enhanced code graph context
+            sources = []
+            for source in response.source_nodes:
+                source_info = {
+                    "file": source.metadata.get("file_name", "unknown"),
+                    "content": source.node.get_content(),
+                    "score": getattr(source, 'score', None),  # Similarity score if available
+                }
+
+                # Add code graph context if available
+                if "code_graph" in source.metadata:
+                    source_info["code_graph"] = source.metadata["code_graph"]
+
+                if "functions" in source.metadata:
+                    source_info["functions"] = source.metadata["functions"]
+
+                if "classes" in source.metadata:
+                    source_info["classes"] = source.metadata["classes"]
+
+                if "related_files" in source.metadata:
+                    source_info["related_files"] = source.metadata["related_files"]
+
+                sources.append(source_info)
+
             return {
                 "repo": repo_path,
                 "status": "completed",
@@ -233,14 +361,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     "operation": "query",
                     "query": query_text,
                     "answer": str(response),
-                    "sources": [
-                        {
-                            "file": source.metadata.get("file_name", "unknown"),
-                            "content": source.node.get_content()
-                        }
-                        for source in response.source_nodes
-                    ],
-                    "index_id": index_id
+                    "sources": sources,
+                    "index_id": index_id,
+                    "total_sources": len(sources)
                 },
                 "task_id": task_params.get("id", "unknown")
             }

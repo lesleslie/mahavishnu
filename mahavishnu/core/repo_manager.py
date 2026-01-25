@@ -27,7 +27,7 @@ class RepositoryManager:
 
         # Index structures for O(1) lookups
         self._tag_index: dict[str, list[str]] = defaultdict(list)
-        self._mcp_index: dict[str, list[str]] = {"native": [], "integration": []}
+        self._mcp_index: dict[str, list[str]] = {"native": [], "3rd-party": []}
         self._package_index: dict[str, Repository] = {}
         self._name_index: dict[str, Repository] = {}
         self._all_paths: list[str] = []
@@ -42,9 +42,9 @@ class RepositoryManager:
             manifest_data = yaml.safe_load(content)
             self._manifest = RepositoryManifest.model_validate(manifest_data)
         except ValidationError as e:
-            raise ValueError(f"Invalid repos.yaml: {e}") from e
+            raise ValueError(f"Invalid repository manifest: {e}") from e
         except yaml.YAMLError as e:
-            raise ValueError(f"Failed to parse repos.yaml: {e}") from e
+            raise ValueError(f"Failed to parse repository manifest: {e}") from e
 
         # Build indexes
         self._build_indexes()
@@ -80,7 +80,7 @@ class RepositoryManager:
 
     @lru_cache(maxsize=128)  # noqa: B019 - Safe for singleton with explicit invalidation
     def get_by_mcp_type(self, mcp_type: str) -> list[str]:
-        """Get repositories by MCP type (native or integration)."""
+        """Get repositories by MCP type (native or 3rd-party)."""
         return self._mcp_index.get(mcp_type, []).copy()
 
     def get_by_package(self, package: str) -> Repository | None:

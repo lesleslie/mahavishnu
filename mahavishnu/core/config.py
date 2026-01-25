@@ -45,7 +45,7 @@ class MahavishnuSettings(BaseSettings):
 
     # Repository configuration
     repos_path: str = Field(
-        default="repos.yaml",
+        default="settings/repos.yaml",
         description="Path to repos.yaml repository manifest",
     )
 
@@ -183,6 +183,42 @@ class MahavishnuSettings(BaseSettings):
         ge=5,
         le=1440,
         description="Subscription token expiration in minutes (5-1440)",
+    )
+
+    # OpenSearch configuration for vector storage and observability
+    opensearch_endpoint: str = Field(
+        default="https://localhost:9200",
+        description="OpenSearch endpoint for vector storage and observability",
+    )
+    opensearch_index_name: str = Field(
+        default="mahavishnu_code",
+        description="OpenSearch index name for code vectors",
+    )
+    opensearch_verify_certs: bool = Field(
+        default=True,
+        description="Verify SSL certificates for OpenSearch connection",
+    )
+    opensearch_ca_certs: str | None = Field(
+        default=None,
+        description="Path to CA certificate file for OpenSearch",
+    )
+    opensearch_use_ssl: bool = Field(
+        default=True,
+        description="Use SSL for OpenSearch connection",
+    )
+    opensearch_ssl_assert_hostname: bool = Field(
+        default=True,
+        description="Assert hostname for OpenSearch SSL connection",
+    )
+    opensearch_ssl_show_warn: bool = Field(
+        default=True,
+        description="Show SSL warnings for OpenSearch connection",
+    )
+
+    # Logging configuration
+    log_level: str = Field(
+        default="INFO",
+        description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
     )
 
     # Terminal management

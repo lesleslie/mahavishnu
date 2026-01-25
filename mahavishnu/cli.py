@@ -5,6 +5,15 @@ import asyncio
 from .core.app import MahavishnuApp
 from .core.subscription_auth import MultiAuthHandler
 
+# Import production readiness CLI
+from .production_cli import add_production_commands
+
+# Import backup and recovery CLI
+from .backup_cli import add_backup_commands
+
+# Import monitoring CLI
+from .monitoring_cli import add_monitoring_commands
+
 app = typer.Typer()
 
 @app.command()
@@ -426,6 +435,15 @@ def terminal_close(
 
     asyncio.run(_close())
 
+
+# Add production readiness commands
+add_production_commands(app)
+
+# Add backup and recovery commands
+add_backup_commands(app)
+
+# Add monitoring commands
+add_monitoring_commands(app)
 
 if __name__ == "__main__":
     app()

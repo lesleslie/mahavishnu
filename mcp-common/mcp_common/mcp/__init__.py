@@ -1,0 +1,1 @@
+"""MCP contracts module for mcp-common"""

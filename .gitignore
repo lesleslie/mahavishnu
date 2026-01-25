@@ -89,6 +89,7 @@ Thumbs.db
 
 # Local configuration
 settings/local.yaml
+settings/repos.yaml
 .envrc.local
 
 # Sensitive configuration files
