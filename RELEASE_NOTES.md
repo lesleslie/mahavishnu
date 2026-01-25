@@ -15,10 +15,15 @@ Mahavishnu v1.0.0 is the first production-ready release of the global orchestrat
 - Secrets validation with minimum entropy requirements
 
 ### Orchestration Engine Support
-- **LangGraph**: AI agent workflows with state management
-- **Prefect**: General workflow orchestration (recommended over Airflow)
-- **Agno**: Experimental AI agent runtime
-- **Airflow**: Legacy support (migration to Prefect recommended)
+Orchestration Adapters:
+- **LlamaIndex**: Fully implemented for RAG pipelines with Ollama embeddings (production ready)
+- **Prefect**: Stub implementation (framework skeleton, not yet functional)
+- **Agno**: Stub implementation (framework skeleton, not yet functional)
+
+Deprecated (removed 2025-01-23):
+- ~~Airflow~~: Replaced by Prefect
+- ~~CrewAI~~: Replaced by Agno
+- ~~LangGraph~~: Replaced by Agno
 
 ### Performance & Reliability
 - Concurrent workflow execution with configurable limits

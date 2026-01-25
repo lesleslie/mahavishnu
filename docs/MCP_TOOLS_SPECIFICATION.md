@@ -174,7 +174,7 @@ async def trigger_workflow(
 **Parameters:**
 - `task_type`: Type of task ("code_sweep", "dependency_audit", "test_generation")
 - `task_params`: Task-specific parameters
-- `adapter`: Orchestrator adapter to use ("airflow", "crewai", "langgraph", "agno")
+- `adapter`: Orchestrator adapter to use ("prefect", "agno", "llamaindex")
 - `tag` (optional): Filter repositories by tag
 - `repos` (optional): Specific repositories to process (overrides tag)
 - `checkpoint_enabled`: Enable Session-Buddy checkpoints. Default: true
@@ -185,7 +185,7 @@ async def trigger_workflow(
 {
     "workflow_id": "wf-abc123",
     "status": "running",
-    "adapter": "langgraph",
+    "adapter": "prefect",
     "task_type": "code_sweep",
     "repos": ["/path/to/repo1", "/path/to/repo2"],
     "started_at": "2025-01-22T12:34:56Z",
@@ -207,7 +207,7 @@ workflow = await trigger_workflow(
     task_params={
         "focus": ["security", "performance"],
     },
-    adapter="langgraph",
+    adapter="prefect",
     tag="backend",
 )
 
@@ -218,7 +218,7 @@ workflow = await trigger_workflow(
         "check_updates": True,
         "check_vulnerabilities": True,
     },
-    adapter="crewai",
+    adapter="agno",
     repos=["/path/to/repo1", "/path/to/repo2"],
 )
 ```
@@ -243,7 +243,7 @@ async def get_workflow_status(
 {
     "workflow_id": "wf-abc123",
     "status": "running",  # "running", "completed", "failed", "cancelled"
-    "adapter": "langgraph",
+    "adapter": "prefect",
     "task_type": "code_sweep",
     "started_at": "2025-01-22T12:34:56Z",
     "completed_at": None,
@@ -342,7 +342,7 @@ async def list_workflows(
     {
         "workflow_id": "wf-abc123",
         "status": "completed",
-        "adapter": "langgraph",
+        "adapter": "prefect",
         "task_type": "code_sweep",
         "started_at": "2025-01-22T12:34:56Z",
         "completed_at": "2025-01-22T12:44:56Z",
@@ -371,7 +371,7 @@ async def list_adapters() -> list[dict[str, Any]]
 ```python
 [
     {
-        "name": "langgraph",
+        "name": "prefect",
         "enabled": true,
         "healthy": true,
         "version": "0.0.40",
@@ -418,12 +418,12 @@ async def get_adapter_health(
 ```
 
 **Parameters:**
-- `adapter_name`: Name of adapter ("airflow", "crewai", "langgraph", "agno")
+- `adapter_name`: Name of adapter ("prefect", "agno", "llamaindex")
 
 **Returns:**
 ```python
 {
-    "name": "langgraph",
+    "name": "prefect",
     "healthy": true,
     "status": "operational",
     "version": "0.0.40",
