@@ -4,7 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Mahavishnu is a multi-engine orchestration platform that provides a unified interface for managing workflows across multiple repositories. It supports Airflow, CrewAI, LangGraph, and Agno through a common adapter pattern.
+Mahavishnu is a multi-engine orchestration platform that provides a unified interface for managing workflows across multiple repositories. It currently provides:
+- LlamaIndex adapter for RAG pipelines (fully implemented with Ollama embeddings)
+- Prefect adapter stub (framework skeleton, no actual orchestration yet)
+- Agno adapter stub (framework skeleton, no actual agent execution yet)
 
 ### Key Architectural Patterns
 
@@ -99,7 +102,7 @@ mahavishnu list-repos
 mahavishnu list-repos --tag backend
 
 # Trigger workflow sweep
-mahavishnu workflow sweep --tag backend --adapter langgraph
+mahavishnu workflow sweep --tag backend --adapter prefect
 ```
 
 ## Configuration Files
@@ -116,8 +119,9 @@ repos:
 ```yaml
 server_name: "Mahavishnu Orchestrator"
 adapters:
-  airflow: true
-  crewai: true
+  prefect: true     # Stub implementation
+  llamaindex: true  # Fully implemented
+  agno: true        # Stub implementation
 qc:
   enabled: true
   min_score: 80
@@ -135,6 +139,7 @@ See `docs/adr/` for full Architecture Decision Records:
 - **ADR 002**: MCP-first design with FastMCP + mcp-common
 - **ADR 003**: Error handling with retry, circuit breakers, dead letter queues
 - **ADR 004**: Adapter architecture for multi-engine support
+- **ADR 005**: Unified memory architecture
 
 ## MCP Server Tools
 

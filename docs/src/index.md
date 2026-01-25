@@ -14,12 +14,13 @@ Welcome to the Mahavishnu documentation. Mahavishnu is a multi-engine orchestrat
 - Test infrastructure (11 test files)
 
 **Partially Complete**:
-- Adapter implementations (stubs/skeleton only - actual orchestration logic not implemented)
+- Prefect adapter (stub only, 143 lines)
+- Agno adapter (stub only, 116 lines)
 - MCP tools (terminal tools complete, core orchestration tools missing)
 
 **Not Started**:
-- Actual adapter logic (Prefect, LangGraph, Agno)
-- LLM provider integrations
+- Actual adapter logic (Prefect, Agno need implementation)
+- LLM provider integrations for Prefect and Agno
 - Production error recovery patterns
 - Full observability implementation
 
@@ -31,8 +32,8 @@ See [UNIFIED_IMPLEMENTATION_STATUS.md](../../UNIFIED_IMPLEMENTATION_STATUS.md) f
 - [Configuration](configuration.md)
 - [Usage](usage.md)
 - [Adapters](adapters/index.md)
+  - [LlamaIndex Adapter](adapters/llamaindex.md) - Fully implemented
   - [Prefect Adapter](adapters/prefect.md) - Stub implementation
-  - [LlamaIndex Adapter](adapters/llamaindex.md) - Stub implementation
   - [Agno Adapter](adapters/agno.md) - Stub implementation
 - [MCP Server](mcp-server.md)
 - [Security](security.md)
@@ -60,13 +61,13 @@ Mahavishnu provides a unified interface to multiple orchestration engines, allow
 
 ### Adapters
 
-Mahavishnu supports the following orchestration engines:
+Mahavishnu provides three orchestration adapters:
 
-- **Prefect**: High-level workflow orchestration (modern replacement for Airflow)
-- **LlamaIndex**: RAG pipelines for knowledge bases and semantic search
-- **Agno**: Fast, scalable AI agents with memory and tools
+- **LlamaIndex**: Fully implemented RAG pipelines with Ollama embeddings (348 lines)
+- **Prefect**: Stub implementation for high-level workflow orchestration (143 lines)
+- **Agno**: Stub implementation for AI agent workflows (116 lines)
 
-**Note**: All adapter implementations are currently stub/skeleton code. Actual orchestration logic is not yet implemented.
+**Note**: Only LlamaIndex is fully functional. Prefect and Agno adapters return simulated results and require implementation of actual orchestration logic.
 
 ## Quick Links
 

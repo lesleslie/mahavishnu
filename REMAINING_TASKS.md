@@ -44,62 +44,45 @@
 
 ---
 
-### 2. Implement LangGraph Adapter (2-3 weeks)
-**Status**: 🟡 Stub only (116 lines, placeholder logic)
-**Impact**: Primary orchestration engine
-
-**Current State**: Returns simulated results like:
-```python
-"changes_identified": 0,  # Would be calculated in real implementation
-"recommendations": []     # Would be populated in real implementation
-```
-
-**Required Implementation**:
-- [ ] LLM provider integration (OpenAI, Anthropic, Gemini, Ollama)
-- [ ] LangGraph StateGraph construction
-- [ ] Node/edge logic for workflows
-- [ ] State management across repos
-- [ ] Progress tracking and streaming
-- [ ] Error handling and timeouts
-- [ ] Integration with configuration
-
-**File**: `mahavishnu/engines/langgraph_adapter.py` (create this file)
-
----
-
-### 3. Implement Prefect Adapter (2 weeks)
-**Status**: 🟡 Stub only (143 lines)
+### 2. Complete Prefect Adapter Implementation (2-3 weeks)
+**Status**: 🟡 Stub only (143 lines, returns hardcoded results)
 **Impact**: High-level orchestration with scheduling
 
+**Current State**: Framework skeleton with placeholder logic. Uses Prefect decorators but no actual orchestration.
+
 **Required Implementation**:
-- [ ] Prefect flow construction
-- [ ] Flow deployment and execution
-- [ ] State management
-- [ ] Scheduling integration
-- [ ] Error handling
+- [ ] Prefect flow construction and execution
+- [ ] State management and checkpointing
+- [ ] LLM integration for dynamic workflows
+- [ ] Flow deployment patterns
+- [ ] Progress tracking and streaming
+- [ ] Error handling and timeouts
 
 **File**: `mahavishnu/engines/prefect_adapter.py`
 
 ---
 
-### 4. Implement Agno Adapter (2-3 weeks)
-**Status**: 🟡 Stub only (116 lines)
+### 3. Complete Agno Adapter Implementation (2-3 weeks)
+**Status**: 🟡 Stub only (116 lines, no Agno imports)
 **Impact**: Multi-agent workflows
+
+**Current State**: Framework skeleton with placeholder logic. No Agno framework integration yet.
 
 **Required Implementation**:
 - [ ] Agno v2.0 integration
 - [ ] Agent lifecycle management
 - [ ] Tool integration
 - [ ] Memory integration
-- [ ] Team coordination
+- [ ] Multi-LLM routing (Ollama, Claude, Qwen)
+- [ ] Agent coordination
 
 **File**: `mahavishnu/engines/agno_adapter.py`
 
-**Blocker**: Waiting for Agno v2.0 release
+**Blocker**: Waiting for Agno v2.0 stable release
 
 ---
 
-### 5. Production Error Recovery (1 week)
+### 4. Production Error Recovery (1 week)
 **Status**: ❌ Circuit breaker exists but not integrated
 **Impact**: Production reliability
 
@@ -263,22 +246,20 @@
 
 ## Sprint Breakdown (Recommended)
 
-### Sprint 1 (Week 3-4): MCP Core Tools + LangGraph Foundation
+### Sprint 1 (Week 3-4): MCP Core Tools + Prefect Foundation
 **Goal**: Functional MCP orchestration
 - Implement MCP core tools (list_repos, trigger_workflow, etc.)
-- Start LangGraph adapter with LLM integration
+- Complete Prefect adapter with real orchestration
 - Estimated: 2 weeks
 
-### Sprint 2 (Week 5-6): Complete Adapters
+### Sprint 2 (Week 5-6): Complete Agno Adapter
 **Goal**: All three adapters functional
-- Finish LangGraph adapter
-- Implement Prefect adapter
-- Start Agno adapter
+- Complete Agno adapter with agent lifecycle
+- LlamaIndex is already fully implemented
 - Estimated: 2 weeks
 
 ### Sprint 3 (Week 7-8): Production Features
 **Goal**: Production-ready feature set
-- Complete Agno adapter
 - Implement error recovery patterns
 - Add observability instrumentation
 - Integrate Crackerjack QC
@@ -321,10 +302,10 @@
 
 **This Week**:
 1. Implement MCP core tools (3-5 days)
-2. Start LangGraph adapter with LLM integration
+2. Complete Prefect adapter with real orchestration logic
 
 **Next 4 Weeks**:
-- Complete all adapter implementations
+- Complete Agno adapter
 - Add production features
 
 **Next 10 Weeks**:

@@ -1,6 +1,9 @@
 # Mahavishnu - Multi-Engine Orchestration Platform
 
-Mahavishnu is a modular orchestration platform that provides unified interfaces for managing workflows across multiple repositories. It currently supports Prefect for high-level orchestration, with planned support for LangGraph and Agno for AI agent workflows.
+Mahavishnu is a modular orchestration platform that provides unified interfaces for managing workflows across multiple repositories. It currently provides:
+- **LlamaIndex adapter** (fully implemented) for RAG pipelines with Ollama embeddings
+- **Prefect adapter stub** for high-level orchestration (framework skeleton only)
+- **Agno adapter stub** for AI agent workflows (framework skeleton only)
 
 ## Current Status
 
@@ -16,12 +19,13 @@ Mahavishnu is a modular orchestration platform that provides unified interfaces 
 - Test infrastructure (11 test files)
 
 **Partially Complete**:
-- Adapter implementations (stubs/skeleton only - actual orchestration logic not implemented)
+- Prefect adapter (stub only, 143 lines)
+- Agno adapter (stub only, 116 lines)
 - MCP tools (terminal tools complete, core orchestration tools missing)
 
 **Not Started**:
-- Actual adapter logic (Prefect, LangGraph, Agno)
-- LLM provider integrations
+- Actual adapter logic (Prefect, Agno need implementation)
+- LLM provider integrations for Prefect and Agno
 - Production error recovery patterns
 - Full observability implementation
 - Crackerjack QC integration
@@ -180,6 +184,20 @@ Mahavishnu uses a layered configuration system:
 
 ## Adapters
 
+### LlamaIndex: RAG & Knowledge Bases
+
+**Status**: Fully implemented (348 lines) with real Ollama integration
+
+LlamaIndex provides RAG (Retrieval-Augmented Generation) pipelines:
+
+**Features**:
+- Repository/document ingestion from `repos.yaml`
+- Vector embeddings with Ollama (local models)
+- Semantic search across codebases
+- Integration with AI agents for knowledge bases
+
+**Current Implementation**: Fully functional with Ollama embeddings
+
 ### Prefect: Workflow Orchestration
 
 **Status**: Stub implementation (143 lines)
@@ -191,31 +209,12 @@ Prefect provides high-level orchestration with dynamic flows:
 - State management and flow coordination
 - Deployment pipelines and batch processing
 
-**Current Implementation**: Returns simulated results, not real orchestration
+**Current Implementation**: Framework skeleton with placeholder logic. Returns simulated results.
 
 **Planned Features**:
 - Dynamic flow creation from task specifications
 - Hybrid execution support (local, cloud, containers)
 - State management and checkpointing
-
-### LlamaIndex: RAG & Knowledge Bases
-
-**Status**: Stub implementation (348 lines)
-
-LlamaIndex powers RAG (Retrieval-Augmented Generation) pipelines:
-
-**Features**:
-- Repository/document ingestion from `repos.yaml`
-- Vector embeddings with Ollama (local models)
-- Semantic search across codebases
-- Integration with AI agents for knowledge bases
-
-**Current Implementation**: Returns simulated results, not real RAG
-
-**Planned Features**:
-- Vector embeddings with Ollama
-- Document chunking and indexing
-- Semantic search queries
 
 ### Agno: AI Agents
 
@@ -229,7 +228,7 @@ Agno provides fast, scalable AI agent workflows:
 - Multi-LLM routing (Ollama, Claude, Qwen)
 - High-performance agent execution
 
-**Current Implementation**: Returns simulated results, not real agent orchestration
+**Current Implementation**: Framework skeleton with placeholder logic. Returns simulated results.
 
 **Planned Features**:
 - Agent lifecycle management
@@ -336,10 +335,11 @@ pytest --cov=mahavishnu --cov-report=html
 
 ## Documentation
 
+- [Architecture](ARCHITECTURE.md) - Single source of truth for current architecture and evolution
 - [Implementation Status](UNIFIED_IMPLEMENTATION_STATUS.md) - Detailed progress tracking
 - [Architecture Decision Records](docs/adr/) - Technical decisions and rationale
 - [MCP Tools Specification](docs/MCP_TOOLS_SPECIFICATION.md) - Complete tool API documentation
-- [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md) - Modernization notes (Prefect vs Airflow, LangGraph vs CrewAI)
+- [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md) - Modernization notes
 - [Terminal Management](docs/TERMINAL_MANAGEMENT.md) - Terminal feature documentation
 
 ## Project Status
