@@ -1,7 +1,7 @@
 # Mahavishnu Configuration with Terminal Management
 
 # Repository manifest path
-repos_path: repos.yaml
+repos_path: settings/repos.yaml
 
 # Concurrency settings
 max_concurrent_workflows: 10

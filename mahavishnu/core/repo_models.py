@@ -31,7 +31,7 @@ class Repository(BaseModel):
     path: Path = Field(..., description="Absolute path to repository")
     tags: list[str] = Field(..., min_length=1, max_length=10)
     description: str = Field(..., min_length=1, max_length=500)
-    mcp: Literal["native", "integration"] | None = Field(
+    mcp: Literal["native", "3rd-party"] | None = Field(
         None, description="MCP server type"
     )
     metadata: RepositoryMetadata | None = Field(
@@ -76,11 +76,11 @@ class Repository(BaseModel):
             # Auto-add mcp tag if not present
             self.tags.append("mcp")
 
-        if self.mcp == "native" and "integration" in self.tags:
-            raise ValueError("Native MCP servers cannot have 'integration' tag")
+        if self.mcp == "native" and "3rd-party" in self.tags:
+            raise ValueError("Native MCP servers cannot have '3rd-party' tag")
 
-        if self.mcp == "integration" and "native" in self.tags:
-            raise ValueError("MCP integrations cannot have 'native' tag")
+        if self.mcp == "3rd-party" and "native" in self.tags:
+            raise ValueError("Third-party MCP servers cannot have 'native' tag")
 
         return self
 

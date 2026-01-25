@@ -9,9 +9,8 @@ def test_default_config_values():
     
     assert config.repos_path == "repos.yaml"
     assert config.max_concurrent_workflows == 10
-    assert config.airflow_enabled is True
-    assert config.crewai_enabled is True
-    assert config.langgraph_enabled is True
+    assert config.prefect_enabled is True
+    assert config.llamaindex_enabled is True
     assert config.agno_enabled is True
     assert config.qc_enabled is True
     assert config.qc_min_score == 80

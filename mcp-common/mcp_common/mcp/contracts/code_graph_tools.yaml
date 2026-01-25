@@ -1,0 +1,50 @@
+# Code Graph Analysis Tools Contract
+# Used by both Session Buddy and Mahavishnu
+
+tools:
+  - name: "index_code_graph"
+    description: "Index codebase structure for better context"
+    input_schema:
+      type: "object"
+      properties:
+        project_path:
+          type: "string"
+          description: "Path to the project to analyze"
+      required:
+        - "project_path"
+    experimental_tags:
+      - "code-graph"
+
+  - name: "get_function_context"
+    description: "Get caller/callee context for a function"
+    input_schema:
+      type: "object"
+      properties:
+        project_path:
+          type: "string"
+          description: "Path to the project"
+        function_name:
+          type: "string"
+          description: "Name of the function to analyze"
+      required:
+        - "project_path"
+        - "function_name"
+    experimental_tags:
+      - "code-graph"
+
+  - name: "find_related_code"
+    description: "Find code related by imports/calls"
+    input_schema:
+      type: "object"
+      properties:
+        project_path:
+          type: "string"
+          description: "Path to the project"
+        file_path:
+          type: "string"
+          description: "Path to the file to analyze"
+      required:
+        - "project_path"
+        - "file_path"
+    experimental_tags:
+      - "code-graph"
