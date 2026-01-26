@@ -347,7 +347,7 @@ class RepositoryMessengerManager:
                 "status": "success",
                 "messages_sent": len(messages),
                 "workflow_id": workflow_id,
-                "status": status
+                "workflow_status": status
             }
         except Exception as e:
             self.logger.error(f"Error notifying workflow status: {str(e)}")

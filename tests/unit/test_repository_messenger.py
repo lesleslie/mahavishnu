@@ -23,6 +23,8 @@ def mock_app():
     app.adapters = {}
     app.config = Mock()
     app.config.cross_project_auth_secret = "test_secret_for_auth"
+    # Mock get_repos() to return a list of test repositories
+    app.get_repos = Mock(return_value=["repo_a", "repo_b", "repo_c"])
     return app
 
 
@@ -285,9 +287,9 @@ async def test_notify_workflow_status(mock_app):
     assert result["status"] == "success"
     assert "messages_sent" in result
     assert "workflow_id" in result
-    assert "status" in result
+    assert "workflow_status" in result
     assert result["workflow_id"] == "wf_123"
-    assert result["status"] == "completed"
+    assert result["workflow_status"] == "completed"
 
 
 @pytest.mark.asyncio
