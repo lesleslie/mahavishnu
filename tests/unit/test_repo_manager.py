@@ -37,7 +37,7 @@ def sample_repos_path(tmp_path: Path) -> Path:
                 "name": "test-repo-2",
                 "package": "test_repo_2",
                 "path": "/tmp/test2",
-                "tags": ["python-mcp", "integration"],
+                "tags": ["python-testing", "integration"],  # Both repos share python-testing
                 "description": "Test repository 2",
                 "mcp": "3rd-party",
             },
@@ -125,16 +125,16 @@ async def test_filter_repos(sample_repos_path: Path) -> None:
     await manager.load()
 
     # Filter by single tag
-    results = manager.filter(tags=["python"])
+    results = manager.filter(tags=["python-testing"])
     assert len(results) == 2
 
     # Filter by multiple tags (AND)
-    results = manager.filter(tags=["python", "testing"])
+    results = manager.filter(tags=["python-testing", "unit-test"])
     assert len(results) == 1
     assert results[0].package == "test_repo_1"
 
     # Filter by tag and MCP type
-    results = manager.filter(tags=["python"], mcp_type="native")
+    results = manager.filter(tags=["python-testing"], mcp_type="native")
     assert len(results) == 1
     assert results[0].package == "test_repo_1"
 
@@ -189,7 +189,7 @@ def test_repository_validation() -> None:
         name="test-repo",
         package="test_repo",
         path="/tmp/test",
-        tags=["python", "testing"],
+        tags=["python-testing", "unit-test"],
         description="Test repository",
         mcp="native",
     )
@@ -206,7 +206,7 @@ def test_repository_validation_errors() -> None:
             name="test repo",
             package="test_repo",
             path="/tmp/test",
-            tags=["python"],
+            tags=["python-testing"],
             description="Test",
         )
 
@@ -226,7 +226,7 @@ def test_repository_validation_errors() -> None:
             name="test-repo",
             package="test_repo",
             path="relative/path",
-            tags=["python"],
+            tags=["python-testing"],
             description="Test",
         )
 
@@ -236,7 +236,7 @@ def test_repository_validation_errors() -> None:
             name="test-repo",
             package="test_repo",
             path="/tmp/test",
-            tags=["python", "integration"],
+            tags=["python-mcp", "integration"],
             description="Test",
             mcp="native",
         )

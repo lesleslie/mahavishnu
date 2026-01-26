@@ -57,6 +57,9 @@ dependencies = [
 
     # Terminal management
     "iterm2>=2.13",  # iTerm2 Python API (optional, for iTerm2 adapter)
+
+    # Admin shell
+    "ipython>=8.0.0",  # IPython admin shell for debugging and monitoring
 ]
 
 [project.scripts]

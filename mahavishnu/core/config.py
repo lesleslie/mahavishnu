@@ -227,6 +227,12 @@ class MahavishnuSettings(BaseSettings):
         description="Terminal session management settings",
     )
 
+    # Admin shell
+    shell_enabled: bool = Field(
+        default=True,
+        description="Enable admin shell (mahavishnu shell command)",
+    )
+
     @field_validator("auth_secret")
     @classmethod
     def validate_auth_secret(cls, v: str | None, info) -> str | None:

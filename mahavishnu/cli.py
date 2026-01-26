@@ -445,5 +445,40 @@ add_backup_commands(app)
 # Add monitoring commands
 add_monitoring_commands(app)
 
+
+@app.command("shell")
+def shell_cmd():
+    """Start the interactive admin shell for debugging and monitoring.
+
+    Provides an IPython environment pre-configured with:
+    - Workflow status display (ps, top, errors)
+    - Log viewing and filtering
+    - Repository inspection
+    - Magic commands (%repos, %workflow)
+
+    Example:
+        $ mahavishnu shell
+        Mahavishnu> ps()              # Show all workflows
+        Mahavishnu> top()             # Show active workflows
+        Mahavishnu> errors(5)         # Show recent errors
+        Mahavishnu> %repos            # List repositories
+    """
+    async def _shell():
+        from .shell import MahavishnuShell
+
+        maha_app = MahavishnuApp()
+
+        # Check if shell is enabled
+        if not getattr(maha_app.config, "shell_enabled", True):
+            typer.echo("ERROR: Admin shell is disabled")
+            raise typer.Exit(code=1)
+
+        # Create and start shell
+        shell = MahavishnuShell(maha_app)
+        shell.start()
+
+    asyncio.run(_shell())
+
+
 if __name__ == "__main__":
     app()

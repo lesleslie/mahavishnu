@@ -16,7 +16,8 @@ Mahavishnu is a modular orchestration platform that provides unified interfaces 
 - Configuration system using Oneiric patterns
 - CLI with authentication framework
 - Repository management (9 repos configured)
-- Test infrastructure (11 test files)
+- **Admin shell** (IPython-based interactive debugging interface)
+- Test infrastructure (12 test files)
 
 **Partially Complete**:
 - Prefect adapter (stub only, 143 lines)
@@ -49,6 +50,7 @@ Mahavishnu follows a modular architecture with the following components:
 - **CLI**: Typer-based command-line interface with authentication
 - **MCP Server**: FastMCP-based server for tool integration
 - **Terminal Management**: Multi-terminal session management (10+ concurrent sessions)
+- **Admin Shell**: IPython-based interactive debugging and monitoring interface
 - **Security**: JWT authentication with multiple providers (Claude Code, Qwen, custom)
 
 ### Technology Stack
@@ -164,8 +166,25 @@ mahavishnu list-repos --tag python
 Start the MCP server:
 
 ```bash
-mahavishnu mcp-serve
+mahavishnu mcp start
 ```
+
+### Admin Shell
+
+Start the interactive admin shell for debugging and monitoring:
+
+```bash
+mahavishnu shell
+```
+
+**Shell features:**
+- `ps()` - Show all workflows
+- `top()` - Show active workflows with progress
+- `errors(n)` - Show recent errors
+- `%repos` - List repositories
+- `%workflow <id>` - Show workflow details
+
+See [Admin Shell Documentation](docs/ADMIN_SHELL.md) for complete usage guide.
 
 ## Configuration
 
@@ -338,6 +357,7 @@ pytest --cov=mahavishnu --cov-report=html
 - [Architecture](ARCHITECTURE.md) - Single source of truth for current architecture and evolution
 - [Implementation Status](UNIFIED_IMPLEMENTATION_STATUS.md) - Detailed progress tracking
 - [Architecture Decision Records](docs/adr/) - Technical decisions and rationale
+- [Admin Shell Guide](docs/ADMIN_SHELL.md) - Interactive debugging and monitoring
 - [MCP Tools Specification](docs/MCP_TOOLS_SPECIFICATION.md) - Complete tool API documentation
 - [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md) - Modernization notes
 - [Terminal Management](docs/TERMINAL_MANAGEMENT.md) - Terminal feature documentation
