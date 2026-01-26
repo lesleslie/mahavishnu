@@ -52,7 +52,7 @@ class Repository(BaseModel):
         """Validate tag format."""
         import re
 
-        tag_pattern = re.compile(r"^[a-z0-9]([\-_][a-z0-9]+)*$")
+        tag_pattern = re.compile(r"^[a-z0-9]+([\-_][a-z0-9]+)*$")
 
         for tag in v:
             if not tag_pattern.match(tag):

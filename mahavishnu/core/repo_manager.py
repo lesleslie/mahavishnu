@@ -95,7 +95,6 @@ class RepositoryManager:
         """Get all repository paths."""
         return self._all_paths.copy()
 
-    @lru_cache(maxsize=64)  # noqa: B019 - Safe for singleton with explicit invalidation
     def filter(
         self,
         tags: list[str] | None = None,
@@ -108,25 +107,63 @@ class RepositoryManager:
         All filters are ANDed together.
         Uses cached indexes for O(1) tag lookups.
         """
-        results = set(self._manifest.repos)
+        # Convert list to tuple for caching
+        tags_tuple = tuple(tags) if tags else None
+
+        # Call the cached implementation
+        return self._filter_cached(tags_tuple, mcp_type, language)
+
+    @lru_cache(maxsize=64)  # noqa: B019 - Safe for singleton with explicit invalidation
+    def _filter_cached(
+        self,
+        tags: tuple[str, ...] | None = None,
+        mcp_type: str | None = None,
+        language: str | None = None,
+    ) -> list[Repository]:
+        """
+        Internal cached implementation of filter.
+        Tags must be a tuple for cacheability.
+        """
+        # Convert tuple back to list
+        tags_list = list(tags) if tags else None
+
+        # Start with all repos
+        results = list(self._manifest.repos)
 
         # Filter by tags (O(1) with index)
-        if tags:
-            matched = set()
-            for tag in tags:
-                matched.update(self.get_by_tag(tag))
-            results &= matched
+        if tags_list:
+            # Get repos that match ALL tags (AND logic)
+            # For each tag, get matching repos, then intersect
+            if len(tags_list) == 1:
+                # Single tag - use index directly
+                results = self.get_by_tag(tags_list[0])
+            else:
+                # Multiple tags - get repos for each tag and find intersection
+                tag_results = [self.get_by_tag(tag) for tag in tags_list]
+                # Find repos that appear in all tag results
+                # Use name as identifier since repos aren't hashable
+                if tag_results:
+                    # Build map of name -> repo for first result
+                    name_to_repo = {r.name: r for r in tag_results[0]}
+                    # Filter to repos that are in all tag results
+                    for tag_result_list in tag_results[1:]:
+                        names_in_this = {r.name for r in tag_result_list}
+                        name_to_repo = {n: r for n, r in name_to_repo.items() if n in names_in_this}
+                    results = list(name_to_repo.values())
+                else:
+                    results = []
 
         # Filter by MCP type (O(1) with index)
         if mcp_type:
-            matched = set(self.get_by_mcp_type(mcp_type))
-            results &= matched
+            mcp_repos = self.get_by_mcp_type(mcp_type)
+            mcp_names = {r.name for r in mcp_repos}
+            results = [r for r in results if r.name in mcp_names]
 
         # Filter by language (O(n) scan, but small n)
         if language:
-            results = {
+            results = [
                 r for r in results if r.metadata and r.metadata.language == language
-            }
+            ]
 
         return list(results)
 
