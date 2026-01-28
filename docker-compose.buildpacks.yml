@@ -1,0 +1,232 @@
+# Mahavishnu Docker Compose with Buildpacks + OTel Stack
+# This file orchestrates Mahavishnu (built with buildpacks) with complete OTel infrastructure
+
+version: '3.9'
+
+services:
+  # ==============================================================================
+  # Mahavishnu Orchestrator (built with buildpacks)
+  # ==============================================================================
+  mahavishnu:
+    image: mahavishnu:latest
+    build:
+      context: .
+      # No Dockerfile needed! Buildpacks auto-detects and builds
+      dockerfile: Dockerfile  # Will be ignored if buildpacks detect project
+    environment:
+      # Server configuration
+      - MAHAVISHNU_SERVER_NAME=Mahavishnu Orchestrator
+      - MAHAVISHNU_LOG_LEVEL=INFO
+
+      # OpenTelemetry configuration
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_SERVICE_NAME=mahavishnu
+      - MAHAVISHNU_METRICS_ENABLED=true
+      - MAHAVISHNU_TRACING_ENABLED=true
+
+      # Adapter configuration
+      - MAHAVISHNU_PREFECT_ENABLED=true
+      - MAHAVISHNU_LLAMAINDEX_ENABLED=true
+      - MAHAVISHNU_AGNO_ENABLED=true
+
+      # Session management
+      - MAHAVISHNU_SESSION_ENABLED=true
+      - MAHAVISHNU_CHECKPOINT_INTERVAL=60
+
+      # LLM configuration
+      - MAHAVISHNU_LLM_MODEL=nomic-embed-text
+      - MAHAVISHNU_OLLAMA_BASE_URL=http://ollama:11434
+
+      # Quality control
+      - MAHAVISHNU_QC_ENABLED=true
+      - MAHAVISHNU_QC_MIN_SCORE=80
+    depends_on:
+      otel-collector:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    ports:
+      - "3035:3035"  # MCP server
+    networks:
+      - mahavishnu-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3035/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==============================================================================
+  # OpenTelemetry Collector
+  # ==============================================================================
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: --config=/etc/otel-collector-config.yaml
+    volumes:
+      - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"  # OTLP gRPC receiver
+      - "4318:4318"  # OTLP HTTP receiver
+      - "13133:13133"  # Health check
+      - "8888:8888"  # Prometheus metrics
+      - "8889:8889"  # Prometheus exporter metrics
+      - "9464:9464"  # Zpages
+    depends_on:
+      - jaeger
+      - prometheus
+      - elasticsearch
+    networks:
+      - mahavishnu-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:13133"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ==============================================================================
+  # Jaeger (Distributed Tracing)
+  # ==============================================================================
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - COLLECTOR_OTLP_HOST_PORT=0.0.0.0:4318
+    ports:
+      - "5775:5775"  # Accept zipkin.thrift over compact thrift protocol
+      - "6831:6831"  # Accept jaeger.thrift over compact thrift protocol
+      - "6832:6832"  # Accept jaeger.thrift over binary thrift protocol
+      - "16686:16686"  # Jaeger UI
+      - "14250:14250"  # Receive from model.proto
+      - "14268:14268"  # Receive from model.proto (TLS)
+      - "14269:14269"  # Receive from model.proto (TLS, auxiliary)
+      - "9411:9411"  # Jaeger internal
+    networks:
+      - mahavishnu-network
+    restart: unless-stopped
+
+  # ==============================================================================
+  # Prometheus (Metrics Storage)
+  # ==============================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"  # Prometheus UI
+    networks:
+      - mahavishnu-network
+    restart: unless-stopped
+
+  # ==============================================================================
+  # Grafana (Metrics Visualization)
+  # ==============================================================================
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "3000:3000"  # Grafana UI
+    depends_on:
+      - prometheus
+    networks:
+      - mahavishnu-network
+    restart: unless-stopped
+
+  # ==============================================================================
+  # Elasticsearch (Log Storage)
+  # ==============================================================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"  # Elasticsearch API
+    networks:
+      - mahavishnu-network
+    restart: unless-stopped
+
+  # ==============================================================================
+  # Kibana (Logs Visualization)
+  # ==============================================================================
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"  # Kibana UI
+    depends_on:
+      - elasticsearch
+    networks:
+      - mahavishnu-network
+    restart: unless-stopped
+
+  # ==============================================================================
+  # Ollama (LLM Server)
+  # ==============================================================================
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"  # Ollama API
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - mahavishnu-network
+    restart: unless-stopped
+    # For GPU support, uncomment:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+networks:
+  mahavishnu-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# ==============================================================================
+# Volumes
+# ==============================================================================
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  elasticsearch-data:
+    driver: local
+  ollama-data:
+    driver: local
