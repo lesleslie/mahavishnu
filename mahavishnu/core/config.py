@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
+from pydantic_core import PydanticUndefined
 
 from ..terminal.config import TerminalSettings
 
@@ -43,10 +44,21 @@ class MahavishnuSettings(BaseSettings):
                 - security_scan
     """
 
+    model_config = SettingsConfigDict(
+        yaml_files=["settings/mahavishnu.yaml", "settings/local.yaml"],
+        env_prefix="MAHAVISHNU_",
+        env_nested_delimiter="__",
+        extra="allow",
+    )
+
     # Repository configuration
     repos_path: str = Field(
         default="settings/repos.yaml",
         description="Path to repos.yaml repository manifest",
+    )
+    allowed_repo_paths: list[str] = Field(
+        default_factory=lambda: ["/Users/les/Projects"],
+        description="List of allowed base paths for repositories (for security)",
     )
 
     # Concurrency configuration
@@ -260,3 +272,30 @@ class MahavishnuSettings(BaseSettings):
     def validate_repos_path(cls, v: str) -> str:
         """Expand user path (~) in repos_path."""
         return str(Path(v).expanduser())
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls,
+        init_settings,
+        env_settings,
+        dotenv_settings,
+        file_secret_settings,
+    ):
+        """Customize settings sources to include YAML files."""
+        # Add YAML configuration sources
+        yaml_sources = []
+        for yaml_file in ["settings/mahavishnu.yaml", "settings/local.yaml"]:
+            yaml_path = Path(yaml_file)
+            if yaml_path.exists():
+                yaml_sources.append(
+                    YamlConfigSettingsSource(settings_cls, yaml_path)
+                )
+
+        return (
+            init_settings,
+            *yaml_sources,
+            env_settings,
+            dotenv_settings,
+            file_secret_settings,
+        )
