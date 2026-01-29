@@ -1,6 +1,6 @@
 """CLI module for Mahavishnu orchestrator."""
+from typing import Optional, NoReturn
 import typer
-from typing import Optional
 import asyncio
 from .core.app import MahavishnuApp
 from .core.subscription_auth import MultiAuthHandler
@@ -29,7 +29,7 @@ def sweep(
     typer.echo(f"Sweep completed with result: {result}")
 
 
-def progress_callback(completed: int, total: int, repo: str):
+def progress_callback(completed: int, total: int, repo: str) -> None:
     """Callback function to report progress during parallel execution."""
     typer.echo(f"Processed {completed}/{total} repos: {repo}", err=True)
 
@@ -119,7 +119,7 @@ def mcp_start(
 
 
 @mcp_app.command("stop")
-def mcp_stop():
+def mcp_stop() -> NoReturn:
     """Stop the MCP server."""
     typer.echo("ERROR: MCP server stop not yet implemented")
     typer.echo("The MCP server runs in the foreground. Use Ctrl+C to stop it.")
@@ -130,7 +130,7 @@ def mcp_stop():
 def mcp_restart(
     host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host address to bind to"),
     port: int = typer.Option(3000, "--port", "-p", help="Port to listen on"),
-):
+) -> NoReturn:
     """Restart the MCP server."""
     typer.echo("ERROR: MCP server restart not yet implemented")
     typer.echo("Use Ctrl+C to stop the server, then run 'mahavishnu mcp start' to restart.")
@@ -138,7 +138,7 @@ def mcp_restart(
 
 
 @mcp_app.command("status")
-def mcp_status():
+def mcp_status() -> None:
     """Check MCP server status."""
     async def _status():
         from .mcp.server_core import FastMCPServer
@@ -164,7 +164,7 @@ def mcp_status():
 
 
 @mcp_app.command("health")
-def mcp_health():
+def mcp_health() -> None:
     """Check MCP server health."""
     async def _health():
         import socket
@@ -193,10 +193,13 @@ def mcp_health():
 
 @app.command()
 def list_repos(
-    tag: Optional[str] = typer.Option(None, "--tag", "-t", help="Filter repositories by tag")
-):
+    tag: Optional[str] = typer.Option(None, "--tag", "-t", help="Filter repositories by tag"),
+    role: Optional[str] = typer.Option(None, "--role", "-r", help="Filter repositories by role"),
+) -> None:
     """
     List repositories in repos.yaml.
+
+    Can filter by tag or role (but not both).
     """
     maha_app = MahavishnuApp()
 
@@ -213,19 +216,119 @@ def list_repos(
     else:
         typer.echo("Authentication not configured, proceeding without auth")
 
-    repos = maha_app.get_repos(tag=tag)
+    # Validate that only one filter is provided
+    if tag and role:
+        typer.echo("Error: Cannot specify both --tag and --role filters")
+        raise typer.Exit(code=1)
 
-    if tag:
-        typer.echo(f"Repositories with tag '{tag}':")
-    else:
-        typer.echo("All repositories:")
+    try:
+        repos = maha_app.get_repos(tag=tag, role=role)
 
-    for repo in repos:
-        typer.echo(f"  - {repo}")
+        if tag:
+            typer.echo(f"Repositories with tag '{tag}':")
+        elif role:
+            typer.echo(f"Repositories with role '{role}':")
+        else:
+            typer.echo("All repositories:")
+
+        for repo in repos:
+            typer.echo(f"  - {repo}")
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=1)
 
 
 @app.command()
-def generate_claude_token(user_id: str = typer.Argument(..., help="User ID for the token")):
+def list_roles() -> None:
+    """
+    List all available roles with their descriptions.
+    """
+    maha_app = MahavishnuApp()
+
+    roles = maha_app.get_roles()
+
+    typer.echo(f"Available roles ({len(roles)}):")
+    for role in roles:
+        typer.echo(f"\n  {role.get('name').upper()}")
+        typer.echo(f"  Description: {role.get('description')}")
+        if tags := role.get('tags'):
+            typer.echo(f"  Tags: {', '.join(tags)}")
+        if capabilities := role.get('capabilities'):
+            typer.echo(f"  Capabilities: {', '.join(capabilities)}")
+
+
+@app.command()
+def show_role(
+    role_name: str = typer.Argument(..., help="Name of the role to display")
+) -> None:
+    """
+    Show detailed information about a specific role.
+
+    Includes description, duties, capabilities, and repositories with that role.
+    """
+    maha_app = MahavishnuApp()
+
+    role = maha_app.get_role_by_name(role_name)
+
+    if not role:
+        typer.echo(f"Error: Role '{role_name}' not found")
+        typer.echo("Use 'mahavishnu list-roles' to see available roles")
+        raise typer.Exit(code=1)
+
+    # Display role details
+    typer.echo(f"\n{role.get('name').upper()}")
+    typer.echo("=" * len(role.get('name')))
+    typer.echo(f"\nDescription: {role.get('description')}")
+
+    if tags := role.get('tags'):
+        typer.echo(f"\nTags:")
+        for tag in tags:
+            typer.echo(f"  - {tag}")
+
+    if duties := role.get('duties'):
+        typer.echo(f"\nDuties:")
+        for duty in duties:
+            typer.echo(f"  - {duty}")
+
+    if capabilities := role.get('capabilities'):
+        typer.echo(f"\nCapabilities:")
+        for capability in capabilities:
+            typer.echo(f"  - {capability}")
+
+    # Get repos with this role
+    repos = maha_app.get_repos_by_role(role_name)
+
+    typer.echo(f"\nRepositories with this role ({len(repos)}):")
+    for repo in repos:
+        name = repo.get('name', repo.get('path'))
+        nickname = repo.get('nickname', '')
+        path = repo.get('path')
+        typer.echo(f"  - {name}", nl=False)
+        if nickname:
+            typer.echo(f" (nickname: {nickname})", nl=False)
+        typer.echo(f"\n    Path: {path}")
+
+
+@app.command()
+def list_nicknames() -> None:
+    """
+    List all repository nicknames.
+    """
+    maha_app = MahavishnuApp()
+
+    nicknames = maha_app.get_all_nicknames()
+
+    if not nicknames:
+        typer.echo("No nicknames configured")
+        return
+
+    typer.echo(f"Repository nicknames ({len(nicknames)}):")
+    for nickname, full_name in sorted(nicknames.items()):
+        typer.echo(f"  {nickname}: {full_name}")
+
+
+@app.command()
+def generate_claude_token(user_id: str = typer.Argument(..., help="User ID for the token")) -> None:
     """
     Generate a Claude Code subscription token.
     """
@@ -250,7 +353,7 @@ def generate_claude_token(user_id: str = typer.Argument(..., help="User ID for t
 
 
 @app.command()
-def generate_codex_token(user_id: str = typer.Argument(..., help="User ID for the token")):
+def generate_codex_token(user_id: str = typer.Argument(..., help="User ID for the token")) -> None:
     """
     Generate a Codex subscription token.
     """
@@ -285,7 +388,7 @@ def terminal_launch(
     count: int = typer.Option(1, "--count", "-c", help="Number of sessions to launch"),
     columns: int = typer.Option(120, "--columns", help="Terminal width"),
     rows: int = typer.Option(40, "--rows", help="Terminal height"),
-):
+) -> None:
     """Launch terminal sessions running a command."""
     async def _launch():
         maha_app = MahavishnuApp()
@@ -319,7 +422,7 @@ def terminal_launch(
 
 
 @terminal_app.command("list")
-def terminal_list():
+def terminal_list() -> None:
     """List active terminal sessions."""
     async def _list():
         maha_app = MahavishnuApp()
@@ -348,7 +451,7 @@ def terminal_list():
 def terminal_send(
     session_id: str = typer.Argument(..., help="Terminal session ID"),
     command: str = typer.Argument(..., help="Command to send"),
-):
+) -> None:
     """Send command to a terminal session."""
     async def _send():
         maha_app = MahavishnuApp()
@@ -375,7 +478,7 @@ def terminal_send(
 def terminal_capture(
     session_id: str = typer.Argument(..., help="Terminal session ID"),
     lines: int = typer.Option(100, "--lines", "-l", help="Number of lines to capture"),
-):
+) -> None:
     """Capture output from a terminal session."""
     async def _capture():
         maha_app = MahavishnuApp()
@@ -404,7 +507,7 @@ def terminal_capture(
 @terminal_app.command("close")
 def terminal_close(
     session_id: str = typer.Argument(..., help="Session ID (or 'all' to close all)"),
-):
+) -> None:
     """Close terminal session(s)."""
     async def _close():
         maha_app = MahavishnuApp()
@@ -447,7 +550,7 @@ add_monitoring_commands(app)
 
 
 @app.command("shell")
-def shell_cmd():
+def shell_cmd() -> None:
     """Start the interactive admin shell for debugging and monitoring.
 
     Provides an IPython environment pre-configured with:

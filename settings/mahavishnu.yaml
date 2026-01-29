@@ -22,7 +22,7 @@ retry_base_delay: 1.0
 # Prefect: High-level orchestration with dynamic flows
 prefect_enabled: true
 # LlamaIndex: RAG pipelines for ingesting repos/docs, embedding with Ollama
-llamaindex_enabled: true
+llamaindex_enabled: false
 # Agno: Fast, scalable single/multi-agents with memory and tools
 agno_enabled: true
 

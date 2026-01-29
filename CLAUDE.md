@@ -101,9 +101,70 @@ mahavishnu list-repos
 # List repositories by tag
 mahavishnu list-repos --tag backend
 
+# List repositories by role
+mahavishnu list-repos --role orchestrator
+
+# List all available roles
+mahavishnu list-roles
+
+# Show detailed information about a specific role
+mahavishnu show-role tool
+
+# List all repository nicknames
+mahavishnu list-nicknames
+
 # Trigger workflow sweep
-mahavishnu workflow sweep --tag backend --adapter prefect
+mahavishnu sweep --tag python --adapter prefect
 ```
+
+#### Role-Based Repository Organization
+
+Mahavishnu uses a role-based taxonomy to organize repositories and enable intelligent workflow routing. Each repository is assigned a single role that defines its purpose and capabilities within the ecosystem.
+
+**Available Roles:**
+
+| Role | Description | Capabilities | Example Repos |
+|------|-------------|---------------|---------------|
+| **orchestrator** | Coordinates workflows and manages cross-repository operations | sweep, schedule, monitor, route, coordinate | mahavishnu (vishnu) |
+| **resolver** | Resolves components, dependencies, and lifecycle management | resolve, activate, swap, explain, watch | oneiric |
+| **manager** | Manages state, sessions, and knowledge across the ecosystem | capture, search, restore, track, analyze | session-buddy (buddy) |
+| **inspector** | Validates code quality and enforces development standards | test, lint, scan, report, validate | crackerjack (jack) |
+| **builder** | Builds applications and web interfaces | render, route, authenticate, build | fastblocks |
+| **aggregator** | Aggregates data and analytics across distributed systems | aggregate, search, detect, correlate, graph | (none yet) |
+| **app** | End-user applications with graphical interfaces | interface, automate, serve-users, integrate | mdinject, splashstand |
+| **asset** | UI libraries, component collections, and style guides | style, theme, componentize, design | fastbulma |
+| **foundation** | Foundational utilities, libraries, and shared code | share, standardize, abstract, build-upon | mcp-common |
+| **visualizer** | Creates visual diagrams and documentation | draw, render, visualize, document | excalidraw-mcp, mermaid-mcp |
+| **extension** | Extends framework capabilities with pluggable modules | extend, filter, enhance, plug-in | jinja2-inflection, jinja2-custom-delimiters |
+| **tool** | Specialized tools and integrations via MCP protocol | connect, expose, integrate | mailgun-mcp, raindropio-mcp, unifi-mcp, etc. |
+
+**Role-Based Query Examples:**
+
+```bash
+# Find all orchestrator repos (should be just mahavishnu)
+mahavishnu list-repos --role orchestrator
+
+# Find all MCP tool integrations
+mahavishnu list-repos --role tool
+
+# Find all UI libraries
+mahavishnu list-repos --role asset
+
+# Show detailed info about the tool role
+mahavishnu show-role tool
+```
+
+**Repository Metadata:**
+
+Each repository in `settings/repos.yaml` includes:
+- `name`: Repository name
+- `package`: Python package name
+- `path`: Filesystem path
+- `nickname`: Short nickname (optional)
+- `role`: Single role from taxonomy
+- `tags`: List of tags for additional categorization
+- `description`: Human-readable description
+- `mcp`: "native" for core MCP servers, "3rd-party" for external integrations
 
 ## Configuration Files
 

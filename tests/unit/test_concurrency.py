@@ -22,5 +22,19 @@ async def test_concurrent_workflow_limiting():
     # For now, we'll just verify the semaphore exists and has the right initial value
     config = MahavishnuSettings(max_concurrent_workflows=3)
     app = MahavishnuApp(config)
-    
+
     assert app.config.max_concurrent_workflows == 3
+
+
+@pytest.mark.asyncio
+async def test_get_active_workflows():
+    """Test retrieving active workflows."""
+    config = MahavishnuSettings()
+    app = MahavishnuApp(config)
+
+    # Initially, no active workflows
+    active_workflows = await app.get_active_workflows()
+    assert active_workflows == []
+
+    # Verify it returns a list (even if empty)
+    assert isinstance(active_workflows, list)

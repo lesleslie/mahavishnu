@@ -30,17 +30,18 @@ if TYPE_CHECKING:
     from ..terminal.manager import TerminalManager
 
 
-def _validate_path(path_str: str) -> Path:
+def _validate_path(path_str: str, allowed_base_paths: list[str] | None = None) -> Path:
     """Validate a path to prevent directory traversal attacks.
 
     Args:
         path_str: Path string to validate
+        allowed_base_paths: Optional list of allowed base paths (defaults to current directory)
 
     Returns:
         Validated Path object
 
     Raises:
-        ValidationError: If path contains directory traversal sequences
+        ValidationError: If path contains directory traversal sequences or is outside allowed paths
     """
     path = Path(path_str)
 
@@ -57,18 +58,24 @@ def _validate_path(path_str: str) -> Path:
             }
         )
 
-    # Additional check: ensure the resolved path is within allowed boundaries
-    # For now, we'll just ensure it doesn't go above the current directory
-    # In a real implementation, you might want to restrict to specific allowed directories
-    try:
-        # This will raise ValueError if the path is outside the current working directory
-        abs_path.relative_to(Path.cwd())
-    except ValueError:
+    # Check if path is within allowed boundaries
+    allowed_paths = allowed_base_paths or [str(Path.cwd())]
+
+    is_allowed = False
+    for allowed_base in allowed_paths:
+        try:
+            abs_path.relative_to(allowed_base)
+            is_allowed = True
+            break
+        except ValueError:
+            continue
+
+    if not is_allowed:
         raise ValidationError(
             message=f"Path is outside allowed directory: {path_str}",
             details={
                 "path": path_str,
-                "cwd": str(Path.cwd()),
+                "allowed_paths": allowed_paths,
                 "suggestion": "Ensure path is within allowed boundaries"
             }
         )
@@ -314,18 +321,19 @@ class MahavishnuApp:
                         },
                     ) from e
 
-    def get_repos(self, tag: str | None = None, user_id: str = None) -> list[str]:
-        """Get repository paths based on tag or return all.
+    def get_repos(self, tag: str | None = None, role: str | None = None, user_id: str = None) -> list[str]:
+        """Get repository paths based on tag, role, or return all.
 
         Args:
             tag: Optional tag to filter repositories
+            role: Optional role to filter repositories
             user_id: Optional user ID for permission checking
 
         Returns:
             List of repository paths
 
         Raises:
-            ValidationError: If tag is invalid
+            ValidationError: If tag or role is invalid
         """
         # Validate tag format if provided
         if tag and not tag.replace("-", "").replace("_", "").isalnum():
@@ -337,6 +345,19 @@ class MahavishnuApp:
                 },
             )
 
+        # Validate role format if provided
+        if role:
+            valid_roles = [r["name"] for r in self.get_roles()]
+            if role not in valid_roles:
+                raise ValidationError(
+                    message=f"Invalid role: {role}",
+                    details={
+                        "role": role,
+                        "valid_roles": valid_roles,
+                        "suggestion": f"Use one of: {', '.join(valid_roles)}",
+                    },
+                )
+
         repos = self.repos_config.get("repos", [])
 
         if tag:
@@ -346,6 +367,13 @@ class MahavishnuApp:
                 for repo in repos
                 if tag in repo.get("tags", [])
             ]
+        elif role:
+            # Filter by role
+            filtered_repos = [
+                repo["path"]
+                for repo in repos
+                if repo.get("role") == role
+            ]
         else:
             # Return all repos
             filtered_repos = [repo["path"] for repo in repos]
@@ -354,7 +382,7 @@ class MahavishnuApp:
         validated_repos = []
         for repo_path in filtered_repos:
             try:
-                validated_path = _validate_path(repo_path)
+                validated_path = _validate_path(repo_path, self.config.allowed_repo_paths)
                 if validated_path.exists():
                     # If user_id is provided, check permissions
                     if user_id:
@@ -399,6 +427,70 @@ class MahavishnuApp:
         """
         return [repo["path"] for repo in self.repos_config.get("repos", [])]
 
+    def get_roles(self) -> list[dict[str, Any]]:
+        """Get all available roles.
+
+        Returns:
+            List of role definitions with name, description, tags, duties, capabilities
+        """
+        return self.repos_config.get("roles", [])
+
+    def get_role_by_name(self, role_name: str) -> dict[str, Any] | None:
+        """Get a specific role by name.
+
+        Args:
+            role_name: Name of the role to retrieve
+
+        Returns:
+            Role definition if found, None otherwise
+        """
+        roles = self.get_roles()
+        for role in roles:
+            if role.get("name") == role_name:
+                return role
+        return None
+
+    def get_repos_by_role(self, role_name: str) -> list[dict[str, Any]]:
+        """Get all repositories with a specific role.
+
+        Args:
+            role_name: Name of the role to filter by
+
+        Returns:
+            List of repository dictionaries with matching role
+
+        Raises:
+            ValidationError: If role_name is not found in role taxonomy
+        """
+        # Validate role exists
+        valid_roles = [r["name"] for r in self.get_roles()]
+        if role_name not in valid_roles:
+            raise ValidationError(
+                message=f"Invalid role: {role_name}",
+                details={
+                    "role": role_name,
+                    "valid_roles": valid_roles,
+                    "suggestion": f"Use one of: {', '.join(valid_roles)}",
+                },
+            )
+
+        # Filter repos by role
+        repos = self.repos_config.get("repos", [])
+        return [repo for repo in repos if repo.get("role") == role_name]
+
+    def get_all_nicknames(self) -> dict[str, str]:
+        """Get all repository nicknames.
+
+        Returns:
+            Dictionary mapping nickname to full repository name
+        """
+        repos = self.repos_config.get("repos", [])
+        nicknames = {}
+        for repo in repos:
+            if nickname := repo.get("nickname"):
+                nicknames[nickname] = repo.get("name", repo.get("path", ""))
+        return nicknames
+
     def is_healthy(self) -> bool:
         """Check if application is healthy.
 
@@ -418,14 +510,25 @@ class MahavishnuApp:
 
         return True
 
-    def get_active_workflows(self) -> list[str]:
+    async def get_active_workflows(self) -> list[str]:
         """Get list of active workflow IDs.
+
+        Queries the workflow state manager for workflows that are currently
+        in RUNNING status and returns their IDs.
 
         Returns:
             List of active workflow IDs
         """
-        # TODO: Implement workflow tracking
-        return []
+        from .workflow_state import WorkflowStatus
+
+        # Get workflows with RUNNING status
+        workflows = await self.workflow_state_manager.list_workflows(
+            status=WorkflowStatus.RUNNING,
+            limit=1000  # Sufficiently large limit
+        )
+
+        # Return workflow IDs
+        return [w.get("id", "") for w in workflows if w.get("id")]
 
     async def execute_workflow(
         self,
@@ -468,7 +571,7 @@ class MahavishnuApp:
         validated_repos = []
         for repo_path in repos:
             try:
-                validated_path = _validate_path(repo_path)
+                validated_path = _validate_path(repo_path, self.config.allowed_repo_paths)
                 validated_repos.append(str(validated_path))
             except ValidationError as e:
                 raise ValidationError(
@@ -580,7 +683,7 @@ class MahavishnuApp:
         validated_repos = []
         for repo_path in repos:
             try:
-                validated_path = _validate_path(repo_path)
+                validated_path = _validate_path(repo_path, self.config.allowed_repo_paths)
                 validated_repos.append(str(validated_path))
             except ValidationError as e:
                 raise ValidationError(
