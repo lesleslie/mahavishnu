@@ -5,17 +5,18 @@
 **Date**: 2025-01-23
 **Status**: Architecture & Implementation Options
 
----
+______________________________________________________________________
 
 ## 🎯 Overview
 
 Mahavishnu can manage your global AI environments including:
+
 - **Claude Code** (~/.claude, ~/.claude/settings.json)
 - **LLM Environments** (Claude Code, Qwen, Codex, etc.)
 - **Session-Buddy** shared memory integration
 - **Unified memory system** (Session-Buddy + AgentDB + pgvector)
 
----
+______________________________________________________________________
 
 ## 📊 Current Configuration Analysis
 
@@ -68,7 +69,7 @@ Mahavishnu can manage your global AI environments including:
 }
 ```
 
----
+______________________________________________________________________
 
 ## 🏗️ Architecture Options
 
@@ -130,16 +131,18 @@ class ClaudeCodeManager:
 ```
 
 **Pros**:
+
 - ✅ Simple and direct
 - ✅ No dependencies
 - ✅ Full control over configuration
 
 **Cons**:
+
 - ❌ Manual JSON parsing
 - ❌ No validation
 - ❌ Race conditions if multiple processes
 
----
+______________________________________________________________________
 
 ### Option 2: Oneiric Secrets Adapter (RECOMMENDED)
 
@@ -223,15 +226,17 @@ class AIAccountManager:
 ```
 
 **Pros**:
+
 - ✅ Oneiric integration (lifecycle, health checks)
 - ✅ Multiple secret sources (env, file, AWS, GCP)
 - ✅ Validation and type safety
 - ✅ Hot-swappable adapters
 
 **Cons**:
+
 - ⚠️ Need to implement Claude Code-specific logic
 
----
+______________________________________________________________________
 
 ### Option 3: Claude Code MCP Tools
 
@@ -268,21 +273,24 @@ class ClaudeCodeMCPClient:
 ```
 
 **Pros**:
+
 - ✅ Official Claude Code API
 - ✅ Type-safe MCP protocol
 - ✅ Future-proof
 
 **Cons**:
+
 - ❌ Claude Code MCP may not expose config tools yet
 - ❌ Requires Claude Code to be running
 
----
+______________________________________________________________________
 
 ## 🔗 Session-Buddy Integration
 
 ### Current Session-Buddy Features
 
 **What Session-Buddy Provides**:
+
 - ✅ **Vector database** (DuckDB FLOAT[384] embeddings)
 - ✅ **Knowledge graph** (DuckPGQ for entities/relationships)
 - ✅ **Quality scoring** (filesystem-based assessment)
@@ -352,7 +360,7 @@ class SessionBuddyClient:
                 return result
 ```
 
----
+______________________________________________________________________
 
 ## 🚀 Unified Memory Architecture
 
@@ -461,7 +469,7 @@ class UnifiedMemoryManager:
         }
 ```
 
----
+______________________________________________________________________
 
 ## 🔧 Service Management
 
@@ -567,13 +575,14 @@ class ServiceManager:
             return False
 ```
 
----
+______________________________________________________________________
 
 ## 💡 Recommended Implementation
 
 ### Phase 1: Foundation
 
 1. **Create AI Environment Manager Module**
+
    ```python
    # mahavishnu/ai_env/
    ├── __init__.py
@@ -582,7 +591,8 @@ class ServiceManager:
    └── service_manager.py     # Service restart logic
    ```
 
-2. **Create Unified Memory Module**
+1. **Create Unified Memory Module**
+
    ```python
    # mahavishnu/memory/
    ├── __init__.py
@@ -591,7 +601,8 @@ class ServiceManager:
    └── hybrid_memory.py       # AgentDB + pgvector sync
    ```
 
-3. **Update Mahavishnu Configuration**
+1. **Update Mahavishnu Configuration**
+
    ```yaml
    # settings/mahavishnu.yaml
    ai_environments:
@@ -627,6 +638,7 @@ class ServiceManager:
 ### Phase 2: Integration
 
 1. **MCP Tools for Mahavishnu**
+
    ```python
    @mcp_tool()
    async def switch_llm(llm_name: str) -> dict:
@@ -651,7 +663,8 @@ class ServiceManager:
        return await manager.restart_all_services()
    ```
 
-2. **CLI Commands**
+1. **CLI Commands**
+
    ```bash
    # Switch LLM
    mahavishnu ai switch-llm claude
@@ -670,21 +683,24 @@ class ServiceManager:
 ### Phase 3: Automation
 
 1. **Auto-Sync Between Memory Systems**
+
    - Write-through: Store in AgentDB + pgvector + Session-Buddy
    - Periodic sync: Cron job every hour
    - Event-driven: Sync on checkpoint
 
-2. **Auto-Restart Services**
+1. **Auto-Restart Services**
+
    - Detect config changes
    - Auto-restart affected services
    - Health check verification
 
-3. **Auto-Switch LLMs**
+1. **Auto-Switch LLMs**
+
    - Detect API failures
    - Auto-fallback to backup LLM
    - Alert on failures
 
----
+______________________________________________________________________
 
 ## 📚 Data Flow Diagrams
 
@@ -726,7 +742,7 @@ Mahavishnu Memory Search
 Merge results by similarity score → Return to user
 ```
 
----
+______________________________________________________________________
 
 ## 🔐 Security Considerations
 
@@ -779,28 +795,32 @@ secrets:
 }
 ```
 
----
+______________________________________________________________________
 
 ## 🚦 Recommendations
 
 ### ✅ DO THIS
 
 1. **Use Oneiric for secrets management**
+
    - EnvSecretAdapter for environment variables
    - FileSecretAdapter for API keys
    - Multiple secret sources (env, file, AWS, GCP)
 
-2. **Integrate with Session-Buddy MCP**
+1. **Integrate with Session-Buddy MCP**
+
    - Access shared memory via MCP client
    - Use checkpoint for session snapshots
    - Leverage progressive search for code context
 
-3. **Implement three-tier memory system**
+1. **Implement three-tier memory system**
+
    - AgentDB: Hot data (active agent memory)
    - pgvector: Cold data (persistent archive)
    - Session-Buddy: Development context (quality scores)
 
-4. **Auto-restart services**
+1. **Auto-restart services**
+
    - launchd for macOS (native)
    - Supervisord for cross-platform
    - Health checks before restart
@@ -808,21 +828,24 @@ secrets:
 ### ❌ DON'T DO THIS
 
 1. **Don't store API keys in plaintext**
+
    - Use Oneiric secret adapters
    - Encrypt sensitive data
    - Use environment variables
 
-2. **Don't restart services without health checks**
+1. **Don't restart services without health checks**
+
    - Verify service is healthy before restart
    - Graceful shutdown first
    - Wait for cleanup
 
-3. **Don't ignore race conditions**
+1. **Don't ignore race conditions**
+
    - Use file locking when writing config
    - Atomic writes (write to temp, then mv)
    - Validate JSON before saving
 
----
+______________________________________________________________________
 
 ## 📖 Resources
 
@@ -831,20 +854,22 @@ secrets:
 - **Oneiric Adapters**: `/Users/les/Projects/oneiric/oneiric/adapters/`
 - **AgentDB Adapter**: Created in Oneiric (`agentdb.py`)
 
----
+______________________________________________________________________
 
 ## Summary
 
 **Yes! Mahavishnu should manage global AI environments!**
 
 **Recommended Stack**:
+
 1. **Oneiric**: Secrets management, configuration
-2. **Session-Buddy MCP**: Development session context
-3. **AgentDB**: Hot agent memory (sub-1ms)
-4. **pgvector**: Persistent archive with GCS backup
-5. **Service Manager**: Auto-restart services
+1. **Session-Buddy MCP**: Development session context
+1. **AgentDB**: Hot agent memory (sub-1ms)
+1. **pgvector**: Persistent archive with GCS backup
+1. **Service Manager**: Auto-restart services
 
 **Benefits**:
+
 - ✅ Unified memory across all AI environments
 - ✅ Seamless LLM switching (Claude, Qwen, Codex)
 - ✅ Automatic service restart on config changes
@@ -852,10 +877,11 @@ secrets:
 - ✅ Three-tier memory (hot, warm, cold)
 
 **Next Steps**:
+
 1. Implement `mahavishnu/ai_env/` module
-2. Implement `mahavishnu/memory/` module
-3. Add MCP tools for LLM switching and memory management
-4. Create CLI commands for common operations
-5. Add auto-sync between memory systems
+1. Implement `mahavishnu/memory/` module
+1. Add MCP tools for LLM switching and memory management
+1. Create CLI commands for common operations
+1. Add auto-sync between memory systems
 
 This is a **powerful unified approach** to AI environment management! 🚀

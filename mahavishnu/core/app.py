@@ -4,30 +4,29 @@ This module provides the main application class that manages configuration,
 repository loading, and adapter initialization using Oneiric patterns.
 """
 
-import yaml
-from pathlib import Path, PurePath
-from typing import Any
-import os
 import asyncio
 from asyncio import Semaphore
+from datetime import datetime
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
-from typing import TYPE_CHECKING
+import yaml
 
-from .config import MahavishnuSettings
-from .errors import ConfigurationError, ValidationError
-from .adapters.base import OrchestratorAdapter
-from .circuit_breaker import CircuitBreaker
-from .workflow_state import WorkflowState
-from .permissions import RBACManager, Permission
-from .observability import init_observability, get_observability_manager
-from .opensearch_integration import OpenSearchIntegration
-from .resilience import ResiliencePatterns, ErrorRecoveryManager
-from .monitoring import MonitoringService
 from ..qc.checker import QualityControl
 from ..session.checkpoint import SessionBuddy
+from .circuit_breaker import CircuitBreaker
+from .config import MahavishnuSettings
+from .errors import ConfigurationError, ValidationError
+from .monitoring import MonitoringService
+from .observability import init_observability
+from .opensearch_integration import OpenSearchIntegration
+from .permissions import Permission, RBACManager
+from .resilience import ErrorRecoveryManager, ResiliencePatterns
+from .workflow_state import WorkflowState
 
 if TYPE_CHECKING:
     from ..terminal.manager import TerminalManager
+    from .adapters.base import OrchestratorAdapter
 
 
 def _validate_path(path_str: str, allowed_base_paths: list[str] | None = None) -> Path:
@@ -49,13 +48,15 @@ def _validate_path(path_str: str, allowed_base_paths: list[str] | None = None) -
     abs_path = path.resolve()
 
     # Check for directory traversal patterns
-    if '..' in path.parts or str(path).startswith('../') or '../' in str(path) or str(path).endswith('/..'):
+    if (
+        ".." in path.parts
+        or str(path).startswith("../")
+        or "../" in str(path)
+        or str(path).endswith("/..")
+    ):
         raise ValidationError(
             message=f"Invalid path contains directory traversal: {path_str}",
-            details={
-                "path": path_str,
-                "suggestion": "Remove any '..' sequences from the path"
-            }
+            details={"path": path_str, "suggestion": "Remove any '..' sequences from the path"},
         )
 
     # Check if path is within allowed boundaries
@@ -76,8 +77,8 @@ def _validate_path(path_str: str, allowed_base_paths: list[str] | None = None) -
             details={
                 "path": path_str,
                 "allowed_paths": allowed_paths,
-                "suggestion": "Ensure path is within allowed boundaries"
-            }
+                "suggestion": "Ensure path is within allowed boundaries",
+            },
         )
 
     return path
@@ -127,7 +128,7 @@ class MahavishnuApp:
         # Initialize production features
         self.circuit_breaker = CircuitBreaker(
             threshold=self.config.circuit_breaker_threshold,
-            timeout=self.config.retry_base_delay * 10  # Adjust as needed
+            timeout=self.config.retry_base_delay * 10,  # Adjust as needed
         )
 
         # Initialize observability
@@ -165,6 +166,7 @@ class MahavishnuApp:
 
         # Initialize backup and recovery managers
         from .backup_recovery import BackupManager, DisasterRecoveryManager
+
         self.backup_manager = BackupManager(self)
         self.recovery_manager = DisasterRecoveryManager(self)
 
@@ -179,7 +181,6 @@ class MahavishnuApp:
             This method returns None if terminal management is not configured
             or if the adapter cannot be initialized.
         """
-        from ..terminal.adapters.mcpretentious import McpretentiousAdapter
 
         try:
             # Note: For now, we create a simple stub.
@@ -235,7 +236,7 @@ class MahavishnuApp:
             )
 
         try:
-            with open(repos_path, "r") as f:
+            with open(repos_path) as f:
                 self.repos_config = yaml.safe_load(f)
 
             # Validate structure
@@ -276,6 +277,7 @@ class MahavishnuApp:
         if self.config.prefect_enabled:
             try:
                 from ..engines.prefect_adapter import PrefectAdapter
+
                 adapter_classes["prefect"] = PrefectAdapter
                 enabled_adapters["prefect"] = True
             except ImportError:
@@ -287,6 +289,7 @@ class MahavishnuApp:
         if self.config.llamaindex_enabled:
             try:
                 from ..engines.llamaindex_adapter import LlamaIndexAdapter
+
                 adapter_classes["llamaindex"] = LlamaIndexAdapter
                 enabled_adapters["llamaindex"] = True
             except ImportError:
@@ -298,6 +301,7 @@ class MahavishnuApp:
         if self.config.agno_enabled:
             try:
                 from ..engines.agno_adapter import AgnoAdapter
+
                 adapter_classes["agno"] = AgnoAdapter
                 enabled_adapters["agno"] = True
             except ImportError:
@@ -321,7 +325,9 @@ class MahavishnuApp:
                         },
                     ) from e
 
-    def get_repos(self, tag: str | None = None, role: str | None = None, user_id: str = None) -> list[str]:
+    def get_repos(
+        self, tag: str | None = None, role: str | None = None, user_id: str = None
+    ) -> list[str]:
         """Get repository paths based on tag, role, or return all.
 
         Args:
@@ -362,18 +368,10 @@ class MahavishnuApp:
 
         if tag:
             # Filter by tag
-            filtered_repos = [
-                repo["path"]
-                for repo in repos
-                if tag in repo.get("tags", [])
-            ]
+            filtered_repos = [repo["path"] for repo in repos if tag in repo.get("tags", [])]
         elif role:
             # Filter by role
-            filtered_repos = [
-                repo["path"]
-                for repo in repos
-                if repo.get("role") == role
-            ]
+            filtered_repos = [repo["path"] for repo in repos if repo.get("role") == role]
         else:
             # Return all repos
             filtered_repos = [repo["path"] for repo in repos]
@@ -388,6 +386,7 @@ class MahavishnuApp:
                     if user_id:
                         # Check if user has read permission for this repo
                         import asyncio
+
                         try:
                             has_permission = asyncio.run(
                                 self.rbac_manager.check_permission(
@@ -396,7 +395,7 @@ class MahavishnuApp:
                             )
                             if has_permission:
                                 validated_repos.append(str(validated_path))
-                        except:
+                        except Exception:
                             # If permission check fails, still allow access for backward compatibility
                             validated_repos.append(str(validated_path))
                     else:
@@ -500,7 +499,7 @@ class MahavishnuApp:
         if not self.adapters:
             return False
 
-        for adapter_name, adapter in self.adapters.items():
+        for _adapter_name, adapter in self.adapters.items():
             try:
                 health = adapter.get_health()
                 if health.get("status") != "healthy":
@@ -524,7 +523,7 @@ class MahavishnuApp:
         # Get workflows with RUNNING status
         workflows = await self.workflow_state_manager.list_workflows(
             status=WorkflowStatus.RUNNING,
-            limit=1000  # Sufficiently large limit
+            limit=1000,  # Sufficiently large limit
         )
 
         # Return workflow IDs
@@ -535,7 +534,7 @@ class MahavishnuApp:
         task: dict[str, Any],
         adapter_name: str,
         repos: list[str] | None = None,
-        user_id: str = None
+        user_id: str = None,
     ) -> dict[str, Any]:
         """Execute a workflow using the specified adapter.
 
@@ -579,8 +578,8 @@ class MahavishnuApp:
                     details={
                         "repo_path": repo_path,
                         "error": str(e),
-                        "suggestion": "Ensure repository path is valid and does not contain directory traversal sequences"
-                    }
+                        "suggestion": "Ensure repository path is valid and does not contain directory traversal sequences",
+                    },
                 ) from e
 
         # If user_id is provided, check execute permission for each repo
@@ -596,8 +595,8 @@ class MahavishnuApp:
                             "user": user_id,
                             "repo": repo_path,
                             "permission": "EXECUTE_WORKFLOW",
-                            "suggestion": "Contact administrator to grant required permissions"
-                        }
+                            "suggestion": "Contact administrator to grant required permissions",
+                        },
                     )
 
         # Execute with adapter using parallel processing
@@ -607,7 +606,9 @@ class MahavishnuApp:
             if self.observability:
                 workflow_counter = self.observability.create_workflow_counter()
                 if workflow_counter:
-                    workflow_counter.add(1, {"adapter": adapter_name, "task_type": task.get("type", "unknown")})
+                    workflow_counter.add(
+                        1, {"adapter": adapter_name, "task_type": task.get("type", "unknown")}
+                    )
 
             result = await adapter.execute(task, validated_repos)
             return result
@@ -620,11 +621,10 @@ class MahavishnuApp:
 
             # Log error to OpenSearch
             import uuid
+
             workflow_id = f"wf_{uuid.uuid4().hex[:8]}_{task.get('type', 'default')}_single"
             await self.opensearch_integration.log_error(
-                workflow_id=workflow_id,
-                error_msg=str(e),
-                adapter=adapter_name
+                workflow_id=workflow_id, error_msg=str(e), adapter=adapter_name
             )
 
             from .errors import AdapterError
@@ -646,7 +646,7 @@ class MahavishnuApp:
         adapter_name: str,
         repos: list[str] | None = None,
         progress_callback=None,
-        user_id: str = None
+        user_id: str = None,
     ) -> dict[str, Any]:
         """Execute a workflow in parallel across repositories with progress reporting.
 
@@ -691,8 +691,8 @@ class MahavishnuApp:
                     details={
                         "repo_path": repo_path,
                         "error": str(e),
-                        "suggestion": "Ensure repository path is valid and does not contain directory traversal sequences"
-                    }
+                        "suggestion": "Ensure repository path is valid and does not contain directory traversal sequences",
+                    },
                 ) from e
 
         # If user_id is provided, check execute permission for each repo
@@ -708,33 +708,29 @@ class MahavishnuApp:
                             "user": user_id,
                             "repo": repo_path,
                             "permission": "EXECUTE_WORKFLOW",
-                            "suggestion": "Contact administrator to grant required permissions"
-                        }
+                            "suggestion": "Contact administrator to grant required permissions",
+                        },
                     )
 
         # Create a unique workflow ID
         import uuid
+
         workflow_id = f"wf_{uuid.uuid4().hex[:8]}_{task.get('type', 'default')}"
 
         # Create workflow state
         await self.workflow_state_manager.create(
-            workflow_id=workflow_id,
-            task=task,
-            repos=validated_repos
+            workflow_id=workflow_id, task=task, repos=validated_repos
         )
 
         # Update workflow state to running
-        await self.workflow_state_manager.update(
-            workflow_id=workflow_id,
-            status="running"
-        )
+        await self.workflow_state_manager.update(workflow_id=workflow_id, status="running")
 
         # Log workflow start to OpenSearch
         await self.opensearch_integration.log_workflow_start(
             workflow_id=workflow_id,
             adapter=adapter_name,
             task_type=task.get("type", "unknown"),
-            repos=validated_repos
+            repos=validated_repos,
         )
 
         # Execute workflow with production features and resilience
@@ -747,14 +743,14 @@ class MahavishnuApp:
                     await self.workflow_state_manager.update(
                         workflow_id=workflow_id,
                         status="failed",
-                        error="Pre-execution QC check failed"
+                        error="Pre-execution QC check failed",
                     )
                     raise ValidationError(
                         message="Pre-execution QC check failed",
                         details={
                             "repos": validated_repos,
-                            "qc_result": "Failed to meet minimum quality standards"
-                        }
+                            "qc_result": "Failed to meet minimum quality standards",
+                        },
                     )
 
             # Create session checkpoint if enabled
@@ -766,8 +762,8 @@ class MahavishnuApp:
                         "task": task,
                         "adapter": adapter_name,
                         "repos": validated_repos,
-                        "status": "started"
-                    }
+                        "status": "started",
+                    },
                 )
 
             # Calculate total repos for progress tracking
@@ -785,9 +781,7 @@ class MahavishnuApp:
                     # Use circuit breaker for each repo processing
                     try:
                         result = await self.circuit_breaker.call(
-                            adapter.execute,
-                            {**task, "single_repo": repo_path},
-                            [repo_path]
+                            adapter.execute, {**task, "single_repo": repo_path}, [repo_path]
                         )
 
                         # Add result to workflow state
@@ -801,7 +795,7 @@ class MahavishnuApp:
                             "repo": repo_path,
                             "error": str(e),
                             "type": type(e).__name__,
-                            "timestamp": datetime.now().isoformat()
+                            "timestamp": datetime.now().isoformat(),
                         }
                         await self.workflow_state_manager.add_error(workflow_id, error_info)
 
@@ -809,14 +803,21 @@ class MahavishnuApp:
                         if self.observability:
                             error_counter = self.observability.create_error_counter()
                             if error_counter:
-                                error_counter.add(1, {"adapter": adapter_name, "error_type": type(e).__name__, "repo": repo_path})
+                                error_counter.add(
+                                    1,
+                                    {
+                                        "adapter": adapter_name,
+                                        "error_type": type(e).__name__,
+                                        "repo": repo_path,
+                                    },
+                                )
 
                         # Log error to OpenSearch
                         await self.opensearch_integration.log_error(
                             workflow_id=workflow_id,
                             error_msg=str(e),
                             repo_path=repo_path,
-                            adapter=adapter_name
+                            adapter=adapter_name,
                         )
 
                         raise e
@@ -827,11 +828,15 @@ class MahavishnuApp:
                     repo_processing_time = time.time() - start_repo_time
 
                     # Update progress in workflow state
-                    await self.workflow_state_manager.update_progress(workflow_id, completed_repos, total_repos)
+                    await self.workflow_state_manager.update_progress(
+                        workflow_id, completed_repos, total_repos
+                    )
 
                     # Record repo processing time in observability
                     if self.observability:
-                        self.observability.record_repo_processing_time(repo_path, workflow_id, repo_processing_time)
+                        self.observability.record_repo_processing_time(
+                            repo_path, workflow_id, repo_processing_time
+                        )
 
                         # Start repo trace
                         with self.observability.start_repo_trace(repo_path, workflow_id):
@@ -845,6 +850,7 @@ class MahavishnuApp:
 
             # Execute all repos in parallel
             import time
+
             start_time = time.time()
 
             # Add observability if enabled
@@ -852,52 +858,73 @@ class MahavishnuApp:
                 # Record workflow execution
                 workflow_counter = self.observability.create_workflow_counter()
                 if workflow_counter:
-                    workflow_counter.add(1, {"adapter": adapter_name, "task_type": task.get("type", "unknown")})
+                    workflow_counter.add(
+                        1, {"adapter": adapter_name, "task_type": task.get("type", "unknown")}
+                    )
 
                 # Record repository processing
                 repo_counter = self.observability.create_repo_counter()
                 if repo_counter:
                     repo_counter.add(len(validated_repos), {"adapter": adapter_name})
 
-                # Start workflow trace
-                workflow_span = self.observability.start_workflow_trace(
+                # Start workflow trace (span is ended automatically on context exit)
+                with self.observability.start_workflow_trace(
                     workflow_id, adapter_name, task.get("type", "unknown")
-                )
+                ) as workflow_span:
+                    _ = workflow_span  # Mark as intentionally used
 
             tasks = [process_single_repo(repo) for repo in validated_repos]
             results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Handle any exceptions that occurred during parallel execution
+            errors = []
+            successful_results = []
 
             execution_time = time.time() - start_time
 
             # End workflow trace
             if self.observability:
-                self.observability.end_workflow_trace(workflow_id, "completed" if not errors else ("partial" if successful_results else "failed"))
+                self.observability.end_workflow_trace(
+                    workflow_id,
+                    "completed" if not errors else ("partial" if successful_results else "failed"),
+                )
 
             # Handle any exceptions that occurred during parallel execution
             errors = []
             successful_results = []
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
-                    errors.append({
-                        "repo": validated_repos[i],
-                        "error": str(result),
-                        "type": type(result).__name__
-                    })
+                    errors.append(
+                        {
+                            "repo": validated_repos[i],
+                            "error": str(result),
+                            "type": type(result).__name__,
+                        }
+                    )
                     # Record error in observability if enabled
                     if self.observability:
                         error_counter = self.observability.create_error_counter()
                         if error_counter:
-                            error_counter.add(1, {"adapter": adapter_name, "error_type": type(result).__name__, "repo": validated_repos[i]})
+                            error_counter.add(
+                                1,
+                                {
+                                    "adapter": adapter_name,
+                                    "error_type": type(result).__name__,
+                                    "repo": validated_repos[i],
+                                },
+                            )
                 else:
                     successful_results.append(result)
 
             # Update workflow state with final status
-            final_status = "completed" if not errors else ("partial" if successful_results else "failed")
+            final_status = (
+                "completed" if not errors else ("partial" if successful_results else "failed")
+            )
             await self.workflow_state_manager.update(
                 workflow_id=workflow_id,
                 status=final_status,
                 execution_time_seconds=execution_time,
-                completed_at=datetime.now().isoformat()
+                completed_at=datetime.now().isoformat(),
             )
 
             # Log workflow completion to OpenSearch
@@ -908,7 +935,7 @@ class MahavishnuApp:
                 results_count=len(successful_results),
                 errors_count=len(errors),
                 adapter=adapter_name,
-                task_type=task.get("type", "unknown")
+                task_type=task.get("type", "unknown"),
             )
 
             # Update checkpoint if enabled
@@ -919,8 +946,8 @@ class MahavishnuApp:
                     result={
                         "successful_repos": len(successful_results),
                         "failed_repos": len(errors),
-                        "execution_time": execution_time
-                    }
+                        "execution_time": execution_time,
+                    },
                 )
 
             # Post-execution quality control check
@@ -943,7 +970,7 @@ class MahavishnuApp:
                 "errors": errors if errors else None,
                 "concurrency_limit": self.config.max_concurrent_workflows,
                 "qc_enabled": self.config.qc_enabled,
-                "session_enabled": self.config.session_enabled
+                "session_enabled": self.config.session_enabled,
             }
         except Exception as e:
             # Update workflow state with error
@@ -951,22 +978,18 @@ class MahavishnuApp:
                 workflow_id=workflow_id,
                 status="failed",
                 error=str(e),
-                completed_at=datetime.now().isoformat()
+                completed_at=datetime.now().isoformat(),
             )
 
             # Log error to OpenSearch
             await self.opensearch_integration.log_error(
-                workflow_id=workflow_id,
-                error_msg=str(e),
-                adapter=adapter_name
+                workflow_id=workflow_id, error_msg=str(e), adapter=adapter_name
             )
 
             # Update checkpoint if enabled and there was an error
             if self.config.session_enabled and checkpoint_id:
                 await self.session_buddy.update_checkpoint(
-                    checkpoint_id,
-                    "failed",
-                    result={"error": str(e)}
+                    checkpoint_id, "failed", result={"error": str(e)}
                 )
 
             from .errors import AdapterError

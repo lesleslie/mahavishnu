@@ -75,14 +75,14 @@ class TestITerm2Adapter:
         """Test connection establishment to iTerm2."""
         with patch('mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE', True), \
              patch('mahavishnu.terminal.adapters.iterm2.iterm2') as mock_iterm2:
-            
+
             # Setup mocks
             mock_iterm2.Connection.async_connect = AsyncMock(return_value=mock_connection)
             mock_iterm2.AsyncApp.async_get = AsyncMock(return_value=mock_app)
-            
+
             adapter = ITerm2Adapter()
             await adapter._ensure_connected()
-            
+
             assert adapter._connected is True
             assert adapter._connection == mock_connection
             assert adapter._app == mock_app
@@ -94,17 +94,17 @@ class TestITerm2Adapter:
         """Test launching a new iTerm2 session."""
         with patch('mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE', True), \
              patch('mahavishnu.terminal.adapters.iterm2.iterm2') as mock_iterm2:
-            
+
             # Setup mocks
             mock_iterm2.Connection.async_connect = AsyncMock(return_value=mock_connection)
             mock_iterm2.AsyncApp.async_get = AsyncMock(return_value=mock_app)
             mock_app.current_terminal_window = mock_window
             mock_window.async_create_tab = AsyncMock(return_value=mock_tab)
             mock_tab.sessions = [mock_session]
-            
+
             adapter = ITerm2Adapter()
             session_id = await adapter.launch_session("echo test", columns=80, rows=24)
-            
+
             assert session_id == "test_session_123"
             assert session_id in adapter._sessions
             assert adapter._sessions[session_id]["command"] == "echo test"
@@ -123,9 +123,9 @@ class TestITerm2Adapter:
                 "command": "echo test",
                 "created_at": datetime.now(),
             }
-            
+
             await adapter.send_command("test_session_123", "ls -la")
-            
+
             mock_session.async_send_text.assert_called_once_with("ls -la\n")
 
     @pytest.mark.asyncio
@@ -133,7 +133,7 @@ class TestITerm2Adapter:
         """Test error when sending to non-existent session."""
         with patch('mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE', True):
             adapter = ITerm2Adapter()
-            
+
             with pytest.raises(KeyError, match="Session nonexistent not found"):
                 await adapter.send_command("nonexistent", "test")
 
@@ -151,12 +151,12 @@ class TestITerm2Adapter:
                 "command": "echo test",
                 "created_at": datetime.now(),
             }
-            
+
             # Setup mock return value
             mock_session.async_get_screen_contents = AsyncMock(return_value=mock_screen_contents)
-            
+
             output = await adapter.capture_output("test_session_123")
-            
+
             assert output == "line1\nline2\nline3\n"
             mock_session.async_get_screen_contents.assert_called_once()
 
@@ -174,12 +174,12 @@ class TestITerm2Adapter:
                 "command": "echo test",
                 "created_at": datetime.now(),
             }
-            
+
             # Setup mock return value
             mock_session.async_get_screen_contents = AsyncMock(return_value=mock_screen_contents)
-            
+
             output = await adapter.capture_output("test_session_123", lines=2)
-            
+
             assert output == "line2\nline3\n"  # Last 2 lines
 
     @pytest.mark.asyncio
@@ -194,9 +194,9 @@ class TestITerm2Adapter:
                 "command": "echo test",
                 "created_at": datetime.now(),
             }
-            
+
             await adapter.close_session("test_session_123")
-            
+
             assert "test_session_123" not in adapter._sessions
             mock_tab.async_close.assert_called_once()
 
@@ -220,9 +220,9 @@ class TestITerm2Adapter:
                     "created_at": datetime(2025, 1, 1, 12, 1, 0),
                 },
             }
-            
+
             sessions = await adapter.list_sessions()
-            
+
             assert len(sessions) == 2
             assert sessions[0]["id"] == "session_1"
             assert sessions[0]["command"] == "echo test1"
@@ -243,9 +243,9 @@ class TestITerm2Adapter:
                     "created_at": datetime.now(),
                 }
             }
-            
+
             await adapter.cleanup()
-            
+
             assert len(adapter._sessions) == 0
             mock_tab.async_close.assert_called()
             mock_connection.close.assert_called_once()

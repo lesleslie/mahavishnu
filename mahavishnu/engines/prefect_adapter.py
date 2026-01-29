@@ -1,44 +1,49 @@
 """Prefect adapter implementation."""
-from typing import Dict, List, Any
-from pathlib import Path
-from prefect import flow, task
-from prefect.states import State
-from prefect.client.schemas import FlowRun
-from prefect.exceptions import Abort
-from ..core.adapters import OrchestratorAdapter
-from tenacity import retry, stop_after_attempt, wait_exponential
+
 import asyncio
+from pathlib import Path
+from typing import Any
 
 # Import the code graph analyzer from mcp-common
 from mcp_common.code_graph import CodeGraphAnalyzer
+from prefect import flow, task
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+from ..core.adapters import OrchestratorAdapter
 
 
 @task
-async def process_repository(repo_path: str, task_spec: Dict[str, Any]) -> Dict[str, Any]:
+async def process_repository(repo_path: str, task_spec: dict[str, Any]) -> dict[str, Any]:
     """Process a single repository as a Prefect task - REAL IMPLEMENTATION"""
     try:
-        task_type = task_spec.get('type', 'default')
+        task_type = task_spec.get("type", "default")
 
-        if task_type == 'code_sweep':
+        if task_type == "code_sweep":
             # Use code graph for intelligent analysis
             graph_analyzer = CodeGraphAnalyzer(Path(repo_path))
             analysis_result = await graph_analyzer.analyze_repository(repo_path)
 
             # Find complex functions (more than 10 lines or with many calls)
             from mcp_common.code_graph.analyzer import FunctionNode
+
             complex_funcs = []
-            for node_id, node in graph_analyzer.nodes.items():
-                if isinstance(node, FunctionNode):
-                    if hasattr(node, 'end_line') and hasattr(node, 'start_line'):
-                        func_length = node.end_line - node.start_line
-                        if func_length > 10 or len(node.calls) > 5:
-                            complex_funcs.append({
-                                "name": node.name,
-                                "file": node.file_id,
-                                "length": func_length,
-                                "calls_count": len(node.calls),
-                                "is_export": node.is_export
-                            })
+            for _node_id, node in graph_analyzer.nodes.items():
+                if (
+                    isinstance(node, FunctionNode)
+                    and hasattr(node, "end_line")
+                    and hasattr(node, "start_line")
+                ):
+                    func_length = node.end_line - node.start_line
+                    if func_length > 10 or len(node.calls) > 5:
+                            complex_funcs.append(
+                                {
+                                    "name": node.name,
+                                    "file": node.file_id,
+                                    "length": func_length,
+                                    "calls_count": len(node.calls),
+                                    "is_export": node.is_export,
+                                }
+                            )
 
             # Use Session Buddy for quality check (placeholder implementation)
             # In a real implementation, this would call Session Buddy's API
@@ -50,12 +55,13 @@ async def process_repository(repo_path: str, task_spec: Dict[str, Any]) -> Dict[
                 "changes_identified": analysis_result["functions_indexed"],
                 "recommendations": complex_funcs,
                 "quality_score": quality_score,
-                "analysis_details": analysis_result
+                "analysis_details": analysis_result,
             }
 
-        elif task_type == 'quality_check':
+        elif task_type == "quality_check":
             # Use Crackerjack integration
             from ..qc.checker import QualityControl
+
             qc = QualityControl()
             result = await qc.check_repository(repo_path)
 
@@ -65,31 +71,31 @@ async def process_repository(repo_path: str, task_spec: Dict[str, Any]) -> Dict[
                 "operation": task_type,
                 "repo": repo_path,
                 "status": "processed",
-                "details": f"Executed {task_type} on {repo_path}"
+                "details": f"Executed {task_type} on {repo_path}",
             }
 
         return {
             "repo": repo_path,
             "status": "completed",
             "result": result,
-            "task_id": task_spec.get("id", "unknown")
+            "task_id": task_spec.get("id", "unknown"),
         }
     except Exception as e:
         return {
             "repo": repo_path,
             "status": "failed",
             "error": str(e),
-            "task_id": task_spec.get("id", "unknown")
+            "task_id": task_spec.get("id", "unknown"),
         }
 
 
 @flow(name="mahavishnu-repo-processing-flow")
-async def process_repositories_flow(repos: List[str], task_spec: Dict[str, Any]) -> List[Dict[str, Any]]:
+async def process_repositories_flow(
+    repos: list[str], task_spec: dict[str, Any]
+) -> list[dict[str, Any]]:
     """Prefect flow to process multiple repositories."""
     # Process all repositories in parallel using Prefect's task scheduling
-    results = await asyncio.gather(*[
-        process_repository(repo, task_spec) for repo in repos
-    ])
+    results = await asyncio.gather(*[process_repository(repo, task_spec) for repo in repos])
 
     return results
 
@@ -102,7 +108,7 @@ class PrefectAdapter(OrchestratorAdapter):
         self.config = config
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-    async def execute(self, task: Dict[str, Any], repos: List[str]) -> Dict[str, Any]:
+    async def execute(self, task: dict[str, Any], repos: list[str]) -> dict[str, Any]:
         """
         Execute a task using Prefect across multiple repositories.
 
@@ -125,7 +131,9 @@ class PrefectAdapter(OrchestratorAdapter):
                 "results": results,
                 "success_count": len([r for r in results if r.get("status") == "completed"]),
                 "failure_count": len([r for r in results if r.get("status") == "failed"]),
-                "flow_run_ids": [f"prefect_flow_{i}" for i in range(len(repos))]  # Simplified ID generation
+                "flow_run_ids": [
+                    f"prefect_flow_{i}" for i in range(len(repos))
+                ],  # Simplified ID generation
             }
         except Exception as e:
             return {
@@ -136,10 +144,10 @@ class PrefectAdapter(OrchestratorAdapter):
                 "error": str(e),
                 "results": [],
                 "success_count": 0,
-                "failure_count": len(repos)
+                "failure_count": len(repos),
             }
 
-    async def get_health(self) -> Dict[str, Any]:
+    async def get_health(self) -> dict[str, Any]:
         """
         Get adapter health status.
 
@@ -153,18 +161,9 @@ class PrefectAdapter(OrchestratorAdapter):
             health_details = {
                 "prefect_version": "3.x",
                 "configured": True,
-                "connection": "available"  # Would be determined by actual connection test
+                "connection": "available",  # Would be determined by actual connection test
             }
 
-            return {
-                "status": "healthy",
-                "details": health_details
-            }
+            return {"status": "healthy", "details": health_details}
         except Exception as e:
-            return {
-                "status": "unhealthy",
-                "details": {
-                    "error": str(e),
-                    "configured": True
-                }
-            }
+            return {"status": "unhealthy", "details": {"error": str(e), "configured": True}}

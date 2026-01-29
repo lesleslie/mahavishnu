@@ -3,13 +3,16 @@
 This module provides a connection pool to reuse iTerm2 WebSocket connections
 across multiple TerminalManager instances, reducing connection overhead.
 """
+
 import asyncio
-from logging import getLogger
-from typing import Optional, Dict, Any
+import contextlib
 from datetime import datetime, timedelta
+from logging import getLogger
+from typing import Any
 
 try:
     import iterm2
+
     ITERM2_AVAILABLE = True
 except ImportError:
     ITERM2_AVAILABLE = False
@@ -52,9 +55,9 @@ class ITerm2ConnectionPool:
         self.idle_timeout = timedelta(seconds=idle_timeout)
         self.health_check_interval = health_check_interval
 
-        self._pool: Dict[str, Any] = {}  # conn_id -> {conn, created_at, last_used, in_use}
+        self._pool: dict[str, Any] = {}  # conn_id -> {conn, created_at, last_used, in_use}
         self._lock = asyncio.Lock()
-        self._health_check_task: Optional[asyncio.Task] = None
+        self._health_check_task: asyncio.Task | None = None
 
         logger.info(
             f"Initialized iTerm2 connection pool (max_size={max_size}, "
@@ -100,7 +103,9 @@ class ITerm2ConnectionPool:
                     "in_use": True,
                 }
 
-                logger.info(f"Created new iTerm2 connection {conn_id} (pool size: {len(self._pool)})")
+                logger.info(
+                    f"Created new iTerm2 connection {conn_id} (pool size: {len(self._pool)})"
+                )
                 return conn
 
             # Pool is full
@@ -135,10 +140,8 @@ class ITerm2ConnectionPool:
             # Stop health check task
             if self._health_check_task:
                 self._health_check_task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await self._health_check_task
-                except asyncio.CancelledError:
-                    pass
                 self._health_check_task = None
 
             # Close all connections
@@ -243,7 +246,7 @@ class ITerm2ConnectionPool:
             if stale_ids:
                 logger.info(f"Removed {len(stale_ids)} stale connections")
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Get pool statistics.
 
         Returns:
@@ -258,12 +261,14 @@ class ITerm2ConnectionPool:
             "in_use": in_use,
             "idle": idle,
             "max_size": self.max_size,
-            "utilization_percent": round((in_use / self.max_size) * 100, 1) if self.max_size > 0 else 0,
+            "utilization_percent": round((in_use / self.max_size) * 100, 1)
+            if self.max_size > 0
+            else 0,
         }
 
 
 # Global connection pool singleton
-_global_pool: Optional[ITerm2ConnectionPool] = None
+_global_pool: ITerm2ConnectionPool | None = None
 _pool_lock = asyncio.Lock()
 
 

@@ -1,6 +1,7 @@
 # Mahavishnu - Multi-Engine Orchestration Platform
 
 Mahavishnu is a modular orchestration platform that provides unified interfaces for managing workflows across multiple repositories. It currently provides:
+
 - **LlamaIndex adapter** (fully implemented) for RAG pipelines with Ollama embeddings
 - **Prefect adapter stub** for high-level orchestration (framework skeleton only)
 - **Agno adapter stub** for AI agent workflows (framework skeleton only)
@@ -10,6 +11,7 @@ Mahavishnu is a modular orchestration platform that provides unified interfaces 
 **Implementation Phase**: Phase 1 Complete (Foundation + Core Architecture)
 
 **Completed**:
+
 - Security hardening (JWT auth, Claude Code + Qwen support)
 - Async base adapter architecture
 - FastMCP-based MCP server with terminal management
@@ -20,11 +22,13 @@ Mahavishnu is a modular orchestration platform that provides unified interfaces 
 - Test infrastructure (12 test files)
 
 **Partially Complete**:
+
 - Prefect adapter (stub only, 143 lines)
 - Agno adapter (stub only, 116 lines)
 - MCP tools (terminal tools complete, core orchestration tools missing)
 
 **Not Started**:
+
 - Actual adapter logic (Prefect, Agno need implementation)
 - LLM provider integrations for Prefect and Agno
 - Production error recovery patterns
@@ -90,6 +94,7 @@ repos:
 ```
 
 Mahavishnu currently includes 9 configured repositories:
+
 - crackerjack
 - session-buddy
 - mcp-common
@@ -178,6 +183,7 @@ mahavishnu shell
 ```
 
 **Shell features:**
+
 - `ps()` - Show all workflows
 - `top()` - Show active workflows with progress
 - `errors(n)` - Show recent errors
@@ -191,9 +197,9 @@ See [Admin Shell Documentation](docs/ADMIN_SHELL.md) for complete usage guide.
 Mahavishnu uses a layered configuration system:
 
 1. Default values in Pydantic models
-2. `settings/mahavishnu.yaml` (committed to git)
-3. `settings/local.yaml` (gitignored, local overrides)
-4. Environment variables `MAHAVISHNU_*`
+1. `settings/mahavishnu.yaml` (committed to git)
+1. `settings/local.yaml` (gitignored, local overrides)
+1. Environment variables `MAHAVISHNU_*`
 
 ### Environment Variables
 
@@ -210,6 +216,7 @@ Mahavishnu uses a layered configuration system:
 LlamaIndex provides RAG (Retrieval-Augmented Generation) pipelines:
 
 **Features**:
+
 - Repository/document ingestion from `repos.yaml`
 - Vector embeddings with Ollama (local models)
 - Semantic search across codebases
@@ -224,6 +231,7 @@ LlamaIndex provides RAG (Retrieval-Augmented Generation) pipelines:
 Prefect provides high-level orchestration with dynamic flows:
 
 **Use Cases**:
+
 - Production workflows with scheduling requirements
 - State management and flow coordination
 - Deployment pipelines and batch processing
@@ -231,6 +239,7 @@ Prefect provides high-level orchestration with dynamic flows:
 **Current Implementation**: Framework skeleton with placeholder logic. Returns simulated results.
 
 **Planned Features**:
+
 - Dynamic flow creation from task specifications
 - Hybrid execution support (local, cloud, containers)
 - State management and checkpointing
@@ -242,6 +251,7 @@ Prefect provides high-level orchestration with dynamic flows:
 Agno provides fast, scalable AI agent workflows:
 
 **Features**:
+
 - Single and multi-agent systems
 - Memory and tools for agents
 - Multi-LLM routing (Ollama, Claude, Qwen)
@@ -250,6 +260,7 @@ Agno provides fast, scalable AI agent workflows:
 **Current Implementation**: Framework skeleton with placeholder logic. Returns simulated results.
 
 **Planned Features**:
+
 - Agent lifecycle management
 - Tool integration
 - Multi-LLM routing
@@ -263,6 +274,7 @@ Mahavishnu includes a FastMCP-based MCP server for tool integration.
 **Status**: Complete (11,453 lines of terminal tools)
 
 Terminal management tools are fully implemented:
+
 - `terminal_launch`: Launch terminal sessions
 - `terminal_type`: Type commands in terminals
 - `terminal_read`: Read terminal output
@@ -270,8 +282,9 @@ Terminal management tools are fully implemented:
 - `terminal_list`: List active terminals
 
 **Features**:
+
 - Launch 10+ concurrent terminal sessions
-- Hot-swappable adapters (iTerm2 <-> mcpretentious)
+- Hot-swappable adapters (iTerm2 \<-> mcpretentious)
 - Connection pooling for reduced overhead
 - iTerm2 profile support
 
@@ -280,6 +293,7 @@ Terminal management tools are fully implemented:
 **Status**: Not yet implemented
 
 The following tools are specified but not yet implemented:
+
 - `list_repos`: List repositories with tag filtering
 - `trigger_workflow`: Trigger workflow execution
 - `get_workflow_status`: Check workflow status
@@ -320,11 +334,11 @@ Provide a `MAHAVISHNU_AUTH_SECRET` environment variable with at least 32 charact
 To contribute to Mahavishnu:
 
 1. Fork the repository
-2. Create a virtual environment: `uv venv`
-3. Install in editable mode: `uv pip install -e .`
-4. Make your changes
-5. Run tests: `pytest`
-6. Submit a pull request
+1. Create a virtual environment: `uv venv`
+1. Install in editable mode: `uv pip install -e .`
+1. Make your changes
+1. Run tests: `pytest`
+1. Submit a pull request
 
 ## Testing
 
@@ -365,6 +379,7 @@ pytest --cov=mahavishnu --cov-report=html
 ## Project Status
 
 **Roadmap**:
+
 - Phase 0: Security Hardening (Complete)
 - Phase 1: Foundation Architecture (Complete)
 - Phase 2: MCP Server (Partial - terminal tools complete, core tools missing)

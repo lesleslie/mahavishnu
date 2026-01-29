@@ -9,10 +9,9 @@ from typing import Any
 
 from fastmcp import FastMCP
 
-from ...terminal.manager import TerminalManager
+from ...terminal.adapters.iterm2 import ITERM2_AVAILABLE, ITerm2Adapter
 from ...terminal.adapters.mcpretentious import McpretentiousAdapter
-from ...terminal.adapters.iterm2 import ITerm2Adapter, ITERM2_AVAILABLE
-from ...terminal.mcp_client import McpretentiousClient
+from ...terminal.manager import TerminalManager
 
 
 def register_terminal_tools(
@@ -151,9 +150,7 @@ def register_terminal_tools(
             >>> print(f"Closed {result['closed_count']} sessions")
         """
         sessions = await terminal_manager.list_sessions()
-        session_ids = [
-            s.get("id", s.get("terminal_id", "")) for s in sessions
-        ]
+        session_ids = [s.get("id", s.get("terminal_id", "")) for s in sessions]
         if session_ids:
             await terminal_manager.close_all(session_ids)
         return {"closed_count": len(session_ids)}
@@ -182,7 +179,7 @@ def register_terminal_tools(
             return {
                 "status": "already_using",
                 "current_adapter": current,
-                "message": f"Already using {current} adapter"
+                "message": f"Already using {current} adapter",
             }
 
         # Create new adapter instance
@@ -190,26 +187,20 @@ def register_terminal_tools(
             if not ITERM2_AVAILABLE:
                 return {
                     "status": "error",
-                    "message": "iTerm2 adapter not available. Install with: pip install iterm2"
+                    "message": "iTerm2 adapter not available. Install with: pip install iterm2",
                 }
             try:
                 new_adapter = ITerm2Adapter()
             except Exception as e:
-                return {
-                    "status": "error",
-                    "message": f"Failed to initialize iTerm2 adapter: {e}"
-                }
+                return {"status": "error", "message": f"Failed to initialize iTerm2 adapter: {e}"}
         elif adapter_name == "mcpretentious":
             if mcp_client is None:
-                return {
-                    "status": "error",
-                    "message": "mcpretentious adapter requires MCP client"
-                }
+                return {"status": "error", "message": "mcpretentious adapter requires MCP client"}
             new_adapter = McpretentiousAdapter(mcp_client)
         else:
             return {
                 "status": "error",
-                "message": f"Unknown adapter: {adapter_name}. Use 'iterm2' or 'mcpretentious'"
+                "message": f"Unknown adapter: {adapter_name}. Use 'iterm2' or 'mcpretentious'",
             }
 
         # Perform the switch
@@ -222,10 +213,7 @@ def register_terminal_tools(
                 "migrate_sessions": migrate_sessions,
             }
         except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Failed to switch adapter: {e}"
-            }
+            return {"status": "error", "message": f"Failed to switch adapter: {e}"}
 
     @mcp.tool()
     async def terminal_current_adapter() -> dict:

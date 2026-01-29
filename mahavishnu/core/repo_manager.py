@@ -1,4 +1,5 @@
 """Optimized repository manager with caching and indexing."""
+
 from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
@@ -161,9 +162,7 @@ class RepositoryManager:
 
         # Filter by language (O(n) scan, but small n)
         if language:
-            results = [
-                r for r in results if r.metadata and r.metadata.language == language
-            ]
+            results = [r for r in results if r.metadata and r.metadata.language == language]
 
         return list(results)
 

@@ -17,32 +17,38 @@ The Mahavishnu platform includes comprehensive production readiness features to 
 The production readiness suite performs comprehensive validation of the system:
 
 ### Configuration Validity
+
 - Validates all required configuration fields are present
 - Checks security settings (authentication, SSL, etc.)
 - Verifies repository paths and accessibility
 - Ensures resource limits are reasonable
 
 ### Adapter Health
+
 - Tests connectivity to all enabled adapters
 - Validates adapter health status
 - Checks for proper initialization
 
 ### Repository Accessibility
+
 - Verifies configured repositories are accessible
 - Checks repository permissions
 - Validates repository structure
 
 ### Workflow Execution
+
 - Tests basic workflow execution
 - Validates workflow state management
 - Checks error handling
 
 ### Resource Limits
+
 - Validates concurrent workflow limits
 - Checks retry settings
 - Verifies timeout configurations
 
 ### Security Settings
+
 - Checks authentication configuration
 - Validates security protocols
 - Reviews access controls
@@ -71,6 +77,7 @@ Performance benchmarks measure system efficiency:
 The following CLI commands are available for production readiness:
 
 ### Run Complete Suite
+
 ```bash
 mahavishnu production run-all-tests
 ```
@@ -78,6 +85,7 @@ mahavishnu production run-all-tests
 This runs the complete production readiness suite including configuration checks, integration tests, and performance benchmarks.
 
 ### Configuration Check Only
+
 ```bash
 mahavishnu production check-config
 ```
@@ -85,6 +93,7 @@ mahavishnu production check-config
 Runs only the configuration validity checks.
 
 ### Integration Tests Only
+
 ```bash
 mahavishnu production run-integration-tests
 ```
@@ -92,6 +101,7 @@ mahavishnu production run-integration-tests
 Runs only the integration tests.
 
 ### Performance Benchmarks Only
+
 ```bash
 mahavishnu production run-benchmarks
 ```
@@ -101,17 +111,20 @@ Runs only the performance benchmarks.
 ## Configuration Recommendations
 
 ### Security
+
 - Enable authentication in production
 - Use strong secrets (at least 32 characters)
 - Enable SSL for all connections
 - Configure proper access controls
 
 ### Resource Management
+
 - Set appropriate concurrent workflow limits (typically 5-20)
 - Configure reasonable retry settings (3-5 attempts)
 - Set appropriate timeouts (300-1800 seconds)
 
 ### Monitoring
+
 - Enable comprehensive logging
 - Configure metrics collection
 - Set up alerting for critical failures
@@ -129,21 +142,27 @@ The production readiness suite includes quality gates that must be met:
 ## Troubleshooting
 
 ### Configuration Issues
+
 If configuration checks fail, verify:
+
 - All required fields are present in the configuration
 - Authentication is properly configured
 - Repository paths are accessible
 - Resource limits are reasonable
 
 ### Test Failures
+
 If integration tests fail:
+
 - Check adapter connectivity
 - Verify repository accessibility
 - Review error logs
 - Validate permissions
 
 ### Performance Issues
+
 If benchmarks show poor performance:
+
 - Review system resources (CPU, memory, disk)
 - Check network connectivity
 - Verify database performance
@@ -152,18 +171,21 @@ If benchmarks show poor performance:
 ## Best Practices
 
 ### Pre-Deployment
+
 - Run the complete production readiness suite
 - Address all configuration issues
 - Achieve 90%+ test pass rate
 - Verify performance meets requirements
 
 ### Post-Deployment
+
 - Monitor system health continuously
 - Run periodic integration tests
 - Track performance metrics
 - Review logs regularly
 
 ### Maintenance
+
 - Update configurations as needed
 - Run readiness checks periodically
 - Monitor for performance degradation

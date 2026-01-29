@@ -1,30 +1,35 @@
 # ADR 003: Error Handling and Resilience Strategy
 
 ## Status
+
 **Accepted**
 
 ## Context
+
 Mahavishnu operates across multiple repositories and external services (LLM providers, Git hosts, CI systems). Failures are inevitable. The system must handle failures gracefully without data corruption or cascading failures.
 
 ### Failure Modes to Address
 
 1. **Transient Failures:** Network timeouts, rate limits, temporary API errors
-2. **Permanent Failures:** Invalid repositories, authentication failures, missing dependencies
-3. **Partial Failures:** 3/10 repos fail, 7 succeed
-4. **Cascading Failures:** One adapter failure affects others
-5. **Catastrophic Failures:** System crash, data corruption
+1. **Permanent Failures:** Invalid repositories, authentication failures, missing dependencies
+1. **Partial Failures:** 3/10 repos fail, 7 succeed
+1. **Cascading Failures:** One adapter failure affects others
+1. **Catastrophic Failures:** System crash, data corruption
 
 ### Options Considered
 
 #### Option 1: Fail Fast
+
 - **Pros:** Simple, errors are visible immediately
 - **Cons:** Wastes work on partial failures, poor user experience, no resilience
 
 #### Option 2: Manual Retry
+
 - **Pros:** Developer control
 - **Cons:** Error-prone, inconsistent, not scalable
 
 #### Option 3: Comprehensive Resilience Patterns (CHOSEN)
+
 - **Pros:**
   - Automatic retry with exponential backoff
   - Circuit breaker prevents cascading failures
@@ -37,6 +42,7 @@ Mahavishnu operates across multiple repositories and external services (LLM prov
   - Need to tune parameters
 
 ## Decision
+
 Implement comprehensive resilience patterns including retry logic, circuit breakers, dead letter queues, and graceful degradation.
 
 ### Retry Logic with Exponential Backoff
@@ -458,6 +464,7 @@ async def _process_single_repo(
 ## Consequences
 
 ### Positive
+
 - System is resilient to transient failures
 - Cascading failures are prevented by circuit breakers
 - Failed workflows can be inspected and replayed via dead letter queue
@@ -465,12 +472,14 @@ async def _process_single_repo(
 - Clear error reporting with structured logging
 
 ### Negative
+
 - Increased complexity in error handling logic
 - More code paths to test and maintain
 - Need to tune retry/backoff parameters
 - Dead letter queue requires management
 
 ### Risks
+
 - **Risk:** Retry storms overwhelming services
   **Mitigation:** Exponential backoff with jitter, circuit breakers
 
@@ -483,30 +492,35 @@ async def _process_single_repo(
 ## Implementation
 
 ### Phase 1: Retry Logic (Week 3, Day 1-2)
+
 - [ ] Implement `retry_with_backoff()` function
 - [ ] Add retry decorators for common operations
 - [ ] Configure retryable exceptions
 - [ ] Add metrics for retry attempts
 
 ### Phase 2: Circuit Breaker (Week 3, Day 3-4)
+
 - [ ] Implement `CircuitBreaker` class
 - [ ] Add circuit breakers to all adapters
 - [ ] Add metrics for circuit state changes
 - [ ] Add alerting for circuit breaker opens
 
 ### Phase 3: Dead Letter Queue (Week 3, Day 5)
+
 - [ ] Implement `DeadLetterQueue` class
 - [ ] Add enqueue on workflow failure
 - [ ] Implement replay CLI command
 - [ ] Add metrics for queue size
 
 ### Phase 4: Graceful Degradation (Week 3, Day 6-7)
+
 - [ ] Implement `execute_with_graceful_degradation()`
 - [ ] Update adapters to use partial results
 - [ ] Add CLI commands for dead letter management
 - [ ] Add integration tests for failure scenarios
 
 ## References
+
 - [Microsoft Resilience Patterns](https://docs.microsoft.com/en-us/azure/architecture/patterns/category/resiliency)
 - [AWS Circuit Breaker Pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/implementing-circuit-breaker-pattern.html)
 - [Google SRE Book: Error Propagation](https://sre.google/sre-book/addressing-cascading-failures/)

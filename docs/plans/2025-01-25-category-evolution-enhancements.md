@@ -5,7 +5,7 @@
 **Status**: Ready for Implementation
 **Estimated Time**: 3 hours
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -14,19 +14,21 @@ Enhance the Session-Buddy Category Evolution system with temporal decay for stor
 ## Problem Statement
 
 ### Current Issues
+
 1. **Storage Growth**: No mechanism to remove old/unused subcategories
-2. **Quality Blindness**: No way to measure if evolution improves or degrades cluster quality
-3. **Fingerprint Bug**: Fingerprint centroids overwrite instead of aggregate
-4. **No Historical Tracking**: Can't compare evolution runs over time
+1. **Quality Blindness**: No way to measure if evolution improves or degrades cluster quality
+1. **Fingerprint Bug**: Fingerprint centroids overwrite instead of aggregate
+1. **No Historical Tracking**: Can't compare evolution runs over time
 
 ### Goals
-1. Add temporal decay to keep storage lean (90-day inactivity threshold)
-2. Implement silhouette score for quality measurement
-3. Track evolution snapshots (before/after metrics)
-4. Fix fingerprint aggregation bug
-5. Archive or delete stale subcategories (configurable)
 
----
+1. Add temporal decay to keep storage lean (90-day inactivity threshold)
+1. Implement silhouette score for quality measurement
+1. Track evolution snapshots (before/after metrics)
+1. Fix fingerprint aggregation bug
+1. Archive or delete stale subcategories (configurable)
+
+______________________________________________________________________
 
 ## Architecture
 
@@ -61,14 +63,14 @@ Enhance the Session-Buddy Category Evolution system with temporal decay for stor
 ### Data Flow
 
 1. **Fetch Memories** → Get memories for category from database
-2. **Apply Temporal Decay** → Remove stale subcategories (90+ days inactive)
-3. **Calculate Quality** → Measure before-state silhouette score
-4. **Cluster Memories** → Assign to existing/new subcategories
-5. **Calculate Quality** → Measure after-state silhouette score
-6. **Create Snapshot** → Record before/after metrics
-7. **Persist** → Save subcategories and snapshots to database
+1. **Apply Temporal Decay** → Remove stale subcategories (90+ days inactive)
+1. **Calculate Quality** → Measure before-state silhouette score
+1. **Cluster Memories** → Assign to existing/new subcategories
+1. **Calculate Quality** → Measure after-state silhouette score
+1. **Create Snapshot** → Record before/after metrics
+1. **Persist** → Save subcategories and snapshots to database
 
----
+______________________________________________________________________
 
 ## Feature Specifications
 
@@ -77,6 +79,7 @@ Enhance the Session-Buddy Category Evolution system with temporal decay for stor
 **Purpose**: Keep storage lean by removing unused subcategories
 
 **Configuration**:
+
 ```python
 @dataclass
 class EvolutionConfig:
@@ -97,6 +100,7 @@ class EvolutionConfig:
 ```
 
 **Data Model Updates**:
+
 ```python
 @dataclass
 class Subcategory:
@@ -116,6 +120,7 @@ class Subcategory:
 ```
 
 **Decay Logic**:
+
 ```python
 async def apply_temporal_decay(
     self,
@@ -177,6 +182,7 @@ async def apply_temporal_decay(
 ```
 
 **Storage Estimation**:
+
 ```python
 def estimate_space_freed(subcategories: list[Subcategory]) -> int:
     """Estimate bytes freed by removing subcategories."""
@@ -189,6 +195,7 @@ def estimate_space_freed(subcategories: list[Subcategory]) -> int:
 **Purpose**: Measure cluster quality using industry-standard silhouette score
 
 **Implementation**:
+
 ```python
 def calculate_silhouette_score(
     self,
@@ -234,6 +241,7 @@ def calculate_silhouette_score(
 ```
 
 **Helper Method**:
+
 ```python
 def _is_memory_in_subcategory(
     self,
@@ -257,6 +265,7 @@ def _is_memory_in_subcategory(
 **Purpose**: Track evolution quality over time with before/after metrics
 
 **Database Schema**:
+
 ```sql
 -- Category evolution snapshots table
 CREATE TABLE IF NOT EXISTS category_evolution_snapshots (
@@ -305,6 +314,7 @@ CREATE TABLE IF NOT EXISTS archived_subcategories (
 ```
 
 **Snapshot Record**:
+
 ```python
 @dataclass
 class EvolutionSnapshot:
@@ -378,12 +388,14 @@ def format_bytes(bytes_count: int) -> str:
 ### 4. Fingerprint Centroid Fix
 
 **Current Bug** (line 481 in category_evolution.py):
+
 ```python
 # WRONG: Just overwrites, losing information
 subcategory.centroid_fingerprint = new_fingerprint
 ```
 
 **Fixed Version**:
+
 ```python
 def _update_fingerprint_centroid(
     self,
@@ -416,22 +428,25 @@ def _update_fingerprint_centroid(
     subcategory.centroid_fingerprint = aggregated_sig.to_bytes()
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Plan
 
 ### Phase 1: Data Model & Configuration (30 min)
 
 **Files**:
+
 - `session_buddy/memory/evolution_config.py` (NEW)
 
 **Tasks**:
+
 1. Create `EvolutionConfig` dataclass with all settings
-2. Create `DecayResult` dataclass for decay operation results
-3. Add `last_accessed_at` and `access_count` to `Subcategory`
-4. Add `record_access()` method to `Subcategory`
+1. Create `DecayResult` dataclass for decay operation results
+1. Add `last_accessed_at` and `access_count` to `Subcategory`
+1. Add `record_access()` method to `Subcategory`
 
 **Acceptance Criteria**:
+
 - Config class with sensible defaults
 - Subcategory can track access patterns
 - Type hints throughout
@@ -439,15 +454,18 @@ def _update_fingerprint_centroid(
 ### Phase 2: Silhouette Score Implementation (45 min)
 
 **Files**:
+
 - `session_buddy/memory/category_evolution.py` (MODIFY)
 
 **Tasks**:
+
 1. Implement `calculate_silhouette_score()` method
-2. Implement helper `_is_memory_in_subcategory()`
-3. Handle edge cases (1 cluster, <2 points, no embeddings)
-4. Add scikit-learn to dependencies if needed
+1. Implement helper `_is_memory_in_subcategory()`
+1. Handle edge cases (1 cluster, \<2 points, no embeddings)
+1. Add scikit-learn to dependencies if needed
 
 **Acceptance Criteria**:
+
 - Returns score in range [-1, +1]
 - Handles edge cases gracefully
 - Logging for debugging
@@ -455,17 +473,20 @@ def _update_fingerprint_centroid(
 ### Phase 3: Temporal Decay Implementation (45 min)
 
 **Files**:
+
 - `session_buddy/memory/category_evolution.py` (MODIFY)
 - `session_buddy/adapters/reflection_adapter_oneiric.py` (MODIFY)
 
 **Tasks**:
+
 1. Implement `apply_temporal_decay()` method
-2. Implement `_archive_subcategories()` method
-3. Implement `_delete_subcategories()` method
-4. Add snapshot table to database schema
-5. Add archived_subcategories table
+1. Implement `_archive_subcategories()` method
+1. Implement `_delete_subcategories()` method
+1. Add snapshot table to database schema
+1. Add archived_subcategories table
 
 **Acceptance Criteria**:
+
 - Removes subcategories inactive for 90+ days
 - Respects `archive_option` config flag
 - Estimates space freed
@@ -474,17 +495,20 @@ def _update_fingerprint_centroid(
 ### Phase 4: Snapshots & Integration (30 min)
 
 **Files**:
+
 - `session_buddy/memory/category_evolution.py` (MODIFY)
 - `session_buddy/tools/category_tools.py` (MODIFY)
 
 **Tasks**:
+
 1. Implement `create_evolution_snapshot()` method
-2. Create `EvolutionSnapshot` dataclass
-3. Wire up `evolve_categories()` MCP tool
-4. Add snapshot creation to evolution workflow
-5. Update `assign_subcategory()` to call `record_access()`
+1. Create `EvolutionSnapshot` dataclass
+1. Wire up `evolve_categories()` MCP tool
+1. Add snapshot creation to evolution workflow
+1. Update `assign_subcategory()` to call `record_access()`
 
 **Acceptance Criteria**:
+
 - Snapshots saved to database
 - Before/after metrics recorded
 - Decay results tracked
@@ -493,14 +517,17 @@ def _update_fingerprint_centroid(
 ### Phase 5: Fingerprint Fix (15 min)
 
 **Files**:
+
 - `session_buddy/memory/category_evolution.py` (MODIFY)
 
 **Tasks**:
+
 1. Replace overwrite logic in `_update_fingerprint_centroid()`
-2. Use MinHash union (element-wise minimum)
-3. Add unit test for fingerprint aggregation
+1. Use MinHash union (element-wise minimum)
+1. Add unit test for fingerprint aggregation
 
 **Acceptance Criteria**:
+
 - Fingerprints aggregate properly
 - No information loss
 - Test passes
@@ -508,22 +535,25 @@ def _update_fingerprint_centroid(
 ### Phase 6: Testing (30 min)
 
 **Files**:
+
 - `tests/unit/test_evolution_decay.py` (NEW)
 - `tests/unit/test_evolution_metrics.py` (NEW)
 - `tests/integration/test_evolution_workflow.py` (NEW)
 
 **Tasks**:
+
 1. Unit tests for decay logic (stale detection, archive, delete)
-2. Unit tests for silhouette score calculation
-3. Integration test for full evolution workflow
-4. Mock database for testing
+1. Unit tests for silhouette score calculation
+1. Integration test for full evolution workflow
+1. Mock database for testing
 
 **Acceptance Criteria**:
+
 - All tests pass
 - Coverage > 80% for new code
 - Integration test validates end-to-end flow
 
----
+______________________________________________________________________
 
 ## Configuration Example
 
@@ -546,7 +576,7 @@ evolution:
     fingerprint_threshold: 0.90
 ```
 
----
+______________________________________________________________________
 
 ## Usage Examples
 
@@ -599,88 +629,99 @@ await engine.evolve_category(
 )
 ```
 
----
+______________________________________________________________________
 
 ## Migration Path
 
 ### Existing Data
+
 1. Add `last_accessed_at` and `access_count` columns with defaults
-2. Existing subcategories get `last_accessed_at = now()` and `access_count = 1`
-3. No data loss during migration
+1. Existing subcategories get `last_accessed_at = now()` and `access_count = 1`
+1. No data loss during migration
 
 ### Backward Compatibility
-1. Temporal decay is opt-in via `temporal_decay_enabled` flag
-2. Default `archive_option = False` (delete, no archive table needed initially)
-3. Silhouette score calculation gracefully handles missing embeddings
 
----
+1. Temporal decay is opt-in via `temporal_decay_enabled` flag
+1. Default `archive_option = False` (delete, no archive table needed initially)
+1. Silhouette score calculation gracefully handles missing embeddings
+
+______________________________________________________________________
 
 ## Success Metrics
 
 ### Storage Efficiency
+
 - **Target**: Reduce subcategory count by 10-20% through decay
 - **Metric**: `bytes_freed` in snapshots
 - **Timeframe**: First 30 days of usage
 
 ### Quality Tracking
+
 - **Target**: Maintain silhouette score > 0.2
 - **Metric**: Compare `before_silhouette` vs `after_silhouette`
 - **Alert**: Investigate if score decreases by > 0.1
 
 ### Performance
+
 - **Target**: Evolution completes in < 5 seconds for 1000 memories
 - **Metric**: `evolution_duration_ms` in snapshots
 - **Optimization**: Profile if consistently > 5 seconds
 
----
+______________________________________________________________________
 
 ## Risks & Mitigations
 
 ### Risk: Over-Aggressive Decay
+
 **Concern**: Important subcategories deleted due to temporary inactivity
 **Mitigation**:
+
 - High `decay_access_threshold` (default: 5)
 - 90-day window (configurable)
 - Archive option for recovery
 
 ### Risk: Silhouette Score Performance
+
 **Concern**: O(n²) complexity for large datasets
 **Mitigation**:
+
 - Sample limit: calculate on max 1000 points
 - Cache scores for 1 hour
 - Async calculation
 
 ### Risk: Database Growth (Snapshots)
+
 **Concern**: Snapshot table grows unbounded
 **Mitigation**:
+
 - Only snapshot when `memory_count_threshold` met
 - Prune snapshots older than 1 year
 - Aggregate old snapshots (monthly → yearly)
 
----
+______________________________________________________________________
 
 ## Open Questions
 
 1. **Q**: Should decay run before or after clustering?
    **A**: Before clustering - removes stale categories first
 
-2. **Q**: How to handle subcategories with no embeddings?
+1. **Q**: How to handle subcategories with no embeddings?
    **A**: Still track access, but can't calculate silhouette for them
 
-3. **Q**: Archive storage location?
+1. **Q**: Archive storage location?
    **A**: Same DuckDB database, separate table (cold storage)
 
----
+______________________________________________________________________
 
 ## Next Steps
 
 1. Review and approve this design
-2. Create implementation plan (detailed task breakdown)
-3. Begin Phase 1 implementation
-4. Test each phase before proceeding
-5. Deploy and monitor first week
+1. Create implementation plan (detailed task breakdown)
+1. Begin Phase 1 implementation
+1. Test each phase before proceeding
+1. Deploy and monitor first week
 
----
+______________________________________________________________________
 
 ## References
 

@@ -4,11 +4,12 @@
 **Date:** 2025-01-24
 **Status:** Ready for Implementation
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
 This revised plan addresses critical issues identified by specialist reviews:
+
 - **Removes AgentDB dependency** (doesn't exist as Python package)
 - **Consolidates to PostgreSQL + pgvector** (unified database)
 - **Standardizes on single embedding model** (nomic-embed-text: 768 dim)
@@ -17,20 +18,20 @@ This revised plan addresses critical issues identified by specialist reviews:
 
 **Timeline:** 4-5 weeks (realistic, tested)
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Architecture Overview](#architecture-overview)
-2. [Phase 1: PostgreSQL Foundation](#phase-1-postgresql-foundation)
-3. [Phase 2: Core Memory Integration](#phase-2-core-memory-integration)
-4. [Phase 3: LlamaIndex RAG Integration](#phase-3-llamaindex-rag-integration)
-5. [Phase 4: Cross-Project Integration](#phase-4-cross-project-integration)
-6. [Phase 5: Testing & Documentation](#phase-5-testing--documentation)
-7. [Configuration & Setup](#configuration--setup)
-8. [Performance Monitoring](#performance-monitoring)
+1. [Phase 1: PostgreSQL Foundation](#phase-1-postgresql-foundation)
+1. [Phase 2: Core Memory Integration](#phase-2-core-memory-integration)
+1. [Phase 3: LlamaIndex RAG Integration](#phase-3-llamaindex-rag-integration)
+1. [Phase 4: Cross-Project Integration](#phase-4-cross-project-integration)
+1. [Phase 5: Testing & Documentation](#phase-5-testing--documentation)
+1. [Configuration & Setup](#configuration--setup)
+1. [Performance Monitoring](#performance-monitoring)
 
----
+______________________________________________________________________
 
 ## Architecture Overview
 
@@ -64,30 +65,34 @@ This revised plan addresses critical issues identified by specialist reviews:
 ### Key Design Decisions
 
 **1. Single PostgreSQL Database**
+
 - All Mahavishnu-specific memory in one place
 - SQL joins across repositories, agents, workflows
 - Single backup strategy
 - Connection pooling for 10+ concurrent terminals
 
 **2. Session-Buddy for Insights Only**
+
 - Keep existing DuckDB databases (working well)
 - Store extracted insights and patterns
 - Cross-project intelligence features
 - NO raw memory duplication
 
 **3. Single Embedding Model**
+
 - Standardize on nomic-embed-text (768 dimensions)
 - Local Ollama (no API costs)
 - LlamaIndex + Session-Buddy can both use it
 - Avoids triple embedding costs
 
 **4. Proper Integration Patterns**
+
 - Oneiric health check types (ComponentHealth)
 - OpenTelemetry metrics
 - Structured logging with trace correlation
 - Async connection pooling (asyncpg)
 
----
+______________________________________________________________________
 
 ## Phase 1: PostgreSQL Foundation
 
@@ -631,7 +636,7 @@ class MahavishnuSettings(BaseSettings):
 - Connection pool established
 - Vector search works with test data
 
----
+______________________________________________________________________
 
 ## Phase 2: Core Memory Integration
 
@@ -993,7 +998,7 @@ class MahavishnuMemoryIntegration:
 - Unified search works
 - Unit tests pass
 
----
+______________________________________________________________________
 
 ## Phase 3: LlamaIndex RAG Integration
 
@@ -1156,9 +1161,9 @@ class LlamaIndexAdapter:
 - Can ingest repositories into PostgreSQL
 - Vector search works with pgvector
 - Knowledge base queries return relevant results
-- Performance targets met (<100ms for 20 results)
+- Performance targets met (\<100ms for 20 results)
 
----
+______________________________________________________________________
 
 ## Phase 4: Cross-Project Integration
 
@@ -1255,7 +1260,7 @@ class MahavishnuCrossProjectIntegration:
 - Cross-project search works
 - Integration tests pass
 
----
+______________________________________________________________________
 
 ## Phase 5: Testing & Documentation
 
@@ -1307,6 +1312,7 @@ async def test_repository_ingestion():
 #### 5.2 Update Documentation
 
 **Files to Update:**
+
 - README.md (already updated)
 - MEMORY_ARCHITECTURE_PLAN.md (add revised architecture section)
 - Create SETUP_GUIDE.md (PostgreSQL setup instructions)
@@ -1325,12 +1331,12 @@ async def test_repository_ingestion():
 - All tests pass
 - Coverage >80%
 - Performance targets met:
-  - Vector search <100ms for 20 results
-  - Unified search <200ms
+  - Vector search \<100ms for 20 results
+  - Unified search \<200ms
   - 1000+ concurrent operations supported
 - Documentation complete
 
----
+______________________________________________________________________
 
 ## Configuration & Setup
 
@@ -1435,7 +1441,7 @@ alembic current
 mahavishnu mcp health
 ```
 
----
+______________________________________________________________________
 
 ## Performance Monitoring
 
@@ -1493,7 +1499,7 @@ class PerformanceMonitor:
         )
 ```
 
----
+______________________________________________________________________
 
 ## Verification Checklist
 
@@ -1539,18 +1545,20 @@ class PerformanceMonitor:
 - [ ] Documentation complete
 - [ ] Backup automation tested
 
----
+______________________________________________________________________
 
 ## Summary
 
 ### What Changed from Original Plan
 
 **Removed:**
+
 - ❌ AgentDB (doesn't exist as Python package)
 - ❌ Multiple embedding models (causes dimension mismatch)
 - ❌ Cross-database synchronization (unnecessary complexity)
 
 **Added:**
+
 - ✅ PostgreSQL + pgvector (unified database)
 - ✅ Single embedding model (nomic-embed-text: 768 dim)
 - ✅ Proper database migrations (Alembic)
@@ -1560,24 +1568,27 @@ class PerformanceMonitor:
 ### Benefits
 
 **Architectural:**
+
 - Single database for all Mahavishnu memory
 - SQL joins across repositories, agents, workflows
 - Single backup strategy
 - Simplified operations
 
 **Performance:**
-- <100ms vector search for 20 results
-- <200ms unified search across all systems
+
+- \<100ms vector search for 20 results
+- \<200ms unified search across all systems
 - 1000+ concurrent operations supported
 - Connection pooling for 10+ terminals
 
 **Operational:**
+
 - Python-only stack (no Node.js needed)
 - Production-ready (pgvector proven at scale)
 - Proper migrations (Alembic)
 - Monitoring and backup strategies
 
----
+______________________________________________________________________
 
 **Document Version:** 2.0 (Revised)
 **Last Updated:** 2025-01-24

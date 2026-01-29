@@ -1,18 +1,19 @@
 """Mahavishnu-specific formatters for admin shell."""
 
 import logging
-from typing import Any, List, Dict, Optional
+from typing import Any
 
 try:
-    from rich.console import Console
-    from rich.table import Table
     from rich.panel import Panel
+    from rich.table import Table
     from rich.text import Text
+
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
 
-from oneiric.shell.formatters import BaseTableFormatter, BaseLogFormatter
+from oneiric.shell.formatters import BaseLogFormatter, BaseTableFormatter
+
 from ..core.workflow_state import WorkflowStatus
 
 logger = logging.getLogger(__name__)
@@ -25,9 +26,7 @@ class WorkflowFormatter(BaseTableFormatter):
     status indicators, progress bars, and detailed views.
     """
 
-    def format_workflows(
-        self, workflows: List[Dict[str, Any]], show_details: bool = False
-    ) -> None:
+    def format_workflows(self, workflows: list[dict[str, Any]], show_details: bool = False) -> None:
         """Display workflows in a table.
 
         Args:
@@ -79,7 +78,7 @@ class WorkflowFormatter(BaseTableFormatter):
         self.console.print(table)
 
     def _format_workflows_fallback(
-        self, workflows: List[Dict[str, Any]], show_details: bool
+        self, workflows: list[dict[str, Any]], show_details: bool
     ) -> None:
         """Fallback workflow formatting without Rich.
 
@@ -93,7 +92,7 @@ class WorkflowFormatter(BaseTableFormatter):
                 print(f"  Adapter: {wf.get('adapter')}")
                 print(f"  Repos: {len(wf.get('repos', []))}")
 
-    def format_workflow_detail(self, workflow: Dict[str, Any]) -> None:
+    def format_workflow_detail(self, workflow: dict[str, Any]) -> None:
         """Display detailed workflow information.
 
         Args:
@@ -117,14 +116,12 @@ class WorkflowFormatter(BaseTableFormatter):
         if workflow.get("errors"):
             details.append(f"\nErrors ({len(workflow['errors'])}):\n", style="bold red")
             for error in workflow.get("errors", [])[:5]:
-                details.append(
-                    f"  - {error.get('message', 'Unknown error')}\n", style="red"
-                )
+                details.append(f"  - {error.get('message', 'Unknown error')}\n", style="red")
 
         panel = Panel(details, title="Workflow Details", border_style="blue")
         self.console.print(panel)
 
-    def _format_workflow_detail_fallback(self, workflow: Dict[str, Any]) -> None:
+    def _format_workflow_detail_fallback(self, workflow: dict[str, Any]) -> None:
         """Fallback detail formatting without Rich.
 
         Args:
@@ -145,9 +142,9 @@ class LogFormatter(BaseLogFormatter):
 
     def format_logs(
         self,
-        logs: List[Dict[str, Any]],
-        level: Optional[str] = None,
-        workflow_id: Optional[str] = None,
+        logs: list[dict[str, Any]],
+        level: str | None = None,
+        workflow_id: str | None = None,
         tail: int = 50,
     ) -> None:
         """Display log entries with filtering.
@@ -178,7 +175,7 @@ class LogFormatter(BaseLogFormatter):
         else:
             self._format_logs_fallback(logs)
 
-    def _format_logs_rich(self, logs: List[Dict[str, Any]]) -> None:
+    def _format_logs_rich(self, logs: list[dict[str, Any]]) -> None:
         """Format logs with Rich colors.
 
         Args:
@@ -196,7 +193,7 @@ class LogFormatter(BaseLogFormatter):
 
             self.console.print(f"[{timestamp}] [{level_str}] {message}", style=style)
 
-    def _format_logs_fallback(self, logs: List[Dict[str, Any]]) -> None:
+    def _format_logs_fallback(self, logs: list[dict[str, Any]]) -> None:
         """Format logs without Rich.
 
         Args:
@@ -216,7 +213,7 @@ class RepoFormatter(BaseTableFormatter):
     tag and metadata display.
     """
 
-    def format_repos(self, repos: List[Dict[str, Any]], show_tags: bool = False) -> None:
+    def format_repos(self, repos: list[dict[str, Any]], show_tags: bool = False) -> None:
         """Display repositories in a table.
 
         Args:
@@ -247,9 +244,7 @@ class RepoFormatter(BaseTableFormatter):
 
         self.console.print(table)
 
-    def _format_repos_fallback(
-        self, repos: List[Dict[str, Any]], show_tags: bool
-    ) -> None:
+    def _format_repos_fallback(self, repos: list[dict[str, Any]], show_tags: bool) -> None:
         """Fallback repo formatting without Rich.
 
         Args:

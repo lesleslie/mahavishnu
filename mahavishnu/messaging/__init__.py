@@ -1,11 +1,17 @@
 """Messaging module for Mahavishnu - inter-repository communication."""
 
-from .repository_messenger import MessageType, MessagePriority, RepositoryMessage, RepositoryMessenger, RepositoryMessengerManager
+from .repository_messenger import (
+    MessagePriority,
+    MessageType,
+    RepositoryMessage,
+    RepositoryMessenger,
+    RepositoryMessengerManager,
+)
 
 __all__ = [
     "MessageType",
-    "MessagePriority", 
+    "MessagePriority",
     "RepositoryMessage",
     "RepositoryMessenger",
-    "RepositoryMessengerManager"
+    "RepositoryMessengerManager",
 ]

@@ -30,7 +30,7 @@ class SimpleClass:
     """A simple class."""
     def __init__(self):
         self.value = 42
-    
+
     def get_value(self):
         return self.value
 
@@ -38,25 +38,25 @@ import os
 from pathlib import Path
 '''
         test_file.write_text(test_content)
-        
+
         # Create analyzer and analyze the repository
         analyzer = CodeGraphAnalyzer(Path(tmp_dir))
         result = await analyzer.analyze_repository(str(tmp_dir))
-        
+
         # Verify the analysis results
         assert result["files_indexed"] >= 1
         assert result["functions_indexed"] >= 2  # simple_function and function_with_calls
         assert result["classes_indexed"] >= 1  # SimpleClass
         assert result["total_nodes"] >= 4  # At least functions, class, and imports
-        
+
         # Verify that function nodes were created
         func_nodes = [node for node in analyzer.nodes.values() if isinstance(node, FunctionNode)]
         assert len(func_nodes) >= 2
-        
+
         # Verify that class nodes were created
         class_nodes = [node for node in analyzer.nodes.values() if isinstance(node, ClassNode)]
         assert len(class_nodes) >= 1
-        
+
         # Verify that import nodes were created
         import_nodes = [node for node in analyzer.nodes.values() if isinstance(node, ImportNode)]
         assert len(import_nodes) >= 2  # os and pathlib imports
@@ -79,14 +79,14 @@ def calling_function():
     return result
 '''
         test_file.write_text(test_content)
-        
+
         # Create analyzer and analyze the repository
         analyzer = CodeGraphAnalyzer(Path(tmp_dir))
         await analyzer.analyze_repository(str(tmp_dir))
-        
+
         # Get context for the target function
         context = await analyzer.get_function_context("target_function")
-        
+
         assert "function" in context
         assert context["function"].name == "target_function"
         assert context["is_export"] is True  # Not starting with underscore
@@ -107,7 +107,7 @@ def main():
     return result
 '''
         main_file.write_text(main_content)
-        
+
         # Create a helper module
         helper_file = Path(tmp_dir) / "helper.py"
         helper_content = '''
@@ -115,14 +115,14 @@ def helper_function():
     return "helper result"
 '''
         helper_file.write_text(helper_content)
-        
+
         # Create analyzer and analyze the repository
         analyzer = CodeGraphAnalyzer(Path(tmp_dir))
         await analyzer.analyze_repository(str(tmp_dir))
-        
+
         # Find related files for main.py
         related = await analyzer.find_related_files(str(main_file))
-        
+
         # Should find the import relationship
         assert len(related) >= 0  # May not find direct relationships in this simple case
 
@@ -149,32 +149,32 @@ def complex_function():
 
 class ComplexClass:
     """A class with multiple methods."""
-    
+
     def method_one(self):
         return utility_func_a()
-    
+
     def method_two(self):
         return utility_func_b()
-    
+
     def combined_method(self):
         return self.method_one() + self.method_two()
 '''
         test_file.write_text(test_content)
-        
+
         # Create analyzer and analyze the repository
         analyzer = CodeGraphAnalyzer(Path(tmp_dir))
         result = await analyzer.analyze_repository(str(tmp_dir))
-        
+
         # Verify analysis results
         assert result["functions_indexed"] >= 3  # utility_func_a, utility_func_b, complex_function
         assert result["classes_indexed"] >= 1  # ComplexClass
-        
+
         # Find the complex function and verify its calls
         complex_func_nodes = [
-            node for node in analyzer.nodes.values() 
+            node for node in analyzer.nodes.values()
             if isinstance(node, FunctionNode) and node.name == "complex_function"
         ]
-        
+
         assert len(complex_func_nodes) == 1
         complex_func = complex_func_nodes[0]
         # The complex function should call utility_func_a and utility_func_b
@@ -197,22 +197,22 @@ def _private_helper():
 class PublicClass:
     def public_method(self):
         return self._private_method()
-    
+
     def _private_method(self):
         return "private method result"
 '''
         test_file.write_text(test_content)
-        
+
         # Create analyzer and analyze the repository
         analyzer = CodeGraphAnalyzer(Path(tmp_dir))
         await analyzer.analyze_repository(str(tmp_dir))
-        
+
         # Find all function nodes
         func_nodes = [node for node in analyzer.nodes.values() if isinstance(node, FunctionNode)]
-        
+
         # Verify that private functions are correctly identified
         public_funcs = [fn for fn in func_nodes if fn.is_export]
         private_funcs = [fn for fn in func_nodes if not fn.is_export]
-        
+
         assert len(public_funcs) >= 2  # public_function and PublicClass.public_method
         assert len(private_funcs) >= 2  # _private_helper and PublicClass._private_method

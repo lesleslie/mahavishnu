@@ -4,7 +4,7 @@
 **Date:** 2025-01-24
 **Status:** ⚠️ CONDITIONAL GO - Must complete Phase 0 before implementation
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
@@ -13,17 +13,20 @@
 ### Critical Changes from V2
 
 **Security Fixes:**
+
 - 🔴 Fix SQL injection vulnerability (use parameterized queries)
 - 🔴 Add context managers for all database connections
 - 🔴 Add transaction management (explicit BEGIN/COMMIT/ROLLBACK)
 
 **Architecture Fixes:**
+
 - 🔴 Use Oneiric's pgvector adapter (remove 2000+ lines of custom code)
 - 🔴 Fix connection pooling (reduce to 20+30, not 50+100)
 - 🔴 Fix IVFFlat index (lists=500, not 100)
 - 🔴 Implement DuckDB migration for existing 99MB data
 
 **Oneiric Integration:**
+
 - 🔴 Use ComponentHealth for health checks (not Dict)
 - 🔴 Add structured logging (structlog with trace correlation)
 - 🔴 Add OpenTelemetry metrics integration
@@ -31,20 +34,20 @@
 
 **Timeline:** 7-8 weeks (including Phase 0 critical fixes)
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Phase 0: Critical Fixes (MANDATORY)](#phase-0-critical-fixes-mandatory)
-2. [Phase 1: PostgreSQL Foundation](#phase-1-postgresql-foundation)
-3. [Phase 2: Oneiric Integration](#phase-2-oneiric-integration)
-4. [Phase 3: Core Memory Integration](#phase-3-core-memory-integration)
-5. [Phase 4: LlamaIndex RAG Integration](#phase-4-llamaindex-rag-integration)
-6. [Phase 5: Cross-Project Integration](#phase-5-cross-project-integration)
-7. [Phase 6: Testing & Documentation](#phase-6-testing--documentation)
-8. [Configuration & Setup](#configuration--setup)
+1. [Phase 1: PostgreSQL Foundation](#phase-1-postgresql-foundation)
+1. [Phase 2: Oneiric Integration](#phase-2-oneiric-integration)
+1. [Phase 3: Core Memory Integration](#phase-3-core-memory-integration)
+1. [Phase 4: LlamaIndex RAG Integration](#phase-4-llamaindex-rag-integration)
+1. [Phase 5: Cross-Project Integration](#phase-5-cross-project-integration)
+1. [Phase 6: Testing & Documentation](#phase-6-testing--documentation)
+1. [Configuration & Setup](#configuration--setup)
 
----
+______________________________________________________________________
 
 ## Phase 0: Critical Fixes (MANDATORY)
 
@@ -57,54 +60,64 @@
 From trifecta review (5.2/10 average score):
 
 1. **SQL Injection Vulnerability** 🔴 CRITICAL
+
    - **Problem:** f-string interpolation in vector_search()
    - **Impact:** Security breach, data loss
    - **Fix:** Use parameterized queries
 
-2. **Resource Leaks** 🔴 CRITICAL
+1. **Resource Leaks** 🔴 CRITICAL
+
    - **Problem:** Missing context managers
    - **Impact:** Connection pool exhaustion
    - **Fix:** Add `async with` for all connections
 
-3. **Missing PostgreSQL Dependencies** 🔴 CRITICAL
+1. **Missing PostgreSQL Dependencies** 🔴 CRITICAL
+
    - **Problem:** asyncpg, pgvector, alembic not in pyproject.toml
    - **Impact:** Implementation fails immediately
    - **Fix:** Add dependencies
 
-4. **Connection Pool Excessive** 🔴 CRITICAL
+1. **Connection Pool Excessive** 🔴 CRITICAL
+
    - **Problem:** 50+100 = 150 connections exceeds PostgreSQL defaults
    - **Impact:** Connection errors under load
    - **Fix:** Reduce to 20+30 or increase PostgreSQL limits
 
-5. **IVFFlat Index Wrong** 🔴 CRITICAL
+1. **IVFFlat Index Wrong** 🔴 CRITICAL
+
    - **Problem:** lists=100 inappropriate for 150K rows
-   - **Impact:** <50% recall on vector search
+   - **Impact:** \<50% recall on vector search
    - **Fix:** Change to lists=500
 
-6. **No DuckDB Migration** 🔴 CRITICAL
+1. **No DuckDB Migration** 🔴 CRITICAL
+
    - **Problem:** 99MB existing Session-Buddy data stranded
    - **Impact:** Lost insights and patterns
    - **Fix:** Implement migration script
 
-7. **Ignores Oneiric's pgvector Adapter** 🔴 CRITICAL
+1. **Ignores Oneiric's pgvector Adapter** 🔴 CRITICAL
+
    - **Problem:** 2000+ lines of custom code unnecessary
    - **Impact:** 60+ hours wasted, maintenance burden
    - **Fix:** Use Oneiric's adapter
 
-8. **No Structured Logging** 🔴 CRITICAL
+1. **No Structured Logging** 🔴 CRITICAL
+
    - **Problem:** Uses standard logging instead of structlog
    - **Impact:** No trace correlation, hard debugging
    - **Fix:** Use structlog with Oneiric patterns
 
-9. **Missing Metrics Integration** 🟡 MAJOR
+1. **Missing Metrics Integration** 🟡 MAJOR
+
    - **Problem:** Custom PostgreSQL storage instead of OpenTelemetry
    - **Impact:** Can't monitor performance properly
    - **Fix:** Use Oneiric's metrics system
 
-10. **Health Check Type Mismatch** 🟡 MAJOR
-    - **Problem:** Returns Dict instead of ComponentHealth
-    - **Impact:** Breaking change for all adapters
-    - **Fix:** Return ComponentHealth objects
+1. **Health Check Type Mismatch** 🟡 MAJOR
+
+   - **Problem:** Returns Dict instead of ComponentHealth
+   - **Impact:** Breaking change for all adapters
+   - **Fix:** Return ComponentHealth objects
 
 ### Fix 0.1: Add Dependencies to pyproject.toml
 
@@ -832,7 +845,7 @@ async def with_retry(
 
 **⚠️ DO NOT PROCEED TO PHASE 1 UNTIL ALL PHASE 0 ACCEPTANCE CRITERIA ARE MET.**
 
----
+______________________________________________________________________
 
 ## Phase 1: PostgreSQL Foundation
 
@@ -936,11 +949,11 @@ psql -h localhost -U postgres -d mahavishnu -c "\d memories"
 - [ ] PostgreSQL database accessible
 - [ ] pgvector extension active
 - [ ] migrations table shows version 001 applied
-- [ ] All indexes exist (check with \di)
+- [ ] All indexes exist (check with \\di)
 - [ ] Connection pool health check passes
 - [ ] Can insert and query test data
 
----
+______________________________________________________________________
 
 ## Phase 2: Oneiric Integration
 
@@ -1080,7 +1093,7 @@ class ExampleAdapter:
 - [ ] Adapter health aggregation works
 - [ ] Lifecycle shutdown hooks tested
 
----
+______________________________________________________________________
 
 ## Phase 3: Core Memory Integration
 
@@ -1328,7 +1341,7 @@ class MahavishnuMemoryIntegration:
 - [ ] Metrics collected correctly
 - [ ] No connection leaks (resource tests pass)
 
----
+______________________________________________________________________
 
 ## Phase 4: LlamaIndex RAG Integration
 
@@ -1464,9 +1477,9 @@ class LlamaIndexAdapter:
 - [ ] Vector search works via Oneiric adapter
 - [ ] Batch operations perform well
 - [ ] Knowledge base queries return relevant results
-- [ ] Performance target met (<100ms for 20 results)
+- [ ] Performance target met (\<100ms for 20 results)
 
----
+______________________________________________________________________
 
 ## Phase 5: Cross-Project Integration
 
@@ -1491,7 +1504,7 @@ class LlamaIndexAdapter:
 - [ ] Cross-project search works
 - [ ] Integration tests pass
 
----
+______________________________________________________________________
 
 ## Phase 6: Testing & Documentation
 
@@ -1555,13 +1568,13 @@ async def test_structured_logging_has_trace_correlation():
 - [ ] Coverage >80%
 - [ ] Security scan passes (no vulnerabilities)
 - [ ] Performance targets met:
-  - Vector search <100ms for 20 results
-  - Unified search <200ms
+  - Vector search \<100ms for 20 results
+  - Unified search \<200ms
   - 1000+ concurrent operations supported
 - [ ] No connection leaks under load
 - [ ] Documentation complete
 
----
+______________________________________________________________________
 
 ## Configuration & Setup
 
@@ -1622,24 +1635,27 @@ memory_service:
   enable_performance_monitoring: true
 ```
 
----
+______________________________________________________________________
 
 ## Summary
 
 ### What Changed from V2
 
 **Critical Security Fixes:**
+
 - 🔴 SQL injection vulnerability fixed (parameterized queries)
 - 🔴 Resource leaks fixed (context managers)
 - 🔴 Transaction management added
 
 **Architecture Fixes:**
+
 - 🔴 Uses Oneiric pgvector adapter (removed 2000+ lines custom code)
 - 🔴 Connection pooling corrected (20+30, not 50+100)
 - 🔴 IVFFlat index corrected (lists=500, not 100)
 - 🔴 DuckDB migration implemented (99MB data preserved)
 
 **Oneiric Integration:**
+
 - 🔴 ComponentHealth for health checks (not Dict)
 - 🔴 Structured logging (structlog with trace correlation)
 - 🔴 OpenTelemetry metrics (not custom PostgreSQL storage)
@@ -1648,17 +1664,20 @@ memory_service:
 ### Benefits
 
 **Security:**
+
 - No SQL injection vulnerabilities
 - Proper resource cleanup
 - Transactional consistency
 
 **Performance:**
-- <100ms vector search for 20 results
-- <200ms unified search
+
+- \<100ms vector search for 20 results
+- \<200ms unified search
 - 1000+ concurrent operations
 - 100x faster batch operations
 
 **Maintainability:**
+
 - Uses Oneiric adapters (2000+ lines less code)
 - Proper health checks (ComponentHealth)
 - Structured logging with trace correlation
@@ -1676,7 +1695,7 @@ memory_service:
 
 **Total: 7-8 weeks** (realistic, including critical fixes)
 
----
+______________________________________________________________________
 
 **Document Version:** 3.0 (Critical Fixes Applied)
 **Date:** 2025-01-24

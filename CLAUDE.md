@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 Mahavishnu is a multi-engine orchestration platform that provides a unified interface for managing workflows across multiple repositories. It currently provides:
+
 - LlamaIndex adapter for RAG pipelines (fully implemented with Ollama embeddings)
 - Prefect adapter stub (framework skeleton, no actual orchestration yet)
 - Agno adapter stub (framework skeleton, no actual agent execution yet)
@@ -12,10 +13,11 @@ Mahavishnu is a multi-engine orchestration platform that provides a unified inte
 ### Key Architectural Patterns
 
 **Oneiric Integration**: All configuration uses Oneiric patterns with layered loading:
+
 1. Default values in Pydantic models
-2. `settings/mahavishnu.yaml` (committed)
-3. `settings/local.yaml` (gitignored, local dev)
-4. Environment variables `MAHAVISHNU_{FIELD}`
+1. `settings/mahavishnu.yaml` (committed)
+1. `settings/local.yaml` (gitignored, local dev)
+1. Environment variables `MAHAVISHNU_{FIELD}`
 
 **Adapter Pattern**: All orchestration engines implement `OrchestratorAdapter` from `mahavishnu/core/adapters/base.py`. Adapters are initialized in `MahavishnuApp._initialize_adapters()` only if enabled in configuration.
 
@@ -26,6 +28,7 @@ Mahavishnu is a multi-engine orchestration platform that provides a unified inte
 ## Development Commands
 
 ### Environment Setup
+
 ```bash
 # Using uv (recommended)
 uv venv
@@ -39,6 +42,7 @@ pip install -e ".[dev]"
 ```
 
 ### Testing
+
 ```bash
 # Run all tests
 pytest
@@ -57,6 +61,7 @@ pytest tests/property/
 ```
 
 ### Code Quality
+
 ```bash
 # Format code
 black mahavishnu/
@@ -79,6 +84,7 @@ crackerjack run
 ```
 
 ### MCP Server
+
 ```bash
 # Start MCP server
 mahavishnu mcp start
@@ -94,6 +100,7 @@ mahavishnu mcp stop
 ```
 
 ### CLI Commands
+
 ```bash
 # List all repositories
 mahavishnu list-repos
@@ -157,6 +164,7 @@ mahavishnu show-role tool
 **Repository Metadata:**
 
 Each repository in `settings/repos.yaml` includes:
+
 - `name`: Repository name
 - `package`: Python package name
 - `path`: Filesystem path
@@ -169,6 +177,7 @@ Each repository in `settings/repos.yaml` includes:
 ## Configuration Files
 
 **repos.yaml**: Repository manifest with tags and metadata
+
 ```yaml
 repos:
   - path: "/path/to/repo"
@@ -177,6 +186,7 @@ repos:
 ```
 
 **settings/mahavishnu.yaml**: Main configuration (Oneiric-compatible)
+
 ```yaml
 server_name: "Mahavishnu Orchestrator"
 adapters:
@@ -209,6 +219,7 @@ All MCP tools are registered in `mahavishnu/mcp/tools/` using FastMCP decorators
 ## Security
 
 See `SECURITY_CHECKLIST.md` for comprehensive security guidelines. Key points:
+
 - All inputs must use Pydantic models for validation
 - Secrets loaded from environment variables only
 - JWT authentication when auth_enabled
@@ -229,6 +240,7 @@ Use `~=` (compatible release clause) for stable dependencies, `>=` only for earl
 - **Error types**: `mahavishnu/core/errors.py` - Custom exceptions
 
 <!-- CRACKERJACK_START -->
+
 ## Crackerjack Integration
 
 This project uses [Crackerjack](https://github.com/yourusername/crackerjack) for quality control and AI-assisted development.
@@ -308,6 +320,7 @@ def test_property_based(input_data):
 ```
 
 Run tests by marker:
+
 ```bash
 pytest -m unit                    # Only unit tests
 pytest -m "integration and airflow"  # Airflow integration tests
@@ -361,6 +374,7 @@ await mcp.call_tool("execute_skill", {
 ```
 
 Available agent types:
+
 - **RefactoringAgent**: Code restructuring and modernization
 - **SecurityAgent**: Security vulnerability analysis
 - **PerformanceAgent**: Performance optimization
@@ -368,5 +382,5 @@ Available agent types:
 - **DocumentationAgent**: Documentation enhancement
 
 For more details, see [Crackerjack Documentation](https://github.com/yourusername/crackerjack#readme).
-<!-- CRACKERJACK_END -->
 
+<!-- CRACKERJACK_END -->

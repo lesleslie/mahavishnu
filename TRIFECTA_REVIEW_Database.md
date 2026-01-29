@@ -1,4 +1,5 @@
 # TRIFECTA REVIEW: Database Architecture
+
 ## Mahavishnu Memory Implementation Plan V2
 
 **Reviewer:** Database Operations Specialist
@@ -6,13 +7,14 @@
 **Review Type:** Critical Architecture Assessment
 **Plan Version:** 2.0 (Revised)
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
 **CRITICAL FINDINGS:** The plan shows architectural improvement but contains **severe database design flaws** that will cause production failures.
 
 **Key Issues:**
+
 - ❌ **Missing PostgreSQL dependencies** in pyproject.toml (plan won't install)
 - ⚠️ **IVFFlat index parameters** inappropriate for planned data volume
 - ⚠️ **No migration strategy** for existing Session-Buddy DuckDB data
@@ -25,6 +27,7 @@
 - ⚠️ **Missing monitoring queries** for performance metrics
 
 **Positive Aspects:**
+
 - ✅ Single PostgreSQL database (good architectural decision)
 - ✅ Using asyncpg (proper async driver)
 - ✅ Alembic for migrations (industry standard)
@@ -36,7 +39,7 @@
 
 **Overall Score:** 4/10 (Major redesign required)
 
----
+______________________________________________________________________
 
 ## Critical Issues (Must Fix Before Implementation)
 
@@ -47,6 +50,7 @@
 **Issue:** Plan specifies PostgreSQL + pgvector architecture but **no database dependencies** are declared in pyproject.toml.
 
 **Evidence:**
+
 ```bash
 $ grep -E "(pgvector|asyncpg|alembic|psycopg)" pyproject.toml
 # No results - dependencies are missing
@@ -55,6 +59,7 @@ $ grep -E "(pgvector|asyncpg|alembic|psycopg)" pyproject.toml
 **Impact:** Implementation will fail immediately. Plan cannot be installed or executed.
 
 **Fix Required:**
+
 ```toml
 # Add to dependencies in pyproject.toml
 dependencies = [
@@ -70,19 +75,21 @@ dependencies = [
 ```
 
 **Why asyncpg instead of psycopg?**
+
 - asyncpg is **3-5x faster** than psycopg2 for async operations
 - Native asyncio support (no thread pool overhead)
 - Better connection pooling for concurrent operations
 - Plan correctly uses asyncpg in implementation (line 287)
 
 **Validation:**
+
 ```bash
 # After adding dependencies, verify they're installable
 uv pip install -e ".[dev]"
 python -c "import asyncpg; import alembic; print('OK')"
 ```
 
----
+______________________________________________________________________
 
 ### 2. IVFFlat Index Parameters Will Cause Poor Performance ⚠️
 
@@ -91,6 +98,7 @@ python -c "import asyncpg; import alembic; print('OK')"
 **Issue:** IVFFlat index configured with `lists = 100` which is **inappropriate** for the planned data volume.
 
 **Current Configuration:**
+
 ```sql
 CREATE INDEX memories_embedding_idx
 ON memories
@@ -101,17 +109,20 @@ WITH (lists = 100);
 **Why This Is Wrong:**
 
 IVFFlat performance depends on `lists` parameter:
+
 - **Too few lists** (< sqrt(rows)): Poor recall, many index scans
 - **Too many lists** (> sqrt(rows)): Slow queries, excessive memory
 - **Optimal**: `lists = sqrt(num_rows) / 2` to `sqrt(num_rows)`
 
 **Projected Data Volume:**
+
 - Agent conversations: 10,000+ messages/month
 - RAG chunks: 100,000+ chunks (100 repos × 1,000 chunks)
 - Workflow executions: 1,000+/month
 - **Total: ~150,000 rows after 6 months**
 
 **Correct Configuration:**
+
 ```sql
 -- For 150,000 rows: sqrt(150000) ≈ 387
 -- Use 400-500 for good recall + performance
@@ -122,6 +133,7 @@ WITH (lists = 500);
 ```
 
 **Rebuilding Strategy:**
+
 ```sql
 -- Plan includes migration script to rebuild index as data grows
 -- Phase 1 (0-10K rows): lists = 100
@@ -130,11 +142,12 @@ WITH (lists = 500);
 ```
 
 **Impact of Wrong Setting:**
+
 - `lists = 100` with 150K rows: **40-60% recall** (miss many relevant results)
 - Queries will need full table scans, defeating index purpose
-- **Performance degradation:** 500ms+ instead of <100ms target
+- **Performance degradation:** 500ms+ instead of \<100ms target
 
----
+______________________________________________________________________
 
 ### 3. No Migration Path from Session-Buddy DuckDB 🔄
 
@@ -143,17 +156,19 @@ WITH (lists = 500);
 **Issue:** Plan assumes greenfield PostgreSQL deployment but **existing Session-Buddy DuckDB databases** contain production data that must be migrated.
 
 **Evidence from plan:**
+
 > "Keep existing DuckDB databases (working well)" (line 73)
 > "NO raw memory duplication" (line 76)
 
 **What's Missing:**
+
 1. **Data inventory:** What's in existing DuckDB databases?
-2. **Export strategy:** How to extract 99MB of DuckDB data?
-3. **Transform logic:** Mapping DuckDB schema → PostgreSQL schema
-4. **Import pipeline:** Bulk loading strategy (COPY vs INSERT)
-5. **Validation:** Verify migration integrity
-6. **Cutover strategy:** Zero-downtime transition
-7. **Rollback plan:** Revert to DuckDB if migration fails
+1. **Export strategy:** How to extract 99MB of DuckDB data?
+1. **Transform logic:** Mapping DuckDB schema → PostgreSQL schema
+1. **Import pipeline:** Bulk loading strategy (COPY vs INSERT)
+1. **Validation:** Verify migration integrity
+1. **Cutover strategy:** Zero-downtime transition
+1. **Rollback plan:** Revert to DuckDB if migration fails
 
 **Proposed Migration Plan (Add to Phase 1):**
 
@@ -243,6 +258,7 @@ class DuckDBToPostgresMigrator:
 **Migration Steps (Add to Phase 1):**
 
 1. **Pre-migration** (Day 1):
+
    ```bash
    # Backup DuckDB databases
    cp ~/.session-buddy/*.db ~/.session-buddy/backup/
@@ -251,30 +267,35 @@ class DuckDBToPostgresMigrator:
    python -m mahavishnu.database.migrations.inventory_duckdb
    ```
 
-2. **Export Phase** (Day 1-2):
+1. **Export Phase** (Day 1-2):
+
    ```bash
    # Export all tables to CSV
    python -m mahavishnu.database.migrations.export_duckdb --output ./migrations/data/
    ```
 
-3. **Schema Mapping** (Day 2):
+1. **Schema Mapping** (Day 2):
+
    - Map DuckDB columns → PostgreSQL columns
    - Handle type conversions (VARCHAR → TEXT, etc.)
    - Create target tables in PostgreSQL
 
-4. **Import Phase** (Day 3-4):
+1. **Import Phase** (Day 3-4):
+
    ```bash
    # Bulk import using COPY (fast)
    python -m mahavishnu.database.migrations.import_postgres --data ./migrations/data/
    ```
 
-5. **Validation** (Day 4-5):
+1. **Validation** (Day 4-5):
+
    ```bash
    # Verify row counts, checksums
    python -m mahavishnu.database.migrations.validate_migration
    ```
 
-6. **Cutover** (Day 5):
+1. **Cutover** (Day 5):
+
    - Stop Mahavishnu services
    - Final incremental sync
    - Update configuration to use PostgreSQL
@@ -283,7 +304,7 @@ class DuckDBToPostgresMigrator:
 
 **Time Estimate:** 5-7 days (not accounted for in plan)
 
----
+______________________________________________________________________
 
 ### 4. Connection Pool Settings Risk Resource Exhaustion 💥
 
@@ -292,6 +313,7 @@ class DuckDBToPostgresMigrator:
 **Issue:** Pool configuration of `50 base + 100 overflow` connections is **excessive** and will cause resource exhaustion.
 
 **Current Configuration:**
+
 ```python
 pool_size = 50
 max_overflow = 100
@@ -301,19 +323,23 @@ timeout = 30
 **Why This Is Dangerous:**
 
 **PostgreSQL Connection Limits:**
+
 - Default `max_connections` = 100
 - Each connection consumes ~10MB RAM
 - 150 connections × 10MB = **1.5GB RAM** for connections alone
 
 **Concurrent Terminals Plan:**
+
 > "Connection pooling for 10+ concurrent terminals" (line 70)
 
 **Math Doesn't Add Up:**
+
 - 10 terminals × 5 concurrent operations = 50 connections (OK)
 - But max_overflow allows **150 total connections**
 - This exceeds PostgreSQL default limit by 50%!
 
 **Production Impact:**
+
 ```
 Terminal 1-10: Normal operations (50 connections)
 Terminal 11: Fails with "connection pool exhausted"
@@ -333,6 +359,7 @@ command_timeout = 60    # Query timeout
 ```
 
 **PostgreSQL Configuration Required:**
+
 ```sql
 -- postgresql.conf
 max_connections = 200   # Increase to support pool
@@ -343,6 +370,7 @@ maintenance_work_mem = 512MB
 ```
 
 **Connection Pool Sizing Formula:**
+
 ```
 connections = (concurrent_terminals × avg_concurrent_ops) + safety_margin
            = (10 × 3) + 10
@@ -351,7 +379,7 @@ connections = (concurrent_terminals × avg_concurrent_ops) + safety_margin
 Set pool_size = 30, max_overflow = 10 (total 40)
 ```
 
----
+______________________________________________________________________
 
 ### 5. Hybrid Search Query Has N+1 Problem 🐌
 
@@ -360,6 +388,7 @@ Set pool_size = 30, max_overflow = 10 (total 40)
 **Issue:** Hybrid search implementation performs **full-text scan + vector search separately**, causing inefficient double queries.
 
 **Current Implementation (Lines 534-546):**
+
 ```python
 async def hybrid_search(self, query: str, memory_types: Optional[List[str]] = None, limit: int = 10) -> List[Dict[str, Any]]:
     async with await self.pg.get_connection() as conn:
@@ -382,9 +411,9 @@ async def hybrid_search(self, query: str, memory_types: Optional[List[str]] = No
 **Problems:**
 
 1. **No vector re-ranking:** Function returns FTS results only, never calls vector search
-2. **`limit * 3` heuristic:** Why 3×? No justification for magic number
-3. **Missing semantic re-ranking:** Claims "re-rank with vector" but doesn't implement it
-4. **No score fusion:** Doesn't combine FTS rank + vector similarity
+1. **`limit * 3` heuristic:** Why 3×? No justification for magic number
+1. **Missing semantic re-ranking:** Claims "re-rank with vector" but doesn't implement it
+1. **No score fusion:** Doesn't combine FTS rank + vector similarity
 
 **Correct Implementation:**
 
@@ -479,12 +508,14 @@ async def hybrid_search(
 ```
 
 **Performance Improvements:**
+
 - **Single vector query** instead of N separate queries (eliminates N+1)
 - **IN clause** with indexed lookups (fast)
 - **Score fusion** properly combines both signals
 - **Configurable alpha** allows tuning per use case
 
 **Query Plan (EXPLAIN ANALYZE):**
+
 ```sql
 -- Should show:
 -- 1. Bitmap Index Scan on memories_content_fts (GIN index)
@@ -493,7 +524,7 @@ async def hybrid_search(
 -- Total: <50ms for 100 candidates
 ```
 
----
+______________________________________________________________________
 
 ### 6. Missing Critical Indexes 🔍
 
@@ -502,6 +533,7 @@ async def hybrid_search(
 **Issue:** Schema is missing **indexes required for common query patterns** defined in the plan.
 
 **What's Indexed (Current):**
+
 ```sql
 CREATE INDEX memories_embedding_idx ... -- IVFFlat (vector search)
 CREATE INDEX memories_type_date_idx ... -- Composite (type + date)
@@ -513,6 +545,7 @@ CREATE INDEX memories_content_fts ... -- GIN (full-text)
 **What's Missing:**
 
 1. **Index for `source_system` filtering:**
+
    ```sql
    -- Query pattern: WHERE source_system = 'agno' AND memory_type = 'agent'
    CREATE INDEX memories_source_system_type_idx
@@ -520,7 +553,8 @@ CREATE INDEX memories_content_fts ... -- GIN (full-text)
    WHERE source_system IS NOT NULL;
    ```
 
-2. **Index for `repo_id` filtering:**
+1. **Index for `repo_id` filtering:**
+
    ```sql
    -- Query pattern: WHERE repo_id = 'mahavishnu' AND memory_type = 'rag'
    CREATE INDEX memories_repo_type_idx
@@ -528,14 +562,16 @@ CREATE INDEX memories_content_fts ... -- GIN (full-text)
    WHERE repo_id IS NOT NULL;
    ```
 
-3. **Index for `created_at` range queries:**
+1. **Index for `created_at` range queries:**
+
    ```sql
    -- Query pattern: WHERE created_at >= NOW() - INTERVAL '30 days'
    CREATE INDEX memories_created_at_idx
    ON memories (created_at DESC);
    ```
 
-4. **Covering index for `unified_search`:**
+1. **Covering index for `unified_search`:**
+
    ```sql
    -- Query pattern: SELECT id, content, metadata WHERE ... ORDER BY created_at
    CREATE INDEX memories_unified_search_covering_idx
@@ -543,7 +579,8 @@ CREATE INDEX memories_content_fts ... -- GIN (full-text)
    INCLUDE (content, metadata);
    ```
 
-5. **`agent_conversations` missing session index:**
+1. **`agent_conversations` missing session index:**
+
    ```sql
    -- Has: agent_conversations_session_idx (session_id, created_at)
    -- Missing: agent_id index for agent-wide queries
@@ -551,21 +588,24 @@ CREATE INDEX memories_content_fts ... -- GIN (full-text)
    ON agent_conversations (agent_id, created_at DESC);
    ```
 
-6. **`rag_ingestions` missing status index:**
+1. **`rag_ingestions` missing status index:**
+
    ```sql
    -- Query pattern: WHERE status = 'failed' ORDER BY created_at
    CREATE INDEX rag_ingestions_status_idx
    ON rag_ingestions (status, created_at DESC);
    ```
 
-7. **`workflow_executions` missing adapter index:**
+1. **`workflow_executions` missing adapter index:**
+
    ```sql
    -- Query pattern: WHERE adapter = 'prefect' AND status = 'running'
    CREATE INDEX workflow_executions_adapter_status_idx
    ON workflow_executions (adapter, status, created_at DESC);
    ```
 
-8. **`performance_metrics` missing compound index:**
+1. **`performance_metrics` missing compound index:**
+
    ```sql
    -- Query pattern: WHERE component = 'agno' AND timestamp > NOW() - INTERVAL '1 hour'
    CREATE INDEX performance_metrics_component_timestamp_idx
@@ -574,10 +614,11 @@ CREATE INDEX memories_content_fts ... -- GIN (full-text)
    ```
 
 **Impact of Missing Indexes:**
+
 - Queries will perform **sequential scans** (slow)
 - **High CPU usage** on PostgreSQL server
 - **Performance degradation** as data grows
-- **Missed SLA:** <100ms target will be violated
+- **Missed SLA:** \<100ms target will be violated
 
 **Updated Schema (Add to Phase 1.1):**
 
@@ -631,7 +672,7 @@ ANALYZE memories;
 VACUUM ANALYZE memories;
 ```
 
----
+______________________________________________________________________
 
 ## Major Concerns (Should Fix Soon)
 
@@ -642,12 +683,14 @@ VACUUM ANALYZE memories;
 **Issue:** Plan references SHA-256 deduplication but provides **no implementation**.
 
 **Current State:**
+
 > "Deduplication strategy (SHA-256)" mentioned in line 1005
 > No code implementation shown
 > No index on content hash
 > No unique constraint
 
 **Why Deduplication Matters:**
+
 - Agent conversations may be re-processed
 - RAG chunks may overlap across repositories
 - Workflow executions may be retried
@@ -762,12 +805,13 @@ WHERE content_hash IS NULL;
 ```
 
 **Why Not Just Use UNIQUE(content)?**
+
 - TEXT comparison is slow for long content
 - SHA-256 hash is **fixed size (64 chars)**, fast to compare
 - Index on hash is **smaller** than index on content
 - Allows **partial updates** (same content, new embedding)
 
----
+______________________________________________________________________
 
 ### 8. Transaction Boundaries Undefined, Race Conditions Likely ⚡
 
@@ -778,6 +822,7 @@ WHERE content_hash IS NULL;
 **Problematic Examples:**
 
 **Example 1: `store_agent_conversation` (Lines 745-781):**
+
 ```python
 async def store_agent_conversation(self, agent_id: str, role: str, content: str, metadata: Dict[str, Any]) -> None:
     # Generate embedding
@@ -791,11 +836,13 @@ async def store_agent_conversation(self, agent_id: str, role: str, content: str,
 ```
 
 **Race Condition:**
+
 - If `store_memory()` succeeds but `_extract_and_store_insights()` fails
 - Data is **partially stored** (inconsistent state)
 - No rollback mechanism
 
 **Example 2: `unified_search` (Lines 890-942):**
+
 ```python
 async def unified_search(self, query: str, memory_types: Optional[List[str]] = None, limit: int = 10) -> List[Dict[str, Any]]:
     all_results = []
@@ -817,6 +864,7 @@ async def unified_search(self, query: str, memory_types: Optional[List[str]] = N
 ```
 
 **Race Condition:**
+
 - Data may be inserted into PostgreSQL **between** the two queries
 - Results are **inconsistent** snapshot
 - No `SERIALIZABLE` isolation level
@@ -903,7 +951,7 @@ async def store_with_transaction_retry(...):
             # ... operations ...
 ```
 
----
+______________________________________________________________________
 
 ### 9. No Vacuum/Analyze Strategy for Bloat Prevention 🗑️
 
@@ -914,21 +962,25 @@ async def store_with_transaction_retry(...):
 **What Happens Without Maintenance:**
 
 1. **Table Bloat:**
+
    - Deleted/updated rows consume space (not reused)
    - Table grows 2-3× larger than necessary
    - Scans take longer (more pages to read)
 
-2. **Index Bloat:**
+1. **Index Bloat:**
+
    - Indexes accumulate dead entries
    - Index scans slow down
    - IVFFlat index degrades (lower recall)
 
-3. **Statistics Stale:**
+1. **Statistics Stale:**
+
    - Planner uses outdated row count estimates
    - Poor query plans (seq scan instead of index scan)
    - Performance degrades over time
 
 **Symptoms:**
+
 ```sql
 -- Check for bloat
 SELECT
@@ -1121,7 +1173,7 @@ autovacuum_freeze_max_age = 200000000
 vacuum_freeze_table_age = 150000000
 ```
 
----
+______________________________________________________________________
 
 ### 10. No Monitoring Queries for Performance Metrics 📊
 
@@ -1132,24 +1184,28 @@ vacuum_freeze_table_age = 150000000
 **What's Missing:**
 
 1. **Connection pool metrics:**
+
    - Active connections
    - Idle connections
    - Connection wait time
    - Pool exhaustion events
 
-2. **Query performance metrics:**
+1. **Query performance metrics:**
+
    - Slow query log
    - Query execution times
    - Index hit ratio
    - Sequential scan rate
 
-3. **Table metrics:**
+1. **Table metrics:**
+
    - Row counts
    - Table bloat
    - Dead tuples
    - Insert/update/delete rates
 
-4. **Index metrics:**
+1. **Index metrics:**
+
    - Index usage
    - Index size
    - Index bloat
@@ -1419,7 +1475,7 @@ class DatabaseMetrics:
         )
 ```
 
----
+______________________________________________________________________
 
 ## Minor Issues (Nice to Have)
 
@@ -1428,6 +1484,7 @@ class DatabaseMetrics:
 **Location:** Plan mentions "backup strategy" in line 1567 but provides **zero details**.
 
 **What's Missing:**
+
 - Backup tool (`pg_dump`, WAL archiving, Barman)
 - Backup frequency (hourly, daily?)
 - Retention policy (7 days, 30 days?)
@@ -1455,13 +1512,14 @@ aws s3 cp $BACKUP_FILE s3://mahavishnu-backups/postgres/
 find $BACKUP_DIR -name "mahavishnu_*.dump" -mtime +7 -delete
 ```
 
----
+______________________________________________________________________
 
 ### 12. No Disaster Recovery Plan 🚨
 
 **Location:** Completely absent from plan.
 
 **What's Missing:**
+
 - RTO (Recovery Time Objective)
 - RPO (Recovery Point Objective)
 - Point-in-time recovery (PITR)
@@ -1470,13 +1528,14 @@ find $BACKUP_DIR -name "mahavishnu_*.dump" -mtime +7 -delete
 
 **Recommendation:** Add to Phase 5 documentation.
 
----
+______________________________________________________________________
 
 ### 13. No Capacity Planning 📈
 
 **Location:** Plan claims "1000+ concurrent operations" (line 1330) but provides **no capacity analysis**.
 
 **Missing Analysis:**
+
 - Storage growth rate (GB/month)
 - Connection pool sizing
 - Memory requirements
@@ -1502,11 +1561,11 @@ print(f"Estimated monthly growth: {monthly_growth:.1f} MB")
 print(f"Estimated yearly growth: {monthly_growth * 12 / 1024:.2f} GB")
 ```
 
----
+______________________________________________________________________
 
 ### 14. No Query Plan Analysis 🔬
 
-**Location:** Performance targets (<100ms) but **no EXPLAIN ANALYZE** validation.
+**Location:** Performance targets (\<100ms) but **no EXPLAIN ANALYZE** validation.
 
 **Recommendation:** Add to Phase 5 testing:
 
@@ -1524,13 +1583,14 @@ LIMIT 20;
 -- - Execution time: <50ms
 ```
 
----
+______________________________________________________________________
 
 ### 15. No Migration Testing Strategy 🧪
 
 **Location:** Alembic mentioned (line 216) but **no testing strategy**.
 
 **What's Missing:**
+
 - Test migrations on copy of production data
 - Rollback testing
 - Zero-downtime migration testing
@@ -1545,7 +1605,7 @@ alembic downgrade -1
 alembic upgrade +1
 ```
 
----
+______________________________________________________________________
 
 ## What's Done Well
 
@@ -1554,25 +1614,28 @@ alembic upgrade +1
 **Lines 38-62:** Unified database architecture is **excellent decision**.
 
 **Benefits:**
+
 - ACID guarantees across all data types
 - Single backup strategy
 - SQL joins for complex queries
 - Mature tooling (pg_dump, pgAdmin, etc.)
 
 **Why This Works:**
+
 - PostgreSQL + pgvector is **production-proven** (millions of deployments)
 - IVFFlat index is **battle-tested** (pgvector has 1.5K+ GitHub stars)
 - Single database reduces operational complexity
 
 **Verdict:** Keep this architecture.
 
----
+______________________________________________________________________
 
 ### 2. AsyncPG for Async Operations ✅
 
 **Line 287:** Using asyncpg is **correct choice**.
 
 **Why AsyncPG:**
+
 - **3-5x faster** than psycopg2 for async operations
 - Native asyncio support (no thread pool)
 - Better connection pooling
@@ -1580,13 +1643,14 @@ alembic upgrade +1
 
 **Verdict:** Keep asyncpg.
 
----
+______________________________________________________________________
 
 ### 3. Alembic for Migrations ✅
 
 **Line 216:** Alembic is **industry standard**.
 
 **Benefits:**
+
 - Automatic migration generation
 - Version control integration
 - Rollback support
@@ -1594,7 +1658,7 @@ alembic upgrade +1
 
 **Verdict:** Keep Alembic.
 
----
+______________________________________________________________________
 
 ### 4. Partial Indexes on NULLable Columns ✅
 
@@ -1607,13 +1671,14 @@ WHERE agent_id IS NOT NULL;
 ```
 
 **Why This Works:**
+
 - Smaller index (only indexed rows)
 - Faster inserts (fewer indexes to update)
 - Still supports common queries (`WHERE agent_id = X`)
 
 **Verdict:** Good pattern.
 
----
+______________________________________________________________________
 
 ### 5. Full-Text Search with GIN Index ✅
 
@@ -1626,44 +1691,45 @@ USING gin(to_tsvector('english', content));
 ```
 
 **Benefits:**
-- Fast full-text search (<10ms)
+
+- Fast full-text search (\<10ms)
 - Supports `plainto_tsquery()` for natural language
 - Works with hybrid search (vector + FTS)
 
 **Verdict:** Keep GIN index.
 
----
+______________________________________________________________________
 
 ## Specific Recommendations
 
 ### Priority 1: Fix Before Implementation
 
 1. **Add PostgreSQL dependencies** to pyproject.toml
-2. **Fix IVFFlat index parameter** (lists = 500, not 100)
-3. **Design DuckDB migration** strategy
-4. **Reduce connection pool** (pool_size = 20, max_overflow = 10)
-5. **Rewrite hybrid_search** to fix N+1 problem
-6. **Add missing indexes** (8 indexes listed above)
-7. **Wrap operations in transactions** (explicit boundaries)
+1. **Fix IVFFlat index parameter** (lists = 500, not 100)
+1. **Design DuckDB migration** strategy
+1. **Reduce connection pool** (pool_size = 20, max_overflow = 10)
+1. **Rewrite hybrid_search** to fix N+1 problem
+1. **Add missing indexes** (8 indexes listed above)
+1. **Wrap operations in transactions** (explicit boundaries)
 
 ### Priority 2: Add to Plan
 
 8. **Implement deduplication** (content_hash + unique constraint)
-9. **Add vacuum/analyze strategy** (autovacuum config + cron job)
-10. **Create monitoring queries** (health report + OTEL metrics)
-11. **Document backup strategy** (pg_dump + S3 + retention)
-12. **Add capacity planning** (storage growth + resource sizing)
-13. **Test query plans** (EXPLAIN ANALYZE for all critical queries)
-14. **Migration testing** (rollback + zero-downtime)
+1. **Add vacuum/analyze strategy** (autovacuum config + cron job)
+1. **Create monitoring queries** (health report + OTEL metrics)
+1. **Document backup strategy** (pg_dump + S3 + retention)
+1. **Add capacity planning** (storage growth + resource sizing)
+1. **Test query plans** (EXPLAIN ANALYZE for all critical queries)
+1. **Migration testing** (rollback + zero-downtime)
 
 ### Priority 3: Future Enhancements
 
 15. **Read replicas** for analytics queries (reduce load on primary)
-16. **Connection pool middleware** (PgBouncer for better pooling)
-17. **Query result caching** (Redis for frequently accessed data)
-18. **Partitioning strategy** (partition memories by created_at)
+01. **Connection pool middleware** (PgBouncer for better pooling)
+01. **Query result caching** (Redis for frequently accessed data)
+01. **Partitioning strategy** (partition memories by created_at)
 
----
+______________________________________________________________________
 
 ## Overall Assessment
 
@@ -1684,16 +1750,19 @@ USING gin(to_tsvector('english', content));
 **GO / NO-GO:** **NO-GO** 🔴
 
 **Justification:**
+
 - **3 critical issues** that will cause immediate failures
 - **7 major concerns** that will cause production problems
 - **8 minor issues** that should be addressed
 
 **Required Actions:**
+
 1. Address all **critical issues** (1-6)
-2. Document **major concerns** (7-10) with implementation plan
-3. Create **action items** for minor issues (11-15)
+1. Document **major concerns** (7-10) with implementation plan
+1. Create **action items** for minor issues (11-15)
 
 **Re-Evaluation Criteria:**
+
 - ✅ PostgreSQL dependencies added to pyproject.toml
 - ✅ IVFFlat index parameter corrected
 - ✅ DuckDB migration strategy documented
@@ -1705,7 +1774,7 @@ USING gin(to_tsvector('english', content));
 
 **Estimated Delay:** 2-3 weeks to address critical issues.
 
----
+______________________________________________________________________
 
 ## Appendix: Query Examples
 
@@ -1777,7 +1846,7 @@ GROUP BY state
 ORDER BY connection_count DESC;
 ```
 
----
+______________________________________________________________________
 
 **Document Version:** 1.0
 **Last Updated:** 2025-01-24

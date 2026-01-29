@@ -80,7 +80,7 @@ async def example():
     async with Client("ws://localhost:3000") as client:
         # List repositories
         repos = await client.call("tools/list_repos", {"tag": "python"})
-        
+
         # Trigger workflow
         result = await client.call("tools/trigger_workflow", {
             "adapter": "langgraph",
@@ -110,3 +110,4 @@ export MAHAVISHNU_QC_ENABLED=true
 
 mahavishnu sweep --tag python --adapter langgraph
 ``
+```

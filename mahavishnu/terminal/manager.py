@@ -1,14 +1,14 @@
 """Terminal manager for multi-session orchestration."""
 
 import asyncio
-from logging import getLogger
-from typing import Any, Dict, List, Optional, Callable
+from collections.abc import Callable
 from datetime import datetime
+from logging import getLogger
+from typing import Any
 
 from .adapters.base import TerminalAdapter
 from .adapters.mcpretentious import McpretentiousAdapter
 from .config import TerminalSettings
-from .session import TerminalSession
 
 logger = getLogger(__name__)
 
@@ -39,7 +39,7 @@ class TerminalManager:
     def __init__(
         self,
         adapter: TerminalAdapter,
-        config: Optional[TerminalSettings] = None,
+        config: TerminalSettings | None = None,
     ) -> None:
         """Initialize terminal manager.
 
@@ -51,8 +51,8 @@ class TerminalManager:
         self.config = config or TerminalSettings()
         self._semaphore = asyncio.Semaphore(self.config.max_concurrent_sessions)
         self._batch_size = 5  # Process 5 sessions at a time
-        self._adapter_history: List[Dict[str, Any]] = []
-        self._session_migration_callback: Optional[Callable] = None
+        self._adapter_history: list[dict[str, Any]] = []
+        self._session_migration_callback: Callable | None = None
 
         logger.info(
             f"Initialized TerminalManager with {self.adapter.adapter_name} adapter "
@@ -78,17 +78,17 @@ class TerminalManager:
         old_adapter_name = old_adapter.adapter_name
         new_adapter_name = new_adapter.adapter_name
 
-        logger.info(
-            f"Hot-switching adapter from {old_adapter_name} to {new_adapter_name}"
-        )
+        logger.info(f"Hot-switching adapter from {old_adapter_name} to {new_adapter_name}")
 
         # Record history
-        self._adapter_history.append({
-            "from": old_adapter_name,
-            "to": new_adapter_name,
-            "timestamp": datetime.now().isoformat(),
-            "migrate_sessions": migrate_sessions,
-        })
+        self._adapter_history.append(
+            {
+                "from": old_adapter_name,
+                "to": new_adapter_name,
+                "timestamp": datetime.now().isoformat(),
+                "migrate_sessions": migrate_sessions,
+            }
+        )
 
         # Attempt session migration if requested
         if migrate_sessions:
@@ -178,7 +178,7 @@ class TerminalManager:
         self._session_migration_callback = callback
         logger.info("Migration callback registered")
 
-    def get_adapter_history(self) -> List[Dict[str, Any]]:
+    def get_adapter_history(self) -> list[dict[str, Any]]:
         """Get history of adapter switches.
 
         Returns:
@@ -200,7 +200,7 @@ class TerminalManager:
         count: int = 1,
         columns: int = 80,
         rows: int = 24,
-    ) -> List[str]:
+    ) -> list[str]:
         """Launch multiple terminal sessions concurrently.
 
         Uses semaphore to limit concurrent launches and prevent
@@ -218,6 +218,7 @@ class TerminalManager:
         Raises:
             TerminalError: If session launch fails
         """
+
         async def launch_one() -> str:
             async with self._semaphore:
                 return await self.adapter.launch_session(
@@ -232,8 +233,7 @@ class TerminalManager:
             session_ids = await asyncio.gather(*tasks)
 
             logger.info(
-                f"Launched {len(session_ids)} sessions "
-                f"using {self.adapter.adapter_name} adapter"
+                f"Launched {len(session_ids)} sessions using {self.adapter.adapter_name} adapter"
             )
             return session_ids
 
@@ -247,7 +247,7 @@ class TerminalManager:
         count: int,
         columns: int = 80,
         rows: int = 24,
-    ) -> List[str]:
+    ) -> list[str]:
         """Launch sessions in batches for better resource management.
 
         Useful for launching many sessions (10+) with smaller
@@ -262,7 +262,7 @@ class TerminalManager:
         Returns:
             List of session IDs
         """
-        session_ids: List[str] = []
+        session_ids: list[str] = []
 
         for i in range(0, count, self._batch_size):
             batch_size = min(self._batch_size, count - i)
@@ -286,7 +286,7 @@ class TerminalManager:
         count: int,
         columns: int,
         rows: int,
-    ) -> List[str]:
+    ) -> list[str]:
         """Launch a batch of sessions.
 
         Args:
@@ -298,6 +298,7 @@ class TerminalManager:
         Returns:
             List of session IDs
         """
+
         async def launch_one() -> str:
             async with self._semaphore:
                 return await self.adapter.launch_session(
@@ -329,7 +330,7 @@ class TerminalManager:
     async def capture_output(
         self,
         session_id: str,
-        lines: Optional[int] = None,
+        lines: int | None = None,
     ) -> str:
         """Capture output from a specific session.
 
@@ -347,9 +348,9 @@ class TerminalManager:
 
     async def capture_all_outputs(
         self,
-        session_ids: List[str],
-        lines: Optional[int] = None,
-    ) -> Dict[str, str]:
+        session_ids: list[str],
+        lines: int | None = None,
+    ) -> dict[str, str]:
         """Capture outputs from multiple sessions concurrently.
 
         Args:
@@ -362,6 +363,7 @@ class TerminalManager:
         Raises:
             TerminalError: If output capture fails
         """
+
         async def capture_one(sid: str) -> tuple[str, str]:
             return sid, await self.adapter.capture_output(sid, lines)
 
@@ -381,7 +383,7 @@ class TerminalManager:
         await self.adapter.close_session(session_id)
         logger.debug(f"Closed session {session_id}")
 
-    async def close_all(self, session_ids: List[str]) -> None:
+    async def close_all(self, session_ids: list[str]) -> None:
         """Close multiple sessions concurrently.
 
         Args:
@@ -394,7 +396,7 @@ class TerminalManager:
         await asyncio.gather(*tasks)
         logger.info(f"Closed {len(session_ids)} sessions")
 
-    async def list_sessions(self) -> List[Dict[str, Any]]:
+    async def list_sessions(self) -> list[dict[str, Any]]:
         """List all active terminal sessions.
 
         Returns:

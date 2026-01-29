@@ -33,10 +33,12 @@ terminal:
 ### Adapter Options
 
 **Auto-Detection (default: `"auto"`):**
+
 - Automatically detects and uses iTerm2 if available (requires iTerm2 running)
 - Falls back to mcpretentious if iTerm2 is not available
 
 **iTerm2 Adapter (`"iterm2"`):**
+
 - Uses native iTerm2 Python API via WebSocket
 - Requires iTerm2 to be running with Python API enabled:
   - iTerm2 → Preferences → General → Magic → Enable Python API
@@ -44,6 +46,7 @@ terminal:
 - Provides native iTerm2 integration with tabs and windows
 
 **mcpretentious Adapter (`"mcpretentious"`):**
+
 - Uses mcpretentious MCP server for PTY-based terminal management
 - Works with any terminal (not iTerm2-specific)
 - Started on-demand by Mahavishnu when needed
@@ -52,6 +55,7 @@ terminal:
 ### Advanced Configuration (Optional)
 
 **Connection Pooling (iTerm2):**
+
 ```yaml
 terminal:
   enabled: true
@@ -62,6 +66,7 @@ terminal:
 ```
 
 **Profile Selection (iTerm2):**
+
 ```yaml
 terminal:
   enabled: true
@@ -70,6 +75,7 @@ terminal:
 ```
 
 **Configuration Benefits:**
+
 - **Pooling**: Reduces connection overhead by reusing WebSocket connections
 - **Profiles**: Customize appearance, color schemes, and behavior per session
 - **Auto-detection**: Seamlessly falls back if iTerm2 unavailable
@@ -131,6 +137,7 @@ When the Mahavishnu MCP server is running with terminal management enabled, the 
 Launch terminal sessions running a command.
 
 **Parameters:**
+
 - `command` (str): Command to run in each terminal
 - `count` (int): Number of sessions to launch (default: 1)
 - `columns` (int): Terminal width in characters (default: 120)
@@ -139,6 +146,7 @@ Launch terminal sessions running a command.
 **Returns:** List of session IDs
 
 **Example:**
+
 ```python
 session_ids = await mcp.call_tool("terminal_launch", {
     "command": "qwen",
@@ -151,10 +159,12 @@ session_ids = await mcp.call_tool("terminal_launch", {
 Send command to a terminal session.
 
 **Parameters:**
+
 - `session_id` (str): Terminal session ID
 - `command` (str): Command to send
 
 **Example:**
+
 ```python
 await mcp.call_tool("terminal_send", {
     "session_id": "term_123",
@@ -167,12 +177,14 @@ await mcp.call_tool("terminal_send", {
 Capture output from a terminal session.
 
 **Parameters:**
+
 - `session_id` (str): Terminal session ID
 - `lines` (int | None): Number of lines to capture (default: 100, None for all)
 
 **Returns:** Terminal output as string
 
 **Example:**
+
 ```python
 output = await mcp.call_tool("terminal_capture", {
     "session_id": "term_123",
@@ -185,12 +197,14 @@ output = await mcp.call_tool("terminal_capture", {
 Capture output from multiple terminal sessions concurrently.
 
 **Parameters:**
+
 - `session_ids` (list[str]): List of session IDs
 - `lines` (int | None): Number of lines to capture per session
 
 **Returns:** Dictionary mapping session_id -> output
 
 **Example:**
+
 ```python
 outputs = await mcp.call_tool("terminal_capture_all", {
     "session_ids": ["term_1", "term_2", "term_3"],
@@ -205,6 +219,7 @@ List all active terminal sessions.
 **Returns:** List of session information dictionaries
 
 **Example:**
+
 ```python
 sessions = await mcp.call_tool("terminal_list", {})
 ```
@@ -214,9 +229,11 @@ sessions = await mcp.call_tool("terminal_list", {})
 Close a terminal session.
 
 **Parameters:**
+
 - `session_id` (str): Terminal session ID to close
 
 **Example:**
+
 ```python
 await mcp.call_tool("terminal_close", {
     "session_id": "term_123"
@@ -230,6 +247,7 @@ Close all terminal sessions.
 **Returns:** Dictionary with count of closed sessions
 
 **Example:**
+
 ```python
 result = await mcp.call_tool("terminal_close_all", {})
 ```
@@ -241,12 +259,14 @@ result = await mcp.call_tool("terminal_close_all", {})
 Hot-swap to a different terminal adapter without restart.
 
 **Parameters:**
+
 - `adapter_name` (str): Name of adapter to switch to ("iterm2" or "mcpretentious")
 - `migrate_sessions` (bool): If True, attempt to migrate existing sessions (experimental)
 
 **Returns:** Dictionary with switch result
 
 **Example:**
+
 ```python
 # Switch to iTerm2 adapter
 result = await mcp.call_tool("terminal_switch_adapter", {
@@ -266,6 +286,7 @@ Get information about the current terminal adapter.
 **Returns:** Dictionary with adapter name and switch history
 
 **Example:**
+
 ```python
 info = await mcp.call_tool("terminal_current_adapter", {})
 print(f"Current adapter: {info['adapter']}")
@@ -279,6 +300,7 @@ List all available terminal adapters and their status.
 **Returns:** Dictionary with available adapters
 
 **Example:**
+
 ```python
 adapters = await mcp.call_tool("terminal_list_adapters", {})
 for name, info in adapters['adapters'].items():
@@ -292,6 +314,7 @@ List available iTerm2 profiles (requires iTerm2 adapter).
 **Returns:** Dictionary with list of profile names
 
 **Example:**
+
 ```python
 profiles = await mcp.call_tool("terminal_list_profiles", {})
 if profiles["status"] == "success":
@@ -303,6 +326,7 @@ if profiles["status"] == "success":
 Launch terminal sessions with a specific iTerm2 profile.
 
 **Parameters:**
+
 - `command` (str): Command to run in each terminal
 - `profile_name` (str): iTerm2 profile name to use
 - `count` (int): Number of sessions to launch (default: 1)
@@ -312,6 +336,7 @@ Launch terminal sessions with a specific iTerm2 profile.
 **Returns:** List of session IDs
 
 **Example:**
+
 ```python
 # Launch with custom profile
 session_ids = await mcp.call_tool("terminal_launch_with_profile", {
@@ -406,10 +431,10 @@ async def interactive_session(session_id: str, adapter):
 The terminal management system uses a layered architecture:
 
 1. **Adapter Interface** (`TerminalAdapter`): Abstract interface for different backends
-2. **mcpretentious Adapter** (`McpretentiousAdapter`): Communicates with mcpretentious MCP server
-3. **Terminal Manager** (`TerminalManager`): High-level orchestration with concurrency control
-4. **MCP Tools**: 7 tools for Claude Code integration
-5. **CLI Commands**: User-friendly command-line interface
+1. **mcpretentious Adapter** (`McpretentiousAdapter`): Communicates with mcpretentious MCP server
+1. **Terminal Manager** (`TerminalManager`): High-level orchestration with concurrency control
+1. **MCP Tools**: 7 tools for Claude Code integration
+1. **CLI Commands**: User-friendly command-line interface
 
 ## Concurrency Management
 
@@ -433,6 +458,7 @@ The terminal management system includes comprehensive error handling:
 ### "mcpretentious server not configured"
 
 Ensure uvx is installed:
+
 ```bash
 pip install uvx
 ```
@@ -440,6 +466,7 @@ pip install uvx
 ### "Failed to start mcpretentious server"
 
 The mcpretentious package will be auto-installed by uvx on first use. If it fails, install manually:
+
 ```bash
 uvx --from mcpretentious mcpretentious
 ```
@@ -447,6 +474,7 @@ uvx --from mcpretentious mcpretentious
 ### High memory usage with many sessions
 
 Reduce `max_concurrent_sessions` in configuration:
+
 ```yaml
 terminal:
   max_concurrent_sessions: 10
@@ -462,11 +490,11 @@ Use `mahavishnu terminal close all` to force cleanup. The MCP server also includ
 Planned features for future releases:
 
 1. **iTerm2 Adapter**: Native iTerm2 integration with WebSocket streaming
-2. **Session Persistence**: Save/restore terminal sessions
-3. **Output Filtering**: Filter output by patterns or regex
-4. **Session Templates**: Predefined session configurations
-5. **Multi-Host Support**: Launch sessions on remote machines
-6. **Output Parsing**: Structured output extraction
+1. **Session Persistence**: Save/restore terminal sessions
+1. **Output Filtering**: Filter output by patterns or regex
+1. **Session Templates**: Predefined session configurations
+1. **Multi-Host Support**: Launch sessions on remote machines
+1. **Output Parsing**: Structured output extraction
 
 ## See Also
 

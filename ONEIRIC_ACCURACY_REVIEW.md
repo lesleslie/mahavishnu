@@ -6,7 +6,7 @@
 **Oneiric Version:** 0.3.12 (installed)
 **Plan Version:** 3.0
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
@@ -25,13 +25,14 @@
 
 **Confidence Score:** 65% (Major API corrections needed before implementation)
 
----
+______________________________________________________________________
 
 ## 1. API Verification
 
 ### 1.1 Oneiric Pgvector Adapter API
 
 **Plan Claims (Lines 287-308):**
+
 ```python
 from oneiric.adapters.vector.pgvector import PgvectorAdapter, PgvectorSettings
 
@@ -55,6 +56,7 @@ await self.adapter.initialize()  # ❌ WRONG METHOD NAME
 **ACTUAL Oneiric API (0.3.12):**
 
 **Correct PgvectorSettings Parameters:**
+
 ```python
 from oneiric.adapters.vector.pgvector import PgvectorAdapter, PgvectorSettings
 
@@ -96,6 +98,7 @@ settings = PgvectorSettings(
 ```
 
 **Correct Adapter Initialization:**
+
 ```python
 adapter = PgvectorAdapter(settings)
 
@@ -108,6 +111,7 @@ await adapter.init()  # Correct method name
 ### 1.2 Vector Store Method Signatures
 
 **Plan Claims (Lines 317-350):**
+
 ```python
 # ❌ WRONG: Plan shows store_memory() method
 memory_id = await self.adapter.insert(
@@ -145,6 +149,7 @@ memory_ids = await adapter.insert(
 **Search Method:**
 
 **Plan Claims (Lines 352-385):**
+
 ```python
 # ❌ WRONG: Plan shows vector_search() method
 results = await self.adapter.search(
@@ -156,6 +161,7 @@ results = await self.adapter.search(
 ```
 
 **ACTUAL Oneiric API:**
+
 ```python
 # ✅ CORRECT: search() requires collection parameter
 results = await adapter.search(
@@ -174,12 +180,14 @@ results = await adapter.search(
 **Batch Upsert Method:**
 
 **Plan Claims (Lines 387-407):**
+
 ```python
 # ❌ WRONG: Plan shows batch_store() method
 memory_ids = await self.adapter.batch_upsert(items)
 ```
 
 **ACTUAL Oneiric API:**
+
 ```python
 from oneiric.adapters.vector.common import VectorDocument
 
@@ -199,13 +207,14 @@ memory_ids = await adapter.upsert(
 # Returns: list[str] (IDs of upserted documents)
 ```
 
----
+______________________________________________________________________
 
 ## 2. Health Check Types
 
 ### 2.1 ComponentHealth Integration
 
 **Plan Claims (Lines 541-594):**
+
 ```python
 from mcp_common.health import ComponentHealth, HealthStatus, HealthCheckResponse
 
@@ -232,13 +241,14 @@ return HealthCheckResponse.create(
 - `HealthCheckResponse.create()` signature: `(components, version, start_time, metadata=None)` ✅
 - Status aggregation logic (worst component status) ✅
 
----
+______________________________________________________________________
 
 ## 3. Configuration Integration
 
 ### 3.1 Layered Configuration Loading
 
 **Plan Claims (Lines 1588-1624):**
+
 ```yaml
 # settings/mahavishnu.yaml
 postgresql:
@@ -254,11 +264,13 @@ postgresql:
 **VERIFICATION:** ⚠️ **PARTIALLY ACCURATE**
 
 **Issues:**
+
 1. Oneiric's `PgvectorSettings` inherits from `VectorBaseSettings` which has `max_connections: int = 10`
-2. Plan's `pool_size` and `max_overflow` appear to be custom PostgreSQL pool settings (asyncpg pattern)
-3. Mixing Oneiric adapter pattern with direct asyncpg pool management
+1. Plan's `pool_size` and `max_overflow` appear to be custom PostgreSQL pool settings (asyncpg pattern)
+1. Mixing Oneiric adapter pattern with direct asyncpg pool management
 
 **Recommendation:**
+
 - Use Oneiric's `max_connections` parameter (not `pool_size`)
 - Remove `max_overflow` (not supported by Oneiric)
 - Let Oneiric manage connection pooling internally
@@ -266,6 +278,7 @@ postgresql:
 ### 3.2 Environment Variable Overrides
 
 **Plan Claims (Lines 1572-1584):**
+
 ```bash
 export MAHAVISHNU_PG_HOST="localhost"
 export MAHAVISHNU_PG_PORT="5432"
@@ -302,13 +315,14 @@ class MahavishnuPgvectorSettings(PgvectorSettings, BaseSettings):
         env_prefix = "MAHAVISHNU_PG_"
 ```
 
----
+______________________________________________________________________
 
 ## 4. Logging Patterns
 
 ### 4.1 Structured Logging with Trace Correlation
 
 **Plan Claims (Lines 488-535):**
+
 ```python
 import structlog
 from opentelemetry import trace
@@ -337,6 +351,7 @@ processors = [
 **Comparison with Oneiric's Actual Implementation:**
 
 Oneiric's `_otel_context_processor` (from `oneiric/core/logging.py`):
+
 ```python
 def _otel_context_processor(
     logger: Any, method_name: str, event_dict: dict[str, Any]
@@ -348,9 +363,10 @@ def _otel_context_processor(
 ```
 
 **Differences:**
+
 1. Oneiric uses `get_span_context()` instead of `.context` (minor difference)
-2. Oneiric uses `setdefault()` instead of direct assignment (safer)
-3. Oneiric checks `context.is_valid` instead of `is_recording()`
+1. Oneiric uses `setdefault()` instead of direct assignment (safer)
+1. Oneiric checks `context.is_valid` instead of `is_recording()`
 
 **Recommendation:** Use Oneiric's built-in processor instead of custom implementation:
 
@@ -372,6 +388,7 @@ configure_logging(
 ### 4.2 Logger Usage
 
 **Plan Claims (Throughout):**
+
 ```python
 import structlog
 
@@ -383,13 +400,14 @@ logger.info("Event message", field1=value1, field2=value2)
 
 Oneiric's `get_logger()` is a wrapper around `structlog.get_logger()` with additional context binding support. The plan's usage is compatible.
 
----
+______________________________________________________________________
 
 ## 5. Metrics Integration
 
 ### 5.1 OpenTelemetry Metrics
 
 **Plan Claims (Lines 954-1015):**
+
 ```python
 from opentelemetry import metrics
 from opentelemetry.sdk.metrics import MeterProvider
@@ -415,6 +433,7 @@ class ObservabilityManager:
 **Observation:** This is actually correct because Oneiric relies on standard OpenTelemetry for metrics. The plan is accurate, but not Oneiric-specific.
 
 **Oneiric's Actual Metrics Usage:**
+
 - Oneiric uses OpenTelemetry's standard metrics API
 - No custom wrapper or abstraction layer
 - Metrics are automatically instrumented for lifecycle operations
@@ -435,13 +454,14 @@ self.memory_search_histogram.record(latency, {
 })
 ```
 
----
+______________________________________________________________________
 
 ## 6. Lifecycle Management
 
 ### 6.1 Adapter Lifecycle Methods
 
 **Plan Claims (Lines 410-414, 1289-1309):**
+
 ```python
 class VectorStore:
     async def initialize(self) -> None:
@@ -456,6 +476,7 @@ class VectorStore:
 ```
 
 **ACTUAL Oneiric Lifecycle API:**
+
 ```python
 class VectorStore:
     async def initialize(self) -> None:
@@ -470,6 +491,7 @@ class VectorStore:
 ```
 
 **Oneiric's Lifecycle Hooks (from VectorBase):**
+
 - `async def init(self) -> None` - Initialize adapter
 - `async def health(self) -> bool` - Check health (returns bool, not ComponentHealth)
 - `async def cleanup(self) -> None` - Release resources
@@ -477,6 +499,7 @@ class VectorStore:
 ### 6.2 Context Managers
 
 **Plan Claims (Lines 1300-1309):**
+
 ```python
 async def __aenter__(self):
     """Context manager entry."""
@@ -493,7 +516,7 @@ async def __aexit__(self, exc_type, exc_val, exc_tb):
 
 Oneiric's adapters don't provide built-in context managers, so implementing custom `__aenter__`/`__aexit__` is the correct approach.
 
----
+______________________________________________________________________
 
 ## 7. Detailed API Corrections
 
@@ -515,6 +538,7 @@ Oneiric's adapters don't provide built-in context managers, so implementing cust
 ### 7.2 Required Code Corrections
 
 **Correction 1: Settings Initialization**
+
 ```python
 # ❌ PLAN (WRONG)
 settings = PgvectorSettings(
@@ -545,6 +569,7 @@ settings = PgvectorSettings(
 ```
 
 **Correction 2: Vector Store Insert**
+
 ```python
 # ❌ PLAN (WRONG)
 memory_id = await self.adapter.insert(
@@ -575,6 +600,7 @@ memory_id = memory_ids[0]  # Returns list
 ```
 
 **Correction 3: Vector Search**
+
 ```python
 # ❌ PLAN (WRONG)
 results = await self.adapter.search(
@@ -597,6 +623,7 @@ results = [r for r in results if r.score < (1 - threshold)]  # cosine distance
 ```
 
 **Correction 4: Lifecycle Methods**
+
 ```python
 # ❌ PLAN (WRONG)
 await self.adapter.initialize()
@@ -607,7 +634,7 @@ await self.adapter.init()
 await self.adapter.cleanup()
 ```
 
----
+______________________________________________________________________
 
 ## 8. Missing Integrations
 
@@ -616,6 +643,7 @@ await self.adapter.cleanup()
 **CRITICAL MISSING:** The plan doesn't show how to register the pgvector adapter with Oneiric's resolver.
 
 **Required Code:**
+
 ```python
 from oneiric.core.resolution import Resolver, Candidate
 from oneiric.adapters.metadata import AdapterMetadata, register_adapter_metadata
@@ -653,6 +681,7 @@ resolver.register(
 **CRITICAL MISSING:** The plan doesn't integrate with Oneiric's `LifecycleManager` for hot-swapping.
 
 **Required Code:**
+
 ```python
 from oneiric.core.lifecycle import LifecycleManager
 
@@ -680,6 +709,7 @@ is_healthy = await lifecycle.probe_instance_health("adapter", "vector")
 **CRITICAL MISSING:** Oneiric's `health()` method returns `bool`, but the plan expects `ComponentHealth`.
 
 **Required Code:**
+
 ```python
 from mcp_common.health import ComponentHealth, HealthStatus
 
@@ -711,7 +741,7 @@ class VectorStore:
             )
 ```
 
----
+______________________________________________________________________
 
 ## 9. Confidence Score Breakdown
 
@@ -735,22 +765,25 @@ class VectorStore:
 **Rationale for 65% Score:**
 
 1. **Major API Errors (35% deduction):**
+
    - Wrong parameter names in PgvectorSettings (pool_size, max_overflow, embedding_dimension)
    - Wrong method names (initialize vs init, close vs cleanup)
    - Wrong method signatures (insert, search, upsert all incorrect)
 
-2. **Missing Architecture (20% deduction):**
+1. **Missing Architecture (20% deduction):**
+
    - No resolver registration
    - No lifecycle manager integration
    - No adapter bridge usage
 
-3. **Correct Concepts (remaining 65%):**
+1. **Correct Concepts (remaining 65%):**
+
    - Correct import paths
    - Correct health check types (mcp_common)
    - Correct logging patterns (structlog)
    - Correct understanding of Oneiric's architecture
 
----
+______________________________________________________________________
 
 ## 10. Recommendations
 
@@ -759,22 +792,26 @@ class VectorStore:
 **MUST FIX before implementation:**
 
 1. **Fix all PgvectorSettings parameter names**
+
    - `pool_size` → `max_connections`
    - `max_overflow` → (remove, doesn't exist)
    - `embedding_dimension` → `default_dimension`
    - `index_args` → `ivfflat_lists`
    - Remove `index_type` (inferred from distance_metric)
 
-2. **Fix adapter lifecycle method calls**
+1. **Fix adapter lifecycle method calls**
+
    - `adapter.initialize()` → `adapter.init()`
    - `adapter.close()` → `adapter.cleanup()`
 
-3. **Fix vector store method signatures**
+1. **Fix vector store method signatures**
+
    - `insert()` → requires `collection` + `documents=[VectorDocument]`
    - `search()` → requires `collection` + `query_vector` + `filter_expr`
    - `upsert()` → requires `collection` + `documents=[VectorDocument]`
 
-4. **Add missing Oneiric integrations**
+1. **Add missing Oneiric integrations**
+
    - Register adapter with resolver
    - Integrate with LifecycleManager
    - Convert `bool` health() to ComponentHealth
@@ -854,6 +891,7 @@ if __name__ == "__main__":
 ### 10.3 Architecture Recommendations
 
 1. **Use Oneiric's AdapterBridge Pattern:**
+
    ```python
    from oneiric.domains import AdapterBridge
 
@@ -868,7 +906,8 @@ if __name__ == "__main__":
    results = await vector_store.instance.search(...)
    ```
 
-2. **Leverage Oneiric's Configuration System:**
+1. **Leverage Oneiric's Configuration System:**
+
    ```python
    from oneiric.core.config import Settings
 
@@ -876,7 +915,8 @@ if __name__ == "__main__":
    settings = Settings.load_yaml("settings/mahavishnu.yaml")
    ```
 
-3. **Use Oneiric's Structured Logging:**
+1. **Use Oneiric's Structured Logging:**
+
    ```python
    from oneiric.core.logging import get_logger, bind_log_context
 
@@ -886,7 +926,7 @@ if __name__ == "__main__":
    )
    ```
 
----
+______________________________________________________________________
 
 ## 11. Conclusion
 
@@ -895,12 +935,14 @@ The MEMORY_IMPLEMENTATION_PLAN_V3.md correctly identifies the need for Oneiric i
 ### Summary of Findings
 
 **Strengths:**
+
 - ✅ Correct import paths
 - ✅ Accurate health check types (mcp_common)
 - ✅ Proper structlog usage
 - ✅ Good understanding of Oneiric's architecture
 
 **Critical Issues:**
+
 - ❌ Wrong PgvectorSettings parameter names (6+ errors)
 - ❌ Wrong adapter lifecycle method names (2 errors)
 - ❌ Wrong vector store method signatures (3 major errors)
@@ -912,17 +954,19 @@ The MEMORY_IMPLEMENTATION_PLAN_V3.md correctly identifies the need for Oneiric i
 **CONDITION: DO NOT PROCEED WITH IMPLEMENTATION** until all critical API corrections are made.
 
 **Suggested Path:**
+
 1. Run Phase 0.5 (Oneiric API Validation) to verify understanding
-2. Update MEMORY_IMPLEMENTATION_PLAN_V3.md with corrected API signatures
-3. Re-submit for accuracy review
-4. Once approved, proceed with Phase 0 implementation
+1. Update MEMORY_IMPLEMENTATION_PLAN_V3.md with corrected API signatures
+1. Re-submit for accuracy review
+1. Once approved, proceed with Phase 0 implementation
 
 **Estimated Impact:**
+
 - Without corrections: Implementation will fail within first 2 hours
 - With corrections: Implementation can proceed smoothly
 - Time to fix: 4-6 hours (API corrections + validation testing)
 
----
+______________________________________________________________________
 
 **Reviewer:** Oneiric Framework Specialist
 **Date:** 2025-01-24

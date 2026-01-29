@@ -232,12 +232,14 @@ Mahavishnu> Counter(w['adapter'] for w in workflows)
 The shell uses Rich for beautiful terminal output when available:
 
 **Status colors:**
+
 - 🟢 **Completed** - Green
 - 🟡 **Running** - Yellow
 - 🔴 **Failed** - Red
 - 🔵 **Pending** - Blue
 
 **Log level colors:**
+
 - **ERROR** - Bold red
 - **WARNING** - Bold yellow
 - **INFO** - Blue
@@ -270,6 +272,7 @@ pytest tests/unit/test_shell_formatters.py --cov=mahavishnu/shell
 **Error:** "Admin shell is disabled"
 
 **Solution:** Check `shell_enabled` in configuration:
+
 ```yaml
 shell_enabled: true  # Must be true
 ```
@@ -279,6 +282,7 @@ shell_enabled: true  # Must be true
 **Error:** "%repos: command not found"
 
 **Solution:** Ensure you're in the MahavishnuShell (not plain IPython):
+
 ```bash
 mahavishnu shell  # Starts MahavishnuShell with magics
 ```
@@ -288,6 +292,7 @@ mahavishnu shell  # Starts MahavishnuShell with magics
 **Error:** Tables display incorrectly
 
 **Solution:** Install Rich for best experience:
+
 ```bash
 uv pip install rich
 ```
@@ -380,10 +385,10 @@ Planned features for future versions:
 When extending the admin shell:
 
 1. **Follow the two-layer architecture** - keep Oneiric reusable
-2. **Add tests** - maintain 100% test coverage
-3. **Document magic commands** - add help text
-4. **Use Rich formatting** - beautiful output matters
-5. **Graceful fallbacks** - work without Rich
+1. **Add tests** - maintain 100% test coverage
+1. **Document magic commands** - add help text
+1. **Use Rich formatting** - beautiful output matters
+1. **Graceful fallbacks** - work without Rich
 
 ## License
 

@@ -1,10 +1,10 @@
 """mcpretentious MCP server adapter for terminal management."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from ..adapters.base import TerminalAdapter
 from ...core.errors import MahavishnuError
+from ..adapters.base import TerminalAdapter
 
 
 class TerminalError(MahavishnuError):
@@ -13,7 +13,7 @@ class TerminalError(MahavishnuError):
     pass
 
 
-class SessionNotFound(TerminalError):
+class SessionNotFoundError(TerminalError):
     """Exception raised when session ID is not found."""
 
     pass
@@ -40,7 +40,7 @@ class McpretentiousAdapter(TerminalAdapter):
             mcp_client: MCP client with call_tool method
         """
         self.mcp = mcp_client
-        self._sessions: Dict[str, Dict[str, Any]] = {}
+        self._sessions: dict[str, dict[str, Any]] = {}
 
     @property
     def adapter_name(self) -> str:
@@ -110,11 +110,11 @@ class McpretentiousAdapter(TerminalAdapter):
             command: Command string to send
 
         Raises:
-            SessionNotFound: If session_id doesn't exist
+            SessionNotFoundError: If session_id doesn't exist
             TerminalError: If command send fails
         """
         if session_id not in self._sessions:
-            raise SessionNotFound(
+            raise SessionNotFoundError(
                 message=f"Session {session_id} not found",
                 details={"session_id": session_id},
             )
@@ -136,7 +136,7 @@ class McpretentiousAdapter(TerminalAdapter):
     async def capture_output(
         self,
         session_id: str,
-        lines: Optional[int] = None,
+        lines: int | None = None,
     ) -> str:
         """Capture output from a terminal session.
 
@@ -148,17 +148,17 @@ class McpretentiousAdapter(TerminalAdapter):
             Terminal output as string
 
         Raises:
-            SessionNotFound: If session_id doesn't exist
+            SessionNotFoundError: If session_id doesn't exist
             TerminalError: If output capture fails
         """
         if session_id not in self._sessions:
-            raise SessionNotFound(
+            raise SessionNotFoundError(
                 message=f"Session {session_id} not found",
                 details={"session_id": session_id},
             )
 
         try:
-            kwargs: Dict[str, Any] = {"terminal_id": session_id}
+            kwargs: dict[str, Any] = {"terminal_id": session_id}
             if lines is not None:
                 kwargs["limit_lines"] = lines
 
@@ -197,7 +197,7 @@ class McpretentiousAdapter(TerminalAdapter):
             if session_id in self._sessions:
                 del self._sessions[session_id]
 
-    async def list_sessions(self) -> List[Dict[str, Any]]:
+    async def list_sessions(self) -> list[dict[str, Any]]:
         """List all active terminal sessions.
 
         Returns:

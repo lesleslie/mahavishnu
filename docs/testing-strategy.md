@@ -7,18 +7,21 @@ This document outlines the testing strategy for the Mahavishnu platform, coverin
 ## Test Categories
 
 ### Unit Tests
+
 - Test individual functions and classes in isolation
 - Fast execution (< 100ms per test)
 - High coverage (95%+ for critical paths)
 - Located in `tests/unit/` directories
 
 ### Integration Tests
+
 - Test interactions between modules/components
 - May use external services (with mocks where appropriate)
 - Moderate execution time (< 1 second per test)
 - Located in `tests/integration/` directories
 
 ### End-to-End Tests
+
 - Test complete workflows from user perspective
 - Use real external services when possible
 - Longer execution time
@@ -33,11 +36,13 @@ This document outlines the testing strategy for the Mahavishnu platform, coverin
 ## Test Execution Strategy
 
 ### Parallel Execution
+
 - Use `pytest-xdist` for parallel test execution
 - Separate test suites to avoid resource contention
 - CI pipelines run tests in parallel across multiple machines
 
 ### Shift-Left Testing
+
 - Test-driven development (TDD) for new features
 - Early validation of assumptions
 - Continuous integration with automated testing
@@ -45,11 +50,13 @@ This document outlines the testing strategy for the Mahavishnu platform, coverin
 ## Specialized Testing Approaches
 
 ### OpenSearch Failure Mode Testing
+
 - Simulate cluster failures
 - Test retry mechanisms and circuit breakers
 - Validate data consistency after failures
 
 ### Cross-Project Integration Testing
+
 - Mock inter-project communication
 - Test authentication and authorization flows
 - Validate message integrity and delivery

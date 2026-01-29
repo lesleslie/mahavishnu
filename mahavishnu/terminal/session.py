@@ -1,7 +1,6 @@
 """Terminal session representation."""
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
 
 from .adapters.base import TerminalAdapter
 
@@ -39,8 +38,8 @@ class TerminalSession:
         self.command = command
         self.adapter = adapter
         self.created_at = datetime.now()
-        self.last_output: Optional[str] = None
-        self._output_buffer: List[str] = []
+        self.last_output: str | None = None
+        self._output_buffer: list[str] = []
 
     async def send(self, command: str) -> None:
         """Send command to this session.
@@ -53,7 +52,7 @@ class TerminalSession:
         """
         await self.adapter.send_command(self.session_id, command)
 
-    async def read(self, lines: Optional[int] = None) -> str:
+    async def read(self, lines: int | None = None) -> str:
         """Read output from this session.
 
         Args:
@@ -83,7 +82,7 @@ class TerminalSession:
         """Get session age."""
         return datetime.now() - self.created_at
 
-    def get_output_history(self) -> List[str]:
+    def get_output_history(self) -> list[str]:
         """Get all captured outputs from this session.
 
         Returns:
@@ -93,8 +92,4 @@ class TerminalSession:
 
     def __repr__(self) -> str:
         """Return string representation of session."""
-        return (
-            f"TerminalSession(id={self.session_id!r}, "
-            f"command={self.command!r}, "
-            f"age={self.age})"
-        )
+        return f"TerminalSession(id={self.session_id!r}, command={self.command!r}, age={self.age})"

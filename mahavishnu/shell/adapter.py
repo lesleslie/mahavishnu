@@ -2,13 +2,13 @@
 
 import asyncio
 import logging
-from typing import Optional
 
 from oneiric.shell import AdminShell, ShellConfig
+
 from ..core.app import MahavishnuApp
 from ..core.workflow_state import WorkflowStatus
-from .formatters import WorkflowFormatter, LogFormatter, RepoFormatter
-from .helpers import ps, top, errors, sync
+from .formatters import LogFormatter, RepoFormatter, WorkflowFormatter
+from .helpers import errors, ps, sync, top
 from .magics import MahavishnuMagics
 
 logger = logging.getLogger(__name__)
@@ -29,9 +29,7 @@ class MahavishnuShell(AdminShell):
     - %workflow <id>: Show workflow details
     """
 
-    def __init__(
-        self, app: MahavishnuApp, config: Optional[ShellConfig] = None
-    ) -> None:
+    def __init__(self, app: MahavishnuApp, config: ShellConfig | None = None) -> None:
         """Initialize Mahavishnu shell.
 
         Args:
@@ -72,7 +70,7 @@ class MahavishnuShell(AdminShell):
         adapters = ", ".join(self.app.adapters.keys())
         return f"""
 Mahavishnu Admin Shell
-{'=' * 60}
+{"=" * 60}
 Active Adapters: {adapters}
 
 Convenience Functions:
@@ -86,5 +84,5 @@ Magic Commands:
   %workflow <id> - Show workflow details
 
 Type 'help()' for Python help or %help_shell for shell commands
-{'=' * 60}
+{"=" * 60}
 """

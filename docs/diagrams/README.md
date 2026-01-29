@@ -49,7 +49,7 @@ Include these diagrams in Markdown files:
 Mahavishnu uses the Mermaid MCP server to generate diagrams. To create new diagrams:
 
 1. Edit Mermaid source code in documentation files
-2. Use the MCP tool to generate:
+1. Use the MCP tool to generate:
    ```bash
    # Generate as PNG
    mcp__mermaid__generate_mermaid_diagram outputType="base64"
@@ -57,7 +57,7 @@ Mahavishnu uses the Mermaid MCP server to generate diagrams. To create new diagr
    # Generate as SVG
    mcp__mermaid__generate_mermaid_diagram outputType="svg_url"
    ```
-3. Download and save to `docs/diagrams/`
+1. Download and save to `docs/diagrams/`
 
 ### Excalidraw Diagrams
 
@@ -71,15 +71,18 @@ mcp__excalidraw__create_element
 ## Diagram Categories
 
 ### Technical Documentation
+
 - Sequence diagrams for API flows
 - Architecture diagrams for system overview
 - Entity relationship diagrams for data models
 
 ### Presentations
+
 - Use Excalidraw for stakeholder presentations
 - Use Mermaid for technical documentation
 
 ### Planning
+
 - Git branching strategies
 - Feature workflows
 - Deployment processes
@@ -93,8 +96,9 @@ mcp__excalidraw__create_element
 ## Maintenance
 
 When updating diagrams:
+
 1. Keep both PNG and SVG versions when possible
-2. Update this README with new diagrams
-3. Reference diagrams in relevant documentation files
-4. Use descriptive filenames
-5. Keep diagrams under 200KB when possible for web performance
+1. Update this README with new diagrams
+1. Reference diagrams in relevant documentation files
+1. Use descriptive filenames
+1. Keep diagrams under 200KB when possible for web performance

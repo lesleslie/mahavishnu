@@ -5,7 +5,7 @@
 **Date**: 2025-01-23
 **Status**: Implementation Guide
 
----
+______________________________________________________________________
 
 ## 🎯 Overview
 
@@ -19,13 +19,14 @@
 **What We're Building**:
 
 A **Python-based alternative** to @z_ai/coding-helper that:
-1. ✅ Dynamically adjusts environment variables for Zai
-2. ✅ Manages multiple coding tools (Claude Code, OpenCode, etc.)
-3. ✅ Integrates with Claude Code configuration
-4. ✅ Provides CLI interface (`mahavishnu coding-helper`)
-5. ✅ Supports all @z_ai/coding-helper features
 
----
+1. ✅ Dynamically adjusts environment variables for Zai
+1. ✅ Manages multiple coding tools (Claude Code, OpenCode, etc.)
+1. ✅ Integrates with Claude Code configuration
+1. ✅ Provides CLI interface (`mahavishnu coding-helper`)
+1. ✅ Supports all @z_ai/coding-helper features
+
+______________________________________________________________________
 
 ## 📊 Current Zai Configuration
 
@@ -43,6 +44,7 @@ A **Python-based alternative** to @z_ai/coding-helper that:
 ```
 
 **Environment Variables**:
+
 ```bash
 ZAI_API_KEY=43d9b2128076439c98eefcbef405a4e2.3D5wfNSaGjkOdBkC
 ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic
@@ -50,7 +52,7 @@ ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic
 
 **✅ You're already configured for Zai!** Now we need dynamic management.
 
----
+______________________________________________________________________
 
 ## 🏗️ Architecture
 
@@ -92,7 +94,7 @@ ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic
 └─────────────────────────────────────────────────────────────┘
 ```
 
----
+______________________________________________________________________
 
 ## 🚀 Implementation
 
@@ -618,7 +620,7 @@ from mahavishnu.coding_helper.cli import app as coding_helper_app
 app.add_typer(coding_helper_app, name="coding-helper")
 ```
 
----
+______________________________________________________________________
 
 ## 🎯 Usage Examples
 
@@ -680,7 +682,7 @@ mahavishnu coding-helper plugins
 mahavishnu coding-helper install-plugin zai-enhanced-autocomplete
 ```
 
----
+______________________________________________________________________
 
 ## 🔄 Dynamic Environment Variable Switching
 
@@ -700,7 +702,7 @@ mahavishnu coding-helper config ANTHROPIC_BASE_URL https://api.z.ai/api/anthropi
 mahavishnu coding-helper restart
 ```
 
----
+______________________________________________________________________
 
 ## 🎨 Rich CLI Output
 
@@ -729,7 +731,7 @@ Environment Variables
   ANTHROPIC_BASE_URL: https://api.z.ai/api/anthropic
 ```
 
----
+______________________________________________________________________
 
 ## 📦 Installation
 
@@ -754,34 +756,36 @@ uv pip install rich requests
 mahavishnu coding-helper status
 ```
 
----
+______________________________________________________________________
 
 ## ✅ Benefits Over @z_ai/coding-helper
 
 **Python vs Node.js**:
+
 - ✅ Native Python (matches Mahavishnu stack)
 - ✅ Direct integration with Oneiric
 - ✅ Better error handling and validation
 - ✅ Rich CLI output (rich library)
 
 **Additional Features**:
+
 - ✅ Multi-tool support (extensible)
 - ✅ Atomic config writes (no corruption)
 - ✅ Graceful service restart
 - ✅ Plugin marketplace integration
 - ✅ Three-tier memory system integration
 
----
+______________________________________________________________________
 
 ## 🎯 Next Steps
 
 1. **Implement core modules** (1 hour)
-2. **Add CLI commands** (30 minutes)
-3. **Test with Zai** (30 minutes)
-4. **Add plugin marketplace** (1 hour)
-5. **Add automation** (auto-switch, auto-restart) (1 hour)
+1. **Add CLI commands** (30 minutes)
+1. **Test with Zai** (30 minutes)
+1. **Add plugin marketplace** (1 hour)
+1. **Add automation** (auto-switch, auto-restart) (1 hour)
 
----
+______________________________________________________________________
 
 ## 📚 Resources
 
@@ -790,7 +794,7 @@ mahavishnu coding-helper status
 - **Chinese Guide**: [docs.bigmodel.cn/cn/coding-plan/extension/coding-tool-helper](https://docs.bigmodel.cn/cn/coding-plan/extension/coding-tool-helper)
 - **Plugins Marketplace**: [github.com/zai-org/zai-coding-plugins](https://github.com/zai-org/zai-coding-plugins)
 
----
+______________________________________________________________________
 
 ## Summary
 

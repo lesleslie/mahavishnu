@@ -5,23 +5,26 @@
 **Date**: 2025-01-23
 **Status**: ✅ AgentDB adapter created for Oneiric
 
----
+______________________________________________________________________
 
 ## 🎯 Why Hybrid?
 
 **AgentDB = Hot Cache**:
+
 - ⚡ **Sub-1ms latency** for active agent memory
 - 🧠 **Purpose-built for AI agents** with cognitive patterns
 - 🔄 **QUIC synchronization** across nodes
 - 📍 **In-memory** for blazing-fast access
 
 **pgvector + PostgreSQL = Persistent Archive**:
+
 - 💾 **30+ years of production reliability**
 - 🔒 **Battle-tested backups** (pg_dump + WAL archiving)
 - ☁️ **Well-documented GCS integration**
 - 📊 **Mature ecosystem** (ORMs, monitoring, GUIs)
 
 **Best of Both Worlds**:
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  Your Application (Mahavishnu)                  │
@@ -46,13 +49,14 @@
 └─────────────────────────────────────────────────┘
 ```
 
----
+______________________________________________________________________
 
 ## ✅ Oneiric AgentDB Adapter Created!
 
 **File**: `/Users/les/Projects/oneiric/oneiric/adapters/vector/agentdb.py`
 
 **Features**:
+
 - ✅ Full `VectorBase` implementation
 - ✅ MCP client integration (AgentDB runs as MCP server)
 - ✅ Lifecycle hooks (`init()`, `health()`, `cleanup()`)
@@ -63,6 +67,7 @@
 - ✅ Registered in `bootstrap.py`
 
 **Capabilities**:
+
 - `vector_search` - Semantic similarity search
 - `batch_operations` - Bulk inserts/updates
 - `metadata_filtering` - Filter by metadata fields
@@ -70,7 +75,7 @@
 - `quic_sync` - Multi-node synchronization
 - `agent_optimized` - Purpose-built for AI agents
 
----
+______________________________________________________________________
 
 ## 🚀 Setup & Installation
 
@@ -150,7 +155,7 @@ storage:
     path: "/path/to/service-account.json"
 ```
 
----
+______________________________________________________________________
 
 ## 🐍 Python Implementation
 
@@ -226,7 +231,7 @@ if __name__ == "__main__":
     asyncio.run(hybrid_memory_demo())
 ```
 
----
+______________________________________________________________________
 
 ## 🔄 Auto-Sync Strategy
 
@@ -319,7 +324,7 @@ async def store_memory_with_backup(
     print("✅ Stored in AgentDB + pgvector")
 ```
 
----
+______________________________________________________________________
 
 ## 📊 Configuration Examples
 
@@ -374,7 +379,7 @@ storage:
     path: "${GCS_CREDENTIALS_PATH}"
 ```
 
----
+______________________________________________________________________
 
 ## 🔍 Monitoring & Observability
 
@@ -431,7 +436,7 @@ async def track_memory_metrics():
     )
 ```
 
----
+______________________________________________________________________
 
 ## 🧪 Testing
 
@@ -477,28 +482,32 @@ async def test_hybrid_memory_insert_and_search():
     assert pgvector_results[0].id == "test_1"
 ```
 
----
+______________________________________________________________________
 
 ## 💡 Best Practices
 
 ### 1. When to Use AgentDB (Hot)
+
 - ✅ **Active agent memory** (current session, recent decisions)
 - ✅ **Frequently accessed data** (user preferences, active tasks)
 - ✅ **Real-time coordination** (multi-agent sync)
 - ✅ **Sub-ms latency required**
 
 ### 2. When to Use pgvector (Cold)
+
 - ✅ **Long-term storage** (historical decisions, audit trail)
 - ✅ **Backup/disaster recovery** (GCS integration)
 - ✅ **Analytics and reporting** (SQL queries on metadata)
 - ✅ **Compliance and retention** (WAL archiving)
 
 ### 3. Sync Strategy
+
 - **Write-through**: Write to both immediately (consistency over latency)
 - **Write-back**: Write to AgentDB, async sync to pgvector (latency over consistency)
 - **Periodic**: Cron job syncs every N minutes (simple, eventual consistency)
 
 ### 4. Data Lifecycle
+
 ```
 New Memory
     ↓
@@ -509,7 +518,7 @@ pgvector (warm, PostgreSQL)
 GCS (cold, archived)
 ```
 
----
+______________________________________________________________________
 
 ## 🔗 Resources
 
@@ -519,29 +528,32 @@ GCS (cold, archived)
 - **Claude Flow (AgentDB integration)**: [github.com/ruvnet/claude-flow](https://github.com/ruvnet/claude-flow)
 - **pgvector GitHub**: [github.com/pgvector/pgvector](https://github.com/pgvector/pgvector)
 
----
+______________________________________________________________________
 
 ## Summary
 
 **✅ AgentDB adapter added to Oneiric!**
 
 **Hybrid Architecture**:
+
 - **AgentDB**: Hot data, sub-1ms access, agent-optimized
 - **pgvector**: Persistent archive, GCS backups, SQL queries
 - **Oneiric**: Unified lifecycle management for both
 - **GCS**: Long-term cloud storage via pg_dump + gsutil
 
 **Benefits**:
+
 - ⚡ **Blazing fast** active memory (AgentDB)
 - 💾 **Production backups** (pgvector + GCS)
 - 🔄 **Flexible sync** strategies
 - 🛠️ **Oneiric integration** (lifecycle, health checks, hot-swapping)
 
 **Next Steps**:
+
 1. Install AgentDB (`npm install -g agentdb`)
-2. Start AgentDB MCP server
-3. Test Oneiric AgentDB adapter
-4. Implement sync strategy (write-through or periodic)
-5. Set up GCS backups for pgvector
+1. Start AgentDB MCP server
+1. Test Oneiric AgentDB adapter
+1. Implement sync strategy (write-through or periodic)
+1. Set up GCS backups for pgvector
 
 The hybrid approach gives you the **best of both worlds**! 🚀

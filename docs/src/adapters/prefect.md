@@ -70,6 +70,7 @@ def my_flow():
 ## Estimated Completion Effort
 
 2 weeks for full implementation including:
+
 - Flow construction logic
 - State management
 - LLM integration
@@ -79,9 +80,9 @@ def my_flow():
 ## Next Steps
 
 1. Implement Prefect flow construction
-2. Add LLM integration for dynamic workflows
-3. Implement state management
-4. Add progress tracking and streaming
-5. Implement checkpointing
+1. Add LLM integration for dynamic workflows
+1. Implement state management
+1. Add progress tracking and streaming
+1. Implement checkpointing
 
 See [UNIFIED_IMPLEMENTATION_STATUS.md](../../UNIFIED_IMPLEMENTATION_STATUS.md) for detailed progress tracking.

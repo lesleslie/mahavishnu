@@ -4,22 +4,23 @@
 **Timeline:** 19-22 weeks
 **Last Updated:** 2025-01-25
 
----
+______________________________________________________________________
 
 ## ✅ Already Done (Committee Review)
 
 1. ✅ **mcp-common dependency added** to `pyproject.toml`
-2. ✅ **Messaging types created** at `mcp-common/messaging/types.py`
-3. ✅ **MCP tool contracts** at `mcp-common/mcp/contracts/code_graph_tools.yaml`
-4. ✅ **Committee review complete** (5/5 reviewers)
-5. ✅ **Implementation plan** at `IMPLEMENTATION_PLAN.md`
-6. ✅ **Progress tracker** at `PROGRESS.md`
+1. ✅ **Messaging types created** at `mcp-common/messaging/types.py`
+1. ✅ **MCP tool contracts** at `mcp-common/mcp/contracts/code_graph_tools.yaml`
+1. ✅ **Committee review complete** (5/5 reviewers)
+1. ✅ **Implementation plan** at `IMPLEMENTATION_PLAN.md`
+1. ✅ **Progress tracker** at `PROGRESS.md`
 
----
+______________________________________________________________________
 
 ## 🚀 Next Steps (When You Get Back)
 
 ### 1. Install OpenSearch (5 minutes)
+
 ```bash
 brew install opensearch
 brew services start opensearch
@@ -33,6 +34,7 @@ uv pip install opensearch-py
 ```
 
 ### 2. Start Phase 0.1: Code Graph Analyzer
+
 **File to create:** `mcp-common/code_graph/analyzer.py`
 
 ```python
@@ -69,6 +71,7 @@ class CodeGraphAnalyzer:
 ```
 
 ### 3. Write First Test
+
 **File to create:** `mcp-common/tests/test_code_graph.py`
 
 ```python
@@ -92,12 +95,13 @@ def hello():
 ```
 
 ### 4. Run Test
+
 ```bash
 cd /Users/les/Projects/mcp-common
 pytest tests/test_code_graph.py -v
 ```
 
----
+______________________________________________________________________
 
 ## 📚 Documentation Structure
 
@@ -122,24 +126,26 @@ pytest tests/test_code_graph.py -v
         └── testing-strategy.md
 ```
 
----
+______________________________________________________________________
 
 ## 🎯 This Week's Goals
 
 **Week 1 (Jan 25 - Jan 31):**
 
 ### Must Complete:
+
 - [ ] Install OpenSearch via Homebrew
 - [ ] Create `mcp-common/code_graph/analyzer.py` skeleton
 - [ ] Write first test for code graph
 - [ ] Create DevOps documentation templates
 
 ### Nice to Have:
+
 - [ ] Complete basic AST parsing
 - [ ] Test OpenSearch prototype (ingest 100 docs)
 - [ ] Set up basic CI/CD pipeline
 
----
+______________________________________________________________________
 
 ## 🔗 Quick Links
 
@@ -148,29 +154,30 @@ pytest tests/test_code_graph.py -v
 **Reviews:** `COMMITTEE_REVIEW_STATUS.md` - All committee feedback
 
 **Key Files:**
+
 - `pyproject.toml` - mcp-common dependency already added ✅
 - `mcp-common/messaging/types.py` - Shared types already created ✅
 - `mcp-common/mcp/contracts/code_graph_tools.yaml` - Tool contracts ✅
 
----
+______________________________________________________________________
 
 ## 💡 Tips
 
 1. **Start with OpenSearch prototype first** (validates technical approach early)
-2. **Keep tests simple** - unit tests over integration tests initially
-3. **Update PROGRESS.md daily** - track what you've done
-4. **Ask for help** - reference committee reviews if stuck
+1. **Keep tests simple** - unit tests over integration tests initially
+1. **Update PROGRESS.md daily** - track what you've done
+1. **Ask for help** - reference committee reviews if stuck
 
----
+______________________________________________________________________
 
 ## ⚠️ Common Pitfalls
 
 1. **Don't skip OpenSearch security** - Phase 0.5 requires TLS/auth
-2. **Don't defer testing** - write tests alongside code (TDD)
-3. **Don't ignore DevOps docs** - they're required for production
-4. **Don't forget cross-project auth** - HMAC signatures needed
+1. **Don't defer testing** - write tests alongside code (TDD)
+1. **Don't ignore DevOps docs** - they're required for production
+1. **Don't forget cross-project auth** - HMAC signatures needed
 
----
+______________________________________________________________________
 
 ## 🎉 Celebration Milestones
 
@@ -184,7 +191,7 @@ pytest tests/test_code_graph.py -v
 - [ ] **First Agno agent:** Agent running and completing task
 - [ ] **Production ready:** All 116 tasks complete 🚀
 
----
+______________________________________________________________________
 
 **Enjoy your walk! See you when you get back! ☕**
 

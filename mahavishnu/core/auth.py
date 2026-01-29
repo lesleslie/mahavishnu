@@ -1,17 +1,19 @@
 """Authentication module for Mahavishnu supporting both JWT and subscription tokens."""
-import jwt
-import os
+
 from datetime import datetime, timedelta
-from typing import Optional
-from pydantic import BaseModel, Field
 from functools import wraps
+
 from fastapi import HTTPException, Request, status
+import jwt
+from pydantic import BaseModel
+
 from ..core.errors import AuthenticationError
-from .subscription_auth import MultiAuthHandler, AuthMethod
+from .subscription_auth import MultiAuthHandler
 
 
 class TokenData(BaseModel):
     """Token data model."""
+
     username: str
     exp: int
 
@@ -70,33 +72,29 @@ class JWTAuth:
             if username is None:
                 raise AuthenticationError(
                     message="Could not validate credentials",
-                    details={"error": "Username not found in token"}
+                    details={"error": "Username not found in token"},
                 )
             token_data = TokenData(username=username, exp=payload.get("exp"))
 
             # Check if token is expired
             if datetime.utcnow().timestamp() > token_data.exp:
                 raise AuthenticationError(
-                    message="Token has expired",
-                    details={"error": "Expired token"}
+                    message="Token has expired", details={"error": "Expired token"}
                 )
 
             return token_data
-        except jwt.exceptions.InvalidSignatureError:
+        except jwt.exceptions.InvalidSignatureError as e:
             raise AuthenticationError(
-                message="Invalid token signature",
-                details={"error": "Invalid signature"}
-            )
-        except jwt.exceptions.DecodeError:
+                message="Invalid token signature", details={"error": "Invalid signature"}
+            ) from e
+        except jwt.exceptions.DecodeError as e:
             raise AuthenticationError(
-                message="Could not decode token",
-                details={"error": "Decode error"}
-            )
+                message="Could not decode token", details={"error": "Decode error"}
+            ) from e
         except Exception as e:
             raise AuthenticationError(
-                message=f"Authentication error: {str(e)}",
-                details={"error": str(e)}
-            )
+                message=f"Authentication error: {str(e)}", details={"error": str(e)}
+            ) from e
 
 
 def get_auth_from_config(config):
@@ -122,6 +120,7 @@ def require_auth(auth_handler):
     Returns:
         Decorator function
     """
+
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -130,21 +129,21 @@ def require_auth(auth_handler):
                 return await func(*args, **kwargs)
 
             # Extract token from request
-            request: Request = kwargs.get('request') or (
+            request: Request = kwargs.get("request") or (
                 args[0] if args and isinstance(args[0], Request) else None
             )
 
             if not request:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Request object required for authentication"
+                    detail="Request object required for authentication",
                 )
 
             auth_header = request.headers.get("Authorization")
             if not auth_header or not auth_header.startswith("Bearer "):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authorization header missing or invalid format"
+                    detail="Authorization header missing or invalid format",
                 )
 
             try:
@@ -158,9 +157,9 @@ def require_auth(auth_handler):
                 return await func(*args, **kwargs)
             except AuthenticationError as e:
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=e.message
-                )
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail=e.message
+                ) from e
 
         return wrapper
+
     return decorator

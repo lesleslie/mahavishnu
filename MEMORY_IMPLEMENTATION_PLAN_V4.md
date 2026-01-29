@@ -4,19 +4,21 @@
 **Date:** 2025-01-24
 **Status:** ✅ READY FOR IMPLEMENTATION
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
 **✅ ALL CRITICAL ISSUES FIXED** - This plan incorporates all 12 corrections identified by the trifecta final review:
 
 **Oneiric API Fixes (4 issues):**
+
 - ✅ Correct PgvectorSettings parameters (max_connections, default_dimension, ivfflat_lists)
 - ✅ Correct method names (init, cleanup)
 - ✅ Correct method signatures (collection parameter, VectorDocument objects)
 - ✅ Correct search signature (query_vector, filter_expr)
 
 **Python Bug Fixes (7 issues):**
+
 - ✅ DuckDB migration uses asyncio.run_in_executor (prevents event loop blocking)
 - ✅ Embedding generation uses asyncio.gather (100x faster)
 - ✅ Fixed attribute references (self.memory.vector_store)
@@ -26,24 +28,25 @@
 - ✅ Fixed TypeVar usage (Awaitable wrapper)
 
 **Timeline Adjustment:**
+
 - ✅ Phase 0 extended to 2-3 weeks (realistic for all fixes)
 
 **Overall Confidence:** 90%+ (up from 74%) - Ready for implementation
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Phase 0: Critical Fixes (ALL CORRECTED)](#phase-0-critical-fixes-all-corrected)
-2. [Phase 1: PostgreSQL Foundation](#phase-1-postgresql-foundation)
-3. [Phase 2: Oneiric Integration](#phase-2-oneiric-integration)
-4. [Phase 3: Core Memory Integration](#phase-3-core-memory-integration)
-5. [Phase 4: LlamaIndex RAG Integration](#phase-4-llamaindex-rag-integration)
-6. [Phase 5: Cross-Project Integration](#phase-5-cross-project-integration)
-7. [Phase 6: Testing & Documentation](#phase-6-testing--documentation)
-8. [Configuration & Setup](#configuration--setup)
+1. [Phase 1: PostgreSQL Foundation](#phase-1-postgresql-foundation)
+1. [Phase 2: Oneiric Integration](#phase-2-oneiric-integration)
+1. [Phase 3: Core Memory Integration](#phase-3-core-memory-integration)
+1. [Phase 4: LlamaIndex RAG Integration](#phase-4-llamaindex-rag-integration)
+1. [Phase 5: Cross-Project Integration](#phase-5-cross-project-integration)
+1. [Phase 6: Testing & Documentation](#phase-6-testing--documentation)
+1. [Configuration & Setup](#configuration--setup)
 
----
+______________________________________________________________________
 
 ## Phase 0: Critical Fixes (ALL CORRECTED)
 
@@ -1134,7 +1137,7 @@ def downgrade() -> None:
 
 **⚠️ DO NOT PROCEED TO PHASE 1 UNTIL ALL PHASE 0 ACCEPTANCE CRITERIA ARE MET.**
 
----
+______________________________________________________________________
 
 ## Phase 1: PostgreSQL Foundation
 
@@ -1184,11 +1187,11 @@ psql -h localhost -U postgres -d mahavishnu -c "\d memories"
 - [ ] PostgreSQL database accessible
 - [ ] pgvector extension active
 - [ ] migrations table shows version 001 applied
-- [ ] All indexes exist (check with \di)
+- [ ] All indexes exist (check with \\di)
 - [ ] Connection pool health check passes
 - [ ] Can insert and query test data
 
----
+______________________________________________________________________
 
 ## Phase 2: Oneiric Integration
 
@@ -1221,7 +1224,7 @@ Use the corrected health check code from Fix 0.6 above.
 - [ ] Adapter health aggregation works
 - [ ] Lifecycle shutdown hooks tested
 
----
+______________________________________________________________________
 
 ## Phase 3: Core Memory Integration
 
@@ -1532,7 +1535,7 @@ class MahavishnuMemoryIntegration:
 - [ ] Metrics collected correctly
 - [ ] No connection leaks (resource tests pass)
 
----
+______________________________________________________________________
 
 ## Phase 4: LlamaIndex RAG Integration
 
@@ -1711,9 +1714,9 @@ class LlamaIndexAdapter:
 - [ ] Vector search works via Oneiric adapter
 - [ ] Batch operations perform well
 - [ ] Knowledge base queries return relevant results
-- [ ] Performance target met (<100ms for 20 results)
+- [ ] Performance target met (\<100ms for 20 results)
 
----
+______________________________________________________________________
 
 ## Phase 5: Cross-Project Integration
 
@@ -1738,7 +1741,7 @@ class LlamaIndexAdapter:
 - [ ] Cross-project search works
 - [ ] Integration tests pass
 
----
+______________________________________________________________________
 
 ## Phase 6: Testing & Documentation
 
@@ -1814,13 +1817,13 @@ async def test_parallel_embeddings():
 - [ ] Coverage >80%
 - [ ] Security scan passes (no vulnerabilities)
 - [ ] Performance targets met:
-  - Vector search <100ms for 20 results
-  - Unified search <200ms
+  - Vector search \<100ms for 20 results
+  - Unified search \<200ms
   - 1000+ concurrent operations supported
 - [ ] No connection leaks under load
 - [ ] Documentation complete
 
----
+______________________________________________________________________
 
 ## Configuration & Setup
 
@@ -1881,7 +1884,7 @@ memory_service:
   enable_performance_monitoring: true
 ```
 
----
+______________________________________________________________________
 
 ## Summary
 
@@ -1890,12 +1893,14 @@ memory_service:
 **All 12 Critical Issues Fixed:**
 
 **Oneiric API Fixes (4):**
+
 - ✅ PgvectorSettings parameters corrected
 - ✅ Method names corrected (init, cleanup)
 - ✅ Method signatures corrected (collection, VectorDocument)
 - ✅ Search signature corrected (query_vector, filter_expr)
 
 **Python Bug Fixes (7):**
+
 - ✅ DuckDB migration uses asyncio.run_in_executor
 - ✅ Embeddings generated in parallel with asyncio.gather
 - ✅ Corrected vector_store reference
@@ -1905,22 +1910,26 @@ memory_service:
 - ✅ Fixed TypeVar with Awaitable wrapper
 
 **Timeline Adjustment (1):**
+
 - ✅ Phase 0 extended to 2-3 weeks (realistic)
 
 ### Benefits
 
 **Security:**
+
 - No SQL injection vulnerabilities (parameterized queries)
 - Proper resource cleanup (context managers)
 - Transactional consistency (with_transaction)
 
 **Performance:**
-- <100ms vector search for 20 results
-- <200ms unified search
+
+- \<100ms vector search for 20 results
+- \<200ms unified search
 - 1000+ concurrent operations
 - 100x faster batch operations (parallel embeddings)
 
 **Maintainability:**
+
 - Uses Oneiric adapters (2000+ lines less code)
 - Proper health checks (ComponentHealth)
 - Structured logging with trace correlation
@@ -1939,7 +1948,7 @@ memory_service:
 
 **Total: 8-9 weeks** (realistic, all corrections applied)
 
----
+______________________________________________________________________
 
 **Document Version:** 4.0 (All Critical Fixes Applied)
 **Date:** 2025-01-24

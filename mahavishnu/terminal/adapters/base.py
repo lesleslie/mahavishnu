@@ -1,7 +1,7 @@
 """Base adapter interface for terminal management."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class TerminalAdapter(ABC):
@@ -49,7 +49,7 @@ class TerminalAdapter(ABC):
             command: Command string to send
 
         Raises:
-            SessionNotFound: If session_id doesn't exist
+            SessionNotFoundError: If session_id doesn't exist
             TerminalError: If command send fails
         """
         pass
@@ -58,7 +58,7 @@ class TerminalAdapter(ABC):
     async def capture_output(
         self,
         session_id: str,
-        lines: Optional[int] = None,
+        lines: int | None = None,
     ) -> str:
         """Capture output from a terminal session.
 
@@ -70,7 +70,7 @@ class TerminalAdapter(ABC):
             Terminal output as string
 
         Raises:
-            SessionNotFound: If session_id doesn't exist
+            SessionNotFoundError: If session_id doesn't exist
             TerminalError: If output capture fails
         """
         pass
@@ -83,13 +83,13 @@ class TerminalAdapter(ABC):
             session_id: Terminal session identifier to close
 
         Raises:
-            SessionNotFound: If session_id doesn't exist
+            SessionNotFoundError: If session_id doesn't exist
             TerminalError: If session close fails
         """
         pass
 
     @abstractmethod
-    async def list_sessions(self) -> List[Dict[str, Any]]:
+    async def list_sessions(self) -> list[dict[str, Any]]:
         """List all active terminal sessions.
 
         Returns:

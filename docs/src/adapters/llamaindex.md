@@ -42,6 +42,7 @@ mahavishnu query --query "authentication patterns" --adapter llamaindex
 **Status**: Fully implemented (348 lines)
 
 The adapter includes real Ollama integration:
+
 - Ollama embedding model integration (`nomic-embed-text`)
 - Ollama LLM integration for generation
 - Document processing and chunking
@@ -76,6 +77,7 @@ results = await adapter.query_documents(
 ## Production Ready
 
 This adapter is ready for production use with:
+
 - Real Ollama integration (not simulated)
 - Comprehensive error handling
 - Configuration-based model selection

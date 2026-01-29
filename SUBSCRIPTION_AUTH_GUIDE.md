@@ -4,19 +4,19 @@
 **Date:** 2025-01-24
 **Purpose:** Complete guide to subscription-based authentication for Claude Code, Codex, and Qwen
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Authentication Overview](#authentication-overview)
-2. [Subscription Token Structure](#subscription-token-structure)
-3. [Token Creation](#token-creation)
-4. [Token Validation](#token-validation)
-5. [Integration Guide](#integration-guide)
-6. [Security Best Practices](#security-best-practices)
-7. [Troubleshooting](#troubleshooting)
+1. [Subscription Token Structure](#subscription-token-structure)
+1. [Token Creation](#token-creation)
+1. [Token Validation](#token-validation)
+1. [Integration Guide](#integration-guide)
+1. [Security Best Practices](#security-best-practices)
+1. [Troubleshooting](#troubleshooting)
 
----
+______________________________________________________________________
 
 ## Authentication Overview
 
@@ -100,7 +100,7 @@ Mahavishnu supports **three authentication methods**:
 └───────────────────────────────────────────┘
 ```
 
----
+______________________________________________________________________
 
 ## Subscription Token Structure
 
@@ -153,7 +153,7 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbGF1ZGVfdXNlcl8xMjMiLCJ1c2VyX2l
 | `workflow_manage` | Create/modify/delete workflows | ✅ | ❌ | ✅ |
 | `admin` | Full administrative access | ✅ | ❌ | ❌ |
 
----
+______________________________________________________________________
 
 ## Token Creation
 
@@ -267,7 +267,7 @@ curl -X POST http://localhost:3035/api/v1/auth/token \
   }'
 ```
 
----
+______________________________________________________________________
 
 ## Token Validation
 
@@ -380,7 +380,7 @@ if required_scope not in auth_result.get("scopes", []):
     )
 ```
 
----
+______________________________________________________________________
 
 ## Integration Guide
 
@@ -556,24 +556,27 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
----
+______________________________________________________________________
 
 ## Security Best Practices
 
 ### 1. Secret Management
 
 **DO:** Store secrets in environment variables
+
 ```bash
 export MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET="your_32char_secret_key_minimum"
 ```
 
 **DON'T:** Hardcode secrets in code
+
 ```python
 # DON'T DO THIS
 SECRET = "my_secret"  # ❌ Vulnerable to git commits
 ```
 
 **DO:** Use .env files (gitignored)
+
 ```bash
 # .env
 MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET="your_32char_secret_key_minimum"
@@ -731,13 +734,14 @@ async def authenticate_and_log(
     return auth_result
 ```
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
 ### Issue: "Subscription token has expired"
 
 **Symptoms:**
+
 ```
 AuthenticationError: Subscription token has expired
 Details: Expired token
@@ -746,6 +750,7 @@ Details: Expired token
 **Solutions:**
 
 1. **Check token expiration:**
+
 ```python
 import jwt
 from datetime import datetime
@@ -760,6 +765,7 @@ print(f"Current time: {datetime.utcnow()}")
 ```
 
 2. **Generate new token:**
+
 ```python
 new_token = auth_handler.create_claude_subscription_token(
     user_id="claude_user_123",
@@ -768,6 +774,7 @@ new_token = auth_handler.create_claude_subscription_token(
 ```
 
 3. **Extend expiration in configuration:**
+
 ```yaml
 # settings/mahavishnu.yaml
 subscription_auth_expire_minutes: 1440  # 24 hours instead of 8
@@ -776,6 +783,7 @@ subscription_auth_expire_minutes: 1440  # 24 hours instead of 8
 ### Issue: "Insufficient permissions"
 
 **Symptoms:**
+
 ```
 AuthorizationError: Insufficient permissions: 'workflow_manage' scope required
 ```
@@ -783,12 +791,14 @@ AuthorizationError: Insufficient permissions: 'workflow_manage' scope required
 **Solutions:**
 
 1. **Check available scopes:**
+
 ```python
 result = auth_handler.authenticate_request(f"Bearer {token}")
 print(f"Available scopes: {result['scopes']}")
 ```
 
 2. **Create new token with required scopes:**
+
 ```python
 new_token = auth_handler.create_claude_subscription_token(
     user_id="claude_user_123",
@@ -799,6 +809,7 @@ new_token = auth_handler.create_claude_subscription_token(
 ### Issue: "Invalid subscription token signature"
 
 **Symptoms:**
+
 ```
 AuthenticationError: Invalid subscription token signature
 ```
@@ -806,6 +817,7 @@ AuthenticationError: Invalid subscription token signature
 **Solutions:**
 
 1. **Verify secret matches:**
+
 ```bash
 # Check environment variable
 echo $MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET
@@ -814,6 +826,7 @@ echo $MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET
 ```
 
 2. **Regenerate token with correct secret:**
+
 ```python
 # Ensure secret is set correctly
 os.environ['MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET'] = 'your_32char_secret_key_minimum'
@@ -828,6 +841,7 @@ token = auth_handler.create_claude_subscription_token(
 ### Issue: "Missing subscription_type in token"
 
 **Symptoms:**
+
 ```
 AuthenticationError: Invalid subscription token: missing required fields
 ```
@@ -835,7 +849,7 @@ AuthenticationError: Invalid subscription token: missing required fields
 **Solutions:**
 
 1. **Token was created as standard JWT (not subscription)**
-2. **Use create_claude_subscription_token() or create_codex_subscription_token() instead**
+1. **Use create_claude_subscription_token() or create_codex_subscription_token() instead**
 
 ```python
 # WRONG: Standard JWT
@@ -848,7 +862,7 @@ subscription_token = auth_handler.create_claude_subscription_token(
 )
 ```
 
----
+______________________________________________________________________
 
 ## Quick Reference
 
@@ -916,7 +930,7 @@ export OLLAMA_BASE_URL="http://localhost:11434"
 export OLLAMA_MODEL="nomic-embed-text"
 ```
 
----
+______________________________________________________________________
 
 ## Summary
 
@@ -941,7 +955,7 @@ export OLLAMA_MODEL="nomic-embed-text"
 | **Hybrid deployment** | Multi-auth | Both subscription and Qwen enabled |
 | **Local development** | None (optional) | `subscription_auth_enabled: false` |
 
----
+______________________________________________________________________
 
 **Document Version:** 1.0
 **Date:** 2025-01-24
@@ -949,6 +963,7 @@ export OLLAMA_MODEL="nomic-embed-text"
 **Next:** Set up authentication for your deployment
 
 **Related Documents:**
+
 - `DEPLOYMENT_GUIDE.md` (Deployment options)
 - `mahavishnu/core/subscription_auth.py` (Implementation)
 - `test_auth_integration.py` (Test examples)

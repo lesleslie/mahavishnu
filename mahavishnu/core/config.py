@@ -6,11 +6,9 @@ support (defaults -> committed YAML -> local YAML -> environment variables).
 """
 
 from pathlib import Path
-from typing import Any
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
-from pydantic_core import PydanticUndefined
 
 from ..terminal.config import TerminalSettings
 
@@ -288,9 +286,7 @@ class MahavishnuSettings(BaseSettings):
         for yaml_file in ["settings/mahavishnu.yaml", "settings/local.yaml"]:
             yaml_path = Path(yaml_file)
             if yaml_path.exists():
-                yaml_sources.append(
-                    YamlConfigSettingsSource(settings_cls, yaml_path)
-                )
+                yaml_sources.append(YamlConfigSettingsSource(settings_cls, yaml_path))
 
         return (
             init_settings,

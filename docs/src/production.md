@@ -183,9 +183,9 @@ tar -czf mahavishnu-config-backup-$(date +%Y%m%d).tar.gz \
 Maintain a rollback plan:
 
 1. Keep previous version artifacts
-2. Document the rollback procedure
-3. Test the rollback process in staging
-4. Have a communication plan for users
+1. Document the rollback procedure
+1. Test the rollback process in staging
+1. Have a communication plan for users
 
 ## Security Hardening
 
@@ -248,3 +248,4 @@ journalctl -u mahavishnu -n 100
 # Follow logs in real-time
 journalctl -u mahavishnu -f
 ``
+```

@@ -11,11 +11,11 @@ Example:
     >>> output = await manager.capture_output(session_ids[0])
 """
 
+from mahavishnu.terminal.adapters.base import TerminalAdapter
+from mahavishnu.terminal.adapters.iterm2 import ITERM2_AVAILABLE, ITerm2Adapter
+from mahavishnu.terminal.adapters.mcpretentious import McpretentiousAdapter
 from mahavishnu.terminal.manager import TerminalManager
 from mahavishnu.terminal.session import TerminalSession
-from mahavishnu.terminal.adapters.base import TerminalAdapter
-from mahavishnu.terminal.adapters.mcpretentious import McpretentiousAdapter
-from mahavishnu.terminal.adapters.iterm2 import ITerm2Adapter, ITERM2_AVAILABLE
 
 __all__ = [
     "TerminalManager",
