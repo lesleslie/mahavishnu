@@ -2,17 +2,18 @@
 
 **Fast-track implementation for managing Claude Code + Session-Buddy + Memory systems**
 
----
+______________________________________________________________________
 
 ## 🎯 What We're Building
 
 A unified system to:
-1. **Manage Claude Code** (~/.claude/settings.json)
-2. **Switch LLMs** (Claude, Qwen, Codex)
-3. **Integrate Session-Buddy** shared memory
-4. **Three-tier memory** (AgentDB + pgvector + Session-Buddy)
 
----
+1. **Manage Claude Code** (~/.claude/settings.json)
+1. **Switch LLMs** (Claude, Qwen, Codex)
+1. **Integrate Session-Buddy** shared memory
+1. **Three-tier memory** (AgentDB + pgvector + Session-Buddy)
+
+______________________________________________________________________
 
 ## 🚀 Quick Implementation (30 minutes)
 
@@ -445,7 +446,7 @@ secrets:
       - CODEX
 ```
 
----
+______________________________________________________________________
 
 ## 🎯 Usage Examples
 
@@ -482,7 +483,7 @@ mahavishnu service restart claude
 mahavishnu service restart all
 ```
 
----
+______________________________________________________________________
 
 ## ✅ Checklist
 
@@ -499,7 +500,7 @@ mahavishnu service restart all
 - [ ] Test unified memory storage
 - [ ] Test Session-Buddy integration
 
----
+______________________________________________________________________
 
 ## 📊 Data Flow
 
@@ -535,19 +536,19 @@ UnifiedMemoryManager.store_decision()
             └─ Checkpoint + quality score
 ```
 
----
+______________________________________________________________________
 
 ## 🚀 Next Steps
 
 1. **Implement the modules** (30 minutes)
-2. **Test LLM switching** (10 minutes)
-3. **Test memory storage** (10 minutes)
-4. **Add MCP tools** (30 minutes)
-5. **Add automation** (auto-sync, auto-restart) (1 hour)
+1. **Test LLM switching** (10 minutes)
+1. **Test memory storage** (10 minutes)
+1. **Add MCP tools** (30 minutes)
+1. **Add automation** (auto-sync, auto-restart) (1 hour)
 
 **Total time**: ~2 hours for full implementation!
 
----
+______________________________________________________________________
 
 ## 📚 Resources
 
@@ -555,6 +556,6 @@ UnifiedMemoryManager.store_decision()
 - **Session-Buddy**: `/Users/les/Projects/session-buddy`
 - **Oneiric Adapters**: `/Users/les/Projects/oneiric/oneiric/adapters/`
 
----
+______________________________________________________________________
 
 **This is a production-ready approach to unified AI environment management!** 🚀

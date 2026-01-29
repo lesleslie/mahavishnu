@@ -5,6 +5,7 @@
 Mahavishnu is a modular orchestration platform that provides unified interfaces for managing workflows across multiple repositories. It serves as a global orchestrator that can coordinate operations across different codebases using various workflow engines.
 
 The project is built with Python and leverages several key technologies:
+
 - **Typer**: For the command-line interface
 - **Oneiric**: For configuration and logging
 - **PyYAML**: For YAML parsing
@@ -27,13 +28,13 @@ Mahavishnu follows a modular architecture with the following components:
 
 1. **Core Application (`mahavishnu/core/app.py`)**: Main application class that manages configuration, repository loading, and adapter initialization.
 
-2. **CLI Module (`mahavishnu/cli.py`)**: Implements the command-line interface with commands like `sweep`, `mcp-serve`, and `list-repos`.
+1. **CLI Module (`mahavishnu/cli.py`)**: Implements the command-line interface with commands like `sweep`, `mcp-serve`, and `list-repos`.
 
-3. **Engine Adapters (`mahavishnu/engines/`)**: Contains adapter implementations for different orchestration engines (Prefect, LlamaIndex, Agno).
+1. **Engine Adapters (`mahavishnu/engines/`)**: Contains adapter implementations for different orchestration engines (Prefect, LlamaIndex, Agno).
 
-4. **MCP Server (`mahavishnu/mcp/server_core.py`)**: Implements the Machine Learning Communication Protocol server for tool integration.
+1. **MCP Server (`mahavishnu/mcp/server_core.py`)**: Implements the Machine Learning Communication Protocol server for tool integration.
 
-5. **Shared Infrastructure (`mcp-common/`)**: Contains shared components used by both Mahavishnu and Session Buddy, including code graph analysis and messaging types.
+1. **Shared Infrastructure (`mcp-common/`)**: Contains shared components used by both Mahavishnu and Session Buddy, including code graph analysis and messaging types.
 
 ## Building and Running
 
@@ -75,10 +76,11 @@ mahavishnu terminal launch "python -c 'print(\"Hello\")'" --count 2
 ### Configuration
 
 Mahavishnu uses multiple configuration sources with the following precedence (later overrides earlier):
+
 1. Default values in Pydantic models
-2. `settings/mahavishnu.yaml` (committed)
-3. `settings/local.yaml` (gitignored)
-4. Environment variables `MAHAVISHNU_*`
+1. `settings/mahavishnu.yaml` (committed)
+1. `settings/local.yaml` (gitignored)
+1. Environment variables `MAHAVISHNU_*`
 
 #### Environment Variables
 
@@ -87,7 +89,9 @@ Mahavishnu uses multiple configuration sources with the following precedence (la
 - `MAHAVISHNU_REPOS_PATH`: Path to repos.yaml file
 
 #### repos.yaml
+
 Repository manifest defining projects and their tags:
+
 ```yaml
 repos:
   - name: "my-project"
@@ -101,6 +105,7 @@ repos:
 ## Development Conventions
 
 ### Project Structure
+
 ```
 mahavishnu/
 ├── pyproject.toml          # Dependencies: oneiric, typer, prefect, llamaindex, agno, etc.
@@ -161,11 +166,13 @@ class OrchestratorAdapter(ABC):
 ### Testing
 
 Run all tests:
+
 ```bash
 pytest
 ```
 
 Run with coverage:
+
 ```bash
 pytest --cov=mahavishnu --cov-report=html
 ```
@@ -173,21 +180,22 @@ pytest --cov=mahavishnu --cov-report=html
 ## Key Features
 
 1. **Multi-engine Support**: Seamlessly switch between Prefect, LlamaIndex, and Agno
-2. **Repository Management**: Organize and operate on repositories using tags
-3. **CLI Interface**: Intuitive command-line interface powered by Typer
-4. **MCP Server**: Machine Learning Communication Protocol server for tool integration
-5. **Terminal Management**: Advanced terminal session management with multiple adapters
-6. **Quality Control**: Integration with Crackerjack for code quality checks
-7. **Session Management**: Integration with Session-Buddy for workflow checkpoints
-8. **Observability**: OpenTelemetry integration for metrics and tracing
-9. **Security**: JWT authentication with multiple provider support
-10. **Concurrency Control**: Built-in concurrency limits and circuit breakers
+1. **Repository Management**: Organize and operate on repositories using tags
+1. **CLI Interface**: Intuitive command-line interface powered by Typer
+1. **MCP Server**: Machine Learning Communication Protocol server for tool integration
+1. **Terminal Management**: Advanced terminal session management with multiple adapters
+1. **Quality Control**: Integration with Crackerjack for code quality checks
+1. **Session Management**: Integration with Session-Buddy for workflow checkpoints
+1. **Observability**: OpenTelemetry integration for metrics and tracing
+1. **Security**: JWT authentication with multiple provider support
+1. **Concurrency Control**: Built-in concurrency limits and circuit breakers
 
 ## Current Status
 
 **Implementation Phase**: Phase 1 Complete (Foundation + Core Architecture)
 
 **Completed**:
+
 - Security hardening (JWT auth, Claude Code + Qwen support)
 - Async base adapter architecture
 - FastMCP-based MCP server with terminal management
@@ -197,11 +205,13 @@ pytest --cov=mahavishnu --cov-report=html
 - Test infrastructure (11 test files)
 
 **Partially Complete**:
+
 - Prefect adapter (stub only, 143 lines)
 - Agno adapter (stub only, 116 lines)
 - MCP tools (terminal tools complete, core orchestration tools missing)
 
 **Not Started**:
+
 - Actual adapter logic (Prefect, Agno need implementation)
 - LLM provider integrations for Prefect and Agno
 - Production error recovery patterns
@@ -214,11 +224,11 @@ pytest --cov=mahavishnu --cov-report=html
 To contribute to Mahavishnu:
 
 1. Fork the repository
-2. Create a virtual environment: `uv venv`
-3. Install in editable mode: `uv pip install -e .`
-4. Make your changes
-5. Run tests: `pytest`
-6. Submit a pull request
+1. Create a virtual environment: `uv venv`
+1. Install in editable mode: `uv pip install -e .`
+1. Make your changes
+1. Run tests: `pytest`
+1. Submit a pull request
 
 ## Shared Infrastructure (mcp-common)
 
@@ -231,6 +241,7 @@ The mcp-common package contains shared components used by both Mahavishnu and Se
 ## Security
 
 Mahavishnu implements comprehensive security measures:
+
 - **JWT Authentication**: Multiple provider support (Claude Code, Qwen, custom)
 - **Path Validation**: Prevents directory traversal attacks
 - **Environment-Based Secrets**: No API keys in configuration files

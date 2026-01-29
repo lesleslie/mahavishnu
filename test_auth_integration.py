@@ -15,7 +15,7 @@ from mahavishnu.core.config import MahavishnuSettings
 def test_claude_subscription_auth():
     """Test Claude Code subscription authentication functionality."""
     print("Testing Claude Code subscription authentication...")
-    
+
     # Create a test configuration with subscription auth enabled
     os.environ['MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET'] = 'a_very_long_secret_key_that_is_at_least_32_characters'
 
@@ -24,23 +24,23 @@ def test_claude_subscription_auth():
         subscription_auth_secret=os.environ.get('MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET'),
         subscription_auth_expire_minutes=60  # Set a longer expiration for testing
     )
-    
+
     # Initialize the auth handler
     auth_handler = MultiAuthHandler(config)
-    
+
     # Test that Claude Code subscription is recognized as available
     assert auth_handler.is_claude_subscribed() == True, "Claude Code subscription should be available"
     print("✅ Claude Code subscription is properly configured")
-    
+
     # Test token creation
     user_id = "test_user_123"
     token = auth_handler.create_claude_subscription_token(
         user_id=user_id,
         scopes=["read", "execute", "workflow_manage"]
     )
-    
+
     print(f"Generated Claude Code token: {token[:50]}...")
-    
+
     # Verify the token can be authenticated
     auth_header = f"Bearer {token}"
     result = auth_handler.authenticate_request(auth_header)
@@ -48,20 +48,20 @@ def test_claude_subscription_auth():
     assert result["user"] == user_id, f"Expected user {user_id}, got {result['user']}"
     assert result["method"] == AuthMethod.CLAUDE_SUBSCRIPTION, f"Expected method {AuthMethod.CLAUDE_SUBSCRIPTION}, got {result['method']}"
     assert "read" in result["scopes"], "Read scope should be present"
-    
+
     print("✅ Claude Code subscription token creation and authentication works correctly")
 
 
 def test_qwen_free_auth():
     """Test that Qwen is recognized as a free service."""
     print("\nTesting Qwen free service recognition...")
-    
+
     # Create a minimal config without any auth enabled
     config = MahavishnuSettings()
-    
+
     # Initialize the auth handler
     auth_handler = MultiAuthHandler(config)
-    
+
     # Test that Qwen is recognized as free
     assert auth_handler.is_qwen_free() == True, "Qwen should be recognized as free service"
     print("✅ Qwen is correctly recognized as a free service")
@@ -70,28 +70,28 @@ def test_qwen_free_auth():
 def test_jwt_fallback():
     """Test that JWT authentication still works as before."""
     print("\nTesting JWT authentication fallback...")
-    
+
     # Set up environment for JWT auth
     os.environ['MAHAVISHNU_AUTH_SECRET'] = 'another_very_long_secret_key_that_is_at_least_32_chars'
-    
+
     config = MahavishnuSettings(
         auth_enabled=True,
         auth_secret=os.environ.get('MAHAVISHNU_AUTH_SECRET')
     )
-    
+
     # Initialize the auth handler
     auth_handler = MultiAuthHandler(config)
-    
+
     # Create a JWT token using the JWT auth directly
     jwt_token = auth_handler.jwt_auth.create_access_token({"sub": "test_user"})
-    
+
     # Test that the JWT token can be authenticated
     auth_header = f"Bearer {jwt_token}"
     result = auth_handler.authenticate_request(auth_header)
-    
+
     assert result["user"] == "test_user", f"Expected user test_user, got {result['user']}"
     assert result["method"] == AuthMethod.JWT, f"Expected method {AuthMethod.JWT}, got {result['method']}"
-    
+
     print("✅ JWT authentication still works correctly")
 
 

@@ -9,7 +9,7 @@ from mahavishnu.cli import app
 def test_cli_list_repos():
     """Test the list-repos CLI command."""
     runner = CliRunner()
-    
+
     # Create a temporary repos.yaml file
     with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
         f.write("""
@@ -21,7 +21,7 @@ repos:
     description: "Test repository"
 """)
         temp_repos_file = f.name
-    
+
     try:
         # Mock the repos.yaml path somehow (this is tricky with the current implementation)
         # For now, we'll just test that the command exists

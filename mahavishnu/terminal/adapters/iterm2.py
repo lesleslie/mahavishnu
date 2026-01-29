@@ -3,10 +3,10 @@
 This adapter uses the iTerm2 Python API to launch and manage terminal sessions.
 Requires iTerm2 to be running with the Python API server enabled.
 """
-import asyncio
-from typing import Any, Dict, List, Optional
-import logging
+
 from datetime import datetime
+import logging
+from typing import Any
 
 from .base import TerminalAdapter
 
@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 # It connects via WebSocket to the iTerm2 application
 try:
     import iterm2
+
     ITERM2_AVAILABLE = True
 except ImportError:
     ITERM2_AVAILABLE = False
@@ -40,9 +41,9 @@ class ITerm2Adapter(TerminalAdapter):
 
     def __init__(
         self,
-        connection: Optional[Any] = None,
+        connection: Any | None = None,
         use_pooling: bool = True,
-        default_profile: Optional[str] = None,
+        default_profile: str | None = None,
     ):
         """Initialize iTerm2 adapter.
 
@@ -56,18 +57,15 @@ class ITerm2Adapter(TerminalAdapter):
             RuntimeError: If cannot connect to iTerm2
         """
         if not ITERM2_AVAILABLE:
-            raise ImportError(
-                "iterm2 package is not available. "
-                "Install with: pip install iterm2"
-            )
+            raise ImportError("iterm2 package is not available. Install with: pip install iterm2")
 
         self._connection = connection
         self._use_pooling = use_pooling
         self._default_profile = default_profile
-        self._app: Optional[Any] = None
-        self._sessions: Dict[str, Dict[str, Any]] = {}
+        self._app: Any | None = None
+        self._sessions: dict[str, dict[str, Any]] = {}
         self._connected = False
-        self._pool: Optional[Any] = None
+        self._pool: Any | None = None
         self._owns_connection: bool = False  # Track if we created the connection
 
     async def _ensure_connected(self) -> None:
@@ -118,13 +116,9 @@ class ITerm2Adapter(TerminalAdapter):
                 logger.info("Closed iTerm2 connection")
 
             self._owns_connection = False
-    
+
     async def launch_session(
-        self,
-        command: str,
-        columns: int = 80,
-        rows: int = 24,
-        **kwargs
+        self, command: str, columns: int = 80, rows: int = 24, **kwargs
     ) -> str:
         """Launch a new iTerm2 terminal session and run a command.
 
@@ -186,63 +180,59 @@ class ITerm2Adapter(TerminalAdapter):
             logger.info(f"Launched iTerm2 session {session_id} with command: {command}")
             return session_id
             return session_id
-            
+
         except Exception as e:
             logger.error(f"Failed to launch iTerm2 session: {e}")
             raise RuntimeError(f"Failed to launch iTerm2 session: {e}") from e
-    
+
     async def send_command(self, session_id: str, command: str) -> None:
         """Send a command to an iTerm2 terminal session.
-        
+
         Args:
             session_id: Session identifier
             command: Command text to send
-        
+
         Raises:
             KeyError: If session_id not found
             RuntimeError: If send fails
         """
         if session_id not in self._sessions:
             raise KeyError(f"Session {session_id} not found")
-        
+
         try:
             session_data = self._sessions[session_id]
             session = session_data["session"]
-            
+
             # Send the command text (including newline for execution)
             await session.async_send_text(command + "\n")
-            
+
             logger.debug(f"Sent command to {session_id}: {command}")
-            
+
         except Exception as e:
             logger.error(f"Failed to send command to {session_id}: {e}")
             raise RuntimeError(f"Failed to send command: {e}") from e
-    
-    async def capture_output(
-        self,
-        session_id: str,
-        lines: Optional[int] = None
-    ) -> str:
+
+    async def capture_output(self, session_id: str, lines: int | None = None) -> str:
         """Capture output from an iTerm2 terminal session.
-        
+
         Args:
             session_id: Session identifier
             lines: Optional number of lines to capture (default: all buffer)
-        
+
         Returns:
             Captured output as string
-        
+
         Raises:
             KeyError: If session_id not found
             RuntimeError: If capture fails
         """
         if session_id not in self._sessions:
             raise KeyError(f"Session {session_id} not found")
-        
+
         try:
             session_data = self._sessions[session_id]
             session = session_data["session"]
-            
+
             # Get the screen contents
             # iTerm2 provides both screen contents and full buffer
             if lines:
@@ -254,74 +244,76 @@ class ITerm2Adapter(TerminalAdapter):
                 # Get full buffer
                 screen = await session.async_get_screen_contents()
                 output = screen.contents
-            
+
             logger.debug(f"Captured {len(output.splitlines())} lines from {session_id}")
             return output
-            
+
         except Exception as e:
             logger.error(f"Failed to capture output from {session_id}: {e}")
             raise RuntimeError(f"Failed to capture output: {e}") from e
-    
+
     async def close_session(self, session_id: str) -> None:
         """Close an iTerm2 terminal session.
-        
+
         Args:
             session_id: Session identifier
-        
+
         Raises:
             KeyError: If session_id not found
             RuntimeError: If close fails
         """
         if session_id not in self._sessions:
             raise KeyError(f"Session {session_id} not found")
-        
+
         try:
             session_data = self._sessions[session_id]
             tab = session_data["tab"]
-            
+
             # Close the tab (which closes the session)
             # Note: iTerm2 doesn't have a direct "close session" method
             # We close the entire tab instead
             await tab.async_close()
-            
+
             # Remove from tracking
             del self._sessions[session_id]
-            
+
             logger.info(f"Closed iTerm2 session {session_id}")
-            
+
         except Exception as e:
             logger.error(f"Failed to close session {session_id}: {e}")
             raise RuntimeError(f"Failed to close session: {e}") from e
-    
-    async def list_sessions(self) -> List[Dict[str, Any]]:
+
+    async def list_sessions(self) -> list[dict[str, Any]]:
         """List all active iTerm2 terminal sessions.
-        
+
         Returns:
             List of session information dictionaries
-        
+
         Raises:
             RuntimeError: If listing fails
         """
         await self._ensure_connected()
-        
+
         try:
             sessions_list = []
-            
+
             for session_id, session_data in self._sessions.items():
-                sessions_list.append({
-                    "id": session_id,
-                    "command": session_data["command"],
-                    "created_at": session_data["created_at"].isoformat(),
-                    "adapter": self.adapter_name,
-                })
-            
+                sessions_list.append(
+                    {
+                        "id": session_id,
+                        "command": session_data["command"],
+                        "created_at": session_data["created_at"].isoformat(),
+                        "adapter": self.adapter_name,
+                    }
+                )
+
             logger.debug(f"Listed {len(sessions_list)} active sessions")
             return sessions_list
-            
+
         except Exception as e:
             logger.error(f"Failed to list sessions: {e}")
             raise RuntimeError(f"Failed to list sessions: {e}") from e
-    
+
     async def cleanup(self) -> None:
         """Clean up resources and release connection.
 
@@ -345,5 +337,3 @@ class ITerm2Adapter(TerminalAdapter):
 
         except Exception as e:
             logger.error(f"Error during iTerm2 adapter cleanup: {e}")
-
-

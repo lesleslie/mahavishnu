@@ -1,22 +1,27 @@
 # ADR 002: MCP-First Design with FastMCP + mcp-common
 
 ## Status
+
 **Accepted**
 
 ## Context
+
 Mahavishnu needs to expose its functionality via MCP (Machine Context Protocol) for integration with AI assistants and other tools. The MCP server is a primary interface, not an afterthought.
 
 ### Options Considered
 
 #### Option 1: REST API + MCP Wrapper
+
 - **Pros:** Familiar pattern, flexible
 - **Cons:** MCP is secondary concern, additional layer, inconsistent with ecosystem
 
 #### Option 2: Raw MCP SDK
+
 - **Pros:** Direct control, no dependencies
 - **Cons:** Reimplementing common patterns, missing best practices, high maintenance
 
 #### Option 3: FastMCP + mcp-common (CHOSEN)
+
 - **Pros:**
   - FastMCP: Declarative MCP server with async support
   - mcp-common: Proven patterns for lifecycle management, configuration, authentication
@@ -30,19 +35,20 @@ Mahavishnu needs to expose its functionality via MCP (Machine Context Protocol) 
   - Must follow mcp-common patterns
 
 ## Decision
+
 Design Mahavishnu as MCP-first using FastMCP + mcp-common patterns.
 
 ### Rationale
 
 1. **Ecosystem Alignment:** Crackerjack, Session-Buddy, and other ecosystem tools use this pattern, ensuring consistency.
 
-2. **Proven Patterns:** mcp-common provides battle-tested solutions for authentication, rate limiting, lifecycle management, and health monitoring.
+1. **Proven Patterns:** mcp-common provides battle-tested solutions for authentication, rate limiting, lifecycle management, and health monitoring.
 
-3. **Developer Experience:** Declarative tool registration with `@mcp_app.tool()` decorator is intuitive and maintainable.
+1. **Developer Experience:** Declarative tool registration with `@mcp_app.tool()` decorator is intuitive and maintainable.
 
-4. **Performance:** FastMCP with async/await provides excellent performance for concurrent operations.
+1. **Performance:** FastMCP with async/await provides excellent performance for concurrent operations.
 
-5. **Operational Excellence:** MCPServerCLIFactory provides standardized lifecycle management (start/stop/restart/status/health) out of the box.
+1. **Operational Excellence:** MCPServerCLIFactory provides standardized lifecycle management (start/stop/restart/status/health) out of the box.
 
 ### Architecture
 
@@ -232,6 +238,7 @@ def stop():
 ## Consequences
 
 ### Positive
+
 - MCP is primary interface, not an afterthought
 - Consistent with Crackerjack and ecosystem tools
 - Standardized lifecycle management (start/stop/restart/status/health)
@@ -240,11 +247,13 @@ def stop():
 - Proven patterns from mcp-common
 
 ### Negative
+
 - Additional dependencies (FastMCP, mcp-common)
 - Must follow mcp-common patterns and conventions
 - Learning curve for developers unfamiliar with the stack
 
 ### Risks
+
 - **Risk:** FastMCP or mcp-common becomes unmaintained
   **Mitigation:** Both are actively maintained; fastmcp is part of FastAPI ecosystem
 
@@ -254,18 +263,21 @@ def stop():
 ## Implementation
 
 ### Phase 1: MCP Server Foundation (Week 4, Day 1-2)
+
 - [ ] Create `MahavishnuMCPServer` class
 - [ ] Setup FastMCP with HTTP endpoint
 - [ ] Implement middleware (rate limiting, authentication)
 - [ ] Add CLI integration with MCPServerCLIFactory
 
 ### Phase 2: Tool Registration (Week 4, Day 3-4)
+
 - [ ] Implement `register_repo_tools()`
 - [ ] Implement `register_workflow_tools()`
 - [ ] Implement `register_adapter_tools()`
 - [ ] Add comprehensive tool documentation
 
 ### Phase 3: Testing (Week 4, Day 5)
+
 - [ ] Test MCP server lifecycle (start/stop/restart)
 - [ ] Test tool registration and discovery
 - [ ] Test authentication and authorization
@@ -273,6 +285,7 @@ def stop():
 - [ ] Test health probes
 
 ## References
+
 - [FastMCP Documentation](https://github.com/jlowin/fastmcp)
 - [mcp-common Documentation](https://github.com/example/mcp-common)
 - [Crackerjack MCP Server](https://github.com/example/crackerjack/tree/main/crackerjack/mcp)

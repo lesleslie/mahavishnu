@@ -9,29 +9,35 @@ Mahavishnu v1.0.0 is the first production-ready release of the global orchestrat
 ## Major Features
 
 ### Security Enhancements
+
 - JWT authentication for CLI and API access
 - Path validation to prevent directory traversal attacks
 - Secure configuration management with environment variable support
 - Secrets validation with minimum entropy requirements
 
 ### Orchestration Engine Support
+
 Orchestration Adapters:
+
 - **LlamaIndex**: Fully implemented for RAG pipelines with Ollama embeddings (production ready)
 - **Prefect**: Stub implementation (framework skeleton, not yet functional)
 - **Agno**: Stub implementation (framework skeleton, not yet functional)
 
 Deprecated (removed 2025-01-23):
+
 - ~~Airflow~~: Replaced by Prefect
 - ~~CrewAI~~: Replaced by Agno
 - ~~LangGraph~~: Replaced by Agno
 
 ### Performance & Reliability
+
 - Concurrent workflow execution with configurable limits
 - Circuit breaker pattern for resilience
 - Retry mechanisms with exponential backoff
 - Parallel repository processing
 
 ### Developer Experience
+
 - MCP (Machine Learning Communication Protocol) server
 - Quality control integration with Crackerjack
 - Session management with checkpointing via Session-Buddy
@@ -51,8 +57,8 @@ Deprecated (removed 2025-01-23):
 ## Upgrade Instructions
 
 1. Update your configuration to use environment variables for secrets
-2. Review the new CLI command syntax
-3. Update any custom adapters to use the async interface
+1. Review the new CLI command syntax
+1. Update any custom adapters to use the async interface
 
 ## Dependencies
 

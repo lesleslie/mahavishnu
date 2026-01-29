@@ -10,7 +10,7 @@ async def test_semaphore_initialization():
     """Test that semaphore is initialized with correct concurrency limit."""
     config = MahavishnuSettings(max_concurrent_workflows=5)
     app = MahavishnuApp(config)
-    
+
     # Check that the semaphore was initialized with the correct value
     assert app.semaphore._value == 5  # Note: This is implementation-specific
 

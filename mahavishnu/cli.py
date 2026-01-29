@@ -1,25 +1,28 @@
 """CLI module for Mahavishnu orchestrator."""
-from typing import Optional, NoReturn
-import typer
-import asyncio
-from .core.app import MahavishnuApp
-from .core.subscription_auth import MultiAuthHandler
 
-# Import production readiness CLI
-from .production_cli import add_production_commands
+import asyncio
+from typing import NoReturn
+
+import typer
 
 # Import backup and recovery CLI
 from .backup_cli import add_backup_commands
+from .core.app import MahavishnuApp
+from .core.subscription_auth import MultiAuthHandler
 
 # Import monitoring CLI
 from .monitoring_cli import add_monitoring_commands
 
+# Import production readiness CLI
+from .production_cli import add_production_commands
+
 app = typer.Typer()
+
 
 @app.command()
 def sweep(
     tag: str = typer.Option(..., "--tag", "-t", help="Tag to filter repositories"),
-    adapter: str = typer.Option("langgraph", "--adapter", "-a", help="Orchestrator adapter to use")
+    adapter: str = typer.Option("langgraph", "--adapter", "-a", help="Orchestrator adapter to use"),
 ):
     """
     Perform an AI sweep across repositories with a specific tag.
@@ -60,10 +63,7 @@ async def _async_sweep(tag: str, adapter: str):
 
     task = {"task": "ai-sweep", "id": f"sweep-{tag}"}
     result = await maha_app.execute_workflow_parallel(
-        task,
-        adapter,
-        repos,
-        progress_callback=progress_callback
+        task, adapter, repos, progress_callback=progress_callback
     )
 
     return result
@@ -80,6 +80,7 @@ def mcp_start(
     port: int = typer.Option(3000, "--port", "-p", help="Port to listen on"),
 ):
     """Start the MCP server to expose tools via mcp-common."""
+
     async def _start():
         from .mcp.server_core import FastMCPServer
 
@@ -101,7 +102,9 @@ def mcp_start(
         # Check if terminal management is enabled
         if maha_app.config.terminal.enabled:
             typer.echo("MCP Server: Terminal management enabled")
-            typer.echo(f"  - Max concurrent sessions: {maha_app.config.terminal.max_concurrent_sessions}")
+            typer.echo(
+                f"  - Max concurrent sessions: {maha_app.config.terminal.max_concurrent_sessions}"
+            )
             typer.echo(f"  - Adapter: {maha_app.config.terminal.adapter_preference}")
         else:
             typer.echo("MCP Server: Terminal management disabled")
@@ -140,24 +143,30 @@ def mcp_restart(
 @mcp_app.command("status")
 def mcp_status() -> None:
     """Check MCP server status."""
+
     async def _status():
         from .mcp.server_core import FastMCPServer
 
         maha_app = MahavishnuApp()
-        server = FastMCPServer(maha_app.config)
+        # FastMCPServer instantiation for side effects (initialization)
+        _ = FastMCPServer(maha_app.config)
 
         # Check if terminal management is enabled
         terminal_status = "enabled" if maha_app.config.terminal.enabled else "disabled"
         typer.echo(f"Terminal Management: {terminal_status}")
 
         if maha_app.config.terminal.enabled:
-            typer.echo(f"  Max concurrent sessions: {maha_app.config.terminal.max_concurrent_sessions}")
-            typer.echo(f"  Default dimensions: {maha_app.config.terminal.default_columns}x{maha_app.config.terminal.default_rows}")
+            typer.echo(
+                f"  Max concurrent sessions: {maha_app.config.terminal.max_concurrent_sessions}"
+            )
+            typer.echo(
+                f"  Default dimensions: {maha_app.config.terminal.default_columns}x{maha_app.config.terminal.default_rows}"
+            )
             typer.echo(f"  Adapter preference: {maha_app.config.terminal.adapter_preference}")
 
         # Note: We can't check if the server is actually running without
         # connecting to it, but we can show the configuration status
-        typer.echo(f"Server will bind to: 127.0.0.1:3000 (configurable)")
+        typer.echo("Server will bind to: 127.0.0.1:3000 (configurable)")
         typer.echo("\nTo start the server, run: mahavishnu mcp start")
 
     asyncio.run(_status())
@@ -166,8 +175,8 @@ def mcp_status() -> None:
 @mcp_app.command("health")
 def mcp_health() -> None:
     """Check MCP server health."""
+
     async def _health():
-        import socket
 
         host = "127.0.0.1"
         port = 3000
@@ -175,14 +184,13 @@ def mcp_health() -> None:
         try:
             # Try to connect to the MCP server
             reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(host, port),
-                timeout=2.0
+                asyncio.open_connection(host, port), timeout=2.0
             )
             writer.close()
             reader.close()
             typer.echo("MCP Server: ✓ Running")
             typer.echo(f"Connected to {host}:{port}")
-        except (ConnectionRefusedError, OSError, asyncio.TimeoutError):
+        except (TimeoutError, ConnectionRefusedError, OSError):
             typer.echo("MCP Server: ✗ Not running")
             typer.echo(f"Could not connect to {host}:{port}")
         except Exception as e:
@@ -193,8 +201,8 @@ def mcp_health() -> None:
 
 @app.command()
 def list_repos(
-    tag: Optional[str] = typer.Option(None, "--tag", "-t", help="Filter repositories by tag"),
-    role: Optional[str] = typer.Option(None, "--role", "-r", help="Filter repositories by role"),
+    tag: str | None = typer.Option(None, "--tag", "-t", help="Filter repositories by tag"),
+    role: str | None = typer.Option(None, "--role", "-r", help="Filter repositories by role"),
 ) -> None:
     """
     List repositories in repos.yaml.
@@ -235,7 +243,7 @@ def list_repos(
             typer.echo(f"  - {repo}")
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @app.command()
@@ -251,16 +259,14 @@ def list_roles() -> None:
     for role in roles:
         typer.echo(f"\n  {role.get('name').upper()}")
         typer.echo(f"  Description: {role.get('description')}")
-        if tags := role.get('tags'):
+        if tags := role.get("tags"):
             typer.echo(f"  Tags: {', '.join(tags)}")
-        if capabilities := role.get('capabilities'):
+        if capabilities := role.get("capabilities"):
             typer.echo(f"  Capabilities: {', '.join(capabilities)}")
 
 
 @app.command()
-def show_role(
-    role_name: str = typer.Argument(..., help="Name of the role to display")
-) -> None:
+def show_role(role_name: str = typer.Argument(..., help="Name of the role to display")) -> None:
     """
     Show detailed information about a specific role.
 
@@ -277,21 +283,21 @@ def show_role(
 
     # Display role details
     typer.echo(f"\n{role.get('name').upper()}")
-    typer.echo("=" * len(role.get('name')))
+    typer.echo("=" * len(role.get("name")))
     typer.echo(f"\nDescription: {role.get('description')}")
 
-    if tags := role.get('tags'):
-        typer.echo(f"\nTags:")
+    if tags := role.get("tags"):
+        typer.echo("\nTags:")
         for tag in tags:
             typer.echo(f"  - {tag}")
 
-    if duties := role.get('duties'):
-        typer.echo(f"\nDuties:")
+    if duties := role.get("duties"):
+        typer.echo("\nDuties:")
         for duty in duties:
             typer.echo(f"  - {duty}")
 
-    if capabilities := role.get('capabilities'):
-        typer.echo(f"\nCapabilities:")
+    if capabilities := role.get("capabilities"):
+        typer.echo("\nCapabilities:")
         for capability in capabilities:
             typer.echo(f"  - {capability}")
 
@@ -300,9 +306,9 @@ def show_role(
 
     typer.echo(f"\nRepositories with this role ({len(repos)}):")
     for repo in repos:
-        name = repo.get('name', repo.get('path'))
-        nickname = repo.get('nickname', '')
-        path = repo.get('path')
+        name = repo.get("name", repo.get("path"))
+        nickname = repo.get("nickname", "")
+        path = repo.get("path")
         typer.echo(f"  - {name}", nl=False)
         if nickname:
             typer.echo(f" (nickname: {nickname})", nl=False)
@@ -344,8 +350,7 @@ def generate_claude_token(user_id: str = typer.Argument(..., help="User ID for t
 
     # Generate Claude Code subscription token
     token = auth_handler.create_claude_subscription_token(
-        user_id=user_id,
-        scopes=["read", "execute", "workflow_manage"]
+        user_id=user_id, scopes=["read", "execute", "workflow_manage"]
     )
 
     typer.echo(f"Claude Code subscription token generated for user '{user_id}':")
@@ -369,8 +374,7 @@ def generate_codex_token(user_id: str = typer.Argument(..., help="User ID for th
 
     # Generate Codex subscription token (using same mechanism as Claude but different type)
     token = auth_handler.create_codex_subscription_token(
-        user_id=user_id,
-        scopes=["read", "execute", "workflow_manage"]
+        user_id=user_id, scopes=["read", "execute", "workflow_manage"]
     )
 
     typer.echo(f"Codex subscription token generated for user '{user_id}':")
@@ -390,6 +394,7 @@ def terminal_launch(
     rows: int = typer.Option(40, "--rows", help="Terminal height"),
 ) -> None:
     """Launch terminal sessions running a command."""
+
     async def _launch():
         maha_app = MahavishnuApp()
 
@@ -416,7 +421,7 @@ def terminal_launch(
                 typer.echo(f"  - {sid}")
         except Exception as e:
             typer.echo(f"ERROR: Failed to launch sessions: {e}")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     asyncio.run(_launch())
 
@@ -424,6 +429,7 @@ def terminal_launch(
 @terminal_app.command("list")
 def terminal_list() -> None:
     """List active terminal sessions."""
+
     async def _list():
         maha_app = MahavishnuApp()
 
@@ -442,7 +448,7 @@ def terminal_list() -> None:
                 typer.echo(f"  - {session}")
         except Exception as e:
             typer.echo(f"ERROR: Failed to list sessions: {e}")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     asyncio.run(_list())
 
@@ -453,6 +459,7 @@ def terminal_send(
     command: str = typer.Argument(..., help="Command to send"),
 ) -> None:
     """Send command to a terminal session."""
+
     async def _send():
         maha_app = MahavishnuApp()
 
@@ -469,7 +476,7 @@ def terminal_send(
             typer.echo(f"✓ Sent command to {session_id}")
         except Exception as e:
             typer.echo(f"ERROR: Failed to send command: {e}")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     asyncio.run(_send())
 
@@ -480,6 +487,7 @@ def terminal_capture(
     lines: int = typer.Option(100, "--lines", "-l", help="Number of lines to capture"),
 ) -> None:
     """Capture output from a terminal session."""
+
     async def _capture():
         maha_app = MahavishnuApp()
 
@@ -499,7 +507,7 @@ def terminal_capture(
             typer.echo(output)
         except Exception as e:
             typer.echo(f"ERROR: Failed to capture output: {e}")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     asyncio.run(_capture())
 
@@ -509,6 +517,7 @@ def terminal_close(
     session_id: str = typer.Argument(..., help="Session ID (or 'all' to close all)"),
 ) -> None:
     """Close terminal session(s)."""
+
     async def _close():
         maha_app = MahavishnuApp()
 
@@ -534,7 +543,7 @@ def terminal_close(
                 typer.echo(f"✓ Closed session {session_id}")
         except Exception as e:
             typer.echo(f"ERROR: Failed to close session(s): {e}")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     asyncio.run(_close())
 
@@ -566,6 +575,7 @@ def shell_cmd() -> None:
         Mahavishnu> errors(5)         # Show recent errors
         Mahavishnu> %repos            # List repositories
     """
+
     async def _shell():
         from .shell import MahavishnuShell
 

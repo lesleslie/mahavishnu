@@ -4,13 +4,14 @@
 **Reviewer:** Python Architecture Specialist (Crackerjack Standards)
 **Status:** ⚠️ **CONDITIONAL GO** - Critical issues must be addressed
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
 ### Overall Assessment: 6.5/10 (Needs Critical Fixes)
 
 **Strengths:**
+
 - Solid architectural foundation with PostgreSQL + pgvector consolidation
 - Good async patterns throughout (asyncpg for connection pooling)
 - Proper use of Pydantic for configuration validation
@@ -18,17 +19,18 @@
 - Strong test structure with pytest-asyncio and proper fixtures
 
 **Critical Blockers:**
+
 1. **SQL injection vulnerabilities** in proposed `PgVectorStore` implementation
-2. **Resource leaks** - missing context managers for database connections
-3. **Type safety gaps** - missing generic type parameters in several places
-4. **Circular import risks** - unclear module boundaries in memory integration
-5. **Hardcoded configuration values** violating Oneiric patterns
-6. **Incomplete error handling** in async database operations
-7. **No transaction management** for multi-step operations
+1. **Resource leaks** - missing context managers for database connections
+1. **Type safety gaps** - missing generic type parameters in several places
+1. **Circular import risks** - unclear module boundaries in memory integration
+1. **Hardcoded configuration values** violating Oneiric patterns
+1. **Incomplete error handling** in async database operations
+1. **No transaction management** for multi-step operations
 
 **Recommendation:** Address critical issues before implementation begins. The plan is architecturally sound but has production-readiness gaps that could cause security vulnerabilities, resource exhaustion, and data corruption.
 
----
+______________________________________________________________________
 
 ## 1. Critical Issues (MUST FIX)
 
@@ -220,6 +222,7 @@ async def store_memory(
 ```
 
 **Required Changes Across Codebase:**
+
 - `List[str]` → `list[str]`
 - `Dict[str, Any]` → `dict[str, Any]`
 - `Optional[str]` → `str | None`
@@ -480,7 +483,7 @@ async def store_memory(
             return memory_id
 ```
 
----
+______________________________________________________________________
 
 ## 2. Major Concerns (SHOULD FIX FOR PRODUCTION)
 
@@ -895,10 +898,11 @@ async def batch_store_memories(
 ```
 
 **Performance Impact:**
+
 - Old: 1000 documents × 50ms = 50 seconds
 - New: 1000 documents / 100 per batch × 50ms = 0.5 seconds (100x faster)
 
----
+______________________________________________________________________
 
 ## 3. Minor Issues (NICE TO HAVE)
 
@@ -1093,7 +1097,7 @@ class PgVectorStore:
             pass
 ```
 
----
+______________________________________________________________________
 
 ## 4. What's Done Well
 
@@ -1108,6 +1112,7 @@ async with await self.pg.get_connection() as conn:
 ```
 
 **Why This Works:**
+
 - No blocking I/O in async functions
 - Proper use of async context managers
 - Uses asyncpg (performant async PostgreSQL driver)
@@ -1132,6 +1137,7 @@ class MahavishnuError(Exception):
 ```
 
 **Why This Works:**
+
 - Specific exception types (ConfigurationError, ValidationError, etc.)
 - Structured error context for debugging
 - `to_dict()` method for API responses
@@ -1157,6 +1163,7 @@ class MahavishnuSettings(BaseSettings):
 ```
 
 **Why This Works:**
+
 - Type-safe configuration
 - Environment variable integration
 - Validation at initialization
@@ -1166,6 +1173,7 @@ class MahavishnuSettings(BaseSettings):
 **Strength:** Test file `test_oneiric_pgvector_adapter.py` has excellent structure.
 
 **Analysis:**
+
 - ✅ Proper pytest-asyncio usage
 - ✅ Fixture-based resource management
 - ✅ Comprehensive test coverage (CRUD operations)
@@ -1173,6 +1181,7 @@ class MahavishnuSettings(BaseSettings):
 - ✅ Proper test markers (`@pytest.mark.integration`, `@pytest.mark.asyncio`)
 
 **Example Good Pattern:**
+
 ```python
 # GOOD - Proper fixture with cleanup
 @pytest.fixture
@@ -1187,11 +1196,12 @@ async def adapter(self):
 ### 4.5 Security Consciousness
 
 **Strength:** Plan includes security considerations:
+
 - Secrets in environment variables only
 - Path traversal validation (already in `core/app.py`)
 - SQL injection prevention (needs fixes as documented)
 
----
+______________________________________________________________________
 
 ## 5. Type Error Fixes in test_oneiric_pgvector_adapter.py
 
@@ -1199,20 +1209,23 @@ async def adapter(self):
 
 ```bash
 $ python -m pyright tests/integration/test_oneiric_pgvector_adapter.py
-0 errors, 0 warnings, 0 informations
+0 errors, 0 warnings, 0 information
 ```
 
 **Why This File Passes Type Checking:**
 
 1. **Proper Import Statements:**
+
    ```python
    from oneiric.adapters.vector.pgvector import PgvectorAdapter, PgvectorSettings
    from oneiric.adapters.vector.common import VectorDocument, VectorSearchResult
    ```
+
    - All imports are type-annotated in Oneiric package
    - No dynamic imports
 
-2. **Correct Type Hints:**
+1. **Correct Type Hints:**
+
    ```python
    async def adapter(self) -> PgvectorAdapter:  # Return type specified
        settings = PgvectorSettings(...)  # Type constructor
@@ -1220,14 +1233,16 @@ $ python -m pyright tests/integration/test_oneiric_pgvector_adapter.py
        yield adapter
    ```
 
-3. **Proper Async Fixture:**
+1. **Proper Async Fixture:**
+
    ```python
    @pytest.fixture
    async def adapter(self):  # Async fixture properly typed
        ...
    ```
 
-4. **Type-Safe Assertions:**
+1. **Type-Safe Assertions:**
+
    ```python
    assert adapter is not None  # Type narrowing
    health = await adapter.health()
@@ -1236,7 +1251,7 @@ $ python -m pyright tests/integration/test_oneiric_pgvector_adapter.py
 
 **Recommendation:** This test file is production-ready from a type-safety perspective. Use it as a template for other test files.
 
----
+______________________________________________________________________
 
 ## 6. Specific Code Recommendations
 
@@ -1923,7 +1938,7 @@ class MahavishnuMemoryIntegration:
             logger.info("PostgreSQL connection closed")
 ```
 
----
+______________________________________________________________________
 
 ## 7. Performance Considerations
 
@@ -1932,6 +1947,7 @@ class MahavishnuMemoryIntegration:
 **Issue:** Plan uses pool_size=50, max_overflow=100.
 
 **Analysis:**
+
 - For 10 concurrent terminals × 5 connections each = 50 connections
 - Max overflow allows bursts up to 150 connections
 - PostgreSQL default max_connections = 100
@@ -2008,6 +2024,7 @@ async def batch_generate_embeddings(
 **Issue:** Plan uses ivfflat with lists=100.
 
 **Analysis:** IVFFlat index performance depends on:
+
 - `lists = sqrt(num_rows)` for optimal performance
 - 100 is too small for large datasets
 
@@ -2030,7 +2047,7 @@ ON memories USING hnsw (embedding vector_cosine_ops)
 WITH (m = 16);  -- HNSW parameters
 ```
 
----
+______________________________________________________________________
 
 ## 8. Security Checklist
 
@@ -2061,13 +2078,14 @@ WITH (m = 16);  -- HNSW parameters
 - ✅ Subscription auth support already in codebase
 - ✅ Field validators enforce secret requirements
 
----
+______________________________________________________________________
 
 ## 9. Testing Strategy
 
 ### 9.1 Required Test Coverage
 
 **Unit Tests (>80% coverage):**
+
 - ✅ `PostgreSQLConnection` initialization, health checks, resource cleanup
 - ✅ `PgVectorStore` CRUD operations, vector search, batch operations
 - ✅ `MahavishnuMemoryIntegration` lazy initialization, error handling
@@ -2075,12 +2093,14 @@ WITH (m = 16);  -- HNSW parameters
 - ✅ Error handling (all exception types)
 
 **Integration Tests:**
+
 - ✅ Already exists: `test_oneiric_pgvector_adapter.py`
 - ✅ Add: End-to-end workflow with PostgreSQL
 - ✅ Add: Concurrent operations test
 - ✅ Add: Transaction rollback test
 
 **Property-Based Tests (Hypothesis):**
+
 ```python
 @pytest.mark.property
 @given(
@@ -2115,7 +2135,7 @@ async def db_connection():
     await conn.close()
 ```
 
----
+______________________________________________________________________
 
 ## 10. Overall Assessment
 
@@ -2136,99 +2156,111 @@ async def db_connection():
 **⚠️ CONDITIONAL GO** - Address critical issues before implementation
 
 **Required Actions (Before Implementation):**
+
 1. ✅ Fix SQL injection vulnerabilities (section 1.1)
-2. ✅ Implement proper context managers (section 1.2)
-3. ✅ Fix type hints for Python 3.13+ (section 1.3)
-4. ✅ Prevent circular imports with lazy loading (section 1.4)
-5. ✅ Use Pydantic for configuration (section 1.5)
-6. ✅ Add transaction management (section 1.6)
+1. ✅ Implement proper context managers (section 1.2)
+1. ✅ Fix type hints for Python 3.13+ (section 1.3)
+1. ✅ Prevent circular imports with lazy loading (section 1.4)
+1. ✅ Use Pydantic for configuration (section 1.5)
+1. ✅ Add transaction management (section 1.6)
 
 **Recommended Actions (During Implementation):**
+
 1. Add health monitoring (section 2.2)
-2. Implement batch operations (section 2.4)
-3. Add comprehensive error handling (section 2.1)
-4. Complete migration rollback strategy (section 2.3)
+1. Implement batch operations (section 2.4)
+1. Add comprehensive error handling (section 2.1)
+1. Complete migration rollback strategy (section 2.3)
 
 **Nice to Have (Post-Implementation):**
-1. Add OpenTelemetry metrics (section 3.2)
-2. Implement property-based tests (section 3.3)
-3. Add connection pool exhaustion prevention (section 3.4)
 
----
+1. Add OpenTelemetry metrics (section 3.2)
+1. Implement property-based tests (section 3.3)
+1. Add connection pool exhaustion prevention (section 3.4)
+
+______________________________________________________________________
 
 ## 11. Implementation Priority
 
 ### Phase 1: Critical Fixes (Week 1)
+
 - Fix all 6 critical issues from section 1
 - Review and approve fixed code
 - Update MEMORY_IMPLEMENTATION_PLAN_V2.md with fixes
 
 ### Phase 2: Foundation (Week 1-2)
+
 - Implement `PostgreSQLConnection` with health monitoring
 - Implement `PgVectorStore` with batch operations
 - Add `PostgreSQLSettings` to `MahavishnuSettings`
 - Write unit tests for all modules
 
 ### Phase 3: Integration (Week 2-3)
+
 - Implement `MahavishnuMemoryIntegration` with lazy loading
 - Connect to LlamaIndex adapter
 - Add error handling and logging
 - Write integration tests
 
 ### Phase 4: Testing & Documentation (Week 3-4)
+
 - Achieve >80% test coverage
 - Add property-based tests
 - Performance benchmarking
 - Update documentation
 
 ### Phase 5: Production Readiness (Week 4-5)
+
 - Security audit
 - Load testing
 - Backup/restore testing
 - Deployment documentation
 
----
+______________________________________________________________________
 
 ## 12. Recommendations
 
 ### For Immediate Action
+
 1. **Stop**: Do not implement current plan as-is
-2. **Fix**: Apply all critical fixes from section 1
-3. **Review**: Re-review fixed code before implementation
-4. **Test**: Write comprehensive tests before deployment
+1. **Fix**: Apply all critical fixes from section 1
+1. **Review**: Re-review fixed code before implementation
+1. **Test**: Write comprehensive tests before deployment
 
 ### For Long-Term Success
-1. Establish code review process with security focus
-2. Add pre-commit hooks for type checking (mypy/pyright)
-3. Implement continuous integration with quality gates
-4. Document runbooks for common operational issues
-5. Add performance monitoring dashboards
 
----
+1. Establish code review process with security focus
+1. Add pre-commit hooks for type checking (mypy/pyright)
+1. Implement continuous integration with quality gates
+1. Document runbooks for common operational issues
+1. Add performance monitoring dashboards
+
+______________________________________________________________________
 
 ## Conclusion
 
 The Mahavishnu memory implementation plan v2.0 has a **solid architectural foundation** but requires **critical fixes** before implementation. The main concerns are:
 
 1. **SQL injection vulnerabilities** (security risk)
-2. **Resource leaks** (operational risk)
-3. **Type safety gaps** (maintainability risk)
-4. **Incomplete error handling** (reliability risk)
+1. **Resource leaks** (operational risk)
+1. **Type safety gaps** (maintainability risk)
+1. **Incomplete error handling** (reliability risk)
 
 Once these issues are addressed, the plan is production-ready with excellent async patterns, strong error hierarchy, and comprehensive test structure.
 
 **Final Recommendation:**
+
 - **Status:** ⚠️ CONDITIONAL GO
 - **Timeline:** 4-5 weeks (realistic with fixes)
 - **Confidence:** 85% (after applying critical fixes)
 
 **Next Steps:**
-1. Apply all fixes from section 1 (Critical Issues)
-2. Re-review fixed code
-3. Begin implementation with Phase 1
-4. Continuous testing and validation
 
----
+1. Apply all fixes from section 1 (Critical Issues)
+1. Re-review fixed code
+1. Begin implementation with Phase 1
+1. Continuous testing and validation
+
+______________________________________________________________________
 
 **Review completed by:** Python Architecture Specialist (Crackerjack Standards)
 **Review date:** 2025-01-24

@@ -12,6 +12,6 @@ Example:
 """
 
 from .adapter import MahavishnuShell
-from .formatters import WorkflowFormatter, LogFormatter, RepoFormatter
+from .formatters import LogFormatter, RepoFormatter, WorkflowFormatter
 
 __all__ = ["MahavishnuShell", "WorkflowFormatter", "LogFormatter", "RepoFormatter"]

@@ -3,7 +3,7 @@
 import asyncio
 import json
 from logging import getLogger
-from typing import Any, Dict
+from typing import Any
 
 logger = getLogger(__name__)
 
@@ -32,7 +32,7 @@ class StdioMCPClient:
         self.args = args
         self.process: asyncio.subprocess.Process | None = None
         self._request_id = 0
-        self._pending_requests: Dict[int, asyncio.Future] = {}
+        self._pending_requests: dict[int, asyncio.Future] = {}
 
     async def start(self) -> None:
         """Start the MCP server process.
@@ -62,7 +62,7 @@ class StdioMCPClient:
             self.process.terminate()
             try:
                 await asyncio.wait_for(self.process.wait(), timeout=5.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 self.process.kill()
                 await self.process.wait()
             logger.info("Stopped MCP server process")
@@ -94,7 +94,7 @@ class StdioMCPClient:
         except Exception as e:
             logger.error(f"Error reading stdout: {e}")
 
-    async def call_tool(self, tool_name: str, params: Dict[str, Any]) -> Any:
+    async def call_tool(self, tool_name: str, params: dict[str, Any]) -> Any:
         """Call an MCP tool on the server.
 
         Args:
@@ -121,10 +121,7 @@ class StdioMCPClient:
             "jsonrpc": "2.0",
             "id": request_id,
             "method": "tools/call",
-            "params": {
-                "name": tool_name,
-                "arguments": params
-            }
+            "params": {"name": tool_name, "arguments": params},
         }
 
         # Send request
@@ -144,9 +141,9 @@ class StdioMCPClient:
 
             return response["result"]
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             del self._pending_requests[request_id]
-            raise RuntimeError(f"Timeout calling MCP tool {tool_name}")
+            raise RuntimeError(f"Timeout calling MCP tool {tool_name}") from None
         except Exception as e:
             del self._pending_requests[request_id]
             raise RuntimeError(f"Failed to call MCP tool {tool_name}: {e}") from e
@@ -168,10 +165,7 @@ class McpretentiousClient:
 
     def __init__(self):
         """Initialize mcpretentious client."""
-        self._client = StdioMCPClient(
-            "uvx",
-            ["--from", "mcpretentious", "mcpretentious"]
-        )
+        self._client = StdioMCPClient("uvx", ["--from", "mcpretentious", "mcpretentious"])
 
     async def start(self) -> None:
         """Start the mcpretentious server."""
@@ -192,16 +186,11 @@ class McpretentiousClient:
             Terminal ID
         """
         result = await self._client.call_tool(
-            "mcpretentious-open",
-            {"columns": columns, "rows": rows}
+            "mcpretentious-open", {"columns": columns, "rows": rows}
         )
         return result["terminal_id"]
 
-    async def type_text(
-        self,
-        terminal_id: str,
-        *input_parts: str
-    ) -> None:
+    async def type_text(self, terminal_id: str, *input_parts: str) -> None:
         """Type text into a terminal.
 
         Args:
@@ -209,18 +198,10 @@ class McpretentiousClient:
             *input_parts: Text parts to type (can include special keys like "enter")
         """
         await self._client.call_tool(
-            "mcpretentious-type",
-            {
-                "terminal_id": terminal_id,
-                "input": list(input_parts)
-            }
+            "mcpretentious-type", {"terminal_id": terminal_id, "input": list(input_parts)}
         )
 
-    async def read_text(
-        self,
-        terminal_id: str,
-        lines: int | None = None
-    ) -> str:
+    async def read_text(self, terminal_id: str, lines: int | None = None) -> str:
         """Read text from a terminal.
 
         Args:
@@ -230,14 +211,11 @@ class McpretentiousClient:
         Returns:
             Terminal output as string
         """
-        params: Dict[str, Any] = {"terminal_id": terminal_id}
+        params: dict[str, Any] = {"terminal_id": terminal_id}
         if lines is not None:
             params["limit_lines"] = lines
 
-        result = await self._client.call_tool(
-            "mcpretentious-read",
-            params
-        )
+        result = await self._client.call_tool("mcpretentious-read", params)
         return result["output"]
 
     async def close_terminal(self, terminal_id: str) -> None:
@@ -246,19 +224,13 @@ class McpretentiousClient:
         Args:
             terminal_id: Terminal session ID to close
         """
-        await self._client.call_tool(
-            "mcpretentious-close",
-            {"terminal_id": terminal_id}
-        )
+        await self._client.call_tool("mcpretentious-close", {"terminal_id": terminal_id})
 
-    async def list_terminals(self) -> list[Dict[str, Any]]:
+    async def list_terminals(self) -> list[dict[str, Any]]:
         """List all active terminals.
 
         Returns:
             List of terminal information
         """
-        result = await self._client.call_tool(
-            "mcpretentious-list",
-            {}
-        )
+        result = await self._client.call_tool("mcpretentious-list", {})
         return result.get("terminals", [])

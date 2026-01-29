@@ -32,16 +32,19 @@ adapters:
 ## Implementation Status
 
 ### LlamaIndex Adapter
+
 - **Status**: Fully implemented (348 lines)
 - **Capabilities**: Real Ollama integration, vector embeddings, semantic search
 - **Ready for production use**
 
 ### Prefect Adapter
+
 - **Status**: Stub implementation (143 lines)
 - **Missing**: LLM integration, flow construction, state management, checkpointing
 - **Estimated**: 2 weeks to complete
 
 ### Agno Adapter
+
 - **Status**: Stub implementation (116 lines)
 - **Missing**: Agent lifecycle, tool integration, multi-LLM routing
 - **Estimated**: 2-3 weeks to complete (waiting for Agno v2.0 stable release)
@@ -57,8 +60,8 @@ adapters:
 ## Next Steps
 
 1. Complete Prefect adapter with flow construction and state management
-2. Complete Agno adapter with agent lifecycle and tool integration
-3. Add comprehensive error handling to both adapters
-4. Implement progress tracking and streaming
+1. Complete Agno adapter with agent lifecycle and tool integration
+1. Add comprehensive error handling to both adapters
+1. Implement progress tracking and streaming
 
 See [UNIFIED_IMPLEMENTATION_STATUS.md](../../UNIFIED_IMPLEMENTATION_STATUS.md) for detailed progress tracking.

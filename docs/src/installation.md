@@ -50,3 +50,4 @@ After installation, you can verify that Mahavishnu is properly installed:
 ```bash
 mahavishnu --help
 ``
+```

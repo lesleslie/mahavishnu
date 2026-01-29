@@ -1,13 +1,14 @@
 # Native macOS Memory Systems: GCS + Homebrew (No Docker/K8s)
 
 **Requirements**:
+
 - ✅ Google Cloud Storage for backup/sync
 - ✅ Oneiric storage adapter (or direct GCS integration)
 - ✅ No Docker or Kubernetes
 - ✅ Homebrew-installable when possible
 - ✅ Native Python packages preferred
 
----
+______________________________________________________________________
 
 ## 🎯 Top Recommendation: pgvector + PostgreSQL + GCS Backup
 
@@ -22,7 +23,7 @@
 - ✅ **Production-proven**: Used by Google Cloud SQL
 - ✅ **Oneiric-compatible**: Can use Oneiric's storage patterns
 
----
+______________________________________________________________________
 
 ## 📦 Installation: pgvector on macOS
 
@@ -85,10 +86,11 @@ USING ivfflat (embedding vector_cosine_ops);
 ```
 
 **Sources**:
+
 - [macOS pgvector installation guide](https://blog.csdn.net/chenji_big/article/details/152044409)
 - [pgvector on StackOverflow](https://stackoverflow.com/questions/75664004/install-pgv-ext-on-mac)
 
----
+______________________________________________________________________
 
 ## ☁️ Google Cloud Storage Setup
 
@@ -118,7 +120,7 @@ gsutil mb gs://your-memory-backup-bucket
 gsutil versioning set on gs://your-memory-backup-bucket
 ```
 
----
+______________________________________________________________________
 
 ## 🐍 Python Implementation: pgvector + GCS
 
@@ -311,11 +313,12 @@ rclone sync /path/to/postgres/backups gcs:your-bucket/postgres-backups
 ```
 
 **Sources**:
+
 - [PostgreSQL logical backup to GCS](https://blog.csdn.net/gitblog_01026/article/details/152007541)
 - [Postgres to GCS backup script](https://github.com/diogopms/postgres-gcs-backup)
 - [Simple Backups: Postgres to GCS](https://simplebackups.com/blog/how-to-backup-postgresql-to-google-cloud-storage-gcs)
 
----
+______________________________________________________________________
 
 ## 🚀 Alternative: Weaviate (Homebrew Available)
 
@@ -352,7 +355,7 @@ s3 = boto3.client('s3')  # GCS is S3-compatible
 
 **Source**: [Weaviate Cloud Storage docs](https://weaviate.io/documentation/cloud-storage)
 
----
+______________________________________________________________________
 
 ## 🔧 Alternative: LanceDB + GCS (Embedded)
 
@@ -384,28 +387,31 @@ db.backup.to_s3(
 ```
 
 **Benefits**:
+
 - ✅ **Embedded**: No separate database server
 - ✅ **Fast**: Local queries on SSD
 - ✅ **Simple**: Python-only, no configuration
 
----
+______________________________________________________________________
 
 ## 🤔 What About AgentDB?
 
 **Bad news**: AgentDB is **not available via Homebrew**
 
 AgentDB is distributed as:
+
 - **npm package**: `npm install agentdb`
 - **MCP server**: `claude mcp add agentdb npx agentdb@latest`
 
 ### Why AgentDB Might Not Fit Your Needs
 
 1. **Not Homebrew-installable**: Requires npm/node
-2. **Newer project**: Less mature than pgvector/Weaviate
-3. **Agent-focused**: Optimized for AI agents, not general memory
-4. **Limited GCS integration**: Less documentation on cloud backup
+1. **Newer project**: Less mature than pgvector/Weaviate
+1. **Agent-focused**: Optimized for AI agents, not general memory
+1. **Limited GCS integration**: Less documentation on cloud backup
 
 **Alternative**: If you really want AgentDB features:
+
 ```bash
 # Install via npm (not Homebrew)
 npm install -g agentdb
@@ -415,11 +421,12 @@ pip install agentdb-sdk
 ```
 
 **Sources**:
+
 - [AgentDB Official Site](https://agentdb.ruv.io/)
 - [AgentDB npm package](https://www.npmjs.com/package/agentdb)
 - [AgentDB PyPI](https://pypi.org/project/agentDB/)
 
----
+______________________________________________________________________
 
 ## 📊 Comparison Table (Native macOS + GCS)
 
@@ -430,7 +437,7 @@ pip install agentdb-sdk
 | **LanceDB** | ✅ pip | ✅ | ✅ S3 SDK | ⭐⭐⭐⭐ Newer |
 | **AgentDB** | ❌ npm | ✅ | ⚠️ Limited | ⭐⭐ New |
 
----
+______________________________________________________________________
 
 ## 🎯 Recommended Architecture
 
@@ -453,7 +460,7 @@ pip install agentdb-sdk
 └─────────────────────────────────────────────────┘
 ```
 
----
+______________________________________________________________________
 
 ## 📝 Auto-Backup Setup (macOS Launchd)
 
@@ -512,7 +519,7 @@ EOF
 launchctl load ~/Library/LaunchAgents/com.memory.backup.plist
 ```
 
----
+______________________________________________________________________
 
 ## 🔗 Oneiric Integration
 
@@ -538,18 +545,18 @@ storage:
     user: "postgres"
 ```
 
----
+______________________________________________________________________
 
 ## 💡 Why This is Better Than AgentDB
 
 1. **Homebrew available**: No npm/node dependency
-2. **Mature ecosystem**: PostgreSQL has 30+ years of production use
-3. **Better GCS tools**: pg_dump + gsutil are battle-tested
-4. **PostgreSQL + pgvector** = Used by Google Cloud SQL
-5. **No Docker required**: Pure Python + Homebrew
-6. **Oneiric-compatible**: Can leverage Oneiric storage patterns
+1. **Mature ecosystem**: PostgreSQL has 30+ years of production use
+1. **Better GCS tools**: pg_dump + gsutil are battle-tested
+1. **PostgreSQL + pgvector** = Used by Google Cloud SQL
+1. **No Docker required**: Pure Python + Homebrew
+1. **Oneiric-compatible**: Can leverage Oneiric storage patterns
 
----
+______________________________________________________________________
 
 ## 🚀 Quick Start (5 Minutes)
 
@@ -573,40 +580,46 @@ python backup_memory.py  # Script from above
 # Follow launchd setup above
 ```
 
----
+______________________________________________________________________
 
 ## 📚 Complete Source List
 
 ### pgvector + GCS
+
 - [PostgreSQL pgvector Setup Guide](https://thedbadmin.com/blog/postgresql-pgvector-setup-guide)
 - [Install pgvector on macOS](https://stackoverflow.com/questions/75664004/install-pgv-ext-on-mac)
 - [Postgres to GCS backup guide](https://blog.csdn.net/gitblog_01026/article/details/152007541)
 - [Postgres GCS backup tool](https://github.com/diogopms/postgres-gcs-backup)
 
 ### Weaviate
+
 - [Weaviate Homepage](https://weaviate.io/)
 - [Weaviate Cloud Storage](https://weaviate.io/documentation/cloud-storage)
 
 ### LanceDB
+
 - [LanceDB Official Site](https://lancedb.com/)
 - [Install Vector with Homebrew](https://vector.dev/docs/setup/installation/package-managers/homebrew/)
 
 ### GCS Tools
+
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs)
 - [rclone for GCS sync](https://rclone.org/)
 
 ### AgentDB Information
+
 - [AgentDB Official Site](https://agentdb.ruv.io/)
 - [AgentDB npm package](https://www.npmjs.com/package/agentdb)
 - [AgentDB integration discussion](https://github.com/ruvnet/claude-flow/issues/829)
 
----
+______________________________________________________________________
 
 ## Summary
 
 **Recommended Stack**: PostgreSQL + pgvector + GCS Backup
 
 **Why**:
+
 - ✅ 100% native macOS (Homebrew + Python)
 - ✅ No Docker or Kubernetes required
 - ✅ GCS backup with pg_dump + gsutil
@@ -615,6 +628,7 @@ python backup_memory.py  # Script from above
 - ✅ Mature ecosystem (30+ years of PostgreSQL)
 
 **Cost**:
+
 - **Local**: Free (self-hosted)
 - **GCS storage**: ~$0.026/GB/month (standard)
   - 100GB = ~$2.60/month

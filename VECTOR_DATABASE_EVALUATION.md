@@ -4,7 +4,7 @@
 **Context:** Mahavishnu multi-engine orchestration platform
 **Status:** Architectural decision document
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
@@ -18,24 +18,27 @@ This document evaluates three vector database options for Mahavishnu's RAG and o
 
 **Key Finding:** OpenSearch emerges as a compelling option for Mahavishnu due to **hybrid code search** + **log analytics** + **existing OpenTelemetry stack**.
 
----
+______________________________________________________________________
 
 ## Current State Analysis
 
 ### Existing Architecture
 
 **LlamaIndex Adapter** (`mahavishnu/engines/llamaindex_adapter.py:148`):
+
 - Uses **in-memory** `VectorStoreIndex` (lost on restart)
 - No persistent vector storage
 - Ollama embeddings (`nomic-embed-text` model)
 - Pure semantic search (no keyword/hybrid)
 
 **Observability Stack** (`pyproject.toml:32-36`):
+
 - OpenTelemetry API, SDK, instrumentation
 - OTLP grpc exporter
 - Struct logging with structlog
 
 **Documented Decision** (`docs/VECTOR_DATABASE_RECOMMENDATIONS.md`):
+
 - Recommends Oneiric's pgvector adapter
 - Leverages existing PostgreSQL infrastructure
 - Production-ready, well-maintained
@@ -43,11 +46,11 @@ This document evaluates three vector database options for Mahavishnu's RAG and o
 ### Limitations of Current Approach
 
 1. **In-memory storage** - Indices lost on restart
-2. **Pure semantic search** - No exact function/class name matching
-3. **No log analytics** - Observability data exported but not analyzed
-4. **No error pattern detection** - Manual log review required
+1. **Pure semantic search** - No exact function/class name matching
+1. **No log analytics** - Observability data exported but not analyzed
+1. **No error pattern detection** - Manual log review required
 
----
+______________________________________________________________________
 
 ## Technology Comparison
 
@@ -81,6 +84,7 @@ results = await adapter.search(
 ```
 
 **Pros:**
+
 - ✅ Zero additional infrastructure (reuse PostgreSQL)
 - ✅ SQL integration with vector search
 - ✅ ACID compliance for data integrity
@@ -90,18 +94,20 @@ results = await adapter.search(
 - ✅ Lower operational overhead
 
 **Cons:**
+
 - ❌ Vector search performance lower than dedicated solutions
 - ❌ No keyword/full-text search (can add pg_trgm but limited)
 - ❌ No log analytics capabilities
 - ❌ No ML-powered pattern detection
 
 **Best For:**
+
 - MVP validation and prototyping
 - Projects with existing PostgreSQL investment
 - Simplicity-focused architecture
 - Scale < 1M vectors
 
----
+______________________________________________________________________
 
 ### 2. OpenSearch
 
@@ -233,6 +239,7 @@ POST /_plugins/_ml/agents/OQutgJYBAc35E4_KvI1q/_execute
 ```
 
 **Response:**
+
 ```json
 {
   "logInsights": [
@@ -256,6 +263,7 @@ POST /_plugins/_ml/agents/OQutgJYBAc35E4_KvI1q/_execute
 ```
 
 **Pros:**
+
 - ✅ **Hybrid search** - Semantic (k-NN) + Keyword (BM25) in one query
 - ✅ **Log analytics** - Native OpenTelemetry support, Data Prepper pipelines
 - ✅ **ML Commons** - Automated error pattern detection, trace correlation
@@ -266,18 +274,20 @@ POST /_plugins/_ml/agents/OQutgJYBAc35E4_KvI1q/_execute
 - ✅ **Observability** - Dashboards, alerting, anomaly detection
 
 **Cons:**
+
 - ❌ Additional infrastructure (Docker/Kubernetes deployment)
 - ❌ Higher resource footprint (Java-based)
 - ❌ More complex to operate than PostgreSQL
 - ❌ Learning curve for OpenSearch-specific concepts
 
 **Best For:**
+
 - Projects needing both code search AND log analytics
 - Existing OpenTelemetry observability stack
 - Multi-repo orchestration with trace correlation
 - Production environments needing automated error detection
 
----
+______________________________________________________________________
 
 ### 3. Weaviate
 
@@ -327,6 +337,7 @@ result = client.query.get("CodeSnippet", ["content", "file_path"]) \
 ```
 
 **Pros:**
+
 - ✅ **Purpose-built for AI** - Optimized for vector search workloads
 - ✅ **Native Ollama integration** - Embeddings out-of-the-box
 - ✅ **Hybrid search** - Semantic + BM25 with tunable alpha
@@ -336,6 +347,7 @@ result = client.query.get("CodeSnippet", ["content", "file_path"]) \
 - ✅ **Great LlamaIndex integration** - `llama-index-vector-stores-weaviate`
 
 **Cons:**
+
 - ❌ Another infrastructure service (separate from PostgreSQL)
 - ❌ No log analytics capabilities
 - ❌ No trace correlation or observability features
@@ -343,12 +355,13 @@ result = client.query.get("CodeSnippet", ["content", "file_path"]) \
 - ❌ Not using existing PostgreSQL investment (if present)
 
 **Best For:**
+
 - Projects where vector search is the core product
 - Multi-modal RAG (images, audio, video alongside code)
 - Sub-100ms query latency requirements at scale
 - Pure AI/ML applications without observability needs
 
----
+______________________________________________________________________
 
 ## Decision Matrix
 
@@ -370,34 +383,38 @@ result = client.query.get("CodeSnippet", ["content", "file_path"]) \
 | **Operational Overhead** | Low | Medium | Medium |
 | **Learning Curve** | Low (SQL) | Medium (OpenSearch DSL) | Medium (GraphQL) |
 | **Scalability** | Vertical only | Horizontal (distributed) | Horizontal (distributed) |
-| **Query Performance** | Good at <1M vectors | Good at any scale | Excellent at any scale |
+| **Query Performance** | Good at \<1M vectors | Good at any scale | Excellent at any scale |
 | **Multi-modal Search** | ❌ No | ❌ Limited | ✅ Excellent |
 | **Type Safety** | ✅ Pydantic (Oneiric) | ⚠️ Dict-based | ✅ GraphQL |
 
----
+______________________________________________________________________
 
 ## Use Case Analysis for Mahavishnu
 
 ### Primary Use Cases
 
 1. **Code Search Across Repositories**
+
    - Semantic: Find "user login" when searching for "authentication"
    - Keyword: Find exact function names like `authenticate_user()`
    - Filter by: repository, language, tags, last modified
    - **Winner:** OpenSearch (hybrid search) or Weaviate (hybrid with alpha)
 
-2. **Workflow Orchestration**
+1. **Workflow Orchestration**
+
    - Execute workflows across multiple repositories
    - Track execution status, errors, performance
    - **Winner:** OpenSearch (trace correlation + log analytics)
 
-3. **Observability & Error Detection**
+1. **Observability & Error Detection**
+
    - Parse workflow logs
    - Detect error patterns automatically
    - Correlate errors with traces
    - **Winner:** OpenSearch (ML Commons + Data Prepper)
 
-4. **RAG Pipelines**
+1. **RAG Pipelines**
+
    - Ingest code repositories
    - Create embeddings with Ollama
    - Query knowledge bases
@@ -406,13 +423,14 @@ result = client.query.get("CodeSnippet", ["content", "file_path"]) \
 ### The "Mahavishnu Pattern"
 
 Mahavishnu is a **workflow orchestrator** that:
+
 1. **Ingests code** from multiple repos → needs **code search** (hybrid semantic+keyword)
-2. **Executes workflows** across repos → needs **log analytics** (pattern detection, trace correlation)
-3. **Uses OpenTelemetry** for observability → needs **trace storage** (OpenSearch native support)
+1. **Executes workflows** across repos → needs **log analytics** (pattern detection, trace correlation)
+1. **Uses OpenTelemetry** for observability → needs **trace storage** (OpenSearch native support)
 
 **Key Insight:** One platform (OpenSearch) solves **all three problems** vs. separate platforms for each.
 
----
+______________________________________________________________________
 
 ## Architecture Proposals
 
@@ -486,13 +504,14 @@ vector_db:
 ```
 
 **Migration Path:**
+
 ```python
 # Later, swap to OpenSearch with minimal code changes
 # from oneiric.adapters.vector.pgvector import PgvectorAdapter
 from llama_index.vector_stores.opensearch import OpensearchVectorStore
 ```
 
----
+______________________________________________________________________
 
 ### Option 2: OpenSearch (Unified Observability)
 
@@ -782,7 +801,7 @@ volumes:
   opensearch-data:
 ```
 
----
+______________________________________________________________________
 
 ## Justification Framework
 
@@ -834,28 +853,31 @@ Start
 
 **Winner: OpenSearch (88/90)** for Mahavishnu's specific use case
 
----
+______________________________________________________________________
 
 ## Recommendation
 
 ### For Mahavishnu specifically:
 
 **Phase 1: Start with pgvector** (2-4 weeks)
+
 - Validate RAG pipelines with persistent storage
 - Use Oneiric's production-ready adapter
 - Minimal operational overhead
 - Prove value before investing in OpenSearch
 
 **Phase 2: Migrate to OpenSearch** (1-2 months)
+
 - After validating RAG effectiveness
 - Add log analytics and error pattern detection
 - Implement hybrid code search
 - Unified observability platform
 
 **Rationale:**
+
 1. **pgvector for quick wins** - Leverage Oneiric adapter, move fast
-2. **OpenSearch for production** - Unified observability, hybrid search, ML-powered insights
-3. **LlamaIndex abstraction** - Same `VectorStoreIndex` interface, swap backends easily
+1. **OpenSearch for production** - Unified observability, hybrid search, ML-powered insights
+1. **LlamaIndex abstraction** - Same `VectorStoreIndex` interface, swap backends easily
 
 ### Migration Path
 
@@ -875,28 +897,32 @@ index = VectorStoreIndex.from_documents(
 )
 ```
 
----
+______________________________________________________________________
 
 ## Next Steps
 
 ### Immediate (This Week)
 
 1. **Install pgvector package**
+
    ```bash
    pip install 'pgvector>=0.2.0'
    pip install 'llama-index-vector-stores-postgres'
    ```
 
-2. **Create vector store wrapper** (2-3 hours)
+1. **Create vector store wrapper** (2-3 hours)
+
    - Implement `mahavishnu/core/vector_store.py`
    - Use Oneiric adapter
    - Add health checks
 
-3. **Update LlamaIndex adapter** (1-2 hours)
+1. **Update LlamaIndex adapter** (1-2 hours)
+
    - Replace in-memory `VectorStoreIndex` with persistent store
    - Test with existing repositories
 
-4. **Write integration tests** (2-3 hours)
+1. **Write integration tests** (2-3 hours)
+
    - Test CRUD operations
    - Test search with filters
    - Test persistence across restarts
@@ -904,11 +930,13 @@ index = VectorStoreIndex.from_documents(
 ### Short-term (This Month)
 
 5. **Validate RAG effectiveness**
+
    - Run ingestion on pilot repositories
    - Measure search quality
    - Get user feedback
 
-6. **Plan OpenSearch migration** (if RAG validated)
+1. **Plan OpenSearch migration** (if RAG validated)
+
    - Set up Docker Compose for local dev
    - Configure Data Prepper for OTel ingestion
    - Implement OpenSearch adapter
@@ -916,16 +944,18 @@ index = VectorStoreIndex.from_documents(
 ### Long-term (Next Quarter)
 
 7. **Deploy OpenSearch to production**
+
    - Kubernetes deployment
    - Security configuration
    - Backup and disaster recovery
 
-8. **Implement log analytics**
+1. **Implement log analytics**
+
    - ML Commons error pattern detection
    - Trace correlation across workflows
    - Dashboards for visualization
 
----
+______________________________________________________________________
 
 ## References
 
@@ -937,7 +967,7 @@ index = VectorStoreIndex.from_documents(
 - **pgvector Documentation**: https://github.com/pgvector/pgvector
 - **Weaviate Documentation**: https://weaviate.io/documentation
 
----
+______________________________________________________________________
 
 **Document Status:** Ready for review
 **Next Review Date:** 2025-02-24 or after Phase 1 completion

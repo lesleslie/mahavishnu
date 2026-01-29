@@ -208,6 +208,14 @@ line-ending = "auto"
 known-first-party = ["mahavishnu"]
 force-sort-within-sections = true
 
+# Ignore B008 (function calls in defaults) for CLI files using Typer pattern
+[tool.ruff.lint.per-file-ignores]
+"mahavishnu/cli.py" = ["B008"]
+"mahavishnu/backup_cli.py" = ["B008"]
+"mahavishnu/monitoring_cli.py" = ["B008"]
+"mahavishnu/production_cli.py" = ["B008"]
+"mahavishnu/cli/**/*.py" = ["B008"]
+
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 100
 

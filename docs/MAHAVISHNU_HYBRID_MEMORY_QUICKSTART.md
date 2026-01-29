@@ -2,18 +2,20 @@
 
 **AgentDB + pgvector + Oneiric integration for Mahavishnu**
 
----
+______________________________________________________________________
 
 ## 🎯 What We Just Did
 
 ### ✅ Created Oneiric AgentDB Adapter
 
 **Files Created/Modified**:
+
 1. `/Users/les/Projects/oneiric/oneiric/adapters/vector/agentdb.py` (NEW)
-2. `/Users/les/Projects/oneiric/oneiric/adapters/vector/__init__.py` (MODIFIED)
-3. `/Users/les/Projects/oneiric/oneiric/adapters/bootstrap.py` (MODIFIED)
+1. `/Users/les/Projects/oneiric/oneiric/adapters/vector/__init__.py` (MODIFIED)
+1. `/Users/les/Projects/oneiric/oneiric/adapters/bootstrap.py` (MODIFIED)
 
 **Adapter Features**:
+
 - ✅ Full `VectorBase` implementation
 - ✅ MCP client integration (AgentDB runs as MCP server)
 - ✅ Lifecycle hooks (`init()`, `health()`, `cleanup()`)
@@ -32,7 +34,7 @@
    - Configuration examples (dev/prod)
    - Monitoring and testing patterns
 
----
+______________________________________________________________________
 
 ## 🚀 Quick Start (5 Minutes)
 
@@ -110,7 +112,7 @@ async def test_memory():
     print(f"✅ Found: {len(results)} memories")
 ```
 
----
+______________________________________________________________________
 
 ## 🏗️ Architecture
 
@@ -133,17 +135,19 @@ Mahavishnu Orchestrator
             └─ GCS backup (pg_dump + gsutil)
 ```
 
----
+______________________________________________________________________
 
 ## 📊 Hybrid Strategy
 
 ### Hot Data (AgentDB)
+
 - **Use for**: Active agent memory, recent decisions, frequently accessed
 - **Access**: Sub-1ms latency
 - **Storage**: In-memory (configurable disk)
 - **Sync**: QUIC multi-node
 
 ### Cold Data (pgvector + GCS)
+
 - **Use for**: Long-term storage, audit trail, backups
 - **Access**: Fast (PostgreSQL) but slower than AgentDB
 - **Storage**: PostgreSQL + GCS
@@ -152,6 +156,7 @@ Mahavishnu Orchestrator
 ### Sync Patterns
 
 **Option 1: Write-Through** (Consistency over latency)
+
 ```python
 # Write to both immediately
 await asyncio.gather(
@@ -161,6 +166,7 @@ await asyncio.gather(
 ```
 
 **Option 2: Write-Back** (Latency over consistency)
+
 ```python
 # Write to AgentDB first
 await agentdb.insert(collection, [doc])
@@ -170,12 +176,13 @@ asyncio.create_task(sync_to_pgvector(collection, doc))
 ```
 
 **Option 3: Periodic** (Simple, eventual consistency)
+
 ```bash
 # Cron job every hour
 0 * * * * /usr/local/bin/sync_memory.sh
 ```
 
----
+______________________________________________________________________
 
 ## 🔧 Oneiric Integration
 
@@ -212,29 +219,32 @@ agentdb = await app.lifecycle.activate("adapter", "vector")
 results = await agentdb.search(...)
 ```
 
----
+______________________________________________________________________
 
 ## 💡 Next Steps
 
 ### Immediate
+
 1. ✅ **AgentDB adapter created** in Oneiric
-2. 📝 **Documentation created** for hybrid approach
-3. 🧪 **Test locally** with AgentDB MCP server
+1. 📝 **Documentation created** for hybrid approach
+1. 🧪 **Test locally** with AgentDB MCP server
 
 ### Implementation
+
 1. **Install AgentDB**: `npm install -g agentdb`
-2. **Start MCP server**: `agentdb mcp start`
-3. **Configure Mahavishnu**: Add AgentDB settings to `oneiric.yaml`
-4. **Test integration**: Run memory operations via Mahavishnu
-5. **Add pgvector backup**: Install PostgreSQL + pgvector for persistence
+1. **Start MCP server**: `agentdb mcp start`
+1. **Configure Mahavishnu**: Add AgentDB settings to `oneiric.yaml`
+1. **Test integration**: Run memory operations via Mahavishnu
+1. **Add pgvector backup**: Install PostgreSQL + pgvector for persistence
 
 ### Production
-1. **Set up sync strategy**: Choose write-through/write-back/periodic
-2. **Configure GCS backup**: pg_dump + gsutil automation
-3. **Add monitoring**: OpenTelemetry metrics for memory system
-4. **Test failover**: Ensure pgvector works if AgentDB is down
 
----
+1. **Set up sync strategy**: Choose write-through/write-back/periodic
+1. **Configure GCS backup**: pg_dump + gsutil automation
+1. **Add monitoring**: OpenTelemetry metrics for memory system
+1. **Test failover**: Ensure pgvector works if AgentDB is down
+
+______________________________________________________________________
 
 ## 📚 Resources
 
@@ -243,11 +253,12 @@ results = await agentdb.search(...)
 - **AgentDB Repo**: [github.com/ruvnet/claude-flow](https://github.com/ruvnet/claude-flow)
 - **AgentDB NPM**: [npmjs.com/package/agentdb](https://www.npmjs.com/package/agentdb)
 
----
+______________________________________________________________________
 
 ## ✅ Summary
 
 **What We Built**:
+
 - ✅ Oneiric AgentDB adapter (full VectorBase implementation)
 - ✅ MCP client integration
 - ✅ Lifecycle management (init, health, cleanup)
@@ -255,6 +266,7 @@ results = await agentdb.search(...)
 - ✅ Integration patterns with Mahavishnu
 
 **Why This Rocks**:
+
 - ⚡ **Sub-1ms hot data** with AgentDB
 - 💾 **Production backups** with pgvector + GCS
 - 🛠️ **Oneiric integration** (lifecycle, health checks)

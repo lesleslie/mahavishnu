@@ -5,6 +5,7 @@ Welcome to the Mahavishnu documentation. Mahavishnu is a multi-engine orchestrat
 **Current Status**: Phase 1 Complete (Foundation + Core Architecture)
 
 **Completed**:
+
 - Security hardening (JWT auth, Claude Code + Qwen support)
 - Async base adapter architecture
 - FastMCP-based MCP server with terminal management
@@ -14,11 +15,13 @@ Welcome to the Mahavishnu documentation. Mahavishnu is a multi-engine orchestrat
 - Test infrastructure (11 test files)
 
 **Partially Complete**:
+
 - Prefect adapter (stub only, 143 lines)
 - Agno adapter (stub only, 116 lines)
 - MCP tools (terminal tools complete, core orchestration tools missing)
 
 **Not Started**:
+
 - Actual adapter logic (Prefect, Agno need implementation)
 - LLM provider integrations for Prefect and Agno
 - Production error recovery patterns
@@ -79,6 +82,7 @@ Mahavishnu provides three orchestration adapters:
 ## Project Status
 
 **Roadmap**:
+
 - Phase 0: Security Hardening (Complete)
 - Phase 1: Foundation Architecture (Complete)
 - Phase 2: MCP Server (Partial - terminal tools complete, core tools missing)

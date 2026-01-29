@@ -1,35 +1,43 @@
 # MCP Server Tool Specification
 
 ## Overview
+
 Mahavishnu's MCP server provides a comprehensive set of tools for managing workflows, repositories, and orchestration engines. All tools are implemented using FastMCP with async/await patterns, comprehensive error handling, and observability.
 
 ## Tool Categories
 
 ### 1. Repository Management Tools
+
 Tools for listing, filtering, and managing repositories.
 
 ### 2. Workflow Execution Tools
+
 Tools for triggering, monitoring, and managing workflows.
 
 ### 3. Adapter Management Tools
+
 Tools for managing and querying orchestration adapters.
 
 ### 4. Quality Control Tools
+
 Tools for running and managing Crackerjack QC checks.
 
 ### 5. Session Management Tools
+
 Tools for managing Session-Buddy checkpoints and state.
 
----
+______________________________________________________________________
 
 ## Tool Specifications
 
 ### Repository Management Tools
 
 #### `list_repos`
+
 List repositories with optional tag filtering.
 
 **Signature:**
+
 ```python
 async def list_repos(
     tag: str | None = None,
@@ -39,11 +47,13 @@ async def list_repos(
 ```
 
 **Parameters:**
+
 - `tag` (optional): Filter repositories by tag. Example: "backend", "python"
 - `limit` (optional): Maximum number of repositories to return. Default: no limit
 - `offset` (optional): Number of repositories to skip. Default: 0
 
 **Returns:**
+
 ```python
 [
     {
@@ -60,10 +70,12 @@ async def list_repos(
 ```
 
 **Errors:**
+
 - `ValueError`: If `repos.yaml` is not found or invalid
 - `PermissionError`: If `repos.yaml` is not readable
 
 **Example:**
+
 ```python
 # List all backend repositories
 repos = await list_repos(tag="backend")
@@ -75,12 +87,14 @@ repos = await list_repos(limit=10)
 repos = await list_repos(limit=10, offset=20)
 ```
 
----
+______________________________________________________________________
 
 #### `get_repo_health`
+
 Get health status for a specific repository.
 
 **Signature:**
+
 ```python
 async def get_repo_health(
     repo_path: str,
@@ -88,9 +102,11 @@ async def get_repo_health(
 ```
 
 **Parameters:**
+
 - `repo_path`: Path to repository (must be in `repos.yaml`)
 
 **Returns:**
+
 ```python
 {
     "path": "/path/to/repo",
@@ -111,22 +127,26 @@ async def get_repo_health(
 ```
 
 **Errors:**
+
 - `ValueError`: If repo is not found in `repos.yaml`
 - `GitError`: If repo is not a valid git repository
 
 **Checks Performed:**
+
 - Git status (clean/dirty)
 - Branch status (ahead/behind remote)
 - Open PRs (via GitHub/GitLab API if configured)
 - Open issues (via GitHub/GitLab API if configured)
 - Recent activity (last commit time)
 
----
+______________________________________________________________________
 
 #### `search_repos`
+
 Search repositories by path, tag, or description.
 
 **Signature:**
+
 ```python
 async def search_repos(
     query: str,
@@ -135,10 +155,12 @@ async def search_repos(
 ```
 
 **Parameters:**
+
 - `query`: Search query (case-insensitive substring match)
 - `search_fields`: Fields to search in. Default: ["path", "tags", "description"]
 
 **Returns:**
+
 ```python
 [
     {
@@ -151,14 +173,16 @@ async def search_repos(
 ]
 ```
 
----
+______________________________________________________________________
 
 ### Workflow Execution Tools
 
 #### `trigger_workflow`
+
 Trigger a new workflow execution.
 
 **Signature:**
+
 ```python
 async def trigger_workflow(
     task_type: str,
@@ -172,6 +196,7 @@ async def trigger_workflow(
 ```
 
 **Parameters:**
+
 - `task_type`: Type of task ("code_sweep", "dependency_audit", "test_generation")
 - `task_params`: Task-specific parameters
 - `adapter`: Orchestrator adapter to use ("prefect", "agno", "llamaindex")
@@ -181,6 +206,7 @@ async def trigger_workflow(
 - `qc_enabled`: Enable Crackerjack QC after execution. Default: true
 
 **Returns:**
+
 ```python
 {
     "workflow_id": "wf-abc123",
@@ -195,11 +221,13 @@ async def trigger_workflow(
 ```
 
 **Errors:**
+
 - `ValueError`: If adapter is not enabled or invalid
 - `ValidationError`: If task parameters are invalid
 - `ResourceError`: If system is at capacity
 
 **Example:**
+
 ```python
 # Trigger code sweep on all backend repos
 workflow = await trigger_workflow(
@@ -223,12 +251,14 @@ workflow = await trigger_workflow(
 )
 ```
 
----
+______________________________________________________________________
 
 #### `get_workflow_status`
+
 Get status of a running or completed workflow.
 
 **Signature:**
+
 ```python
 async def get_workflow_status(
     workflow_id: str,
@@ -236,9 +266,11 @@ async def get_workflow_status(
 ```
 
 **Parameters:**
+
 - `workflow_id`: Workflow identifier (from `trigger_workflow`)
 
 **Returns:**
+
 ```python
 {
     "workflow_id": "wf-abc123",
@@ -276,14 +308,17 @@ async def get_workflow_status(
 ```
 
 **Errors:**
+
 - `ValueError`: If workflow_id is not found
 
----
+______________________________________________________________________
 
 #### `cancel_workflow`
+
 Cancel a running workflow.
 
 **Signature:**
+
 ```python
 async def cancel_workflow(
     workflow_id: str,
@@ -292,10 +327,12 @@ async def cancel_workflow(
 ```
 
 **Parameters:**
+
 - `workflow_id`: Workflow identifier
 - `reason` (optional): Reason for cancellation
 
 **Returns:**
+
 ```python
 {
     "workflow_id": "wf-abc123",
@@ -312,15 +349,18 @@ async def cancel_workflow(
 ```
 
 **Errors:**
+
 - `ValueError`: If workflow_id is not found
 - `StateError`: If workflow is already completed
 
----
+______________________________________________________________________
 
 #### `list_workflows`
+
 List workflow executions with optional filtering.
 
 **Signature:**
+
 ```python
 async def list_workflows(
     status: str | None = None,
@@ -331,12 +371,14 @@ async def list_workflows(
 ```
 
 **Parameters:**
+
 - `status` (optional): Filter by status ("running", "completed", "failed", "cancelled")
 - `adapter` (optional): Filter by adapter
 - `limit`: Maximum number of workflows to return. Default: 50
 - `offset`: Number of workflows to skip. Default: 0
 
 **Returns:**
+
 ```python
 [
     {
@@ -355,19 +397,22 @@ async def list_workflows(
 ]
 ```
 
----
+______________________________________________________________________
 
 ### Adapter Management Tools
 
 #### `list_adapters`
+
 List available orchestration adapters.
 
 **Signature:**
+
 ```python
 async def list_adapters() -> list[dict[str, Any]]
 ```
 
 **Returns:**
+
 ```python
 [
     {
@@ -405,12 +450,14 @@ async def list_adapters() -> list[dict[str, Any]]
 ]
 ```
 
----
+______________________________________________________________________
 
 #### `get_adapter_health`
+
 Get health status for a specific adapter.
 
 **Signature:**
+
 ```python
 async def get_adapter_health(
     adapter_name: str,
@@ -418,9 +465,11 @@ async def get_adapter_health(
 ```
 
 **Parameters:**
+
 - `adapter_name`: Name of adapter ("prefect", "agno", "llamaindex")
 
 **Returns:**
+
 ```python
 {
     "name": "prefect",
@@ -443,23 +492,28 @@ async def get_adapter_health(
 ```
 
 **Errors:**
+
 - `ValueError`: If adapter_name is not found
 
----
+______________________________________________________________________
 
 #### `enable_adapter / disable_adapter`
+
 Enable or disable an adapter.
 
 **Signature:**
+
 ```python
 async def enable_adapter(adapter_name: str) -> dict[str, Any]
 async def disable_adapter(adapter_name: str) -> dict[str, Any]
 ```
 
 **Parameters:**
+
 - `adapter_name`: Name of adapter
 
 **Returns:**
+
 ```python
 {
     "adapter_name": "langgraph",
@@ -470,17 +524,20 @@ async def disable_adapter(adapter_name: str) -> dict[str, Any]
 ```
 
 **Errors:**
+
 - `ValueError`: If adapter_name is not found
 - `StateError`: If adapter is already in target state
 
----
+______________________________________________________________________
 
 ### Quality Control Tools
 
 #### `run_qc`
+
 Run Crackerjack QC checks on a repository.
 
 **Signature:**
+
 ```python
 async def run_qc(
     repo_path: str,
@@ -490,11 +547,13 @@ async def run_qc(
 ```
 
 **Parameters:**
+
 - `repo_path`: Path to repository
 - `checks` (optional): List of checks to run. Default: from config
 - `autofix`: Enable automatic fixes. Default: false
 
 **Returns:**
+
 ```python
 {
     "repo_path": "/path/to/repo",
@@ -535,23 +594,27 @@ async def run_qc(
 ```
 
 **Available Checks:**
+
 - `linting`: Code style linting (flake8, black, isort)
 - `type_checking`: Static type checking (mypy)
 - `security_scan`: Security vulnerability scanning (bandit)
 - `complexity`: Code complexity analysis (mccabe)
 - `formatting`: Code formatting (black, prettier)
 
----
+______________________________________________________________________
 
 #### `get_qc_thresholds`
+
 Get QC threshold configuration.
 
 **Signature:**
+
 ```python
 async def get_qc_thresholds() -> dict[str, Any]
 ```
 
 **Returns:**
+
 ```python
 {
     "min_score": 80,
@@ -575,12 +638,14 @@ async def get_qc_thresholds() -> dict[str, Any]
 }
 ```
 
----
+______________________________________________________________________
 
 #### `set_qc_thresholds`
+
 Set QC threshold configuration.
 
 **Signature:**
+
 ```python
 async def set_qc_thresholds(
     min_score: int | None = None,
@@ -589,10 +654,12 @@ async def set_qc_thresholds(
 ```
 
 **Parameters:**
+
 - `min_score` (optional): Overall minimum score (0-100)
 - `check_thresholds` (optional): Per-check thresholds
 
 **Returns:**
+
 ```python
 {
     "min_score": 80,
@@ -609,16 +676,19 @@ async def set_qc_thresholds(
 ```
 
 **Errors:**
+
 - `ValueError`: If thresholds are out of range (0-100)
 
----
+______________________________________________________________________
 
 ### Session Management Tools
 
 #### `list_checkpoints`
+
 List Session-Buddy checkpoints.
 
 **Signature:**
+
 ```python
 async def list_checkpoints(
     workflow_id: str | None = None,
@@ -626,9 +696,11 @@ async def list_checkpoints(
 ```
 
 **Parameters:**
+
 - `workflow_id` (optional): Filter by workflow ID
 
 **Returns:**
+
 ```python
 [
     {
@@ -647,12 +719,14 @@ async def list_checkpoints(
 ]
 ```
 
----
+______________________________________________________________________
 
 #### `resume_workflow`
+
 Resume a workflow from checkpoint.
 
 **Signature:**
+
 ```python
 async def resume_workflow(
     workflow_id: str,
@@ -660,9 +734,11 @@ async def resume_workflow(
 ```
 
 **Parameters:**
+
 - `workflow_id`: Workflow identifier
 
 **Returns:**
+
 ```python
 {
     "workflow_id": "wf-abc123",
@@ -677,14 +753,17 @@ async def resume_workflow(
 ```
 
 **Errors:**
+
 - `ValueError`: If checkpoint is not found
 
----
+______________________________________________________________________
 
 #### `delete_checkpoint`
+
 Delete a workflow checkpoint.
 
 **Signature:**
+
 ```python
 async def delete_checkpoint(
     workflow_id: str,
@@ -692,9 +771,11 @@ async def delete_checkpoint(
 ```
 
 **Parameters:**
+
 - `workflow_id`: Workflow identifier
 
 **Returns:**
+
 ```python
 {
     "workflow_id": "wf-abc123",
@@ -704,15 +785,17 @@ async def delete_checkpoint(
 ```
 
 **Errors:**
+
 - `ValueError`: If checkpoint is not found
 
----
+______________________________________________________________________
 
 ## Authentication
 
 All MCP tools require authentication via JWT bearer token.
 
 ### Token Format
+
 ```json
 {
   "sub": "user@example.com",
@@ -724,11 +807,12 @@ All MCP tools require authentication via JWT bearer token.
 ```
 
 ### Authorization
+
 - **Admin**: Full access to all tools
 - **Operator**: Can trigger/view workflows, list repos, run QC
 - **Viewer**: Read-only access (list tools only)
 
----
+______________________________________________________________________
 
 ## Rate Limiting
 
@@ -737,13 +821,14 @@ All MCP tools require authentication via JWT bearer token.
 - **Configurable**: Per-client rate limits
 
 Rate limit headers are included in responses:
+
 ```
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 95
 X-RateLimit-Reset: 1706945696
 ```
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -771,16 +856,18 @@ except Exception as e:
     raise
 ```
 
----
+______________________________________________________________________
 
 ## Observability
 
 All tools include:
+
 - **Metrics**: Execution time, success/failure counts
 - **Tracing**: OpenTelemetry span for each tool call
 - **Logging**: Structured logs with correlation IDs
 
 Example span attributes:
+
 ```
 tool.name: "list_repos"
 tool.tag: "backend"

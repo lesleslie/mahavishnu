@@ -2,18 +2,19 @@
 
 **Fast-track implementation for dynamic env var management**
 
----
+______________________________________________________________________
 
 ## 🎯 What You're Getting
 
 A **Python-based coding helper** that:
-1. ✅ Dynamically switches environment variables for Zai
-2. ✅ Manages multiple coding tools (Claude Code, OpenCode, Crush)
-3. ✅ Integrates with Claude Code configuration
-4. ✅ Provides rich CLI interface
-5. ✅ Supports plugin marketplace
 
----
+1. ✅ Dynamically switches environment variables for Zai
+1. ✅ Manages multiple coding tools (Claude Code, OpenCode, Crush)
+1. ✅ Integrates with Claude Code configuration
+1. ✅ Provides rich CLI interface
+1. ✅ Supports plugin marketplace
+
+______________________________________________________________________
 
 ## ⚡ Quick Setup (10 minutes)
 
@@ -35,6 +36,7 @@ mkdir -p mahavishnu/coding_helper
 ### Step 3: Create Files
 
 **File**: `mahavishnu/coding_helper/__init__.py`
+
 ```python
 """Mahavishnu Coding Helper - Zai compatible."""
 
@@ -44,6 +46,7 @@ __all__ = ["app"]
 ```
 
 **File**: `mahavishnu/coding_helper/env_manager.py`
+
 ```python
 """Environment manager for Claude Code and Zai."""
 import json
@@ -135,6 +138,7 @@ class ClaudeCodeEnvManager:
 ```
 
 **File**: `mahavishnu/coding_helper/cli.py`
+
 ```python
 """CLI interface for coding helper."""
 import typer
@@ -251,7 +255,7 @@ mahavishnu coding-helper switch-provider anthropic
 mahavishnu coding-helper restart
 ```
 
----
+______________________________________________________________________
 
 ## 🎯 Common Use Cases
 
@@ -288,39 +292,42 @@ mahavishnu coding-helper config ZAI_API_KEY $NEW_ZAI_KEY
 mahavishnu coding-helper restart
 ```
 
----
+______________________________________________________________________
 
 ## ✅ Features
 
 **Dynamic Environment Variables**:
+
 - ✅ Update ANTHROPIC_BASE_URL (switch providers)
 - ✅ Update API_TIMEOUT_MS (adjust timeout)
 - ✅ Update ZAI_API_KEY (switch accounts)
 - ✅ Atomic writes (no corruption)
 
 **Safe Operations**:
+
 - ✅ JSON validation before writing
 - ✅ Atomic file operations (temp + mv)
 - ✅ Graceful service restart
 - ✅ Error handling and rollback
 
 **Rich CLI**:
+
 - ✅ Beautiful output with rich library
 - ✅ Tables and formatted output
 - ✅ Clear success/error messages
 - ✅ Masked API keys in output
 
----
+______________________________________________________________________
 
 ## 🚀 Next Steps
 
 1. **Create the module** (copy files above)
-2. **Test basic operations** (status, config, restart)
-3. **Add tool switching** (Claude Code, OpenCode, Crush)
-4. **Add plugin marketplace** (install, update, list)
-5. **Add automation** (auto-switch on failure, etc.)
+1. **Test basic operations** (status, config, restart)
+1. **Add tool switching** (Claude Code, OpenCode, Crush)
+1. **Add plugin marketplace** (install, update, list)
+1. **Add automation** (auto-switch on failure, etc.)
 
----
+______________________________________________________________________
 
 ## 📊 Comparison: Mahavishnu vs @z_ai/coding-helper
 
@@ -334,7 +341,7 @@ mahavishnu coding-helper restart
 | **Atomic Config** | No | Yes ✅ |
 | **Extensible** | Limited | Highly extensible ✅ |
 
----
+______________________________________________________________________
 
 ## 💡 Pro Tips
 
@@ -388,7 +395,7 @@ mahavishnu coding-helper config-profile anthropic ~/.claude/profiles/anthropic.j
 mahavishnu coding-helper load-profile zai
 ```
 
----
+______________________________________________________________________
 
 ## 📚 Resources
 
@@ -397,7 +404,7 @@ mahavishnu coding-helper load-profile zai
 - **Z.AI Docs**: [docs.z.ai/devpack/extension/coding-tool-helper](https://docs.z.ai/devpack/extension/coding-tool-helper)
 - **Plugins**: [github.com/zai-org/zai-coding-plugins](https://github.com/zai-org/zai-coding-plugins)
 
----
+______________________________________________________________________
 
 ## Summary
 

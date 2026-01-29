@@ -10,12 +10,13 @@
 Mahavishnu is a global orchestrator package that manages workflows across multiple repositories. As the system evolved, we identified several memory-related needs:
 
 1. **Agent Memory**: High-volume agent conversations, tool usage, reasoning traces
-2. **RAG Knowledge Base**: Vector embeddings for semantic search across codebases
-3. **Workflow History**: Execution logs and orchestration patterns
-4. **Cross-Project Learning**: Share insights across related projects
-5. **Session Context**: Maintain context across development sessions
+1. **RAG Knowledge Base**: Vector embeddings for semantic search across codebases
+1. **Workflow History**: Execution logs and orchestration patterns
+1. **Cross-Project Learning**: Share insights across related projects
+1. **Session Context**: Maintain context across development sessions
 
 The existing implementation had basic session checkpoint integration but lacked:
+
 - Unified search across memory systems
 - Persistent agent memory storage
 - Cross-project knowledge sharing
@@ -28,11 +29,13 @@ We will implement a **unified memory architecture** that integrates three specia
 ### 1. Session-Buddy Integration (Project Memory + Global Intelligence)
 
 **What:**
+
 - Use Session-Buddy's Reflection Database (DuckDB-based)
 - Create dedicated collections for Mahavishnu
 - Leverage Session-Buddy's cross-project intelligence features
 
 **Why:**
+
 - **Already integrated**: Session-Buddy MCP server is available and configured
 - **Proven architecture**: Reflection Database with ONNX embeddings works well
 - **Cross-project features**: Automatic dependency-aware search and knowledge sharing
@@ -40,6 +43,7 @@ We will implement a **unified memory architecture** that integrates three specia
 - **Privacy-first**: 100% local processing, no external APIs
 
 **Collections:**
+
 ```python
 collection_name="mahavishnu_project"
   - Workflow executions
@@ -55,11 +59,13 @@ collection_name="mahavishnu_global"
 ### 2. AgentDB + PostgreSQL (Agent Memory)
 
 **What:**
+
 - Use AgentDB with PostgreSQL backend for agent-specific memory
 - Store high-volume agent data (conversations, tool usage, reasoning traces)
 - Provide PostgreSQL-backed persistent storage with replication support
 
 **Why:**
+
 - **Scalability**: AgentDB optimized for agent workloads, handles high-frequency operations
 - **Persistence**: PostgreSQL provides durable, scalable storage with replication
 - **Vector operations**: Built-in similarity search for agent memory
@@ -67,6 +73,7 @@ collection_name="mahavishnu_global"
 - **Performance**: PostgreSQL connection pooling for concurrent access
 
 **Use Cases:**
+
 - Agent conversation tracking (Agno adapter)
 - Tool usage history and results
 - Reasoning traces and decision processes
@@ -75,11 +82,13 @@ collection_name="mahavishnu_global"
 ### 3. LlamaIndex + AgentDB (RAG Knowledge Base)
 
 **What:**
+
 - Use LlamaIndex for RAG pipelines with AgentDB as vector store backend
 - Ingest repositories and documents with Ollama embeddings
 - Provide large-scale semantic search capabilities
 
 **Why:**
+
 - **Purpose-built**: LlamaIndex optimized for RAG and vector operations
 - **Ollama integration**: Local embeddings (nomic-embed-text), no external APIs
 - **AgentDB backend**: Persistent vector storage in PostgreSQL
@@ -87,6 +96,7 @@ collection_name="mahavishnu_global"
 - **Large-scale**: Handles millions of documents efficiently
 
 **Use Cases:**
+
 - Repository/document ingestion
 - Code chunking and embeddings
 - Semantic search for knowledge retrieval
@@ -95,12 +105,14 @@ collection_name="mahavishnu_global"
 ### Unified Memory Service
 
 **What:**
+
 - Create `MahavishnuMemoryIntegration` class as single interface
 - Provide unified search across all memory systems
 - Implement bidirectional memory sharing protocols
 - Automatic deduplication and result merging
 
 **Why:**
+
 - **Developer experience**: Single API for all memory operations
 - **Transparency**: Developers don't need to know where data is stored
 - **Optimization**: Intelligent result merging and ranking
@@ -164,11 +176,13 @@ collection_name="mahavishnu_global"
 **Approach:** Use Session-Buddy's Reflection Database for all memory storage
 
 **Pros:**
+
 - Simpler architecture (single system)
 - Already integrated and proven
 - Cross-project features built-in
 
 **Cons:**
+
 - Not optimized for high-volume agent operations
 - LlamaIndex would need custom vector store adapter
 - No AgentDB agent-specific features
@@ -180,11 +194,13 @@ collection_name="mahavishnu_global"
 **Approach:** Use AgentDB for all memory storage
 
 **Pros:**
+
 - Single system to manage
 - PostgreSQL backend provides persistence and scalability
 - AgentDB optimized for agent workloads
 
 **Cons:**
+
 - Loses Session-Buddy's cross-project intelligence features
 - Loses automatic insights capture
 - Would need to reimplement Session-Buddy features
@@ -196,10 +212,12 @@ collection_name="mahavishnu_global"
 **Approach:** Build custom memory system from scratch
 
 **Pros:**
+
 - Complete control over architecture
 - Can optimize for Mahavishnu-specific needs
 
 **Cons:**
+
 - Reinventing the wheel (Session-Buddy and AgentDB already exist)
 - High development and maintenance cost
 - Risk of building inferior solution
@@ -209,27 +227,32 @@ collection_name="mahavishnu_global"
 ## Implementation Plan
 
 ### Phase 1: Core Memory Integration (Foundation)
+
 - Create `MahavishnuMemoryIntegration` class
 - Set up Session-Buddy collections
 - Add AgentDB + PostgreSQL
 - Implement basic unified search
 
 ### Phase 2: LlamaIndex + AgentDB Backend
+
 - Update `llamaindex_adapter.py` with AgentDB backend
 - Create RAG ingestion workflows
 - Implement unified search including RAG results
 
 ### Phase 3: Cross-Project Integration
+
 - Register Mahavishnu with Session-Buddy project groups
 - Define dependencies from repos.yaml
 - Enable cross-project search
 
 ### Phase 4: Advanced Features
+
 - Implement memory sharing protocols
 - Create knowledge graph visualization
 - Add memory synchronization service
 
 ### Phase 5: Testing & Documentation
+
 - Comprehensive test suite (>80% coverage)
 - Performance benchmarks
 - Complete documentation
@@ -269,12 +292,14 @@ llamaindex:
 ## Success Metrics
 
 ### Performance Targets
-- **Unified Search Latency**: <500ms for 20 results
-- **Memory Store Latency**: <100ms per operation
+
+- **Unified Search Latency**: \<500ms for 20 results
+- **Memory Store Latency**: \<100ms per operation
 - **Concurrent Operations**: Support 100+ concurrent stores
-- **Cross-Project Search**: <1s for dependency-aware results
+- **Cross-Project Search**: \<1s for dependency-aware results
 
 ### Quality Targets
+
 - **Test Coverage**: >80% across all memory modules
 - **Deduplication Accuracy**: >99% duplicate detection
 - **Search Relevance**: >0.8 average relevance score
@@ -295,7 +320,7 @@ llamaindex:
 - [ADR 003: Error Handling Strategy](./003-error-handling-strategy.md) - Error handling patterns
 - [ADR 004: Adapter Architecture](./004-adapter-architecture.md) - Multi-adapter support
 
----
+______________________________________________________________________
 
 **Document Version:** 1.0
 **Last Updated:** 2025-01-24

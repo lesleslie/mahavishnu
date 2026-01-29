@@ -5,7 +5,7 @@
 **Last Updated**: 2026-01-24
 **Status**: Phase 1 Complete (Foundation + Core Architecture)
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
@@ -14,6 +14,7 @@ Mahavishnu is a multi-engine orchestration platform that provides unified interf
 ### Current State (2026-01-24)
 
 **Complete**:
+
 - Security hardening (JWT auth, Claude Code + Qwen support)
 - Async base adapter architecture
 - FastMCP-based MCP server with terminal management
@@ -24,16 +25,18 @@ Mahavishnu is a multi-engine orchestration platform that provides unified interf
 - **LlamaIndex adapter** (348 lines, fully functional with Ollama)
 
 **Stub Implementations**:
+
 - Prefect adapter (143 lines, framework skeleton only)
 - Agno adapter (116 lines, framework skeleton only)
 
 **Missing**:
+
 - Actual orchestration logic in Prefect and Agno adapters
 - MCP core orchestration tools (terminal tools are complete)
 - Production error recovery patterns
 - Full observability implementation
 
----
+______________________________________________________________________
 
 ## Architecture Overview
 
@@ -68,7 +71,7 @@ Mahavishnu
     └── property/               # Property-based tests
 ```
 
----
+______________________________________________________________________
 
 ## Adapter Architecture
 
@@ -79,6 +82,7 @@ Mahavishnu
 **Status**: Production Ready
 
 **Capabilities**:
+
 - Real Ollama integration (not simulated)
 - Vector embeddings with `nomic-embed-text` model
 - Document ingestion from `repos.yaml`
@@ -87,12 +91,14 @@ Mahavishnu
 - Comprehensive error handling
 
 **Key Imports**:
+
 ```python
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.llms.ollama import Ollama
 ```
 
 **Usage**:
+
 ```python
 from mahavishnu.engines import LlamaIndexAdapter
 
@@ -113,12 +119,14 @@ results = await adapter.query_documents(query="authentication patterns")
 **Status**: Framework Skeleton Only
 
 **Current State**:
+
 - Uses Prefect decorators (`@flow`, `@task`)
 - Returns simulated/hardcoded results
 - No actual flow construction or execution
 - No state management or checkpointing
 
 **Missing**:
+
 - LLM integration for dynamic workflows
 - Real flow construction logic
 - State management and checkpointing
@@ -134,12 +142,14 @@ results = await adapter.query_documents(query="authentication patterns")
 **Status**: Framework Skeleton Only
 
 **Current State**:
+
 - Returns simulated results
 - No Agno framework imports
 - No agent lifecycle management
 - No tool integration
 
 **Missing**:
+
 - Agno v2.0 integration
 - Agent lifecycle management
 - Tool integration
@@ -149,18 +159,20 @@ results = await adapter.query_documents(query="authentication patterns")
 
 **Estimated Completion**: 2-3 weeks (waiting for Agno v2.0 stable release)
 
----
+______________________________________________________________________
 
 ## Architectural Evolution
 
 ### Phase 1: Original Architecture (Deprecated 2025-01-23)
 
 **Deprecated Adapters**:
+
 - **Airflow**: Data pipeline orchestration
 - **CrewAI**: Multi-agent workflows
 - **LangGraph**: Stateful AI agents
 
 **Reasons for Deprecation**:
+
 - Airflow → Replaced by Prefect (more Python-native, no scheduler infrastructure)
 - CrewAI → Replaced by Agno (better adoption, more active development)
 - LangGraph → Replaced by Agno (consolidate to one agent framework)
@@ -168,6 +180,7 @@ results = await adapter.query_documents(query="authentication patterns")
 ### Phase 2: Modernization (2025-01-23)
 
 **Decision Records**:
+
 - **ADR 001**: Use Oneiric for configuration and logging
 - **ADR 002**: MCP-first design with FastMCP + mcp-common
 - **ADR 003**: Error handling with retry, circuit breakers, dead letter queues
@@ -175,6 +188,7 @@ results = await adapter.query_documents(query="authentication patterns")
 - **ADR 005**: Unified memory architecture
 
 **Key Changes**:
+
 - Simplified from 6 engines to 3 adapters
 - Focus on Python-native frameworks (Prefect over Airflow)
 - Consolidate AI agent frameworks (Agno replaces CrewAI + LangGraph)
@@ -183,16 +197,18 @@ results = await adapter.query_documents(query="authentication patterns")
 ### Phase 3: Current Architecture (2026-01-24)
 
 **Active Adapters**:
+
 1. **LlamaIndex**: Fully implemented with Ollama integration
-2. **Prefect**: Stub implementation, needs real orchestration logic
-3. **Agno**: Stub implementation, needs agent framework integration
+1. **Prefect**: Stub implementation, needs real orchestration logic
+1. **Agno**: Stub implementation, needs agent framework integration
 
 **Recommendations**:
+
 - Use LlamaIndex for RAG pipelines and semantic search (production ready)
 - Wait to use Prefect adapter until implementation complete (2 weeks)
 - Wait to use Agno adapter until v2.0 stable release + implementation (2-3 weeks)
 
----
+______________________________________________________________________
 
 ## Architecture Diagram
 
@@ -270,11 +286,12 @@ graph TB
 ```
 
 **Legend**:
+
 - ✅ **Green**: Fully implemented and functional
 - 🟡 **Yellow**: Stub implementation (framework skeleton only)
 - ❌ **Red**: Not implemented (deprecated)
 
----
+______________________________________________________________________
 
 ## Configuration System
 
@@ -283,10 +300,11 @@ graph TB
 Mahavishnu uses Oneiric patterns for layered configuration loading:
 
 **Priority Order** (highest to lowest):
+
 1. Environment variables `MAHAVISHNU_{FIELD}`
-2. `settings/local.yaml` (gitignored, local dev)
-3. `settings/mahavishnu.yaml` (committed to git)
-4. Default values in Pydantic models
+1. `settings/local.yaml` (gitignored, local dev)
+1. `settings/mahavishnu.yaml` (committed to git)
+1. Default values in Pydantic models
 
 **Example Configuration**:
 
@@ -324,7 +342,7 @@ auth:
   expire_minutes: 60
 ```
 
----
+______________________________________________________________________
 
 ## MCP Server Architecture
 
@@ -333,6 +351,7 @@ auth:
 **Status**: Complete (11,453 lines of terminal tools)
 
 **Tools**:
+
 - `terminal_launch`: Launch terminal sessions
 - `terminal_type`: Type commands in terminals
 - `terminal_read`: Read terminal output
@@ -340,6 +359,7 @@ auth:
 - `terminal_list`: List active terminals
 
 **Features**:
+
 - Launch 10+ concurrent terminal sessions
 - Hot-swappable adapters (iTerm2 ↔ mcpretentious)
 - Connection pooling for reduced overhead
@@ -349,6 +369,7 @@ auth:
 ### Not Yet Implemented (Core Orchestration)
 
 **Tools**:
+
 - `list_repos`: List repositories with tag filtering
 - `trigger_workflow`: Trigger workflow execution
 - `get_workflow_status`: Check workflow status
@@ -357,29 +378,33 @@ auth:
 - `get_adapter_health`: Get health status for specific adapter
 
 **Quality Control Tools**:
+
 - `run_qc`: Run Crackerjack QC checks on repository
 - `get_qc_thresholds`: Get QC threshold configuration
 - `set_qc_thresholds`: Set QC threshold configuration
 
 **Session Management Tools**:
+
 - `list_checkpoints`: List Session-Buddy checkpoints
 - `resume_workflow`: Resume workflow from checkpoint
 - `delete_checkpoint`: Delete workflow checkpoint
 
 **Estimated Completion**: 1 week for core orchestration tools
 
----
+______________________________________________________________________
 
 ## Security Architecture
 
 ### Authentication
 
 **JWT Authentication** with multiple providers:
+
 - Claude Code subscription authentication
 - Qwen free service authentication
 - Custom JWT tokens
 
 **Configuration**:
+
 ```yaml
 auth:
   enabled: true
@@ -388,6 +413,7 @@ auth:
 ```
 
 **Environment Variable**:
+
 ```bash
 export MAHAVISHNU_AUTH_SECRET="your-secret-minimum-32-characters"
 ```
@@ -399,7 +425,7 @@ export MAHAVISHNU_AUTH_SECRET="your-secret-minimum-32-characters"
 - **Auth Secret Strength Validation**: Minimum 32 characters required
 - **Pydantic Validation**: All inputs validated through Pydantic models
 
----
+______________________________________________________________________
 
 ## Error Handling Architecture
 
@@ -408,6 +434,7 @@ export MAHAVISHNU_AUTH_SECRET="your-secret-minimum-32-characters"
 **File**: `mahavishnu/core/errors.py`
 
 **Exception Types**:
+
 - `MahavishnuError`: Base exception
 - `ConfigurationError`: Configuration-related errors
 - `AdapterError`: Adapter execution errors
@@ -415,6 +442,7 @@ export MAHAVISHNU_AUTH_SECRET="your-secret-minimum-32-characters"
 - `AuthenticationError`: Authentication failures
 
 **Features**:
+
 - Structured error context with `message` and `details`
 - `to_dict()` method for API responses
 - Circuit breaker patterns for resilience
@@ -423,6 +451,7 @@ export MAHAVISHNU_AUTH_SECRET="your-secret-minimum-32-characters"
 ### Production Error Recovery (Not Yet Implemented)
 
 **Required**:
+
 - Tenacity retry decorators on adapter methods
 - Exponential backoff with jitter
 - Circuit breaker state machine integration
@@ -432,7 +461,7 @@ export MAHAVISHNU_AUTH_SECRET="your-secret-minimum-32-characters"
 
 **Estimated Completion**: 1 week
 
----
+______________________________________________________________________
 
 ## Observability Architecture
 
@@ -442,6 +471,7 @@ export MAHAVISHNU_AUTH_SECRET="your-secret-minimum-32-characters"
 **Lines**: 135 (skeleton only)
 
 **Framework Defined**:
+
 - Span creation interface
 - Metric recording interface
 - Distributed tracing with correlation IDs
@@ -449,13 +479,14 @@ export MAHAVISHNU_AUTH_SECRET="your-secret-minimum-32-characters"
 - OTLP endpoint interface
 
 **Not Yet Instrumented**:
+
 - No actual span creation in adapters
 - No metric recording during workflows
 - No distributed tracing implementation
 
 **Estimated Completion**: 1-2 weeks
 
----
+______________________________________________________________________
 
 ## Testing Architecture
 
@@ -475,6 +506,7 @@ tests/
 ```
 
 **Test Markers**:
+
 - `@pytest.mark.unit`: Unit tests
 - `@pytest.mark.integration`: Integration tests
 - `@pytest.mark.slow`: Slow tests (E2E)
@@ -483,6 +515,7 @@ tests/
 **Current Coverage**: 11 test files (mostly unit tests for foundation)
 
 **Production Testing Requirements** (Not Started):
+
 - Unit tests for adapters (0% coverage currently)
 - Integration tests for MCP tools
 - E2E tests for critical workflows
@@ -495,7 +528,7 @@ tests/
 
 **Estimated Completion**: 2 weeks
 
----
+______________________________________________________________________
 
 ## Project Status
 
@@ -512,55 +545,62 @@ tests/
 ### Estimated Time to Production
 
 **Critical Path** (Priority 1 tasks):
+
 1. MCP core tools: 1 week
-2. Complete Prefect adapter: 2 weeks
-3. Complete Agno adapter: 2-3 weeks
-4. Production error recovery: 1 week
-5. Production testing: 2 weeks
+1. Complete Prefect adapter: 2 weeks
+1. Complete Agno adapter: 2-3 weeks
+1. Production error recovery: 1 week
+1. Production testing: 2 weeks
 
 **Total**: 8-11 weeks to production-ready v1.0
 
----
+______________________________________________________________________
 
 ## Recommended Technology Stack
 
 ### For Production Use
 
 **Current (Production Ready)**:
+
 - **LlamaIndex**: Use for RAG pipelines and semantic search
 - **Ollama**: Local embeddings with `nomic-embed-text`
 - **FastMCP**: MCP server for Claude Desktop integration
 - **Oneiric**: Configuration management
 
 **Future (When Implementation Complete)**:
+
 - **Prefect**: General workflow orchestration and ETL pipelines
 - **Agno v2.0**: Multi-agent workflows (wait for stable release)
 
 ### For Development
 
 **Configuration**:
+
 - Use `settings/local.yaml` for local overrides
 - Environment variables for secrets
 - Oneiric cache in `.oneiric_cache/`
 
 **Testing**:
+
 - `pytest -m unit` for fast unit tests
 - `pytest -m integration` for integration tests
 - `pytest --cov=mahavishnu` for coverage reports
 
 **Code Quality**:
+
 - `black mahavishnu/` for formatting
 - `ruff check mahavishnu/` for linting
 - `mypy mahavishnu/` for type checking
 - `bandit -r mahavishnu/` for security scanning
 
----
+______________________________________________________________________
 
 ## Migration Notes
 
 ### From Deprecated Technologies
 
 **Airflow → Prefect**:
+
 - No scheduler infrastructure required
 - Pure Python (no YAML DAG definitions)
 - 60-70% cost savings
@@ -568,17 +608,19 @@ tests/
 - Easier testing
 
 **CrewAI → Agno**:
+
 - More active development
 - Better adoption
 - v2.0 release (September 2025) as "AgentOS runtime"
 - Single and multi-agent systems
 
 **LangGraph → Agno**:
+
 - Consolidate to one agent framework
 - Reduce complexity
 - Unified agent lifecycle management
 
----
+______________________________________________________________________
 
 ## Key Files Reference
 
@@ -596,7 +638,7 @@ tests/
 | `mahavishnu/core/errors.py` | Error handling | Complete |
 | `mahavishnu/core/observability.py` | Observability framework | Skeleton |
 
----
+______________________________________________________________________
 
 ## Documentation
 
@@ -608,13 +650,14 @@ tests/
 - **[docs/MCP_TOOLS_SPECIFICATION.md](docs/MCP_TOOLS_SPECIFICATION.md)**: MCP tool API documentation
 - **[docs/IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md)**: Modernization notes
 
----
+______________________________________________________________________
 
 ## Summary
 
 Mahavishnu provides a unified interface to multiple orchestration engines through a common adapter pattern. The architecture is modular and extensible, with one production-ready adapter (LlamaIndex) and two stub adapters (Prefect, Agno) that require implementation.
 
 **Key Points**:
+
 - LlamaIndex is the only fully functional adapter (real Ollama integration)
 - Prefect and Agno are framework skeletons that need implementation
 - MCP terminal tools are complete and functional
@@ -622,11 +665,12 @@ Mahavishnu provides a unified interface to multiple orchestration engines throug
 - Estimated 8-11 weeks to production-ready v1.0
 
 **For Production Use Today**:
+
 - Use LlamaIndex adapter for RAG pipelines and semantic search
 - Use MCP terminal management tools
 - Wait for Prefect and Agno adapter implementation before using for orchestration
 
----
+______________________________________________________________________
 
 **Document Status**: Single source of truth for Mahavishnu architecture
 **Last Reviewed**: 2026-01-24

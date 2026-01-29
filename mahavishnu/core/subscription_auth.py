@@ -4,17 +4,19 @@ This module provides authentication mechanisms for services like Claude Code
 that use subscription tokens, in addition to the existing JWT authentication.
 """
 
-import os
-import jwt
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field
 from enum import Enum
+from typing import Any
+
+import jwt
+from pydantic import BaseModel
+
 from .errors import AuthenticationError
 
 
 class AuthMethod(str, Enum):
     """Enumeration of supported authentication methods."""
+
     JWT = "jwt"
     CLAUDE_SUBSCRIPTION = "claude_subscription"
     CODEX_SUBSCRIPTION = "codex_subscription"
@@ -23,6 +25,7 @@ class AuthMethod(str, Enum):
 
 class SubscriptionTokenData(BaseModel):
     """Subscription token data model."""
+
     user_id: str
     subscription_type: str
     exp: int  # Expiration timestamp as integer
@@ -48,7 +51,9 @@ class SubscriptionAuth:
         self.algorithm = algorithm
         self.expire_minutes = expire_minutes
 
-    def create_subscription_token(self, user_id: str, subscription_type: str, scopes: list[str] = None) -> str:
+    def create_subscription_token(
+        self, user_id: str, subscription_type: str, scopes: list[str] = None
+    ) -> str:
         """
         Create a subscription token for services like Claude Code.
 
@@ -67,7 +72,7 @@ class SubscriptionAuth:
             "sub": user_id,  # Using 'sub' to match JWT standard
             "user_id": user_id,
             "subscription_type": subscription_type,
-            "scopes": scopes
+            "scopes": scopes,
         }
 
         expire = datetime.utcnow() + timedelta(minutes=self.expire_minutes)
@@ -91,51 +96,48 @@ class SubscriptionAuth:
         """
         try:
             payload = jwt.decode(token, self.secret, algorithms=[self.algorithm])
-            
+
             user_id: str = payload.get("user_id")
             subscription_type: str = payload.get("subscription_type")
-            
+
             if not user_id or not subscription_type:
                 raise AuthenticationError(
                     message="Invalid subscription token: missing required fields",
-                    details={"error": "user_id or subscription_type not found in token"}
+                    details={"error": "user_id or subscription_type not found in token"},
                 )
-                
+
             token_data = SubscriptionTokenData(
                 user_id=user_id,
                 subscription_type=subscription_type,
                 exp=payload.get("exp"),
-                scopes=payload.get("scopes", [])
+                scopes=payload.get("scopes", []),
             )
 
             # Check if token is expired
             if datetime.utcnow().timestamp() > token_data.exp:
                 raise AuthenticationError(
-                    message="Subscription token has expired",
-                    details={"error": "Expired token"}
+                    message="Subscription token has expired", details={"error": "Expired token"}
                 )
 
             return token_data
-        except jwt.exceptions.InvalidSignatureError:
+        except jwt.exceptions.InvalidSignatureError as e:
             raise AuthenticationError(
                 message="Invalid subscription token signature",
-                details={"error": "Invalid signature"}
-            )
-        except jwt.exceptions.DecodeError:
+                details={"error": "Invalid signature"},
+            ) from e
+        except jwt.exceptions.DecodeError as e:
             raise AuthenticationError(
-                message="Could not decode subscription token",
-                details={"error": "Decode error"}
-            )
+                message="Could not decode subscription token", details={"error": "Decode error"}
+            ) from e
         except Exception as e:
             raise AuthenticationError(
-                message=f"Subscription authentication error: {str(e)}",
-                details={"error": str(e)}
-            )
+                message=f"Subscription authentication error: {str(e)}", details={"error": str(e)}
+            ) from e
 
 
 class MultiAuthHandler:
     """Handles multiple authentication methods including JWT and subscription tokens."""
-    
+
     def __init__(self, config):
         """
         Initialize multi-authentication handler.
@@ -146,27 +148,28 @@ class MultiAuthHandler:
         self.config = config
         self.jwt_auth = None
         self.subscription_auth = None
-        
+
         # Initialize JWT auth if enabled
         if config.auth_enabled and config.auth_secret:
             from .auth import JWTAuth
+
             self.jwt_auth = JWTAuth(
                 secret=config.auth_secret,
                 algorithm=config.auth_algorithm,
-                expire_minutes=config.auth_expire_minutes
+                expire_minutes=config.auth_expire_minutes,
             )
-        
+
         # Initialize subscription auth if enabled
-        if hasattr(config, 'subscription_auth_enabled') and config.subscription_auth_enabled:
-            subscription_secret = getattr(config, 'subscription_auth_secret', None)
+        if hasattr(config, "subscription_auth_enabled") and config.subscription_auth_enabled:
+            subscription_secret = getattr(config, "subscription_auth_secret", None)
             if subscription_secret:
                 self.subscription_auth = SubscriptionAuth(
                     secret=subscription_secret,
-                    algorithm=getattr(config, 'subscription_auth_algorithm', 'HS256'),
-                    expire_minutes=getattr(config, 'subscription_auth_expire_minutes', 60)
+                    algorithm=getattr(config, "subscription_auth_algorithm", "HS256"),
+                    expire_minutes=getattr(config, "subscription_auth_expire_minutes", 60),
                 )
-    
-    def authenticate_request(self, auth_header: str) -> Dict[str, Any]:
+
+    def authenticate_request(self, auth_header: str) -> dict[str, Any]:
         """
         Authenticate a request using either JWT or subscription token.
 
@@ -182,19 +185,18 @@ class MultiAuthHandler:
         if not auth_header or not auth_header.startswith("Bearer "):
             raise AuthenticationError(
                 message="Authorization header missing or invalid format",
-                details={"error": "Expected 'Bearer <token>' format"}
+                details={"error": "Expected 'Bearer <token>' format"},
             )
 
-        token = auth_header[len("Bearer "):]
+        token = auth_header[len("Bearer ") :]
 
         # Decode the token without verification to check its type
         try:
             decoded_payload = jwt.decode(token, options={"verify_signature": False})
-        except jwt.exceptions.DecodeError:
+        except jwt.exceptions.DecodeError as e:
             raise AuthenticationError(
-                message="Could not decode token",
-                details={"error": "Invalid token format"}
-            )
+                message="Could not decode token", details={"error": "Invalid token format"}
+            ) from e
 
         # Check if it's a subscription token by looking for subscription-specific claims
         is_subscription_token = "subscription_type" in decoded_payload
@@ -216,7 +218,7 @@ class MultiAuthHandler:
                     "method": auth_method,
                     "subscription_type": token_data.subscription_type,
                     "scopes": token_data.scopes,
-                    "authenticated": True
+                    "authenticated": True,
                 }
             except AuthenticationError as e:
                 raise e  # Re-raise the specific error from subscription auth
@@ -229,7 +231,7 @@ class MultiAuthHandler:
                     "user": token_data.username,
                     "method": AuthMethod.JWT,
                     "authenticated": True,
-                    "scopes": ["read", "write", "execute"]  # Default scopes for JWT
+                    "scopes": ["read", "write", "execute"],  # Default scopes for JWT
                 }
             except AuthenticationError as e:
                 raise e  # Re-raise the specific error from JWT auth
@@ -238,9 +240,9 @@ class MultiAuthHandler:
             # Neither authentication method is appropriate for this token
             raise AuthenticationError(
                 message="Authentication failed with all available methods",
-                details={"error": "Invalid or expired token"}
+                details={"error": "Invalid or expired token"},
             )
-    
+
     def create_claude_subscription_token(self, user_id: str, scopes: list[str] = None) -> str:
         """
         Create a Claude Code subscription token.
@@ -255,15 +257,13 @@ class MultiAuthHandler:
         if not self.subscription_auth:
             raise AuthenticationError(
                 message="Subscription authentication is not configured",
-                details={"error": "subscription_auth not initialized"}
+                details={"error": "subscription_auth not initialized"},
             )
-        
+
         return self.subscription_auth.create_subscription_token(
-            user_id=user_id,
-            subscription_type="claude_code",
-            scopes=scopes
+            user_id=user_id, subscription_type="claude_code", scopes=scopes
         )
-    
+
     def is_claude_subscribed(self) -> bool:
         """
         Check if Claude Code subscription authentication is available.
@@ -296,15 +296,13 @@ class MultiAuthHandler:
         if not self.subscription_auth:
             raise AuthenticationError(
                 message="Subscription authentication is not configured",
-                details={"error": "subscription_auth not initialized"}
+                details={"error": "subscription_auth not initialized"},
             )
 
         return self.subscription_auth.create_subscription_token(
-            user_id=user_id,
-            subscription_type="codex",
-            scopes=scopes
+            user_id=user_id, subscription_type="codex", scopes=scopes
         )
-    
+
     def is_qwen_free(self) -> bool:
         """
         Check if Qwen is configured as a free service (no auth required).

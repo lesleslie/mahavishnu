@@ -4,7 +4,7 @@ import asyncio
 import logging
 from typing import Any
 
-from IPython.core.magic import Magics, magics_class, line_magic
+from IPython.core.magic import Magics, line_magic, magics_class
 
 from ..core.app import MahavishnuApp
 from .formatters import RepoFormatter, WorkflowFormatter

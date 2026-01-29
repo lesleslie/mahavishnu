@@ -1,4 +1,5 @@
 """Mahavishnu core module."""
+
 from .app import MahavishnuApp
 from .config import MahavishnuSettings
 from .errors import (

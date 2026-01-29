@@ -1,4 +1,5 @@
 """Repository validation models."""
+
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
@@ -31,12 +32,8 @@ class Repository(BaseModel):
     path: Path = Field(..., description="Absolute path to repository")
     tags: list[str] = Field(..., min_length=1, max_length=10)
     description: str = Field(..., min_length=1, max_length=500)
-    mcp: Literal["native", "3rd-party"] | None = Field(
-        None, description="MCP server type"
-    )
-    metadata: RepositoryMetadata | None = Field(
-        default=None, description="Additional metadata"
-    )
+    mcp: Literal["native", "3rd-party"] | None = Field(None, description="MCP server type")
+    metadata: RepositoryMetadata | None = Field(default=None, description="Additional metadata")
 
     @field_validator("path")
     @classmethod

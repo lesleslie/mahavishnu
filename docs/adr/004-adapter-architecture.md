@@ -1,30 +1,36 @@
 # ADR 004: Adapter Architecture and Engine Integration
 
 ## Status
+
 **Accepted**
 
 ## Context
+
 Mahavishnu needs to support multiple orchestration engines (Airflow, CrewAI, LangGraph, Agno) with a unified interface. Each engine has different capabilities, APIs, and operational models.
 
 ### Requirements
+
 1. **Unified Interface:** Common API across all engines
-2. **Engine-Specific Features:** Access to unique capabilities of each engine
-3. **Type Safety:** Pydantic models for configuration and results
-4. **Observability:** Metrics and tracing for all operations
-5. **Error Handling:** Consistent error handling across adapters
-6. **Extensibility:** Easy to add new engines
+1. **Engine-Specific Features:** Access to unique capabilities of each engine
+1. **Type Safety:** Pydantic models for configuration and results
+1. **Observability:** Metrics and tracing for all operations
+1. **Error Handling:** Consistent error handling across adapters
+1. **Extensibility:** Easy to add new engines
 
 ### Options Considered
 
 #### Option 1: Direct Engine API
+
 - **Pros:** Full access to engine features
 - **Cons:** Inconsistent interfaces, high coupling, difficult to switch engines
 
 #### Option 2: Wrapper Classes
+
 - **Pros:** Simple abstraction layer
 - **Cons:** Limited to lowest common denominator, loses engine-specific features
 
 #### Option 3: Abstract Base with Engine Extensions (CHOSEN)
+
 - **Pros:**
   - Common interface via `OrchestratorAdapter` base class
   - Engine-specific extensions available via type casting
@@ -36,6 +42,7 @@ Mahavishnu needs to support multiple orchestration engines (Airflow, CrewAI, Lan
   - Need to maintain base class interface
 
 ## Decision
+
 Use abstract base class `OrchestratorAdapter` with engine-specific implementations and extensions.
 
 ### Architecture
@@ -673,6 +680,7 @@ class LangGraphAdapter(OrchestratorAdapter):
 ## Consequences
 
 ### Positive
+
 - Unified interface across all engines
 - Type-safe with Pydantic models
 - Built-in observability and error handling
@@ -680,11 +688,13 @@ class LangGraphAdapter(OrchestratorAdapter):
 - Easy to add new engines
 
 ### Negative
+
 - More upfront design work
 - Need to maintain base class interface
 - Engine-specific features require type casting
 
 ### Risks
+
 - **Risk:** Base class interface becomes limiting
   **Mitigation:** Use engine_specific field for custom data, allow extension methods
 
@@ -694,29 +704,34 @@ class LangGraphAdapter(OrchestratorAdapter):
 ## Implementation
 
 ### Phase 1: Base Adapter (Week 1, Day 5)
+
 - [ ] Define `OrchestratorAdapter` abstract base class
 - [ ] Define `AdapterResult` dataclass
 - [ ] Add base methods with default implementations
 - [ ] Add observability (metrics, tracing)
 
 ### Phase 2: CrewAI Adapter (Week 2, Day 1-3)
+
 - [ ] Implement `CrewAIAdapter`
 - [ ] Add crew creation logic
 - [ ] Add agent management
 - [ ] Add unit tests
 
 ### Phase 3: LangGraph Adapter (Week 2, Day 4-6)
+
 - [ ] Implement `LangGraphAdapter`
 - [ ] Add graph building logic
 - [ ] Add checkpoint management
 - [ ] Add unit tests
 
 ### Phase 4: Airflow & Agno (Week 3)
+
 - [ ] Implement `AirflowAdapter`
 - [ ] Implement `AgnoAdapter`
 - [ ] Add integration tests
 
 ## References
+
 - [CrewAI Documentation](https://docs.crewai.com/)
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
 - [Apache Airflow Documentation](https://airflow.apache.org/docs/)

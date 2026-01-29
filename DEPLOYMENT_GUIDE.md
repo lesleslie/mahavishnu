@@ -4,19 +4,19 @@
 **Date:** 2025-01-24
 **Purpose:** Comprehensive guide for deploying Mahavishnu with Claude Code and Qwen
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Deployment Overview](#deployment-overview)
-2. [Option 1: Mahavishnu as MCP Server for Claude Code](#option-1-mahavishnu-as-mcp-server-for-claude-code)
-3. [Option 2: Mahavishnu Embedded in Qwen Sessions](#option-2-mahavishnu-embedded-in-qwen-sessions)
-4. [Option 3: Hybrid Deployment (Both Claude Code and Qwen)](#option-3-hybrid-deployment-both-claude-code-and-qwen)
-5. [Subscription Authentication Setup](#subscription-authentication-setup)
-6. [Configuration Examples](#configuration-examples)
-7. [Troubleshooting](#troubleshooting)
+1. [Option 1: Mahavishnu as MCP Server for Claude Code](#option-1-mahavishnu-as-mcp-server-for-claude-code)
+1. [Option 2: Mahavishnu Embedded in Qwen Sessions](#option-2-mahavishnu-embedded-in-qwen-sessions)
+1. [Option 3: Hybrid Deployment (Both Claude Code and Qwen)](#option-3-hybrid-deployment-both-claude-code-and-qwen)
+1. [Subscription Authentication Setup](#subscription-authentication-setup)
+1. [Configuration Examples](#configuration-examples)
+1. [Troubleshooting](#troubleshooting)
 
----
+______________________________________________________________________
 
 ## Deployment Overview
 
@@ -34,11 +34,12 @@ Mahavishnu supports **three deployment models**:
 | **Use Case** | Production workflows | Development/testing | Full-featured |
 
 **Recommended:**
+
 - **Production:** Option 1 (MCP Server)
 - **Development:** Option 2 (Embedded in Qwen)
 - **Full-Featured:** Option 3 (Hybrid)
 
----
+______________________________________________________________________
 
 ## Option 1: Mahavishnu as MCP Server for Claude Code
 
@@ -157,7 +158,7 @@ a workflow sweep using the LangGraph adapter?
 ❌ **Requires separate process**
 ❌ **Higher resource usage**
 
----
+______________________________________________________________________
 
 ## Option 2: Mahavishnu Embedded in Qwen Sessions
 
@@ -264,7 +265,7 @@ mahavishnu workflow sweep --adapter langgraph
 ❌ **Limited to Qwen environment**
 ❌ **No MCP tools**
 
----
+______________________________________________________________________
 
 ## Option 3: Hybrid Deployment (Both Claude Code and Qwen)
 
@@ -522,7 +523,7 @@ mahavishnu mcp start
 ⚠️ **Requires client detection logic**
 ⚠️ **Potential auth bypass risks**
 
----
+______________________________________________________________________
 
 ## Subscription Authentication Setup
 
@@ -710,7 +711,7 @@ async def mahavishnu_workflow_sweep(
 | `workflow_manage` | Create/modify workflows | ✅ | ❌ | ✅ |
 | `admin` | Full administrative access | ✅ | ❌ | ❌ |
 
----
+______________________________________________________________________
 
 ## Configuration Examples
 
@@ -862,21 +863,23 @@ adapters:
   agno: true
 ```
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
 ### Issue 1: "Subscription authentication failed"
 
 **Symptoms:**
+
 - Claude Code can't connect to Mahavishnu MCP server
 - Error: "Authentication required"
 
 **Solutions:**
+
 1. Check MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET is set
-2. Verify subscription token is valid
-3. Check token expiration
-4. Ensure subscription_auth_enabled=true
+1. Verify subscription token is valid
+1. Check token expiration
+1. Ensure subscription_auth_enabled=true
 
 ```bash
 # Debug auth
@@ -905,13 +908,15 @@ print(f'Result: {result}')
 ### Issue 2: "Qwen can't import mahavishnu"
 
 **Symptoms:**
+
 - ImportError when importing in Qwen
 - Module not found errors
 
 **Solutions:**
+
 1. Install Mahavishnu in development mode
-2. Ensure Python version is 3.10+
-3. Check virtual environment
+1. Ensure Python version is 3.10+
+1. Check virtual environment
 
 ```bash
 # In Qwen session or terminal
@@ -930,13 +935,15 @@ python -c "from mahavishnu.core import MahavishnuApp; print('OK')"
 ### Issue 3: "MCP server not starting"
 
 **Symptoms:**
+
 - mahavishnu mcp start fails
 - Connection errors in Claude Code
 
 **Solutions:**
+
 1. Check port conflicts
-2. Verify dependencies installed
-3. Check logs for specific errors
+1. Verify dependencies installed
+1. Check logs for specific errors
 
 ```bash
 # Check dependencies
@@ -955,13 +962,15 @@ mahavishnu mcp health
 ### Issue 4: "Database connection errors"
 
 **Symptoms:**
+
 - Can't connect to PostgreSQL
 - Connection pool exhausted
 
 **Solutions:**
+
 1. Verify PostgreSQL is running
-2. Check connection pool settings
-3. Test database connection
+1. Check connection pool settings
+1. Test database connection
 
 ```bash
 # Test PostgreSQL connection
@@ -987,13 +996,15 @@ asyncio.run(test())
 ### Issue 5: "Ollama embeddings not working"
 
 **Symptoms:**
+
 - Embedding generation fails
 - "model not found" errors
 
 **Solutions:**
+
 1. Ensure Ollama is running
-2. Pull the embedding model
-3. Check base URL
+1. Pull the embedding model
+1. Check base URL
 
 ```bash
 # Start Ollama
@@ -1025,7 +1036,7 @@ asyncio.run(test())
 "
 ```
 
----
+______________________________________________________________________
 
 ## Quick Start Guides
 
@@ -1087,7 +1098,7 @@ EOF
 # 3. Done!
 ```
 
----
+______________________________________________________________________
 
 ## Summary
 
@@ -1104,12 +1115,12 @@ EOF
 ### Key Takeaways
 
 1. **Claude Code**: Requires subscription token, uses MCP protocol
-2. **Qwen**: Free tier, no subscription required, Python library
-3. **Hybrid**: Best of both, requires client detection
-4. **Authentication**: JWT-based with subscription metadata
-5. **Configuration**: Single codebase, deployment-specific settings
+1. **Qwen**: Free tier, no subscription required, Python library
+1. **Hybrid**: Best of both, requires client detection
+1. **Authentication**: JWT-based with subscription metadata
+1. **Configuration**: Single codebase, deployment-specific settings
 
----
+______________________________________________________________________
 
 **Document Version:** 1.0
 **Date:** 2025-01-24

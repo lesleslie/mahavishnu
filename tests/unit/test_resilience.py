@@ -21,7 +21,7 @@ async def test_error_classification():
     """Test that errors are correctly classified."""
     app = Mock(spec=MahavishnuApp)
     recovery_manager = ErrorRecoveryManager(app)
-    
+
     # Test network error classification
     network_errors = [
         "ConnectionError: Network is unreachable",
@@ -30,12 +30,12 @@ async def test_error_classification():
         "ssl.SSLError: Certificate verify failed",
         "ConnectionResetError: Connection was reset"
     ]
-    
+
     for error_msg in network_errors:
         error = Exception(error_msg)
         category = await recovery_manager.classify_error(error)
         assert category == ErrorCategory.NETWORK
-    
+
     # Test resource error classification
     resource_errors = [
         "MemoryError: Out of memory",
@@ -43,12 +43,12 @@ async def test_error_classification():
         "MemoryError: Unable to allocate",
         "OSError: No space left on device"
     ]
-    
+
     for error_msg in resource_errors:
         error = Exception(error_msg)
         category = await recovery_manager.classify_error(error)
         assert category == ErrorCategory.RESOURCE
-    
+
     # Test permission error classification
     permission_errors = [
         "PermissionError: Access denied",
@@ -56,12 +56,12 @@ async def test_error_classification():
         "Forbidden: Access is forbidden",
         "AuthenticationError: Invalid token"
     ]
-    
+
     for error_msg in permission_errors:
         error = Exception(error_msg)
         category = await recovery_manager.classify_error(error)
         assert category == ErrorCategory.PERMISSION
-    
+
     # Test validation error classification
     validation_errors = [
         "ValueError: Invalid value provided",
@@ -69,12 +69,12 @@ async def test_error_classification():
         "ValidationError: Field is required",
         "AssertionError: Value must be positive"
     ]
-    
+
     for error_msg in validation_errors:
         error = Exception(error_msg)
         category = await recovery_manager.classify_error(error)
         assert category == ErrorCategory.VALIDATION
-    
+
     # Test transient error classification
     transient_errors = [
         "TemporaryError: Try again later",
@@ -82,19 +82,19 @@ async def test_error_classification():
         "ServiceBusyError: Service is busy",
         "RetryableError: Operation can be retried"
     ]
-    
+
     for error_msg in transient_errors:
         error = Exception(error_msg)
         category = await recovery_manager.classify_error(error)
         assert category == ErrorCategory.TRANSIENT
-    
+
     # Test permanent error classification (default)
     permanent_errors = [
         "RuntimeError: Something went wrong",
         "KeyError: Key not found",
         "IndexError: Index out of range"
     ]
-    
+
     for error_msg in permanent_errors:
         error = Exception(error_msg)
         category = await recovery_manager.classify_error(error)
@@ -131,22 +131,22 @@ async def test_execute_with_resilience_retry_success():
     app.observability = Mock()
     app.opensearch_integration = AsyncMock()
     recovery_manager = ErrorRecoveryManager(app)
-    
+
     # Counter to track attempts
     attempt_count = 0
-    
+
     async def flaky_operation():
         nonlocal attempt_count
         attempt_count += 1
         if attempt_count < 3:
             raise Exception("Temporary network issue")
         return "success"
-    
+
     # Execute with resilience - should succeed after retries
     result = await recovery_manager.execute_with_resilience(
         flaky_operation, workflow_id="test_wf_2", repo_path="/test/repo"
     )
-    
+
     # Verify success after retries
     assert result["success"] is True
     assert result["result"] == "success"
@@ -188,15 +188,15 @@ async def test_execute_with_resilience_skip_strategy():
     app.observability = Mock()
     app.opensearch_integration = AsyncMock()
     recovery_manager = ErrorRecoveryManager(app)
-    
+
     async def permanent_error_operation():
         raise Exception("Permission denied: access forbidden")
-    
+
     # Execute with resilience - should skip for permission errors
     result = await recovery_manager.execute_with_resilience(
         permanent_error_operation, workflow_id="test_wf_4", repo_path="/test/repo"
     )
-    
+
     # Verify it was treated as "recovered" by skipping
     assert result["success"] is False  # Operation didn't succeed
     assert result["skipped"] is True  # But was skipped as recovered
@@ -268,10 +268,10 @@ async def test_get_recovery_metrics():
     """Test that recovery metrics can be retrieved."""
     app = Mock(spec=MahavishnuApp)
     recovery_manager = ErrorRecoveryManager(app)
-    
+
     # Get metrics
     metrics = await recovery_manager.get_recovery_metrics()
-    
+
     # Verify metrics structure
     assert "total_recovery_attempts" in metrics
     assert "successful_recoveries" in metrics

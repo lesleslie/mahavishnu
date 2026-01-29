@@ -15,6 +15,7 @@ mahavishnu mcp-serve
 ### Implemented Tools
 
 **Terminal Management** (11,453 lines of terminal tools):
+
 - `terminal_launch`: Launch terminal sessions
 - `terminal_type`: Type commands in terminals
 - `terminal_read`: Read terminal output
@@ -22,8 +23,9 @@ mahavishnu mcp-serve
 - `terminal_list`: List active terminals
 
 **Features**:
+
 - Launch 10+ concurrent terminal sessions
-- Hot-swappable adapters (iTerm2 <-> mcpretentious)
+- Hot-swappable adapters (iTerm2 \<-> mcpretentious)
 - Connection pooling for reduced overhead
 - iTerm2 profile support
 - Command injection and output capture
@@ -31,6 +33,7 @@ mahavishnu mcp-serve
 ### Not Yet Implemented
 
 **Core Orchestration Tools**:
+
 - `list_repos`: List repositories with tag filtering
 - `trigger_workflow`: Trigger workflow execution
 - `get_workflow_status`: Check workflow status
@@ -39,11 +42,13 @@ mahavishnu mcp-serve
 - `get_adapter_health`: Get health status for specific adapter
 
 **Quality Control Tools**:
+
 - `run_qc`: Run Crackerjack QC checks on repository
 - `get_qc_thresholds`: Get QC threshold configuration
 - `set_qc_thresholds`: Set QC threshold configuration
 
 **Session Management Tools**:
+
 - `list_checkpoints`: List Session-Buddy checkpoints
 - `resume_workflow`: Resume workflow from checkpoint
 - `delete_checkpoint`: Delete workflow checkpoint
@@ -96,6 +101,7 @@ When exposing the MCP server externally, ensure:
 ### Authentication
 
 Mahavishnu supports multiple authentication providers:
+
 - Claude Code subscription authentication
 - Qwen free service authentication
 - Custom JWT tokens
@@ -110,6 +116,7 @@ auth:
 ```
 
 Set environment variable:
+
 ```bash
 export MAHAVISHNU_AUTH_SECRET="your-secret-minimum-32-characters"
 ```
@@ -117,8 +124,8 @@ export MAHAVISHNU_AUTH_SECRET="your-secret-minimum-32-characters"
 ## Next Steps
 
 1. Implement core orchestration tools (estimated 1 week)
-2. Add adapter discovery and health checks
-3. Implement QC integration with Crackerjack
-4. Add Session-Buddy checkpoint integration
+1. Add adapter discovery and health checks
+1. Implement QC integration with Crackerjack
+1. Add Session-Buddy checkpoint integration
 
 See [UNIFIED_IMPLEMENTATION_STATUS.md](../../UNIFIED_IMPLEMENTATION_STATUS.md) for detailed progress tracking and [TERMINAL_MANAGEMENT.md](../TERMINAL_MANAGEMENT.md) for terminal feature documentation.

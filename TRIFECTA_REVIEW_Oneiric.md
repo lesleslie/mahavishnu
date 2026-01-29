@@ -5,23 +5,23 @@
 **Document:** MEMORY_IMPLEMENTATION_PLAN_V2.md
 **Verdict:** ⚠️ **CONDITIONAL GO** - Requires critical fixes before implementation
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
 The revised memory plan has improved architecture but has **CRITICAL Oneiric integration issues** that must be fixed:
 
 1. ✅ **GOOD**: Eliminates non-existent AgentDB dependency, consolidates to PostgreSQL + pgvector
-2. ❌ **CRITICAL**: Ignores Oneiric's built-in pgvector adapter - proposes custom implementation instead
-3. ❌ **CRITICAL**: Health checks return `bool` instead of following Oneiric patterns
-4. ❌ **CRITICAL**: Missing Oneiric observability integration (structured logging, trace correlation)
-5. ⚠️ **MAJOR**: Configuration doesn't extend Oneiric base settings properly
-6. ⚠️ **MAJOR**: No use of Oneiric's lifecycle hooks or error handling patterns
-7. ⚠️ **MAJOR**: Metrics collection doesn't use Oneiric's observability utilities
+1. ❌ **CRITICAL**: Ignores Oneiric's built-in pgvector adapter - proposes custom implementation instead
+1. ❌ **CRITICAL**: Health checks return `bool` instead of following Oneiric patterns
+1. ❌ **CRITICAL**: Missing Oneiric observability integration (structured logging, trace correlation)
+1. ⚠️ **MAJOR**: Configuration doesn't extend Oneiric base settings properly
+1. ⚠️ **MAJOR**: No use of Oneiric's lifecycle hooks or error handling patterns
+1. ⚠️ **MAJOR**: Metrics collection doesn't use Oneiric's observability utilities
 
 **Overall Score: 5/10** - Solid architectural decisions but poor Oneiric integration patterns.
 
----
+______________________________________________________________________
 
 ## Critical Issues (Must Fix)
 
@@ -30,11 +30,13 @@ The revised memory plan has improved architecture but has **CRITICAL Oneiric int
 **Problem:** The plan proposes building custom PostgreSQL and vector store implementations despite Oneiric having production-ready adapters.
 
 **Evidence from Plan:**
+
 - Lines 99-211: Custom `PgVectorStore` class with manual SQL queries
 - Lines 284-393: Custom `PostgreSQLConnection` class
 - Lines 231-278: Custom Alembic migrations
 
 **Oneiric Reality:**
+
 ```python
 # Oneiric v0.3.12 already has this:
 from oneiric.adapters.vector.pgvector import PgvectorAdapter, PgvectorSettings
@@ -54,12 +56,14 @@ health = await adapter.health()  # Returns: bool
 ```
 
 **Impact:**
+
 - **Wastes 60-80 hours** of development time
 - **Adds maintenance burden** - you maintain custom code instead of using Oneiric
 - **Misses out** on Oneiric updates and bug fixes
 - **Breaks consistency** with rest of Mahavishnu's Oneiric patterns
 
 **Fix Required:**
+
 ```python
 # CORRECT APPROACH (from VECTOR_DATABASE_RECOMMENDATIONS.md):
 # mahavishnu/core/vector_store.py
@@ -114,17 +118,19 @@ class MahavishnuVectorStore:
 ```
 
 **References:**
+
 - `ONEIRIC_ADAPTER_ANALYSIS.md` lines 1-615
 - `VECTOR_DATABASE_RECOMMENDATIONS.md` lines 1-535
 - `test_oneiric_pgvector_adapter.py` (working integration test exists)
 
----
+______________________________________________________________________
 
 ### 2. **Health Check Type Mismatch** 🔴
 
 **Problem:** Plan shows health checks returning `Dict[str, Any]` but Oneiric adapters return `bool`.
 
 **Evidence from Plan:**
+
 ```python
 # Line 355-368: INCORRECT
 async def health_check(self) -> bool:
@@ -138,6 +144,7 @@ async def health_check(self) -> bool:
 **Wait, this is actually correct!** The custom implementation returns `bool`, which matches Oneiric.
 
 **BUT** - the base adapter interface (`mahavishnu/core/adapters/base.py` line 24-31) requires:
+
 ```python
 async def get_health(self) -> Dict[str, Any]:
     """
@@ -147,10 +154,12 @@ async def get_health(self) -> Dict[str, Any]:
 ```
 
 **This is a MISMATCH:**
+
 - Oneiric adapters: `health() -> bool`
 - Mahavishnu base: `get_health() -> Dict[str, Any]`
 
 **Fix Required:**
+
 ```python
 # Option 1: Update Mahavishnu base adapter to match Oneiric
 class OrchestratorAdapter(ABC):
@@ -171,13 +180,14 @@ class MahavishnuVectorStore:
         }
 ```
 
----
+______________________________________________________________________
 
 ### 3. **No Structured Logging with Trace Correlation** 🔴
 
 **Problem:** Custom implementations use standard `logging` instead of Oneiric's structured logging.
 
 **Evidence from Plan:**
+
 ```python
 # Lines 294, 339, 364, etc.: Standard logging
 logger = logging.getLogger(__name__)
@@ -186,6 +196,7 @@ logger.debug(f"Stored memory {memory_id} (type={memory_type})")
 ```
 
 **Oneiric Pattern:**
+
 ```python
 from oneiric.core.observability import get_logger, scoped_log_context, trace
 
@@ -207,12 +218,14 @@ async def store_memory(self, content: str, embedding: list[float]):
 ```
 
 **Why This Matters:**
+
 - Oneiric uses **structlog** for structured logging
 - Trace correlation connects logs across async operations
 - Observability systems (Jaeger, Tempo) can trace request flows
 - Critical for debugging async memory operations
 
 **Fix Required:**
+
 ```python
 # Use Oneiric observability
 from oneiric.core.observability import get_logger, scoped_log_context, trace
@@ -239,13 +252,14 @@ class MahavishnuVectorStore:
                 logger.info("memory-stored", doc_id=doc.id)
 ```
 
----
+______________________________________________________________________
 
 ### 4. **Missing Oneiric Metrics Integration** 🔴
 
 **Problem:** Performance monitoring plan doesn't use Oneiric's observability features.
 
 **Evidence from Plan:**
+
 ```python
 # Lines 1446-1494: Custom metrics storage
 class PerformanceMonitor:
@@ -255,6 +269,7 @@ class PerformanceMonitor:
 ```
 
 **Oneiric Pattern:**
+
 ```python
 from oneiric.core.observability import configure_observability, get_tracer
 from opentelemetry import metrics
@@ -291,12 +306,13 @@ class MahavishnuVectorStore:
 ```
 
 **Why This Matters:**
+
 - Metrics automatically exported to OTLP endpoint (if configured)
 - Consistent with Oneiric ecosystem
 - Works with Prometheus, Grafana, etc.
 - No custom PostgreSQL storage needed
 
----
+______________________________________________________________________
 
 ## Major Concerns (Should Fix)
 
@@ -305,6 +321,7 @@ class MahavishnuVectorStore:
 **Problem:** Plan adds fields to `MahavishnuSettings` without following Oneiric patterns.
 
 **Evidence from Plan:**
+
 ```python
 # Lines 558-616: Custom PostgreSQLSettings
 class PostgreSQLSettings(BaseModel):  # Should extend Oneiric settings
@@ -314,6 +331,7 @@ class PostgreSQLSettings(BaseModel):  # Should extend Oneiric settings
 ```
 
 **Oneiric Pattern:**
+
 ```python
 from oneiric.adapters.vector.pgvector import PgvectorSettings
 from pydantic import Field
@@ -348,18 +366,20 @@ class MahavishnuSettings(MCPServerSettings):
 ```
 
 **Missing:**
+
 - No `SecretStr` for passwords (security risk)
 - No field validators for port ranges
 - No environment variable overrides
 - No Oneiric layered loading integration
 
----
+______________________________________________________________________
 
 ### 6. **No Use of Oneiric Lifecycle Hooks** ⚠️
 
 **Problem:** Custom implementations don't use Oneiric's lifecycle management.
 
 **Oneiric Lifecycle Pattern:**
+
 ```python
 from oneiric.core.lifecycle import LifecycleManager, LifecycleError
 
@@ -406,18 +426,20 @@ class MahavishnuVectorStore:
 ```
 
 **Missing from Plan:**
+
 - No `LifecycleError` usage
 - No pre/post hooks
 - No circuit breaker integration
 - No graceful degradation
 
----
+______________________________________________________________________
 
 ### 7. **No Circuit Breaker Integration** ⚠️
 
 **Problem:** Memory operations don't use circuit breakers despite Mahavishnu having them.
 
 **Evidence from Code:**
+
 ```python
 # mahavishnu/core/app.py lines 116-119
 self.circuit_breaker = CircuitBreaker(
@@ -427,6 +449,7 @@ self.circuit_breaker = CircuitBreaker(
 ```
 
 **But Memory Implementation Ignores This:**
+
 ```python
 # Plan lines 745-778: No circuit breaker usage
 async def store_agent_conversation(self, agent_id: str, role: str, content: str):
@@ -438,6 +461,7 @@ async def store_agent_conversation(self, agent_id: str, role: str, content: str)
 ```
 
 **Fix Required:**
+
 ```python
 class MahavishnuMemoryIntegration:
     def __init__(self, config, circuit_breaker):
@@ -467,13 +491,14 @@ class MahavishnuMemoryIntegration:
             raise
 ```
 
----
+______________________________________________________________________
 
 ## Minor Issues (Nice to Have)
 
 ### 8. **No Transaction Context Usage**
 
 Oneiric's pgvector adapter supports transactions:
+
 ```python
 async with adapter.transaction() as client:
     await adapter.insert("coll1", docs1)
@@ -483,11 +508,12 @@ async with adapter.transaction() as client:
 
 Plan doesn't use this for multi-table operations.
 
----
+______________________________________________________________________
 
 ### 9. **No Retry Logic**
 
 Oneiric doesn't have built-in retry, but Mahavishnu has retry configuration:
+
 ```python
 # config.py lines 109-120
 retry_max_attempts: int = Field(default=3)
@@ -496,18 +522,19 @@ retry_base_delay: float = Field(default=1.0)
 
 Memory implementation should use this for transient failures.
 
----
+______________________________________________________________________
 
 ### 10. **No Use of Oneiric Error Types**
 
 Oneiric has structured error types:
+
 ```python
 from oneiric.core.errors import LifecycleError, ConfigurationError
 ```
 
 Plan uses generic exceptions.
 
----
+______________________________________________________________________
 
 ## What's Done Well
 
@@ -520,18 +547,20 @@ Plan uses generic exceptions.
 ✅ **Connection Pooling** - Performance consideration present
 ✅ **Alembic Migrations** - Database version control is smart
 
----
+______________________________________________________________________
 
 ## Specific Recommendations
 
 ### Recommendation 1: Use Oneiric pgvector Adapter (Critical)
 
 **Remove from plan:**
+
 - Lines 99-211: `PgVectorStore` custom implementation
 - Lines 284-393: `PostgreSQLConnection` custom implementation
 - Lines 231-278: Custom schema SQL (use Oneiric's collection management)
 
 **Add to plan:**
+
 ```python
 # mahavishnu/core/vector_store.py (NEW FILE)
 from oneiric.adapters.vector.pgvector import PgvectorAdapter, PgvectorSettings
@@ -656,11 +685,12 @@ class MahavishnuVectorStore:
             await self.adapter.cleanup()
 ```
 
----
+______________________________________________________________________
 
 ### Recommendation 2: Update MahavishnuSettings (Critical)
 
 **Add to `mahavishnu/core/config.py`:**
+
 ```python
 from pydantic import Field, SecretStr, field_validator
 from oneiric.adapters.vector.pgvector import PgvectorSettings
@@ -736,6 +766,7 @@ class MahavishnuSettings(MCPServerSettings):
 ```
 
 **Configuration file (`settings/mahavishnu.yaml`):**
+
 ```yaml
 # ... existing config ...
 
@@ -751,11 +782,12 @@ vector_db_dimension: 768  # nomic-embed-text
 vector_db_distance_metric: cosine
 ```
 
----
+______________________________________________________________________
 
 ### Recommendation 3: Update Memory Integration (Critical)
 
 **Replace `MahavishnuMemoryIntegration` with Oneiric patterns:**
+
 ```python
 # mahavishnu/core/memory_integration.py (REWRITE)
 from typing import Optional, List, Dict, Any
@@ -986,11 +1018,12 @@ class MahavishnuMemoryIntegration:
         await self.vector_store.cleanup()
 ```
 
----
+______________________________________________________________________
 
 ### Recommendation 4: Update MahavishnuApp Initialization
 
 **Add to `mahavishnu/core/app.py`:**
+
 ```python
 from .vector_store import MahavishnuVectorStore
 from .memory_integration import MahavishnuMemoryIntegration
@@ -1074,7 +1107,7 @@ class MahavishnuApp:
             await self.vector_store.cleanup()
 ```
 
----
+______________________________________________________________________
 
 ## Overall Assessment
 
@@ -1095,7 +1128,7 @@ class MahavishnuApp:
 
 **Overall Score: 5/10** - Good architecture, poor Oneiric integration
 
----
+______________________________________________________________________
 
 ## Go/No-Go Decision
 
@@ -1104,38 +1137,41 @@ class MahavishnuApp:
 **Required Changes Before Implementation:**
 
 1. ✅ **MUST:** Replace custom PostgreSQL/pgvector with Oneiric adapters
-2. ✅ **MUST:** Add structured logging with trace correlation
-3. ✅ **MUST:** Use Oneiric observability for metrics
-4. ✅ **MUST:** Fix health check type consistency
-5. ✅ **SHOULD:** Integrate circuit breakers with memory operations
-6. ✅ **SHOULD:** Add Oneiric lifecycle hooks
-7. ✅ **SHOULD:** Update configuration to use `SecretStr`
+1. ✅ **MUST:** Add structured logging with trace correlation
+1. ✅ **MUST:** Use Oneiric observability for metrics
+1. ✅ **MUST:** Fix health check type consistency
+1. ✅ **SHOULD:** Integrate circuit breakers with memory operations
+1. ✅ **SHOULD:** Add Oneiric lifecycle hooks
+1. ✅ **SHOULD:** Update configuration to use `SecretStr`
 
 **Implementation Sequence:**
 
 1. **Phase 0 (NEW):** Oneiric Integration Foundation (3-4 days)
+
    - Update `MahavishnuSettings` with vector_db fields
    - Create `MahavishnuVectorStore` using Oneiric pgvector adapter
    - Add structured logging throughout
    - Update base adapter health check signature
 
-2. **Phase 1 (Revised):** Vector Store Setup (2-3 days)
+1. **Phase 1 (Revised):** Vector Store Setup (2-3 days)
+
    - Remove custom schema/migrations (use Oneiric collections)
    - Initialize vector store in `MahavishnuApp`
    - Add health checks with Oneiric patterns
    - Add circuit breaker integration
 
-3. **Phase 2 (Revised):** Memory Integration (4-5 days)
+1. **Phase 2 (Revised):** Memory Integration (4-5 days)
+
    - Implement `MahavishnuMemoryIntegration` with Oneiric observability
    - Add Session-Buddy integration for insights
    - Add retry logic and circuit breaker protection
    - Add comprehensive logging
 
-4. **Phase 3-5:** Continue as planned with Oneiric patterns
+1. **Phase 3-5:** Continue as planned with Oneiric patterns
 
 **Revised Timeline:** 4-5 weeks (same as original plan, but better architecture)
 
----
+______________________________________________________________________
 
 ## Conclusion
 
@@ -1144,13 +1180,14 @@ The memory implementation plan V2 has **solid architectural decisions** but **cr
 **Key Takeaway:** Use Oneiric's production-ready adapters. Focus on business logic, not infrastructure.
 
 **Next Steps:**
-1. Address all "Critical Issues" in this review
-2. Update MEMORY_IMPLEMENTATION_PLAN_V2.md with corrected code
-3. Run existing integration test (`test_oneiric_pgvector_adapter.py`)
-4. Create new implementation tasks based on recommendations
-5. Begin implementation with Oneiric-first approach
 
----
+1. Address all "Critical Issues" in this review
+1. Update MEMORY_IMPLEMENTATION_PLAN_V2.md with corrected code
+1. Run existing integration test (`test_oneiric_pgvector_adapter.py`)
+1. Create new implementation tasks based on recommendations
+1. Begin implementation with Oneiric-first approach
+
+______________________________________________________________________
 
 **Reviewer Signature:** Oneiric Integration Specialist
 **Date:** 2025-01-24

@@ -65,6 +65,7 @@ Agno is currently in evaluation phase. It is recommended to evaluate Agno v2.0 b
 ## Estimated Completion Effort
 
 2-3 weeks for full implementation including:
+
 - Agno v2.0 integration
 - Agent lifecycle management
 - Tool integration
@@ -75,9 +76,9 @@ Agno is currently in evaluation phase. It is recommended to evaluate Agno v2.0 b
 ## Next Steps
 
 1. Evaluate Agno v2.0 capabilities
-2. Implement agent lifecycle management
-3. Add multi-LLM routing
-4. Implement tool integration
-5. Add memory and context management
+1. Implement agent lifecycle management
+1. Add multi-LLM routing
+1. Implement tool integration
+1. Add memory and context management
 
 See [UNIFIED_IMPLEMENTATION_STATUS.md](../../UNIFIED_IMPLEMENTATION_STATUS.md) for detailed progress tracking.

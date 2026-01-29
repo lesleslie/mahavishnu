@@ -5,6 +5,7 @@
 Mahavishnu is a global orchestrator package designed to help manage development workflows across multiple repositories. It provides a unified interface to various orchestration engines including Airflow, CrewAI, LangGraph, and Agno, while leveraging Oneiric for core configuration and logging.
 
 **Key Design Principles:**
+
 - **Oneiric-Native**: Full integration with Oneiric's configuration, logging, and lifecycle management
 - **MCP-First**: Native MCP server using FastMCP + mcp-common patterns
 - **Resilient**: Built-in error handling, retries, circuit breakers, and graceful degradation
@@ -160,6 +161,7 @@ mahavishnu/
 ## Implementation Phases
 
 ### Phase 1: Foundation ✅ (COMPLETED)
+
 - [x] Initialize project structure
 - [x] Set up pyproject.toml with dependencies
 - [x] Implement core application class
@@ -169,7 +171,9 @@ mahavishnu/
 - [x] Create sample configuration files
 
 ### Phase 2: Engine Integration (Week 2)
+
 **Objectives:**
+
 - Implement full-featured adapters for CrewAI and LangGraph
 - Add Crackerjack integration for post-execution QC
 - Add Session-Buddy integration for task persistence
@@ -177,6 +181,7 @@ mahavishnu/
 - Add comprehensive error handling
 
 **Deliverables:**
+
 - [ ] CrewAIAdapter with crew creation, task execution, error handling
 - [ ] LangGraphAdapter with graph building, state management, routing
 - [ ] Crackerjack QC runner with configurable thresholds
@@ -186,13 +191,16 @@ mahavishnu/
 - [ ] Integration tests for CLI commands
 
 **Success Criteria:**
+
 - Can execute workflows across multiple repos
 - QC checks run automatically after workflow completion
 - Sessions can be saved and resumed
 - All adapters handle errors gracefully
 
 ### Phase 3: Advanced Engines (Week 3)
+
 **Objectives:**
+
 - Implement Airflow adapter with dynamic DAG creation
 - Implement Agno adapter with agent capabilities
 - Test hybrid workflows (e.g., Airflow DAG calling CrewAI)
@@ -200,6 +208,7 @@ mahavishnu/
 - Add resilience patterns (retries, circuit breakers)
 
 **Deliverables:**
+
 - [ ] AirflowAdapter with dynamic DAG generation
 - [ ] AgnoAdapter with multi-agent coordination
 - [ ] Hybrid workflow examples
@@ -209,6 +218,7 @@ mahavishnu/
 - [ ] Dead letter queue for failed workflows
 
 **Success Criteria:**
+
 - Airflow DAGs are created dynamically from workflow definitions
 - Hybrid workflows can chain multiple engines
 - Failed operations are retried with backoff
@@ -216,7 +226,9 @@ mahavishnu/
 - Dead letter workflows can be manually replayed
 
 ### Phase 4: MCP and Tools (Week 4)
+
 **Objectives:**
+
 - Build production-ready MCP server using FastMCP + mcp-common
 - Implement comprehensive tool set
 - Add authentication and rate limiting
@@ -224,6 +236,7 @@ mahavishnu/
 - Add workflow monitoring capabilities
 
 **Deliverables:**
+
 - [ ] MCP server using MCPServerCLIFactory pattern
 - [ ] Tool registry with 10+ tools
 - [ ] JWT-based authentication
@@ -233,6 +246,7 @@ mahavishnu/
 - [ ] HTTP endpoint with SSE support
 
 **Success Criteria:**
+
 - MCP server starts/stops cleanly
 - All tools are discoverable and documented
 - Authentication prevents unauthorized access
@@ -240,7 +254,9 @@ mahavishnu/
 - Health probe returns accurate status
 
 ### Phase 5: Observability & Monitoring (Week 5)
+
 **Objectives:**
+
 - Implement OpenTelemetry metrics collection
 - Add distributed tracing for cross-repo operations
 - Create Grafana dashboards
@@ -248,6 +264,7 @@ mahavishnu/
 - Add performance profiling
 
 **Deliverables:**
+
 - [ ] OpenTelemetry metrics (execution times, success rates, repo-level stats)
 - [ ] Distributed tracing with Jaeger/Tempo
 - [ ] Structured JSON logging with correlation IDs
@@ -256,6 +273,7 @@ mahavishnu/
 - [ ] Performance profiling with cProfile/py-spy
 
 **Success Criteria:**
+
 - Metrics are exported to Prometheus
 - Traces show full workflow execution across repos
 - Logs are queryable in Elasticsearch/Loki
@@ -263,7 +281,9 @@ mahavishnu/
 - Alerts fire for critical failures
 
 ### Phase 6: Polish and Deployment (Week 6-7)
+
 **Objectives:**
+
 - Add comprehensive tests (unit, integration, E2E, property-based)
 - Set up CI/CD pipeline
 - Prepare for PyPI release
@@ -272,6 +292,7 @@ mahavishnu/
 - Performance testing and optimization
 
 **Deliverables:**
+
 - [ ] Test suite: >80% unit coverage, 50+ integration tests, 10+ E2E tests
 - [ ] Property-based tests with Hypothesis
 - [ ] CI/CD pipeline (GitHub Actions)
@@ -283,6 +304,7 @@ mahavishnu/
 - [ ] Documentation site (MkDocs)
 
 **Success Criteria:**
+
 - All tests pass in CI
 - Package can be installed via pip
 - Examples are runnable and well-documented
@@ -291,7 +313,9 @@ mahavishnu/
 - Documentation is comprehensive and accurate
 
 ### Phase 7: Production Readiness (Week 8)
+
 **Objectives:**
+
 - Load testing and performance benchmarking
 - Security audit and penetration testing
 - Incident response runbooks
@@ -300,6 +324,7 @@ mahavishnu/
 - Compliance checks (if applicable)
 
 **Deliverables:**
+
 - [ ] Load test report (target: 1000 repos, 100 concurrent workflows)
 - [ ] Security audit by third party
 - [ ] Penetration testing report
@@ -310,6 +335,7 @@ mahavishnu/
 - [ ] Multi-region deployment guide
 
 **Success Criteria:**
+
 - System handles target load without degradation
 - Security audit finds no critical issues
 - Runbooks are tested and validated
@@ -324,6 +350,7 @@ mahavishnu/
 Mahavishnu uses Oneiric for configuration and logging, following these patterns:
 
 **Configuration (mahavishnu/core/config.py):**
+
 ```python
 from pydantic import Field
 from mcp_common.cli import MCPServerSettings
@@ -387,6 +414,7 @@ class MahavishnuSettings(MCPServerSettings):
 ```
 
 **Logging (mahavishnu/core/logging.py):**
+
 ```python
 import structlog
 from pathlib import Path
@@ -451,6 +479,7 @@ def _add_correlation_id(
 All adapters implement a common interface with enhanced error handling and observability:
 
 **Base Adapter (mahavishnu/core/adapters/base.py):**
+
 ```python
 from abc import ABC, abstractmethod
 from typing import Any
@@ -537,6 +566,7 @@ class OrchestratorAdapter(ABC):
 The MCP server follows mcp-common patterns with FastMCP:
 
 **Server Factory (mahavishnu/mcp/server_core.py):**
+
 ```python
 from fastmcp import FastMCP
 from mcp_common.cli import MCPServerCLIFactory
@@ -599,6 +629,7 @@ class MahavishnuMCPServer:
 ```
 
 **Tool Registration (mahavishnu/mcp/tools/repo_tools.py):**
+
 ```python
 from typing import Any
 from fastmcp import FastMCP
@@ -669,6 +700,7 @@ def register_repo_tools(mcp_app: FastMCP, settings: MahavishnuSettings) -> None:
 ### CLI Commands
 
 **CLI Groups (mahavishnu/cli.py):**
+
 ```python
 import typer
 from pathlib import Path
@@ -757,6 +789,7 @@ def status():
 ### Integration Points
 
 **Crackerjack QC (mahavishnu/qc/runner.py):**
+
 ```python
 from dataclasses import dataclass
 from typing import Any
@@ -834,6 +867,7 @@ class QCRunner:
 ```
 
 **Session-Buddy Checkpoints (mahavishnu/session/checkpoint.py):**
+
 ```python
 from dataclasses import dataclass, asdict
 from datetime import datetime
@@ -939,12 +973,14 @@ class CheckpointManager:
 ### Authentication & Authorization
 
 **JWT-Based Authentication:**
+
 - All MCP tools require valid JWT token
 - Tokens are signed with HS256 algorithm
 - Token expiration: 1 hour (configurable)
 - Refresh token support
 
 **Role-Based Access Control:**
+
 - Admin: Full access to all tools
 - Operator: Can trigger workflows, view status
 - Viewer: Read-only access
@@ -952,6 +988,7 @@ class CheckpointManager:
 ### Input Validation
 
 **Pydantic Models:**
+
 - All tool inputs use Pydantic models
 - Schema validation on all parameters
 - SQL injection prevention for repo paths
@@ -960,6 +997,7 @@ class CheckpointManager:
 ### Secrets Management
 
 **Provider-Based:**
+
 - Environment variables (default)
 - HashiCorp Vault (optional)
 - AWS Secrets Manager (optional)
@@ -968,6 +1006,7 @@ class CheckpointManager:
 ### Audit Logging
 
 **All Operations Logged:**
+
 - Workflow triggers
 - QC check results
 - Configuration changes
@@ -975,6 +1014,7 @@ class CheckpointManager:
 - Authorization failures
 
 **Log Format:**
+
 ```json
 {
   "timestamp": "2025-01-22T12:34:56Z",
@@ -992,6 +1032,7 @@ class CheckpointManager:
 ### Network Security
 
 **TLS/mTLS:**
+
 - TLS 1.3 for HTTP endpoint
 - mTLS for server-to-server communication
 - Certificate rotation support
@@ -999,6 +1040,7 @@ class CheckpointManager:
 ### Rate Limiting
 
 **Per-Client Limits:**
+
 - 100 requests per minute
 - Burst capacity: 20 requests
 - Configurable per client tier
@@ -1008,12 +1050,14 @@ class CheckpointManager:
 ### Retry Logic
 
 **Exponential Backoff with Jitter:**
+
 - Max attempts: 3 (configurable)
 - Base delay: 1 second
 - Max delay: 60 seconds
 - Jitter: ±1 second
 
 **Retryable Errors:**
+
 - Network timeouts
 - 5xx server errors
 - Rate limit errors (429)
@@ -1022,11 +1066,13 @@ class CheckpointManager:
 ### Circuit Breaker
 
 **Circuit States:**
+
 - Closed: Normal operation
 - Open: Failures exceed threshold, requests fail fast
 - Half-Open: Testing if service has recovered
 
 **Configuration:**
+
 - Failure threshold: 5 consecutive failures
 - Timeout: 60 seconds before half-open
 - Success threshold: 2 consecutive successes to close
@@ -1034,6 +1080,7 @@ class CheckpointManager:
 ### Dead Letter Queue
 
 **Failed Workflows:**
+
 - Saved to `.mahavishnu/dead_letter/`
 - Include error context and metadata
 - Can be replayed manually
@@ -1042,11 +1089,13 @@ class CheckpointManager:
 ### Graceful Degradation
 
 **Partial Failures:**
+
 - If 3/10 repos fail, continue with remaining 7
 - Return partial results with error details
 - Don't fail entire workflow for single repo failure
 
 **Adapter Unavailability:**
+
 - If adapter crashes, mark as unhealthy
 - Circuit breaker opens for that adapter
 - Other adapters continue functioning
@@ -1056,6 +1105,7 @@ class CheckpointManager:
 ### Metrics (OpenTelemetry)
 
 **Collected Metrics:**
+
 - `mahavishnu_workflow_duration_seconds`: Workflow execution time
 - `mahavishnu_workflow_status_total`: Workflow success/failure count
 - `mahavishnu_repo_processing_duration_seconds`: Per-repo processing time
@@ -1064,6 +1114,7 @@ class CheckpointManager:
 - `mahavishnu_active_workflows`: Current active workflow count
 
 **Labels:**
+
 - adapter: {airflow,crewai,langgraph,agno}
 - workflow_type: {sweep,audit,generate}
 - repo: repository path
@@ -1072,6 +1123,7 @@ class CheckpointManager:
 ### Distributed Tracing
 
 **Trace Workflow Execution:**
+
 - Span for workflow initiation
 - Child spans for each repo
 - Grandchild spans for QC checks
@@ -1080,6 +1132,7 @@ class CheckpointManager:
 ### Logging
 
 **Structured JSON Logs:**
+
 ```json
 {
   "timestamp": "2025-01-22T12:34:56Z",
@@ -1096,6 +1149,7 @@ class CheckpointManager:
 ```
 
 **Multiple Sinks:**
+
 - stdout: Human-readable in development
 - file: Rotating file logs (.mahavishnu/logs/)
 - http: Send to log aggregation (optional)
@@ -1103,24 +1157,28 @@ class CheckpointManager:
 ### Dashboards (Grafana)
 
 **Dashboard 1: Workflow Overview**
+
 - Workflow execution rate
 - Success/failure ratio
 - Average duration
 - Active workflow count
 
 **Dashboard 2: Repository Stats**
+
 - Repos processed
 - Per-repo duration
 - QC scores by repo
 - Failed repos
 
 **Dashboard 3: Adapter Health**
+
 - Adapter status (healthy/degraded/down)
 - Request rate per adapter
 - Error rate per adapter
 - Circuit breaker state
 
 **Dashboard 4: System Resources**
+
 - CPU usage
 - Memory usage
 - Disk I/O
@@ -1129,6 +1187,7 @@ class CheckpointManager:
 ### Alerting
 
 **Alert Rules:**
+
 - Workflow failure rate > 10% (5 minutes)
 - QC score < 80 (5 minutes)
 - Adapter circuit breaker open (immediate)
@@ -1136,6 +1195,7 @@ class CheckpointManager:
 - Active workflows > 100 (immediate)
 
 **Alert Channels:**
+
 - Slack: #mahavishnu-alerts
 - PagerDuty: On-call rotation
 - Email: team@example.com
@@ -1145,6 +1205,7 @@ class CheckpointManager:
 ### Schema Validation
 
 **Pydantic Models:**
+
 - All configuration uses Pydantic models
 - Schema validation at startup
 - Type safety and coercion
@@ -1153,14 +1214,16 @@ class CheckpointManager:
 ### Environment-Specific Configs
 
 **Configuration Hierarchy:**
+
 1. `settings/mahavishnu.yaml` (base, committed)
-2. `settings/local.yaml` (development, gitignored)
-3. `settings/production.yaml` (production, committed if non-sensitive)
-4. Environment variables: `MAHAVISHNU_{FIELD}`
+1. `settings/local.yaml` (development, gitignored)
+1. `settings/production.yaml` (production, committed if non-sensitive)
+1. Environment variables: `MAHAVISHNU_{FIELD}`
 
 ### Hot Reload
 
 **SIGHUP Handler:**
+
 - Reload configuration without restart
 - Validate new configuration before applying
 - Rollback on validation failure
@@ -1171,11 +1234,13 @@ class CheckpointManager:
 ### Upgrade Strategy
 
 **Database Migrations:**
+
 - Alembic for schema migrations
 - Forward and backward migrations
 - Migration testing in CI
 
 **Configuration Migrations:**
+
 - Automatic config migration on startup
 - Backup old configuration
 - Rollback on failure
@@ -1183,11 +1248,13 @@ class CheckpointManager:
 ### Backup & Restore
 
 **Backups:**
+
 - Checkpoints: Daily to S3
 - Configuration: Git versioned
 - State database: Hourly snapshots
 
 **Restore:**
+
 - One-command restore from backup
 - Restore specific checkpoint
 - Restore configuration version
@@ -1195,6 +1262,7 @@ class CheckpointManager:
 ### Disaster Recovery
 
 **Multi-Region Deployment:**
+
 - Primary region: us-east-1
 - DR region: us-west-2
 - Data replication: Async
@@ -1204,6 +1272,7 @@ class CheckpointManager:
 ### Multi-Tenancy
 
 **User/Org Isolation:**
+
 - Separate checkpoints per user
 - Separate workflow history
 - Rate limiting per user
@@ -1214,6 +1283,7 @@ class CheckpointManager:
 ### Local Development
 
 **Quickstart:**
+
 ```bash
 # Clone and install
 git clone https://github.com/example/mahavishnu.git
@@ -1236,12 +1306,14 @@ mahavishnu mcp start
 ### Debugging
 
 **Enable Debug Logging:**
+
 ```bash
 export MAHAVISHNU_LOG_LEVEL=DEBUG
 mahavishnu workflow sweep --tag=backend
 ```
 
 **Enable Tracing:**
+
 ```bash
 export MAHAVISHNU_TRACING_ENABLED=true
 export MAHAVISHNU_OTLP_ENDPOINT=http://localhost:4317
@@ -1251,14 +1323,16 @@ mahavishnu workflow sweep --tag=backend
 ### Contributing
 
 **Contribution Workflow:**
+
 1. Fork repository
-2. Create feature branch
-3. Make changes with tests
-4. Run `crackerjack run`
-5. Run `pytest tests/`
-6. Submit pull request
+1. Create feature branch
+1. Make changes with tests
+1. Run `crackerjack run`
+1. Run `pytest tests/`
+1. Submit pull request
 
 **Code Style:**
+
 - Black: Code formatting
 - isort: Import sorting
 - flake8: Linting
@@ -1267,6 +1341,7 @@ mahavishnu workflow sweep --tag=backend
 ## Dependencies
 
 ### Core Dependencies
+
 ```toml
 [project]
 name = "mahavishnu"
@@ -1348,6 +1423,7 @@ all = [
 ### repos.yaml
 
 **Schema:**
+
 ```yaml
 repos:
   - path: "/path/to/repo1"
@@ -1372,6 +1448,7 @@ repos:
 ```
 
 **Validation:**
+
 - Path must exist and be a git repository
 - Tags must be alphanumeric with hyphens
 - Description is required
@@ -1380,6 +1457,7 @@ repos:
 ### settings/mahavishnu.yaml
 
 **Example:**
+
 ```yaml
 # Mahavishnu Configuration
 
@@ -1470,6 +1548,7 @@ mcp:
 **Coverage Target:** >80%
 
 **Test Structure:**
+
 ```
 tests/unit/
 ├── core/
@@ -1493,6 +1572,7 @@ tests/unit/
 **Framework:** pytest with Docker containers for dependencies
 
 **Test Structure:**
+
 ```
 tests/integration/
 ├── test_workflow_execution.py
@@ -1506,6 +1586,7 @@ tests/integration/
 **Framework:** pytest with real repositories
 
 **Test Structure:**
+
 ```
 tests/e2e/
 ├── test_sweep_workflow.py
@@ -1519,12 +1600,14 @@ tests/e2e/
 **Framework:** Hypothesis
 
 **Test Properties:**
+
 - Repo list filtering is idempotent
 - Workflow execution is commutative
 - Checkpoint save/load is round-trip
 - QC scoring is monotonic
 
 **Example:**
+
 ```python
 from hypothesis import given, strategies as st
 
@@ -1540,25 +1623,29 @@ def test_repo_filtering_is_idempotent(tags):
 ## Performance Targets
 
 ### Throughput
+
 - 100 concurrent workflows
 - 1000 repositories per workflow
 - 1000 repos processed per minute
 
 ### Latency
-- Workflow initiation: <100ms
-- Per-repo processing: <5s (average)
-- QC check execution: <30s per repo
-- Total workflow time: <10 minutes (100 repos)
+
+- Workflow initiation: \<100ms
+- Per-repo processing: \<5s (average)
+- QC check execution: \<30s per repo
+- Total workflow time: \<10 minutes (100 repos)
 
 ### Resource Usage
-- Memory: <4GB (100 concurrent workflows)
-- CPU: <80% (8 cores)
-- Disk I/O: <100MB/s
-- Network: <1Gbps
+
+- Memory: \<4GB (100 concurrent workflows)
+- CPU: \<80% (8 cores)
+- Disk I/O: \<100MB/s
+- Network: \<1Gbps
 
 ## Production Readiness Checklist
 
 ### Security
+
 - [ ] Authentication implemented and tested
 - [ ] Input validation on all inputs
 - [ ] Secrets management configured
@@ -1569,6 +1656,7 @@ def test_repo_filtering_is_idempotent(tags):
 - [ ] Penetration testing completed
 
 ### Observability
+
 - [ ] Metrics collection enabled
 - [ ] Distributed tracing enabled
 - [ ] Structured logging configured
@@ -1577,6 +1665,7 @@ def test_repo_filtering_is_idempotent(tags):
 - [ ] On-call rotation established
 
 ### Reliability
+
 - [ ] Circuit breakers implemented
 - [ ] Retry logic configured
 - [ ] Dead letter queue configured
@@ -1585,12 +1674,14 @@ def test_repo_filtering_is_idempotent(tags):
 - [ ] Disaster recovery tested
 
 ### Performance
+
 - [ ] Load testing completed
 - [ ] Performance benchmarks met
 - [ ] Resource usage optimized
 - [ ] Bottlenecks identified and resolved
 
 ### Operations
+
 - [ ] CI/CD pipeline operational
 - [ ] Deployment automation working
 - [ ] Backup/restore tested

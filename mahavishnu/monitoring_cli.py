@@ -1,12 +1,13 @@
 """Monitoring CLI commands."""
-from typing import Optional
-import typer
+
 import asyncio
+
+import typer
 
 
 def add_monitoring_commands(app: typer.Typer) -> None:
     """Add monitoring commands to the main CLI app."""
-    from .core.monitoring import AlertManager, MonitoringService, MonitoringDashboard
+    from .core.monitoring import AlertManager, MonitoringDashboard, MonitoringService
 
     monitor_app = typer.Typer(help="System monitoring and alerting")
     app.add_typer(monitor_app, name="monitor")
@@ -14,14 +15,17 @@ def add_monitoring_commands(app: typer.Typer) -> None:
     @monitor_app.command("metrics")
     def monitor_metrics() -> None:
         """Show system metrics."""
+
         async def _metrics():
             from .core.app import MahavishnuApp
+
             maha_app = MahavishnuApp()
             dashboard = MonitoringDashboard(maha_app)
 
             metrics = await dashboard.get_system_metrics()
 
             import json
+
             typer.echo(json.dumps(metrics, indent=2))
 
         asyncio.run(_metrics())
@@ -29,11 +33,15 @@ def add_monitoring_commands(app: typer.Typer) -> None:
     @monitor_app.command("alerts")
     def monitor_alerts(
         limit: int = typer.Option(10, "--limit", "-l", help="Number of alerts to show"),
-        active_only: bool = typer.Option(True, "--active-only", "-a", help="Show only active alerts")
+        active_only: bool = typer.Option(
+            True, "--active-only", "-a", help="Show only active alerts"
+        ),
     ) -> None:
         """Show recent alerts."""
+
         async def _alerts():
             from .core.app import MahavishnuApp
+
             maha_app = MahavishnuApp()
             dashboard = MonitoringDashboard(maha_app)
 
@@ -49,9 +57,9 @@ def add_monitoring_commands(app: typer.Typer) -> None:
 
             typer.echo(f"Found {len(alerts)} alert(s):")
             for alert in alerts:
-                if active_only and alert.get('acknowledged'):
+                if active_only and alert.get("acknowledged"):
                     continue
-                status_symbol = "!" if not alert.get('acknowledged') else "✓"
+                status_symbol = "!" if not alert.get("acknowledged") else "✓"
                 typer.echo(f"  {status_symbol} [{alert['severity'].upper()}] {alert['title']}")
                 typer.echo(f"    Time: {alert['timestamp']}")
                 typer.echo(f"    Type: {alert['type']}")
@@ -62,14 +70,17 @@ def add_monitoring_commands(app: typer.Typer) -> None:
     @monitor_app.command("dashboard")
     def monitor_dashboard() -> None:
         """Show monitoring dashboard data."""
+
         async def _dashboard():
             from .core.app import MahavishnuApp
+
             maha_app = MahavishnuApp()
             service = MonitoringService(maha_app)
 
             data = await service.get_dashboard_data()
 
             import json
+
             typer.echo(json.dumps(data, indent=2))
 
         asyncio.run(_dashboard())
@@ -77,11 +88,13 @@ def add_monitoring_commands(app: typer.Typer) -> None:
     @monitor_app.command("acknowledge")
     def monitor_acknowledge(
         alert_id: str = typer.Argument(..., help="Alert ID to acknowledge"),
-        user: str = typer.Option("admin", "--user", "-u", help="User acknowledging the alert")
+        user: str = typer.Option("admin", "--user", "-u", help="User acknowledging the alert"),
     ) -> None:
         """Acknowledge an alert."""
+
         async def _acknowledge():
             from .core.app import MahavishnuApp
+
             maha_app = MahavishnuApp()
             service = MonitoringService(maha_app)
 
@@ -98,8 +111,10 @@ def add_monitoring_commands(app: typer.Typer) -> None:
     @monitor_app.command("health")
     def monitor_health() -> None:
         """Check system health."""
+
         async def _health():
             from .core.app import MahavishnuApp
+
             maha_app = MahavishnuApp()
 
             # Check adapter health

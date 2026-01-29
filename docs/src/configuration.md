@@ -7,9 +7,9 @@ This guide covers how to configure Mahavishnu for your environment.
 Mahavishnu uses a layered configuration system:
 
 1. Default values in Pydantic models
-2. `settings/mahavishnu.yaml` (committed to git)
-3. `settings/local.yaml` (gitignored, local overrides)
-4. Environment variables `MAHAVISHNU_*`
+1. `settings/mahavishnu.yaml` (committed to git)
+1. `settings/local.yaml` (gitignored, local overrides)
+1. Environment variables `MAHAVISHNU_*`
 
 ## Main Configuration File
 
@@ -96,3 +96,4 @@ agno:
   runtime: "local"
   agent_os_enabled: true
 ``
+```
