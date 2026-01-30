@@ -1,15 +1,15 @@
 """Test script for Claude Code and Qwen authentication implementation."""
 
 import os
-import sys
 from pathlib import Path
+import sys
 
 # Add the project root to the path so we can import mahavishnu modules
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from mahavishnu.core.subscription_auth import MultiAuthHandler, AuthMethod
 from mahavishnu.core.config import MahavishnuSettings
+from mahavishnu.core.subscription_auth import AuthMethod, MultiAuthHandler
 
 
 def test_claude_subscription_auth():
@@ -17,26 +17,29 @@ def test_claude_subscription_auth():
     print("Testing Claude Code subscription authentication...")
 
     # Create a test configuration with subscription auth enabled
-    os.environ['MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET'] = 'a_very_long_secret_key_that_is_at_least_32_characters'
+    os.environ["MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"] = (
+        "a_very_long_secret_key_that_is_at_least_32_characters"
+    )
 
     config = MahavishnuSettings(
         subscription_auth_enabled=True,
-        subscription_auth_secret=os.environ.get('MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET'),
-        subscription_auth_expire_minutes=60  # Set a longer expiration for testing
+        subscription_auth_secret=os.environ.get("MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"),
+        subscription_auth_expire_minutes=60,  # Set a longer expiration for testing
     )
 
     # Initialize the auth handler
     auth_handler = MultiAuthHandler(config)
 
     # Test that Claude Code subscription is recognized as available
-    assert auth_handler.is_claude_subscribed() == True, "Claude Code subscription should be available"
+    assert auth_handler.is_claude_subscribed() == True, (
+        "Claude Code subscription should be available"
+    )
     print("✅ Claude Code subscription is properly configured")
 
     # Test token creation
     user_id = "test_user_123"
     token = auth_handler.create_claude_subscription_token(
-        user_id=user_id,
-        scopes=["read", "execute", "workflow_manage"]
+        user_id=user_id, scopes=["read", "execute", "workflow_manage"]
     )
 
     print(f"Generated Claude Code token: {token[:50]}...")
@@ -46,7 +49,9 @@ def test_claude_subscription_auth():
     result = auth_handler.authenticate_request(auth_header)
 
     assert result["user"] == user_id, f"Expected user {user_id}, got {result['user']}"
-    assert result["method"] == AuthMethod.CLAUDE_SUBSCRIPTION, f"Expected method {AuthMethod.CLAUDE_SUBSCRIPTION}, got {result['method']}"
+    assert result["method"] == AuthMethod.CLAUDE_SUBSCRIPTION, (
+        f"Expected method {AuthMethod.CLAUDE_SUBSCRIPTION}, got {result['method']}"
+    )
     assert "read" in result["scopes"], "Read scope should be present"
 
     print("✅ Claude Code subscription token creation and authentication works correctly")
@@ -72,11 +77,10 @@ def test_jwt_fallback():
     print("\nTesting JWT authentication fallback...")
 
     # Set up environment for JWT auth
-    os.environ['MAHAVISHNU_AUTH_SECRET'] = 'another_very_long_secret_key_that_is_at_least_32_chars'
+    os.environ["MAHAVISHNU_AUTH_SECRET"] = "another_very_long_secret_key_that_is_at_least_32_chars"
 
     config = MahavishnuSettings(
-        auth_enabled=True,
-        auth_secret=os.environ.get('MAHAVISHNU_AUTH_SECRET')
+        auth_enabled=True, auth_secret=os.environ.get("MAHAVISHNU_AUTH_SECRET")
     )
 
     # Initialize the auth handler
@@ -90,7 +94,9 @@ def test_jwt_fallback():
     result = auth_handler.authenticate_request(auth_header)
 
     assert result["user"] == "test_user", f"Expected user test_user, got {result['user']}"
-    assert result["method"] == AuthMethod.JWT, f"Expected method {AuthMethod.JWT}, got {result['method']}"
+    assert result["method"] == AuthMethod.JWT, (
+        f"Expected method {AuthMethod.JWT}, got {result['method']}"
+    )
 
     print("✅ JWT authentication still works correctly")
 
@@ -100,14 +106,16 @@ def test_multi_auth_priority():
     print("\nTesting multi-authentication priority...")
 
     # Set up both auth methods
-    os.environ['MAHAVISHNU_AUTH_SECRET'] = 'jwt_test_secret_that_is_at_least_32_characters_long'
-    os.environ['MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET'] = 'subscription_test_secret_that_is_at_least_32_chars'
+    os.environ["MAHAVISHNU_AUTH_SECRET"] = "jwt_test_secret_that_is_at_least_32_characters_long"
+    os.environ["MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"] = (
+        "subscription_test_secret_that_is_at_least_32_chars"
+    )
 
     config = MahavishnuSettings(
         auth_enabled=True,
-        auth_secret=os.environ.get('MAHAVISHNU_AUTH_SECRET'),
+        auth_secret=os.environ.get("MAHAVISHNU_AUTH_SECRET"),
         subscription_auth_enabled=True,
-        subscription_auth_secret=os.environ.get('MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET')
+        subscription_auth_secret=os.environ.get("MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"),
     )
 
     # Initialize the auth handler
@@ -116,14 +124,10 @@ def test_multi_auth_priority():
     # Create both types of tokens
     jwt_token = auth_handler.jwt_auth.create_access_token({"sub": "jwt_user"})
     claude_token = auth_handler.subscription_auth.create_subscription_token(
-        user_id="claude_user",
-        subscription_type="claude_code",
-        scopes=["read", "execute"]
+        user_id="claude_user", subscription_type="claude_code", scopes=["read", "execute"]
     )
     codex_token = auth_handler.subscription_auth.create_subscription_token(
-        user_id="codex_user",
-        subscription_type="codex",
-        scopes=["read", "execute"]
+        user_id="codex_user", subscription_type="codex", scopes=["read", "execute"]
     )
 
     # Test JWT token authentication
@@ -149,12 +153,14 @@ def test_codex_subscription_auth():
     print("\nTesting Codex subscription authentication...")
 
     # Create a test configuration with subscription auth enabled
-    os.environ['MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET'] = 'a_very_long_secret_key_that_is_at_least_32_characters'
+    os.environ["MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"] = (
+        "a_very_long_secret_key_that_is_at_least_32_characters"
+    )
 
     config = MahavishnuSettings(
         subscription_auth_enabled=True,
-        subscription_auth_secret=os.environ.get('MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET'),
-        subscription_auth_expire_minutes=60  # Set a longer expiration for testing
+        subscription_auth_secret=os.environ.get("MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"),
+        subscription_auth_expire_minutes=60,  # Set a longer expiration for testing
     )
 
     # Initialize the auth handler
@@ -167,8 +173,7 @@ def test_codex_subscription_auth():
     # Test Codex token creation
     user_id = "test_codex_user_123"
     token = auth_handler.create_codex_subscription_token(
-        user_id=user_id,
-        scopes=["read", "execute", "workflow_manage"]
+        user_id=user_id, scopes=["read", "execute", "workflow_manage"]
     )
 
     print(f"Generated Codex subscription token: {token[:50]}...")
@@ -178,7 +183,9 @@ def test_codex_subscription_auth():
     result = auth_handler.authenticate_request(auth_header)
 
     assert result["user"] == user_id, f"Expected user {user_id}, got {result['user']}"
-    assert result["method"] == AuthMethod.CODEX_SUBSCRIPTION, f"Expected method {AuthMethod.CODEX_SUBSCRIPTION}, got {result['method']}"
+    assert result["method"] == AuthMethod.CODEX_SUBSCRIPTION, (
+        f"Expected method {AuthMethod.CODEX_SUBSCRIPTION}, got {result['method']}"
+    )
     assert "read" in result["scopes"], "Read scope should be present"
 
     print("✅ Codex subscription token creation and authentication works correctly")
@@ -195,11 +202,14 @@ def run_all_tests():
         test_jwt_fallback()
         test_multi_auth_priority()
 
-        print("\n🎉 All tests passed! Claude Code, Codex, and Qwen authentication integration is working correctly.")
+        print(
+            "\n🎉 All tests passed! Claude Code, Codex, and Qwen authentication integration is working correctly."
+        )
 
     except Exception as e:
         print(f"\n❌ Test failed with error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

@@ -1,9 +1,11 @@
 """Unit tests for resilience and error recovery functionality."""
+
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock, MagicMock
-from mahavishnu.core.resilience import ErrorRecoveryManager, RecoveryStrategy, ErrorCategory
+
 from mahavishnu.core.app import MahavishnuApp
+from mahavishnu.core.resilience import ErrorCategory, ErrorRecoveryManager
 
 
 @pytest.fixture
@@ -28,7 +30,7 @@ async def test_error_classification():
         "TimeoutError: Request timed out",
         "socket.gaierror: Name or service not known",
         "ssl.SSLError: Certificate verify failed",
-        "ConnectionResetError: Connection was reset"
+        "ConnectionResetError: Connection was reset",
     ]
 
     for error_msg in network_errors:
@@ -41,7 +43,7 @@ async def test_error_classification():
         "MemoryError: Out of memory",
         "OSError: Disk quota exceeded",
         "MemoryError: Unable to allocate",
-        "OSError: No space left on device"
+        "OSError: No space left on device",
     ]
 
     for error_msg in resource_errors:
@@ -54,7 +56,7 @@ async def test_error_classification():
         "PermissionError: Access denied",
         "Unauthorized: Invalid credentials",
         "Forbidden: Access is forbidden",
-        "AuthenticationError: Invalid token"
+        "AuthenticationError: Invalid token",
     ]
 
     for error_msg in permission_errors:
@@ -67,7 +69,7 @@ async def test_error_classification():
         "ValueError: Invalid value provided",
         "TypeError: Incorrect type",
         "ValidationError: Field is required",
-        "AssertionError: Value must be positive"
+        "AssertionError: Value must be positive",
     ]
 
     for error_msg in validation_errors:
@@ -80,7 +82,7 @@ async def test_error_classification():
         "TemporaryError: Try again later",
         "RateLimitError: Too many requests",
         "ServiceBusyError: Service is busy",
-        "RetryableError: Operation can be retried"
+        "RetryableError: Operation can be retried",
     ]
 
     for error_msg in transient_errors:
@@ -92,7 +94,7 @@ async def test_error_classification():
     permanent_errors = [
         "RuntimeError: Something went wrong",
         "KeyError: Key not found",
-        "IndexError: Index out of range"
+        "IndexError: Index out of range",
     ]
 
     for error_msg in permanent_errors:
@@ -218,7 +220,7 @@ async def test_log_operation_result():
         repo_path="/test/repo",
         success=True,
         execution_time=0.5,
-        result="success_result"
+        result="success_result",
     )
 
     # Verify observability logging was called
@@ -234,7 +236,7 @@ async def test_log_operation_result():
         success=False,
         execution_time=0.3,
         error="Test error occurred",
-        error_category="network"
+        error_category="network",
     )
 
     # Verify error logging was called
@@ -256,7 +258,7 @@ async def test_log_recovery_action():
         repo_path="/test/repo",
         action="retry_success",
         attempt=2,
-        result="recovered_result"
+        result="recovered_result",
     )
 
     # Verify logging was called

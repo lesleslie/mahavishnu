@@ -188,9 +188,9 @@ __all__ = [
 
 ```python
 __all__ = [
-    "PrefectAdapter",       # Stub implementation
-    "AgnoAdapter",          # Stub implementation
-    "LlamaIndexAdapter",    # Fully implemented
+    "PrefectAdapter",  # Stub implementation
+    "AgnoAdapter",  # Stub implementation
+    "LlamaIndexAdapter",  # Fully implemented
 ]
 ```
 
@@ -217,9 +217,9 @@ __all__ = [
 
 ```python
 __all__ = [
-    "PrefectAdapter",       # Stub implementation (143 lines)
-    "AgnoAdapter",          # Stub implementation (116 lines)
-    "LlamaIndexAdapter",    # Fully implemented (348 lines)
+    "PrefectAdapter",  # Stub implementation (143 lines)
+    "AgnoAdapter",  # Stub implementation (116 lines)
+    "LlamaIndexAdapter",  # Fully implemented (348 lines)
 ]
 ```
 

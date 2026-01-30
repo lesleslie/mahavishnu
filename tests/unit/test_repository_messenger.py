@@ -1,16 +1,18 @@
 """Unit tests for repository messaging functionality."""
-import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock, MagicMock
+
 from datetime import datetime
+from unittest.mock import Mock
+
+import pytest
+
+from mahavishnu.core.app import MahavishnuApp
 from mahavishnu.messaging.repository_messenger import (
+    MessagePriority,
+    MessageType,
+    RepositoryMessage,
     RepositoryMessenger,
     RepositoryMessengerManager,
-    MessageType,
-    MessagePriority,
-    RepositoryMessage
 )
-from mahavishnu.core.app import MahavishnuApp
 
 
 @pytest.fixture
@@ -31,7 +33,6 @@ def mock_app():
 @pytest.mark.asyncio
 async def test_repository_message_structure():
     """Test the structure of RepositoryMessage."""
-    from datetime import datetime
     import uuid
 
     # Create a message
@@ -43,7 +44,7 @@ async def test_repository_message_structure():
         content={"change": "test change"},
         priority=MessagePriority.HIGH,
         timestamp=datetime.now(),
-        correlation_id=str(uuid.uuid4())
+        correlation_id=str(uuid.uuid4()),
     )
 
     # Verify all fields are set correctly
@@ -80,7 +81,7 @@ async def test_send_message(mock_app):
         receiver_repo="receiver_repo",
         message_type=MessageType.WORKFLOW_STATUS_UPDATE,
         content={"status": "completed", "workflow_id": "test_wf_123"},
-        priority=MessagePriority.NORMAL
+        priority=MessagePriority.NORMAL,
     )
 
     # Verify message was created and stored
@@ -116,7 +117,7 @@ async def test_subscribe_and_notify(mock_app):
         receiver_repo="target_repo",  # This matches the subscription
         message_type=MessageType.QUALITY_ALERT,
         content={"alert": "test alert"},
-        priority=MessagePriority.HIGH
+        priority=MessagePriority.HIGH,
     )
 
     # The callback should have been called with the message
@@ -137,21 +138,21 @@ async def test_get_messages_for_repo(mock_app):
         sender_repo="sender1",
         receiver_repo="repo_a",
         message_type=MessageType.CODE_CHANGE_NOTIFICATION,
-        content={"change": "change1"}
+        content={"change": "change1"},
     )
 
     msg2 = await messenger.send_message(
         sender_repo="sender2",
         receiver_repo="repo_b",
         message_type=MessageType.WORKFLOW_STATUS_UPDATE,
-        content={"status": "running"}
+        content={"status": "running"},
     )
 
     msg3 = await messenger.send_message(
         sender_repo="sender3",
         receiver_repo="repo_a",  # Same receiver as msg1
         message_type=MessageType.QUALITY_ALERT,
-        content={"alert": "quality_issue"}
+        content={"alert": "quality_issue"},
     )
 
     # Get messages for repo_a
@@ -178,7 +179,7 @@ async def test_broadcast_message(mock_app):
         sender_repo="broadcast_sender",
         message_type=MessageType.DEPENDENCY_UPDATE,
         content={"dependency": "test_dep", "version": "1.0.0"},
-        priority=MessagePriority.HIGH
+        priority=MessagePriority.HIGH,
     )
 
     # Should have sent messages to all repos except the sender
@@ -203,7 +204,7 @@ async def test_acknowledge_message(mock_app):
         sender_repo="sender",
         receiver_repo="receiver",
         message_type=MessageType.SECURITY_SCAN_RESULT,
-        content={"scan_result": "ok"}
+        content={"scan_result": "ok"},
     )
 
     # Acknowledge the message
@@ -225,7 +226,7 @@ async def test_verify_message_signature(mock_app):
         receiver_repo="receiver_repo",
         message_type=MessageType.CUSTOM,
         content={"test": "data"},
-        priority=MessagePriority.NORMAL
+        priority=MessagePriority.NORMAL,
     )
 
     # Verify the message signature (this should work if the message was properly signed)
@@ -257,7 +258,7 @@ async def test_process_repository_changes(mock_app):
     changes = [
         {"type": "file_added", "path": "/path/to/new_file.py", "content": "print('hello')"},
         {"type": "file_modified", "path": "/path/to/existing_file.py", "diff": "+ new line"},
-        {"type": "file_deleted", "path": "/path/to/deleted_file.py"}
+        {"type": "file_deleted", "path": "/path/to/deleted_file.py"},
     ]
 
     # Process repository changes
@@ -280,7 +281,7 @@ async def test_notify_workflow_status(mock_app):
         workflow_id="wf_123",
         status="completed",
         repo_path="/test/repo",
-        target_repos=["repo_a", "repo_b"]
+        target_repos=["repo_a", "repo_b"],
     )
 
     # Verify result structure
@@ -302,7 +303,7 @@ async def test_send_quality_alert(mock_app):
         repo_path="/test/repo",
         alert_type="security_vulnerability",
         description="Potential security issue detected",
-        severity="high"
+        severity="high",
     )
 
     # Verify result structure

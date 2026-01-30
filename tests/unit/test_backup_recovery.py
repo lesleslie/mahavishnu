@@ -1,13 +1,14 @@
 """Unit tests for backup and recovery functionality."""
-import pytest
-import asyncio
-import tempfile
-import os
+
+from datetime import datetime
 from pathlib import Path
-from unittest.mock import Mock, AsyncMock, MagicMock
-from datetime import datetime, timedelta
-from mahavishnu.core.backup_recovery import BackupManager, DisasterRecoveryManager, BackupInfo
+import tempfile
+from unittest.mock import AsyncMock, Mock
+
+import pytest
+
 from mahavishnu.core.app import MahavishnuApp
+from mahavishnu.core.backup_recovery import BackupInfo, BackupManager, DisasterRecoveryManager
 
 
 @pytest.fixture
@@ -33,7 +34,7 @@ async def test_backup_info_structure():
         location="/path/to/backup.tar.gz",
         status="completed",
         files_backed_up=10,
-        checksum="abc123"
+        checksum="abc123",
     )
 
     # Verify all fields are set correctly

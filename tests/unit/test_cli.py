@@ -1,6 +1,8 @@
 """Unit tests for CLI commands."""
+
 import pytest
 from typer.testing import CliRunner
+
 from mahavishnu.cli import app
 
 
@@ -16,7 +18,7 @@ class TestListReposCommand:
         assert "All repositories:" in result.stdout
         assert "/Users/les/Projects/mahavishnu" in result.stdout
         # Should show all 24 repos
-        assert "24" not in result.stdout or len(result.stdout.split('\n')) > 20
+        assert "24" not in result.stdout or len(result.stdout.split("\n")) > 20
 
     def test_list_repos_by_role(self):
         """Test listing repositories filtered by role."""

@@ -1,8 +1,10 @@
 """Unit tests for repository validation."""
-import pytest
-from pathlib import Path
-import tempfile
+
 import os
+import tempfile
+
+import pytest
+
 from mahavishnu.core.app import _validate_path
 
 
@@ -70,7 +72,9 @@ def test_validate_path_with_encoded_dotdot():
             with pytest.raises(Exception) as exc_info:
                 _validate_path(malicious_path)
 
-            assert "directory traversal" in str(exc_info.value) or "outside allowed directory" in str(exc_info.value)
+            assert "directory traversal" in str(
+                exc_info.value
+            ) or "outside allowed directory" in str(exc_info.value)
 
 
 def test_validate_path_absolute_outside_cwd():

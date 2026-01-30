@@ -1,19 +1,25 @@
 """Debug script to check token expiration issue."""
 
-import os
-import sys
+from datetime import datetime
 from pathlib import Path
-from datetime import datetime, timedelta
+import sys
+
 import jwt
 
 # Add the project root to the path so we can import mahavishnu modules
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
+# Create a test subscription auth
+# NOTE: This is a test secret for debugging purposes only
+# In production, use environment variables or secure secret management
+import os
+
 from mahavishnu.core.subscription_auth import SubscriptionAuth
 
-# Create a test subscription auth
-secret = 'a_very_long_secret_key_that_is_at_least_32_characters'
+secret = os.environ.get(
+    "TEST_SUBSCRIPTION_SECRET", "a_very_long_test_secret_for_debugging_purposes_only"
+)
 auth = SubscriptionAuth(secret, expire_minutes=60)
 
 # Create a token
@@ -27,7 +33,7 @@ decoded = jwt.decode(token, options={"verify_signature": False})
 print(f"Decoded token: {decoded}")
 
 # Check the expiration
-exp_timestamp = decoded.get('exp')
+exp_timestamp = decoded.get("exp")
 print(f"Expiration timestamp: {exp_timestamp}")
 print(f"Expiration datetime: {datetime.fromtimestamp(exp_timestamp)}")
 print(f"Current datetime: {datetime.utcnow()}")

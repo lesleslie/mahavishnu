@@ -1,0 +1,11 @@
+[tool.creosote]
+paths = ["mahavishnu"]
+exclude = [
+    "tests",
+    "__pycache__",
+    "*.egg-info",
+]
+extensions = [".py"]
+ignore_files = []
+deps-file = "pyproject.toml"
+section = "project.dependencies"

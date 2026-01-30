@@ -85,6 +85,3 @@ This adapter is ready for production use with:
 - Semantic search with relevance scoring
 
 ## See Also
-
-- [Architecture](../../ARCHITECTURE.md) - Overall architecture and adapter evolution
-- [UNIFIED_IMPLEMENTATION_STATUS.md](../../UNIFIED_IMPLEMENTATION_STATUS.md) - Detailed progress tracking

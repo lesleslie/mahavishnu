@@ -185,7 +185,6 @@ def mcp_health() -> None:
     """Check MCP server health."""
 
     async def _health():
-
         host = "127.0.0.1"
         port = 3000
 

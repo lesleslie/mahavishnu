@@ -127,5 +127,3 @@ export MAHAVISHNU_AUTH_SECRET="your-secret-minimum-32-characters"
 1. Add adapter discovery and health checks
 1. Implement QC integration with Crackerjack
 1. Add Session-Buddy checkpoint integration
-
-See [UNIFIED_IMPLEMENTATION_STATUS.md](../../UNIFIED_IMPLEMENTATION_STATUS.md) for detailed progress tracking and [TERMINAL_MANAGEMENT.md](../TERMINAL_MANAGEMENT.md) for terminal feature documentation.

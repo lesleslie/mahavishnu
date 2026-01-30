@@ -27,8 +27,6 @@ Welcome to the Mahavishnu documentation. Mahavishnu is a multi-engine orchestrat
 - Production error recovery patterns
 - Full observability implementation
 
-See [UNIFIED_IMPLEMENTATION_STATUS.md](../../UNIFIED_IMPLEMENTATION_STATUS.md) for detailed progress tracking.
-
 ## Table of Contents
 
 - [Installation](installation.md)
@@ -74,8 +72,6 @@ Mahavishnu provides three orchestration adapters:
 
 ## Quick Links
 
-- [Implementation Status Report](../../UNIFIED_IMPLEMENTATION_STATUS.md) - Detailed progress tracking
-- [MCP Tools Specification](../MCP_TOOLS_SPECIFICATION.md) - Complete tool API documentation
 - [Architecture Decision Records](../adr/) - Technical decisions and rationale
 - [Terminal Management Documentation](../TERMINAL_MANAGEMENT.md) - Terminal feature documentation
 

@@ -307,7 +307,6 @@ llamaindex:
 
 ## References
 
-- [MEMORY_ARCHITECTURE_PLAN.md](../MEMORY_ARCHITECTURE_PLAN.md) - Detailed implementation plan
 - [Session-Buddy Documentation](https://github.com/lesleslie/session-buddy) - Project memory and cross-project intelligence
 - [LlamaIndex Documentation](https://docs.llamaindex.ai) - RAG pipelines and vector operations
 - [AgentDB Documentation](https://github.com/agentdb/agentdb) - Agent memory storage (verify availability)

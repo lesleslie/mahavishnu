@@ -52,12 +52,13 @@ class WorkflowFormatter(BaseTableFormatter):
             table.add_column("Details", width=40)
 
         for wf in workflows:
+            status_key = wf.get("status")
             status_style = {
                 WorkflowStatus.RUNNING: "yellow",
                 WorkflowStatus.COMPLETED: "green",
                 WorkflowStatus.FAILED: "red",
                 WorkflowStatus.PENDING: "blue",
-            }.get(wf.get("status"), "")
+            }.get(status_key, "") if status_key else ""
 
             row = [
                 wf.get("id", "")[:20],

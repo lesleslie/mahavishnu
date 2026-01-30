@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 # Try to import OpenSearch, with fallback if not available
 try:
@@ -25,11 +26,11 @@ class WorkflowStatus(str, Enum):
 class WorkflowState:
     """Track workflow execution state"""
 
-    def __init__(self, opensearch_client=None):
+    def __init__(self, opensearch_client=None) -> None:
         self.opensearch = opensearch_client
-        self.local_states = {}  # Fallback in-memory storage
+        self.local_states: dict = {}  # Fallback in-memory storage
 
-    async def create(self, workflow_id: str, task: dict, repos: list[str]) -> dict:
+    async def create(self, workflow_id: str, task: dict[str, Any], repos: list[str]) -> dict[str, Any]:
         """Create new workflow state"""
         state = {
             "id": workflow_id,
@@ -52,7 +53,7 @@ class WorkflowState:
 
         return state
 
-    async def update(self, workflow_id: str, **updates):
+    async def update(self, workflow_id: str, **updates: Any) -> None:
         """Update workflow state"""
         updates["updated_at"] = datetime.now().isoformat()
 
@@ -71,7 +72,8 @@ class WorkflowState:
         if self.opensearch and OPENSEARCH_AVAILABLE:
             try:
                 response = await self.opensearch.get(index="mahavishnu_workflows", id=workflow_id)
-                return response.get("_source")
+                source = response.get("_source")
+                return source if isinstance(source, dict) else None
             except Exception:
                 # If OpenSearch fails, fall back to local storage
                 return self.local_states.get(workflow_id)
@@ -81,7 +83,7 @@ class WorkflowState:
 
     async def list_workflows(
         self, status: WorkflowStatus | None = None, limit: int = 100
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """List workflows, optionally filtered by status"""
         if self.opensearch and OPENSEARCH_AVAILABLE:
             try:
@@ -107,7 +109,7 @@ class WorkflowState:
                 workflows = [w for w in workflows if w.get("status") == status.value]
             return workflows[:limit]
 
-    async def delete(self, workflow_id: str):
+    async def delete(self, workflow_id: str) -> None:
         """Delete workflow state"""
         if self.opensearch and OPENSEARCH_AVAILABLE:
             try:
@@ -119,12 +121,12 @@ class WorkflowState:
             # Remove from local memory
             self.local_states.pop(workflow_id, None)
 
-    async def update_progress(self, workflow_id: str, completed: int, total: int):
+    async def update_progress(self, workflow_id: str, completed: int, total: int) -> None:
         """Update workflow progress percentage"""
         progress = int((completed / total) * 100) if total > 0 else 0
         await self.update(workflow_id, progress=progress)
 
-    async def add_result(self, workflow_id: str, result: dict):
+    async def add_result(self, workflow_id: str, result: dict[str, Any]) -> None:
         """Add a result to the workflow"""
         state = await self.get(workflow_id)
         if state:
@@ -132,7 +134,7 @@ class WorkflowState:
             results.append(result)
             await self.update(workflow_id, results=results)
 
-    async def add_error(self, workflow_id: str, error: dict):
+    async def add_error(self, workflow_id: str, error: dict[str, Any]) -> None:
         """Add an error to the workflow"""
         state = await self.get(workflow_id)
         if state:

@@ -120,7 +120,7 @@ class AlertManager:
                 try:
                     await handler(alert)
                 except Exception as e:
-                    self.logger.error(f"Error in alert handler: {str(e)}")
+                    self.logger.error(f"Error in alert handler: {e}")
 
         # Send notifications
         await self._send_notifications(alert)
@@ -148,7 +148,7 @@ class AlertManager:
             try:
                 await channel.send_notification(alert)
             except Exception as e:
-                self.logger.error(f"Failed to send notification via {channel.name}: {str(e)}")
+                self.logger.error(f"Failed to send notification via {channel.name}: {e}")
 
     async def _handle_workflow_failure(self, alert: Alert):
         """Handle workflow failure alerts."""
@@ -163,7 +163,7 @@ class AlertManager:
                     # Attempt to heal the workflow
                     await self.app.error_recovery_manager.monitor_and_heal_workflows()
                 except Exception as e:
-                    self.logger.error(f"Failed to auto-heal workflow: {str(e)}")
+                    self.logger.error(f"Failed to auto-heal workflow: {e}")
 
     async def _handle_system_health(self, alert: Alert):
         """Handle system health alerts."""
@@ -193,7 +193,7 @@ class AlertManager:
             backup_manager = BackupManager(self.app)
             await backup_manager.create_backup("full")
         except Exception as e:
-            self.logger.error(f"Failed to retry backup: {str(e)}")
+            self.logger.error(f"Failed to retry backup: {e}")
 
     async def _monitoring_loop(self):
         """Background monitoring loop."""
@@ -208,7 +208,7 @@ class AlertManager:
                 # Sleep before next check
                 await asyncio.sleep(30)  # Check every 30 seconds
             except Exception as e:
-                self.logger.error(f"Error in monitoring loop: {str(e)}")
+                self.logger.error(f"Error in monitoring loop: {e}")
                 await asyncio.sleep(60)  # Wait longer if there's an error
 
     async def _check_system_health(self):
@@ -230,7 +230,7 @@ class AlertManager:
                     details={"unhealthy_adapters": unhealthy_adapters},
                 )
         except Exception as e:
-            self.logger.error(f"Error checking system health: {str(e)}")
+            self.logger.error(f"Error checking system health: {e}")
 
     async def _check_workflow_health(self):
         """Check workflow health."""
@@ -267,7 +267,7 @@ class AlertManager:
                         # If we can't parse the date, skip this workflow
                         continue
         except Exception as e:
-            self.logger.error(f"Error checking workflow health: {str(e)}")
+            self.logger.error(f"Error checking workflow health: {e}")
 
     async def _check_resource_usage(self):
         """Check resource usage."""
@@ -304,7 +304,7 @@ class AlertManager:
                     },
                 )
         except Exception as e:
-            self.logger.error(f"Error checking resource usage: {str(e)}")
+            self.logger.error(f"Error checking resource usage: {e}")
 
     async def _check_backup_status(self):
         """Check backup status."""
@@ -339,7 +339,7 @@ class AlertManager:
                         },
                     )
         except Exception as e:
-            self.logger.error(f"Error checking backup status: {str(e)}")
+            self.logger.error(f"Error checking backup status: {e}")
 
 
 class NotificationChannel:
@@ -397,7 +397,7 @@ This is an automated message from the Mahavishnu monitoring system.
 
             print(f"Email notification sent for alert {alert.id}")
         except Exception as e:
-            print(f"Failed to send email notification: {str(e)}")
+            print(f"Failed to send email notification: {e}")
 
 
 class SlackNotificationChannel(NotificationChannel):
@@ -417,7 +417,7 @@ class SlackNotificationChannel(NotificationChannel):
                 "attachments": [
                     {
                         "color": "danger"
-                        if alert.severity in [AlertSeverity.HIGH, AlertSeverity.CRITICAL]
+                        if alert.severity in (AlertSeverity.HIGH, AlertSeverity.CRITICAL)
                         else "warning"
                         if alert.severity == AlertSeverity.MEDIUM
                         else "good",
@@ -436,7 +436,7 @@ class SlackNotificationChannel(NotificationChannel):
             else:
                 print(f"Slack notification sent for alert {alert.id}")
         except Exception as e:
-            print(f"Failed to send Slack notification: {str(e)}")
+            print(f"Failed to send Slack notification: {e}")
 
 
 class PagerDutyNotificationChannel(NotificationChannel):
@@ -483,7 +483,7 @@ class PagerDutyNotificationChannel(NotificationChannel):
             else:
                 print(f"PagerDuty notification sent for alert {alert.id}")
         except Exception as e:
-            print(f"Failed to send PagerDuty notification: {str(e)}")
+            print(f"Failed to send PagerDuty notification: {e}")
 
 
 class MonitoringDashboard:

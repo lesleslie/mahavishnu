@@ -499,5 +499,3 @@ Planned features for future releases:
 ## See Also
 
 - [MCP Tools Specification](./MCP_TOOLS_SPECIFICATION.md)
-- [Configuration Guide](../src/configuration.md)
-- [CLI Reference](../src/usage.md)

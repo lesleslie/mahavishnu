@@ -35,15 +35,15 @@ async def process_repository(repo_path: str, task_spec: dict[str, Any]) -> dict[
                 ):
                     func_length = node.end_line - node.start_line
                     if func_length > 10 or len(node.calls) > 5:
-                            complex_funcs.append(
-                                {
-                                    "name": node.name,
-                                    "file": node.file_id,
-                                    "length": func_length,
-                                    "calls_count": len(node.calls),
-                                    "is_export": node.is_export,
-                                }
-                            )
+                        complex_funcs.append(
+                            {
+                                "name": node.name,
+                                "file": node.file_id,
+                                "length": func_length,
+                                "calls_count": len(node.calls),
+                                "is_export": node.is_export,
+                            }
+                        )
 
             # Use Session Buddy for quality check (placeholder implementation)
             # In a real implementation, this would call Session Buddy's API

@@ -1,7 +1,9 @@
 """OpenSearch integration for log analytics and search."""
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
+
+UTC = timezone.utc
 import logging
 from typing import Any
 
@@ -147,7 +149,7 @@ class OpenSearchLogAnalytics:
 
         try:
             doc = {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(tz=UTC).isoformat(),
                 "level": level,
                 "message": message,
                 "attributes": attributes or {},
@@ -174,7 +176,7 @@ class OpenSearchLogAnalytics:
                 "adapter": adapter,
                 "task_type": task_type,
                 "status": status,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(tz=UTC).isoformat(),
                 **kwargs,
             }
 
@@ -391,7 +393,7 @@ class OpenSearchIntegration:
             task_type=task_type,
             status="started",
             repos=repos,
-            start_time=datetime.utcnow().isoformat(),
+            start_time=datetime.now(tz=UTC).isoformat(),
         )
 
         await self.analytics.log_event(
@@ -440,7 +442,7 @@ class OpenSearchIntegration:
             execution_time_seconds=execution_time,
             results_count=results_count,
             errors_count=errors_count,
-            completed_at=datetime.utcnow().isoformat(),
+            completed_at=datetime.now(tz=UTC).isoformat(),
             **kwargs,
         )
 

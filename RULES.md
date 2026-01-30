@@ -28,10 +28,8 @@ Type hints are **required** for all public functions and methods:
 from typing import List, Optional
 from mahavishnu.core.models import WorkflowConfig
 
-def get_workflow_configs(
-    repo_path: str,
-    tags: Optional[List[str]] = None
-) -> List[WorkflowConfig]:
+
+def get_workflow_configs(repo_path: str, tags: Optional[List[str]] = None) -> List[WorkflowConfig]:
     """Retrieve workflow configurations for a repository.
 
     Args:
@@ -101,10 +99,9 @@ logger = structlog.get_logger(__name__)
 logger.info("workflow_started", workflow_id=workflow_id, adapter=adapter_name)
 
 # Error logging with context
-logger.error("adapter_initialization_failed",
-             adapter_name=adapter_name,
-             error=str(e),
-             details=e.details)
+logger.error(
+    "adapter_initialization_failed", adapter_name=adapter_name, error=str(e), details=e.details
+)
 ```
 
 ## Testing Standards
@@ -124,6 +121,7 @@ tests/
 import pytest
 from mahavishnu.core.adapters.airflow import AirflowAdapter
 
+
 @pytest.mark.unit
 class TestAirflowAdapter:
     """Test suite for Airflow adapter."""
@@ -134,11 +132,14 @@ class TestAirflowAdapter:
         assert adapter.is_initialized()
         assert adapter.adapter_name == "airflow"
 
-    @pytest.mark.parametrize("dag_folder,expected", [
-        ("/valid/path", True),
-        ("", False),
-        (None, False),
-    ])
+    @pytest.mark.parametrize(
+        "dag_folder,expected",
+        [
+            ("/valid/path", True),
+            ("", False),
+            (None, False),
+        ],
+    )
     def test_initialization_with_invalid_config(self, dag_folder, expected):
         """Test initialization with various folder configurations."""
         adapter = AirflowAdapter(config={"dag_folder": dag_folder})
@@ -156,14 +157,14 @@ class TestAirflowAdapter:
 ```python
 # Unit tests (fast, isolated)
 @pytest.mark.unit
-def test_adapter_validation():
-    ...
+def test_adapter_validation(): ...
+
 
 # Integration tests (slower, external services)
 @pytest.mark.integration
 @pytest.mark.airflow
-def test_airflow_connection():
-    ...
+def test_airflow_connection(): ...
+
 
 # Property-based tests
 @pytest.mark.property
@@ -180,6 +181,7 @@ All adapters must implement the `OrchestratorAdapter` interface:
 
 ```python
 from mahavishnu.core.adapters.base import OrchestratorAdapter
+
 
 class CustomAdapter(OrchestratorAdapter):
     """Custom orchestration engine adapter."""
@@ -208,6 +210,7 @@ Use Pydantic models with Oneiric layered loading:
 ```python
 from pydantic import BaseModel, Field
 
+
 class AdapterConfig(BaseModel):
     """Adapter configuration with validation."""
 
@@ -226,13 +229,14 @@ Use custom exception hierarchy from `mahavishnu.core.errors`:
 ```python
 from mahavishnu.core.errors import MahavishnuError, AdapterError
 
+
 class AdapterInitializationError(AdapterError):
     """Raised when adapter initialization fails."""
 
     def __init__(self, adapter_name: str, reason: str):
         super().__init__(
             message=f"Failed to initialize {adapter_name}: {reason}",
-            details={"adapter": adapter_name, "reason": reason}
+            details={"adapter": adapter_name, "reason": reason},
         )
 ```
 
@@ -243,17 +247,18 @@ class AdapterInitializationError(AdapterError):
 ```python
 from pydantic import BaseModel, Field, validator
 
+
 class WorkflowRequest(BaseModel):
     """Workflow request with validation."""
 
     repo_path: str = Field(..., min_length=1, max_length=500)
-    workflow_name: str = Field(..., regex=r'^[a-zA-Z0-9_-]+$')
+    workflow_name: str = Field(..., regex=r"^[a-zA-Z0-9_-]+$")
 
-    @validator('repo_path')
+    @validator("repo_path")
     def validate_path(cls, v):
         """Prevent path traversal attacks."""
-        if '..' in v or v.startswith('/'):
-            raise ValueError('Invalid repository path')
+        if ".." in v or v.startswith("/"):
+            raise ValueError("Invalid repository path")
         return v
 ```
 
@@ -264,7 +269,7 @@ import os
 from mahavishnu.core.config import MahavishnuSettings
 
 # DO: Load from environment
-api_key = os.getenv('MAHAVISHNU_API_KEY')
+api_key = os.getenv("MAHAVISHNU_API_KEY")
 
 # DON'T: Hardcode secrets
 api_key = "sk-1234567890abcdef"  # NEVER DO THIS!

@@ -1,7 +1,9 @@
 """Enhanced observability module for Mahavishnu."""
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
+
+UTC = timezone.utc
 from enum import Enum
 import logging
 import time
@@ -194,7 +196,7 @@ class ObservabilityManager:
     ):
         """Log a message with attributes."""
         log_entry = LogEntry(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(tz=UTC),
             level=level,
             message=message,
             attributes=attributes or {},
@@ -234,7 +236,7 @@ class ObservabilityManager:
             "workflow.id": workflow_id,
             "workflow.adapter": adapter,
             "workflow.task_type": task_type,
-            "workflow.start_time": datetime.utcnow().isoformat(),
+            "workflow.start_time": datetime.now(tz=UTC).isoformat(),
         }
 
         span = self.tracer.start_as_current_span(
@@ -309,7 +311,7 @@ class ObservabilityManager:
             "active_workflow_durations": active_durations,
             "total_logs": len(self.logs),
             "recent_errors": len(
-                [log for log in self.logs[-50:] if log.level in [LogLevel.ERROR, LogLevel.CRITICAL]]
+                [log for log in self.logs[-50:] if log.level in (LogLevel.ERROR, LogLevel.CRITICAL)]
             ),
         }
 

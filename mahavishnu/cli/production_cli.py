@@ -84,7 +84,6 @@ def check_config(
 
     checker = ProductionReadinessChecker(maha_app)
 
-    # Run only the config check
     result = checker._check_config_validity()
 
     if result:
@@ -163,7 +162,7 @@ def run_benchmarks(
 
     typer.echo(f"\n📈 Performance Score: {results['summary']['performance_score']}/100")
 
-    if results["summary"]["status"] in ["EXCELLENT", "GOOD"]:
+    if results["summary"]["status"] in ("EXCELLENT", "GOOD"):
         typer.echo("✅ Performance benchmarks passed")
         raise typer.Exit(code=0)
     else:

@@ -1,7 +1,7 @@
 """Unit tests for JWT authentication."""
+
 import pytest
-import jwt
-from datetime import datetime, timedelta
+
 from mahavishnu.core.auth import JWTAuth, get_auth_from_config
 from mahavishnu.core.config import MahavishnuSettings
 
@@ -52,6 +52,7 @@ def test_expired_token():
 
     # Wait for token to expire
     import time
+
     time.sleep(1)
 
     # Verification should fail

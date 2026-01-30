@@ -1,11 +1,10 @@
 """Ecosystem management commands for Mahavishnu CLI."""
 
 from pathlib import Path
-from typing import NoReturn
 
 import typer
 
-from mahavishnu.core.ecosystem import EcosystemLoader, get_ecosystem_loader
+from mahavishnu.core.ecosystem import get_ecosystem_loader
 from mahavishnu.core.errors import ConfigurationError
 
 
@@ -17,7 +16,7 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
     """
 
     @app.command("validate")
-    def validate_all():
+    def validate_all() -> None:
         """Validate all MCP server configurations."""
         try:
             loader = get_ecosystem_loader()
@@ -40,13 +39,15 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
 
         except ConfigurationError as e:
             typer.echo(f"❌ Configuration Error: {e.message}", err=True)
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     @app.command("list")
     def list_servers(
         category: str = typer.Option(None, "--category", "-c", help="Filter by category"),
-        status: str = typer.Option(None, "--status", "-s", help="Filter by status (enabled/disabled)"),
-    ):
+        status: str = typer.Option(
+            None, "--status", "-s", help="Filter by status (enabled/disabled)"
+        ),
+    ) -> None:
         """List all MCP servers."""
         try:
             loader = get_ecosystem_loader()
@@ -60,7 +61,7 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
                 servers = [s for s in servers if s.status == status]
 
             # Group by category
-            by_category = {}
+            by_category: dict = {}
             for server in servers:
                 if server.category not in by_category:
                     by_category[server.category] = []
@@ -79,20 +80,21 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
 
         except ConfigurationError as e:
             typer.echo(f"❌ Configuration Error: {e.message}", err=True)
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     @app.command("generate-claude-config")
     def generate_claude_config(
-        output: Path = typer.Option(
-            Path.home() / ".claude.json",
-            "--output",
-            "-o",
-            help="Output path for generated config",
+        output: Path | None = typer.Option(  # noqa: B008
+            None, "--output", "-o", help="Output path for generated config"
         ),
         dry_run: bool = typer.Option(False, "--dry-run", help="Print config without writing"),
-    ):
+    ) -> None:
         """Generate ~/.claude.json MCP server configuration from ecosystem.yaml."""
         import json
+
+        # Set default output path if not provided
+        if output is None:
+            output = Path.home() / ".claude.json"
 
         try:
             loader = get_ecosystem_loader()
@@ -122,23 +124,19 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
 
         except ConfigurationError as e:
             typer.echo(f"❌ Configuration Error: {e.message}", err=True)
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     @app.command("audit")
     def audit_info(
         server_name: str = typer.Argument(None, help="Server name (omit for all servers)"),
-    ):
+    ) -> None:
         """Show audit information for MCP servers."""
         try:
             loader = get_ecosystem_loader()
 
             if server_name:
                 # Show audit info for specific server
-                servers = [
-                    s
-                    for s in loader.config.mcp_servers
-                    if s.name == server_name
-                ]
+                servers = [s for s in loader.config.mcp_servers if s.name == server_name]
                 if not servers:
                     typer.echo(f"❌ Server not found: {server_name}", err=True)
                     raise typer.Exit(code=1)
@@ -164,15 +162,17 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
 
         except ConfigurationError as e:
             typer.echo(f"❌ Configuration Error: {e.message}", err=True)
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     @app.command("update-audit")
     def update_audit(
         server_name: str = typer.Argument(..., help="Server name"),
-        field: str = typer.Argument(..., help="Audit field to update (e.g., last_validated, last_tested)"),
+        field: str = typer.Argument(
+            ..., help="Audit field to update (e.g., last_validated, last_tested)"
+        ),
         value: str = typer.Argument(..., help="Timestamp value"),
         notes: str = typer.Option(None, "--notes", "-n", help="Optional notes"),
-    ):
+    ) -> None:
         """Update audit timestamp for an MCP server."""
         try:
             loader = get_ecosystem_loader()
@@ -186,20 +186,16 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
 
         except ConfigurationError as e:
             typer.echo(f"❌ Error: {e.message}", err=True)
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     @app.command("urls")
     def show_server_urls(
         server_name: str = typer.Argument(..., help="MCP server name"),
-    ):
+    ) -> None:
         """Show all URLs for an MCP server."""
         try:
             loader = get_ecosystem_loader()
-            servers = [
-                s
-                for s in loader.config.mcp_servers
-                if s.name == server_name
-            ]
+            servers = [s for s in loader.config.mcp_servers if s.name == server_name]
             if not servers:
                 typer.echo(f"❌ Server not found: {server_name}", err=True)
                 raise typer.Exit(code=1)
@@ -225,20 +221,16 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
 
         except ConfigurationError as e:
             typer.echo(f"❌ Configuration Error: {e.message}", err=True)
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     @app.command("repo-urls")
     def show_repo_urls(
         repo_name: str = typer.Argument(..., help="Repository name"),
-    ):
+    ) -> None:
         """Show all URLs for a repository."""
         try:
             loader = get_ecosystem_loader()
-            repos = [
-                r
-                for r in loader.config.repos
-                if r.name == repo_name
-            ]
+            repos = [r for r in loader.config.repos if r.name == repo_name]
             if not repos:
                 typer.echo(f"❌ Repository not found: {repo_name}", err=True)
                 raise typer.Exit(code=1)
@@ -264,13 +256,15 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
 
         except ConfigurationError as e:
             typer.echo(f"❌ Configuration Error: {e.message}", err=True)
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     @app.command("list-lsp")
     def list_lsp_servers(
         language: str = typer.Option(None, "--language", "-l", help="Filter by language"),
-        enabled: str = typer.Option(None, "--enabled", "-e", help="Filter by enabled status (true/false)"),
-    ):
+        enabled: str = typer.Option(
+            None, "--enabled", "-e", help="Filter by enabled status (true/false)"
+        ),
+    ) -> None:
         """List all LSP servers."""
         try:
             loader = get_ecosystem_loader()
@@ -284,7 +278,7 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
                 servers = [s for s in servers if s.get("enabled") == enabled_bool]
 
             # Group by language
-            by_language = {}
+            by_language: dict = {}
             for server in servers:
                 lang = server.get("language", "unknown")
                 if lang not in by_language:
@@ -304,12 +298,12 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
 
         except ConfigurationError as e:
             typer.echo(f"❌ Configuration Error: {e.message}", err=True)
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     @app.command("lsp-info")
     def lsp_info(
         server_name: str = typer.Argument(None, help="LSP server name (omit for all servers)"),
-    ):
+    ) -> None:
         """Show detailed information about LSP servers."""
         try:
             loader = get_ecosystem_loader()
@@ -328,7 +322,9 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
                 typer.echo(f"Language:      {server.get('language')}")
                 typer.echo(f"Type:          {server.get('type')}")
                 typer.echo(f"Status:        {'enabled' if server.get('enabled') else 'disabled'}")
-                typer.echo(f"Command:       {server.get('command')} {' '.join(server.get('args', []))}")
+                typer.echo(
+                    f"Command:       {server.get('command')} {' '.join(server.get('args', []))}"
+                )
                 typer.echo(f"Config File:   {server.get('config_file') or 'N/A'}")
                 typer.echo(f"Config Section: {server.get('config_section') or 'N/A'}")
 
@@ -348,14 +344,17 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
 
         except ConfigurationError as e:
             typer.echo(f"❌ Configuration Error: {e.message}", err=True)
-            raise typer.Exit(code=1)
-
+            raise typer.Exit(code=1) from None
 
     @app.command("ports")
     def list_ports(
-        type_filter: str = typer.Option(None, "--type", "-t", help="Filter by type (MCP, LSP, WebSocket)"),
-        status: str = typer.Option(None, "--status", "-s", help="Filter by status (enabled/disabled)"),
-    ):
+        type_filter: str = typer.Option(
+            None, "--type", "-t", help="Filter by type (MCP, LSP, WebSocket)"
+        ),
+        status: str = typer.Option(
+            None, "--status", "-s", help="Filter by status (enabled/disabled)"
+        ),
+    ) -> None:
         """Show all ports used across the ecosystem in numeric order."""
         try:
             loader = get_ecosystem_loader()
@@ -365,7 +364,6 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
             if type_filter:
                 portmap = [p for p in portmap if p.get("type", "").upper() == type_filter.upper()]
             if status:
-                status_bool = status.lower() == "enabled"
                 portmap = [p for p in portmap if p.get("status", "").lower() == status.lower()]
 
             if not portmap:
@@ -394,7 +392,9 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
                     status_icon = "✅" if entry.get("status") == "enabled" else "❌"
                     description = entry.get("description", "")[:50]
 
-                    typer.echo(f"  {status_icon} {port:5} | {service:25} {svc_type:4} | {category:15} | {protocol:20}")
+                    typer.echo(
+                        f"  {status_icon} {port:5} | {service:25} {svc_type:4} | {category:15} | {protocol:20}"
+                    )
                     if description:
                         typer.echo(f"       {description}")
 
@@ -411,7 +411,9 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
                     status_icon = "✅" if entry.get("status") == "enabled" else "❌"
                     description = entry.get("description", "")[:50]
 
-                    typer.echo(f"  {status_icon} {port:5} | {service:25} {svc_type:4} | {category:15} | {protocol:20}")
+                    typer.echo(
+                        f"  {status_icon} {port:5} | {service:25} {svc_type:4} | {category:15} | {protocol:20}"
+                    )
                     if description:
                         typer.echo(f"       {description}")
 
@@ -424,4 +426,4 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
 
         except ConfigurationError as e:
             typer.echo(f"❌ Configuration Error: {e.message}", err=True)
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None

@@ -1,6 +1,7 @@
 """FastMCP server implementation for Mahavishnu."""
 
 import asyncio
+from contextlib import suppress
 from datetime import datetime
 from logging import getLogger
 from typing import Any
@@ -216,7 +217,7 @@ class FastMCPServer:
                 }
             except Exception as e:
                 return {
-                    "error": f"Failed to list repositories: {str(e)}",
+                    "error": f"Failed to list repositories: {e}",
                     "repos": [],
                     "total_count": 0,
                     "filtered_count": 0,
@@ -329,7 +330,8 @@ class FastMCPServer:
                 error_workflow_id = f"wf_error_{uuid.uuid4().hex[:8]}_{task_type}"
 
                 # Update workflow state to reflect error
-                try:
+                with suppress(Exception):
+                    # If we can't update the workflow state, continue with the response
                     task_for_state = {"type": task_type, "params": params}
                     await self.app.workflow_state_manager.create(
                         workflow_id=error_workflow_id,
@@ -342,9 +344,6 @@ class FastMCPServer:
                         error=str(e),
                         completed_at=asyncio.get_event_loop().time(),
                     )
-                except Exception:
-                    # If we can't update the workflow state, continue with the response
-                    pass
 
                 return {
                     "workflow_id": error_workflow_id,
@@ -481,15 +480,13 @@ class FastMCPServer:
                 }
             except Exception as e:
                 return {
-                    "error": f"Failed to list workflows: {str(e)}",
+                    "error": f"Failed to list workflows: {e}",
                     "workflows": [],
                     "total_count": 0,
                 }
 
         @server.tool()
-        async def cancel_workflow(
-            workflow_id: str, user_id: str | None = None
-        ) -> dict[str, Any]:
+        async def cancel_workflow(workflow_id: str, user_id: str | None = None) -> dict[str, Any]:
             """Cancel a running workflow.
 
             Args:
@@ -528,7 +525,7 @@ class FastMCPServer:
                 return {
                     "workflow_id": workflow_id,
                     "status": "error",
-                    "error": f"Failed to cancel workflow: {str(e)}",
+                    "error": f"Failed to cancel workflow: {e}",
                 }
 
         @server.tool()
@@ -610,7 +607,7 @@ class FastMCPServer:
                     "has_permission": has_permission,
                 }
             except Exception as e:
-                return {"error": f"Failed to check permission: {str(e)}", "has_permission": False}
+                return {"error": f"Failed to check permission: {e}", "has_permission": False}
 
         @server.tool()
         async def get_observability_metrics() -> dict[str, Any]:
@@ -645,7 +642,7 @@ class FastMCPServer:
                     "timestamp": datetime.now().isoformat(),
                 }
             except Exception as e:
-                return {"error": f"Failed to get observability metrics: {str(e)}", "metrics": {}}
+                return {"error": f"Failed to get observability metrics: {e}", "metrics": {}}
 
         @server.tool()
         async def search_logs(
@@ -697,7 +694,7 @@ class FastMCPServer:
                     },
                 }
             except Exception as e:
-                return {"status": "error", "error": f"Failed to search logs: {str(e)}", "logs": []}
+                return {"status": "error", "error": f"Failed to search logs: {e}", "logs": []}
 
         @server.tool()
         async def search_workflows(
@@ -751,7 +748,7 @@ class FastMCPServer:
             except Exception as e:
                 return {
                     "status": "error",
-                    "error": f"Failed to search workflows: {str(e)}",
+                    "error": f"Failed to search workflows: {e}",
                     "workflows": [],
                 }
 
@@ -769,7 +766,7 @@ class FastMCPServer:
             except Exception as e:
                 return {
                     "status": "error",
-                    "error": f"Failed to get workflow statistics: {str(e)}",
+                    "error": f"Failed to get workflow statistics: {e}",
                     "statistics": {},
                 }
 
@@ -787,7 +784,7 @@ class FastMCPServer:
             except Exception as e:
                 return {
                     "status": "error",
-                    "error": f"Failed to get log statistics: {str(e)}",
+                    "error": f"Failed to get log statistics: {e}",
                     "statistics": {},
                 }
 
@@ -805,7 +802,7 @@ class FastMCPServer:
             except Exception as e:
                 return {
                     "status": "error",
-                    "error": f"Failed to get recovery metrics: {str(e)}",
+                    "error": f"Failed to get recovery metrics: {e}",
                     "metrics": {},
                 }
 
@@ -838,7 +835,7 @@ class FastMCPServer:
                     "message": f"Backup {backup_info.backup_id} created successfully",
                 }
             except Exception as e:
-                return {"status": "error", "error": f"Failed to create backup: {str(e)}"}
+                return {"status": "error", "error": f"Failed to create backup: {e}"}
 
         @server.tool()
         async def list_backups() -> dict[str, Any]:
@@ -871,7 +868,7 @@ class FastMCPServer:
             except Exception as e:
                 return {
                     "status": "error",
-                    "error": f"Failed to list backups: {str(e)}",
+                    "error": f"Failed to list backups: {e}",
                     "backups": [],
                 }
 
@@ -898,7 +895,7 @@ class FastMCPServer:
                     "message": f"Restore {'completed' if success else 'failed'} for backup {backup_id}",
                 }
             except Exception as e:
-                return {"status": "error", "error": f"Failed to restore backup: {str(e)}"}
+                return {"status": "error", "error": f"Failed to restore backup: {e}"}
 
         @server.tool()
         async def run_disaster_recovery_check() -> dict[str, Any]:
@@ -918,7 +915,7 @@ class FastMCPServer:
             except Exception as e:
                 return {
                     "status": "error",
-                    "error": f"Failed to run disaster recovery check: {str(e)}",
+                    "error": f"Failed to run disaster recovery check: {e}",
                 }
 
         @server.tool()
@@ -933,7 +930,7 @@ class FastMCPServer:
 
                 return {"status": "success", "message": "Healing process initiated"}
             except Exception as e:
-                return {"status": "error", "error": f"Failed to initiate healing: {str(e)}"}
+                return {"status": "error", "error": f"Failed to initiate healing: {e}"}
 
         @server.tool()
         async def get_monitoring_dashboard() -> dict[str, Any]:
@@ -950,7 +947,7 @@ class FastMCPServer:
 
                 return {"status": "success", "dashboard": dashboard_data}
             except Exception as e:
-                return {"status": "error", "error": f"Failed to get monitoring dashboard: {str(e)}"}
+                return {"status": "error", "error": f"Failed to get monitoring dashboard: {e}"}
 
         @server.tool()
         async def get_active_alerts() -> dict[str, Any]:
@@ -982,7 +979,7 @@ class FastMCPServer:
                     "count": len(active_alerts),
                 }
             except Exception as e:
-                return {"status": "error", "error": f"Failed to get active alerts: {str(e)}"}
+                return {"status": "error", "error": f"Failed to get active alerts: {e}"}
 
         @server.tool()
         async def acknowledge_alert(alert_id: str, user: str) -> dict[str, Any]:
@@ -1006,7 +1003,7 @@ class FastMCPServer:
                     "message": f"Alert {alert_id} {'acknowledged' if success else 'failed to acknowledge'} by {user}",
                 }
             except Exception as e:
-                return {"status": "error", "error": f"Failed to acknowledge alert: {str(e)}"}
+                return {"status": "error", "error": f"Failed to acknowledge alert: {e}"}
 
         @server.tool()
         async def trigger_test_alert(
@@ -1053,7 +1050,7 @@ class FastMCPServer:
                     "message": f"Test alert created with ID: {alert.id}",
                 }
             except Exception as e:
-                return {"status": "error", "error": f"Failed to trigger test alert: {str(e)}"}
+                return {"status": "error", "error": f"Failed to trigger test alert: {e}"}
 
         @server.tool()
         async def flush_metrics() -> dict[str, Any]:
@@ -1073,7 +1070,7 @@ class FastMCPServer:
 
                 return {"status": "success", "message": "Metrics flushed successfully"}
             except Exception as e:
-                return {"status": "error", "error": f"Failed to flush metrics: {str(e)}"}
+                return {"status": "error", "error": f"Failed to flush metrics: {e}"}
 
         @server.tool()
         async def list_adapters() -> dict[str, Any]:

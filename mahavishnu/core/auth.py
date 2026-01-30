@@ -1,6 +1,9 @@
 """Authentication module for Mahavishnu supporting both JWT and subscription tokens."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from typing import Any, Callable, Awaitable
+
+UTC = timezone.utc
 from functools import wraps
 
 from fastapi import HTTPException, Request, status
@@ -48,7 +51,7 @@ class JWTAuth:
             Encoded JWT token
         """
         to_encode = data.copy()
-        expire = datetime.utcnow() + timedelta(minutes=self.expire_minutes)
+        expire = datetime.now(tz=UTC) + timedelta(minutes=self.expire_minutes)
         to_encode.update({"exp": int(expire.timestamp())})  # Convert datetime to integer timestamp
         encoded_jwt = jwt.encode(to_encode, self.secret, algorithm=self.algorithm)
         return encoded_jwt
@@ -68,20 +71,8 @@ class JWTAuth:
         """
         try:
             payload = jwt.decode(token, self.secret, algorithms=[self.algorithm])
-            username: str = payload.get("sub")
-            if username is None:
-                raise AuthenticationError(
-                    message="Could not validate credentials",
-                    details={"error": "Username not found in token"},
-                )
-            token_data = TokenData(username=username, exp=payload.get("exp"))
-
-            # Check if token is expired
-            if datetime.utcnow().timestamp() > token_data.exp:
-                raise AuthenticationError(
-                    message="Token has expired", details={"error": "Expired token"}
-                )
-
+            token_data = self._validate_payload(payload)
+            self._check_token_expiry(token_data)
             return token_data
         except jwt.exceptions.InvalidSignatureError as e:
             raise AuthenticationError(
@@ -93,11 +84,37 @@ class JWTAuth:
             ) from e
         except Exception as e:
             raise AuthenticationError(
-                message=f"Authentication error: {str(e)}", details={"error": str(e)}
+                message=f"Authentication error: {e}", details={"error": str(e)}
             ) from e
 
+    def _validate_payload(self, payload: dict) -> TokenData:
+        """Validate the JWT payload and extract token data."""
+        username: str | None = payload.get("sub")
+        exp: int | None = payload.get("exp")
 
-def get_auth_from_config(config):
+        if username is None:
+            raise AuthenticationError(
+                message="Could not validate credentials",
+                details={"error": "Username not found in token"},
+            )
+
+        if exp is None:
+            raise AuthenticationError(
+                message="Could not validate credentials",
+                details={"error": "Expiration not found in token"},
+            )
+
+        return TokenData(username=username, exp=exp)
+
+    def _check_token_expiry(self, token_data: TokenData) -> None:
+        """Check if the token has expired."""
+        if datetime.now(tz=UTC).timestamp() > token_data.exp:
+            raise AuthenticationError(
+                message="Token has expired", details={"error": "Expired token"}
+            )
+
+
+def get_auth_from_config(config: Any) -> MultiAuthHandler:
     """
     Create MultiAuthHandler instance from configuration.
 
@@ -110,7 +127,9 @@ def get_auth_from_config(config):
     return MultiAuthHandler(config)
 
 
-def require_auth(auth_handler):
+from typing import Callable, Awaitable
+
+def require_auth(auth_handler: Any) -> Callable:
     """
     Decorator to require authentication for functions using MultiAuthHandler.
 
@@ -121,15 +140,15 @@ def require_auth(auth_handler):
         Decorator function
     """
 
-    def decorator(func):
+    def decorator(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs) -> Any:
             if not auth_handler:
                 # If auth is disabled, allow access
                 return await func(*args, **kwargs)
 
             # Extract token from request
-            request: Request = kwargs.get("request") or (
+            request: Request | None = kwargs.get("request") or (
                 args[0] if args and isinstance(args[0], Request) else None
             )
 

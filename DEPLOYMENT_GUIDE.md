@@ -222,6 +222,7 @@ export OLLAMA_MODEL="nomic-embed-text"
 from mahavishnu.core import MahavishnuApp
 import asyncio
 
+
 async def main():
     # Initialize Mahavishnu (no auth needed for Qwen)
     app = MahavishnuApp()
@@ -231,12 +232,11 @@ async def main():
 
     # Execute workflow
     result = await app.execute_workflow(
-        task={"type": "code_sweep"},
-        adapter_name="langgraph",
-        repos=repos
+        task={"type": "code_sweep"}, adapter_name="langgraph", repos=repos
     )
 
     print(f"Workflow completed: {result}")
+
 
 # Run in Qwen
 asyncio.run(main())
@@ -326,26 +326,30 @@ adapters:
 
 ```python
 """Client detection for hybrid deployment."""
+
 from enum import Enum
 from typing import Optional
 import structlog
 
 logger = structlog.get_logger(__name__)
 
+
 class ClientType(str, Enum):
     """Type of client connecting to Mahavishnu."""
+
     CLAUDE_CODE = "claude_code"
     QWEN = "qwen"
     CLI = "cli"
     UNKNOWN = "unknown"
+
 
 class ClientDetector:
     """Detect client type and apply appropriate auth rules."""
 
     def __init__(self, config: Any) -> None:
         self.config = config
-        self.hybrid_mode = getattr(config, 'deployment_mode', 'mcp') == 'hybrid'
-        self.qwen_bypass = getattr(config, 'qwen_bypass_subscription', False)
+        self.hybrid_mode = getattr(config, "deployment_mode", "mcp") == "hybrid"
+        self.qwen_bypass = getattr(config, "qwen_bypass_subscription", False)
 
     def detect_client(self, request_headers: dict) -> ClientType:
         """Detect client type from request.
@@ -357,26 +361,27 @@ class ClientDetector:
             Detected client type
         """
         # Check for Qwen user agent
-        user_agent = request_headers.get('user-agent', '')
-        if 'qwen' in user_agent.lower():
+        user_agent = request_headers.get("user-agent", "")
+        if "qwen" in user_agent.lower():
             logger.debug("Detected Qwen client")
             return ClientType.QWEN
 
         # Check for Claude Code subscription token
-        auth_header = request_headers.get('authorization', '')
-        if auth_header.startswith('Bearer '):
+        auth_header = request_headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
             token = auth_header[7:]  # Remove 'Bearer '
 
             # Decode token to check subscription type
             try:
                 import jwt
+
                 payload = jwt.decode(token, options={"verify_signature": False})
 
-                if 'subscription_type' in payload:
-                    if payload['subscription_type'] == 'claude_code':
+                if "subscription_type" in payload:
+                    if payload["subscription_type"] == "claude_code":
                         logger.debug("Detected Claude Code client")
                         return ClientType.CLAUDE_CODE
-                    elif payload['subscription_type'] == 'codex':
+                    elif payload["subscription_type"] == "codex":
                         logger.debug("Detected Codex client")
                         return ClientType.CLAUDE_CODE
 
@@ -407,10 +412,10 @@ class ClientDetector:
 
         # CLI doesn't require auth (optional)
         if client_type == ClientType.CLI:
-            return getattr(self.config, 'cli_auth_enabled', False)
+            return getattr(self.config, "cli_auth_enabled", False)
 
         # Unknown clients require auth if subscription auth is enabled
-        return getattr(self.config, 'subscription_auth_enabled', False)
+        return getattr(self.config, "subscription_auth_enabled", False)
 
     def get_client_info(self, client_type: ClientType) -> dict:
         """Get client information for logging/metrics.
@@ -424,7 +429,7 @@ class ClientDetector:
         return {
             "client_type": client_type.value,
             "subscription_required": self.should_require_auth(client_type),
-            "deployment_mode": "hybrid" if self.hybrid_mode else "single"
+            "deployment_mode": "hybrid" if self.hybrid_mode else "single",
         }
 ```
 
@@ -434,7 +439,9 @@ class ClientDetector:
 
 ```python
 """Add client detection to MahavishnuApp."""
+
 from .client_detector import ClientDetector, ClientType
+
 
 class MahavishnuApp:
     """Main application with hybrid client support."""
@@ -446,11 +453,7 @@ class MahavishnuApp:
         self.client_detector = ClientDetector(config) if config else None
 
     async def execute_workflow_hybrid(
-        self,
-        task: dict,
-        adapter_name: str,
-        repos: list,
-        request_headers: dict | None = None
+        self, task: dict, adapter_name: str, repos: list, request_headers: dict | None = None
     ) -> dict:
         """Execute workflow with client-aware auth (HYBRID MODE).
 
@@ -471,29 +474,30 @@ class MahavishnuApp:
         # Check if auth required
         if self.client_detector and self.client_detector.should_require_auth(client_type):
             # Verify subscription token
-            auth_header = request_headers.get('authorization', '')
+            auth_header = request_headers.get("authorization", "")
             if not auth_header:
                 raise AuthenticationError(
                     "Authentication required for this client",
                     client_type=client_type.value,
-                    suggestion="Provide valid subscription token"
+                    suggestion="Provide valid subscription token",
                 )
 
             # Verify auth
             from .subscription_auth import MultiAuthHandler
+
             auth_handler = MultiAuthHandler(self.config)
             auth_result = auth_handler.authenticate_request(auth_header)
 
             logger.info(
                 "Client authenticated",
                 client_type=auth_result.get("method"),
-                user=auth_result.get("user")
+                user=auth_result.get("user"),
             )
         else:
             logger.info(
                 "Skipping auth check",
                 client_type=client_type.value,
-                reason="Qwen free tier or auth not required"
+                reason="Qwen free tier or auth not required",
             )
 
         # Execute workflow (same logic for all clients)
@@ -589,11 +593,11 @@ from mahavishnu.core.config import MahavishnuSettings
 import os
 
 # Configure
-os.environ['MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET'] = 'your_32char_secret_key_here_minimum'
+os.environ["MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"] = "your_32char_secret_key_here_minimum"
 
 config = MahavishnuSettings(
     subscription_auth_enabled=True,
-    subscription_auth_secret=os.environ.get('MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET')
+    subscription_auth_secret=os.environ.get("MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"),
 )
 
 # Create auth handler
@@ -601,16 +605,14 @@ auth_handler = MultiAuthHandler(config)
 
 # Create Claude Code subscription token
 claude_token = auth_handler.create_claude_subscription_token(
-    user_id="claude_user_123",
-    scopes=["read", "execute", "workflow_manage"]
+    user_id="claude_user_123", scopes=["read", "execute", "workflow_manage"]
 )
 
 print(f"Claude Code token: {claude_token}")
 
 # Create Codex subscription token
 codex_token = auth_handler.create_codex_subscription_token(
-    user_id="codex_user_456",
-    scopes=["read", "execute"]
+    user_id="codex_user_456", scopes=["read", "execute"]
 )
 
 print(f"Codex token: {codex_token}")
@@ -639,12 +641,13 @@ mahavishnu auth create-token \
 ```python
 from mahavishnu.core.subscription_auth import MultiAuthHandler
 
+
 # In MCP tool implementation
 @app.mcp_tool()
 async def mahavishnu_workflow_sweep(
     adapter: str,
     repos: list[str],
-    auth_header: str  # Passed from Claude Code
+    auth_header: str,  # Passed from Claude Code
 ) -> dict:
     """Execute workflow sweep with subscription auth."""
 
@@ -664,18 +667,13 @@ async def mahavishnu_workflow_sweep(
 
         # Proceed with workflow
         result = await app.execute_workflow(
-            task={"type": "sweep"},
-            adapter_name=adapter,
-            repos=repos
+            task={"type": "sweep"}, adapter_name=adapter, repos=repos
         )
 
         return result
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "authenticated": False
-        }
+        return {"error": str(e), "authenticated": False}
 ```
 
 ### Token Structure
@@ -816,7 +814,7 @@ from mahavishnu.core import MahavishnuApp
 import os
 
 # Set Qwen mode
-os.environ['MAHAVISHNU_QWEN_MODE'] = 'true'
+os.environ["MAHAVISHNU_QWEN_MODE"] = "true"
 
 # Initialize (no auth needed)
 app = MahavishnuApp()
@@ -824,9 +822,7 @@ app = MahavishnuApp()
 # Use it
 repos = app.get_repos(tag="backend")
 result = await app.execute_workflow(
-    task={"type": "code_sweep"},
-    adapter_name="langgraph",
-    repos=repos
+    task={"type": "code_sweep"}, adapter_name="langgraph", repos=repos
 )
 ```
 

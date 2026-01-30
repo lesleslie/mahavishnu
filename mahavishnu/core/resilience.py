@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 import logging
 import random
@@ -110,7 +110,7 @@ class ErrorRecoveryManager:
         # Must check before resource to catch "rate limit" before "limit"
         if any(
             keyword in error_str
-            for keyword in [
+            for keyword in (
                 "rate limit",
                 "ratelimit",
                 "rate-limit",
@@ -125,14 +125,14 @@ class ErrorRecoveryManager:
                 "offline",
                 "retryable",
                 "retryableerror",
-            ]
+            )
         ):
             return ErrorCategory.TRANSIENT
 
         # Check for network-related errors
         if any(
             keyword in error_str
-            for keyword in [
+            for keyword in (
                 "connection",
                 "timeout",
                 "network",
@@ -141,14 +141,14 @@ class ErrorRecoveryManager:
                 "ssl",
                 "certificate",
                 "handshake",
-            ]
+            )
         ):
             return ErrorCategory.NETWORK
 
         # Check for resource-related errors (but not "rate limit" or "range")
         if any(
             keyword in error_str
-            for keyword in [
+            for keyword in (
                 "memory",
                 "disk",
                 "quota",
@@ -160,20 +160,20 @@ class ErrorRecoveryManager:
                 "exceeded",
                 "space",
                 "device",
-            ]
+            )
         ) and not any(
             exclude in error_str
-            for exclude in [
+            for exclude in (
                 "index",
                 "range",  # Exclude index/range errors which are usually permanent
-            ]
+            )
         ):
             return ErrorCategory.RESOURCE
 
         # Check for permission-related errors
         if any(
             keyword in error_str
-            for keyword in [
+            for keyword in (
                 "permission",
                 "denied",
                 "forbidden",
@@ -181,14 +181,14 @@ class ErrorRecoveryManager:
                 "access",
                 "auth",
                 "credential",
-            ]
+            )
         ):
             return ErrorCategory.PERMISSION
 
         # Check for validation-related errors
         if any(
             keyword in error_str
-            for keyword in [
+            for keyword in (
                 "invalid",
                 "malformed",
                 "validation",
@@ -198,7 +198,7 @@ class ErrorRecoveryManager:
                 "schema",
                 "assertion",
                 "assertionerror",
-            ]
+            )
         ):
             return ErrorCategory.VALIDATION
 
@@ -297,20 +297,19 @@ class ErrorRecoveryManager:
             return await self._retry_operation(
                 operation, args, kwargs, max_attempts, backoff_factor, workflow_id, repo_path
             )
-        elif strategy == RecoveryStrategy.FALLBACK and recovery_action.fallback_function:
+        if strategy == RecoveryStrategy.FALLBACK and recovery_action.fallback_function:
             return await self._execute_fallback(
                 recovery_action.fallback_function, args, kwargs, workflow_id, repo_path
             )
-        elif strategy == RecoveryStrategy.SKIP:
+        if strategy == RecoveryStrategy.SKIP:
             return await self._skip_and_continue(error, workflow_id, repo_path)
-        elif strategy == RecoveryStrategy.NOTIFY:
+        if strategy == RecoveryStrategy.NOTIFY:
             await self._notify_error(error, workflow_id, repo_path)
             return {"success": False, "error": str(error), "attempts": 1, "recovered": False}
-        else:
-            # Default to retry if no specific strategy
-            return await self._retry_operation(
-                operation, args, kwargs, max_attempts, backoff_factor, workflow_id, repo_path
-            )
+        # Default to retry if no specific strategy
+        return await self._retry_operation(
+            operation, args, kwargs, max_attempts, backoff_factor, workflow_id, repo_path
+        )
 
     async def _retry_operation(
         self,
@@ -348,7 +347,7 @@ class ErrorRecoveryManager:
             except Exception as e:
                 last_exception = e
                 self.logger.warning(
-                    f"Attempt {attempt}/{max_attempts} failed for workflow {workflow_id}: {str(e)}"
+                    f"Attempt {attempt}/{max_attempts} failed for workflow {workflow_id}: {e}"
                 )
 
                 # Log failed retry
@@ -398,7 +397,7 @@ class ErrorRecoveryManager:
 
             return {"success": True, "result": result, "attempts": 1, "recovered": True}
         except Exception as e:
-            self.logger.error(f"Fallback function failed for workflow {workflow_id}: {str(e)}")
+            self.logger.error(f"Fallback function failed for workflow {workflow_id}: {e}")
 
             # Log failed fallback
             await self._log_recovery_action(
@@ -412,7 +411,7 @@ class ErrorRecoveryManager:
     ) -> dict[str, Any]:
         """Skip the operation and continue."""
         self.logger.warning(
-            f"Skipping operation for workflow {workflow_id} due to error: {str(error)}"
+            f"Skipping operation for workflow {workflow_id} due to error: {error}"
         )
 
         # Log skip action
@@ -432,7 +431,7 @@ class ErrorRecoveryManager:
         self, error: Exception, workflow_id: str | None = None, repo_path: str | None = None
     ) -> dict[str, Any]:
         """Notify about the error (placeholder for notification system)."""
-        self.logger.error(f"Notifying about error in workflow {workflow_id}: {str(error)}")
+        self.logger.error(f"Notifying about error in workflow {workflow_id}: {error}")
 
         # In a real implementation, this would send notifications
         # via email, Slack, etc.
@@ -458,7 +457,7 @@ class ErrorRecoveryManager:
     ):
         """Log operation results for monitoring and analysis."""
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "workflow_id": workflow_id,
             "repo_path": repo_path,
             "success": success,
@@ -507,7 +506,7 @@ class ErrorRecoveryManager:
     ):
         """Log recovery actions for monitoring."""
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "workflow_id": workflow_id,
             "repo_path": repo_path,
             "action": action,
@@ -558,7 +557,7 @@ class ErrorRecoveryManager:
             await self._check_stuck_workflows()
 
         except Exception as e:
-            self.logger.error(f"Error in workflow monitoring: {str(e)}")
+            self.logger.error(f"Error in workflow monitoring: {e}")
 
     async def _heal_workflow(self, workflow_id: str, workflow_state: dict[str, Any]) -> bool:
         """Attempt to heal a failed workflow."""
@@ -611,7 +610,7 @@ class ErrorRecoveryManager:
                 return False
 
         except Exception as e:
-            self.logger.error(f"Error healing workflow {workflow_id}: {str(e)}")
+            self.logger.error(f"Error healing workflow {workflow_id}: {e}")
             return False
 
     async def _check_stuck_workflows(self):
@@ -622,7 +621,7 @@ class ErrorRecoveryManager:
                 status=WorkflowStatus.RUNNING, limit=100
             )
 
-            current_time = datetime.utcnow()
+            current_time = datetime.now(timezone.utc)
             timeout_threshold = timedelta(hours=1)  # Consider workflows stuck after 1 hour
 
             for workflow in running_workflows:
@@ -649,7 +648,7 @@ class ErrorRecoveryManager:
                         continue
 
         except Exception as e:
-            self.logger.error(f"Error checking for stuck workflows: {str(e)}")
+            self.logger.error(f"Error checking for stuck workflows: {e}")
 
     async def get_recovery_metrics(self) -> dict[str, Any]:
         """Get metrics about recovery operations."""
@@ -711,7 +710,7 @@ class ResiliencePatterns:
                     # Check every 5 minutes
                     await asyncio.sleep(300)
                 except Exception as e:
-                    self.app.logger.error(f"Error in monitoring loop: {str(e)}")
+                    self.app.logger.error(f"Error in monitoring loop: {e}")
                     # Wait a bit before retrying
                     await asyncio.sleep(60)
 

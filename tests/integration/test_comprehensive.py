@@ -1,18 +1,14 @@
 """Comprehensive test suite for Mahavishnu orchestration platform."""
-import pytest
-import asyncio
-import tempfile
-import os
+
 from pathlib import Path
-from unittest.mock import Mock, AsyncMock, patch
+import tempfile
+
+from mcp_common.code_graph.analyzer import CodeGraphAnalyzer
+import pytest
 
 from mahavishnu.core.app import MahavishnuApp
-from mcp_common.code_graph.analyzer import CodeGraphAnalyzer
-from mahavishnu.core.workflow_state import WorkflowState
-from mahavishnu.core.permissions import RBACManager, Permission
-from mahavishnu.core.resilience import ErrorRecoveryManager
-from mahavishnu.core.monitoring import AlertManager, AlertSeverity, AlertType
-from mahavishnu.core.backup_recovery import BackupManager
+from mahavishnu.core.monitoring import AlertSeverity, AlertType
+from mahavishnu.core.permissions import Permission
 
 
 @pytest.mark.asyncio
@@ -76,11 +72,14 @@ from pathlib import Path
         # Verify analysis results
         assert result["files_indexed"] >= 1
         assert result["functions_indexed"] >= 3  # main_function, helper_function, process_result
-        assert result["classes_indexed"] >= 1   # TestClass
+        assert result["classes_indexed"] >= 1  # TestClass
 
         # Verify that function nodes were created
-        func_nodes = [node for node in analyzer.nodes.values()
-                     if hasattr(node, 'name') and hasattr(node, 'calls')]
+        func_nodes = [
+            node
+            for node in analyzer.nodes.values()
+            if hasattr(node, "name") and hasattr(node, "calls")
+        ]
         assert len(func_nodes) >= 3
 
 
@@ -98,11 +97,7 @@ async def test_workflow_state_persistence():
     await app.workflow_state_manager.create(workflow_id, task, repos)
 
     # Update workflow state
-    await app.workflow_state_manager.update(
-        workflow_id=workflow_id,
-        status="running",
-        progress=50
-    )
+    await app.workflow_state_manager.update(workflow_id=workflow_id, status="running", progress=50)
 
     # Retrieve workflow state
     state = await app.workflow_state_manager.get(workflow_id)
@@ -129,9 +124,7 @@ async def test_rbac_workflow_integration():
 
         # Create a test user with limited permissions
         user = await app.rbac_manager.create_user(
-            user_id="integration_test_user",
-            roles=["developer"],
-            allowed_repos=[repo_str]
+            user_id="integration_test_user", roles=["developer"], allowed_repos=[repo_str]
         )
 
         # Verify user was created
@@ -169,7 +162,7 @@ async def test_resilience_pattern_integration():
             task=task,
             adapter_name="llamaindex",  # Use available adapter
             repos=[str(repo_str)],
-            user_id="test_user"
+            user_id="test_user",
         )
 
         # Verify result structure
@@ -189,7 +182,7 @@ async def test_monitoring_alert_integration():
         alert_type=AlertType.SYSTEM_HEALTH,
         title="Integration Test Alert",
         description="Testing alert integration",
-        details={"test": True, "component": "integration_test"}
+        details={"test": True, "component": "integration_test"},
     )
 
     # Verify alert was created
@@ -257,9 +250,7 @@ async def test_error_recovery_integration():
 
     # Execute with resilience
     result = await app.error_recovery_manager.execute_with_resilience(
-        failing_operation,
-        workflow_id="recovery_test",
-        repo_path="/test/repo"
+        failing_operation, workflow_id="recovery_test", repo_path="/test/repo"
     )
 
     # Verify that recovery was attempted
@@ -276,19 +267,15 @@ async def test_complete_workflow_cycle():
     with tempfile.TemporaryDirectory() as temp_dir:
         # Create a test repository
         repo_path = Path(temp_dir)
-        (repo_path / "main.py").write_text('''
+        (repo_path / "main.py").write_text("""
 def hello_world():
     return "Hello, World!"
-''')
+""")
         repo_str = str(repo_path)
 
         # Step 1: Create workflow state
         workflow_id = "complete_cycle_test"
-        task = {
-            "type": "code_analysis",
-            "params": {"analyze_functions": True},
-            "id": workflow_id
-        }
+        task = {"type": "code_analysis", "params": {"analyze_functions": True}, "id": workflow_id}
         repos = [str(repo_str)]
 
         await app.workflow_state_manager.create(workflow_id, task, repos)
@@ -299,17 +286,13 @@ def hello_world():
         # Step 3: Execute workflow with resilience
         if "llamaindex" in app.adapters:
             result = await app.resilience_manager.resilient_workflow_execution(
-                task=task,
-                adapter_name="llamaindex",
-                repos=repos
+                task=task, adapter_name="llamaindex", repos=repos
             )
 
             # Step 4: Update workflow state based on result
             final_status = "completed" if result.get("success", False) else "failed"
             await app.workflow_state_manager.update(
-                workflow_id=workflow_id,
-                status=final_status,
-                result=result
+                workflow_id=workflow_id, status=final_status, result=result
             )
 
         # Step 5: Verify final state
@@ -342,9 +325,7 @@ async def test_multi_component_interaction():
         # 3. Create a workflow
         workflow_id = "multi_component_test"
         await app.workflow_state_manager.create(
-            workflow_id,
-            {"type": "multi_test"},
-            [str(repo_str)]
+            workflow_id, {"type": "multi_test"}, [str(repo_str)]
         )
 
         # 4. Use resilience for execution
@@ -353,14 +334,12 @@ async def test_multi_component_interaction():
             result = {
                 "analysis": analysis,
                 "permissions_checked": has_perm,
-                "workflow_created": True
+                "workflow_created": True,
             }
             return result
 
         resilient_result = await app.error_recovery_manager.execute_with_resilience(
-            multi_component_task,
-            workflow_id=workflow_id,
-            repo_path=str(repo_str)
+            multi_component_task, workflow_id=workflow_id, repo_path=str(repo_str)
         )
 
         # 5. Log to observability
@@ -369,8 +348,8 @@ async def test_multi_component_interaction():
             attributes={
                 "workflow_id": workflow_id,
                 "result_success": resilient_result.get("success", False),
-                "analysis_files": analysis.get("files_indexed", 0)
-            }
+                "analysis_files": analysis.get("files_indexed", 0),
+            },
         )
 
         # 6. Verify all components worked together

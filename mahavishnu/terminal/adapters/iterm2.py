@@ -179,7 +179,6 @@ class ITerm2Adapter(TerminalAdapter):
 
             logger.info(f"Launched iTerm2 session {session_id} with command: {command}")
             return session_id
-            return session_id
 
         except Exception as e:
             logger.error(f"Failed to launch iTerm2 session: {e}")

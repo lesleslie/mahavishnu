@@ -46,7 +46,7 @@ settings = PgvectorSettings(
     max_overflow=30,  # ❌ WRONG PARAMETER NAME
     embedding_dimension=768,  # ❌ WRONG PARAMETER NAME
     index_type="ivfflat",  # ❌ DOESN'T EXIST
-    index_args="lists=500"  # ❌ DOESN'T EXIST
+    index_args="lists=500",  # ❌ DOESN'T EXIST
 )
 
 self.adapter = PgvectorAdapter(settings)
@@ -67,33 +67,27 @@ settings = PgvectorSettings(
     user="postgres",
     password=None,  # SecretStr | None
     database="postgres",
-
     # ❌ PLAN USES WRONG NAMES:
     # Plan: pool_size=20
     # Actual: max_connections=10 (from VectorBaseSettings)
-
     # ❌ PLAN USES WRONG NAMES:
     # Plan: max_overflow=30
     # Actual: DOESN'T EXIST in PgvectorSettings
-
     # ❌ PLAN USES WRONG NAMES:
     # Plan: embedding_dimension=768
     # Actual: default_dimension=1536 (from VectorBaseSettings)
-
     # ❌ PLAN USES WRONG NAMES:
     # Plan: index_type="ivfflat"
     # Actual: DOESN'T EXIST (index type inferred from distance_metric)
-
     # ✅ CORRECT NAME:
     # Plan: index_args="lists=500"
     # Actual: ivfflat_lists=100 (default is 100, so 500 is valid)
-
     # Additional settings not mentioned in plan:
     db_schema="public",
     collection_prefix="vectors_",
     statement_timeout_ms=None,
     ssl=False,
-    ensure_extension=True
+    ensure_extension=True,
 )
 ```
 
@@ -117,7 +111,7 @@ await adapter.init()  # Correct method name
 memory_id = await self.adapter.insert(
     content=content,
     embedding=embedding,
-    metadata={**metadata, "memory_type": memory_type, "source_system": source_system}
+    metadata={**metadata, "memory_type": memory_type, "source_system": source_system},
 )
 ```
 
@@ -137,10 +131,10 @@ memory_ids = await adapter.insert(
                 "content": content,  # ❌ Plan expects content as direct param
                 "memory_type": memory_type,
                 "source_system": source_system,
-                **metadata
-            }
+                **metadata,
+            },
         )
-    ]
+    ],
 )
 
 # Returns: list[str] (IDs of inserted documents)
@@ -156,7 +150,7 @@ results = await self.adapter.search(
     query_embedding=query_embedding,  # ❌ WRONG PARAMETER NAME
     limit=limit,
     threshold=threshold,  # ❌ DOESN'T EXIST
-    metadata_filter=metadata_filter  # ❌ WRONG PARAMETER NAME
+    metadata_filter=metadata_filter,  # ❌ WRONG PARAMETER NAME
 )
 ```
 
@@ -169,7 +163,7 @@ results = await adapter.search(
     query_vector=query_embedding,  # ✅ CORRECT NAME
     limit=limit,
     filter_expr=metadata_filter,  # ✅ CORRECT NAME
-    include_vectors=False
+    include_vectors=False,
 )
 
 # Returns: list[VectorSearchResult]
@@ -198,10 +192,10 @@ memory_ids = await adapter.upsert(
         VectorDocument(
             id=item.get("id"),  # Optional
             vector=item["embedding"],
-            metadata=item["metadata"]
+            metadata=item["metadata"],
         )
         for item in items
-    ]
+    ],
 )
 
 # Returns: list[str] (IDs of upserted documents)
@@ -223,14 +217,12 @@ return ComponentHealth(
     name="postgresql",
     status=HealthStatus.HEALTHY if is_healthy else HealthStatus.UNHEALTHY,
     message="PostgreSQL connection OK" if is_healthy else "PostgreSQL connection failed",
-    latency_ms=0
+    latency_ms=0,
 )
 
 # ✅ CORRECT: HealthCheckResponse.create() usage
 return HealthCheckResponse.create(
-    components=components,
-    version="1.0.0",
-    start_time=self.start_time
+    components=components, version="1.0.0", start_time=self.start_time
 )
 ```
 
@@ -295,6 +287,7 @@ export MAHAVISHNU_PG_PASSWORD="your_password"
 from pydantic import Field
 from oneiric.adapters.vector.pgvector import PgvectorSettings
 
+
 class MahavishnuPgvectorSettings(PgvectorSettings):
     """Custom settings with environment variable support."""
 
@@ -309,6 +302,7 @@ Or use pydantic-settings:
 
 ```python
 from pydantic_settings import BaseSettings
+
 
 class MahavishnuPgvectorSettings(PgvectorSettings, BaseSettings):
     class Config:
@@ -327,6 +321,7 @@ ______________________________________________________________________
 import structlog
 from opentelemetry import trace
 
+
 def add_correlation_id(logger, method_name, event_dict):
     """Add OpenTelemetry trace correlation to logs."""
     current_span = trace.get_current_span()
@@ -336,13 +331,14 @@ def add_correlation_id(logger, method_name, event_dict):
         event_dict["span_id"] = format(context.span_id, "016x")
     return event_dict
 
+
 processors = [
     structlog.stdlib.add_log_level,
     structlog.processors.TimeStamper(fmt="iso"),
     add_correlation_id,  # ✅ CORRECT PATTERN
     structlog.processors.StackInfoRenderer(),
     structlog.processors.format_exc_info,
-    structlog.processors.JSONRenderer()
+    structlog.processors.JSONRenderer(),
 ]
 ```
 
@@ -380,7 +376,7 @@ logger = get_logger("mahavishnu.memory")
 configure_logging(
     LoggingConfig(
         service_name="mahavishnu",
-        include_trace_context=True  # ✅ Built-in support
+        include_trace_context=True,  # ✅ Built-in support
     )
 )
 ```
@@ -414,11 +410,12 @@ from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 
+
 class ObservabilityManager:
     def _initialize_meter(self):
         exporter = OTLPMetricExporter(
-            endpoint=self.config.otlp_endpoint if hasattr(self.config, 'otlp_endpoint') else None,
-            insecure=True
+            endpoint=self.config.otlp_endpoint if hasattr(self.config, "otlp_endpoint") else None,
+            insecure=True,
         )
         reader = PeriodicExportingMetricReader(exporter, export_interval_millis=30000)
         provider = MeterProvider(metric_readers=[reader])
@@ -447,11 +444,10 @@ from oneiric.core.logging import bind_log_context
 bind_log_context(domain="memory", operation="vector_search")
 
 # Metrics will inherit context if using OTel+structlog integration
-self.memory_search_histogram.record(latency, {
-    "search_type": "unified",
-    "oneiric.domain": "memory",
-    "oneiric.operation": "vector_search"
-})
+self.memory_search_histogram.record(
+    latency,
+    {"search_type": "unified", "oneiric.domain": "memory", "oneiric.operation": "vector_search"},
+)
 ```
 
 ______________________________________________________________________
@@ -507,6 +503,7 @@ async def __aenter__(self):
         await self.initialize()
     return self
 
+
 async def __aexit__(self, exc_type, exc_val, exc_tb):
     """Context manager exit."""
     await self.close()
@@ -551,7 +548,7 @@ settings = PgvectorSettings(
     max_overflow=30,
     embedding_dimension=768,
     index_type="ivfflat",
-    index_args="lists=500"
+    index_args="lists=500",
 )
 
 # ✅ CORRECTED
@@ -564,7 +561,7 @@ settings = PgvectorSettings(
     max_connections=20,  # Was pool_size
     ivfflat_lists=500,  # Was index_args
     default_dimension=768,  # Was embedding_dimension
-    default_distance_metric="cosine"  # Implicitly uses ivfflat
+    default_distance_metric="cosine",  # Implicitly uses ivfflat
 )
 ```
 
@@ -573,9 +570,7 @@ settings = PgvectorSettings(
 ```python
 # ❌ PLAN (WRONG)
 memory_id = await self.adapter.insert(
-    content=content,
-    embedding=embedding,
-    metadata={**metadata, "memory_type": memory_type}
+    content=content, embedding=embedding, metadata={**metadata, "memory_type": memory_type}
 )
 
 # ✅ CORRECTED
@@ -591,10 +586,10 @@ memory_ids = await self.adapter.insert(
                 "content": content,
                 "memory_type": memory_type,
                 "source_system": source_system,
-                **metadata
-            }
+                **metadata,
+            },
         )
-    ]
+    ],
 )
 memory_id = memory_ids[0]  # Returns list
 ```
@@ -607,15 +602,12 @@ results = await self.adapter.search(
     query_embedding=query_embedding,
     limit=limit,
     threshold=threshold,
-    metadata_filter=metadata_filter
+    metadata_filter=metadata_filter,
 )
 
 # ✅ CORRECTED
 results = await self.adapter.search(
-    collection="memories",
-    query_vector=query_embedding,
-    limit=limit,
-    filter_expr=metadata_filter
+    collection="memories", query_vector=query_embedding, limit=limit, filter_expr=metadata_filter
 )
 
 # Apply threshold in application code
@@ -659,9 +651,9 @@ register_adapter_metadata(
             provider="pgvector",
             stack_level=10,
             factory=lambda config: PgvectorAdapter(config),
-            description="Mahavishnu memory store"
+            description="Mahavishnu memory store",
         )
-    ]
+    ],
 )
 
 # Option 2: Manual registration
@@ -671,7 +663,7 @@ resolver.register(
         key="vector",
         provider="pgvector",
         stack_level=10,
-        factory=lambda: PgvectorAdapter(settings)
+        factory=lambda: PgvectorAdapter(settings),
     )
 )
 ```
@@ -686,8 +678,7 @@ resolver.register(
 from oneiric.core.lifecycle import LifecycleManager
 
 lifecycle = LifecycleManager(
-    resolver,
-    status_snapshot_path=Path(".oneiric_cache/lifecycle_status.json")
+    resolver, status_snapshot_path=Path(".oneiric_cache/lifecycle_status.json")
 )
 
 # Activate vector store
@@ -695,9 +686,10 @@ vector_store = await lifecycle.activate("adapter", "vector")
 
 # Hot-swap to different provider (automatic rollback on failure)
 await lifecycle.swap(
-    "adapter", "vector",
+    "adapter",
+    "vector",
     provider="qdrant",  # Switch from pgvector to qdrant
-    force=False
+    force=False,
 )
 
 # Check health
@@ -712,6 +704,7 @@ is_healthy = await lifecycle.probe_instance_health("adapter", "vector")
 
 ```python
 from mcp_common.health import ComponentHealth, HealthStatus
+
 
 class VectorStore:
     async def get_health(self) -> ComponentHealth:
@@ -730,14 +723,14 @@ class VectorStore:
                 name="vector_store",
                 status=HealthStatus.HEALTHY if is_healthy else HealthStatus.UNHEALTHY,
                 message="Vector store operational" if is_healthy else "Vector store unavailable",
-                latency_ms=latency_ms
+                latency_ms=latency_ms,
             )
         except Exception as e:
             return ComponentHealth(
                 name="vector_store",
                 status=HealthStatus.UNHEALTHY,
                 message=f"Health check error: {e}",
-                latency_ms=0
+                latency_ms=0,
             )
 ```
 
@@ -824,9 +817,11 @@ Before implementing Phase 0, add a validation phase:
 
 ```python
 """Validate Oneiric API understanding before implementation."""
+
 import asyncio
 from oneiric.adapters.vector.pgvector import PgvectorAdapter, PgvectorSettings
 from oneiric.adapters.vector.common import VectorDocument
+
 
 async def validate_oneiric_api():
     """Test Oneiric API to ensure understanding is correct."""
@@ -839,7 +834,7 @@ async def validate_oneiric_api():
         database="test",
         max_connections=20,
         ivfflat_lists=500,
-        default_dimension=768
+        default_dimension=768,
     )
 
     # Test 2: Adapter initialization
@@ -847,31 +842,18 @@ async def validate_oneiric_api():
     await adapter.init()  # Note: init(), not initialize()
 
     # Test 3: Create collection
-    await adapter.create_collection(
-        name="test",
-        dimension=768,
-        distance_metric="cosine"
-    )
+    await adapter.create_collection(name="test", dimension=768, distance_metric="cosine")
 
     # Test 4: Insert documents
     doc_ids = await adapter.insert(
         collection="test",
-        documents=[
-            VectorDocument(
-                id=None,
-                vector=[0.1] * 768,
-                metadata={"content": "test"}
-            )
-        ]
+        documents=[VectorDocument(id=None, vector=[0.1] * 768, metadata={"content": "test"})],
     )
     print(f"Inserted: {doc_ids}")
 
     # Test 5: Search
     results = await adapter.search(
-        collection="test",
-        query_vector=[0.1] * 768,
-        limit=10,
-        filter_expr=None
+        collection="test", query_vector=[0.1] * 768, limit=10, filter_expr=None
     )
     print(f"Found: {len(results)} results")
 
@@ -883,6 +865,7 @@ async def validate_oneiric_api():
     await adapter.cleanup()  # Note: cleanup(), not close()
 
     print("✅ All Oneiric API tests passed!")
+
 
 if __name__ == "__main__":
     asyncio.run(validate_oneiric_api())
@@ -896,9 +879,7 @@ if __name__ == "__main__":
    from oneiric.domains import AdapterBridge
 
    adapter_bridge = AdapterBridge(
-       resolver=resolver,
-       lifecycle=lifecycle,
-       settings=Settings.load_yaml("settings/adapters.yml")
+       resolver=resolver, lifecycle=lifecycle, settings=Settings.load_yaml("settings/adapters.yml")
    )
 
    # Use vector store
@@ -920,10 +901,7 @@ if __name__ == "__main__":
    ```python
    from oneiric.core.logging import get_logger, bind_log_context
 
-   logger = get_logger("mahavishnu.memory").bind(
-       domain="memory",
-       operation="vector_search"
-   )
+   logger = get_logger("mahavishnu.memory").bind(domain="memory", operation="vector_search")
    ```
 
 ______________________________________________________________________

@@ -1,9 +1,10 @@
 """Integration tests for Oneiric pgvector adapter."""
 
 import os
-import pytest
+
+from oneiric.adapters.vector.common import VectorDocument
 from oneiric.adapters.vector.pgvector import PgvectorAdapter, PgvectorSettings
-from oneiric.adapters.vector.common import VectorDocument, VectorSearchResult
+import pytest
 
 
 @pytest.mark.integration
@@ -47,9 +48,7 @@ class TestOneiricPgvectorAdapter:
         """Test creating a collection."""
         collection_name = "test_collection"
         success = await adapter.create_collection(
-            name=collection_name,
-            dimension=1536,
-            distance_metric="cosine"
+            name=collection_name, dimension=1536, distance_metric="cosine"
         )
         assert success is True
 
@@ -66,25 +65,21 @@ class TestOneiricPgvectorAdapter:
         await adapter.create_collection(
             name=collection_name,
             dimension=3,  # Small dimension for testing
-            distance_metric="cosine"
+            distance_metric="cosine",
         )
 
         # Insert test documents
         documents = [
             VectorDocument(
-                id="doc1",
-                vector=[1.0, 0.0, 0.0],
-                metadata={"category": "tech", "title": "AI"}
+                id="doc1", vector=[1.0, 0.0, 0.0], metadata={"category": "tech", "title": "AI"}
             ),
             VectorDocument(
-                id="doc2",
-                vector=[0.0, 1.0, 0.0],
-                metadata={"category": "tech", "title": "ML"}
+                id="doc2", vector=[0.0, 1.0, 0.0], metadata={"category": "tech", "title": "ML"}
             ),
             VectorDocument(
                 id="doc3",
                 vector=[0.0, 0.0, 1.0],
-                metadata={"category": "science", "title": "Physics"}
+                metadata={"category": "science", "title": "Physics"},
             ),
         ]
 
@@ -100,37 +95,18 @@ class TestOneiricPgvectorAdapter:
         collection_name = "test_search"
 
         # Create collection and insert documents
-        await adapter.create_collection(
-            name=collection_name,
-            dimension=3,
-            distance_metric="cosine"
-        )
+        await adapter.create_collection(name=collection_name, dimension=3, distance_metric="cosine")
 
         documents = [
-            VectorDocument(
-                id="doc1",
-                vector=[1.0, 0.0, 0.0],
-                metadata={"category": "tech"}
-            ),
-            VectorDocument(
-                id="doc2",
-                vector=[0.9, 0.1, 0.0],
-                metadata={"category": "tech"}
-            ),
-            VectorDocument(
-                id="doc3",
-                vector=[0.0, 0.0, 1.0],
-                metadata={"category": "science"}
-            ),
+            VectorDocument(id="doc1", vector=[1.0, 0.0, 0.0], metadata={"category": "tech"}),
+            VectorDocument(id="doc2", vector=[0.9, 0.1, 0.0], metadata={"category": "tech"}),
+            VectorDocument(id="doc3", vector=[0.0, 0.0, 1.0], metadata={"category": "science"}),
         ]
         await adapter.insert(collection_name, documents)
 
         # Search for similar vectors
         results = await adapter.search(
-            collection=collection_name,
-            query_vector=[1.0, 0.0, 0.0],
-            limit=2,
-            include_vectors=False
+            collection=collection_name, query_vector=[1.0, 0.0, 0.0], limit=2, include_vectors=False
         )
 
         assert len(results) == 2
@@ -143,27 +119,19 @@ class TestOneiricPgvectorAdapter:
         """Test vector search with metadata filtering."""
         collection_name = "test_filter"
 
-        await adapter.create_collection(
-            name=collection_name,
-            dimension=3,
-            distance_metric="cosine"
-        )
+        await adapter.create_collection(name=collection_name, dimension=3, distance_metric="cosine")
 
         documents = [
             VectorDocument(
-                id="doc1",
-                vector=[1.0, 0.0, 0.0],
-                metadata={"category": "tech", "tag": "ai"}
+                id="doc1", vector=[1.0, 0.0, 0.0], metadata={"category": "tech", "tag": "ai"}
             ),
             VectorDocument(
                 id="doc2",
                 vector=[0.9, 0.1, 0.0],
-                metadata={"category": "science", "tag": "physics"}
+                metadata={"category": "science", "tag": "physics"},
             ),
             VectorDocument(
-                id="doc3",
-                vector=[0.8, 0.2, 0.0],
-                metadata={"category": "tech", "tag": "ml"}
+                id="doc3", vector=[0.8, 0.2, 0.0], metadata={"category": "tech", "tag": "ml"}
             ),
         ]
         await adapter.insert(collection_name, documents)
@@ -173,7 +141,7 @@ class TestOneiricPgvectorAdapter:
             collection=collection_name,
             query_vector=[1.0, 0.0, 0.0],
             limit=10,
-            filter_expr={"category": "tech"}
+            filter_expr={"category": "tech"},
         )
 
         assert len(results) == 2
@@ -184,19 +152,11 @@ class TestOneiricPgvectorAdapter:
         """Test upserting documents (insert or update)."""
         collection_name = "test_upsert"
 
-        await adapter.create_collection(
-            name=collection_name,
-            dimension=3,
-            distance_metric="cosine"
-        )
+        await adapter.create_collection(name=collection_name, dimension=3, distance_metric="cosine")
 
         # Insert initial documents
         documents = [
-            VectorDocument(
-                id="doc1",
-                vector=[1.0, 0.0, 0.0],
-                metadata={"version": 1}
-            ),
+            VectorDocument(id="doc1", vector=[1.0, 0.0, 0.0], metadata={"version": 1}),
         ]
         await adapter.insert(collection_name, documents)
 
@@ -205,13 +165,9 @@ class TestOneiricPgvectorAdapter:
             VectorDocument(
                 id="doc1",
                 vector=[0.9, 0.1, 0.0],  # Updated vector
-                metadata={"version": 2}  # Updated metadata
+                metadata={"version": 2},  # Updated metadata
             ),
-            VectorDocument(
-                id="doc2",
-                vector=[0.0, 1.0, 0.0],
-                metadata={"version": 1}
-            ),
+            VectorDocument(id="doc2", vector=[0.0, 1.0, 0.0], metadata={"version": 1}),
         ]
         ids = await adapter.upsert(collection_name, updated_documents)
 
@@ -228,23 +184,11 @@ class TestOneiricPgvectorAdapter:
         """Test retrieving documents by IDs."""
         collection_name = "test_get"
 
-        await adapter.create_collection(
-            name=collection_name,
-            dimension=3,
-            distance_metric="cosine"
-        )
+        await adapter.create_collection(name=collection_name, dimension=3, distance_metric="cosine")
 
         documents = [
-            VectorDocument(
-                id="doc1",
-                vector=[1.0, 0.0, 0.0],
-                metadata={"title": "Doc 1"}
-            ),
-            VectorDocument(
-                id="doc2",
-                vector=[0.0, 1.0, 0.0],
-                metadata={"title": "Doc 2"}
-            ),
+            VectorDocument(id="doc1", vector=[1.0, 0.0, 0.0], metadata={"title": "Doc 1"}),
+            VectorDocument(id="doc2", vector=[0.0, 1.0, 0.0], metadata={"title": "Doc 2"}),
         ]
         await adapter.insert(collection_name, documents)
 
@@ -256,11 +200,7 @@ class TestOneiricPgvectorAdapter:
         assert docs[0].metadata == {"title": "Doc 1"}
 
         # Get documents with vectors
-        docs_with_vectors = await adapter.get(
-            collection_name,
-            ["doc1"],
-            include_vectors=True
-        )
+        docs_with_vectors = await adapter.get(collection_name, ["doc1"], include_vectors=True)
         assert len(docs_with_vectors) == 1
         assert docs_with_vectors[0].vector == [1.0, 0.0, 0.0]
 
@@ -269,17 +209,13 @@ class TestOneiricPgvectorAdapter:
         """Test counting documents."""
         collection_name = "test_count"
 
-        await adapter.create_collection(
-            name=collection_name,
-            dimension=3,
-            distance_metric="cosine"
-        )
+        await adapter.create_collection(name=collection_name, dimension=3, distance_metric="cosine")
 
         documents = [
             VectorDocument(
                 id=f"doc{i}",
                 vector=[1.0, 0.0, 0.0],
-                metadata={"category": "tech" if i % 2 == 0 else "science"}
+                metadata={"category": "tech" if i % 2 == 0 else "science"},
             )
             for i in range(10)
         ]
@@ -290,10 +226,7 @@ class TestOneiricPgvectorAdapter:
         assert total == 10
 
         # Count with filter
-        tech_count = await adapter.count(
-            collection_name,
-            filter_expr={"category": "tech"}
-        )
+        tech_count = await adapter.count(collection_name, filter_expr={"category": "tech"})
         assert tech_count == 5
 
     @pytest.mark.asyncio
@@ -301,23 +234,11 @@ class TestOneiricPgvectorAdapter:
         """Test deleting documents."""
         collection_name = "test_delete"
 
-        await adapter.create_collection(
-            name=collection_name,
-            dimension=3,
-            distance_metric="cosine"
-        )
+        await adapter.create_collection(name=collection_name, dimension=3, distance_metric="cosine")
 
         documents = [
-            VectorDocument(
-                id="doc1",
-                vector=[1.0, 0.0, 0.0],
-                metadata={}
-            ),
-            VectorDocument(
-                id="doc2",
-                vector=[0.0, 1.0, 0.0],
-                metadata={}
-            ),
+            VectorDocument(id="doc1", vector=[1.0, 0.0, 0.0], metadata={}),
+            VectorDocument(id="doc2", vector=[0.0, 1.0, 0.0], metadata={}),
         ]
         await adapter.insert(collection_name, documents)
 
@@ -334,11 +255,7 @@ class TestOneiricPgvectorAdapter:
         """Test deleting a collection."""
         collection_name = "test_drop"
 
-        await adapter.create_collection(
-            name=collection_name,
-            dimension=3,
-            distance_metric="cosine"
-        )
+        await adapter.create_collection(name=collection_name, dimension=3, distance_metric="cosine")
 
         # Verify collection exists
         collections = await adapter.list_collections()
@@ -357,11 +274,7 @@ class TestOneiricPgvectorAdapter:
         """Test accessing collections dynamically via attributes."""
         collection_name = "test_dynamic"
 
-        await adapter.create_collection(
-            name=collection_name,
-            dimension=3,
-            distance_metric="cosine"
-        )
+        await adapter.create_collection(name=collection_name, dimension=3, distance_metric="cosine")
 
         # Access collection dynamically
         collection = getattr(adapter, collection_name)
@@ -369,20 +282,11 @@ class TestOneiricPgvectorAdapter:
         assert collection.name == collection_name
 
         # Use collection interface
-        documents = [
-            VectorDocument(
-                id="doc1",
-                vector=[1.0, 0.0, 0.0],
-                metadata={}
-            )
-        ]
+        documents = [VectorDocument(id="doc1", vector=[1.0, 0.0, 0.0], metadata={})]
         ids = await collection.insert(documents)
         assert len(ids) == 1
 
-        results = await collection.search(
-            query_vector=[1.0, 0.0, 0.0],
-            limit=1
-        )
+        results = await collection.search(query_vector=[1.0, 0.0, 0.0], limit=1)
         assert len(results) == 1
         assert results[0].id == "doc1"
 

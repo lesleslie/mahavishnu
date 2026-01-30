@@ -63,5 +63,3 @@ adapters:
 1. Complete Agno adapter with agent lifecycle and tool integration
 1. Add comprehensive error handling to both adapters
 1. Implement progress tracking and streaming
-
-See [UNIFIED_IMPLEMENTATION_STATUS.md](../../UNIFIED_IMPLEMENTATION_STATUS.md) for detailed progress tracking.

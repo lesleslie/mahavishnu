@@ -1,0 +1,17 @@
+{
+  "timeout": 10,
+  "retry_wait_time": 3,
+  "max_retries": 3,
+  "user_agent": "Mozilla/5.0 (compatible; linkcheckmd)",
+  "exclude_dead": false,
+  "exclude_links": [
+    "https://github.com/",
+    "https://docs.github.com/"
+  ],
+  "exclude_patterns": [
+    "^https://github\\.com/[^/]+/[^/]+/(issues|pull)/\\d+$"
+  ],
+  "include_verbatim": false,
+  "require_https": false,
+  "verbose": true
+}

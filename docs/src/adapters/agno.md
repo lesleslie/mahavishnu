@@ -80,5 +80,3 @@ Agno is currently in evaluation phase. It is recommended to evaluate Agno v2.0 b
 1. Add multi-LLM routing
 1. Implement tool integration
 1. Add memory and context management
-
-See [UNIFIED_IMPLEMENTATION_STATUS.md](../../UNIFIED_IMPLEMENTATION_STATUS.md) for detailed progress tracking.

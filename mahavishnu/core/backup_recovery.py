@@ -5,12 +5,12 @@ from datetime import datetime, timedelta
 import hashlib
 import json
 import logging
+from operator import itemgetter
 from pathlib import Path
 import shutil
 import tarfile
 import tempfile
 from typing import Any
-
 
 @dataclass
 class BackupInfo:
@@ -24,11 +24,10 @@ class BackupInfo:
     files_backed_up: int
     checksum: str
 
-
 class BackupManager:
     """Manages backups of Mahavishnu configuration and data."""
 
-    def __init__(self, app):
+    def __init__(self, app) -> None:
         self.app = app
         self.logger = logging.getLogger(__name__)
         self.backup_dir = Path(getattr(app.config, "backup_directory", "./backups"))
@@ -66,7 +65,7 @@ class BackupManager:
                 await self._backup_workflows(workflow_backup)
 
                 # Backup any other important data
-                metadata = {
+                metadata: dict[str, Any] = {
                     "backup_id": backup_id,
                     "timestamp": datetime.now().isoformat(),
                     "type": backup_type,
@@ -77,7 +76,7 @@ class BackupManager:
                 }
 
                 # Write metadata
-                with open(temp_path / "metadata.json", "w") as f:
+                with (temp_path / "metadata.json").open("w") as f:
                     json.dump(metadata, f, indent=2, default=str)
 
                 # Create archive
@@ -112,10 +111,10 @@ class BackupManager:
                 return backup_info
 
         except Exception as e:
-            self.logger.error(f"Failed to create backup: {str(e)}")
+            self.logger.error(f"Failed to create backup: {e}")
             raise
 
-    async def _backup_config(self, backup_dir: Path):
+    async def _backup_config(self, backup_dir: Path) -> None:
         """Backup configuration files."""
         try:
             # Copy configuration files
@@ -128,9 +127,9 @@ class BackupManager:
                     shutil.copy2(source_path, dest_path)
 
         except Exception as e:
-            self.logger.warning(f"Failed to backup config: {str(e)}")
+            self.logger.warning(f"Failed to backup config: {e}")
 
-    async def _backup_workflows(self, backup_dir: Path):
+    async def _backup_workflows(self, backup_dir: Path) -> None:
         """Backup workflow states."""
         try:
             # Get all workflows
@@ -138,21 +137,21 @@ class BackupManager:
 
             # Save workflows to JSON
             workflows_file = backup_dir / "workflows.json"
-            with open(workflows_file, "w") as f:
+            with workflows_file.open("w") as f:
                 json.dump(all_workflows, f, indent=2, default=str)
 
         except Exception as e:
-            self.logger.warning(f"Failed to backup workflows: {str(e)}")
+            self.logger.warning(f"Failed to backup workflows: {e}")
 
     async def _calculate_checksum(self, file_path: Path) -> str:
         """Calculate SHA256 checksum of a file."""
         sha256_hash = hashlib.sha256()
-        with open(file_path, "rb") as f:
+        with file_path.open("rb") as f:
             for byte_block in iter(lambda: f.read(4096), b""):
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
 
-    async def _cleanup_old_backups(self):
+    async def _cleanup_old_backups(self) -> None:
         """Clean up old backups based on retention policy."""
         try:
             # Get all backup files
@@ -190,15 +189,15 @@ class BackupManager:
             backups_to_keep = []
 
             # Keep daily backups
-            daily_backups.sort(key=lambda x: x[1], reverse=True)
+            daily_backups.sort(key=itemgetter(1), reverse=True)
             backups_to_keep.extend(daily_backups[: self.backup_schedule["daily"]])
 
             # Keep weekly backups
-            weekly_backups.sort(key=lambda x: x[1], reverse=True)
+            weekly_backups.sort(key=itemgetter(1), reverse=True)
             backups_to_keep.extend(weekly_backups[: self.backup_schedule["weekly"]])
 
             # Keep monthly backups
-            monthly_backups.sort(key=lambda x: x[1], reverse=True)
+            monthly_backups.sort(key=itemgetter(1), reverse=True)
             backups_to_keep.extend(monthly_backups[: self.backup_schedule["monthly"]])
 
             # Delete old backups
@@ -213,10 +212,10 @@ class BackupManager:
                     backup_file.unlink()
                     self.logger.info(f"Deleted old backup: {backup_file.name}")
                 except Exception as e:
-                    self.logger.warning(f"Failed to delete backup {backup_file.name}: {str(e)}")
+                    self.logger.warning(f"Failed to delete backup {backup_file.name}: {e}")
 
         except Exception as e:
-            self.logger.warning(f"Failed to cleanup old backups: {str(e)}")
+            self.logger.warning(f"Failed to cleanup old backups: {e}")
 
     async def restore_backup(self, backup_id: str) -> bool:
         """Restore from a backup."""
@@ -252,21 +251,21 @@ class BackupManager:
                 return True
 
         except Exception as e:
-            self.logger.error(f"Failed to restore backup: {str(e)}")
+            self.logger.error(f"Failed to restore backup: {e}")
             raise
 
-    async def _restore_config(self, config_dir: Path):
+    async def _restore_config(self, config_dir: Path) -> None:
         """Restore configuration files."""
         # This would restore config files to their original locations
         # Implementation depends on specific deployment setup
         self.logger.info(f"Restoring configuration from {config_dir}")
 
-    async def _restore_workflows(self, workflow_dir: Path):
+    async def _restore_workflows(self, workflow_dir: Path) -> None:
         """Restore workflow states."""
         workflows_file = workflow_dir / "workflows.json"
         if workflows_file.exists():
-            with open(workflows_file) as f:
-                workflows = json.load(f)
+            with workflows_file.open() as f:
+                workflows: list[dict[str, Any]] = json.load(f)
 
             # Restore each workflow to the workflow state manager
             for workflow in workflows:
@@ -307,7 +306,7 @@ class BackupManager:
                 backups.append(backup_info)
 
             except Exception as e:
-                self.logger.warning(f"Failed to read backup info for {backup_file}: {str(e)}")
+                self.logger.warning(f"Failed to read backup info for {backup_file}: {e}")
 
         # Sort by timestamp (newest first)
         backups.sort(key=lambda x: x.timestamp, reverse=True)
@@ -335,7 +334,7 @@ class BackupManager:
                         tar.extract(members[0], path=temp_path)
                         metadata_path = temp_path / "metadata.json"
                         if metadata_path.exists():
-                            with open(metadata_path) as f:
+                            with metadata_path.open() as f:
                                 # Metadata loaded but not currently used
                                 _metadata = json.load(f)
 
@@ -349,18 +348,17 @@ class BackupManager:
                 checksum=await self._calculate_checksum(backup_path),
             )
         except Exception as e:
-            self.logger.warning(f"Failed to get backup info for {backup_id}: {str(e)}")
+            self.logger.warning(f"Failed to get backup info for {backup_id}: {e}")
             return None
-
 
 class DisasterRecoveryManager:
     """Manages disaster recovery procedures."""
 
-    def __init__(self, app):
+    def __init__(self, app) -> None:
         self.app = app
         self.backup_manager = BackupManager(app)
         self.logger = logging.getLogger(__name__)
-        self.disaster_recovery_plan = {}
+        self.disaster_recovery_plan: dict[str, Any] = {}
 
     async def run_disaster_recovery_check(self) -> dict[str, Any]:
         """Run a comprehensive disaster recovery check."""
@@ -369,7 +367,7 @@ class DisasterRecoveryManager:
         # Check backup availability
         backups = await self.backup_manager.list_backups()
         results["checks"]["backups_available"] = {
-            "status": "pass" if len(backups) > 0 else "fail",
+            "status": "pass" if backups else "fail",
             "count": len(backups),
             "latest_backup": backups[0].timestamp.isoformat() if backups else None,
         }
@@ -414,10 +412,10 @@ class DisasterRecoveryManager:
         return results
 
     async def initiate_disaster_recovery(
-        self, backup_id: str | None = None, components: list[str] = None
+        self, backup_id: str | None = None, components: list[str] | None = None
     ) -> dict[str, Any]:
         """Initiate disaster recovery procedure."""
-        if not components:
+        if components is None:
             components = ["config", "workflows", "state"]
 
         try:
@@ -445,16 +443,16 @@ class DisasterRecoveryManager:
                 return {"status": "fail", "error": f"Failed to restore from backup {backup_id}"}
 
         except Exception as e:
-            self.logger.error(f"Disaster recovery failed: {str(e)}")
+            self.logger.error(f"Disaster recovery failed: {e}")
             return {"status": "fail", "error": str(e)}
 
-    async def _restart_services(self):
+    async def _restart_services(self) -> None:
         """Restart critical services after recovery."""
         # In a real implementation, this would restart services
         # like the MCP server, workflow processors, etc.
         self.logger.info("Services restarted after disaster recovery")
 
-    async def schedule_regular_backups(self):
+    async def schedule_regular_backups(self) -> None:
         """Schedule regular backups based on configuration."""
         # This would typically run as a background task
         # Implementation would depend on the scheduler used
@@ -489,11 +487,10 @@ class DisasterRecoveryManager:
             },
         }
 
-
 class BackupAndRecoveryCLI:
     """CLI commands for backup and recovery operations."""
 
-    def __init__(self, app):
+    def __init__(self, app) -> None:
         self.app = app
         self.backup_manager = BackupManager(app)
         self.recovery_manager = DisasterRecoveryManager(app)

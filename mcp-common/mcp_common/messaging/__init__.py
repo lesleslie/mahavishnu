@@ -1,13 +1,13 @@
 """Messaging module for mcp-common"""
 
 from .types import (
-    Priority,
-    MessageType,
-    MessageStatus,
-    MessageContent,
     ForwardedFrom,
+    MessageContent,
+    MessageStatus,
+    MessageType,
+    Priority,
+    ProjectMessage,
     RepositoryMessage,
-    ProjectMessage
 )
 
 __all__ = [
@@ -17,5 +17,5 @@ __all__ = [
     "MessageContent",
     "ForwardedFrom",
     "RepositoryMessage",
-    "ProjectMessage"
+    "ProjectMessage",
 ]

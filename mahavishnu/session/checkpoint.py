@@ -123,7 +123,7 @@ class SessionBuddy:
         # For now, we'll simulate the functionality
         checkpoint = await self.get_checkpoint(checkpoint_id)
 
-        if checkpoint and checkpoint.get("status") in ["created", "running"]:
+        if checkpoint and checkpoint.get("status") in ("created", "running"):
             print(f"[Session-Buddy] Restored from checkpoint: {checkpoint_id}")
             return checkpoint.get("state")
 

@@ -1,6 +1,8 @@
 """Shared messaging types for Session Buddy and Mahavishnu"""
+
 from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -29,7 +31,7 @@ class MessageContent(BaseModel):
     type: MessageType
     title: str
     content: str
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 class ForwardedFrom(BaseModel):
@@ -42,11 +44,11 @@ class RepositoryMessage(BaseModel):
     repo_id: str
     message: MessageContent
     priority: Priority = Priority.NORMAL
-    forwarded_from: Optional[ForwardedFrom] = None
+    forwarded_from: ForwardedFrom | None = None
 
 
 class ProjectMessage(BaseModel):
     project_id: str
     message: MessageContent
     priority: Priority = Priority.NORMAL
-    forwarded_from: Optional[ForwardedFrom] = None
+    forwarded_from: ForwardedFrom | None = None

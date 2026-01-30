@@ -1,6 +1,6 @@
 import pytest
+
 from mcp_common.code_graph import CodeGraphAnalyzer
-from pathlib import Path
 
 
 @pytest.mark.asyncio

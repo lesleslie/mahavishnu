@@ -1,11 +1,12 @@
 """Unit tests for Session Buddy integration functionality."""
-import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock, MagicMock
+
 from pathlib import Path
-from datetime import datetime
-from mahavishnu.session_buddy.integration import SessionBuddyIntegration, SessionBuddyManager
+from unittest.mock import Mock
+
+import pytest
+
 from mahavishnu.core.app import MahavishnuApp
+from mahavishnu.session_buddy.integration import SessionBuddyIntegration, SessionBuddyManager
 
 
 @pytest.fixture
@@ -48,7 +49,6 @@ async def test_integrate_code_graph(mock_app):
 
     # Create a temporary directory with a test Python file
     import tempfile
-    import os
 
     with tempfile.TemporaryDirectory() as temp_dir:
         # Create a test Python file
@@ -78,7 +78,7 @@ class SampleClass:
 
         # Verify that functions and classes were extracted
         assert result["functions_extracted"] >= 1  # sample_function
-        assert result["classes_extracted"] >= 1    # SampleClass
+        assert result["classes_extracted"] >= 1  # SampleClass
 
 
 @pytest.mark.asyncio
@@ -92,21 +92,21 @@ async def test_get_related_code(mock_app):
     with tempfile.TemporaryDirectory() as temp_dir:
         # Create a main module
         main_file = Path(temp_dir) / "main.py"
-        main_content = '''
+        main_content = """
 from helper import helper_function
 
 def main():
     result = helper_function()
     return result
-'''
+"""
         main_file.write_text(main_content)
 
         # Create a helper module
         helper_file = Path(temp_dir) / "helper.py"
-        helper_content = '''
+        helper_content = """
 def helper_function():
     return "helper result"
-'''
+"""
         helper_file.write_text(helper_content)
 
         # Get related code
@@ -222,7 +222,7 @@ async def test_send_project_message(mock_app):
         from_project="project_a",
         to_project="project_b",
         subject="Test Subject",
-        message="Test message content"
+        message="Test message content",
     )
 
     # Verify result structure
@@ -298,7 +298,7 @@ async def test_get_enhanced_context(mock_app):
     query_elements = {
         "function_name": "test_function",
         "file_path": "/path/to/test.py",
-        "query": "test documentation query"
+        "query": "test documentation query",
     }
 
     result = await manager.get_enhanced_context("/test/repo", query_elements)
