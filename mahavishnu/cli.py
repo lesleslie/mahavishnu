@@ -10,6 +10,9 @@ from .backup_cli import add_backup_commands
 from .core.app import MahavishnuApp
 from .core.subscription_auth import MultiAuthHandler
 
+# Import ecosystem management CLI
+from .ecosystem_cli import add_ecosystem_commands
+
 # Import monitoring CLI
 from .monitoring_cli import add_monitoring_commands
 
@@ -74,6 +77,11 @@ mcp_app = typer.Typer(help="MCP server lifecycle management")
 app.add_typer(mcp_app, name="mcp")
 
 
+# Ecosystem management
+ecosystem_app = typer.Typer(help="Ecosystem configuration and management")
+app.add_typer(ecosystem_app, name="ecosystem")
+
+
 @mcp_app.command("start")
 def mcp_start(
     host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host address to bind to"),
@@ -109,7 +117,7 @@ def mcp_start(
         else:
             typer.echo("MCP Server: Terminal management disabled")
 
-        server = FastMCPServer(maha_app.config)
+        server = FastMCPServer(maha_app)
 
         try:
             await server.start(host=host, port=port)
@@ -553,6 +561,9 @@ add_production_commands(app)
 
 # Add backup and recovery commands
 add_backup_commands(app)
+
+# Add ecosystem management commands
+add_ecosystem_commands(ecosystem_app)
 
 # Add monitoring commands
 add_monitoring_commands(app)
