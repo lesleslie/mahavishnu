@@ -1,5 +1,5 @@
 """Tests for RepositoryManager."""
-import asyncio
+
 from pathlib import Path
 
 import pytest

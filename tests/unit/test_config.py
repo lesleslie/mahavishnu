@@ -1,5 +1,7 @@
 """Unit tests for configuration validation."""
+
 import pytest
+
 from mahavishnu.core.config import MahavishnuSettings
 
 
@@ -29,9 +31,7 @@ def test_default_config_values():
 def test_config_custom_values():
     """Test that custom configuration values are respected."""
     config = MahavishnuSettings(
-        repos_path="/custom/path.yaml",
-        max_concurrent_workflows=20,
-        qc_min_score=90
+        repos_path="/custom/path.yaml", max_concurrent_workflows=20, qc_min_score=90
     )
 
     assert config.repos_path == "/custom/path.yaml"

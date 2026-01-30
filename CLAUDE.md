@@ -300,17 +300,20 @@ def test_adapter_initialization():
     """Fast, isolated unit test."""
     pass
 
+
 @pytest.mark.integration
 @pytest.mark.airflow
 def test_airflow_workflow_execution():
     """Integration test for Airflow adapter."""
     pass
 
+
 @pytest.mark.slow
 @pytest.mark.e2e
 def test_full_orchestration_workflow():
     """End-to-end test (marked as slow)."""
     pass
+
 
 @pytest.mark.property
 @given(st.text())  # Hypothesis strategy
@@ -366,11 +369,14 @@ await mcp.call_tool("list_skills", {"skill_type": "all"})
 await mcp.call_tool("get_skills_for_issue", {"issue_type": "complexity"})
 
 # Execute a skill
-await mcp.call_tool("execute_skill", {
-    "skill_id": "skill_abc123",
-    "issue_type": "refactoring",
-    "issue_data": {"message": "...", "file_path": "..."}
-})
+await mcp.call_tool(
+    "execute_skill",
+    {
+        "skill_id": "skill_abc123",
+        "issue_type": "refactoring",
+        "issue_data": {"message": "...", "file_path": "..."},
+    },
+)
 ```
 
 Available agent types:

@@ -1,5 +1,7 @@
 """Unit tests for role-based repository management."""
+
 import pytest
+
 from mahavishnu.core.app import MahavishnuApp
 from mahavishnu.core.errors import ValidationError
 
@@ -111,10 +113,7 @@ class TestRoles:
         for repo_path in repos:
             # Get the repo from config to check tags
             repos_list = app.get_all_repos()
-            matching_repo = next(
-                (r for r in repos_list if r["path"] == repo_path),
-                None
-            )
+            matching_repo = next((r for r in repos_list if r["path"] == repo_path), None)
             assert matching_repo is not None
             assert "mcp" in matching_repo.get("tags", [])
 
@@ -206,10 +205,7 @@ class TestRoleIntegration:
 
         for nickname, full_name in nicknames.items():
             # Find the repo with this name
-            matching_repo = next(
-                (r for r in all_repos if r.get("name") == full_name),
-                None
-            )
+            matching_repo = next((r for r in all_repos if r.get("name") == full_name), None)
             assert matching_repo is not None
             # Verify nickname matches
             assert matching_repo.get("nickname") == nickname

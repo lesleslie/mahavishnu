@@ -207,7 +207,7 @@ def trigger_test_alert(
         typer.echo(f"✅ Test alert created with ID: {alert.id}")
         raise typer.Exit(code=0)
     except Exception as e:
-        typer.echo(f"❌ Failed to create test alert: {str(e)}")
+        typer.echo(f"❌ Failed to create test alert: {e}")
         raise typer.Exit(code=1) from None
 
 

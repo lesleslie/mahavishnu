@@ -14,7 +14,7 @@ class SessionBuddyIntegration:
     def __init__(self, app):
         self.app = app
         self.session_buddy_client = None
-        self.code_graph_analyzer = CodeGraphAnalyzer(Path("."))
+        self.code_graph_analyzer = CodeGraphAnalyzer(Path())
         self.logger = __import__("logging").getLogger(__name__)
 
     async def integrate_code_graph(self, repo_path: str) -> dict[str, Any]:
@@ -84,7 +84,7 @@ class SessionBuddyIntegration:
                 "imports_extracted": len(code_context["imports"]),
             }
         except Exception as e:
-            self.logger.error(f"Error integrating code graph: {str(e)}")
+            self.logger.error(f"Error integrating code graph: {e}")
             return {"status": "error", "error": str(e)}
 
     async def _send_code_context_to_session_buddy(
@@ -112,7 +112,7 @@ class SessionBuddyIntegration:
             self.logger.info(f"Session Buddy message prepared: {session_buddy_message.project_id}")
 
         except Exception as e:
-            self.logger.error(f"Error sending code context to Session Buddy: {str(e)}")
+            self.logger.error(f"Error sending code context to Session Buddy: {e}")
 
     async def get_related_code(self, repo_path: str, file_path: str) -> dict[str, Any]:
         """Get related code based on imports/calls using code graph."""
@@ -131,7 +131,7 @@ class SessionBuddyIntegration:
                 "count": len(related_files),
             }
         except Exception as e:
-            self.logger.error(f"Error getting related code: {str(e)}")
+            self.logger.error(f"Error getting related code: {e}")
             return {"status": "error", "error": str(e)}
 
     async def get_function_context(self, repo_path: str, function_name: str) -> dict[str, Any]:
@@ -146,7 +146,7 @@ class SessionBuddyIntegration:
 
             return {"status": "success", "function_name": function_name, "context": context}
         except Exception as e:
-            self.logger.error(f"Error getting function context: {str(e)}")
+            self.logger.error(f"Error getting function context: {e}")
             return {"status": "error", "error": str(e)}
 
     async def index_documentation(self, repo_path: str) -> dict[str, Any]:
@@ -184,7 +184,7 @@ class SessionBuddyIntegration:
                 "indexed": True,
             }
         except Exception as e:
-            self.logger.error(f"Error indexing documentation: {str(e)}")
+            self.logger.error(f"Error indexing documentation: {e}")
             return {"status": "error", "error": str(e)}
 
     def _extract_docstring_from_file(self, file_path: str, function_name: str) -> str | None:
@@ -197,14 +197,17 @@ class SessionBuddyIntegration:
             tree = __import__("ast").parse(content)
 
             for node in __import__("ast").walk(tree):
-                if isinstance(
-                    node,
-                    (
-                        __import__("ast").FunctionDef,
-                        __import__("ast").AsyncFunctionDef,
-                        __import__("ast").ClassDef,
-                    ),
-                ) and node.name == function_name:
+                if (
+                    isinstance(
+                        node,
+                        (
+                            __import__("ast").FunctionDef,
+                            __import__("ast").AsyncFunctionDef,
+                            __import__("ast").ClassDef,
+                        ),
+                    )
+                    and node.name == function_name
+                ):
                     docstring = __import__("ast").get_docstring(node)
                     return docstring
 
@@ -239,7 +242,7 @@ class SessionBuddyIntegration:
             self.logger.info(f"Documentation index message prepared for {repo_path}")
 
         except Exception as e:
-            self.logger.error(f"Error indexing documentation in Session Buddy: {str(e)}")
+            self.logger.error(f"Error indexing documentation in Session Buddy: {e}")
 
     async def search_documentation(self, query: str) -> dict[str, Any]:
         """Search through indexed documentation."""
@@ -252,7 +255,7 @@ class SessionBuddyIntegration:
             # For now, return an empty result
             return {"status": "success", "query": query, "results": [], "count": 0}
         except Exception as e:
-            self.logger.error(f"Error searching documentation: {str(e)}")
+            self.logger.error(f"Error searching documentation: {e}")
             return {"status": "error", "error": str(e)}
 
     async def send_project_message(
@@ -287,7 +290,7 @@ class SessionBuddyIntegration:
                 "sent": True,
             }
         except Exception as e:
-            self.logger.error(f"Error sending project message: {str(e)}")
+            self.logger.error(f"Error sending project message: {e}")
             return {"status": "error", "error": str(e)}
 
     async def list_project_messages(self, project: str) -> dict[str, Any]:
@@ -299,7 +302,7 @@ class SessionBuddyIntegration:
 
             return {"status": "success", "project": project, "messages": [], "count": 0}
         except Exception as e:
-            self.logger.error(f"Error listing project messages: {str(e)}")
+            self.logger.error(f"Error listing project messages: {e}")
             return {"status": "error", "error": str(e)}
 
 
@@ -323,7 +326,7 @@ class SessionBuddyManager:
             "code_graph_integration": code_graph_result,
             "documentation_indexing": doc_result,
             "overall_status": "success"
-            if code_graph_result["status"] == "success" and doc_result["status"] == "success"
+            if code_graph_result["status"] == doc_result["status"] == "success"
             else "partial",
         }
 

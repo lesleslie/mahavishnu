@@ -130,7 +130,7 @@ class RepositoryMessenger:
 
             return message
         except Exception as e:
-            self.logger.error(f"Error sending message: {str(e)}")
+            self.logger.error(f"Error sending message: {e}")
             raise
 
     async def _notify_subscribers(self, message: RepositoryMessage):
@@ -141,7 +141,7 @@ class RepositoryMessenger:
                 try:
                     await callback(message)
                 except Exception as e:
-                    self.logger.error(f"Error in subscriber callback: {str(e)}")
+                    self.logger.error(f"Error in subscriber callback: {e}")
 
         # Also notify wildcard subscribers (those interested in all messages)
         if "*" in self.subscribers:
@@ -149,7 +149,7 @@ class RepositoryMessenger:
                 try:
                     await callback(message)
                 except Exception as e:
-                    self.logger.error(f"Error in wildcard subscriber callback: {str(e)}")
+                    self.logger.error(f"Error in wildcard subscriber callback: {e}")
 
     async def get_messages_for_repo(
         self,
@@ -175,7 +175,7 @@ class RepositoryMessenger:
             # Return limited results
             return repo_messages[:limit]
         except Exception as e:
-            self.logger.error(f"Error getting messages for repo {repo_name}: {str(e)}")
+            self.logger.error(f"Error getting messages for repo {repo_name}: {e}")
             return []
 
     async def broadcast_message(
@@ -209,7 +209,7 @@ class RepositoryMessenger:
             )
             return sent_messages
         except Exception as e:
-            self.logger.error(f"Error broadcasting message: {str(e)}")
+            self.logger.error(f"Error broadcasting message: {e}")
             raise
 
     async def acknowledge_message(self, message_id: str, receiver_repo: str) -> bool:
@@ -220,7 +220,7 @@ class RepositoryMessenger:
             self.logger.info(f"Message {message_id} acknowledged by {receiver_repo}")
             return True
         except Exception as e:
-            self.logger.error(f"Error acknowledging message {message_id}: {str(e)}")
+            self.logger.error(f"Error acknowledging message {message_id}: {e}")
             return False
 
     async def get_unacknowledged_messages(self, repo_name: str) -> list[RepositoryMessage]:
@@ -249,7 +249,7 @@ class RepositoryMessenger:
             if expired_count > 0:
                 self.logger.info(f"Cleaned up {expired_count} expired messages")
         except Exception as e:
-            self.logger.error(f"Error cleaning up expired messages: {str(e)}")
+            self.logger.error(f"Error cleaning up expired messages: {e}")
 
     async def verify_message_signature(self, message: RepositoryMessage) -> bool:
         """Verify the signature of an incoming message."""
@@ -305,7 +305,7 @@ class RepositoryMessengerManager:
                 "changes_notified": len(changes),
             }
         except Exception as e:
-            self.logger.error(f"Error processing repository changes: {str(e)}")
+            self.logger.error(f"Error processing repository changes: {e}")
             return {"status": "error", "error": str(e)}
 
     async def notify_workflow_status(
@@ -347,7 +347,7 @@ class RepositoryMessengerManager:
                 "workflow_status": status,
             }
         except Exception as e:
-            self.logger.error(f"Error notifying workflow status: {str(e)}")
+            self.logger.error(f"Error notifying workflow status: {e}")
             return {"status": "error", "error": str(e)}
 
     async def send_quality_alert(
@@ -369,7 +369,7 @@ class RepositoryMessengerManager:
                 message_type=MessageType.QUALITY_ALERT,
                 content=content,
                 priority=MessagePriority.HIGH
-                if severity.lower() in ["high", "critical"]
+                if severity.lower() in ("high", "critical")
                 else MessagePriority.NORMAL,
             )
 
@@ -380,5 +380,5 @@ class RepositoryMessengerManager:
                 "severity": severity,
             }
         except Exception as e:
-            self.logger.error(f"Error sending quality alert: {str(e)}")
+            self.logger.error(f"Error sending quality alert: {e}")
             return {"status": "error", "error": str(e)}

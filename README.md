@@ -36,8 +36,6 @@ Mahavishnu is a modular orchestration platform that provides unified interfaces 
 - Crackerjack QC integration
 - Session-Buddy checkpoint integration
 
-See [UNIFIED_IMPLEMENTATION_STATUS.md](UNIFIED_IMPLEMENTATION_STATUS.md) for detailed progress tracking.
-
 ## Architecture
 
 Mahavishnu follows a modular architecture with the following components:
@@ -369,8 +367,6 @@ pytest --cov=mahavishnu --cov-report=html
 ## Documentation
 
 - [Architecture](ARCHITECTURE.md) - Single source of truth for current architecture and evolution
-- [Implementation Status](UNIFIED_IMPLEMENTATION_STATUS.md) - Detailed progress tracking
-- [Architecture Decision Records](docs/adr/) - Technical decisions and rationale
 - [Admin Shell Guide](docs/ADMIN_SHELL.md) - Interactive debugging and monitoring
 - [MCP Tools Specification](docs/MCP_TOOLS_SPECIFICATION.md) - Complete tool API documentation
 - [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md) - Modernization notes

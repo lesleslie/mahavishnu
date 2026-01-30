@@ -224,7 +224,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             return {
                 "repo": repo_path,
                 "status": "failed",
-                "error": f"Ingestion failed: {str(e)}",
+                "error": f"Ingestion failed: {e}",
                 "task_id": task_params.get("id", "unknown"),
             }
 
@@ -369,7 +369,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             return {
                 "repo": repo_path,
                 "status": "failed",
-                "error": f"Query failed: {str(e)}",
+                "error": f"Query failed: {e}",
                 "task_id": task_params.get("id", "unknown"),
             }
 

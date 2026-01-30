@@ -88,11 +88,11 @@ class MessageAuthenticator:
                 return False, None
 
             # Verify the signature
-            is_valid = self.authenticator.verify_message(message_payload, signature)
+            is_valid = self.authenticator.verify_message(message_payload, signature)  # type: ignore
 
             if is_valid:
                 # Check if message is too old (replay attack prevention)
-                timestamp_str = message_payload.get("timestamp")
+                timestamp_str = message_payload.get("timestamp") if message_payload else None
                 if timestamp_str:
                     try:
                         timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
@@ -103,7 +103,7 @@ class MessageAuthenticator:
                         # If timestamp is invalid, reject the message
                         return False, None
 
-                return True, message_payload
+                return True, message_payload  # type: ignore
             else:
                 return False, None
 
@@ -147,7 +147,7 @@ class AuthenticatedSessionBuddyClient:
 
             return result
         except Exception as e:
-            self.logger.error(f"Error sending authenticated message: {str(e)}")
+            self.logger.error(f"Error sending authenticated message: {e}")
             return {"status": "error", "error": str(e)}
 
     async def receive_authenticated_message(
@@ -177,7 +177,7 @@ class AuthenticatedSessionBuddyClient:
 
                 return {"status": "invalid", "error": "Message signature verification failed"}
         except Exception as e:
-            self.logger.error(f"Error receiving authenticated message: {str(e)}")
+            self.logger.error(f"Error receiving authenticated message: {e}")
             return {"status": "error", "error": str(e)}
 
     async def validate_project_access(

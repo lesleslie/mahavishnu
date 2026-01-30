@@ -52,6 +52,8 @@ class RepositoryManager:
 
     def _build_indexes(self) -> None:
         """Build index structures for O(1) lookups."""
+        if self._manifest is None:
+            return
         for repo in self._manifest.repos:
             # Package index
             self._package_index[repo.package] = repo
@@ -129,42 +131,54 @@ class RepositoryManager:
         tags_list = list(tags) if tags else None
 
         # Start with all repos
-        results = list(self._manifest.repos)
+        results: list[Repository] = list(self._manifest.repos) if self._manifest else []
 
         # Filter by tags (O(1) with index)
         if tags_list:
-            # Get repos that match ALL tags (AND logic)
-            # For each tag, get matching repos, then intersect
-            if len(tags_list) == 1:
-                # Single tag - use index directly
-                results = self.get_by_tag(tags_list[0])
-            else:
-                # Multiple tags - get repos for each tag and find intersection
-                tag_results = [self.get_by_tag(tag) for tag in tags_list]
-                # Find repos that appear in all tag results
-                # Use name as identifier since repos aren't hashable
-                if tag_results:
-                    # Build map of name -> repo for first result
-                    name_to_repo = {r.name: r for r in tag_results[0]}
-                    # Filter to repos that are in all tag results
-                    for tag_result_list in tag_results[1:]:
-                        names_in_this = {r.name for r in tag_result_list}
-                        name_to_repo = {n: r for n, r in name_to_repo.items() if n in names_in_this}
-                    results = list(name_to_repo.values())
-                else:
-                    results = []
+            results = self._filter_by_tags(results, tags_list)
 
         # Filter by MCP type (O(1) with index)
         if mcp_type:
-            mcp_repos = self.get_by_mcp_type(mcp_type)
-            mcp_names = {r.name for r in mcp_repos}
-            results = [r for r in results if r.name in mcp_names]
+            results = self._filter_by_mcp_type(results, mcp_type)
 
         # Filter by language (O(n) scan, but small n)
         if language:
-            results = [r for r in results if r.metadata and r.metadata.language == language]
+            results = self._filter_by_language(results, language)
 
-        return list(results)
+        return results.copy()
+
+    def _filter_by_tags(self, results: list[Repository], tags_list: list[str]) -> list[Repository]:
+        """Filter repositories by tags."""
+        # Get repos that match ALL tags (AND logic)
+        # For each tag, get matching repos, then intersect
+        if len(tags_list) == 1:
+            # Single tag - use index directly
+            return [self.get_by_package(pkg) for pkg in self.get_by_tag(tags_list[0]) if self.get_by_package(pkg)]
+        else:
+            # Multiple tags - get repos for each tag and find intersection
+            tag_results = [[self.get_by_package(pkg) for pkg in self.get_by_tag(tag) if self.get_by_package(pkg)] for tag in tags_list]
+            # Find repos that appear in all tag results
+            # Use name as identifier since repos aren't hashable
+            if tag_results and all(tag_results):
+                # Build map of name -> repo for first result
+                name_to_repo = {r.name: r for r in tag_results[0] if r}
+                # Filter to repos that are in all tag results
+                for tag_result_list in tag_results[1:]:
+                    names_in_this = {r.name for r in tag_result_list if r}
+                    name_to_repo = {n: r for n, r in name_to_repo.items() if n in names_in_this}
+                return list(name_to_repo.values())
+            else:
+                return []
+
+    def _filter_by_mcp_type(self, results: list[Repository], mcp_type: str) -> list[Repository]:
+        """Filter repositories by MCP type."""
+        mcp_repos = [self.get_by_package(pkg) for pkg in self.get_by_mcp_type(mcp_type) if self.get_by_package(pkg)]
+        mcp_names = {r.name for r in mcp_repos if r}
+        return [r for r in results if r and r.name in mcp_names]
+
+    def _filter_by_language(self, results: list[Repository], language: str) -> list[Repository]:
+        """Filter repositories by language."""
+        return [r for r in results if r.metadata and r.metadata.language == language]
 
     def search(self, query: str, limit: int = 10) -> list[Repository]:
         """
@@ -172,24 +186,18 @@ class RepositoryManager:
 
         Simple text search (can be enhanced with full-text search).
         """
+        if self._manifest is None:
+            return []
+
         query_lower = query.lower()
-        results = []
 
-        for repo in self._manifest.repos:
-            # Search in name
-            if query_lower in repo.name:
-                results.append(repo)
-                continue
-
-            # Search in package
-            if query_lower in repo.package:
-                results.append(repo)
-                continue
-
-            # Search in description
-            if query_lower in repo.description.lower():
-                results.append(repo)
-                continue
+        results = [
+            repo
+            for repo in self._manifest.repos
+            if query_lower in repo.name
+            or query_lower in repo.package
+            or query_lower in repo.description.lower()
+        ]
 
         return results[:limit]
 
@@ -199,6 +207,9 @@ class RepositoryManager:
 
         Returns list of missing repos.
         """
+        if self._manifest is None:
+            return []
+
         missing = []
 
         for repo in self._manifest.repos:
@@ -209,7 +220,7 @@ class RepositoryManager:
 
     def get_manifest(self) -> RepositoryManifest:
         """Get the validated manifest."""
-        if not self._manifest:
+        if self._manifest is None:
             raise RuntimeError("Manifest not loaded. Call load() first.")
         return self._manifest
 

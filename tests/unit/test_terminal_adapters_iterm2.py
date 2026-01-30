@@ -1,10 +1,11 @@
 """Unit tests for iTerm2 adapter."""
-import pytest
-from unittest.mock import Mock, AsyncMock, MagicMock, patch
-from datetime import datetime
 
-from mahavishnu.terminal.adapters.iterm2 import ITerm2Adapter, ITERM2_AVAILABLE
-from mahavishnu.terminal.config import TerminalSettings
+from datetime import datetime
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+
+from mahavishnu.terminal.adapters.iterm2 import ITERM2_AVAILABLE, ITerm2Adapter
 
 
 @pytest.mark.skipif(not ITERM2_AVAILABLE, reason="iterm2 package not available")
@@ -57,7 +58,7 @@ class TestITerm2Adapter:
     @pytest.mark.asyncio
     async def test_iterm2_adapter_init(self):
         """Test iTerm2 adapter initialization."""
-        with patch('mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE', True):
+        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
             adapter = ITerm2Adapter()
             assert adapter.adapter_name == "iterm2"
             assert adapter._connected is False
@@ -66,16 +67,17 @@ class TestITerm2Adapter:
     @pytest.mark.asyncio
     async def test_iterm2_adapter_not_available(self):
         """Test error when iTerm2 is not available."""
-        with patch('mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE', False):
+        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", False):
             with pytest.raises(ImportError, match="iterm2 package is not available"):
                 ITerm2Adapter()
 
     @pytest.mark.asyncio
     async def test_ensure_connected(self, mock_connection, mock_app):
         """Test connection establishment to iTerm2."""
-        with patch('mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE', True), \
-             patch('mahavishnu.terminal.adapters.iterm2.iterm2') as mock_iterm2:
-
+        with (
+            patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True),
+            patch("mahavishnu.terminal.adapters.iterm2.iterm2") as mock_iterm2,
+        ):
             # Setup mocks
             mock_iterm2.Connection.async_connect = AsyncMock(return_value=mock_connection)
             mock_iterm2.AsyncApp.async_get = AsyncMock(return_value=mock_app)
@@ -92,9 +94,10 @@ class TestITerm2Adapter:
         self, mock_connection, mock_app, mock_window, mock_tab, mock_session
     ):
         """Test launching a new iTerm2 session."""
-        with patch('mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE', True), \
-             patch('mahavishnu.terminal.adapters.iterm2.iterm2') as mock_iterm2:
-
+        with (
+            patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True),
+            patch("mahavishnu.terminal.adapters.iterm2.iterm2") as mock_iterm2,
+        ):
             # Setup mocks
             mock_iterm2.Connection.async_connect = AsyncMock(return_value=mock_connection)
             mock_iterm2.AsyncApp.async_get = AsyncMock(return_value=mock_app)
@@ -114,7 +117,7 @@ class TestITerm2Adapter:
     @pytest.mark.asyncio
     async def test_send_command(self, mock_connection, mock_session):
         """Test sending a command to a session."""
-        with patch('mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE', True):
+        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
             adapter = ITerm2Adapter()
             adapter._connected = True
             adapter._sessions["test_session_123"] = {
@@ -131,18 +134,16 @@ class TestITerm2Adapter:
     @pytest.mark.asyncio
     async def test_send_command_session_not_found(self):
         """Test error when sending to non-existent session."""
-        with patch('mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE', True):
+        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
             adapter = ITerm2Adapter()
 
             with pytest.raises(KeyError, match="Session nonexistent not found"):
                 await adapter.send_command("nonexistent", "test")
 
     @pytest.mark.asyncio
-    async def test_capture_output(
-        self, mock_connection, mock_session, mock_screen_contents
-    ):
+    async def test_capture_output(self, mock_connection, mock_session, mock_screen_contents):
         """Test capturing output from a session."""
-        with patch('mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE', True):
+        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
             adapter = ITerm2Adapter()
             adapter._connected = True
             adapter._sessions["test_session_123"] = {
@@ -165,7 +166,7 @@ class TestITerm2Adapter:
         self, mock_connection, mock_session, mock_screen_contents
     ):
         """Test capturing limited lines from a session."""
-        with patch('mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE', True):
+        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
             adapter = ITerm2Adapter()
             adapter._connected = True
             adapter._sessions["test_session_123"] = {
@@ -185,7 +186,7 @@ class TestITerm2Adapter:
     @pytest.mark.asyncio
     async def test_close_session(self, mock_connection, mock_tab):
         """Test closing a session."""
-        with patch('mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE', True):
+        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
             adapter = ITerm2Adapter()
             adapter._connected = True
             adapter._sessions["test_session_123"] = {
@@ -203,7 +204,7 @@ class TestITerm2Adapter:
     @pytest.mark.asyncio
     async def test_list_sessions(self, mock_connection):
         """Test listing all active sessions."""
-        with patch('mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE', True):
+        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
             adapter = ITerm2Adapter()
             adapter._connected = True
             adapter._sessions = {
@@ -231,7 +232,7 @@ class TestITerm2Adapter:
     @pytest.mark.asyncio
     async def test_cleanup(self, mock_connection, mock_tab):
         """Test cleanup method."""
-        with patch('mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE', True):
+        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
             adapter = ITerm2Adapter()
             adapter._connected = True
             adapter._connection = mock_connection

@@ -195,6 +195,12 @@ class MahavishnuSettings(BaseSettings):
         description="Subscription token expiration in minutes (5-1440)",
     )
 
+    # Cross-project authentication (for Session Buddy integration)
+    cross_project_auth_secret: str | None = Field(
+        default=None,
+        description="Cross-project authentication secret (must be set via environment for Session Buddy integration)",
+    )
+
     # OpenSearch configuration for vector storage and observability
     opensearch_endpoint: str = Field(
         default="https://localhost:9200",
@@ -283,7 +289,7 @@ class MahavishnuSettings(BaseSettings):
         """Customize settings sources to include YAML files."""
         # Add YAML configuration sources
         yaml_sources = []
-        for yaml_file in ["settings/mahavishnu.yaml", "settings/local.yaml"]:
+        for yaml_file in ("settings/mahavishnu.yaml", "settings/local.yaml"):
             yaml_path = Path(yaml_file)
             if yaml_path.exists():
                 yaml_sources.append(YamlConfigSettingsSource(settings_cls, yaml_path))

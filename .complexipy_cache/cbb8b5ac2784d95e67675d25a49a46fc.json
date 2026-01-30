@@ -1,0 +1,2857 @@
+{
+  "functions": [
+    {
+      "complexity": 26,
+      "file_name": "backup_cli.py",
+      "function_name": "add_backup_commands",
+      "path": "mahavishnu/backup_cli.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "cli.py",
+      "function_name": "mcp_restart",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "cli.py",
+      "function_name": "mcp_stop",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "cli.py",
+      "function_name": "progress_callback",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "cli.py",
+      "function_name": "sweep",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "cli.py",
+      "function_name": "generate_claude_token",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "cli.py",
+      "function_name": "generate_codex_token",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "cli.py",
+      "function_name": "list_nicknames",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "cli.py",
+      "function_name": "mcp_health",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "cli.py",
+      "function_name": "shell_cmd",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "cli.py",
+      "function_name": "mcp_status",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "cli.py",
+      "function_name": "list_roles",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "cli.py",
+      "function_name": "terminal_capture",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "cli.py",
+      "function_name": "terminal_send",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 6,
+      "file_name": "cli.py",
+      "function_name": "_async_sweep",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "cli.py",
+      "function_name": "terminal_launch",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "cli.py",
+      "function_name": "terminal_list",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 10,
+      "file_name": "cli.py",
+      "function_name": "mcp_start",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 13,
+      "file_name": "cli.py",
+      "function_name": "show_role",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 14,
+      "file_name": "cli.py",
+      "function_name": "list_repos",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 14,
+      "file_name": "cli.py",
+      "function_name": "terminal_close",
+      "path": "mahavishnu/cli.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "backup_cli.py",
+      "function_name": "add_backup_commands",
+      "path": "mahavishnu/cli/backup_cli.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "backup_cli.py",
+      "function_name": "create_backup",
+      "path": "mahavishnu/cli/backup_cli.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "backup_cli.py",
+      "function_name": "restore",
+      "path": "mahavishnu/cli/backup_cli.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "backup_cli.py",
+      "function_name": "list_backups",
+      "path": "mahavishnu/cli/backup_cli.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "backup_cli.py",
+      "function_name": "get_procedures",
+      "path": "mahavishnu/cli/backup_cli.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "backup_cli.py",
+      "function_name": "run_dr_check",
+      "path": "mahavishnu/cli/backup_cli.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring_cli.py",
+      "function_name": "add_monitoring_commands",
+      "path": "mahavishnu/cli/monitoring_cli.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "monitoring_cli.py",
+      "function_name": "trigger_test_alert",
+      "path": "mahavishnu/cli/monitoring_cli.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "monitoring_cli.py",
+      "function_name": "acknowledge_alert",
+      "path": "mahavishnu/cli/monitoring_cli.py"
+    },
+    {
+      "complexity": 11,
+      "file_name": "monitoring_cli.py",
+      "function_name": "get_dashboard",
+      "path": "mahavishnu/cli/monitoring_cli.py"
+    },
+    {
+      "complexity": 20,
+      "file_name": "monitoring_cli.py",
+      "function_name": "get_alerts",
+      "path": "mahavishnu/cli/monitoring_cli.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "production_cli.py",
+      "function_name": "add_production_commands",
+      "path": "mahavishnu/cli/production_cli.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "production_cli.py",
+      "function_name": "check_config",
+      "path": "mahavishnu/cli/production_cli.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "production_cli.py",
+      "function_name": "run_all_tests",
+      "path": "mahavishnu/cli/production_cli.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "production_cli.py",
+      "function_name": "run_benchmarks",
+      "path": "mahavishnu/cli/production_cli.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "production_cli.py",
+      "function_name": "run_integration_tests",
+      "path": "mahavishnu/cli/production_cli.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "base.py",
+      "function_name": "OrchestratorAdapter::execute",
+      "path": "mahavishnu/core/adapters/base.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "base.py",
+      "function_name": "OrchestratorAdapter::get_health",
+      "path": "mahavishnu/core/adapters/base.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::get_active_workflows",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::get_all_repo_paths",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::get_all_repos",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::get_roles",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::_check_user_repo_permission",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::_init_terminal_manager",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::_load_config",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::get_repos_by_role",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::__init__",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::get_all_nicknames",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::get_role_by_name",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::_load_repos",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 6,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::is_healthy",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 6,
+      "file_name": "app.py",
+      "function_name": "_validate_path",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 10,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::_prepare_execution",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 11,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::execute_workflow",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 14,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::_initialize_adapters",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 24,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::get_repos",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 65,
+      "file_name": "app.py",
+      "function_name": "MahavishnuApp::execute_workflow_parallel",
+      "path": "mahavishnu/core/app.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "auth.py",
+      "function_name": "JWTAuth::create_access_token",
+      "path": "mahavishnu/core/auth.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "auth.py",
+      "function_name": "get_auth_from_config",
+      "path": "mahavishnu/core/auth.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "auth.py",
+      "function_name": "JWTAuth::__init__",
+      "path": "mahavishnu/core/auth.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "auth.py",
+      "function_name": "JWTAuth::_check_token_expiry",
+      "path": "mahavishnu/core/auth.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "auth.py",
+      "function_name": "JWTAuth::_validate_payload",
+      "path": "mahavishnu/core/auth.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "auth.py",
+      "function_name": "JWTAuth::verify_token",
+      "path": "mahavishnu/core/auth.py"
+    },
+    {
+      "complexity": 9,
+      "file_name": "auth.py",
+      "function_name": "require_auth",
+      "path": "mahavishnu/core/auth.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupAndRecoveryCLI::__init__",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupManager::__init__",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupManager::_restore_config",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "backup_recovery.py",
+      "function_name": "DisasterRecoveryManager::__init__",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "backup_recovery.py",
+      "function_name": "DisasterRecoveryManager::_restart_services",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "backup_recovery.py",
+      "function_name": "DisasterRecoveryManager::get_recovery_procedures",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "backup_recovery.py",
+      "function_name": "DisasterRecoveryManager::schedule_regular_backups",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupAndRecoveryCLI::create_backup",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupAndRecoveryCLI::get_recovery_procedures",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupAndRecoveryCLI::list_backups",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupAndRecoveryCLI::run_disaster_recovery_check",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupManager::_backup_workflows",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupManager::_calculate_checksum",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupManager::list_backups",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupAndRecoveryCLI::restore_backup",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 6,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupManager::_backup_config",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 7,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupManager::_restore_workflows",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupManager::restore_backup",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 10,
+      "file_name": "backup_recovery.py",
+      "function_name": "DisasterRecoveryManager::initiate_disaster_recovery",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 11,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupManager::get_backup_info",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 13,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupManager::_cleanup_old_backups",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 13,
+      "file_name": "backup_recovery.py",
+      "function_name": "BackupManager::create_backup",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 13,
+      "file_name": "backup_recovery.py",
+      "function_name": "DisasterRecoveryManager::run_disaster_recovery_check",
+      "path": "mahavishnu/core/backup_recovery.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "circuit_breaker.py",
+      "function_name": "CircuitBreaker::__init__",
+      "path": "mahavishnu/core/circuit_breaker.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "circuit_breaker.py",
+      "function_name": "CircuitBreaker::record_success",
+      "path": "mahavishnu/core/circuit_breaker.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "circuit_breaker.py",
+      "function_name": "CircuitBreaker::record_failure",
+      "path": "mahavishnu/core/circuit_breaker.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "circuit_breaker.py",
+      "function_name": "circuit_breaker",
+      "path": "mahavishnu/core/circuit_breaker.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "circuit_breaker.py",
+      "function_name": "CircuitBreaker::call",
+      "path": "mahavishnu/core/circuit_breaker.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "circuit_breaker.py",
+      "function_name": "CircuitBreaker::allow_request",
+      "path": "mahavishnu/core/circuit_breaker.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "config.py",
+      "function_name": "MahavishnuSettings::validate_repos_path",
+      "path": "mahavishnu/core/config.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "config.py",
+      "function_name": "MahavishnuSettings::validate_auth_secret",
+      "path": "mahavishnu/core/config.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "config.py",
+      "function_name": "MahavishnuSettings::validate_subscription_auth_secret",
+      "path": "mahavishnu/core/config.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "config.py",
+      "function_name": "MahavishnuSettings::settings_customise_sources",
+      "path": "mahavishnu/core/config.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "ecosystem.py",
+      "function_name": "EcosystemLoader::__init__",
+      "path": "mahavishnu/core/ecosystem.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "ecosystem.py",
+      "function_name": "EcosystemLoader::config",
+      "path": "mahavishnu/core/ecosystem.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "ecosystem.py",
+      "function_name": "EcosystemLoader::save",
+      "path": "mahavishnu/core/ecosystem.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "ecosystem.py",
+      "function_name": "get_ecosystem_loader",
+      "path": "mahavishnu/core/ecosystem.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "ecosystem.py",
+      "function_name": "EcosystemLoader::load",
+      "path": "mahavishnu/core/ecosystem.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "ecosystem.py",
+      "function_name": "MCPServerConfig::get_rendered_command",
+      "path": "mahavishnu/core/ecosystem.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "ecosystem.py",
+      "function_name": "MCPServerConfig::validate_command",
+      "path": "mahavishnu/core/ecosystem.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "ecosystem.py",
+      "function_name": "EcosystemLoader::get_enabled_mcp_servers",
+      "path": "mahavishnu/core/ecosystem.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "ecosystem.py",
+      "function_name": "EcosystemLoader::get_startup_commands",
+      "path": "mahavishnu/core/ecosystem.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "ecosystem.py",
+      "function_name": "MCPServerConfig::validate_port",
+      "path": "mahavishnu/core/ecosystem.py"
+    },
+    {
+      "complexity": 6,
+      "file_name": "ecosystem.py",
+      "function_name": "EcosystemLoader::update_audit_timestamp",
+      "path": "mahavishnu/core/ecosystem.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "ecosystem.py",
+      "function_name": "EcosystemLoader::generate_claude_mcp_config",
+      "path": "mahavishnu/core/ecosystem.py"
+    },
+    {
+      "complexity": 23,
+      "file_name": "ecosystem.py",
+      "function_name": "EcosystemLoader::validate_mcp_servers",
+      "path": "mahavishnu/core/ecosystem.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "errors.py",
+      "function_name": "MahavishnuError::to_dict",
+      "path": "mahavishnu/core/errors.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "errors.py",
+      "function_name": "MahavishnuError::__init__",
+      "path": "mahavishnu/core/errors.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::__init__",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::_handle_performance_degradation",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::_handle_system_health",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::_init_default_handlers",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::get_active_alerts",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::register_notification_channel",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "EmailNotificationChannel::__init__",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "MonitoringDashboard::__init__",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "MonitoringDashboard::get_system_metrics",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "MonitoringDashboard::set_alert_manager",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "MonitoringService::__init__",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "MonitoringService::get_dashboard_data",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "NotificationChannel::__init__",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "NotificationChannel::send_notification",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "PagerDutyNotificationChannel::__init__",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "monitoring.py",
+      "function_name": "SlackNotificationChannel::__init__",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::_handle_backup_failure",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::_handle_resource_exhaustion",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::register_handler",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "monitoring.py",
+      "function_name": "EmailNotificationChannel::send_notification",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "monitoring.py",
+      "function_name": "MonitoringDashboard::get_recent_alerts",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "monitoring.py",
+      "function_name": "MonitoringService::acknowledge_alert",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::_monitoring_loop",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::_send_notifications",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "monitoring.py",
+      "function_name": "MonitoringDashboard::_get_adapter_health",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "monitoring.py",
+      "function_name": "MonitoringDashboard::_get_alert_counts",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "monitoring.py",
+      "function_name": "MonitoringDashboard::_get_workflow_counts",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::acknowledge_alert",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::_handle_workflow_failure",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::trigger_alert",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "monitoring.py",
+      "function_name": "PagerDutyNotificationChannel::send_notification",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::_check_resource_usage",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 7,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::_check_backup_status",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::_check_system_health",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "monitoring.py",
+      "function_name": "SlackNotificationChannel::send_notification",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 12,
+      "file_name": "monitoring.py",
+      "function_name": "AlertManager::_check_workflow_health",
+      "path": "mahavishnu/core/monitoring.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::create_error_counter",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::create_repo_counter",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::create_workflow_counter",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::log",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::log_critical",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::log_debug",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::log_error",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::log_info",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::log_warning",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::record_repo_processing_time",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::start_repo_trace",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::start_workflow_trace",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "observability.py",
+      "function_name": "get_observability_manager",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "observability.py",
+      "function_name": "init_observability",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::_init_fallback_components",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::_init_otel_components",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::end_workflow_trace",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::get_performance_metrics",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::flush_metrics",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::get_logs",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::shutdown",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "observability.py",
+      "function_name": "ObservabilityManager::__init__",
+      "path": "mahavishnu/core/observability.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchIntegration::__init__",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchIntegration::get_log_stats",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchIntegration::get_workflow_stats",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchIntegration::health_check",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchIntegration::log_error",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchIntegration::log_workflow_completion",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchIntegration::log_workflow_start",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchIntegration::log_workflow_update",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchIntegration::search_logs",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchIntegration::search_workflows",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchLogAnalytics::_init_indices",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchLogAnalytics::close",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchLogAnalytics::get_log_stats",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchLogAnalytics::get_workflow_stats",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchLogAnalytics::log_workflow_event",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchLogAnalytics::__init__",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchLogAnalytics::log_event",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchLogAnalytics::_create_log_index",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchLogAnalytics::_create_workflow_index",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchLogAnalytics::health_check",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 21,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchLogAnalytics::search_logs",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 21,
+      "file_name": "opensearch_integration.py",
+      "function_name": "OpenSearchLogAnalytics::search_workflows",
+      "path": "mahavishnu/core/opensearch_integration.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "permissions.py",
+      "function_name": "CrossProjectAuth::__init__",
+      "path": "mahavishnu/core/permissions.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "permissions.py",
+      "function_name": "CrossProjectAuth::sign_message",
+      "path": "mahavishnu/core/permissions.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "permissions.py",
+      "function_name": "CrossProjectAuth::verify_message",
+      "path": "mahavishnu/core/permissions.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "permissions.py",
+      "function_name": "RBACManager::__init__",
+      "path": "mahavishnu/core/permissions.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "permissions.py",
+      "function_name": "RBACManager::_init_default_roles",
+      "path": "mahavishnu/core/permissions.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "permissions.py",
+      "function_name": "JWTManager::__init__",
+      "path": "mahavishnu/core/permissions.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "permissions.py",
+      "function_name": "JWTManager::create_token",
+      "path": "mahavishnu/core/permissions.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "permissions.py",
+      "function_name": "JWTManager::refresh_token",
+      "path": "mahavishnu/core/permissions.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "permissions.py",
+      "function_name": "JWTManager::verify_token",
+      "path": "mahavishnu/core/permissions.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "permissions.py",
+      "function_name": "RBACManager::create_user",
+      "path": "mahavishnu/core/permissions.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "permissions.py",
+      "function_name": "RBACManager::get_user_permissions",
+      "path": "mahavishnu/core/permissions.py"
+    },
+    {
+      "complexity": 6,
+      "file_name": "permissions.py",
+      "function_name": "RBACManager::check_permission",
+      "path": "mahavishnu/core/permissions.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "permissions.py",
+      "function_name": "RBACManager::filter_repos_by_permission",
+      "path": "mahavishnu/core/permissions.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "production_readiness.py",
+      "function_name": "IntegrationTestSuite::__init__",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "production_readiness.py",
+      "function_name": "PerformanceBenchmark::__init__",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "production_readiness.py",
+      "function_name": "ProductionReadinessChecker::__init__",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "production_readiness.py",
+      "function_name": "run_production_readiness_suite",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "production_readiness.py",
+      "function_name": "IntegrationTestSuite::_test_rbac_permissions",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "production_readiness.py",
+      "function_name": "IntegrationTestSuite::_test_workflow_state_management",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "production_readiness.py",
+      "function_name": "_calculate_overall_assessment",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "production_readiness.py",
+      "function_name": "IntegrationTestSuite::_test_observation_logging",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "production_readiness.py",
+      "function_name": "PerformanceBenchmark::_benchmark_repo_operations",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 6,
+      "file_name": "production_readiness.py",
+      "function_name": "IntegrationTestSuite::_test_basic_workflow_execution",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 7,
+      "file_name": "production_readiness.py",
+      "function_name": "PerformanceBenchmark::run_benchmarks",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 9,
+      "file_name": "production_readiness.py",
+      "function_name": "PerformanceBenchmark::_benchmark_concurrent_workflows",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 9,
+      "file_name": "production_readiness.py",
+      "function_name": "ProductionReadinessChecker::_check_workflow_execution",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 10,
+      "file_name": "production_readiness.py",
+      "function_name": "ProductionReadinessChecker::_check_resource_limits",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 12,
+      "file_name": "production_readiness.py",
+      "function_name": "ProductionReadinessChecker::_check_config_validity",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 13,
+      "file_name": "production_readiness.py",
+      "function_name": "ProductionReadinessChecker::_check_adapter_health",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 14,
+      "file_name": "production_readiness.py",
+      "function_name": "PerformanceBenchmark::_benchmark_workflow_execution",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 14,
+      "file_name": "production_readiness.py",
+      "function_name": "ProductionReadinessChecker::_check_security_settings",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 15,
+      "file_name": "production_readiness.py",
+      "function_name": "ProductionReadinessChecker::_check_repo_accessibility",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 16,
+      "file_name": "production_readiness.py",
+      "function_name": "IntegrationTestSuite::run_all_tests",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 16,
+      "file_name": "production_readiness.py",
+      "function_name": "ProductionReadinessChecker::run_all_checks",
+      "path": "mahavishnu/core/production_readiness.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::__init__",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::_filter_by_language",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::_filter_by_mcp_type",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::get_all_paths",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::get_by_mcp_type",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::get_by_name",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::get_by_package",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::get_by_tag",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::invalidate_cache",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::filter",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::get_manifest",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::load",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::validate_repos_exist",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::_filter_cached",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 6,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::_build_indexes",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::search",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 9,
+      "file_name": "repo_manager.py",
+      "function_name": "RepositoryManager::_filter_by_tags",
+      "path": "mahavishnu/core/repo_manager.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "repo_models.py",
+      "function_name": "Repository::name_must_match_package_convention",
+      "path": "mahavishnu/core/repo_models.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "repo_models.py",
+      "function_name": "Repository::path_must_be_absolute",
+      "path": "mahavishnu/core/repo_models.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "repo_models.py",
+      "function_name": "Repository::tags_must_be_valid",
+      "path": "mahavishnu/core/repo_models.py"
+    },
+    {
+      "complexity": 6,
+      "file_name": "repo_models.py",
+      "function_name": "Repository::validate_mcp_consistency",
+      "path": "mahavishnu/core/repo_models.py"
+    },
+    {
+      "complexity": 7,
+      "file_name": "repo_models.py",
+      "function_name": "RepositoryManifest::repos_must_be_unique",
+      "path": "mahavishnu/core/repo_models.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::__init__",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::_init_default_recovery_patterns",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::_notify_error",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::_resource_fallback",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::_skip_and_continue",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::get_recovery_metrics",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "resilience.py",
+      "function_name": "RecoveryAction::__init__",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "resilience.py",
+      "function_name": "ResiliencePatterns::__init__",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "resilience.py",
+      "function_name": "ResiliencePatterns::resilient_repo_operation",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "resilience.py",
+      "function_name": "ResiliencePatterns::resilient_workflow_execution",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::_execute_fallback",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::execute_with_resilience",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::_log_recovery_action",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "resilience.py",
+      "function_name": "ResiliencePatterns::start_monitoring_service",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::_retry_operation",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 6,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::classify_error",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 7,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::_attempt_recovery",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 9,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::_log_operation_result",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 10,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::_heal_workflow",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 11,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::monitor_and_heal_workflows",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 19,
+      "file_name": "resilience.py",
+      "function_name": "ErrorRecoveryManager::_check_stuck_workflows",
+      "path": "mahavishnu/core/resilience.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "subscription_auth.py",
+      "function_name": "MultiAuthHandler::is_claude_subscribed",
+      "path": "mahavishnu/core/subscription_auth.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "subscription_auth.py",
+      "function_name": "MultiAuthHandler::is_codex_subscribed",
+      "path": "mahavishnu/core/subscription_auth.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "subscription_auth.py",
+      "function_name": "MultiAuthHandler::is_qwen_free",
+      "path": "mahavishnu/core/subscription_auth.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "subscription_auth.py",
+      "function_name": "MultiAuthHandler::create_claude_subscription_token",
+      "path": "mahavishnu/core/subscription_auth.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "subscription_auth.py",
+      "function_name": "MultiAuthHandler::create_codex_subscription_token",
+      "path": "mahavishnu/core/subscription_auth.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "subscription_auth.py",
+      "function_name": "SubscriptionAuth::__init__",
+      "path": "mahavishnu/core/subscription_auth.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "subscription_auth.py",
+      "function_name": "SubscriptionAuth::_check_subscription_token_expiry",
+      "path": "mahavishnu/core/subscription_auth.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "subscription_auth.py",
+      "function_name": "SubscriptionAuth::create_subscription_token",
+      "path": "mahavishnu/core/subscription_auth.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "subscription_auth.py",
+      "function_name": "SubscriptionAuth::_validate_subscription_payload",
+      "path": "mahavishnu/core/subscription_auth.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "subscription_auth.py",
+      "function_name": "SubscriptionAuth::verify_subscription_token",
+      "path": "mahavishnu/core/subscription_auth.py"
+    },
+    {
+      "complexity": 6,
+      "file_name": "subscription_auth.py",
+      "function_name": "MultiAuthHandler::__init__",
+      "path": "mahavishnu/core/subscription_auth.py"
+    },
+    {
+      "complexity": 14,
+      "file_name": "subscription_auth.py",
+      "function_name": "MultiAuthHandler::authenticate_request",
+      "path": "mahavishnu/core/subscription_auth.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "workflow_state.py",
+      "function_name": "WorkflowState::__init__",
+      "path": "mahavishnu/core/workflow_state.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "workflow_state.py",
+      "function_name": "WorkflowState::add_error",
+      "path": "mahavishnu/core/workflow_state.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "workflow_state.py",
+      "function_name": "WorkflowState::add_result",
+      "path": "mahavishnu/core/workflow_state.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "workflow_state.py",
+      "function_name": "WorkflowState::update_progress",
+      "path": "mahavishnu/core/workflow_state.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "workflow_state.py",
+      "function_name": "WorkflowState::create",
+      "path": "mahavishnu/core/workflow_state.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "workflow_state.py",
+      "function_name": "WorkflowState::delete",
+      "path": "mahavishnu/core/workflow_state.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "workflow_state.py",
+      "function_name": "WorkflowState::update",
+      "path": "mahavishnu/core/workflow_state.py"
+    },
+    {
+      "complexity": 7,
+      "file_name": "workflow_state.py",
+      "function_name": "WorkflowState::get",
+      "path": "mahavishnu/core/workflow_state.py"
+    },
+    {
+      "complexity": 12,
+      "file_name": "workflow_state.py",
+      "function_name": "WorkflowState::list_workflows",
+      "path": "mahavishnu/core/workflow_state.py"
+    },
+    {
+      "complexity": 241,
+      "file_name": "ecosystem_cli.py",
+      "function_name": "add_ecosystem_commands",
+      "path": "mahavishnu/ecosystem_cli.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "agno_adapter.py",
+      "function_name": "AgnoAdapter::__init__",
+      "path": "mahavishnu/engines/agno_adapter.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "agno_adapter.py",
+      "function_name": "AgnoAdapter::_get_llm",
+      "path": "mahavishnu/engines/agno_adapter.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "agno_adapter.py",
+      "function_name": "AgnoAdapter::_search_code",
+      "path": "mahavishnu/engines/agno_adapter.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "agno_adapter.py",
+      "function_name": "AgnoAdapter::execute",
+      "path": "mahavishnu/engines/agno_adapter.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "agno_adapter.py",
+      "function_name": "AgnoAdapter::_read_file",
+      "path": "mahavishnu/engines/agno_adapter.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "agno_adapter.py",
+      "function_name": "AgnoAdapter::get_health",
+      "path": "mahavishnu/engines/agno_adapter.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "agno_adapter.py",
+      "function_name": "AgnoAdapter::_create_agent",
+      "path": "mahavishnu/engines/agno_adapter.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "agno_adapter.py",
+      "function_name": "AgnoAdapter::_process_single_repo",
+      "path": "mahavishnu/engines/agno_adapter.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "llamaindex_adapter.py",
+      "function_name": "LlamaIndexAdapter::_get_document_context",
+      "path": "mahavishnu/engines/llamaindex_adapter.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "llamaindex_adapter.py",
+      "function_name": "LlamaIndexAdapter::get_health",
+      "path": "mahavishnu/engines/llamaindex_adapter.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "llamaindex_adapter.py",
+      "function_name": "LlamaIndexAdapter::__init__",
+      "path": "mahavishnu/engines/llamaindex_adapter.py"
+    },
+    {
+      "complexity": 13,
+      "file_name": "llamaindex_adapter.py",
+      "function_name": "LlamaIndexAdapter::execute",
+      "path": "mahavishnu/engines/llamaindex_adapter.py"
+    },
+    {
+      "complexity": 15,
+      "file_name": "llamaindex_adapter.py",
+      "function_name": "LlamaIndexAdapter::_ingest_repository",
+      "path": "mahavishnu/engines/llamaindex_adapter.py"
+    },
+    {
+      "complexity": 24,
+      "file_name": "llamaindex_adapter.py",
+      "function_name": "LlamaIndexAdapter::_query_index",
+      "path": "mahavishnu/engines/llamaindex_adapter.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "prefect_adapter.py",
+      "function_name": "PrefectAdapter::__init__",
+      "path": "mahavishnu/engines/prefect_adapter.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "prefect_adapter.py",
+      "function_name": "process_repositories_flow",
+      "path": "mahavishnu/engines/prefect_adapter.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "prefect_adapter.py",
+      "function_name": "PrefectAdapter::execute",
+      "path": "mahavishnu/engines/prefect_adapter.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "prefect_adapter.py",
+      "function_name": "PrefectAdapter::get_health",
+      "path": "mahavishnu/engines/prefect_adapter.py"
+    },
+    {
+      "complexity": 19,
+      "file_name": "prefect_adapter.py",
+      "function_name": "process_repository",
+      "path": "mahavishnu/engines/prefect_adapter.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "server.py",
+      "function_name": "MCPServer::__init__",
+      "path": "mahavishnu/mcp/server.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "server.py",
+      "function_name": "MCPServer::run",
+      "path": "mahavishnu/mcp/server.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "server_core.py",
+      "function_name": "FastMCPServer::_register_repository_messaging_tools",
+      "path": "mahavishnu/mcp/server_core.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "server_core.py",
+      "function_name": "FastMCPServer::_register_session_buddy_tools",
+      "path": "mahavishnu/mcp/server_core.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "server_core.py",
+      "function_name": "FastMCPServer::_register_terminal_tools",
+      "path": "mahavishnu/mcp/server_core.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "server_core.py",
+      "function_name": "McpretentiousMCPClient::__init__",
+      "path": "mahavishnu/mcp/server_core.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "server_core.py",
+      "function_name": "run_server",
+      "path": "mahavishnu/mcp/server_core.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "server_core.py",
+      "function_name": "FastMCPServer::start",
+      "path": "mahavishnu/mcp/server_core.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "server_core.py",
+      "function_name": "McpretentiousMCPClient::_ensure_started",
+      "path": "mahavishnu/mcp/server_core.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "server_core.py",
+      "function_name": "FastMCPServer::__init__",
+      "path": "mahavishnu/mcp/server_core.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "server_core.py",
+      "function_name": "FastMCPServer::stop",
+      "path": "mahavishnu/mcp/server_core.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "server_core.py",
+      "function_name": "McpretentiousMCPClient::call_tool",
+      "path": "mahavishnu/mcp/server_core.py"
+    },
+    {
+      "complexity": 15,
+      "file_name": "server_core.py",
+      "function_name": "FastMCPServer::_init_terminal_manager",
+      "path": "mahavishnu/mcp/server_core.py"
+    },
+    {
+      "complexity": 144,
+      "file_name": "server_core.py",
+      "function_name": "FastMCPServer::_register_tools",
+      "path": "mahavishnu/mcp/server_core.py"
+    },
+    {
+      "complexity": 23,
+      "file_name": "repository_messaging_tools.py",
+      "function_name": "register_repository_messaging_tools",
+      "path": "mahavishnu/mcp/tools/repository_messaging_tools.py"
+    },
+    {
+      "complexity": 29,
+      "file_name": "session_buddy_tools.py",
+      "function_name": "register_session_buddy_tools",
+      "path": "mahavishnu/mcp/tools/session_buddy_tools.py"
+    },
+    {
+      "complexity": 28,
+      "file_name": "terminal_tools.py",
+      "function_name": "register_terminal_tools",
+      "path": "mahavishnu/mcp/tools/terminal_tools.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessenger::get_unacknowledged_messages",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessengerManager::__init__",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessenger::__init__",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessenger::acknowledge_message",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessenger::get_messages_for_repo",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessenger::subscribe",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessengerManager::process_repository_changes",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessengerManager::send_quality_alert",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessage::__post_init__",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessenger::unsubscribe",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessenger::verify_message_signature",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessenger::cleanup_expired_messages",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessenger::send_message",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessenger::_notify_subscribers",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessenger::broadcast_message",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 11,
+      "file_name": "repository_messenger.py",
+      "function_name": "RepositoryMessengerManager::notify_workflow_status",
+      "path": "mahavishnu/messaging/repository_messenger.py"
+    },
+    {
+      "complexity": 28,
+      "file_name": "monitoring_cli.py",
+      "function_name": "add_monitoring_commands",
+      "path": "mahavishnu/monitoring_cli.py"
+    },
+    {
+      "complexity": 12,
+      "file_name": "production_cli.py",
+      "function_name": "add_production_commands",
+      "path": "mahavishnu/production_cli.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "opensearch_test.py",
+      "function_name": "test_opensearch_connection",
+      "path": "mahavishnu/prototypes/opensearch_test.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "checker.py",
+      "function_name": "QualityControl::__init__",
+      "path": "mahavishnu/qc/checker.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "checker.py",
+      "function_name": "QualityControl::validate_post_execution",
+      "path": "mahavishnu/qc/checker.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "checker.py",
+      "function_name": "QualityControl::validate_pre_execution",
+      "path": "mahavishnu/qc/checker.py"
+    },
+    {
+      "complexity": 12,
+      "file_name": "checker.py",
+      "function_name": "QualityControl::run_post_checks",
+      "path": "mahavishnu/qc/checker.py"
+    },
+    {
+      "complexity": 12,
+      "file_name": "checker.py",
+      "function_name": "QualityControl::run_pre_checks",
+      "path": "mahavishnu/qc/checker.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "checkpoint.py",
+      "function_name": "SessionBuddy::__init__",
+      "path": "mahavishnu/session/checkpoint.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "checkpoint.py",
+      "function_name": "SessionBuddy::cleanup_checkpoint",
+      "path": "mahavishnu/session/checkpoint.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "checkpoint.py",
+      "function_name": "SessionBuddy::create_checkpoint",
+      "path": "mahavishnu/session/checkpoint.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "checkpoint.py",
+      "function_name": "SessionBuddy::get_checkpoint",
+      "path": "mahavishnu/session/checkpoint.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "checkpoint.py",
+      "function_name": "SessionBuddy::update_checkpoint",
+      "path": "mahavishnu/session/checkpoint.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "checkpoint.py",
+      "function_name": "SessionBuddy::restore_from_checkpoint",
+      "path": "mahavishnu/session/checkpoint.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "auth.py",
+      "function_name": "AuthenticatedSessionBuddyClient::__init__",
+      "path": "mahavishnu/session_buddy/auth.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "auth.py",
+      "function_name": "CrossProjectAuth::__init__",
+      "path": "mahavishnu/session_buddy/auth.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "auth.py",
+      "function_name": "CrossProjectAuth::sign_message",
+      "path": "mahavishnu/session_buddy/auth.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "auth.py",
+      "function_name": "CrossProjectAuth::verify_message",
+      "path": "mahavishnu/session_buddy/auth.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "auth.py",
+      "function_name": "MessageAuthenticator::create_authenticated_message",
+      "path": "mahavishnu/session_buddy/auth.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "auth.py",
+      "function_name": "MessageAuthenticator::is_cross_project_auth_enabled",
+      "path": "mahavishnu/session_buddy/auth.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "auth.py",
+      "function_name": "test_cross_project_authentication",
+      "path": "mahavishnu/session_buddy/auth.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "auth.py",
+      "function_name": "AuthenticatedSessionBuddyClient::send_authenticated_message",
+      "path": "mahavishnu/session_buddy/auth.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "auth.py",
+      "function_name": "AuthenticatedSessionBuddyClient::validate_project_access",
+      "path": "mahavishnu/session_buddy/auth.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "auth.py",
+      "function_name": "MessageAuthenticator::__init__",
+      "path": "mahavishnu/session_buddy/auth.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "auth.py",
+      "function_name": "AuthenticatedSessionBuddyClient::receive_authenticated_message",
+      "path": "mahavishnu/session_buddy/auth.py"
+    },
+    {
+      "complexity": 18,
+      "file_name": "auth.py",
+      "function_name": "MessageAuthenticator::verify_authenticated_message",
+      "path": "mahavishnu/session_buddy/auth.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "integration.py",
+      "function_name": "SessionBuddyIntegration::__init__",
+      "path": "mahavishnu/session_buddy/integration.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "integration.py",
+      "function_name": "SessionBuddyManager::__init__",
+      "path": "mahavishnu/session_buddy/integration.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "integration.py",
+      "function_name": "SessionBuddyIntegration::_index_documentation_in_session_buddy",
+      "path": "mahavishnu/session_buddy/integration.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "integration.py",
+      "function_name": "SessionBuddyIntegration::_send_code_context_to_session_buddy",
+      "path": "mahavishnu/session_buddy/integration.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "integration.py",
+      "function_name": "SessionBuddyIntegration::get_function_context",
+      "path": "mahavishnu/session_buddy/integration.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "integration.py",
+      "function_name": "SessionBuddyIntegration::get_related_code",
+      "path": "mahavishnu/session_buddy/integration.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "integration.py",
+      "function_name": "SessionBuddyIntegration::list_project_messages",
+      "path": "mahavishnu/session_buddy/integration.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "integration.py",
+      "function_name": "SessionBuddyIntegration::search_documentation",
+      "path": "mahavishnu/session_buddy/integration.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "integration.py",
+      "function_name": "SessionBuddyIntegration::send_project_message",
+      "path": "mahavishnu/session_buddy/integration.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "integration.py",
+      "function_name": "SessionBuddyManager::process_repository_for_session_buddy",
+      "path": "mahavishnu/session_buddy/integration.py"
+    },
+    {
+      "complexity": 7,
+      "file_name": "integration.py",
+      "function_name": "SessionBuddyIntegration::_extract_docstring_from_file",
+      "path": "mahavishnu/session_buddy/integration.py"
+    },
+    {
+      "complexity": 7,
+      "file_name": "integration.py",
+      "function_name": "SessionBuddyManager::get_enhanced_context",
+      "path": "mahavishnu/session_buddy/integration.py"
+    },
+    {
+      "complexity": 11,
+      "file_name": "integration.py",
+      "function_name": "SessionBuddyIntegration::index_documentation",
+      "path": "mahavishnu/session_buddy/integration.py"
+    },
+    {
+      "complexity": 13,
+      "file_name": "integration.py",
+      "function_name": "SessionBuddyIntegration::integrate_code_graph",
+      "path": "mahavishnu/session_buddy/integration.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "adapter.py",
+      "function_name": "MahavishnuShell::__init__",
+      "path": "mahavishnu/shell/adapter.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "adapter.py",
+      "function_name": "MahavishnuShell::_add_mahavishnu_namespace",
+      "path": "mahavishnu/shell/adapter.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "adapter.py",
+      "function_name": "MahavishnuShell::_get_banner",
+      "path": "mahavishnu/shell/adapter.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "adapter.py",
+      "function_name": "MahavishnuShell::_register_magics",
+      "path": "mahavishnu/shell/adapter.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "formatters.py",
+      "function_name": "WorkflowFormatter::_format_workflow_detail_fallback",
+      "path": "mahavishnu/shell/formatters.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "formatters.py",
+      "function_name": "LogFormatter::_format_logs_fallback",
+      "path": "mahavishnu/shell/formatters.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "formatters.py",
+      "function_name": "LogFormatter::_format_logs_rich",
+      "path": "mahavishnu/shell/formatters.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "formatters.py",
+      "function_name": "RepoFormatter::_format_repos_fallback",
+      "path": "mahavishnu/shell/formatters.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "formatters.py",
+      "function_name": "WorkflowFormatter::_format_workflows_fallback",
+      "path": "mahavishnu/shell/formatters.py"
+    },
+    {
+      "complexity": 6,
+      "file_name": "formatters.py",
+      "function_name": "LogFormatter::format_logs",
+      "path": "mahavishnu/shell/formatters.py"
+    },
+    {
+      "complexity": 7,
+      "file_name": "formatters.py",
+      "function_name": "RepoFormatter::format_repos",
+      "path": "mahavishnu/shell/formatters.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "formatters.py",
+      "function_name": "WorkflowFormatter::format_workflow_detail",
+      "path": "mahavishnu/shell/formatters.py"
+    },
+    {
+      "complexity": 10,
+      "file_name": "formatters.py",
+      "function_name": "WorkflowFormatter::format_workflows",
+      "path": "mahavishnu/shell/formatters.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "helpers.py",
+      "function_name": "ps",
+      "path": "mahavishnu/shell/helpers.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "helpers.py",
+      "function_name": "sync",
+      "path": "mahavishnu/shell/helpers.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "helpers.py",
+      "function_name": "top",
+      "path": "mahavishnu/shell/helpers.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "helpers.py",
+      "function_name": "errors",
+      "path": "mahavishnu/shell/helpers.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "magics.py",
+      "function_name": "MahavishnuMagics::__init__",
+      "path": "mahavishnu/shell/magics.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "magics.py",
+      "function_name": "MahavishnuMagics::set_app",
+      "path": "mahavishnu/shell/magics.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "magics.py",
+      "function_name": "MahavishnuMagics::repos",
+      "path": "mahavishnu/shell/magics.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "magics.py",
+      "function_name": "MahavishnuMagics::workflow",
+      "path": "mahavishnu/shell/magics.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "base.py",
+      "function_name": "TerminalAdapter::adapter_name",
+      "path": "mahavishnu/terminal/adapters/base.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "base.py",
+      "function_name": "TerminalAdapter::capture_output",
+      "path": "mahavishnu/terminal/adapters/base.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "base.py",
+      "function_name": "TerminalAdapter::close_session",
+      "path": "mahavishnu/terminal/adapters/base.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "base.py",
+      "function_name": "TerminalAdapter::launch_session",
+      "path": "mahavishnu/terminal/adapters/base.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "base.py",
+      "function_name": "TerminalAdapter::list_sessions",
+      "path": "mahavishnu/terminal/adapters/base.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "base.py",
+      "function_name": "TerminalAdapter::send_command",
+      "path": "mahavishnu/terminal/adapters/base.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "iterm2.py",
+      "function_name": "ITerm2Adapter::__init__",
+      "path": "mahavishnu/terminal/adapters/iterm2.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "iterm2.py",
+      "function_name": "ITerm2Adapter::close_session",
+      "path": "mahavishnu/terminal/adapters/iterm2.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "iterm2.py",
+      "function_name": "ITerm2Adapter::send_command",
+      "path": "mahavishnu/terminal/adapters/iterm2.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "iterm2.py",
+      "function_name": "ITerm2Adapter::list_sessions",
+      "path": "mahavishnu/terminal/adapters/iterm2.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "iterm2.py",
+      "function_name": "ITerm2Adapter::cleanup",
+      "path": "mahavishnu/terminal/adapters/iterm2.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "iterm2.py",
+      "function_name": "ITerm2Adapter::_release_connection",
+      "path": "mahavishnu/terminal/adapters/iterm2.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "iterm2.py",
+      "function_name": "ITerm2Adapter::capture_output",
+      "path": "mahavishnu/terminal/adapters/iterm2.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "iterm2.py",
+      "function_name": "ITerm2Adapter::launch_session",
+      "path": "mahavishnu/terminal/adapters/iterm2.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "iterm2.py",
+      "function_name": "ITerm2Adapter::_ensure_connected",
+      "path": "mahavishnu/terminal/adapters/iterm2.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "mcpretentious.py",
+      "function_name": "McpretentiousAdapter::__init__",
+      "path": "mahavishnu/terminal/adapters/mcpretentious.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "mcpretentious.py",
+      "function_name": "McpretentiousAdapter::adapter_name",
+      "path": "mahavishnu/terminal/adapters/mcpretentious.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "mcpretentious.py",
+      "function_name": "McpretentiousAdapter::launch_session",
+      "path": "mahavishnu/terminal/adapters/mcpretentious.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "mcpretentious.py",
+      "function_name": "McpretentiousAdapter::list_sessions",
+      "path": "mahavishnu/terminal/adapters/mcpretentious.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "mcpretentious.py",
+      "function_name": "McpretentiousAdapter::send_command",
+      "path": "mahavishnu/terminal/adapters/mcpretentious.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "mcpretentious.py",
+      "function_name": "McpretentiousAdapter::close_session",
+      "path": "mahavishnu/terminal/adapters/mcpretentious.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "mcpretentious.py",
+      "function_name": "McpretentiousAdapter::capture_output",
+      "path": "mahavishnu/terminal/adapters/mcpretentious.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::_launch_batch",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::capture_all_outputs",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::capture_output",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::close_all",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::close_session",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::current_adapter",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::get_adapter_history",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::list_sessions",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::send_command",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::set_migration_callback",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::__init__",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::launch_sessions",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::launch_sessions_batch",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 4,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::switch_adapter",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::create",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 7,
+      "file_name": "manager.py",
+      "function_name": "TerminalManager::_migrate_sessions",
+      "path": "mahavishnu/terminal/manager.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "mcp_client.py",
+      "function_name": "McpretentiousClient::__init__",
+      "path": "mahavishnu/terminal/mcp_client.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "mcp_client.py",
+      "function_name": "McpretentiousClient::close_terminal",
+      "path": "mahavishnu/terminal/mcp_client.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "mcp_client.py",
+      "function_name": "McpretentiousClient::list_terminals",
+      "path": "mahavishnu/terminal/mcp_client.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "mcp_client.py",
+      "function_name": "McpretentiousClient::open_terminal",
+      "path": "mahavishnu/terminal/mcp_client.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "mcp_client.py",
+      "function_name": "McpretentiousClient::start",
+      "path": "mahavishnu/terminal/mcp_client.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "mcp_client.py",
+      "function_name": "McpretentiousClient::stop",
+      "path": "mahavishnu/terminal/mcp_client.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "mcp_client.py",
+      "function_name": "McpretentiousClient::type_text",
+      "path": "mahavishnu/terminal/mcp_client.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "mcp_client.py",
+      "function_name": "StdioMCPClient::__init__",
+      "path": "mahavishnu/terminal/mcp_client.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "mcp_client.py",
+      "function_name": "McpretentiousClient::read_text",
+      "path": "mahavishnu/terminal/mcp_client.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "mcp_client.py",
+      "function_name": "StdioMCPClient::start",
+      "path": "mahavishnu/terminal/mcp_client.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "mcp_client.py",
+      "function_name": "StdioMCPClient::stop",
+      "path": "mahavishnu/terminal/mcp_client.py"
+    },
+    {
+      "complexity": 8,
+      "file_name": "mcp_client.py",
+      "function_name": "StdioMCPClient::call_tool",
+      "path": "mahavishnu/terminal/mcp_client.py"
+    },
+    {
+      "complexity": 17,
+      "file_name": "mcp_client.py",
+      "function_name": "StdioMCPClient::_read_stdout",
+      "path": "mahavishnu/terminal/mcp_client.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "pool.py",
+      "function_name": "ITerm2ConnectionPool::__init__",
+      "path": "mahavishnu/terminal/pool.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "pool.py",
+      "function_name": "ITerm2ConnectionPool::_create_connection",
+      "path": "mahavishnu/terminal/pool.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "pool.py",
+      "function_name": "ITerm2ConnectionPool::start_health_check",
+      "path": "mahavishnu/terminal/pool.py"
+    },
+    {
+      "complexity": 1,
+      "file_name": "pool.py",
+      "function_name": "ITerm2ConnectionPool::stats",
+      "path": "mahavishnu/terminal/pool.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "pool.py",
+      "function_name": "ITerm2ConnectionPool::_is_connection_healthy",
+      "path": "mahavishnu/terminal/pool.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "pool.py",
+      "function_name": "close_global_pool",
+      "path": "mahavishnu/terminal/pool.py"
+    },
+    {
+      "complexity": 2,
+      "file_name": "pool.py",
+      "function_name": "get_global_pool",
+      "path": "mahavishnu/terminal/pool.py"
+    },
+    {
+      "complexity": 3,
+      "file_name": "pool.py",
+      "function_name": "ITerm2ConnectionPool::_health_check_loop",
+      "path": "mahavishnu/terminal/pool.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "pool.py",
+      "function_name": "ITerm2ConnectionPool::close_all",
+      "path": "mahavishnu/terminal/pool.py"
+    },
+    {
+      "complexity": 5,
+      "file_name": "pool.py",
+      "function_name": "ITerm2ConnectionPool::release",
+      "path": "mahavishnu/terminal/pool.py"
+    },
+    {
+      "complexity": 12,
+      "file_name": "pool.py",
+      "function_name": "ITerm2ConnectionPool::acquire",
+      "path": "mahavishnu/terminal/pool.py"
+    },
+    {
+      "complexity": 16,
+      "file_name": "pool.py",
+      "function_name": "ITerm2ConnectionPool::_remove_stale_connections",
+      "path": "mahavishnu/terminal/pool.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "session.py",
+      "function_name": "TerminalSession::__init__",
+      "path": "mahavishnu/terminal/session.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "session.py",
+      "function_name": "TerminalSession::__repr__",
+      "path": "mahavishnu/terminal/session.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "session.py",
+      "function_name": "TerminalSession::age",
+      "path": "mahavishnu/terminal/session.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "session.py",
+      "function_name": "TerminalSession::close",
+      "path": "mahavishnu/terminal/session.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "session.py",
+      "function_name": "TerminalSession::get_output_history",
+      "path": "mahavishnu/terminal/session.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "session.py",
+      "function_name": "TerminalSession::read",
+      "path": "mahavishnu/terminal/session.py"
+    },
+    {
+      "complexity": 0,
+      "file_name": "session.py",
+      "function_name": "TerminalSession::send",
+      "path": "mahavishnu/terminal/session.py"
+    }
+  ],
+  "targets": [
+    "/Users/les/Projects/mahavishnu/mahavishnu"
+  ]
+}

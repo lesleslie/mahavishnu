@@ -4,7 +4,9 @@ This module provides authentication mechanisms for services like Claude Code
 that use subscription tokens, in addition to the existing JWT authentication.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+UTC = timezone.utc
 from enum import Enum
 from typing import Any
 
@@ -52,7 +54,7 @@ class SubscriptionAuth:
         self.expire_minutes = expire_minutes
 
     def create_subscription_token(
-        self, user_id: str, subscription_type: str, scopes: list[str] = None
+        self, user_id: str, subscription_type: str, scopes: list[str] | None = None
     ) -> str:
         """
         Create a subscription token for services like Claude Code.
@@ -75,7 +77,7 @@ class SubscriptionAuth:
             "scopes": scopes,
         }
 
-        expire = datetime.utcnow() + timedelta(minutes=self.expire_minutes)
+        expire = datetime.now(tz=UTC) + timedelta(minutes=self.expire_minutes)
         to_encode.update({"exp": int(expire.timestamp())})  # Convert datetime to integer timestamp
 
         encoded_jwt = jwt.encode(to_encode, self.secret, algorithm=self.algorithm)
@@ -96,29 +98,8 @@ class SubscriptionAuth:
         """
         try:
             payload = jwt.decode(token, self.secret, algorithms=[self.algorithm])
-
-            user_id: str = payload.get("user_id")
-            subscription_type: str = payload.get("subscription_type")
-
-            if not user_id or not subscription_type:
-                raise AuthenticationError(
-                    message="Invalid subscription token: missing required fields",
-                    details={"error": "user_id or subscription_type not found in token"},
-                )
-
-            token_data = SubscriptionTokenData(
-                user_id=user_id,
-                subscription_type=subscription_type,
-                exp=payload.get("exp"),
-                scopes=payload.get("scopes", []),
-            )
-
-            # Check if token is expired
-            if datetime.utcnow().timestamp() > token_data.exp:
-                raise AuthenticationError(
-                    message="Subscription token has expired", details={"error": "Expired token"}
-                )
-
+            token_data = self._validate_subscription_payload(payload)
+            self._check_subscription_token_expiry(token_data)
             return token_data
         except jwt.exceptions.InvalidSignatureError as e:
             raise AuthenticationError(
@@ -131,14 +112,39 @@ class SubscriptionAuth:
             ) from e
         except Exception as e:
             raise AuthenticationError(
-                message=f"Subscription authentication error: {str(e)}", details={"error": str(e)}
+                message=f"Subscription authentication error: {e}", details={"error": str(e)}
             ) from e
+
+    def _validate_subscription_payload(self, payload: dict) -> SubscriptionTokenData:
+        """Validate the subscription token payload and extract token data."""
+        user_id: str = payload.get("user_id")
+        subscription_type: str = payload.get("subscription_type")
+
+        if not user_id or not subscription_type:
+            raise AuthenticationError(
+                message="Invalid subscription token: missing required fields",
+                details={"error": "user_id or subscription_type not found in token"},
+            )
+
+        return SubscriptionTokenData(
+            user_id=user_id,
+            subscription_type=subscription_type,
+            exp=payload.get("exp"),
+            scopes=payload.get("scopes", []),
+        )
+
+    def _check_subscription_token_expiry(self, token_data: SubscriptionTokenData) -> None:
+        """Check if the subscription token has expired."""
+        if datetime.now(tz=UTC).timestamp() > token_data.exp:
+            raise AuthenticationError(
+                message="Subscription token has expired", details={"error": "Expired token"}
+            )
 
 
 class MultiAuthHandler:
     """Handles multiple authentication methods including JWT and subscription tokens."""
 
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         """
         Initialize multi-authentication handler.
 

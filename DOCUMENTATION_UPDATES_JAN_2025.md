@@ -190,9 +190,6 @@ ______________________________________________________________________
 
 ### Oneiric Documentation
 
-- [README.md](/Users/les/Projects/oneiric/README.md) - Oneiric overview
-- [docs/](/Users/les/Projects/oneiric/docs/) - Oneiric docs
-
 ### Related Features
 
 - Terminal Management - Multi-terminal sessions

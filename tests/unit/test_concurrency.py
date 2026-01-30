@@ -1,6 +1,7 @@
 """Unit tests for concurrency control."""
+
 import pytest
-import asyncio
+
 from mahavishnu.core.app import MahavishnuApp
 from mahavishnu.core.config import MahavishnuSettings
 

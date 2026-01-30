@@ -1,11 +1,11 @@
 """Tests for MCP server tools and functionality."""
-import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock, MagicMock
-from fastmcp import FastMCP
 
-from mahavishnu.mcp.server_core import FastMCPServer
+from unittest.mock import AsyncMock, Mock
+
+import pytest
+
 from mahavishnu.core.app import MahavishnuApp
+from mahavishnu.mcp.server_core import FastMCPServer
 
 
 @pytest.fixture
@@ -39,11 +39,13 @@ def mock_app():
     app.rbac_manager.get_user_permissions = AsyncMock(return_value=[])
 
     # Mock the monitoring service
-    app.monitoring_service.get_dashboard_data = AsyncMock(return_value={
-        "metrics": {"system": {}, "workflows": {}, "adapters": {}, "alerts": {}},
-        "recent_alerts": [],
-        "timestamp": "2023-01-01T00:00:00"
-    })
+    app.monitoring_service.get_dashboard_data = AsyncMock(
+        return_value={
+            "metrics": {"system": {}, "workflows": {}, "adapters": {}, "alerts": {}},
+            "recent_alerts": [],
+            "timestamp": "2023-01-01T00:00:00",
+        }
+    )
     app.monitoring_service.alert_manager = Mock()
     app.monitoring_service.alert_manager.get_active_alerts = AsyncMock(return_value=[])
     app.monitoring_service.acknowledge_alert = AsyncMock(return_value=True)
@@ -95,17 +97,13 @@ async def test_trigger_workflow_tool(mock_app):
     server = FastMCPServer(mock_app)
 
     # Mock the execute_workflow_parallel method
-    mock_app.execute_workflow_parallel = AsyncMock(return_value={
-        "status": "completed",
-        "results": [],
-        "repos_processed": 1
-    })
+    mock_app.execute_workflow_parallel = AsyncMock(
+        return_value={"status": "completed", "results": [], "repos_processed": 1}
+    )
 
     # Call the tool directly
     result = await server.server._tools["trigger_workflow"].handler(
-        adapter="test_adapter",
-        task_type="test_task",
-        params={"test": True}
+        adapter="test_adapter", task_type="test_task", params={"test": True}
     )
 
     # Verify result structure
@@ -120,9 +118,7 @@ async def test_get_workflow_status_tool(mock_app):
     server = FastMCPServer(mock_app)
 
     # Call the tool directly
-    result = await server.server._tools["get_workflow_status"].handler(
-        workflow_id="test_wf_123"
-    )
+    result = await server.server._tools["get_workflow_status"].handler(workflow_id="test_wf_123")
 
     # Verify result structure
     assert "workflow_id" in result
@@ -136,9 +132,7 @@ async def test_cancel_workflow_tool(mock_app):
     server = FastMCPServer(mock_app)
 
     # Call the tool directly
-    result = await server.server._tools["cancel_workflow"].handler(
-        workflow_id="test_wf_123"
-    )
+    result = await server.server._tools["cancel_workflow"].handler(workflow_id="test_wf_123")
 
     # Verify result structure
     assert "workflow_id" in result
@@ -185,10 +179,9 @@ async def test_list_workflows_tool(mock_app):
     server = FastMCPServer(mock_app)
 
     # Mock the workflow state manager
-    mock_app.workflow_state_manager.list_workflows = AsyncMock(return_value=[
-        {"id": "wf1", "status": "completed"},
-        {"id": "wf2", "status": "running"}
-    ])
+    mock_app.workflow_state_manager.list_workflows = AsyncMock(
+        return_value=[{"id": "wf1", "status": "completed"}, {"id": "wf2", "status": "running"}]
+    )
 
     # Call the tool directly
     result = await server.server._tools["list_workflows"].handler()
@@ -209,9 +202,7 @@ async def test_check_permission_tool(mock_app):
 
     # Call the tool directly
     result = await server.server._tools["check_permission"].handler(
-        user_id="test_user",
-        repo="test_repo",
-        permission="READ_REPO"
+        user_id="test_user", repo="test_repo", permission="READ_REPO"
     )
 
     # Verify result structure
@@ -249,9 +240,7 @@ async def test_create_user_tool(mock_app):
 
     # Call the tool directly
     result = await server.server._tools["create_user"].handler(
-        user_id="new_user",
-        roles=["developer"],
-        allowed_repos=["/repo1"]
+        user_id="new_user", roles=["developer"], allowed_repos=["/repo1"]
     )
 
     # Verify result structure
@@ -291,7 +280,9 @@ async def test_get_active_alerts_tool(mock_app):
     mock_alert.description = "Test description"
     mock_alert.details = {}
 
-    mock_app.monitoring_service.alert_manager.get_active_alerts = AsyncMock(return_value=[mock_alert])
+    mock_app.monitoring_service.alert_manager.get_active_alerts = AsyncMock(
+        return_value=[mock_alert]
+    )
 
     # Call the tool directly
     result = await server.server._tools["get_active_alerts"].handler()
@@ -309,8 +300,7 @@ async def test_acknowledge_alert_tool(mock_app):
 
     # Call the tool directly
     result = await server.server._tools["acknowledge_alert"].handler(
-        alert_id="alert_123",
-        user="test_user"
+        alert_id="alert_123", user="test_user"
     )
 
     # Verify result structure
@@ -324,9 +314,7 @@ async def test_trigger_test_alert_tool(mock_app):
 
     # Call the tool directly
     result = await server.server._tools["trigger_test_alert"].handler(
-        severity="medium",
-        title="Test Alert",
-        description="This is a test alert"
+        severity="medium", title="Test Alert", description="This is a test alert"
     )
 
     # Verify result structure
@@ -364,9 +352,7 @@ async def test_create_backup_tool(mock_app):
     mock_app.backup_manager.create_backup = AsyncMock(return_value=mock_backup_info)
 
     # Call the tool directly
-    result = await server.server._tools["create_backup"].handler(
-        backup_type="full"
-    )
+    result = await server.server._tools["create_backup"].handler(backup_type="full")
 
     # Verify result structure
     assert "status" in result
@@ -405,9 +391,7 @@ async def test_restore_backup_tool(mock_app):
     server = FastMCPServer(mock_app)
 
     # Call the tool directly
-    result = await server.server._tools["restore_backup"].handler(
-        backup_id="backup_123"
-    )
+    result = await server.server._tools["restore_backup"].handler(backup_id="backup_123")
 
     # Verify result structure
     assert "status" in result
@@ -421,11 +405,9 @@ async def test_run_disaster_recovery_check_tool(mock_app):
 
     # Mock the disaster recovery manager
     mock_app.disaster_recovery_manager = Mock()
-    mock_app.disaster_recovery_manager.run_disaster_recovery_check = AsyncMock(return_value={
-        "timestamp": "2023-01-01T00:00:00",
-        "checks": {},
-        "status": "healthy"
-    })
+    mock_app.disaster_recovery_manager.run_disaster_recovery_check = AsyncMock(
+        return_value={"timestamp": "2023-01-01T00:00:00", "checks": {}, "status": "healthy"}
+    )
 
     # Call the tool directly
     result = await server.server._tools["run_disaster_recovery_check"].handler()

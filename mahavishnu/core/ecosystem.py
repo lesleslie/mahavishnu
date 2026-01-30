@@ -11,10 +11,9 @@ This module provides utilities to:
 from pathlib import Path
 from typing import Any
 
-import yaml
 from pydantic import BaseModel, Field, field_validator
+import yaml
 
-from .config import MahavishnuSettings
 from .errors import ConfigurationError
 
 
@@ -28,14 +27,21 @@ class RepositoryConfig(BaseModel):
     role: str
     tags: list[str] = Field(default_factory=list)
     description: str
-    mcp: str | None = Field(default=None, description="MCP server type: 'native', '3rd-party', or null")
+    mcp: str | None = Field(
+        default=None, description="MCP server type: 'native', '3rd-party', or null"
+    )
     audit: dict[str, Any] = Field(default_factory=dict)
 
     # URL fields for quick access to resources
-    repo_url: str | None = Field(default=None, description="Source code repository URL (GitHub, GitLab, etc.)")
+    repo_url: str | None = Field(
+        default=None, description="Source code repository URL (GitHub, GitLab, etc.)"
+    )
     homepage_url: str | None = Field(default=None, description="Project homepage URL")
     docs_url: str | None = Field(default=None, description="Documentation URL")
-    urls: dict[str, str] = Field(default_factory=dict, description="Additional categorized URLs (e.g., issues, wiki, releases)")
+    urls: dict[str, str] = Field(
+        default_factory=dict,
+        description="Additional categorized URLs (e.g., issues, wiki, releases)",
+    )
 
 
 class MCPServerConfig(BaseModel):
@@ -61,14 +67,17 @@ class MCPServerConfig(BaseModel):
     repo_url: str | None = Field(default=None, description="Source code repository URL")
     homepage_url: str | None = Field(default=None, description="Project homepage URL")
     docs_url: str | None = Field(default=None, description="Documentation URL")
-    urls: dict[str, str] = Field(default_factory=dict, description="Additional categorized URLs (e.g., issues, examples, api)")
+    urls: dict[str, str] = Field(
+        default_factory=dict,
+        description="Additional categorized URLs (e.g., issues, examples, api)",
+    )
 
     @field_validator("port")
     @classmethod
     def validate_port(cls, v: int | None, info: Any) -> int | None:
         """Validate port configuration."""
         # Skip validation for IDE-managed servers (no command or path)
-        if info.data.get("command") is None and info.data.get("path") is None:
+        if info.data.get("command") is info.data.get("path") is None:
             return v
         if info.data.get("type") == "http" and v is None:
             raise ValueError("HTTP servers must have a port")
@@ -152,7 +161,7 @@ class EcosystemLoader:
             )
 
         try:
-            with open(self.config_path) as f:
+            with self.config_path.open() as f:
                 data = yaml.safe_load(f)
         except Exception as e:
             raise ConfigurationError(
@@ -203,8 +212,7 @@ class EcosystemLoader:
         while remaining:
             # Find servers with no unresolved dependencies
             ready = [
-                s for s in remaining.values()
-                if all(dep in resolved for dep in s.dependencies)
+                s for s in remaining.values() if all(dep in resolved for dep in s.dependencies)
             ]
 
             if not ready:
@@ -269,16 +277,18 @@ class EcosystemLoader:
                     try:
                         __import__(server.package)
                     except ImportError:
-                        errors.append(f"{server.name}: Package '{server.package}' not installed or not importable")
+                        errors.append(
+                            f"{server.name}: Package '{server.package}' not installed or not importable"
+                        )
 
             # Check for port conflicts
             if server.port:
                 conflicting = [
-                    s for s in self.config.mcp_servers
+                    s
+                    for s in self.config.mcp_servers
                     if s.name != server.name
                     and s.port == server.port
-                    and s.status == "enabled"
-                    and server.status == "enabled"
+                    and s.status == server.status == "enabled"
                 ]
                 if conflicting:
                     errors.append(
@@ -351,7 +361,7 @@ class EcosystemLoader:
             ConfigurationError: If configuration cannot be saved
         """
         try:
-            with open(self.config_path, "w") as f:
+            with self.config_path.open("w") as f:
                 yaml.dump(self._config.model_dump(mode="yaml"), f, default_flow_style=False)
         except Exception as e:
             raise ConfigurationError(

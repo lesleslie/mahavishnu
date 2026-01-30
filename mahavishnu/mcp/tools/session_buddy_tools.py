@@ -33,7 +33,7 @@ def register_session_buddy_tools(server, session_manager, mcp_client):
 
             return {"status": "success", "result": result}
         except Exception as e:
-            return {"status": "error", "error": f"Failed to index code graph: {str(e)}"}
+            return {"status": "error", "error": f"Failed to index code graph: {e}"}
 
     @server.tool()
     async def get_function_context(project_path: str, function_name: str) -> dict[str, Any]:
@@ -58,7 +58,7 @@ def register_session_buddy_tools(server, session_manager, mcp_client):
 
             return {"status": "success", "result": result}
         except Exception as e:
-            return {"status": "error", "error": f"Failed to get function context: {str(e)}"}
+            return {"status": "error", "error": f"Failed to get function context: {e}"}
 
     @server.tool()
     async def find_related_code(project_path: str, file_path: str) -> dict[str, Any]:
@@ -83,7 +83,7 @@ def register_session_buddy_tools(server, session_manager, mcp_client):
 
             return {"status": "success", "result": result}
         except Exception as e:
-            return {"status": "error", "error": f"Failed to find related code: {str(e)}"}
+            return {"status": "error", "error": f"Failed to find related code: {e}"}
 
     @server.tool()
     async def index_documentation(project_path: str) -> dict[str, Any]:
@@ -107,7 +107,7 @@ def register_session_buddy_tools(server, session_manager, mcp_client):
 
             return {"status": "success", "result": result}
         except Exception as e:
-            return {"status": "error", "error": f"Failed to index documentation: {str(e)}"}
+            return {"status": "error", "error": f"Failed to index documentation: {e}"}
 
     @server.tool()
     async def search_documentation(query: str) -> dict[str, Any]:
@@ -131,7 +131,7 @@ def register_session_buddy_tools(server, session_manager, mcp_client):
 
             return {"status": "success", "result": result}
         except Exception as e:
-            return {"status": "error", "error": f"Failed to search documentation: {str(e)}"}
+            return {"status": "error", "error": f"Failed to search documentation: {e}"}
 
     @server.tool()
     async def send_project_message(
@@ -172,7 +172,7 @@ def register_session_buddy_tools(server, session_manager, mcp_client):
 
             return {"status": "success", "result": result}
         except Exception as e:
-            return {"status": "error", "error": f"Failed to send project message: {str(e)}"}
+            return {"status": "error", "error": f"Failed to send project message: {e}"}
 
     @server.tool()
     async def list_project_messages(project: str) -> dict[str, Any]:
@@ -196,6 +196,6 @@ def register_session_buddy_tools(server, session_manager, mcp_client):
 
             return {"status": "success", "result": result}
         except Exception as e:
-            return {"status": "error", "error": f"Failed to list project messages: {str(e)}"}
+            return {"status": "error", "error": f"Failed to list project messages: {e}"}
 
     print("✅ Registered 7 Session Buddy integration tools with MCP server")

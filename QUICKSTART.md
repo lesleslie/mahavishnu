@@ -39,13 +39,16 @@ uv pip install opensearch-py
 
 ```python
 """Shared code graph analyzer - used by Session Buddy and Mahavishnu"""
+
 import ast
 from pathlib import Path
 from dataclasses import dataclass
 
+
 @dataclass
 class FunctionNode:
     """Function or method"""
+
     id: str
     name: str
     file_id: str
@@ -53,6 +56,7 @@ class FunctionNode:
     start_line: int
     end_line: int
     calls: list[str]
+
 
 class CodeGraphAnalyzer:
     """Analyze and index codebase structure"""
@@ -63,11 +67,7 @@ class CodeGraphAnalyzer:
     async def analyze_repository(self, repo_path: str) -> dict:
         """Analyze repository and build code graph."""
         # TODO: Implement AST parsing
-        return {
-            "files_indexed": 0,
-            "functions_indexed": 0,
-            "classes_indexed": 0
-        }
+        return {"files_indexed": 0, "functions_indexed": 0, "classes_indexed": 0}
 ```
 
 ### 3. Write First Test
@@ -77,6 +77,7 @@ class CodeGraphAnalyzer:
 ```python
 import pytest
 from mcp_common.code_graph import CodeGraphAnalyzer
+
 
 @pytest.mark.asyncio
 async def test_analyze_simple_repository(tmp_path):

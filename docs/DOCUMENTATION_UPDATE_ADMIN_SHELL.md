@@ -67,7 +67,7 @@ ______________________________________________________________________
 
 #### Documentation Section
 
-- Added link to [Admin Shell Guide](docs/ADMIN_SHELL.md)
+- Added link to [Admin Shell Guide](ADMIN_SHELL.md)
 - Updated documentation index to include admin shell
 
 **Changes Summary**:

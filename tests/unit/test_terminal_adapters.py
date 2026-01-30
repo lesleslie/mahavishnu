@@ -1,13 +1,12 @@
 """Unit tests for terminal adapters."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
-from mahavishnu.terminal.adapters.base import TerminalAdapter
+import pytest
+
 from mahavishnu.terminal.adapters.mcpretentious import (
     McpretentiousAdapter,
     SessionNotFound,
-    TerminalError,
 )
 
 
@@ -141,9 +140,7 @@ async def test_mcpretentious_adapter_list_sessions():
     adapter = McpretentiousAdapter(mock_mcp)
 
     # Mock list response
-    mock_mcp.call_tool = AsyncMock(
-        return_value={"terminals": [{"id": "term_1"}, {"id": "term_2"}]}
-    )
+    mock_mcp.call_tool = AsyncMock(return_value={"terminals": [{"id": "term_1"}, {"id": "term_2"}]})
 
     sessions = await adapter.list_sessions()
 
@@ -154,8 +151,8 @@ async def test_mcpretentious_adapter_list_sessions():
 @pytest.mark.asyncio
 async def test_terminal_manager_concurrency():
     """Test concurrent session launch with semaphore."""
-    from mahavishnu.terminal.manager import TerminalManager
     from mahavishnu.terminal.config import TerminalSettings
+    from mahavishnu.terminal.manager import TerminalManager
 
     mock_mcp = MockMCPClient()
     adapter = McpretentiousAdapter(mock_mcp)
@@ -175,8 +172,8 @@ async def test_terminal_manager_concurrency():
 @pytest.mark.asyncio
 async def test_terminal_manager_capture_all_outputs():
     """Test capturing outputs from multiple sessions concurrently."""
-    from mahavishnu.terminal.manager import TerminalManager
     from mahavishnu.terminal.config import TerminalSettings
+    from mahavishnu.terminal.manager import TerminalManager
 
     mock_mcp = MockMCPClient()
     adapter = McpretentiousAdapter(mock_mcp)
@@ -197,8 +194,8 @@ async def test_terminal_manager_capture_all_outputs():
 @pytest.mark.asyncio
 async def test_terminal_manager_close_all():
     """Test closing all sessions."""
-    from mahavishnu.terminal.manager import TerminalManager
     from mahavishnu.terminal.config import TerminalSettings
+    from mahavishnu.terminal.manager import TerminalManager
 
     mock_mcp = MockMCPClient()
     adapter = McpretentiousAdapter(mock_mcp)

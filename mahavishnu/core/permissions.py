@@ -1,6 +1,8 @@
 """Permissions and RBAC module for Mahavishnu."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+UTC = timezone.utc
 from enum import Enum
 
 import jwt
@@ -108,9 +110,8 @@ class RBACManager:
         has_permission = False
         for role in user.roles:
             # If role allows all repos or user has access to this specific repo
-            if (
-                permission in role.permissions
-                and (role.allowed_repos is None or repo in role.allowed_repos)
+            if permission in role.permissions and (
+                role.allowed_repos is None or repo in role.allowed_repos
             ):
                 has_permission = True
                 break
@@ -165,8 +166,8 @@ class JWTManager:
         """Create a JWT token for a user."""
         payload = {
             "user_id": user_id,
-            "exp": datetime.utcnow() + timedelta(minutes=self.expire_minutes),
-            "iat": datetime.utcnow(),
+            "exp": datetime.now(tz=UTC) + timedelta(minutes=self.expire_minutes),
+            "iat": datetime.now(tz=UTC),
             "type": "access",
         }
 
@@ -193,8 +194,8 @@ class JWTManager:
         if "exp" in payload:
             del payload["exp"]
 
-        payload["exp"] = datetime.utcnow() + timedelta(minutes=self.expire_minutes)
-        payload["refreshed_at"] = datetime.utcnow().isoformat()
+        payload["exp"] = datetime.now(tz=UTC) + timedelta(minutes=self.expire_minutes)
+        payload["refreshed_at"] = datetime.now(tz=UTC).isoformat()
 
         return jwt.encode(payload, self.secret, algorithm=self.algorithm)
 

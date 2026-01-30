@@ -2,7 +2,7 @@
 
 import pytest
 
-from mahavishnu.shell.formatters import WorkflowFormatter, LogFormatter, RepoFormatter
+from mahavishnu.shell.formatters import LogFormatter, RepoFormatter, WorkflowFormatter
 
 
 @pytest.mark.unit

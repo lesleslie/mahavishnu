@@ -55,7 +55,7 @@ async def errors(app: MahavishnuApp, limit: int = 10) -> None:
                     "message": error.get("message", "Unknown error"),
                 }
             )
-    error_entries.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    error_entries.sort(key=lambda x: x.get("timestamp", "") or "", reverse=True)
     error_entries = error_entries[:limit]
     if not error_entries:
         print("No errors found")

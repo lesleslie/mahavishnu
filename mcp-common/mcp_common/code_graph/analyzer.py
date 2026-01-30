@@ -1,15 +1,14 @@
 """Shared code graph analyzer - used by Session Buddy and Mahavishnu"""
+
 import ast
-import os
-from pathlib import Path
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set
-import asyncio
+from pathlib import Path
 
 
 @dataclass
 class CodeNode:
     """Base class for code nodes"""
+
     id: str
     name: str
     file_id: str
@@ -19,6 +18,7 @@ class CodeNode:
 @dataclass
 class FunctionNode(CodeNode):
     """Function or method"""
+
     is_export: bool
     start_line: int
     end_line: int
@@ -29,6 +29,7 @@ class FunctionNode(CodeNode):
 @dataclass
 class ClassNode(CodeNode):
     """Class definition"""
+
     methods: list[str]
     inherits_from: list[str]
 
@@ -36,8 +37,9 @@ class ClassNode(CodeNode):
 @dataclass
 class ImportNode(CodeNode):
     """Import statement"""
+
     imported_from: str
-    alias: Optional[str] = None
+    alias: str | None = None
 
 
 class CodeGraphAnalyzer:
@@ -45,8 +47,8 @@ class CodeGraphAnalyzer:
 
     def __init__(self, project_path: Path):
         self.project_path = project_path
-        self.nodes: Dict[str, CodeNode] = {}
-        self.file_to_nodes: Dict[str, List[str]] = {}
+        self.nodes: dict[str, CodeNode] = {}
+        self.file_to_nodes: dict[str, list[str]] = {}
 
     async def analyze_repository(self, repo_path: str) -> dict:
         """Analyze repository and build code graph."""
@@ -77,13 +79,13 @@ class CodeGraphAnalyzer:
             "files_indexed": files_indexed,
             "functions_indexed": functions_indexed,
             "classes_indexed": classes_indexed,
-            "total_nodes": len(self.nodes)
+            "total_nodes": len(self.nodes),
         }
 
     async def _analyze_file(self, file_path: Path):
         """Analyze a single Python file and extract code graph information."""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Parse the file with AST
@@ -92,18 +94,13 @@ class CodeGraphAnalyzer:
             # Create a file node
             file_node_id = f"file:{file_path}"
             file_node = CodeNode(
-                id=file_node_id,
-                name=file_path.name,
-                file_id=str(file_path),
-                node_type="file"
+                id=file_node_id, name=file_path.name, file_id=str(file_path), node_type="file"
             )
             self.nodes[file_node_id] = file_node
 
             # Process all nodes in the AST
             for node in ast.walk(tree):
-                if isinstance(node, ast.FunctionDef):
-                    await self._process_function_def(node, file_path, content)
-                elif isinstance(node, ast.AsyncFunctionDef):
+                if isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
                     await self._process_function_def(node, file_path, content)
                 elif isinstance(node, ast.ClassDef):
                     await self._process_class_def(node, file_path, content)
@@ -123,7 +120,7 @@ class CodeGraphAnalyzer:
         func_id = f"func:{file_path}:{func_name}:{func_node.lineno}"
 
         # Determine if function is exported (not private)
-        is_export = not func_name.startswith('_')
+        is_export = not func_name.startswith("_")
 
         # Find function calls within the function
         calls = []
@@ -141,8 +138,8 @@ class CodeGraphAnalyzer:
             file_id=str(file_path),
             is_export=is_export,
             start_line=func_node.lineno,
-            end_line=getattr(func_node, 'end_lineno', func_node.lineno),
-            calls=list(set(calls))  # Remove duplicates
+            end_line=getattr(func_node, "end_lineno", func_node.lineno),
+            calls=list(set(calls)),  # Remove duplicates
         )
 
         self.nodes[func_id] = func_node_obj
@@ -182,7 +179,7 @@ class CodeGraphAnalyzer:
             file_id=str(file_path),
             node_type="class",
             methods=methods,
-            inherits_from=inherits_from
+            inherits_from=inherits_from,
         )
 
         self.nodes[class_id] = class_node_obj
@@ -207,7 +204,7 @@ class CodeGraphAnalyzer:
                     file_id=str(file_path),
                     node_type="import",
                     imported_from=import_name,
-                    alias=import_alias
+                    alias=import_alias,
                 )
 
                 self.nodes[import_id] = import_node_obj
@@ -231,7 +228,7 @@ class CodeGraphAnalyzer:
                     file_id=str(file_path),
                     node_type="import",
                     imported_from=module,
-                    alias=import_alias
+                    alias=import_alias,
                 )
 
                 self.nodes[import_id] = import_node_obj
@@ -245,7 +242,8 @@ class CodeGraphAnalyzer:
         """Get comprehensive context for a function."""
         # Find the function node
         func_nodes = [
-            node for node_id, node in self.nodes.items()
+            node
+            for node_id, node in self.nodes.items()
             if isinstance(node, FunctionNode) and node.name == function_name
         ]
 
@@ -258,10 +256,12 @@ class CodeGraphAnalyzer:
             "function": func_node,
             "file_path": func_node.file_id,
             "calls": func_node.calls,
-            "is_export": func_node.is_export
+            "is_export": func_node.is_export,
         }
 
-    async def find_related_files(self, file_path: str, relationship_type: str = "import") -> list[dict]:
+    async def find_related_files(
+        self, file_path: str, relationship_type: str = "import"
+    ) -> list[dict]:
         """Find files related by imports/calls."""
         related = []
 
@@ -275,13 +275,17 @@ class CodeGraphAnalyzer:
                         if other_file != file_path:
                             for other_node_id in other_nodes:
                                 other_node = self.nodes[other_node_id]
-                                if (isinstance(other_node, ImportNode) and
-                                    hasattr(other_node, 'imported_from') and
-                                    other_node.imported_from in node.name):
-                                    related.append({
-                                        "file": other_file,
-                                        "relationship": "import",
-                                        "node": other_node
-                                    })
+                                if (
+                                    isinstance(other_node, ImportNode)
+                                    and hasattr(other_node, "imported_from")
+                                    and other_node.imported_from in node.name
+                                ):
+                                    related.append(
+                                        {
+                                            "file": other_file,
+                                            "relationship": "import",
+                                            "node": other_node,
+                                        }
+                                    )
 
         return related

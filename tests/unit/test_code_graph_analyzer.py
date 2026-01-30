@@ -1,13 +1,15 @@
 """Unit tests for code graph analyzer functionality."""
-import pytest
-import tempfile
+
 import os
 from pathlib import Path
 import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'mcp-common'))
+import tempfile
 
-from mcp_common.code_graph.analyzer import CodeGraphAnalyzer, FunctionNode, ClassNode, ImportNode
+import pytest
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "mcp-common"))
+
+from mcp_common.code_graph.analyzer import ClassNode, CodeGraphAnalyzer, FunctionNode, ImportNode
 
 
 @pytest.mark.asyncio
@@ -99,21 +101,21 @@ async def test_code_graph_analyzer_related_files():
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Create a main module
         main_file = Path(tmp_dir) / "main.py"
-        main_content = '''
+        main_content = """
 from helper import helper_function
 
 def main():
     result = helper_function()
     return result
-'''
+"""
         main_file.write_text(main_content)
 
         # Create a helper module
         helper_file = Path(tmp_dir) / "helper.py"
-        helper_content = '''
+        helper_content = """
 def helper_function():
     return "helper result"
-'''
+"""
         helper_file.write_text(helper_content)
 
         # Create analyzer and analyze the repository
@@ -171,14 +173,24 @@ class ComplexClass:
 
         # Find the complex function and verify its calls
         complex_func_nodes = [
-            node for node in analyzer.nodes.values()
+            node
+            for node in analyzer.nodes.values()
             if isinstance(node, FunctionNode) and node.name == "complex_function"
         ]
 
         assert len(complex_func_nodes) == 1
         complex_func = complex_func_nodes[0]
         # The complex function should call utility_func_a and utility_func_b
-        assert len([call for call in complex_func.calls if call in ["utility_func_a", "utility_func_b"]]) >= 2
+        assert (
+            len(
+                [
+                    call
+                    for call in complex_func.calls
+                    if call in ["utility_func_a", "utility_func_b"]
+                ]
+            )
+            >= 2
+        )
 
 
 @pytest.mark.asyncio
@@ -187,7 +199,7 @@ async def test_code_graph_analyzer_private_functions():
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Create a test Python file with private functions
         test_file = Path(tmp_dir) / "private_module.py"
-        test_content = '''
+        test_content = """
 def public_function():
     return _private_helper()
 
@@ -200,7 +212,7 @@ class PublicClass:
 
     def _private_method(self):
         return "private method result"
-'''
+"""
         test_file.write_text(test_content)
 
         # Create analyzer and analyze the repository

@@ -355,6 +355,7 @@ Mahavishnu uses Oneiric for configuration and logging, following these patterns:
 from pydantic import Field
 from mcp_common.cli import MCPServerSettings
 
+
 class MahavishnuSettings(MCPServerSettings):
     """Mahavishnu configuration extending Oneiric MCPServerSettings.
 
@@ -420,6 +421,7 @@ import structlog
 from pathlib import Path
 from typing import Any
 
+
 def setup_logging(settings: MahavishnuSettings) -> None:
     """Setup structured logging with configurable sinks.
 
@@ -445,6 +447,7 @@ def setup_logging(settings: MahavishnuSettings) -> None:
     # Add correlation ID if tracing is enabled
     if settings.tracing_enabled:
         from opentelemetry import trace
+
         processors.append(_add_correlation_id)
 
     # Choose renderer based on environment
@@ -460,6 +463,7 @@ def setup_logging(settings: MahavishnuSettings) -> None:
         cache_logger_on_first_use=True,
     )
 
+
 def _add_correlation_id(
     logger: Any,
     method_name: str,
@@ -467,6 +471,7 @@ def _add_correlation_id(
 ) -> dict[str, Any]:
     """Add OpenTelemetry trace correlation ID to log entries."""
     from opentelemetry import trace
+
     current_span = trace.get_current_span()
     if current_span and current_span.is_recording():
         event_dict["trace_id"] = format(current_span.context.trace_id, "032x")
@@ -485,15 +490,18 @@ from abc import ABC, abstractmethod
 from typing import Any
 from dataclasses import dataclass
 
+
 @dataclass
 class AdapterResult:
     """Standard result type for adapter execution."""
+
     status: str  # "success", "failure", "partial"
     repos_processed: int
     repos_failed: int
     execution_time_seconds: float
     metadata: dict[str, Any]
     errors: list[str] | None = None
+
 
 class OrchestratorAdapter(ABC):
     """Base class for orchestrator adapters with resilience patterns."""
@@ -555,7 +563,7 @@ class OrchestratorAdapter(ABC):
                     self.stats["retries"] += attempt
                     raise
 
-                delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+                delay = base_delay * (2**attempt) + random.uniform(0, 1)
                 await asyncio.sleep(delay)
 
         self.stats["retries"] += max_attempts - 1
@@ -572,6 +580,7 @@ from fastmcp import FastMCP
 from mcp_common.cli import MCPServerCLIFactory
 from mcp_common.ui import ServerPanels
 from ..core.config import MahavishnuSettings
+
 
 class MahavishnuMCPServer:
     """Mahavishnu MCP server using FastMCP + mcp-common patterns."""
@@ -636,6 +645,7 @@ from fastmcp import FastMCP
 from mcp_common.ui import ServerPanels
 from ...core.config import MahavishnuSettings
 from ...core.app import MahavishnuApp
+
 
 def register_repo_tools(mcp_app: FastMCP, settings: MahavishnuSettings) -> None:
     """Register repository management tools."""
@@ -717,6 +727,7 @@ app.add_typer(workflow_app, name="workflow")
 app.add_typer(adapter_app, name="adapter")
 app.add_typer(repo_app, name="repo")
 
+
 @workflow_app.command()
 def sweep(
     tag: str = typer.Option(..., "--tag", "-t", help="Tag to filter repositories"),
@@ -739,6 +750,7 @@ def sweep(
 
     typer.echo(f"Workflow completed: {result}")
 
+
 @repo_app.command()
 def list(
     tag: str | None = typer.Option(None, "--tag", "-t", help="Filter by tag"),
@@ -752,9 +764,11 @@ def list(
     for repo in repos:
         typer.echo(f"  {repo.path} - {', '.join(repo.tags)}")
 
+
 # MCP server lifecycle commands
 mcp_app = typer.Typer()
 app.add_typer(mcp_app, name="mcp")
+
 
 @mcp_app.command()
 def start():
@@ -772,6 +786,7 @@ def start():
     )
 
     factory.start()
+
 
 @mcp_app.command()
 def status():
@@ -795,14 +810,17 @@ from dataclasses import dataclass
 from typing import Any
 from crackerjack import run_crackerjack
 
+
 @dataclass
 class QCResult:
     """Quality control result."""
+
     repo_path: str
     score: int
     passed: bool
     checks: dict[str, Any]
     errors: list[str] | None = None
+
 
 class QCRunner:
     """Crackerjack QC execution wrapper."""
@@ -874,9 +892,11 @@ from datetime import datetime
 from typing import Any
 import json
 
+
 @dataclass
 class CheckpointState:
     """Session checkpoint state."""
+
     workflow_id: str
     task: dict[str, Any]
     repos: list[str]
@@ -885,6 +905,7 @@ class CheckpointState:
     current_step: str
     metadata: dict[str, Any]
     timestamp: str
+
 
 class CheckpointManager:
     """Session-Buddy checkpoint management."""
@@ -955,10 +976,7 @@ class CheckpointManager:
             raise ValueError(f"Checkpoint not found: {workflow_id}")
 
         # Calculate remaining repos
-        remaining_repos = [
-            repo for repo in state.repos
-            if repo not in state.completed_repos
-        ]
+        remaining_repos = [repo for repo in state.repos if repo not in state.completed_repos]
 
         return {
             "workflow_id": workflow_id,
@@ -1610,6 +1628,7 @@ tests/e2e/
 
 ```python
 from hypothesis import given, strategies as st
+
 
 @given(st.lists(st.text(min_size=1), min_size=1, max_size=100))
 def test_repo_filtering_is_idempotent(tags):

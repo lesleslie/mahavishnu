@@ -1,6 +1,6 @@
 """Unit tests for error handling hierarchy."""
-import pytest
-from mahavishnu.core.errors import ConfigurationError, ValidationError, AdapterError
+
+from mahavishnu.core.errors import AdapterError, ConfigurationError, ValidationError
 
 
 def test_error_hierarchy():

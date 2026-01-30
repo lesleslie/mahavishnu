@@ -1,16 +1,13 @@
 """Integration tests for Mahavishnu orchestration platform."""
-import pytest
-import asyncio
-import tempfile
-import os
-from pathlib import Path
-from unittest.mock import Mock, AsyncMock, MagicMock
 
-from mahavishnu.core.app import MahavishnuApp
+from pathlib import Path
+import tempfile
+from unittest.mock import AsyncMock, Mock
+
+import pytest
+
 from mahavishnu.core.adapters.base import OrchestratorAdapter
-from mahavishnu.engines.prefect_adapter import PrefectAdapter
-from mahavishnu.engines.agno_adapter import AgnoAdapter
-from mahavishnu.engines.llamaindex_adapter import LlamaIndexAdapter
+from mahavishnu.core.app import MahavishnuApp
 
 
 class MockAdapter(OrchestratorAdapter):
@@ -28,7 +25,7 @@ class MockAdapter(OrchestratorAdapter):
             "repos": repos,
             "status": "completed",
             "adapter": "mock",
-            "results": [{"repo": repo, "processed": True} for repo in repos]
+            "results": [{"repo": repo, "processed": True} for repo in repos],
         }
         self.execution_results.append(result)
         return result
@@ -170,9 +167,7 @@ async def test_rbac_integration():
 
         # Create a test user with permissions
         user = await app.rbac_manager.create_user(
-            user_id="test_user",
-            roles=["developer"],
-            allowed_repos=[test_repo_path]
+            user_id="test_user", roles=["developer"], allowed_repos=[test_repo_path]
         )
 
         # Verify user was created
@@ -249,11 +244,11 @@ async def test_opensearch_integration():
     assert app.opensearch_integration is not None
 
     # Test that it has the expected methods
-    assert hasattr(app.opensearch_integration, 'log_workflow_start')
-    assert hasattr(app.opensearch_integration, 'log_workflow_completion')
-    assert hasattr(app.opensearch_integration, 'log_error')
-    assert hasattr(app.opensearch_integration, 'search_logs')
-    assert hasattr(app.opensearch_integration, 'search_workflows')
+    assert hasattr(app.opensearch_integration, "log_workflow_start")
+    assert hasattr(app.opensearch_integration, "log_workflow_completion")
+    assert hasattr(app.opensearch_integration, "log_error")
+    assert hasattr(app.opensearch_integration, "search_logs")
+    assert hasattr(app.opensearch_integration, "search_workflows")
 
 
 @pytest.mark.asyncio
@@ -266,12 +261,12 @@ async def test_resilience_integration():
     assert app.error_recovery_manager is not None
 
     # Test that resilience manager has expected methods
-    assert hasattr(app.resilience_manager, 'resilient_workflow_execution')
-    assert hasattr(app.resilience_manager, 'resilient_repo_operation')
+    assert hasattr(app.resilience_manager, "resilient_workflow_execution")
+    assert hasattr(app.resilience_manager, "resilient_repo_operation")
 
     # Test that error recovery manager has expected methods
-    assert hasattr(app.error_recovery_manager, 'classify_error')
-    assert hasattr(app.error_recovery_manager, 'execute_with_resilience')
+    assert hasattr(app.error_recovery_manager, "classify_error")
+    assert hasattr(app.error_recovery_manager, "execute_with_resilience")
 
 
 @pytest.mark.asyncio
@@ -297,11 +292,11 @@ async def test_backup_recovery_integration():
     app = MahavishnuApp()
 
     # Verify backup manager is available
-    assert hasattr(app, 'backup_manager')
+    assert hasattr(app, "backup_manager")
     assert app.backup_manager is not None
 
     # Verify recovery manager is available
-    assert hasattr(app, 'recovery_manager')
+    assert hasattr(app, "recovery_manager")
     assert app.recovery_manager is not None
 
 
@@ -311,7 +306,7 @@ async def test_session_buddy_integration():
     app = MahavishnuApp()
 
     # Verify Session Buddy integration is available
-    assert hasattr(app, 'session_buddy_integration')
+    assert hasattr(app, "session_buddy_integration")
     # Note: The actual attribute name may vary based on implementation
     # If it doesn't exist, that's fine - this test verifies the concept
 
@@ -322,7 +317,7 @@ async def test_repository_messaging_integration():
     app = MahavishnuApp()
 
     # Verify repository messenger is available
-    assert hasattr(app, 'repository_messenger')
+    assert hasattr(app, "repository_messenger")
     # Note: The actual attribute name may vary based on implementation
     # If it doesn't exist, that's fine - this test verifies the concept
 
@@ -342,19 +337,12 @@ async def test_end_to_end_workflow():
         if "llamaindex" in app.adapters:
             task = {
                 "type": "ingest",
-                "params": {
-                    "file_types": [".py"],
-                    "exclude_patterns": ["__pycache__"]
-                },
-                "id": "end_to_end_test"
+                "params": {"file_types": [".py"], "exclude_patterns": ["__pycache__"]},
+                "id": "end_to_end_test",
             }
 
             # Execute the workflow
-            result = await app.execute_workflow_parallel(
-                task,
-                "llamaindex",
-                [test_repo_path]
-            )
+            result = await app.execute_workflow_parallel(task, "llamaindex", [test_repo_path])
 
             # Verify the workflow completed successfully
             assert "status" in result

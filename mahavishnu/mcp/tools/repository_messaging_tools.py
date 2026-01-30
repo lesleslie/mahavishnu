@@ -71,7 +71,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "priority": message.priority.value,
             }
         except Exception as e:
-            return {"status": "error", "error": f"Failed to send repository message: {str(e)}"}
+            return {"status": "error", "error": f"Failed to send repository message: {e}"}
 
     @server.tool()
     async def broadcast_repository_message(
@@ -128,7 +128,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "target_repos": target_repos or app.get_repos(),
             }
         except Exception as e:
-            return {"status": "error", "error": f"Failed to broadcast repository message: {str(e)}"}
+            return {"status": "error", "error": f"Failed to broadcast repository message: {e}"}
 
     @server.tool()
     async def get_repository_messages(
@@ -194,7 +194,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "count": len(messages),
             }
         except Exception as e:
-            return {"status": "error", "error": f"Failed to get repository messages: {str(e)}"}
+            return {"status": "error", "error": f"Failed to get repository messages: {e}"}
 
     @server.tool()
     async def acknowledge_repository_message(message_id: str, receiver_repo: str) -> dict[str, Any]:
@@ -221,7 +221,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
         except Exception as e:
             return {
                 "status": "error",
-                "error": f"Failed to acknowledge repository message: {str(e)}",
+                "error": f"Failed to acknowledge repository message: {e}",
             }
 
     @server.tool()
@@ -246,7 +246,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "changes_notified": result.get("changes_notified", 0),
             }
         except Exception as e:
-            return {"status": "error", "error": f"Failed to notify repository changes: {str(e)}"}
+            return {"status": "error", "error": f"Failed to notify repository changes: {e}"}
 
     @server.tool()
     async def notify_workflow_status(
@@ -274,7 +274,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "workflow_id": workflow_id,
             }
         except Exception as e:
-            return {"status": "error", "error": f"Failed to notify workflow status: {str(e)}"}
+            return {"status": "error", "error": f"Failed to notify workflow status: {e}"}
 
     @server.tool()
     async def send_quality_alert(
@@ -303,6 +303,6 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "severity": severity,
             }
         except Exception as e:
-            return {"status": "error", "error": f"Failed to send quality alert: {str(e)}"}
+            return {"status": "error", "error": f"Failed to send quality alert: {e}"}
 
     print("✅ Registered 7 repository messaging tools with MCP server")

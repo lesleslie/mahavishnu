@@ -20,7 +20,7 @@ def add_backup_commands(app: typer.Typer) -> None:
     ) -> None:
         """Create a new backup."""
 
-        async def _create():
+        async def _create() -> None:
             from .core.app import MahavishnuApp
 
             maha_app = MahavishnuApp()
@@ -42,7 +42,7 @@ def add_backup_commands(app: typer.Typer) -> None:
     def backup_list() -> None:
         """List all available backups."""
 
-        async def _list():
+        async def _list() -> None:
             from .core.app import MahavishnuApp
 
             maha_app = MahavishnuApp()
@@ -67,7 +67,7 @@ def add_backup_commands(app: typer.Typer) -> None:
     def backup_restore(backup_id: str = typer.Argument(..., help="Backup ID to restore")) -> None:
         """Restore from a backup."""
 
-        async def _restore():
+        async def _restore() -> None:
             from .core.app import MahavishnuApp
 
             maha_app = MahavishnuApp()
@@ -90,7 +90,7 @@ def add_backup_commands(app: typer.Typer) -> None:
     def backup_info(backup_id: str = typer.Argument(..., help="Backup ID to inspect")) -> None:
         """Show information about a specific backup."""
 
-        async def _info():
+        async def _info() -> None:
             from .core.app import MahavishnuApp
 
             maha_app = MahavishnuApp()
@@ -117,7 +117,7 @@ def add_backup_commands(app: typer.Typer) -> None:
     def backup_check() -> None:
         """Run disaster recovery check."""
 
-        async def _check():
+        async def _check() -> None:
             from .core.app import MahavishnuApp
 
             maha_app = MahavishnuApp()
@@ -137,7 +137,7 @@ def add_backup_commands(app: typer.Typer) -> None:
     def backup_procedures() -> None:
         """Show disaster recovery procedures."""
 
-        async def _procedures():
+        async def _procedures() -> None:
             from .core.app import MahavishnuApp
 
             maha_app = MahavishnuApp()

@@ -1,10 +1,17 @@
 """Unit tests for monitoring and alerting functionality."""
+
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, MagicMock
-from mahavishnu.core.monitoring import AlertManager, AlertSeverity, AlertType, Alert, MonitoringService
+
 from mahavishnu.core.app import MahavishnuApp
+from mahavishnu.core.monitoring import (
+    Alert,
+    AlertManager,
+    AlertSeverity,
+    AlertType,
+    MonitoringService,
+)
 
 
 @pytest.fixture
@@ -31,7 +38,7 @@ async def test_alert_creation():
         alert_type=AlertType.WORKFLOW_FAILURE,
         title="Test Alert",
         description="This is a test alert",
-        details={"test": True, "value": 42}
+        details={"test": True, "value": 42},
     )
 
     # Verify alert was created correctly
@@ -61,7 +68,7 @@ async def test_alert_acknowledgement():
         alert_type=AlertType.SYSTEM_HEALTH,
         title="Ack Test Alert",
         description="This alert will be acknowledged",
-        details={}
+        details={},
     )
 
     # Verify it's active
@@ -88,7 +95,12 @@ async def test_severity_based_handling():
     alert_manager = AlertManager(app)
 
     # Test all severity levels
-    severities = [AlertSeverity.LOW, AlertSeverity.MEDIUM, AlertSeverity.HIGH, AlertSeverity.CRITICAL]
+    severities = [
+        AlertSeverity.LOW,
+        AlertSeverity.MEDIUM,
+        AlertSeverity.HIGH,
+        AlertSeverity.CRITICAL,
+    ]
 
     for severity in severities:
         alert = await alert_manager.trigger_alert(
@@ -96,7 +108,7 @@ async def test_severity_based_handling():
             alert_type=AlertType.RESOURCE_EXHAUSTION,
             title=f"Test {severity.value} Alert",
             description=f"Alert with {severity.value} severity",
-            details={"severity": severity.value}
+            details={"severity": severity.value},
         )
 
         # Verify alert was created with correct severity
@@ -116,7 +128,7 @@ async def test_alert_type_handling():
         AlertType.RESOURCE_EXHAUSTION,
         AlertType.PERFORMANCE_DEGRADATION,
         AlertType.SECURITY_ISSUE,
-        AlertType.BACKUP_FAILURE
+        AlertType.BACKUP_FAILURE,
     ]
 
     for alert_type in alert_types:
@@ -125,7 +137,7 @@ async def test_alert_type_handling():
             alert_type=alert_type,
             title=f"Test {alert_type.value} Alert",
             description=f"Alert of type {alert_type.value}",
-            details={"type": alert_type.value}
+            details={"type": alert_type.value},
         )
 
         # Verify alert was created with correct type
@@ -195,7 +207,7 @@ async def test_alert_manager_handlers():
         alert_type=AlertType.WORKFLOW_FAILURE,
         title="Handler Test",
         description="Testing handler execution",
-        details={}
+        details={},
     )
 
     # Verify handler was called
@@ -216,7 +228,7 @@ async def test_monitoring_acknowledge_alert():
         alert_type=AlertType.SYSTEM_HEALTH,
         title="Ack Service Test",
         description="Testing service acknowledge",
-        details={}
+        details={},
     )
 
     # Verify it's active

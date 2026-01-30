@@ -122,13 +122,14 @@ class MahavishnuApp:
 
         # Initialize concurrency control
         self.semaphore = Semaphore(self.config.max_concurrent_workflows)
-        self.active_workflows = set()
-        self.workflow_queue = asyncio.Queue()
+        from typing import Set
+        self.active_workflows: Set[str] = set()
+        self.workflow_queue: asyncio.Queue = asyncio.Queue()
 
         # Initialize production features
         self.circuit_breaker = CircuitBreaker(
             threshold=self.config.circuit_breaker_threshold,
-            timeout=self.config.retry_base_delay * 10,  # Adjust as needed
+            timeout=int(self.config.retry_base_delay * 10),  # Convert to int
         )
 
         # Initialize observability
@@ -236,7 +237,7 @@ class MahavishnuApp:
             )
 
         try:
-            with open(repos_path) as f:
+            with repos_path.open() as f:
                 self.repos_config = yaml.safe_load(f)
 
             # Validate structure
@@ -270,8 +271,8 @@ class MahavishnuApp:
         Raises:
             ConfigurationError: If adapter initialization fails
         """
-        adapter_classes = {}
-        enabled_adapters = {}
+        adapter_classes: dict[str, type] = {}
+        enabled_adapters: dict[str, bool] = {}
 
         # Prefect - Core orchestration (enabled by default)
         if self.config.prefect_enabled:
@@ -326,7 +327,7 @@ class MahavishnuApp:
                     ) from e
 
     def get_repos(
-        self, tag: str | None = None, role: str | None = None, user_id: str = None
+        self, tag: str | None = None, role: str | None = None, user_id: str | None = None
     ) -> list[str]:
         """Get repository paths based on tag, role, or return all.
 
@@ -384,19 +385,7 @@ class MahavishnuApp:
                 if validated_path.exists():
                     # If user_id is provided, check permissions
                     if user_id:
-                        # Check if user has read permission for this repo
-                        import asyncio
-
-                        try:
-                            has_permission = asyncio.run(
-                                self.rbac_manager.check_permission(
-                                    user_id, str(validated_path), Permission.READ_REPO
-                                )
-                            )
-                            if has_permission:
-                                validated_repos.append(str(validated_path))
-                        except Exception:
-                            # If permission check fails, still allow access for backward compatibility
+                        if self._check_user_repo_permission(user_id, str(validated_path)):
                             validated_repos.append(str(validated_path))
                     else:
                         # No user specified, allow access
@@ -410,13 +399,26 @@ class MahavishnuApp:
 
         return validated_repos
 
+    def _check_user_repo_permission(self, user_id: str, repo_path: str) -> bool:
+        """Check if user has read permission for the repository."""
+        import asyncio
+
+        try:
+            has_permission = asyncio.run(
+                self.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO)
+            )
+            return has_permission
+        except Exception:
+            # If permission check fails, still allow access for backward compatibility
+            return True
+
     def get_all_repos(self) -> list[dict[str, Any]]:
         """Get all repositories with full metadata.
 
         Returns:
             List of repository dictionaries with path, tags, description
         """
-        return self.repos_config.get("repos", [])
+        return self.repos_config.get("repos", [])  # type: ignore
 
     def get_all_repo_paths(self) -> list[str]:
         """Get all repository paths.
@@ -424,7 +426,8 @@ class MahavishnuApp:
         Returns:
             List of all repository paths
         """
-        return [repo["path"] for repo in self.repos_config.get("repos", [])]
+        repos = self.repos_config.get("repos", [])  # type: ignore
+        return [repo["path"] for repo in repos]
 
     def get_roles(self) -> list[dict[str, Any]]:
         """Get all available roles.
@@ -490,7 +493,7 @@ class MahavishnuApp:
                 nicknames[nickname] = repo.get("name", repo.get("path", ""))
         return nicknames
 
-    def is_healthy(self) -> bool:
+    async def is_healthy(self) -> bool:
         """Check if application is healthy.
 
         Returns:
@@ -499,9 +502,9 @@ class MahavishnuApp:
         if not self.adapters:
             return False
 
-        for _adapter_name, adapter in self.adapters.items():
+        for adapter in self.adapters.values():
             try:
-                health = adapter.get_health()
+                health = await adapter.get_health()
                 if health.get("status") != "healthy":
                     return False
             except Exception:
@@ -534,7 +537,7 @@ class MahavishnuApp:
         task: dict[str, Any],
         adapter_name: str,
         repos: list[str] | None = None,
-        user_id: str = None,
+        user_id: str | None = None,
     ) -> dict[str, Any]:
         """Execute a workflow using the specified adapter.
 
@@ -551,56 +554,10 @@ class MahavishnuApp:
             ValidationError: If task or adapter_name is invalid
             AdapterError: If adapter execution fails
         """
-        # Validate adapter
-        if adapter_name not in self.adapters:
-            raise ValidationError(
-                message=f"Adapter not found: {adapter_name}",
-                details={
-                    "adapter": adapter_name,
-                    "available_adapters": list(self.adapters.keys()),
-                    "suggestion": "Check adapter is enabled in configuration",
-                },
-            )
-
-        # Get repos if not provided
-        if repos is None:
-            repos = self.get_repos(user_id=user_id)
-
-        # Validate repository paths to prevent directory traversal
-        validated_repos = []
-        for repo_path in repos:
-            try:
-                validated_path = _validate_path(repo_path, self.config.allowed_repo_paths)
-                validated_repos.append(str(validated_path))
-            except ValidationError as e:
-                raise ValidationError(
-                    message=f"Invalid repository path: {repo_path}",
-                    details={
-                        "repo_path": repo_path,
-                        "error": str(e),
-                        "suggestion": "Ensure repository path is valid and does not contain directory traversal sequences",
-                    },
-                ) from e
-
-        # If user_id is provided, check execute permission for each repo
-        if user_id:
-            for repo_path in validated_repos:
-                has_permission = await self.rbac_manager.check_permission(
-                    user_id, repo_path, Permission.EXECUTE_WORKFLOW
-                )
-                if not has_permission:
-                    raise ValidationError(
-                        message=f"User {user_id} does not have permission to execute workflows on {repo_path}",
-                        details={
-                            "user": user_id,
-                            "repo": repo_path,
-                            "permission": "EXECUTE_WORKFLOW",
-                            "suggestion": "Contact administrator to grant required permissions",
-                        },
-                    )
+        # Validate adapter and prepare for execution
+        adapter, validated_repos = await self._prepare_execution(adapter_name, task, repos, user_id)
 
         # Execute with adapter using parallel processing
-        adapter = self.adapters[adapter_name]
         try:
             # Add observability if enabled
             if self.observability:
@@ -640,30 +597,10 @@ class MahavishnuApp:
                 },
             ) from e
 
-    async def execute_workflow_parallel(
-        self,
-        task: dict[str, Any],
-        adapter_name: str,
-        repos: list[str] | None = None,
-        progress_callback=None,
-        user_id: str = None,
-    ) -> dict[str, Any]:
-        """Execute a workflow in parallel across repositories with progress reporting.
-
-        Args:
-            task: Task specification with 'type' and 'params' keys
-            adapter_name: Name of adapter to use
-            repos: Optional list of repositories (defaults to all repos)
-            progress_callback: Optional callback function to report progress
-            user_id: Optional user ID for permission checking
-
-        Returns:
-            Workflow execution result with timing and performance metrics
-
-        Raises:
-            ValidationError: If task or adapter_name is invalid
-            AdapterError: If adapter execution fails
-        """
+    async def _prepare_execution(
+        self, adapter_name: str, task: dict[str, Any], repos: list[str] | None, user_id: str | None
+    ) -> tuple["OrchestratorAdapter", list[str]]:
+        """Helper method to validate adapter and prepare for execution."""
         # Validate adapter
         if adapter_name not in self.adapters:
             raise ValidationError(
@@ -711,6 +648,36 @@ class MahavishnuApp:
                             "suggestion": "Contact administrator to grant required permissions",
                         },
                     )
+
+        adapter = self.adapters[adapter_name]
+        return adapter, validated_repos
+
+    async def execute_workflow_parallel(
+        self,
+        task: dict[str, Any],
+        adapter_name: str,
+        repos: list[str] | None = None,
+        progress_callback=None,
+        user_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Execute a workflow in parallel across repositories with progress reporting.
+
+        Args:
+            task: Task specification with 'type' and 'params' keys
+            adapter_name: Name of adapter to use
+            repos: Optional list of repositories (defaults to all repos)
+            progress_callback: Optional callback function to report progress
+            user_id: Optional user ID for permission checking
+
+        Returns:
+            Workflow execution result with timing and performance metrics
+
+        Raises:
+            ValidationError: If task or adapter_name is invalid
+            AdapterError: If adapter execution fails
+        """
+        # Validate adapter and prepare for execution
+        adapter, validated_repos = await self._prepare_execution(adapter_name, task, repos, user_id)
 
         # Create a unique workflow ID
         import uuid
@@ -781,7 +748,7 @@ class MahavishnuApp:
                     # Use circuit breaker for each repo processing
                     try:
                         result = await self.circuit_breaker.call(
-                            adapter.execute, {**task, "single_repo": repo_path}, [repo_path]
+                            adapter.execute, task | {"single_repo": repo_path}, [repo_path]
                         )
 
                         # Add result to workflow state
@@ -876,10 +843,6 @@ class MahavishnuApp:
             tasks = [process_single_repo(repo) for repo in validated_repos]
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            # Handle any exceptions that occurred during parallel execution
-            errors = []
-            successful_results = []
-
             execution_time = time.time() - start_time
 
             # End workflow trace
@@ -890,8 +853,8 @@ class MahavishnuApp:
                 )
 
             # Handle any exceptions that occurred during parallel execution
-            errors = []
-            successful_results = []
+            errors: list[dict[str, Any]] = []
+            successful_results: list[Any] = []
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
                     errors.append(
@@ -967,7 +930,7 @@ class MahavishnuApp:
                 "failed_repos": len(errors),
                 "execution_time_seconds": execution_time,
                 "results": successful_results,
-                "errors": errors if errors else None,
+                "errors": errors or None,
                 "concurrency_limit": self.config.max_concurrent_workflows,
                 "qc_enabled": self.config.qc_enabled,
                 "session_enabled": self.config.session_enabled,

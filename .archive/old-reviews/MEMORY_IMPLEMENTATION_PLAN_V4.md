@@ -96,12 +96,14 @@ postgres = [
 
 ```python
 """PostgreSQL connection management with CORRECTED pooling."""
+
 from typing import Optional
 import asyncpg
 from asyncpg import pool
 import structlog
 
 logger = structlog.get_logger(__name__)
+
 
 class PostgreSQLConnection:
     """PostgreSQL connection pool manager (FIXED VERSION).
@@ -121,16 +123,16 @@ class PostgreSQLConnection:
     def _build_dsn(self, config) -> str:
         """Build PostgreSQL DSN from config."""
         # Try postgres_url first
-        if hasattr(config, 'postgresql') and hasattr(config.postgresql, 'postgres_url'):
+        if hasattr(config, "postgresql") and hasattr(config.postgresql, "postgres_url"):
             if config.postgresql.postgres_url:
                 return config.postgresql.postgres_url
 
         # Build from components
-        host = getattr(config, 'pg_host', 'localhost')
-        port = getattr(config, 'pg_port', 5432)
-        database = getattr(config, 'pg_database', 'mahavishnu')
-        user = getattr(config, 'pg_user', 'postgres')
-        password = getattr(config, 'pg_password', '')
+        host = getattr(config, "pg_host", "localhost")
+        port = getattr(config, "pg_port", 5432)
+        database = getattr(config, "pg_database", "mahavishnu")
+        user = getattr(config, "pg_user", "postgres")
+        password = getattr(config, "pg_password", "")
 
         return f"postgresql://{user}:{password}@{host}:{port}/{database}"
 
@@ -142,15 +144,13 @@ class PostgreSQLConnection:
         timeout = 30
         command_timeout = 60
 
-        if hasattr(self.config, 'postgresql') and hasattr(self.config.postgresql, 'pool_size'):
+        if hasattr(self.config, "postgresql") and hasattr(self.config.postgresql, "pool_size"):
             pool_size = self.config.postgresql.pool_size
-        if hasattr(self.config, 'postgresql') and hasattr(self.config.postgresql, 'max_overflow'):
+        if hasattr(self.config, "postgresql") and hasattr(self.config.postgresql, "max_overflow"):
             max_overflow = self.config.postgresql.max_overflow
 
         logger.info(
-            "Creating PostgreSQL connection pool",
-            pool_size=pool_size,
-            max_overflow=max_overflow
+            "Creating PostgreSQL connection pool", pool_size=pool_size, max_overflow=max_overflow
         )
 
         self.pool = await pool.create(
@@ -162,7 +162,7 @@ class PostgreSQLConnection:
             command_timeout=command_timeout,
             # CRITICAL: Enable prepared statement cache
             max_cached_statement_lifetime=300,
-            max_cached_statements=500
+            max_cached_statements=500,
         )
 
         logger.info("PostgreSQL connection pool created successfully")
@@ -210,6 +210,7 @@ class PostgreSQLConnection:
 
 ```python
 """Vector store using Oneiric's pgvector adapter (ALL API FIXES APPLIED)."""
+
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
 import structlog
 
@@ -217,6 +218,7 @@ if TYPE_CHECKING:
     from typing import Optional
 
 logger = structlog.get_logger(__name__)
+
 
 class VectorStore:
     """Vector store using Oneiric's production-ready pgvector adapter.
@@ -256,7 +258,7 @@ class VectorStore:
                 port=self.config.pg_port,
                 database=self.config.pg_database,
                 user=self.config.pg_user,
-                password=self.config.pg_password
+                password=self.config.pg_password,
             )
 
             self.adapter = PgvectorAdapter(settings)
@@ -275,7 +277,7 @@ class VectorStore:
         embedding: List[float],
         memory_type: str,
         source_system: str,
-        metadata: Dict[str, Any]
+        metadata: Dict[str, Any],
     ) -> str:
         """Store memory with embedding using Oneiric adapter (CORRECTED SIGNATURE)."""
         if not self._initialized:
@@ -287,17 +289,13 @@ class VectorStore:
         doc = VectorDocument(
             content=content,
             embedding=embedding,
-            metadata={
-                **metadata,
-                "memory_type": memory_type,
-                "source_system": source_system
-            }
+            metadata={**metadata, "memory_type": memory_type, "source_system": source_system},
         )
 
         # CORRECT: Use insert with collection and documents parameters
         memory_ids = await self.adapter.insert(
             collection="memories",  # CORRECT: Required parameter
-            documents=[doc]  # CORRECT: List of VectorDocument
+            documents=[doc],  # CORRECT: List of VectorDocument
         )
 
         memory_id = memory_ids[0] if memory_ids else ""
@@ -306,7 +304,7 @@ class VectorStore:
             "Stored memory",
             memory_id=memory_id,
             memory_type=memory_type,
-            source_system=source_system
+            source_system=source_system,
         )
 
         return memory_id
@@ -316,7 +314,7 @@ class VectorStore:
         query_embedding: List[float],
         memory_types: Optional[List[str]] = None,
         limit: int = 10,
-        threshold: float = 0.7
+        threshold: float = 0.7,
     ) -> List[Dict[str, Any]]:
         """Perform vector similarity search using Oneiric adapter (CORRECTED SIGNATURE)."""
         if not self._initialized:
@@ -332,7 +330,7 @@ class VectorStore:
             collection="memories",  # CORRECT: Required parameter
             query_vector=query_embedding,  # CORRECT: Parameter name
             filter_expr=filter_expr,  # CORRECT: Parameter name
-            top_k=limit  # CORRECT: Parameter name
+            top_k=limit,  # CORRECT: Parameter name
         )
 
         # Filter by threshold
@@ -343,24 +341,17 @@ class VectorStore:
                 "metadata": r.get("metadata", {}),
                 "similarity": r.get("similarity", 0.0),
                 "memory_type": r.get("metadata", {}).get("memory_type", ""),
-                "source_system": r.get("metadata", {}).get("source_system", "")
+                "source_system": r.get("metadata", {}).get("source_system", ""),
             }
             for r in results
             if r.get("similarity", 0.0) >= threshold
         ]
 
-        logger.debug(
-            "Vector search completed",
-            results_count=len(filtered),
-            threshold=threshold
-        )
+        logger.debug("Vector search completed", results_count=len(filtered), threshold=threshold)
 
         return filtered
 
-    async def batch_store(
-        self,
-        items: List[Dict[str, Any]]
-    ) -> List[str]:
+    async def batch_store(self, items: List[Dict[str, Any]]) -> List[str]:
         """Batch store memories using Oneiric's upsert operation (CORRECTED SIGNATURE)."""
         if not self._initialized:
             await self.initialize()
@@ -370,9 +361,7 @@ class VectorStore:
         # Convert to VectorDocument objects
         documents = [
             VectorDocument(
-                content=item["content"],
-                embedding=item["embedding"],
-                metadata=item["metadata"]
+                content=item["content"], embedding=item["embedding"], metadata=item["metadata"]
             )
             for item in items
         ]
@@ -380,14 +369,10 @@ class VectorStore:
         # CORRECT: Use upsert with collection and documents parameters
         memory_ids = await self.adapter.upsert(
             collection="memories",  # CORRECT: Required parameter
-            documents=documents  # CORRECT: List of VectorDocument
+            documents=documents,  # CORRECT: List of VectorDocument
         )
 
-        logger.debug(
-            "Batch stored memories",
-            count=len(items),
-            memory_ids=memory_ids
-        )
+        logger.debug("Batch stored memories", count=len(items), memory_ids=memory_ids)
 
         return memory_ids
 
@@ -537,10 +522,12 @@ ON performance_metrics (component, timestamp);
 
 ```python
 """Structured logging configuration using structlog (CORRECTED)."""
+
 import structlog
 from opentelemetry import trace
 import logging
 from typing import Any
+
 
 def add_correlation_id(logger: Any, method_name: str, event_dict: Dict[str, Any]) -> Dict[str, Any]:
     """Add OpenTelemetry trace correlation to logs.
@@ -554,6 +541,7 @@ def add_correlation_id(logger: Any, method_name: str, event_dict: Dict[str, Any]
         event_dict["span_id"] = format(context.span_id, "016x")
     return event_dict
 
+
 def setup_logging(config: Any) -> None:
     """Configure structlog for Oneiric integration (CORRECTED).
 
@@ -566,7 +554,7 @@ def setup_logging(config: Any) -> None:
         add_correlation_id,  # Oneiric pattern
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
-        structlog.processors.JSONRenderer()
+        structlog.processors.JSONRenderer(),
     ]
 
     # Configure structlog
@@ -579,10 +567,7 @@ def setup_logging(config: Any) -> None:
     )
 
     # Also configure standard logging to use structlog
-    logging.basicConfig(
-        format="%(message)s",
-        level=getattr(config, 'log_level', 'INFO')
-    )
+    logging.basicConfig(format="%(message)s", level=getattr(config, "log_level", "INFO"))
 ```
 
 ### Fix 0.6: Fix Health Check Types (CORRECTED)
@@ -591,10 +576,12 @@ def setup_logging(config: Any) -> None:
 
 ```python
 """CRITICAL FIX: Health checks using ComponentHealth (CORRECTED)."""
+
 from mcp_common.health import ComponentHealth, HealthStatus, HealthCheckResponse
 import structlog
 
 logger = structlog.get_logger(__name__)
+
 
 class MahavishnuApp:
     """Main application class with CORRECTED health checks."""
@@ -613,12 +600,14 @@ class MahavishnuApp:
                 components.append(health)
             except Exception as e:
                 logger.error("Adapter health check failed", adapter=adapter_name, error=str(e))
-                components.append(ComponentHealth(
-                    name=adapter_name,
-                    status=HealthStatus.UNHEALTHY,
-                    message=f"Health check failed: {e}",
-                    latency_ms=0
-                ))
+                components.append(
+                    ComponentHealth(
+                        name=adapter_name,
+                        status=HealthStatus.UNHEALTHY,
+                        message=f"Health check failed: {e}",
+                        latency_ms=0,
+                    )
+                )
 
         # Check memory systems
         if self.memory_integration:
@@ -628,12 +617,14 @@ class MahavishnuApp:
                     components.append(pg_health)
                 except Exception as e:
                     logger.error("PostgreSQL health check failed", error=str(e))
-                    components.append(ComponentHealth(
-                        name="postgresql",
-                        status=HealthStatus.UNHEALTHY,
-                        message=f"Health check failed: {e}",
-                        latency_ms=0
-                    ))
+                    components.append(
+                        ComponentHealth(
+                            name="postgresql",
+                            status=HealthStatus.UNHEALTHY,
+                            message=f"Health check failed: {e}",
+                            latency_ms=0,
+                        )
+                    )
 
             if self.memory_integration.session_buddy_project:
                 try:
@@ -641,18 +632,18 @@ class MahavishnuApp:
                     components.append(sb_health)
                 except Exception as e:
                     logger.error("Session-Buddy health check failed", error=str(e))
-                    components.append(ComponentHealth(
-                        name="session_buddy",
-                        status=HealthStatus.UNHEALTHY,
-                        message=f"Health check failed: {e}",
-                        latency_ms=0
-                    ))
+                    components.append(
+                        ComponentHealth(
+                            name="session_buddy",
+                            status=HealthStatus.UNHEALTHY,
+                            message=f"Health check failed: {e}",
+                            latency_ms=0,
+                        )
+                    )
 
         # Oneiric automatically aggregates worst status
         return HealthCheckResponse.create(
-            components=components,
-            version="1.0.0",
-            start_time=self.start_time
+            components=components, version="1.0.0", start_time=self.start_time
         )
 
     async def _check_postgresql_health(self) -> ComponentHealth:
@@ -671,8 +662,10 @@ class MahavishnuApp:
             return ComponentHealth(
                 name="postgresql",
                 status=HealthStatus.HEALTHY if is_healthy else HealthStatus.UNHEALTHY,
-                message="PostgreSQL connection OK" if is_healthy else "PostgreSQL connection failed",
-                latency_ms=latency_ms
+                message="PostgreSQL connection OK"
+                if is_healthy
+                else "PostgreSQL connection failed",
+                latency_ms=latency_ms,
             )
         except Exception as e:
             logger.error("PostgreSQL health check error", error=str(e))
@@ -680,7 +673,7 @@ class MahavishnuApp:
                 name="postgresql",
                 status=HealthStatus.UNHEALTHY,
                 message=f"PostgreSQL health check failed: {e}",
-                latency_ms=0
+                latency_ms=0,
             )
 
     async def _check_session_buddy_health(self) -> ComponentHealth:
@@ -697,8 +690,7 @@ class MahavishnuApp:
             if self.memory_integration.session_buddy_project:
                 # Try a simple operation
                 await self.memory_integration.session_buddy_project.add_memory(
-                    content="Health check ping",
-                    metadata={"doc_type": "health_check"}
+                    content="Health check ping", metadata={"doc_type": "health_check"}
                 )
 
                 latency_ms = (time.time() - start_time) * 1000
@@ -707,7 +699,7 @@ class MahavishnuApp:
                     name="session_buddy",
                     status=HealthStatus.HEALTHY,
                     message="Session-Buddy connection OK",
-                    latency_ms=latency_ms
+                    latency_ms=latency_ms,
                 )
         except Exception as e:
             logger.error("Session-Buddy health check error", error=str(e))
@@ -715,7 +707,7 @@ class MahavishnuApp:
                 name="session_buddy",
                 status=HealthStatus.UNHEALTHY,
                 message=f"Session-Buddy health check failed: {e}",
-                latency_ms=0
+                latency_ms=0,
             )
 ```
 
@@ -725,6 +717,7 @@ class MahavishnuApp:
 
 ```python
 """Migrate existing Session-Buddy DuckDB data to PostgreSQL (CORRECTED)."""
+
 import duckdb
 import asyncio
 from typing import Dict, List, Tuple
@@ -733,10 +726,9 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
+
 async def migrate_duckdb_to_postgres(
-    duckdb_path: str,
-    pg_connection,
-    embed_model
+    duckdb_path: str, pg_connection, embed_model
 ) -> Dict[str, int]:
     """Migrate Session-Buddy DuckDB data to PostgreSQL (FIXED).
 
@@ -753,11 +745,7 @@ async def migrate_duckdb_to_postgres(
     Returns:
         Migration statistics
     """
-    stats = {
-        "reflections_migrated": 0,
-        "knowledge_graph_entries": 0,
-        "errors": 0
-    }
+    stats = {"reflections_migrated": 0, "knowledge_graph_entries": 0, "errors": 0}
 
     def read_duckdb_sync(duckdb_path: str) -> List[Tuple[str, Dict, str]]:
         """Synchronously read from DuckDB (runs in thread pool).
@@ -792,16 +780,12 @@ async def migrate_duckdb_to_postgres(
     metadatas = [row[1] for row in reflections]
 
     # Generate embeddings in parallel
-    embeddings = await asyncio.gather(*[
-        embed_model.aget_text_embedding(content)
-        for content in contents
-    ])
+    embeddings = await asyncio.gather(
+        *[embed_model.aget_text_embedding(content) for content in contents]
+    )
 
     # Calculate hashes
-    content_hashes = [
-        hashlib.sha256(content.encode()).hexdigest()
-        for content in contents
-    ]
+    content_hashes = [hashlib.sha256(content.encode()).hexdigest() for content in contents]
 
     logger.info("Inserting reflections into PostgreSQL (in batches)")
 
@@ -813,12 +797,7 @@ async def migrate_duckdb_to_postgres(
 
         # Prepare batch data
         batch_data = [
-            (
-                contents[idx],
-                embeddings[idx],
-                content_hashes[idx],
-                metadatas[idx]
-            )
+            (contents[idx], embeddings[idx], content_hashes[idx], metadatas[idx])
             for idx in range(i, batch_end)
         ]
 
@@ -831,16 +810,16 @@ async def migrate_duckdb_to_postgres(
                 VALUES ($1, $2, $3, $4, $5, $6)
                 ON CONFLICT (content_hash) DO NOTHING
                 """,
-                batch_data
+                batch_data,
             )
 
         stats["reflections_migrated"] += len(batch_data)
-        logger.debug(f"Migrated batch {i//batch_size + 1}: {len(batch_data)} reflections")
+        logger.debug(f"Migrated batch {i // batch_size + 1}: {len(batch_data)} reflections")
 
     logger.info(
         "DuckDB migration completed",
         reflections=stats["reflections_migrated"],
-        errors=stats["errors"]
+        errors=stats["errors"],
     )
 
     return stats
@@ -852,6 +831,7 @@ async def migrate_duckdb_to_postgres(
 
 ```python
 """Transaction management for PostgreSQL operations (CORRECTED)."""
+
 import asyncpg
 from typing import Any, Callable, TypeVar, Awaitable
 import asyncio
@@ -859,11 +839,11 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 async def with_transaction(
-    connection: asyncpg.Connection,
-    callback: Callable[[asyncpg.Connection], Awaitable[T]]
+    connection: asyncpg.Connection, callback: Callable[[asyncpg.Connection], Awaitable[T]]
 ) -> T:
     """Execute callback within a transaction with proper error handling (CORRECTED).
 
@@ -886,11 +866,9 @@ async def with_transaction(
             logger.error("Transaction failed, rolling back", error=str(e))
             raise
 
+
 async def with_retry(
-    connection_pool,
-    operation: Callable,
-    max_attempts: int = 3,
-    base_delay: float = 1.0
+    connection_pool, operation: Callable, max_attempts: int = 3, base_delay: float = 1.0
 ) -> Any:
     """Execute operation with retry logic (CORRECTED).
 
@@ -904,13 +882,13 @@ async def with_retry(
             if attempt == max_attempts - 1:
                 raise
 
-            delay = base_delay * (2 ** attempt)  # Exponential backoff
+            delay = base_delay * (2**attempt)  # Exponential backoff
             logger.warning(
                 "Database operation failed, retrying",
                 attempt=attempt + 1,
                 max_attempts=max_attempts,
                 delay=delay,
-                error=str(e)
+                error=str(e),
             )
             await asyncio.sleep(delay)
 ```
@@ -921,6 +899,7 @@ async def with_retry(
 
 ```python
 """OpenTelemetry observability integration (CORRECTED)."""
+
 from opentelemetry import metrics
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
@@ -929,6 +908,7 @@ from typing import Any, Optional
 import structlog
 
 logger = structlog.get_logger(__name__)
+
 
 class ObservabilityManager:
     """Manage OpenTelemetry metrics collection (CORRECTED).
@@ -944,16 +924,14 @@ class ObservabilityManager:
     def _initialize_meter(self) -> None:
         """Initialize OpenTelemetry meter (CORRECTED)."""
         # Configure OTLP exporter (or console for dev)
-        otlp_endpoint = getattr(self.config, 'otlp_endpoint', None)
+        otlp_endpoint = getattr(self.config, "otlp_endpoint", None)
 
         if otlp_endpoint:
-            exporter = OTLPMetricExporter(
-                endpoint=otlp_endpoint,
-                insecure=True
-            )
+            exporter = OTLPMetricExporter(endpoint=otlp_endpoint, insecure=True)
         else:
             # Console exporter for development
             from opentelemetry.sdk.metrics.export import ConsoleMetricExporter
+
             exporter = ConsoleMetricExporter()
 
         # Create meter provider
@@ -968,30 +946,17 @@ class ObservabilityManager:
 
     def create_counter(self, name: str, description: str) -> metrics.Counter:
         """Create a counter metric."""
-        return self.meter.create_counter(
-            name,
-            description=description
-        )
+        return self.meter.create_counter(name, description=description)
 
     def create_histogram(self, name: str, description: str) -> metrics.Histogram:
         """Create a histogram metric."""
-        return self.meter.create_histogram(
-            name,
-            description=description
-        )
+        return self.meter.create_histogram(name, description=description)
 
     def create_gauge(self, name: str, description: str) -> metrics.Gauge:
         """Create a gauge metric."""
-        return self.meter.create_gauge(
-            name,
-            description=description
-        )
+        return self.meter.create_gauge(name, description=description)
 
-    async def record_adapter_health(
-        self,
-        adapter_name: str,
-        health: Any
-    ) -> None:
+    async def record_adapter_health(self, adapter_name: str, health: Any) -> None:
         """Record adapter health as metric (CORRECTED).
 
         CRITICAL FIX: Uses OpenTelemetry instead of PostgreSQL storage.
@@ -1005,20 +970,18 @@ class ObservabilityManager:
         health_value = {
             HealthStatus.HEALTHY: 2,
             HealthStatus.DEGRADED: 1,
-            HealthStatus.UNHEALTHY: 0
+            HealthStatus.UNHEALTHY: 0,
         }.get(health.status, 0)
 
         # Record as gauge metric
         health_gauge = self.create_gauge(
             f"adapter.{adapter_name}.health",
-            "Adapter health status (0=unhealthy, 1=degraded, 2=healthy)"
+            "Adapter health status (0=unhealthy, 1=degraded, 2=healthy)",
         )
         health_gauge.set(health_value)
 
         logger.debug(
-            "Recorded adapter health metric",
-            adapter=adapter_name,
-            health_value=health_value
+            "Recorded adapter health metric", adapter=adapter_name, health_value=health_value
         )
 ```
 
@@ -1033,77 +996,89 @@ Revision ID: 001
 Revises:
 Create Date: 2025-01-24
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+
 def upgrade() -> None:
     # Create pgvector extension
-    op.execute('CREATE EXTENSION IF NOT EXISTS vector')
+    op.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
     # Create memories table
     op.create_table(
-        'memories',
-        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('content', sa.Text(), nullable=False),
-        sa.Column('embedding', postgresql.vector(768), nullable=False),
-        sa.Column('memory_type', sa.Text(), nullable=False),
-        sa.Column('source_system', sa.Text(), nullable=False),
-        sa.Column('agent_id', sa.Text(), nullable=True),
-        sa.Column('workflow_id', sa.Text(), nullable=True),
-        sa.Column('repo_id', sa.Text(), nullable=True),
-        sa.Column('metadata', postgresql.JSONB(), nullable=True),
-        sa.Column('content_hash', sa.Text(), nullable=True),  # For deduplication
-        sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False),
-        sa.Column('updated_at', sa.TIMESTAMP(timezone=True), nullable=False),
+        "memories",
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("content", sa.Text(), nullable=False),
+        sa.Column("embedding", postgresql.vector(768), nullable=False),
+        sa.Column("memory_type", sa.Text(), nullable=False),
+        sa.Column("source_system", sa.Text(), nullable=False),
+        sa.Column("agent_id", sa.Text(), nullable=True),
+        sa.Column("workflow_id", sa.Text(), nullable=True),
+        sa.Column("repo_id", sa.Text(), nullable=True),
+        sa.Column("metadata", postgresql.JSONB(), nullable=True),
+        sa.Column("content_hash", sa.Text(), nullable=True),  # For deduplication
+        sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), nullable=False),
         sa.CheckConstraint(
-            "memory_type IN ('agent', 'rag', 'workflow', 'insight')",
-            name='valid_memory_type'
+            "memory_type IN ('agent', 'rag', 'workflow', 'insight')", name="valid_memory_type"
         ),
-        sa.PrimaryKeyConstraint('id')
+        sa.PrimaryKeyConstraint("id"),
     )
 
     # CRITICAL FIX: Correct IVFFlat index (lists=500)
     op.execute(
-        'CREATE INDEX memories_embedding_idx '
-        'ON memories USING ivfflat (embedding vector_cosine_ops) '
-        'WITH (lists = 500)'
+        "CREATE INDEX memories_embedding_idx "
+        "ON memories USING ivfflat (embedding vector_cosine_ops) "
+        "WITH (lists = 500)"
     )
 
     # Additional indexes for performance
-    op.execute('CREATE INDEX memories_type_date_idx ON memories (memory_type, created_at DESC)')
-    op.execute('CREATE INDEX memories_agent_idx ON memories (agent_id) WHERE agent_id IS NOT NULL')
-    op.execute('CREATE INDEX memories_workflow_idx ON memories (workflow_id) WHERE workflow_id IS NOT NULL')
-    op.execute('CREATE INDEX memories_repo_idx ON memories (repo_id) WHERE repo_id IS NOT NULL')
-    op.execute('CREATE INDEX memories_source_type_idx ON memories (source_system, memory_type)')
-    op.execute('CREATE INDEX memories_hash_idx ON memories (content_hash) WHERE content_hash IS NOT NULL')
-    op.execute('CREATE INDEX memories_recent_idx ON memories (created_at DESC) WHERE created_at > NOW() - INTERVAL \'30 days\'')
+    op.execute("CREATE INDEX memories_type_date_idx ON memories (memory_type, created_at DESC)")
+    op.execute("CREATE INDEX memories_agent_idx ON memories (agent_id) WHERE agent_id IS NOT NULL")
+    op.execute(
+        "CREATE INDEX memories_workflow_idx ON memories (workflow_id) WHERE workflow_id IS NOT NULL"
+    )
+    op.execute("CREATE INDEX memories_repo_idx ON memories (repo_id) WHERE repo_id IS NOT NULL")
+    op.execute("CREATE INDEX memories_source_type_idx ON memories (source_system, memory_type)")
+    op.execute(
+        "CREATE INDEX memories_hash_idx ON memories (content_hash) WHERE content_hash IS NOT NULL"
+    )
+    op.execute(
+        "CREATE INDEX memories_recent_idx ON memories (created_at DESC) WHERE created_at > NOW() - INTERVAL '30 days'"
+    )
 
     # Full-text search index
-    op.execute('CREATE INDEX memories_content_fts ON memories USING gin(to_tsvector(\'english\', content))')
+    op.execute(
+        "CREATE INDEX memories_content_fts ON memories USING gin(to_tsvector('english', content))"
+    )
 
     # Create other tables...
     op.create_table(
-        'agent_conversations',
-        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('agent_id', sa.Text(), nullable=False),
-        sa.Column('session_id', sa.Text(), nullable=False),
-        sa.Column('role', sa.Text(), nullable=False),
-        sa.Column('content', sa.Text(), nullable=False),
-        sa.Column('metadata', postgresql.JSONB(), nullable=True),
-        sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False),
-        sa.CheckConstraint("role IN ('user', 'assistant')", name='valid_role'),
-        sa.PrimaryKeyConstraint('id')
+        "agent_conversations",
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("agent_id", sa.Text(), nullable=False),
+        sa.Column("session_id", sa.Text(), nullable=False),
+        sa.Column("role", sa.Text(), nullable=False),
+        sa.Column("content", sa.Text(), nullable=False),
+        sa.Column("metadata", postgresql.JSONB(), nullable=True),
+        sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False),
+        sa.CheckConstraint("role IN ('user', 'assistant')", name="valid_role"),
+        sa.PrimaryKeyConstraint("id"),
     )
 
-    op.execute('CREATE INDEX agent_conversations_session_idx ON agent_conversations (session_id, created_at)')
+    op.execute(
+        "CREATE INDEX agent_conversations_session_idx ON agent_conversations (session_id, created_at)"
+    )
 
     # Create rag_ingestions, workflow_executions, performance_metrics tables...
     # (Similar pattern)
 
+
 def downgrade() -> None:
-    op.drop_table('memories')
-    op.drop_table('agent_conversations')
+    op.drop_table("memories")
+    op.drop_table("agent_conversations")
     # Drop other tables...
 ```
 
@@ -1239,10 +1214,12 @@ ______________________________________________________________________
 
 ```python
 """Memory integration using Oneiric's pgvector adapter (ALL CORRECTIONS APPLIED)."""
+
 from typing import Optional, List, Dict, Any
 import structlog
 
 logger = structlog.get_logger(__name__)
+
 
 class MahavishnuMemoryIntegration:
     """Integrated memory system using Oneiric adapters (ALL FIXES APPLIED).
@@ -1286,6 +1263,7 @@ class MahavishnuMemoryIntegration:
         try:
             # Initialize Oneiric pgvector adapter
             from .database.vector_store import VectorStore
+
             self.vector_store = VectorStore(self.config)
             await self.vector_store.initialize()
 
@@ -1298,12 +1276,10 @@ class MahavishnuMemoryIntegration:
             # Initialize metrics
             if self.observability:
                 self.memory_store_counter = self.observability.create_counter(
-                    "memory.store.count",
-                    "Number of memories stored"
+                    "memory.store.count", "Number of memories stored"
                 )
                 self.memory_search_histogram = self.observability.create_histogram(
-                    "memory.search.latency",
-                    "Memory search latency in seconds"
+                    "memory.search.latency", "Memory search latency in seconds"
                 )
 
             self._initialized = True
@@ -1318,19 +1294,17 @@ class MahavishnuMemoryIntegration:
         try:
             from session_buddy.adapters.reflection_adapter_oneiric import (
                 ReflectionDatabaseAdapterOneiric,
-                ReflectionAdapterSettings
+                ReflectionAdapterSettings,
             )
 
             # Project-specific memory (workflow executions, patterns)
             self.session_buddy_project = ReflectionDatabaseAdapterOneiric(
-                collection_name="mahavishnu_project",
-                settings=self.config.session_buddy_settings
+                collection_name="mahavishnu_project", settings=self.config.session_buddy_settings
             )
 
             # Global/cross-project memory (insights, patterns)
             self.session_buddy_global = ReflectionDatabaseAdapterOneiric(
-                collection_name="mahavishnu_global",
-                settings=self.config.session_buddy_settings
+                collection_name="mahavishnu_global", settings=self.config.session_buddy_settings
             )
 
             logger.info("Session-Buddy integration initialized")
@@ -1346,8 +1320,7 @@ class MahavishnuMemoryIntegration:
             from llama_index.embeddings.ollama import OllamaEmbedding
 
             self.embed_model = OllamaEmbedding(
-                model_name=self.config.llm_model,
-                base_url=self.config.ollama_base_url
+                model_name=self.config.llm_model, base_url=self.config.ollama_base_url
             )
 
             logger.info(f"Ollama embeddings initialized ({self.config.llm_model})")
@@ -1356,11 +1329,7 @@ class MahavishnuMemoryIntegration:
             logger.warning(f"Ollama not available: {e}")
 
     async def store_agent_conversation(
-        self,
-        agent_id: str,
-        role: str,
-        content: str,
-        metadata: Dict[str, Any]
+        self, agent_id: str, role: str, content: str, metadata: Dict[str, Any]
     ) -> None:
         """Store agent conversation using Oneiric adapter (CORRECTED)."""
         if not self._initialized:
@@ -1376,11 +1345,7 @@ class MahavishnuMemoryIntegration:
                 embedding=embedding,
                 memory_type="agent",
                 source_system="agno",
-                metadata={
-                    **metadata,
-                    "agent_id": agent_id,
-                    "role": role
-                }
+                metadata={**metadata, "agent_id": agent_id, "role": role},
             )
 
             # Record metric
@@ -1391,10 +1356,7 @@ class MahavishnuMemoryIntegration:
             await self._extract_and_store_insights(content, metadata)
 
             logger.debug(
-                "Stored agent conversation",
-                memory_id=memory_id,
-                agent_id=agent_id,
-                role=role
+                "Stored agent conversation", memory_id=memory_id, agent_id=agent_id, role=role
             )
 
         except Exception as e:
@@ -1402,16 +1364,14 @@ class MahavishnuMemoryIntegration:
             raise
 
     async def unified_search(
-        self,
-        query: str,
-        memory_types: Optional[List[str]] = None,
-        limit: int = 10
+        self, query: str, memory_types: Optional[List[str]] = None, limit: int = 10
     ) -> List[Dict[str, Any]]:
         """Unified search across PostgreSQL and Session-Buddy (CORRECTED)."""
         if not self._initialized:
             await self.initialize()
 
         import time
+
         start_time = time.time()
 
         try:
@@ -1421,31 +1381,27 @@ class MahavishnuMemoryIntegration:
             query_embedding = await self.embed_model.aget_text_embedding(query)
 
             pg_results = await self.vector_store.vector_search(
-                query_embedding=query_embedding,
-                memory_types=memory_types,
-                limit=limit
+                query_embedding=query_embedding, memory_types=memory_types, limit=limit
             )
 
             for result in pg_results:
-                all_results.append({
-                    **result,
-                    "source": "postgresql"
-                })
+                all_results.append({**result, "source": "postgresql"})
 
             # Search Session-Buddy (insights)
             if self.session_buddy_project:
                 sb_results = await self.session_buddy_project.semantic_search(
-                    query=query,
-                    limit=limit // 2
+                    query=query, limit=limit // 2
                 )
 
                 for result in sb_results:
-                    all_results.append({
-                        "content": result.get("content", ""),
-                        "metadata": result.get("metadata", {}),
-                        "score": result.get("score", 0.0),
-                        "source": "session_buddy"
-                    })
+                    all_results.append(
+                        {
+                            "content": result.get("content", ""),
+                            "metadata": result.get("metadata", {}),
+                            "score": result.get("score", 0.0),
+                            "source": "session_buddy",
+                        }
+                    )
 
             # Sort by relevance
             all_results.sort(key=lambda x: x.get("score", 0.0), reverse=True)
@@ -1458,7 +1414,7 @@ class MahavishnuMemoryIntegration:
             logger.debug(
                 "Unified search completed",
                 results_count=len(all_results[:limit]),
-                latency_ms=(time.time() - start_time) * 1000
+                latency_ms=(time.time() - start_time) * 1000,
             )
 
             return all_results[:limit]
@@ -1489,11 +1445,7 @@ class MahavishnuMemoryIntegration:
         """Context manager exit."""
         await self.close()
 
-    async def _extract_and_store_insights(
-        self,
-        content: str,
-        metadata: Dict[str, Any]
-    ) -> None:
+    async def _extract_and_store_insights(self, content: str, metadata: Dict[str, Any]) -> None:
         """Extract insights and store in Session-Buddy (CORRECTED)."""
         if not self.session_buddy_global:
             return
@@ -1509,8 +1461,8 @@ class MahavishnuMemoryIntegration:
                 **metadata,
                 "source_system": "mahavishnu",
                 "doc_type": "agent_insight",
-                "extracted_at": datetime.now().isoformat()
-            }
+                "extracted_at": datetime.now().isoformat(),
+            },
         )
 
         logger.debug("Stored insight in Session-Buddy global memory")
@@ -1756,9 +1708,11 @@ ______________________________________________________________________
 
 ```python
 """Test suite for V4 implementation with ALL CRITICAL FIXES."""
+
 import pytest
 from mahavishnu.database.vector_store import VectorStore
 from mahavishnu.database.connection import PostgreSQLConnection
+
 
 @pytest.mark.asyncio
 async def test_vector_store_uses_correct_oneiric_api():
@@ -1766,11 +1720,13 @@ async def test_vector_store_uses_correct_oneiric_api():
     # Test implementation
     pass
 
+
 @pytest.mark.asyncio
 async def test_context_managers_prevent_leaks():
     """Test that context managers prevent connection leaks (FIXED)."""
     # Test implementation
     pass
+
 
 @pytest.mark.asyncio
 async def test_parameterized_queries_prevent_injection():
@@ -1778,11 +1734,13 @@ async def test_parameterized_queries_prevent_injection():
     # Test with malicious input
     pass
 
+
 @pytest.mark.asyncio
 async def test_health_check_returns_componenthealth():
     """Test that health checks return ComponentHealth objects (FIXED)."""
     # Test implementation
     pass
+
 
 @pytest.mark.asyncio
 async def test_structured_logging_has_trace_correlation():
@@ -1790,11 +1748,13 @@ async def test_structured_logging_has_trace_correlation():
     # Test implementation
     pass
 
+
 @pytest.mark.asyncio
 async def test_duckdb_migration_uses_thread_pool():
     """Test that DuckDB migration uses asyncio.run_in_executor (FIXED)."""
     # Test implementation
     pass
+
 
 @pytest.mark.asyncio
 async def test_parallel_embeddings():

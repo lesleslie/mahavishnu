@@ -84,5 +84,3 @@ def my_flow():
 1. Implement state management
 1. Add progress tracking and streaming
 1. Implement checkpointing
-
-See [UNIFIED_IMPLEMENTATION_STATUS.md](../../UNIFIED_IMPLEMENTATION_STATUS.md) for detailed progress tracking.

@@ -148,7 +148,7 @@ class TerminalManager:
             try:
                 # For iTerm2 adapters, we can't easily migrate sessions
                 # because session_ids are iTerm2-specific
-                if old_adapter.adapter_name == "iterm2" or new_adapter.adapter_name == "iterm2":
+                if "iterm2" in (old_adapter.adapter_name, new_adapter.adapter_name):
                     logger.warning(
                         f"Session migration involving iTerm2 is not supported. "
                         f"Session {session_id} will be orphaned."
@@ -434,7 +434,7 @@ class TerminalManager:
         preference = terminal_config.adapter_preference
 
         # Try mcpretentious (default and most portable)
-        if preference in ["auto", "mcpretentious"]:
+        if preference in ("auto", "mcpretentious"):
             try:
                 adapter = McpretentiousAdapter(mcp_client)
                 logger.info("Using mcpretentious adapter")

@@ -52,9 +52,11 @@ mahavishnu/
 The `repos.yaml` file is being **migrated into** `ecosystem.yaml`. The `repos` section in `ecosystem.yaml` now contains all 24 repositories with enhanced audit tracking:
 
 **Before** (repos.yaml only):
+
 - name, path, role, tags, description, mcp
 
 **After** (ecosystem.yaml):
+
 - All of the above **PLUS**
 - `audit.last_reviewed` - When the repo was last reviewed
 - `audit.last_cleaned` - When the repo was last cleaned up
@@ -117,6 +119,7 @@ mcp_servers:
 Follow these guidelines:
 
 **Infrastructure (8676-8682)**:
+
 - 8676: crackerjack (inspector)
 - 8678: session-buddy (manager)
 - 8680: mahavishnu (orchestrator)
@@ -124,6 +127,7 @@ Follow these guidelines:
 - 8682: akosha (aggregator)
 
 **Tools & Integrations (3032-3039)**:
+
 - 3032: excalidraw (visualizer)
 - 3033: mermaid (visualizer)
 - 3034: raindropio (tool)
@@ -154,6 +158,7 @@ mahavishnu ecosystem update-audit mahavishnu last_tested "2026-01-29" \
 ### Automated Audit Tracking
 
 The ecosystem.yaml file is backed up to GitLab:
+
 - **Repo**: `git@gitlab.com:lesleslie/dot-claude.git`
 - **Path**: `/Users/les/.claude`
 - **Schedule**: Daily (automatic)
@@ -185,9 +190,9 @@ Categories for MCP servers and repositories:
 ### Adding a New Repository
 
 1. Create the repository
-2. Add it to `repos.yaml` (for now)
-3. Add it to `ecosystem.yaml` in the appropriate role section
-4. Include audit timestamps
+1. Add it to `repos.yaml` (for now)
+1. Add it to `ecosystem.yaml` in the appropriate role section
+1. Include audit timestamps
 
 ### Repository Audit Fields
 
@@ -211,11 +216,13 @@ repos:
 ### `ecosystem validate`
 
 Validate all MCP server configurations:
+
 ```bash
 mahavishnu ecosystem validate
 ```
 
 Checks for:
+
 - Port conflicts
 - Missing paths
 - Missing packages
@@ -225,6 +232,7 @@ Checks for:
 ### `ecosystem list`
 
 List MCP servers with filtering:
+
 ```bash
 # List all enabled servers
 mahavishnu ecosystem list
@@ -239,6 +247,7 @@ mahavishnu ecosystem list --status disabled
 ### `ecosystem generate-claude-config`
 
 Generate or update ~/.claude.json:
+
 ```bash
 # Dry run (print to console)
 mahavishnu ecosystem generate-claude-config --dry-run
@@ -253,6 +262,7 @@ mahavishnu ecosystem generate-claude-config --output ~/test-claude.json
 ### `ecosystem audit`
 
 Show audit information:
+
 ```bash
 # Show all servers
 mahavishnu ecosystem audit
@@ -264,6 +274,7 @@ mahavishnu ecosystem audit crackerjack
 ### `ecosystem update-audit`
 
 Update audit timestamps:
+
 ```bash
 mahavishnu ecosystem update-audit <server_name> <field> <timestamp> [--notes <notes>]
 
@@ -275,6 +286,7 @@ mahavishnu ecosystem update-audit oneiric last_tested "2026-01-29" --notes "Fixe
 ### `ecosystem urls`
 
 Show all URLs for an MCP server:
+
 ```bash
 mahavishnu ecosystem urls <server_name>
 
@@ -283,6 +295,7 @@ mahavishnu ecosystem urls mahavishnu
 ```
 
 Output includes:
+
 - 📦 Repository URL
 - 🏠 Homepage URL
 - 📚 Documentation URL
@@ -291,6 +304,7 @@ Output includes:
 ### `ecosystem repo-urls`
 
 Show all URLs for a repository:
+
 ```bash
 mahavishnu ecosystem repo-urls <repo_name>
 
@@ -324,10 +338,11 @@ mahavishnu ecosystem cleanup
 ### 3. Document Changes
 
 When adding or updating servers:
+
 1. Update `last_validated` timestamp
-2. Add meaningful notes in `audit.notes`
-3. Include dependencies if applicable
-4. Set correct category and tags
+1. Add meaningful notes in `audit.notes`
+1. Include dependencies if applicable
+1. Set correct category and tags
 
 ### 4. Port Allocation
 
@@ -353,39 +368,47 @@ The `repos.yaml` file is being migrated into `ecosystem.yaml`. Key differences:
 | Separate file | Integrated with ecosystem catalog |
 
 **Migration plan**:
+
 1. ✅ All repos are now in ecosystem.yaml
-2. ⏳ Update tools to read from ecosystem.yaml instead of repos.yaml
-3. ⏳ Deprecate repos.yaml (add migration warning)
-4. ⏳ Eventually remove repos.yaml
+1. ⏳ Update tools to read from ecosystem.yaml instead of repos.yaml
+1. ⏳ Deprecate repos.yaml (add migration warning)
+1. ⏳ Eventually remove repos.yaml
 
 ## Troubleshooting
 
 ### Validation Errors
 
 **Port conflict**:
+
 ```
 ❌ mahavishnu: Port 8680 conflicts with: oneiric
 ```
+
 **Solution**: Change port in ecosystem.yaml
 
 **Missing path**:
+
 ```
 ❌ my-server: Path does not exist: /Users/les/Projects/missing
 ```
+
 **Solution**: Verify path or update path in ecosystem.yaml
 
 **Missing package**:
+
 ```
 ❌ my-server: Package 'my_package' not installed
 ```
+
 **Solution**: Install the package or fix package name
 
 ### Generation Issues
 
 If `generate-claude-config` fails:
+
 1. Check file permissions on ~/.claude.json
-2. Validate ecosystem.yaml first: `mahavishnu ecosystem validate`
-3. Check JSON syntax in existing ~/.claude.json
+1. Validate ecosystem.yaml first: `mahavishnu ecosystem validate`
+1. Check JSON syntax in existing ~/.claude.json
 
 ## Related Documentation
 

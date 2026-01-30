@@ -71,6 +71,7 @@ from oneiric.adapters.vector.pgvector import PgvectorAdapter, PgvectorSettings
 from oneiric.adapters.vector.common import VectorDocument
 from mahavishnu.core.config import MahavishnuSettings
 
+
 class MahavishnuVectorStore:
     """Thin wrapper around Oneiric pgvector adapter."""
 
@@ -84,28 +85,21 @@ class MahavishnuVectorStore:
         await self.adapter.create_collection(
             name="workflows",
             dimension=768,  # nomic-embed-text
-            distance_metric="cosine"
+            distance_metric="cosine",
         )
 
     async def search_workflows(
-        self,
-        query_embedding: list[float],
-        limit: int = 10,
-        tags: list[str] | None = None
+        self, query_embedding: list[float], limit: int = 10, tags: list[str] | None = None
     ) -> list[dict]:
         filter_expr = {"tags": tags} if tags else None
         results = await self.adapter.search(
             collection="workflows",
             query_vector=query_embedding,
             limit=limit,
-            filter_expr=filter_expr
+            filter_expr=filter_expr,
         )
         return [
-            {
-                "workflow_id": r.id,
-                "similarity_score": r.score,
-                "metadata": r.metadata
-            }
+            {"workflow_id": r.id, "similarity_score": r.score, "metadata": r.metadata}
             for r in results
         ]
 
@@ -168,6 +162,7 @@ class OrchestratorAdapter(ABC):
         """Return True if healthy, False otherwise."""
         pass
 
+
 # Option 2: Create adapter wrapper that converts
 class MahavishnuVectorStore:
     async def get_health(self) -> Dict[str, Any]:
@@ -176,7 +171,7 @@ class MahavishnuVectorStore:
         return {
             "status": "healthy" if is_healthy else "unhealthy",
             "vector_db": is_healthy,
-            "adapter": "pgvector"
+            "adapter": "pgvector",
         }
 ```
 
@@ -202,12 +197,11 @@ from oneiric.core.observability import get_logger, scoped_log_context, trace
 
 logger = get_logger(__name__)
 
+
 # With trace correlation
 async def store_memory(self, content: str, embedding: list[float]):
     with scoped_log_context(
-        memory_id=memory_id,
-        memory_type=memory_type,
-        source_system=source_system
+        memory_id=memory_id, memory_type=memory_type, source_system=source_system
     ):
         logger.info("storing-memory", content_length=len(content))
 
@@ -232,19 +226,15 @@ from oneiric.core.observability import get_logger, scoped_log_context, trace
 
 logger = get_logger(__name__)
 
+
 class MahavishnuVectorStore:
     async def store_memory(self, content: str, embedding: list[float]):
-        with scoped_log_context(
-            memory_type="agent",
-            source_system="agno"
-        ):
+        with scoped_log_context(memory_type="agent", source_system="agno"):
             with trace("memory.store", component="vector_store"):
                 logger.info("storing-memory", content_length=len(content))
 
                 doc = VectorDocument(
-                    id=str(uuid.uuid4()),
-                    vector=embedding,
-                    metadata={"content": content}
+                    id=str(uuid.uuid4()), vector=embedding, metadata={"content": content}
                 )
 
                 await self.adapter.insert("memories", [doc])
@@ -274,6 +264,7 @@ class PerformanceMonitor:
 from oneiric.core.observability import configure_observability, get_tracer
 from opentelemetry import metrics
 
+
 class MahavishnuVectorStore:
     def __init__(self, settings):
         # Configure Oneiric observability
@@ -284,25 +275,17 @@ class MahavishnuVectorStore:
 
         # Create metrics
         self.memory_store_counter = self.meter.create_counter(
-            "memory.stored",
-            description="Number of memories stored"
+            "memory.stored", description="Number of memories stored"
         )
         self.search_latency = self.meter.create_histogram(
-            "search.latency",
-            description="Vector search latency in seconds"
+            "search.latency", description="Vector search latency in seconds"
         )
 
     async def store_memory(self, content: str, embedding: list[float]):
         with self.search_latency.record_time():
             result = await self.adapter.insert("memories", [doc])
 
-        self.memory_store_counter.add(
-            1,
-            {
-                "memory_type": "agent",
-                "source_system": "agno"
-            }
-        )
+        self.memory_store_counter.add(1, {"memory_type": "agent", "source_system": "agno"})
 ```
 
 **Why This Matters:**
@@ -336,6 +319,7 @@ class PostgreSQLSettings(BaseModel):  # Should extend Oneiric settings
 from oneiric.adapters.vector.pgvector import PgvectorSettings
 from pydantic import Field
 
+
 class MahavishnuSettings(MCPServerSettings):
     # ... existing fields ...
 
@@ -361,7 +345,7 @@ class MahavishnuSettings(MCPServerSettings):
             default_dimension=self.vector_db_dimension,
             default_distance_metric="cosine",
             collection_prefix="mahavishnu_",
-            ensure_extension=True
+            ensure_extension=True,
         )
 ```
 
@@ -382,6 +366,7 @@ ______________________________________________________________________
 
 ```python
 from oneiric.core.lifecycle import LifecycleManager, LifecycleError
+
 
 class MahavishnuVectorStore:
     def __init__(self, settings):
@@ -406,7 +391,7 @@ class MahavishnuVectorStore:
             raise LifecycleError(
                 f"Failed to initialize vector store: {e}",
                 component="vector_store",
-                details={"settings": self.settings.dict()}
+                details={"settings": self.settings.dict()},
             )
 
     async def health_check(self) -> bool:
@@ -443,8 +428,7 @@ ______________________________________________________________________
 ```python
 # mahavishnu/core/app.py lines 116-119
 self.circuit_breaker = CircuitBreaker(
-    threshold=self.config.circuit_breaker_threshold,
-    timeout=self.config.retry_base_delay * 10
+    threshold=self.config.circuit_breaker_threshold, timeout=self.config.retry_base_delay * 10
 )
 ```
 
@@ -570,6 +554,7 @@ from mahavishnu.core.config import MahavishnuSettings
 
 logger = get_logger(__name__)
 
+
 class MahavishnuVectorStore:
     """Mahavishnu vector store using Oneiric pgvector adapter."""
 
@@ -592,18 +577,22 @@ class MahavishnuVectorStore:
             for collection in [
                 self.COLLECTION_MEMORIES,
                 self.COLLECTION_WORKFLOWS,
-                self.COLLECTION_REPOSITORIES
+                self.COLLECTION_REPOSITORIES,
             ]:
                 await self.adapter.create_collection(
                     name=collection,
                     dimension=768,  # nomic-embed-text
-                    distance_metric="cosine"
+                    distance_metric="cosine",
                 )
 
-            logger.info("vector-store-initialized",
-                       collections=[self.COLLECTION_MEMORIES,
-                                   self.COLLECTION_WORKFLOWS,
-                                   self.COLLECTION_REPOSITORIES])
+            logger.info(
+                "vector-store-initialized",
+                collections=[
+                    self.COLLECTION_MEMORIES,
+                    self.COLLECTION_WORKFLOWS,
+                    self.COLLECTION_REPOSITORIES,
+                ],
+            )
 
     async def store_memory(
         self,
@@ -611,13 +600,10 @@ class MahavishnuVectorStore:
         embedding: list[float],
         memory_type: str,
         source_system: str,
-        metadata: dict
+        metadata: dict,
     ) -> str:
         """Store memory with Oneiric observability."""
-        with scoped_log_context(
-            memory_type=memory_type,
-            source_system=source_system
-        ):
+        with scoped_log_context(memory_type=memory_type, source_system=source_system):
             with trace("vector-store.store", component="memory"):
                 doc = VectorDocument(
                     id=str(uuid.uuid4()),
@@ -627,8 +613,8 @@ class MahavishnuVectorStore:
                         "content": content,
                         "memory_type": memory_type,
                         "source_system": source_system,
-                        "timestamp": datetime.now().isoformat()
-                    }
+                        "timestamp": datetime.now().isoformat(),
+                    },
                 )
 
                 await self.adapter.insert(self.COLLECTION_MEMORIES, [doc])
@@ -641,7 +627,7 @@ class MahavishnuVectorStore:
         query_embedding: list[float],
         memory_types: list[str] | None = None,
         limit: int = 10,
-        threshold: float = 0.7
+        threshold: float = 0.7,
     ) -> list[dict]:
         """Search memories with Oneiric observability."""
         with trace("vector-store.search", component="memory"):
@@ -651,7 +637,7 @@ class MahavishnuVectorStore:
                 collection=self.COLLECTION_MEMORIES,
                 query_vector=query_embedding,
                 limit=limit,
-                filter_expr=filter_expr
+                filter_expr=filter_expr,
             )
 
             # Apply threshold
@@ -662,7 +648,7 @@ class MahavishnuVectorStore:
                     "memory_type": r.metadata.get("memory_type"),
                     "source_system": r.metadata.get("source_system"),
                     "similarity": r.score,
-                    "metadata": r.metadata
+                    "metadata": r.metadata,
                 }
                 for r in results
                 if r.score >= threshold
@@ -695,51 +681,34 @@ ______________________________________________________________________
 from pydantic import Field, SecretStr, field_validator
 from oneiric.adapters.vector.pgvector import PgvectorSettings
 
+
 class MahavishnuSettings(MCPServerSettings):
     # ... existing fields ...
 
     # Vector database configuration (Oneiric-compatible)
     vector_db_enabled: bool = Field(
-        default=True,
-        description="Enable vector database for memory storage"
+        default=True, description="Enable vector database for memory storage"
     )
     vector_db_host: str = Field(
-        default="localhost",
-        description="PostgreSQL host for vector database"
+        default="localhost", description="PostgreSQL host for vector database"
     )
-    vector_db_port: int = Field(
-        default=5432,
-        ge=1,
-        le=65535,
-        description="PostgreSQL port"
-    )
-    vector_db_user: str = Field(
-        default="postgres",
-        description="PostgreSQL user"
-    )
+    vector_db_port: int = Field(default=5432, ge=1, le=65535, description="PostgreSQL port")
+    vector_db_user: str = Field(default="postgres", description="PostgreSQL user")
     vector_db_password: SecretStr | None = Field(
-        default=None,
-        description="PostgreSQL password (use env var MAHAVISHNU_VECTOR_DB_PASSWORD)"
+        default=None, description="PostgreSQL password (use env var MAHAVISHNU_VECTOR_DB_PASSWORD)"
     )
-    vector_db_name: str = Field(
-        default="mahavishnu",
-        description="PostgreSQL database name"
-    )
-    vector_db_schema: str = Field(
-        default="public",
-        description="PostgreSQL schema"
-    )
+    vector_db_name: str = Field(default="mahavishnu", description="PostgreSQL database name")
+    vector_db_schema: str = Field(default="public", description="PostgreSQL schema")
     vector_db_dimension: int = Field(
         default=768,  # nomic-embed-text
         ge=1,
-        description="Embedding vector dimension"
+        description="Embedding vector dimension",
     )
     vector_db_distance_metric: str = Field(
-        default="cosine",
-        description="Distance metric (cosine, euclidean, dot_product)"
+        default="cosine", description="Distance metric (cosine, euclidean, dot_product)"
     )
 
-    @field_validator('vector_db_password')
+    @field_validator("vector_db_password")
     @classmethod
     def validate_vector_db_password(cls, v: SecretStr | None) -> SecretStr | None:
         """Validate password is set if vector DB is enabled."""
@@ -761,7 +730,7 @@ class MahavishnuSettings(MCPServerSettings):
             collection_prefix="mahavishnu_",
             ensure_extension=True,
             ivfflat_lists=100,
-            max_connections=10
+            max_connections=10,
         )
 ```
 
@@ -803,14 +772,12 @@ from .vector_store import MahavishnuVectorStore
 
 logger = get_logger(__name__)
 
+
 class MahavishnuMemoryIntegration:
     """Integrated memory system using Oneiric pgvector + Session-Buddy."""
 
     def __init__(
-        self,
-        config: MahavishnuSettings,
-        circuit_breaker,
-        vector_store: MahavishnuVectorStore
+        self, config: MahavishnuSettings, circuit_breaker, vector_store: MahavishnuVectorStore
     ):
         self.config = config
         self.circuit_breaker = circuit_breaker
@@ -832,12 +799,10 @@ class MahavishnuMemoryIntegration:
             from llama_index.embeddings.ollama import OllamaEmbedding
 
             self.embed_model = OllamaEmbedding(
-                model_name=self.config.llm_model,
-                base_url=self.config.ollama_base_url
+                model_name=self.config.llm_model, base_url=self.config.ollama_base_url
             )
 
-            logger.info("embeddings-initialized",
-                       model=self.config.llm_model)
+            logger.info("embeddings-initialized", model=self.config.llm_model)
 
         except ImportError as e:
             logger.warning("ollama-not-available", error=str(e))
@@ -846,7 +811,7 @@ class MahavishnuMemoryIntegration:
         """Initialize Session-Buddy (for insights only)."""
         try:
             from session_buddy.adapters.reflection_adapter_oneiric import (
-                ReflectionDatabaseAdapterOneiric
+                ReflectionDatabaseAdapterOneiric,
             )
 
             # Project-specific memory
@@ -865,11 +830,7 @@ class MahavishnuMemoryIntegration:
             logger.warning("session-buddy-not-available", error=str(e))
 
     async def store_agent_conversation(
-        self,
-        agent_id: str,
-        role: str,
-        content: str,
-        metadata: Dict[str, Any]
+        self, agent_id: str, role: str, content: str, metadata: Dict[str, Any]
     ) -> None:
         """Store agent conversation with Oneiric observability."""
         with scoped_log_context(agent_id=agent_id, role=role):
@@ -890,11 +851,7 @@ class MahavishnuMemoryIntegration:
                         embedding=embedding,
                         memory_type="agent",
                         source_system="agno",
-                        metadata={
-                            **metadata,
-                            "agent_id": agent_id,
-                            "role": role
-                        }
+                        metadata={**metadata, "agent_id": agent_id, "role": role},
                     )
 
                     # Extract insights to Session-Buddy
@@ -911,14 +868,11 @@ class MahavishnuMemoryIntegration:
                 raise LifecycleError(
                     f"Failed to store conversation: {e}",
                     component="memory",
-                    details={"agent_id": agent_id, "role": role}
+                    details={"agent_id": agent_id, "role": role},
                 )
 
     async def search_memories(
-        self,
-        query: str,
-        memory_types: Optional[List[str]] = None,
-        limit: int = 10
+        self, query: str, memory_types: Optional[List[str]] = None, limit: int = 10
     ) -> List[Dict[str, Any]]:
         """Unified search with Oneiric observability."""
         with trace("memory.search", component="memory"):
@@ -927,9 +881,7 @@ class MahavishnuMemoryIntegration:
 
             # Search vector DB
             vector_results = await self.vector_store.search_memories(
-                query_embedding=query_embedding,
-                memory_types=memory_types,
-                limit=limit
+                query_embedding=query_embedding, memory_types=memory_types, limit=limit
             )
 
             # Search Session-Buddy (insights only)
@@ -937,40 +889,34 @@ class MahavishnuMemoryIntegration:
             if self.session_buddy_project:
                 try:
                     session_results = await self.session_buddy_project.semantic_search(
-                        query=query,
-                        limit=limit // 2
+                        query=query, limit=limit // 2
                     )
                 except Exception as e:
                     logger.error("session-buddy-search-failed", error=str(e))
 
             # Combine and rank results
-            all_results = [
-                {**r, "source": "vector_db"}
-                for r in vector_results
-            ] + [
+            all_results = [{**r, "source": "vector_db"} for r in vector_results] + [
                 {
                     "content": r.get("content"),
                     "metadata": r.get("metadata"),
                     "score": r.get("score", 0.0),
-                    "source": "session_buddy"
+                    "source": "session_buddy",
                 }
                 for r in session_results
             ]
 
             all_results.sort(key=lambda x: x.get("score", 0.0), reverse=True)
 
-            logger.info("memory-search-completed",
-                       total_results=len(all_results),
-                       vector_db_results=len(vector_results),
-                       session_buddy_results=len(session_results))
+            logger.info(
+                "memory-search-completed",
+                total_results=len(all_results),
+                vector_db_results=len(vector_results),
+                session_buddy_results=len(session_results),
+            )
 
             return all_results[:limit]
 
-    async def _extract_and_store_insights(
-        self,
-        content: str,
-        metadata: Dict[str, Any]
-    ) -> None:
+    async def _extract_and_store_insights(self, content: str, metadata: Dict[str, Any]) -> None:
         """Extract insights and store in Session-Buddy."""
         if not self.session_buddy_global:
             return
@@ -987,8 +933,8 @@ class MahavishnuMemoryIntegration:
                         **metadata,
                         "source_system": "mahavishnu",
                         "doc_type": "agent_insight",
-                        "extracted_at": datetime.now().isoformat()
-                    }
+                        "extracted_at": datetime.now().isoformat(),
+                    },
                 )
 
                 logger.debug("insight-extracted")
@@ -1010,7 +956,7 @@ class MahavishnuMemoryIntegration:
             "status": "healthy" if vector_health else "degraded",
             "vector_store": vector_health,
             "embeddings": self.embed_model is not None,
-            "session_buddy": self.session_buddy_project is not None
+            "session_buddy": self.session_buddy_project is not None,
         }
 
     async def close(self) -> None:
@@ -1027,6 +973,7 @@ ______________________________________________________________________
 ```python
 from .vector_store import MahavishnuVectorStore
 from .memory_integration import MahavishnuMemoryIntegration
+
 
 class MahavishnuApp:
     def __init__(self, config: MahavishnuSettings | None = None) -> None:
@@ -1045,7 +992,7 @@ class MahavishnuApp:
             self.memory_integration = MahavishnuMemoryIntegration(
                 config=self.config,
                 circuit_breaker=self.circuit_breaker,
-                vector_store=self.vector_store
+                vector_store=self.vector_store,
             )
 
         # ... rest of initialization ...
@@ -1066,10 +1013,7 @@ class MahavishnuApp:
 
     async def health_check(self) -> Dict[str, Any]:
         """Comprehensive health check."""
-        health = {
-            "status": "healthy",
-            "components": {}
-        }
+        health = {"status": "healthy", "components": {}}
 
         # Vector store health
         if self.vector_store:
@@ -1077,7 +1021,9 @@ class MahavishnuApp:
 
         # Memory integration health
         if self.memory_integration:
-            health["components"]["memory_integration"] = await self.memory_integration.health_check()
+            health["components"][
+                "memory_integration"
+            ] = await self.memory_integration.health_check()
 
         # Adapter health
         for name, adapter in self.adapters.items():
@@ -1085,10 +1031,7 @@ class MahavishnuApp:
                 adapter_health = await adapter.get_health()
                 health["components"][name] = adapter_health
             except Exception as e:
-                health["components"][name] = {
-                    "status": "unhealthy",
-                    "error": str(e)
-                }
+                health["components"][name] = {"status": "unhealthy", "error": str(e)}
 
         # Overall status
         if any(c.get("status") == "unhealthy" for c in health["components"].values()):

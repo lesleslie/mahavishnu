@@ -39,7 +39,7 @@ class ProductionReadinessChecker:
                     else:
                         print(f"❌ {method.__name__[7:].replace('_', ' ').title()}: FAILED")
                 except Exception as e:
-                    print(f"❌ {method.__name__[7:].replace('_', ' ').title()}: ERROR - {str(e)}")
+                    print(f"❌ {method.__name__[7:].replace('_', ' ').title()}: ERROR - {e}")
 
         # Calculate overall score
         score = (self.checks_passed / self.total_checks * 100) if self.total_checks > 0 else 0
@@ -99,7 +99,7 @@ class ProductionReadinessChecker:
         except Exception as e:
             self.results["config_validity"] = {
                 "status": "FAIL",
-                "message": f"Configuration error: {str(e)}",
+                "message": f"Configuration error: {e}",
             }
             return False
 
@@ -117,7 +117,7 @@ class ProductionReadinessChecker:
                     else:
                         print(f"  ⚠️  Adapter {name} is not healthy: {health}")
                 except Exception as e:
-                    print(f"  ❌ Adapter {name} health check failed: {str(e)}")
+                    print(f"  ❌ Adapter {name} health check failed: {e}")
 
             if healthy_adapters == total_adapters and total_adapters > 0:
                 self.results["adapter_health"] = {
@@ -134,7 +134,7 @@ class ProductionReadinessChecker:
         except Exception as e:
             self.results["adapter_health"] = {
                 "status": "FAIL",
-                "message": f"Adapter health check error: {str(e)}",
+                "message": f"Adapter health check error: {e}",
             }
             return False
 
@@ -154,7 +154,7 @@ class ProductionReadinessChecker:
                 except Exception:
                     print(f"  ⚠️  Repository path validation failed: {repo_path}")
 
-            if len(repos) == 0:
+            if not repos:
                 print("  ⚠️  No repositories configured")
                 self.results["repo_accessibility"] = {
                     "status": "CAUTION",
@@ -177,7 +177,7 @@ class ProductionReadinessChecker:
         except Exception as e:
             self.results["repo_accessibility"] = {
                 "status": "FAIL",
-                "message": f"Repository accessibility check error: {str(e)}",
+                "message": f"Repository accessibility check error: {e}",
             }
             return False
 
@@ -219,7 +219,7 @@ class ProductionReadinessChecker:
             )  # Just test with first repo
             execution_time = time.time() - start_time
 
-            if result and result.get("status") in ["completed", "partial"]:
+            if result and result.get("status") in ("completed", "partial"):
                 self.results["workflow_execution"] = {
                     "status": "PASS",
                     "message": f"Workflow executed successfully in {execution_time:.2f}s",
@@ -234,10 +234,10 @@ class ProductionReadinessChecker:
                 }
                 return False
         except Exception as e:
-            print(f"  ❌ Workflow execution test error: {str(e)}")
+            print(f"  ❌ Workflow execution test error: {e}")
             self.results["workflow_execution"] = {
                 "status": "FAIL",
-                "message": f"Workflow execution test error: {str(e)}",
+                "message": f"Workflow execution test error: {e}",
             }
             return False
 
@@ -279,7 +279,7 @@ class ProductionReadinessChecker:
         except Exception as e:
             self.results["resource_limits"] = {
                 "status": "FAIL",
-                "message": f"Resource limits check error: {str(e)}",
+                "message": f"Resource limits check error: {e}",
             }
             return False
 
@@ -294,7 +294,7 @@ class ProductionReadinessChecker:
                     print("  ❌ Auth enabled but secret is too short (should be at least 32 chars)")
                     return False
 
-                if config.auth_algorithm not in ["HS256", "RS256"]:
+                if config.auth_algorithm not in ("HS256", "RS256"):
                     print(f"  ⚠️  Weak auth algorithm: {config.auth_algorithm}")
                     return False
             else:
@@ -312,7 +312,7 @@ class ProductionReadinessChecker:
         except Exception as e:
             self.results["security_settings"] = {
                 "status": "FAIL",
-                "message": f"Security settings check error: {str(e)}",
+                "message": f"Security settings check error: {e}",
             }
             return False
 
@@ -343,7 +343,7 @@ class IntegrationTestSuite:
                     else:
                         print(f"❌ {method.__name__[6:].replace('_', ' ').title()}: FAILED")
                 except Exception as e:
-                    print(f"❌ {method.__name__[6:].replace('_', ' ').title()}: ERROR - {str(e)}")
+                    print(f"❌ {method.__name__[6:].replace('_', ' ').title()}: ERROR - {e}")
 
         score = (passed_tests / total_tests * 100) if total_tests > 0 else 0
 
@@ -388,7 +388,7 @@ class IntegrationTestSuite:
             # Execute workflow
             result = await self.app.execute_workflow(task, adapter_name, repos[:1])
 
-            success = result and result.get("status") in ["completed", "partial"]
+            success = result and result.get("status") in ("completed", "partial")
             self.test_results.append(
                 {
                     "test": "basic_workflow_execution",
@@ -418,7 +418,7 @@ class IntegrationTestSuite:
             )
 
             # This should return False for a non-existent user
-            success = has_permission in [True, False]  # Should not throw an exception
+            success = isinstance(has_permission, bool)  # Should not throw an exception
 
             self.test_results.append(
                 {
@@ -537,10 +537,11 @@ class PerformanceBenchmark:
         await self._benchmark_repo_operations()
 
         # Calculate overall performance score
-        avg_times = []
-        for _benchmark, results in self.benchmarks.items():
-            if "avg_time" in results:
-                avg_times.append(results["avg_time"])
+        avg_times = [
+            results["avg_time"]
+            for results in self.benchmarks.values()
+            if "avg_time" in results
+        ]
 
         if avg_times:
             avg_performance = sum(avg_times) / len(avg_times)
@@ -616,7 +617,7 @@ class PerformanceBenchmark:
                 f"  📈 Workflow execution: avg={avg_time:.2f}s, min={min_time:.2f}s, max={max_time:.2f}s"
             )
         except Exception as e:
-            print(f"  ❌ Workflow execution benchmark failed: {str(e)}")
+            print(f"  ❌ Workflow execution benchmark failed: {e}")
 
     async def _benchmark_concurrent_workflows(self):
         """Benchmark concurrent workflow handling."""
@@ -662,7 +663,7 @@ class PerformanceBenchmark:
                 f"  🚀 Concurrent workflows: {num_concurrent} in {total_time:.2f}s, throughput={successful_executions / total_time:.2f} ops/sec"
             )
         except Exception as e:
-            print(f"  ❌ Concurrent workflows benchmark failed: {str(e)}")
+            print(f"  ❌ Concurrent workflows benchmark failed: {e}")
 
     async def _benchmark_repo_operations(self):
         """Benchmark repository operations."""
@@ -689,7 +690,7 @@ class PerformanceBenchmark:
 
             print(f"  🗂️  Repo operations: avg get_repos={avg_time:.4f}s for {len(repos)} repos")
         except Exception as e:
-            print(f"  ❌ Repo operations benchmark failed: {str(e)}")
+            print(f"  ❌ Repo operations benchmark failed: {e}")
 
 
 async def run_production_readiness_suite(app: MahavishnuApp) -> dict[str, Any]:

@@ -26,7 +26,7 @@ class MahavishnuMagics(Magics):
             shell: IPython shell instance
         """
         super().__init__(shell)
-        self.app = None
+        self.app: MahavishnuApp | None = None
         self.repo_formatter = RepoFormatter()
         self.workflow_formatter = WorkflowFormatter()
 
@@ -49,7 +49,7 @@ class MahavishnuMagics(Magics):
             print("No application configured")
             return
 
-        tag = line.strip() if line.strip() else None
+        tag = line.strip() or None
 
         # Get repos from app
         repos = self.app.get_all_repos() if hasattr(self.app, "get_all_repos") else []

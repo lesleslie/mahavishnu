@@ -115,9 +115,6 @@ def circuit_breaker(threshold: int = 5, timeout: int = 60, reset_timeout: int = 
         def sync_wrapper(*args, **kwargs):
             return cb.call(func, *args, **kwargs)
 
-        if asyncio.iscoroutinefunction(func):
-            return async_wrapper
-        else:
-            return sync_wrapper
+        return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
 
     return decorator

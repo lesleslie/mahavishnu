@@ -77,9 +77,7 @@ class OTelStorageSettings(BaseSettings):
     def validate_connection_string(cls, v: str) -> str:
         """Ensure connection string uses postgresql:// scheme."""
         if not v.startswith("postgresql://"):
-            raise ValueError(
-                f"Connection string must start with 'postgresql://', got: {v[:20]}..."
-            )
+            raise ValueError(f"Connection string must start with 'postgresql://', got: {v[:20]}...")
         return v
 
     class Config:

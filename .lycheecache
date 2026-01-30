@@ -1,0 +1,29 @@
+{
+  "retryOn429": true,
+  "timeout": 10000,
+  "concurrent": 5,
+  "fallbackRetryDelay": "5s",
+  "aliveStatusCodes": [200, 206, 401, 403, 429],
+  "ignorePatterns": [
+    {
+      "pattern": "^https://github.com/"
+    },
+    {
+      "pattern": "^https://docs.github.com/"
+    },
+    {
+      "pattern": "^https://github\\.com/[^/]+/[^/]+/issues"
+    },
+    {
+      "pattern": "^https://github\\.com/[^/]+/[^/]+/pull"
+    }
+  ],
+  "httpHeaders": [
+    {
+      "urls": ["https://github.com/", "https://docs.github.com/"],
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; linkcheckmd)"
+      }
+    }
+  ]
+}

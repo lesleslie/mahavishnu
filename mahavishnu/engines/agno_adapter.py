@@ -56,7 +56,7 @@ class AgnoAdapter(OrchestratorAdapter):
             with open(file_path, encoding="utf-8") as f:
                 return f.read()
         except Exception as e:
-            return f"Error reading file {file_path}: {str(e)}"
+            return f"Error reading file {file_path}: {e}"
 
     async def _search_code(self, search_term: str, repo_path: str) -> list:
         """Tool to search code in repository"""
