@@ -52,6 +52,9 @@ dependencies = [
     "iterm2>=2.13",  # iTerm2 Python API (optional, for iTerm2 adapter)
     # Admin shell
     "ipython>=8.0.0",  # IPython admin shell for debugging and monitoring
+    # Claude-Qwen sync
+    "watchdog>=5.0.0",  # File system watching for config sync
+    "jsonmerge>=1.9.0",  # JSON merging for bidirectional config sync
 ]
 
 [project.scripts]
