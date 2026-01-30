@@ -19,6 +19,9 @@ from .monitoring_cli import add_monitoring_commands
 # Import production readiness CLI
 from .production_cli import add_production_commands
 
+# Import sync CLI
+from .sync_cli import add_sync_commands
+
 app = typer.Typer()
 
 
@@ -566,6 +569,9 @@ add_ecosystem_commands(ecosystem_app)
 
 # Add monitoring commands
 add_monitoring_commands(app)
+
+# Add Claude-Qwen sync commands
+add_sync_commands(app)
 
 
 @app.command("shell")
