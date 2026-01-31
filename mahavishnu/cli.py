@@ -574,6 +574,518 @@ add_monitoring_commands(app)
 add_sync_commands(app)
 
 
+# Worker management
+workers_app = typer.Typer(help="Worker orchestration and management")
+app.add_typer(workers_app, name="workers")
+
+
+@workers_app.command("spawn")
+def workers_spawn(
+    worker_type: str = typer.Option(
+        "terminal-qwen",
+        "--type",
+        "-t",
+        help="Type of worker (terminal-qwen, terminal-claude, container-executor)",
+    ),
+    count: int = typer.Option(1, "--count", "-n", min=1, max=50, help="Number of workers to spawn"),
+) -> None:
+    """Spawn worker instances for task execution.
+
+    Example:
+        $ mahavishnu workers spawn --type terminal-qwen --count 3
+        $ mahavishnu workers spawn -t terminal-claude -n 5
+    """
+
+    async def _spawn():
+        from .workers import WorkerManager
+        from .terminal.manager import TerminalManager
+
+        maha_app = MahavishnuApp()
+
+        # Check if workers are enabled
+        if not getattr(maha_app.config, "workers_enabled", True):
+            typer.echo("ERROR: Worker orchestration is disabled")
+            raise typer.Exit(code=1)
+
+        # Create terminal manager (reusing existing infrastructure)
+        terminal_mgr = TerminalManager.create(
+            maha_app.config,
+            mcp_client=None,  # Will be set if needed
+        )
+
+        # Create worker manager
+        worker_mgr = WorkerManager(
+            terminal_manager=terminal_mgr,
+            max_concurrent=getattr(maha_app.config, "max_concurrent_workers", 10),
+            debug_mode=False,  # Use --debug flag for debug mode
+            session_buddy_client=None,  # Will integrate in Phase 2.5
+        )
+
+        # Spawn workers
+        try:
+            worker_ids = await worker_mgr.spawn_workers(
+                worker_type=worker_type,
+                count=count,
+            )
+
+            typer.echo(f"✅ Spawned {len(worker_ids)} {worker_type} workers")
+            typer.echo(f"Worker IDs: {', '.join(worker_ids)}")
+
+            # List workers
+            workers_list = await worker_mgr.list_workers()
+            typer.echo(f"\nActive workers: {len(workers_list)}")
+
+        except Exception as e:
+            typer.echo(f"❌ Failed to spawn workers: {e}", err=True)
+            raise typer.Exit(code=1)
+
+    asyncio.run(_spawn())
+
+
+@workers_app.command("execute")
+def workers_execute(
+    prompt: str = typer.Option(..., "--prompt", "-p", help="Task prompt for AI workers"),
+    count: int = typer.Option(3, "--count", "-n", min=1, max=20, help="Number of workers to use"),
+    worker_type: str = typer.Option(
+        "terminal-qwen",
+        "--type",
+        "-t",
+        help="Type of worker (terminal-qwen, terminal-claude)",
+    ),
+    timeout: int = typer.Option(
+        300,
+        "--timeout",
+        "-T",
+        min=30,
+        max=3600,
+        help="Task timeout in seconds",
+    ),
+) -> None:
+    """Execute task on multiple workers concurrently.
+
+    Example:
+        $ mahavishnu workers execute --prompt "Implement a REST API" --count 3
+        $ mahavishnu workers execute -p "Create a Python class" -n 5 -t terminal-claude
+    """
+
+    async def _execute():
+        from .workers import WorkerManager
+        from .terminal.manager import TerminalManager
+
+        maha_app = MahavishnuApp()
+
+        # Check if workers are enabled
+        if not getattr(maha_app.config, "workers_enabled", True):
+            typer.echo("ERROR: Worker orchestration is disabled")
+            raise typer.Exit(code=1)
+
+        # Create managers
+        terminal_mgr = TerminalManager.create(
+            maha_app.config,
+            mcp_client=None,
+        )
+
+        worker_mgr = WorkerManager(
+            terminal_manager=terminal_mgr,
+            max_concurrent=getattr(maha_app.config, "max_concurrent_workers", 10),
+            debug_mode=False,
+            session_buddy_client=None,
+        )
+
+        # Spawn workers
+        typer.echo(f"🚀 Spawning {count} {worker_type} workers...")
+        worker_ids = await worker_mgr.spawn_workers(
+            worker_type=worker_type,
+            count=count,
+        )
+        typer.echo(f"✅ Workers spawned: {', '.join(worker_ids)}")
+
+        # Prepare tasks
+        tasks = [
+            {
+                "prompt": prompt,
+                "timeout": timeout,
+            }
+            for _ in range(count)
+        ]
+
+        # Execute tasks
+        typer.echo(f"\n⚙️  Executing tasks across {count} workers...")
+        results = await worker_mgr.execute_batch(worker_ids, tasks)
+
+        # Display results
+        typer.echo(f"\n📊 Results:")
+        successful = 0
+        failed = 0
+
+        for wid, result in results.items():
+            status_emoji = "✅" if result.is_success() else "❌"
+            typer.echo(f"{status_emoji} Worker {wid}:")
+            typer.echo(f"   Status: {result.status.value}")
+            typer.echo(f"   Duration: {result.duration_seconds:.2f}s")
+
+            if result.has_output():
+                output_preview = result.output[:150] + "..." if len(result.output) > 150 else result.output
+                typer.echo(f"   Output: {output_preview}")
+
+            if result.error:
+                typer.echo(f"   Error: {result.error}")
+
+            if result.is_success():
+                successful += 1
+            else:
+                failed += 1
+
+        typer.echo(f"\n📈 Summary: {successful} successful, {failed} failed")
+
+        # Cleanup workers
+        typer.echo(f"\n🧹 Cleaning up workers...")
+        for wid in worker_ids:
+            await worker_mgr.close_worker(wid)
+        typer.echo("✅ All workers closed")
+
+    asyncio.run(_execute())
+
+
+# Pool management
+pool_app = typer.Typer(help="Multi-pool orchestration and management")
+app.add_typer(pool_app, name="pool")
+
+
+@pool_app.command("spawn")
+def pool_spawn(
+    pool_type: str = typer.Option(
+        "mahavishnu",
+        "--type",
+        "-t",
+        help="Type of pool (mahavishnu, session-buddy, kubernetes)",
+    ),
+    name: str = typer.Option("default", "--name", "-n", help="Pool name"),
+    min_workers: int = typer.Option(1, "--min", "-m", min=1, max=10, help="Minimum workers"),
+    max_workers: int = typer.Option(10, "--max", "-M", min=1, max=100, help="Maximum workers"),
+    worker_type: str = typer.Option(
+        "terminal-qwen",
+        "--worker-type",
+        "-w",
+        help="Worker type (terminal-qwen, terminal-claude, container)",
+    ),
+) -> None:
+    """Spawn a new worker pool.
+
+    Example:
+        $ mahavishnu pool spawn --type mahavishnu --name local --min 2 --max 5
+        $ mahavishnu pool spawn -t session-buddy -n delegated
+    """
+
+    async def _spawn():
+        from .pools import PoolManager, PoolConfig
+        from .terminal.manager import TerminalManager
+
+        maha_app = MahavishnuApp()
+
+        # Check if pools are enabled
+        if not getattr(maha_app.config, "pools_enabled", True):
+            typer.echo("ERROR: Pool management is disabled")
+            raise typer.Exit(code=1)
+
+        # Create terminal manager
+        terminal_mgr = TerminalManager.create(
+            maha_app.config,
+            mcp_client=None,
+        )
+
+        # Create pool manager
+        from .mcp.protocols.message_bus import MessageBus
+        message_bus = MessageBus()
+        pool_mgr = PoolManager(
+            terminal_manager=terminal_mgr,
+            session_buddy_client=maha_app.session_buddy,
+            message_bus=message_bus,
+        )
+
+        # Create pool config
+        config = PoolConfig(
+            name=name,
+            pool_type=pool_type,
+            min_workers=min_workers,
+            max_workers=max_workers,
+            worker_type=worker_type,
+        )
+
+        # Spawn pool
+        try:
+            pool_id = await pool_mgr.spawn_pool(pool_type, config)
+            typer.echo(f"✅ Spawned {pool_type} pool: {pool_id}")
+            typer.echo(f"   Name: {name}")
+            typer.echo(f"   Workers: {min_workers}-{max_workers}")
+            typer.echo(f"   Worker type: {worker_type}")
+
+        except Exception as e:
+            typer.echo(f"❌ Failed to spawn pool: {e}", err=True)
+            raise typer.Exit(code=1)
+
+    asyncio.run(_spawn())
+
+
+@pool_app.command("list")
+def pool_list() -> None:
+    """List all active pools.
+
+    Example:
+        $ mahavishnu pool list
+    """
+
+    async def _list():
+        from .pools import PoolManager
+        from .terminal.manager import TerminalManager
+
+        maha_app = MahavishnuApp()
+
+        if not hasattr(maha_app, "pool_manager") or maha_app.pool_manager is None:
+            typer.echo("No pool manager initialized")
+            raise typer.Exit(code=1)
+
+        try:
+            pools = await maha_app.pool_manager.list_pools()
+
+            if not pools:
+                typer.echo("No active pools")
+                return
+
+            typer.echo(f"Active pools: {len(pools)}\n")
+            for pool in pools:
+                typer.echo(f"  📦 {pool['pool_id']}")
+                typer.echo(f"     Type: {pool['pool_type']}")
+                typer.echo(f"     Name: {pool['name']}")
+                typer.echo(f"     Status: {pool['status']}")
+                typer.echo(f"     Workers: {pool['workers']} ({pool['min_workers']}-{pool['max_workers']})")
+                typer.echo("")
+
+        except Exception as e:
+            typer.echo(f"❌ Failed to list pools: {e}", err=True)
+            raise typer.Exit(code=1)
+
+    asyncio.run(_list())
+
+
+@pool_app.command("execute")
+def pool_execute(
+    pool_id: str = typer.Argument(..., help="Pool ID to execute on"),
+    prompt: str = typer.Option(..., "--prompt", "-p", help="Task prompt"),
+    timeout: int = typer.Option(300, "--timeout", "-T", min=30, max=3600, help="Timeout in seconds"),
+) -> None:
+    """Execute task on specific pool.
+
+    Example:
+        $ mahavishnu pool execute pool_abc --prompt "Write Python code"
+    """
+
+    async def _execute():
+        maha_app = MahavishnuApp()
+
+        if not hasattr(maha_app, "pool_manager") or maha_app.pool_manager is None:
+            typer.echo("No pool manager initialized")
+            raise typer.Exit(code=1)
+
+        try:
+            result = await maha_app.pool_manager.execute_on_pool(
+                pool_id,
+                {"prompt": prompt, "timeout": timeout},
+            )
+
+            typer.echo(f"✅ Task completed on pool: {pool_id}")
+            typer.echo(f"   Status: {result['status']}")
+            if result.get("output"):
+                typer.echo(f"   Output:\n{result['output']}")
+            if result.get("error"):
+                typer.echo(f"   Error: {result['error']}")
+
+        except ValueError as e:
+            typer.echo(f"❌ {e}", err=True)
+            raise typer.Exit(code=1)
+        except Exception as e:
+            typer.echo(f"❌ Failed to execute task: {e}", err=True)
+            raise typer.Exit(code=1)
+
+    asyncio.run(_execute())
+
+
+@pool_app.command("route")
+def pool_route(
+    prompt: str = typer.Option(..., "--prompt", "-p", help="Task prompt"),
+    selector: str = typer.Option(
+        "least_loaded",
+        "--selector",
+        "-s",
+        help="Pool selector (round_robin, least_loaded, random)",
+    ),
+    timeout: int = typer.Option(300, "--timeout", "-T", min=30, max=3600, help="Timeout in seconds"),
+) -> None:
+    """Execute task with automatic pool routing.
+
+    Example:
+        $ mahavishnu pool route --prompt "Write tests" --selector least_loaded
+    """
+
+    async def _route():
+        from .pools import PoolSelector
+
+        maha_app = MahavishnuApp()
+
+        if not hasattr(maha_app, "pool_manager") or maha_app.pool_manager is None:
+            typer.echo("No pool manager initialized")
+            raise typer.Exit(code=1)
+
+        try:
+            pool_selector = PoolSelector(selector)
+            result = await maha_app.pool_manager.route_task(
+                {"prompt": prompt, "timeout": timeout},
+                pool_selector=pool_selector,
+            )
+
+            typer.echo(f"✅ Task routed to pool: {result['pool_id']}")
+            typer.echo(f"   Status: {result['status']}")
+            if result.get("output"):
+                typer.echo(f"   Output:\n{result['output']}")
+
+        except ValueError as e:
+            typer.echo(f"❌ {e}", err=True)
+            raise typer.Exit(code=1)
+        except Exception as e:
+            typer.echo(f"❌ Failed to route task: {e}", err=True)
+            raise typer.Exit(code=1)
+
+    asyncio.run(_route())
+
+
+@pool_app.command("scale")
+def pool_scale(
+    pool_id: str = typer.Argument(..., help="Pool ID to scale"),
+    target: int = typer.Option(..., "--target", "-t", min=1, max=100, help="Target worker count"),
+) -> None:
+    """Scale pool to target worker count.
+
+    Example:
+        $ mahavishnu pool scale pool_abc --target 10
+    """
+
+    async def _scale():
+        maha_app = MahavishnuApp()
+
+        if not hasattr(maha_app, "pool_manager") or maha_app.pool_manager is None:
+            typer.echo("No pool manager initialized")
+            raise typer.Exit(code=1)
+
+        try:
+            pool = maha_app.pool_manager._pools.get(pool_id)
+            if not pool:
+                typer.echo(f"❌ Pool not found: {pool_id}", err=True)
+                raise typer.Exit(code=1)
+
+            await pool.scale(target)
+            typer.echo(f"✅ Scaled pool {pool_id} to {target} workers")
+            typer.echo(f"   Current workers: {len(pool._workers)}")
+
+        except NotImplementedError as e:
+            typer.echo(f"❌ {e}", err=True)
+            raise typer.Exit(code=1)
+        except Exception as e:
+            typer.echo(f"❌ Failed to scale pool: {e}", err=True)
+            raise typer.Exit(code=1)
+
+    asyncio.run(_scale())
+
+
+@pool_app.command("close")
+def pool_close(
+    pool_id: str = typer.Argument(..., help="Pool ID to close"),
+) -> None:
+    """Close a specific pool.
+
+    Example:
+        $ mahavishnu pool close pool_abc
+    """
+
+    async def _close():
+        maha_app = MahavishnuApp()
+
+        if not hasattr(maha_app, "pool_manager") or maha_app.pool_manager is None:
+            typer.echo("No pool manager initialized")
+            raise typer.Exit(code=1)
+
+        try:
+            await maha_app.pool_manager.close_pool(pool_id)
+            typer.echo(f"✅ Closed pool: {pool_id}")
+
+        except Exception as e:
+            typer.echo(f"❌ Failed to close pool: {e}", err=True)
+            raise typer.Exit(code=1)
+
+    asyncio.run(_close())
+
+
+@pool_app.command("close-all")
+def pool_close_all() -> None:
+    """Close all active pools.
+
+    Example:
+        $ mahavishnu pool close-all
+    """
+
+    async def _close_all():
+        maha_app = MahavishnuApp()
+
+        if not hasattr(maha_app, "pool_manager") or maha_app.pool_manager is None:
+            typer.echo("No pool manager initialized")
+            raise typer.Exit(code=1)
+
+        try:
+            await maha_app.pool_manager.close_all()
+            typer.echo("✅ All pools closed")
+
+        except Exception as e:
+            typer.echo(f"❌ Failed to close pools: {e}", err=True)
+            raise typer.Exit(code=1)
+
+    asyncio.run(_close_all())
+
+
+@pool_app.command("health")
+def pool_health() -> None:
+    """Get health status of all pools.
+
+    Example:
+        $ mahavishnu pool health
+    """
+
+    async def _health():
+        maha_app = MahavishnuApp()
+
+        if not hasattr(maha_app, "pool_manager") or maha_app.pool_manager is None:
+            typer.echo("No pool manager initialized")
+            raise typer.Exit(code=1)
+
+        try:
+            health = await maha_app.pool_manager.health_check()
+
+            typer.echo(f"Pool Manager Health: {health['status']}")
+            typer.echo(f"Active pools: {health['pools_active']}\n")
+
+            if health.get("pools"):
+                for pool in health["pools"]:
+                    status_emoji = "✅" if pool["status"] == "running" else "⚠️"
+                    typer.echo(f"  {status_emoji} {pool['pool_id']}")
+                    typer.echo(f"     Type: {pool['pool_type']}")
+                    typer.echo(f"     Workers: {pool['workers']}")
+                    typer.echo("")
+
+        except Exception as e:
+            typer.echo(f"❌ Failed to get health: {e}", err=True)
+            raise typer.Exit(code=1)
+
+    asyncio.run(_health())
+
+
 @app.command("shell")
 def shell_cmd() -> None:
     """Start the interactive admin shell for debugging and monitoring.

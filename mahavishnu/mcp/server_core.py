@@ -1228,6 +1228,12 @@ class FastMCPServer:
         # Register Session Buddy integration tools
         self._register_session_buddy_tools()
 
+        # Register worker orchestration tools if enabled
+        self._register_worker_tools()
+
+        # Register pool management tools if enabled
+        self._register_pool_tools()
+
         # Register repository messaging tools
         self._register_repository_messaging_tools()
 
@@ -1266,6 +1272,60 @@ class FastMCPServer:
 
         register_repository_messaging_tools(self.server, self.app, self.mcp_client)
         logger.info("Registered repository messaging tools with MCP server")
+
+    def _register_worker_tools(self) -> None:
+        """Register worker orchestration tools with MCP server."""
+        # Check if workers are enabled in config
+        if not getattr(self.app.config, "workers_enabled", True):
+            logger.info("Worker orchestration disabled, skipping tool registration")
+            return
+
+        # Get worker manager from app (if initialized)
+        worker_manager = getattr(self.app, "_worker_manager", None)
+        if worker_manager is None:
+            logger.warning("Worker manager not initialized, skipping worker tools")
+            return
+
+        # Get Session-Buddy client for result storage
+        session_buddy_client = getattr(self.app, "session_buddy", None)
+        if session_buddy_client:
+            # Get the MCP client from Session-Buddy
+            try:
+                session_buddy_client = getattr(
+                    session_buddy_client,
+                    "mcp_client",
+                    None
+                )
+            except Exception:
+                session_buddy_client = None
+
+        # Import and register worker tools
+        from ..mcp.tools.worker_tools import register_worker_tools
+
+        register_worker_tools(
+            self.server,
+            worker_manager,
+        )
+        logger.info("Registered 9 worker orchestration tools with MCP server")
+
+    def _register_pool_tools(self) -> None:
+        """Register pool management tools with MCP server."""
+        # Check if pools are enabled in config
+        if not getattr(self.app.config, "pools_enabled", True):
+            logger.info("Pool management disabled, skipping tool registration")
+            return
+
+        # Get pool manager from app (if initialized)
+        pool_manager = getattr(self.app, "pool_manager", None)
+        if pool_manager is None:
+            logger.warning("Pool manager not initialized, skipping pool tools")
+            return
+
+        # Import and register pool tools
+        from ..mcp.tools.pool_tools import register_pool_tools
+
+        register_pool_tools(self.server, pool_manager)
+        logger.info("Registered 10 pool management tools with MCP server")
 
 
 async def run_server(config=None):

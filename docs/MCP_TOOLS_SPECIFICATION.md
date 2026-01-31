@@ -22,9 +22,17 @@ Tools for managing and querying orchestration adapters.
 
 Tools for running and managing Crackerjack QC checks.
 
-### 5. Session Management Tools
+### 5. Worker Management Tools
+
+Tools for orchestrating headless AI workers across terminals and containers.
+
+### 6. Session Management Tools
 
 Tools for managing Session-Buddy checkpoints and state.
+
+### 7. Pool Management Tools
+
+Tools for multi-pool orchestration, routing, and scaling across local, delegated, and cloud workers.
 
 ______________________________________________________________________
 
@@ -787,6 +795,925 @@ async def delete_checkpoint(
 **Errors:**
 
 - `ValueError`: If checkpoint is not found
+
+______________________________________________________________________
+
+### Worker Management Tools
+
+#### `worker_spawn`
+
+Spawn worker instances for task execution.
+
+**Signature:**
+
+```python
+async def worker_spawn(
+    worker_type: str = "terminal-qwen",
+    count: int = 1,
+) -> list[str]
+```
+
+**Parameters:**
+
+- `worker_type`: Type of worker to spawn. Options:
+  - `"terminal-qwen"`: Headless Qwen CLI execution
+  - `"terminal-claude"`: Headless Claude Code CLI execution
+  - `"container-executor"`: Containerized task execution
+- `count`: Number of workers to spawn (1-50). Default: 1
+
+**Returns:**
+
+```python
+[
+    "term_abc123",
+    "term_def456",
+    "term_ghi789",
+    # ... more worker IDs
+]
+```
+
+**Errors:**
+
+- `ValueError`: If worker_type is unknown
+- `RuntimeError`: If worker fails to start
+- `ResourceError`: If system is at capacity (max concurrent workers)
+
+**Example:**
+
+```python
+# Spawn 3 Qwen workers
+worker_ids = await worker_spawn(worker_type="terminal-qwen", count=3)
+
+# Spawn 5 Claude workers
+worker_ids = await worker_spawn(worker_type="terminal-claude", count=5)
+
+# Spawn 2 container workers
+worker_ids = await worker_spawn(worker_type="container-executor", count=2)
+```
+
+______________________________________________________________________
+
+#### `worker_execute`
+
+Execute task on a specific worker.
+
+**Signature:**
+
+```python
+async def worker_execute(
+    worker_id: str,
+    prompt: str,
+    timeout: int = 300,
+) -> dict[str, Any]
+```
+
+**Parameters:**
+
+- `worker_id`: Worker identifier (from `worker_spawn`)
+- `prompt`: Task prompt for AI workers
+- `timeout`: Execution timeout in seconds (30-3600). Default: 300
+
+**Returns:**
+
+```python
+{
+    "worker_id": "term_abc123",
+    "status": "completed",  # "pending", "running", "completed", "failed", "timeout", "cancelled"
+    "output": "Task completed successfully",
+    "error": None,
+    "exit_code": 0,
+    "duration_seconds": 45.2,
+    "metadata": {
+        "worker_type": "terminal-qwen",
+        "last_output": "Final response",
+        "output_lines": 10,
+    },
+}
+```
+
+**Errors:**
+
+- `ValueError`: If worker_id not found
+- `TimeoutError`: If task execution exceeds timeout
+- `RuntimeError`: If worker fails during execution
+
+**Example:**
+
+```python
+# Execute task on specific worker
+result = await worker_execute(
+    worker_id="term_abc123",
+    prompt="Implement a REST API with FastAPI",
+    timeout=600,
+)
+```
+
+______________________________________________________________________
+
+#### `worker_execute_batch`
+
+Execute tasks on multiple workers concurrently.
+
+**Signature:**
+
+```python
+async def worker_execute_batch(
+    worker_ids: list[str],
+    prompts: list[str],
+    timeout: int = 300,
+) -> dict[str, dict[str, Any]]
+```
+
+**Parameters:**
+
+- `worker_ids`: List of worker identifiers
+- `prompts`: List of prompts (same length as worker_ids)
+- `timeout`: Execution timeout in seconds (30-3600). Default: 300
+
+**Returns:**
+
+```python
+{
+    "term_abc123": {
+        "worker_id": "term_abc123",
+        "status": "completed",
+        "output": "Task completed",
+        "duration_seconds": 42.1,
+    },
+    "term_def456": {
+        "worker_id": "term_def456",
+        "status": "completed",
+        "output": "Task completed",
+        "duration_seconds": 43.8,
+    },
+    "term_ghi789": {
+        "worker_id": "term_ghi789",
+        "status": "failed",
+        "error": "Task failed",
+        "duration_seconds": 12.5,
+    },
+}
+```
+
+**Errors:**
+
+- `ValueError`: If worker_ids and prompts length mismatch
+- `ValueError`: If any worker_id not found
+
+**Example:**
+
+```python
+# Execute different tasks on multiple workers
+results = await worker_execute_batch(
+    worker_ids=["term_abc123", "term_def456", "term_ghi789"],
+    prompts=[
+        "Implement user authentication",
+        "Implement database models",
+        "Write API documentation",
+    ],
+)
+```
+
+______________________________________________________________________
+
+#### `worker_list`
+
+List all active workers.
+
+**Signature:**
+
+```python
+async def worker_list() -> list[dict[str, Any]]
+```
+
+**Returns:**
+
+```python
+[
+    {
+        "worker_id": "term_abc123",
+        "worker_type": "terminal-qwen",
+        "status": "running",
+    },
+    {
+        "worker_id": "term_def456",
+        "worker_type": "terminal-claude",
+        "status": "completed",
+    },
+    {
+        "worker_id": "container_ghi789",
+        "worker_type": "container-executor",
+        "status": "running",
+    },
+]
+```
+
+**Example:**
+
+```python
+# List all active workers
+workers = await worker_list()
+```
+
+______________________________________________________________________
+
+#### `worker_monitor`
+
+Monitor status of multiple workers.
+
+**Signature:**
+
+```python
+async def worker_monitor(
+    worker_ids: list[str],
+    interval: float = 1.0,
+) -> dict[str, str]
+```
+
+**Parameters:**
+
+- `worker_ids`: List of worker identifiers to monitor
+- `interval`: Polling interval in seconds. Default: 1.0
+
+**Returns:**
+
+```python
+{
+    "term_abc123": "running",
+    "term_def456": "completed",
+    "term_ghi789": "failed",
+}
+```
+
+**Errors:**
+
+- `ValueError`: If any worker_id not found
+
+**Example:**
+
+```python
+# Monitor multiple workers
+statuses = await worker_monitor(
+    worker_ids=["term_abc123", "term_def456"],
+    interval=0.5,
+)
+```
+
+______________________________________________________________________
+
+#### `worker_collect_results`
+
+Collect results from completed workers.
+
+**Signature:**
+
+```python
+async def worker_collect_results(
+    worker_ids: list[str] | None = None,
+) -> dict[str, dict[str, Any]]
+```
+
+**Parameters:**
+
+- `worker_ids` (optional): List of worker identifiers. Default: all workers
+
+**Returns:**
+
+```python
+{
+    "term_abc123": {
+        "worker_id": "term_abc123",
+        "status": "completed",
+        "output": "Full worker output...",
+        "duration_seconds": 45.2,
+        "progress": {...},
+    },
+    "term_def456": {
+        "worker_id": "term_def456",
+        "status": "completed",
+        "output": "Full worker output...",
+        "duration_seconds": 43.8,
+        "progress": {...},
+    },
+}
+```
+
+**Example:**
+
+```python
+# Collect results from specific workers
+results = await worker_collect_results(
+    worker_ids=["term_abc123", "term_def456"]
+)
+
+# Collect results from all workers
+results = await worker_collect_results()
+```
+
+______________________________________________________________________
+
+#### `worker_close`
+
+Close a specific worker.
+
+**Signature:**
+
+```python
+async def worker_close(
+    worker_id: str,
+) -> dict[str, Any]
+```
+
+**Parameters:**
+
+- `worker_id`: Worker identifier to close
+
+**Returns:**
+
+```python
+{
+    "worker_id": "term_abc123",
+    "closed": True,
+    "message": "Worker closed successfully",
+}
+```
+
+**Errors:**
+
+- `ValueError`: If worker_id not found
+
+**Example:**
+
+```python
+# Close a specific worker
+result = await worker_close(worker_id="term_abc123")
+```
+
+______________________________________________________________________
+
+#### `worker_close_all`
+
+Close all active workers.
+
+**Signature:**
+
+```python
+async def worker_close_all() -> dict[str, Any]
+```
+
+**Returns:**
+
+```python
+{
+    "closed_count": 5,
+    "failed_count": 0,
+    "workers_closed": ["term_abc123", "term_def456", "term_ghi789", "container_jkl012", "term_mno345"],
+}
+```
+
+**Example:**
+
+```python
+# Close all workers
+result = await worker_close_all()
+```
+
+______________________________________________________________________
+
+#### `worker_health`
+
+Get worker system health.
+
+**Signature:**
+
+```python
+async def worker_health() -> dict[str, Any]
+```
+
+**Returns:**
+
+```python
+{
+    "status": "healthy",
+    "workers_active": 3,
+    "max_concurrent": 10,
+    "debug_mode": false,
+    "debug_monitor_active": false,
+    "workers": [
+        {
+            "worker_id": "term_abc123",
+            "worker_type": "terminal-qwen",
+            "status": "running",
+        },
+        {
+            "worker_id": "term_def456",
+            "worker_type": "terminal-claude",
+            "status": "running",
+        },
+        {
+            "worker_id": "container_ghi789",
+            "worker_type": "container-executor",
+            "status": "running",
+        },
+    ],
+}
+```
+
+**Example:**
+
+```python
+# Get worker system health
+health = await worker_health()
+```
+
+### Pool Management Tools
+
+#### `pool_spawn`
+
+Spawn a new worker pool of specified type.
+
+**Signature:**
+
+```python
+async def pool_spawn(
+    pool_type: str = "mahavishnu",
+    name: str = "default",
+    min_workers: int = 1,
+    max_workers: int = 10,
+    worker_type: str = "terminal-qwen",
+) -> dict[str, Any]
+```
+
+**Parameters:**
+
+- `pool_type`: Type of pool to spawn. Options: "mahavishnu", "session-buddy", "kubernetes"
+- `name`: Human-readable pool name
+- `min_workers`: Minimum number of workers (1-10)
+- `max_workers`: Maximum number of workers (1-100)
+- `worker_type`: Worker type. Options: "terminal-qwen", "terminal-claude", "container"
+
+**Returns:**
+
+```python
+{
+    "pool_id": "mahavishnu_abc123",
+    "pool_type": "mahavishnu",
+    "name": "local-pool",
+    "status": "created",
+    "min_workers": 1,
+    "max_workers": 10,
+}
+```
+
+**Errors:**
+
+- `ValueError`: If pool_type is unknown
+- `RuntimeError`: If pool fails to start
+- `ValueError`: If target worker count outside range [min_workers, max_workers]
+
+**Example:**
+
+```python
+# Spawn local Mahavishnu pool
+pool = await pool_spawn(
+    pool_type="mahavishnu",
+    name="local",
+    min_workers=2,
+    max_workers=5,
+)
+
+# Spawn Session-Buddy delegated pool
+pool = await pool_spawn(
+    pool_type="session-buddy",
+    name="delegated",
+)
+```
+
+______________________________________________________________________
+
+#### `pool_execute`
+
+Execute task on specific pool.
+
+**Signature:**
+
+```python
+async def pool_execute(
+    pool_id: str,
+    prompt: str,
+    timeout: int = 300,
+) -> dict[str, Any]
+```
+
+**Parameters:**
+
+- `pool_id`: Target pool identifier
+- `prompt`: Task prompt for workers
+- `timeout`: Execution timeout in seconds (30-3600). Default: 300
+
+**Returns:**
+
+```python
+{
+    "pool_id": "mahavishnu_abc123",
+    "worker_id": "worker_xyz789",
+    "status": "completed",
+    "output": "Task output here...",
+    "error": None,
+    "duration": 5.2,
+}
+```
+
+**Errors:**
+
+- `ValueError`: If pool_id not found
+- `RuntimeError`: If no workers available in pool
+
+**Example:**
+
+```python
+# Execute task on specific pool
+result = await pool_execute(
+    pool_id="mahavishnu_abc123",
+    prompt="Implement a REST API endpoint",
+    timeout=300,
+)
+```
+
+______________________________________________________________________
+
+#### `pool_route_execute`
+
+Execute task with automatic pool routing.
+
+**Signature:**
+
+```python
+async def pool_route_execute(
+    prompt: str,
+    pool_selector: str = "least_loaded",
+    timeout: int = 300,
+) -> dict[str, Any]
+```
+
+**Parameters:**
+
+- `prompt`: Task prompt for workers
+- `pool_selector`: Pool selection strategy. Options: "round_robin", "least_loaded", "random"
+- `timeout`: Execution timeout in seconds (30-3600). Default: 300
+
+**Returns:**
+
+```python
+{
+    "pool_id": "mahavishnu_abc123",
+    "worker_id": "worker_xyz789",
+    "status": "completed",
+    "output": "Task output here...",
+    "error": None,
+    "duration": 5.2,
+}
+```
+
+**Errors:**
+
+- `RuntimeError`: If no pools available
+- `ValueError`: If pool_selector is invalid
+
+**Example:**
+
+```python
+# Route to least loaded pool
+result = await pool_route_execute(
+    prompt="Implement API endpoint",
+    pool_selector="least_loaded",
+)
+
+# Route using round-robin
+result = await pool_route_execute(
+    prompt="Write tests",
+    pool_selector="round_robin",
+)
+```
+
+______________________________________________________________________
+
+#### `pool_list`
+
+List all active pools.
+
+**Signature:**
+
+```python
+async def pool_list() -> list[dict[str, Any]]
+```
+
+**Returns:**
+
+```python
+[
+    {
+        "pool_id": "mahavishnu_abc123",
+        "pool_type": "mahavishnu",
+        "name": "local",
+        "status": "running",
+        "workers": 5,
+        "min_workers": 2,
+        "max_workers": 10,
+    },
+    {
+        "pool_id": "session_buddy_def456",
+        "pool_type": "session-buddy",
+        "name": "delegated",
+        "status": "running",
+        "workers": 3,
+        "min_workers": 3,
+        "max_workers": 3,
+    },
+]
+```
+
+**Example:**
+
+```python
+# List all active pools
+pools = await pool_list()
+
+for pool in pools:
+    print(f"{pool['pool_id']}: {pool['status']} ({pool['workers']} workers)")
+```
+
+______________________________________________________________________
+
+#### `pool_monitor`
+
+Monitor pool status and metrics.
+
+**Signature:**
+
+```python
+async def pool_monitor(
+    pool_ids: list[str] | None = None,
+) -> dict[str, dict[str, Any]]
+```
+
+**Parameters:**
+
+- `pool_ids`: Optional list of pool IDs to monitor. None = all pools
+
+**Returns:**
+
+```python
+{
+    "mahavishnu_abc123": {
+        "memory_count": 15,
+        "status": "running",
+        "metrics": {
+            "active_workers": 5,
+            "tasks_completed": 100,
+            "tasks_failed": 2,
+        },
+    },
+    "session_buddy_def456": {
+        "memory_count": 8,
+        "status": "running",
+    },
+}
+```
+
+**Example:**
+
+```python
+# Monitor all pools
+metrics = await pool_monitor()
+
+# Monitor specific pools
+metrics = await pool_monitor(pool_ids=["mahavishnu_abc123"])
+```
+
+______________________________________________________________________
+
+#### `pool_scale`
+
+Scale pool to target worker count.
+
+**Signature:**
+
+```python
+async def pool_scale(
+    pool_id: str,
+    target_workers: int,
+) -> dict[str, Any]
+```
+
+**Parameters:**
+
+- `pool_id`: Pool identifier to scale
+- `target_workers`: Target worker count (1-100)
+
+**Returns:**
+
+```python
+{
+    "pool_id": "mahavishnu_abc123",
+    "target_workers": 10,
+    "actual_workers": 10,
+    "status": "scaled",
+}
+```
+
+**Errors:**
+
+- `ValueError`: If pool_id not found
+- `ValueError`: If target_workers outside [min_workers, max_workers]
+- `NotImplementedError`: If pool doesn't support scaling (e.g., SessionBuddyPool)
+
+**Example:**
+
+```python
+# Scale pool to 10 workers
+result = await pool_scale(
+    pool_id="mahavishnu_abc123",
+    target_workers=10,
+)
+```
+
+______________________________________________________________________
+
+#### `pool_close`
+
+Close a specific pool.
+
+**Signature:**
+
+```python
+async def pool_close(
+    pool_id: str,
+) -> dict[str, Any]
+```
+
+**Parameters:**
+
+- `pool_id`: Pool identifier to close
+
+**Returns:**
+
+```python
+{
+    "pool_id": "mahavishnu_abc123",
+    "status": "closed",
+}
+```
+
+**Errors:**
+
+- `ValueError`: If pool_id not found
+
+**Example:**
+
+```python
+# Close specific pool
+result = await pool_close(pool_id="mahavishnu_abc123")
+```
+
+______________________________________________________________________
+
+#### `pool_close_all`
+
+Close all active pools.
+
+**Signature:**
+
+```python
+async def pool_close_all() -> dict[str, Any]
+```
+
+**Returns:**
+
+```python
+{
+    "pools_closed": 3,
+    "status": "all_closed",
+}
+```
+
+**Example:**
+
+```python
+# Close all pools
+result = await pool_close_all()
+print(f"Closed {result['pools_closed']} pools")
+```
+
+______________________________________________________________________
+
+#### `pool_health`
+
+Get health status of all pools.
+
+**Signature:**
+
+```python
+async def pool_health() -> dict[str, Any]
+```
+
+**Returns:**
+
+```python
+{
+    "status": "healthy",
+    "pools_active": 3,
+    "pools": [
+        {
+            "pool_id": "mahavishnu_abc123",
+            "pool_type": "mahavishnu",
+            "status": "running",
+            "workers": 5,
+        },
+        {
+            "pool_id": "session_buddy_def456",
+            "pool_type": "session-buddy",
+            "status": "running",
+            "workers": 3,
+        },
+    ],
+}
+```
+
+**Example:**
+
+```python
+# Get pool health
+health = await pool_health()
+
+print(f"Overall status: {health['status']}")
+print(f"Active pools: {health['pools_active']}")
+
+for pool in health["pools"]:
+    print(f"  {pool['pool_id']}: {pool['status']} ({pool['workers']} workers)")
+```
+
+______________________________________________________________________
+
+#### `pool_search_memory`
+
+Search memory across all pools.
+
+**Signature:**
+
+```python
+async def pool_search_memory(
+    query: str,
+    limit: int = 100,
+) -> list[dict[str, Any]]
+```
+
+**Parameters:**
+
+- `query`: Search query string
+- `limit`: Maximum results to return. Default: 100
+
+**Returns:**
+
+```python
+[
+    {
+        "content": "API implementation code...",
+        "metadata": {
+            "pool_id": "mahavishnu_abc123",
+            "pool_type": "mahavishnu",
+            "worker_id": "worker_xyz789",
+            "timestamp": 1234567890.0,
+        },
+    },
+    {
+        "content": "Test code...",
+        "metadata": {
+            "pool_id": "session_buddy_def456",
+            "pool_type": "session-buddy",
+            "timestamp": 1234567890.0,
+        },
+    },
+]
+```
+
+**Errors:**
+
+- `RuntimeError`: If search fails
+
+**Example:**
+
+```python
+# Search across all pools
+results = await pool_search_memory(
+    query="API implementation",
+    limit=50,
+)
+
+for result in results:
+    print(f"Pool: {result['metadata']['pool_id']}")
+    print(f"Content: {result['content'][:100]}...")
+```
 
 ______________________________________________________________________
 

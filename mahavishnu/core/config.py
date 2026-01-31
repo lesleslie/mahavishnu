@@ -249,6 +249,76 @@ class MahavishnuSettings(BaseSettings):
         description="Enable admin shell (mahavishnu shell command)",
     )
 
+    # Worker configuration
+    workers_enabled: bool = Field(
+        default=True,
+        description="Enable worker orchestration for headless AI execution",
+    )
+    max_concurrent_workers: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum number of concurrent workers (1-100)",
+    )
+    worker_default_type: str = Field(
+        default="terminal-qwen",
+        description="Default worker type (terminal-qwen, terminal-claude, container-executor)",
+    )
+    worker_timeout_seconds: int = Field(
+        default=300,
+        ge=30,
+        le=3600,
+        description="Default worker timeout in seconds (30-3600)",
+    )
+    session_buddy_integration: bool = Field(
+        default=True,
+        description="Enable Session-Buddy result storage for workers",
+    )
+
+    # Pool configuration
+    pools_enabled: bool = Field(
+        default=True,
+        description="Enable pool management for multi-pool orchestration",
+    )
+    default_pool_type: str = Field(
+        default="mahavishnu",
+        description="Default pool type (mahavishnu, session-buddy, kubernetes)",
+    )
+    pool_routing_strategy: str = Field(
+        default="least_loaded",
+        description="Pool selection strategy (round_robin, least_loaded, random, affinity)",
+    )
+    memory_aggregation_enabled: bool = Field(
+        default=True,
+        description="Enable memory aggregation across pools",
+    )
+    memory_sync_interval: int = Field(
+        default=60,
+        ge=10,
+        le=600,
+        description="Memory sync interval in seconds (10-600)",
+    )
+    session_buddy_pool_url: str = Field(
+        default="http://localhost:8678/mcp",
+        description="Session-Buddy MCP server URL for delegated pools",
+    )
+    akosha_url: str = Field(
+        default="http://localhost:8682/mcp",
+        description="Akosha MCP server URL for cross-pool analytics",
+    )
+    pool_default_min_workers: int = Field(
+        default=1,
+        ge=1,
+        le=10,
+        description="Default minimum workers per pool",
+    )
+    pool_default_max_workers: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Default maximum workers per pool",
+    )
+
     @field_validator("auth_secret")
     @classmethod
     def validate_auth_secret(cls, v: str | None, info) -> str | None:

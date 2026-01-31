@@ -174,6 +174,122 @@ Each repository in `settings/repos.yaml` includes:
 - `description`: Human-readable description
 - `mcp`: "native" for core MCP servers, "3rd-party" for external integrations
 
+## Pool Management
+
+Mahavishnu supports a **multi-pool orchestration architecture** that enables horizontal scaling across local, delegated, and cloud worker resources.
+
+### Pool Types
+
+**MahavishnuPool** (Direct Management):
+- Wraps existing WorkerManager for local worker execution
+- Low-latency task execution
+- Dynamic scaling (min_workers to max_workers)
+- Use for: local development, debugging, CI/CD
+
+**SessionBuddyPool** (Delegated):
+- Delegates worker management to Session-Buddy instances
+- Each Session-Buddy instance manages exactly 3 workers
+- Remote execution via MCP protocol
+- Use for: distributed workloads, multi-server deployments
+
+**KubernetesPool** (Cloud-Native):
+- Deploys workers as Kubernetes Jobs/Pods
+- Auto-scaling via HorizontalPodAutoscaler
+- Cloud resource management
+- Use for: production deployments, auto-scaling workloads
+
+### Pool CLI Commands
+
+```bash
+# Spawn a pool
+mahavishnu pool spawn --type mahavishnu --name local --min 2 --max 5
+
+# List all pools
+mahavishnu pool list
+
+# Execute on specific pool
+mahavishnu pool execute pool_abc --prompt "Write code"
+
+# Auto-route to best pool
+mahavishnu pool route --prompt "Write code" --selector least_loaded
+
+# Scale pool
+mahavishnu pool scale pool_abc --target 10
+
+# Monitor pools
+mahavishnu pool health
+
+# Close pools
+mahavishnu pool close pool_abc
+mahavishnu pool close-all
+```
+
+### Pool Configuration
+
+Enable pools in `settings/mahavishnu.yaml`:
+
+```yaml
+# Pool configuration
+pools_enabled: true
+default_pool_type: "mahavishnu"
+pool_routing_strategy: "least_loaded"  # round_robin, least_loaded, random
+
+# Memory aggregation
+memory_aggregation_enabled: true
+memory_sync_interval: 60
+session_buddy_pool_url: "http://localhost:8678/mcp"
+akosha_url: "http://localhost:8682/mcp"
+```
+
+### Usage Examples
+
+**Spawn and Execute**:
+```python
+from mahavishnu.pools import PoolManager, PoolConfig, PoolSelector
+
+# Create pool manager
+pool_mgr = PoolManager(terminal_manager=tm, message_bus=MessageBus())
+
+# Spawn local pool
+config = PoolConfig(name="local", pool_type="mahavishnu", min_workers=2, max_workers=5)
+pool_id = await pool_mgr.spawn_pool("mahavishnu", config)
+
+# Execute task
+result = await pool_mgr.execute_on_pool(pool_id, {"prompt": "Write code"})
+
+# Auto-route
+result = await pool_mgr.route_task(
+    {"prompt": "Write tests"},
+    pool_selector=PoolSelector.LEAST_LOADED,
+)
+```
+
+**Memory Aggregation**:
+```python
+from mahavishnu.pools import MemoryAggregator
+
+aggregator = MemoryAggregator()
+await aggregator.start_periodic_sync(pool_manager)
+
+# Search across pools
+results = await aggregator.cross_pool_search("API implementation", pool_mgr)
+```
+
+### Key Features
+
+- **Auto-routing**: 4 strategies (round_robin, least_loaded, random, affinity)
+- **Inter-pool communication**: Async message bus for coordination
+- **Memory aggregation**: Automatic sync from pools → Session-Buddy → Akosha
+- **Dynamic scaling**: Scale pools up/down based on load
+- **Health monitoring**: Track pool and worker status
+
+### Documentation
+
+- [Pool Architecture](docs/POOL_ARCHITECTURE.md) - Complete architecture guide
+- [Migration Guide](docs/POOL_MIGRATION.md) - From WorkerManager to pools
+- [MCP Tools Spec](docs/MCP_TOOLS_SPECIFICATION.md) - Pool MCP tool reference
+- [Implementation Progress](POOL_IMPLEMENTATION_PROGRESS.md) - Implementation status
+
 ## Configuration Files
 
 **repos.yaml**: Repository manifest with tags and metadata
