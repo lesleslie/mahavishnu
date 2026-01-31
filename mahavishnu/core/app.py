@@ -149,6 +149,14 @@ class MahavishnuApp:
         # Initialize workflow state manager
         self.workflow_state_manager = WorkflowState()
 
+        # Initialize pool manager
+        self.pool_manager = None
+        self.memory_aggregator = None
+        if self.config.pools_enabled:
+            self.pool_manager = self._init_pool_manager()
+            if self.config.memory_aggregation_enabled:
+                self.memory_aggregator = self._init_memory_aggregator()
+
         # Initialize RBAC manager
         self.rbac_manager = RBACManager(self.config)
 
@@ -194,6 +202,75 @@ class MahavishnuApp:
         except Exception as e:
             logger = __import__("logging").getLogger(__name__)
             logger.warning(f"Failed to initialize terminal manager: {e}")
+            return None
+
+    def _init_pool_manager(self):
+        """Initialize pool manager for multi-pool orchestration.
+
+        Returns:
+            PoolManager instance or None if initialization fails
+
+        Note:
+            PoolManager requires TerminalManager to be available.
+        """
+        try:
+            from ..pools.manager import PoolManager, PoolSelector
+            from ..mcp.protocols.message_bus import MessageBus
+
+            # Create message bus for inter-pool communication
+            message_bus = MessageBus()
+
+            # Initialize pool manager
+            pool_manager = PoolManager(
+                terminal_manager=self.terminal_manager,
+                session_buddy_client=self.session_buddy,
+                message_bus=message_bus,
+            )
+
+            # Set default pool selector strategy
+            selector = PoolSelector(self.config.pool_routing_strategy)
+            pool_manager.set_pool_selector(selector)
+
+            logger = __import__("logging").getLogger(__name__)
+            logger.info(
+                f"Pool manager initialized "
+                f"(strategy={self.config.pool_routing_strategy}, "
+                f"default_type={self.config.default_pool_type})"
+            )
+
+            return pool_manager
+
+        except Exception as e:
+            logger = __import__("logging").getLogger(__name__)
+            logger.warning(f"Failed to initialize pool manager: {e}")
+            return None
+
+    def _init_memory_aggregator(self):
+        """Initialize memory aggregator for cross-pool memory sync.
+
+        Returns:
+            MemoryAggregator instance or None if initialization fails
+        """
+        try:
+            from ..pools.memory_aggregator import MemoryAggregator
+
+            memory_aggregator = MemoryAggregator(
+                session_buddy_url=self.config.session_buddy_pool_url,
+                akosha_url=self.config.akosha_url,
+                sync_interval=self.config.memory_sync_interval,
+            )
+
+            logger = __import__("logging").getLogger(__name__)
+            logger.info(
+                f"Memory aggregator initialized "
+                f"(sync_interval={self.config.memory_sync_interval}s)"
+            )
+
+            return memory_aggregator
+
+        except Exception as e:
+            logger = __import__("logging").getLogger(__name__)
+            logger.warning(f"Failed to initialize memory aggregator: {e}")
             return None
 
     def _load_config(self) -> MahavishnuSettings:
@@ -310,12 +387,54 @@ class MahavishnuApp:
                 print("Warning: Agno adapter not available due to missing dependencies")
                 pass
 
+        # Worker - Headless AI execution (enabled by default)
+        if getattr(self.config, "workers_enabled", True):
+            try:
+                from ..adapters.worker import WorkerOrchestratorAdapter
+                from ..workers import WorkerManager
+
+                # Create worker manager with Session-Buddy integration
+                # Note: TerminalManager is created lazily when needed
+                adapter_classes["worker"] = WorkerOrchestratorAdapter
+                enabled_adapters["worker"] = True
+
+                # Store for later initialization with WorkerManager
+                self._worker_manager_cls = WorkerManager
+            except ImportError:
+                # Worker components not available
+                print("Warning: Worker adapter not available due to missing dependencies")
+                pass
+
         for adapter_name, is_enabled in enabled_adapters.items():
             if is_enabled:
                 try:
                     adapter_class = adapter_classes.get(adapter_name)
                     if adapter_class:
-                        self.adapters[adapter_name] = adapter_class(self.config)
+                        # Special handling for WorkerOrchestratorAdapter
+                        # which requires a WorkerManager instance
+                        if adapter_name == "worker":
+                            from ..terminal.manager import TerminalManager
+
+                            # Create terminal manager
+                            terminal_mgr = TerminalManager.create(
+                                self.config,
+                                mcp_client=None,  # Will use Session-Buddy if available
+                            )
+
+                            # Create worker manager
+                            worker_mgr = self._worker_manager_cls(
+                                terminal_manager=terminal_mgr,
+                                max_concurrent=getattr(self.config, "max_concurrent_workers", 10),
+                                debug_mode=False,  # Debug mode set via CLI flag
+                                session_buddy_client=None,  # Will integrate in Phase 2.5
+                            )
+
+                            # Initialize adapter with worker manager
+                            self.adapters[adapter_name] = adapter_class(worker_mgr)
+                            self._worker_manager = worker_mgr  # Store for later access
+                        else:
+                            # Standard adapter initialization with config only
+                            self.adapters[adapter_name] = adapter_class(self.config)
                 except Exception as e:
                     raise ConfigurationError(
                         message=f"Failed to initialize {adapter_name} adapter: {e}",
