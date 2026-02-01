@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-02-01T13:16:14.874330",
+  "quality_score": {
+    "total": 75,
+    "max": 100,
+    "percentage": 75.0,
+    "breakdown": {
+      "maturity": {
+        "score": 30,
+        "max": 30,
+        "details": "README, documentation, and test coverage"
+      },
+      "quality": {
+        "score": 5,
+        "max": 30,
+        "details": "Ruff linting and Mypy type checking"
+      },
+      "session": {
+        "score": 20,
+        "max": 20,
+        "details": "Development environment and tooling"
+      },
+      "workflow": {
+        "score": 20,
+        "max": 20,
+        "details": "Git history and branch management"
+      }
+    }
+  },
+  "session_type": "metrics_tracking"
+}
