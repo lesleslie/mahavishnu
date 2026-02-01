@@ -1,0 +1,1741 @@
+version: '1.0'
+last_updated: '2026-01-29'
+maintainer: les
+description: Centralized catalog for Mahavishnu orchestration platform
+portmap:
+- port: 3032
+  service: excalidraw
+  type: MCP
+  category: visualizer
+  protocol: HTTP
+  status: enabled
+  description: Diagram collaboration and visualization
+- port: 3033
+  service: mermaid
+  type: MCP
+  category: visualizer
+  protocol: HTTP (streamable)
+  status: enabled
+  description: Diagram generation from text descriptions
+- port: 3034
+  service: raindropio
+  type: MCP
+  category: tool
+  protocol: HTTP
+  status: enabled
+  description: Bookmark management integration
+- port: 3035
+  service: grafana
+  type: MCP
+  category: visualizer
+  protocol: HTTP (SSE)
+  status: enabled
+  description: Metrics dashboards and visualization
+- port: 3036
+  service: chart-antv
+  type: MCP
+  category: visualizer
+  protocol: HTTP (streamable)
+  status: enabled
+  description: Chart generation using Apache ECharts
+- port: 3038
+  service: unifi
+  type: MCP
+  category: tool
+  protocol: HTTP
+  status: enabled
+  description: UniFi network device management
+- port: 3039
+  service: mailgun
+  type: MCP
+  category: tool
+  protocol: HTTP
+  status: enabled
+  description: Email service integration
+- port: 8676
+  service: crackerjack
+  type: MCP
+  category: inspector
+  protocol: HTTP
+  status: enabled
+  description: Quality control and testing automation
+- port: 8677
+  service: zuban
+  type: LSP
+  category: type-checker
+  protocol: stdio
+  status: enabled
+  description: Rust-based Python type checker
+- port: 8678
+  service: session-buddy
+  type: MCP
+  category: manager
+  protocol: HTTP
+  status: enabled
+  description: Session and knowledge management
+- port: 8680
+  service: mahavishnu
+  type: MCP
+  category: orchestrator
+  protocol: HTTP
+  status: enabled
+  description: Multi-engine workflow orchestration
+- port: 8681
+  service: oneiric
+  type: MCP
+  category: resolver
+  protocol: HTTP
+  status: enabled
+  description: Component resolution and lifecycle management
+- port: 8682
+  service: akosha
+  type: MCP
+  category: aggregator
+  protocol: HTTP
+  status: enabled
+  description: Data aggregation and analytics
+- port: 64342
+  service: pycharm
+  type: MCP
+  category: tool
+  protocol: HTTP
+  status: enabled
+  description: PyCharm IDE integration (IDE-managed)
+mcp_servers:
+- name: crackerjack
+  type: http
+  port: 8676
+  path: /Users/les/Projects/crackerjack
+  package: crackerjack
+  category: inspector
+  function: Quality control and testing
+  command: .venv/bin/uvicorn crackerjack.mcp.server_core:http_app --host 127.0.0.1
+    --port {port}
+  description: AI-assisted development with quality checks, testing, and CI/CD automation
+  health_check: http://127.0.0.1:{port}/health
+  status: enabled
+  tags:
+  - quality
+  - testing
+  - ci-cd
+  - python
+  dependencies: []
+  maintainer: les
+  repo_url: https://github.com/lesleslie/crackerjack
+  homepage_url: https://github.com/lesleslie/crackerjack
+  docs_url: https://github.com/lesleslie/crackerjack/blob/main/docs/README.md
+  urls:
+    issues: https://github.com/lesleslie/crackerjack/issues
+    examples: https://github.com/lesleslie/crackerjack/tree/main/examples
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: '2026-01-29'
+    notes: Working correctly
+- name: session-buddy
+  type: http
+  port: 8678
+  path: /Users/les/Projects/session-buddy
+  package: session_buddy
+  category: manager
+  function: Session and knowledge management
+  command: .venv/bin/uvicorn session_buddy.mcp.server:http_app --host 127.0.0.1 --port
+    {port}
+  description: Session management with automatic knowledge capture, semantic search,
+    and analytics
+  health_check: http://127.0.0.1:{port}/health
+  status: enabled
+  tags:
+  - session
+  - knowledge
+  - embeddings
+  - analytics
+  - mcp
+  dependencies: []
+  maintainer: les
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: '2026-01-29'
+    notes: Working correctly
+- name: mahavishnu
+  type: http
+  port: 8680
+  path: /Users/les/Projects/mahavishnu
+  package: mahavishnu
+  category: orchestrator
+  function: Multi-engine workflow orchestration
+  command: .venv/bin/python -m mahavishnu.cli mcp start --host 127.0.0.1 --port {port}
+  description: Orchestrate workflows across LlamaIndex, Prefect, and Agno adapters
+  health_check: http://127.0.0.1:{port}/health
+  status: enabled
+  tags:
+  - orchestration
+  - workflows
+  - python
+  - multi-engine
+  dependencies:
+  - oneiric
+  maintainer: les
+  repo_url: https://github.com/lesleslie/mahavishnu
+  homepage_url: https://github.com/lesleslie/mahavishnu
+  docs_url: https://github.com/lesleslie/mahavishnu/blob/main/README.md
+  urls:
+    issues: https://github.com/lesleslie/mahavishnu/issues
+    api: https://github.com/lesleslie/mahavishnu/blob/main/docs/MCP_TOOLS_SPECIFICATION.md
+    architecture: https://github.com/lesleslie/mahavishnu/tree/main/docs/adr
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: '2026-01-29'
+    notes: Fixed startup bug, moved to port 8680
+- name: oneiric
+  type: http
+  port: 8681
+  path: /Users/les/Projects/oneiric-mcp
+  package: oneiric_mcp
+  category: resolver
+  function: Component resolution and lifecycle management
+  command: .venv/bin/python -m oneiric_mcp.main --host 127.0.0.1 --port {port}
+  description: MCP interface for Oneiric component resolution and hot-swapping
+  health_check: http://127.0.0.1:{port}/health
+  status: enabled
+  tags:
+  - resolver
+  - lifecycle
+  - dependency-injection
+  - configuration
+  dependencies: []
+  maintainer: les
+  repo_url: https://github.com/lesleslie/oneiric-mcp
+  docs_url: https://github.com/lesleslie/oneiric-mcp/blob/main/README.md
+  urls:
+    examples: https://github.com/lesleslie/oneiric-mcp/tree/main/examples
+    api: https://github.com/lesleslie/oneiric-mcp/blob/main/docs/API.md
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: '2026-01-29'
+    notes: Moved to port 8681, import path verified
+- name: akosha
+  type: http
+  port: 8682
+  path: /Users/les/Projects/akosha
+  package: akosha
+  category: aggregator
+  function: Data aggregation and analytics
+  command: .venv/bin/python -m akosha.mcp.server --host 127.0.0.1 --port {port}
+  description: Universal memory aggregation with vector embeddings and temporal analytics
+  health_check: http://127.0.0.1:{port}/health
+  status: enabled
+  tags:
+  - aggregation
+  - analytics
+  - embeddings
+  - knowledge-graph
+  dependencies: []
+  maintainer: les
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: '2026-01-29'
+    notes: Moved to port 8682, import path corrected
+- name: excalidraw
+  type: http
+  port: 3032
+  path: /Users/les/Projects/excalidraw-mcp
+  package: excalidraw_mcp
+  category: visualizer
+  function: Diagram collaboration
+  command: .venv/bin/uvicorn excalidraw_mcp.server:http_app --host 127.0.0.1 --port
+    {port}
+  description: Excalidraw integration for collaborative diagram editing
+  health_check: http://127.0.0.1:{port}/health
+  status: enabled
+  tags:
+  - visualizer
+  - diagram
+  - collaboration
+  - drawing
+  dependencies: []
+  maintainer: les
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: '2026-01-28'
+    notes: Working correctly
+- name: mermaid
+  type: http
+  port: 3033
+  path: npx
+  package: null
+  category: visualizer
+  function: Diagram generation
+  command: npx -y mcp-mermaid -t streamable --host 127.0.0.1 --port {port}
+  description: Generate Mermaid diagrams from text descriptions via HTTP streaming
+  health_check: http://127.0.0.1:{port}/health
+  status: enabled
+  tags:
+  - visualizer
+  - diagram
+  - flowchart
+  - sequence-diagram
+  - http-streaming
+  dependencies: []
+  maintainer: external
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: '2026-01-29'
+    notes: Updated to HTTP streaming (streamable transport)
+- name: chart-antv
+  type: http
+  port: 3036
+  path: /usr/local/bin
+  package: null
+  category: visualizer
+  function: Chart generation
+  command: /usr/local/bin/mcp-server-chart -t streamable --host 127.0.0.1 --port {port}
+  description: Generate charts using Apache ECharts (AntV) via HTTP streaming
+  health_check: http://127.0.0.1:{port}/health
+  status: enabled
+  tags:
+  - visualizer
+  - chart
+  - graph
+  - data-viz
+  - http-streaming
+coordination:
+  issues:
+  - id: ISSUE-001
+    title: MCP Test Issue
+    description: Created via MCP
+    status: pending
+    priority: high
+    severity: normal
+    repos:
+    - mahavishnu
+    created: '2026-02-01T04:10:20.735822'
+    updated: '2026-02-01T04:10:20.735822'
+    target: null
+    dependencies: []
+    blocking: []
+    assignee: null
+    labels: []
+    metadata: {}
+ription: Query and visualize metrics from Grafana via HTTP SSE
+  health_check: http://127.0.0.1:{port}/health
+  status: enabled
+  tags:
+  - visualizer
+  - metrics
+  - dashboard
+  - monitoring
+  - http-streaming
+  dependencies: []
+  maintainer: external
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: '2026-01-29'
+    notes: Updated to HTTP streaming (SSE transport)
+- name: raindropio
+  type: http
+  port: 3034
+  path: /Users/les/Projects/raindropio-mcp
+  package: raindropio_mcp
+  category: tool
+  function: Bookmark management
+  command: .venv/bin/uvicorn raindropio_mcp.server:http_app --host 127.0.0.1 --port
+    {port}
+  description: Manage Raindrop.io bookmarks via MCP
+  health_check: http://127.0.0.1:{port}/health
+  status: enabled
+  tags:
+  - tool
+  - bookmarks
+  - integration
+  - api
+  dependencies: []
+  maintainer: les
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: '2026-01-28'
+    notes: Working correctly
+- name: unifi
+  type: http
+  port: 3038
+  path: /Users/les/Projects/unifi-mcp
+  package: unifi_mcp
+  category: tool
+  function: Network management
+  command: .venv/bin/uvicorn unifi_mcp.server:http_app --host 127.0.0.1 --port {port}
+  description: Manage UniFi network devices via MCP
+  health_check: http://127.0.0.1:{port}/health
+  status: enabled
+  tags:
+  - tool
+  - network
+  - unifi
+  - monitoring
+  dependencies: []
+  maintainer: les
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: '2026-01-28'
+    notes: Working correctly
+- name: mailgun
+  type: http
+  port: 3039
+  path: /Users/les/Projects/mailgun-mcp
+  package: mailgun_mcp
+  category: tool
+  function: Email service
+  command: .venv/bin/uvicorn mailgun_mcp.main:app --host 127.0.0.1 --port {port}
+  description: Send emails via Mailgun API
+  health_check: http://127.0.0.1:{port}/health
+  status: enabled
+  tags:
+  - tool
+  - email
+  - api
+  - integration
+  dependencies: []
+  maintainer: les
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: '2026-01-28'
+    notes: Working correctly
+- name: n8n
+  type: stdio
+  port: null
+  path: /usr/local/bin
+  package: null
+  category: tool
+  function: Workflow automation
+  command: /usr/local/bin/n8n-mcp
+  description: Integrate with n8n workflow automation
+  health_check: null
+  status: enabled
+  tags:
+  - tool
+  - workflow
+  - automation
+  - integration
+  dependencies: []
+  maintainer: external
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: null
+    notes: External binary
+- name: neo4j
+  type: stdio
+  port: null
+  path: /usr/local/bin
+  package: null
+  category: database
+  function: Graph database
+  command: /usr/local/bin/neo4j-mcp
+  description: Query Neo4j graph database
+  health_check: null
+  status: enabled
+  tags:
+  - database
+  - graph
+  - neo4j
+  - cypher
+  dependencies: []
+  maintainer: external
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: null
+    notes: External binary
+- name: homebrew
+  type: stdio
+  port: null
+  path: /usr/local/bin
+  package: null
+  category: tool
+  function: Package management
+  command: brew
+  args:
+  - mcp-server
+  description: Homebrew package manager integration for managing formulae and casks
+  health_check: null
+  status: enabled
+  tags:
+  - tool
+  - package-manager
+  - homebrew
+  - macos
+  - cli
+  dependencies: []
+  maintainer: external
+  repo_url: https://github.com/Homebrew/brew
+  homepage_url: https://brew.sh
+  docs_url: https://docs.brew.sh
+  audit:
+    last_validated: '2026-01-30'
+    last_tested: '2026-01-30'
+    notes: Official Homebrew MCP server
+- name: pycharm
+  type: http
+  port: 64342
+  path: null
+  package: null
+  category: tool
+  function: IDE integration
+  command: null
+  description: PyCharm IDE integration with context awareness and project intelligence.
+    Managed by PyCharm IDE plugin.
+  health_check: null
+  status: enabled
+  tags:
+  - ide
+  - pycharm
+  - jetbrains
+  - integration
+  - context
+  dependencies: []
+  maintainer: external
+  repo_url: https://github.com/JetBrains/pycharm-mcp
+  homepage_url: https://www.jetbrains.com/pycharm/
+  docs_url: https://plugins.jetbrains.com/plugin/XXXX-pycharm-mcp/
+  urls:
+    marketplace: https://plugins.jetbrains.com/plugin/XXXX-pycharm-mcp
+    issues: https://github.com/JetBrains/pycharm-mcp/issues
+  audit:
+    last_validated: '2026-01-30'
+    last_tested: '2026-01-30'
+    notes: IDE-MANAGED - Automatically started by PyCharm. Port 64342 is JetBrains-specific.
+lsp_servers:
+- name: zuban
+  language: python
+  type: stdio
+  command: zuban
+  args:
+  - lsp
+  description: Rust-based Python type checker with LSP support
+  config_file: pyproject.toml
+  config_section: '[tool.crackerjack]'
+  enabled: true
+  port: 8677
+  path: /usr/local/bin
+  package: zuban
+  repo_url: https://github.com/Chucketesque/zuban
+  docs_url: https://github.com/Chucketesque/zuban/blob/main/README.md
+  urls:
+    issues: https://github.com/Chucketesque/zuban/issues
+    cracerjack_integration: https://github.com/lesleslie/crackerjack/blob/main/crackerjack/adapters/lsp/zuban.py
+  maintainer: external
+  tags:
+  - python
+  - type-checker
+  - rust
+  - lsp
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: '2026-01-29'
+    notes: 'Enabled in crackerjack pyproject.toml (zuban_lsp_enabled: true)'
+- name: pyright
+  language: python
+  type: stdio
+  command: pyright
+  args:
+  - --stdio
+  description: Microsoft's static type checker for Python
+  config_file: pyproject.toml
+  config_section: '[tool.pyright]'
+  enabled: true
+  port: null
+  path: /Users/les/Projects/mahavishnu/.venv/bin
+  package: pyright
+  repo_url: https://github.com/microsoft/pyright
+  homepage_url: https://microsoft.github.io/pyright
+  docs_url: https://microsoft.github.io/pyright#/configuration
+  urls:
+    issues: https://github.com/microsoft/pyright/issues
+    config_options: https://microsoft.github.io/pyright#/configuration
+  maintainer: external
+  tags:
+  - python
+  - type-checker
+  - microsoft
+  - lsp
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: '2026-01-29'
+    notes: Active and working
+- name: ruff
+  language: python
+  type: stdio
+  command: ruff
+  args:
+  - server
+  description: Extremely fast Python linter and formatter (LSP mode)
+  config_file: pyproject.toml
+  config_section: '[tool.ruff]'
+  enabled: true
+  port: null
+  path: /usr/local/bin
+  package: ruff
+  repo_url: https://github.com/astral-sh/ruff
+  homepage_url: https://docs.astral.sh/ruff
+  docs_url: https://docs.astral.sh/ruff/editors
+  urls:
+    issues: https://github.com/astral-sh/ruff/issues
+    lsp_config: https://docs.astral.sh/ruff/editors/#setup
+  maintainer: external
+  tags:
+  - python
+  - linter
+  - formatter
+  - rust
+  - lsp
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: '2026-01-29'
+    notes: Installed globally, version 0.14.14
+- name: rust-analyzer
+  language: rust
+  type: stdio
+  command: rust-analyzer
+  description: Rust language server for IDE support
+  config_file: null
+  config_section: null
+  enabled: false
+  port: null
+  path: null
+  package: rust-analyzer
+  repo_url: https://github.com/rust-lang/rust-analyzer
+  homepage_url: https://rust-analyzer.github.io
+  docs_url: https://rust-analyzer.github.io/manual.html
+  urls:
+    manual: https://rust-analyzer.github.io/manual.html
+    features: https://rust-analyzer.github.io/manual.html#features
+  maintainer: external
+  tags:
+  - rust
+  - lsp
+  - ide
+  - completion
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: null
+    notes: Not installed, tracked for future use
+- name: typos
+  language: source
+  type: cli
+  command: typos
+  description: Source code spell checker (not an LSP, CLI tool)
+  config_file: _typos.toml
+  config_section: default
+  enabled: false
+  port: null
+  path: null
+  package: typos-cli
+  repo_url: https://github.com/crate-ci/typos
+  homepage_url: https://crate-ci.github.io/typos/
+  docs_url: https://crate-ci.github.io/typos/install/
+  urls:
+    issues: https://github.com/crate-ci/typos/issues
+    config: https://crate-ci.github.io/typos/configuring.html
+  maintainer: external
+  tags:
+  - spell-check
+  - cli
+  - source
+  - rust
+  audit:
+    last_validated: '2026-01-29'
+    last_tested: null
+    notes: Not installed, CLI tool not LSP
+- name: ruff-lsp
+  language: python
+  type: stdio
+  command: ruff-lsp
+  description: Ruff LSP server - provides IDE features (autocomplete, go to definition,
+    etc.)
+  config_file: null
+  config_section: null
+  enabled: true
+  recommended: true
+  priority: high
+  install_via: brew install ruff-lsp
+  port: null
+  path: /usr/local/bin
+  package: ruff-lsp
+  repo_url: https://github.com/astral-sh/ruff
+  homepage_url: https://docs.astral.sh/ruff
+  docs_url: https://docs.astral.sh/ruff/editors/#overview
+  urls:
+    issues: https://github.com/astral-sh/ruff/issues
+    features: https://docs.astral.sh/ruff/editors/#features
+    pycharm_setup: https://plugins.jetbrains.com/plugin/20576-ruff-support/
+  maintainer: external
+  tags:
+  - python
+  - linter
+  - formatter
+  - lsp
+  - ide
+  - recommended
+  audit:
+    last_validated: '2026-01-30'
+    last_tested: '2026-01-30'
+    notes: INSTALLED - Wire up in PyCharm for IDE features. Works alongside ruff CLI.
+- name: python-lsp-server
+  language: python
+  type: stdio
+  command: python-lsp-server
+  description: Pyright-based Python language server (alternative to pyright)
+  config_file: null
+  config_section: null
+  enabled: true
+  recommended: true
+  priority: medium
+  install_via: brew install python-lsp-server
+  port: null
+  path: /usr/local/bin
+  package: python-lsp-server
+  repo_url: https://github.com/python-lsp/python-lsp-server
+  homepage_url: https://github.com/python-lsp/python-lsp-server
+  docs_url: https://github.com/python-lsp/python-lsp-server
+  urls:
+    issues: https://github.com/python-lsp/python-lsp-server/issues
+    wiki: https://github.com/python-lsp/python-lsp-server/wiki
+    pypi: https://pypi.org/project/python-lsp-server/
+  maintainer: external
+  tags:
+  - python
+  - type-checker
+  - lsp
+  - ide
+  - recommended
+  audit:
+    last_validated: '2026-01-30'
+    last_tested: '2026-01-30'
+    notes: INSTALLED - Wire up in PyCharm for IDE features. Alternative to pyright.
+      Uses Pyright under the hood but different implementation.
+- name: typos-lsp
+  language: source
+  type: stdio
+  command: typos-lsp
+  description: Spell checking LSP server with IDE integration (better than CLI typos)
+  config_file: null
+  config_section: null
+  enabled: true
+  recommended: true
+  priority: low
+  install_via: brew install typos-lsp
+  port: null
+  path: /usr/local/bin
+  package: typos-lsp
+  repo_url: https://github.com/crate-ci/typos
+  homepage_url: https://crate-ci.github.io/typos/
+  docs_url: https://github.com/crate-ci/typos/tree/master/typos-lsp
+  urls:
+    issues: https://github.com/crate-ci/typos/issues
+    lsp_docs: https://github.com/crate-ci/typos/blob/master/typos-lsp/README.md
+  maintainer: external
+  tags:
+  - spell-check
+  - lsp
+  - ide
+  - source
+  - recommended
+  audit:
+    last_validated: '2026-01-30'
+    last_tested: '2026-01-30'
+    notes: INSTALLED - Wire up in PyCharm for IDE spell checking. Nice to have, low
+      priority.
+- name: ctags-lsp
+  language: universal
+  type: stdio
+  command: ctags-lsp
+  description: Universal code intelligence using CTags (works with any language)
+  config_file: null
+  config_section: null
+  enabled: true
+  recommended: false
+  priority: low
+  install_via: brew install ctags-lsp
+  port: null
+  path: /usr/local/bin
+  package: ctags-lsp
+  repo_url: https://github.com/iamcco/ctags-lsp
+  docs_url: https://github.com/iamcco/ctags-lsp#readme
+  urls:
+    issues: https://github.com/iamcco/ctags-lsp/issues
+    features: https://github.com/iamcco/ctags-lsp#features
+  maintainer: external
+  tags:
+  - universal
+  - code-index
+  - lsp
+  - multi-language
+  audit:
+    last_validated: '2026-01-30'
+    last_tested: '2026-01-30'
+    notes: INSTALLED - Optional universal code indexing. Wire up in PyCharm if needed
+      for multi-language projects.
+repos:
+- name: mahavishnu
+  package: mahavishnu
+  path: /Users/les/Projects/mahavishnu
+  nickname: vishnu
+  role: orchestrator
+  tags:
+  - python
+  - development
+  - orchestration
+  description: Multi-engine orchestration platform for managing workflows across multiple
+    repositories
+  mcp: native
+  repo_url: https://github.com/lesleslie/mahavishnu
+  homepage_url: https://github.com/lesleslie/mahavishnu
+  docs_url: https://github.com/lesleslie/mahavishnu/blob/main/docs/ECOSYSTEM.md
+  urls:
+    issues: https://github.com/lesleslie/mahavishnu/issues
+    examples: https://github.com/lesleslie/mahavishnu/tree/main/examples
+    cli_reference: https://github.com/lesleslie/mahavishnu/blob/main/docs/CLI_REFERENCE.md
+  audit:
+    last_reviewed: '2026-01-29'
+    last_cleaned: '2026-01-28'
+    notes: Recently fixed MCP server startup bug
+- name: oneiric
+  package: oneiric
+  path: /Users/les/Projects/oneiric
+  role: resolver
+  tags:
+  - python
+  - framework
+  - lifecycle
+  - dependency-injection
+  - configuration
+  description: Explainable component resolution, lifecycle management, and remote
+    delivery platform for Python 3.13+ runtimes
+  mcp: native
+  audit:
+    last_reviewed: '2026-01-28'
+    last_cleaned: '2026-01-27'
+    notes: Core framework, actively maintained
+- name: session-buddy
+  package: session_buddy
+  path: /Users/les/Projects/session-buddy
+  nickname: buddy
+  role: manager
+  tags:
+  - python
+  - mcp
+  - session-management
+  - knowledge
+  - embeddings
+  - analytics
+  description: Session Management MCP Server for Claude Code with automatic knowledge
+    capture, semantic search, and cross-session intelligence
+  mcp: native
+  audit:
+    last_reviewed: '2026-01-29'
+    last_cleaned: '2026-01-28'
+    notes: Working well, new checkpoint features
+- name: crackerjack
+  package: crackerjack
+  path: /Users/les/Projects/crackerjack
+  nickname: jack
+  role: inspector
+  tags:
+  - python
+  - quality
+  - testing
+  - ci-cd
+  description: Quality control and testing framework with AI-assisted development
+    workflows
+  mcp: native
+  audit:
+    last_reviewed: '2026-01-28'
+    last_cleaned: '2026-01-27'
+    notes: Active development
+- name: akosha
+  package: akosha
+  path: /Users/les/Projects/akosha
+  role: aggregator
+  tags:
+  - python
+  - analytics
+  - aggregation
+  - knowledge-graph
+  - embeddings
+  description: Universal memory aggregation with vector embeddings, temporal analytics,
+    and knowledge graph management
+  mcp: native
+  audit:
+    last_reviewed: '2026-01-29'
+    last_cleaned: '2026-01-28'
+    notes: Recently fixed MCP import path
+- name: mcp-common
+  package: mcp_common
+  path: /Users/les/Projects/mcp-common
+  role: foundation
+  tags:
+  - python
+  - mcp
+  - utilities
+  - shared
+  - infrastructure
+  - oneiric
+  description: Oneiric-native foundation library for building production-grade MCP
+    servers with CLI factory, HTTP client adapters, security utilities, rich console
+    UI, settings management, and health checks
+  mcp: null
+  audit:
+    last_reviewed: '2026-01-27'
+    last_cleaned: '2026-01-26'
+    notes: Core infrastructure, stable
+- name: jinja2-async-environment
+  package: jinja2_async_environment
+  path: /Users/les/Projects/jinja2-async-environment
+  role: foundation
+  tags:
+  - python
+  - jinja2
+  - async
+  - templates
+  - rendering
+  description: 100% compatible asynchronous Jinja2 environment with superior performance,
+    Redis bytecode caching, and complete macro support for async applications
+  mcp: null
+  audit:
+    last_reviewed: '2026-01-26'
+    last_cleaned: '2026-01-25'
+    notes: Stable, production-ready
+- name: starlette-async-jinja
+  package: starlette_async_jinja
+  path: /Users/les/Projects/starlette-async-jinja
+  role: foundation
+  tags:
+  - python
+  - jinja2
+  - async
+  - starlette
+  - fastapi
+  - templates
+  description: Asynchronous Jinja2 template integration for Starlette and FastAPI
+    with fragment rendering, context processors, and performance optimizations
+  mcp: null
+  audit:
+    last_reviewed: '2026-01-25'
+    last_cleaned: '2026-01-24'
+    notes: Stable utility library
+- name: jinja2-inflection
+  package: jinja2_inflection
+  path: /Users/les/Projects/jinja2-inflection
+  role: extension
+  tags:
+  - python
+  - jinja2
+  - extension
+  - filters
+  - string-transformation
+  description: Jinja2 extension providing inflection library string transformation
+    filters (pluralize, camelize, humanize, ordinalize, and more)
+  mcp: null
+  audit:
+    last_reviewed: '2026-01-25'
+    last_cleaned: '2026-01-24'
+    notes: Useful extension, actively maintained
+- name: jinja2-custom-delimiters
+  package: jinja2_custom_delimiters
+  path: /Users/les/Projects/jinja2-custom-delimiters
+  role: extension
+  tags:
+  - java
+  - ide
+  - pycharm
+  - plugin
+  - jinja2
+  - custom-delimiters
+  description: PyCharm Professional plugin for configuring custom Jinja2 template
+    delimiters while maintaining full IDE language support including syntax highlighting,
+    code completion, and formatting
+  mcp: null
+  audit:
+    last_reviewed: '2026-01-24'
+    last_cleaned: '2026-01-23'
+    notes: IDE plugin, stable
+- name: excalidraw-mcp
+  package: excalidraw_mcp
+  path: /Users/les/Projects/excalidraw-mcp
+  role: visualizer
+  tags:
+  - python
+  - mcp
+  - diagrams
+  - visualization
+  - excalidraw
+  - real-time
+  - canvas
+  description: AI-powered live visual diagramming server combining Excalidraw's drawing
+    capabilities with MCP for real-time collaborative diagram creation and manipulation
+  mcp: native
+  audit:
+    last_reviewed: '2026-01-29'
+    last_cleaned: '2026-01-28'
+    notes: Working correctly
+- name: fastblocks
+  package: fastblocks
+  path: /Users/les/Projects/fastblocks
+  role: builder
+  tags:
+  - python
+  - web-framework
+  - htmx
+  - ssr
+  - async
+  - jinja2
+  description: Asynchronous web application framework for rapid delivery of server-side
+    rendered HTMX/Jinja template blocks built on Oneiric
+  mcp: null
+  audit:
+    last_reviewed: '2026-01-28'
+    last_cleaned: '2026-01-27'
+    notes: Active development, used in multiple projects
+- name: fastbulma
+  package: fastbulma
+  path: /Users/les/Projects/fastbulma
+  role: asset
+  tags:
+  - css
+  - web-components
+  - bulma
+  - microsoft-fast
+  - ui
+  - design-system
+  - theming
+  description: Framework combining Bulma's CSS utilities with Microsoft FAST web components
+    for seamless theming through CSS variables without build tools or Sass compilation
+  mcp: null
+  audit:
+    last_reviewed: '2026-01-26'
+    last_cleaned: '2026-01-25'
+    notes: UI library, stable
+- name: mdinject
+  package: mdinject
+  path: /Users/les/Projects/mdinject
+  role: app
+  tags:
+  - python
+  - swiftui
+  - macos
+  - markdown
+  - productivity
+  - automation
+  - prompt-management
+  description: Markdown prompt injection application with MCP server integration,
+    featuring prompt management, CLI integration, collaborative planning, and multi-format
+    export with SQLite storage
+  mcp: null
+  audit:
+    last_reviewed: '2026-01-27'
+    last_cleaned: '2026-01-26'
+    notes: Productivity application
+- name: splashstand
+  package: splashstand
+  path: /Users/les/Projects/splashstand
+  role: app
+  tags:
+  - python
+  - cms
+  - web-application
+  - micro-cms
+  - fastblocks
+  - oneiric
+  - htmx
+  - mobile-first
+  - serverless
+  description: Mobile-first modular micro-CMS built on FastBlocks and Oneiric with
+    HTMX, Jinja2 templates, SQLAlchemy, Redis, and Google Cloud Platform integration
+  mcp: null
+  audit:
+    last_reviewed: '2026-01-24'
+    last_cleaned: '2026-01-23'
+    notes: Micro-CMS demo app
+- name: mailgun-mcp
+  package: mailgun_mcp
+  path: /Users/les/Projects/mailgun-mcp
+  role: tool
+  tags:
+  - python
+  - mcp
+  - email
+  - mailgun
+  - api
+  - communication
+  description: Comprehensive MCP server for Mailgun API providing email management,
+    domain operations, event tracking, statistics, and webhook configuration
+  mcp: native
+  audit:
+    last_reviewed: '2026-01-29'
+    last_tested: '2026-01-28'
+    notes: Working correctly
+- name: oneiric-mcp
+  package: oneiric_mcp
+  path: /Users/les/Projects/oneiric-mcp
+  role: tool
+  tags:
+  - python
+  - mcp
+  - oneiric
+  - adapters
+  - discovery
+  - resolution
+  description: Universal adapter discovery via MCP, exposing Oneiric's resolution
+    layer and 56+ built-in adapters across storage, cache, database, vector, secrets,
+    and monitoring domains
+  mcp: native
+  audit:
+    last_reviewed: '2026-01-29'
+    last_tested: '2026-01-28'
+    notes: Working correctly
+- name: raindropio-mcp
+  package: raindropio_mcp
+  path: /Users/les/Projects/raindropio-mcp
+  role: tool
+  tags:
+  - python
+  - mcp
+  - bookmarks
+  - raindropio
+  - productivity
+  description: FastMCP-based Model Context Protocol server exposing Raindrop.io API
+    for bookmark management, collections, tags, highlights, filters, and batch operations
+  mcp: native
+  audit:
+    last_reviewed: '2026-01-29'
+    last_tested: '2026-01-28'
+    notes: Working correctly
+- name: unifi-mcp
+  package: unifi_mcp
+  path: /Users/les/Projects/unifi-mcp
+  role: tool
+  tags:
+  - python
+  - mcp
+  - networking
+  - unifi
+  - ubiquiti
+  - network-management
+  description: FastMCP server for managing UniFi Network and Access controllers, providing
+    tools to interact with devices, sites, users, and network entities
+  mcp: native
+  audit:
+    last_reviewed: '2026-01-29'
+    last_tested: '2026-01-28'
+    notes: Working correctly
+- name: opera-cloud-mcp
+  package: opera_cloud_mcp
+  path: /Users/les/Projects/opera-cloud-mcp
+  role: tool
+  tags:
+  - python
+  - mcp
+  - hospitality
+  - opera-cloud
+  - api
+  - oracle
+  description: Unofficial MCP server for Oracle OPERA Cloud API integration, enabling
+    AI agents to interact with hospitality management systems for reservations, guests,
+    rooms, and operations
+  mcp: native
+  audit:
+    last_reviewed: '2026-01-27'
+    last_cleaned: '2026-01-26'
+    notes: Hospitality integration
+- name: synxis-crs-mcp
+  package: synxis_crs_mcp
+  path: /Users/les/Projects/synxis-crs-mcp
+  role: tool
+  tags:
+  - python
+  - mcp
+  - hospitality
+  - synxis
+  - crs
+  - reservations
+  description: MCP server for Synxis Central Reservation System integration, enabling
+    AI agents to interact with hotel reservation systems
+  mcp: native
+  audit:
+    last_reviewed: '2026-01-27'
+    last_cleaned: '2026-01-26'
+    notes: Hospitality integration
+- name: synxis-pms-mcp
+  package: synxis_pms_mcp
+  path: /Users/les/Projects/synxis-pms-mcp
+  role: tool
+  tags:
+  - python
+  - mcp
+  - hospitality
+  - synxis
+  - pms
+  - property-management
+  description: MCP server for Synxis Property Management System integration, enabling
+    AI agents to interact with hotel property management operations
+  mcp: native
+  audit:
+    last_reviewed: '2026-01-27'
+    last_cleaned: '2026-01-26'
+    notes: Hospitality integration
+- name: porkbun-dns-mcp
+  package: porkbun_dns_mcp
+  path: /Users/les/Projects/porkbun-dns-mcp
+  role: tool
+  tags:
+  - python
+  - mcp
+  - dns
+  - porkbun
+  - domain-management
+  description: MCP server for Porkbun DNS API management, enabling DNS record operations
+    and domain DNS configuration
+  mcp: native
+  audit:
+    last_reviewed: '2026-01-26'
+    last_cleaned: '2026-01-25'
+    notes: DNS management tool
+- name: porkbun-domain-mcp
+  package: porkbun_domain_mcp
+  path: /Users/les/Projects/porkbun-domain-mcp
+  role: tool
+  tags:
+  - python
+  - mcp
+  - domains
+  - porkbun
+  - registrar
+  description: MCP server for Porkbun domain API management, enabling domain registration,
+    renewal, and configuration operations
+  mcp: native
+  audit:
+    last_reviewed: '2026-01-26'
+    last_cleaned: '2026-01-25'
+    notes: Domain management tool
+lsp_servers_summary:
+  total_count: 9
+  enabled_count: 7
+  disabled_count: 2
+  last_audited: '2026-01-30'
+  recommended_count: 4
+  languages:
+    python:
+      count: 5
+      servers:
+      - zuban
+      - pyright
+      - ruff
+      - ruff-lsp
+      - python-lsp-server
+      enabled:
+      - zuban
+      - pyright
+      - ruff
+      - ruff-lsp
+      - python-lsp-server
+      disabled: []
+      recommended:
+      - ruff-lsp (high)
+      - python-lsp-server (medium)
+    rust:
+      count: 1
+      servers:
+      - rust-analyzer
+      enabled: []
+      disabled:
+      - rust-analyzer
+      recommended: []
+    source:
+      count: 2
+      servers:
+      - typos
+      - typos-lsp
+      enabled:
+      - typos-lsp
+      disabled:
+      - typos
+      recommended:
+      - typos-lsp (low)
+    universal:
+      count: 1
+      servers:
+      - ctags-lsp
+      enabled:
+      - ctags-lsp
+      disabled: []
+      recommended: []
+claude_agents:
+  path: /Users/les/.claude/agents
+  total_count: 83
+  active_count: 83
+  last_audited: '2026-01-29'
+  audit:
+    last_relevance_check: '2026-01-29'
+    last_cleanup: '2026-01-28'
+    obsolete_removed: 0
+    categories:
+      programming_languages:
+        count: 8
+        agents:
+        - python-pro
+        - javascript-pro
+        - typescript-pro
+        - go-pro
+        - rust-pro
+        - java-pro
+        - c-cpp-pro
+        - flutter-pro
+        last_audited: '2026-01-28'
+      databases:
+        count: 9
+        agents:
+        - postgresql-specialist
+        - mysql-specialist
+        - sqlite-specialist
+        - redis-specialist
+        - vector-db
+        - elasticsearch-specialist
+        - mongodb-specialist
+        - cassandra-specialist
+        - cosmos-db-specialist
+        last_audited: '2026-01-28'
+      testing_quality:
+        count: 5
+        agents:
+        - pytest-specialist
+        - testing-guru
+        - test-creation-specialist
+        - test-consolidator
+        - quality-assurance
+        last_audited: '2026-01-27'
+workflows:
+  path: /Users/les/.claude/commands/workflows
+  total_count: 18
+  active_count: 18
+  last_audited: '2026-01-29'
+  audit:
+    last_relevance_check: '2026-01-29'
+    last_cleanup: '2026-01-28'
+    notes: All workflows active and relevant
+  categories:
+    feature:
+      count: 2
+      workflows:
+      - feature-delivery-lifecycle
+      - product-discovery-sprint
+      last_validated: '2026-01-27'
+    maintenance:
+      count: 6
+      workflows:
+      - incident-response
+      - disaster-recovery
+      - legacy-modernize
+      - security-hardening
+      - stability-lifecycle
+      - improve-agent
+      last_validated: '2026-01-28'
+    deployment:
+      count: 5
+      workflows:
+      - container-deployment
+      - ml-pipeline
+      - database-migration
+      - api-versioning
+      - release-governance
+      last_validated: '2026-01-27'
+    automation:
+      count: 1
+      workflows:
+      - automation-orchestration
+      last_validated: '2026-01-26'
+    monitoring:
+      count: 1
+      workflows:
+      - adoption-analytics
+      last_validated: '2026-01-25'
+    code_review:
+      count: 1
+      workflows:
+      - multi-stage-code-review
+      last_validated: '2026-01-27'
+    planning:
+      count: 1
+      workflows:
+      - plan-then-execute
+      last_validated: '2026-01-28'
+    documentation:
+      count: 1
+      workflows:
+      - WORKFLOW-CATALOG
+      last_validated: '2026-01-29'
+skills:
+  path: /Users/les/.claude
+  total_count: 64
+  active_count: 64
+  last_audited: '2026-01-29'
+  audit:
+    last_relevance_check: '2026-01-29'
+    last_cleanup: '2026-01-28'
+    notes: All skills active
+  categories:
+    superpowers:
+      count: 15
+      last_audited: '2026-01-29'
+      description: Core AI agent workflow and development skills
+    development:
+      count: 25
+      last_audited: '2026-01-28'
+      description: Development tools and scaffolding skills
+    workflow:
+      count: 15
+      last_audited: '2026-01-27'
+      description: Workflow and automation skills
+    maintenance:
+      count: 9
+      last_audited: '2026-01-26'
+      description: Maintenance and cleanup skills
+tools:
+  path: /Users/les/.claude/commands/tools
+  total_count: 49
+  active_count: 49
+  last_audited: '2026-01-29'
+  audit:
+    last_relevance_check: '2026-01-29'
+    last_cleanup: '2026-01-28'
+    notes: All tools active
+  categories:
+    development:
+      count: 15
+      last_audited: '2026-01-28'
+      tools:
+      - api-scaffold
+      - grpc-service-implementation
+      - code-explain
+      - debugging-guide
+    deployment:
+      count: 8
+      last_audited: '2026-01-27'
+      tools:
+      - docker-optimize
+      - k8s-manifest
+      - cost-optimize
+      - secrets-management
+    monitoring:
+      count: 8
+      last_audited: '2026-01-27'
+      tools:
+      - security-scan
+      - observability-lifecycle
+      - distributed-tracing-setup
+    workflow:
+      count: 10
+      last_audited: '2026-01-26'
+      tools:
+      - ai-assistant
+      - pr-enhance
+      - config-validate
+    maintenance:
+      count: 8
+      last_audited: '2026-01-25'
+      tools:
+      - tech-debt
+      - maintenance-cadence
+roles:
+- name: orchestrator
+  description: Coordinates workflows and manages cross-repository operations
+  tags:
+  - coordination
+  - workflow
+  - automation
+  - scheduling
+  capabilities:
+  - sweep
+  - schedule
+  - monitor
+  - route
+  - coordinate
+- name: resolver
+  description: Resolves components, dependencies, and lifecycle management
+  tags:
+  - dependency-injection
+  - lifecycle
+  - configuration
+  - hot-swap
+  capabilities:
+  - resolve
+  - activate
+  - swap
+  - explain
+  - watch
+- name: manager
+  description: Manages state, sessions, and knowledge across the ecosystem
+  tags:
+  - state
+  - knowledge
+  - tracking
+  - analytics
+  capabilities:
+  - capture
+  - search
+  - restore
+  - track
+  - analyze
+- name: inspector
+  description: Validates code quality and enforces development standards
+  tags:
+  - quality
+  - testing
+  - validation
+  - ci-cd
+  capabilities:
+  - test
+  - lint
+  - scan
+  - report
+  - validate
+- name: builder
+  description: Builds applications and web interfaces
+  tags:
+  - web-framework
+  - ssr
+  - htmx
+  - templates
+  capabilities:
+  - render
+  - route
+  - authenticate
+  - build
+- name: aggregator
+  description: Aggregates data and analytics across distributed systems
+  tags:
+  - analytics
+  - aggregation
+  - search
+  - detection
+  capabilities:
+  - aggregate
+  - search
+  - detect
+  - correlate
+  - graph
+- name: app
+  description: End-user applications with graphical interfaces
+  tags:
+  - ui
+  - application
+  - user-facing
+  capabilities:
+  - interface
+  - automate
+  - serve-users
+  - integrate
+- name: asset
+  description: UI libraries, component collections, and style guides
+  tags:
+  - ui-library
+  - components
+  - styling
+  capabilities:
+  - style
+  - theme
+  - componentize
+  - design
+- name: foundation
+  description: Foundational utilities, libraries, and shared code
+  tags:
+  - utilities
+  - library
+  - shared-code
+  capabilities:
+  - share
+  - standardize
+  - abstract
+  - build-upon
+- name: visualizer
+  description: Creates visual diagrams and documentation
+  tags:
+  - diagram
+  - visualization
+  - documentation
+  capabilities:
+  - draw
+  - render
+  - visualize
+  - document
+- name: extension
+  description: Extends framework capabilities with pluggable modules
+  tags:
+  - extension
+  - plugin
+  - filters
+  - enhancement
+  capabilities:
+  - extend
+  - filter
+  - enhance
+  - plug-in
+- name: tool
+  description: Specialized tools and integrations via MCP protocol
+  tags:
+  - mcp
+  - integration
+  - api
+  - service
+  capabilities:
+  - connect
+  - expose
+  - integrate
+- name: worker
+  description: Executes tasks and workflows under orchestrator direction
+  tags:
+  - execution
+  - compute
+  - processing
+  - headless
+  duties:
+  - Execute headless AI commands (Qwen, Claude Code)
+  - Run containerized workloads
+  - Report progress and capture output
+  - Handle retries, timeouts, and error recovery
+  capabilities:
+  - execute
+  - report
+  - retry
+  - timeout
+  - capture
+workers:
+- name: terminal-qwen
+  description: Headless Qwen CLI execution in terminal
+  tags:
+  - terminal
+  - qwen
+  - cli
+  - local
+  command_template: qwen -o stream-json --approval-mode yolo
+  progress_tracking: stream-json
+  result_storage: session-buddy
+- name: terminal-claude
+  description: Headless Claude Code CLI execution in terminal
+  tags:
+  - terminal
+  - claude
+  - cli
+  - local
+  command_template: claude --output-format stream-json --permission-mode acceptEdits
+  progress_tracking: stream-json
+  result_storage: session-buddy
+- name: container-executor
+  description: Containerized task execution
+  tags:
+  - container
+  - docker
+  - podman
+  - remote
+  runtime: docker
+  progress_tracking: socket
+  result_storage: session-buddy
+- name: debug-monitor
+  description: iTerm2 debug log tailer with Session-Buddy streaming
+  tags:
+  - monitoring
+  - debug
+  - iterm2
+  - logging
+  - session-buddy
+  implementation: iterm2-python-api
+  streaming: session-buddy
+  trigger: --debug flag enabled
+backup:
+  repo: git@gitlab.com:lesleslie/dot-claude.git
+  private: true
+  path: /Users/les/.claude
+  schedule: daily
+  last_backup: '2026-01-29'
+  auto_commit_message: 'chore: backup ~/.claude configuration'
+maintenance:
+  directory_cleanup:
+    last_run: '2026-01-28'
+    schedule: weekly
+    locations:
+    - path: /Users/les/.claude/agents
+      obsolete_threshold_days: 90
+    - path: /Users/les/.claude/commands
+      obsolete_threshold_days: 60
+    - path: /Users/les/.claude/plugins/cache
+      obsolete_threshold_days: 30
+  relevance_audit:
+    last_run: '2026-01-29'
+    schedule: monthly
+    scope:
+    - agents
+    - workflows
+    - skills
+    - tools
+  dependency_check:
+    last_run: '2026-01-28'
+    schedule: weekly
+    check_security_updates: true
+claude_settings:
+  auto_updates: true
+  theme: dark-ansi
+  preferred_notif_channel: iterm2_with_bell
+  editor_mode: vim
+  mcp_config_sync:
+    enabled: true
+    source: ecosystem.yaml
+    auto_update_claude_json: true
+    notify_on_changes: true
+coordination:
+  issues:
+  - id: ISSUE-001
+    title: Implement unified memory service
+    description: Create MahavishnuMemoryIntegration class with Session-Buddy, AgentDB,
+      and LlamaIndex backends
+    status: pending
+    priority: high
+    severity: feature
+    repos:
+    - mahavishnu
+    - session-buddy
+    created: '2026-02-01T03:55:54.908065'
+    updated: '2026-02-01T03:55:54.908065'
+    target: null
+    dependencies: []
+    blocking: []
+    assignee: les
+    labels: []
+    metadata: {}
+  plans: []
+  todos:
+  - id: TODO-001
+    task: Create CoordinationManager class
+    description: Implement the core coordination manager with CRUD operations
+    repo: mahavishnu
+    status: pending
+    priority: high
+    created: '2026-02-01T03:56:08.804607'
+    updated: '2026-02-01T03:56:08.804607'
+    estimated_hours: 16.0
+    actual_hours: null
+    blocked_by: []
+    blocking: []
+    assignee: les
+    labels: []
+    acceptance_criteria: []
+  - id: TODO-002
+    task: MCP Test Task
+    description: Created via MCP
+    repo: mahavishnu
+    status: pending
+    priority: medium
+    created: '2026-02-01T04:10:20.627892'
+    updated: '2026-02-01T04:10:20.627892'
+    estimated_hours: 4.0
+    actual_hours: null
+    blocked_by: []
+    blocking: []
+    assignee: null
+    labels: []
+    acceptance_criteria: []
+  dependencies: []

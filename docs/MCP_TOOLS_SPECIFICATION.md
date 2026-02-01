@@ -34,6 +34,10 @@ Tools for managing Session-Buddy checkpoints and state.
 
 Tools for multi-pool orchestration, routing, and scaling across local, delegated, and cloud workers.
 
+### 8. OpenTelemetry Tools
+
+Tools for ingesting and searching OpenTelemetry traces using Akosha HotStore (DuckDB).
+
 ______________________________________________________________________
 
 ## Tool Specifications
@@ -1713,6 +1717,279 @@ results = await pool_search_memory(
 for result in results:
     print(f"Pool: {result['metadata']['pool_id']}")
     print(f"Content: {result['content'][:100]}...")
+```
+
+______________________________________________________________________
+
+
+### OpenTelemetry Tools
+
+Tools for ingesting and searching OpenTelemetry traces using Akosha HotStore (DuckDB).
+
+#### `ingest_otel_traces`
+
+Ingest OTel trace log files into HotStore with semantic embeddings.
+
+**Signature:**
+
+```python
+async def ingest_otel_traces(
+    log_files: list[str],
+    batch_size: int | None = None,
+) -> dict[str, Any]
+```
+
+**Parameters:**
+
+- `log_files` (required): List of log file paths to ingest
+- `batch_size` (optional): Batch size for ingestion. Default: 100
+
+**Returns:**
+
+```python
+{
+    "status": "success",
+    "traces_ingested": 127,
+    "storage_backend": "duckdb_hotstore",
+    "ingestion_time_seconds": 0.45,
+    "files_processed": 2,
+}
+```
+
+**Errors:**
+
+- `FileNotFoundError`: If log file doesn't exist
+- `json.JSONDecodeError`: If file is not valid JSON
+- `ValueError`: If file is not in expected OTel format
+- `RuntimeError`: If embedding generation fails
+
+**Example:**
+
+```python
+# Ingest single file
+result = await ingest_otel_traces(
+    log_files=["/path/to/claude/session.json"],
+)
+
+# Ingest multiple files with custom batch size
+result = await ingest_otel_traces(
+    log_files=[
+        "/path/to/claude/session_1.json",
+        "/path/to/qwen/session_1.json",
+    ],
+    batch_size=200,
+)
+
+print(f"Ingested {result['traces_ingested']} traces in {result['ingestion_time_seconds']:.2f}s")
+```
+
+______________________________________________________________________
+
+#### `search_otel_traces`
+
+Perform semantic search over ingested traces.
+
+**Signature:**
+
+```python
+async def search_otel_traces(
+    query: str,
+    limit: int = 10,
+    threshold: float | None = None,
+    filters: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]
+```
+
+**Parameters:**
+
+- `query` (required): Natural language search query
+- `limit` (optional): Maximum results to return. Default: 10
+- `threshold` (optional): Minimum similarity score (0-1). Default: 0.75
+- `filters` (optional): Attribute filters (e.g., `{"kind": "CLIENT"}`)
+
+**Returns:**
+
+```python
+[
+    {
+        "trace_id": "trace-abc123",
+        "span_id": "span-def456",
+        "similarity": 0.892,
+        "name": "http.client.request",
+        "summary": "HTTP POST request to /api/users endpoint",
+        "timestamp": "2025-01-31T14:23:45Z",
+        "kind": "CLIENT",
+        "status": "OK",
+        "duration_ms": 1234,
+        "attributes": {
+            "http.method": "POST",
+            "http.url": "https://api.example.com/users",
+        },
+    },
+    # ... more results
+]
+```
+
+**Errors:**
+
+- `ValueError`: If query is empty or limit <= 0
+- `ValueError`: If threshold not in range [0.0, 1.0]
+
+**Example:**
+
+```python
+# Basic search
+results = await search_otel_traces(
+    query="authentication error when accessing API",
+)
+
+# Search with high similarity threshold
+results = await search_otel_traces(
+    query="memory usage spike",
+    threshold=0.80,
+)
+
+# Search with filters
+results = await search_otel_traces(
+    query="database connection",
+    filters={
+        "kind": "CLIENT",
+        "status": "ERROR",
+    },
+)
+
+# Process results
+for result in results:
+    print(f"{result['trace_id']}: {result['summary'][:80]}...")
+    print(f"  Similarity: {result['similarity']:.3f}")
+```
+
+______________________________________________________________________
+
+#### `get_trace_by_id`
+
+Retrieve a specific trace by ID.
+
+**Signature:**
+
+```python
+async def get_trace_by_id(
+    trace_id: str,
+) -> dict[str, Any] | None
+```
+
+**Parameters:**
+
+- `trace_id` (required): Trace identifier (hex string)
+
+**Returns:**
+
+```python
+{
+    "trace_id": "trace-abc123",
+    "span_id": "span-def456",
+    "parent_span_id": "span-ghi789",  # If nested
+    "name": "http.client.request",
+    "kind": "CLIENT",
+    "status": "OK",
+    "start_time": "2025-01-31T14:23:45.123456Z",
+    "end_time": "2025-01-31T14:23:46.567890Z",
+    "duration_ms": 1444,
+    "attributes": {
+        "http.method": "POST",
+        "http.url": "https://api.example.com/users",
+        "http.status_code": 201,
+    },
+    "events": [
+        {
+            "time": "2025-01-31T14:23:45.500000Z",
+            "name": "connection.opened",
+        },
+    ],
+    "summary": "HTTP POST request to /api/users endpoint",
+    "created_at": "2025-01-31T14:23:45Z",
+}
+```
+
+Returns `None` if trace not found.
+
+**Errors:**
+
+- `ValueError`: If trace_id is empty or invalid
+
+**Example:**
+
+```python
+# Get specific trace
+trace = await get_trace_by_id(trace_id="abc123def456")
+
+if trace:
+    print(f"Trace: {trace['name']}")
+    print(f"Duration: {trace['duration_ms']}ms")
+    print(f"Status: {trace['status']}")
+    print(f"Summary: {trace['summary']}")
+else:
+    print("Trace not found")
+```
+
+______________________________________________________________________
+
+#### `get_otel_statistics`
+
+Get statistics about ingested traces.
+
+**Signature:**
+
+```python
+async def get_otel_statistics() -> dict[str, Any]
+```
+
+**Parameters:** None
+
+**Returns:**
+
+```python
+{
+    "total_traces": 12458,
+    "total_spans": 45623,
+    "unique_names": 234,
+    "avg_duration_ms": 234.5,
+    "min_duration_ms": 1.2,
+    "max_duration_ms": 15234.5,
+    "by_status": {
+        "OK": 11200,
+        "ERROR": 892,
+        "UNSET": 366,
+    },
+    "by_kind": {
+        "INTERNAL": 5423,
+        "SERVER": 3211,
+        "CLIENT": 3456,
+        "PRODUCER": 234,
+        "CONSUMER": 134,
+    },
+    "storage_backend": "duckdb_hotstore",
+    "database_size_mb": 48.2,
+    "index_size_mb": 12.3,
+    "cache_hit_rate": 0.85,
+}
+```
+
+**Example:**
+
+```python
+# Get statistics
+stats = await get_otel_statistics()
+
+print(f"Total traces: {stats['total_traces']}")
+print(f"Average duration: {stats['avg_duration_ms']:.2f}ms")
+print(f"Traces by status:")
+for status, count in stats['by_status'].items():
+    print(f"  {status}: {count}")
+
+# Calculate success rate
+success_rate = stats['by_status']['OK'] / stats['total_traces'] * 100
+print(f"Success rate: {success_rate:.1f}%")
 ```
 
 ______________________________________________________________________

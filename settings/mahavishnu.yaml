@@ -40,6 +40,19 @@ opensearch:
   ssl_assert_hostname: true
   ssl_show_warn: true
 
+# OpenTelemetry trace storage with semantic search
+otel_storage:
+  enabled: true  # PostgreSQL + pgvector setup complete
+  connection_string: "postgresql://otel_user:otel@localhost:5432/otel_traces"
+  embedding_model: "all-MiniLM-L6-v2"  # Sentence transformer model
+  embedding_dimension: 384  # Vector dimension (match model)
+  cache_size: 1000  # Max embeddings in memory cache
+  similarity_threshold: 0.85  # Min similarity for search (0.0-1.0)
+  batch_size: 100  # Traces per batch write
+  batch_interval_seconds: 5  # Seconds between batch flushes
+  max_retries: 3  # Retry attempts for failed operations
+  circuit_breaker_threshold: 5  # Failures before circuit breaker opens
+
 # Quality control
 qc_enabled: true
 qc_min_score: 80
@@ -70,3 +83,17 @@ terminal:
   # Adapter preference: "auto" (detect iTerm2, fallback to mcpretentious),
   # "iterm2" (native iTerm2 Python API), or "mcpretentious" (PTY-based)
   adapter_preference: "auto"
+
+# Session-Buddy polling integration
+session_buddy_polling_enabled: false  # Set to true to enable polling
+session_buddy_polling_endpoint: "http://localhost:8678/mcp"  # Session-Buddy MCP server URL
+session_buddy_polling_interval_seconds: 30  # Polling interval (5-600)
+session_buddy_polling_timeout_seconds: 10  # HTTP timeout for MCP calls (1-60)
+session_buddy_polling_max_retries: 3  # Maximum retry attempts (1-10)
+session_buddy_polling_retry_delay_seconds: 5  # Base retry delay (1-60)
+session_buddy_polling_circuit_breaker_threshold: 5  # Failures before circuit opens (1-20)
+session_buddy_polling_metrics_to_collect:  # MCP tools to poll
+  - get_activity_summary
+  - get_workflow_metrics
+  - get_session_analytics
+  - get_performance_metrics

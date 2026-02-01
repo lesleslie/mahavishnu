@@ -1,8 +1,16 @@
 # OpenTelemetry Collector Configuration for Mahavishnu
-# Receives telemetry, processes it, and exports to backends
+# Receives telemetry from multiple sources, processes it, and exports to backends
+#
+# This configuration supports:
+# - Direct OTLP ingestion from applications (gRPC + HTTP)
+# - File log receiver for reading session logs directly
+# - Multiple independent OTLP receivers for external sources
+# - Claude-specific and Qwen-specific telemetry ingestion
 
 receivers:
-  # OTLP receiver (gRPC) - for Mahavishnu application
+  # ==============================================================================
+  # Primary OTLP receiver (for Mahavishnu application and internal services)
+  # ==============================================================================
   otlp:
     protocols:
       grpc:
@@ -10,67 +18,263 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 
+  # ==============================================================================
+  # External OTLP receiver for Claude and other AI assistants
+  # ==============================================================================
+  otlp/claude:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4319  # Separate port for Claude
+      http:
+        endpoint: 0.0.0.0:4320  # Separate HTTP port for Claude
+
+  # ==============================================================================
+  # External OTLP receiver for Qwen and other services
+  # ==============================================================================
+  otlp/qwen:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4321  # Separate port for Qwen
+      http:
+        endpoint: 0.0.0.0:4322  # Separate HTTP port for Qwen
+
+  # ==============================================================================
+  # File log receiver for reading session logs directly
+  # ==============================================================================
+  filelog/claude:
+    include:
+      - /var/log/mahavishnu/sessions/claude/*.log
+    include_file_name: false
+    include_file_path: true
+    start_at: beginning
+    retry_on_failure:
+      enabled: true
+    max_log_size: 1024  # 1MB
+    encoding: utf-8
+    # Parse JSON logs
+    operators:
+      - type: json_parser
+        parse_from: body
+        severity:
+          parse_from: attributes.level
+          mapping:
+            debug: 1
+            info: 2
+            warn: 3
+            error: 4
+            fatal: 5
+      - type: move
+        from: attributes.session_id
+        to: resource.session_id
+      - type: move
+        from: attributes.timestamp
+        to: resource.timestamp
+      - type: move
+        from: attributes.source
+        to: resource.source
+
+  filelog/qwen:
+    include:
+      - /var/log/mahavishnu/sessions/qwen/*.log
+    include_file_name: false
+    include_file_path: true
+    start_at: beginning
+    retry_on_failure:
+      enabled: true
+    max_log_size: 1024  # 1MB
+    encoding: utf-8
+    operators:
+      - type: json_parser
+        parse_from: body
+        severity:
+          parse_from: attributes.level
+          mapping:
+            debug: 1
+            info: 2
+            warn: 3
+            error: 4
+            fatal: 5
+      - type: move
+        from: attributes.session_id
+        to: resource.session_id
+      - type: move
+        from: attributes.timestamp
+        to: resource.timestamp
+      - type: move
+        from: attributes.source
+        to: resource.source
+
+  filelog/general:
+    include:
+      - /var/log/mahavishnu/sessions/**/*.log
+    exclude:
+      - /var/log/mahavishnu/sessions/claude/*.log  # Already handled above
+      - /var/log/mahavishnu/sessions/qwen/*.log    # Already handled above
+    include_file_name: false
+    include_file_path: true
+    start_at: end
+    retry_on_failure:
+      enabled: true
+    max_log_size: 1024  # 1MB
+    encoding: utf-8
+    operators:
+      - type: regex_parser
+        regex: '^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\s+(?P<level>\w+)\s+(?P<message>.*)$'
+        timestamp:
+          parse_from: attributes.timestamp
+          layout: '%Y-%m-%dT%H:%M:%S'
+        severity:
+          parse_from: attributes.level
+          mapping:
+            debug: 1
+            info: 2
+            warn: 3
+            error: 4
+            fatal: 5
+
+  # ==============================================================================
   # Prometheus receiver for scraping metrics
+  # ==============================================================================
   prometheus:
     config:
       scrape_configs:
         - job_name: 'otel-collector'
           static_configs:
             - targets: ['localhost:8888']
+        - job_name: 'mahavishnu'
+          static_configs:
+            - targets: ['mahavishnu:3035']
+          metrics_path: /metrics
+
+  # ==============================================================================
+  # Host metrics receiver for system-level monitoring
+  # ==============================================================================
+  hostmetrics:
+    scrapers:
+      cpu:
+      load:
+      memory:
+      disk:
+      filesystem:
+      network:
 
 processors:
+  # ==============================================================================
   # Batch telemetry data before exporting
+  # ==============================================================================
   batch:
+    timeout: 5s
+    send_batch_size: 10000
+    send_batch_max_size: 11000
 
+  # ==============================================================================
   # Memory limiter to prevent OOM
+  # ==============================================================================
   memory_limiter:
     check_interval: 1s
     limit_percentage: 80
     spike_limit_percentage: 25
 
+  # ==============================================================================
   # Add resource attributes to all telemetry
+  # ==============================================================================
   resource:
     attributes:
       - key: deployment.environment
         value: production
+        action: upsert
       - key: deployment.platform
         value: docker-compose
+        action: upsert
+      - key: service.namespace
+        value: mahavishnu
+        action: upsert
+
+  # ==============================================================================
+  # Add attributes to differentiate sources
+  # ==============================================================================
+  attributes/claude:
+    actions:
+      - key: telemetry.source
+        value: claude
+        action: insert
+      - key: telemetry.source.type
+        value: ai_assistant
+        action: insert
+
+  attributes/qwen:
+    actions:
+      - key: telemetry.source
+        value: qwen
+        action: insert
+      - key: telemetry.source.type
+        value: ai_assistant
+        action: insert
 
 exporters:
-  # Export traces to Jaeger
-  jaeger:
-    endpoint: jaeger:14250
+  # ==============================================================================
+  # Export traces to Jaeger (via OTLP)
+  # ==============================================================================
+  otlp/jaeger:
+    endpoint: jaeger:4317
     tls:
       insecure: true
 
+  # ==============================================================================
   # Export metrics to Prometheus
+  # ==============================================================================
   prometheusremotewrite:
     endpoint: 'http://prometheus:9090/api/v1/write'
     tls:
       insecure: true
+    resource_to_telemetry_conversion:
+      enabled: true
 
+  # ==============================================================================
   # Export logs to Elasticsearch
+  # ==============================================================================
   elasticsearch:
     endpoints:
       - http://elasticsearch:9200
-    index: 'mahavishnu-logs'
     tls:
       insecure: true
 
-  # Debug exporter (optional, for development)
-  logging:
-    loglevel: debug
+  # ==============================================================================
+  # Debug exporter (for development)
+  # ==============================================================================
+  debug:
+    verbosity: detailed
+
+  # ==============================================================================
+  # OTLP forwarding exporter (for sending to external OTLP collectors)
+  # ==============================================================================
+  otlp/forward:
+    endpoint: http://external-collector:4317  # Optional: Forward to external collector
+    tls:
+      insecure: true
+    sending_queue:
+      enabled: true
+      num_consumers: 10
+      queue_size: 10000
+    retry_on_failure:
+      enabled: true
 
 extensions:
+  # ==============================================================================
   # Health check extension
+  # ==============================================================================
   health_check:
     endpoint: 0.0.0.0:13133
 
+  # ==============================================================================
   # Pprof extension for profiling
+  # ==============================================================================
   pprof:
     endpoint: 0.0.0.0:1777
 
+  # ==============================================================================
   # Zpages extension for trace debugging
+  # ==============================================================================
   zpages:
     endpoint: 0.0.0.0:55679
 
@@ -81,20 +285,82 @@ service:
     - zpages
 
   pipelines:
-    # Traces pipeline
+    # ==============================================================================
+    # Primary traces pipeline (Mahavishnu application)
+    # ==============================================================================
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch, resource]
-      exporters: [jaeger, logging]
+      exporters: [otlp/jaeger, debug]
 
-    # Metrics pipeline
+    # ==============================================================================
+    # Claude traces pipeline
+    # ==============================================================================
+    traces/claude:
+      receivers: [otlp/claude]
+      processors: [memory_limiter, batch, resource, attributes/claude]
+      exporters: [otlp/jaeger, debug]
+
+    # ==============================================================================
+    # Qwen traces pipeline
+    # ==============================================================================
+    traces/qwen:
+      receivers: [otlp/qwen]
+      processors: [memory_limiter, batch, resource, attributes/qwen]
+      exporters: [otlp/jaeger, debug]
+
+    # ==============================================================================
+    # Primary metrics pipeline (Mahavishnu application)
+    # ==============================================================================
     metrics:
       receivers: [otlp, prometheus]
       processors: [memory_limiter, batch, resource]
-      exporters: [prometheusremotewrite, logging]
+      exporters: [prometheusremotewrite, debug]
 
-    # Logs pipeline
-    logs:
-      receivers: [otlp]
+    # ==============================================================================
+    # Claude metrics pipeline
+    # ==============================================================================
+    metrics/claude:
+      receivers: [otlp/claude]
+      processors: [memory_limiter, batch, resource, attributes/claude]
+      exporters: [prometheusremotewrite, debug]
+
+    # ==============================================================================
+    # Qwen metrics pipeline
+    # ==============================================================================
+    metrics/qwen:
+      receivers: [otlp/qwen]
+      processors: [memory_limiter, batch, resource, attributes/qwen]
+      exporters: [prometheusremotewrite, debug]
+
+    # ==============================================================================
+    # Host metrics pipeline
+    # ==============================================================================
+    metrics/host:
+      receivers: [hostmetrics]
       processors: [memory_limiter, batch, resource]
-      exporters: [elasticsearch, logging]
+      exporters: [prometheusremotewrite, debug]
+
+    # ==============================================================================
+    # Primary logs pipeline (Mahavishnu application + file logs)
+    # ==============================================================================
+    logs:
+      receivers: [otlp, filelog/general]
+      processors: [memory_limiter, batch, resource]
+      exporters: [elasticsearch, debug]
+
+    # ==============================================================================
+    # Claude logs pipeline (OTLP + file)
+    # ==============================================================================
+    logs/claude:
+      receivers: [otlp/claude, filelog/claude]
+      processors: [memory_limiter, batch, resource, attributes/claude]
+      exporters: [elasticsearch, debug]
+
+    # ==============================================================================
+    # Qwen logs pipeline (OTLP + file)
+    # ==============================================================================
+    logs/qwen:
+      receivers: [otlp/qwen, filelog/qwen]
+      processors: [memory_limiter, batch, resource, attributes/qwen]
+      exporters: [elasticsearch, debug]

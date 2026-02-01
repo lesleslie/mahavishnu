@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from mcp_common.messaging.types import Priority
+from messaging.types import Priority
 
 
 def register_session_buddy_tools(server, session_manager, mcp_client):

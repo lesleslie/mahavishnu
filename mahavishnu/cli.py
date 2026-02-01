@@ -22,6 +22,9 @@ from .production_cli import add_production_commands
 # Import sync CLI
 from .sync_cli import add_sync_commands
 
+# Import coordination CLI
+from .coordination_cli import add_coordination_commands
+
 app = typer.Typer()
 
 
@@ -572,6 +575,9 @@ add_monitoring_commands(app)
 
 # Add Claude-Qwen sync commands
 add_sync_commands(app)
+
+# Add cross-repository coordination commands
+add_coordination_commands(app)
 
 
 # Worker management

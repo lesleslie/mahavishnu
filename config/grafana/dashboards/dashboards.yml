@@ -1,0 +1,12 @@
+# Grafana dashboard provisioning
+
+apiVersion: 1
+
+providers:
+  - name: 'Mahavishnu'
+    orgId: 1
+    folder: 'Mahavishnu'
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards
+    allowUiUpdates: true

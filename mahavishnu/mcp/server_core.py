@@ -1237,6 +1237,9 @@ class FastMCPServer:
         # Register repository messaging tools
         self._register_repository_messaging_tools()
 
+        # Register OTel trace management tools
+        self._register_otel_tools()
+
         await self.server.run_http_async(host=host, port=port)
 
     async def stop(self) -> None:
@@ -1326,6 +1329,19 @@ class FastMCPServer:
 
         register_pool_tools(self.server, pool_manager)
         logger.info("Registered 10 pool management tools with MCP server")
+
+    def _register_otel_tools(self) -> None:
+        """Register OTel trace management tools with MCP server."""
+        # Check if OTel storage is enabled in config
+        if not getattr(self.app.config, "otel_storage_enabled", False):
+            logger.info("OTel storage disabled, skipping tool registration")
+            return
+
+        # Import and register OTel tools
+        from ..mcp.tools.otel_tools import register_otel_tools
+
+        register_otel_tools(self.server, self.app, self.mcp_client)
+        logger.info("Registered 4 OTel trace management tools with MCP server")
 
 
 async def run_server(config=None):
