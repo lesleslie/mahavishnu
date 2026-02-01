@@ -179,6 +179,72 @@ class MahavishnuApp:
         self.backup_manager = BackupManager(self)
         self.recovery_manager = DisasterRecoveryManager(self)
 
+        # Initialize Session-Buddy poller for telemetry collection
+        self.session_buddy_poller = None
+        if self.config.session_buddy_polling_enabled:
+            self.session_buddy_poller = self._init_session_buddy_poller()
+
+    def _init_session_buddy_poller(self):
+        """Initialize Session-Buddy poller for telemetry collection.
+
+        Returns:
+            SessionBuddyPoller instance or None if initialization fails
+
+        Note:
+            Poller must be started explicitly via await poller.start()
+            after the async event loop is running.
+        """
+        try:
+            from ..integrations.session_buddy_poller import SessionBuddyPoller
+
+            poller = SessionBuddyPoller(
+                config=self.config,
+                observability_manager=self.observability,
+            )
+
+            logger = __import__("logging").getLogger(__name__)
+            logger.info(
+                f"Session-Buddy poller initialized: "
+                f"endpoint={self.config.session_buddy_polling_endpoint}, "
+                f"interval={self.config.session_buddy_polling_interval_seconds}s"
+            )
+
+            return poller
+
+        except Exception as e:
+            logger = __import__("logging").getLogger(__name__)
+            logger.warning(f"Failed to initialize Session-Buddy poller: {e}")
+            return None
+
+    async def start_poller(self) -> None:
+        """Start the Session-Buddy poller if configured.
+
+        This method should be called after the async event loop is running.
+        It's safe to call multiple times (idempotent).
+
+        Example:
+            >>> app = MahavishnuApp()
+            >>> await app.start_poller()  # Start polling
+        """
+        if self.session_buddy_poller and not self.session_buddy_poller._running:
+            await self.session_buddy_poller.start()
+            logger = __import__("logging").getLogger(__name__)
+            logger.info("Session-Buddy poller started")
+
+    async def stop_poller(self) -> None:
+        """Stop the Session-Buddy poller.
+
+        This method should be called before shutting down the application.
+        It's safe to call multiple times (idempotent).
+
+        Example:
+            >>> await app.stop_poller()  # Stop polling
+        """
+        if self.session_buddy_poller and self.session_buddy_poller._running:
+            await self.session_buddy_poller.stop()
+            logger = __import__("logging").getLogger(__name__)
+            logger.info("Session-Buddy poller stopped")
+
     def _init_terminal_manager(self) -> "TerminalManager | None":
         """Initialize terminal manager with mcpretentious adapter.
 

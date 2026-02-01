@@ -1,0 +1,122 @@
+# Lightweight OTel Collector Configuration for Testing
+# Simplified configuration for standalone testing
+
+receivers:
+  # Primary OTLP receiver
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # Claude-specific OTLP receiver
+  otlp/claude:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4319
+      http:
+        endpoint: 0.0.0.0:4320
+
+  # Qwen-specific OTLP receiver
+  otlp/qwen:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4321
+      http:
+        endpoint: 0.0.0.0:4322
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 10000
+
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: testing
+        action: upsert
+
+  attributes/claude:
+    actions:
+      - key: telemetry.source
+        value: claude
+        action: insert
+
+  attributes/qwen:
+    actions:
+      - key: telemetry.source
+        value: qwen
+        action: insert
+
+exporters:
+  # Export to Jaeger
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+
+  # Export to Prometheus (for manual scraping)
+  prometheusremotewrite:
+    endpoint: http://prometheus:9090/api/v1/write
+    tls:
+      insecure: true
+
+  # Debug logging
+  logging:
+    loglevel: debug
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions: [health_check, pprof, zpages]
+
+  pipelines:
+    # Primary traces
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [jaeger, logging]
+
+    # Claude traces
+    traces/claude:
+      receivers: [otlp/claude]
+      processors: [memory_limiter, batch, resource, attributes/claude]
+      exporters: [jaeger, logging]
+
+    # Qwen traces
+    traces/qwen:
+      receivers: [otlp/qwen]
+      processors: [memory_limiter, batch, resource, attributes/qwen]
+      exporters: [jaeger, logging]
+
+    # Primary metrics
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [prometheusremotewrite, logging]
+
+    # Claude metrics
+    metrics/claude:
+      receivers: [otlp/claude]
+      processors: [memory_limiter, batch, resource, attributes/claude]
+      exporters: [prometheusremotewrite, logging]
+
+    # Qwen metrics
+    metrics/qwen:
+      receivers: [otlp/qwen]
+      processors: [memory_limiter, batch, resource, attributes/qwen]
+      exporters: [prometheusremotewrite, logging]

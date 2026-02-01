@@ -1,0 +1,115 @@
+[
+  {
+    "trace_id": "claude-session-001",
+    "system_id": "claude",
+    "spans": [
+      {
+        "name": "HTTP POST /api/rag/query",
+        "start_time": "2026-02-01T15:30:00Z",
+        "end_time": "2026-02-01T15:30:02.5Z",
+        "attributes": {
+          "service.name": "claude",
+          "http.method": "POST",
+          "http.url": "/api/rag/query",
+          "http.status_code": 200,
+          "user.id": "user-123",
+          "session.id": "session-abc"
+        }
+      },
+      {
+        "name": "vector_store.query",
+        "start_time": "2026-02-01T15:30:00.5Z",
+        "end_time": "2026-02-01T15:30:01.2Z",
+        "attributes": {
+          "service.name": "claude",
+          "db.system": "pgvector",
+          "db.query": "SELECT * FROM documents WHERE embedding <=>",
+          "db.statement": "vector_search",
+          "db.rows_returned": 10
+        }
+      },
+      {
+        "name": "llm.generation",
+        "start_time": "2026-02-01T15:30:01.5Z",
+        "end_time": "2026-02-01T15:30:02.3Z",
+        "attributes": {
+          "service.name": "claude",
+          "llm.model": "claude-3-opus",
+          "llm.prompt_tokens": 150,
+          "llm.completion_tokens": 300,
+          "llm.total_tokens": 450
+        }
+      },
+      {
+        "name": "response.formatted",
+        "start_time": "2026-02-01T15:30:02.3Z",
+        "end_time": "2026-02-01T15:30:02.5Z",
+        "attributes": {
+          "service.name": "claude",
+          "response.format": "json",
+          "response.size_bytes": 2048
+        }
+      }
+    ]
+  },
+  {
+    "trace_id": "claude-session-002",
+    "system_id": "claude",
+    "spans": [
+      {
+        "name": "HTTP POST /api/rag/query",
+        "start_time": "2026-02-01T15:31:00Z",
+        "end_time": "2026-02-01T15:31:05.0Z",
+        "attributes": {
+          "service.name": "claude",
+          "http.method": "POST",
+          "http.url": "/api/rag/query",
+          "http.status_code": 500,
+          "error.message": "Database connection timeout",
+          "error.type": "TimeoutError"
+        }
+      },
+      {
+        "name": "vector_store.query",
+        "start_time": "2026-02-01T15:31:00.5Z",
+        "end_time": "2026-02-01T15:31:05.0Z",
+        "attributes": {
+          "service.name": "claude",
+          "db.system": "pgvector",
+          "db.query": "SELECT * FROM documents WHERE embedding <=>",
+          "error.message": "connection timeout after 5s",
+          "error.type": "TimeoutError"
+        }
+      }
+    ]
+  },
+  {
+    "trace_id": "claude-session-003",
+    "system_id": "claude",
+    "spans": [
+      {
+        "name": "HTTP POST /api/chat/completion",
+        "start_time": "2026-02-01T15:32:00Z",
+        "end_time": "2026-02-01T15:32:03.0Z",
+        "attributes": {
+          "service.name": "claude",
+          "http.method": "POST",
+          "http.url": "/api/chat/completion",
+          "http.status_code": 200,
+          "llm.model": "claude-3-sonnet",
+          "llm.total_tokens": 820
+        }
+      },
+      {
+        "name": "cache.hit",
+        "start_time": "2026-02-01T15:32:00.1Z",
+        "end_time": "2026-02-01T15:32:00.2Z",
+        "attributes": {
+          "service.name": "claude",
+          "cache.key": "user-123-recent-query",
+          "cache.hit": true
+        }
+      }
+    ]
+  }
+]

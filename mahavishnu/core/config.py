@@ -155,50 +155,86 @@ class MahavishnuSettings(BaseSettings):
         description="OTLP endpoint for metrics/traces",
     )
 
-    # Authentication (optional)
-    auth_enabled: bool = Field(
+    # OpenTelemetry trace storage with semantic search (PostgreSQL + pgvector)
+    otel_storage_enabled: bool = Field(
         default=False,
-        description="Enable JWT authentication",
+        description="Enable OTel trace storage with PostgreSQL + pgvector",
     )
-    auth_secret: str | None = Field(
-        default=None,
-        description="JWT secret (must be set via environment if auth enabled)",
+    otel_storage_connection_string: str = Field(
+        default="postgresql://postgres:password@localhost:5432/otel_traces",
+        description="PostgreSQL connection string for OTel trace storage",
     )
-    auth_algorithm: str = Field(
-        default="HS256",
-        description="JWT algorithm (HS256 or RS256)",
+    otel_storage_embedding_model: str = Field(
+        default="all-MiniLM-L6-v2",
+        description="Sentence transformer model for semantic search",
     )
-    auth_expire_minutes: int = Field(
-        default=60,
-        ge=5,
-        le=1440,
-        description="JWT token expiration in minutes (5-1440)",
+    otel_storage_embedding_dimension: int = Field(
+        default=384,
+        ge=128,
+        le=1024,
+        description="Vector dimension for embeddings (128-1024)",
+    )
+    otel_storage_cache_size: int = Field(
+        default=1000,
+        ge=100,
+        le=10000,
+        description="Maximum number of embeddings to cache in memory",
+    )
+    otel_storage_similarity_threshold: float = Field(
+        default=0.85,
+        ge=0.0,
+        le=1.0,
+        description="Minimum similarity score for semantic search (0.0-1.0)",
+    )
+    otel_storage_batch_size: int = Field(
+        default=100,
+        ge=10,
+        le=1000,
+        description="Number of traces to batch in single write operation",
+    )
+    otel_storage_batch_interval_seconds: int = Field(
+        default=5,
+        ge=1,
+        le=60,
+        description="Seconds between batch flushes",
+    )
+    otel_storage_max_retries: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Maximum retry attempts for failed operations",
+    )
+    otel_storage_circuit_breaker_threshold: int = Field(
+        default=5,
+        ge=3,
+        le=20,
+        description="Failures before circuit breaker opens",
     )
 
-    # Subscription authentication (for Claude Code, etc.)
-    subscription_auth_enabled: bool = Field(
+    # OpenTelemetry trace ingester using Akosha HotStore (DuckDB)
+    otel_ingester_enabled: bool = Field(
         default=False,
-        description="Enable subscription-based authentication (e.g., Claude Code)",
+        description="Enable OTel trace ingester with Akosha HotStore (DuckDB)",
     )
-    subscription_auth_secret: str | None = Field(
-        default=None,
-        description="Subscription auth secret (must be set via environment if subscription auth enabled)",
+    otel_ingester_hot_store_path: str = Field(
+        default=":memory:",
+        description="DuckDB database path for OTel ingester (':memory:' for in-memory)",
     )
-    subscription_auth_algorithm: str = Field(
-        default="HS256",
-        description="Subscription auth algorithm (HS256 or RS256)",
+    otel_ingester_embedding_model: str = Field(
+        default="all-MiniLM-L6-v2",
+        description="Sentence transformer model for OTel ingester embeddings",
     )
-    subscription_auth_expire_minutes: int = Field(
-        default=60,
-        ge=5,
-        le=1440,
-        description="Subscription token expiration in minutes (5-1440)",
+    otel_ingester_cache_size: int = Field(
+        default=1000,
+        ge=100,
+        le=10000,
+        description="Maximum number of embeddings to cache in memory (OTel ingester)",
     )
-
-    # Cross-project authentication (for Session Buddy integration)
-    cross_project_auth_secret: str | None = Field(
-        default=None,
-        description="Cross-project authentication secret (must be set via environment for Session Buddy integration)",
+    otel_ingester_similarity_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Minimum similarity score for semantic search (OTel ingester)",
     )
 
     # OpenSearch configuration for vector storage and observability
@@ -319,6 +355,101 @@ class MahavishnuSettings(BaseSettings):
         description="Default maximum workers per pool",
     )
 
+    # Session-Buddy polling configuration
+    session_buddy_polling_enabled: bool = Field(
+        default=False,
+        description="Enable Session-Buddy telemetry polling",
+    )
+    session_buddy_polling_endpoint: str = Field(
+        default="http://localhost:8678/mcp",
+        description="Session-Buddy MCP server URL for polling",
+    )
+    session_buddy_polling_interval_seconds: int = Field(
+        default=30,
+        ge=5,
+        le=600,
+        description="Polling interval in seconds (5-600)",
+    )
+    session_buddy_polling_timeout_seconds: int = Field(
+        default=10,
+        ge=1,
+        le=60,
+        description="HTTP timeout for MCP calls in seconds (1-60)",
+    )
+    session_buddy_polling_max_retries: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Maximum retry attempts for failed MCP calls (1-10)",
+    )
+    session_buddy_polling_retry_delay_seconds: int = Field(
+        default=5,
+        ge=1,
+        le=60,
+        description="Base retry delay in seconds (1-60)",
+    )
+    session_buddy_polling_circuit_breaker_threshold: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Consecutive failures before circuit breaker opens (1-20)",
+    )
+    session_buddy_polling_metrics_to_collect: list[str] = Field(
+        default_factory=lambda: [
+            "get_activity_summary",
+            "get_workflow_metrics",
+            "get_session_analytics",
+            "get_performance_metrics",
+        ],
+        description="List of MCP tools to poll for metrics",
+    )
+
+    # Authentication (optional)
+    auth_enabled: bool = Field(
+        default=False,
+        description="Enable JWT authentication",
+    )
+    auth_secret: str | None = Field(
+        default=None,
+        description="JWT secret (must be set via environment if auth enabled)",
+    )
+    auth_algorithm: str = Field(
+        default="HS256",
+        description="JWT algorithm (HS256 or RS256)",
+    )
+    auth_expire_minutes: int = Field(
+        default=60,
+        ge=5,
+        le=1440,
+        description="JWT token expiration in minutes (5-1440)",
+    )
+
+    # Subscription authentication (for Claude Code, etc.)
+    subscription_auth_enabled: bool = Field(
+        default=False,
+        description="Enable subscription-based authentication (e.g., Claude Code)",
+    )
+    subscription_auth_secret: str | None = Field(
+        default=None,
+        description="Subscription auth secret (must be set via environment if subscription auth enabled)",
+    )
+    subscription_auth_algorithm: str = Field(
+        default="HS256",
+        description="Subscription auth algorithm (HS256 or RS256)",
+    )
+    subscription_auth_expire_minutes: int = Field(
+        default=60,
+        ge=5,
+        le=1440,
+        description="Subscription token expiration in minutes (5-1440)",
+    )
+
+    # Cross-project authentication (for Session Buddy integration)
+    cross_project_auth_secret: str | None = Field(
+        default=None,
+        description="Cross-project authentication secret (must be set via environment for Session Buddy integration)",
+    )
+
     @field_validator("auth_secret")
     @classmethod
     def validate_auth_secret(cls, v: str | None, info) -> str | None:
@@ -346,6 +477,16 @@ class MahavishnuSettings(BaseSettings):
     def validate_repos_path(cls, v: str) -> str:
         """Expand user path (~) in repos_path."""
         return str(Path(v).expanduser())
+
+    @field_validator("otel_storage_connection_string")
+    @classmethod
+    def validate_otel_storage_connection_string(cls, v: str) -> str:
+        """Ensure OTel storage connection string uses postgresql:// scheme."""
+        if v and not v.startswith("postgresql://"):
+            raise ValueError(
+                f"OTel storage connection_string must start with 'postgresql://', got: {v[:20]}..."
+            )
+        return v
 
     @classmethod
     def settings_customise_sources(

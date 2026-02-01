@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from mcp_common.code_graph import CodeGraphAnalyzer
-from mcp_common.messaging.types import Priority, ProjectMessage
+from messaging.types import Priority, ProjectMessage
 
 
 class SessionBuddyIntegration:
