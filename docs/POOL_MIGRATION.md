@@ -91,6 +91,7 @@ await pool_mgr.close_all()
 ### 1. Worker Management
 
 **WorkerManager**:
+
 ```python
 # Manual worker spawning
 worker_ids = await worker_mgr.spawn_workers(
@@ -103,6 +104,7 @@ result = await worker_mgr.execute_task(worker_ids[0], task)
 ```
 
 **Pools**:
+
 ```python
 # Pool auto-spawns workers
 pool_id = await pool_mgr.spawn_pool("mahavishnu", config)
@@ -114,6 +116,7 @@ result = await pool_mgr.execute_on_pool(pool_id, task)
 ### 2. Task Routing
 
 **WorkerManager**:
+
 ```python
 # Manual routing logic
 worker_id = select_worker(worker_ids)
@@ -121,6 +124,7 @@ result = await worker_mgr.execute_task(worker_id, task)
 ```
 
 **Pools**:
+
 ```python
 # Automatic routing
 result = await pool_mgr.route_task(
@@ -132,6 +136,7 @@ result = await pool_mgr.route_task(
 ### 3. Scaling
 
 **WorkerManager**:
+
 ```python
 # Manual spawning/closing
 new_workers = await worker_mgr.spawn_workers("terminal-qwen", 5)
@@ -140,6 +145,7 @@ for wid in workers_to_remove:
 ```
 
 **Pools**:
+
 ```python
 # Simple scaling
 pool = pool_mgr._pools[pool_id]
@@ -151,6 +157,7 @@ await pool.scale(target_workers=10)
 ### Scenario 1: Single WorkerManager → Single Pool
 
 **Before**:
+
 ```python
 class TaskRunner:
     def __init__(self):
@@ -176,6 +183,7 @@ class TaskRunner:
 ```
 
 **After**:
+
 ```python
 class TaskRunner:
     def __init__(self):
@@ -209,6 +217,7 @@ class TaskRunner:
 ### Scenario 2: Multiple WorkerManagers → Pool Manager
 
 **Before**:
+
 ```python
 class MultiTaskExecutor:
     def __init__(self):
@@ -237,6 +246,7 @@ class MultiTaskExecutor:
 ```
 
 **After**:
+
 ```python
 class MultiTaskExecutor:
     def __init__(self):
@@ -276,6 +286,7 @@ class MultiTaskExecutor:
 ### Scenario 3: Adding Session-Buddy Delegation
 
 **Before**:
+
 ```python
 # Only local workers
 worker_mgr = WorkerManager(terminal_manager=tm)
@@ -283,6 +294,7 @@ result = await worker_mgr.execute_task(worker_id, task)
 ```
 
 **After**:
+
 ```python
 # Mix local and delegated pools
 pool_mgr = PoolManager(
@@ -350,6 +362,7 @@ memory_sync_interval: 60
 ### Pattern 1: Worker Selection
 
 **Before**:
+
 ```python
 # Manual worker selection
 least_loaded_worker = min(workers, key=lambda w: w.task_count)
@@ -357,6 +370,7 @@ result = await worker_mgr.execute_task(least_loaded_worker.id, task)
 ```
 
 **After**:
+
 ```python
 # Automatic least-loaded routing
 result = await pool_mgr.route_task(
@@ -368,6 +382,7 @@ result = await pool_mgr.route_task(
 ### Pattern 2: Batch Execution
 
 **Before**:
+
 ```python
 # Manual batch distribution
 tasks_per_worker = len(tasks) // len(workers)
@@ -382,6 +397,7 @@ for i, worker_id in enumerate(workers):
 ```
 
 **After**:
+
 ```python
 # Automatic batch execution
 pool = pool_mgr._pools[pool_id]
@@ -391,6 +407,7 @@ results = await pool.execute_batch(tasks)
 ### Pattern 3: Health Monitoring
 
 **Before**:
+
 ```python
 # Manual health checks
 for worker_id in worker_ids:
@@ -400,6 +417,7 @@ for worker_id in worker_ids:
 ```
 
 **After**:
+
 ```python
 # Pool-level health monitoring
 health = await pool_mgr.health_check()
@@ -476,6 +494,7 @@ mahavishnu pool health
 ### Pitfall 1: Assuming Worker IDs
 
 **Wrong**:
+
 ```python
 # WorkerManager uses worker IDs
 worker_ids = await worker_mgr.spawn_workers("terminal-qwen", 3)
@@ -483,6 +502,7 @@ result = await worker_mgr.execute_task(worker_ids[0], task)
 ```
 
 **Correct**:
+
 ```python
 # Pools use pool IDs
 pool_id = await pool_mgr.spawn_pool("mahavishnu", config)
@@ -493,6 +513,7 @@ result = await pool_mgr.execute_on_pool(pool_id, task)
 ### Pitfall 2: Manual Scaling
 
 **Wrong**:
+
 ```python
 # Trying to manually add/remove workers
 new_workers = await worker_mgr.spawn_workers("terminal-qwen", 2)
@@ -500,6 +521,7 @@ await worker_mgr.close_worker(old_worker_id)
 ```
 
 **Correct**:
+
 ```python
 # Use pool scaling
 pool = pool_mgr._pools[pool_id]
@@ -509,12 +531,14 @@ await pool.scale(target_workers=5)
 ### Pitfall 3: Ignoring Pool Health
 
 **Wrong**:
+
 ```python
 # No health monitoring
 result = await pool_mgr.execute_on_pool(pool_id, task)
 ```
 
 **Correct**:
+
 ```python
 # Check pool health first
 health = await pool_mgr.health_check()
@@ -530,6 +554,7 @@ result = await pool_mgr.execute_on_pool(pool_id, task)
 ### Unit Tests
 
 **Before (WorkerManager)**:
+
 ```python
 async def test_worker_execution():
     worker_mgr = WorkerManager(terminal_mgr=tm)
@@ -544,6 +569,7 @@ async def test_worker_execution():
 ```
 
 **After (Pools)**:
+
 ```python
 async def test_pool_execution():
     pool_mgr = PoolManager(
@@ -569,6 +595,7 @@ async def test_pool_execution():
 ### Integration Tests
 
 **Before**:
+
 ```python
 async def test_multi_worker_execution():
     worker_mgr = WorkerManager(terminal_mgr=tm, max_concurrent=10)
@@ -581,6 +608,7 @@ async def test_multi_worker_execution():
 ```
 
 **After**:
+
 ```python
 async def test_multi_pool_execution():
     pool_mgr = PoolManager(
@@ -695,6 +723,7 @@ worker_mgr = WorkerManager(terminal_manager=tm)
 ## Support
 
 For migration assistance:
+
 - Review [POOL_ARCHITECTURE.md](POOL_ARCHITECTURE.md)
 - Check [MCP_TOOLS_SPECIFICATION.md](MCP_TOOLS_SPECIFICATION.md)
 - Run tests: `pytest tests/unit/test_pools.py`

@@ -14,27 +14,26 @@ Configuration properties tested:
 """
 
 from pathlib import Path
-from typing import Any
 
-import pytest
 from hypothesis import (
-    assume,
+    HealthCheck,
     given,
     settings,
-    strategies as st,
-    HealthCheck,
 )
-
-from mahavishnu.core.config import (
-    MahavishnuSettings,
-    QualityControlConfig,
-    ResilienceConfig,
-    PoolConfig,
-    OTelStorageConfig,
-    AuthConfig,
+from hypothesis import (
+    strategies as st,
 )
 from pydantic import ValidationError
+import pytest
 
+from mahavishnu.core.config import (
+    AuthConfig,
+    MahavishnuSettings,
+    OTelStorageConfig,
+    PoolConfig,
+    QualityControlConfig,
+    ResilienceConfig,
+)
 
 # =============================================================================
 # Helper Strategies
@@ -46,7 +45,9 @@ valid_concurrency_strategy = st.integers(min_value=1, max_value=100)
 valid_interval_strategy = st.integers(min_value=10, max_value=600)
 valid_timeout_strategy = st.integers(min_value=30, max_value=3600)
 valid_attempts_strategy = st.integers(min_value=1, max_value=10)
-valid_delay_strategy = st.floats(min_value=0.1, max_value=60.0, allow_nan=False, allow_infinity=False)
+valid_delay_strategy = st.floats(
+    min_value=0.1, max_value=60.0, allow_nan=False, allow_infinity=False
+)
 valid_pool_min_strategy = st.integers(min_value=1, max_value=10)
 valid_pool_max_strategy = st.integers(min_value=1, max_value=100)
 
@@ -54,13 +55,13 @@ valid_pool_max_strategy = st.integers(min_value=1, max_value=100)
 simple_text_strategy = st.text(
     alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_",
     min_size=1,
-    max_size=50
+    max_size=50,
 )
 
 valid_path_strategy = st.text(
     alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/-_.",
     min_size=1,
-    max_size=100
+    max_size=100,
 )
 
 # List strategies
@@ -83,10 +84,11 @@ class TestQCConfigProperties:
         assert qc_config.min_score == score
         assert 0 <= qc_config.min_score <= 100
 
-    @given(score=st.one_of(
-        st.integers(min_value=-1000, max_value=-1),
-        st.integers(min_value=101, max_value=1000)
-    ))
+    @given(
+        score=st.one_of(
+            st.integers(min_value=-1000, max_value=-1), st.integers(min_value=101, max_value=1000)
+        )
+    )
     @settings(max_examples=30)
     def test_qc_min_score_rejects_invalid_range(self, score):
         """Invalid QC scores (negative or >100) are rejected by Pydantic."""
@@ -94,17 +96,11 @@ class TestQCConfigProperties:
         with pytest.raises(ValidationError):
             QualityControlConfig(min_score=score)
 
-    @given(
-        qc_enabled=st.booleans(),
-        qc_min_score=st.integers(min_value=0, max_value=100)
-    )
+    @given(qc_enabled=st.booleans(), qc_min_score=st.integers(min_value=0, max_value=100))
     @settings(max_examples=30)
     def test_qc_fields_independent(self, qc_enabled, qc_min_score):
         """QC enabled flag and min_score are independent."""
-        qc_config = QualityControlConfig(
-            enabled=qc_enabled,
-            min_score=qc_min_score
-        )
+        qc_config = QualityControlConfig(enabled=qc_enabled, min_score=qc_min_score)
         assert qc_config.enabled == qc_enabled
         assert qc_config.min_score == qc_min_score
 
@@ -120,15 +116,12 @@ class TestConcurrencyConfigProperties:
     @given(
         max_workflows=valid_concurrency_strategy,
         max_workers=valid_concurrency_strategy,
-        min_workers=valid_pool_min_strategy
+        min_workers=valid_pool_min_strategy,
     )
     @settings(max_examples=40, deadline=None, suppress_health_check=[HealthCheck.too_slow])
     def test_concurrency_bounds_enforced(self, max_workflows, max_workers, min_workers):
         """Concurrency settings respect configured bounds."""
-        pool_config = PoolConfig(
-            min_workers=min_workers,
-            max_workers=max_workers
-        )
+        pool_config = PoolConfig(min_workers=min_workers, max_workers=max_workers)
 
         # Property: Values should be within bounds
         assert 1 <= pool_config.min_workers <= 10
@@ -152,9 +145,7 @@ class TestAdapterConfigProperties:
     """Property-based tests for adapter configuration."""
 
     @given(
-        prefect_enabled=st.booleans(),
-        llamaindex_enabled=st.booleans(),
-        agno_enabled=st.booleans()
+        prefect_enabled=st.booleans(), llamaindex_enabled=st.booleans(), agno_enabled=st.booleans()
     )
     @settings(max_examples=20)
     def test_adapter_flags_independent(self, prefect_enabled, llamaindex_enabled, agno_enabled):
@@ -162,7 +153,7 @@ class TestAdapterConfigProperties:
         config = MahavishnuSettings(
             prefect_enabled=prefect_enabled,
             llamaindex_enabled=llamaindex_enabled,
-            agno_enabled=agno_enabled
+            agno_enabled=agno_enabled,
         )
 
         assert config.prefect_enabled == prefect_enabled
@@ -183,17 +174,11 @@ class TestAdapterConfigProperties:
 class TestLLMConfigProperties:
     """Property-based tests for LLM configuration."""
 
-    @given(
-        model=simple_text_strategy,
-        base_url=st.just("http://localhost:11434")
-    )
+    @given(model=simple_text_strategy, base_url=st.just("http://localhost:11434"))
     @settings(max_examples=30, deadline=None)
     def test_llm_configuration_preserved(self, model, base_url):
         """LLM configuration settings are preserved correctly."""
-        config = MahavishnuSettings(
-            llm_model=model,
-            ollama_base_url=base_url
-        )
+        config = MahavishnuSettings(llm_model=model, ollama_base_url=base_url)
 
         assert config.llm_model == model[:50]  # May be truncated
         assert config.ollama_base_url == base_url
@@ -207,16 +192,12 @@ class TestLLMConfigProperties:
 class TestSessionConfigProperties:
     """Property-based tests for session management configuration."""
 
-    @given(
-        session_enabled=st.booleans(),
-        checkpoint_interval=valid_interval_strategy
-    )
+    @given(session_enabled=st.booleans(), checkpoint_interval=valid_interval_strategy)
     @settings(max_examples=40)
     def test_checkpoint_interval_bounds(self, session_enabled, checkpoint_interval):
         """Checkpoint interval respects configured bounds."""
         config = MahavishnuSettings(
-            session_enabled=session_enabled,
-            checkpoint_interval=checkpoint_interval
+            session_enabled=session_enabled, checkpoint_interval=checkpoint_interval
         )
 
         # Property: Interval must be within bounds
@@ -235,7 +216,7 @@ class TestResilienceConfigProperties:
     @given(
         max_attempts=valid_attempts_strategy,
         base_delay=valid_delay_strategy,
-        threshold=st.integers(min_value=1, max_value=100)
+        threshold=st.integers(min_value=1, max_value=100),
     )
     @settings(max_examples=40, deadline=None)
     def test_retry_configuration_bounds(self, max_attempts, base_delay, threshold):
@@ -243,7 +224,7 @@ class TestResilienceConfigProperties:
         resilience_config = ResilienceConfig(
             retry_max_attempts=max_attempts,
             retry_base_delay=base_delay,
-            circuit_breaker_threshold=threshold
+            circuit_breaker_threshold=threshold,
         )
 
         # Properties: Retry settings must be within bounds
@@ -253,8 +234,7 @@ class TestResilienceConfigProperties:
 
     @given(
         timeout=st.one_of(
-            st.integers(min_value=1, max_value=29),
-            st.integers(min_value=3601, max_value=10000)
+            st.integers(min_value=1, max_value=29), st.integers(min_value=3601, max_value=10000)
         )
     )
     @settings(max_examples=30)
@@ -276,7 +256,7 @@ class TestOTelStorageConfigProperties:
         embedding_dim=st.integers(min_value=128, max_value=1024),
         cache_size=st.integers(min_value=100, max_value=10000),
         similarity=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
-        batch_size=st.integers(min_value=10, max_value=1000)
+        batch_size=st.integers(min_value=10, max_value=1000),
     )
     @settings(max_examples=40, deadline=None)
     def test_otel_storage_bounds(self, embedding_dim, cache_size, similarity, batch_size):
@@ -285,7 +265,7 @@ class TestOTelStorageConfigProperties:
             embedding_dimension=embedding_dim,
             cache_size=cache_size,
             similarity_threshold=similarity,
-            batch_size=batch_size
+            batch_size=batch_size,
         )
 
         # Properties: OTel storage settings must be within bounds
@@ -296,7 +276,7 @@ class TestOTelStorageConfigProperties:
 
     @given(
         enabled=st.booleans(),
-        connection_string=st.just("postgresql://user:strong_secure_password_12345@localhost/db")
+        connection_string=st.just("postgresql://user:strong_secure_password_12345@localhost/db"),
     )
     @settings(max_examples=20)
     def test_otel_storage_requires_connection_when_enabled(self, enabled, connection_string):
@@ -304,31 +284,30 @@ class TestOTelStorageConfigProperties:
         if enabled:
             # Should succeed with valid connection string
             config = MahavishnuSettings(
-                otel_storage_enabled=enabled,
-                otel_storage_connection_string=connection_string
+                otel_storage_enabled=enabled, otel_storage_connection_string=connection_string
             )
             assert config.otel_storage_enabled == enabled
         else:
             # Should succeed without connection string when disabled
-            config = MahavishnuSettings(
-                otel_storage_enabled=enabled
-            )
+            config = MahavishnuSettings(otel_storage_enabled=enabled)
             assert config.otel_storage_enabled == enabled
 
     @given(
         embedding_dim=st.integers(min_value=128, max_value=1024),
         cache_size=st.integers(min_value=100, max_value=10000),
         similarity=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
-        batch_size=st.integers(min_value=10, max_value=1000)
+        batch_size=st.integers(min_value=10, max_value=1000),
     )
     @settings(max_examples=20, deadline=None)
-    def test_otel_storage_allows_valid_config(self, embedding_dim, cache_size, similarity, batch_size):
+    def test_otel_storage_allows_valid_config(
+        self, embedding_dim, cache_size, similarity, batch_size
+    ):
         """OTel storage accepts valid configuration values."""
         otel_config = OTelStorageConfig(
             embedding_dimension=embedding_dim,
             cache_size=cache_size,
             similarity_threshold=similarity,
-            batch_size=batch_size
+            batch_size=batch_size,
         )
         assert 128 <= otel_config.embedding_dimension <= 1024
         assert 100 <= otel_config.cache_size <= 10000
@@ -349,22 +328,19 @@ class TestPoolConfigProperties:
         default_pool_type=st.sampled_from(["mahavishnu", "session-buddy", "kubernetes"]),
         routing_strategy=st.sampled_from(["round_robin", "least_loaded", "random", "affinity"]),
         min_workers=valid_pool_min_strategy,
-        max_workers=valid_pool_max_strategy
+        max_workers=valid_pool_max_strategy,
     )
     @settings(max_examples=30)
-    def test_pool_configuration(self, pools_enabled, default_pool_type, routing_strategy, min_workers, max_workers):
+    def test_pool_configuration(
+        self, pools_enabled, default_pool_type, routing_strategy, min_workers, max_workers
+    ):
         """Pool configuration settings are preserved correctly."""
-        pool_config = PoolConfig(
-            min_workers=min_workers,
-            max_workers=max_workers
-        )
+        pool_config = PoolConfig(min_workers=min_workers, max_workers=max_workers)
 
         assert 1 <= pool_config.min_workers <= 10
         assert 1 <= pool_config.max_workers <= 100
 
-    @given(
-        sync_interval=st.integers(min_value=10, max_value=600)
-    )
+    @given(sync_interval=st.integers(min_value=10, max_value=600))
     @settings(max_examples=30)
     def test_memory_sync_interval_bounds(self, sync_interval):
         """Memory sync interval respects configured bounds."""
@@ -385,9 +361,11 @@ class TestAuthConfigProperties:
 
     @given(
         auth_enabled=st.booleans(),
-        secret=st.text(min_size=32, max_size=100, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        secret=st.text(
+            min_size=32, max_size=100, alphabet=st.characters(whitelist_categories=("L", "N"))
+        ),
         algorithm=st.sampled_from(["HS256", "RS256"]),
-        expire_minutes=st.integers(min_value=5, max_value=1440)
+        expire_minutes=st.integers(min_value=5, max_value=1440),
     )
     @settings(max_examples=30, deadline=None)
     def test_auth_configuration(self, auth_enabled, secret, algorithm, expire_minutes):
@@ -397,7 +375,7 @@ class TestAuthConfigProperties:
                 enabled=auth_enabled,
                 secret=secret,
                 algorithm=algorithm,
-                expire_minutes=expire_minutes
+                expire_minutes=expire_minutes,
             )
             assert auth_config.enabled == auth_enabled
             assert auth_config.secret == secret
@@ -411,7 +389,9 @@ class TestAuthConfigProperties:
 
     @given(
         auth_enabled=st.just(True),
-        secret=st.text(min_size=1, max_size=31, alphabet=st.characters(whitelist_categories=("L", "N")))
+        secret=st.text(
+            min_size=1, max_size=31, alphabet=st.characters(whitelist_categories=("L", "N"))
+        ),
     )
     @settings(max_examples=20)
     def test_auth_requires_minimum_secret_length(self, auth_enabled, secret):
@@ -432,7 +412,9 @@ class TestPathConfigProperties:
     """Property-based tests for path configuration."""
 
     @given(
-        path_component=st.text(min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N")))
+        path_component=st.text(
+            min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))
+        )
     )
     @settings(max_examples=30, deadline=None)
     def test_repos_path_expands_tilde(self, path_component):
@@ -450,7 +432,7 @@ class TestPathConfigProperties:
             st.builds(lambda p: f"/Users/{p}", st.text(min_size=1, max_size=20)),
             min_size=1,
             max_size=5,
-            unique=True
+            unique=True,
         )
     )
     @settings(max_examples=20, deadline=None)
@@ -470,9 +452,7 @@ class TestPathConfigProperties:
 class TestRepoTagProperties:
     """Property-based tests for repository tag configuration."""
 
-    @given(
-        tags=st.lists(simple_text_strategy, min_size=0, max_size=10, unique=True)
-    )
+    @given(tags=st.lists(simple_text_strategy, min_size=0, max_size=10, unique=True))
     @settings(max_examples=30, deadline=None)
     def test_repo_tags_roundtrip(self, tags):
         """Repository tag lists are preserved correctly."""
@@ -486,7 +466,7 @@ class TestRepoTagProperties:
         tags=st.lists(
             st.text(min_size=1, max_size=20, alphabet="abcdefghijklmnopqrstuvwxyz0123456789-_"),
             min_size=0,
-            max_size=10
+            max_size=10,
         )
     )
     @settings(max_examples=30, deadline=None)
@@ -496,7 +476,9 @@ class TestRepoTagProperties:
         normalized_tags = [tag.lower() for tag in tags]
 
         assert len(tags) == len(normalized_tags)
-        assert all(tag.islower() or any(c.isdigit() or c in "_-" for c in tag) for tag in normalized_tags)
+        assert all(
+            tag.islower() or any(c.isdigit() or c in "_-" for c in tag) for tag in normalized_tags
+        )
 
 
 # =============================================================================
@@ -511,16 +493,18 @@ class TestBooleanConfigProperties:
         metrics_enabled=st.booleans(),
         tracing_enabled=st.booleans(),
         shell_enabled=st.booleans(),
-        workers_enabled=st.booleans()
+        workers_enabled=st.booleans(),
     )
     @settings(max_examples=20)
-    def test_boolean_fields_preserve_values(self, metrics_enabled, tracing_enabled, shell_enabled, workers_enabled):
+    def test_boolean_fields_preserve_values(
+        self, metrics_enabled, tracing_enabled, shell_enabled, workers_enabled
+    ):
         """Boolean configuration fields preserve their values."""
         config = MahavishnuSettings(
             metrics_enabled=metrics_enabled,
             tracing_enabled=tracing_enabled,
             shell_enabled=shell_enabled,
-            workers_enabled=workers_enabled
+            workers_enabled=workers_enabled,
         )
 
         # Properties: All boolean fields should preserve their values
@@ -530,12 +514,10 @@ class TestBooleanConfigProperties:
         assert config.workers_enabled == workers_enabled
 
         # Property: All should be boolean type
-        assert all(isinstance(getattr(config, field), bool) for field in [
-            "metrics_enabled",
-            "tracing_enabled",
-            "shell_enabled",
-            "workers_enabled"
-        ])
+        assert all(
+            isinstance(getattr(config, field), bool)
+            for field in ["metrics_enabled", "tracing_enabled", "shell_enabled", "workers_enabled"]
+        )
 
 
 # =============================================================================

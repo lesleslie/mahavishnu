@@ -6,9 +6,9 @@ with automatic instrumentation for FastAPI, asyncio, and HTTP clients.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import logging
 import os
-from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from opentelemetry import trace
@@ -16,7 +16,7 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from opentelemetry.sdk.resources import Resource, SERVICE_NAME
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 
@@ -114,7 +114,7 @@ async def start_span(
         yield span
 
 
-def instrument_fastapi(app: "FastAPI", service_name: str) -> None:
+def instrument_fastapi(app: FastAPI, service_name: str) -> None:
     """Instrument FastAPI application with OpenTelemetry.
 
     Args:
@@ -185,9 +185,7 @@ def get_tracer() -> trace.Tracer:
         RuntimeError: If telemetry hasn't been configured
     """
     if _tracer is None:
-        raise RuntimeError(
-            "Telemetry not configured. Call setup_telemetry() first."
-        )
+        raise RuntimeError("Telemetry not configured. Call setup_telemetry() first.")
     return _tracer
 
 
@@ -254,9 +252,7 @@ class trace_operation:
 
     async def __aenter__(self):
         tracer = get_tracer()
-        self.span = tracer.start_as_current_span(
-            self.name, attributes=self.attributes or {}
-        )
+        self.span = tracer.start_as_current_span(self.name, attributes=self.attributes or {})
         return self.span
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -271,7 +267,7 @@ class trace_operation:
 
 # Auto-instrumentation setup
 def auto_instrument(
-    fastapi_app: "FastAPI | None" = None,
+    fastapi_app: FastAPI | None = None,
     service_name: str = "mcp-server",
 ) -> None:
     """Automatically instrument all available components.

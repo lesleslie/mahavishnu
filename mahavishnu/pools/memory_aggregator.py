@@ -1,13 +1,12 @@
 """Aggregate memory from pools and sync to Session-Buddy/Akosha."""
 
 import asyncio
+from datetime import datetime, timedelta
 import logging
 import time
-from datetime import datetime, timedelta
-from typing import Any, NamedTuple
+from typing import Any
 
 import httpx
-
 
 logger = logging.getLogger(__name__)
 
@@ -59,10 +58,7 @@ class MemoryAggregator:
         self._mcp_client = httpx.AsyncClient(timeout=300.0)
         self._sync_task: asyncio.Task | None = None
 
-        logger.info(
-            f"MemoryAggregator initialized "
-            f"(sync_interval={sync_interval}s)"
-        )
+        logger.info(f"MemoryAggregator initialized (sync_interval={sync_interval}s)")
 
         # PERFORMANCE: Batch size for Session-Buddy inserts
         self._BATCH_SIZE = 20
@@ -89,10 +85,7 @@ class MemoryAggregator:
             logger.warning(f"Failed to collect from pool {pool_id}: {e}")
             return []
 
-    async def _batch_insert_to_session_buddy(
-        self,
-        memory_items: list[dict[str, Any]]
-    ) -> int:
+    async def _batch_insert_to_session_buddy(self, memory_items: list[dict[str, Any]]) -> int:
         """Insert memory items to Session-Buddy in batches (25x faster).
 
         Args:
@@ -106,7 +99,7 @@ class MemoryAggregator:
         # Process in batches instead of one-by-one
         batch_tasks = []
         for i in range(0, len(memory_items), self._BATCH_SIZE):
-            batch = memory_items[i:i + self._BATCH_SIZE]
+            batch = memory_items[i : i + self._BATCH_SIZE]
             batch_tasks.append(self._insert_batch_to_session_buddy(batch))
 
         # Execute all batch inserts concurrently
@@ -166,6 +159,7 @@ class MemoryAggregator:
             await aggregator.start_periodic_sync(pool_manager)
             ```
         """
+
         async def sync_loop():
             while True:
                 try:
@@ -251,11 +245,13 @@ class MemoryAggregator:
             logger.info(f"Synced {synced_count}/{len(all_memory)} items to Session-Buddy")
 
         # Sync summary to Akosha
-        await self._sync_to_akosha({
-            "pools_count": len(pools_info),
-            "memory_items_count": len(all_memory),
-            "timestamp": time.time(),
-        })
+        await self._sync_to_akosha(
+            {
+                "pools_count": len(pools_info),
+                "memory_items_count": len(all_memory),
+                "timestamp": time.time(),
+            }
+        )
 
         return {
             "pools_synced": len(pools_info),
@@ -287,9 +283,7 @@ class MemoryAggregator:
             if response.status_code == 200:
                 logger.info("Synced summary to Akosha")
             else:
-                logger.warning(
-                    f"Failed to sync to Akosha: {response.text[:200]}"
-                )
+                logger.warning(f"Failed to sync to Akosha: {response.text[:200]}")
 
         except httpx.HTTPError as e:
             logger.warning(f"Failed to sync to Akosha: {e}")
@@ -360,7 +354,7 @@ class MemoryAggregator:
                 # Store in cache
                 self._search_cache[cache_key] = {
                     "results": conversations,
-                    "cached_at": datetime.now()
+                    "cached_at": datetime.now(),
                 }
 
                 return conversations
@@ -398,7 +392,8 @@ class MemoryAggregator:
         now = datetime.now()
 
         active = sum(
-            1 for entry in self._search_cache.values()
+            1
+            for entry in self._search_cache.values()
             if (now - entry["cached_at"]) < self.CACHE_TTL
         )
 
@@ -409,7 +404,7 @@ class MemoryAggregator:
             "active_entries": active,
             "expired_entries": expired,
             "ttl_minutes": int(self.CACHE_TTL.total_seconds() / 60),
-            "cache_hit_rate_expected": "60%+"
+            "cache_hit_rate_expected": "60%+",
         }
 
     async def get_pool_memory_stats(

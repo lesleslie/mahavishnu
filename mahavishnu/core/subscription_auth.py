@@ -4,9 +4,9 @@ This module provides authentication mechanisms for services like Claude Code
 that use subscription tokens, in addition to the existing JWT authentication.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-UTC = timezone.utc
+UTC = UTC
 from enum import Enum
 from typing import Any
 
@@ -238,8 +238,7 @@ class MultiAuthHandler:
 
         # If we get here, all authentication methods failed
         raise AuthenticationError(
-            message="All authentication methods failed",
-            details={"errors": errors}
+            message="All authentication methods failed", details={"errors": errors}
         )
 
     def create_claude_subscription_token(self, user_id: str, scopes: list[str] = None) -> str:

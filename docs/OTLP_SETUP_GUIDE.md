@@ -5,17 +5,17 @@ Complete guide for configuring OTLP (OpenTelemetry Protocol) ingestion from exte
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
-2. [Architecture Overview](#architecture-overview)
-3. [Ingestion Methods](#ingestion-methods)
-4. [Client Configuration](#client-configuration)
-5. [Claude-Specific Setup](#claude-specific-setup)
-6. [Qwen-Specific Setup](#qwen-specific-setup)
-7. [General Python Applications](#general-python-applications)
-8. [Testing and Validation](#testing-and-validation)
-9. [Troubleshooting](#troubleshooting)
-10. [Production Checklist](#production-checklist)
+1. [Architecture Overview](#architecture-overview)
+1. [Ingestion Methods](#ingestion-methods)
+1. [Client Configuration](#client-configuration)
+1. [Claude-Specific Setup](#claude-specific-setup)
+1. [Qwen-Specific Setup](#qwen-specific-setup)
+1. [General Python Applications](#general-python-applications)
+1. [Testing and Validation](#testing-and-validation)
+1. [Troubleshooting](#troubleshooting)
+1. [Production Checklist](#production-checklist)
 
----
+______________________________________________________________________
 
 ## Quick Start
 
@@ -59,7 +59,7 @@ with tracer.start_as_current_span("test-span"):
     print("OTLP is working!")
 ```
 
----
+______________________________________________________________________
 
 ## Architecture Overview
 
@@ -97,7 +97,7 @@ Each source has dedicated pipelines for traces, metrics, and logs:
 - **Metrics**: Application → Collector → Prometheus
 - **Logs**: Application → Collector → Elasticsearch
 
----
+______________________________________________________________________
 
 ## Ingestion Methods
 
@@ -106,12 +106,14 @@ Each source has dedicated pipelines for traces, metrics, and logs:
 Send telemetry directly via OTLP protocol using OpenTelemetry SDKs.
 
 **Pros:**
+
 - Real-time streaming
 - Full telemetry support (traces, metrics, logs)
 - Automatic retries and batching
 - Standard protocol
 
 **Cons:**
+
 - Requires OpenTelemetry SDK integration
 - Network dependency on collector
 
@@ -120,11 +122,13 @@ Send telemetry directly via OTLP protocol using OpenTelemetry SDKs.
 Write logs to files that the collector monitors.
 
 **Pros:**
+
 - Simple integration
 - No network dependency during write
 - Works with any logging format
 
 **Cons:**
+
 - Polling-based (not real-time)
 - Logs only (no traces/metrics)
 - Requires proper log formatting
@@ -134,11 +138,12 @@ Write logs to files that the collector monitors.
 Combine OTLP for traces/metrics with file logging for logs.
 
 **Recommended for:**
+
 - High-volume logging
 - Offline scenarios
 - Legacy application integration
 
----
+______________________________________________________________________
 
 ## Client Configuration
 
@@ -286,7 +291,7 @@ networks:
     external: true
 ```
 
----
+______________________________________________________________________
 
 ## Claude-Specific Setup
 
@@ -439,7 +444,7 @@ services:
       - /var/log/mahavishnu/sessions:/var/log/mahavishnu/sessions:ro  # Add this
 ```
 
----
+______________________________________________________________________
 
 ## Qwen-Specific Setup
 
@@ -562,7 +567,7 @@ log_qwen_interaction(
 )
 ```
 
----
+______________________________________________________________________
 
 ## General Python Applications
 
@@ -669,7 +674,7 @@ def hello():
     return {"message": "Hello with telemetry!"}
 ```
 
----
+______________________________________________________________________
 
 ## Testing and Validation
 
@@ -707,6 +712,7 @@ with tracer.start_as_current_span('test-span'):
 ```
 
 **Verify in Jaeger:**
+
 - Open http://localhost:16686
 - Click "Search"
 - Look for service "test-span"
@@ -738,6 +744,7 @@ print('Metric sent! Wait 5 seconds for export...')
 ```
 
 **Verify in Prometheus:**
+
 - Open http://localhost:9090
 - Query: `test_counter`
 - Should see the metric
@@ -769,6 +776,7 @@ print('Log sent!')
 ```
 
 **Verify in Elasticsearch/Kibana:**
+
 - Open http://localhost:5601
 - Go to "Discover"
 - Index pattern: `mahavishnu-logs*`
@@ -847,35 +855,40 @@ docker-compose -f docker-compose.buildpacks.yml logs -f otel-collector
 # Verify in Kibana (http://localhost:5601)
 ```
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
 ### Problem: No traces appearing in Jaeger
 
 **Symptoms:**
+
 - Jaeger UI shows no traces
 - Test client runs without errors
 
 **Solutions:**
 
 1. **Check collector is receiving data:**
+
    ```bash
    docker-compose -f docker-compose.buildpacks.yml logs otel-collector | grep -i "span"
    ```
 
-2. **Verify Jaeger exporter configuration:**
+1. **Verify Jaeger exporter configuration:**
+
    ```bash
    # Check collector config
    cat config/otel-collector-config.yaml | grep -A 5 "jaeger:"
    ```
 
-3. **Test Jaeger connection:**
+1. **Test Jaeger connection:**
+
    ```bash
    docker exec -it $(docker ps -q -f name=jaeger) nc -zv localhost 14250
    ```
 
-4. **Check exporter logs:**
+1. **Check exporter logs:**
+
    ```bash
    docker-compose -f docker-compose.buildpacks.yml logs otel-collector | grep -i "exporter"
    ```
@@ -883,27 +896,32 @@ docker-compose -f docker-compose.buildpacks.yml logs -f otel-collector
 ### Problem: "Connection refused" errors
 
 **Symptoms:**
+
 - `Error: 14 UNAVAILABLE: Connection refused`
 - Client fails to connect
 
 **Solutions:**
 
 1. **Verify collector is running:**
+
    ```bash
    docker-compose -f docker-compose.buildpacks.yml ps otel-collector
    ```
 
-2. **Check ports are exposed:**
+1. **Check ports are exposed:**
+
    ```bash
    netstat -tuln | grep 4317  # Should show LISTEN
    netstat -tuln | grep 4318  # Should show LISTEN
    ```
 
-3. **Verify endpoint URL:**
+1. **Verify endpoint URL:**
+
    - Use `http://localhost:4317` (not `https://`)
    - For Docker networking, use service name: `http://otel-collector:4317`
 
-4. **Restart collector:**
+1. **Restart collector:**
+
    ```bash
    docker-compose -f docker-compose.buildpacks.yml restart otel-collector
    ```
@@ -911,17 +929,20 @@ docker-compose -f docker-compose.buildpacks.yml logs -f otel-collector
 ### Problem: Metrics not appearing in Prometheus
 
 **Symptoms:**
+
 - Prometheus UI has no data
 - Query returns "no results"
 
 **Solutions:**
 
 1. **Check Prometheus target:**
+
    ```bash
    curl http://localhost:9090/api/v1/targets
    ```
 
-2. **Verify remote write is working:**
+1. **Verify remote write is working:**
+
    ```bash
    curl -X POST http://localhost:9090/api/v1/write -d '
      # TYPE test_metric counter
@@ -929,7 +950,8 @@ docker-compose -f docker-compose.buildpacks.yml logs -f otel-collector
    '
    ```
 
-3. **Check collector metrics:**
+1. **Check collector metrics:**
+
    ```bash
    curl http://localhost:8888/metrics
    ```
@@ -937,27 +959,32 @@ docker-compose -f docker-compose.buildpacks.yml logs -f otel-collector
 ### Problem: Logs not in Elasticsearch
 
 **Symptoms:**
+
 - Kibana shows no data
 - Index not created
 
 **Solutions:**
 
 1. **Verify Elasticsearch is running:**
+
    ```bash
    curl http://localhost:9200/_cluster/health
    ```
 
-2. **Check index exists:**
+1. **Check index exists:**
+
    ```bash
    curl http://localhost:9200/_cat/indices?v
    ```
 
-3. **Test index creation:**
+1. **Test index creation:**
+
    ```bash
    curl -X PUT http://localhost:9200/mahavishnu-logs-test
    ```
 
-4. **Check Elasticsearch logs:**
+1. **Check Elasticsearch logs:**
+
    ```bash
    docker-compose -f docker-compose.buildpacks.yml logs elasticsearch
    ```
@@ -965,22 +992,26 @@ docker-compose -f docker-compose.buildpacks.yml logs -f otel-collector
 ### Problem: File log receiver not working
 
 **Symptoms:**
+
 - Log files exist but not appearing in Kibana
 - No errors in collector logs
 
 **Solutions:**
 
 1. **Verify file paths in config:**
+
    ```bash
    cat config/otel-collector-config.yaml | grep -A 5 "filelog:"
    ```
 
-2. **Check file permissions:**
+1. **Check file permissions:**
+
    ```bash
    ls -la /var/log/mahavishnu/sessions/
    ```
 
-3. **Verify volume mount in docker-compose:**
+1. **Verify volume mount in docker-compose:**
+
    ```yaml
    services:
      otel-collector:
@@ -988,7 +1019,8 @@ docker-compose -f docker-compose.buildpacks.yml logs -f otel-collector
          - /var/log/mahavishnu/sessions:/var/log/mahavishnu/sessions:ro
    ```
 
-4. **Test file accessibility from container:**
+1. **Test file accessibility from container:**
+
    ```bash
    docker exec -it $(docker ps -q -f name=otel-collector) ls -la /var/log/mahavishnu/sessions/
    ```
@@ -996,12 +1028,14 @@ docker-compose -f docker-compose.buildpacks.yml logs -f otel-collector
 ### Problem: High memory usage
 
 **Symptoms:**
+
 - Collector OOM killed
 - High memory consumption
 
 **Solutions:**
 
 1. **Adjust batch processor settings:**
+
    ```yaml
    processors:
      batch:
@@ -1009,7 +1043,8 @@ docker-compose -f docker-compose.buildpacks.yml logs -f otel-collector
        send_batch_size: 5000  # Decrease batch size
    ```
 
-2. **Enable memory limiter:**
+1. **Enable memory limiter:**
+
    ```yaml
    processors:
      memory_limiter:
@@ -1018,7 +1053,8 @@ docker-compose -f docker-compose.buildpacks.yml logs -f otel-collector
        spike_limit_percentage: 20
    ```
 
-3. **Increase container memory:**
+1. **Increase container memory:**
+
    ```yaml
    services:
      otel-collector:
@@ -1031,16 +1067,19 @@ docker-compose -f docker-compose.buildpacks.yml logs -f otel-collector
 ### Problem: Mixed telemetry from different sources
 
 **Symptoms:**
+
 - Can't distinguish Claude vs Qwen traces
 - All telemetry appears as one service
 
 **Solutions:**
 
 1. **Use separate endpoints:**
+
    - Claude: `http://localhost:4319`
    - Qwen: `http://localhost:4321`
 
-2. **Set resource attributes:**
+1. **Set resource attributes:**
+
    ```python
    resource = Resource.create({
        "telemetry.source": "claude",  # or "qwen"
@@ -1048,11 +1087,12 @@ docker-compose -f docker-compose.buildpacks.yml logs -f otel-collector
    })
    ```
 
-3. **Verify in Jaeger:**
+1. **Verify in Jaeger:**
+
    - Search by service name
    - Filter by `telemetry.source` tag
 
----
+______________________________________________________________________
 
 ## Production Checklist
 
@@ -1112,7 +1152,7 @@ docker-compose -f docker-compose.buildpacks.yml logs -f otel-collector
 - [ ] Create onboarding documentation for developers
 - [ ] Set up API documentation for custom integrations
 
----
+______________________________________________________________________
 
 ## Additional Resources
 
@@ -1123,7 +1163,7 @@ docker-compose -f docker-compose.buildpacks.yml logs -f otel-collector
 - [Prometheus Documentation](https://prometheus.io/docs/)
 - [Elasticsearch Documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html)
 
----
+______________________________________________________________________
 
 ## Quick Reference
 
@@ -1180,7 +1220,7 @@ docker-compose -f docker-compose.buildpacks.yml down
 docker-compose -f docker-compose.buildpacks.yml down -v
 ```
 
----
+______________________________________________________________________
 
 **Last Updated:** 2025-01-31
 **Version:** 1.0.0

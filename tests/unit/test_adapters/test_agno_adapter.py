@@ -13,15 +13,12 @@ Tests cover:
 """
 
 import asyncio
-from pathlib import Path
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from mahavishnu.core.errors import ConfigurationError
 from mahavishnu.engines.agno_adapter import AgnoAdapter
-
 
 # ============================================================================
 # Fixtures
@@ -79,29 +76,31 @@ class TestClass:
 def mock_code_graph_analyzer():
     """Create mock code graph analyzer."""
     analyzer = MagicMock()
-    analyzer.analyze_repository = AsyncMock(return_value={
-        "functions_indexed": 2,
-        "total_nodes": 5,
-        "total_functions": 2,
-        "total_classes": 1,
-        "nodes": {
-            "node1": {
-                "type": "function",
-                "name": "hello_world",
-                "file_id": "/test/test.py",
-                "start_line": 2,
-                "end_line": 3,
-                "is_export": True,
-                "calls": []
+    analyzer.analyze_repository = AsyncMock(
+        return_value={
+            "functions_indexed": 2,
+            "total_nodes": 5,
+            "total_functions": 2,
+            "total_classes": 1,
+            "nodes": {
+                "node1": {
+                    "type": "function",
+                    "name": "hello_world",
+                    "file_id": "/test/test.py",
+                    "start_line": 2,
+                    "end_line": 3,
+                    "is_export": True,
+                    "calls": [],
+                },
+                "node2": {
+                    "type": "class",
+                    "name": "TestClass",
+                    "methods": ["method"],
+                    "inherits_from": [],
+                },
             },
-            "node2": {
-                "type": "class",
-                "name": "TestClass",
-                "methods": ["method"],
-                "inherits_from": []
-            }
         }
-    })
+    )
     analyzer.nodes = {
         "node1": MagicMock(
             name="hello_world",
@@ -109,13 +108,9 @@ def mock_code_graph_analyzer():
             start_line=2,
             end_line=3,
             is_export=True,
-            calls=[]
+            calls=[],
         ),
-        "node2": MagicMock(
-            name="TestClass",
-            methods=["method"],
-            inherits_from=[]
-        )
+        "node2": MagicMock(name="TestClass", methods=["method"], inherits_from=[]),
     }
     analyzer.find_related_files = AsyncMock(return_value=[])
     return analyzer
@@ -286,14 +281,17 @@ async def test_search_code_tool(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_execute_code_sweep_single_repo(mock_config, sample_repo_path, mock_code_graph_analyzer):
+async def test_execute_code_sweep_single_repo(
+    mock_config, sample_repo_path, mock_code_graph_analyzer
+):
     """Test executing code sweep on a single repository."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with patch('mahavishnu.engines.agno_adapter.CodeGraphAnalyzer', return_value=mock_code_graph_analyzer):
+    with patch(
+        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    ):
         result = await adapter.execute(
-            task={"type": "code_sweep", "id": "test_123"},
-            repos=[sample_repo_path]
+            task={"type": "code_sweep", "id": "test_123"}, repos=[sample_repo_path]
         )
 
         assert result["status"] in ["completed", "failed"]
@@ -310,11 +308,10 @@ async def test_execute_code_sweep_multiple_repos(mock_config, mock_code_graph_an
 
     repos = ["/path/to/repo1", "/path/to/repo2", "/path/to/repo3"]
 
-    with patch('mahavishnu.engines.agno_adapter.CodeGraphAnalyzer', return_value=mock_code_graph_analyzer):
-        result = await adapter.execute(
-            task={"type": "code_sweep", "id": "test_123"},
-            repos=repos
-        )
+    with patch(
+        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    ):
+        result = await adapter.execute(task={"type": "code_sweep", "id": "test_123"}, repos=repos)
 
         assert result["status"] in ["completed", "failed"]
         assert result["repos_processed"] == 3
@@ -322,14 +319,17 @@ async def test_execute_code_sweep_multiple_repos(mock_config, mock_code_graph_an
 
 
 @pytest.mark.asyncio
-async def test_execute_code_sweep_with_analysis_details(mock_config, sample_repo_path, mock_code_graph_analyzer):
+async def test_execute_code_sweep_with_analysis_details(
+    mock_config, sample_repo_path, mock_code_graph_analyzer
+):
     """Test that code sweep includes analysis details from code graph."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with patch('mahavishnu.engines.agno_adapter.CodeGraphAnalyzer', return_value=mock_code_graph_analyzer):
+    with patch(
+        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    ):
         result = await adapter.execute(
-            task={"type": "code_sweep", "id": "test_123"},
-            repos=[sample_repo_path]
+            task={"type": "code_sweep", "id": "test_123"}, repos=[sample_repo_path]
         )
 
         # Check that results contain analysis details
@@ -349,10 +349,11 @@ async def test_execute_quality_check(mock_config, sample_repo_path, mock_code_gr
     """Test executing quality check on repository."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with patch('mahavishnu.engines.agno_adapter.CodeGraphAnalyzer', return_value=mock_code_graph_analyzer):
+    with patch(
+        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    ):
         result = await adapter.execute(
-            task={"type": "quality_check", "id": "test_456"},
-            repos=[sample_repo_path]
+            task={"type": "quality_check", "id": "test_456"}, repos=[sample_repo_path]
         )
 
         assert result["status"] in ["completed", "failed"]
@@ -374,10 +375,11 @@ async def test_execute_default_operation(mock_config, sample_repo_path, mock_cod
     """Test executing a default (unknown) operation."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with patch('mahavishnu.engines.agno_adapter.CodeGraphAnalyzer', return_value=mock_code_graph_analyzer):
+    with patch(
+        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    ):
         result = await adapter.execute(
-            task={"type": "custom_operation", "id": "test_789"},
-            repos=[sample_repo_path]
+            task={"type": "custom_operation", "id": "test_789"}, repos=[sample_repo_path]
         )
 
         assert result["status"] in ["completed", "failed"]
@@ -401,10 +403,11 @@ async def test_execute_handles_repo_processing_errors(mock_config, mock_code_gra
     # Make analyzer raise an error
     mock_code_graph_analyzer.analyze_repository.side_effect = Exception("Analysis failed")
 
-    with patch('mahavishnu.engines.agno_adapter.CodeGraphAnalyzer', return_value=mock_code_graph_analyzer):
+    with patch(
+        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    ):
         result = await adapter.execute(
-            task={"type": "code_sweep", "id": "test_error"},
-            repos=["/path/to/repo1"]
+            task={"type": "code_sweep", "id": "test_error"}, repos=["/path/to/repo1"]
         )
 
         assert result["status"] == "completed"  # Overall execution completes
@@ -418,8 +421,7 @@ async def test_process_single_repo_exception_handling(mock_config):
 
     # Invalid repo path should not crash
     result = await adapter._process_single_repo(
-        repo="/nonexistent/path",
-        task={"type": "code_sweep", "id": "test_exception"}
+        repo="/nonexistent/path", task={"type": "code_sweep", "id": "test_exception"}
     )
 
     assert result is not None
@@ -445,14 +447,21 @@ async def test_retry_on_transient_failure(mock_config, mock_code_graph_analyzer)
         call_count += 1
         if call_count < 2:
             raise Exception("Transient error")
-        return {"functions_indexed": 1, "total_nodes": 1, "total_functions": 1, "total_classes": 0, "nodes": {}}
+        return {
+            "functions_indexed": 1,
+            "total_nodes": 1,
+            "total_functions": 1,
+            "total_classes": 0,
+            "nodes": {},
+        }
 
     mock_code_graph_analyzer.analyze_repository = failing_analyze
 
-    with patch('mahavishnu.engines.agno_adapter.CodeGraphAnalyzer', return_value=mock_code_graph_analyzer):
+    with patch(
+        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    ):
         result = await adapter._process_single_repo(
-            repo="/path/to/repo",
-            task={"type": "code_sweep", "id": "test_retry"}
+            repo="/path/to/repo", task={"type": "code_sweep", "id": "test_retry"}
         )
 
         # Should eventually succeed or fail after retries
@@ -472,19 +481,24 @@ async def test_execute_with_timeout(mock_config, sample_repo_path):
     # Create a slow operation
     async def slow_analyze(*args, **kwargs):
         await asyncio.sleep(5)
-        return {"functions_indexed": 1, "total_nodes": 1, "total_functions": 1, "total_classes": 0, "nodes": {}}
+        return {
+            "functions_indexed": 1,
+            "total_nodes": 1,
+            "total_functions": 1,
+            "total_classes": 0,
+            "nodes": {},
+        }
 
     mock_analyzer = MagicMock()
     mock_analyzer.analyze_repository = slow_analyze
     mock_analyzer.nodes = {}
     mock_analyzer.find_related_files = AsyncMock(return_value=[])
 
-    with patch('mahavishnu.engines.agno_adapter.CodeGraphAnalyzer', return_value=mock_analyzer):
+    with patch("mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_analyzer):
         with pytest.raises((asyncio.TimeoutError, TimeoutError)):
             async with asyncio.timeout(0.5):
                 await adapter.execute(
-                    task={"type": "code_sweep", "id": "test_timeout"},
-                    repos=[sample_repo_path]
+                    task={"type": "code_sweep", "id": "test_timeout"}, repos=[sample_repo_path]
                 )
 
 
@@ -542,7 +556,7 @@ async def test_mock_agent_code_quality_response(mock_config):
 
     response = await agent.run(
         "Analyze repository for code quality",
-        context={"repo_path": "/test/repo", "code_graph": {"functions_indexed": 10}}
+        context={"repo_path": "/test/repo", "code_graph": {"functions_indexed": 10}},
     )
 
     assert hasattr(response, "content")
@@ -558,8 +572,7 @@ async def test_mock_agent_quality_check_response(mock_config):
     agent = await adapter._create_agent("code_sweep")
 
     response = await agent.run(
-        "Perform quality check",
-        context={"repo_path": "/test/repo", "code_graph": {}}
+        "Perform quality check", context={"repo_path": "/test/repo", "code_graph": {}}
     )
 
     assert hasattr(response, "content")
@@ -574,8 +587,7 @@ async def test_mock_agent_default_response(mock_config):
     agent = await adapter._create_agent("code_sweep")
 
     response = await agent.run(
-        "Unknown operation",
-        context={"repo_path": "/test/repo", "code_graph": {}}
+        "Unknown operation", context={"repo_path": "/test/repo", "code_graph": {}}
     )
 
     assert hasattr(response, "content")
@@ -593,15 +605,17 @@ async def test_full_execution_workflow(mock_config, sample_repo_path, mock_code_
     """Test complete workflow from task execution to result."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with patch('mahavishnu.engines.agno_adapter.CodeGraphAnalyzer', return_value=mock_code_graph_analyzer):
+    with patch(
+        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    ):
         # Execute task
         result = await adapter.execute(
             task={
                 "type": "code_sweep",
                 "id": "integration_test",
-                "params": {"analysis_depth": "deep"}
+                "params": {"analysis_depth": "deep"},
             },
-            repos=[sample_repo_path]
+            repos=[sample_repo_path],
         )
 
         # Verify structure
@@ -626,10 +640,11 @@ async def test_concurrent_execution_multiple_repos(mock_config, mock_code_graph_
 
     repos = [f"/path/to/repo{i}" for i in range(10)]
 
-    with patch('mahavishnu.engines.agno_adapter.CodeGraphAnalyzer', return_value=mock_code_graph_analyzer):
+    with patch(
+        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    ):
         result = await adapter.execute(
-            task={"type": "code_sweep", "id": "concurrent_test"},
-            repos=repos
+            task={"type": "code_sweep", "id": "concurrent_test"}, repos=repos
         )
 
         assert result["repos_processed"] == 10
@@ -648,10 +663,7 @@ async def test_execute_with_empty_repo_list(mock_config):
     """Test executing with empty repository list."""
     adapter = AgnoAdapter(config=mock_config)
 
-    result = await adapter.execute(
-        task={"type": "code_sweep", "id": "empty_test"},
-        repos=[]
-    )
+    result = await adapter.execute(task={"type": "code_sweep", "id": "empty_test"}, repos=[])
 
     assert result["repos_processed"] == 0
     assert result["success_count"] == 0
@@ -660,14 +672,18 @@ async def test_execute_with_empty_repo_list(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_execute_with_missing_task_id(mock_config, sample_repo_path, mock_code_graph_analyzer):
+async def test_execute_with_missing_task_id(
+    mock_config, sample_repo_path, mock_code_graph_analyzer
+):
     """Test executing task without ID."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with patch('mahavishnu.engines.agno_adapter.CodeGraphAnalyzer', return_value=mock_code_graph_analyzer):
+    with patch(
+        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    ):
         result = await adapter.execute(
             task={"type": "code_sweep"},  # No id
-            repos=[sample_repo_path]
+            repos=[sample_repo_path],
         )
 
         # Should use "unknown" as default
@@ -676,14 +692,18 @@ async def test_execute_with_missing_task_id(mock_config, sample_repo_path, mock_
 
 
 @pytest.mark.asyncio
-async def test_execute_with_missing_task_type(mock_config, sample_repo_path, mock_code_graph_analyzer):
+async def test_execute_with_missing_task_type(
+    mock_config, sample_repo_path, mock_code_graph_analyzer
+):
     """Test executing task without type (uses default)."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with patch('mahavishnu.engines.agno_adapter.CodeGraphAnalyzer', return_value=mock_code_graph_analyzer):
+    with patch(
+        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    ):
         result = await adapter.execute(
             task={"id": "no_type_test"},  # No type
-            repos=[sample_repo_path]
+            repos=[sample_repo_path],
         )
 
         assert result["status"] in ["completed", "failed"]

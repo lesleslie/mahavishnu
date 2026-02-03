@@ -21,7 +21,11 @@ def test_claude_subscription_auth():
         "a_very_long_secret_key_that_is_at_least_32_characters"
     )
 
-    config = MahavishnuSettings(subscription_auth={"enabled": True, "secret": os.environ.get("MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"}),
+    config = MahavishnuSettings(
+        subscription_auth={
+            "enabled": True,
+            "secret": os.environ.get("MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"),
+        },
         subscription_auth_expire_minutes=60,  # Set a longer expiration for testing
     )
 
@@ -77,7 +81,8 @@ def test_jwt_fallback():
     # Set up environment for JWT auth
     os.environ["MAHAVISHNU_AUTH_SECRET"] = "another_very_long_secret_key_that_is_at_least_32_chars"
 
-    config = MahavishnuSettings(auth={"enabled": True, "secret": os.environ.get("MAHAVISHNU_AUTH_SECRET"})
+    config = MahavishnuSettings(
+        auth={"enabled": True, "secret": os.environ.get("MAHAVISHNU_AUTH_SECRET")}
     )
 
     # Initialize the auth handler
@@ -108,7 +113,8 @@ def test_multi_auth_priority():
         "subscription_test_secret_that_is_at_least_32_chars"
     )
 
-    config = MahavishnuSettings(auth={"enabled": True, "secret": os.environ.get("MAHAVISHNU_AUTH_SECRET"}),
+    config = MahavishnuSettings(
+        auth={"enabled": True, "secret": os.environ.get("MAHAVISHNU_AUTH_SECRET")},
         subscription_auth_enabled=True,
         subscription_auth_secret=os.environ.get("MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"),
     )
@@ -152,7 +158,11 @@ def test_codex_subscription_auth():
         "a_very_long_secret_key_that_is_at_least_32_characters"
     )
 
-    config = MahavishnuSettings(subscription_auth={"enabled": True, "secret": os.environ.get("MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"}),
+    config = MahavishnuSettings(
+        subscription_auth={
+            "enabled": True,
+            "secret": os.environ.get("MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"),
+        },
         subscription_auth_expire_minutes=60,  # Set a longer expiration for testing
     )
 

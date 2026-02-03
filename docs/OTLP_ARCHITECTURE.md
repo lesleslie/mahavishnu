@@ -423,7 +423,7 @@ Visual representations of the Mahavishnu OTLP ingestion architecture.
 └───────────────────┘ └───────────────────┘ └───────────────────┘
 ```
 
----
+______________________________________________________________________
 
 **Diagrams created:** 2025-01-31
 **Architecture version:** 1.0.0

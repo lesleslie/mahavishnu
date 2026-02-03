@@ -4,19 +4,19 @@
 
 **Last Updated**: 2026-02-03
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Quick Start Workflow](#1-quick-start-workflow)
-2. [Pool Spawn and Execute](#2-pool-spawn-and-execute)
-3. [Repository Sweep](#3-repository-sweep)
-4. [Memory Search](#4-memory-search)
-5. [Quality Control Pipeline](#5-quality-control-pipeline)
-6. [Error Recovery](#6-error-recovery)
-7. [MCP Tool Execution](#7-mcp-tool-execution)
+1. [Pool Spawn and Execute](#2-pool-spawn-and-execute)
+1. [Repository Sweep](#3-repository-sweep)
+1. [Memory Search](#4-memory-search)
+1. [Quality Control Pipeline](#5-quality-control-pipeline)
+1. [Error Recovery](#6-error-recovery)
+1. [MCP Tool Execution](#7-mcp-tool-execution)
 
----
+______________________________________________________________________
 
 ## 1. Quick Start Workflow
 
@@ -59,7 +59,7 @@ graph BT
     style Defaults fill:#90EE90,stroke:#2E7D32
 ```
 
----
+______________________________________________________________________
 
 ## 2. Pool Spawn and Execute
 
@@ -160,7 +160,7 @@ flowchart TD
     style Fallback fill:#FFB347,stroke:#FF8C00
 ```
 
----
+______________________________________________________________________
 
 ## 3. Repository Sweep
 
@@ -249,7 +249,7 @@ graph LR
     style Frontend fill:#DDA0DD,stroke:#9370DB
 ```
 
----
+______________________________________________________________________
 
 ## 4. Memory Search
 
@@ -314,7 +314,7 @@ graph LR
     style Return fill:#87CEEB,stroke:#4682B4
 ```
 
----
+______________________________________________________________________
 
 ## 5. Quality Control Pipeline
 
@@ -375,7 +375,7 @@ pie title "Quality Control Score Components (Target: 80+)"
     "Coverage (10%)" : 10
 ```
 
----
+______________________________________________________________________
 
 ## 6. Error Recovery
 
@@ -445,7 +445,7 @@ flowchart TD
     style End fill:#FF6B6B,stroke:#8B0000
 ```
 
----
+______________________________________________________________________
 
 ## 7. MCP Tool Execution
 
@@ -523,7 +523,7 @@ mindmap
             cross_pool_search
 ```
 
----
+______________________________________________________________________
 
 ## Quick Reference
 
@@ -560,7 +560,7 @@ graph TB
     style Q1 fill:#FF6B6B,stroke:#8B0000,color:#fff
 ```
 
----
+______________________________________________________________________
 
 ## Summary
 
@@ -576,11 +576,12 @@ These workflow diagrams cover the most common operational procedures in Mahavish
 
 For more detailed architecture diagrams, see [VISUAL_GUIDE.md](VISUAL_GUIDE.md).
 
----
+______________________________________________________________________
 
 **Document Version**: 1.0
 **Last Updated**: 2026-02-03
 **Related Documentation**:
+
 - [VISUAL_GUIDE.md](VISUAL_GUIDE.md) - Comprehensive architecture diagrams
 - [GETTING_STARTED.md](GETTING_STARTED.md) - Setup and configuration
 - [MCP_TOOLS_REFERENCE.md](MCP_TOOLS_REFERENCE.md) - Complete MCP tool documentation

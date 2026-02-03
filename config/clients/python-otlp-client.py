@@ -21,28 +21,26 @@ import argparse
 import logging
 import random
 import time
-from typing import Optional
 
-from opentelemetry import trace, metrics, logs
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader, ConsoleMetricExporter
+from opentelemetry import logs, metrics, trace
+from opentelemetry.exporter.otlp.proto.grpc.log_exporter import OTLPLogExporter
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.logs import LoggerProvider
 from opentelemetry.sdk.logs.export import BatchLogRecordProcessor, ConsoleLogRecordExporter
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
-from opentelemetry.exporter.otlp.proto.grpc.log_exporter import OTLPLogExporter
-from opentelemetry.sdk.resources import Resource, SERVICE_NAME
-from opentelemetry import context
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 
 
 def setup_telemetry(
     endpoint: str,
     service_name: str,
-    source: Optional[str] = None,
+    source: str | None = None,
     environment: str = "development",
-    console_export: bool = False
+    console_export: bool = False,
 ) -> tuple:
     """
     Setup complete OpenTelemetry instrumentation
@@ -68,7 +66,9 @@ def setup_telemetry(
 
     if source:
         resource_attributes["telemetry.source"] = source
-        resource_attributes["telemetry.source.type"] = "ai_assistant" if source in ["claude", "qwen"] else "custom"
+        resource_attributes["telemetry.source.type"] = (
+            "ai_assistant" if source in ["claude", "qwen"] else "custom"
+        )
 
     resource = Resource.create(resource_attributes)
 
@@ -125,14 +125,16 @@ def setup_telemetry(
 
     # Optional: Console exporter for debugging
     if console_export:
-        logger_provider.add_log_record_processor(BatchLogRecordProcessor(ConsoleLogRecordExporter()))
+        logger_provider.add_log_record_processor(
+            BatchLogRecordProcessor(ConsoleLogRecordExporter())
+        )
 
     logs.set_logger_provider(logger_provider)
     logger = logging.getLogger(service_name)
 
     # Add OTLP handler to Python logging
     handler = logs.LoggingHandler(logger_provider=logger_provider)
-    handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
 
@@ -146,7 +148,9 @@ def generate_example_traces(tracer, count: int = 5):
     for i in range(count):
         with tracer.start_as_current_span(f"example-operation-{i}") as parent:
             parent.set_attribute("operation.index", i)
-            parent.set_attribute("operation.type", random.choice(["read", "write", "compute", "query"]))
+            parent.set_attribute(
+                "operation.type", random.choice(["read", "write", "compute", "query"])
+            )
             parent.set_attribute("operation.duration_ms", random.randint(10, 500))
 
             # Simulate nested spans
@@ -161,7 +165,7 @@ def generate_example_traces(tracer, count: int = 5):
 
             time.sleep(0.01)  # Simulate work
 
-        print(f"  ✓ Generated trace {i+1}/{count}")
+        print(f"  ✓ Generated trace {i + 1}/{count}")
 
     print(f"✅ Generated {count} traces successfully!")
 
@@ -172,19 +176,15 @@ def generate_example_metrics(meter, count: int = 10):
 
     # Create instruments
     counter = meter.create_counter(
-        "operations.total",
-        description="Total number of operations performed"
+        "operations.total", description="Total number of operations performed"
     )
 
     histogram = meter.create_histogram(
-        "operation.duration",
-        description="Operation duration in milliseconds",
-        unit="ms"
+        "operation.duration", description="Operation duration in milliseconds", unit="ms"
     )
 
     gauge = meter.create_up_down_counter(
-        "active.connections",
-        description="Number of active connections"
+        "active.connections", description="Number of active connections"
     )
 
     for i in range(count):
@@ -193,8 +193,8 @@ def generate_example_metrics(meter, count: int = 10):
             random.randint(1, 10),
             {
                 "operation.type": random.choice(["read", "write", "compute"]),
-                "operation.status": random.choice(["success", "error"])
-            }
+                "operation.status": random.choice(["success", "error"]),
+            },
         )
 
         # Histogram
@@ -202,18 +202,15 @@ def generate_example_metrics(meter, count: int = 10):
             random.randint(10, 500),
             {
                 "operation.type": random.choice(["read", "write", "compute"]),
-            }
+            },
         )
 
         # Gauge
         gauge.add(
-            random.randint(-5, 5),
-            {
-                "connection.type": random.choice(["http", "grpc", "websocket"])
-            }
+            random.randint(-5, 5), {"connection.type": random.choice(["http", "grpc", "websocket"])}
         )
 
-        print(f"  ✓ Generated metric batch {i+1}/{count}")
+        print(f"  ✓ Generated metric batch {i + 1}/{count}")
         time.sleep(0.1)
 
     print(f"✅ Generated {count} metric batches successfully!")
@@ -227,15 +224,19 @@ def generate_example_logs(logger, count: int = 5):
 
     for i in range(count):
         level = random.choice(log_levels)
-        message = f"Example log message {i+1} - {random.choice(['Success', 'Warning', 'Error', 'Debug info'])}"
+        message = f"Example log message {i + 1} - {random.choice(['Success', 'Warning', 'Error', 'Debug info'])}"
 
-        logger.log(level, message, extra={
-            "log.index": i,
-            "log.type": random.choice(["system", "application", "audit"]),
-            "log.user_id": f"user-{random.randint(1000, 9999)}"
-        })
+        logger.log(
+            level,
+            message,
+            extra={
+                "log.index": i,
+                "log.type": random.choice(["system", "application", "audit"]),
+                "log.user_id": f"user-{random.randint(1000, 9999)}",
+            },
+        )
 
-        print(f"  ✓ Generated log {i+1}/{count}")
+        print(f"  ✓ Generated log {i + 1}/{count}")
 
     print(f"✅ Generated {count} logs successfully!")
 
@@ -264,9 +265,9 @@ def simulate_ai_assistant_workflow(tracer, meter, logger, source: str):
             time.sleep(random.uniform(0.1, 0.5))
 
             # Metrics for processing
-            meter.create_counter(
-                f"{source}.requests.total"
-            ).add(1, {"model": processing_span.attributes.get("ai.model")})
+            meter.create_counter(f"{source}.requests.total").add(
+                1, {"model": processing_span.attributes.get("ai.model")}
+            )
 
         # Generate response
         response = "Distributed tracing is a method used to track requests..."
@@ -279,11 +280,8 @@ def simulate_ai_assistant_workflow(tracer, meter, logger, source: str):
         span.set_attribute("ai.duration_ms", random.randint(500, 2000))
 
         # Metrics for tokens
-        meter.create_counter(
-            f"{source}.tokens.total"
-        ).add(
-            int(prompt_tokens + response_tokens),
-            {"token_type": "total"}
+        meter.create_counter(f"{source}.tokens.total").add(
+            int(prompt_tokens + response_tokens), {"token_type": "total"}
         )
 
         logger.info(f"Generated response: {response[:50]}...")
@@ -314,60 +312,33 @@ Examples:
 
   # Simulate AI workflow
   %(prog)s --endpoint http://localhost:4319 --service claude --source claude --ai-workflow
-        """
+        """,
     )
 
     parser.add_argument(
         "--endpoint",
         default="http://localhost:4317",
-        help="OTLP endpoint (default: http://localhost:4317)"
+        help="OTLP endpoint (default: http://localhost:4317)",
     )
     parser.add_argument(
-        "--service",
-        default="python-otlp-client",
-        help="Service name (default: python-otlp-client)"
+        "--service", default="python-otlp-client", help="Service name (default: python-otlp-client)"
     )
     parser.add_argument(
-        "--source",
-        default=None,
-        help="Source identifier (e.g., claude, qwen, custom)"
+        "--source", default=None, help="Source identifier (e.g., claude, qwen, custom)"
     )
     parser.add_argument(
-        "--environment",
-        default="development",
-        help="Deployment environment (default: development)"
+        "--environment", default="development", help="Deployment environment (default: development)"
     )
     parser.add_argument(
-        "--console",
-        action="store_true",
-        help="Also export to console for debugging"
+        "--console", action="store_true", help="Also export to console for debugging"
     )
+    parser.add_argument("--traces-only", action="store_true", help="Only generate traces")
+    parser.add_argument("--metrics-only", action="store_true", help="Only generate metrics")
+    parser.add_argument("--logs-only", action="store_true", help="Only generate logs")
     parser.add_argument(
-        "--traces-only",
-        action="store_true",
-        help="Only generate traces"
+        "--count", type=int, default=10, help="Number of items to generate (default: 10)"
     )
-    parser.add_argument(
-        "--metrics-only",
-        action="store_true",
-        help="Only generate metrics"
-    )
-    parser.add_argument(
-        "--logs-only",
-        action="store_true",
-        help="Only generate logs"
-    )
-    parser.add_argument(
-        "--count",
-        type=int,
-        default=10,
-        help="Number of items to generate (default: 10)"
-    )
-    parser.add_argument(
-        "--ai-workflow",
-        action="store_true",
-        help="Simulate AI assistant workflow"
-    )
+    parser.add_argument("--ai-workflow", action="store_true", help="Simulate AI assistant workflow")
 
     args = parser.parse_args()
 
@@ -387,7 +358,7 @@ Examples:
             service_name=args.service,
             source=args.source,
             environment=args.environment,
-            console_export=args.console
+            console_export=args.console,
         )
         print("✅ Telemetry initialized successfully!")
     except Exception as e:
@@ -413,8 +384,8 @@ Examples:
         print("=" * 80)
         print("\n📍 View your telemetry:")
         print(f"  • Jaeger (Traces): http://localhost:16686/?service={args.service}")
-        print(f"  • Prometheus (Metrics): http://localhost:9090")
-        print(f"  • Kibana (Logs): http://localhost:5601")
+        print("  • Prometheus (Metrics): http://localhost:9090")
+        print("  • Kibana (Logs): http://localhost:5601")
         print("\n💡 Wait 10-15 seconds for metrics to be exported (batch interval)")
         print("\n🔍 Troubleshooting:")
         print("  • Check collector health: curl http://localhost:13133/healthy")
@@ -429,6 +400,7 @@ Examples:
     except Exception as e:
         print(f"\n❌ Error generating telemetry: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
     finally:
@@ -444,4 +416,5 @@ Examples:
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(main())

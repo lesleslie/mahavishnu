@@ -10,8 +10,8 @@ Run with: python scripts/fix_code_quality.py
 """
 
 import logging
-import re
 from pathlib import Path
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -44,13 +44,13 @@ def fix_app_py(content: str) -> tuple[str, dict]:
     # The repos_config dict can return list[dict[str, Any]], so we need to cast properly
     content = content.replace(
         'return self.repos_config.get("repos", [])  # type: ignore',
-        'return self.repos_config.get("repos", [])'
+        'return self.repos_config.get("repos", [])',
     )
     changes["type_ignore_removed"] += 1
 
     content = content.replace(
         'repos = self.repos_config.get("repos", [])  # type: ignore',
-        'repos = self.repos_config.get("repos", [])'
+        'repos = self.repos_config.get("repos", [])',
     )
     changes["type_ignore_removed"] += 1
 
@@ -135,24 +135,51 @@ def fix_production_readiness_py(content: str) -> tuple[str, dict]:
     # Replace print statements with appropriate logger calls
     replacements = [
         # Info level messages (status updates, summaries)
-        (r'print\("🔍 Running Production Readiness Checks\.\.\."\)', 'logger.info("Running Production Readiness Checks...")'),
-        (r'print\(f"\n📊 Overall Score: \{score\}%.*?\)"', 'logger.info(f"Overall Score: {score}% ({self.checks_passed}/{self.total_checks} checks passed)")'),
-        (r'print\(f"🎯 Status: \{summary\[.summary.\]\[.status.\]\}"\)', 'logger.info(f"Status: {summary[\'summary\'][\'status\']}")'),
-        (r'print\("🧪 Running Integration Tests\.\.\."\)', 'logger.info("Running Integration Tests...")'),
-        (r'print\(f"\n📊 Test Score: \{score\}%.*?\)"', 'logger.info(f"Test Score: {score}% ({passed_tests}/{total_tests} tests passed)")'),
-        (r'print\("⚡ Running Performance Benchmarks\.\.\."\)', 'logger.info("Running Performance Benchmarks...")'),
-        (r'print\(f"\n📊 Performance Score: \{performance_score\}/100"\)', 'logger.info(f"Performance Score: {performance_score}/100")'),
-
+        (
+            r'print\("🔍 Running Production Readiness Checks\.\.\."\)',
+            'logger.info("Running Production Readiness Checks...")',
+        ),
+        (
+            r'print\(f"\n📊 Overall Score: \{score\}%.*?\)"',
+            'logger.info(f"Overall Score: {score}% ({self.checks_passed}/{self.total_checks} checks passed)")',
+        ),
+        (
+            r'print\(f"🎯 Status: \{summary\[.summary.\]\[.status.\]\}"\)',
+            "logger.info(f\"Status: {summary['summary']['status']}\")",
+        ),
+        (
+            r'print\("🧪 Running Integration Tests\.\.\."\)',
+            'logger.info("Running Integration Tests...")',
+        ),
+        (
+            r'print\(f"\n📊 Test Score: \{score\}%.*?\)"',
+            'logger.info(f"Test Score: {score}% ({passed_tests}/{total_tests} tests passed)")',
+        ),
+        (
+            r'print\("⚡ Running Performance Benchmarks\.\.\."\)',
+            'logger.info("Running Performance Benchmarks...")',
+        ),
+        (
+            r'print\(f"\n📊 Performance Score: \{performance_score\}/100"\)',
+            'logger.info(f"Performance Score: {performance_score}/100")',
+        ),
         # Success messages
-        (r'print\(f"✅ \{method\.__name__\[7:\]\.replace\(\'_\', \' \)\.title\(\)\}: PASSED"\)', 'logger.info(f"{method.__name__[7:].replace(\'_\', \' \').title()}: PASSED")'),
-
+        (
+            r'print\(f"✅ \{method\.__name__\[7:\]\.replace\(\'_\', \' \)\.title\(\)\}: PASSED"\)',
+            "logger.info(f\"{method.__name__[7:].replace('_', ' ').title()}: PASSED\")",
+        ),
         # Warning messages
         (r'print\("  ⚠️  (.*)"\)', r'logger.warning("  \1")'),
         (r'print\(f"  ⚠️  (.*)"\)', r'logger.warning(f"  \1")'),
-
         # Error messages
-        (r'print\(f"❌ \{method\.__name__\[7:\]\.replace\(\'_\', \' \)\.title\(\)\}: FAILED"\)', 'logger.error(f"{method.__name__[7:].replace(\'_\', \' \').title()}: FAILED")'),
-        (r'print\(f"❌ \{method\.__name__\[7:\]\.replace\(\'_\', \' \)\.title\(\)\}: ERROR - \{e\}"\)', 'logger.error(f"{method.__name__[7:].replace(\'_\', \' \').title()}: ERROR - {e}")'),
+        (
+            r'print\(f"❌ \{method\.__name__\[7:\]\.replace\(\'_\', \' \)\.title\(\)\}: FAILED"\)',
+            "logger.error(f\"{method.__name__[7:].replace('_', ' ').title()}: FAILED\")",
+        ),
+        (
+            r'print\(f"❌ \{method\.__name__\[7:\]\.replace\(\'_\', \' \)\.title\(\)\}: ERROR - \{e\}"\)',
+            "logger.error(f\"{method.__name__[7:].replace('_', ' ').title()}: ERROR - {e}\")",
+        ),
         (r'print\(f"  ❌ (.*)"\)', r'logger.error("  \1")'),
     ]
 
@@ -180,9 +207,18 @@ def fix_memory_aggregator_py(content: str) -> tuple[str, dict]:
 
     # This file already has logger, just need to replace print statements
     replacements = [
-        (r'print\(f"Synced \{stats\[.memory_items_synced.\]\} items"\)', 'logger.info(f"Synced {stats[\'memory_items_synced\']} items")'),
-        (r'print\(f"\{result\[.pool_id.\]\}: \{result\[.content.\]\[:100\]\}"\)', 'logger.info(f"{result[\'pool_id\']}: {result[\'content\'][:100]}")'),
-        (r'print\(f"\{pool_id\}: \{pool_stats\[.memory_count.\]\} items"\)', 'logger.info(f"{pool_id}: {pool_stats[\'memory_count\']} items")'),
+        (
+            r'print\(f"Synced \{stats\[.memory_items_synced.\]\} items"\)',
+            "logger.info(f\"Synced {stats['memory_items_synced']} items\")",
+        ),
+        (
+            r'print\(f"\{result\[.pool_id.\]\}: \{result\[.content.\]\[:100\]\}"\)',
+            "logger.info(f\"{result['pool_id']}: {result['content'][:100]}\")",
+        ),
+        (
+            r'print\(f"\{pool_id\}: \{pool_stats\[.memory_count.\]\} items"\)',
+            "logger.info(f\"{pool_id}: {pool_stats['memory_count']} items\")",
+        ),
     ]
 
     for pattern, replacement in replacements:
@@ -209,9 +245,18 @@ def fix_manager_py(content: str) -> tuple[str, dict]:
 
     # This file already has logger, just need to replace print statements
     replacements = [
-        (r'print\(f"\{pool\[.pool_id.\]\}: \{pool\[.pool_type.\]\} - \{pool\[.status.\]\}"\)', 'logger.info(f"{pool[\'pool_id\']}: {pool[\'pool_type\']} - {pool[\'status\']}")'),
-        (r'print\(f"Status: \{health\[.status.\]\}"\)', 'logger.info(f"Status: {health[\'status\']}")'),
-        (r'print\(f"Active pools: \{health\[.pools_active.\]\}"\)', 'logger.info(f"Active pools: {health[\'pools_active\']}")'),
+        (
+            r'print\(f"\{pool\[.pool_id.\]\}: \{pool\[.pool_type.\]\} - \{pool\[.status.\]\}"\)',
+            "logger.info(f\"{pool['pool_id']}: {pool['pool_type']} - {pool['status']}\")",
+        ),
+        (
+            r'print\(f"Status: \{health\[.status.\]\}"\)',
+            "logger.info(f\"Status: {health['status']}\")",
+        ),
+        (
+            r'print\(f"Active pools: \{health\[.pools_active.\]\}"\)',
+            "logger.info(f\"Active pools: {health['pools_active']}\")",
+        ),
     ]
 
     for pattern, replacement in replacements:
@@ -271,7 +316,7 @@ def main() -> None:
 
             logger.info(f"  Fixed: {changes}")
         else:
-            logger.info(f"  No changes needed")
+            logger.info("  No changes needed")
 
     # Print summary
     logger.info("=" * 60)

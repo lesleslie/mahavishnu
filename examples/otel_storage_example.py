@@ -10,11 +10,12 @@ This example demonstrates:
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Add parent directory to path for imports
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mahavishnu.core.config import MahavishnuSettings
@@ -23,9 +24,9 @@ from oneiric.adapters.observability import OTelStorageAdapter, OTelStorageSettin
 
 async def example_basic_usage():
     """Basic usage example."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Example 1: Basic Usage")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     # Load Mahavishnu configuration
     settings = MahavishnuSettings()
@@ -42,7 +43,7 @@ async def example_basic_usage():
     # Initialize adapter
     adapter = OTelStorageAdapter(otel_settings)
 
-    print(f"Adapter initialized with:")
+    print("Adapter initialized with:")
     print(f"  - Connection: {otel_settings.connection_string[:30]}...")
     print(f"  - Model: {otel_settings.embedding_model}")
     print(f"  - Dimensions: {otel_settings.embedding_dimension}")
@@ -52,9 +53,9 @@ async def example_basic_usage():
 
 async def example_health_check():
     """Health check example."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Example 2: Health Check")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     settings = MahavishnuSettings()
     otel_settings = OTelStorageSettings(
@@ -78,9 +79,9 @@ async def example_health_check():
 
 async def example_store_traces():
     """Store traces example."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Example 3: Store Traces")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     settings = MahavishnuSettings()
     otel_settings = OTelStorageSettings(
@@ -101,8 +102,8 @@ async def example_store_traces():
         trace_state="",
         name="database.query.execute",
         kind="CLIENT",
-        start_time=datetime.now(timezone.utc),
-        end_time=datetime.now(timezone.utc),
+        start_time=datetime.now(UTC),
+        end_time=datetime.now(UTC),
         status="OK",
         attributes={
             "db.system": "postgresql",
@@ -117,15 +118,15 @@ async def example_store_traces():
 
     print(f"Stored trace: {trace_id}")
     print(f"  Span: {span_id}")
-    print(f"  Name: database.query.execute")
-    print(f"  Status: OK")
+    print("  Name: database.query.execute")
+    print("  Status: OK")
 
 
 async def example_semantic_search():
     """Semantic search example."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Example 4: Semantic Search")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     settings = MahavishnuSettings()
     otel_settings = OTelStorageSettings(
@@ -162,9 +163,9 @@ async def example_semantic_search():
 
 async def example_retrieve_trace():
     """Retrieve trace by ID example."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Example 5: Retrieve Trace by ID")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     settings = MahavishnuSettings()
     otel_settings = OTelStorageSettings(
@@ -191,9 +192,9 @@ async def example_retrieve_trace():
 
 async def example_batch_operations():
     """Batch operations example."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Example 6: Batch Operations")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     settings = MahavishnuSettings()
     otel_settings = OTelStorageSettings(
@@ -206,24 +207,26 @@ async def example_batch_operations():
     # Create sample traces for batch insert
     traces = []
     for i in range(10):
-        traces.append({
-            "trace_id": f"batch-trace-{i:03d}",
-            "span_id": f"batch-span-{i:03d}",
-            "parent_span_id": None,
-            "trace_state": "",
-            "name": f"batch.operation.{i}",
-            "kind": "INTERNAL",
-            "start_time": datetime.now(timezone.utc),
-            "end_time": datetime.now(timezone.utc),
-            "status": "OK",
-            "attributes": {
-                "batch.index": i,
-                "batch.size": 10,
-            },
-            "events": [],
-            "links": [],
-            "summary": f"Batch operation number {i} for processing data",
-        })
+        traces.append(
+            {
+                "trace_id": f"batch-trace-{i:03d}",
+                "span_id": f"batch-span-{i:03d}",
+                "parent_span_id": None,
+                "trace_state": "",
+                "name": f"batch.operation.{i}",
+                "kind": "INTERNAL",
+                "start_time": datetime.now(UTC),
+                "end_time": datetime.now(UTC),
+                "status": "OK",
+                "attributes": {
+                    "batch.index": i,
+                    "batch.size": 10,
+                },
+                "events": [],
+                "links": [],
+                "summary": f"Batch operation number {i} for processing data",
+            }
+        )
 
     # Store in batch
     await adapter.batch_store(traces)
@@ -235,9 +238,9 @@ async def example_batch_operations():
 
 async def example_search_with_filters():
     """Search with filters example."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Example 7: Search with Filters")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     settings = MahavishnuSettings()
     otel_settings = OTelStorageSettings(
@@ -256,9 +259,9 @@ async def example_search_with_filters():
         },
     )
 
-    print(f"Search results with filters:")
-    print(f"  Query: 'database operations'")
-    print(f"  Filters: kind=CLIENT, status=OK")
+    print("Search results with filters:")
+    print("  Query: 'database operations'")
+    print("  Filters: kind=CLIENT, status=OK")
     print(f"  Results: {len(results)} traces")
 
     for i, result in enumerate(results, 1):
@@ -267,9 +270,9 @@ async def example_search_with_filters():
 
 async def example_statistics():
     """Statistics example."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Example 8: Statistics")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     settings = MahavishnuSettings()
     otel_settings = OTelStorageSettings(
@@ -286,16 +289,16 @@ async def example_statistics():
     print(f"  Total spans: {stats.get('total_spans', 0)}")
     print(f"  Unique trace names: {stats.get('unique_names', 0)}")
     print(f"  Average duration: {stats.get('avg_duration_ms', 0):.2f}ms")
-    print(f"  Traces by status:")
-    for status, count in stats.get('by_status', {}).items():
+    print("  Traces by status:")
+    for status, count in stats.get("by_status", {}).items():
         print(f"    {status}: {count}")
 
 
 async def main():
     """Run all examples."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Oneiric OTelStorageAdapter Examples")
-    print("="*60)
+    print("=" * 60)
 
     try:
         # Check if OTel storage is enabled
@@ -317,9 +320,9 @@ async def main():
         await example_search_with_filters()
         await example_statistics()
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("All examples completed successfully!")
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
     except Exception as e:
         print(f"\nERROR: {e}")

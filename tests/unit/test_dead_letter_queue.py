@@ -9,8 +9,8 @@ Tests DLQ functionality including:
 """
 
 import asyncio
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -32,7 +32,7 @@ class TestFailedTask:
             task={"type": "test"},
             repos=["/path/to/repo"],
             error="Test error",
-            failed_at=datetime.now(timezone.utc),
+            failed_at=datetime.now(UTC),
         )
 
         assert task.task_id == "wf_123"
@@ -42,7 +42,7 @@ class TestFailedTask:
 
     def test_failed_task_to_dict(self):
         """Test converting FailedTask to dictionary."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         task = FailedTask(
             task_id="wf_123",
             task={"type": "test"},
@@ -67,7 +67,7 @@ class TestFailedTask:
             "task": {"type": "test"},
             "repos": ["/path/to/repo"],
             "error": "Test error",
-            "failed_at": datetime.now(timezone.utc).isoformat(),
+            "failed_at": datetime.now(UTC).isoformat(),
             "retry_count": 1,
             "max_retries": 3,
             "retry_policy": "exponential",
@@ -99,7 +99,7 @@ class TestRetryPolicyCalculations:
     def test_immediate_policy(self):
         """Test IMMEDIATE retry policy."""
         dlq = DeadLetterQueue(max_size=100)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         next_retry = dlq._calculate_next_retry(RetryPolicy.IMMEDIATE, 0)
 
         assert next_retry is not None
@@ -109,7 +109,7 @@ class TestRetryPolicyCalculations:
     def test_linear_policy(self):
         """Test LINEAR retry policy."""
         dlq = DeadLetterQueue(max_size=100)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # First retry: 5 minutes
         next_retry_1 = dlq._calculate_next_retry(RetryPolicy.LINEAR, 0)
@@ -126,7 +126,7 @@ class TestRetryPolicyCalculations:
     def test_exponential_policy(self):
         """Test EXPONENTIAL retry policy."""
         dlq = DeadLetterQueue(max_size=100)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # First retry: 1 minute (2^0)
         next_retry_1 = dlq._calculate_next_retry(RetryPolicy.EXPONENTIAL, 0)
@@ -524,7 +524,7 @@ class TestPersistence:
             task={"type": "test"},
             repos=["/path/to/repo"],
             error="Test error",
-            failed_at=datetime.now(timezone.utc),
+            failed_at=datetime.now(UTC),
         )
 
         # Update persistence

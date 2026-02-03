@@ -22,6 +22,7 @@ Mahavishnu includes comprehensive visual documentation with **50+ diagrams** cov
 ### 🎯 **Essential Diagrams**
 
 1. **[Visual Guide](VISUAL_GUIDE.md)** - Master collection of all diagrams
+
    - Overall system architecture with all components
    - Pool management system with scaling strategies
    - Memory aggregation flow (concurrent collection)
@@ -31,7 +32,8 @@ Mahavishnu includes comprehensive visual documentation with **50+ diagrams** cov
    - Dead letter queue flow
    - Quality metrics timeline
 
-2. **[Workflow Diagrams](WORKFLOW_DIAGRAMS.md)** - Step-by-step operational procedures
+1. **[Workflow Diagrams](WORKFLOW_DIAGRAMS.md)** - Step-by-step operational procedures
+
    - Quick start setup flow
    - Pool spawn and execute sequences
    - Repository sweep operations
@@ -43,6 +45,7 @@ Mahavishnu includes comprehensive visual documentation with **50+ diagrams** cov
 ### 📊 **Key Visual Aids**
 
 **Architecture Overview:**
+
 ```mermaid
 graph TB
     User([User]) --> CLI[CLI]
@@ -69,7 +72,7 @@ graph TB
 - **Troubleshooting?** Check [Error Recovery](WORKFLOW_DIAGRAMS.md#6-error-recovery)
 - **Curious about performance?** View [Performance Optimizations](VISUAL_GUIDE.md#6-performance-optimizations)
 
----
+______________________________________________________________________
 
 ## Prerequisites
 
@@ -153,9 +156,9 @@ You should see the Mahavishnu CLI help message with all available commands.
 Mahavishnu uses a layered configuration system:
 
 1. **Default values** in Pydantic models
-2. **`settings/mahavishnu.yaml`** (committed to git)
-3. **`settings/local.yaml`** (gitignored, for local development)
-4. **Environment variables** (`MAHAVISHNU_{GROUP}__{FIELD}`)
+1. **`settings/mahavishnu.yaml`** (committed to git)
+1. **`settings/local.yaml`** (gitignored, for local development)
+1. **Environment variables** (`MAHAVISHNU_{GROUP}__{FIELD}`)
 
 ### Step 1: Review Default Configuration
 
@@ -566,41 +569,36 @@ mahavishnu terminal list
 
 ### Learn More
 
-- **[Architecture](ARCHITECTURE.md)** - Complete architecture overview
 - **[Admin Shell Guide](docs/ADMIN_SHELL.md)** - Interactive debugging and monitoring
-- **[Pool Architecture](docs/POOL_ARCHITECTURE.md)** - Multi-pool orchestration details
+
 - **[MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md)** - Complete MCP tool API documentation
-- **[Production Deployment](docs/PRODUCTION_DEPLOYMENT_GUIDE.md)** - Production readiness checklist
 
-### Development
-
-- **[Testing](#testing)** - Run tests and contribute
 - **[Configuration Reference](#configuration-reference)** - All configuration options
+
 - **[Security](SECURITY_CHECKLIST.md)** - Security guidelines and best practices
 
 ### Advanced Features
 
 - **[OpenTelemetry Integration](docs/NATIVE_OTEL_SETUP_GUIDE.md)** - Distributed tracing setup
-- **[Cross-Repository Messaging](docs/CROSS_REPO_COORDINATION_PLAN.md)** - Message passing between repos
 - **[Disaster Recovery](docs/MAINTENANCE_PROCEDURES.md)** - Backup and restore procedures
 
 ## Testing
 
-Run the test suite to verify your installation:
-
-```bash
 # Run all tests
-pytest
 
 # Run unit tests only
+
 pytest tests/unit/
 
 # Run with coverage
+
 pytest --cov=mahavishnu --cov-report=html
 
 # Run specific test file
+
 pytest tests/unit/test_config.py -v
-```
+
+````
 
 ## Configuration Reference
 
@@ -621,16 +619,16 @@ export MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING="postgresql://..."
 
 # Boolean values
 export MAHAVISHNU_DEBUG="true"  # "true" or "false"
-```
+````
 
 ### Configuration File Priority
 
 Configuration is loaded in this order (later overrides earlier):
 
 1. Default values in Pydantic models
-2. `settings/mahavishnu.yaml` (committed)
-3. `settings/local.yaml` (gitignored)
-4. Environment variables
+1. `settings/mahavishnu.yaml` (committed)
+1. `settings/local.yaml` (gitignored)
+1. Environment variables
 
 ### Validation
 
@@ -656,9 +654,9 @@ otel_storage:
 We welcome contributions! Please see the main README.md for contribution guidelines.
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests: `pytest`
-5. Submit a pull request
+1. Create a feature branch
+1. Make your changes
+1. Run tests: `pytest`
+1. Submit a pull request
 
 **Happy orchestrating!**

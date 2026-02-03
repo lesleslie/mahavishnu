@@ -4,11 +4,12 @@ Provides decorators and utilities for rate limiting individual MCP tools.
 Designed to work with FastMCP's tool-based architecture.
 """
 
+from collections.abc import Callable
 from functools import wraps
 from logging import getLogger
-from typing import Any, Callable
+from typing import Any
 
-from ..core.rate_limit import RateLimiter, RateLimitConfig, RateLimitError
+from ..core.rate_limit import RateLimitConfig, RateLimiter
 
 logger = getLogger(__name__)
 
@@ -181,16 +182,12 @@ def get_all_rate_limit_stats() -> dict[str, Any]:
         Dictionary with statistics for all tools
     """
     total_calls = sum(stats.get("total_calls", 0) for stats in _tool_stats.values())
-    total_rate_limited = sum(
-        stats.get("rate_limited_calls", 0) for stats in _tool_stats.values()
-    )
+    total_rate_limited = sum(stats.get("rate_limited_calls", 0) for stats in _tool_stats.values())
 
     return {
         "total_calls": total_calls,
         "total_rate_limited": total_rate_limited,
-        "rate_limit_rate": (
-            total_rate_limited / total_calls if total_calls > 0 else 0
-        ),
+        "rate_limit_rate": (total_rate_limited / total_calls if total_calls > 0 else 0),
         "tools": dict(_tool_stats),
     }
 

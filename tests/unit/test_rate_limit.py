@@ -10,33 +10,30 @@ Tests cover:
 """
 
 import asyncio
-import time
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from starlette.requests import Request
 
 from mahavishnu.core.rate_limit import (
-    RateLimiter,
     RateLimitConfig,
+    RateLimiter,
     RateLimitInfo,
-    RateLimitMiddleware,
-    RateLimitError,
     rate_limit,
 )
 from mahavishnu.core.rate_limit_tools import (
-    get_global_limiter,
-    rate_limit_tool,
-    get_tool_rate_limit_stats,
     get_all_rate_limit_stats,
+    get_global_limiter,
+    get_tool_rate_limit_stats,
+    rate_limit_tool,
     reset_tool_stats,
 )
-
 
 # ============================================================================
 # Rate Limiter Tests
 # ============================================================================
+
 
 class TestRateLimiter:
     """Test RateLimiter class functionality."""
@@ -86,7 +83,7 @@ class TestRateLimiter:
         # Make 5 requests (at limit)
         for i in range(5):
             allowed, _ = await limiter.is_allowed(key)
-            assert allowed is True, f"Request {i+1} should be allowed"
+            assert allowed is True, f"Request {i + 1} should be allowed"
 
         # Next request should be blocked
         allowed, info = await limiter.is_allowed(key)
@@ -104,7 +101,7 @@ class TestRateLimiter:
         # Make requests up to burst size
         for i in range(3):
             allowed, _ = await limiter.is_allowed(key)
-            assert allowed is True, f"Burst request {i+1} should be allowed"
+            assert allowed is True, f"Burst request {i + 1} should be allowed"
 
         # Next request should be blocked due to burst limit
         allowed, info = await limiter.is_allowed(key)
@@ -191,6 +188,7 @@ class TestRateLimiter:
 # Rate Limit Config Tests
 # ============================================================================
 
+
 class TestRateLimitConfig:
     """Test RateLimitConfig dataclass."""
 
@@ -231,6 +229,7 @@ class TestRateLimitConfig:
 # Rate Limit Info Tests
 # ============================================================================
 
+
 class TestRateLimitInfo:
     """Test RateLimitInfo dataclass."""
 
@@ -259,6 +258,7 @@ class TestRateLimitInfo:
 # Rate Limit Decorator Tests
 # ============================================================================
 
+
 class TestRateLimitDecorator:
     """Test rate_limit decorator."""
 
@@ -283,6 +283,7 @@ class TestRateLimitDecorator:
     @pytest.mark.asyncio
     async def test_rate_limit_decorator_handles_limit(self):
         """Decorator should handle rate limit gracefully when limit exceeded."""
+
         # Note: The @rate_limit decorator is designed for general async functions
         # and may raise RateLimitError. For MCP tools, use @rate_limit_tool instead.
         # This test verifies the decorator doesn't crash the application.
@@ -305,6 +306,7 @@ class TestRateLimitDecorator:
     @pytest.mark.asyncio
     async def test_rate_limit_decorator_with_key_func(self):
         """Decorator should use custom key function."""
+
         def custom_key(request: Request) -> str:
             return f"custom:{request.client.host if request.client else 'unknown'}"
 
@@ -329,12 +331,14 @@ class TestRateLimitDecorator:
 # Rate Limit Tool Decorator Tests
 # ============================================================================
 
+
 class TestRateLimitToolDecorator:
     """Test rate_limit_tool decorator for FastMCP."""
 
     @pytest.mark.asyncio
     async def test_rate_limit_tool_allows_requests(self):
         """Tool decorator should allow requests within limits."""
+
         @rate_limit_tool(requests_per_minute=10)
         async def test_tool(param: str) -> dict[str, Any]:
             return {"result": f"processed: {param}"}
@@ -347,6 +351,7 @@ class TestRateLimitToolDecorator:
     @pytest.mark.asyncio
     async def test_rate_limit_tool_returns_error_on_limit(self):
         """Tool decorator should return error dict when limit exceeded."""
+
         @rate_limit_tool(
             requests_per_minute=2,
             requests_per_hour=10,
@@ -369,6 +374,7 @@ class TestRateLimitToolDecorator:
     @pytest.mark.asyncio
     async def test_rate_limit_tool_with_user_id(self):
         """Tool decorator should use user_id from params for key."""
+
         @rate_limit_tool(requests_per_minute=5)
         async def test_tool(user_id: str, param: str) -> dict[str, Any]:
             return {"result": f"processed: {param}"}
@@ -480,6 +486,7 @@ class TestRateLimitToolDecorator:
 # Global Limiter Tests
 # ============================================================================
 
+
 class TestGlobalLimiter:
     """Test global rate limiter instance."""
 
@@ -488,6 +495,7 @@ class TestGlobalLimiter:
         """Should create global limiter on first call."""
         # Reset global limiter
         import mahavishnu.core.rate_limit_tools as rl_module
+
         rl_module._global_limiter = None
 
         # Get global limiter (should create new instance)
@@ -500,6 +508,7 @@ class TestGlobalLimiter:
         """Should reuse existing global limiter instance."""
         # Reset global limiter
         import mahavishnu.core.rate_limit_tools as rl_module
+
         rl_module._global_limiter = None
 
         # Get global limiter twice
@@ -514,6 +523,7 @@ class TestGlobalLimiter:
         """Should create limiter with custom config."""
         # Reset global limiter
         import mahavishnu.core.rate_limit_tools as rl_module
+
         rl_module._global_limiter = None
 
         config = RateLimitConfig(
@@ -531,6 +541,7 @@ class TestGlobalLimiter:
 # Integration Tests
 # ============================================================================
 
+
 class TestRateLimitIntegration:
     """Integration tests for rate limiting."""
 
@@ -544,10 +555,7 @@ class TestRateLimitIntegration:
             return allowed, index
 
         # Launch concurrent requests
-        tasks = [
-            make_request("concurrent_test", i)
-            for i in range(10)
-        ]
+        tasks = [make_request("concurrent_test", i) for i in range(10)]
 
         results = await asyncio.gather(*tasks)
 
@@ -591,7 +599,7 @@ class TestRateLimitIntegration:
         # Make requests up to per-minute limit
         for i in range(5):
             allowed, _ = await limiter.is_allowed(key)
-            assert allowed is True, f"Request {i+1} should be allowed"
+            assert allowed is True, f"Request {i + 1} should be allowed"
 
         # Next request should be blocked
         allowed, info = await limiter.is_allowed(key)

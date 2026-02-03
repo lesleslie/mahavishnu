@@ -5,7 +5,7 @@
 
 **📊 Visual Aids Available**: See [diagrams/embedding-architecture.md](diagrams/embedding-architecture.md) for comprehensive system diagrams.
 
----
+______________________________________________________________________
 
 ## Quick Overview
 
@@ -64,13 +64,14 @@ flowchart TD
     style ERROR fill:#FFB6C1,stroke:#333,stroke-width:3px
 ```
 
----
+______________________________________________________________________
 
 ## Quick Start
 
 ### Option 1: FastEmbed (Production) ⭐ RECOMMENDED
 
 **Installation**:
+
 ```bash
 # FastEmbed is already installed as a core dependency
 # No additional installation needed!
@@ -80,6 +81,7 @@ python -c "from fastembed import SentenceTransformer; print('✅ FastEmbed avail
 ```
 
 **Usage**:
+
 ```python
 from mahavishnu.core.embeddings_oneiric import get_embeddings_with_oneiric
 
@@ -91,6 +93,7 @@ print(f"Dimension: {len(embeddings[0])}")
 ```
 
 **Configuration**:
+
 ```yaml
 # In settings/mahavishnu.yaml
 embeddings:
@@ -99,11 +102,12 @@ embeddings:
   batch_size: 32
 ```
 
----
+______________________________________________________________________
 
 ### Option 2: Ollama (Development) ⭐ PRIVACY-FIRST
 
 **Installation**:
+
 ```bash
 # Install Ollama
 brew install ollama
@@ -122,6 +126,7 @@ python -c "import socket; s=socket.socket(); s.connect(('localhost', 11434)); pr
 ```
 
 **Usage**:
+
 ```python
 # Configure to use Ollama
 # In settings/mahavishnu.yaml:
@@ -137,7 +142,7 @@ config = EmbeddingConfig(provider=EmbeddingProvider.OLLAMA)
 embeddings = await get_embeddings_with_oneiric(["hello", "world"], config)
 ```
 
----
+______________________________________________________________________
 
 ## Configuration Examples
 
@@ -160,12 +165,13 @@ flowchart LR
 ```
 
 **Priority Order** (higher overrides lower):
-1. ✅ **Environment Variables** (highest priority)
-2. ✅ **settings/local.yaml** (local development)
-3. ✅ **settings/mahavishnu.yaml** (committed defaults)
-4. ✅ **Pydantic defaults** (fallback)
 
----
+1. ✅ **Environment Variables** (highest priority)
+1. ✅ **settings/local.yaml** (local development)
+1. ✅ **settings/mahavishnu.yaml** (committed defaults)
+1. ✅ **Pydantic defaults** (fallback)
+
+______________________________________________________________________
 
 ### Production: FastEmbed (default)
 
@@ -200,7 +206,7 @@ embeddings:
   # export MAHAVISHNU_EMBEDDINGS_OPENAI_API_KEY=sk-...
 ```
 
----
+______________________________________________________________________
 
 ## Programmatic Usage
 
@@ -252,7 +258,7 @@ info = adapter.get_provider_info()
 print(f"Using: {info['provider']} with model {info['model']}")
 ```
 
----
+______________________________________________________________________
 
 ## MCP Tool Integration
 
@@ -290,7 +296,7 @@ mahavishnu mcp call get_embeddings \
     --provider fastembed
 ```
 
----
+______________________________________________________________________
 
 ## Model Comparison
 
@@ -324,6 +330,7 @@ graph LR
 ```
 
 **📏 Dimension Guide:**
+
 - **384-d**: Fastest, good for quick similarity matching
 - **768-d**: Balanced speed/quality, good for most use cases
 - **1024-d**: High quality, better for nuanced semantic search
@@ -344,7 +351,7 @@ graph LR
 | - text-embedding-3-small | 1536 | ⭐⭐⭐ | ⭐⭐⭐⭐ | Best quality |
 | - text-embedding-3-large | 3072 | ⭐ | ⭐⭐⭐⭐ | Best quality |
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
@@ -353,6 +360,7 @@ graph LR
 **Issue**: First embedding generation is slow while downloading model
 
 **Solution**: Pre-download model
+
 ```python
 from fastembed import SentenceTransformer
 
@@ -366,6 +374,7 @@ model = SentenceTransformer("BAAI/bge-small-en-v1.5")
 **Issue**: Cannot connect to Ollama API
 
 **Solution**: Start Ollama service
+
 ```bash
 # Start Ollama
 ollama serve &
@@ -382,12 +391,13 @@ ollama pull nomic-embed-text
 **Issue**: OpenAI provider says API key not found
 
 **Solution**: Set environment variable
+
 ```bash
 export OPENAI_API_KEY=sk-...
 export MAHAVISHNU_EMBEDDINGS_OPENAI_API_KEY=sk-...
 ```
 
----
+______________________________________________________________________
 
 ## Performance Benchmarks
 
@@ -402,6 +412,7 @@ xychart-beta
 ```
 
 **📊 Key Insights:**
+
 - 🟢 **FastEmbed**: 4x faster than Ollama, 12x faster than OpenAI (subsequent calls)
 - 🟡 **Ollama**: 3x faster than OpenAI, but slower than FastEmbed
 - 🔵 **OpenAI**: Slowest due to network latency, but best quality
@@ -416,11 +427,12 @@ On Intel Mac (x86_64):
 | **Ollama** | 0s (service) | 100ms | 80ms | 2.5s |
 | **OpenAI** | 0s | 300ms | 250ms | 6s |
 
----
+______________________________________________________________________
 
 ## Migration from sentence-transformers
 
 ### Before (incompatible)
+
 ```python
 from sentence_transformers import SentenceTransformer
 
@@ -429,6 +441,7 @@ embeddings = model.encode(["hello", "world"])
 ```
 
 ### After (FastEmbed)
+
 ```python
 from mahavishnu.core.embeddings_oneiric import get_embeddings_with_oneiric
 
@@ -436,6 +449,7 @@ embeddings = await get_embeddings_with_oneiric(["hello", "world"])
 ```
 
 ### After (Ollama)
+
 ```python
 from mahavishnu.core.embeddings_oneiric import get_embeddings_with_oneiric, EmbeddingConfig, EmbeddingProvider
 
@@ -443,7 +457,7 @@ config = EmbeddingConfig(provider=EmbeddingProvider.OLLAMA)
 embeddings = await get_embeddings_with_oneiric(["hello", "world"], config)
 ```
 
----
+______________________________________________________________________
 
 ## Environment Variables
 
@@ -466,7 +480,7 @@ export MAHAVISHNU_EMBEDDINGS_BATCH_SIZE=64
 export MAHAVISHNU_EMBEDDINGS_ENABLE_CACHE=true
 ```
 
----
+______________________________________________________________________
 
 ## Summary
 
@@ -476,7 +490,7 @@ export MAHAVISHNU_EMBEDDINGS_ENABLE_CACHE=true
 
 **Recommendation**: Use FastEmbed for production, Ollama for development!
 
----
+______________________________________________________________________
 
 **Last Updated**: 2026-02-02
 **Status**: ✅ Ready to use

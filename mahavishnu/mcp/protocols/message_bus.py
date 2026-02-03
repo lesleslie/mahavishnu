@@ -1,12 +1,12 @@
 """Async message passing between pools."""
 
 import asyncio
-import logging
-from typing import Any, Callable
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
+import logging
 import time
-
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ class MessageType(Enum):
         POOL_CLOSED: Announce pool shutdown
         TASK_COMPLETED: Announce task completion
     """
+
     TASK_DELEGATE = "task_delegate"
     RESULT_SHARE = "result_share"
     STATUS_UPDATE = "status_update"
@@ -43,6 +44,7 @@ class Message:
         payload: Message payload dictionary
         timestamp: Message timestamp
     """
+
     type: MessageType
     source_pool_id: str | None
     target_pool_id: str | None
@@ -128,21 +130,16 @@ class MessageBus:
         if msg.target_pool_id:
             # Create queue if it doesn't exist (lazy initialization)
             if msg.target_pool_id not in self._queues:
-                self._queues[msg.target_pool_id] = asyncio.Queue(
-                    maxsize=self._max_queue_size
-                )
+                self._queues[msg.target_pool_id] = asyncio.Queue(maxsize=self._max_queue_size)
 
             queue = self._queues[msg.target_pool_id]
             try:
                 queue.put_nowait(msg)
                 logger.debug(
-                    f"Delivered message to pool {msg.target_pool_id} "
-                    f"(type={msg_type.value})"
+                    f"Delivered message to pool {msg.target_pool_id} (type={msg_type.value})"
                 )
             except asyncio.QueueFull:
-                logger.warning(
-                    f"Queue full for pool {msg.target_pool_id} - message dropped"
-                )
+                logger.warning(f"Queue full for pool {msg.target_pool_id} - message dropped")
 
         # Deliver to subscribers
         for subscriber in self._subscribers.get(msg_type, []):
@@ -207,7 +204,7 @@ class MessageBus:
                 self._queues[pool_id].get(),
                 timeout=timeout,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return None
 
     async def receive_batch(
@@ -228,11 +225,7 @@ class MessageBus:
         """
         messages = []
 
-        deadline = (
-            asyncio.get_event_loop().time() + timeout
-            if timeout
-            else None
-        )
+        deadline = asyncio.get_event_loop().time() + timeout if timeout else None
 
         for _ in range(count):
             if deadline:
@@ -268,14 +261,10 @@ class MessageBus:
         Returns:
             Statistics dictionary
         """
-        queue_sizes = {
-            pool_id: self.get_queue_size(pool_id)
-            for pool_id in self._queues.keys()
-        }
+        queue_sizes = {pool_id: self.get_queue_size(pool_id) for pool_id in self._queues.keys()}
 
         subscriber_counts = {
-            msg_type.value: len(handlers)
-            for msg_type, handlers in self._subscribers.items()
+            msg_type.value: len(handlers) for msg_type, handlers in self._subscribers.items()
         }
 
         return {

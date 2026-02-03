@@ -5,15 +5,12 @@ Provides commands for collecting and reporting on test coverage
 and other quality metrics across the Mahavishnu ecosystem.
 """
 
-import sys
 from pathlib import Path
-from typing import Optional
+import sys
 
-import typer
 from rich.console import Console
 from rich.table import Table
-
-from mahavishnu.core.app import MahavishnuApp
+import typer
 
 # Create metrics app
 metrics_app = typer.Typer(help="Metrics collection and reporting for the Mahavishnu ecosystem")
@@ -85,7 +82,7 @@ def generate_report(
         "--format",
         help="Report format: text, json, or markdown",
     ),
-    output: Optional[Path] = typer.Option(
+    output: Path | None = typer.Option(
         None,
         "--output",
         "-o",
@@ -100,7 +97,7 @@ def generate_report(
     Example:
         mahavishnu metrics report --format markdown --output metrics.md
     """
-    console.print(f"[yellow]Generating metrics report...[/yellow]")
+    console.print("[yellow]Generating metrics report...[/yellow]")
 
     # For now, delegate to collect_metrics
     # TODO: Generate more comprehensive reports with historical data
@@ -122,13 +119,13 @@ def generate_report(
 
 @metrics_app.command("status")
 def show_status(
-    repo: Optional[str] = typer.Option(
+    repo: str | None = typer.Option(
         None,
         "--repo",
         "-r",
         help="Show status for specific repository",
     ),
-    role: Optional[str] = typer.Option(
+    role: str | None = typer.Option(
         None,
         "--role",
         help="Filter by repository role",
@@ -145,7 +142,7 @@ def show_status(
     """
     import yaml
 
-    console.print(f"[cyan]📊 Mahavishnu Ecosystem Metrics Status[/cyan]\n")
+    console.print("[cyan]📊 Mahavishnu Ecosystem Metrics Status[/cyan]\n")
 
     # Load repository catalog
     repos_path = Path("settings/repos.yaml")
@@ -161,7 +158,7 @@ def show_status(
         repos = [r for r in repos if r.get("role") == role]
 
     if not repos:
-        console.print(f"[yellow]No repositories found matching criteria[/yellow]")
+        console.print("[yellow]No repositories found matching criteria[/yellow]")
         sys.exit(0)
 
     # Create table
@@ -229,26 +226,24 @@ def show_history(
     """
     from pathlib import Path
 
-    console.print(f"[cyan]📈 Metrics History[/cyan]\n")
+    console.print("[cyan]📈 Metrics History[/cyan]\n")
 
     # Find metrics directory
     metrics_dir = Path.cwd() / "data" / "metrics"
 
     if not metrics_dir.exists():
-        console.print(f"[yellow]No metrics history found[/yellow]")
-        console.print(f"[dim]Collect metrics with --store-metrics flag to enable history[/dim]")
+        console.print("[yellow]No metrics history found[/yellow]")
+        console.print("[dim]Collect metrics with --store-metrics flag to enable history[/dim]")
         return
 
     # Get all snapshot files, sorted by modification time (newest first)
     snapshots = sorted(
-        metrics_dir.glob("metrics_*.json"),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True
+        metrics_dir.glob("metrics_*.json"), key=lambda p: p.stat().st_mtime, reverse=True
     )[:limit]
 
     if not snapshots:
-        console.print(f"[yellow]No metrics snapshots found[/yellow]")
-        console.print(f"[dim]Directory exists but contains no snapshots[/dim]")
+        console.print("[yellow]No metrics snapshots found[/yellow]")
+        console.print("[dim]Directory exists but contains no snapshots[/dim]")
         return
 
     # Display snapshots
@@ -265,7 +260,6 @@ def show_history(
 
     prev_coverage = None
     import json
-    from datetime import datetime
 
     for snapshot_path in snapshots:
         try:
@@ -289,13 +283,7 @@ def show_history(
             else:
                 trend = ""
 
-            table.add_row(
-                timestamp_str,
-                f"{avg_cov:.1f}%",
-                str(repos),
-                str(files),
-                trend
-            )
+            table.add_row(timestamp_str, f"{avg_cov:.1f}%", str(repos), str(files), trend)
 
             prev_coverage = avg_cov
 
@@ -329,10 +317,9 @@ def generate_dashboard(
     Example:
         mahavishnu metrics dashboard --output metrics.html --open
     """
-    import subprocess
     import sys
 
-    console.print(f"[cyan]📊 Generating Metrics Dashboard[/cyan]\n")
+    console.print("[cyan]📊 Generating Metrics Dashboard[/cyan]\n")
 
     # Import dashboard generator
     from scripts.generate_metrics_dashboard import main as dashboard_main
@@ -346,8 +333,9 @@ def generate_dashboard(
 
         if exit_code == 0 and open_browser:
             import webbrowser
+
             output_path = Path(output).absolute()
-            console.print(f"\n[cyan]Opening dashboard in browser...[/cyan]")
+            console.print("\n[cyan]Opening dashboard in browser...[/cyan]")
             webbrowser.open(f"file://{output_path}")
 
         sys.exit(exit_code)

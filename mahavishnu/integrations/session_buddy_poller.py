@@ -13,9 +13,9 @@ Example:
 """
 
 import asyncio
-import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+import logging
 from typing import Any
 
 import httpx
@@ -230,7 +230,7 @@ class SessionBuddyPoller:
             raise RuntimeError("Poller is not started (HTTP client not initialized)")
 
         self._poll_cycles += 1
-        self._last_poll_time = datetime.now(timezone.utc)
+        self._last_poll_time = datetime.now(UTC)
 
         self.logger.debug(f"Starting poll cycle #{self._poll_cycles}")
 
@@ -587,7 +587,7 @@ class SessionBuddyPoller:
         Opens the circuit breaker when consecutive failures exceed threshold.
         """
         self._circuit_breaker_open = True
-        self._circuit_breaker_opened_at = datetime.now(timezone.utc)
+        self._circuit_breaker_opened_at = datetime.now(UTC)
 
         self.logger.error(
             f"Circuit breaker opened after {self._consecutive_failures} consecutive failures"
@@ -604,7 +604,7 @@ class SessionBuddyPoller:
         # Wait for cooldown period (5 * interval)
         if self._circuit_breaker_opened_at:
             cooldown_end = self._circuit_breaker_opened_at.timestamp() + (self.interval * 5)
-            if datetime.now(timezone.utc).timestamp() < cooldown_end:
+            if datetime.now(UTC).timestamp() < cooldown_end:
                 return  # Still in cooldown
 
         # Attempt to close circuit breaker

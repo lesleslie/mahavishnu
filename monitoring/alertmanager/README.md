@@ -3,7 +3,7 @@
 **Purpose**: Production alerting configuration for Mahavishnu MCP Ecosystem
 **Last Updated**: 2026-02-02
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -12,7 +12,7 @@ This directory contains production AlertManager configuration for the Mahavishnu
 - **production_config.yml**: Main AlertManager configuration (routes, receivers, templates)
 - **alert_rules.yml**: Prometheus alert rules (thresholds, conditions, annotations)
 
----
+______________________________________________________________________
 
 ## Quick Start
 
@@ -66,7 +66,7 @@ alertmanager \
 
 Open browser: http://localhost:9093
 
----
+______________________________________________________________________
 
 ## Configuration Files
 
@@ -75,28 +75,33 @@ Open browser: http://localhost:9093
 **Key Sections**:
 
 1. **Global Configuration**
+
    - SMTP settings (email notifications)
    - Slack webhook URL
    - PagerDuty integration
 
-2. **Routes**
+1. **Routes**
+
    - Default receiver: `#alerts` Slack channel
    - Critical alerts: PagerDuty + `#critical-incidents`
    - Warning alerts: `#warnings` Slack channel
    - Service-specific routing
 
-3. **Receivers**
+1. **Receivers**
+
    - `default`: Slack + email
    - `critical`: PagerDuty + Slack critical incidents + SMS
    - `warning`: Slack warnings + email
    - `mahavishnu-team`: Mahavishnu team channel
    - `session-buddy-team`: Session-Buddy team channel
 
-4. **Inhibition Rules**
+1. **Inhibition Rules**
+
    - Inhibit warnings if critical is firing
    - Inhibit all alerts during maintenance
 
-5. **Time Intervals**
+1. **Time Intervals**
+
    - Business hours vs off-hours routing
    - Maintenance windows
 
@@ -105,49 +110,56 @@ Open browser: http://localhost:9093
 **Alert Groups**:
 
 1. **Mahavishnu MCP Server Alerts**
+
    - Service down (P1)
    - High error rate > 5% (P1)
    - High latency p95 > 1s (P2)
    - High memory usage > 80% (P2)
    - Worker pool exhausted (P3)
 
-2. **Session-Buddy Alerts**
+1. **Session-Buddy Alerts**
+
    - Service down (P1)
    - DB pool exhausted (P1)
    - High error rate > 5% (P2)
    - DB size growing > 50%/day (P3)
 
-3. **Akosha Alerts**
+1. **Akosha Alerts**
+
    - Service down (P1)
    - PostgreSQL down (P1)
    - High memory usage > 80% (P2)
 
-4. **System Resource Alerts**
+1. **System Resource Alerts**
+
    - Disk space < 20% (P1)
    - CPU usage > 80% (P2)
    - Memory usage > 80% (P2)
    - Load average > 2x CPU count (P3)
 
-5. **Backup Alerts**
+1. **Backup Alerts**
+
    - Backup failed (P1)
    - Backup old > 24h (P2)
    - Backup size doubled in 7 days (P3)
 
-6. **Security Alerts**
+1. **Security Alerts**
+
    - Auth failure rate > 10% (P1)
    - High rate limit violations (P2)
    - Suspicious user agent (P3)
 
----
+______________________________________________________________________
 
 ## Notification Channels
 
 ### Slack Integration
 
 **Setup**:
+
 1. Create Slack app: https://api.slack.com/apps
-2. Enable Incoming Webhooks
-3. Create webhooks for:
+1. Enable Incoming Webhooks
+1. Create webhooks for:
    - `#alerts`: General alerts
    - `#critical-incidents`: Critical alerts only
    - `#warnings`: Warning alerts only
@@ -155,6 +167,7 @@ Open browser: http://localhost:9093
    - `#session-buddy-team`: Session-Buddy-specific
 
 **Configure**:
+
 ```bash
 export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 ```
@@ -162,11 +175,13 @@ export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 ### Email Notifications
 
 **Setup**:
+
 1. Configure SMTP credentials in `.env`
-2. Set notification email addresses
-3. Test email delivery
+1. Set notification email addresses
+1. Test email delivery
 
 **Test**:
+
 ```bash
 echo "Test alert" | mail -s "AlertManager Test" oncall@example.com
 ```
@@ -174,18 +189,20 @@ echo "Test alert" | mail -s "AlertManager Test" oncall@example.com
 ### PagerDuty Integration
 
 **Setup**:
+
 1. Create PagerDuty account: https://www.pagerduty.com/
-2. Create service: "Mahavishnu MCP"
-3. Get integration key
-4. Configure in `.env`
+1. Create service: "Mahavishnu MCP"
+1. Get integration key
+1. Configure in `.env`
 
 **Configure**:
+
 ```bash
 export PAGERDUTY_SERVICE_KEY=your-integration-key
 export PAGERDUTY_URL=https://events.pagerduty.com/v2/enqueue
 ```
 
----
+______________________________________________________________________
 
 ## Alert Testing
 
@@ -239,7 +256,7 @@ curl -X POST "$PAGERDUTY_URL" \
   }'
 ```
 
----
+______________________________________________________________________
 
 ## Alert Rules Management
 
@@ -279,13 +296,14 @@ amtool alert query --alertmanager.url=http://localhost:9093 severity=critical
 amtool alert query --alertmanager.url=http://localhost:9093 service=mahavishnu-mcp
 ```
 
----
+______________________________________________________________________
 
 ## Maintenance Mode
 
 ### Enable Maintenance Mode
 
 **Option 1: Via API**
+
 ```bash
 # Set maintenance label
 amtool alert add maintenance_mode \
@@ -295,6 +313,7 @@ amtool alert add maintenance_mode \
 ```
 
 **Option 2: Via AlertManager config**
+
 ```yaml
 # Add to production_config.yml
 mute_time_intervals:
@@ -305,6 +324,7 @@ mute_time_intervals:
 ```
 
 **Option 3: Via Mahavishnu CLI**
+
 ```bash
 mahavishnu maintenance enable \
   --message "Scheduled maintenance" \
@@ -322,7 +342,7 @@ amtool alert delete maintenance_mode \
 mahavishnu maintenance disable
 ```
 
----
+______________________________________________________________________
 
 ## Monitoring AlertManager
 
@@ -348,19 +368,21 @@ curl http://localhost:9093/metrics | grep alertmanager_
 
 Import AlertManager dashboard: https://grafana.com/grafana/dashboards/9578
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
 ### Alerts Not Firing
 
 **Check**:
+
 1. Prometheus is scraping targets: http://localhost:9090/targets
-2. Alert rules are loaded: http://localhost:9090/alerts
-3. Rule evaluation interval: `prometheus --enable-feature=promql-experimental-functions`
-4. Alert thresholds are appropriate
+1. Alert rules are loaded: http://localhost:9090/alerts
+1. Rule evaluation interval: `prometheus --enable-feature=promql-experimental-functions`
+1. Alert thresholds are appropriate
 
 **Debug**:
+
 ```bash
 # Query Prometheus directly
 promql 'up{job="mahavishnu-mcp"} == 0'
@@ -372,12 +394,14 @@ journalctl -u prometheus -f | grep "rule="
 ### Notifications Not Sending
 
 **Check**:
+
 1. AlertManager is receiving alerts: http://localhost:9093/#/alerts
-2. Notification channels are configured correctly
-3. API keys/webhook URLs are valid
-4. Network connectivity to notification service
+1. Notification channels are configured correctly
+1. API keys/webhook URLs are valid
+1. Network connectivity to notification service
 
 **Debug**:
+
 ```bash
 # Check AlertManager logs
 journalctl -u alertmanager -f
@@ -394,6 +418,7 @@ amtool alert add test_alert \
 **Fix**: Adjust `group_by` and `inhibit_rules` in production_config.yml
 
 **Example**:
+
 ```yaml
 route:
   group_by: ['alertname', 'cluster', 'service']  # More specific grouping
@@ -406,51 +431,57 @@ inhibit_rules:
     equal: ['alertname', 'instance']  # More precise matching
 ```
 
----
+______________________________________________________________________
 
 ## Best Practices
 
 1. **Test Alert Rules Regularly**
+
    - Use amtool to simulate alerts
    - Verify notifications are received
    - Check alert severity levels
 
-2. **Avoid Alert Fatigue**
+1. **Avoid Alert Fatigue**
+
    - Tune thresholds based on actual usage
    - Use appropriate severity levels
    - Set reasonable `for` durations
 
-3. **Document Alerts**
+1. **Document Alerts**
+
    - Update runbook URLs in alert annotations
    - Include troubleshooting steps
    - Document alert conditions clearly
 
-4. **Review and Iterate**
+1. **Review and Iterate**
+
    - Monthly alert rule review
    - Adjust thresholds based on metrics
    - Add new alerts as needed
    - Remove or silence noisy alerts
 
-5. **Use Alert Grouping**
+1. **Use Alert Grouping**
+
    - Group related alerts together
    - Reduce notification spam
    - Improve visibility
 
----
+______________________________________________________________________
 
 ## On-Call Procedures
 
 ### Receiving an Alert
 
 1. **Acknowledge receipt** (respond to notification)
-2. **Assess severity** (P1: immediate, P2: 1 hour, P3: 4 hours)
-3. **Investigate** (use runbook, check metrics)
-4. **Resolve or escalate** (fix issue or escalate to next level)
-5. **Document** (update incident log, runbook if needed)
+1. **Assess severity** (P1: immediate, P2: 1 hour, P3: 4 hours)
+1. **Investigate** (use runbook, check metrics)
+1. **Resolve or escalate** (fix issue or escalate to next level)
+1. **Document** (update incident log, runbook if needed)
 
 ### Alert Silence
 
 **Temporarily silence an alert**:
+
 ```bash
 # Silence for 2 hours
 amtool silence add \
@@ -466,17 +497,14 @@ amtool silence query --alertmanager.url=http://localhost:9093
 amtool silence expire <silence-id> --alertmanager.url=http://localhost:9093
 ```
 
----
+______________________________________________________________________
 
 ## Related Documentation
 
-- [Incident Response Runbook](../INCIDENT_RESPONSE_RUNBOOK.md)
 - [Maintenance Procedures](../MAINTENANCE_PROCEDURES.md)
-- [Production Deployment Guide](../PRODUCTION_DEPLOYMENT_GUIDE.md)
 - [Prometheus Documentation](https://prometheus.io/docs/alerting/latest/alertmanager/)
-- [AlertManager Documentation](https://prometheus.io/docs/alerting/latest/configuration/)
 
----
+______________________________________________________________________
 
 **Last Updated**: 2026-02-02
 **Next Review**: 2026-03-02

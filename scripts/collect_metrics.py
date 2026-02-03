@@ -7,21 +7,18 @@ Can optionally create coordination issues for low-coverage repos.
 """
 
 import argparse
-import json
-import subprocess
-import sys
 from datetime import datetime
+import json
 from pathlib import Path
-from typing import Any, Dict, List
+import sys
+from typing import Any
 
 import yaml
 
 
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Collect metrics across Mahavishnu ecosystem"
-    )
+    parser = argparse.ArgumentParser(description="Collect metrics across Mahavishnu ecosystem")
     parser.add_argument(
         "--create-issues",
         action="store_true",
@@ -48,11 +45,12 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def get_coverage_from_file(repo_path: Path) -> Dict[str, Any]:
+def get_coverage_from_file(repo_path: Path) -> dict[str, Any]:
     """Extract coverage from .coverage file."""
     try:
-        import coverage
         from io import StringIO
+
+        import coverage
 
         # Create a Coverage object
         cov = coverage.Coverage(str(repo_path / ".coverage"), config_file=False)
@@ -72,7 +70,7 @@ def get_coverage_from_file(repo_path: Path) -> Dict[str, Any]:
                 if len(parts) >= 4:
                     # Get coverage percentage (last column)
                     coverage_str = parts[-1]
-                    coverage_pct = float(coverage_str.rstrip('%'))
+                    coverage_pct = float(coverage_str.rstrip("%"))
 
                     # Get number of files measured
                     data = cov.get_data()
@@ -87,10 +85,10 @@ def get_coverage_from_file(repo_path: Path) -> Dict[str, Any]:
 
 
 def create_coordination_issues(
-    results: List[Dict[str, Any]],
+    results: list[dict[str, Any]],
     min_coverage: float,
     ecosystem_path: Path,
-) -> List[str]:
+) -> list[str]:
     """Create coordination issues for repos below coverage threshold.
 
     Args:
@@ -176,7 +174,7 @@ def create_coordination_issues(
 
 
 def store_metrics_snapshot(
-    results: List[Dict[str, Any]],
+    results: list[dict[str, Any]],
     avg_coverage: float,
 ) -> None:
     """Store metrics snapshot for historical tracking.
@@ -230,7 +228,9 @@ def store_metrics_snapshot(
         latest_path.symlink_to(snapshot_path.name)
 
         # Clean up old snapshots (keep last 30)
-        snapshots = sorted(metrics_dir.glob("metrics_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        snapshots = sorted(
+            metrics_dir.glob("metrics_*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+        )
         for old_snapshot in snapshots[30:]:
             old_snapshot.unlink()
             print(f"  🗑️  Removed old snapshot: {old_snapshot.name}")
@@ -238,6 +238,7 @@ def store_metrics_snapshot(
     except Exception as e:
         print(f"  ⚠️  Could not store metrics snapshot: {e}")
         import traceback
+
         traceback.print_exc()
 
 
@@ -254,8 +255,8 @@ def main() -> int:
 
     repos = data.get("repos", [])
 
-    print(f"📊 Mahavishnu Ecosystem Metrics")
-    print(f"=" * 50)
+    print("📊 Mahavishnu Ecosystem Metrics")
+    print("=" * 50)
     print(f"\nScanning {len(repos)} repositories...\n")
 
     # Collect coverage data
@@ -278,12 +279,14 @@ def main() -> int:
                 coverage = cov_data.get("coverage", 0)
                 files = cov_data.get("files", 0)
 
-                results.append({
-                    "repo": repo_name,
-                    "role": role,
-                    "coverage": coverage,
-                    "files_tested": files,
-                })
+                results.append(
+                    {
+                        "repo": repo_name,
+                        "role": role,
+                        "coverage": coverage,
+                        "files_tested": files,
+                    }
+                )
 
                 # Status based on coverage
                 if coverage >= 80:
@@ -299,7 +302,7 @@ def main() -> int:
 
     # Summary
     print(f"\n{'=' * 50}")
-    print(f"Summary")
+    print("Summary")
     print(f"{'=' * 50}\n")
 
     if results:
@@ -310,13 +313,13 @@ def main() -> int:
 
         # Find outliers
         print(f"\n{'=' * 50}")
-        print(f"Coverage Leaders (> 90%):")
+        print("Coverage Leaders (> 90%):")
         leaders = [r for r in results if r["coverage"] > 90]
         if leaders:
             for r in sorted(leaders, key=lambda x: x["coverage"], reverse=True):
                 print(f"  • {r['repo']:30} | {r['coverage']:5.1f}%")
 
-        print(f"\nNeeds Attention (< 70%):")
+        print("\nNeeds Attention (< 70%):")
         laggards = [r for r in results if r["coverage"] < 70]
         if laggards:
             for r in sorted(laggards, key=lambda x: x["coverage"]):
@@ -324,7 +327,7 @@ def main() -> int:
 
         # By role
         print(f"\n{'=' * 50}")
-        print(f"By Role:")
+        print("By Role:")
         print(f"{'=' * 50}\n")
 
         by_role = {}
@@ -341,21 +344,19 @@ def main() -> int:
     # Create coordination issues if requested
     if args.create_issues and results:
         print(f"\n{'=' * 50}")
-        print(f"Creating Coordination Issues")
+        print("Creating Coordination Issues")
         print(f"{'=' * 50}\n")
 
-        issues_created = create_coordination_issues(
-            results, args.min_coverage, ecosystem_path
-        )
+        issues_created = create_coordination_issues(results, args.min_coverage, ecosystem_path)
 
         if issues_created:
             print(f"\n  ✅ Created {len(issues_created)} quality issues")
-            print(f"  📝 View with: mahavishnu coord list-issues --severity quality")
+            print("  📝 View with: mahavishnu coord list-issues --severity quality")
 
     # Store metrics snapshot if requested
     if args.store_metrics and results:
         print(f"\n{'=' * 50}")
-        print(f"Storing Metrics Snapshot")
+        print("Storing Metrics Snapshot")
         print(f"{'=' * 50}\n")
 
         store_metrics_snapshot(results, avg_coverage)

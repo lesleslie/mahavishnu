@@ -4,25 +4,25 @@ Integration tests for coordination system phases 4-6.
 Tests MCP tools, memory integration, and pool execution.
 """
 
-import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+import tempfile
+from unittest.mock import AsyncMock
 
 import pytest
 import yaml
 
-from mahavishnu.core.coordination.manager import CoordinationManager
-from mahavishnu.core.coordination.memory import CoordinationMemory, CoordinationManagerWithMemory
 from mahavishnu.core.coordination.executor import CoordinationExecutor
+from mahavishnu.core.coordination.manager import CoordinationManager
+from mahavishnu.core.coordination.memory import CoordinationManagerWithMemory, CoordinationMemory
 from mahavishnu.core.coordination.models import (
     CrossRepoIssue,
-    CrossRepoTodo,
     CrossRepoPlan,
-    Milestone,
+    CrossRepoTodo,
     IssueStatus,
+    Milestone,
+    PlanStatus,
     Priority,
     TodoStatus,
-    PlanStatus,
 )
 
 
@@ -306,9 +306,9 @@ class TestPhase6_PoolExecution:
         # Create multiple todos
         for i in range(3):
             todo = CrossRepoTodo(
-                id=f"TODO-{i+1:03d}",
-                task=f"Task {i+1}",
-                description=f"Test task {i+1}",
+                id=f"TODO-{i + 1:03d}",
+                task=f"Task {i + 1}",
+                description=f"Test task {i + 1}",
                 repo="mahavishnu",
                 status=TodoStatus.PENDING,
                 priority=Priority.MEDIUM,
@@ -466,4 +466,6 @@ class TestEndToEnd:
         assert final_issue.status == IssueStatus.CLOSED
 
         # Verify all memory operations
-        assert mock_session_buddy.store_memory.call_count == 4  # create_issue, create_todo, execute, close
+        assert (
+            mock_session_buddy.store_memory.call_count == 4
+        )  # create_issue, create_todo, execute, close

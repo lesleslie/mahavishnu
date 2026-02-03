@@ -8,7 +8,7 @@ from oneiric.shell import AdminShell, ShellConfig
 from ..core.app import MahavishnuApp
 from ..core.workflow_state import WorkflowStatus
 from .formatters import LogFormatter, RepoFormatter, WorkflowFormatter
-from .helpers import errors, ps, sync, top
+from .shell_commands import errors, ps, sync, top
 from .magics import MahavishnuMagics
 
 logger = logging.getLogger(__name__)

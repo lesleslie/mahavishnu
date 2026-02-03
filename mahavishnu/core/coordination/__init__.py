@@ -5,28 +5,25 @@ This module provides data models and management for coordinating work across
 multiple repositories in the Mahavishnu ecosystem.
 """
 
+from mahavishnu.core.coordination.executor import CoordinationExecutor
+from mahavishnu.core.coordination.manager import CoordinationManager
+from mahavishnu.core.coordination.memory import (
+    CoordinationManagerWithMemory,
+    CoordinationMemory,
+)
 from mahavishnu.core.coordination.models import (
     CrossRepoIssue,
     CrossRepoPlan,
     CrossRepoTodo,
     Dependency,
-    Milestone,
-    IssueStatus,
-    Priority,
-    PlanStatus,
-    TodoStatus,
-    DependencyType,
     DependencyStatus,
+    DependencyType,
+    IssueStatus,
+    Milestone,
+    PlanStatus,
+    Priority,
+    TodoStatus,
 )
-
-from mahavishnu.core.coordination.manager import CoordinationManager
-
-from mahavishnu.core.coordination.memory import (
-    CoordinationMemory,
-    CoordinationManagerWithMemory,
-)
-
-from mahavishnu.core.coordination.executor import CoordinationExecutor
 
 __all__ = [
     # Models

@@ -6,7 +6,7 @@ Executes todo items via worker pools with progress tracking.
 
 import asyncio
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from mahavishnu.core.coordination.manager import CoordinationManager
 from mahavishnu.core.coordination.models import CrossRepoTodo
@@ -22,8 +22,8 @@ class CoordinationExecutor:
 
     def __init__(
         self,
-        coordination_manager: Optional[CoordinationManager] = None,
-        pool_manager: Optional[Any] = None,
+        coordination_manager: CoordinationManager | None = None,
+        pool_manager: Any | None = None,
     ) -> None:
         """
         Initialize the coordination executor.
@@ -41,7 +41,7 @@ class CoordinationExecutor:
         pool_type: str = "mahavishnu",
         pool_selector: str = "least_loaded",
         timeout: int = 3600,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute a todo via specified pool.
 
@@ -147,7 +147,7 @@ class CoordinationExecutor:
         pool_type: str = "mahavishnu",
         pool_selector: str = "least_loaded",
         parallel: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute all pending todos in a plan.
 
@@ -210,7 +210,7 @@ class CoordinationExecutor:
     async def validate_plan_completion(
         self,
         plan_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Validate that all plan acceptance criteria are met.
 
@@ -244,10 +244,10 @@ class CoordinationExecutor:
 
     async def _execute_via_pool(
         self,
-        task_data: Dict[str, Any],
+        task_data: dict[str, Any],
         pool_type: str,
         pool_selector: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute task via pool manager."""
         try:
             # Import here to avoid circular imports
@@ -269,7 +269,7 @@ class CoordinationExecutor:
     async def _simulate_execution(
         self,
         todo: CrossRepoTodo,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Simulate execution for testing."""
         # Simulate work
         await asyncio.sleep(0.5)
@@ -281,23 +281,20 @@ class CoordinationExecutor:
 
     async def _execute_parallel(
         self,
-        todos: List[CrossRepoTodo],
+        todos: list[CrossRepoTodo],
         pool_type: str,
         pool_selector: str,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Execute todos in parallel."""
-        tasks = [
-            self.execute_todo(todo.id, pool_type, pool_selector)
-            for todo in todos
-        ]
+        tasks = [self.execute_todo(todo.id, pool_type, pool_selector) for todo in todos]
         return await asyncio.gather(*tasks)
 
     async def _execute_sequential(
         self,
-        todos: List[CrossRepoTodo],
+        todos: list[CrossRepoTodo],
         pool_type: str,
         pool_selector: str,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Execute todos sequentially."""
         results = []
         for todo in todos:
@@ -313,18 +310,20 @@ class CoordinationExecutor:
     async def _validate_milestone(
         self,
         milestone: Any,
-        repos: List[str],
-    ) -> Dict[str, Any]:
+        repos: list[str],
+    ) -> dict[str, Any]:
         """Validate a milestone's completion criteria."""
         # Check all criteria
         criteria_met = []
         for criterion in milestone.completion_criteria:
             # This would check if the criterion is met
             # For now, simulate validation
-            criteria_met.append({
-                "criterion": criterion,
-                "met": True,  # Simulated
-            })
+            criteria_met.append(
+                {
+                    "criterion": criterion,
+                    "met": True,  # Simulated
+                }
+            )
 
         all_met = all(c["met"] for c in criteria_met)
 

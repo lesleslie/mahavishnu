@@ -2,8 +2,8 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
 from enum import Enum
+from typing import Any
 
 
 class PoolStatus(Enum):
@@ -18,6 +18,7 @@ class PoolStatus(Enum):
         STOPPED: Pool has been gracefully shut down
         FAILED: Pool has encountered a critical error
     """
+
     PENDING = "pending"
     INITIALIZING = "initializing"
     RUNNING = "running"
@@ -40,6 +41,7 @@ class PoolConfig:
         auto_scale: Enable automatic scaling (default: False)
         memory_enabled: Enable memory aggregation (default: True)
     """
+
     name: str
     pool_type: str
     min_workers: int = 1
@@ -78,6 +80,7 @@ class PoolMetrics:
         avg_task_duration: Average task duration in seconds
         memory_usage_mb: Memory usage in MB
     """
+
     pool_id: str
     status: PoolStatus
     active_workers: int
@@ -151,10 +154,7 @@ class BasePool(ABC):
         pass
 
     @abstractmethod
-    async def execute_batch(
-        self,
-        tasks: list[dict[str, Any]]
-    ) -> dict[str, dict[str, Any]]:
+    async def execute_batch(self, tasks: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         """Execute multiple tasks concurrently.
 
         Args:

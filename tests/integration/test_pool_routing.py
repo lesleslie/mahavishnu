@@ -47,6 +47,7 @@ class TestHeapRoutingScalability:
 
             # Build heap to simulate real spawn behavior
             import heapq
+
             for pool_id, count in pool_mgr._pool_worker_counts.items():
                 heapq.heappush(pool_mgr._worker_count_heap, (count, pool_id))
 
@@ -60,7 +61,9 @@ class TestHeapRoutingScalability:
             # Should be very fast with O(log n) heap
             assert elapsed < 1.0, f"1000 route operations took {elapsed:.2f}s"
 
-            print(f"Heap routing (100 pools): 1000 routes in {elapsed:.3f}s ({1000/elapsed:.0f} routes/sec)")
+            print(
+                f"Heap routing (100 pools): 1000 routes in {elapsed:.3f}s ({1000 / elapsed:.0f} routes/sec)"
+            )
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -97,6 +100,7 @@ class TestHeapRoutingScalability:
 
             # Build heap
             import heapq
+
             for pool_id, count in pool_mgr._pool_worker_counts.items():
                 heapq.heappush(pool_mgr._worker_count_heap, (count, pool_id))
 
@@ -140,6 +144,7 @@ class TestHeapRoutingScalability:
 
             # Build heap
             import heapq
+
             for pool_id, count in pool_mgr._pool_worker_counts.items():
                 heapq.heappush(pool_mgr._worker_count_heap, (count, pool_id))
 
@@ -152,7 +157,9 @@ class TestHeapRoutingScalability:
             least_loaded = pool_mgr._get_least_loaded_pool()
 
             # Should skip stale (5, pool0) and return pool1 or pool2
-            assert least_loaded in ["pool1", "pool2"], f"Expected pool1 or pool2, got {least_loaded}"
+            assert least_loaded in ["pool1", "pool2"], (
+                f"Expected pool1 or pool2, got {least_loaded}"
+            )
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -188,6 +195,7 @@ class TestHeapRoutingScalability:
 
             # Build heap
             import heapq
+
             for pool_id, count in pool_mgr._pool_worker_counts.items():
                 heapq.heappush(pool_mgr._worker_count_heap, (count, pool_id))
 
@@ -198,7 +206,9 @@ class TestHeapRoutingScalability:
             # _get_least_loaded_pool should skip it and return pool1 or pool2
             least_loaded = pool_mgr._get_least_loaded_pool()
 
-            assert least_loaded in ["pool1", "pool2"], f"Expected pool1 or pool2, got {least_loaded}"
+            assert least_loaded in ["pool1", "pool2"], (
+                f"Expected pool1 or pool2, got {least_loaded}"
+            )
             assert "pool0" not in pool_mgr._pools
 
     @pytest.mark.asyncio
@@ -236,6 +246,7 @@ class TestHeapRoutingScalability:
 
             # Build heap
             import heapq
+
             for pool_id, count in pool_mgr._pool_worker_counts.items():
                 heapq.heappush(pool_mgr._worker_count_heap, (count, pool_id))
 
@@ -258,10 +269,12 @@ class TestHeapRoutingScalability:
                 pool_id = route_linear()
             linear_elapsed = time.time() - start
 
-            print(f"\nPerformance comparison (50 pools, 1000 routes):")
-            print(f"  Heap (O(log n)):  {heap_elapsed:.4f}s ({1000/heap_elapsed:.0f} routes/sec)")
-            print(f"  Linear (O(n)):    {linear_elapsed:.4f}s ({1000/linear_elapsed:.0f} routes/sec)")
-            print(f"  Speedup:          {linear_elapsed/heap_elapsed:.2f}x")
+            print("\nPerformance comparison (50 pools, 1000 routes):")
+            print(f"  Heap (O(log n)):  {heap_elapsed:.4f}s ({1000 / heap_elapsed:.0f} routes/sec)")
+            print(
+                f"  Linear (O(n)):    {linear_elapsed:.4f}s ({1000 / linear_elapsed:.0f} routes/sec)"
+            )
+            print(f"  Speedup:          {linear_elapsed / heap_elapsed:.2f}x")
 
             # Heap should be faster (allowing some margin for small test sizes)
             assert heap_elapsed < linear_elapsed * 1.5, "Heap routing should be faster than linear"
@@ -305,6 +318,7 @@ class TestLeastLoadedRouting:
 
             # Build heap
             import heapq
+
             for pool_id, count in pool_mgr._pool_worker_counts.items():
                 heapq.heappush(pool_mgr._worker_count_heap, (count, pool_id))
 

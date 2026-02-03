@@ -18,42 +18,33 @@ Property-based testing complements example-based tests by:
 """
 
 import asyncio
-import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
-import jwt
-import pytest
 from hypothesis import (
+    HealthCheck,
     assume,
     given,
     settings,
+)
+from hypothesis import (
     strategies as st,
-    HealthCheck,
 )
-from hypothesis.stateful import (
-    RuleBasedStateMachine,
-    rule,
-    invariant,
-    initialize,
-    run_state_machine_as_test,
-)
+import pytest
 
+from mahavishnu.core.auth import JWTAuth
 from mahavishnu.core.config import MahavishnuSettings
-from mahavishnu.core.rate_limit import RateLimiter, RateLimitConfig, RateLimitInfo
-from mahavishnu.core.auth import JWTAuth, TokenData
-from mahavishnu.core.workflow_state import WorkflowStatus, WorkflowState
+from mahavishnu.core.errors import AuthenticationError
 from mahavishnu.core.permissions import (
+    CrossProjectAuth,
     Permission,
+    RBACManager,
     Role,
     User,
-    RBACManager,
-    JWTManager,
-    CrossProjectAuth,
 )
-from mahavishnu.core.repo_models import Repository, RepositoryMetadata, RepositoryManifest
-from mahavishnu.core.errors import AuthenticationError, ConfigurationError
+from mahavishnu.core.rate_limit import RateLimitConfig, RateLimiter
+from mahavishnu.core.repo_models import Repository, RepositoryManifest, RepositoryMetadata
+from mahavishnu.core.workflow_state import WorkflowState, WorkflowStatus
 
 # =============================================================================
 # Helper Strategies
@@ -61,15 +52,11 @@ from mahavishnu.core.errors import AuthenticationError, ConfigurationError
 
 # Simple alphanumeric strategies for faster generation
 simple_name_strategy = st.text(
-    alphabet="abcdefghijklmnopqrstuvwxyz0123456789-_",
-    min_size=1,
-    max_size=20
+    alphabet="abcdefghijklmnopqrstuvwxyz0123456789-_", min_size=1, max_size=20
 )
 
 simple_tag_strategy = st.text(
-    alphabet="abcdefghijklmnopqrstuvwxyz0123456789-_",
-    min_size=1,
-    max_size=15
+    alphabet="abcdefghijklmnopqrstuvwxyz0123456789-_", min_size=1, max_size=15
 )
 
 # =============================================================================
@@ -82,8 +69,12 @@ class TestRepositoryProperties:
 
     @given(
         name=simple_name_strategy,
-        package=simple_name_strategy.filter(lambda x: x[0].isalpha() and x.replace("_", "").isalnum()),
-        description=st.text(min_size=1, max_size=200, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        package=simple_name_strategy.filter(
+            lambda x: x[0].isalpha() and x.replace("_", "").isalnum()
+        ),
+        description=st.text(
+            min_size=1, max_size=200, alphabet=st.characters(whitelist_categories=("L", "N"))
+        ),
         tags=st.lists(simple_tag_strategy, min_size=1, max_size=5, unique=True),
     )
     @settings(max_examples=30, deadline=None)
@@ -111,7 +102,9 @@ class TestRepositoryProperties:
             assert repo.path.is_absolute()
             assert len(repo.tags) >= 1
             assert len(repo.tags) <= 10
-            assert all(tag.islower() or any(c.isdigit() or c in "_-" for c in tag) for tag in repo.tags)
+            assert all(
+                tag.islower() or any(c.isdigit() or c in "_-" for c in tag) for tag in repo.tags
+            )
         except ValueError:
             # Some generated inputs may not match Pydantic patterns, which is fine
             pass
@@ -121,7 +114,9 @@ class TestRepositoryProperties:
             st.builds(
                 Repository,
                 name=simple_name_strategy.map(lambda x: x.lower()[:20]),
-                package=simple_name_strategy.filter(lambda x: x and x[0].isalpha()).map(lambda x: x[:20]),
+                package=simple_name_strategy.filter(lambda x: x and x[0].isalpha()).map(
+                    lambda x: x[:20]
+                ),
                 path=st.builds(lambda n: Path(f"/tmp/repos/{n}"), simple_name_strategy),
                 description=st.text(min_size=1, max_size=100),
                 tags=st.lists(simple_tag_strategy, min_size=1, max_size=3, unique=True),
@@ -191,7 +186,9 @@ class TestRateLimitingProperties:
         num_requests=st.integers(min_value=0, max_value=200),
     )
     @settings(max_examples=30, deadline=None)
-    def test_rate_limit_respects_configured_limits(self, per_minute, per_hour, per_day, burst_size, num_requests):
+    def test_rate_limit_respects_configured_limits(
+        self, per_minute, per_hour, per_day, burst_size, num_requests
+    ):
         """Test that rate limiter never exceeds configured limits."""
         # Assume sensible limits
         assume(per_hour >= per_minute)
@@ -214,8 +211,12 @@ class TestRateLimitingProperties:
                 allowed_count += 1
 
         # Invariants that must always hold
-        assert allowed_count <= per_minute, f"Allowed {allowed_count} requests, limit is {per_minute}/min"
-        assert allowed_count <= per_hour, f"Allowed {allowed_count} requests, limit is {per_hour}/hour"
+        assert allowed_count <= per_minute, (
+            f"Allowed {allowed_count} requests, limit is {per_minute}/min"
+        )
+        assert allowed_count <= per_hour, (
+            f"Allowed {allowed_count} requests, limit is {per_hour}/hour"
+        )
         assert allowed_count <= per_day, f"Allowed {allowed_count} requests, limit is {per_day}/day"
 
     @given(
@@ -239,10 +240,14 @@ class TestRateLimitingProperties:
                 break  # Stop once rate limited
 
         # Invariant: First burst_size requests should always be allowed
-        assert allowed_count <= burst_size, f"Burst control failed: allowed {allowed_count} > burst_size {burst_size}"
+        assert allowed_count <= burst_size, (
+            f"Burst control failed: allowed {allowed_count} > burst_size {burst_size}"
+        )
 
     @given(
-        exempt_ips=st.sets(st.text(min_size=7, max_size=15, alphabet="0123456789."), min_size=0, max_size=5),
+        exempt_ips=st.sets(
+            st.text(min_size=7, max_size=15, alphabet="0123456789."), min_size=0, max_size=5
+        ),
         test_ip=st.text(min_size=7, max_size=15, alphabet="0123456789."),
     )
     @settings(max_examples=30, deadline=None, suppress_health_check=[HealthCheck.too_slow])
@@ -261,7 +266,9 @@ class TestRateLimitingProperties:
 
         # Property: Exempt IPs should always be allowed
         for _ in range(20):  # Try multiple requests
-            allowed, info = asyncio.get_event_loop().run_until_complete(limiter.is_allowed(test_ip, config))
+            allowed, info = asyncio.get_event_loop().run_until_complete(
+                limiter.is_allowed(test_ip, config)
+            )
 
             if test_ip in exempt_ips:
                 assert allowed is True, f"Exempt IP {test_ip} was rate limited"
@@ -298,10 +305,14 @@ class TestRateLimitingProperties:
 
         # Invariant: Each client should be allowed up to per_minute requests
         for client, count in client_results.items():
-            assert count <= per_minute, f"Client {client} exceeded rate limit: {count} > {per_minute}"
+            assert count <= per_minute, (
+                f"Client {client} exceeded rate limit: {count} > {per_minute}"
+            )
 
         # Property: Multiple clients can all be under their limits simultaneously
-        assert all(count > 0 for count in client_results.values()), "All clients should be able to make requests"
+        assert all(count > 0 for count in client_results.values()), (
+            "All clients should be able to make requests"
+        )
 
     @given(
         num_keys=st.integers(min_value=1, max_value=5),
@@ -323,7 +334,9 @@ class TestRateLimitingProperties:
             key = f"key_{i}"
             stats = limiter.get_stats(key)
             assert stats["key"] == key
-            assert stats["requests_per_minute"] == requests_per_key, f"Expected {requests_per_key} requests, got {stats['requests_per_minute']}"
+            assert stats["requests_per_minute"] == requests_per_key, (
+                f"Expected {requests_per_key} requests, got {stats['requests_per_minute']}"
+            )
 
 
 # =============================================================================
@@ -335,7 +348,9 @@ class TestJWTAuthProperties:
     """Property-based tests for JWT authentication."""
 
     @given(
-        secret=st.text(min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        secret=st.text(
+            min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))
+        ),
         username=st.text(min_size=1, max_size=20),
         expire_minutes=st.integers(min_value=1, max_value=100),
     )
@@ -352,7 +367,9 @@ class TestJWTAuthProperties:
         assert isinstance(token_data.exp, int)
 
     @given(
-        secret=st.text(min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        secret=st.text(
+            min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))
+        ),
         username=st.text(min_size=1, max_size=20),
         expire_minutes=st.integers(min_value=1, max_value=100),
     )
@@ -365,16 +382,20 @@ class TestJWTAuthProperties:
         token_data = auth.verify_token(token)
 
         # Property: Token expiration should be approximately expire_minutes from now
-        now = datetime.now(tz=timezone.utc)
-        exp_time = datetime.fromtimestamp(token_data.exp, tz=timezone.utc)
+        now = datetime.now(tz=UTC)
+        exp_time = datetime.fromtimestamp(token_data.exp, tz=UTC)
         time_diff = (exp_time - now).total_seconds()
 
         # Allow 5 second tolerance for test execution time
         expected_seconds = expire_minutes * 60
-        assert abs(time_diff - expected_seconds) < 5, f"Token expiration off by {abs(time_diff - expected_seconds)} seconds"
+        assert abs(time_diff - expected_seconds) < 5, (
+            f"Token expiration off by {abs(time_diff - expected_seconds)} seconds"
+        )
 
     @given(
-        secret=st.text(min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        secret=st.text(
+            min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))
+        ),
         username=st.text(min_size=1, max_size=20),
     )
     @settings(max_examples=20, deadline=None)
@@ -393,7 +414,9 @@ class TestJWTAuthProperties:
             wrong_auth.verify_token(token)
 
     @given(
-        secret=st.text(min_size=1, max_size=31, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        secret=st.text(
+            min_size=1, max_size=31, alphabet=st.characters(whitelist_categories=("L", "N"))
+        ),
         username=st.text(min_size=1, max_size=20),
     )
     @settings(max_examples=10)
@@ -408,9 +431,13 @@ class TestRBACProperties:
     """Property-based tests for role-based access control."""
 
     @given(
-        user_id=st.text(min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        user_id=st.text(
+            min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))
+        ),
         repo=st.text(min_size=1, max_size=30),
-        permissions=st.lists(st.sampled_from(list(Permission)), min_size=1, max_size=5, unique=True),
+        permissions=st.lists(
+            st.sampled_from(list(Permission)), min_size=1, max_size=5, unique=True
+        ),
     )
     @settings(max_examples=30, deadline=None)
     def test_permission_check_is_idempotent(self, user_id, repo, permissions):
@@ -425,14 +452,20 @@ class TestRBACProperties:
 
         # Property: Permission checks should be idempotent
         for permission in permissions:
-            result1 = asyncio.get_event_loop().run_until_complete(rbac.check_permission(user_id, repo, permission))
-            result2 = asyncio.get_event_loop().run_until_complete(rbac.check_permission(user_id, repo, permission))
+            result1 = asyncio.get_event_loop().run_until_complete(
+                rbac.check_permission(user_id, repo, permission)
+            )
+            result2 = asyncio.get_event_loop().run_until_complete(
+                rbac.check_permission(user_id, repo, permission)
+            )
 
             assert result1 == result2, f"Permission check for {permission} is not idempotent"
             assert result1 is True, f"User should have permission {permission}"
 
     @given(
-        user_id=st.text(min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        user_id=st.text(
+            min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))
+        ),
         repos=st.lists(st.text(min_size=1, max_size=20), min_size=1, max_size=5, unique=True),
     )
     @settings(max_examples=30, deadline=None)
@@ -462,7 +495,9 @@ class TestRBACProperties:
         has_permission = asyncio.get_event_loop().run_until_complete(
             rbac.check_permission(user_id, forbidden_repo, Permission.READ_REPO)
         )
-        assert has_permission is False, f"User should not have READ_REPO permission for {forbidden_repo}"
+        assert has_permission is False, (
+            f"User should not have READ_REPO permission for {forbidden_repo}"
+        )
 
     @given(
         user_id=st.text(min_size=1, max_size=20),
@@ -505,16 +540,22 @@ class TestRBACProperties:
             rbac.filter_repos_by_permission(user_id, Permission.READ_REPO)
         )
 
-        assert set(filtered).issubset(set(repos)), "Filtered repos should be subset of allowed repos"
+        assert set(filtered).issubset(set(repos)), (
+            "Filtered repos should be subset of allowed repos"
+        )
 
 
 class TestCrossProjectAuthProperties:
     """Property-based tests for cross-project authentication."""
 
     @given(
-        secret=st.text(min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        secret=st.text(
+            min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))
+        ),
         message=st.dictionaries(
-            keys=st.text(min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L",))),
+            keys=st.text(
+                min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L",))
+            ),
             values=st.one_of(st.text(min_size=1, max_size=10), st.integers(), st.booleans()),
             min_size=1,
             max_size=5,
@@ -534,7 +575,9 @@ class TestCrossProjectAuthProperties:
         assert len(sig1) == 64  # SHA256 produces 64 hex characters
 
     @given(
-        secret=st.text(min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        secret=st.text(
+            min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))
+        ),
         message=st.dictionaries(
             keys=st.text(min_size=1, max_size=10),
             values=st.text(min_size=1, max_size=10),
@@ -561,7 +604,9 @@ class TestCrossProjectAuthProperties:
         assert is_valid is False, "Tampered message should fail verification"
 
     @given(
-        secret=st.text(min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        secret=st.text(
+            min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))
+        ),
         message=st.dictionaries(
             keys=st.text(min_size=1, max_size=10),
             values=st.text(min_size=1, max_size=10),
@@ -637,7 +682,9 @@ class TestWorkflowStateProperties:
 
         # Property: created_at should never change
         updated_workflow = asyncio.get_event_loop().run_until_complete(state.get(workflow_id))
-        assert updated_workflow["created_at"] == original_created_at, "created_at should be immutable"
+        assert updated_workflow["created_at"] == original_created_at, (
+            "created_at should be immutable"
+        )
 
     @given(
         workflow_id=st.text(min_size=1, max_size=20),
@@ -664,11 +711,15 @@ class TestWorkflowStateProperties:
         # Property: Progress should be accurate percentage
         workflow = asyncio.get_event_loop().run_until_complete(state.get(workflow_id))
         expected_progress = int((completed / total) * 100)
-        assert workflow["progress"] == expected_progress, f"Progress mismatch: {workflow['progress']} != {expected_progress}"
+        assert workflow["progress"] == expected_progress, (
+            f"Progress mismatch: {workflow['progress']} != {expected_progress}"
+        )
 
     @given(
         num_workflows=st.integers(min_value=1, max_value=10),
-        status_filter=st.sampled_from([None, WorkflowStatus.PENDING, WorkflowStatus.RUNNING, WorkflowStatus.COMPLETED]),
+        status_filter=st.sampled_from(
+            [None, WorkflowStatus.PENDING, WorkflowStatus.RUNNING, WorkflowStatus.COMPLETED]
+        ),
     )
     @settings(max_examples=20, deadline=None)
     def test_workflow_list_filters_correctly(self, num_workflows, status_filter):
@@ -676,7 +727,12 @@ class TestWorkflowStateProperties:
         state = WorkflowState()
 
         # Create workflows with different statuses
-        statuses = [WorkflowStatus.PENDING, WorkflowStatus.RUNNING, WorkflowStatus.COMPLETED, WorkflowStatus.FAILED]
+        statuses = [
+            WorkflowStatus.PENDING,
+            WorkflowStatus.RUNNING,
+            WorkflowStatus.COMPLETED,
+            WorkflowStatus.FAILED,
+        ]
 
         for i in range(num_workflows):
             workflow_id = f"workflow_{i}"
@@ -688,15 +744,21 @@ class TestWorkflowStateProperties:
             asyncio.get_event_loop().run_until_complete(state.update(workflow_id, status=status))
 
         # List workflows
-        workflows = asyncio.get_event_loop().run_until_complete(state.list_workflows(status=status_filter, limit=100))
+        workflows = asyncio.get_event_loop().run_until_complete(
+            state.list_workflows(status=status_filter, limit=100)
+        )
 
         # Property: Filtered list should only contain workflows with specified status
         if status_filter:
             for wf in workflows:
-                assert wf["status"] == status_filter.value, f"Workflow {wf['id']} has wrong status in filtered list"
+                assert wf["status"] == status_filter.value, (
+                    f"Workflow {wf['id']} has wrong status in filtered list"
+                )
         else:
             # No filter means all workflows returned
-            assert len(workflows) == num_workflows, "All workflows should be returned without filter"
+            assert len(workflows) == num_workflows, (
+                "All workflows should be returned without filter"
+            )
 
 
 # =============================================================================
@@ -714,10 +776,17 @@ class TestConfigurationProperties:
         retry_max_attempts=st.integers(min_value=1, max_value=10),
     )
     @settings(max_examples=30, deadline=None)
-    def test_configuration_respects_bounds(self, max_concurrent_workflows, qc_min_score, checkpoint_interval, retry_max_attempts):
+    def test_configuration_respects_bounds(
+        self, max_concurrent_workflows, qc_min_score, checkpoint_interval, retry_max_attempts
+    ):
         """Test that configuration enforces declared bounds."""
         # Property: Configuration should accept values within bounds
-        config = MahavishnuSettings(max_concurrent_workflows=max_concurrent_workflows, qc={min_score=qc_min_score}, session={checkpoint_interval=checkpoint_interval}, resilience={retry_max_attempts=retry_max_attempts})
+        config = MahavishnuSettings(
+            max_concurrent_workflows=max_concurrent_workflows,
+            qc={"min_score": qc_min_score},
+            session={"checkpoint_interval": checkpoint_interval},
+            resilience={"retry_max_attempts": retry_max_attempts},
+        )
 
         assert config.max_concurrent_workflows == max_concurrent_workflows
         assert config.qc.min_score == qc_min_score
@@ -735,10 +804,12 @@ class TestConfigurationProperties:
         """Test that configuration rejects values outside bounds."""
         # Property: Configuration should reject out-of-bounds values
         with pytest.raises(ValueError):
-            MahavishnuSettings(qc={min_score=invalid_scores})
+            MahavishnuSettings(qc={"min_score": invalid_scores})
 
     @given(
-        path_component=st.text(min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        path_component=st.text(
+            min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))
+        ),
     )
     @settings(max_examples=20, deadline=None)
     def test_repos_path_expands_tilde(self, path_component):

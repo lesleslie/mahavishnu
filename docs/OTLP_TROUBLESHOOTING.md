@@ -33,13 +33,14 @@ docker logs otel-collector 2>&1 | tail -5
 
 Save as `diagnose.sh` and run with `bash diagnose.sh`.
 
----
+______________________________________________________________________
 
 ## Common Issues
 
 ### Issue 1: No Traces Appearing in Jaeger
 
 **Symptoms:**
+
 - Jaeger UI shows no traces
 - Client runs without errors
 - No data in Jaeger search
@@ -64,16 +65,19 @@ docker exec otel-collector cat /etc/otel-collector-config.yaml | grep -A 3 "jaeg
 **Solutions:**
 
 1. **Restart Jaeger:**
+
    ```bash
    docker-compose restart jaeger
    ```
 
-2. **Check Jaeger OTLP receiver:**
+1. **Check Jaeger OTLP receiver:**
+
    ```bash
    curl -X POST http://localhost:4318/v1/traces -d '{}'
    ```
 
-3. **Verify exporter configuration:**
+1. **Verify exporter configuration:**
+
    ```yaml
    exporters:
      jaeger:
@@ -82,16 +86,18 @@ docker exec otel-collector cat /etc/otel-collector-config.yaml | grep -A 3 "jaeg
          insecure: true
    ```
 
-4. **Check network connectivity:**
+1. **Check network connectivity:**
+
    ```bash
    docker exec otel-collector nc -zv jaeger 14250
    ```
 
----
+______________________________________________________________________
 
 ### Issue 2: Connection Refused Errors
 
 **Symptoms:**
+
 - `Error: 14 UNAVAILABLE: Connection refused`
 - Client cannot connect to collector
 - Telnet to port fails
@@ -116,6 +122,7 @@ docker exec otel-collector wget -O- http://localhost:4317
 **Solutions:**
 
 1. **Use correct endpoint format:**
+
    ```python
    # Correct
    OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True)
@@ -125,7 +132,8 @@ docker exec otel-collector wget -O- http://localhost:4317
    OTLPSpanExporter(endpoint="https://localhost:4317")  # Should be http://
    ```
 
-2. **Verify port mapping:**
+1. **Verify port mapping:**
+
    ```yaml
    services:
      otel-collector:
@@ -133,7 +141,8 @@ docker exec otel-collector wget -O- http://localhost:4317
          - "4317:4317"  # Must be mapped
    ```
 
-3. **Check firewall:**
+1. **Check firewall:**
+
    ```bash
    # macOS
    sudo pfctl -s rules | grep 4317
@@ -142,7 +151,8 @@ docker exec otel-collector wget -O- http://localhost:4317
    sudo iptables -L -n | grep 4317
    ```
 
-4. **For Docker networking:**
+1. **For Docker networking:**
+
    ```python
    # Use service name when both are in Docker
    endpoint="http://otel-collector:4317"
@@ -151,11 +161,12 @@ docker exec otel-collector wget -O- http://localhost:4317
    endpoint="http://localhost:4317"
    ```
 
----
+______________________________________________________________________
 
 ### Issue 3: Metrics Not Appearing in Prometheus
 
 **Symptoms:**
+
 - Prometheus UI has no data
 - Query returns "no results"
 - Metrics exist in collector but not Prometheus
@@ -179,20 +190,23 @@ docker logs prometheus 2>&1 | grep -i "remote"
 **Solutions:**
 
 1. **Verify remote write configuration:**
+
    ```yaml
    exporters:
      prometheusremotewrite:
        endpoint: 'http://prometheus:9090/api/v1/write'  # Must be /api/v1/write
    ```
 
-2. **Check Prometheus is configured to accept remote write:**
+1. **Check Prometheus is configured to accept remote write:**
+
    ```yaml
    prometheus:
      command:
        - '--enable-feature=remote-write-receiver'
    ```
 
-3. **Manually test metric ingestion:**
+1. **Manually test metric ingestion:**
+
    ```bash
    cat <<EOF | curl -X POST http://localhost:9090/api/v1/write --data-binary @-
    # TYPE test_metric counter
@@ -200,17 +214,19 @@ docker logs prometheus 2>&1 | grep -i "remote"
    EOF
    ```
 
-4. **Check for metric name conflicts:**
+1. **Check for metric name conflicts:**
+
    ```bash
    # List all metrics
    curl http://localhost:8888/metrics | grep "^operations"
    ```
 
----
+______________________________________________________________________
 
 ### Issue 4: Logs Not Appearing in Elasticsearch
 
 **Symptoms:**
+
 - Kibana shows no data
 - Index not created
 - No logs in Elasticsearch
@@ -234,11 +250,13 @@ docker logs elasticsearch 2>&1 | tail -50
 **Solutions:**
 
 1. **Create index pattern manually:**
+
    ```bash
    curl -X PUT http://localhost:9200/mahavishnu-logs-$(date +%Y.%m.%d)
    ```
 
-2. **Check exporter configuration:**
+1. **Check exporter configuration:**
+
    ```yaml
    exporters:
      elasticsearch:
@@ -247,24 +265,27 @@ docker logs elasticsearch 2>&1 | tail -50
        index: 'mahavishnu-logs'  # Without date pattern
    ```
 
-3. **Verify Elasticsearch has no security blocking:**
+1. **Verify Elasticsearch has no security blocking:**
+
    ```yaml
    elasticsearch:
      environment:
        - xpack.security.enabled=false  # Must be disabled for dev
    ```
 
-4. **Test index creation:**
+1. **Test index creation:**
+
    ```bash
    curl -X PUT http://localhost:9200/test-index
    curl -X POST http://localhost:9200/test-index/_doc -H 'Content-Type: application/json' -d '{"message": "test"}'
    ```
 
----
+______________________________________________________________________
 
 ### Issue 5: File Log Receiver Not Working
 
 **Symptoms:**
+
 - Log files exist but not appearing
 - No errors in collector logs
 - File receiver not reading files
@@ -288,6 +309,7 @@ docker exec otel-collector cat /etc/otel-collector-config.yaml | grep -A 10 "fil
 **Solutions:**
 
 1. **Verify volume mount in docker-compose:**
+
    ```yaml
    services:
      otel-collector:
@@ -295,31 +317,35 @@ docker exec otel-collector cat /etc/otel-collector-config.yaml | grep -A 10 "fil
          - /var/log/mahavishnu/sessions:/var/log/mahavishnu/sessions:ro
    ```
 
-2. **Check file format:**
+1. **Check file format:**
+
    ```bash
    # Must be JSON for JSON parser
    cat /var/log/mahavishnu/sessions/claude/test.log
    # Expected: {"timestamp": "...", "message": "..."}
    ```
 
-3. **Fix file permissions:**
+1. **Fix file permissions:**
+
    ```bash
    sudo chmod 644 /var/log/mahavishnu/sessions/*.log
    sudo chown $(whoami) /var/log/mahavishnu/sessions/*.log
    ```
 
-4. **Use correct operators in config:**
+1. **Use correct operators in config:**
+
    ```yaml
    operators:
      - type: json_parser  # For JSON logs
      - type: regex_parser  # For text logs
    ```
 
----
+______________________________________________________________________
 
 ### Issue 6: High Memory Usage
 
 **Symptoms:**
+
 - Collector OOM killed
 - `docker ps` shows collector restarting
 - High memory consumption
@@ -343,6 +369,7 @@ curl http://localhost:8888/metrics | grep memory_limiter
 **Solutions:**
 
 1. **Adjust batch settings:**
+
    ```yaml
    processors:
      batch:
@@ -350,7 +377,8 @@ curl http://localhost:8888/metrics | grep memory_limiter
        send_batch_size: 5000  # Decrease from 10000
    ```
 
-2. **Tighten memory limiter:**
+1. **Tighten memory limiter:**
+
    ```yaml
    memory_limiter:
      check_interval: 1s
@@ -358,7 +386,8 @@ curl http://localhost:8888/metrics | grep memory_limiter
      spike_limit_percentage: 20  # Decrease from 25
    ```
 
-3. **Increase container memory:**
+1. **Increase container memory:**
+
    ```yaml
    services:
      otel-collector:
@@ -368,7 +397,8 @@ curl http://localhost:8888/metrics | grep memory_limiter
              memory: 1G  # Increase from default
    ```
 
-4. **Enable sending queue:**
+1. **Enable sending queue:**
+
    ```yaml
    exporters:
      otlp:
@@ -378,11 +408,12 @@ curl http://localhost:8888/metrics | grep memory_limiter
          num_consumers: 10
    ```
 
----
+______________________________________________________________________
 
 ### Issue 7: Mixed Telemetry from Different Sources
 
 **Symptoms:**
+
 - Can't distinguish Claude vs Qwen traces
 - All telemetry appears as one service
 - Filters not working
@@ -403,6 +434,7 @@ docker logs otel-collector 2>&1 | grep -i "resource"
 **Solutions:**
 
 1. **Use separate endpoints:**
+
    ```python
    # Claude
    OTLPSpanExporter(endpoint="http://localhost:4319")
@@ -411,7 +443,8 @@ docker logs otel-collector 2>&1 | grep -i "resource"
    OTLPSpanExporter(endpoint="http://localhost:4321")
    ```
 
-2. **Set resource attributes:**
+1. **Set resource attributes:**
+
    ```python
    resource = Resource.create({
        "service.name": "claude-integration",
@@ -420,7 +453,8 @@ docker logs otel-collector 2>&1 | grep -i "resource"
    })
    ```
 
-3. **Use attributes processor:**
+1. **Use attributes processor:**
+
    ```yaml
    processors:
      attributes/claude:
@@ -430,11 +464,12 @@ docker logs otel-collector 2>&1 | grep -i "resource"
            action: insert
    ```
 
----
+______________________________________________________________________
 
 ### Issue 8: Batch Delays in Seeing Telemetry
 
 **Symptoms:**
+
 - Telemetry takes 10+ seconds to appear
 - Metrics appear after delays
 - Seems like data is lost
@@ -455,26 +490,29 @@ watch -n 1 'curl -s http://localhost:8888/metrics | grep operations_total'
 **Solutions:**
 
 1. **Reduce batch timeout:**
+
    ```yaml
    processors:
      batch:
        timeout: 1s  # Decrease from 5s for faster export
    ```
 
-2. **Decrease batch size:**
+1. **Decrease batch size:**
+
    ```yaml
    batch:
      send_batch_size: 1000  # Export more frequently
    ```
 
-3. **Use debug logging to verify:**
+1. **Use debug logging to verify:**
+
    ```yaml
    exporters:
      logging:
        loglevel: debug  # See exports in real-time
    ```
 
----
+______________________________________________________________________
 
 ## Debugging Tools
 
@@ -522,7 +560,7 @@ service:
 go tool pprof http://localhost:1777/debug/pprof/heap
 ```
 
----
+______________________________________________________________________
 
 ## Performance Tuning
 
@@ -575,7 +613,7 @@ processors:
     send_batch_size: 1000  # Small batches
 ```
 
----
+______________________________________________________________________
 
 ## Health Checks
 
@@ -653,25 +691,28 @@ else
 fi
 ```
 
----
+______________________________________________________________________
 
 ## Getting Help
 
 If you're still stuck:
 
 1. **Check logs:**
+
    ```bash
    docker-compose logs -f --tail=100 otel-collector
    ```
 
-2. **Enable debug logging:**
+1. **Enable debug logging:**
+
    ```yaml
    exporters:
      logging:
        loglevel: debug
    ```
 
-3. **Verify configuration:**
+1. **Verify configuration:**
+
    ```bash
    docker run --rm -v $(pwd)/config:/config \
      otel/opentelemetry-collector-contrib:latest \
@@ -679,10 +720,12 @@ If you're still stuck:
      --validate
    ```
 
-4. **Check GitHub issues:**
+1. **Check GitHub issues:**
+
    - [OpenTelemetry Collector](https://github.com/open-telemetry/opentelemetry-collector/issues)
    - [OpenTelemetry Python](https://github.com/open-telemetry/opentelemetry-python/issues)
 
-5. **Community resources:**
+1. **Community resources:**
+
    - [OpenTelemetry Slack](https://cloud-native.slack.com/archives/CJFCJHG4Q)
    - [CNCF Discourse](https://discuss.cncf.io/)

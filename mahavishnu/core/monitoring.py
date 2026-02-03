@@ -272,7 +272,6 @@ class AlertManager:
     async def _check_resource_usage(self):
         """Check resource usage."""
         try:
-
             import psutil
 
             # Check memory usage

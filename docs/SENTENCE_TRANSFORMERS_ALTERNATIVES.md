@@ -6,7 +6,7 @@
 
 **Better Solutions**: Use embedding alternatives that work everywhere
 
----
+______________________________________________________________________
 
 ## Quick Comparison
 
@@ -44,7 +44,7 @@ graph TB
 | **OpenAI API** | ✅ | ✅ | ✅ | ✅ | ✅ | Easy |
 | **ONNX Runtime** | ✅ | ✅ | ✅ | ✅ | ✅ | Hard |
 
----
+______________________________________________________________________
 
 ## Recommended Alternatives
 
@@ -84,15 +84,17 @@ embeddings = session.run(None, {
 ```
 
 **Pros**:
+
 - ✅ Works on Intel Macs
 - ✅ Faster inference than PyTorch
 - ✅ Compatible with Python 3.13
 
 **Cons**:
+
 - Requires one-time model export
 - Slightly more complex setup
 
----
+______________________________________________________________________
 
 ### 2. OpenAI Embeddings API ⭐ SIMPLEST
 
@@ -116,17 +118,19 @@ embedding = response.data[0].embedding
 ```
 
 **Pros**:
+
 - ✅ Zero dependencies
 - ✅ Works on all platforms
 - ✅ No local model management
 - ✅ State-of-the-art quality
 
 **Cons**:
+
 - Requires API key
 - Network latency
 - Usage costs apply
 
----
+______________________________________________________________________
 
 ### 3. Ollama with Local Embeddings ⭐ BEST FOR PRIVACY
 
@@ -154,16 +158,18 @@ embedding = get_embedding("Hello world")
 ```
 
 **Pros**:
+
 - ✅ Works on Intel Macs (no PyTorch needed)
 - ✅ Fully local (privacy-preserving)
 - ✅ Easy to use
 - ✅ Supports multiple embedding models
 
 **Cons**:
+
 - Requires Ollama service running
 - Model quality varies
 
----
+______________________________________________________________________
 
 ### 4. FastEmbed ⭐ FASTEST
 
@@ -188,16 +194,18 @@ embeddings = embedding_model.encode([
 ```
 
 **Pros**:
+
 - ✅ Works on all platforms (ONNX-based)
 - ✅ No PyTorch dependency
 - ✅ Fast inference
 - ✅ Multiple models available
 
 **Cons**:
+
 - Limited model selection
 - First download can be slow
 
----
+______________________________________________________________________
 
 ### 5. Sentence-Transformers with CPU-Only PyTorch
 
@@ -217,15 +225,17 @@ embeddings = model.encode("Hello world")
 ```
 
 **Pros**:
+
 - ✅ Familiar API
 - ✅ Works on Intel Macs
 
 **Cons**:
+
 - Uses older PyTorch version (may have security issues)
 - Slower inference
 - Not recommended for production
 
----
+______________________________________________________________________
 
 ## Migration Guide
 
@@ -266,6 +276,7 @@ flowchart TD
 ### Replace sentence-transformers in Code
 
 **Current code** (incompatible):
+
 ```python
 from sentence_transformers import SentenceTransformer
 
@@ -274,6 +285,7 @@ embeddings = model.encode(["text1", "text2"])
 ```
 
 ### Option 1: Use FastEmbed (RECOMMENDED)
+
 ```python
 from fastembed import SentenceTransformer
 
@@ -282,6 +294,7 @@ embeddings = model.encode(["text1", "text2"])
 ```
 
 ### Option 2: Use Ollama
+
 ```python
 import requests
 import json
@@ -297,6 +310,7 @@ embeddings = get_embeddings(["text1", "text2"])
 ```
 
 ### Option 3: Use OpenAI API
+
 ```python
 from openai import OpenAI
 
@@ -312,13 +326,14 @@ def get_embeddings(texts: list[str]) -> list[list[float]]:
 embeddings = get_embeddings(["text1", "text2"])
 ```
 
----
+______________________________________________________________________
 
 ## Recommended Approach for Mahavishnu
 
 ### For Production (Privacy-First): Use FastEmbed
 
 **Implementation**:
+
 ```bash
 # Update dependencies
 # In pyproject.toml, replace:
@@ -328,6 +343,7 @@ embeddings = get_embeddings(["text1", "text2"])
 ```
 
 **Code changes** (in modules using embeddings):
+
 ```python
 # mahavishnu/core/embeddings.py
 from fastembed import SentenceTransformer
@@ -344,6 +360,7 @@ class EmbeddingService:
 ### For Development/Testing: Use Ollama
 
 **Setup**:
+
 ```bash
 # Install Ollama
 brew install ollama
@@ -356,6 +373,7 @@ ollama pull nomic-embed-text
 ```
 
 **Usage**:
+
 ```python
 import requests
 
@@ -372,7 +390,7 @@ def get_embedding(text: str) -> list[float]:
     return response.json()["embedding"]
 ```
 
----
+______________________________________________________________________
 
 ## Performance Comparison
 
@@ -384,33 +402,37 @@ def get_embedding(text: str) -> list[float]:
 | **OpenAI API** | 200-500 ms | Low | ✅ All | ❌ Cloud |
 | **ONNX Runtime** | 30-80 ms | High | ✅ All | ✅ Local |
 
----
+______________________________________________________________________
 
 ## Summary Recommendation
 
 **For Mahavishnu**, I recommend:
 
 1. **Primary**: Use **FastEmbed** for production
+
    - Fast, cross-platform, no dependencies
    - Easy migration (similar API)
 
-2. **Alternative**: Use **Ollama** for development
+1. **Alternative**: Use **Ollama** for development
+
    - Privacy-preserving
    - Supports multiple models
    - Easy to install
 
-3. **Fallback**: Use **OpenAI API** for cloud scenarios
+1. **Fallback**: Use **OpenAI API** for cloud scenarios
+
    - Zero setup
    - Best quality embeddings
    - Pay-per-use pricing
 
----
+______________________________________________________________________
 
 ## Next Steps
 
 Would you like me to:
+
 1. Replace sentence-transformers with FastEmbed in Mahavishnu?
-2. Set up Ollama integration for development?
-3. Create an embedding service abstraction that supports multiple providers?
+1. Set up Ollama integration for development?
+1. Create an embedding service abstraction that supports multiple providers?
 
 Let me know your preference!

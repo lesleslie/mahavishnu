@@ -1,9 +1,9 @@
 """Enhanced observability module for Mahavishnu."""
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-UTC = timezone.utc
+UTC = UTC
 from enum import Enum
 import logging
 import time
@@ -118,7 +118,9 @@ class ObservabilityManager:
 
             # Initialize tracer
             trace_provider = TracerProvider(resource=resource)
-            processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=self.config.observability.otlp_endpoint))
+            processor = BatchSpanProcessor(
+                OTLPSpanExporter(endpoint=self.config.observability.otlp_endpoint)
+            )
             trace_provider.add_span_processor(processor)
             trace.set_tracer_provider(trace_provider)
             self.tracer = trace.get_tracer(__name__)

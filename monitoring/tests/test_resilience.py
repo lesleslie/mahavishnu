@@ -9,27 +9,26 @@ Tests cover:
 """
 
 import asyncio
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from monitoring.resilience import (
+    BackoffStrategy,
     CircuitBreaker,
     CircuitBreakerError,
     CircuitState,
-    Retry,
-    BackoffStrategy,
     MaxRetriesExceededError,
+    Retry,
     circuit_breaker,
-    retry,
     resilient,
+    retry,
     with_fallback,
 )
-
 
 # ============================================================================
 # Circuit Breaker Tests
 # ============================================================================
+
 
 class TestCircuitBreaker:
     """Test circuit breaker functionality."""
@@ -256,6 +255,7 @@ class TestCircuitBreaker:
 # Retry Tests
 # ============================================================================
 
+
 class TestRetry:
     """Test retry functionality."""
 
@@ -384,6 +384,7 @@ class TestRetry:
     @pytest.mark.asyncio
     async def test_retry_decorator(self):
         """Retry should work as a decorator."""
+
         @retry(max_attempts=3)
         async def protected_function():
             raise ConnectionError("Connection failed")
@@ -443,12 +444,14 @@ class TestRetry:
 # Combined Resilience Tests
 # ============================================================================
 
+
 class TestCombinedResilience:
     """Test combined circuit breaker + retry patterns."""
 
     @pytest.mark.asyncio
     async def test_resilient_decorator(self):
         """Resilient decorator should combine circuit breaker and retry."""
+
         @resilient(
             failure_threshold=3,
             recovery_timeout=60,
@@ -480,12 +483,14 @@ class TestCombinedResilience:
 # Fallback Tests
 # ============================================================================
 
+
 class TestFallback:
     """Test fallback pattern."""
 
     @pytest.mark.asyncio
     async def test_fallback_on_exception(self):
         """Fallback should be called when primary function raises exception."""
+
         async def primary_function():
             raise ConnectionError("Primary failed")
 
@@ -503,6 +508,7 @@ class TestFallback:
     @pytest.mark.asyncio
     async def test_fallback_not_called_on_success(self):
         """Fallback should not be called when primary function succeeds."""
+
         async def primary_function():
             return "primary_value"
 
@@ -520,6 +526,7 @@ class TestFallback:
     @pytest.mark.asyncio
     async def test_fallback_with_sync_fallback_function(self):
         """Fallback should work with synchronous fallback function."""
+
         async def primary_function():
             raise ConnectionError("Primary failed")
 
@@ -537,6 +544,7 @@ class TestFallback:
     @pytest.mark.asyncio
     async def test_fallback_only_for_specified_exceptions(self):
         """Fallback should only trigger for specified exceptions."""
+
         async def primary_function():
             raise ValueError("Invalid value")
 
@@ -556,6 +564,7 @@ class TestFallback:
 # ============================================================================
 # Integration Tests
 # ============================================================================
+
 
 class TestResilienceIntegration:
     """Integration tests for resilience patterns."""

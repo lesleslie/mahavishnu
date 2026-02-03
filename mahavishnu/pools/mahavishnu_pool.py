@@ -93,9 +93,7 @@ class MahavishnuPool(BasePool):
         self._workers = {wid: f"worker_{wid}" for wid in worker_ids}
         self._status = PoolStatus.RUNNING
 
-        logger.info(
-            f"MahavishnuPool {self.pool_id} started with {len(worker_ids)} workers"
-        )
+        logger.info(f"MahavishnuPool {self.pool_id} started with {len(worker_ids)} workers")
 
         return self.pool_id
 
@@ -150,10 +148,7 @@ class MahavishnuPool(BasePool):
         worker_ids = list(self._workers.keys())
 
         # Round-robin task assignment
-        worker_tasks = [
-            (worker_ids[i % len(worker_ids)], task)
-            for i, task in enumerate(tasks)
-        ]
+        worker_tasks = [(worker_ids[i % len(worker_ids)], task) for i, task in enumerate(tasks)]
 
         start_time = time.time()
         results = await self.worker_manager.execute_batch(
@@ -181,8 +176,7 @@ class MahavishnuPool(BasePool):
             }
 
         logger.info(
-            f"MahavishnuPool {self.pool_id} executed {len(tasks)} tasks "
-            f"in {total_duration:.2f}s"
+            f"MahavishnuPool {self.pool_id} executed {len(tasks)} tasks in {total_duration:.2f}s"
         )
 
         return task_results
@@ -209,8 +203,7 @@ class MahavishnuPool(BasePool):
         if target_worker_count > current_count:
             # Scale up
             logger.info(
-                f"Scaling up MahavishnuPool {self.pool_id}: "
-                f"{current_count} → {target_worker_count}"
+                f"Scaling up MahavishnuPool {self.pool_id}: {current_count} → {target_worker_count}"
             )
             new_workers = await self.worker_manager.spawn_workers(
                 worker_type=self.config.worker_type,
@@ -270,9 +263,7 @@ class MahavishnuPool(BasePool):
 
         # Calculate average task duration
         avg_duration = (
-            sum(self._task_durations) / len(self._task_durations)
-            if self._task_durations
-            else 0.0
+            sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
         )
 
         return PoolMetrics(
@@ -297,24 +288,24 @@ class MahavishnuPool(BasePool):
         # Transform WorkerResults to memory format
         memory_items = []
         for worker_id, result in results.items():
-            memory_items.append({
-                "content": result.output or "",
-                "metadata": {
-                    "type": "pool_worker_execution",
-                    "pool_id": self.pool_id,
-                    "pool_type": "mahavishnu",
-                    "worker_id": result.worker_id,
-                    "status": result.status.value,
-                    "duration_seconds": result.duration_seconds,
-                    "exit_code": result.exit_code,
-                    "error": result.error,
-                    "timestamp": time.time(),
-                },
-            })
+            memory_items.append(
+                {
+                    "content": result.output or "",
+                    "metadata": {
+                        "type": "pool_worker_execution",
+                        "pool_id": self.pool_id,
+                        "pool_type": "mahavishnu",
+                        "worker_id": result.worker_id,
+                        "status": result.status.value,
+                        "duration_seconds": result.duration_seconds,
+                        "exit_code": result.exit_code,
+                        "error": result.error,
+                        "timestamp": time.time(),
+                    },
+                }
+            )
 
-        logger.info(
-            f"Collected {len(memory_items)} memory items from pool {self.pool_id}"
-        )
+        logger.info(f"Collected {len(memory_items)} memory items from pool {self.pool_id}")
 
         return memory_items
 

@@ -18,6 +18,7 @@ docker-compose up -d
 ```
 
 This starts:
+
 - **Prometheus** (metrics): http://localhost:9090
 - **Grafana** (dashboards): http://localhost:3000
 - **Jaeger** (traces): http://localhost:16686
@@ -69,6 +70,7 @@ async def metrics():
 ### 4. Verify Monitoring (instant)
 
 Check your MCP server metrics:
+
 ```bash
 curl http://localhost:8000/metrics
 ```
@@ -80,15 +82,18 @@ You should see Prometheus metrics output!
 ### Grafana (http://localhost:3000)
 
 **Login**:
+
 - Username: `admin`
 - Password: `admin`
 
 **Import Dashboard**:
+
 1. Navigate to Dashboards → Import
-2. Upload `monitoring/dashboards/mcp_ecosystem.json`
-3. View your MCP ecosystem metrics in real-time!
+1. Upload `monitoring/dashboards/mcp_ecosystem.json`
+1. View your MCP ecosystem metrics in real-time!
 
 **Dashboard Features**:
+
 - Request rate and latency
 - Tool success rate
 - Worker pool status
@@ -98,14 +103,16 @@ You should see Prometheus metrics output!
 ### Jaeger (http://localhost:16686)
 
 **Search Traces**:
+
 1. Select your service from the dropdown
-2. Search by operation name, trace ID, or tags
-3. View detailed trace timeline
-4. Identify bottlenecks and errors
+1. Search by operation name, trace ID, or tags
+1. View detailed trace timeline
+1. Identify bottlenecks and errors
 
 ### Prometheus (http://localhost:9090)
 
 **Query Metrics**:
+
 ```promql
 # Error rate
 rate(mcp_tool_calls_total{status="error"}[5m])
@@ -172,14 +179,14 @@ Once your MCP servers have monitoring integrated, Prometheus will automatically 
 ### Metrics not appearing
 
 1. Check Prometheus targets: http://localhost:9090/targets
-2. Verify `/metrics` endpoint is accessible
-3. Check Docker logs: `docker-compose logs prometheus`
+1. Verify `/metrics` endpoint is accessible
+1. Check Docker logs: `docker-compose logs prometheus`
 
 ### Traces not appearing
 
 1. Check Jaeger UI: http://localhost:16686
-2. Verify OTLP endpoint is correct
-3. Check Docker logs: `docker-compose logs otel-collector`
+1. Verify OTLP endpoint is correct
+1. Check Docker logs: `docker-compose logs otel-collector`
 
 ### Grafana can't connect to Prometheus
 
@@ -192,6 +199,7 @@ Once your MCP servers have monitoring integrated, Prometheus will automatically 
 ## Example: Full Integration
 
 See `monitoring/example_integration.py` for a complete working example showing:
+
 - OpenTelemetry span creation
 - Prometheus metrics collection
 - Custom attributes
@@ -201,10 +209,10 @@ See `monitoring/example_integration.py` for a complete working example showing:
 ## Next Steps
 
 1. **Configure alerting** - Set up AlertManager rules
-2. **Add log aggregation** - Configure Promtail for MCP server logs
-3. **Create custom dashboards** - Build domain-specific views
-4. **Set up synthetic monitoring** - Health checks and uptime monitoring
-5. **Performance baselines** - Establish normal operating ranges
+1. **Add log aggregation** - Configure Promtail for MCP server logs
+1. **Create custom dashboards** - Build domain-specific views
+1. **Set up synthetic monitoring** - Health checks and uptime monitoring
+1. **Performance baselines** - Establish normal operating ranges
 
 ## Architecture Overview
 
@@ -235,11 +243,13 @@ See `monitoring/example_integration.py` for a complete working example showing:
 ## Cost
 
 **Self-hosted** (recommended for development):
+
 - Infrastructure: $0 (your own server)
 - Time: 1-2 hours setup
 - Maintenance: Low
 
 **Cloud-hosted** (production):
+
 - GCP Cloud Operations: ~$50/month for basic tier
 - AWS X-Ray: ~$30/TB traced
 - Azure Monitor: ~$25/month
@@ -247,6 +257,7 @@ See `monitoring/example_integration.py` for a complete working example showing:
 ## Support
 
 For issues or questions:
+
 - Check logs: `docker-compose logs -f [service-name]`
 - Health check: `curl http://localhost:9090/-/healthy`
 - Documentation: `monitoring/MONITORING_GUIDE.md`
@@ -257,5 +268,5 @@ For issues or questions:
 ✅ Distributed tracing across services
 ✅ Real-time dashboards operational
 ✅ Alert rules configured (Phase 4, Task 2)
-✅ <1% performance overhead
-✅ <5s scrape interval
+✅ \<1% performance overhead
+✅ \<5s scrape interval

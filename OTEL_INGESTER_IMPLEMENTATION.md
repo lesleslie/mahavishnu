@@ -9,17 +9,20 @@ Successfully implemented a **native OTel trace ingester** using Akosha's HotStor
 ### Files Created
 
 1. **`/Users/les/Projects/mahavishnu/mahavishnu/ingesters/otel_ingester.py`** (490 lines)
+
    - Complete OtelIngester class implementation
    - Async/await throughout for high performance
    - Comprehensive error handling
    - Context manager support
    - Factory function for convenient instantiation
 
-2. **`/Users/les/Projects/mahavishnu/mahavishnu/ingesters/__init__.py`**
+1. **`/Users/les/Projects/mahavishnu/mahavishnu/ingesters/__init__.py`**
+
    - Module exports: `OtelIngester`, `create_otel_ingester`
    - Package initialization
 
-3. **`/Users/les/Projects/mahavishnu/mahavishnu/ingesters/README.md`**
+1. **`/Users/les/Projects/mahavishnu/mahavishnu/ingesters/README.md`**
+
    - Complete documentation
    - Usage examples
    - API reference
@@ -71,23 +74,27 @@ OtelIngester.search_traces() → Similarity search
 ## Key Features
 
 ### 1. Semantic Search
+
 - Find traces by meaning, not just exact matches
 - Uses cosine similarity on embeddings
 - Configurable similarity threshold (default: 0.7)
 
 ### 2. High Performance
+
 - **In-Memory Storage**: DuckDB in-memory database for fast access
 - **Embedding Caching**: FIFO cache with configurable size (default: 1000)
 - **Batch Ingestion**: Efficient bulk processing
 - **Async/Await**: Full async support for concurrent operations
 
 ### 3. Resilient Error Handling
+
 - **Graceful Degradation**: Continues processing on individual trace failures
 - **Validation**: Checks required fields (trace_id, spans)
 - **Timestamp Parsing**: Handles ISO 8601 and Unix timestamps
 - **Embedding Fallbacks**: Returns zero vector on failure (logs error)
 
 ### 4. Production Ready
+
 - **Type Hints**: Full type annotations
 - **Docstrings**: Comprehensive Google-style docstrings
 - **Context Manager**: `async with OtelIngester() as ingester:`
@@ -213,15 +220,15 @@ export MAHAVISHNU_OTEL_INGESTER_SIMILARITY_THRESHOLD=0.7
 - **Ingestion**: ~1000 traces/second (in-memory)
 - **Embedding Generation**: ~50 embeddings/second (first time)
 - **Embedding (Cached)**: ~10,000 embeddings/second
-- **Search**: <10ms for 100K traces (using HNSW index)
+- **Search**: \<10ms for 100K traces (using HNSW index)
 
 ### Optimization Tips
 
 1. **Use In-Memory for Testing**: `hot_store_path=":memory:"`
-2. **Use Persistent for Production**: `hot_store_path="/data/traces.db"`
-3. **Increase Cache Size**: For repeated content
-4. **Batch Ingestion**: Use `ingest_batch()` for bulk loads
-5. **Tune Threshold**: Lower (0.6) for more results, higher (0.9) for precision
+1. **Use Persistent for Production**: `hot_store_path="/data/traces.db"`
+1. **Increase Cache Size**: For repeated content
+1. **Batch Ingestion**: Use `ingest_batch()` for bulk loads
+1. **Tune Threshold**: Lower (0.6) for more results, higher (0.9) for precision
 
 ## Dependencies
 
@@ -240,10 +247,12 @@ pip install duckdb
 ### Akosha (HotStore)
 
 The ingester imports from Akosha:
+
 - `from akosha.storage import HotStore`
 - `from akosha.models import HotRecord`
 
 Akosha provides:
+
 - DuckDB connection management
 - HNSW vector indexing
 - Cosine similarity search
@@ -253,7 +262,7 @@ Akosha provides:
 
 ### Requirements Met
 
-✅ **Line Count**: 490 lines (requirement: <500)
+✅ **Line Count**: 490 lines (requirement: \<500)
 ✅ **All Required Methods**: initialize, ingest_trace, ingest_batch, search_traces, get_trace_by_id, close
 ✅ **Async/Await**: Full async support throughout
 ✅ **Type Hints**: Complete type annotations
@@ -279,7 +288,8 @@ mahavishnu/ingesters/
 
 ### Integration with Mahavishnu
 
-1. **Add to MahavishnuApp._initialize_adapters()**:
+1. **Add to MahavishnuApp.\_initialize_adapters()**:
+
    ```python
    if settings.otel_ingester_enabled:
        from mahavishnu.ingesters import OtelIngester
@@ -287,7 +297,8 @@ mahavishnu/ingesters/
        await self.otel_ingester.initialize()
    ```
 
-2. **Add MCP Tool** (optional):
+1. **Add MCP Tool** (optional):
+
    ```python
    @mcp.tool()
    async def ingest_otel_trace(trace_data: dict) -> dict:
@@ -301,7 +312,8 @@ mahavishnu/ingesters/
        return await app.otel_ingester.search_traces(query, limit)
    ```
 
-3. **Add CLI Commands** (optional):
+1. **Add CLI Commands** (optional):
+
    ```bash
    mahavishnu otel ingest trace.json
    mahavishnu otel search "database errors"
@@ -311,6 +323,7 @@ mahavishnu/ingesters/
 ### Testing
 
 Create integration tests in `tests/integration/test_otel_ingester.py`:
+
 - Test trace ingestion
 - Test semantic search
 - Test batch processing
@@ -322,21 +335,25 @@ Create integration tests in `tests/integration/test_otel_ingester.py`:
 ### Common Issues
 
 1. **Import Error: sentence-transformers**
+
    ```bash
    pip install sentence-transformers
    ```
 
-2. **HotStore Not Initialized**
+1. **HotStore Not Initialized**
+
    ```python
    await ingester.initialize()  # Must call before other methods
    ```
 
-3. **No Search Results**
+1. **No Search Results**
+
    - Lower the `threshold` parameter
    - Check traces were ingested successfully
    - Verify `system_id` filter matches trace data
 
-4. **Slow Embedding Generation**
+1. **Slow Embedding Generation**
+
    - Increase `cache_size` parameter
    - Use faster model: `embedding_model="all-MiniLM-L6-v2"`
    - Pre-generate embeddings offline
@@ -356,6 +373,7 @@ Successfully implemented a **production-ready OTel trace ingester** using Akosha
 **Status**: Ready for integration and testing.
 
 **File Locations**:
+
 - Implementation: `/Users/les/Projects/mahavishnu/mahavishnu/ingesters/otel_ingester.py`
 - Documentation: `/Users/les/Projects/mahavishnu/mahavishnu/ingesters/README.md`
 - Configuration: `/Users/les/Projects/mahavishnu/mahavishnu/core/config.py`

@@ -2,7 +2,6 @@
 """Test MCP OTel tools with sample Claude and Qwen traces."""
 
 import asyncio
-import json
 from pathlib import Path
 
 
@@ -14,8 +13,9 @@ async def main():
 
     # Import after path setup
     try:
-        from mahavishnu.ingesters import OtelIngester
         from akosha.storage import HotStore
+
+        from mahavishnu.ingesters import OtelIngester
     except ImportError as e:
         print(f"❌ Import error: {e}")
         print("\nRequired: pip install duckdb sentence-transformers")

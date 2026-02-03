@@ -9,8 +9,8 @@ This adapter provides:
 - OpenTelemetry instrumentation for tracing and metrics
 """
 
-import time
 from pathlib import Path
+import time
 from typing import Any
 
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -173,12 +173,8 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 tracer_provider = trace.get_tracer_provider()
                 meter_provider = metrics.get_meter_provider()
 
-                self.tracer = tracer_provider.get_tracer(
-                    "mahavishnu.llamaindex", "1.0.0"
-                )
-                self.meter = meter_provider.get_meter(
-                    "mahavishnu.llamaindex", "1.0.0"
-                )
+                self.tracer = tracer_provider.get_tracer("mahavishnu.llamaindex", "1.0.0")
+                self.meter = meter_provider.get_meter("mahavishnu.llamaindex", "1.0.0")
 
                 # Create metric instruments
                 self.ingest_duration_histogram = self.meter.create_histogram(
@@ -230,27 +226,13 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         self.meter = MockMeter()
 
         # Create fallback metric instruments
-        self.ingest_duration_histogram = self.meter.create_histogram(
-            "llamaindex.ingest.duration"
-        )
-        self.query_duration_histogram = self.meter.create_histogram(
-            "llamaindex.query.duration"
-        )
-        self.documents_counter = self.meter.create_counter(
-            "llamaindex.documents.count"
-        )
-        self.nodes_counter = self.meter.create_counter(
-            "llamaindex.nodes.count"
-        )
-        self.query_counter = self.meter.create_counter(
-            "llamaindex.queries.count"
-        )
-        self.error_counter = self.meter.create_counter(
-            "llamaindex.errors.count"
-        )
-        self.index_counter = self.meter.create_counter(
-            "llamaindex.indexes.count"
-        )
+        self.ingest_duration_histogram = self.meter.create_histogram("llamaindex.ingest.duration")
+        self.query_duration_histogram = self.meter.create_histogram("llamaindex.query.duration")
+        self.documents_counter = self.meter.create_counter("llamaindex.documents.count")
+        self.nodes_counter = self.meter.create_counter("llamaindex.nodes.count")
+        self.query_counter = self.meter.create_counter("llamaindex.queries.count")
+        self.error_counter = self.meter.create_counter("llamaindex.errors.count")
+        self.index_counter = self.meter.create_counter("llamaindex.indexes.count")
 
     def _truncate_query(self, query: str, max_length: int = 100) -> str:
         """Truncate query text for span attributes to avoid excessive size.
@@ -294,7 +276,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 "repo.name": Path(repo_path).name,
                 "llamaindex.operation": "ingest",
                 "vector.backend": self._vector_backend,
-            }
+            },
         ) as span:
             start_time = time.time()
             error_occurred = False
@@ -312,7 +294,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                             "operation": "ingest",
                             "error_type": "path_not_found",
                             "repo.path": repo_path,
-                        }
+                        },
                     )
                     return {
                         "repo": repo_path,
@@ -333,7 +315,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 # Get file types to include (default: common code/doc files)
                 file_types = task_params.get(
                     "file_types",
-                    [".py", ".js", ".ts", ".md", ".txt", ".rst", ".yaml", ".yml", ".json"]
+                    [".py", ".js", ".ts", ".md", ".txt", ".rst", ".yaml", ".yml", ".json"],
                 )
                 span.set_attribute("ingest.file_types", ",".join(file_types))
 
@@ -374,8 +356,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
                 # Enhance documents with code graph context
                 with self.tracer.start_as_current_span(
-                    "llamaindex.enhance_documents",
-                    attributes={"doc.count": len(documents)}
+                    "llamaindex.enhance_documents", attributes={"doc.count": len(documents)}
                 ) as enhance_span:
                     for doc in documents:
                         file_path = Path(doc.metadata.get("file_path", ""))
@@ -405,19 +386,18 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                             )
 
                 # Parse documents into nodes
-                with self.tracer.start_as_current_span(
-                    "llamaindex.parse_nodes"
-                ) as parse_span:
+                with self.tracer.start_as_current_span("llamaindex.parse_nodes") as parse_span:
                     nodes = self.node_parser.get_nodes_from_documents(documents)
                     parse_span.set_attribute("nodes.count", len(nodes))
 
                 # Create storage context with OpenSearch vector store if available
                 with self.tracer.start_as_current_span(
-                    "llamaindex.create_index",
-                    attributes={"vector.backend": self._vector_backend}
+                    "llamaindex.create_index", attributes={"vector.backend": self._vector_backend}
                 ) as create_span:
                     if self.vector_store:
-                        storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
+                        storage_context = StorageContext.from_defaults(
+                            vector_store=self.vector_store
+                        )
                         # Create index with persistent OpenSearch storage
                         index = VectorStoreIndex(nodes, storage_context=storage_context)
                     else:
@@ -439,15 +419,13 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                         "repo.path": repo_path,
                         "repo.name": repo.name,
                         "vector.backend": self._vector_backend,
-                    }
+                    },
                 )
                 self.documents_counter.add(
-                    len(documents),
-                    attributes={"repo.path": repo_path, "repo.name": repo.name}
+                    len(documents), attributes={"repo.path": repo_path, "repo.name": repo.name}
                 )
                 self.nodes_counter.add(
-                    len(nodes),
-                    attributes={"repo.path": repo_path, "repo.name": repo.name}
+                    len(nodes), attributes={"repo.path": repo_path, "repo.name": repo.name}
                 )
                 self.index_counter.add(
                     1,
@@ -455,7 +433,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                         "repo.path": repo_path,
                         "repo.name": repo.name,
                         "vector.backend": self._vector_backend,
-                    }
+                    },
                 )
 
                 # Add completion attributes to span
@@ -496,7 +474,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                         "operation": "ingest",
                         "error_type": type(e).__name__,
                         "repo.path": repo_path,
-                    }
+                    },
                 )
 
                 return {
@@ -595,7 +573,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 "query.text": self._truncate_query(query_text),
                 "query.top_k": top_k,
                 "vector.backend": self._vector_backend,
-            }
+            },
         ) as span:
             start_time = time.time()
 
@@ -610,7 +588,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                             "operation": "query",
                             "error_type": "missing_query",
                             "repo.path": repo_path,
-                        }
+                        },
                     )
                     return {
                         "repo": repo_path,
@@ -640,7 +618,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                                     "operation": "query",
                                     "error_type": "index_not_found",
                                     "repo.path": repo_path,
-                                }
+                                },
                             )
                             return {
                                 "repo": repo_path,
@@ -658,9 +636,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 )
 
                 # Execute query
-                with self.tracer.start_as_current_span(
-                    "llamaindex.execute_query"
-                ) as exec_span:
+                with self.tracer.start_as_current_span("llamaindex.execute_query") as exec_span:
                     response = query_engine.query(query_text)
                     exec_span.set_attribute("response.sources_count", len(response.source_nodes))
 
@@ -697,7 +673,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                         "repo.name": Path(repo_path).name,
                         "vector.backend": self._vector_backend,
                         "query.top_k": top_k,
-                    }
+                    },
                 )
                 self.query_counter.add(
                     1,
@@ -705,7 +681,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                         "repo.path": repo_path,
                         "repo.name": Path(repo_path).name,
                         "vector.backend": self._vector_backend,
-                    }
+                    },
                 )
 
                 # Add completion attributes to span
@@ -743,7 +719,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                         "operation": "query",
                         "error_type": type(e).__name__,
                         "repo.path": repo_path,
-                    }
+                    },
                 )
 
                 return {
@@ -780,7 +756,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 "task.id": task_params.get("id", "unknown"),
                 "repos.count": len(repos),
                 "llamaindex.operation": "execute",
-            }
+            },
         ) as span:
             results = []
             success_count = 0
@@ -839,7 +815,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             # Add completion attributes to span
             span.set_attribute("execute.success_count", success_count)
             span.set_attribute("execute.failure_count", failure_count)
-            span.set_attribute("execute.status", "success" if failure_count == 0 else "partial_failure")
+            span.set_attribute(
+                "execute.status", "success" if failure_count == 0 else "partial_failure"
+            )
 
             return {
                 "status": "completed",
@@ -872,7 +850,8 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 "documents_loaded": sum(len(docs) for docs in self.documents.values()),
                 "vector_backend": self._vector_backend,
                 "configured": True,
-                "telemetry_enabled": OTEL_AVAILABLE and getattr(self.config, "metrics_enabled", False),
+                "telemetry_enabled": OTEL_AVAILABLE
+                and getattr(self.config, "metrics_enabled", False),
                 "opentelemetry_available": OTEL_AVAILABLE,
             }
 

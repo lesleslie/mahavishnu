@@ -66,21 +66,25 @@ The Dead Letter Queue (DLQ) is a production-grade system for handling failed wor
 ## Retry Policies
 
 ### Never (`RetryPolicy.NEVER`)
+
 - **Use Case**: Permanent errors (permissions, validation, configuration)
 - **Behavior**: Task is enqueued but never automatically retried
 - **Action**: Manual intervention required
 
 ### Linear (`RetryPolicy.LINEAR`)
+
 - **Use Case**: Resource constraints, rate limits
 - **Behavior**: Retry with linear backoff (5min, 10min, 15min, ...)
 - **Formula**: `delay = 5 * (retry_count + 1)` minutes
 
 ### Exponential (`RetryPolicy.EXPONENTIAL`) ⭐ **Default**
+
 - **Use Case**: Transient errors, network issues, temporary failures
 - **Behavior**: Exponential backoff with 60-minute cap (1min, 2min, 4min, 8min, ...)
 - **Formula**: `delay = min(2^retry_count, 60)` minutes
 
 ### Immediate (`RetryPolicy.IMMEDIATE`)
+
 - **Use Case**: Quick retries for flaky operations
 - **Behavior**: Retry on next processor cycle
 - **Delay**: 0 seconds (respecting processor interval)
@@ -478,6 +482,7 @@ pytest tests/unit/test_dead_letter_queue.py --cov=mahavishnu.core.dead_letter_qu
 ### Test Coverage
 
 The test suite covers:
+
 - ✅ Task enqueue and retrieval
 - ✅ Retry policy calculations (never, linear, exponential, immediate)
 - ✅ Automatic retry processing

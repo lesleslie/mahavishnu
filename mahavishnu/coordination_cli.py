@@ -6,23 +6,16 @@ plans, todos, and dependencies.
 """
 
 from datetime import datetime
-from typing import Optional
 
-import typer
 from rich.console import Console
 from rich.table import Table
+import typer
 
 from mahavishnu.core.coordination.manager import CoordinationManager
 from mahavishnu.core.coordination.models import (
     CrossRepoIssue,
-    CrossRepoPlan,
     CrossRepoTodo,
-    Dependency,
-    DependencyValidation,
-    DependencyType,
-    DependencyStatus,
     IssueStatus,
-    PlanStatus,
     Priority,
     TodoStatus,
 )
@@ -43,10 +36,10 @@ def add_coordination_commands(app: typer.Typer) -> None:
 
 @coord_app.command("list-issues")
 def list_issues(
-    status: Optional[str] = typer.Option(None, "--status", "-s", help="Filter by status"),
-    priority: Optional[str] = typer.Option(None, "--priority", "-p", help="Filter by priority"),
-    repo: Optional[str] = typer.Option(None, "--repo", "-r", help="Filter by repository"),
-    assignee: Optional[str] = typer.Option(None, "--assignee", "-a", help="Filter by assignee"),
+    status: str | None = typer.Option(None, "--status", "-s", help="Filter by status"),
+    priority: str | None = typer.Option(None, "--priority", "-p", help="Filter by priority"),
+    repo: str | None = typer.Option(None, "--repo", "-r", help="Filter by repository"),
+    assignee: str | None = typer.Option(None, "--assignee", "-a", help="Filter by assignee"),
 ):
     """List cross-repository issues with optional filtering."""
     mgr = CoordinationManager()
@@ -125,7 +118,7 @@ def show_issue(
     if issue.labels:
         console.print(f"[bold]Labels:[/bold] {', '.join(issue.labels)}")
     if issue.metadata:
-        console.print(f"\n[bold]Metadata:[/bold]")
+        console.print("\n[bold]Metadata:[/bold]")
         for key, value in issue.metadata.items():
             console.print(f"  {key}: {value}")
 
@@ -137,8 +130,8 @@ def create_issue(
     repos: str = typer.Option(..., "--repos", "-r", help="Comma-separated list of repositories"),
     priority: str = typer.Option("medium", "--priority", "-p", help="Issue priority"),
     severity: str = typer.Option("normal", "--severity", help="Severity level"),
-    assignee: Optional[str] = typer.Option(None, "--assignee", "-a", help="Assignee"),
-    target: Optional[str] = typer.Option(None, "--target", help="Target completion date (ISO 8601)"),
+    assignee: str | None = typer.Option(None, "--assignee", "-a", help="Assignee"),
+    target: str | None = typer.Option(None, "--target", help="Target completion date (ISO 8601)"),
 ):
     """Create a new cross-repository issue."""
     mgr = CoordinationManager()
@@ -189,8 +182,8 @@ def create_issue(
 @coord_app.command("update-issue")
 def update_issue(
     issue_id: str = typer.Argument(..., help="Issue identifier"),
-    status: Optional[str] = typer.Option(None, "--status", "-s", help="New status"),
-    priority: Optional[str] = typer.Option(None, "--priority", "-p", help="New priority"),
+    status: str | None = typer.Option(None, "--status", "-s", help="New status"),
+    priority: str | None = typer.Option(None, "--priority", "-p", help="New priority"),
 ):
     """Update an existing issue."""
     mgr = CoordinationManager()
@@ -240,9 +233,9 @@ def close_issue(
 
 @coord_app.command("list-todos")
 def list_todos(
-    status: Optional[str] = typer.Option(None, "--status", "-s", help="Filter by status"),
-    repo: Optional[str] = typer.Option(None, "--repo", "-r", help="Filter by repository"),
-    assignee: Optional[str] = typer.Option(None, "--assignee", "-a", help="Filter by assignee"),
+    status: str | None = typer.Option(None, "--status", "-s", help="Filter by status"),
+    repo: str | None = typer.Option(None, "--repo", "-r", help="Filter by repository"),
+    assignee: str | None = typer.Option(None, "--assignee", "-a", help="Filter by assignee"),
 ):
     """List todo items with optional filtering."""
     mgr = CoordinationManager()
@@ -318,7 +311,7 @@ def show_todo(
     if todo.labels:
         console.print(f"[bold]Labels:[/bold] {', '.join(todo.labels)}")
     if todo.acceptance_criteria:
-        console.print(f"\n[bold]Acceptance Criteria:[/bold]")
+        console.print("\n[bold]Acceptance Criteria:[/bold]")
         for i, criterion in enumerate(todo.acceptance_criteria, 1):
             console.print(f"  {i}. {criterion}")
 
@@ -330,7 +323,7 @@ def create_todo(
     repo: str = typer.Option(..., "--repo", "-r", help="Repository nickname"),
     estimate: float = typer.Option(..., "--estimate", "-e", help="Estimated hours"),
     priority: str = typer.Option("medium", "--priority", "-p", help="Task priority"),
-    assignee: Optional[str] = typer.Option(None, "--assignee", "-a", help="Assignee"),
+    assignee: str | None = typer.Option(None, "--assignee", "-a", help="Assignee"),
 ):
     """Create a new todo item."""
     mgr = CoordinationManager()
@@ -407,8 +400,8 @@ def complete_todo(
 
 @coord_app.command("list-plans")
 def list_plans(
-    status: Optional[str] = typer.Option(None, "--status", "-s", help="Filter by status"),
-    repo: Optional[str] = typer.Option(None, "--repo", "-r", help="Filter by repository"),
+    status: str | None = typer.Option(None, "--status", "-s", help="Filter by status"),
+    repo: str | None = typer.Option(None, "--repo", "-r", help="Filter by repository"),
 ):
     """List cross-repository plans with optional filtering."""
     mgr = CoordinationManager()
@@ -450,8 +443,8 @@ def list_plans(
 
 @coord_app.command("list-deps")
 def list_deps(
-    consumer: Optional[str] = typer.Option(None, "--consumer", "-c", help="Filter by consumer"),
-    provider: Optional[str] = typer.Option(None, "--provider", "-p", help="Filter by provider"),
+    consumer: str | None = typer.Option(None, "--consumer", "-c", help="Filter by consumer"),
+    provider: str | None = typer.Option(None, "--provider", "-p", help="Filter by provider"),
 ):
     """List inter-repository dependencies."""
     mgr = CoordinationManager()
@@ -485,13 +478,13 @@ def list_deps(
 
 @coord_app.command("check-deps")
 def check_deps(
-    consumer: Optional[str] = typer.Option(None, "--consumer", "-c", help="Filter by consumer"),
+    consumer: str | None = typer.Option(None, "--consumer", "-c", help="Filter by consumer"),
 ):
     """Validate inter-repository dependencies."""
     mgr = CoordinationManager()
     results = mgr.check_dependencies(consumer=consumer)
 
-    console.print(f"\n[bold]Dependency Check Results[/bold]")
+    console.print("\n[bold]Dependency Check Results[/bold]")
     console.print(f"Total: {results['total']}")
     console.print(f"[green]Satisfied: {results['satisfied']}[/green]")
     console.print(f"[red]Unsatisfied: {results['unsatisfied']}[/red]")
@@ -500,7 +493,7 @@ def check_deps(
         console.print(f"[dim]Deprecated: {results['deprecated']}[/dim]")
 
     if results["dependencies"]:
-        console.print(f"\n[bold]Details:[/bold]")
+        console.print("\n[bold]Details:[/bold]")
         for dep in results["dependencies"]:
             status_color = "green" if dep["status"] == "satisfied" else "red"
             console.print(
@@ -555,12 +548,12 @@ def repo_status(
 
     # Blocking info
     if status["blocking"]:
-        console.print(f"\n[bold yellow]Blocking:[/bold yellow]")
+        console.print("\n[bold yellow]Blocking:[/bold yellow]")
         for todo in status["blocking"]:
             console.print(f"  {todo.id}: {todo.task}")
 
     if status["blocked_by"]:
-        console.print(f"\n[bold red]Blocked By:[/bold red]")
+        console.print("\n[bold red]Blocked By:[/bold red]")
         for dep in status["blocked_by"]:
             console.print(f"  {dep.id}: {dep.consumer} requires {dep.provider}")
 
@@ -583,11 +576,11 @@ def blocking(
         return
 
     if issues:
-        console.print(f"[bold]Open Issues:[/bold]")
+        console.print("[bold]Open Issues:[/bold]")
         for issue in issues:
             console.print(f"  [{issue.priority.value}] {issue.id}: {issue.title}")
 
     if deps:
-        console.print(f"\n[bold]Unsatisfied Dependencies:[/bold]")
+        console.print("\n[bold]Unsatisfied Dependencies:[/bold]")
         for dep in deps:
             console.print(f"  {dep.id}: requires {dep.provider} {dep.version_constraint}")

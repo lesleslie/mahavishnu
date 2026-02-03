@@ -10,15 +10,13 @@ Comprehensive test coverage for:
 """
 
 from datetime import timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from mahavishnu.core.errors import ConfigurationError
 from mahavishnu.terminal.config import TerminalSettings
 from mahavishnu.terminal.manager import TerminalManager
 from mahavishnu.terminal.session import TerminalSession
-
 
 # =============================================================================
 # Mock Adapter Implementation
@@ -100,9 +98,7 @@ class MockTerminalAdapter:
         # Store command in session history
         self._sessions[session_id].setdefault("commands", []).append(command)
 
-    async def capture_output(
-        self, session_id: str, lines: int | None = None
-    ) -> str:
+    async def capture_output(self, session_id: str, lines: int | None = None) -> str:
         """Capture output from a session.
 
         Args:
@@ -371,9 +367,7 @@ class TestTerminalManagerSessionLaunch:
         adapter = MockTerminalAdapter()
         manager = TerminalManager(adapter)
 
-        await manager.launch_sessions(
-            "echo test", count=3, columns=200, rows=60
-        )
+        await manager.launch_sessions("echo test", count=3, columns=200, rows=60)
 
         # Verify all sessions were launched with correct dimensions
         for call in adapter._launch_calls:
@@ -409,9 +403,7 @@ class TestTerminalManagerSessionLaunch:
         manager = TerminalManager(adapter)
 
         # Launch 12 sessions (should be 3 batches of 5, 5, 2)
-        session_ids = await manager.launch_sessions_batch(
-            "echo test", count=12
-        )
+        session_ids = await manager.launch_sessions_batch("echo test", count=12)
 
         assert len(session_ids) == 12
         assert len(set(session_ids)) == 12
@@ -493,7 +485,10 @@ class TestTerminalManagerOutputCapture:
 
         output = await manager.capture_output(session_id)
 
-        assert output == "Line 0\nLine 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8\nLine 9"
+        assert (
+            output
+            == "Line 0\nLine 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8\nLine 9"
+        )
         assert adapter._capture_calls[0] == (session_id, None)
 
     @pytest.mark.asyncio
@@ -518,8 +513,7 @@ class TestTerminalManagerOutputCapture:
         assert len(outputs) == 3
         assert all(sid in outputs for sid in session_ids)
         assert all(
-            output == "Line 0\nLine 1\nLine 2\nLine 3\nLine 4"
-            for output in outputs.values()
+            output == "Line 0\nLine 1\nLine 2\nLine 3\nLine 4" for output in outputs.values()
         )
 
     @pytest.mark.asyncio

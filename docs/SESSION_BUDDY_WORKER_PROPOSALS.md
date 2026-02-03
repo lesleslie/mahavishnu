@@ -4,19 +4,20 @@
 **Status**: Architectural Proposals
 **Priority**: High - Defines next-phase worker orchestration
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
 Session-Buddy has **limited worker management capabilities** (manages background agents like the ConsciousAgent), but is not a full worker orchestration system. This document proposes **3 architectural approaches** for integrating Session-Buddy with Mahavishnu's worker system, ranging from lightweight integration to full hierarchical orchestration.
 
----
+______________________________________________________________________
 
 ## Current State Analysis
 
 ### Session-Buddy Capabilities
 
 **Current Session-Buddy Features:**
+
 - ✅ **Memory Storage**: `store_memory`, `search_memories` (persistent knowledge)
 - ✅ **ConsciousAgent**: Background memory optimization (1 agent instance)
 - ✅ **Session Tracking**: Checkpoints, session lifecycle management
@@ -26,6 +27,7 @@ Session-Buddy has **limited worker management capabilities** (manages background
 - ❌ **No Progress Monitoring**: Cannot track worker execution
 
 **What Session-Buddy CAN Do:**
+
 - Store worker execution results as memories
 - Provide semantic search over worker outputs
 - Maintain conversation context across worker sessions
@@ -34,6 +36,7 @@ Session-Buddy has **limited worker management capabilities** (manages background
 ### Mahavishnu Worker Capabilities
 
 **Current Mahavishnu Features:**
+
 - ✅ **Worker Spawning**: Launch Qwen/Claude terminals, containers
 - ✅ **Task Execution**: Execute prompts across workers
 - ✅ **Progress Monitoring**: stream-json parsing, status tracking
@@ -41,12 +44,13 @@ Session-Buddy has **limited worker management capabilities** (manages background
 - ⚠️ **Session-Buddy Storage**: Stub integration (not fully implemented)
 
 **What Mahavishnu DOES:**
+
 - Spawns and manages worker lifecycles
 - Distributes tasks across workers
 - Monitors execution progress
 - Aggregates results
 
----
+______________________________________________________________________
 
 ## Architectural Proposal 1: Lightweight Storage Integration ⚡
 
@@ -80,6 +84,7 @@ Mahavishnu manages workers; Session-Buddy provides persistent storage and search
 ### Implementation
 
 **Step 1**: Complete Session-Buddy storage in workers
+
 ```python
 # mahavishnu/workers/terminal.py
 async def _store_result_in_session_buddy(self, result, task):
@@ -107,6 +112,7 @@ async def _store_result_in_session_buddy(self, result, task):
 ```
 
 **Step 2**: Add MCP tool for searching worker history
+
 ```python
 # mahavishnu/mcp/tools/worker_tools.py
 
@@ -145,6 +151,7 @@ async def worker_search_history(
 ### Pros & Cons
 
 ✅ **Pros:**
+
 - Simple to implement (1-2 days)
 - Clear separation of concerns
 - Mahavishnu controls orchestration
@@ -152,11 +159,12 @@ async def worker_search_history(
 - No changes to Session-Buddy required
 
 ❌ **Cons:**
+
 - Session-Buddy doesn't manage workers
 - No hierarchical orchestration
 - Single point of integration
 
----
+______________________________________________________________________
 
 ## Architectural Proposal 2: Hierarchical Orchestration 🏗️
 
@@ -456,6 +464,7 @@ async def pool_shutdown(pool_id: str) -> dict[str, Any]:
 ### Pros & Cons
 
 ✅ **Pros:**
+
 - Hierarchical orchestration (Mahavishnu → Session-Buddy → Workers)
 - Session-Buddy manages small worker groups (3 workers each)
 - Natural scaling: Add more pools for more workers
@@ -463,12 +472,13 @@ async def pool_shutdown(pool_id: str) -> dict[str, Any]:
 - Each pool has local memory + Akosha backup
 
 ❌ **Cons:**
+
 - More complex architecture
 - Requires Session-Buddy enhancements (worker allocation APIs)
 - Multiple Session-Buddy instances to manage
 - Pool lifecycle management overhead
 
----
+______________________________________________________________________
 
 ## Architectural Proposal 3: Container-Native Session-Buddy 🐳
 
@@ -762,6 +772,7 @@ class ContainerWorkerPool:
 ### Pros & Cons
 
 ✅ **Pros:**
+
 - Fully isolated worker environments
 - Each container has local Session-Buddy for fast memory access
 - Natural for Kubernetes/Docker Swarm deployment
@@ -769,12 +780,13 @@ class ContainerWorkerPool:
 - Akosha aggregation provides global search
 
 ❌ **Cons:**
+
 - Most complex architecture
 - Requires container image building
 - Resource overhead (Session-Buddy per container)
 - Network latency between Mahavishnu and containers
 
----
+______________________________________________________________________
 
 ## Comparison & Recommendation
 
@@ -790,23 +802,26 @@ class ContainerWorkerPool:
 ### Recommendation: Start with Proposal 1, Evolve to Proposal 2
 
 **Phase 1 (Now)**: Implement **Proposal 1: Lightweight Storage Integration**
+
 - Complete Session-Buddy storage in existing workers
 - Add `worker_search_history` MCP tool
 - Enables persistent worker execution history
 - Low effort, high value
 
 **Phase 2 (Later)**: Implement **Proposal 2: Hierarchical Orchestration**
+
 - Add `WorkerPoolManager` to Mahavishnu
 - Session-Buddy instances manage 3-worker pools
 - Better resource utilization
 - Natural scaling path
 
 **Phase 3 (Future)**: Consider **Proposal 3: Container-Native** if needed
+
 - For Kubernetes deployments
 - For extreme isolation requirements
 - When multi-tenant isolation is critical
 
----
+______________________________________________________________________
 
 ## Akosha Integration
 
@@ -815,9 +830,9 @@ All three proposals assume **Akosha** as the central aggregation point:
 ### Akosha's Role
 
 1. **Aggregation**: Collect results from multiple pools/containers
-2. **Search**: Global search across all worker executions
-3. **Persistence**: Long-term storage (beyond Session-Buddy's scope)
-4. **Analytics**: Cross-worker pattern detection, trend analysis
+1. **Search**: Global search across all worker executions
+1. **Persistence**: Long-term storage (beyond Session-Buddy's scope)
+1. **Analytics**: Cross-worker pattern detection, trend analysis
 
 ### Akosha API (Required)
 
@@ -844,51 +859,57 @@ async def akosha_search_workers(
     pass
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Roadmap
 
 ### Sprint 1: Complete Proposal 1 (Week 1)
+
 1. ✅ Finish Session-Buddy storage in workers
-2. ✅ Add `worker_search_history` MCP tool
-3. ✅ Add metadata enrichment (repo, branch, commit)
-4. ✅ Test semantic search over worker outputs
+1. ✅ Add `worker_search_history` MCP tool
+1. ✅ Add metadata enrichment (repo, branch, commit)
+1. ✅ Test semantic search over worker outputs
 
 ### Sprint 2: Design Proposal 2 (Week 2)
+
 1. ✅ Design `WorkerPool` class
-2. ✅ Design `WorkerPoolManager` class
-3. ✅ Define Session-Buddy worker allocation API
-4. ✅ Create architecture diagrams
+1. ✅ Design `WorkerPoolManager` class
+1. ✅ Define Session-Buddy worker allocation API
+1. ✅ Create architecture diagrams
 
 ### Sprint 3: Implement Proposal 2 (Weeks 3-4)
+
 1. ✅ Implement `WorkerPool` in Mahavishnu
-2. ✅ Extend Session-Buddy with worker management APIs
-3. ✅ Add pool MCP tools (`pool_create`, `pool_execute`, `pool_shutdown`)
-4. ✅ Implement Akosha push on pool shutdown
-5. ✅ Integration testing
+1. ✅ Extend Session-Buddy with worker management APIs
+1. ✅ Add pool MCP tools (`pool_create`, `pool_execute`, `pool_shutdown`)
+1. ✅ Implement Akosha push on pool shutdown
+1. ✅ Integration testing
 
 ### Sprint 4: Proposal 3 Design (Week 5) - If Needed
-1. ✅ Container image with embedded Session-Buddy
-2. ✅ Session-Buddy worker server
-3. ✅ Mahavishnu container orchestrator
-4. ✅ Kubernetes deployment manifests
 
----
+1. ✅ Container image with embedded Session-Buddy
+1. ✅ Session-Buddy worker server
+1. ✅ Mahavishnu container orchestrator
+1. ✅ Kubernetes deployment manifests
+
+______________________________________________________________________
 
 ## Next Steps
 
 **Immediate Actions** (Proposal 1):
+
 1. Complete Session-Buddy storage in `TerminalAIWorker._store_result_in_session_buddy()`
-2. Add `worker_search_history` MCP tool
-3. Test semantic search over past executions
-4. Document worker history search patterns
+1. Add `worker_search_history` MCP tool
+1. Test semantic search over past executions
+1. Document worker history search patterns
 
 **Future Considerations**:
+
 - Should Mahavishnu launch Session-Buddy instances? → **Yes**, for Proposal 2
 - Should containers have embedded Session-Buddy? → **Maybe**, for Proposal 3
 - How to handle worker failures in pools? → **Pool-level retry logic**
 - How to load balance across pools? → **Round-robin with health checks**
 
----
+______________________________________________________________________
 
 **Summary**: Start simple with storage integration, evolve to hierarchical orchestration as needs grow. Session-Buddy complements Mahavishnu's worker orchestration with persistent knowledge storage and semantic search.

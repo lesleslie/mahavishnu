@@ -1,10 +1,9 @@
 """Production readiness and testing module for Mahavishnu."""
-import logging
-
 
 import asyncio
 from datetime import datetime
 import inspect
+import logging
 from pathlib import Path
 import time
 import traceback
@@ -12,9 +11,8 @@ from typing import Any
 
 from ..core.app import MahavishnuApp
 
-
-
 logger = logging.getLogger(__name__)
+
 
 class ProductionReadinessChecker:
     """Comprehensive checker for production readiness."""
@@ -59,7 +57,9 @@ class ProductionReadinessChecker:
             "details": self.results,
         }
 
-        logger.info(f"Overall Score: {score}% ({self.checks_passed}/{self.total_checks} checks passed)")
+        logger.info(
+            f"Overall Score: {score}% ({self.checks_passed}/{self.total_checks} checks passed)"
+        )
         logger.info(f"Status: {summary['summary']['status']}")
 
         return summary
@@ -70,10 +70,10 @@ class ProductionReadinessChecker:
             config = self.app.config
 
             # Check if auth is enabled in production
-            if config.auth.enabled and (
-                not config.auth.secret or len(config.auth.secret) < 32
-            ):
-                logger.warning("  Auth enabled but secret is too short (should be at least 32 chars)")
+            if config.auth.enabled and (not config.auth.secret or len(config.auth.secret) < 32):
+                logger.warning(
+                    "  Auth enabled but secret is too short (should be at least 32 chars)"
+                )
                 return False
 
             # Check if required fields are present
@@ -258,8 +258,13 @@ class ProductionReadinessChecker:
                 return False
 
             # Check retry settings
-            if config.resilience.retry_max_attempts <= 0 or config.resilience.retry_max_attempts > 10:
-                logger.warning(f"  ⚠️  Unreasonable retry_max_attempts: {config.resilience.retry_max_attempts}")
+            if (
+                config.resilience.retry_max_attempts <= 0
+                or config.resilience.retry_max_attempts > 10
+            ):
+                logger.warning(
+                    f"  ⚠️  Unreasonable retry_max_attempts: {config.resilience.retry_max_attempts}"
+                )
                 return False
 
             # Check timeout settings
@@ -294,7 +299,9 @@ class ProductionReadinessChecker:
             # Check if auth is enabled in production-like environment
             if config.auth.enabled:
                 if not config.auth.secret or len(config.auth.secret) < 32:
-                    logger.error("  ❌ Auth enabled but secret is too short (should be at least 32 chars)")
+                    logger.error(
+                        "  ❌ Auth enabled but secret is too short (should be at least 32 chars)"
+                    )
                     return False
 
                 if config.auth.algorithm not in ("HS256", "RS256"):
@@ -541,9 +548,7 @@ class PerformanceBenchmark:
 
         # Calculate overall performance score
         avg_times = [
-            results["avg_time"]
-            for results in self.benchmarks.values()
-            if "avg_time" in results
+            results["avg_time"] for results in self.benchmarks.values() if "avg_time" in results
         ]
 
         if avg_times:
@@ -616,7 +621,9 @@ class PerformanceBenchmark:
                 "times": execution_times,
             }
 
-            logger.info(f"  📈 Workflow execution: avg={avg_time:.2f}s, min={min_time:.2f}s, max={max_time:.2f}s")
+            logger.info(
+                f"  📈 Workflow execution: avg={avg_time:.2f}s, min={min_time:.2f}s, max={max_time:.2f}s"
+            )
         except Exception as e:
             logger.error(f"  ❌ Workflow execution benchmark failed: {e}")
 
@@ -689,7 +696,9 @@ class PerformanceBenchmark:
                 "total_ops_time": total_time,
             }
 
-            logger.info(f"  🗂️  Repo operations: avg get_repos={avg_time:.4f}s for {len(repos)} repos")
+            logger.info(
+                f"  🗂️  Repo operations: avg get_repos={avg_time:.4f}s for {len(repos)} repos"
+            )
         except Exception as e:
             logger.error(f"  ❌ Repo operations benchmark failed: {e}")
 

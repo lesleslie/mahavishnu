@@ -1,9 +1,9 @@
 """OpenSearch integration for log analytics and search."""
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-UTC = timezone.utc
+UTC = UTC
 import logging
 from typing import Any
 

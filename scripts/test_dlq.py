@@ -5,7 +5,7 @@ This script runs basic DLQ tests without requiring full pytest setup.
 """
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 import sys
 
 # Add project root to path
@@ -99,7 +99,7 @@ async def test_retry_policies():
     print("Testing retry policies...")
 
     dlq = DeadLetterQueue(max_size=100)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # NEVER policy
     next_retry = dlq._calculate_next_retry(RetryPolicy.NEVER, 0)
@@ -214,7 +214,7 @@ async def test_failed_task_serialization():
     """Test FailedTask to_dict and from_dict."""
     print("Testing FailedTask serialization...")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     task = FailedTask(
         task_id="wf_123",

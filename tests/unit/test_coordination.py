@@ -4,8 +4,8 @@ Unit tests for the cross-repository coordination system.
 Tests the CoordinationManager and data models.
 """
 
-import tempfile
 from pathlib import Path
+import tempfile
 
 import pytest
 import yaml
@@ -15,9 +15,8 @@ from mahavishnu.core.coordination.models import (
     CrossRepoIssue,
     CrossRepoTodo,
     Dependency,
-    DependencyValidation,
-    DependencyType,
     DependencyStatus,
+    DependencyType,
     IssueStatus,
     Priority,
     TodoStatus,

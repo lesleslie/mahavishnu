@@ -53,13 +53,13 @@ class AgnoAdapter(OrchestratorAdapter):
                     """Run agent with prompt and return structured response."""
                     # Simulate processing based on prompt
                     if "code quality" in prompt.lower() or "improvement" in prompt.lower():
-                        content = f"""Based on analysis of {context.get('repo_path', 'repository')}:
+                        content = f"""Based on analysis of {context.get("repo_path", "repository")}:
 
 ## Analysis Summary
 
 ### Code Quality Assessment
-- Total Functions Analyzed: {context.get('code_graph', {}).get('functions_indexed', 0)}
-- Complex Functions: {len([f for f in context.get('code_graph', {}).get('nodes', {}).values() if isinstance(f, dict) and f.get('type') == 'function'])}
+- Total Functions Analyzed: {context.get("code_graph", {}).get("functions_indexed", 0)}
+- Complex Functions: {len([f for f in context.get("code_graph", {}).get("nodes", {}).values() if isinstance(f, dict) and f.get("type") == "function"])}
 - Maintainability Index: 7.5/10
 
 ### Recommendations
@@ -74,7 +74,7 @@ class AgnoAdapter(OrchestratorAdapter):
 - Refactor critical functions for better performance
 """
                     elif "quality check" in prompt.lower():
-                        content = f"""Quality Check Results for {context.get('repo_path', 'repository')}:
+                        content = f"""Quality Check Results for {context.get("repo_path", "repository")}:
 
 ## Compliance Score: 92/100
 
@@ -91,11 +91,11 @@ class AgnoAdapter(OrchestratorAdapter):
 Repository follows best practices with minor improvements needed.
 """
                     else:
-                        content = f"""Analysis of {context.get('repo_path', 'repository')}:
+                        content = f"""Analysis of {context.get("repo_path", "repository")}:
 
 ## Summary
 Repository has been analyzed using Agno agent.
-- Functions indexed: {context.get('code_graph', {}).get('functions_indexed', 0)}
+- Functions indexed: {context.get("code_graph", {}).get("functions_indexed", 0)}
 - Code structure: Organized and maintainable
 - Overall quality: Good
 
@@ -182,8 +182,7 @@ Repository has been analyzed using Agno agent.
 
         else:
             raise ConfigurationError(
-                f"Unsupported LLM provider: {provider}. "
-                f"Supported: anthropic, openai, ollama"
+                f"Unsupported LLM provider: {provider}. Supported: anthropic, openai, ollama"
             )
 
     async def _read_file(self, file_path: str) -> str:

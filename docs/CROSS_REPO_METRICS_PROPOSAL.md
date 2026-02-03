@@ -8,6 +8,7 @@
 ### What Exists (Fragmented)
 
 Each repository has its own:
+
 - ✅ Unit tests (pytest)
 - ✅ Coverage files (.coverage, coverage.xml)
 - ✅ Coverage reports (pytest-cov)
@@ -18,10 +19,10 @@ Each repository has its own:
 ### What's Missing
 
 1. **Unified coverage dashboard** - See all repos at once
-2. **Quality score tracking** - Track trends over time
-3. **Cross-repo quality gates** - Enforce standards
-4. **Metrics history** - Track improvements/degradations
-5. **Automated alerts** - Notify when quality drops
+1. **Quality score tracking** - Track trends over time
+1. **Cross-repo quality gates** - Enforce standards
+1. **Metrics history** - Track improvements/degradations
+1. **Automated alerts** - Notify when quality drops
 
 ## Proposed Solution
 
@@ -62,12 +63,14 @@ Each repository has its own:
 **Why:** We just built this! It's perfect for tracking cross-repo issues.
 
 **Approach:**
+
 1. Create quality issues in coordination system
-2. Track metrics as todos/dependencies
-3. Use memory integration for trends
-4. Execute sweeps via pools
+1. Track metrics as todos/dependencies
+1. Use memory integration for trends
+1. Execute sweeps via pools
 
 **Example Usage:**
+
 ```bash
 # Create quality issue for low coverage
 mahavishnu coord create-issue \
@@ -96,6 +99,7 @@ mahavishnu coord create-plan \
 **File:** `mahavishnu/scripts/collect_metrics.py`
 
 **What it does:**
+
 - Scans all repos in repos.yaml
 - Collects .coverage, coverage.xml files
 - Runs `pytest --cov` if needed
@@ -103,6 +107,7 @@ mahavishnu coord create-plan \
 - Creates coordination issues for low-quality repos
 
 **Usage:**
+
 ```bash
 # Collect all metrics
 python scripts/collect_metrics.py
@@ -119,6 +124,7 @@ python scripts/collect_metrics.py --create-issues --min-coverage 80
 **File:** `crackerjack/aggregate.py`
 
 **Enhance Crackerjack to:**
+
 - Scan all repos in ecosystem.yaml
 - Aggregate coverage reports
 - Generate unified quality dashboard
@@ -246,6 +252,7 @@ async def metrics_dashboard():
 ```
 
 **Features:**
+
 - Coverage comparison table (all 24 repos)
 - Quality trends over time
 - Historical charts (last 30 days, 90 days)
@@ -267,6 +274,7 @@ crackerjack aggregate --repos all --min-coverage 80
 ### 2. Session-Buddy
 
 **Store metrics events:**
+
 ```python
 await session_buddy.store_memory(
     collection="mahavishnu_metrics",
@@ -284,6 +292,7 @@ await session_buddy.store_memory(
 ### 3. Mahavishnu Coordination
 
 **Track quality issues as coordination issues:**
+
 ```yaml
 # ecosystem.yaml coordination section
 coordination:
@@ -452,32 +461,32 @@ mahavishnu coord create-issue \
 **Start with Option 1** (Coordination System) because:
 
 1. ✅ **Already built** - use what we just created!
-2. ✅ **Action-oriented** - turns metrics into work items
-3. ✅ **Memory-aware** - Session-Buddy integration for trends
-4. ✅ **Pool-executable** - can trigger automated fixes
-5. ✅ **Role-aware** - leverage existing repo taxonomy
+1. ✅ **Action-oriented** - turns metrics into work items
+1. ✅ **Memory-aware** - Session-Buddy integration for trends
+1. ✅ **Pool-executable** - can trigger automated fixes
+1. ✅ **Role-aware** - leverage existing repo taxonomy
 
 **Then add Option 2** (Collector Script) for automation:
 
 1. Scan all repos automatically
-2. Parse coverage files
-3. Create coordination issues programmatically
-4. Generate reports
+1. Parse coverage files
+1. Create coordination issues programmatically
+1. Generate reports
 
 **Consider Option 3** (Dashboard) later when needed:
 
 1. Visual interface for stakeholders
-2. Real-time monitoring
-3. Historical charts and trends
+1. Real-time monitoring
+1. Historical charts and trends
 
 ## Next Steps
 
 Would you like me to:
 
 1. **Create the metrics collector script** (`scripts/collect_metrics.py`)?
-2. **Set up automated coordination issues** for quality tracking?
-3. **Create a sample quality plan** for your repos?
-4. **Integrate with crackerjack** for unified quality reporting?
-5. **Build a FastBlocks dashboard** for metrics visualization?
+1. **Set up automated coordination issues** for quality tracking?
+1. **Create a sample quality plan** for your repos?
+1. **Integrate with crackerjack** for unified quality reporting?
+1. **Build a FastBlocks dashboard** for metrics visualization?
 
 This would be a perfect way to demonstrate the coordination system in action!

@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 import logging
 import random
@@ -410,9 +410,7 @@ class ErrorRecoveryManager:
         self, error: Exception, workflow_id: str | None = None, repo_path: str | None = None
     ) -> dict[str, Any]:
         """Skip the operation and continue."""
-        self.logger.warning(
-            f"Skipping operation for workflow {workflow_id} due to error: {error}"
-        )
+        self.logger.warning(f"Skipping operation for workflow {workflow_id} due to error: {error}")
 
         # Log skip action
         await self._log_recovery_action(
@@ -457,7 +455,7 @@ class ErrorRecoveryManager:
     ):
         """Log operation results for monitoring and analysis."""
         log_entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "workflow_id": workflow_id,
             "repo_path": repo_path,
             "success": success,
@@ -506,7 +504,7 @@ class ErrorRecoveryManager:
     ):
         """Log recovery actions for monitoring."""
         log_entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "workflow_id": workflow_id,
             "repo_path": repo_path,
             "action": action,
@@ -621,7 +619,7 @@ class ErrorRecoveryManager:
                 status=WorkflowStatus.RUNNING, limit=100
             )
 
-            current_time = datetime.now(timezone.utc)
+            current_time = datetime.now(UTC)
             timeout_threshold = timedelta(hours=1)  # Consider workflows stuck after 1 hour
 
             for workflow in running_workflows:

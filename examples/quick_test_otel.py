@@ -2,6 +2,7 @@
 """Quick test script for native OTel ingester."""
 
 import asyncio
+
 from mahavishnu.ingesters import OtelIngester
 
 
@@ -13,6 +14,7 @@ async def main():
 
     # Create ingester (in-memory DuckDB)
     from akosha.storage import HotStore
+
     hot_store = HotStore(database_path=":memory:")
     ingester = OtelIngester(hot_store=hot_store)
 
@@ -62,7 +64,9 @@ async def main():
     results = await ingester.search_traces("RAG query API call", limit=5)
     print(f"✅ Found {len(results)} results:")
     for i, result in enumerate(results, 1):
-        print(f"   {i}. [{result.get('similarity', 0):.2f}] {result.get('conversation_id', 'unknown')}")
+        print(
+            f"   {i}. [{result.get('similarity', 0):.2f}] {result.get('conversation_id', 'unknown')}"
+        )
 
     # Get trace by ID
     print("\n⏳ Retrieving trace by ID...")

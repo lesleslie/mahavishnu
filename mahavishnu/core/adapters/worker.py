@@ -2,8 +2,8 @@
 
 from typing import Any
 
-from ..adapters.base import OrchestratorAdapter
 from ...workers.manager import WorkerManager
+from ..adapters.base import OrchestratorAdapter
 
 
 class WorkerOrchestratorAdapter(OrchestratorAdapter):
@@ -65,8 +65,8 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         Raises:
             ValueError: If task parameters are invalid
         """
-        import time
         import logging
+        import time
 
         logger = logging.getLogger(__name__)
         start_time = time.time()
@@ -143,7 +143,9 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             "results": {
                 wid: {
                     "status": result.status.value,
-                    "output": result.output[:200] + "..." if result.output and len(result.output) > 200 else result.output,
+                    "output": result.output[:200] + "..."
+                    if result.output and len(result.output) > 200
+                    else result.output,
                     "duration": result.duration_seconds,
                     "has_output": result.has_output(),
                 }
@@ -167,9 +169,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         workers_active = health.get("workers_active", 0)
         max_concurrent = health.get("max_concurrent", 10)
 
-        if workers_active == 0:
-            status = "healthy"
-        elif workers_active < max_concurrent:
+        if workers_active == 0 or workers_active < max_concurrent:
             status = "healthy"
         else:
             status = "degraded"

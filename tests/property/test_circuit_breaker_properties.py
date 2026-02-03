@@ -23,28 +23,26 @@ State Machine Invariants Tested:
 - Half-open state closes on success, opens on failure
 """
 
-import asyncio
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import datetime, timedelta
 
-import pytest
 from hypothesis import (
+    HealthCheck,
     assume,
     given,
     settings,
+)
+from hypothesis import (
     strategies as st,
-    HealthCheck,
 )
 from hypothesis.stateful import (
     RuleBasedStateMachine,
-    rule,
     invariant,
-    initialize,
+    rule,
     run_state_machine_as_test,
 )
+import pytest
 
 from mahavishnu.core.circuit_breaker import CircuitBreaker, CircuitState
-
 
 # =============================================================================
 # Helper Strategies
@@ -68,10 +66,7 @@ short_timeout_strategy = st.integers(min_value=1, max_value=10)
 class TestCircuitBreakerStateProperties:
     """Property-based tests for circuit breaker state machine."""
 
-    @given(
-        threshold=valid_threshold_strategy,
-        num_failures=st.integers(min_value=0, max_value=100)
-    )
+    @given(threshold=valid_threshold_strategy, num_failures=st.integers(min_value=0, max_value=100))
     @settings(max_examples=50)
     def test_failure_count_increments_correctly(self, threshold, num_failures):
         """Failure count increments correctly and circuit opens at threshold."""
@@ -90,11 +85,10 @@ class TestCircuitBreakerStateProperties:
         else:
             assert cb.state == CircuitState.CLOSED
 
-    @given(
-        threshold=valid_threshold_strategy,
-        num_failures=st.integers(min_value=1, max_value=50)
+    @given(threshold=valid_threshold_strategy, num_failures=st.integers(min_value=1, max_value=50))
+    @settings(
+        max_examples=40, suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow]
     )
-    @settings(max_examples=40, suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow])
     def test_circuit_opens_at_threshold(self, threshold, num_failures):
         """Circuit opens exactly when failures reach threshold."""
         assume(num_failures >= threshold)
@@ -103,7 +97,7 @@ class TestCircuitBreakerStateProperties:
 
         # Record failures up to threshold
         for i in range(threshold):
-            assert cb.state == CircuitState.CLOSED, f"Circuit opened early at failure {i+1}"
+            assert cb.state == CircuitState.CLOSED, f"Circuit opened early at failure {i + 1}"
             cb.record_failure()
 
         # Circuit should now be open
@@ -115,10 +109,7 @@ class TestCircuitBreakerStateProperties:
             cb.record_failure()
             assert cb.state == CircuitState.OPEN
 
-    @given(
-        threshold=valid_threshold_strategy,
-        timeout=short_timeout_strategy
-    )
+    @given(threshold=valid_threshold_strategy, timeout=short_timeout_strategy)
     @settings(max_examples=30, deadline=None)
     def test_open_circuit_blocks_requests(self, threshold, timeout):
         """Open circuit blocks requests until timeout elapses."""
@@ -137,10 +128,7 @@ class TestCircuitBreakerStateProperties:
         # (simulate small delay but less than timeout)
         assert cb.allow_request() is False
 
-    @given(
-        threshold=valid_threshold_strategy,
-        timeout=short_timeout_strategy
-    )
+    @given(threshold=valid_threshold_strategy, timeout=short_timeout_strategy)
     @settings(max_examples=30, deadline=None)
     def test_timeout_transitions_to_half_open(self, threshold, timeout):
         """Circuit transitions to HALF_OPEN after timeout elapses."""
@@ -160,10 +148,7 @@ class TestCircuitBreakerStateProperties:
         assert cb.state == CircuitState.HALF_OPEN
         assert allowed is True
 
-    @given(
-        threshold=valid_threshold_strategy,
-        timeout=short_timeout_strategy
-    )
+    @given(threshold=valid_threshold_strategy, timeout=short_timeout_strategy)
     @settings(max_examples=30, deadline=None)
     def test_half_open_closes_on_success(self, threshold, timeout):
         """Half-open circuit closes on successful request."""
@@ -185,10 +170,7 @@ class TestCircuitBreakerStateProperties:
         assert cb.state == CircuitState.CLOSED
         assert cb.failure_count == 0
 
-    @given(
-        threshold=valid_threshold_strategy,
-        timeout=short_timeout_strategy
-    )
+    @given(threshold=valid_threshold_strategy, timeout=short_timeout_strategy)
     @settings(max_examples=30, deadline=None)
     def test_half_open_opens_on_failure(self, threshold, timeout):
         """Half-open circuit opens again on failure."""
@@ -212,9 +194,11 @@ class TestCircuitBreakerStateProperties:
 
     @given(
         threshold=valid_threshold_strategy,
-        num_failures_before_success=st.integers(min_value=0, max_value=10)
+        num_failures_before_success=st.integers(min_value=0, max_value=10),
     )
-    @settings(max_examples=40, suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow])
+    @settings(
+        max_examples=40, suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow]
+    )
     def test_success_resets_failure_count(self, threshold, num_failures_before_success):
         """Success resets failure count to zero."""
         cb = CircuitBreaker(threshold=threshold)
@@ -233,10 +217,7 @@ class TestCircuitBreakerStateProperties:
         if cb.state == CircuitState.HALF_OPEN:
             assert cb.state == CircuitState.CLOSED
 
-    @given(
-        threshold=valid_threshold_strategy,
-        timeout=short_timeout_strategy
-    )
+    @given(threshold=valid_threshold_strategy, timeout=short_timeout_strategy)
     @settings(max_examples=30)
     def test_closed_state_allows_requests(self, threshold, timeout):
         """Closed state always allows requests."""
@@ -251,10 +232,7 @@ class TestCircuitBreakerStateProperties:
         assert cb.state == CircuitState.CLOSED
         assert cb.allow_request() is True
 
-    @given(
-        threshold=valid_threshold_strategy,
-        timeout=short_timeout_strategy
-    )
+    @given(threshold=valid_threshold_strategy, timeout=short_timeout_strategy)
     @settings(max_examples=30)
     def test_half_open_allows_requests(self, threshold, timeout):
         """Half-open state allows requests (testing)."""
@@ -276,7 +254,7 @@ class TestCircuitBreakerStateProperties:
     @given(
         threshold=valid_threshold_strategy,
         timeout=short_timeout_strategy,
-        num_successes=st.integers(min_value=1, max_value=10)
+        num_successes=st.integers(min_value=1, max_value=10),
     )
     @settings(max_examples=30)
     def test_successes_in_closed_state_preserve_state(self, threshold, timeout, num_successes):
@@ -292,10 +270,7 @@ class TestCircuitBreakerStateProperties:
         assert cb.failure_count == 0
         assert cb.allow_request() is True
 
-    @given(
-        threshold=valid_threshold_strategy,
-        timeout=valid_timeout_strategy
-    )
+    @given(threshold=valid_threshold_strategy, timeout=valid_timeout_strategy)
     @settings(max_examples=30, deadline=None)
     def test_last_failure_time_tracked(self, threshold, timeout):
         """Last failure time is tracked correctly."""
@@ -330,7 +305,7 @@ class TestCircuitBreakerIntegrationProperties:
     @given(
         threshold=valid_threshold_strategy,
         timeout=short_timeout_strategy,
-        should_fail=st.booleans()
+        should_fail=st.booleans(),
     )
     @settings(max_examples=30, deadline=None)
     async def test_call_protects_function(self, threshold, timeout, should_fail):
@@ -358,10 +333,7 @@ class TestCircuitBreakerIntegrationProperties:
             if threshold > 1:
                 assert cb.state == CircuitState.CLOSED
 
-    @given(
-        threshold=valid_threshold_strategy,
-        timeout=short_timeout_strategy
-    )
+    @given(threshold=valid_threshold_strategy, timeout=short_timeout_strategy)
     @settings(max_examples=30, deadline=None)
     async def test_open_circuit_blocks_calls(self, threshold, timeout):
         """Open circuit blocks function calls."""
@@ -381,10 +353,7 @@ class TestCircuitBreakerIntegrationProperties:
         with pytest.raises(Exception, match="Circuit breaker is open"):
             await cb.call(failing_function)
 
-    @given(
-        threshold=valid_threshold_strategy,
-        timeout=short_timeout_strategy
-    )
+    @given(threshold=valid_threshold_strategy, timeout=short_timeout_strategy)
     @settings(max_examples=30, deadline=None)
     async def test_success_in_half_open_closes_circuit(self, threshold, timeout):
         """Success in half-open state closes circuit for subsequent calls."""
@@ -415,10 +384,7 @@ class TestCircuitBreakerIntegrationProperties:
         result = await cb.call(success_function)
         assert result == "success"
 
-    @given(
-        threshold=valid_threshold_strategy,
-        timeout=short_timeout_strategy
-    )
+    @given(threshold=valid_threshold_strategy, timeout=short_timeout_strategy)
     @settings(max_examples=30, deadline=None)
     async def test_failure_in_half_open_keeps_circuit_open(self, threshold, timeout):
         """Failure in half-open state keeps circuit open."""
@@ -527,10 +493,7 @@ def test_circuit_breaker_state_machine():
 class TestCircuitBreakerEdgeCases:
     """Property-based tests for circuit breaker edge cases."""
 
-    @given(
-        threshold=st.integers(min_value=1, max_value=5),
-        timeout=short_timeout_strategy
-    )
+    @given(threshold=st.integers(min_value=1, max_value=5), timeout=short_timeout_strategy)
     @settings(max_examples=30)
     def test_rapid_failures_open_circuit(self, threshold, timeout):
         """Rapid failures should open circuit correctly."""
@@ -543,10 +506,7 @@ class TestCircuitBreakerEdgeCases:
         # Circuit should be open
         assert cb.state == CircuitState.OPEN
 
-    @given(
-        threshold=valid_threshold_strategy,
-        timeout=short_timeout_strategy
-    )
+    @given(threshold=valid_threshold_strategy, timeout=short_timeout_strategy)
     @settings(max_examples=30)
     def test_alternating_success_failure(self, threshold, timeout):
         """Alternating success and failure maintains correct state."""
@@ -563,7 +523,7 @@ class TestCircuitBreakerEdgeCases:
     @given(
         threshold=valid_threshold_strategy,
         timeout=short_timeout_strategy,
-        num_cycles=st.integers(min_value=1, max_value=5)
+        num_cycles=st.integers(min_value=1, max_value=5),
     )
     @settings(max_examples=30, deadline=None)
     def test_circuit_can_reopen_after_closing(self, threshold, timeout, num_cycles):
@@ -588,10 +548,7 @@ class TestCircuitBreakerEdgeCases:
         # Property: Circuit should be closed after all cycles
         assert cb.state == CircuitState.CLOSED
 
-    @given(
-        threshold=valid_threshold_strategy,
-        timeout=short_timeout_strategy
-    )
+    @given(threshold=valid_threshold_strategy, timeout=short_timeout_strategy)
     @settings(max_examples=30, deadline=None)
     def test_timeout_transitions_after_elapsed(self, threshold, timeout):
         """Timeout behavior after time has elapsed."""
@@ -608,7 +565,7 @@ class TestCircuitBreakerEdgeCases:
         if timeout <= 59:
             # Set time past timeout
             cb.last_failure_time = datetime.now() - timedelta(seconds=timeout + 1)
-            
+
             # Should transition to half-open
             allowed = cb.allow_request()
             assert cb.state == CircuitState.HALF_OPEN

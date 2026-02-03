@@ -1,4 +1,4 @@
-"""Convenience helper functions for Mahavishnu admin shell."""
+"""Admin shell commands for Mahavishnu workflow management."""
 
 import logging
 

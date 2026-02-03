@@ -23,12 +23,14 @@ This directory contains comprehensive property-based tests for the Mahavishnu re
 ## Invariants Discovered
 
 ### 1. Repository Configuration
+
 - **Repository names** are always normalized to lowercase
 - **All repository paths** must be unique within a manifest
 - **Repository tags** must match regex patterns: `^[a-z0-9]+([\-_][a-z0-9]+)*$`
 - **MCP servers** auto-tag themselves with 'mcp' tag
 
 ### 2. Rate Limiting
+
 - **Rate limiter** never allows more requests than configured limits
 - **Burst control** prevents request spikes (first burst_size requests allowed)
 - **Rate limits** are isolated per client (independent tracking)
@@ -36,6 +38,7 @@ This directory contains comprehensive property-based tests for the Mahavishnu re
 - **Statistics** accurately reflect actual request counts ⚠️ **BUG FOUND**
 
 ### 3. JWT Authentication
+
 - **JWT tokens** round-trip correctly (create → verify)
 - **Token expiration** time matches configured expire_minutes (±5s tolerance)
 - **Tokens** signed with one secret don't verify with another
@@ -43,6 +46,7 @@ This directory contains comprehensive property-based tests for the Mahavishnu re
 - **Token expiration** is stored as integer timestamp
 
 ### 4. RBAC Permissions
+
 - **Permission checks** are idempotent (same result for same inputs)
 - **Restricted roles** only allow access to specified repos
 - **Nonexistent users** have no permissions
@@ -50,12 +54,14 @@ This directory contains comprehensive property-based tests for the Mahavishnu re
 - **Admin role** (allowed_repos=None) can access all repos
 
 ### 5. Cross-Project Auth
+
 - **Message signatures** are deterministic (same input → same signature)
 - **Signatures** are always 64 hex characters (SHA256)
 - **Tampered messages** always fail verification
 - **Valid messages** with correct signature always verify
 
 ### 6. Workflow State
+
 - **Created workflows** always initialize with PENDING status
 - **All required fields** are present on creation
 - **created_at timestamp** is immutable (never changes after creation)
@@ -63,6 +69,7 @@ This directory contains comprehensive property-based tests for the Mahavishnu re
 - **Workflow list** filters correctly by status
 
 ### 7. Configuration
+
 - **All numeric fields** respect declared bounds
 - **Out-of-bounds values** raise ValueError
 - **Paths with ~** are expanded to absolute paths
@@ -76,6 +83,7 @@ This directory contains comprehensive property-based tests for the Mahavishnu re
 **Issue**: Statistics don't accurately count all requests made
 
 **Details**:
+
 - The test makes 11 requests but stats show only 10
 - This suggests the rate limiter's statistics tracking may have an off-by-one error
 - The burst control token consumption may not be tracked correctly
@@ -85,11 +93,11 @@ This directory contains comprehensive property-based tests for the Mahavishnu re
 ### Bug #2: Repository Name Pattern Validation ⚠️
 
 **Test**: `test_repository_manifest_uniqueness_invariant`
-**Issue**: Generated names like "_" don't match the Pydantic pattern `^[a-z0-9]([\-a-z0-9]*[a-z0-9])?$`
 
 **Details**:
+
 - The pattern requires names to start and end with alphanumeric characters
-- Our simple_name_strategy generates names starting with "_" which is invalid
+- Our simple_name_strategy generates names starting with "\_" which is invalid
 - This is actually correct behavior - the test strategy needs refinement
 
 **Recommendation**: Update the test strategy to only generate valid repository names that match the pattern.
@@ -128,6 +136,7 @@ simple_name_strategy = st.text(
 ### Configuration
 
 Most tests use:
+
 - `max_examples=30` - Balanced between coverage and speed
 - `deadline=None` - Disabled for slower tests
 - `suppress_health_check=[HealthCheck.too_slow]` - For complex data generation
@@ -135,18 +144,18 @@ Most tests use:
 ## Benefits Achieved
 
 1. **Edge Case Discovery**: Tests automatically explore edge cases humans might miss
-2. **Regression Prevention**: Invariants are checked across wide input ranges
-3. **Documentation**: Tests serve as executable documentation of system properties
-4. **Bug Finding**: Discovered 2 real bugs through automated generation
-5. **Confidence**: 92% pass rate provides strong confidence in system correctness
+1. **Regression Prevention**: Invariants are checked across wide input ranges
+1. **Documentation**: Tests serve as executable documentation of system properties
+1. **Bug Finding**: Discovered 2 real bugs through automated generation
+1. **Confidence**: 92% pass rate provides strong confidence in system correctness
 
 ## Next Steps
 
 1. **Fix Bugs**: Address the rate limiting statistics tracking issue
-2. **Improve Coverage**: Add more tests for error conditions
-3. **State Machine Testing**: Consider adding stateful tests for workflow transitions
-4. **Integration Properties**: Test invariants across component boundaries
-5. **Performance Properties**: Add tests for performance characteristics
+1. **Improve Coverage**: Add more tests for error conditions
+1. **State Machine Testing**: Consider adding stateful tests for workflow transitions
+1. **Integration Properties**: Test invariants across component boundaries
+1. **Performance Properties**: Add tests for performance characteristics
 
 ## Resources
 

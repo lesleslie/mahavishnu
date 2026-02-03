@@ -1,31 +1,31 @@
 {
-  "timestamp": "2026-02-01T13:16:14.874330",
   "quality_score": {
-    "total": 75,
-    "max": 100,
-    "percentage": 75.0,
     "breakdown": {
       "maturity": {
-        "score": 30,
+        "details": "README, documentation, and test coverage",
         "max": 30,
-        "details": "README, documentation, and test coverage"
+        "score": 30
       },
       "quality": {
-        "score": 5,
+        "details": "Ruff linting and Mypy type checking",
         "max": 30,
-        "details": "Ruff linting and Mypy type checking"
+        "score": 5
       },
       "session": {
-        "score": 20,
+        "details": "Development environment and tooling",
         "max": 20,
-        "details": "Development environment and tooling"
+        "score": 20
       },
       "workflow": {
-        "score": 20,
+        "details": "Git history and branch management",
         "max": 20,
-        "details": "Git history and branch management"
+        "score": 20
       }
-    }
+    },
+    "max": 100,
+    "percentage": 75.0,
+    "total": 75
   },
-  "session_type": "metrics_tracking"
+  "session_type": "metrics_tracking",
+  "timestamp": "2026-02-01T13:16:14.874330"
 }

@@ -33,7 +33,7 @@ print(f"Cycles: {status.poll_cycles}, Errors: {status.errors}")
 
 That's it! The poller is now collecting metrics every 30 seconds.
 
----
+______________________________________________________________________
 
 ## Configuration Cheatsheet
 
@@ -82,7 +82,7 @@ export MAHAVISHNU_SESSION_BUDDY_POLLING__MAX_RETRIES=3
 export MAHAVISHNU_SESSION_BUDDY_POLLING__CIRCUIT_BREAKER_THRESHOLD=5
 ```
 
----
+______________________________________________________________________
 
 ## Code Patterns
 
@@ -134,35 +134,40 @@ print(result['metrics_collected']) # list[str]
 print(result['errors'])           # list[str]
 ```
 
----
+______________________________________________________________________
 
 ## Metrics Collected
 
 ### Session Metrics
+
 - `session_buddy.sessions.active` (gauge)
 - `session_buddy.sessions.total` (counter)
 
 ### Workflow Metrics
+
 - `session_buddy.workflows.completed` (counter)
 - `session_buddy.workflows.failed` (counter)
 - `session_buddy.workflow.duration` (histogram)
 
 ### Checkpoint Metrics
+
 - `session_buddy.checkpoints.total` (counter)
 - `session_buddy.checkpoint.size` (histogram)
 
 ### Performance Metrics
+
 - `session_buddy.performance.cpu_usage` (gauge)
 - `session_buddy.performance.memory_usage` (gauge)
 - `session_buddy.performance.response_time` (histogram)
 
 ### Poller Metrics
+
 - `session_buddy_poller.poll_cycles_total` (counter)
 - `session_buddy_poller.poll_errors_total` (counter)
 - `session_buddy_poller.poll_duration_seconds` (histogram)
 - `session_buddy_poller.circuit_breaker_state` (gauge)
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
@@ -208,7 +213,7 @@ app.session_buddy_poller._circuit_breaker_open = False
 app.session_buddy_poller._consecutive_failures = 0
 ```
 
----
+______________________________________________________________________
 
 ## Common Use Cases
 
@@ -243,7 +248,7 @@ session_buddy_polling_interval_seconds: 5   # Poll every 5 seconds
 session_buddy_polling_timeout_seconds: 3    # Quick timeout
 ```
 
----
+______________________________________________________________________
 
 ## Health Checks
 
@@ -279,27 +284,31 @@ import json
 print(json.dumps(health_report, indent=2, default=str))
 ```
 
----
+______________________________________________________________________
 
 ## File Locations
 
 ### Implementation
+
 - `/Users/les/Projects/mahavishnu/mahavishnu/integrations/session_buddy_poller.py`
 
 ### Configuration
+
 - `/Users/les/Projects/mahavishnu/mahavishnu/core/config.py`
 - `/Users/les/Projects/mahavishnu/settings/mahavishnu.yaml`
 
 ### App Integration
+
 - `/Users/les/Projects/mahavishnu/mahavishnu/core/app.py`
 
 ### Documentation
+
 - `/Users/les/Projects/mahavishnu/SESSION_BUDDY_POLLING_PLAN.md`
 - `/Users/les/Projects/mahavishnu/SESSION_BUDDY_POLLING_USAGE.md`
 - `/Users/les/Projects/mahavishnu/SESSION_BUDDY_POLLING_SUMMARY.md`
 - `/Users/les/Projects/mahavishnu/SESSION_BUDDY_POLLING_QUICKSTART.md` (this file)
 
----
+______________________________________________________________________
 
 ## Key Facts
 
@@ -313,7 +322,7 @@ print(json.dumps(health_report, indent=2, default=str))
 - **Error Handling**: Graceful degradation, continues on individual failures
 - **Dependencies**: httpx, opentelemetry-api (already in project)
 
----
+______________________________________________________________________
 
 ## One-Line Summary
 
@@ -322,17 +331,17 @@ print(json.dumps(health_report, indent=2, default=str))
 app = MahavishnuApp(); await app.start_poller()
 ```
 
----
+______________________________________________________________________
 
 ## Need Help?
 
 1. **Quick Issues**: Check this guide
-2. **Usage Examples**: See `SESSION_BUDDY_POLLING_USAGE.md`
-3. **Architecture**: See `SESSION_BUDDY_POLLING_PLAN.md`
-4. **Full Details**: See `SESSION_BUDDY_POLLING_SUMMARY.md`
-5. **Source Code**: Check `session_buddy_poller.py` docstrings
+1. **Usage Examples**: See `SESSION_BUDDY_POLLING_USAGE.md`
+1. **Architecture**: See `SESSION_BUDDY_POLLING_PLAN.md`
+1. **Full Details**: See `SESSION_BUDDY_POLLING_SUMMARY.md`
+1. **Source Code**: Check `session_buddy_poller.py` docstrings
 
----
+______________________________________________________________________
 
 **Status**: Production-Ready ✅
 **Version**: 1.0.0

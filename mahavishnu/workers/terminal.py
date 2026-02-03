@@ -161,9 +161,7 @@ class TerminalAIWorker(BaseWorker):
         while True:
             # Capture latest output
             try:
-                output = await self.terminal_manager.capture_output(
-                    self.session_id, lines=50
-                )
+                output = await self.terminal_manager.capture_output(self.session_id, lines=50)
             except Exception as e:
                 logger.error(f"Failed to capture output: {e}")
                 output = ""
@@ -286,11 +284,7 @@ class TerminalAIWorker(BaseWorker):
         Returns:
             Complete WorkerResult
         """
-        duration = (
-            asyncio.get_event_loop().time() - self._start_time
-            if self._start_time
-            else 0
-        )
+        duration = asyncio.get_event_loop().time() - self._start_time if self._start_time else 0
 
         full_output = "\n".join(output_lines)
 
@@ -351,17 +345,11 @@ class TerminalAIWorker(BaseWorker):
         output = ""
         if self.session_id:
             try:
-                output = await self.terminal_manager.capture_output(
-                    self.session_id, lines=10
-                )
+                output = await self.terminal_manager.capture_output(self.session_id, lines=10)
             except Exception:
                 pass
 
-        duration = (
-            asyncio.get_event_loop().time() - self._start_time
-            if self._start_time
-            else 0
-        )
+        duration = asyncio.get_event_loop().time() - self._start_time if self._start_time else 0
 
         return {
             "status": self._status.value,

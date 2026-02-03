@@ -4,22 +4,22 @@
 **Last Updated**: 2026-02-02
 **Scope**: Mahavishnu MCP Ecosystem
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Daily Maintenance Tasks](#daily-maintenance-tasks)
-2. [Weekly Maintenance Tasks](#weekly-maintenance-tasks)
-3. [Monthly Maintenance Tasks](#monthly-maintenance-tasks)
-4. [Backup Verification](#backup-verification)
-5. [Scaling Procedures](#scaling-procedures)
-6. [Log Rotation and Cleanup](#log-rotation-and-cleanup)
-7. [Database Maintenance](#database-maintenance)
-8. [Performance Tuning](#performance-tuning)
-9. [Security Updates](#security-updates)
-10. [Monitoring and Alerting Verification](#monitoring-and-alerting-verification)
+1. [Weekly Maintenance Tasks](#weekly-maintenance-tasks)
+1. [Monthly Maintenance Tasks](#monthly-maintenance-tasks)
+1. [Backup Verification](#backup-verification)
+1. [Scaling Procedures](#scaling-procedures)
+1. [Log Rotation and Cleanup](#log-rotation-and-cleanup)
+1. [Database Maintenance](#database-maintenance)
+1. [Performance Tuning](#performance-tuning)
+1. [Security Updates](#security-updates)
+1. [Monitoring and Alerting Verification](#monitoring-and-alerting-verification)
 
----
+______________________________________________________________________
 
 ## Daily Maintenance Tasks
 
@@ -104,12 +104,13 @@ echo "=== Health Check Complete ==="
 ```
 
 **Automate with cron**:
+
 ```bash
 # Add to crontab: crontab -e
 0 9 * * * /path/to/daily_health_check.sh >> /var/log/mahavishnu/health_check.log 2>&1
 ```
 
----
+______________________________________________________________________
 
 ## Weekly Maintenance Tasks
 
@@ -186,7 +187,7 @@ ERROR_RATE=$(echo "scale=2; $ERROR_REQUESTS / $TOTAL_REQUESTS * 100" | bc)
 echo "Error rate: ${ERROR_RATE}%"
 ```
 
----
+______________________________________________________________________
 
 ## Monthly Maintenance Tasks
 
@@ -281,7 +282,7 @@ echo ""
 echo "=== Capacity Review Complete ==="
 ```
 
----
+______________________________________________________________________
 
 ## Backup Verification
 
@@ -374,13 +375,14 @@ cp /Users/les/Projects/session-buddy/data/sessions.db.before_restore \
 sudo systemctl start session-buddy
 ```
 
----
+______________________________________________________________________
 
 ## Scaling Procedures
 
 ### Horizontal Scaling (Add More Workers)
 
 **When to Scale**:
+
 - CPU utilization > 80% for 10+ minutes
 - Worker pool queue depth > 100
 - Response time p95 > 1000ms
@@ -416,6 +418,7 @@ mahavishnu pool health
 ```
 
 **Usage**:
+
 ```bash
 # Scale local pool to 10 workers
 ./scale_horizontal.sh local 10
@@ -427,6 +430,7 @@ mahavishnu pool health
 ### Vertical Scaling (Increase Resources)
 
 **When to Scale**:
+
 - Memory utilization > 80% consistently
 - Database locks increasing
 - Disk I/O at capacity
@@ -453,7 +457,7 @@ systemctl show mahavishnu-mcp | grep MemoryLimit
 systemctl show mahavishnu-mcp | grep CPUQuota
 ```
 
----
+______________________________________________________________________
 
 ## Log Rotation and Cleanup
 
@@ -504,7 +508,7 @@ echo ""
 echo "=== Log Cleanup Complete ==="
 ```
 
----
+______________________________________________________________________
 
 ## Database Maintenance
 
@@ -591,7 +595,7 @@ echo ""
 echo "=== Akosha Maintenance Complete ==="
 ```
 
----
+______________________________________________________________________
 
 ## Performance Tuning
 
@@ -666,7 +670,7 @@ echo ""
 echo "=== Optimization Complete ==="
 ```
 
----
+______________________________________________________________________
 
 ## Security Updates
 
@@ -708,7 +712,7 @@ echo ""
 echo "=== Security Updates Complete ==="
 ```
 
----
+______________________________________________________________________
 
 ## Monitoring and Alerting Verification
 
@@ -744,12 +748,12 @@ echo "=== Alert Testing Complete ==="
 **Schedule**: Weekly
 
 1. **Access Grafana dashboard**: http://localhost:3000
-2. **Verify all panels loading**
-3. **Check data freshness** (last update < 5 minutes)
-4. **Verify alert rules configured**
-5. **Test alert notifications**
+1. **Verify all panels loading**
+1. **Check data freshness** (last update < 5 minutes)
+1. **Verify alert rules configured**
+1. **Test alert notifications**
 
----
+______________________________________________________________________
 
 ## Maintenance Calendar
 
@@ -764,7 +768,7 @@ echo "=== Alert Testing Complete ==="
 | Security Updates | Monthly (Patch Tue) | 1 hour | Security |
 | Alert Testing | Weekly (Sun 12:00 UTC) | 15 min | On-Call |
 
----
+______________________________________________________________________
 
 ## Maintenance Runbook Execution
 
@@ -778,9 +782,9 @@ echo "=== Alert Testing Complete ==="
 ### During Maintenance
 
 1. **Execute maintenance script**
-2. **Monitor for errors**
-3. **Verify service health**
-4. **Document any issues**
+1. **Monitor for errors**
+1. **Verify service health**
+1. **Document any issues**
 
 ### Post-Maintenance Checklist
 
@@ -791,7 +795,7 @@ echo "=== Alert Testing Complete ==="
 - [ ] Users notified of completion
 - [ ] Maintenance log updated
 
----
+______________________________________________________________________
 
 ## Emergency Maintenance
 
@@ -826,16 +830,15 @@ echo ""
 echo "=== Emergency Maintenance Complete ==="
 ```
 
----
+______________________________________________________________________
 
 ## Related Documentation
 
 - [Incident Response Runbook](INCIDENT_RESPONSE_RUNBOOK.md)
-- [Disaster Recovery Runbook](DISASTER_RECOVERY_RUNBOOK.md)
 - [Production Deployment Guide](PRODUCTION_DEPLOYMENT_GUIDE.md)
 - [Monitoring & Alerting](../monitoring/README.md)
 
----
+______________________________________________________________________
 
 **Last Updated**: 2026-02-02
 **Next Review**: 2026-03-02

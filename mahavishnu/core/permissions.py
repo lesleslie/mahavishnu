@@ -1,8 +1,8 @@
 """Permissions and RBAC module for Mahavishnu."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-UTC = timezone.utc
+UTC = UTC
 from enum import Enum
 
 import jwt

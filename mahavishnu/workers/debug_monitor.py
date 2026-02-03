@@ -94,9 +94,7 @@ class DebugMonitorWorker(BaseWorker):
         # Start streaming to Session-Buddy
         if self.session_buddy_client:
             self._running = True
-            self._streaming_task = asyncio.create_task(
-                self._stream_to_session_buddy()
-            )
+            self._streaming_task = asyncio.create_task(self._stream_to_session_buddy())
 
         logger.info(f"Started iTerm2 debug monitor: {self.session_id}")
         return self.session_id
@@ -117,9 +115,7 @@ class DebugMonitorWorker(BaseWorker):
         # Still attempt streaming if Session-Buddy available
         if self.session_buddy_client:
             self._running = True
-            self._streaming_task = asyncio.create_task(
-                self._stream_to_session_buddy()
-            )
+            self._streaming_task = asyncio.create_task(self._stream_to_session_buddy())
 
         logger.info(f"Started terminal debug monitor: {self.session_id}")
         return self.session_id
@@ -145,9 +141,7 @@ class DebugMonitorWorker(BaseWorker):
                     # Capture screen contents using iTerm2 API
                     if self._iterm2_connection and self.session_id:
                         # Find the session
-                        app = await iterm2.App.async_get_connection(
-                            self._iterm2_connection
-                        )
+                        app = await iterm2.App.async_get_connection(self._iterm2_connection)
                         sessions = await app.async_get_sessions()
 
                         # Find our debug session by session_id
@@ -162,8 +156,7 @@ class DebugMonitorWorker(BaseWorker):
                             # Get screen contents (last 100 lines)
                             try:
                                 contents = await debug_session.async_get_contents(
-                                    first_line=-100,
-                                    number_of_lines=100
+                                    first_line=-100, number_of_lines=100
                                 )
 
                                 # Extract text from screen contents
@@ -291,10 +284,7 @@ class DebugMonitorWorker(BaseWorker):
         Returns:
             Dictionary with progress details
         """
-        streaming_active = (
-            self._streaming_task is not None
-            and not self._streaming_task.done()
-        )
+        streaming_active = self._streaming_task is not None and not self._streaming_task.done()
 
         return {
             "status": await self.status(),

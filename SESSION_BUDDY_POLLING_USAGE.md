@@ -463,6 +463,6 @@ The Session-Buddy polling integration provides:
 - **Comprehensive error handling** and logging
 
 For more details, see:
+
 - [Implementation Plan](SESSION_BUDDY_POLLING_PLAN.md)
-- [Source Code](/Users/les/Projects/mahavishnu/mahavishnu/integrations/session_buddy_poller.py)
 - [Configuration](/Users/les/Projects/mahavishnu/mahavishnu/core/config.py)

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Fix remaining print statements in production_readiness.py."""
 
-import re
 from pathlib import Path
+import re
 
 
 def fix_production_readiness() -> None:
@@ -18,37 +18,79 @@ def fix_production_readiness() -> None:
 
     # Info level
     patterns = [
-        (r'print\("🔍 Running Production Readiness Checks\.\.\."\)', 'logger.info("Running Production Readiness Checks...")', 1),
-        (r'print\("🧪 Running Integration Tests\.\.\."\)', 'logger.info("Running Integration Tests...")', 1),
-        (r'print\("⚡ Running Performance Benchmarks\.\.\."\)', 'logger.info("Running Performance Benchmarks...")', 1),
-        (r'print\([^\)]+f\"\\n📊 Overall Score:.*?\)', 'logger.info(f"Overall Score: {score}% ({self.checks_passed}/{self.total_checks} checks passed)")', 1),
-        (r'print\([^\)]+f\"\\n📊 Test Score:.*?\)', 'logger.info(f"Test Score: {score}% ({passed_tests}/{total_tests} tests passed)")', 1),
-        (r'print\([^\)]+f\"\\n📊 Performance Score:.*?\)', 'logger.info(f"Performance Score: {performance_score}/100")', 1),
-        (r'print\(f\"🎯 Status: \{summary\[.summary.\]\[.status.\]\}"\)', 'logger.info(f"Status: {summary[\'summary\'][\'status\']}")', 1),
-
+        (
+            r'print\("🔍 Running Production Readiness Checks\.\.\."\)',
+            'logger.info("Running Production Readiness Checks...")',
+            1,
+        ),
+        (
+            r'print\("🧪 Running Integration Tests\.\.\."\)',
+            'logger.info("Running Integration Tests...")',
+            1,
+        ),
+        (
+            r'print\("⚡ Running Performance Benchmarks\.\.\."\)',
+            'logger.info("Running Performance Benchmarks...")',
+            1,
+        ),
+        (
+            r"print\([^\)]+f\"\\n📊 Overall Score:.*?\)",
+            'logger.info(f"Overall Score: {score}% ({self.checks_passed}/{self.total_checks} checks passed)")',
+            1,
+        ),
+        (
+            r"print\([^\)]+f\"\\n📊 Test Score:.*?\)",
+            'logger.info(f"Test Score: {score}% ({passed_tests}/{total_tests} tests passed)")',
+            1,
+        ),
+        (
+            r"print\([^\)]+f\"\\n📊 Performance Score:.*?\)",
+            'logger.info(f"Performance Score: {performance_score}/100")',
+            1,
+        ),
+        (
+            r'print\(f\"🎯 Status: \{summary\[.summary.\]\[.status.\]\}"\)',
+            "logger.info(f\"Status: {summary['summary']['status']}\")",
+            1,
+        ),
         # Success messages
-        (r'print\(f\"✅ \{method\.__name__\[7:\]\.replace\(\'_\', \' \)\.title\(\)\}: PASSED\"\)',
-         'logger.info(f"{method.__name__[7:].replace(\'_\', \' \').title()}: PASSED")', 1),
-        (r'print\(f\"✅ \{method\.__name__\[6:\]\.replace\(\'_\', \' \)\.title\(\)\}: PASSED\"\)',
-         'logger.info(f"{method.__name__[6:].replace(\'_\', \' \').title()}: PASSED")', 1),
-
+        (
+            r"print\(f\"✅ \{method\.__name__\[7:\]\.replace\(\'_\', \' \)\.title\(\)\}: PASSED\"\)",
+            "logger.info(f\"{method.__name__[7:].replace('_', ' ').title()}: PASSED\")",
+            1,
+        ),
+        (
+            r"print\(f\"✅ \{method\.__name__\[6:\]\.replace\(\'_\', \' \)\.title\(\)\}: PASSED\"\)",
+            "logger.info(f\"{method.__name__[6:].replace('_', ' ').title()}: PASSED\")",
+            1,
+        ),
         # Error messages
-        (r'print\(f\"❌ \{method\.__name__\[7:\]\.replace\(\'_\', \' \)\.title\(\)\}: FAILED\"\)',
-         'logger.error(f"{method.__name__[7:].replace(\'_\', \' \').title()}: FAILED")', 1),
-        (r'print\(f\"❌ \{method\.__name__\[6:\]\.replace\(\'_\', \' \)\.title\(\)\}: FAILED\"\)',
-         'logger.error(f"{method.__name__[6:].replace(\'_\', \' \').title()}: FAILED")', 1),
-        (r'print\(f\"❌ \{method\.__name__\[7:\]\.replace\(\'_\', \' \)\.title\(\)\}: ERROR - \{e\}"\)',
-         'logger.error(f"{method.__name__[7:].replace(\'_\', \' \').title()}: ERROR - {e}")', 1),
-        (r'print\(f\"❌ \{method\.__name__\[6:\]\.replace\(\'_\', \' \)\.title\(\)\}: ERROR - \{e\}"\)',
-         'logger.error(f"{method.__name__[6:].replace(\'_\', \' \').title()}: ERROR - {e}")', 1),
-
+        (
+            r"print\(f\"❌ \{method\.__name__\[7:\]\.replace\(\'_\', \' \)\.title\(\)\}: FAILED\"\)",
+            "logger.error(f\"{method.__name__[7:].replace('_', ' ').title()}: FAILED\")",
+            1,
+        ),
+        (
+            r"print\(f\"❌ \{method\.__name__\[6:\]\.replace\(\'_\', \' \)\.title\(\)\}: FAILED\"\)",
+            "logger.error(f\"{method.__name__[6:].replace('_', ' ').title()}: FAILED\")",
+            1,
+        ),
+        (
+            r'print\(f\"❌ \{method\.__name__\[7:\]\.replace\(\'_\', \' \)\.title\(\)\}: ERROR - \{e\}"\)',
+            "logger.error(f\"{method.__name__[7:].replace('_', ' ').title()}: ERROR - {e}\")",
+            1,
+        ),
+        (
+            r'print\(f\"❌ \{method\.__name__\[6:\]\.replace\(\'_\', \' \)\.title\(\)\}: ERROR - \{e\}"\)',
+            "logger.error(f\"{method.__name__[6:].replace('_', ' ').title()}: ERROR - {e}\")",
+            1,
+        ),
         # Warning messages - generic pattern
-        (r'print\(\"  ⚠️  (.*)\"\)', r'logger.warning("  \1")', 100),
-        (r'print\(f\"  ⚠️  (.*)\"\)', r'logger.warning(f"  \1")', 100),
-
+        (r"print\(\"  ⚠️  (.*)\"\)", r'logger.warning("  \1")', 100),
+        (r"print\(f\"  ⚠️  (.*)\"\)", r'logger.warning(f"  \1")', 100),
         # Error messages - generic pattern
-        (r'print\(\"  ❌ (.*)\"\)', r'logger.error("  \1")', 100),
-        (r'print\(f\"  ❌ (.*)\"\)', r'logger.error(f"  \1")', 100),
+        (r"print\(\"  ❌ (.*)\"\)", r'logger.error("  \1")', 100),
+        (r"print\(f\"  ❌ (.*)\"\)", r'logger.error(f"  \1")', 100),
     ]
 
     for pattern, replacement, max_replace in patterns:
@@ -71,7 +113,7 @@ def fix_production_readiness() -> None:
     for line in lines:
         if "print(" in line and "logger." not in line:
             # Extract the print content
-            match = re.search(r'print\((.*)\)', line)
+            match = re.search(r"print\((.*)\)", line)
             if match:
                 print_content = match.group(1)
 

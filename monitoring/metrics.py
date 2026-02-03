@@ -9,19 +9,20 @@ This module provides Prometheus instrumentation for tracking:
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from functools import wraps
 import logging
 import time
-from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from prometheus_client import (
+    REGISTRY,
+    CollectorRegistry,
     Counter,
     Gauge,
     Histogram,
     Summary,
-    CollectorRegistry,
     generate_latest,
-    REGISTRY,
 )
 
 if TYPE_CHECKING:
@@ -44,7 +45,7 @@ http_request_duration_seconds = Histogram(
     "mcp_http_request_duration_seconds",
     "HTTP request latency",
     ["method", "endpoint"],
-    buckets=(.005, .01, .025, .05, .075, .1, .25, .5, .75, 1.0, 2.5, 5.0, 7.5, 10.0),
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0),
 )
 
 http_requests_in_progress = Gauge(
@@ -67,7 +68,7 @@ mcp_tool_duration_seconds = Histogram(
     "mcp_tool_duration_seconds",
     "MCP tool execution duration",
     ["tool_name"],
-    buckets=(.01, .05, .1, .25, .5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0),
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0),
 )
 
 mcp_tools_registered = Gauge(
@@ -328,6 +329,7 @@ def create_histogram(
 # Decorators for Automatic Metrics
 # ============================================================================
 
+
 def track_time(
     histogram: Histogram,
     labels: dict[str, str] | None = None,
@@ -345,6 +347,7 @@ def track_time(
         >>> async def my_func():
         ...     return 42
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -375,6 +378,7 @@ def track_time(
                 histogram.labels(**label_values).observe(duration)
 
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         else:
@@ -400,6 +404,7 @@ def track_calls(
         >>> async def my_func():
         ...     return 42
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -430,6 +435,7 @@ def track_calls(
                 raise
 
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         else:
@@ -441,6 +447,7 @@ def track_calls(
 # ============================================================================
 # Metrics Export
 # ============================================================================
+
 
 def get_metrics_registry() -> CollectorRegistry:
     """Get the Prometheus metrics registry.
@@ -476,6 +483,7 @@ def expose_metrics(registry: CollectorRegistry | None = None) -> bytes:
 # Metrics Endpoint (for FastAPI)
 # ============================================================================
 
+
 async def metrics_endpoint():
     """FastAPI endpoint handler for /metrics.
 
@@ -488,4 +496,5 @@ async def metrics_endpoint():
         ...     return Response(content=expose_metrics(), media_type="text/plain")
     """
     from fastapi import Response
+
     return Response(content=expose_metrics(), media_type="text/plain")

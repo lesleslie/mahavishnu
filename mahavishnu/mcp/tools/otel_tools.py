@@ -303,8 +303,9 @@ def register_otel_tools(server, app, mcp_client):
             stats = await mcp.call_tool("otel_ingester_stats", {})
         """
         try:
-            from mahavishnu.ingesters import OtelIngester
             from akosha.storage import HotStore
+
+            from mahavishnu.ingesters import OtelIngester
 
             # Initialize HotStore to query statistics
             hot_store = HotStore(database_path=app.config.otel_ingester.hot_store_path)

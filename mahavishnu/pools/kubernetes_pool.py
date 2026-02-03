@@ -84,7 +84,8 @@ class KubernetesPool(BasePool):
             return
 
         try:
-            from kubernetes import client, config as k8s_config
+            from kubernetes import client
+            from kubernetes import config as k8s_config
 
             # Load kubeconfig
             if self.kubeconfig_path:
@@ -123,9 +124,7 @@ class KubernetesPool(BasePool):
 
             try:
                 core_api.create_namespace(
-                    body=client.V1Namespace(
-                        metadata=client.V1ObjectMeta(name=self.namespace)
-                    )
+                    body=client.V1Namespace(metadata=client.V1ObjectMeta(name=self.namespace))
                 )
                 logger.info(f"Created namespace: {self.namespace}")
             except client.exceptions.ApiException as e:
@@ -167,7 +166,7 @@ class KubernetesPool(BasePool):
 
         if not command:
             # Default command for AI task execution
-            command = f'python -c "print(\'{prompt}\')"'
+            command = f"python -c \"print('{prompt}')\""
 
         job_spec = self._create_job_spec(command, job_name)
 
@@ -239,10 +238,7 @@ class KubernetesPool(BasePool):
         coros = [self.execute_task(task) for task in tasks]
         results = await asyncio.gather(*coros)
 
-        return {
-            str(i): result
-            for i, result in enumerate(results)
-        }
+        return {str(i): result for i, result in enumerate(results)}
 
     async def scale(self, target_worker_count: int) -> None:
         """Scale not applicable for K8s (job-based execution).
@@ -325,9 +321,7 @@ class KubernetesPool(BasePool):
 
         # Calculate average task duration
         avg_duration = (
-            sum(self._task_durations) / len(self._task_durations)
-            if self._task_durations
-            else 0.0
+            sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
         )
 
         return PoolMetrics(
@@ -354,17 +348,19 @@ class KubernetesPool(BasePool):
         for task_id, job_name in self._active_jobs.items():
             try:
                 logs = self._get_job_logs(job_name)
-                memory_items.append({
-                    "content": logs or "",
-                    "metadata": {
-                        "type": "pool_worker_execution",
-                        "pool_id": self.pool_id,
-                        "pool_type": "kubernetes",
-                        "worker_id": job_name,
-                        "status": "completed",
-                        "timestamp": time.time(),
-                    },
-                })
+                memory_items.append(
+                    {
+                        "content": logs or "",
+                        "metadata": {
+                            "type": "pool_worker_execution",
+                            "pool_id": self.pool_id,
+                            "pool_type": "kubernetes",
+                            "worker_id": job_name,
+                            "status": "completed",
+                            "timestamp": time.time(),
+                        },
+                    }
+                )
             except Exception as e:
                 logger.warning(f"Failed to collect logs from {job_name}: {e}")
 

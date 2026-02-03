@@ -5,17 +5,18 @@ monitoring, resilience, performance, and operational readiness.
 """
 
 import asyncio
-import os
-import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+import os
 from pathlib import Path
+import subprocess
 from typing import Any
 
 
 class ReadinessStatus(Enum):
     """Status of a readiness check."""
+
     PASS = "✅ PASS"
     FAIL = "❌ FAIL"
     WARN = "⚠️ WARN"
@@ -25,6 +26,7 @@ class ReadinessStatus(Enum):
 @dataclass
 class ReadinessCheck:
     """Result of a single readiness check."""
+
     name: str
     status: ReadinessStatus
     message: str
@@ -35,6 +37,7 @@ class ReadinessCheck:
 @dataclass
 class ProductionReadinessReport:
     """Overall production readiness report."""
+
     total_checks: int = 0
     passed: int = 0
     failed: int = 0
@@ -112,10 +115,7 @@ class ProductionReadinessChecker:
         await self._check_maintenance_procedures()
 
         # Generate report
-        report = ProductionReadinessReport(
-            checks=self.checks,
-            timestamp=datetime.now().isoformat()
-        )
+        report = ProductionReadinessReport(checks=self.checks, timestamp=datetime.now().isoformat())
         report.total_checks = len(self.checks)
         report.passed = sum(1 for c in self.checks if c.status == ReadinessStatus.PASS)
         report.failed = sum(1 for c in self.checks if c.status == ReadinessStatus.FAIL)
@@ -129,6 +129,7 @@ class ProductionReadinessChecker:
     async def _check_security_audit(self):
         """Check if security audit has been completed."""
         import time
+
         start = time.time()
 
         # Check for security audit completion file
@@ -142,17 +143,17 @@ class ProductionReadinessChecker:
             message = "Security audit not found (run: python -m monitoring.security_audit)"
 
         duration_ms = (time.time() - start) * 1000
-        self.checks.append(ReadinessCheck(
-            name="Security Audit",
-            status=status,
-            message=message,
-            duration_ms=duration_ms
-        ))
+        self.checks.append(
+            ReadinessCheck(
+                name="Security Audit", status=status, message=message, duration_ms=duration_ms
+            )
+        )
 
     async def _check_secrets_management(self):
         """Check for hardcoded secrets in codebase."""
-        import time
         import re
+        import time
+
         start = time.time()
 
         issues = []
@@ -192,17 +193,20 @@ class ProductionReadinessChecker:
             details = None
 
         duration_ms = (time.time() - start) * 1000
-        self.checks.append(ReadinessCheck(
-            name="Secrets Management",
-            status=status,
-            message=message,
-            details=details,
-            duration_ms=duration_ms
-        ))
+        self.checks.append(
+            ReadinessCheck(
+                name="Secrets Management",
+                status=status,
+                message=message,
+                details=details,
+                duration_ms=duration_ms,
+            )
+        )
 
     async def _check_authentication(self):
         """Check if authentication is configured."""
         import time
+
         start = time.time()
 
         # Check for auth secret
@@ -219,20 +223,22 @@ class ProductionReadinessChecker:
             message = "MAHAVISHNU_AUTH_SECRET not set (auth disabled)"
 
         duration_ms = (time.time() - start) * 1000
-        self.checks.append(ReadinessCheck(
-            name="Authentication",
-            status=status,
-            message=message,
-            duration_ms=duration_ms
-        ))
+        self.checks.append(
+            ReadinessCheck(
+                name="Authentication", status=status, message=message, duration_ms=duration_ms
+            )
+        )
 
     async def _check_data_encryption(self):
         """Check if data encryption is implemented."""
         import time
+
         start = time.time()
 
         # Check for encryption module in session-buddy
-        encryption_file = self.project_root.parent / "session-buddy" / "session_buddy" / "utils" / "encryption.py"
+        encryption_file = (
+            self.project_root.parent / "session-buddy" / "session_buddy" / "utils" / "encryption.py"
+        )
 
         if encryption_file.exists():
             status = ReadinessStatus.PASS
@@ -242,16 +248,16 @@ class ProductionReadinessChecker:
             message = "Data encryption not found (sensitive data unencrypted)"
 
         duration_ms = (time.time() - start) * 1000
-        self.checks.append(ReadinessCheck(
-            name="Data Encryption",
-            status=status,
-            message=message,
-            duration_ms=duration_ms
-        ))
+        self.checks.append(
+            ReadinessCheck(
+                name="Data Encryption", status=status, message=message, duration_ms=duration_ms
+            )
+        )
 
     async def _check_metrics_collection(self):
         """Check if metrics collection is configured."""
         import time
+
         start = time.time()
 
         # Check for monitoring module
@@ -266,21 +272,22 @@ class ProductionReadinessChecker:
             message = "Metrics collection not found"
 
         duration_ms = (time.time() - start) * 1000
-        self.checks.append(ReadinessCheck(
-            name="Metrics Collection",
-            status=status,
-            message=message,
-            duration_ms=duration_ms
-        ))
+        self.checks.append(
+            ReadinessCheck(
+                name="Metrics Collection", status=status, message=message, duration_ms=duration_ms
+            )
+        )
 
     async def _check_logging(self):
         """Check if structured logging is configured."""
         import time
+
         start = time.time()
 
         # Check for structlog in dependencies
         try:
             import structlog
+
             status = ReadinessStatus.PASS
             message = "Structured logging available (structlog)"
         except ImportError:
@@ -288,16 +295,14 @@ class ProductionReadinessChecker:
             message = "structlog not installed"
 
         duration_ms = (time.time() - start) * 1000
-        self.checks.append(ReadinessCheck(
-            name="Logging",
-            status=status,
-            message=message,
-            duration_ms=duration_ms
-        ))
+        self.checks.append(
+            ReadinessCheck(name="Logging", status=status, message=message, duration_ms=duration_ms)
+        )
 
     async def _check_alerting(self):
         """Check if alerting is configured."""
         import time
+
         start = time.time()
 
         # Check for alerting configuration
@@ -311,16 +316,14 @@ class ProductionReadinessChecker:
             message = "Alerting configuration not found"
 
         duration_ms = (time.time() - start) * 1000
-        self.checks.append(ReadinessCheck(
-            name="Alerting",
-            status=status,
-            message=message,
-            duration_ms=duration_ms
-        ))
+        self.checks.append(
+            ReadinessCheck(name="Alerting", status=status, message=message, duration_ms=duration_ms)
+        )
 
     async def _check_circuit_breakers(self):
         """Check if circuit breakers are implemented."""
         import time
+
         start = time.time()
 
         # Check for circuit breaker module
@@ -334,16 +337,16 @@ class ProductionReadinessChecker:
             message = "Circuit breakers not found"
 
         duration_ms = (time.time() - start) * 1000
-        self.checks.append(ReadinessCheck(
-            name="Circuit Breakers",
-            status=status,
-            message=message,
-            duration_ms=duration_ms
-        ))
+        self.checks.append(
+            ReadinessCheck(
+                name="Circuit Breakers", status=status, message=message, duration_ms=duration_ms
+            )
+        )
 
     async def _check_backup_system(self):
         """Check if backup system is configured."""
         import time
+
         start = time.time()
 
         # Check for backup directory
@@ -359,16 +362,16 @@ class ProductionReadinessChecker:
             message = "Backup directory not found"
 
         duration_ms = (time.time() - start) * 1000
-        self.checks.append(ReadinessCheck(
-            name="Backup System",
-            status=status,
-            message=message,
-            duration_ms=duration_ms
-        ))
+        self.checks.append(
+            ReadinessCheck(
+                name="Backup System", status=status, message=message, duration_ms=duration_ms
+            )
+        )
 
     async def _check_rate_limiting(self):
         """Check if rate limiting is implemented."""
         import time
+
         start = time.time()
 
         # Check for rate limiting module
@@ -382,16 +385,16 @@ class ProductionReadinessChecker:
             message = "Rate limiting not found"
 
         duration_ms = (time.time() - start) * 1000
-        self.checks.append(ReadinessCheck(
-            name="Rate Limiting",
-            status=status,
-            message=message,
-            duration_ms=duration_ms
-        ))
+        self.checks.append(
+            ReadinessCheck(
+                name="Rate Limiting", status=status, message=message, duration_ms=duration_ms
+            )
+        )
 
     async def _check_unit_tests(self):
         """Run unit tests and check coverage."""
         import time
+
         start = time.time()
 
         try:
@@ -401,7 +404,7 @@ class ProductionReadinessChecker:
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,
-                timeout=300  # Increased to 5 minutes
+                timeout=300,  # Increased to 5 minutes
             )
 
             # Parse coverage from coverage.xml (XML) if available
@@ -409,6 +412,7 @@ class ProductionReadinessChecker:
             if coverage_file.exists():
                 try:
                     import xml.etree.ElementTree as ET
+
                     tree = ET.parse(coverage_file)
                     root = tree.getroot()
 
@@ -451,17 +455,20 @@ class ProductionReadinessChecker:
             details = None
 
         duration_ms = (time.time() - start) * 1000
-        self.checks.append(ReadinessCheck(
-            name="Unit Tests",
-            status=status,
-            message=message,
-            details=details,
-            duration_ms=duration_ms
-        ))
+        self.checks.append(
+            ReadinessCheck(
+                name="Unit Tests",
+                status=status,
+                message=message,
+                details=details,
+                duration_ms=duration_ms,
+            )
+        )
 
     async def _check_integration_tests(self):
         """Check for integration tests."""
         import time
+
         start = time.time()
 
         # Count integration tests
@@ -484,16 +491,16 @@ class ProductionReadinessChecker:
             message = "Integration test directory not found"
 
         duration_ms = (time.time() - start) * 1000
-        self.checks.append(ReadinessCheck(
-            name="Integration Tests",
-            status=status,
-            message=message,
-            duration_ms=duration_ms
-        ))
+        self.checks.append(
+            ReadinessCheck(
+                name="Integration Tests", status=status, message=message, duration_ms=duration_ms
+            )
+        )
 
     async def _check_incident_response(self):
         """Check for incident response procedures."""
         import time
+
         start = time.time()
 
         # Check for runbook (try multiple possible filenames)
@@ -513,16 +520,16 @@ class ProductionReadinessChecker:
             message = "Runbook not found (create: docs/INCIDENT_RESPONSE_RUNBOOK.md)"
 
         duration_ms = (time.time() - start) * 1000
-        self.checks.append(ReadinessCheck(
-            name="Incident Response",
-            status=status,
-            message=message,
-            duration_ms=duration_ms
-        ))
+        self.checks.append(
+            ReadinessCheck(
+                name="Incident Response", status=status, message=message, duration_ms=duration_ms
+            )
+        )
 
     async def _check_maintenance_procedures(self):
         """Check for maintenance procedures."""
         import time
+
         start = time.time()
 
         # Check for maintenance docs (try multiple possible filenames)
@@ -541,12 +548,14 @@ class ProductionReadinessChecker:
             message = "Maintenance procedures not documented"
 
         duration_ms = (time.time() - start) * 1000
-        self.checks.append(ReadinessCheck(
-            name="Maintenance Procedures",
-            status=status,
-            message=message,
-            duration_ms=duration_ms
-        ))
+        self.checks.append(
+            ReadinessCheck(
+                name="Maintenance Procedures",
+                status=status,
+                message=message,
+                duration_ms=duration_ms,
+            )
+        )
 
     def _generate_recommendation(self, score: float) -> str:
         """Generate deployment recommendation based on score."""
@@ -590,7 +599,12 @@ class ProductionReadinessChecker:
 
         # Group checks by section
         sections = {
-            "Security & Compliance": ["Security Audit", "Secrets Management", "Authentication", "Data Encryption"],
+            "Security & Compliance": [
+                "Security Audit",
+                "Secrets Management",
+                "Authentication",
+                "Data Encryption",
+            ],
             "Monitoring & Observability": ["Metrics Collection", "Logging", "Alerting"],
             "Resilience & Fault Tolerance": ["Circuit Breakers", "Backup System"],
             "Performance & Scalability": ["Rate Limiting"],
@@ -608,7 +622,7 @@ class ProductionReadinessChecker:
                     lines.append(f"{check.status.value} {check.name}")
                     lines.append(f"  {check.message}")
                     if check.details and check.details.get("issues"):
-                        lines.append(f"  Issues:")
+                        lines.append("  Issues:")
                         for issue in check.details["issues"]:
                             lines.append(f"    - {issue}")
                     if check.duration_ms is not None:

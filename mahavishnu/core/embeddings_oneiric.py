@@ -21,20 +21,13 @@ Usage:
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from mahavishnu.core.embeddings import (
     EmbeddingProvider,
     EmbeddingService,
-    EmbeddingServiceError,
-    get_embedding_service,
 )
-
-if TYPE_CHECKING:
-    pass
 
 
 class EmbeddingConfig(BaseModel):
@@ -91,7 +84,7 @@ class EmbeddingConfig(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
     @classmethod
-    def load_from_file(cls, config_path: str | None = None) -> "EmbeddingConfig":
+    def load_from_file(cls, config_path: str | None = None) -> EmbeddingConfig:
         """Load configuration from YAML file (Oneiric pattern).
 
         Args:
@@ -111,7 +104,7 @@ class EmbeddingConfig(BaseModel):
         return cls()
 
     @classmethod
-    def load_from_env(cls) -> "EmbeddingConfig":
+    def load_from_env(cls) -> EmbeddingConfig:
         """Load configuration from environment variables.
 
         Environment variables (MAHAVISHNU_EMBEDDINGS_ prefix):
@@ -164,7 +157,7 @@ class EmbeddingConfig(BaseModel):
         return config
 
     @classmethod
-    def load(cls) -> "EmbeddingConfig":
+    def load(cls) -> EmbeddingConfig:
         """Load configuration using Oneiric layered pattern.
 
         Order:

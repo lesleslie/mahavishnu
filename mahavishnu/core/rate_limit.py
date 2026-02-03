@@ -5,17 +5,17 @@ Supports IP-based, user-based, and token-based rate limiting.
 """
 
 import asyncio
-import time
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 from functools import wraps
 from logging import getLogger
-from typing import Any, Awaitable, Callable
+import time
+from typing import Any
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse
 
 logger = getLogger(__name__)
 
@@ -134,17 +134,14 @@ class RateLimiter:
         # Clean up request history
         for key in list(self._requests.keys()):
             self._requests[key] = [
-                (ts, count) for ts, count in self._requests[key]
-                if ts > cutoff_time
+                (ts, count) for ts, count in self._requests[key] if ts > cutoff_time
             ]
             if not self._requests[key]:
                 del self._requests[key]
 
         # Clean up violations
         for key in list(self._violations.keys()):
-            self._violations[key] = [
-                ts for ts in self._violations[key] if ts > cutoff_time
-            ]
+            self._violations[key] = [ts for ts in self._violations[key] if ts > cutoff_time]
             if not self._violations[key]:
                 del self._violations[key]
 
@@ -185,10 +182,7 @@ class RateLimiter:
 
         # Check per-minute limit
         minute_ago = now - 60
-        recent_requests = [
-            (ts, count) for ts, count in self._requests[key]
-            if ts > minute_ago
-        ]
+        recent_requests = [(ts, count) for ts, count in self._requests[key] if ts > minute_ago]
 
         # Check token bucket for burst control
         tokens = self._tokens[key]
@@ -306,18 +300,20 @@ class RateLimiter:
 
         # Calculate total requests across all clients
         total_requests = sum(
-            sum(count for _, count in requests)
-            for requests in self._requests.values()
+            sum(count for _, count in requests) for requests in self._requests.values()
         )
 
         return {
             "total_clients": total_clients,
             "total_requests": total_requests,
             "total_violations": total_violations,
-            "active_clients": len([
-                k for k, v in self._requests.items()
-                if any(ts > now - 300 for ts, _ in v)  # Active in last 5 minutes
-            ]),
+            "active_clients": len(
+                [
+                    k
+                    for k, v in self._requests.items()
+                    if any(ts > now - 300 for ts, _ in v)  # Active in last 5 minutes
+                ]
+            ),
         }
 
 
@@ -400,10 +396,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Rate limited, record violation
             self.limiter.record_violation(key)
 
-            logger.warning(
-                f"Rate limit exceeded for {key} "
-                f"(IP: {client_ip}, User: {user_id})"
-            )
+            logger.warning(f"Rate limit exceeded for {key} (IP: {client_ip}, User: {user_id})")
 
             return JSONResponse(
                 status_code=429,
@@ -503,7 +496,9 @@ def rate_limit(
                 key = key_func(request)
             elif request:
                 # Default key: IP address or user ID
-                key = request.headers.get("X-User-ID") or rate_limit_middleware._get_client_ip(request)
+                key = request.headers.get("X-User-ID") or rate_limit_middleware._get_client_ip(
+                    request
+                )
             else:
                 # No request context, skip rate limiting
                 return await func(*args, **kwargs)

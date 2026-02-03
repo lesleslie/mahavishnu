@@ -7,6 +7,7 @@
 ## Overview
 
 Comprehensive monitoring and observability stack for all MCP servers using:
+
 - **OpenTelemetry** for distributed tracing
 - **Prometheus** for metrics collection
 - **Grafana** for dashboards and visualization
@@ -43,6 +44,7 @@ Comprehensive monitoring and observability stack for all MCP servers using:
 ### 1. OpenTelemetry Tracing (`otel.py`)
 
 **Features**:
+
 - Distributed tracing across MCP servers
 - Automatic instrumentation for FastAPI, HTTPX, asyncio
 - Span context propagation
@@ -50,6 +52,7 @@ Comprehensive monitoring and observability stack for all MCP servers using:
 - Custom span attributes
 
 **Setup**:
+
 ```python
 from monitoring.otel import setup_telemetry, auto_instrument
 
@@ -65,6 +68,7 @@ auto_instrument(fastapi_app, service_name="mahavishnu")
 ```
 
 **Usage**:
+
 ```python
 from monitoring.otel import start_span, add_span_attributes, record_exception
 
@@ -83,42 +87,50 @@ async with start_span("process_workflow", {"workflow_id": "123"}):
 **Metrics Collected**:
 
 **Request Metrics**:
+
 - `mcp_http_requests_total` - Total HTTP requests
 - `mcp_http_request_duration_seconds` - Request latency
 - `mcp_http_requests_in_progress` - Requests currently in progress
 
 **MCP Tool Metrics**:
+
 - `mcp_tool_calls_total` - Tool execution count
 - `mcp_tool_duration_seconds` - Tool execution duration
 - `mcp_tools_registered` - Number of registered tools
 
 **Agent/Workflow Metrics**:
+
 - `agent_tasks_total` - Agent task executions
 - `agent_task_duration_seconds` - Task duration
 - `agent_tasks_in_progress` - Tasks in progress
 - `pool_workers_active` - Active pool workers
 
 **Memory Metrics**:
+
 - `memory_syncs_total` - Memory sync operations
 - `memories_stored` - Total memories in AkOSHA
 - `embeddings_generated` - Embeddings generated
 
 **Session Metrics**:
+
 - `session_operations_total` - Session operations
 - `session_duration_active` - Session duration
 - `sessions_active` - Active sessions
 
 **System Metrics**:
+
 - `system_memory_usage_bytes` - Memory usage
 - `system_cpu_usage_percent` - CPU usage
 - `system_disk_usage_percent` - Disk usage
 
 **Cache Metrics**:
+
 - `cache_operations_total` - Cache operations
 - `cache_size_bytes` - Cache size
 - `cache_evictions_total` - Evictions
 
 **Setup**:
+
 ```python
 from monitoring.metrics import expose_metrics
 from fastapi import FastAPI, Response
@@ -132,6 +144,7 @@ async def metrics():
 ```
 
 **Custom Metrics**:
+
 ```python
 from monitoring.metrics import create_counter, create_gauge, create_histogram
 
@@ -147,6 +160,7 @@ my_counter.labels(operation_type="read").inc()
 ```
 
 **Decorators**:
+
 ```python
 from monitoring.metrics import track_time, track_calls
 
@@ -166,16 +180,18 @@ async def my_function():
 **Dashboard**: `monitoring/dashboards/mcp_ecosystem.json`
 
 **Panels**:
+
 1. Request Rate (5m avg)
-2. Request Latency (p50, p95, p99)
-3. Tool Success Rate %
-4. Active Workers by Pool Type
-5. Agent Task Rate
-6. Memory Usage
-7. CPU Usage
-8. Disk Usage
+1. Request Latency (p50, p95, p99)
+1. Tool Success Rate %
+1. Active Workers by Pool Type
+1. Agent Task Rate
+1. Memory Usage
+1. CPU Usage
+1. Disk Usage
 
 **Import**:
+
 ```bash
 # Import dashboard into Grafana
 curl -X POST http://localhost:3000/api/dashboards/db \
@@ -454,14 +470,17 @@ async def metrics():
 ### 3. View Dashboards
 
 1. Open Grafana: http://localhost:3000
+
    - Username: admin
    - Password: admin (change on first login)
 
-2. Import dashboard:
+1. Import dashboard:
+
    - Dashboards → Import
    - Upload `monitoring/dashboards/mcp_ecosystem.json`
 
-3. View traces (optional):
+1. View traces (optional):
+
    - Access Jaeger at http://localhost:1668
    - Search by service name, trace ID, or tags
 
@@ -549,18 +568,21 @@ groups:
 ## Benefits
 
 ### Distributed Tracing
+
 - ✅ Track requests across multiple services
 - ✅ Identify performance bottlenecks
 - ✅ Debug complex workflows
 - ✅ Visualize service dependencies
 
 ### Metrics Collection
+
 - ✅ Real-time performance monitoring
 - ✅ Resource usage tracking
 - ✅ Business metrics (tools, agents, tasks)
 - ✅ Custom metrics for domain-specific operations
 
 ### Dashboards
+
 - ✅ Visualize system health
 - ✅ Monitor trends over time
 - ✅ Alert on anomalies
@@ -569,10 +591,10 @@ groups:
 ## Next Steps
 
 1. ✅ Core monitoring infrastructure implemented
-2. ⏳ Log aggregation (Loki/ELK) - planned
-3. ⏳ AlertManager integration - planned
-4. ⏳ Synthetic monitoring - planned
-5. ⏳ Performance baselines - planned
+1. ⏳ Log aggregation (Loki/ELK) - planned
+1. ⏳ AlertManager integration - planned
+1. ⏳ Synthetic monitoring - planned
+1. ⏳ Performance baselines - planned
 
 ## Files Created
 
@@ -596,6 +618,7 @@ prometheus-client==0.19.0
 ## Cost
 
 **Infrastructure** (monthly):
+
 - OTel Collector: $5-10
 - Prometheus: $10
 - Grafana: $15

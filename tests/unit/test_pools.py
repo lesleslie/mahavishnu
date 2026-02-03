@@ -1,13 +1,13 @@
 """Unit tests for pool management modules."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mahavishnu.mcp.protocols.message_bus import Message, MessageBus, MessageType
 from mahavishnu.pools.base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 from mahavishnu.pools.manager import PoolManager, PoolSelector
-from mahavishnu.mcp.protocols.message_bus import Message, MessageBus, MessageType
 
 
 class TestPoolConfig:
@@ -125,11 +125,13 @@ class TestMessageBus:
         message_bus.subscribe(MessageType.TASK_DELEGATE, handler)
 
         # Publish message
-        await message_bus.publish({
-            "type": "task_delegate",
-            "source_pool_id": "pool_abc",
-            "payload": {"task": "test"},
-        })
+        await message_bus.publish(
+            {
+                "type": "task_delegate",
+                "source_pool_id": "pool_abc",
+                "payload": {"task": "test"},
+            }
+        )
 
         # Give subscriber time to process
         await asyncio.sleep(0.1)
@@ -142,11 +144,13 @@ class TestMessageBus:
     async def test_receive_from_queue(self, message_bus):
         """Test receiving messages from pool-specific queue."""
         # Publish message to specific pool
-        await message_bus.publish({
-            "type": "task_delegate",
-            "target_pool_id": "pool_xyz",
-            "payload": {"data": "test"},
-        })
+        await message_bus.publish(
+            {
+                "type": "task_delegate",
+                "target_pool_id": "pool_xyz",
+                "payload": {"data": "test"},
+            }
+        )
 
         # Receive message
         msg = await message_bus.receive("pool_xyz", timeout=1.0)
@@ -165,11 +169,13 @@ class TestMessageBus:
         """Test receiving multiple messages."""
         # Publish multiple messages
         for i in range(3):
-            await message_bus.publish({
-                "type": "status_update",
-                "target_pool_id": "pool_batch",
-                "payload": {"index": i},
-            })
+            await message_bus.publish(
+                {
+                    "type": "status_update",
+                    "target_pool_id": "pool_batch",
+                    "payload": {"index": i},
+                }
+            )
 
         # Receive batch
         messages = await message_bus.receive_batch("pool_batch", count=5, timeout=1.0)
@@ -184,19 +190,23 @@ class TestMessageBus:
         """Test queue backpressure when full."""
         # Fill queue to max size
         for _ in range(10):
-            await message_bus.publish({
-                "type": "heartbeat",
-                "target_pool_id": "pool_full",
-                "payload": {},
-            })
+            await message_bus.publish(
+                {
+                    "type": "heartbeat",
+                    "target_pool_id": "pool_full",
+                    "payload": {},
+                }
+            )
 
         # Try to publish one more (should be dropped/ignored)
         # The publish should succeed but message won't be queued
-        await message_bus.publish({
-            "type": "heartbeat",
-            "target_pool_id": "pool_full",
-            "payload": {},
-        })
+        await message_bus.publish(
+            {
+                "type": "heartbeat",
+                "target_pool_id": "pool_full",
+                "payload": {},
+            }
+        )
 
         # Queue size should be at max
         queue_size = message_bus.get_queue_size("pool_full")
@@ -219,11 +229,13 @@ class TestMessageBus:
         """Test clearing pool queue."""
         # Add messages
         for _ in range(5):
-            await message_bus.publish({
-                "type": "heartbeat",
-                "target_pool_id": "pool_clear",
-                "payload": {},
-            })
+            await message_bus.publish(
+                {
+                    "type": "heartbeat",
+                    "target_pool_id": "pool_clear",
+                    "payload": {},
+                }
+            )
 
         # Clear queue
         count = await message_bus.clear_queue("pool_clear")
@@ -521,12 +533,14 @@ class TestPoolManagerIntegration:
 
         message_bus.subscribe(MessageType.TASK_DELEGATE, handler)
 
-        await message_bus.publish({
-            "type": "task_delegate",
-            "source_pool_id": "pool1",
-            "target_pool_id": "pool2",
-            "payload": {"task": "test"},
-        })
+        await message_bus.publish(
+            {
+                "type": "task_delegate",
+                "source_pool_id": "pool1",
+                "target_pool_id": "pool2",
+                "payload": {"task": "test"},
+            }
+        )
 
         await asyncio.sleep(0.1)
 
