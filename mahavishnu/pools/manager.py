@@ -470,7 +470,7 @@ class PoolManager:
             ```python
             pools = await pool_mgr.list_pools()
             for pool in pools:
-                print(f"{pool['pool_id']}: {pool['pool_type']} - {pool['status']}")
+                logger.info(f"{pool['pool_id']}: {pool['pool_type']} - {pool['status']}")
             ```
         """
         # Collect pool information concurrently (10x performance improvement!)
@@ -509,8 +509,8 @@ class PoolManager:
         Example:
             ```python
             health = await pool_mgr.health_check()
-            print(f"Status: {health['status']}")
-            print(f"Active pools: {health['pools_active']}")
+            logger.info(f"Status: {health['status']}")
+            logger.info(f"Active pools: {health['pools_active']}")
             ```
         """
         pools_info = await self.list_pools()

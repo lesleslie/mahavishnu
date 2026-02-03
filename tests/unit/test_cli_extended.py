@@ -151,7 +151,7 @@ class TestWorkerCommands:
 
         with patch("mahavishnu.cli.MahavishnuApp") as mock_app_class:
             mock_app = MagicMock()
-            mock_app.config.workers_enabled = True
+            mock_app.config.workers.enabled = True
             mock_app_class.return_value = mock_app
 
             # Mock WorkerManager and TerminalManager
@@ -198,7 +198,7 @@ class TestPoolCommands:
 
         with patch("mahavishnu.cli.MahavishnuApp") as mock_app_class:
             mock_app = MagicMock()
-            mock_app.config.pools_enabled = True
+            mock_app.config.pools.enabled = True
             mock_app_class.return_value = mock_app
 
             result = runner.invoke(app, ["pool", "spawn", "--type", "mahavishnu", "--name", "test-pool"])
@@ -619,7 +619,7 @@ class TestCLIMocking:
         with patch("mahavishnu.cli.MahavishnuApp") as mock_app_class:
             with patch("mahavishnu.cli.MultiAuthHandler") as mock_auth_class:
                 mock_app = MagicMock()
-                mock_app.config.auth_enabled = False
+                mock_app.config.auth.enabled = False
                 mock_app.get_repos = MagicMock(return_value=[])
                 mock_app_class.return_value = mock_app
 

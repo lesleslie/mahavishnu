@@ -54,14 +54,14 @@ class OpenSearchLogAnalytics:
             try:
                 self.client = AsyncOpenSearch(
                     hosts=[
-                        config.opensearch_endpoint.replace("https://", "").replace("http://", "")
+                        config.opensearch.endpoint.replace("https://", "").replace("http://", "")
                     ],
                     http_auth=None,  # Add authentication if needed
-                    use_ssl=config.opensearch_use_ssl,
-                    verify_certs=config.opensearch_verify_certs,
-                    ssl_assert_hostname=config.opensearch_ssl_assert_hostname,
-                    ssl_show_warn=config.opensearch_ssl_show_warn,
-                    ca_certs=config.opensearch_ca_certs,
+                    use_ssl=config.opensearch.use_ssl,
+                    verify_certs=config.opensearch.verify_certs,
+                    ssl_assert_hostname=config.opensearch.ssl_assert_hostname,
+                    ssl_show_warn=config.opensearch.ssl_show_warn,
+                    ca_certs=config.opensearch.ca_certs,
                 )
 
                 # Initialize indices

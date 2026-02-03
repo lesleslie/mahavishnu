@@ -164,23 +164,23 @@ class JWTManager:
         self.config = config
 
         # Critical security: Never use hardcoded secrets
-        if not config.auth_secret:
+        if not config.auth.secret:
             raise ConfigurationError(
                 "MAHAVISHNU_AUTH_SECRET environment variable must be set. "
                 "Generate a secure secret with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
             )
 
         # Validate minimum entropy (length check as proxy for entropy)
-        if len(config.auth_secret) < self.MIN_SECRET_LENGTH:
+        if len(config.auth.secret) < self.MIN_SECRET_LENGTH:
             raise ConfigurationError(
                 f"JWT secret must be at least {self.MIN_SECRET_LENGTH} characters long. "
-                f"Current length: {len(config.auth_secret)} characters. "
+                f"Current length: {len(config.auth.secret)} characters. "
                 "Generate a secure secret with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
             )
 
-        self.secret = config.auth_secret
-        self.algorithm = config.auth_algorithm
-        self.expire_minutes = config.auth_expire_minutes
+        self.secret = config.auth.secret
+        self.algorithm = config.auth.algorithm
+        self.expire_minutes = config.auth.expire_minutes
 
     def create_token(self, user_id: str, additional_claims: dict = None) -> str:
         """Create a JWT token for a user."""

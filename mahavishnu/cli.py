@@ -59,7 +59,7 @@ async def _async_sweep(tag: str, adapter: str):
     # Check if Claude Code subscription is available
     if auth_handler.is_claude_subscribed():
         typer.echo("Using Claude Code subscription authentication")
-    elif maha_app.config.auth_enabled and maha_app.config.auth_secret:
+    elif maha_app.config.auth.enabled and maha_app.config.auth.secret:
         typer.echo("Using JWT authentication")
     elif auth_handler.is_qwen_free():
         typer.echo("Using Qwen (free service)")
@@ -109,7 +109,7 @@ def mcp_start(
         # Check if Claude Code subscription is available
         if auth_handler.is_claude_subscribed():
             typer.echo("MCP Server: Claude Code subscription authentication enabled")
-        elif maha_app.config.auth_enabled and maha_app.config.auth_secret:
+        elif maha_app.config.auth.enabled and maha_app.config.auth.secret:
             typer.echo("MCP Server: JWT authentication enabled")
         elif auth_handler.is_qwen_free():
             typer.echo("MCP Server: Qwen (free service) authentication")
@@ -233,7 +233,7 @@ def list_repos(
     # Check if Claude Code subscription is available
     if auth_handler.is_claude_subscribed():
         typer.echo("Using Claude Code subscription authentication")
-    elif maha_app.config.auth_enabled and maha_app.config.auth_secret:
+    elif maha_app.config.auth.enabled and maha_app.config.auth.secret:
         typer.echo("Using JWT authentication")
     elif auth_handler.is_qwen_free():
         typer.echo("Using Qwen (free service)")

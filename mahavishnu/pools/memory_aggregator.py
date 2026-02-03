@@ -211,7 +211,7 @@ class MemoryAggregator:
         Example:
             ```python
             stats = await aggregator.collect_and_sync(pool_manager)
-            print(f"Synced {stats['memory_items_synced']} items")
+            logger.info(f"Synced {stats['memory_items_synced']} items")
             ```
         """
         # Collect memory from all pools CONCURRENTLY (25x faster!)
@@ -319,7 +319,7 @@ class MemoryAggregator:
             )
 
             for result in results:
-                print(f"{result['pool_id']}: {result['content'][:100]}")
+                logger.info(f"{result['pool_id']}: {result['content'][:100]}")
             ```
         """
         # Check cache first (60%+ hit rate expected)
@@ -428,7 +428,7 @@ class MemoryAggregator:
             ```python
             stats = await aggregator.get_pool_memory_stats(pool_manager)
             for pool_id, pool_stats in stats.items():
-                print(f"{pool_id}: {pool_stats['memory_count']} items")
+                logger.info(f"{pool_id}: {pool_stats['memory_count']} items")
             ```
         """
         pools_info = await pool_manager.list_pools()

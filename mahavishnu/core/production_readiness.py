@@ -1,4 +1,6 @@
 """Production readiness and testing module for Mahavishnu."""
+import logging
+
 
 import asyncio
 from datetime import datetime
@@ -11,6 +13,9 @@ from typing import Any
 from ..core.app import MahavishnuApp
 
 
+
+logger = logging.getLogger(__name__)
+
 class ProductionReadinessChecker:
     """Comprehensive checker for production readiness."""
 
@@ -22,7 +27,7 @@ class ProductionReadinessChecker:
 
     async def run_all_checks(self) -> dict[str, Any]:
         """Run all production readiness checks."""
-        print("🔍 Running Production Readiness Checks...")
+        logger.info("Running Production Readiness Checks...")
 
         # Run all check methods
         check_methods = [method for method in dir(self) if method.startswith("_check_")]
@@ -35,11 +40,11 @@ class ProductionReadinessChecker:
                     result = await method() if inspect.iscoroutinefunction(method) else method()
                     if result:
                         self.checks_passed += 1
-                        print(f"✅ {method.__name__[7:].replace('_', ' ').title()}: PASSED")
+                        logger.info(f"✅ {method.__name__[7:].replace('_', ' ').title()}: PASSED")
                     else:
-                        print(f"❌ {method.__name__[7:].replace('_', ' ').title()}: FAILED")
+                        logger.error(f"❌ {method.__name__[7:].replace('_', ' ').title()}: FAILED")
                 except Exception as e:
-                    print(f"❌ {method.__name__[7:].replace('_', ' ').title()}: ERROR - {e}")
+                    logger.error(f"❌ {method.__name__[7:].replace('_', ' ').title()}: ERROR - {e}")
 
         # Calculate overall score
         score = (self.checks_passed / self.total_checks * 100) if self.total_checks > 0 else 0
@@ -54,10 +59,8 @@ class ProductionReadinessChecker:
             "details": self.results,
         }
 
-        print(
-            f"\n📊 Overall Score: {score}% ({self.checks_passed}/{self.total_checks} checks passed)"
-        )
-        print(f"🎯 Status: {summary['summary']['status']}")
+        logger.info(f"Overall Score: {score}% ({self.checks_passed}/{self.total_checks} checks passed)")
+        logger.info(f"Status: {summary['summary']['status']}")
 
         return summary
 
@@ -67,10 +70,10 @@ class ProductionReadinessChecker:
             config = self.app.config
 
             # Check if auth is enabled in production
-            if config.auth_enabled and (
-                not config.auth_secret or len(config.auth_secret) < 32
+            if config.auth.enabled and (
+                not config.auth.secret or len(config.auth.secret) < 32
             ):
-                print("  ⚠️  Auth enabled but secret is too short (should be at least 32 chars)")
+                logger.warning("  Auth enabled but secret is too short (should be at least 32 chars)")
                 return False
 
             # Check if required fields are present
@@ -83,13 +86,13 @@ class ProductionReadinessChecker:
 
             for field in required_fields:
                 if not hasattr(config, field):
-                    print(f"  ❌ Missing required config field: {field}")
+                    logger.error("  Missing required config field: {field}")
                     return False
 
             # Check if repos file exists
             repos_path = Path(config.repos_path).expanduser()
             if not repos_path.exists():
-                print(f"  ⚠️  Repos file does not exist: {repos_path}")
+                logger.warning(f"  Repos file does not exist: {repos_path}")
 
             self.results["config_validity"] = {
                 "status": "PASS",
@@ -115,9 +118,9 @@ class ProductionReadinessChecker:
                     if health.get("status") == "healthy":
                         healthy_adapters += 1
                     else:
-                        print(f"  ⚠️  Adapter {name} is not healthy: {health}")
+                        logger.warning(f"  ⚠️  Adapter {name} is not healthy: {health}")
                 except Exception as e:
-                    print(f"  ❌ Adapter {name} health check failed: {e}")
+                    logger.error(f"  ❌ Adapter {name} health check failed: {e}")
 
             if healthy_adapters == total_adapters and total_adapters > 0:
                 self.results["adapter_health"] = {
@@ -150,12 +153,12 @@ class ProductionReadinessChecker:
                     if repo_path_obj.exists() and repo_path_obj.is_dir():
                         accessible_count += 1
                     else:
-                        print(f"  ⚠️  Repository not accessible: {repo_path}")
+                        logger.warning(f"  ⚠️  Repository not accessible: {repo_path}")
                 except Exception:
-                    print(f"  ⚠️  Repository path validation failed: {repo_path}")
+                    logger.error(f"  ⚠️  Repository path validation failed: {repo_path}")
 
             if not repos:
-                print("  ⚠️  No repositories configured")
+                logger.warning("  ⚠️  No repositories configured")
                 self.results["repo_accessibility"] = {
                     "status": "CAUTION",
                     "message": "No repositories configured",
@@ -187,7 +190,7 @@ class ProductionReadinessChecker:
             # Get a simple repo to test with
             repos = self.app.get_repos()
             if not repos:
-                print("  ⚠️  No repositories to test workflow execution")
+                logger.warning("  ⚠️  No repositories to test workflow execution")
                 self.results["workflow_execution"] = {
                     "status": "CAUTION",
                     "message": "No repositories available for testing",
@@ -196,7 +199,7 @@ class ProductionReadinessChecker:
 
             # Test with the first available adapter
             if not self.app.adapters:
-                print("  ❌ No adapters available for testing")
+                logger.error("  ❌ No adapters available for testing")
                 self.results["workflow_execution"] = {
                     "status": "FAIL",
                     "message": "No adapters available",
@@ -227,14 +230,14 @@ class ProductionReadinessChecker:
                 }
                 return True
             else:
-                print(f"  ❌ Workflow execution failed: {result}")
+                logger.error(f"  ❌ Workflow execution failed: {result}")
                 self.results["workflow_execution"] = {
                     "status": "FAIL",
                     "message": f"Workflow execution failed: {result}",
                 }
                 return False
         except Exception as e:
-            print(f"  ❌ Workflow execution test error: {e}")
+            logger.error(f"  ❌ Workflow execution test error: {e}")
             self.results["workflow_execution"] = {
                 "status": "FAIL",
                 "message": f"Workflow execution test error: {e}",
@@ -249,20 +252,20 @@ class ProductionReadinessChecker:
             # Check max concurrent workflows
             max_concurrent = config.max_concurrent_workflows
             if max_concurrent <= 0 or max_concurrent > 100:
-                print(
+                logger.warning(
                     f"  ⚠️  Unreasonable max_concurrent_workflows: {max_concurrent} (should be 1-100)"
                 )
                 return False
 
             # Check retry settings
-            if config.retry_max_attempts <= 0 or config.retry_max_attempts > 10:
-                print(f"  ⚠️  Unreasonable retry_max_attempts: {config.retry_max_attempts}")
+            if config.resilience.retry_max_attempts <= 0 or config.resilience.retry_max_attempts > 10:
+                logger.warning(f"  ⚠️  Unreasonable retry_max_attempts: {config.resilience.retry_max_attempts}")
                 return False
 
             # Check timeout settings
-            if config.timeout_per_repo < 30 or config.timeout_per_repo > 3600:
-                print(
-                    f"  ⚠️  Unreasonable timeout_per_repo: {config.timeout_per_repo} (should be 30-3600)"
+            if config.resilience.timeout_per_repo < 30 or config.resilience.timeout_per_repo > 3600:
+                logger.warning(
+                    f"  ⚠️  Unreasonable timeout_per_repo: {config.resilience.timeout_per_repo} (should be 30-3600)"
                 )
                 return False
 
@@ -271,8 +274,8 @@ class ProductionReadinessChecker:
                 "message": "Resource limits are reasonable",
                 "limits": {
                     "max_concurrent_workflows": max_concurrent,
-                    "retry_max_attempts": config.retry_max_attempts,
-                    "timeout_per_repo": config.timeout_per_repo,
+                    "retry_max_attempts": config.resilience.retry_max_attempts,
+                    "timeout_per_repo": config.resilience.timeout_per_repo,
                 },
             }
             return True
@@ -289,20 +292,20 @@ class ProductionReadinessChecker:
             config = self.app.config
 
             # Check if auth is enabled in production-like environment
-            if config.auth_enabled:
-                if not config.auth_secret or len(config.auth_secret) < 32:
-                    print("  ❌ Auth enabled but secret is too short (should be at least 32 chars)")
+            if config.auth.enabled:
+                if not config.auth.secret or len(config.auth.secret) < 32:
+                    logger.error("  ❌ Auth enabled but secret is too short (should be at least 32 chars)")
                     return False
 
-                if config.auth_algorithm not in ("HS256", "RS256"):
-                    print(f"  ⚠️  Weak auth algorithm: {config.auth_algorithm}")
+                if config.auth.algorithm not in ("HS256", "RS256"):
+                    logger.warning(f"  ⚠️  Weak auth algorithm: {config.auth.algorithm}")
                     return False
             else:
-                print("  ⚠️  Authentication is disabled - consider enabling for production")
+                logger.warning("  ⚠️  Authentication is disabled - consider enabling for production")
 
             # Check OpenSearch security settings
-            if hasattr(config, "opensearch_use_ssl") and not config.opensearch_use_ssl:
-                print("  ⚠️  OpenSearch SSL is disabled - consider enabling for production")
+            if hasattr(config, "opensearch_use_ssl") and not config.opensearch.use_ssl:
+                logger.warning("  ⚠️  OpenSearch SSL is disabled - consider enabling for production")
 
             self.results["security_settings"] = {
                 "status": "PASS",
@@ -326,7 +329,7 @@ class IntegrationTestSuite:
 
     async def run_all_tests(self) -> dict[str, Any]:
         """Run all integration tests."""
-        print("🧪 Running Integration Tests...")
+        logger.info("Running Integration Tests...")
 
         test_methods = [method for method in dir(self) if method.startswith("_test_")]
         passed_tests = 0
@@ -339,11 +342,11 @@ class IntegrationTestSuite:
                     result = await method() if inspect.iscoroutinefunction(method) else method()
                     if result:
                         passed_tests += 1
-                        print(f"✅ {method.__name__[6:].replace('_', ' ').title()}: PASSED")
+                        logger.info(f"✅ {method.__name__[6:].replace('_', ' ').title()}: PASSED")
                     else:
-                        print(f"❌ {method.__name__[6:].replace('_', ' ').title()}: FAILED")
+                        logger.error(f"❌ {method.__name__[6:].replace('_', ' ').title()}: FAILED")
                 except Exception as e:
-                    print(f"❌ {method.__name__[6:].replace('_', ' ').title()}: ERROR - {e}")
+                    logger.error(f"❌ {method.__name__[6:].replace('_', ' ').title()}: ERROR - {e}")
 
         score = (passed_tests / total_tests * 100) if total_tests > 0 else 0
 
@@ -357,8 +360,8 @@ class IntegrationTestSuite:
             "details": self.test_results,
         }
 
-        print(f"\n📊 Test Score: {score}% ({passed_tests}/{total_tests} tests passed)")
-        print(f"🎯 Status: {summary['summary']['status']}")
+        logger.info(f"\n📊 Test Score: {score}% ({passed_tests}/{total_tests} tests passed)")
+        logger.info(f"Status: {summary['summary']['status']}")
 
         return summary
 
@@ -367,7 +370,7 @@ class IntegrationTestSuite:
         try:
             # Test with available adapters
             if not self.app.adapters:
-                print("  ⚠️  No adapters available for testing")
+                logger.warning("  ⚠️  No adapters available for testing")
                 return True  # Not a failure of the system, just configuration
 
             adapter_name = next(iter(self.app.adapters.keys()))
@@ -382,7 +385,7 @@ class IntegrationTestSuite:
             # Get available repos
             repos = self.app.get_repos()
             if not repos:
-                print("  ⚠️  No repositories available for testing")
+                logger.warning("  ⚠️  No repositories available for testing")
                 return True  # Not a failure of the system, just configuration
 
             # Execute workflow
@@ -483,7 +486,7 @@ class IntegrationTestSuite:
         """Test observability and logging."""
         try:
             if not self.app.observability:
-                print("  ⚠️  Observability not initialized")
+                logger.warning("  ⚠️  Observability not initialized")
                 return True  # Not a failure if not configured
 
             # Test logging
@@ -529,7 +532,7 @@ class PerformanceBenchmark:
 
     async def run_benchmarks(self) -> dict[str, Any]:
         """Run performance benchmarks."""
-        print("⚡ Running Performance Benchmarks...")
+        logger.info("Running Performance Benchmarks...")
 
         # Run individual benchmarks
         await self._benchmark_workflow_execution()
@@ -561,8 +564,8 @@ class PerformanceBenchmark:
             "benchmarks": self.benchmarks,
         }
 
-        print(f"\n📊 Performance Score: {performance_score}/100")
-        print(f"🎯 Status: {summary['summary']['status']}")
+        logger.info(f"\n📊 Performance Score: {performance_score}/100")
+        logger.info(f"Status: {summary['summary']['status']}")
 
         return summary
 
@@ -570,14 +573,14 @@ class PerformanceBenchmark:
         """Benchmark workflow execution speed."""
         try:
             if not self.app.adapters:
-                print("  ⚠️  No adapters available for benchmarking")
+                logger.warning("  ⚠️  No adapters available for benchmarking")
                 return
 
             adapter_name = next(iter(self.app.adapters.keys()))
             repos = self.app.get_repos()
 
             if not repos:
-                print("  ⚠️  No repositories available for benchmarking")
+                logger.warning("  ⚠️  No repositories available for benchmarking")
                 return
 
             # Run multiple executions to get average
@@ -613,24 +616,22 @@ class PerformanceBenchmark:
                 "times": execution_times,
             }
 
-            print(
-                f"  📈 Workflow execution: avg={avg_time:.2f}s, min={min_time:.2f}s, max={max_time:.2f}s"
-            )
+            logger.info(f"  📈 Workflow execution: avg={avg_time:.2f}s, min={min_time:.2f}s, max={max_time:.2f}s")
         except Exception as e:
-            print(f"  ❌ Workflow execution benchmark failed: {e}")
+            logger.error(f"  ❌ Workflow execution benchmark failed: {e}")
 
     async def _benchmark_concurrent_workflows(self):
         """Benchmark concurrent workflow handling."""
         try:
             if not self.app.adapters:
-                print("  ⚠️  No adapters available for benchmarking")
+                logger.warning("  ⚠️  No adapters available for benchmarking")
                 return
 
             adapter_name = next(iter(self.app.adapters.keys()))
             repos = self.app.get_repos()
 
             if not repos:
-                print("  ⚠️  No repositories available for benchmarking")
+                logger.warning("  ⚠️  No repositories available for benchmarking")
                 return
 
             # Run multiple concurrent executions
@@ -659,11 +660,11 @@ class PerformanceBenchmark:
                 "throughput": successful_executions / total_time if total_time > 0 else 0,
             }
 
-            print(
+            logger.info(
                 f"  🚀 Concurrent workflows: {num_concurrent} in {total_time:.2f}s, throughput={successful_executions / total_time:.2f} ops/sec"
             )
         except Exception as e:
-            print(f"  ❌ Concurrent workflows benchmark failed: {e}")
+            logger.error(f"  ❌ Concurrent workflows benchmark failed: {e}")
 
     async def _benchmark_repo_operations(self):
         """Benchmark repository operations."""
@@ -671,7 +672,7 @@ class PerformanceBenchmark:
             repos = self.app.get_repos()
 
             if not repos:
-                print("  ⚠️  No repositories available for benchmarking")
+                logger.warning("  ⚠️  No repositories available for benchmarking")
                 return
 
             # Benchmark get_repos operation
@@ -688,14 +689,14 @@ class PerformanceBenchmark:
                 "total_ops_time": total_time,
             }
 
-            print(f"  🗂️  Repo operations: avg get_repos={avg_time:.4f}s for {len(repos)} repos")
+            logger.info(f"  🗂️  Repo operations: avg get_repos={avg_time:.4f}s for {len(repos)} repos")
         except Exception as e:
-            print(f"  ❌ Repo operations benchmark failed: {e}")
+            logger.error(f"  ❌ Repo operations benchmark failed: {e}")
 
 
 async def run_production_readiness_suite(app: MahavishnuApp) -> dict[str, Any]:
     """Run the complete production readiness suite."""
-    print("🚀 Starting Production Readiness Suite...\n")
+    logger.info("🚀 Starting Production Readiness Suite...\n")
 
     # Initialize components
     checker = ProductionReadinessChecker(app)
@@ -718,11 +719,11 @@ async def run_production_readiness_suite(app: MahavishnuApp) -> dict[str, Any]:
         ),
     }
 
-    print("\n🏆 FINAL ASSESSMENT:")
-    print(f"   Production Readiness: {readiness_results['summary']['score_percentage']}%")
-    print(f"   Integration Tests: {test_results['summary']['score_percentage']}%")
-    print(f"   Performance Score: {benchmark_results['summary']['performance_score']}/100")
-    print(f"   Overall Status: {final_report['overall_assessment']['status']}")
+    logger.info("\n🏆 FINAL ASSESSMENT:")
+    logger.info(f"   Production Readiness: {readiness_results['summary']['score_percentage']}%")
+    logger.info(f"   Integration Tests: {test_results['summary']['score_percentage']}%")
+    logger.info(f"   Performance Score: {benchmark_results['summary']['performance_score']}/100")
+    logger.info(f"   Overall Status: {final_report['overall_assessment']['status']}")
 
     return final_report
 

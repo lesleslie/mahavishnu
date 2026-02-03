@@ -12,12 +12,7 @@ from mahavishnu.core.config import MahavishnuSettings
 @pytest.fixture
 def mock_settings():
     """Create mock settings for testing."""
-    return MahavishnuSettings(
-        server_name="Test Server",
-        llm_provider="anthropic",
-        llm_model="claude-sonnet-4",
-        observability_enabled=False,
-    )
+    return MahavishnuSettings(server_name="Test Server", llm_provider="anthropic", observability_enabled=False, llm={model="claude-sonnet-4"})
 
 
 @pytest.fixture
@@ -252,11 +247,7 @@ class TestMahavishnuMCPServerConfiguration:
     @pytest.mark.asyncio
     async def test_initialize_with_custom_config(self):
         """Test server initializes with custom configuration."""
-        settings = MahavishnuSettings(
-            server_name="Custom Server",
-            llm_provider="openai",
-            llm_model="gpt-4"
-        )
+        settings = MahavishnuSettings(server_name="Custom Server", llm_provider="openai", llm={model="gpt-4"})
         server = MahavishnuMCPServer(settings=settings)
 
         assert server.settings.server_name == "Custom Server"

@@ -22,11 +22,11 @@ def mock_app():
     app.adapters = {"test_adapter": Mock()}
     app.config = Mock()
     app.config.max_concurrent_workflows = 10
-    app.config.auth_enabled = False
-    app.config.qc_enabled = False
-    app.config.session_enabled = False
-    app.config.subscription_auth_enabled = False
-    app.config.subscription_auth_secret = None
+    app.config.auth.enabled = False
+    app.config.qc.enabled = False
+    app.config.session.enabled = False
+    app.config.subscription_auth.enabled = False
+    app.config.subscription_auth.secret = None
 
     # Mock the workflow state manager
     app.workflow_state_manager.list_workflows = AsyncMock(return_value=[])

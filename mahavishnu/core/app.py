@@ -5,6 +5,8 @@ repository loading, and adapter initialization using Oneiric patterns.
 """
 
 import asyncio
+import time
+import uuid
 from asyncio import Semaphore
 from datetime import datetime
 from pathlib import Path
@@ -16,7 +18,7 @@ from ..qc.checker import QualityControl
 from ..session.checkpoint import SessionBuddy
 from .circuit_breaker import CircuitBreaker
 from .config import MahavishnuSettings
-from .errors import ConfigurationError, ValidationError
+from .errors import AdapterError, ConfigurationError, ValidationError
 from .monitoring import MonitoringService
 from .observability import init_observability
 from .opensearch_integration import OpenSearchIntegration
@@ -128,8 +130,8 @@ class MahavishnuApp:
 
         # Initialize production features
         self.circuit_breaker = CircuitBreaker(
-            threshold=self.config.circuit_breaker_threshold,
-            timeout=int(self.config.retry_base_delay * 10),  # Convert to int
+            threshold=self.config.resilience.circuit_breaker_threshold,
+            timeout=int(self.config.resilience.retry_base_delay * 10),  # Convert to int
         )
 
         # Initialize observability
@@ -152,9 +154,9 @@ class MahavishnuApp:
         # Initialize pool manager
         self.pool_manager = None
         self.memory_aggregator = None
-        if self.config.pools_enabled:
+        if self.config.pools.enabled:
             self.pool_manager = self._init_pool_manager()
-            if self.config.memory_aggregation_enabled:
+            if self.config.pools.memory_aggregation_enabled:
                 self.memory_aggregator = self._init_memory_aggregator()
 
         # Initialize RBAC manager
@@ -181,7 +183,7 @@ class MahavishnuApp:
 
         # Initialize Session-Buddy poller for telemetry collection
         self.session_buddy_poller = None
-        if self.config.session_buddy_polling_enabled:
+        if self.config.session_buddy_polling.enabled:
             self.session_buddy_poller = self._init_session_buddy_poller()
 
     def _init_session_buddy_poller(self):
@@ -205,8 +207,8 @@ class MahavishnuApp:
             logger = __import__("logging").getLogger(__name__)
             logger.info(
                 f"Session-Buddy poller initialized: "
-                f"endpoint={self.config.session_buddy_polling_endpoint}, "
-                f"interval={self.config.session_buddy_polling_interval_seconds}s"
+                f"endpoint={self.config.session_buddy_polling.endpoint}, "
+                f"interval={self.config.session_buddy_polling.interval_seconds}s"
             )
 
             return poller
@@ -294,14 +296,14 @@ class MahavishnuApp:
             )
 
             # Set default pool selector strategy
-            selector = PoolSelector(self.config.pool_routing_strategy)
+            selector = PoolSelector(self.config.pools.routing_strategy)
             pool_manager.set_pool_selector(selector)
 
             logger = __import__("logging").getLogger(__name__)
             logger.info(
                 f"Pool manager initialized "
-                f"(strategy={self.config.pool_routing_strategy}, "
-                f"default_type={self.config.default_pool_type})"
+                f"(strategy={self.config.pools.routing_strategy}, "
+                f"default_type={self.config.pools.default_type})"
             )
 
             return pool_manager
@@ -321,15 +323,15 @@ class MahavishnuApp:
             from ..pools.memory_aggregator import MemoryAggregator
 
             memory_aggregator = MemoryAggregator(
-                session_buddy_url=self.config.session_buddy_pool_url,
-                akosha_url=self.config.akosha_url,
-                sync_interval=self.config.memory_sync_interval,
+                session_buddy_url=self.config.pools.session_buddy_url,
+                akosha_url=self.config.pools.akosha_url,
+                sync_interval=self.config.pools.memory_sync_interval,
             )
 
             logger = __import__("logging").getLogger(__name__)
             logger.info(
                 f"Memory aggregator initialized "
-                f"(sync_interval={self.config.memory_sync_interval}s)"
+                f"(sync_interval={self.config.pools.memory_sync_interval}s)"
             )
 
             return memory_aggregator
@@ -418,7 +420,7 @@ class MahavishnuApp:
         enabled_adapters: dict[str, bool] = {}
 
         # Prefect - Core orchestration (enabled by default)
-        if self.config.prefect_enabled:
+        if self.config.adapters.prefect_enabled:
             try:
                 from ..engines.prefect_adapter import PrefectAdapter
 
@@ -426,11 +428,11 @@ class MahavishnuApp:
                 enabled_adapters["prefect"] = True
             except ImportError:
                 # Prefect not available, skip this adapter
-                print("Warning: Prefect adapter not available due to missing dependencies")
+                logger.warning("Prefect adapter not available due to missing dependencies")
                 pass
 
         # LlamaIndex - RAG pipelines (enabled by default)
-        if self.config.llamaindex_enabled:
+        if self.config.adapters.llamaindex_enabled:
             try:
                 from ..engines.llamaindex_adapter import LlamaIndexAdapter
 
@@ -438,11 +440,11 @@ class MahavishnuApp:
                 enabled_adapters["llamaindex"] = True
             except ImportError:
                 # LlamaIndex not available, skip this adapter
-                print("Warning: LlamaIndex adapter not available due to missing dependencies")
+                logger.warning("LlamaIndex adapter not available due to missing dependencies")
                 pass
 
         # Agno - Fast agents (enabled by default)
-        if self.config.agno_enabled:
+        if self.config.adapters.agno_enabled:
             try:
                 from ..engines.agno_adapter import AgnoAdapter
 
@@ -450,7 +452,7 @@ class MahavishnuApp:
                 enabled_adapters["agno"] = True
             except ImportError:
                 # Agno not available, skip this adapter
-                print("Warning: Agno adapter not available due to missing dependencies")
+                logger.warning("Agno adapter not available due to missing dependencies")
                 pass
 
         # Worker - Headless AI execution (enabled by default)
@@ -468,7 +470,7 @@ class MahavishnuApp:
                 self._worker_manager_cls = WorkerManager
             except ImportError:
                 # Worker components not available
-                print("Warning: Worker adapter not available due to missing dependencies")
+                logger.warning("Worker adapter not available due to missing dependencies")
                 pass
 
         for adapter_name, is_enabled in enabled_adapters.items():
@@ -577,10 +579,10 @@ class MahavishnuApp:
                         validated_repos.append(str(validated_path))
                 else:
                     # Log warning but continue with other repos
-                    print(f"Warning: Repository path does not exist: {validated_path}")
+                    logger.warning(f"Repository path does not exist: {validated_path}")
             except ValidationError as e:
                 # Log warning but continue with other repos
-                print(f"Warning: Invalid repository path: {repo_path} - {e.message}")
+                logger.warning(f"Invalid repository path: {repo_path} - {e.message}")
 
         return validated_repos
 
@@ -603,7 +605,7 @@ class MahavishnuApp:
         Returns:
             List of repository dictionaries with path, tags, description
         """
-        return self.repos_config.get("repos", [])  # type: ignore
+        return self.repos_config.get("repos", [])
 
     def get_all_repo_paths(self) -> list[str]:
         """Get all repository paths.
@@ -611,7 +613,7 @@ class MahavishnuApp:
         Returns:
             List of all repository paths
         """
-        repos = self.repos_config.get("repos", [])  # type: ignore
+        repos = self.repos_config.get("repos", [])
         return [repo["path"] for repo in repos]
 
     def get_roles(self) -> list[dict[str, Any]]:
@@ -762,14 +764,10 @@ class MahavishnuApp:
                     error_counter.add(1, {"adapter": adapter_name, "error_type": type(e).__name__})
 
             # Log error to OpenSearch
-            import uuid
-
             workflow_id = f"wf_{uuid.uuid4().hex[:8]}_{task.get('type', 'default')}_single"
             await self.opensearch_integration.log_error(
                 workflow_id=workflow_id, error_msg=str(e), adapter=adapter_name
             )
-
-            from .errors import AdapterError
 
             raise AdapterError(
                 message=f"Adapter execution failed: {e}",
@@ -837,36 +835,27 @@ class MahavishnuApp:
         adapter = self.adapters[adapter_name]
         return adapter, validated_repos
 
-    async def execute_workflow_parallel(
+    # ========================================================================
+    # REFACTORED: execute_workflow_parallel helper methods
+    # ========================================================================
+
+    async def _initialize_workflow_state(
         self,
         task: dict[str, Any],
         adapter_name: str,
-        repos: list[str] | None = None,
-        progress_callback=None,
-        user_id: str | None = None,
-    ) -> dict[str, Any]:
-        """Execute a workflow in parallel across repositories with progress reporting.
+        validated_repos: list[str],
+    ) -> str:
+        """Initialize workflow state, logging, and observability.
 
         Args:
-            task: Task specification with 'type' and 'params' keys
-            adapter_name: Name of adapter to use
-            repos: Optional list of repositories (defaults to all repos)
-            progress_callback: Optional callback function to report progress
-            user_id: Optional user ID for permission checking
+            task: Task specification
+            adapter_name: Name of adapter being used
+            validated_repos: List of validated repository paths
 
         Returns:
-            Workflow execution result with timing and performance metrics
-
-        Raises:
-            ValidationError: If task or adapter_name is invalid
-            AdapterError: If adapter execution fails
+            workflow_id: Unique workflow identifier
         """
-        # Validate adapter and prepare for execution
-        adapter, validated_repos = await self._prepare_execution(adapter_name, task, repos, user_id)
-
         # Create a unique workflow ID
-        import uuid
-
         workflow_id = f"wf_{uuid.uuid4().hex[:8]}_{task.get('type', 'default')}"
 
         # Create workflow state
@@ -885,270 +874,484 @@ class MahavishnuApp:
             repos=validated_repos,
         )
 
-        # Execute workflow with production features and resilience
-        adapter = self.adapters[adapter_name]
-        try:
-            # Pre-execution quality control check
-            if self.config.qc_enabled:
-                qc_result = await self.qc.validate_pre_execution(validated_repos)
-                if not qc_result:
-                    await self.workflow_state_manager.update(
-                        workflow_id=workflow_id,
-                        status="failed",
-                        error="Pre-execution QC check failed",
-                    )
-                    raise ValidationError(
-                        message="Pre-execution QC check failed",
-                        details={
-                            "repos": validated_repos,
-                            "qc_result": "Failed to meet minimum quality standards",
-                        },
-                    )
+        return workflow_id
 
-            # Create session checkpoint if enabled
-            checkpoint_id = None
-            if self.config.session_enabled:
-                checkpoint_id = await self.session_buddy.create_checkpoint(
-                    session_id=f"workflow_{task.get('id', 'default')}",
-                    state={
-                        "task": task,
-                        "adapter": adapter_name,
-                        "repos": validated_repos,
-                        "status": "started",
-                    },
-                )
+    async def _validate_pre_execution_qc(
+        self, workflow_id: str, validated_repos: list[str]
+    ) -> None:
+        """Validate pre-execution quality control checks.
 
-            # Calculate total repos for progress tracking
-            total_repos = len(validated_repos)
-            completed_repos = 0
+        Args:
+            workflow_id: Workflow identifier
+            validated_repos: List of validated repository paths
 
-            # Process repos in parallel with concurrency control
-            semaphore = self.semaphore
+        Raises:
+            ValidationError: If QC check fails
+        """
+        if not self.config.qc.enabled:
+            return
 
-            async def process_single_repo(repo_path):
-                nonlocal completed_repos
-                async with semaphore:  # Limit concurrent executions
-                    start_repo_time = time.time()
-
-                    # Use circuit breaker for each repo processing
-                    try:
-                        result = await self.circuit_breaker.call(
-                            adapter.execute, task | {"single_repo": repo_path}, [repo_path]
-                        )
-
-                        # Add result to workflow state
-                        await self.workflow_state_manager.add_result(workflow_id, result)
-                    except Exception as e:
-                        # Record failure in circuit breaker
-                        self.circuit_breaker.record_failure()
-
-                        # Add error to workflow state
-                        error_info = {
-                            "repo": repo_path,
-                            "error": str(e),
-                            "type": type(e).__name__,
-                            "timestamp": datetime.now().isoformat(),
-                        }
-                        await self.workflow_state_manager.add_error(workflow_id, error_info)
-
-                        # Record error in observability if enabled
-                        if self.observability:
-                            error_counter = self.observability.create_error_counter()
-                            if error_counter:
-                                error_counter.add(
-                                    1,
-                                    {
-                                        "adapter": adapter_name,
-                                        "error_type": type(e).__name__,
-                                        "repo": repo_path,
-                                    },
-                                )
-
-                        # Log error to OpenSearch
-                        await self.opensearch_integration.log_error(
-                            workflow_id=workflow_id,
-                            error_msg=str(e),
-                            repo_path=repo_path,
-                            adapter=adapter_name,
-                        )
-
-                        raise e
-
-                    completed_repos += 1
-
-                    # Calculate and record repo processing time
-                    repo_processing_time = time.time() - start_repo_time
-
-                    # Update progress in workflow state
-                    await self.workflow_state_manager.update_progress(
-                        workflow_id, completed_repos, total_repos
-                    )
-
-                    # Record repo processing time in observability
-                    if self.observability:
-                        self.observability.record_repo_processing_time(
-                            repo_path, workflow_id, repo_processing_time
-                        )
-
-                        # Start repo trace
-                        with self.observability.start_repo_trace(repo_path, workflow_id):
-                            pass  # Span is active during this context
-
-                    # Report progress if callback provided
-                    if progress_callback:
-                        progress_callback(completed_repos, total_repos, repo_path)
-
-                    return result
-
-            # Execute all repos in parallel
-            import time
-
-            start_time = time.time()
-
-            # Add observability if enabled
-            if self.observability:
-                # Record workflow execution
-                workflow_counter = self.observability.create_workflow_counter()
-                if workflow_counter:
-                    workflow_counter.add(
-                        1, {"adapter": adapter_name, "task_type": task.get("type", "unknown")}
-                    )
-
-                # Record repository processing
-                repo_counter = self.observability.create_repo_counter()
-                if repo_counter:
-                    repo_counter.add(len(validated_repos), {"adapter": adapter_name})
-
-                # Start workflow trace (span is ended automatically on context exit)
-                with self.observability.start_workflow_trace(
-                    workflow_id, adapter_name, task.get("type", "unknown")
-                ) as workflow_span:
-                    _ = workflow_span  # Mark as intentionally used
-
-            tasks = [process_single_repo(repo) for repo in validated_repos]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            execution_time = time.time() - start_time
-
-            # End workflow trace
-            if self.observability:
-                self.observability.end_workflow_trace(
-                    workflow_id,
-                    "completed" if not errors else ("partial" if successful_results else "failed"),
-                )
-
-            # Handle any exceptions that occurred during parallel execution
-            errors: list[dict[str, Any]] = []
-            successful_results: list[Any] = []
-            for i, result in enumerate(results):
-                if isinstance(result, Exception):
-                    errors.append(
-                        {
-                            "repo": validated_repos[i],
-                            "error": str(result),
-                            "type": type(result).__name__,
-                        }
-                    )
-                    # Record error in observability if enabled
-                    if self.observability:
-                        error_counter = self.observability.create_error_counter()
-                        if error_counter:
-                            error_counter.add(
-                                1,
-                                {
-                                    "adapter": adapter_name,
-                                    "error_type": type(result).__name__,
-                                    "repo": validated_repos[i],
-                                },
-                            )
-                else:
-                    successful_results.append(result)
-
-            # Update workflow state with final status
-            final_status = (
-                "completed" if not errors else ("partial" if successful_results else "failed")
-            )
-            await self.workflow_state_manager.update(
-                workflow_id=workflow_id,
-                status=final_status,
-                execution_time_seconds=execution_time,
-                completed_at=datetime.now().isoformat(),
-            )
-
-            # Log workflow completion to OpenSearch
-            await self.opensearch_integration.log_workflow_completion(
-                workflow_id=workflow_id,
-                status=final_status,
-                execution_time=execution_time,
-                results_count=len(successful_results),
-                errors_count=len(errors),
-                adapter=adapter_name,
-                task_type=task.get("type", "unknown"),
-            )
-
-            # Update checkpoint if enabled
-            if self.config.session_enabled and checkpoint_id:
-                await self.session_buddy.update_checkpoint(
-                    checkpoint_id,
-                    final_status,
-                    result={
-                        "successful_repos": len(successful_results),
-                        "failed_repos": len(errors),
-                        "execution_time": execution_time,
-                    },
-                )
-
-            # Post-execution quality control check
-            if self.config.qc_enabled:
-                qc_result = await self.qc.validate_post_execution(validated_repos)
-                if not qc_result:
-                    # Log warning but don't fail the workflow
-                    print(f"Warning: Post-execution QC check failed for repos: {validated_repos}")
-
-            return {
-                "workflow_id": workflow_id,
-                "status": final_status,
-                "adapter": adapter_name,
-                "task": task,
-                "repos_processed": len(validated_repos),
-                "successful_repos": len(successful_results),
-                "failed_repos": len(errors),
-                "execution_time_seconds": execution_time,
-                "results": successful_results,
-                "errors": errors or None,
-                "concurrency_limit": self.config.max_concurrent_workflows,
-                "qc_enabled": self.config.qc_enabled,
-                "session_enabled": self.config.session_enabled,
-            }
-        except Exception as e:
-            # Update workflow state with error
+        qc_result = await self.qc.validate_pre_execution(validated_repos)
+        if not qc_result:
             await self.workflow_state_manager.update(
                 workflow_id=workflow_id,
                 status="failed",
-                error=str(e),
-                completed_at=datetime.now().isoformat(),
+                error="Pre-execution QC check failed",
+            )
+            raise ValidationError(
+                message="Pre-execution QC check failed",
+                details={
+                    "repos": validated_repos,
+                    "qc_result": "Failed to meet minimum quality standards",
+                },
             )
 
-            # Log error to OpenSearch
-            await self.opensearch_integration.log_error(
-                workflow_id=workflow_id, error_msg=str(e), adapter=adapter_name
-            )
+    async def _create_session_checkpoint(
+        self, task: dict[str, Any], adapter_name: str, validated_repos: list[str]
+    ) -> str | None:
+        """Create session checkpoint if enabled.
 
-            # Update checkpoint if enabled and there was an error
-            if self.config.session_enabled and checkpoint_id:
-                await self.session_buddy.update_checkpoint(
-                    checkpoint_id, "failed", result={"error": str(e)}
+        Args:
+            task: Task specification
+            adapter_name: Name of adapter being used
+            validated_repos: List of validated repository paths
+
+        Returns:
+            checkpoint_id: Checkpoint ID if created, None otherwise
+        """
+        if not self.config.session.enabled:
+            return None
+
+        return await self.session_buddy.create_checkpoint(
+            session_id=f"workflow_{task.get('id', 'default')}",
+            state={
+                "task": task,
+                "adapter": adapter_name,
+                "repos": validated_repos,
+                "status": "started",
+            },
+        )
+
+    async def _process_single_repo(
+        self,
+        adapter: "OrchestratorAdapter",
+        task: dict[str, Any],
+        adapter_name: str,
+        workflow_id: str,
+        repo_path: str,
+        total_repos: int,
+        semaphore: Semaphore,
+        progress_callback=None,
+    ) -> Any:
+        """Process a single repository with circuit breaker and observability.
+
+        Args:
+            adapter: Orchestrator adapter instance
+            task: Task specification
+            adapter_name: Name of adapter being used
+            workflow_id: Workflow identifier
+            repo_path: Repository path to process
+            total_repos: Total number of repos (for progress tracking)
+            semaphore: Semaphore for concurrency control
+            progress_callback: Optional progress callback
+
+        Returns:
+            Result from adapter execution
+
+        Raises:
+            Exception: If execution fails (propagated for error handling)
+        """
+        async with semaphore:
+            start_repo_time = time.time()
+
+            # Use circuit breaker for each repo processing
+            try:
+                result = await self.circuit_breaker.call(
+                    adapter.execute, task | {"single_repo": repo_path}, [repo_path]
                 )
 
-            from .errors import AdapterError
+                # Add result to workflow state
+                await self.workflow_state_manager.add_result(workflow_id, result)
 
-            raise AdapterError(
-                message=f"Adapter execution failed: {e}",
-                details={
-                    "adapter": adapter_name,
-                    "task": task,
-                    "repos_count": len(validated_repos),
+                # Calculate and record repo processing time
+                repo_processing_time = time.time() - start_repo_time
+
+                # Update progress in workflow state
+                completed_repos = await self.workflow_state_manager.get_completed_count(workflow_id)
+                await self.workflow_state_manager.update_progress(
+                    workflow_id, completed_repos + 1, total_repos
+                )
+
+                # Record repo processing time in observability
+                if self.observability:
+                    self.observability.record_repo_processing_time(
+                        repo_path, workflow_id, repo_processing_time
+                    )
+
+                    # Start repo trace
+                    with self.observability.start_repo_trace(repo_path, workflow_id):
+                        pass  # Span is active during this context
+
+                # Report progress if callback provided
+                if progress_callback:
+                    progress_callback(completed_repos + 1, total_repos, repo_path)
+
+                return result
+
+            except Exception as e:
+                # Record failure in circuit breaker
+                self.circuit_breaker.record_failure()
+
+                # Add error to workflow state
+                error_info = {
+                    "repo": repo_path,
                     "error": str(e),
-                    "error_type": type(e).__name__,
+                    "type": type(e).__name__,
+                    "timestamp": datetime.now().isoformat(),
+                }
+                await self.workflow_state_manager.add_error(workflow_id, error_info)
+
+                # Record error in observability if enabled
+                if self.observability:
+                    error_counter = self.observability.create_error_counter()
+                    if error_counter:
+                        error_counter.add(
+                            1,
+                            {
+                                "adapter": adapter_name,
+                                "error_type": type(e).__name__,
+                                "repo": repo_path,
+                            },
+                        )
+
+                # Log error to OpenSearch
+                await self.opensearch_integration.log_error(
+                    workflow_id=workflow_id,
+                    error_msg=str(e),
+                    repo_path=repo_path,
+                    adapter=adapter_name,
+                )
+
+                raise e
+
+    async def _execute_parallel_workflow(
+        self,
+        adapter: "OrchestratorAdapter",
+        task: dict[str, Any],
+        adapter_name: str,
+        workflow_id: str,
+        validated_repos: list[str],
+        progress_callback=None,
+    ) -> tuple[float, list[Any], list[dict[str, Any]]]:
+        """Execute workflow across repos in parallel with observability.
+
+        Args:
+            adapter: Orchestrator adapter instance
+            task: Task specification
+            adapter_name: Name of adapter being used
+            workflow_id: Workflow identifier
+            validated_repos: List of validated repository paths
+            progress_callback: Optional progress callback
+
+        Returns:
+            Tuple of (execution_time, successful_results, errors)
+        """
+        start_time = time.time()
+
+        # Add observability if enabled
+        if self.observability:
+            # Record workflow execution
+            workflow_counter = self.observability.create_workflow_counter()
+            if workflow_counter:
+                workflow_counter.add(
+                    1, {"adapter": adapter_name, "task_type": task.get("type", "unknown")}
+                )
+
+            # Record repository processing
+            repo_counter = self.observability.create_repo_counter()
+            if repo_counter:
+                repo_counter.add(len(validated_repos), {"adapter": adapter_name})
+
+            # Start workflow trace (span is ended automatically on context exit)
+            with self.observability.start_workflow_trace(
+                workflow_id, adapter_name, task.get("type", "unknown")
+            ) as workflow_span:
+                _ = workflow_span  # Mark as intentionally used
+
+        # Process repos in parallel with concurrency control
+        semaphore = self.semaphore
+        total_repos = len(validated_repos)
+
+        tasks = [
+            self._process_single_repo(
+                adapter=adapter,
+                task=task,
+                adapter_name=adapter_name,
+                workflow_id=workflow_id,
+                repo_path=repo_path,
+                total_repos=total_repos,
+                semaphore=semaphore,
+                progress_callback=progress_callback,
+            )
+            for repo_path in validated_repos
+        ]
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        execution_time = time.time() - start_time
+
+        # End workflow trace
+        if self.observability:
+            # Determine final status
+            errors_count = sum(1 for r in results if isinstance(r, Exception))
+            successful_count = len(results) - errors_count
+
+            final_status = (
+                "completed" if errors_count == 0 else ("partial" if successful_count > 0 else "failed")
+            )
+
+            self.observability.end_workflow_trace(workflow_id, final_status)
+
+        # Handle any exceptions that occurred during parallel execution
+        errors: list[dict[str, Any]] = []
+        successful_results: list[Any] = []
+
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                errors.append(
+                    {
+                        "repo": validated_repos[i],
+                        "error": str(result),
+                        "type": type(result).__name__,
+                    }
+                )
+                # Record error in observability if enabled
+                if self.observability:
+                    error_counter = self.observability.create_error_counter()
+                    if error_counter:
+                        error_counter.add(
+                            1,
+                            {
+                                "adapter": adapter_name,
+                                "error_type": type(result).__name__,
+                                "repo": validated_repos[i],
+                            },
+                        )
+            else:
+                successful_results.append(result)
+
+        return execution_time, successful_results, errors
+
+    async def _finalize_workflow_execution(
+        self,
+        workflow_id: str,
+        adapter_name: str,
+        task: dict[str, Any],
+        validated_repos: list[str],
+        execution_time: float,
+        successful_results: list[Any],
+        errors: list[dict[str, Any]],
+        checkpoint_id: str | None,
+    ) -> dict[str, Any]:
+        """Finalize workflow execution with logging and checkpoint updates.
+
+        Args:
+            workflow_id: Workflow identifier
+            adapter_name: Name of adapter being used
+            task: Task specification
+            validated_repos: List of validated repository paths
+            execution_time: Total execution time in seconds
+            successful_results: List of successful results
+            errors: List of error dictionaries
+            checkpoint_id: Optional checkpoint ID for session management
+
+        Returns:
+            Final workflow summary dictionary
+        """
+        # Determine final status
+        final_status = (
+            "completed" if not errors else ("partial" if successful_results else "failed")
+        )
+
+        # Update workflow state with final status
+        await self.workflow_state_manager.update(
+            workflow_id=workflow_id,
+            status=final_status,
+            execution_time_seconds=execution_time,
+            completed_at=datetime.now().isoformat(),
+        )
+
+        # Log workflow completion to OpenSearch
+        await self.opensearch_integration.log_workflow_completion(
+            workflow_id=workflow_id,
+            status=final_status,
+            execution_time=execution_time,
+            results_count=len(successful_results),
+            errors_count=len(errors),
+            adapter=adapter_name,
+            task_type=task.get("type", "unknown"),
+        )
+
+        # Update checkpoint if enabled
+        if self.config.session.enabled and checkpoint_id:
+            await self.session_buddy.update_checkpoint(
+                checkpoint_id,
+                final_status,
+                result={
+                    "successful_repos": len(successful_results),
+                    "failed_repos": len(errors),
+                    "execution_time": execution_time,
                 },
-            ) from e
+            )
+
+        # Post-execution quality control check
+        if self.config.qc.enabled:
+            qc_result = await self.qc.validate_post_execution(validated_repos)
+            if not qc_result:
+                # Log warning but don't fail the workflow
+                logger.warning(f"Post-execution QC check failed for repos: {validated_repos}")
+
+        return {
+            "workflow_id": workflow_id,
+            "status": final_status,
+            "adapter": adapter_name,
+            "task": task,
+            "repos_processed": len(validated_repos),
+            "successful_repos": len(successful_results),
+            "failed_repos": len(errors),
+            "execution_time_seconds": execution_time,
+            "results": successful_results,
+            "errors": errors or None,
+            "concurrency_limit": self.config.max_concurrent_workflows,
+            "qc_enabled": self.config.qc.enabled,
+            "session_enabled": self.config.session.enabled,
+        }
+
+    async def _handle_workflow_execution_error(
+        self,
+        workflow_id: str,
+        adapter_name: str,
+        task: dict[str, Any],
+        validated_repos: list[str],
+        error: Exception,
+        checkpoint_id: str | None,
+    ) -> None:
+        """Handle workflow execution error with logging and state updates.
+
+        Args:
+            workflow_id: Workflow identifier
+            adapter_name: Name of adapter being used
+            task: Task specification
+            validated_repos: List of validated repository paths
+            error: The exception that occurred
+            checkpoint_id: Optional checkpoint ID for session management
+
+        Raises:
+            AdapterError: Always raises with detailed error information
+        """
+        # Update workflow state with error
+        await self.workflow_state_manager.update(
+            workflow_id=workflow_id,
+            status="failed",
+            error=str(error),
+            completed_at=datetime.now().isoformat(),
+        )
+
+        # Log error to OpenSearch
+        await self.opensearch_integration.log_error(
+            workflow_id=workflow_id, error_msg=str(error), adapter=adapter_name
+        )
+
+        # Update checkpoint if enabled and there was an error
+        if self.config.session.enabled and checkpoint_id:
+            await self.session_buddy.update_checkpoint(
+                checkpoint_id, "failed", result={"error": str(error)}
+            )
+
+        # Raise AdapterError with details
+        raise AdapterError(
+            message=f"Adapter execution failed: {error}",
+            details={
+                "adapter": adapter_name,
+                "task": task,
+                "repos_count": len(validated_repos),
+                "error": str(error),
+                "error_type": type(error).__name__,
+            },
+        ) from error
+
+    # ========================================================================
+    # REFACTORED: execute_workflow_parallel (main orchestrator)
+    # ========================================================================
+
+    async def execute_workflow_parallel(
+        self,
+        task: dict[str, Any],
+        adapter_name: str,
+        repos: list[str] | None = None,
+        progress_callback=None,
+        user_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Execute a workflow in parallel across repositories with progress reporting.
+
+        This refactored method orchestrates workflow execution through focused helper methods,
+        following the Single Responsibility Principle for improved maintainability.
+
+        Args:
+            task: Task specification with 'type' and 'params' keys
+            adapter_name: Name of adapter to use
+            repos: Optional list of repositories (defaults to all repos)
+            progress_callback: Optional callback function to report progress
+            user_id: Optional user ID for permission checking
+
+        Returns:
+            Workflow execution result with timing and performance metrics
+
+        Raises:
+            ValidationError: If task or adapter_name is invalid
+            AdapterError: If adapter execution fails
+        """
+        # Validate adapter and prepare for execution
+        adapter, validated_repos = await self._prepare_execution(adapter_name, task, repos, user_id)
+
+        # Phase 1: Initialize workflow state, logging, and observability
+        workflow_id = await self._initialize_workflow_state(task, adapter_name, validated_repos)
+
+        # Phase 2: Validate pre-execution quality control
+        await self._validate_pre_execution_qc(workflow_id, validated_repos)
+
+        # Phase 3: Create session checkpoint if enabled
+        checkpoint_id = await self._create_session_checkpoint(task, adapter_name, validated_repos)
+
+        try:
+            # Phase 4: Execute workflow across repos in parallel
+            execution_time, successful_results, errors = await self._execute_parallel_workflow(
+                adapter=adapter,
+                task=task,
+                adapter_name=adapter_name,
+                workflow_id=workflow_id,
+                validated_repos=validated_repos,
+                progress_callback=progress_callback,
+            )
+
+            # Phase 5: Finalize workflow with logging and checkpoint updates
+            return await self._finalize_workflow_execution(
+                workflow_id=workflow_id,
+                adapter_name=adapter_name,
+                task=task,
+                validated_repos=validated_repos,
+                execution_time=execution_time,
+                successful_results=successful_results,
+                errors=errors,
+                checkpoint_id=checkpoint_id,
+            )
+
+        except Exception as e:
+            # Handle execution error with proper state updates
+            await self._handle_workflow_execution_error(
+                workflow_id=workflow_id,
+                adapter_name=adapter_name,
+                task=task,
+                validated_repos=validated_repos,
+                error=e,
+                checkpoint_id=checkpoint_id,
+            )

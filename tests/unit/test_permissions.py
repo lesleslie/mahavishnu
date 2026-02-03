@@ -18,7 +18,7 @@ class TestJWTManagerSecurity:
         Previously, missing secrets would fallback to hardcoded secrets.
         """
         # Create config without auth_secret
-        config = MahavishnuSettings(auth_enabled=False, auth_secret=None)
+        config = MahavishnuSettings(auth={"enabled": False, "secret": None})
 
         # JWTManager should raise ConfigurationError
         with pytest.raises(ConfigurationError) as exc_info:
@@ -45,7 +45,7 @@ class TestJWTManagerSecurity:
         ]
 
         for short_secret in short_secrets:
-            config = MahavishnuSettings(auth_enabled=True, auth_secret=short_secret)
+            config = MahavishnuSettings(auth={"enabled": True, "secret": short_secret})
 
             with pytest.raises(ConfigurationError) as exc_info:
                 JWTManager(config)
@@ -59,7 +59,7 @@ class TestJWTManagerSecurity:
         secret = "exactly_32_characters_long_12345"  # Exactly 32 chars
         assert len(secret) == 32, f"Test secret should be 32 chars, got {len(secret)}"
 
-        config = MahavishnuSettings(auth_enabled=True, auth_secret=secret)
+        config = MahavishnuSettings(auth={"enabled": True, "secret": secret})
 
         # Should not raise
         jwt_manager = JWTManager(config)
@@ -70,7 +70,7 @@ class TestJWTManagerSecurity:
     def test_jwt_manager_accepts_long_secret(self):
         """Test that JWTManager accepts secrets longer than minimum (best practice)."""
         long_secret = "a_very_secure_secret_that_is_much_longer_than_required_12345678"
-        config = MahavishnuSettings(auth_enabled=True, auth_secret=long_secret)
+        config = MahavishnuSettings(auth={"enabled": True, "secret": long_secret})
 
         # Should not raise
         jwt_manager = JWTManager(config)
@@ -79,7 +79,7 @@ class TestJWTManagerSecurity:
     def test_jwt_manager_with_valid_secret(self):
         """Test that JWTManager works correctly with a valid secret."""
         secret = "test_secret_32_characters_long_xyz"
-        config = MahavishnuSettings(auth_enabled=True, auth_secret=secret)
+        config = MahavishnuSettings(auth={"enabled": True, "secret": secret})
 
         # Should not raise
         jwt_manager = JWTManager(config)
@@ -90,7 +90,7 @@ class TestJWTManagerSecurity:
     def test_jwt_create_and_verify_token(self):
         """Test creating and verifying JWT tokens."""
         secret = "test_secret_32_characters_long_xyz"
-        config = MahavishnuSettings(auth_enabled=True, auth_secret=secret)
+        config = MahavishnuSettings(auth={"enabled": True, "secret": secret})
         jwt_manager = JWTManager(config)
 
         # Create token
@@ -105,7 +105,7 @@ class TestJWTManagerSecurity:
     def test_jwt_token_refresh(self):
         """Test refreshing JWT tokens."""
         secret = "test_secret_32_characters_long_xyz"
-        config = MahavishnuSettings(auth_enabled=True, auth_secret=secret)
+        config = MahavishnuSettings(auth={"enabled": True, "secret": secret})
         jwt_manager = JWTManager(config)
 
         # Create token
@@ -124,7 +124,7 @@ class TestJWTManagerSecurity:
     def test_jwt_invalid_token_raises_error(self):
         """Test that invalid tokens raise ValueError."""
         secret = "test_secret_32_characters_long_xyz"
-        config = MahavishnuSettings(auth_enabled=True, auth_secret=secret)
+        config = MahavishnuSettings(auth={"enabled": True, "secret": secret})
         jwt_manager = JWTManager(config)
 
         with pytest.raises(ValueError) as exc_info:
@@ -203,7 +203,7 @@ class TestConfigurationValidation:
     def test_config_requires_secret_when_auth_enabled(self):
         """Test that config validation requires auth_secret when auth_enabled is True."""
         with pytest.raises(ValidationError) as exc_info:
-            MahavishnuSettings(auth_enabled=True, auth_secret=None)
+            MahavishnuSettings(auth={"enabled": True, "secret": None})
 
         errors = exc_info.value.errors()
         assert any("auth_secret" in str(err.get("loc", "")) for err in errors)
@@ -211,17 +211,17 @@ class TestConfigurationValidation:
     def test_config_accepts_none_secret_when_auth_disabled(self):
         """Test that config allows auth_secret=None when auth_enabled is False."""
         # Should not raise
-        config = MahavishnuSettings(auth_enabled=False, auth_secret=None)
-        assert config.auth_enabled is False
-        assert config.auth_secret is None
+        config = MahavishnuSettings(auth={"enabled": False, "secret": None})
+        assert config.auth.enabled is False
+        assert config.auth.secret is None
 
     def test_config_validates_secret_length(self):
         """Test that config validates auth_secret minimum length."""
         # Config validator doesn't check length, but JWTManager does
         # This test ensures config can be created with short secret,
         # but JWTManager will reject it
-        config = MahavishnuSettings(auth_enabled=True, auth_secret="short")
-        assert config.auth_secret == "short"
+        config = MahavishnuSettings(auth={"enabled": True, "secret": "short"})
+        assert config.auth.secret == "short"
 
         # JWTManager should reject it
         with pytest.raises(ConfigurationError) as exc_info:

@@ -34,14 +34,7 @@ def mock_settings():
     Returns:
         MahavishnuSettings: Configured settings for testing
     """
-    return MahavishnuSettings(
-        server_name="Test Server",
-        observability_enabled=False,
-        terminal_enabled=False,
-        pools_enabled=False,
-        workers_enabled=False,
-        otel_storage_enabled=False,
-    )
+    return MahavishnuSettings(server_name="Test Server", observability_enabled=False, terminal_enabled=False, pools={enabled=False}, workers={enabled=False}, otel_storage={enabled=False})
 
 
 @pytest.fixture

@@ -14,8 +14,8 @@ async def test_agno_adapter_requires_llm_configuration():
     # Create adapter with mock config that has no LLM provider
     config = MagicMock()
     config.llm_provider = "ollama"
-    config.llm_model = "qwen2.5:7b"
-    config.ollama_base_url = "http://localhost:11434"
+    config.llm.model = "qwen2.5:7b"
+    config.llm.ollama_base_url = "http://localhost:11434"
 
     adapter = AgnoAdapter(config)
 
@@ -46,8 +46,8 @@ async def test_agno_adapter_with_ollama_llm():
     # Mock config
     config = MagicMock()
     config.llm_provider = "ollama"
-    config.llm_model = "qwen2.5:7b"
-    config.ollama_base_url = "http://localhost:11434"
+    config.llm.model = "qwen2.5:7b"
+    config.llm.ollama_base_url = "http://localhost:11434"
 
     adapter = AgnoAdapter(config)
 
@@ -65,7 +65,7 @@ async def test_agno_adapter_with_anthropic_llm():
     # Mock config
     config = MagicMock()
     config.llm_provider = "anthropic"
-    config.llm_model = "claude-sonnet-4-20250514"
+    config.llm.model = "claude-sonnet-4-20250514"
 
     adapter = AgnoAdapter(config)
 
@@ -86,7 +86,7 @@ async def test_agno_adapter_with_openai_llm():
     # Mock config
     config = MagicMock()
     config.llm_provider = "openai"
-    config.llm_model = "gpt-4"
+    config.llm.model = "gpt-4"
 
     adapter = AgnoAdapter(config)
 
@@ -118,7 +118,7 @@ async def test_agno_adapter_parallel_execution():
     """Test that Agno adapter processes repositories in parallel."""
     config = MagicMock()
     config.llm_provider = "ollama"
-    config.llm_model = "qwen2.5:7b"
+    config.llm.model = "qwen2.5:7b"
 
     adapter = AgnoAdapter(config)
 
