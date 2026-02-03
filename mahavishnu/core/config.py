@@ -161,8 +161,8 @@ class MahavishnuSettings(BaseSettings):
         description="Enable OTel trace storage with PostgreSQL + pgvector",
     )
     otel_storage_connection_string: str = Field(
-        default="postgresql://postgres:password@localhost:5432/otel_traces",
-        description="PostgreSQL connection string for OTel trace storage",
+        default="",  # SECURITY: Must be explicitly configured via environment variable
+        description="PostgreSQL connection string for OTel trace storage (required if otel_storage_enabled=True, set via MAHAVISHNU_OTEL_STORAGE_CONNECTION_STRING)",
     )
     otel_storage_embedding_model: str = Field(
         default="all-MiniLM-L6-v2",
@@ -480,12 +480,77 @@ class MahavishnuSettings(BaseSettings):
 
     @field_validator("otel_storage_connection_string")
     @classmethod
-    def validate_otel_storage_connection_string(cls, v: str) -> str:
-        """Ensure OTel storage connection string uses postgresql:// scheme."""
-        if v and not v.startswith("postgresql://"):
+    def validate_otel_storage_connection_string(cls, v: str, info) -> str:
+        """Validate OTel storage connection string for security and format.
+
+        SECURITY CHECKS:
+        - Requires non-empty connection string when otel_storage_enabled=True
+        - Rejects default credentials (e.g., "password@", "postgres:postgres@")
+        - Validates postgresql:// or postgres:// scheme
+
+        Args:
+            v: Connection string value
+            info: Field validation info
+
+        Returns:
+            Validated connection string
+
+        Raises:
+            ValueError: If validation fails
+        """
+        storage_enabled = info.data.get("otel_storage_enabled", False)
+
+        # Require connection string when storage is enabled
+        if storage_enabled and not v:
             raise ValueError(
-                f"OTel storage connection_string must start with 'postgresql://', got: {v[:20]}..."
+                "otel_storage_connection_string must be set via MAHAVISHNU_OTEL_STORAGE_CONNECTION_STRING "
+                "environment variable when otel_storage_enabled is true"
             )
+
+        # Allow empty when disabled
+        if not v:
+            return v
+
+        # Check for default/insecure credentials
+        insecure_patterns = [
+            "password@",  # Default password
+            "postgres:postgres@",  # Username=password
+            "postgres:password@",  # Explicit default
+            "admin:admin@",  # Another common default
+            "root:root@",  # Common default
+            "test:test@",  # Test credentials
+        ]
+
+        v_lower = v.lower()
+        for pattern in insecure_patterns:
+            if pattern in v_lower:
+                raise ValueError(
+                    f"otel_storage_connection_string contains insecure default credentials: '{pattern}'. "
+                    f"Please use a strong, unique password. Set via MAHAVISHNU_OTEL_STORAGE_CONNECTION_STRING "
+                    f"environment variable."
+                )
+
+        # Validate connection string format
+        if not v.startswith(("postgresql://", "postgres://")):
+            raise ValueError(
+                f"otel_storage_connection_string must use postgresql:// or postgres:// scheme. "
+                f"Got: {v[:30]}..."
+            )
+
+        # Basic structure validation (scheme://user:pass@host:port/db)
+        # Should have at least: postgresql://user@host/db or postgresql://user:pass@host:port/db
+        if v.count("@") < 1:
+            raise ValueError(
+                f"otel_storage_connection_string missing '@' separator. "
+                f"Expected format: postgresql://user:password@host:port/database"
+            )
+
+        if v.count("/") < 3:  # postgresql:// is 2 slashes, need at least one more for database
+            raise ValueError(
+                f"otel_storage_connection_string missing database name. "
+                f"Expected format: postgresql://user:password@host:port/database"
+            )
+
         return v
 
     @classmethod

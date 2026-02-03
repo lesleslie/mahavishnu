@@ -1,0 +1,136 @@
+# Prometheus configuration for MCP ecosystem monitoring
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'mcp-ecosystem'
+    environment: 'production'
+
+# Alertmanager configuration (for future use)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # TODO: Add alertmanager when implemented
+          # - alertmanager:9093
+
+# Rule files (for future use)
+rule_files:
+  # - "alert_rules.yml"
+
+# Scrape configurations for MCP servers
+scrape_configs:
+  # ========================================
+  # Mahavishnu - Orchestration Server
+  # ========================================
+  - job_name: 'mahavishnu'
+    static_configs:
+      - targets: ['host.docker.internal:8680']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # ========================================
+  # Akosha - Memory Aggregation
+  # ========================================
+  - job_name: 'akosha'
+    static_configs:
+      - targets: ['host.docker.internal:8682']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # ========================================
+  # Session-Buddy - Session Management
+  # ========================================
+  - job_name: 'session-buddy'
+    static_configs:
+      - targets: ['host.docker.internal:8678']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # ========================================
+  # Crackerjack - Quality Control
+  # ========================================
+  - job_name: 'crackerjack'
+    static_configs:
+      - targets: ['host.docker.internal:8676']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # ========================================
+  # Excalidraw - Diagram Collaboration
+  # ========================================
+  - job_name: 'excalidraw'
+    static_configs:
+      - targets: ['host.docker.internal:3032']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # ========================================
+  # Mermaid - Diagram Generation
+  # ========================================
+  - job_name: 'mermaid'
+    static_configs:
+      - targets: ['host.docker.internal:3033']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # ========================================
+  # UniFi - Network Management
+  # ========================================
+  - job_name: 'unifi'
+    static_configs:
+      - targets: ['host.docker.internal:3038']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # ========================================
+  # Mailgun - Email Service
+  # ========================================
+  - job_name: 'mailgun'
+    static_configs:
+      - targets: ['host.docker.internal:3039']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # ========================================
+  # RaindropIO - Bookmark Management
+  # ========================================
+  - job_name: 'raindropio'
+    static_configs:
+      - targets: ['host.docker.internal:3034']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # ========================================
+  # OpenTelemetry Collector - Prometheus Exporter
+  # ========================================
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:8889']
+    scrape_interval: 15s
+
+  # ========================================
+  # Prometheus Self-Monitoring
+  # ========================================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+# ========================================
+# Storage Configuration
+# ========================================
+storage:
+  tsdb:
+    path: /prometheus
+    retention:
+      time: 15d
+      size: 50GB

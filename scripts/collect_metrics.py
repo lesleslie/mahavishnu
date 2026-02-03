@@ -7,7 +7,6 @@ Can optionally create coordination issues for low-coverage repos.
 """
 
 import argparse
-import asyncio
 import json
 import subprocess
 import sys
@@ -176,67 +175,70 @@ def create_coordination_issues(
         return []
 
 
-async def store_metrics_in_session_buddy(
+def store_metrics_snapshot(
     results: List[Dict[str, Any]],
     avg_coverage: float,
 ) -> None:
-    """Store metrics in Session-Buddy for historical tracking.
+    """Store metrics snapshot for historical tracking.
 
     Args:
         results: List of coverage results
         avg_coverage: Average coverage across all repos
     """
     try:
-        # Try to import Session-Buddy MCP client
-        # This will only work if MCP server is running
-        from mcp import ClientSession, StdioServerParameters
+        # Create metrics storage directory
+        metrics_dir = Path(__file__).parent.parent / "data" / "metrics"
+        metrics_dir.mkdir(parents=True, exist_ok=True)
 
-        # Connect to Session-Buddy MCP server
-        server_params = StdioServerParameters(
-            command="python",
-            args=["-m", "session_buddy.mcp_server"],
-        )
+        # Create snapshot file with timestamp
+        timestamp = datetime.now()
+        filename = f"metrics_{timestamp.strftime('%Y%m%d_%H%M%S')}.json"
+        snapshot_path = metrics_dir / filename
 
-        async with ClientSession(server_params) as session:
-            # Initialize session
-            await session.initialize()
-
-            # Store summary metrics
-            content = (
-                f"Mahavishnu ecosystem metrics: {avg_coverage:.1f}% average coverage. "
-                f"{len(results)} repos with coverage data."
-            )
-
-            metadata = {
-                "type": "metrics_snapshot",
-                "timestamp": datetime.now().isoformat(),
+        # Prepare snapshot data
+        snapshot = {
+            "timestamp": timestamp.isoformat(),
+            "summary": {
                 "avg_coverage": avg_coverage,
                 "repos_count": len(results),
-                "repos": [
-                    {
-                        "name": r["repo"],
-                        "role": r["role"],
-                        "coverage": r["coverage"],
-                        "files_tested": r["files_tested"],
-                    }
-                    for r in results
-                ],
-            }
+                "total_files_tested": sum(r["files_tested"] for r in results),
+            },
+            "repositories": [
+                {
+                    "name": r["repo"],
+                    "role": r["role"],
+                    "coverage": r["coverage"],
+                    "files_tested": r["files_tested"],
+                }
+                for r in results
+            ],
+        }
 
-            await session.call_tool(
-                "store_memory",
-                arguments={
-                    "collection": "mahavishnu_metrics",
-                    "content": content,
-                    "metadata": metadata,
-                },
-            )
+        # Write snapshot to file
+        with open(snapshot_path, "w") as f:
+            json.dump(snapshot, f, indent=2)
 
-            print(f"  ✅ Stored metrics snapshot in Session-Buddy")
+        print(f"  ✅ Stored metrics snapshot: {snapshot_path}")
+        print(f"     Timestamp: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"     Average coverage: {avg_coverage:.1f}%")
+        print(f"     Repositories: {len(results)}")
+
+        # Update latest symlink
+        latest_path = metrics_dir / "latest.json"
+        if latest_path.exists():
+            latest_path.unlink()
+        latest_path.symlink_to(snapshot_path.name)
+
+        # Clean up old snapshots (keep last 30)
+        snapshots = sorted(metrics_dir.glob("metrics_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        for old_snapshot in snapshots[30:]:
+            old_snapshot.unlink()
+            print(f"  🗑️  Removed old snapshot: {old_snapshot.name}")
 
     except Exception as e:
-        print(f"  ⚠️  Could not store metrics in Session-Buddy: {e}")
-        print(f"     (Session-Buddy MCP server may not be running)")
+        print(f"  ⚠️  Could not store metrics snapshot: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def main() -> int:
@@ -350,13 +352,13 @@ def main() -> int:
             print(f"\n  ✅ Created {len(issues_created)} quality issues")
             print(f"  📝 View with: mahavishnu coord list-issues --severity quality")
 
-    # Store metrics in Session-Buddy if requested
+    # Store metrics snapshot if requested
     if args.store_metrics and results:
         print(f"\n{'=' * 50}")
-        print(f"Storing Metrics in Session-Buddy")
+        print(f"Storing Metrics Snapshot")
         print(f"{'=' * 50}\n")
 
-        asyncio.run(store_metrics_in_session_buddy(results, avg_coverage))
+        store_metrics_snapshot(results, avg_coverage)
 
     # Output JSON if requested
     if args.output == "json":

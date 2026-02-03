@@ -1,0 +1,61 @@
+# Mahavishnu Configuration
+# Generated: 2026-02-02
+
+server_name: "Mahavishnu Orchestrator"
+
+# Adapters
+adapters:
+  prefect: true
+  llamaindex: false  # Disabled due to httpx conflict with fastmcp
+  agno: true
+
+# Quality Control
+qc:
+  enabled: true
+  min_score: 80
+
+# Pool Management
+pools_enabled: true
+default_pool_type: "mahavishnu"
+pool_routing_strategy: "least_loaded"
+
+# Memory Aggregation
+memory_aggregation_enabled: true
+memory_sync_interval: 60
+session_buddy_pool_url: "http://localhost:8678/mcp"
+akosha_url: "http://localhost:8682/mcp"
+
+# =============================================================================
+# Embeddings Configuration
+# =============================================================================
+embeddings:
+  # Provider: fastembed, ollama, openai
+  # - fastembed: Production, cross-platform (recommended)
+  # - ollama: Development, local privacy
+  # - openai: Cloud, high quality (requires API key)
+  provider: fastembed
+
+  # Model name (provider-specific)
+  # FastEmbed models:
+  #   - BAAI/bge-small-en-v1.5 (default, fast)
+  #   - BAAI/bge-base-en-v1.5 (better quality)
+  #   - BAAI/bge-large-en-v1.5 (best quality)
+  # Ollama models:
+  #   - nomic-embed-text (default)
+  #   - mxbai-embed-large-v1 (better quality)
+  #   - all-minilm (small, fast)
+  # OpenAI models:
+  #   - text-embedding-3-small (default, cheapest)
+  #   - text-embedding-3-large (better quality)
+  model: BAAI/bge-small-en-v1.5
+
+  # Ollama configuration (if provider is ollama)
+  ollama_base_url: "http://localhost:11434"
+
+  # OpenAI configuration (if provider is openai)
+  # Set via environment variable: MAHAVISHNU_EMBEDDINGS_OPENAI_API_KEY
+  openai_model: text-embedding-3-small
+
+  # Performance settings
+  batch_size: 32
+  enable_cache: true

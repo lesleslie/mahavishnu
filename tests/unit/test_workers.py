@@ -769,3 +769,745 @@ class TestStreamJsonParsing:
         data = {"text": "Hello, world!"}
         content = worker._extract_content(data)
         assert content == "Hello, world!"
+
+
+# ============================================================================
+# Concurrent Execution Tests
+# ============================================================================
+
+class TestConcurrentExecution:
+    """Test concurrent worker execution patterns."""
+
+    @pytest.mark.asyncio
+    async def test_concurrent_worker_execution(self, worker_manager):
+        """Test multiple workers executing concurrently."""
+        # Track execution order
+        execution_order = []
+        
+        async def mock_execute(task):
+            execution_order.append(task["id"])
+            await asyncio.sleep(0.05)
+            return WorkerResult(
+                worker_id=task["id"],
+                status=WorkerStatus.COMPLETED,
+                output=f"Result {task['id']}",
+                error=None,
+                exit_code=0,
+                duration_seconds=0.05,
+                metadata={},
+            )
+        
+        # Create mock workers
+        for i in range(5):
+            mock_worker = MagicMock()
+            mock_worker.execute = mock_execute
+            worker_manager._workers[f"worker_{i}"] = mock_worker
+        
+        # Execute batch
+        worker_ids = [f"worker_{i}" for i in range(5)]
+        tasks = [{"id": f"task_{i}"} for i in range(5)]
+        results = await worker_manager.execute_batch(worker_ids, tasks)
+        
+        assert len(results) == 5
+        assert len(execution_order) == 5
+        assert all(r.status == WorkerStatus.COMPLETED for r in results.values())
+
+    @pytest.mark.asyncio
+    async def test_concurrent_execution_with_failures(self, worker_manager):
+        """Test batch execution with some failures."""
+        # Mock some workers to fail
+        call_count = [0]
+        
+        async def mock_execute(task):
+            call_count[0] += 1
+            if call_count[0] % 2 == 0:
+                raise RuntimeError("Worker failed")
+            
+            await asyncio.sleep(0.01)
+            return WorkerResult(
+                worker_id=task["id"],
+                status=WorkerStatus.COMPLETED,
+                output="Success",
+                error=None,
+                exit_code=0,
+                duration_seconds=0.01,
+                metadata={},
+            )
+        
+        # Create mock workers
+        for i in range(4):
+            mock_worker = MagicMock()
+            mock_worker.execute = mock_execute
+            worker_manager._workers[f"worker_{i}"] = mock_worker
+        
+        # Execute batch
+        worker_ids = [f"worker_{i}" for i in range(4)]
+        tasks = [{"id": f"task_{i}"} for i in range(4)]
+        results = await worker_manager.execute_batch(worker_ids, tasks)
+        
+        # Some should succeed, some should fail
+        assert len(results) == 4
+        success_count = sum(1 for r in results.values() if r.status == WorkerStatus.COMPLETED)
+        failed_count = sum(1 for r in results.values() if r.status == WorkerStatus.FAILED)
+        assert success_count > 0
+        assert failed_count > 0
+
+    @pytest.mark.asyncio
+    async def test_semaphore_limits_concurrent_execution(self, worker_manager):
+        """Test that semaphore limits concurrent execution."""
+        # Create manager with max_concurrent=2
+        terminal_manager = MagicMock()
+        manager = WorkerManager(
+            terminal_manager=terminal_manager,
+            max_concurrent=2,
+            debug_mode=False,
+            session_buddy_client=None,
+        )
+        
+        # Track concurrent executions
+        concurrent_count = 0
+        max_concurrent_reached = 0
+        lock = asyncio.Lock()
+        
+        async def mock_execute(task):
+            nonlocal concurrent_count, max_concurrent_reached
+            async with lock:
+                concurrent_count += 1
+                max_concurrent_reached = max(max_concurrent_reached, concurrent_count)
+            
+            await asyncio.sleep(0.1)
+            
+            async with lock:
+                concurrent_count -= 1
+            
+            return WorkerResult(
+                worker_id="worker",
+                status=WorkerStatus.COMPLETED,
+                output="Done",
+                error=None,
+                exit_code=0,
+                duration_seconds=0.1,
+                metadata={},
+            )
+        
+        # Add mock workers
+        for i in range(5):
+            mock_worker = MagicMock()
+            mock_worker.execute = mock_execute
+            manager._workers[f"worker_{i}"] = mock_worker
+        
+        # Execute batch
+        await manager.execute_batch(
+            worker_ids=[f"worker_{i}" for i in range(5)],
+            tasks=[{"prompt": f"Task {i}"} for i in range(5)],
+        )
+        
+        # Verify concurrency was limited
+        assert max_concurrent_reached <= 2
+
+
+# ============================================================================
+# Error Handling and Retry Tests
+# ============================================================================
+
+class TestErrorHandling:
+    """Test error handling and edge cases."""
+
+    @pytest.mark.asyncio
+    async def test_worker_crash_during_execution(self, worker_manager):
+        """Test handling worker crash during task execution."""
+        # Mock worker that crashes
+        async def crash_execute(task):
+            await asyncio.sleep(0.01)
+            raise RuntimeError("Worker crashed!")
+        
+        mock_worker = MagicMock()
+        mock_worker.execute = crash_execute
+        worker_manager._workers["crash_worker"] = mock_worker
+        
+        result = await worker_manager.execute_task(
+            worker_id="crash_worker",
+            task={"prompt": "Test"},
+        )
+        
+        assert result.status == WorkerStatus.FAILED
+        assert "crashed" in result.error.lower()
+
+    @pytest.mark.asyncio
+    async def test_worker_timeout_handling(self, terminal_qwen_worker):
+        """Test timeout handling for long-running workers."""
+        # Mock _monitor_completion to return a timeout result
+        timeout_result = WorkerResult(
+            worker_id="session_123",
+            status=WorkerStatus.TIMEOUT,
+            output="Partial output",
+            error="Task timed out",
+            exit_code=None,
+            duration_seconds=300.0,
+            metadata={"timeout": 300},
+        )
+        
+        terminal_qwen_worker._monitor_completion = AsyncMock(return_value=timeout_result)
+        
+        result = await terminal_qwen_worker.execute({"prompt": "Long task", "timeout": 300})
+        
+        assert result.status == WorkerStatus.TIMEOUT
+        assert "timed out" in result.error.lower()
+
+    @pytest.mark.asyncio
+    async def test_worker_cleanup_on_failure(self, worker_manager):
+        """Test workers are cleaned up even after failures."""
+        # Mock worker that fails on stop
+        mock_worker = MagicMock()
+        mock_worker.execute = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="test",
+                status=WorkerStatus.COMPLETED,
+                output="Done",
+                error=None,
+                exit_code=0,
+                duration_seconds=1.0,
+                metadata={},
+            )
+        )
+        mock_worker.stop = AsyncMock(side_effect=RuntimeError("Stop failed"))
+        worker_manager._workers["test_worker"] = mock_worker
+        
+        # Execute task
+        await worker_manager.execute_task("test_worker", {"prompt": "Test"})
+        
+        # Close should not raise exception
+        await worker_manager.close_worker("test_worker")
+        
+        # Worker should be removed from registry despite stop failure
+        assert "test_worker" not in worker_manager._workers
+
+    @pytest.mark.asyncio
+    async def test_status_check_failure_handling(self, worker_manager):
+        """Test monitoring handles status check failures gracefully."""
+        # Add a worker that fails status checks
+        mock_worker_bad = MagicMock()
+        mock_worker_bad.status = AsyncMock(side_effect=RuntimeError("Status failed"))
+        worker_manager._workers["bad_worker"] = mock_worker_bad
+        
+        # Add a good worker
+        mock_worker_good = MagicMock()
+        mock_worker_good.status = AsyncMock(return_value=WorkerStatus.RUNNING)
+        worker_manager._workers["good_worker"] = mock_worker_good
+        
+        statuses = await worker_manager.monitor_workers()
+        
+        # Bad worker should be marked as FAILED
+        assert statuses["bad_worker"] == WorkerStatus.FAILED
+        # Good worker should be RUNNING
+        assert statuses["good_worker"] == WorkerStatus.RUNNING
+
+    @pytest.mark.asyncio
+    async def test_container_worker_execute_not_started(self):
+        """Test execute before starting container raises error."""
+        worker = ContainerWorker(
+            runtime="docker",
+            image="python:3.13-slim",
+            session_buddy_client=None,
+        )
+        
+        with pytest.raises(RuntimeError, match="Container not started"):
+            await worker.execute({"command": "echo test"})
+
+    @pytest.mark.asyncio
+    async def test_terminal_worker_invalid_ai_type(self, mock_terminal_manager):
+        """Test starting worker with invalid AI type raises error."""
+        worker = TerminalAIWorker(
+            terminal_manager=mock_terminal_manager,
+            ai_type="invalid",
+            session_buddy_client=None,
+        )
+        
+        with pytest.raises(ValueError, match="Unknown AI type"):
+            await worker.start()
+
+
+# ============================================================================
+# Worker Lifecycle Tests
+# ============================================================================
+
+class TestWorkerLifecycle:
+    """Test complete worker lifecycle."""
+
+    @pytest.mark.asyncio
+    async def test_full_worker_lifecycle(self, mock_terminal_manager):
+        """Test complete worker lifecycle: start -> execute -> stop."""
+        worker = TerminalAIWorker(
+            terminal_manager=mock_terminal_manager,
+            ai_type="qwen",
+            session_buddy_client=None,
+        )
+        
+        # Mock monitor completion
+        worker._monitor_completion = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="session_123",
+                status=WorkerStatus.COMPLETED,
+                output="Task completed",
+                error=None,
+                exit_code=0,
+                duration_seconds=1.0,
+                metadata={},
+            )
+        )
+        
+        # Start worker
+        session_id = await worker.start()
+        assert session_id == "session_123"
+        assert worker._status == WorkerStatus.RUNNING
+        
+        # Execute task
+        result = await worker.execute({"prompt": "Test task"})
+        assert result.status == WorkerStatus.COMPLETED
+        
+        # Check status
+        status = await worker.status()
+        assert status == WorkerStatus.RUNNING
+        
+        # Get progress
+        progress = await worker.get_progress()
+        assert "status" in progress
+        assert "session_id" in progress
+        
+        # Stop worker
+        await worker.stop()
+        assert worker._status == WorkerStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_container_worker_lifecycle(self):
+        """Test complete container worker lifecycle."""
+        worker = ContainerWorker(
+            runtime="docker",
+            image="python:3.13-slim",
+            session_buddy_client=None,
+        )
+        
+        with patch("asyncio.create_subprocess_exec") as mock_subprocess:
+            # Mock start
+            mock_proc = AsyncMock()
+            mock_proc.returncode = 0
+            mock_proc.communicate = AsyncMock(
+                return_value=(b"container_123\n", b"")
+            )
+            mock_subprocess.return_value = mock_proc
+            
+            # Start
+            container_id = await worker.start()
+            assert container_id == "container_123"
+            assert worker._running is True
+            
+            # Execute
+            mock_proc.communicate = AsyncMock(
+                return_value=(b"output\n", b"")
+            )
+            result = await worker.execute({"command": "echo test"})
+            assert result.status == WorkerStatus.COMPLETED
+            
+            # Status
+            mock_proc.communicate = AsyncMock(
+                return_value=(b"running\n", b"")
+            )
+            status = await worker.status()
+            assert status == WorkerStatus.RUNNING
+            
+            # Stop
+            mock_proc.communicate = AsyncMock(return_value=(b"", b""))
+            await worker.stop()
+            assert worker._running is False
+            assert worker.container_id is None
+
+
+# ============================================================================
+# Worker Pool Management Tests
+# ============================================================================
+
+class TestWorkerPoolManagement:
+    """Test worker pool management operations."""
+
+    @pytest.mark.asyncio
+    async def test_add_and_remove_workers(self, worker_manager):
+        """Test adding and removing workers from pool."""
+        # Add workers manually
+        for i in range(3):
+            mock_worker = MagicMock()
+            mock_worker.stop = AsyncMock()
+            worker_manager._workers[f"worker_{i}"] = mock_worker
+        
+        assert len(worker_manager._workers) == 3
+        
+        # Remove one worker
+        await worker_manager.close_worker("worker_1")
+        assert len(worker_manager._workers) == 2
+        assert "worker_1" not in worker_manager._workers
+        
+        # Remove all
+        await worker_manager.close_all()
+        assert len(worker_manager._workers) == 0
+
+    @pytest.mark.asyncio
+    async def test_list_workers_with_status(self, worker_manager):
+        """Test listing workers with their status."""
+        # Add mock workers
+        for i in range(3):
+            mock_worker = MagicMock()
+            mock_worker.worker_type = f"terminal-{i}"
+            mock_worker.status = AsyncMock(
+                return_value=WorkerStatus.RUNNING if i % 2 == 0 else WorkerStatus.COMPLETED
+            )
+            worker_manager._workers[f"worker_{i}"] = mock_worker
+        
+        workers_list = await worker_manager.list_workers()
+        
+        assert len(workers_list) == 3
+        for worker_info in workers_list:
+            assert "worker_id" in worker_info
+            assert "worker_type" in worker_info
+            assert "status" in worker_info
+
+    @pytest.mark.asyncio
+    async def test_monitor_specific_workers(self, worker_manager):
+        """Test monitoring specific subset of workers."""
+        # Add mock workers
+        for i in range(5):
+            mock_worker = MagicMock()
+            mock_worker.status = AsyncMock(return_value=WorkerStatus.RUNNING)
+            worker_manager._workers[f"worker_{i}"] = mock_worker
+        
+        # Monitor only first 2 workers
+        statuses = await worker_manager.monitor_workers(
+            worker_ids=["worker_0", "worker_1"]
+        )
+        
+        assert len(statuses) == 2
+        assert "worker_0" in statuses
+        assert "worker_1" in statuses
+        assert "worker_2" not in statuses
+
+    @pytest.mark.asyncio
+    async def test_collect_results_from_specific_workers(self, worker_manager):
+        """Test collecting results from specific workers."""
+        # Add mock workers
+        for i in range(3):
+            mock_worker = MagicMock()
+            mock_worker.get_progress = AsyncMock(
+                return_value={
+                    "status": WorkerStatus.COMPLETED.value,
+                    "output_preview": f"Output {i}",
+                    "duration_seconds": 1.0,
+                }
+            )
+            worker_manager._workers[f"worker_{i}"] = mock_worker
+        
+        # Collect from specific workers
+        results = await worker_manager.collect_results(
+            worker_ids=["worker_0", "worker_2"]
+        )
+        
+        assert len(results) == 2
+        assert "worker_0" in results
+        assert "worker_2" in results
+        assert "worker_1" not in results
+
+
+# ============================================================================
+# Health Check Tests
+# ============================================================================
+
+class TestHealthChecks:
+    """Test health check functionality."""
+
+    @pytest.mark.asyncio
+    async def test_worker_manager_health_check(self, worker_manager):
+        """Test WorkerManager health check."""
+        # Add mock workers
+        for i in range(2):
+            mock_worker = MagicMock()
+            mock_worker.worker_type = "terminal-qwen"
+            mock_worker.status = AsyncMock(return_value=WorkerStatus.RUNNING)
+            worker_manager._workers[f"worker_{i}"] = mock_worker
+        
+        health = await worker_manager.health_check()
+        
+        assert health["status"] == "healthy"
+        assert health["workers_active"] == 2
+        assert health["max_concurrent"] == 5
+        assert "workers" in health
+
+    @pytest.mark.asyncio
+    async def test_base_worker_health_check_success(self, terminal_qwen_worker):
+        """Test health_check returns healthy when worker is running."""
+        terminal_qwen_worker._status = WorkerStatus.RUNNING
+        
+        health = await terminal_qwen_worker.health_check()
+        
+        assert health["healthy"] is True
+        assert health["status"] == WorkerStatus.RUNNING.value
+        assert health["worker_type"] == "terminal-qwen"
+
+    @pytest.mark.asyncio
+    async def test_base_worker_health_check_failure(self):
+        """Test health_check returns unhealthy when worker fails."""
+        class FailingWorker(BaseWorker):
+            async def start(self) -> str:
+                raise RuntimeError("Failed to start")
+            
+            async def execute(self, task: dict) -> WorkerResult:
+                raise NotImplementedError()
+            
+            async def stop(self) -> None:
+                pass
+            
+            async def status(self) -> WorkerStatus:
+                raise RuntimeError("Status check failed")
+            
+            async def get_progress(self) -> dict:
+                raise NotImplementedError()
+        
+        worker = FailingWorker(worker_type="failing")
+        health = await worker.health_check()
+        
+        assert health["healthy"] is False
+        assert "error" in health["details"]
+
+
+# ============================================================================
+# Session-Buddy Storage Tests
+# ============================================================================
+
+class TestSessionBuddyStorage:
+    """Test Session-Buddy result storage."""
+
+    @pytest.mark.asyncio
+    async def test_terminal_worker_session_buddy_error_handling(self, mock_terminal_manager):
+        """Test that Session-Buddy errors don't fail worker execution."""
+        mock_sb_client = MagicMock()
+        mock_sb_client.call_tool = AsyncMock(side_effect=RuntimeError("Storage failed"))
+        
+        worker = TerminalAIWorker(
+            terminal_manager=mock_terminal_manager,
+            ai_type="qwen",
+            session_buddy_client=mock_sb_client,
+        )
+        
+        # Mock _monitor_completion to return a result
+        worker._monitor_completion = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="session_123",
+                status=WorkerStatus.COMPLETED,
+                output="Success",
+                error=None,
+                exit_code=0,
+                duration_seconds=1.0,
+                metadata={},
+            )
+        )
+        
+        # Execute should succeed despite Session-Buddy failure
+        result = await worker.execute({"prompt": "Test"})
+        
+        assert result.status == WorkerStatus.COMPLETED
+        # Session-Buddy was attempted but failed
+        mock_sb_client.call_tool.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_container_worker_session_buddy_metadata(self):
+        """Test that ContainerWorker stores correct metadata in Session-Buddy."""
+        mock_sb_client = MagicMock()
+        mock_sb_client.call_tool = AsyncMock()
+        
+        worker = ContainerWorker(
+            runtime="docker",
+            image="python:3.13-slim",
+            session_buddy_client=mock_sb_client,
+        )
+        worker.container_id = "container_123"
+        worker._running = True
+        
+        with patch("asyncio.create_subprocess_exec") as mock_subprocess:
+            mock_proc = AsyncMock()
+            mock_proc.returncode = 0
+            mock_proc.communicate = AsyncMock(return_value=(b"Output\n", b""))
+            mock_subprocess.return_value = mock_proc
+            
+            result = await worker.execute({"command": "echo test"})
+            
+            # Verify Session-Buddy metadata
+            call_args = mock_sb_client.call_tool.call_args
+            metadata = call_args[1]["arguments"]["metadata"]
+            assert metadata["worker_type"] == "container-executor"
+            assert metadata["runtime"] == "docker"
+            assert metadata["image"] == "python:3.13-slim"
+            assert metadata["type"] == "worker_result"
+
+
+# ============================================================================
+# Stream-JSON Content Extraction Tests
+# ============================================================================
+
+class TestContentExtraction:
+    """Test content extraction from stream-json messages."""
+
+    def test_extract_content_multi_modal(self):
+        """Test extracting content from multi-modal messages."""
+        worker = TerminalAIWorker(
+            terminal_manager=MagicMock(),
+            ai_type="claude",
+            session_buddy_client=None,
+        )
+        
+        # Multi-modal content
+        data = {
+            "content": [
+                {"type": "text", "text": "Hello"},
+                {"type": "image", "source": "data:image..."}
+            ]
+        }
+        content = worker._extract_content(data)
+        assert content == "Hello"
+
+    def test_extract_content_no_content(self):
+        """Test extracting content when none exists."""
+        worker = TerminalAIWorker(
+            terminal_manager=MagicMock(),
+            ai_type="qwen",
+            session_buddy_client=None,
+        )
+        
+        data = {"other": "field"}
+        content = worker._extract_content(data)
+        assert content is None
+
+    def test_is_complete_multiple_markers(self):
+        """Test various completion markers."""
+        worker = TerminalAIWorker(
+            terminal_manager=MagicMock(),
+            ai_type="qwen",
+            session_buddy_client=None,
+        )
+        
+        # All should return True
+        assert worker._is_complete({"finish_reason": "stop"}) is True
+        assert worker._is_complete({"done": True}) is True
+        assert worker._is_complete({"type": "done"}) is True
+        assert worker._is_complete({"type": "completion"}) is True
+        assert worker._is_complete({"status": "completed"}) is True
+        
+        # Should return False
+        assert worker._is_complete({"content": "text"}) is False
+        assert worker._is_complete({"delta": {"content": "more"}}) is False
+
+
+# ============================================================================
+# Edge Case Tests
+# ============================================================================
+
+class TestEdgeCases:
+    """Test edge cases and boundary conditions."""
+
+    @pytest.mark.asyncio
+    async def test_execute_with_empty_task(self, terminal_qwen_worker):
+        """Test executing with empty task dict."""
+        terminal_qwen_worker._monitor_completion = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="session_123",
+                status=WorkerStatus.COMPLETED,
+                output="Done",
+                error=None,
+                exit_code=0,
+                duration_seconds=1.0,
+                metadata={},
+            )
+        )
+        
+        # Should not raise error
+        result = await terminal_qwen_worker.execute({})
+        assert result.status == WorkerStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_worker_result_with_long_output(self):
+        """Test WorkerResult with very long output."""
+        long_output = "x" * 10000
+        result = WorkerResult(
+            worker_id="test",
+            status=WorkerStatus.COMPLETED,
+            output=long_output,
+            error=None,
+            exit_code=0,
+            duration_seconds=1.0,
+            metadata={},
+        )
+        
+        # get_summary should truncate
+        summary = result.get_summary()
+        assert "..." in summary
+        assert len(summary) < len(long_output)
+
+    @pytest.mark.asyncio
+    async def test_monitor_workers_with_empty_list(self, worker_manager):
+        """Test monitoring with no workers."""
+        statuses = await worker_manager.monitor_workers(worker_ids=[])
+        assert statuses == {}
+
+    @pytest.mark.asyncio
+    async def test_collect_results_with_empty_list(self, worker_manager):
+        """Test collecting results with no workers."""
+        results = await worker_manager.collect_results(worker_ids=[])
+        assert results == {}
+
+    @pytest.mark.asyncio
+    async def test_close_nonexistent_worker(self, worker_manager):
+        """Test closing worker that doesn't exist (should not raise)."""
+        # Should not raise error
+        await worker_manager.close_worker("nonexistent")
+
+    @pytest.mark.asyncio
+    async def test_execute_batch_with_empty_lists(self, worker_manager):
+        """Test batch execution with empty lists."""
+        results = await worker_manager.execute_batch([], [])
+        assert results == {}
+
+    def test_worker_status_enum_coverage(self):
+        """Test that all WorkerStatus enum values are accessible."""
+        statuses = [
+            WorkerStatus.PENDING,
+            WorkerStatus.STARTING,
+            WorkerStatus.RUNNING,
+            WorkerStatus.COMPLETED,
+            WorkerStatus.FAILED,
+            WorkerStatus.TIMEOUT,
+            WorkerStatus.CANCELLED,
+        ]
+        
+        assert len(statuses) == 7
+        assert all(isinstance(s, WorkerStatus) for s in statuses)
+
+    def test_worker_result_serialization_roundtrip(self):
+        """Test complete serialization/deserialization roundtrip."""
+        original = WorkerResult(
+            worker_id="test_worker",
+            status=WorkerStatus.COMPLETED,
+            output="Test output with special chars: \n\t",
+            error=None,
+            exit_code=0,
+            duration_seconds=1.5,
+            metadata={"key": "value", "number": 42},
+        )
+        
+        # Serialize
+        data_dict = original.to_dict()
+        
+        # Deserialize
+        restored = WorkerResult.from_dict(data_dict)
+        
+        # Verify all fields
+        assert restored.worker_id == original.worker_id
+        assert restored.status == original.status
+        assert restored.output == original.output
+        assert restored.exit_code == original.exit_code
+        assert restored.duration_seconds == original.duration_seconds
+        assert restored.metadata == original.metadata
