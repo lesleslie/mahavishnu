@@ -1,0 +1,175 @@
+# AlertManager Production Configuration
+# Mahavishnu MCP Ecosystem
+#
+# This is the production configuration for AlertManager.
+# Customize notification channels and thresholds for your environment.
+
+global:
+  # Global resolve timeout
+  resolve_timeout: 5m
+
+  # SMTP configuration for email notifications
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'alerts@mahavishnu.com'
+  smtp_auth_username: 'alerts@mahavishnu.com'
+  smtp_auth_password: '${SMTP_PASSWORD}'  # Set via environment variable
+  smtp_require_tls: true
+
+  # Slack webhook URL (set via environment variable)
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
+
+  # PagerDuty integration (set via environment variable)
+  pagerduty_url: '${PAGERDUTY_URL}'
+
+# Route configuration
+route:
+  # Default receiver for all alerts
+  receiver: 'default'
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'cluster', 'service']
+
+  # Wait time before sending notification for a new alert group
+  group_wait: 10s
+
+  # Wait time before sending notification about new alerts for an existing group
+  group_interval: 10s
+
+  # Wait time before sending notification after an alert is resolved
+  repeat_interval: 12h
+
+  # Child routes with specific matchers
+  routes:
+    # P1 Critical alerts - immediate escalation
+    - match:
+        severity: critical
+      receiver: 'critical'
+      continue: true
+
+    # P2 High priority alerts
+    - match:
+        severity: warning
+      receiver: 'warning'
+
+    # Service-specific alerts
+    - match:
+        service: mahavishnu-mcp
+      receiver: 'mahavishnu-team'
+
+    - match:
+        service: session-buddy
+      receiver: 'session-buddy-team'
+
+# Receivers configuration
+receivers:
+  - name: 'default'
+    slack_configs:
+      - channel: '#alerts'
+        title: '{{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+
+    email_configs:
+      - to: 'oncall@example.com'
+        subject: '[{{ .Status }}] {{ .GroupLabels.alertname }}'
+        html: '{{ template "email.default.html" . }}'
+        send_resolved: true
+
+  - name: 'critical'
+    # PagerDuty for critical alerts
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+        description: '{{ .GroupLabels.alertname }}: {{ .CommonAnnotations.summary }}'
+        severity: '{{ .GroupLabels.severity }}'
+        send_resolved: true
+
+    # Slack to critical incidents channel
+    slack_configs:
+      - channel: '#critical-incidents'
+        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        color: 'danger'
+        send_resolved: true
+        actions:
+          - type: button
+            text: 'View Incident'
+            url: '{{ .ExternalURL }}'
+          - type: button
+            text: 'Acknowledge'
+            url: '{{ .ExternalURL }}'
+
+    # SMS for critical alerts (via Twilio or similar)
+    # webhook_configs:
+    #   - url: 'https://api.twilio.com/...'
+
+  - name: 'warning'
+    slack_configs:
+      - channel: '#warnings'
+        title: '⚠️ WARNING: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        color: 'warning'
+        send_resolved: true
+
+    email_configs:
+      - to: 'devops@example.com'
+        subject: '[WARNING] {{ .GroupLabels.alertname }}'
+        html: '{{ template "email.default.html" . }}'
+        send_resolved: true
+
+  - name: 'mahavishnu-team'
+    slack_configs:
+      - channel: '#mahavishnu-team'
+        title: '{{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+
+  - name: 'session-buddy-team'
+    slack_configs:
+      - channel: '#session-buddy-team'
+        title: '{{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+
+# Inhibition rules (prevent alert spam)
+inhibit_rules:
+  # Inhibit warning if critical is firing for same alert
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'service']
+
+  # Inhibit alerts if maintenance mode is active
+  - source_match:
+      maintenance: 'true'
+    target_match_re:
+      severity: '(warning|critical)'
+    equal: ['service']
+
+# Templates
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Time intervals
+time_intervals:
+  - name: 'business-hours'
+    time_intervals:
+      - times:
+          - start_time: '09:00'
+            end_time: '17:00'
+        weekdays: ['monday:friday']
+
+  - name: 'off-hours'
+    time_intervals:
+      - times:
+          - start_time: '17:00'
+            end_time: '09:00'
+        weekdays: ['monday:friday']
+      - weekdays: ['saturday', 'sunday']
+
+# Mute time intervals (for scheduled maintenance)
+mute_time_intervals:
+  - name: 'maintenance-window'
+    time_intervals:
+      - start_time: '2026-02-03T02:00:00Z'
+        end_time: '2026-02-03T06:00:00Z'
