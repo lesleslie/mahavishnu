@@ -48,9 +48,9 @@ def mock_app():
     app.monitoring_service = Mock()
     app.config = Mock()
     app.config.max_concurrent_workflows = 10
-    app.config.auth_enabled = False
-    app.config.qc_enabled = False
-    app.config.session_enabled = False
+    app.config.auth.enabled = False
+    app.config.qc.enabled = False
+    app.config.session.enabled = False
     app.adapters = {}
 
     # Mock the workflow state manager

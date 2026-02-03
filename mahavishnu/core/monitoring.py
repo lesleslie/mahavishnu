@@ -395,9 +395,9 @@ This is an automated message from the Mahavishnu monitoring system.
             server.sendmail(self.username, self.recipients, text)
             server.quit()
 
-            print(f"Email notification sent for alert {alert.id}")
+            self.logger.info(f"Email notification sent for alert {alert.id}")
         except Exception as e:
-            print(f"Failed to send email notification: {e}")
+            self.logger.error(f"Failed to send email notification: {e}")
 
 
 class SlackNotificationChannel(NotificationChannel):
@@ -432,11 +432,11 @@ class SlackNotificationChannel(NotificationChannel):
 
             response = requests.post(self.webhook_url, json=message)
             if response.status_code != 200:
-                print(f"Failed to send Slack notification: {response.text}")
+                self.logger.warning(f"Failed to send Slack notification: {response.text}")
             else:
-                print(f"Slack notification sent for alert {alert.id}")
+                self.logger.info(f"Slack notification sent for alert {alert.id}")
         except Exception as e:
-            print(f"Failed to send Slack notification: {e}")
+            self.logger.error(f"Failed to send Slack notification: {e}")
 
 
 class PagerDutyNotificationChannel(NotificationChannel):
@@ -479,11 +479,11 @@ class PagerDutyNotificationChannel(NotificationChannel):
             )
 
             if response.status_code != 202:
-                print(f"Failed to send PagerDuty notification: {response.text}")
+                self.logger.warning(f"Failed to send PagerDuty notification: {response.text}")
             else:
-                print(f"PagerDuty notification sent for alert {alert.id}")
+                self.logger.info(f"PagerDuty notification sent for alert {alert.id}")
         except Exception as e:
-            print(f"Failed to send PagerDuty notification: {e}")
+            self.logger.error(f"Failed to send PagerDuty notification: {e}")
 
 
 class MonitoringDashboard:

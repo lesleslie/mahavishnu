@@ -98,7 +98,7 @@ class ObservabilityManager:
         self.logger = logging.getLogger(__name__)
 
         # Initialize components based on availability
-        if OTEL_AVAILABLE and config.metrics_enabled:
+        if OTEL_AVAILABLE and config.observability.metrics_enabled:
             self._init_otel_components()
         else:
             self._init_fallback_components()
@@ -118,14 +118,14 @@ class ObservabilityManager:
 
             # Initialize tracer
             trace_provider = TracerProvider(resource=resource)
-            processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=self.config.otlp_endpoint))
+            processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=self.config.observability.otlp_endpoint))
             trace_provider.add_span_processor(processor)
             trace.set_tracer_provider(trace_provider)
             self.tracer = trace.get_tracer(__name__)
 
             # Initialize meter
             metric_reader = PeriodicExportingMetricReader(
-                OTLPMetricExporter(endpoint=self.config.otlp_endpoint)
+                OTLPMetricExporter(endpoint=self.config.observability.otlp_endpoint)
             )
             meter_provider = MeterProvider(metric_readers=[metric_reader], resource=resource)
             metrics.set_meter_provider(meter_provider)

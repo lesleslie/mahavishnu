@@ -126,6 +126,24 @@ class WorkflowState:
         progress = int((completed / total) * 100) if total > 0 else 0
         await self.update(workflow_id, progress=progress)
 
+    async def get_completed_count(self, workflow_id: str) -> int:
+        """Get the count of completed repos for a workflow.
+
+        Args:
+            workflow_id: Workflow identifier
+
+        Returns:
+            Count of completed repos (results + errors)
+        """
+        state = await self.get(workflow_id)
+        if not state:
+            return 0
+
+        results_count = len(state.get("results", []))
+        errors_count = len(state.get("errors", []))
+
+        return results_count + errors_count
+
     async def add_result(self, workflow_id: str, result: dict[str, Any]) -> None:
         """Add a result to the workflow"""
         state = await self.get(workflow_id)

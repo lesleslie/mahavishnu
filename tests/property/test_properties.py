@@ -717,17 +717,12 @@ class TestConfigurationProperties:
     def test_configuration_respects_bounds(self, max_concurrent_workflows, qc_min_score, checkpoint_interval, retry_max_attempts):
         """Test that configuration enforces declared bounds."""
         # Property: Configuration should accept values within bounds
-        config = MahavishnuSettings(
-            max_concurrent_workflows=max_concurrent_workflows,
-            qc_min_score=qc_min_score,
-            checkpoint_interval=checkpoint_interval,
-            retry_max_attempts=retry_max_attempts,
-        )
+        config = MahavishnuSettings(max_concurrent_workflows=max_concurrent_workflows, qc={min_score=qc_min_score}, session={checkpoint_interval=checkpoint_interval}, resilience={retry_max_attempts=retry_max_attempts})
 
         assert config.max_concurrent_workflows == max_concurrent_workflows
-        assert config.qc_min_score == qc_min_score
-        assert config.checkpoint_interval == checkpoint_interval
-        assert config.retry_max_attempts == retry_max_attempts
+        assert config.qc.min_score == qc_min_score
+        assert config.session.checkpoint_interval == checkpoint_interval
+        assert config.resilience.retry_max_attempts == retry_max_attempts
 
     @given(
         invalid_scores=st.one_of(
@@ -740,7 +735,7 @@ class TestConfigurationProperties:
         """Test that configuration rejects values outside bounds."""
         # Property: Configuration should reject out-of-bounds values
         with pytest.raises(ValueError):
-            MahavishnuSettings(qc_min_score=invalid_scores)
+            MahavishnuSettings(qc={min_score=invalid_scores})
 
     @given(
         path_component=st.text(min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))),

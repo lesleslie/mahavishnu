@@ -17,8 +17,8 @@ class SessionBuddy:
             config: MahavishnuSettings configuration object
         """
         self.config = config
-        self.enabled = config.session_enabled
-        self.checkpoint_interval = config.checkpoint_interval
+        self.enabled = config.session.enabled
+        self.checkpoint_interval = config.session.checkpoint_interval
 
     async def create_checkpoint(self, session_id: str, state: dict[str, Any]) -> str:
         """Create a checkpoint for the current session.

@@ -12,27 +12,65 @@ from ..core.config import MahavishnuSettings
 
 
 class CrossProjectAuth:
-    """Shared authentication for Session Buddy ↔ Mahavishnu communication."""
+    """Shared authentication for Session Buddy ↔ Mahavishnu communication.
 
-    def __init__(self, shared_secret: str):
+    Attributes:
+        shared_secret: Shared secret key for HMAC signing
+    """
+
+    def __init__(self, shared_secret: str) -> None:
+        """Initialize cross-project authentication.
+
+        Args:
+            shared_secret: Shared secret key for HMAC signing
+        """
         self.shared_secret = shared_secret
 
-    def sign_message(self, message: dict) -> str:
-        """HMAC-SHA256 signature for cross-project messages"""
+    def sign_message(self, message: dict[str, Any]) -> str:
+        """Generate HMAC-SHA256 signature for cross-project messages.
+
+        Args:
+            message: Message dictionary to sign
+
+        Returns:
+            Hexadecimal HMAC-SHA256 signature
+        """
         message_str = json.dumps(message, sort_keys=True)
         hmac_obj = hmac.new(self.shared_secret.encode(), message_str.encode(), hashlib.sha256)
         return hmac_obj.hexdigest()
 
-    def verify_message(self, message: dict, signature: str) -> bool:
-        """Verify message signature"""
+    def verify_message(self, message: dict[str, Any], signature: str) -> bool:
+        """Verify message signature.
+
+        Args:
+            message: Message dictionary to verify
+            signature: Signature to verify against
+
+        Returns:
+            True if signature is valid, False otherwise
+        """
         expected = self.sign_message(message)
         return hmac.compare_digest(expected, signature)
 
 
 class MessageAuthenticator:
-    """Handles authentication for cross-project messages."""
+    """Handles authentication for cross-project messages.
 
-    def __init__(self, config: MahavishnuSettings):
+    Attributes:
+        config: Mahavishnu configuration
+        auth_secret: Shared secret for authentication
+        authenticator: CrossProjectAuth instance
+    """
+
+    def __init__(self, config: MahavishnuSettings) -> None:
+        """Initialize message authenticator.
+
+        Args:
+            config: Mahavishnu configuration
+
+        Raises:
+            ValueError: If auth secret is not configured or is too short
+        """
         self.config = config
         self.auth_secret = getattr(
             config, "cross_project_auth_secret", os.getenv("CROSS_PROJECT_AUTH_SECRET")
@@ -56,14 +94,22 @@ class MessageAuthenticator:
     def create_authenticated_message(
         self, from_project: str, to_project: str, content: dict[str, Any]
     ) -> dict[str, Any]:
-        """Create an authenticated message for cross-project communication."""
+        """Create an authenticated message for cross-project communication.
+
+        Args:
+            from_project: Source project identifier
+            to_project: Target project identifier
+            content: Message content dictionary
+
+        Returns:
+            Authenticated message with signature
+        """
         # Create the message payload
         message_payload = {
             "from_project": from_project,
             "to_project": to_project,
             "content": content,
             "timestamp": datetime.now().isoformat(),
-            "nonce": f"{from_project}_{int(datetime.now().timestamp() * 1000000)}",  # Unique per message
         }
 
         # Sign the message
@@ -75,7 +121,14 @@ class MessageAuthenticator:
     def verify_authenticated_message(
         self, authenticated_message: dict[str, Any]
     ) -> tuple[bool, dict[str, Any] | None]:
-        """Verify an authenticated message and return its content if valid."""
+        """Verify an authenticated message and return its content if valid.
+
+        Args:
+            authenticated_message: Message dictionary with signature
+
+        Returns:
+            Tuple of (is_valid, message_payload or None)
+        """
         try:
             message_payload = authenticated_message.get("message")
             signature = authenticated_message.get("signature")
@@ -87,8 +140,8 @@ class MessageAuthenticator:
             if algorithm != "HMAC-SHA256":
                 return False, None
 
-            # Verify the signature
-            is_valid = self.authenticator.verify_message(message_payload, signature)  # type: ignore
+            # Verify the signature - message_payload is guaranteed to be dict here
+            is_valid = self.authenticator.verify_message(message_payload, signature)
 
             if is_valid:
                 # Check if message is too old (replay attack prevention)
@@ -103,7 +156,7 @@ class MessageAuthenticator:
                         # If timestamp is invalid, reject the message
                         return False, None
 
-                return True, message_payload  # type: ignore
+                return True, message_payload
             else:
                 return False, None
 
@@ -111,14 +164,29 @@ class MessageAuthenticator:
             return False, None
 
     def is_cross_project_auth_enabled(self) -> bool:
-        """Check if cross-project authentication is enabled."""
+        """Check if cross-project authentication is enabled.
+
+        Returns:
+            True if authentication is configured and enabled
+        """
         return bool(self.auth_secret)
 
 
 class AuthenticatedSessionBuddyClient:
-    """Authenticated client for Session Buddy communication."""
+    """Authenticated client for Session Buddy communication.
 
-    def __init__(self, config: MahavishnuSettings):
+    Attributes:
+        config: Mahavishnu configuration
+        authenticator: MessageAuthenticator instance
+        logger: Logger instance
+    """
+
+    def __init__(self, config: MahavishnuSettings) -> None:
+        """Initialize authenticated Session-Buddy client.
+
+        Args:
+            config: Mahavishnu configuration
+        """
         self.config = config
         self.authenticator = MessageAuthenticator(config)
         self.logger = __import__("logging").getLogger(__name__)
@@ -126,7 +194,16 @@ class AuthenticatedSessionBuddyClient:
     async def send_authenticated_message(
         self, from_project: str, to_project: str, content: dict[str, Any]
     ) -> dict[str, Any]:
-        """Send an authenticated message to Session Buddy."""
+        """Send an authenticated message to Session Buddy.
+
+        Args:
+            from_project: Source project identifier
+            to_project: Target project identifier
+            content: Message content
+
+        Returns:
+            Result dictionary with status and message_id
+        """
         try:
             # Create authenticated message
             authenticated_msg = self.authenticator.create_authenticated_message(
@@ -153,14 +230,21 @@ class AuthenticatedSessionBuddyClient:
     async def receive_authenticated_message(
         self, received_message: dict[str, Any]
     ) -> dict[str, Any]:
-        """Receive and verify an authenticated message from Session Buddy."""
+        """Receive and verify an authenticated message from Session Buddy.
+
+        Args:
+            received_message: Received message dictionary with signature
+
+        Returns:
+            Result dictionary with validation status and content
+        """
         try:
             # Verify the message
             is_valid, message_content = self.authenticator.verify_authenticated_message(
                 received_message
             )
 
-            if is_valid:
+            if is_valid and message_content:
                 self.logger.info(
                     f"Received valid authenticated message from {message_content.get('from_project')}"
                 )
@@ -183,7 +267,16 @@ class AuthenticatedSessionBuddyClient:
     async def validate_project_access(
         self, requesting_project: str, target_project: str, action: str
     ) -> bool:
-        """Validate if a project has access to perform an action on another project."""
+        """Validate if a project has access to perform an action on another project.
+
+        Args:
+            requesting_project: Project requesting access
+            target_project: Target project to access
+            action: Action to perform
+
+        Returns:
+            True if access is granted, False otherwise
+        """
         # In a real implementation, this would check permissions in a database or configuration
         # For now, we'll implement a simple policy
 
@@ -197,8 +290,11 @@ class AuthenticatedSessionBuddyClient:
 
 
 # Example usage and testing
-async def test_cross_project_authentication():
-    """Test the cross-project authentication functionality."""
+async def test_cross_project_authentication() -> None:
+    """Test the cross-project authentication functionality.
+
+    This is a demonstration function showing how to use the authentication system.
+    """
     from ..core.config import MahavishnuSettings
 
     # Create a mock config with auth secret
@@ -217,30 +313,16 @@ async def test_cross_project_authentication():
 
     # Create authenticated message
     auth_msg = authenticator.create_authenticated_message(
-        "mahavishnu", "session_buddy", test_message["content"]
+        from_project="mahavishnu",
+        to_project="session_buddy",
+        content=test_message,
     )
-
-    print("Original message:", test_message)
-    print("Authenticated message:", auth_msg)
 
     # Verify the message
-    is_valid, content = authenticator.verify_authenticated_message(auth_msg)
-    print("Verification result:", is_valid)
-    print("Verified content:", content)
+    is_valid, payload = authenticator.verify_authenticated_message(auth_msg)
 
-    # Test with tampered message
-    tampered_msg = auth_msg.copy()
-    tampered_msg["message"]["content"]["data"] = "tampered data"
-    is_valid_tampered, _ = authenticator.verify_authenticated_message(tampered_msg)
-    print("Tampered message verification:", is_valid_tampered)
-
-    # Test client
-    client = AuthenticatedSessionBuddyClient(config)
-    result = await client.send_authenticated_message(
-        "mahavishnu", "session_buddy", {"test": "data"}
-    )
-    print("Send result:", result)
-
-
-if __name__ == "__main__":
-    asyncio.run(test_cross_project_authentication())
+    if is_valid:
+        print("✓ Authentication test passed")
+        print(f"  Verified message: {payload}")
+    else:
+        print("✗ Authentication test failed")

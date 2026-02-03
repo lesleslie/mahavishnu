@@ -71,9 +71,9 @@ def register_otel_tools(server, app, mcp_client):
 
             # Initialize ingester with app config
             ingester = OtelIngester(
-                hot_store_path=app.config.otel_ingester_hot_store_path,
-                embedding_model=app.config.otel_ingester_embedding_model,
-                cache_size=app.config.otel_ingester_cache_size,
+                hot_store_path=app.config.otel_ingester.hot_store_path,
+                embedding_model=app.config.otel_ingester.embedding_model,
+                cache_size=app.config.otel_ingester.cache_size,
             )
             await ingester.initialize()
 
@@ -209,9 +209,9 @@ def register_otel_tools(server, app, mcp_client):
 
             # Initialize ingester
             ingester = OtelIngester(
-                hot_store_path=app.config.otel_ingester_hot_store_path,
-                embedding_model=app.config.otel_ingester_embedding_model,
-                similarity_threshold=threshold or app.config.otel_ingester_similarity_threshold,
+                hot_store_path=app.config.otel_ingester.hot_store_path,
+                embedding_model=app.config.otel_ingester.embedding_model,
+                similarity_threshold=threshold or app.config.otel_ingester.similarity_threshold,
             )
             await ingester.initialize()
 
@@ -262,7 +262,7 @@ def register_otel_tools(server, app, mcp_client):
 
             # Initialize ingester
             ingester = OtelIngester(
-                hot_store_path=app.config.otel_ingester_hot_store_path,
+                hot_store_path=app.config.otel_ingester.hot_store_path,
             )
             await ingester.initialize()
 
@@ -307,17 +307,17 @@ def register_otel_tools(server, app, mcp_client):
             from akosha.storage import HotStore
 
             # Initialize HotStore to query statistics
-            hot_store = HotStore(database_path=app.config.otel_ingester_hot_store_path)
+            hot_store = HotStore(database_path=app.config.otel_ingester.hot_store_path)
             await hot_store.initialize()
 
             # Query total traces (basic implementation)
             # Note: DuckDB doesn't expose count directly without SQL query
             stats = {
                 "storage_backend": "duckdb_hotstore",
-                "hot_store_path": app.config.otel_ingester_hot_store_path,
-                "embedding_model": app.config.otel_ingester_embedding_model,
-                "cache_size": app.config.otel_ingester_cache_size,
-                "similarity_threshold": app.config.otel_ingester_similarity_threshold,
+                "hot_store_path": app.config.otel_ingester.hot_store_path,
+                "embedding_model": app.config.otel_ingester.embedding_model,
+                "cache_size": app.config.otel_ingester.cache_size,
+                "similarity_threshold": app.config.otel_ingester.similarity_threshold,
                 "status": "healthy",
                 # Would need to add SQL query to HotStore for exact counts
                 "total_traces": "unknown",

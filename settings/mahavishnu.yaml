@@ -14,21 +14,16 @@ repos_path: settings/repos.yaml
 # Concurrency settings
 max_concurrent_workflows: 10
 
-# Circuit breaker settings
-circuit_breaker_threshold: 5
-retry_base_delay: 1.0
-
-# Adapter configuration - Core Components
-# Prefect: High-level orchestration with dynamic flows
-prefect_enabled: true
-# LlamaIndex: RAG pipelines for ingesting repos/docs, embedding with Ollama
-llamaindex_enabled: false
-# Agno: Fast, scalable single/multi-agents with memory and tools
-agno_enabled: true
+# Adapter configuration
+adapters:
+  prefect_enabled: true  # High-level orchestration with dynamic flows
+  llamaindex_enabled: false  # RAG pipelines for ingesting repos/docs, embedding with Ollama
+  agno_enabled: true  # Fast, scalable single/multi-agents with memory and tools
 
 # LLM configuration for LlamaIndex and Agno
-llm_model: nomic-embed-text  # Ollama embedding model
-ollama_base_url: http://localhost:11434  # Ollama API endpoint
+llm:
+  model: nomic-embed-text  # Ollama embedding model
+  ollama_base_url: http://localhost:11434  # Ollama API endpoint
 
 # OpenSearch configuration for vector storage and observability
 opensearch:
@@ -42,8 +37,8 @@ opensearch:
 
 # OpenTelemetry trace storage with semantic search
 otel_storage:
-  enabled: true  # PostgreSQL + pgvector setup complete
-  connection_string: "postgresql://otel_user:otel@localhost:5432/otel_traces"
+  enabled: false  # Set to true to enable PostgreSQL + pgvector storage
+  connection_string: ""  # Set via MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING environment variable
   embedding_model: "all-MiniLM-L6-v2"  # Sentence transformer model
   embedding_dimension: 384  # Vector dimension (match model)
   cache_size: 1000  # Max embeddings in memory cache
@@ -53,24 +48,89 @@ otel_storage:
   max_retries: 3  # Retry attempts for failed operations
   circuit_breaker_threshold: 5  # Failures before circuit breaker opens
 
+# OpenTelemetry trace ingester with Akosha HotStore (DuckDB)
+otel_ingester:
+  enabled: false  # Set to true to enable OTel ingester
+  hot_store_path: ":memory:"  # DuckDB database path (':memory:' for in-memory)
+  embedding_model: "all-MiniLM-L6-v2"  # Sentence transformer model
+  cache_size: 1000  # Max embeddings in memory cache
+  similarity_threshold: 0.7  # Min similarity for search (0.0-1.0)
+
+# Pool management for multi-pool orchestration
+pools:
+  enabled: true  # Enable pool management
+  default_type: "mahavishnu"  # Default pool type (mahavishnu, session-buddy, kubernetes)
+  routing_strategy: "least_loaded"  # Pool selection (round_robin, least_loaded, random, affinity)
+  min_workers: 1  # Default minimum workers per pool
+  max_workers: 10  # Default maximum workers per pool
+  memory_aggregation_enabled: true  # Enable memory aggregation across pools
+  memory_sync_interval: 60  # Memory sync interval in seconds (10-600)
+  session_buddy_url: "http://localhost:8678/mcp"  # Session-Buddy MCP server URL for delegated pools
+  akosha_url: "http://localhost:8682/mcp"  # Akosha MCP server URL for cross-pool analytics
+
+# Worker orchestration for headless AI execution
+workers:
+  enabled: true  # Enable worker orchestration
+  max_concurrent: 10  # Maximum concurrent workers (1-100)
+  default_type: "terminal-qwen"  # Default worker type (terminal-qwen, terminal-claude, container-executor)
+  timeout_seconds: 300  # Default worker timeout in seconds (30-3600)
+  session_buddy_integration: true  # Enable Session-Buddy result storage for workers
+
 # Quality control
-qc_enabled: true
-qc_min_score: 80
-qc_checks:
-  - linting
-  - type_checking
-  - security_scan
+qc:
+  enabled: true
+  min_score: 80
+  checks:
+    - linting
+    - type_checking
+    - security_scan
 
 # Session management
-session_enabled: true
-checkpoint_interval: 60
+session:
+  enabled: true
+  checkpoint_interval: 60  # Checkpoint interval in seconds (10-600)
+
+# Resilience configuration
+resilience:
+  retry_max_attempts: 3  # Maximum retry attempts (1-10)
+  retry_base_delay: 1.0  # Base retry delay in seconds (0.1-60)
+  circuit_breaker_threshold: 5  # Consecutive failures before circuit opens (1-100)
+  timeout_per_repo: 300  # Timeout per repo in seconds (30-3600)
+
+# Observability configuration
+observability:
+  metrics_enabled: true  # Enable OpenTelemetry metrics
+  tracing_enabled: true  # Enable distributed tracing
+  otlp_endpoint: "http://localhost:4317"  # OTLP endpoint for metrics/traces
 
 # Authentication settings
 auth:
   enabled: false  # Set to true in production
   algorithm: "HS256"
   expire_minutes: 60
-  # Set MAHAVISHNU_AUTH_SECRET environment variable with at least 32 characters
+  # Set MAHAVISHNU_AUTH__SECRET environment variable with at least 32 characters
+
+# Subscription-based authentication (e.g., Claude Code)
+subscription_auth:
+  enabled: false
+  algorithm: "HS256"
+  expire_minutes: 60
+  # Set MAHAVISHNU_SUBSCRIPTION_AUTH__SECRET environment variable
+
+# Session-Buddy polling integration
+session_buddy_polling:
+  enabled: false  # Set to true to enable polling
+  endpoint: "http://localhost:8678/mcp"  # Session-Buddy MCP server URL
+  interval_seconds: 30  # Polling interval (5-600)
+  timeout_seconds: 10  # HTTP timeout for MCP calls (1-60)
+  max_retries: 3  # Maximum retry attempts (1-10)
+  retry_delay_seconds: 5  # Base retry delay (1-60)
+  circuit_breaker_threshold: 5  # Failures before circuit opens (1-20)
+  metrics_to_collect:  # MCP tools to poll
+    - get_activity_summary
+    - get_workflow_metrics
+    - get_session_analytics
+    - get_performance_metrics
 
 # Terminal management
 terminal:
@@ -83,17 +143,3 @@ terminal:
   # Adapter preference: "auto" (detect iTerm2, fallback to mcpretentious),
   # "iterm2" (native iTerm2 Python API), or "mcpretentious" (PTY-based)
   adapter_preference: "auto"
-
-# Session-Buddy polling integration
-session_buddy_polling_enabled: false  # Set to true to enable polling
-session_buddy_polling_endpoint: "http://localhost:8678/mcp"  # Session-Buddy MCP server URL
-session_buddy_polling_interval_seconds: 30  # Polling interval (5-600)
-session_buddy_polling_timeout_seconds: 10  # HTTP timeout for MCP calls (1-60)
-session_buddy_polling_max_retries: 3  # Maximum retry attempts (1-10)
-session_buddy_polling_retry_delay_seconds: 5  # Base retry delay (1-60)
-session_buddy_polling_circuit_breaker_threshold: 5  # Failures before circuit opens (1-20)
-session_buddy_polling_metrics_to_collect:  # MCP tools to poll
-  - get_activity_summary
-  - get_workflow_metrics
-  - get_session_analytics
-  - get_performance_metrics

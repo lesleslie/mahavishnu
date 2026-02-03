@@ -19,7 +19,8 @@ try:
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
-    SentenceTransformer = None  # type: ignore
+    # Define as type alias for None when not available
+    SentenceTransformer: type[Any] | None = None  # type: ignore[misc]
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -445,12 +446,22 @@ class OtelIngester:
         return all_attributes
 
     async def __aenter__(self) -> OtelIngester:
-        """Async context manager entry."""
+        """Async context manager entry.
+
+        Returns:
+            Initialized OtelIngester instance
+        """
         await self.initialize()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Async context manager exit."""
+        """Async context manager exit.
+
+        Args:
+            exc_type: Exception type if an exception was raised
+            exc_val: Exception value if an exception was raised
+            exc_tb: Exception traceback if an exception was raised
+        """
         await self.close()
 
 

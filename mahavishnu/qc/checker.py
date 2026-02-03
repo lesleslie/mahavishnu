@@ -15,8 +15,8 @@ class QualityControl:
             config: MahavishnuSettings configuration object
         """
         self.config = config
-        self.enabled = config.qc_enabled
-        self.min_score = config.qc_min_score
+        self.enabled = config.qc.enabled
+        self.min_score = config.qc.min_score
         self.checks = getattr(config, "qc_checks", ["linting", "type_checking"])
 
     async def run_pre_checks(self, repos: list[str], checks: list[str] = None) -> dict[str, Any]:

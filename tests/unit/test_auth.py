@@ -75,18 +75,18 @@ def test_invalid_token():
 def test_get_auth_from_config():
     """Test getting JWTAuth from configuration."""
     # Test with auth disabled
-    config = MahavishnuSettings(auth_enabled=False)
+    config = MahavishnuSettings(auth={"enabled": False})
     auth = get_auth_from_config(config)
     assert auth is None
 
     # Test with auth enabled but no secret
-    config = MahavishnuSettings(auth_enabled=True, auth_secret=None)
+    config = MahavishnuSettings(auth={"enabled": True, "secret": None})
     auth = get_auth_from_config(config)
     assert auth is None
 
     # Test with auth enabled and valid secret
     secret = "x" * 32
-    config = MahavishnuSettings(auth_enabled=True, auth_secret=secret)
+    config = MahavishnuSettings(auth={"enabled": True, "secret": secret})
     auth = get_auth_from_config(config)
     assert auth is not None
     assert auth.secret == secret

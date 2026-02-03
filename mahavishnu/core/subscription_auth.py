@@ -156,17 +156,17 @@ class MultiAuthHandler:
         self.subscription_auth = None
 
         # Initialize JWT auth if enabled
-        if config.auth_enabled and config.auth_secret:
+        if config.auth.enabled and config.auth.secret:
             from .auth import JWTAuth
 
             self.jwt_auth = JWTAuth(
-                secret=config.auth_secret,
-                algorithm=config.auth_algorithm,
-                expire_minutes=config.auth_expire_minutes,
+                secret=config.auth.secret,
+                algorithm=config.auth.algorithm,
+                expire_minutes=config.auth.expire_minutes,
             )
 
         # Initialize subscription auth if enabled
-        if hasattr(config, "subscription_auth_enabled") and config.subscription_auth_enabled:
+        if hasattr(config, "subscription_auth_enabled") and config.subscription_auth.enabled:
             subscription_secret = getattr(config, "subscription_auth_secret", None)
             if subscription_secret:
                 self.subscription_auth = SubscriptionAuth(

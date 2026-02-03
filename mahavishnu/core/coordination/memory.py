@@ -1,9 +1,9 @@
-"""
-Memory integration for cross-repository coordination.
+"""Memory integration for cross-repository coordination.
 
 Stores coordination events in Session-Buddy for semantic search and analytics.
 """
 
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
@@ -19,17 +19,22 @@ if TYPE_CHECKING:
     from mahavishnu.core.coordination.manager import CoordinationManager
 
 
+logger = logging.getLogger(__name__)
+
+
 class CoordinationMemory:
-    """
-    Store coordination events in memory systems.
+    """Store coordination events in memory systems.
 
     This class provides integration with Session-Buddy to store
     coordination events for semantic search and trend analysis.
+
+    Attributes:
+        session_buddy: Optional Session-Buddy MCP client
+        collection: Collection name for storing coordination events
     """
 
     def __init__(self, session_buddy_client: Optional[Any] = None) -> None:
-        """
-        Initialize coordination memory integration.
+        """Initialize coordination memory integration.
 
         Args:
             session_buddy_client: Optional Session-Buddy MCP client
@@ -43,8 +48,7 @@ class CoordinationMemory:
         issue: CrossRepoIssue,
         changes: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """
-        Store an issue-related event in memory.
+        """Store an issue-related event in memory.
 
         Args:
             event_type: Type of event (created, updated, closed, etc.)
@@ -79,8 +83,7 @@ class CoordinationMemory:
         todo: CrossRepoTodo,
         changes: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """
-        Store a todo-related event in memory.
+        """Store a todo-related event in memory.
 
         Args:
             event_type: Type of event (created, updated, completed, etc.)
@@ -116,8 +119,7 @@ class CoordinationMemory:
         dependency: Dependency,
         validation_result: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """
-        Store a dependency-related event in memory.
+        """Store a dependency-related event in memory.
 
         Args:
             event_type: Type of event (validated, status_changed, etc.)
@@ -155,8 +157,7 @@ class CoordinationMemory:
         plan: CrossRepoPlan,
         milestone: Optional[str] = None,
     ) -> None:
-        """
-        Store a plan-related event in memory.
+        """Store a plan-related event in memory.
 
         Args:
             event_type: Type of event (created, updated, milestone_completed, etc.)
@@ -192,8 +193,7 @@ class CoordinationMemory:
         repo: Optional[str] = None,
         limit: int = 20,
     ) -> List[Dict[str, Any]]:
-        """
-        Search coordination history.
+        """Search coordination history.
 
         Args:
             query: Search query string
@@ -226,8 +226,8 @@ class CoordinationMemory:
             )
             return results
         except Exception as e:
-            # If search fails, return empty results
-            print(f"Coordination memory search failed: {e}")
+            # If search fails, log error and return empty results
+            logger.error(f"Coordination memory search failed: {e}")
             return []
 
     async def get_coordination_trends(
@@ -235,8 +235,7 @@ class CoordinationMemory:
         repo: Optional[str] = None,
         days: int = 30,
     ) -> Dict[str, Any]:
-        """
-        Get coordination trends and analytics.
+        """Get coordination trends and analytics.
 
         Args:
             repo: Optional repository to filter by
@@ -257,8 +256,7 @@ class CoordinationMemory:
         }
 
     async def _store_memory(self, content: str, metadata: Dict[str, Any]) -> None:
-        """
-        Store a memory in Session-Buddy.
+        """Store a memory in Session-Buddy.
 
         Args:
             content: Content string for search
@@ -272,7 +270,7 @@ class CoordinationMemory:
             )
         except Exception as e:
             # Log but don't fail - coordination is more important than memory
-            print(f"Failed to store coordination memory: {e}")
+            logger.error(f"Failed to store coordination memory: {e}")
 
     async def close(self) -> None:
         """Close the memory integration and cleanup resources."""
@@ -283,12 +281,19 @@ class CoordinationMemory:
 # Extended manager with memory integration
 
 
-class CoordinationManagerWithMemory:  # type: ignore
-    """
-    Coordination manager with automatic memory integration.
+class CoordinationManagerWithMemory:
+    """Coordination manager with automatic memory integration.
 
     Extends CoordinationManager to automatically store events
     in Session-Buddy for search and analytics.
+
+    This class uses composition rather than inheritance to avoid
+    MRO (Method Resolution Order) issues with type checking.
+
+    Attributes:
+        _coordination_mgr: Wrapped CoordinationManager instance
+        _coordination_path: Path to ecosystem.yaml file
+        memory: CoordinationMemory instance for storing events
     """
 
     def __init__(
@@ -296,8 +301,7 @@ class CoordinationManagerWithMemory:  # type: ignore
         ecosystem_path: str = "settings/ecosystem.yaml",
         session_buddy_client: Optional[Any] = None,
     ) -> None:
-        """
-        Initialize the coordination manager with memory.
+        """Initialize the coordination manager with memory.
 
         Args:
             ecosystem_path: Path to ecosystem.yaml
@@ -312,6 +316,7 @@ class CoordinationManagerWithMemory:  # type: ignore
         self.memory = CoordinationMemory(session_buddy_client)
 
     # Delegate all CoordinationManager methods
+
     def reload(self) -> None:
         """Reload coordination data from ecosystem.yaml."""
         self._coordination_mgr.reload()
@@ -321,61 +326,165 @@ class CoordinationManagerWithMemory:  # type: ignore
         self._coordination_mgr.save()
 
     def list_issues(self, *args, **kwargs):
-        """Delegate to wrapped manager."""
+        """Delegate to wrapped manager.
+
+        Args:
+            *args: Positional arguments to pass to wrapped manager
+            **kwargs: Keyword arguments to pass to wrapped manager
+
+        Returns:
+            Result from wrapped manager's list_issues method
+        """
         return self._coordination_mgr.list_issues(*args, **kwargs)
 
     def get_issue(self, *args, **kwargs):
-        """Delegate to wrapped manager."""
+        """Delegate to wrapped manager.
+
+        Args:
+            *args: Positional arguments to pass to wrapped manager
+            **kwargs: Keyword arguments to pass to wrapped manager
+
+        Returns:
+            Result from wrapped manager's get_issue method
+        """
         return self._coordination_mgr.get_issue(*args, **kwargs)
 
     def create_issue(self, *args, **kwargs):
-        """Delegate to wrapped manager."""
+        """Delegate to wrapped manager.
+
+        Args:
+            *args: Positional arguments to pass to wrapped manager
+            **kwargs: Keyword arguments to pass to wrapped manager
+
+        Returns:
+            Result from wrapped manager's create_issue method
+        """
         return self._coordination_mgr.create_issue(*args, **kwargs)
 
     def update_issue(self, *args, **kwargs):
-        """Delegate to wrapped manager."""
+        """Delegate to wrapped manager.
+
+        Args:
+            *args: Positional arguments to pass to wrapped manager
+            **kwargs: Keyword arguments to pass to wrapped manager
+
+        Returns:
+            Result from wrapped manager's update_issue method
+        """
         return self._coordination_mgr.update_issue(*args, **kwargs)
 
     def delete_issue(self, *args, **kwargs):
-        """Delegate to wrapped manager."""
+        """Delegate to wrapped manager.
+
+        Args:
+            *args: Positional arguments to pass to wrapped manager
+            **kwargs: Keyword arguments to pass to wrapped manager
+
+        Returns:
+            Result from wrapped manager's delete_issue method
+        """
         return self._coordination_mgr.delete_issue(*args, **kwargs)
 
     def list_plans(self, *args, **kwargs):
-        """Delegate to wrapped manager."""
+        """Delegate to wrapped manager.
+
+        Args:
+            *args: Positional arguments to pass to wrapped manager
+            **kwargs: Keyword arguments to pass to wrapped manager
+
+        Returns:
+            Result from wrapped manager's list_plans method
+        """
         return self._coordination_mgr.list_plans(*args, **kwargs)
 
     def get_plan(self, *args, **kwargs):
-        """Delegate to wrapped manager."""
+        """Delegate to wrapped manager.
+
+        Args:
+            *args: Positional arguments to pass to wrapped manager
+            **kwargs: Keyword arguments to pass to wrapped manager
+
+        Returns:
+            Result from wrapped manager's get_plan method
+        """
         return self._coordination_mgr.get_plan(*args, **kwargs)
 
     def list_todos(self, *args, **kwargs):
-        """Delegate to wrapped manager."""
+        """Delegate to wrapped manager.
+
+        Args:
+            *args: Positional arguments to pass to wrapped manager
+            **kwargs: Keyword arguments to pass to wrapped manager
+
+        Returns:
+            Result from wrapped manager's list_todos method
+        """
         return self._coordination_mgr.list_todos(*args, **kwargs)
 
     def get_todo(self, *args, **kwargs):
-        """Delegate to wrapped manager."""
+        """Delegate to wrapped manager.
+
+        Args:
+            *args: Positional arguments to pass to wrapped manager
+            **kwargs: Keyword arguments to pass to wrapped manager
+
+        Returns:
+            Result from wrapped manager's get_todo method
+        """
         return self._coordination_mgr.get_todo(*args, **kwargs)
 
     def list_dependencies(self, *args, **kwargs):
-        """Delegate to wrapped manager."""
+        """Delegate to wrapped manager.
+
+        Args:
+            *args: Positional arguments to pass to wrapped manager
+            **kwargs: Keyword arguments to pass to wrapped manager
+
+        Returns:
+            Result from wrapped manager's list_dependencies method
+        """
         return self._coordination_mgr.list_dependencies(*args, **kwargs)
 
     def check_dependencies(self, *args, **kwargs):
-        """Delegate to wrapped manager."""
+        """Delegate to wrapped manager.
+
+        Args:
+            *args: Positional arguments to pass to wrapped manager
+            **kwargs: Keyword arguments to pass to wrapped manager
+
+        Returns:
+            Result from wrapped manager's check_dependencies method
+        """
         return self._coordination_mgr.check_dependencies(*args, **kwargs)
 
     def get_blocking_issues(self, *args, **kwargs):
-        """Delegate to wrapped manager."""
+        """Delegate to wrapped manager.
+
+        Args:
+            *args: Positional arguments to pass to wrapped manager
+            **kwargs: Keyword arguments to pass to wrapped manager
+
+        Returns:
+            Result from wrapped manager's get_blocking_issues method
+        """
         return self._coordination_mgr.get_blocking_issues(*args, **kwargs)
 
     def get_repo_status(self, *args, **kwargs):
-        """Delegate to wrapped manager."""
+        """Delegate to wrapped manager.
+
+        Args:
+            *args: Positional arguments to pass to wrapped manager
+            **kwargs: Keyword arguments to pass to wrapped manager
+
+        Returns:
+            Result from wrapped manager's get_repo_status method
+        """
         return self._coordination_mgr.get_repo_status(*args, **kwargs)
 
     # Memory-integrated methods
+
     async def create_issue_with_memory(self, issue: CrossRepoIssue) -> None:
-        """
-        Create an issue and store the event in memory.
+        """Create an issue and store the event in memory.
 
         Args:
             issue: The issue to create
@@ -388,8 +497,7 @@ class CoordinationManagerWithMemory:  # type: ignore
         issue_id: str,
         updates: Dict[str, Any],
     ) -> None:
-        """
-        Update an issue and store the event in memory.
+        """Update an issue and store the event in memory.
 
         Args:
             issue_id: Issue identifier
@@ -411,8 +519,7 @@ class CoordinationManagerWithMemory:  # type: ignore
         )
 
     async def close_issue_with_memory(self, issue_id: str) -> None:
-        """
-        Close an issue and store the event in memory.
+        """Close an issue and store the event in memory.
 
         Args:
             issue_id: Issue identifier
@@ -423,8 +530,7 @@ class CoordinationManagerWithMemory:  # type: ignore
         await self.memory.store_issue_event("closed", issue)
 
     async def create_todo_with_memory(self, todo: CrossRepoTodo) -> None:
-        """
-        Create a todo and store the event in memory.
+        """Create a todo and store the event in memory.
 
         Args:
             todo: The todo to create
@@ -437,11 +543,13 @@ class CoordinationManagerWithMemory:  # type: ignore
         await self.memory.store_todo_event("created", todo)
 
     async def complete_todo_with_memory(self, todo_id: str) -> None:
-        """
-        Complete a todo and store the event in memory.
+        """Complete a todo and store the event in memory.
 
         Args:
             todo_id: Todo identifier
+
+        Raises:
+            ValueError: If todo_id is not found
         """
         todos_data = self._coordination_mgr._coordination.get("todos", [])
         for todo in todos_data:
@@ -464,8 +572,7 @@ class CoordinationManagerWithMemory:  # type: ignore
         self,
         consumer: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """
-        Check dependencies and store validation events in memory.
+        """Check dependencies and store validation events in memory.
 
         Args:
             consumer: Optional consumer repository to filter by
