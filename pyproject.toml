@@ -40,9 +40,11 @@ dependencies = [
     # OpenTelemetry trace storage with semantic search
     "asyncpg>=0.29.0",  # Async PostgreSQL driver for OTel trace storage
     "pgvector>=0.2.5",  # Vector similarity search for semantic trace search
-    "sentence-transformers>=2.2.2",  # Sentence transformer embeddings
+    "sentence-transformers>=2.2.2; python_version < '3.13' or sys_platform != 'darwin' or platform_machine == 'arm64'",  # Sentence transformer embeddings (incompatible with Python 3.13 on Intel Macs)
     # Resilience
     "tenacity>=9.1.2",
+    # Rate limiting & DDoS protection
+    "starlette-context>=0.4.0",  # Request context for rate limiting
     # Quality control (optional)
     "crackerjack>=0.50.1",
     # Session management (optional)
