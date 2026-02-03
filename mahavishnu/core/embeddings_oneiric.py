@@ -24,7 +24,7 @@ import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from mahavishnu.core.embeddings import (
     EmbeddingProvider,
@@ -88,8 +88,7 @@ class EmbeddingConfig(BaseModel):
         description="Enable embedding cache (reduces API calls)",
     )
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
     @classmethod
     def load_from_file(cls, config_path: str | None = None) -> "EmbeddingConfig":
