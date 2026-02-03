@@ -67,7 +67,20 @@ class TestOllamaProvider:
     )
     async def test_ollama_generate_embeddings(self):
         """Test generating embeddings with Ollama."""
+        import httpx
         from mahavishnu.core.embeddings import OllamaProvider
+
+        # Check if model is available
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get("http://localhost:11434/api/tags")
+                response.raise_for_status()
+                models = response.json().get("models", [])
+                model_names = [m["name"] for m in models]
+                if "nomic-embed-text" not in model_names:
+                    pytest.skip("Ollama model 'nomic-embed-text' not pulled. Run: ollama pull nomic-embed-text")
+        except Exception:
+            pytest.skip("Could not verify Ollama model availability")
 
         provider = OllamaProvider()
         result = await provider.embed(["hello world"])
@@ -128,10 +141,10 @@ class TestProviderFallback:
         service = EmbeddingService(auto_fallback=True)
 
         # Should auto-select FastEmbed
-        embeddings = await service.embed(["hello world"])
+        result = await service.embed(["hello world"])
 
-        assert len(embeddings) == 1
-        assert len(embeddings[0]) > 0  # Has embeddings
+        assert len(result.embeddings) == 1
+        assert len(result.embeddings[0]) > 0  # Has embeddings
 
 
 @pytest.mark.asyncio

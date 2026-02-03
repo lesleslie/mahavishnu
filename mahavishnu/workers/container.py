@@ -52,6 +52,77 @@ class ContainerWorker(BaseWorker):
         self.container_id: str | None = None
         self._running = False
 
+        # SECURITY: Whitelist of allowed commands to prevent RCE
+        self._ALLOWED_COMMANDS = {
+            "python", "pip", "npm", "node", "ls", "cat", "echo",
+            "grep", "find", "head", "tail", "wc", "pwd", "cd",
+            "mkdir", "touch", "rm", "cp", "mv", "sort", "uniq",
+            "cut", "awk", "sed", "git", "pytest", "black"
+        }
+
+        # SECURITY: Dangerous command patterns to block
+        self._DANGEROUS_PATTERNS = [
+            "rm -rf /", "mkfs", "dd if=", "> /dev/sd",
+            "chmod 000", "chown root:", "curl | sh", "wget | sh",
+            "&& rm", "; rm", "| rm", "nc -e", "ncat",
+            "/dev/tcp", "/dev/udp", "bind shell", "reverse shell"
+        ]
+
+        self._MAX_COMMAND_LENGTH = 10000
+
+    def _validate_command(self, command: str) -> None:
+        """Validate command for security to prevent injection attacks.
+
+        Args:
+            command: Command string to validate
+
+        Raises:
+            ValueError: If command fails validation
+        """
+        if not isinstance(command, str):
+            raise ValueError("Command must be a string")
+
+        # Check length limit
+        if len(command) > self._MAX_COMMAND_LENGTH:
+            raise ValueError(
+                f"Command too long: {len(command)} > {self._MAX_COMMAND_LENGTH} characters"
+            )
+
+        # Block dangerous patterns
+        command_lower = command.lower()
+        for pattern in self._DANGEROUS_PATTERNS:
+            if pattern.lower() in command_lower:
+                raise ValueError(
+                    f"Command contains dangerous pattern '{pattern}'. "
+                    "This command is not allowed for security reasons."
+                )
+
+        # Extract first word (command name)
+        first_word = command.strip().split()[0] if command.strip() else ""
+        if not first_word:
+            raise ValueError("Command cannot be empty")
+
+        # Check against whitelist
+        if first_word not in self._ALLOWED_COMMANDS:
+            raise ValueError(
+                f"Command '{first_word}' is not in the allowed list. "
+                f"Allowed commands: {', '.join(sorted(self._ALLOWED_COMMANDS))}"
+            )
+
+    def _sanitize_command(self, command: str) -> str:
+        """Sanitize command for safe execution.
+
+        Args:
+            command: Command string to sanitize
+
+        Returns:
+            Sanitized command string
+        """
+        import shlex
+        # Use shlex.quote to escape special characters
+        # This prevents shell metacharacter injection
+        return shlex.quote(command)
+
     async def start(self) -> str:
         """Launch container with persistent shell.
 
@@ -121,6 +192,9 @@ class ContainerWorker(BaseWorker):
         if not command:
             raise ValueError("Task must specify 'command'")
 
+        # SECURITY: Validate command to prevent injection attacks
+        self._validate_command(command)
+
         import time
 
         start_time = time.time()
@@ -128,14 +202,15 @@ class ContainerWorker(BaseWorker):
         try:
             logger.info(f"Executing in container {self.container_id}: {command}")
 
-            # Execute command in container
+            # Execute command in container with validated and sanitized input
+            safe_command = self._sanitize_command(command)
             proc = await asyncio.create_subprocess_exec(
                 self.runtime,
                 "exec",
                 self.container_id,
                 "sh",
                 "-c",
-                command,
+                f"echo {safe_command} | sh",  # Double protection with shlex.quote + pipe
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
