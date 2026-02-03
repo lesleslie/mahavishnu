@@ -1,6 +1,7 @@
 """Integration tests for pool orchestration and multi-pool scenarios."""
 
 import asyncio
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -496,3 +497,225 @@ class TestMemoryAggregation:
             )
 
             assert len(results) == 2
+
+
+class TestConcurrentPoolCollection:
+    """Test concurrent pool collection performance improvements."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    @pytest.mark.slow
+    async def test_concurrent_pool_list_performance(self):
+        """Test that list_pools collects concurrently with 10x improvement."""
+        from mahavishnu.mcp.protocols.message_bus import MessageBus
+        from mahavishnu.pools.base import PoolStatus
+
+        pool_manager = PoolManager(
+            terminal_manager=MagicMock(),
+            message_bus=MessageBus(),
+        )
+
+        # Create 10 mock pools with simulated delay
+        async def slow_status():
+            """Simulate 0.1s delay per pool status check."""
+            await asyncio.sleep(0.1)
+            return PoolStatus.RUNNING
+
+        for i in range(10):
+            mock_pool = MagicMock()
+            mock_pool.pool_id = f"pool{i}"
+            mock_pool.config = PoolConfig(
+                name=f"pool{i}",
+                pool_type="mahavishnu",
+                min_workers=1,
+                max_workers=5,
+            )
+            mock_pool._workers = {f"w{j}": f"w{j}" for j in range(2)}
+            mock_pool.status = slow_status
+            pool_manager._pools[f"pool{i}"] = mock_pool
+
+        # Measure concurrent collection time
+        start = time.time()
+        pools_info = await pool_manager.list_pools()
+        elapsed = time.time() - start
+
+        # With 10 pools taking 0.1s each:
+        # Sequential: 10 * 0.1 = 1.0s
+        # Concurrent: max(0.1) = ~0.1-0.2s
+        # We'll be lenient and expect < 0.5s (5x improvement)
+        assert elapsed < 0.5, f"Pool collection took {elapsed:.2f}s, expected < 0.5s"
+        assert len(pools_info) == 10
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    @pytest.mark.slow
+    async def test_concurrent_aggregate_results_performance(self):
+        """Test that aggregate_results collects concurrently with 10x improvement."""
+        from mahavishnu.mcp.protocols.message_bus import MessageBus
+        from mahavishnu.pools.base import PoolStatus
+
+        pool_manager = PoolManager(
+            terminal_manager=MagicMock(),
+            message_bus=MessageBus(),
+        )
+
+        # Create 10 mock pools with simulated delay
+        async def slow_collect():
+            """Simulate 0.1s delay per pool memory collection."""
+            await asyncio.sleep(0.1)
+            return []
+
+        async def slow_status():
+            """Simulate 0.1s delay per pool status check."""
+            await asyncio.sleep(0.1)
+            return PoolStatus.RUNNING
+
+        for i in range(10):
+            mock_pool = MagicMock()
+            mock_pool.pool_id = f"pool{i}"
+            mock_pool.config = PoolConfig(
+                name=f"pool{i}",
+                pool_type="mahavishnu",
+            )
+            mock_pool.collect_memory = slow_collect
+            mock_pool.status = slow_status
+            pool_manager._pools[f"pool{i}"] = mock_pool
+
+        # Measure concurrent collection time
+        start = time.time()
+        results = await pool_manager.aggregate_results()
+        elapsed = time.time() - start
+
+        # With 10 pools taking 0.2s each (collect + status):
+        # Sequential: 10 * 0.2 = 2.0s
+        # Concurrent: max(0.2) = ~0.2-0.3s
+        # We'll be lenient and expect < 0.8s (5x improvement)
+        assert elapsed < 0.8, f"Pool aggregation took {elapsed:.2f}s, expected < 0.8s"
+        assert len(results) == 10
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    @pytest.mark.slow
+    async def test_concurrent_health_check_performance(self):
+        """Test that health_check uses concurrent list_pools."""
+        from mahavishnu.mcp.protocols.message_bus import MessageBus
+        from mahavishnu.pools.base import PoolStatus
+
+        pool_manager = PoolManager(
+            terminal_manager=MagicMock(),
+            message_bus=MessageBus(),
+        )
+
+        # Create 10 mock pools with simulated delay
+        async def slow_status():
+            """Simulate 0.1s delay per pool status check."""
+            await asyncio.sleep(0.1)
+            return PoolStatus.HEALTHY
+
+        for i in range(10):
+            mock_pool = MagicMock()
+            mock_pool.pool_id = f"pool{i}"
+            mock_pool.config = PoolConfig(
+                name=f"pool{i}",
+                pool_type="mahavishnu",
+            )
+            mock_pool._workers = {f"w{j}": f"w{j}" for j in range(2)}
+            mock_pool.status = slow_status
+            pool_manager._pools[f"pool{i}"] = mock_pool
+
+        # Measure concurrent health check time
+        start = time.time()
+        health = await pool_manager.health_check()
+        elapsed = time.time() - start
+
+        # Should complete in < 0.5s due to concurrent collection
+        assert elapsed < 0.5, f"Health check took {elapsed:.2f}s, expected < 0.5s"
+        assert health["status"] == "healthy"
+        assert health["pools_active"] == 10
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    async def test_concurrent_collection_with_errors(self):
+        """Test that concurrent collection handles individual pool errors gracefully."""
+        from mahavishnu.mcp.protocols.message_bus import MessageBus
+        from mahavishnu.pools.base import PoolStatus
+
+        pool_manager = PoolManager(
+            terminal_manager=MagicMock(),
+            message_bus=MessageBus(),
+        )
+
+        # Create mock pools where some fail
+        call_count = [0]
+
+        async def failing_status():
+            """Every third pool fails."""
+            call_count[0] += 1
+            if call_count[0] % 3 == 0:
+                raise RuntimeError(f"Pool {call_count[0]} failed")
+            return PoolStatus.RUNNING
+
+        for i in range(9):
+            mock_pool = MagicMock()
+            mock_pool.pool_id = f"pool{i}"
+            mock_pool.config = PoolConfig(
+                name=f"pool{i}",
+                pool_type="mahavishnu",
+            )
+            mock_pool._workers = {}
+            mock_pool.status = failing_status
+            pool_manager._pools[f"pool{i}"] = mock_pool
+
+        # Should collect successfully despite 3 failing pools
+        pools_info = await pool_manager.list_pools()
+
+        # 6 pools succeed, 3 fail (exceptions filtered out)
+        assert len(pools_info) == 6
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    async def test_concurrent_aggregate_with_partial_failures(self):
+        """Test that aggregate_results continues despite individual pool failures."""
+        from mahavishnu.mcp.protocols.message_bus import MessageBus
+        from mahavishnu.pools.base import PoolStatus
+
+        pool_manager = PoolManager(
+            terminal_manager=MagicMock(),
+            message_bus=MessageBus(),
+        )
+
+        # Create pools where some fail during collection
+        # Use factory function to properly capture pool_id in closure
+        def make_collect_mock(pool_id):
+            """Factory to create collect mock with proper closure capture."""
+            async def collect_mock():
+                if pool_id in ["pool2", "pool5"]:
+                    raise RuntimeError(f"Pool {pool_id} collection failed")
+                return [
+                    {"content": f"Memory from {pool_id}", "metadata": {}}
+                ]
+            return collect_mock
+
+        async def always_healthy():
+            return PoolStatus.RUNNING
+
+        for i in range(7):
+            mock_pool = MagicMock()
+            pool_id = f"pool{i}"
+            mock_pool.pool_id = pool_id
+            mock_pool.config = PoolConfig(
+                name=pool_id,
+                pool_type="mahavishnu",
+            )
+
+            mock_pool.collect_memory = make_collect_mock(pool_id)
+            mock_pool.status = always_healthy
+            pool_manager._pools[pool_id] = mock_pool
+
+        # Should aggregate successfully despite 2 failing pools
+        results = await pool_manager.aggregate_results()
+
+        # 5 pools succeed, 2 fail (but errors are logged, not raised)
+        assert len(results) == 5
+        assert "pool2" not in results
+        assert "pool5" not in results

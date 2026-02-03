@@ -5,13 +5,62 @@ allowing Claude Code and other MCP clients to launch, control, and
 capture output from terminal sessions.
 """
 
+import re
 from typing import Any
+
+from pydantic import Field, StringConstraints
+from typing_extensions import Annotated
 
 from fastmcp import FastMCP
 
 from ...terminal.adapters.iterm2 import ITERM2_AVAILABLE, ITerm2Adapter
 from ...terminal.adapters.mcpretentious import McpretentiousAdapter
 from ...terminal.manager import TerminalManager
+
+# SECURITY: Define validation constraints for MCP tool inputs
+SessionID = Annotated[
+    str,
+    StringConstraints(
+        pattern=r'^[a-zA-Z0-9_-]+$',
+        min_length=1,
+        max_length=100
+    )
+]
+
+Command = Annotated[
+    str,
+    StringConstraints(
+        min_length=1,
+        max_length=10000
+    )
+]
+
+# SECURITY: Dangerous command patterns to block in MCP tools
+DANGEROUS_COMMAND_PATTERNS = [
+    'rm -rf /', 'mkfs', 'dd if=', '> /dev/sd',
+    'chmod 000', 'chown root:', 'curl | sh', 'wget | sh',
+    '&& rm', '; rm', '| rm', 'nc -e', 'ncat',
+    '/dev/tcp', '/dev/udp', 'bind shell', 'reverse shell',
+    'kill -9', 'pkill', 'killall'
+]
+
+def validate_command_safety(command: str) -> None:
+    """Validate command for safety to prevent injection.
+
+    Args:
+        command: Command string to validate
+
+    Raises:
+        ValueError: If command contains dangerous patterns
+    """
+    command_lower = command.lower()
+
+    for pattern in DANGEROUS_COMMAND_PATTERNS:
+        if pattern.lower() in command_lower:
+            raise ValueError(
+                f"Command contains dangerous pattern '{pattern}'. "
+                "This command is not allowed for security reasons."
+            )
 
 
 def register_terminal_tools(
@@ -29,26 +78,32 @@ def register_terminal_tools(
 
     @mcp.tool()
     async def terminal_launch(
-        command: str,
-        count: int = 1,
-        columns: int = 120,
-        rows: int = 40,
+        command: Command,
+        count: int = Field(default=1, ge=1, le=10),
+        columns: int = Field(default=120, ge=40, le=300),
+        rows: int = Field(default=40, ge=10, le=200),
     ) -> list[str]:
         """Launch terminal sessions running a command.
 
         Args:
-            command: Command to run in each terminal
-            count: Number of sessions to launch (default: 1)
-            columns: Terminal width in characters (default: 120)
-            rows: Terminal height in lines (default: 40)
+            command: Command to run in each terminal (max 10000 chars)
+            count: Number of sessions to launch (default: 1, max: 10)
+            columns: Terminal width in characters (default: 120, range: 40-300)
+            rows: Terminal height in lines (default: 40, range: 10-200)
 
         Returns:
             List of session IDs
+
+        Raises:
+            ValueError: If command contains dangerous patterns
 
         Example:
             >>> session_ids = await terminal_launch("qwen", count=3)
             >>> print(f"Launched {len(session_ids)} sessions")
         """
+        # SECURITY: Validate command safety
+        validate_command_safety(command)
+
         return await terminal_manager.launch_sessions(
             command,
             count,
@@ -58,19 +113,35 @@ def register_terminal_tools(
 
     @mcp.tool()
     async def terminal_send(
-        session_id: str,
-        command: str,
-    ) -> None:
+        session_id: SessionID,
+        command: Command,
+    ) -> dict[str, Any]:
         """Send command to a terminal session.
 
         Args:
-            session_id: Terminal session ID
-            command: Command to send
+            session_id: Terminal session ID (alphanumeric, underscore, hyphen only, max 100 chars)
+            command: Command to send (max 10000 chars)
+
+        Returns:
+            Command execution result
+
+        Raises:
+            ValueError: If session_id format invalid or command contains dangerous patterns
 
         Example:
-            >>> await terminal_send("term_123", "hello world")
+            >>> result = await terminal_send("term_123", "hello world")
+            >>> print(result["status"])
         """
+        # SECURITY: Validate command safety
+        validate_command_safety(command)
+
         await terminal_manager.send_command(session_id, command)
+
+        return {
+            "status": "success",
+            "session_id": session_id,
+            "command": command
+        }
 
     @mcp.tool()
     async def terminal_capture(

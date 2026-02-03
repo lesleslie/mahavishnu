@@ -196,22 +196,16 @@ class MultiAuthHandler:
 
         token = auth_header[len("Bearer ") :]
 
-        # Decode the token without verification to check its type
-        try:
-            decoded_payload = jwt.decode(token, options={"verify_signature": False})
-        except jwt.exceptions.DecodeError as e:
-            raise AuthenticationError(
-                message="Could not decode token", details={"error": "Invalid token format"}
-            ) from e
+        # SECURITY: Try each auth method with full signature validation
+        # Never bypass signature verification for routing or inspection
+        errors = []
 
-        # Check if it's a subscription token by looking for subscription-specific claims
-        is_subscription_token = "subscription_type" in decoded_payload
-
-        if is_subscription_token and self.subscription_auth:
-            # Try subscription token authentication
+        # Try subscription auth first (with full signature validation)
+        if self.subscription_auth:
             try:
                 token_data = self.subscription_auth.verify_subscription_token(token)
 
+                # SUCCESS: Valid subscription token
                 # Determine the specific authentication method based on subscription type
                 auth_method = AuthMethod.CLAUDE_SUBSCRIPTION
                 if token_data.subscription_type == "codex":
@@ -227,10 +221,10 @@ class MultiAuthHandler:
                     "authenticated": True,
                 }
             except AuthenticationError as e:
-                raise e  # Re-raise the specific error from subscription auth
+                errors.append(f"Subscription auth failed: {e}")
 
-        elif not is_subscription_token and self.jwt_auth:
-            # Try JWT authentication
+        # Try JWT auth (with full signature validation)
+        if self.jwt_auth:
             try:
                 token_data = self.jwt_auth.verify_token(token)
                 return {
@@ -240,14 +234,13 @@ class MultiAuthHandler:
                     "scopes": ["read", "write", "execute"],  # Default scopes for JWT
                 }
             except AuthenticationError as e:
-                raise e  # Re-raise the specific error from JWT auth
+                errors.append(f"JWT auth failed: {e}")
 
-        else:
-            # Neither authentication method is appropriate for this token
-            raise AuthenticationError(
-                message="Authentication failed with all available methods",
-                details={"error": "Invalid or expired token"},
-            )
+        # If we get here, all authentication methods failed
+        raise AuthenticationError(
+            message="All authentication methods failed",
+            details={"errors": errors}
+        )
 
     def create_claude_subscription_token(self, user_id: str, scopes: list[str] = None) -> str:
         """

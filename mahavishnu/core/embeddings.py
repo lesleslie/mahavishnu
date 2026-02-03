@@ -117,9 +117,9 @@ class FastEmbedProvider(EmbeddingProviderInterface):
     async def _load_client(self):
         """Lazy load the FastEmbed client."""
         try:
-            from fastembed import SentenceTransformer
+            from fastembed import TextEmbedding
 
-            self._client = SentenceTransformer(self.model)
+            self._client = TextEmbedding(model_name=self.model)
         except ImportError as e:
             raise EmbeddingProviderError(
                 f"FastEmbed not available. Install with: uv pip install fastembed\n{e}"
@@ -133,14 +133,20 @@ class FastEmbedProvider(EmbeddingProviderInterface):
         if self._client is None:
             await self._load_client()
 
-        # FastEmbed's encode method is synchronous, run in thread pool
+        # FastEmbed's embed method returns a generator, collect results in thread pool
+        def _collect_embeddings():
+            return [emb.tolist() for emb in self._client.embed(texts)]
+
         loop = asyncio.get_event_loop()
-        embeddings = await loop.run_in_executor(None, self._client.encode, texts)
+        embeddings = await loop.run_in_executor(None, _collect_embeddings)
+
+        dimension = len(embeddings[0]) if embeddings else 0
 
         return EmbeddingResult(
-            embeddings=[emb.tolist() for emb in embeddings],
+            embeddings=embeddings,
             model=self.model,
             provider=EmbeddingProvider.FASTEMBED,
+            dimension=dimension,
         )
 
     def is_available(self) -> bool:
