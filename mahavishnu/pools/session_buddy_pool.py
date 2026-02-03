@@ -233,8 +233,7 @@ class SessionBuddyPool(BasePool):
                 }
 
             logger.info(
-                f"SessionBuddyPool {self.pool_id} executed {len(tasks)} tasks "
-                f"in {duration:.2f}s"
+                f"SessionBuddyPool {self.pool_id} executed {len(tasks)} tasks in {duration:.2f}s"
             )
 
             return task_results
@@ -261,8 +260,7 @@ class SessionBuddyPool(BasePool):
             NotImplementedError: Always - SessionBuddyPool has fixed worker count
         """
         raise NotImplementedError(
-            "SessionBuddyPool has fixed worker count (3). "
-            "Spawn additional pools for more capacity."
+            "SessionBuddyPool has fixed worker count (3). Spawn additional pools for more capacity."
         )
 
     async def health_check(self) -> dict[str, Any]:
@@ -315,9 +313,7 @@ class SessionBuddyPool(BasePool):
 
         # Calculate average task duration
         avg_duration = (
-            sum(self._task_durations) / len(self._task_durations)
-            if self._task_durations
-            else 0.0
+            sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
         )
 
         return PoolMetrics(

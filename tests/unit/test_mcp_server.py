@@ -7,20 +7,18 @@ handling, and error responses.
 
 import asyncio
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from fastmcp import FastMCP
+import pytest
 
 from mahavishnu.core.app import MahavishnuApp
 from mahavishnu.core.config import MahavishnuSettings
-from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.server_core import (
     FastMCPServer,
     McpretentiousMCPClient,
     run_server,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -34,7 +32,14 @@ def mock_settings():
     Returns:
         MahavishnuSettings: Configured settings for testing
     """
-    return MahavishnuSettings(server_name="Test Server", observability_enabled=False, terminal_enabled=False, pools={enabled=False}, workers={enabled=False}, otel_storage={enabled=False})
+    return MahavishnuSettings(
+        server_name="Test Server",
+        observability_enabled=False,
+        terminal_enabled=False,
+        pools={"enabled": False},
+        workers={"enabled": False},
+        otel_storage={"enabled": False},
+    )
 
 
 @pytest.fixture
@@ -443,7 +448,9 @@ class TestToolExecutionSuccess:
     @pytest.mark.asyncio
     async def test_list_repos_with_pagination(self, server):
         """Test list_repos tool with pagination."""
-        server.app.get_repos = MagicMock(return_value=["/repo1", "/repo2", "/repo3", "/repo4", "/repo5"])
+        server.app.get_repos = MagicMock(
+            return_value=["/repo1", "/repo2", "/repo3", "/repo4", "/repo5"]
+        )
 
         result = await server.server.call_tool("list_repos", {"limit": 2, "offset": 1})
 
@@ -504,7 +511,9 @@ class TestToolExecutionSuccess:
         """Test get_workflow_status when workflow not found."""
         server.app.workflow_state_manager.get = AsyncMock(return_value=None)
 
-        result = await server.server.call_tool("get_workflow_status", {"workflow_id": "nonexistent"})
+        result = await server.server.call_tool(
+            "get_workflow_status", {"workflow_id": "nonexistent"}
+        )
 
         assert result is not None
         assert hasattr(result, "content")
@@ -543,7 +552,6 @@ class TestToolExecutionSuccess:
     @pytest.mark.asyncio
     async def test_list_workflows_with_status_filter(self, server):
         """Test list_workflows with status filter."""
-        from mahavishnu.core.workflow_state import WorkflowStatus
 
         server.app.workflow_state_manager.list_workflows = AsyncMock(return_value=[])
 
@@ -612,7 +620,9 @@ class TestToolExecutionSuccess:
     @pytest.mark.asyncio
     async def test_get_observability_metrics(self, server):
         """Test getting observability metrics."""
-        server.app.observability.get_performance_metrics = MagicMock(return_value={"cpu": 50, "memory": 70})
+        server.app.observability.get_performance_metrics = MagicMock(
+            return_value={"cpu": 50, "memory": 70}
+        )
         server.app.observability.get_logs = MagicMock(
             return_value=[MagicMock(timestamp=datetime.now())]
         )
@@ -674,7 +684,7 @@ class TestToolExecutionErrors:
     async def test_trigger_workflow_timeout_error(self, server):
         """Test workflow trigger handles timeout."""
         server.app.get_repos = MagicMock(return_value=["/repo1", "/repo2"])
-        server.app.execute_workflow_parallel = AsyncMock(side_effect=asyncio.TimeoutError())
+        server.app.execute_workflow_parallel = AsyncMock(side_effect=TimeoutError())
 
         result = await server.server.call_tool(
             "trigger_workflow",
@@ -826,6 +836,7 @@ class TestTerminalManagerInitialization:
         server = FastMCPServer(app=None, config=mock_settings)
 
         assert server.terminal_manager is None
+
 
 # =============================================================================
 

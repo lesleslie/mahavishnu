@@ -12,18 +12,18 @@ Requirements:
 """
 
 import asyncio
-import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 # Add parent directory to path for imports
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # =============================================================================
 # Example 1: Ingest Claude Session Logs
 # =============================================================================
+
 
 async def example_ingest_claude_sessions():
     """Example 1: Ingest Claude session logs into HotStore."""
@@ -52,8 +52,8 @@ async def example_ingest_claude_sessions():
                 "span_id": "span-001",
                 "name": "claude.completion",
                 "summary": "Claude helped implement a REST API using FastAPI with proper error handling and validation",
-                "start_time": datetime.now(timezone.utc),
-                "end_time": datetime.now(timezone.utc),
+                "start_time": datetime.now(UTC),
+                "end_time": datetime.now(UTC),
                 "kind": "INTERNAL",
                 "status": "OK",
                 "attributes": {
@@ -69,8 +69,8 @@ async def example_ingest_claude_sessions():
                 "span_id": "span-002",
                 "name": "claude.completion",
                 "summary": "User asked about exploiting a vulnerability. Claude refused due to safety guidelines and suggested responsible disclosure",
-                "start_time": datetime.now(timezone.utc),
-                "end_time": datetime.now(timezone.utc),
+                "start_time": datetime.now(UTC),
+                "end_time": datetime.now(UTC),
                 "kind": "INTERNAL",
                 "status": "OK",
                 "attributes": {
@@ -86,8 +86,8 @@ async def example_ingest_claude_sessions():
                 "span_id": "span-003",
                 "name": "claude.completion",
                 "summary": "Claude explained the difference between PostgreSQL and DuckDB for vector search use cases",
-                "start_time": datetime.now(timezone.utc),
-                "end_time": datetime.now(timezone.utc),
+                "start_time": datetime.now(UTC),
+                "end_time": datetime.now(UTC),
                 "kind": "INTERNAL",
                 "status": "OK",
                 "attributes": {
@@ -130,6 +130,7 @@ async def example_ingest_claude_sessions():
 # Example 2: Ingest Qwen Session Logs
 # =============================================================================
 
+
 async def example_ingest_qwen_sessions():
     """Example 2: Ingest Qwen session logs into HotStore."""
     print("\n" + "=" * 70)
@@ -153,8 +154,8 @@ async def example_ingest_qwen_sessions():
                 "span_id": "span-001",
                 "name": "qwen.completion",
                 "summary": "Qwen generated Python code for data processing using pandas with groupby operations",
-                "start_time": datetime.now(timezone.utc),
-                "end_time": datetime.now(timezone.utc),
+                "start_time": datetime.now(UTC),
+                "end_time": datetime.now(UTC),
                 "kind": "INTERNAL",
                 "status": "OK",
                 "attributes": {
@@ -170,8 +171,8 @@ async def example_ingest_qwen_sessions():
                 "span_id": "span-002",
                 "name": "qwen.completion",
                 "summary": "Qwen helped debug a SQL query with JOIN operations that was returning duplicate rows",
-                "start_time": datetime.now(timezone.utc),
-                "end_time": datetime.now(timezone.utc),
+                "start_time": datetime.now(UTC),
+                "end_time": datetime.now(UTC),
                 "kind": "INTERNAL",
                 "status": "OK",
                 "attributes": {
@@ -186,8 +187,8 @@ async def example_ingest_qwen_sessions():
                 "span_id": "span-003",
                 "name": "qwen.completion",
                 "summary": "Authentication token expired during API call. Qwen suggested implementing token refresh logic",
-                "start_time": datetime.now(timezone.utc),
-                "end_time": datetime.now(timezone.utc),
+                "start_time": datetime.now(UTC),
+                "end_time": datetime.now(UTC),
                 "kind": "INTERNAL",
                 "status": "ERROR",
                 "attributes": {
@@ -225,6 +226,7 @@ async def example_ingest_qwen_sessions():
 # Example 3: Semantic Search Queries
 # =============================================================================
 
+
 async def example_semantic_search():
     """Example 3: Perform semantic search over traces."""
     print("\n" + "=" * 70)
@@ -246,8 +248,8 @@ async def example_semantic_search():
                 "span_id": "span-001",
                 "name": "http.request",
                 "summary": "HTTP POST request to authenticate user with JWT token",
-                "start_time": datetime.now(timezone.utc),
-                "end_time": datetime.now(timezone.utc),
+                "start_time": datetime.now(UTC),
+                "end_time": datetime.now(UTC),
                 "kind": "CLIENT",
                 "status": "OK",
                 "attributes": {"http.method": "POST", "http.status_code": 200},
@@ -257,8 +259,8 @@ async def example_semantic_search():
                 "span_id": "span-002",
                 "name": "database.query",
                 "summary": "Database query timeout when connecting to PostgreSQL server",
-                "start_time": datetime.now(timezone.utc),
-                "end_time": datetime.now(timezone.utc),
+                "start_time": datetime.now(UTC),
+                "end_time": datetime.now(UTC),
                 "kind": "CLIENT",
                 "status": "ERROR",
                 "attributes": {"db.system": "postgresql", "error.type": "timeout"},
@@ -268,8 +270,8 @@ async def example_semantic_search():
                 "span_id": "span-003",
                 "name": "ai.completion",
                 "summary": "AI assistant refused to provide code for exploiting security vulnerabilities",
-                "start_time": datetime.now(timezone.utc),
-                "end_time": datetime.now(timezone.utc),
+                "start_time": datetime.now(UTC),
+                "end_time": datetime.now(UTC),
                 "kind": "INTERNAL",
                 "status": "OK",
                 "attributes": {"ai.model": "claude-3.5", "session.type": "refusal"},
@@ -279,8 +281,8 @@ async def example_semantic_search():
                 "span_id": "span-004",
                 "name": "python.execution",
                 "summary": "Python script executed successfully with pandas data processing",
-                "start_time": datetime.now(timezone.utc),
-                "end_time": datetime.now(timezone.utc),
+                "start_time": datetime.now(UTC),
+                "end_time": datetime.now(UTC),
                 "kind": "INTERNAL",
                 "status": "OK",
                 "attributes": {"language": "python", "library": "pandas"},
@@ -334,6 +336,7 @@ async def example_semantic_search():
 # Example 4: Retrieve Trace by ID
 # =============================================================================
 
+
 async def example_retrieve_trace():
     """Example 4: Retrieve a specific trace by ID."""
     print("\n" + "=" * 70)
@@ -354,8 +357,8 @@ async def example_retrieve_trace():
             "span_id": "span-123",
             "name": "api.request",
             "summary": "REST API request to retrieve user profile with JWT authentication",
-            "start_time": datetime.now(timezone.utc),
-            "end_time": datetime.now(timezone.utc),
+            "start_time": datetime.now(UTC),
+            "end_time": datetime.now(UTC),
             "kind": "SERVER",
             "status": "OK",
             "attributes": {
@@ -380,8 +383,8 @@ async def example_retrieve_trace():
             print(f"  Kind: {trace['kind']}")
             print(f"  Status: {trace['status']}")
             print(f"  Duration: {trace['duration_ms']:.2f}ms")
-            print(f"\n  Attributes:")
-            for key, value in trace['attributes'].items():
+            print("\n  Attributes:")
+            for key, value in trace["attributes"].items():
                 print(f"    {key}: {value}")
             print(f"\n  Summary: {trace['summary']}\n")
         else:
@@ -408,6 +411,7 @@ async def example_retrieve_trace():
 # Example 5: Batch Ingestion
 # =============================================================================
 
+
 async def example_batch_ingestion():
     """Example 5: Batch ingestion of multiple traces."""
     print("\n" + "=" * 70)
@@ -427,30 +431,32 @@ async def example_batch_ingestion():
         print("Creating batch of 50 traces...")
         traces = []
         for i in range(50):
-            traces.append({
-                "trace_id": f"batch-trace-{i:03d}",
-                "span_id": f"batch-span-{i:03d}",
-                "name": f"batch.operation.{i}",
-                "summary": f"Batch operation {i} processing data with ID {i}",
-                "start_time": datetime.now(timezone.utc),
-                "end_time": datetime.now(timezone.utc),
-                "kind": "INTERNAL",
-                "status": "OK",
-                "attributes": {
-                    "batch.index": i,
-                    "batch.size": 50,
-                    "processing.type": "batch",
-                },
-            })
+            traces.append(
+                {
+                    "trace_id": f"batch-trace-{i:03d}",
+                    "span_id": f"batch-span-{i:03d}",
+                    "name": f"batch.operation.{i}",
+                    "summary": f"Batch operation {i} processing data with ID {i}",
+                    "start_time": datetime.now(UTC),
+                    "end_time": datetime.now(UTC),
+                    "kind": "INTERNAL",
+                    "status": "OK",
+                    "attributes": {
+                        "batch.index": i,
+                        "batch.size": 50,
+                        "processing.type": "batch",
+                    },
+                }
+            )
 
         # Ingest in batch
         print(f"Ingesting {len(traces)} traces...")
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC)
         result = await ingester.batch_store(traces)
-        end_time = datetime.now(timezone.utc)
+        end_time = datetime.now(UTC)
 
         duration = (end_time - start_time).total_seconds()
-        print(f"\n✅ Batch ingestion completed:")
+        print("\n✅ Batch ingestion completed:")
         print(f"  Traces stored: {result['traces_stored']}")
         print(f"  Batch size: {result['batch_size']}")
         print(f"  Time: {duration:.3f}s")
@@ -474,6 +480,7 @@ async def example_batch_ingestion():
 # =============================================================================
 # Example 6: MCP Tool Usage
 # =============================================================================
+
 
 async def example_mcp_tool_usage():
     """Example 6: Use OTel tools via MCP protocol."""
@@ -518,6 +525,7 @@ async def example_mcp_tool_usage():
 # Example 7: Health Check
 # =============================================================================
 
+
 async def example_health_check():
     """Example 7: Perform health check on HotStore."""
     print("\n" + "=" * 70)
@@ -536,7 +544,7 @@ async def example_health_check():
         print("\nPerforming health check...\n")
         health = await ingester.health_check()
 
-        if health['healthy']:
+        if health["healthy"]:
             print("✅ HotStore is HEALTHY\n")
             print(f"  Storage Backend: {health['storage_backend']}")
             print(f"  Database Path: {health['database_path']}")
@@ -564,6 +572,7 @@ async def example_health_check():
 # =============================================================================
 # Example 8: Real-World Workflow
 # =============================================================================
+
 
 async def example_real_world_workflow():
     """Example 8: Real-world workflow with ingestion and search."""
@@ -595,8 +604,8 @@ async def example_real_world_workflow():
                 "span_id": "span-001",
                 "name": "assistant.session",
                 "summary": "User requested help with Python async/await. Assistant provided clear explanation with code examples",
-                "start_time": datetime.now(timezone.utc),
-                "end_time": datetime.now(timezone.utc),
+                "start_time": datetime.now(UTC),
+                "end_time": datetime.now(UTC),
                 "kind": "INTERNAL",
                 "status": "OK",
                 "attributes": {
@@ -611,8 +620,8 @@ async def example_real_world_workflow():
                 "span_id": "span-002",
                 "name": "assistant.session",
                 "summary": "User experienced authentication failure. Assistant helped troubleshoot token refresh issue",
-                "start_time": datetime.now(timezone.utc),
-                "end_time": datetime.now(timezone.utc),
+                "start_time": datetime.now(UTC),
+                "end_time": datetime.now(UTC),
                 "kind": "INTERNAL",
                 "status": "ERROR",
                 "attributes": {
@@ -627,8 +636,8 @@ async def example_real_world_workflow():
                 "span_id": "span-003",
                 "name": "assistant.session",
                 "summary": "User asked for SQL query optimization. Assistant suggested adding indexes and rewriting JOIN",
-                "start_time": datetime.now(timezone.utc),
-                "end_time": datetime.now(timezone.utc),
+                "start_time": datetime.now(UTC),
+                "end_time": datetime.now(UTC),
                 "kind": "INTERNAL",
                 "status": "OK",
                 "attributes": {
@@ -677,12 +686,12 @@ async def example_real_world_workflow():
 
         # Step 5: Recommendations
         print("Step 5: Recommendations")
-        if stats['by_status']['ERROR'] > 0:
+        if stats["by_status"]["ERROR"] > 0:
             print("  ⚠️  Authentication issues detected - review token refresh logic")
         else:
             print("  ✅ No critical issues detected")
 
-        if stats['avg_duration_ms'] > 10000:
+        if stats["avg_duration_ms"] > 10000:
             print("  ⚠️  High average session duration - consider optimizing responses")
         else:
             print("  ✅ Session duration within acceptable range")
@@ -704,6 +713,7 @@ async def example_real_world_workflow():
 # Main Entry Point
 # =============================================================================
 
+
 async def main():
     """Run all examples."""
     print("\n" + "=" * 70)
@@ -714,6 +724,7 @@ async def main():
     print("\nChecking dependencies...")
     try:
         import duckdb
+
         print("  ✅ duckdb")
     except ImportError:
         print("  ❌ duckdb (install with: pip install duckdb)")
@@ -721,6 +732,7 @@ async def main():
 
     try:
         import sentence_transformers
+
         print("  ✅ sentence-transformers")
     except ImportError:
         print("  ❌ sentence-transformers (install with: pip install sentence-transformers)")

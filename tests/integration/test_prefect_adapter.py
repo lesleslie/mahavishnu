@@ -1,7 +1,8 @@
 """Integration tests for Prefect adapter with dynamic quality scoring."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from mahavishnu.engines.prefect_adapter import PrefectAdapter, process_repository
 
@@ -81,9 +82,7 @@ async def test_process_repository_quality_check_integration():
         # Setup mock QC
         mock_qc = MagicMock()
         mock_qc_class.return_value = mock_qc
-        mock_qc.check_repository = AsyncMock(
-            return_value={"status": "passed", "score": 85}
-        )
+        mock_qc.check_repository = AsyncMock(return_value={"status": "passed", "score": 85})
 
         # Execute
         result = await process_repository(repo_path, task_spec)
@@ -168,9 +167,9 @@ async def test_quality_score_calculation_edge_cases():
         quality_score = max(quality_score, 0)
 
         # Verify score is in expected range
-        assert (
-            score_range[0] <= quality_score <= score_range[1]
-        ), f"Score {quality_score} not in range {score_range} for input: complex_funcs={len(complex_funcs)}, avg_length={avg_length}, max_calls={max_calls}"
+        assert score_range[0] <= quality_score <= score_range[1], (
+            f"Score {quality_score} not in range {score_range} for input: complex_funcs={len(complex_funcs)}, avg_length={avg_length}, max_calls={max_calls}"
+        )
 
 
 if __name__ == "__main__":

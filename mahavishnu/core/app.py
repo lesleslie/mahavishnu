@@ -5,12 +5,12 @@ repository loading, and adapter initialization using Oneiric patterns.
 """
 
 import asyncio
-import time
-import uuid
 from asyncio import Semaphore
 from datetime import datetime
 from pathlib import Path
+import time
 from typing import TYPE_CHECKING, Any
+import uuid
 
 import yaml
 
@@ -124,8 +124,8 @@ class MahavishnuApp:
 
         # Initialize concurrency control
         self.semaphore = Semaphore(self.config.max_concurrent_workflows)
-        from typing import Set
-        self.active_workflows: Set[str] = set()
+
+        self.active_workflows: set[str] = set()
         self.workflow_queue: asyncio.Queue = asyncio.Queue()
 
         # Initialize production features
@@ -282,8 +282,8 @@ class MahavishnuApp:
             PoolManager requires TerminalManager to be available.
         """
         try:
-            from ..pools.manager import PoolManager, PoolSelector
             from ..mcp.protocols.message_bus import MessageBus
+            from ..pools.manager import PoolManager, PoolSelector
 
             # Create message bus for inter-pool communication
             message_bus = MessageBus()
@@ -428,6 +428,7 @@ class MahavishnuApp:
                 enabled_adapters["prefect"] = True
             except ImportError:
                 # Prefect not available, skip this adapter
+                logger = __import__("logging").getLogger(__name__)
                 logger.warning("Prefect adapter not available due to missing dependencies")
                 pass
 
@@ -440,6 +441,7 @@ class MahavishnuApp:
                 enabled_adapters["llamaindex"] = True
             except ImportError:
                 # LlamaIndex not available, skip this adapter
+                logger = __import__("logging").getLogger(__name__)
                 logger.warning("LlamaIndex adapter not available due to missing dependencies")
                 pass
 
@@ -452,6 +454,7 @@ class MahavishnuApp:
                 enabled_adapters["agno"] = True
             except ImportError:
                 # Agno not available, skip this adapter
+                logger = __import__("logging").getLogger(__name__)
                 logger.warning("Agno adapter not available due to missing dependencies")
                 pass
 
@@ -470,6 +473,7 @@ class MahavishnuApp:
                 self._worker_manager_cls = WorkerManager
             except ImportError:
                 # Worker components not available
+                logger = __import__("logging").getLogger(__name__)
                 logger.warning("Worker adapter not available due to missing dependencies")
                 pass
 
@@ -529,6 +533,8 @@ class MahavishnuApp:
         Raises:
             ValidationError: If tag or role is invalid
         """
+        logger = __import__("logging").getLogger(__name__)
+
         # Validate tag format if provided
         if tag and not tag.replace("-", "").replace("_", "").isalnum():
             raise ValidationError(
@@ -1106,7 +1112,9 @@ class MahavishnuApp:
             successful_count = len(results) - errors_count
 
             final_status = (
-                "completed" if errors_count == 0 else ("partial" if successful_count > 0 else "failed")
+                "completed"
+                if errors_count == 0
+                else ("partial" if successful_count > 0 else "failed")
             )
 
             self.observability.end_workflow_trace(workflow_id, final_status)
@@ -1167,6 +1175,8 @@ class MahavishnuApp:
         Returns:
             Final workflow summary dictionary
         """
+        logger = __import__("logging").getLogger(__name__)
+
         # Determine final status
         final_status = (
             "completed" if not errors else ("partial" if successful_results else "failed")

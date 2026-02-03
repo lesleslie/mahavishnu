@@ -1,144 +1,144 @@
 [
   {
-    "trace_id": "qwen-session-001",
-    "system_id": "qwen",
     "spans": [
       {
-        "name": "HTTP POST /api/generate",
-        "start_time": "2026-02-01T15:30:00Z",
-        "end_time": "2026-02-01T15:30:04.0Z",
         "attributes": {
-          "service.name": "qwen",
           "http.method": "POST",
-          "http.url": "/api/generate",
           "http.status_code": 200,
+          "http.url": "/api/generate",
+          "llm.completion_tokens": 500,
           "llm.model": "qwen-72b-chat",
           "llm.prompt_tokens": 200,
-          "llm.completion_tokens": 500,
-          "llm.total_tokens": 700
-        }
-      },
-      {
-        "name": "llm.inference",
-        "start_time": "2026-02-01T15:30:00.5Z",
-        "end_time": "2026-02-01T15:30:03.5Z",
-        "attributes": {
-          "service.name": "qwen",
-          "llm.provider": "vllm",
-          "llm.gpu utilization": "85%",
-          "llm.inference.time": "3.0s"
-        }
-      },
-      {
-        "name": "response.serialization",
-        "start_time": "2026-02-01T15:30:03.5Z",
+          "llm.total_tokens": 700,
+          "service.name": "qwen"
+        },
         "end_time": "2026-02-01T15:30:04.0Z",
-        "attributes": {
-          "service.name": "qwen",
-          "response.format": "json",
-          "response.size_bytes": 4096
-        }
-      }
-    ]
-  },
-  {
-    "trace_id": "qwen-session-002",
-    "system_id": "qwen",
-    "spans": [
-      {
         "name": "HTTP POST /api/generate",
-        "start_time": "2026-02-01T15:31:00Z",
-        "end_time": "2026-02-01T15:31:02.0Z",
-        "attributes": {
-          "service.name": "qwen",
-          "http.method": "POST",
-          "http.url": "/api/generate",
-          "http.status_code": 200,
-          "llm.model": "qwen-14b-chat",
-          "llm.total_tokens": 150
-        }
+        "start_time": "2026-02-01T15:30:00Z"
       },
       {
-        "name": "cache.hit",
-        "start_time": "2026-02-01T15:31:00.1Z",
-        "end_time": "2026-02-01T15:31:00.2Z",
         "attributes": {
-          "service.name": "qwen",
-          "cache.key": "prompt-hash-abc123",
-          "cache.hit": true
-        }
+          "llm.gpu utilization": "85%",
+          "llm.inference.time": "3.0s",
+          "llm.provider": "vllm",
+          "service.name": "qwen"
+        },
+        "end_time": "2026-02-01T15:30:03.5Z",
+        "name": "llm.inference",
+        "start_time": "2026-02-01T15:30:00.5Z"
+      },
+      {
+        "attributes": {
+          "response.format": "json",
+          "response.size_bytes": 4096,
+          "service.name": "qwen"
+        },
+        "end_time": "2026-02-01T15:30:04.0Z",
+        "name": "response.serialization",
+        "start_time": "2026-02-01T15:30:03.5Z"
       }
-    ]
+    ],
+    "system_id": "qwen",
+    "trace_id": "qwen-session-001"
   },
   {
-    "trace_id": "qwen-session-003",
-    "system_id": "qwen",
     "spans": [
       {
-        "name": "HTTP POST /api/embeddings",
-        "start_time": "2026-02-01T15:32:00Z",
-        "end_time": "2026-02-01T15:32:01.5Z",
         "attributes": {
-          "service.name": "qwen",
           "http.method": "POST",
-          "http.url": "/api/embeddings",
           "http.status_code": 200,
-          "embedding.model": "bge-base-en-v1.5",
-          "embedding.dimension": 768,
-          "embedding.count": 5
-        }
+          "http.url": "/api/generate",
+          "llm.model": "qwen-14b-chat",
+          "llm.total_tokens": 150,
+          "service.name": "qwen"
+        },
+        "end_time": "2026-02-01T15:31:02.0Z",
+        "name": "HTTP POST /api/generate",
+        "start_time": "2026-02-01T15:31:00Z"
       },
       {
-        "name": "embedding.generation",
-        "start_time": "2026-02-01T15:32:00.2Z",
-        "end_time": "2026-02-01T15:32:01.3Z",
         "attributes": {
-          "service.name": "qwen",
-          "embedding.provider": "sentence-transformers",
-          "batch.size": 5
-        }
+          "cache.hit": true,
+          "cache.key": "prompt-hash-abc123",
+          "service.name": "qwen"
+        },
+        "end_time": "2026-02-01T15:31:00.2Z",
+        "name": "cache.hit",
+        "start_time": "2026-02-01T15:31:00.1Z"
+      }
+    ],
+    "system_id": "qwen",
+    "trace_id": "qwen-session-002"
+  },
+  {
+    "spans": [
+      {
+        "attributes": {
+          "embedding.count": 5,
+          "embedding.dimension": 768,
+          "embedding.model": "bge-base-en-v1.5",
+          "http.method": "POST",
+          "http.status_code": 200,
+          "http.url": "/api/embeddings",
+          "service.name": "qwen"
+        },
+        "end_time": "2026-02-01T15:32:01.5Z",
+        "name": "HTTP POST /api/embeddings",
+        "start_time": "2026-02-01T15:32:00Z"
       },
       {
-        "name": "vector.store",
-        "start_time": "2026-02-01T15:32:01.3Z",
-        "end_time": "2026-02-01T15:32:01.5Z",
+        "attributes": {
+          "batch.size": 5,
+          "embedding.provider": "sentence-transformers",
+          "service.name": "qwen"
+        },
+        "end_time": "2026-02-01T15:32:01.3Z",
+        "name": "embedding.generation",
+        "start_time": "2026-02-01T15:32:00.2Z"
+      },
+      {
         "attributes": {
           "service.name": "qwen",
           "vector.store": "qdrant",
           "vectors.stored": 5
-        }
+        },
+        "end_time": "2026-02-01T15:32:01.5Z",
+        "name": "vector.store",
+        "start_time": "2026-02-01T15:32:01.3Z"
       }
-    ]
+    ],
+    "system_id": "qwen",
+    "trace_id": "qwen-session-003"
   },
   {
-    "trace_id": "qwen-session-004",
-    "system_id": "qwen",
     "spans": [
       {
-        "name": "HTTP POST /api/generate",
-        "start_time": "2026-02-01T15:33:00Z",
-        "end_time": "2026-02-01T15:33:08.0Z",
         "attributes": {
-          "service.name": "qwen",
-          "http.method": "POST",
-          "http.url": "/api/generate",
-          "http.status_code": 500,
           "error.message": "GPU out of memory",
           "error.type": "RuntimeError",
-          "llm.model": "qwen-72b-chat"
-        }
+          "http.method": "POST",
+          "http.status_code": 500,
+          "http.url": "/api/generate",
+          "llm.model": "qwen-72b-chat",
+          "service.name": "qwen"
+        },
+        "end_time": "2026-02-01T15:33:08.0Z",
+        "name": "HTTP POST /api/generate",
+        "start_time": "2026-02-01T15:33:00Z"
       },
       {
-        "name": "llm.inference",
-        "start_time": "2026-02-01T15:33:00.5Z",
-        "end_time": "2026-02-01T15:33:08.0Z",
         "attributes": {
-          "service.name": "qwen",
           "error.message": "CUDA out of memory",
           "gpu.memory.available": "1024MB",
-          "gpu.memory.required": "16384MB"
-        }
+          "gpu.memory.required": "16384MB",
+          "service.name": "qwen"
+        },
+        "end_time": "2026-02-01T15:33:08.0Z",
+        "name": "llm.inference",
+        "start_time": "2026-02-01T15:33:00.5Z"
       }
-    ]
+    ],
+    "system_id": "qwen",
+    "trace_id": "qwen-session-004"
   }
 ]

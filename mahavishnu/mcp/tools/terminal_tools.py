@@ -5,13 +5,10 @@ allowing Claude Code and other MCP clients to launch, control, and
 capture output from terminal sessions.
 """
 
-import re
-from typing import Any
-
-from pydantic import Field, StringConstraints
-from typing_extensions import Annotated
+from typing import Annotated, Any
 
 from fastmcp import FastMCP
+from pydantic import Field, StringConstraints
 
 from ...terminal.adapters.iterm2 import ITERM2_AVAILABLE, ITerm2Adapter
 from ...terminal.adapters.mcpretentious import McpretentiousAdapter
@@ -19,30 +16,35 @@ from ...terminal.manager import TerminalManager
 
 # SECURITY: Define validation constraints for MCP tool inputs
 SessionID = Annotated[
-    str,
-    StringConstraints(
-        pattern=r'^[a-zA-Z0-9_-]+$',
-        min_length=1,
-        max_length=100
-    )
+    str, StringConstraints(pattern=r"^[a-zA-Z0-9_-]+$", min_length=1, max_length=100)
 ]
 
-Command = Annotated[
-    str,
-    StringConstraints(
-        min_length=1,
-        max_length=10000
-    )
-]
+Command = Annotated[str, StringConstraints(min_length=1, max_length=10000)]
 
 # SECURITY: Dangerous command patterns to block in MCP tools
 DANGEROUS_COMMAND_PATTERNS = [
-    'rm -rf /', 'mkfs', 'dd if=', '> /dev/sd',
-    'chmod 000', 'chown root:', 'curl | sh', 'wget | sh',
-    '&& rm', '; rm', '| rm', 'nc -e', 'ncat',
-    '/dev/tcp', '/dev/udp', 'bind shell', 'reverse shell',
-    'kill -9', 'pkill', 'killall'
+    "rm -rf /",
+    "mkfs",
+    "dd if=",
+    "> /dev/sd",
+    "chmod 000",
+    "chown root:",
+    "curl | sh",
+    "wget | sh",
+    "&& rm",
+    "; rm",
+    "| rm",
+    "nc -e",
+    "ncat",
+    "/dev/tcp",
+    "/dev/udp",
+    "bind shell",
+    "reverse shell",
+    "kill -9",
+    "pkill",
+    "killall",
 ]
+
 
 def validate_command_safety(command: str) -> None:
     """Validate command for safety to prevent injection.
@@ -137,11 +139,7 @@ def register_terminal_tools(
 
         await terminal_manager.send_command(session_id, command)
 
-        return {
-            "status": "success",
-            "session_id": session_id,
-            "command": command
-        }
+        return {"status": "success", "session_id": session_id, "command": command}
 
     @mcp.tool()
     async def terminal_capture(

@@ -2,7 +2,7 @@
 
 Complete API reference for the native OpenTelemetry storage implementation using Akosha HotStore and DuckDB.
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@ Complete API reference for the native OpenTelemetry storage implementation using
   - [flush](#flush)
   - [close](#close)
 
----
+______________________________________________________________________
 
 ## OtelIngester
 
@@ -50,7 +50,7 @@ class OtelIngester:
     """
 ```
 
----
+______________________________________________________________________
 
 ### __init__
 
@@ -84,7 +84,7 @@ def __init__(
 
 - `ValueError`: If `embedding_dimension` doesn't match model output
 - `ValueError`: If `similarity_threshold` not in range [0.0, 1.0]
-- `ValueError`: If `cache_size` or `batch_size` <= 0
+- `ValueError`: If `cache_size` or `batch_size` \<= 0
 
 **Example:**
 
@@ -112,7 +112,7 @@ ingester = OtelIngester(
 )
 ```
 
----
+______________________________________________________________________
 
 ### initialize
 
@@ -143,7 +143,7 @@ await ingester.initialize()
 # Ready to ingest and search
 ```
 
----
+______________________________________________________________________
 
 ### ingest_log_file
 
@@ -189,6 +189,7 @@ Parses an OTel log file (JSON format), extracts traces and spans, generates embe
 **Supported File Formats:**
 
 1. **OTel JSON Export Format:**
+
 ```json
 {
   "resourceSpans": [
@@ -219,6 +220,7 @@ Parses an OTel log file (JSON format), extracts traces and spans, generates embe
 ```
 
 2. **Custom JSON Format:**
+
 ```json
 {
   "traces": [
@@ -246,7 +248,7 @@ if result['errors']:
         print(f"Error: {error}")
 ```
 
----
+______________________________________________________________________
 
 ### ingest_trace
 
@@ -343,7 +345,7 @@ result = await ingester.ingest_trace(
 )
 ```
 
----
+______________________________________________________________________
 
 ### batch_store
 
@@ -409,7 +411,7 @@ result = await ingester.batch_store(traces)
 print(f"Stored {result['traces_stored']} traces in {result['time_seconds']:.2f}s")
 ```
 
----
+______________________________________________________________________
 
 ### search_traces
 
@@ -460,7 +462,7 @@ async def search_traces(
 
 **Raises:**
 
-- `ValueError`: If `query` is empty or `limit` <= 0
+- `ValueError`: If `query` is empty or `limit` \<= 0
 - `ValueError`: If `threshold` not in range [0.0, 1.0]
 
 **Description:**
@@ -470,10 +472,10 @@ Performs semantic search using cosine similarity between query embedding and sto
 **Search Algorithm:**
 
 1. Generate embedding for query using same model as traces
-2. Query HNSW index for nearest neighbors
-3. Filter by similarity threshold
-4. Apply attribute filters if provided
-5. Sort by similarity and limit results
+1. Query HNSW index for nearest neighbors
+1. Filter by similarity threshold
+1. Apply attribute filters if provided
+1. Sort by similarity and limit results
 
 **Example:**
 
@@ -505,7 +507,7 @@ results = await ingester.search_traces(
 )
 ```
 
----
+______________________________________________________________________
 
 ### get_trace
 
@@ -574,7 +576,7 @@ else:
     print("Trace not found")
 ```
 
----
+______________________________________________________________________
 
 ### get_statistics
 
@@ -630,7 +632,7 @@ for status, count in stats['by_status'].items():
     print(f"  {status}: {count}")
 ```
 
----
+______________________________________________________________________
 
 ### health_check
 
@@ -677,7 +679,7 @@ else:
     print("❌ HotStore is unhealthy")
 ```
 
----
+______________________________________________________________________
 
 ### flush
 
@@ -717,7 +719,7 @@ result = await ingester.flush()
 print(f"Flushed {result['traces_flushed']} traces")
 ```
 
----
+______________________________________________________________________
 
 ### close
 
@@ -750,7 +752,7 @@ finally:
     await ingester.close()
 ```
 
----
+______________________________________________________________________
 
 ## Type Definitions
 
@@ -803,7 +805,7 @@ type IngestionResult = {
 }
 ```
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -851,7 +853,7 @@ async def safe_ingestion():
         await ingester.close()
 ```
 
----
+______________________________________________________________________
 
 ## Best Practices
 
@@ -932,7 +934,7 @@ except Exception as e:
     raise
 ```
 
----
+______________________________________________________________________
 
 ## Performance Considerations
 
@@ -941,16 +943,19 @@ except Exception as e:
 Embedding generation is the bottleneck (~80% of ingestion time). Optimize by:
 
 1. **Choosing the right model:**
+
    - `all-MiniLM-L6-v2`: Fast, good quality (384 dims)
    - `all-mpnet-base-v2`: Slower, better quality (768 dims)
 
-2. **Using batch ingestion:**
+1. **Using batch ingestion:**
+
    ```python
    # Batch embedding generation
    await ingester.batch_store(traces)  # Faster
    ```
 
-3. **Caching embeddings:**
+1. **Caching embeddings:**
+
    ```python
    # Larger cache for repeated queries
    ingester = OtelIngester(cache_size=5000)
@@ -968,12 +973,14 @@ HNSW index provides O(log N) search complexity:
 Optimize by:
 
 1. **Adjusting similarity threshold:**
+
    ```python
    # Higher threshold = fewer results, faster
    results = await ingester.search_traces(query, threshold=0.85)
    ```
 
-2. **Using attribute filters:**
+1. **Using attribute filters:**
+
    ```python
    # Pre-filter by attributes
    results = await ingester.search_traces(
@@ -982,7 +989,8 @@ Optimize by:
    )
    ```
 
-3. **Limiting results:**
+1. **Limiting results:**
+
    ```python
    # Smaller limit = faster
    results = await ingester.search_traces(query, limit=10)
@@ -991,16 +999,18 @@ Optimize by:
 ### Memory Usage
 
 **In-Memory Mode:**
+
 - Base: ~10MB (DuckDB overhead)
 - Per trace: ~4KB (including embedding)
 - Example: 10,000 traces ≈ 50MB
 
 **File-Backed Mode:**
+
 - Same memory footprint
 - Disk usage: ~2x memory size
 - Startup penalty: ~200ms
 
----
+______________________________________________________________________
 
 ## Advanced Usage
 
@@ -1054,7 +1064,7 @@ async def distributed_search(query, stores):
     return merged[:10]
 ```
 
----
+______________________________________________________________________
 
 ## References
 

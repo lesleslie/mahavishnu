@@ -117,7 +117,11 @@ class WorkerResult:
             WorkerStatus.STARTING: "🔄",
         }.get(self.status, "❓")
 
-        output_preview = (self.output[:50] + "...") if self.output and len(self.output) > 50 else self.output or ""
+        output_preview = (
+            (self.output[:50] + "...")
+            if self.output and len(self.output) > 50
+            else self.output or ""
+        )
 
         if self.is_success():
             return f"{status_emoji} {self.worker_id}: {output_preview}"

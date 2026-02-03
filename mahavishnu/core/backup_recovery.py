@@ -12,6 +12,7 @@ import tarfile
 import tempfile
 from typing import Any
 
+
 @dataclass
 class BackupInfo:
     """Information about a backup."""
@@ -23,6 +24,7 @@ class BackupInfo:
     status: str
     files_backed_up: int
     checksum: str
+
 
 class BackupManager:
     """Manages backups of Mahavishnu configuration and data."""
@@ -351,6 +353,7 @@ class BackupManager:
             self.logger.warning(f"Failed to get backup info for {backup_id}: {e}")
             return None
 
+
 class DisasterRecoveryManager:
     """Manages disaster recovery procedures."""
 
@@ -486,6 +489,7 @@ class DisasterRecoveryManager:
                 "alerts": True,
             },
         }
+
 
 class BackupAndRecoveryCLI:
     """CLI commands for backup and recovery operations."""

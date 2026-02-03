@@ -36,7 +36,7 @@ Example:
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 import logging
 from typing import Any
@@ -56,7 +56,9 @@ class RetryPolicy(str, Enum):
 
     NEVER = "never"  # Never retry - manual intervention only
     LINEAR = "linear"  # Linear backoff: 5min, 10min, 15min, ...
-    EXPONENTIAL = "exponential"  # Exponential backoff: 1min, 2min, 4min, 8min, ... (capped at 60min)
+    EXPONENTIAL = (
+        "exponential"  # Exponential backoff: 1min, 2min, 4min, 8min, ... (capped at 60min)
+    )
     IMMEDIATE = "immediate"  # Retry immediately on next processor cycle
 
 
@@ -123,14 +125,18 @@ class FailedTask:
             "error_category": self.error_category,
             "last_error": self.last_error,
             "total_attempts": self.total_attempts,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "FailedTask":
         """Create FailedTask from dictionary."""
         # Convert ISO format strings back to datetime objects
-        failed_at = datetime.fromisoformat(data["failed_at"]) if data.get("failed_at") else datetime.now(timezone.utc)
+        failed_at = (
+            datetime.fromisoformat(data["failed_at"])
+            if data.get("failed_at")
+            else datetime.now(UTC)
+        )
 
         next_retry_at = None
         if data.get("next_retry_at"):
@@ -238,7 +244,7 @@ class DeadLetterQueue:
         if policy == RetryPolicy.NEVER:
             return None
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if policy == RetryPolicy.IMMEDIATE:
             return now
@@ -299,7 +305,7 @@ class DeadLetterQueue:
                 task=task,
                 repos=repos,
                 error=error,
-                failed_at=datetime.now(timezone.utc),
+                failed_at=datetime.now(UTC),
                 retry_count=0,
                 max_retries=max_retries,
                 retry_policy=retry_policy,
@@ -413,9 +419,7 @@ class DeadLetterQueue:
                     await asyncio.sleep(10)
 
         self._retry_task = asyncio.create_task(retry_loop())
-        self._logger.info(
-            f"Started DLQ retry processor (check_interval={check_interval_seconds}s)"
-        )
+        self._logger.info(f"Started DLQ retry processor (check_interval={check_interval_seconds}s)")
 
     async def stop_retry_processor(self) -> None:
         """Stop the background retry processor.
@@ -446,7 +450,7 @@ class DeadLetterQueue:
             callback: Function to call for retry attempts
         """
         async with self._lock:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             tasks_to_retry = [
                 task
                 for task in self._queue
@@ -592,9 +596,7 @@ class DeadLetterQueue:
 
         # Process outside lock using the configured callback
         if not self._retry_callback:
-            raise RuntimeError(
-                "No retry callback configured. Use start_retry_processor() first."
-            )
+            raise RuntimeError("No retry callback configured. Use start_retry_processor() first.")
 
         try:
             # Attempt retry
@@ -742,7 +744,9 @@ class DeadLetterQueue:
                 "retry_policies": retry_policies,
                 "lifetime_stats": self._stats.copy(),
                 "is_processor_running": self._is_running,
-                "retry_interval_seconds": self._retry_interval_seconds if self._is_running else None,
+                "retry_interval_seconds": self._retry_interval_seconds
+                if self._is_running
+                else None,
             }
 
     async def clear_all(self) -> int:

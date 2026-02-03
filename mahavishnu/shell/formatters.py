@@ -53,12 +53,16 @@ class WorkflowFormatter(BaseTableFormatter):
 
         for wf in workflows:
             status_key = wf.get("status")
-            status_style = {
-                WorkflowStatus.RUNNING: "yellow",
-                WorkflowStatus.COMPLETED: "green",
-                WorkflowStatus.FAILED: "red",
-                WorkflowStatus.PENDING: "blue",
-            }.get(status_key, "") if status_key else ""
+            status_style = (
+                {
+                    WorkflowStatus.RUNNING: "yellow",
+                    WorkflowStatus.COMPLETED: "green",
+                    WorkflowStatus.FAILED: "red",
+                    WorkflowStatus.PENDING: "blue",
+                }.get(status_key, "")
+                if status_key
+                else ""
+            )
 
             row = [
                 wf.get("id", "")[:20],

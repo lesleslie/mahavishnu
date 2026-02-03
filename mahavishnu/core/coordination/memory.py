@@ -3,9 +3,9 @@
 Stores coordination events in Session-Buddy for semantic search and analytics.
 """
 
-import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+import logging
+from typing import Any
 
 from mahavishnu.core.coordination.models import (
     CrossRepoIssue,
@@ -15,9 +15,6 @@ from mahavishnu.core.coordination.models import (
 )
 
 # Type hints for circular imports
-if TYPE_CHECKING:
-    from mahavishnu.core.coordination.manager import CoordinationManager
-
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +30,7 @@ class CoordinationMemory:
         collection: Collection name for storing coordination events
     """
 
-    def __init__(self, session_buddy_client: Optional[Any] = None) -> None:
+    def __init__(self, session_buddy_client: Any | None = None) -> None:
         """Initialize coordination memory integration.
 
         Args:
@@ -46,7 +43,7 @@ class CoordinationMemory:
         self,
         event_type: str,
         issue: CrossRepoIssue,
-        changes: Optional[Dict[str, Any]] = None,
+        changes: dict[str, Any] | None = None,
     ) -> None:
         """Store an issue-related event in memory.
 
@@ -81,7 +78,7 @@ class CoordinationMemory:
         self,
         event_type: str,
         todo: CrossRepoTodo,
-        changes: Optional[Dict[str, Any]] = None,
+        changes: dict[str, Any] | None = None,
     ) -> None:
         """Store a todo-related event in memory.
 
@@ -117,7 +114,7 @@ class CoordinationMemory:
         self,
         event_type: str,
         dependency: Dependency,
-        validation_result: Optional[Dict[str, Any]] = None,
+        validation_result: dict[str, Any] | None = None,
     ) -> None:
         """Store a dependency-related event in memory.
 
@@ -155,7 +152,7 @@ class CoordinationMemory:
         self,
         event_type: str,
         plan: CrossRepoPlan,
-        milestone: Optional[str] = None,
+        milestone: str | None = None,
     ) -> None:
         """Store a plan-related event in memory.
 
@@ -189,10 +186,10 @@ class CoordinationMemory:
     async def search_coordination_history(
         self,
         query: str,
-        entity_type: Optional[str] = None,
-        repo: Optional[str] = None,
+        entity_type: str | None = None,
+        repo: str | None = None,
         limit: int = 20,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search coordination history.
 
         Args:
@@ -208,7 +205,7 @@ class CoordinationMemory:
             return []
 
         # Build search filters
-        filters: Dict[str, Any] = {"collection": self.collection}
+        filters: dict[str, Any] = {"collection": self.collection}
 
         if entity_type:
             filters["entity_type"] = entity_type
@@ -232,9 +229,9 @@ class CoordinationMemory:
 
     async def get_coordination_trends(
         self,
-        repo: Optional[str] = None,
+        repo: str | None = None,
         days: int = 30,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get coordination trends and analytics.
 
         Args:
@@ -255,7 +252,7 @@ class CoordinationMemory:
             "days": days,
         }
 
-    async def _store_memory(self, content: str, metadata: Dict[str, Any]) -> None:
+    async def _store_memory(self, content: str, metadata: dict[str, Any]) -> None:
         """Store a memory in Session-Buddy.
 
         Args:
@@ -299,7 +296,7 @@ class CoordinationManagerWithMemory:
     def __init__(
         self,
         ecosystem_path: str = "settings/ecosystem.yaml",
-        session_buddy_client: Optional[Any] = None,
+        session_buddy_client: Any | None = None,
     ) -> None:
         """Initialize the coordination manager with memory.
 
@@ -495,7 +492,7 @@ class CoordinationManagerWithMemory:
     async def update_issue_with_memory(
         self,
         issue_id: str,
-        updates: Dict[str, Any],
+        updates: dict[str, Any],
     ) -> None:
         """Update an issue and store the event in memory.
 
@@ -570,8 +567,8 @@ class CoordinationManagerWithMemory:
 
     async def check_dependencies_with_memory(
         self,
-        consumer: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        consumer: str | None = None,
+    ) -> dict[str, Any]:
         """Check dependencies and store validation events in memory.
 
         Args:
@@ -584,7 +581,11 @@ class CoordinationManagerWithMemory:
 
         # Store validation events for each dependency
         for dep_info in results["dependencies"]:
-            from mahavishnu.core.coordination.models import Dependency, DependencyStatus, DependencyType
+            from mahavishnu.core.coordination.models import (
+                Dependency,
+                DependencyStatus,
+                DependencyType,
+            )
 
             # Create a minimal Dependency object for memory
             dep = Dependency(

@@ -153,10 +153,21 @@ class RepositoryManager:
         # For each tag, get matching repos, then intersect
         if len(tags_list) == 1:
             # Single tag - use index directly
-            return [self.get_by_package(pkg) for pkg in self.get_by_tag(tags_list[0]) if self.get_by_package(pkg)]
+            return [
+                self.get_by_package(pkg)
+                for pkg in self.get_by_tag(tags_list[0])
+                if self.get_by_package(pkg)
+            ]
         else:
             # Multiple tags - get repos for each tag and find intersection
-            tag_results = [[self.get_by_package(pkg) for pkg in self.get_by_tag(tag) if self.get_by_package(pkg)] for tag in tags_list]
+            tag_results = [
+                [
+                    self.get_by_package(pkg)
+                    for pkg in self.get_by_tag(tag)
+                    if self.get_by_package(pkg)
+                ]
+                for tag in tags_list
+            ]
             # Find repos that appear in all tag results
             # Use name as identifier since repos aren't hashable
             if tag_results and all(tag_results):
@@ -172,7 +183,11 @@ class RepositoryManager:
 
     def _filter_by_mcp_type(self, results: list[Repository], mcp_type: str) -> list[Repository]:
         """Filter repositories by MCP type."""
-        mcp_repos = [self.get_by_package(pkg) for pkg in self.get_by_mcp_type(mcp_type) if self.get_by_package(pkg)]
+        mcp_repos = [
+            self.get_by_package(pkg)
+            for pkg in self.get_by_mcp_type(mcp_type)
+            if self.get_by_package(pkg)
+        ]
         mcp_names = {r.name for r in mcp_repos if r}
         return [r for r in results if r and r.name in mcp_names]
 

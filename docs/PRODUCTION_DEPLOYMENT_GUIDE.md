@@ -5,32 +5,34 @@
 **Project**: Mahavishnu MCP Ecosystem
 **Purpose**: Guide for deploying Mahavishnu MCP ecosystem to production
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Prerequisites](#prerequisites)
-2. [Infrastructure Setup](#infrastructure-setup)
-3. [Environment Configuration](#environment-configuration)
-4. [Deployment Process](#deployment-process)
-5. [Smoke Tests](#smoke-tests)
-6. [Monitoring & Validation](#monitoring--validation)
-7. [Rollback Procedures](#rollback-procedures)
-8. [Troubleshooting](#troubleshooting)
+1. [Infrastructure Setup](#infrastructure-setup)
+1. [Environment Configuration](#environment-configuration)
+1. [Deployment Process](#deployment-process)
+1. [Smoke Tests](#smoke-tests)
+1. [Monitoring & Validation](#monitoring--validation)
+1. [Rollback Procedures](#rollback-procedures)
+1. [Troubleshooting](#troubleshooting)
 
----
+______________________________________________________________________
 
 ## Prerequisites
 
 ### Infrastructure Requirements
 
 **Minimum Requirements**:
+
 - CPU: 4 cores per MCP server
 - RAM: 8GB per MCP server
 - Disk: 50GB SSD per MCP server
 - Network: 1 Gbps
 
 **Recommended Requirements**:
+
 - CPU: 8 cores per MCP server
 - RAM: 16GB per MCP server
 - Disk: 100GB SSD per MCP server
@@ -39,12 +41,14 @@
 ### External Dependencies
 
 **Required Services**:
+
 - PostgreSQL 14+ (for Session-Buddy, Akosha)
 - OpenSearch 2.x (for log aggregation)
 - Redis 7+ (for caching, optional)
 - S3-compatible storage (for backups)
 
 **Optional Services**:
+
 - Prometheus (for metrics)
 - Grafana (for dashboards)
 - AlertManager (for alerting)
@@ -52,13 +56,14 @@
 ### Software Requirements
 
 **On Deployment Machine**:
+
 - Python 3.11+
 - uv (latest)
 - Docker 24+ (if using containers)
 - kubectl (if using Kubernetes)
 - Terraform 1.5+ (if using IaC)
 
----
+______________________________________________________________________
 
 ## Infrastructure Setup
 
@@ -223,7 +228,7 @@ docker-compose logs -f
 
 See `kubernetes/deployment.md` for detailed Kubernetes manifests and deployment procedures.
 
----
+______________________________________________________________________
 
 ## Environment Configuration
 
@@ -331,7 +336,7 @@ opensearch_use_ssl: true
 otel_enabled: true
 ```
 
----
+______________________________________________________________________
 
 ## Deployment Process
 
@@ -344,6 +349,7 @@ python -m mahavishnu.core.production_readiness_standalone
 ```
 
 **Minimum Requirements**:
+
 - ✅ Overall score ≥ 70/100
 - ✅ Zero failed checks
 - ✅ Security audit complete
@@ -371,6 +377,7 @@ tar -czf backups/data_$TIMESTAMP.tar.gz data/
 #### 2. Deploy New Version
 
 **Cloud Run**:
+
 ```bash
 gcloud run deploy mahavishnu-mcp \
   --source . \
@@ -381,6 +388,7 @@ gcloud run deploy mahavishnu-mcp \
 ```
 
 **Docker**:
+
 ```bash
 # Pull new image
 docker pull mahavishnu:latest
@@ -401,6 +409,7 @@ docker run -d \
 ```
 
 **Kubernetes**:
+
 ```bash
 # Apply new deployment
 kubectl apply -f kubernetes/mahavishnu-deployment.yaml
@@ -421,7 +430,7 @@ curl https://mahavishnu-mcp-xxxxx.a.run.app/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 ```
 
----
+______________________________________________________________________
 
 ## Smoke Tests
 
@@ -478,13 +487,14 @@ pytest tests/integration/ \
   --tb=short
 ```
 
----
+______________________________________________________________________
 
 ## Monitoring & Validation
 
 ### Immediate Monitoring (First 30 minutes)
 
 **Check Metrics**:
+
 ```bash
 # Request rate
 curl http://prometheus:9090/api/v1/query?query=rate(mahavishnu_requests_total[5m])
@@ -497,6 +507,7 @@ curl http://prometheus:9090/api/v1/query?query=histogram_quantile(0.95,mahavishn
 ```
 
 **Check Logs**:
+
 ```bash
 # View recent errors
 docker logs mahavishnu --since 30m | grep ERROR
@@ -518,6 +529,7 @@ curl -X GET "$OPENSEARCH_URL/_search" -H 'Content-Type: application/json' -d'
 ### 24-Hour Monitoring
 
 **Critical Metrics**:
+
 - Uptime: Should be > 99.9%
 - p95 latency: Should be < 1s
 - p99 latency: Should be < 2s
@@ -526,24 +538,27 @@ curl -X GET "$OPENSEARCH_URL/_search" -H 'Content-Type: application/json' -d'
 - CPU usage: Should be < 70%
 
 **Alert Thresholds**:
+
 - Error rate > 1%: P1 alert
 - Latency > 2s (p95): P2 alert
 - Memory > 90%: P2 alert
 - CPU > 85%: P3 alert
 
----
+______________________________________________________________________
 
 ## Rollback Procedures
 
 ### When to Rollback
 
 **Immediate Rollback Triggers**:
+
 - Error rate > 5%
 - Critical security vulnerability detected
 - Data corruption
 - Complete service outage
 
 **Consider Rollback**:
+
 - Error rate > 1% for 10 minutes
 - Latency degradation > 50%
 - Memory leak detected
@@ -551,6 +566,7 @@ curl -X GET "$OPENSEARCH_URL/_search" -H 'Content-Type: application/json' -d'
 ### Rollback Steps
 
 **Cloud Run**:
+
 ```bash
 # Rollback to previous version
 gcloud run services update-traffic mahavishnu-mcp \
@@ -559,6 +575,7 @@ gcloud run services update-traffic mahavishnu-mcp \
 ```
 
 **Docker**:
+
 ```bash
 # Stop new version
 docker stop mahavishnu
@@ -570,6 +587,7 @@ docker rename mahavishnu-old mahavishnu
 ```
 
 **Kubernetes**:
+
 ```bash
 # Rollback deployment
 kubectl rollout undo deployment/mahavishnu-mcp
@@ -591,7 +609,7 @@ kubectl rollout status deployment/mahavishnu-mcp
 # (should see normal operation logs)
 ```
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
@@ -602,6 +620,7 @@ kubectl rollout status deployment/mahavishnu-mcp
 **Symptoms**: Memory > 90%, OOM kills
 
 **Diagnosis**:
+
 ```bash
 # Check memory usage
 docker stats mahavishnu
@@ -611,6 +630,7 @@ curl http://localhost:8680/debug/memory
 ```
 
 **Solutions**:
+
 - Reduce `max_concurrent_workflows`
 - Increase container memory limit
 - Check for connection leaks
@@ -621,6 +641,7 @@ curl http://localhost:8680/debug/memory
 **Symptoms**: p95 latency > 2s
 
 **Diagnosis**:
+
 ```bash
 # Check slow queries
 curl http://prometheus:9090/api/v1/query?query=topk(10,mahavishnu_slow_queries)
@@ -630,6 +651,7 @@ pg_stat_statements
 ```
 
 **Solutions**:
+
 - Add database indexes
 - Enable query caching
 - Increase worker pool size
@@ -640,6 +662,7 @@ pg_stat_statements
 **Symptoms**: 5xx errors, connection refused
 
 **Diagnosis**:
+
 ```bash
 # Check service health
 curl http://localhost:8680/health
@@ -649,6 +672,7 @@ psql $POSTGRES_URL -c "SELECT 1"
 ```
 
 **Solutions**:
+
 - Verify database connection string
 - Check firewall rules
 - Increase connection pool size
@@ -659,12 +683,14 @@ psql $POSTGRES_URL -c "SELECT 1"
 **Symptoms**: Legitimate requests blocked
 
 **Diagnosis**:
+
 ```bash
 # Check rate limit stats
 curl http://localhost:8680/debug/rate_limits
 ```
 
 **Solutions**:
+
 - Increase rate limit thresholds
 - Add IP exemptions for trusted sources
 - Check for distributed rate limiting issues
@@ -678,17 +704,18 @@ curl http://localhost:8680/debug/rate_limits
 ### Escalation Path
 
 1. **P1 (Critical)**: Page on-call immediately
-2. **P2 (High)**: Page on-call, create ticket
-3. **P3 (Medium)**: Create ticket, address in next business day
-4. **P4 (Low)**: Create ticket, address in next sprint
+1. **P2 (High)**: Page on-call, create ticket
+1. **P3 (Medium)**: Create ticket, address in next business day
+1. **P4 (Low)**: Create ticket, address in next sprint
 
----
+______________________________________________________________________
 
 ## Appendix
 
 ### Useful Commands
 
 **View Logs**:
+
 ```bash
 # Real-time logs
 docker logs -f mahavishnu
@@ -701,6 +728,7 @@ docker logs -t mahavishnu
 ```
 
 **Restart Services**:
+
 ```bash
 # Graceful restart
 docker exec mahavishnu kill -HUP 1
@@ -710,6 +738,7 @@ docker restart mahavishnu
 ```
 
 **Check Configuration**:
+
 ```bash
 # View config
 cat settings/mahavishnu.yaml
@@ -723,6 +752,7 @@ python -c "from mahavishnu.core.config import MahavishnuSettings; MahavishnuSett
 `GET /health`
 
 **Response**:
+
 ```json
 {
   "status": "healthy",
@@ -740,7 +770,7 @@ python -c "from mahavishnu.core.config import MahavishnuSettings; MahavishnuSett
 }
 ```
 
----
+______________________________________________________________________
 
 **Last Updated**: 2026-02-02
 **Next Review**: 2026-03-02

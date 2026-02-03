@@ -137,7 +137,7 @@ Mahavishnu uses a role-based taxonomy to organize repositories and enable intell
 | **manager** | Manages state, sessions, and knowledge across the ecosystem | capture, search, restore, track, analyze | session-buddy (buddy) |
 | **inspector** | Validates code quality and enforces development standards | test, lint, scan, report, validate | crackerjack (jack) |
 | **builder** | Builds applications and web interfaces | render, route, authenticate, build | fastblocks |
-| **aggregator** | Aggregates data and analytics across distributed systems | aggregate, search, detect, correlate, graph | (none yet) |
+| **soothsayer** | Reveals hidden patterns and insights across distributed systems | aggregate, search, detect, correlate, graph | akosha |
 | **app** | End-user applications with graphical interfaces | interface, automate, serve-users, integrate | mdinject, splashstand |
 | **asset** | UI libraries, component collections, and style guides | style, theme, componentize, design | fastbulma |
 | **foundation** | Foundational utilities, libraries, and shared code | share, standardize, abstract, build-upon | mcp-common |
@@ -181,18 +181,21 @@ Mahavishnu supports a **multi-pool orchestration architecture** that enables hor
 ### Pool Types
 
 **MahavishnuPool** (Direct Management):
+
 - Wraps existing WorkerManager for local worker execution
 - Low-latency task execution
 - Dynamic scaling (min_workers to max_workers)
 - Use for: local development, debugging, CI/CD
 
 **SessionBuddyPool** (Delegated):
+
 - Delegates worker management to Session-Buddy instances
 - Each Session-Buddy instance manages exactly 3 workers
 - Remote execution via MCP protocol
 - Use for: distributed workloads, multi-server deployments
 
 **KubernetesPool** (Cloud-Native):
+
 - Deploys workers as Kubernetes Jobs/Pods
 - Auto-scaling via HorizontalPodAutoscaler
 - Cloud resource management
@@ -244,6 +247,7 @@ akosha_url: "http://localhost:8682/mcp"
 ### Usage Examples
 
 **Spawn and Execute**:
+
 ```python
 from mahavishnu.pools import PoolManager, PoolConfig, PoolSelector
 
@@ -265,6 +269,7 @@ result = await pool_mgr.route_task(
 ```
 
 **Memory Aggregation**:
+
 ```python
 from mahavishnu.pools import MemoryAggregator
 

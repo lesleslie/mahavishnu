@@ -1,8 +1,7 @@
 """Unit tests for circuit breaker implementation."""
 
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import MagicMock
+from datetime import datetime
 
 import pytest
 
@@ -56,6 +55,7 @@ class TestCircuitBreakerStates:
 
         # Wait for timeout
         import time
+
         time.sleep(1.1)
 
         # Next request should transition to HALF_OPEN
@@ -73,6 +73,7 @@ class TestCircuitBreakerStates:
 
         # Check requests are still denied within timeout
         import time
+
         time.sleep(0.5)
         assert breaker.allow_request() is False
         assert breaker.state == CircuitState.OPEN
@@ -88,6 +89,7 @@ class TestCircuitBreakerStates:
 
         # Wait for timeout and transition to HALF_OPEN
         import time
+
         time.sleep(1.1)
         breaker.allow_request()
         assert breaker.state == CircuitState.HALF_OPEN
@@ -107,6 +109,7 @@ class TestCircuitBreakerStates:
 
         # Wait for timeout and transition to HALF_OPEN
         import time
+
         time.sleep(1.1)
         breaker.allow_request()
         assert breaker.state == CircuitState.HALF_OPEN
@@ -159,6 +162,7 @@ class TestCircuitBreakerCounters:
         first_time = breaker.last_failure_time
 
         import time
+
         time.sleep(0.1)
 
         breaker.record_failure()
@@ -201,6 +205,7 @@ class TestCircuitBreakerConfigurations:
 
         # Should still be OPEN within timeout
         import time
+
         time.sleep(1)
         assert breaker.state == CircuitState.OPEN
         assert breaker.allow_request() is False
@@ -247,6 +252,7 @@ class TestCircuitBreakerAllowRequest:
 
         # Wait for timeout
         import time
+
         time.sleep(1.1)
 
         # Transition to HALF_OPEN
@@ -264,6 +270,7 @@ class TestCircuitBreakerAllowRequest:
 
         # Wait for timeout
         import time
+
         time.sleep(1.1)
 
         # allow_request should trigger transition to HALF_OPEN
@@ -523,6 +530,7 @@ class TestCircuitBreakerEdgeCases:
         first_failure_time = breaker.last_failure_time
 
         import time
+
         time.sleep(0.1)
 
         breaker.record_failure()
@@ -542,6 +550,7 @@ class TestCircuitBreakerEdgeCases:
         assert breaker.state == CircuitState.OPEN
 
         import time
+
         time.sleep(1.1)
         breaker.allow_request()
         breaker.record_success()
@@ -564,6 +573,7 @@ class TestCircuitBreakerLogging:
     def test_logs_warning_on_open(self, caplog):
         """Test that circuit breaker logs warning when opening."""
         import logging
+
         breaker = CircuitBreaker(threshold=2, timeout=60)
 
         with caplog.at_level(logging.WARNING):
@@ -575,6 +585,7 @@ class TestCircuitBreakerLogging:
     def test_logs_info_on_close(self, caplog):
         """Test that circuit breaker logs info when closing."""
         import logging
+
         breaker = CircuitBreaker(threshold=2, timeout=1)
 
         # Open the circuit
@@ -583,6 +594,7 @@ class TestCircuitBreakerLogging:
 
         # Wait for timeout and transition to HALF_OPEN
         import time
+
         time.sleep(1.1)
         breaker.allow_request()
 
@@ -595,6 +607,7 @@ class TestCircuitBreakerLogging:
     def test_logs_info_on_half_open_transition(self, caplog):
         """Test that circuit breaker logs info when transitioning to HALF_OPEN."""
         import logging
+
         breaker = CircuitBreaker(threshold=1, timeout=1)
 
         # Open the circuit
@@ -602,6 +615,7 @@ class TestCircuitBreakerLogging:
 
         # Wait for timeout and check transition
         import time
+
         time.sleep(1.1)
 
         with caplog.at_level(logging.INFO):

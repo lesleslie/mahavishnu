@@ -54,8 +54,7 @@ class WorkerManager:
         self._debug_monitor_worker: BaseWorker | None = None
 
         logger.info(
-            f"Initialized WorkerManager "
-            f"(max_concurrent={self.max_concurrent}, debug={debug_mode})"
+            f"Initialized WorkerManager (max_concurrent={self.max_concurrent}, debug={debug_mode})"
         )
 
     async def spawn_workers(
@@ -194,10 +193,7 @@ class WorkerManager:
             return worker_id, result
 
         # Execute all tasks concurrently
-        coros = [
-            execute_one(wid, task)
-            for wid, task in zip(worker_ids, tasks)
-        ]
+        coros = [execute_one(wid, task) for wid, task in zip(worker_ids, tasks)]
         results = await asyncio.gather(*coros)
 
         logger.info(f"Completed {len(results)} worker tasks")
@@ -367,17 +363,21 @@ class WorkerManager:
         for wid, worker in self._workers.items():
             try:
                 status = await worker.status()
-                workers_info.append({
-                    "worker_id": wid,
-                    "worker_type": worker.worker_type,
-                    "status": status.value,
-                })
+                workers_info.append(
+                    {
+                        "worker_id": wid,
+                        "worker_type": worker.worker_type,
+                        "status": status.value,
+                    }
+                )
             except Exception:
-                workers_info.append({
-                    "worker_id": wid,
-                    "worker_type": worker.worker_type,
-                    "status": "unknown",
-                })
+                workers_info.append(
+                    {
+                        "worker_id": wid,
+                        "worker_type": worker.worker_type,
+                        "status": "unknown",
+                    }
+                )
 
         return workers_info
 

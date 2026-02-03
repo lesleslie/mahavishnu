@@ -20,21 +20,17 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+import asyncio
 from enum import Enum
 from functools import lru_cache
-from typing import TYPE_CHECKING
 
 import httpx
-
-if TYPE_CHECKING:
-    pass
 
 
 class EmbeddingProvider(Enum):
     """Embedding provider options."""
+
     FASTEMBED = "fastembed"
     OLLAMA = "ollama"
     OPENAI = "openai"
@@ -43,11 +39,13 @@ class EmbeddingProvider(Enum):
 
 class EmbeddingServiceError(Exception):
     """Base exception for embedding service errors."""
+
     pass
 
 
 class EmbeddingProviderError(EmbeddingServiceError):
     """Raised when embedding provider is not available."""
+
     pass
 
 
@@ -153,6 +151,7 @@ class FastEmbedProvider(EmbeddingProviderInterface):
         """Check if FastEmbed is available."""
         try:
             import fastembed  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -203,9 +202,7 @@ class OllamaProvider(EmbeddingProviderInterface):
         )
 
         if response.status_code != 200:
-            raise EmbeddingServiceError(
-                f"Ollama API error: {response.status_code} {response.text}"
-            )
+            raise EmbeddingServiceError(f"Ollama API error: {response.status_code} {response.text}")
 
         data = response.json()
 
@@ -221,10 +218,11 @@ class OllamaProvider(EmbeddingProviderInterface):
     def is_available(self) -> bool:
         """Check if Ollama is available."""
         try:
-            import httpx  # noqa: F401
-
             # Quick health check
             import socket
+
+            import httpx  # noqa: F401
+
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(1.0)
             result = sock.connect_ex(("localhost", 11434))
@@ -290,9 +288,7 @@ class OpenAIProvider(EmbeddingProviderInterface):
         )
 
         if response.status_code != 200:
-            raise EmbeddingServiceError(
-                f"OpenAI API error: {response.status_code} {response.text}"
-            )
+            raise EmbeddingServiceError(f"OpenAI API error: {response.status_code} {response.text}")
 
         data = response.json()
 

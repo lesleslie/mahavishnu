@@ -1721,7 +1721,6 @@ for result in results:
 
 ______________________________________________________________________
 
-
 ### OpenTelemetry Tools
 
 Tools for ingesting and searching OpenTelemetry traces using Akosha HotStore (DuckDB).
@@ -1832,7 +1831,7 @@ async def search_otel_traces(
 
 **Errors:**
 
-- `ValueError`: If query is empty or limit <= 0
+- `ValueError`: If query is empty or limit \<= 0
 - `ValueError`: If threshold not in range [0.0, 1.0]
 
 **Example:**

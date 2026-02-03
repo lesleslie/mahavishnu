@@ -4,30 +4,31 @@
 **Researcher**: Claude (Research Analyst Agent)
 **Status**: ✅ Research Complete
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
 Session-Buddy has **no native OpenTelemetry (OTel) instrumentation** but provides extensive monitoring and analytics capabilities through custom implementations. Mahavishnu has **complete OTel support** with OTLP export capabilities already configured. Integration requires bridging Session-Buddy's custom metrics to Mahavishnu's OTel infrastructure.
 
 **Key Findings:**
+
 - ✅ Mahavishnu has full OTel/OTLP support with OpenTelemetry Collector
 - ❌ Session-Buddy uses custom analytics (DuckDB) instead of OTel
 - ✅ Both systems have complementary monitoring capabilities
 - ⚠️ Integration requires Session-Buddy → OTel adapter or direct Mahavishnu polling
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Session-Buddy Current Capabilities](#session-buddy-current-capabilities)
-2. [Mahavishnu OTel Infrastructure](#mahavishnu-otel-infrastructure)
-3. [Integration Options](#integration-options)
-4. [Configuration Requirements](#configuration-requirements)
-5. [Recommendations](#recommendations)
-6. [Implementation Roadmap](#implementation-roadmap)
+1. [Mahavishnu OTel Infrastructure](#mahavishnu-otel-infrastructure)
+1. [Integration Options](#integration-options)
+1. [Configuration Requirements](#configuration-requirements)
+1. [Recommendations](#recommendations)
+1. [Implementation Roadmap](#implementation-roadmap)
 
----
+______________________________________________________________________
 
 ## 1. Session-Buddy Current Capabilities
 
@@ -36,6 +37,7 @@ Session-Buddy has **no native OpenTelemetry (OTel) instrumentation** but provide
 Session-Buddy has extensive monitoring but **no OTel instrumentation**:
 
 #### **Workflow Metrics Engine**
+
 - **Location**: `/Users/les/Projects/session-buddy/session_buddy/core/workflow_metrics.py`
 - **Purpose**: Track development velocity and quality trends
 - **Storage**: DuckDB database (`~/.claude/data/workflow_metrics.db`)
@@ -58,6 +60,7 @@ SessionMetrics:
 ```
 
 **Aggregated Metrics**:
+
 - `avg_velocity_commits_per_hour`: Development speed
 - `quality_trend`: "improving", "stable", "declining"
 - `most_productive_time_of_day`: Best working hours
@@ -65,6 +68,7 @@ SessionMetrics:
 - `active_projects`: List of projects with activity
 
 #### **Usage Analytics Tracker**
+
 - **Location**: `/Users/les/Projects/session-buddy/session_buddy/analytics/usage_tracker.py`
 - **Purpose**: Adaptive result ranking based on user interaction patterns
 - **Tracking Data**:
@@ -83,6 +87,7 @@ ResultInteraction:
 ```
 
 **Usage Metrics**:
+
 - Click-through rate
 - Average dwell time
 - Average position clicked
@@ -90,6 +95,7 @@ ResultInteraction:
 - Success threshold (minimum similarity for useful results)
 
 #### **Application Monitoring**
+
 - **Location**: `/Users/les/Projects/session-buddy/session_buddy/app_monitor.py`
 - **Purpose**: IDE activity tracking and browser documentation monitoring
 - **Features**:
@@ -99,6 +105,7 @@ ResultInteraction:
   - SQLite activity database (`~/.claude/data/activity.db`)
 
 **Activity Events Tracked**:
+
 ```python
 ActivityEvent:
   - timestamp: str
@@ -114,9 +121,11 @@ ActivityEvent:
 Session-Buddy exposes monitoring via **MCP tools** (not OTel):
 
 #### **Workflow Metrics Tools**
+
 - **Location**: `/Users/les/Projects/session-buddy/session_buddy/mcp/tools/monitoring/workflow_metrics_tools.py`
 
 **Available MCP Tools**:
+
 ```python
 @mcp.tool()
 async def get_workflow_metrics(
@@ -137,9 +146,11 @@ async def get_session_analytics(
 ```
 
 #### **Application Monitoring Tools**
+
 - **Location**: `/Users/les/Projects/session-buddy/session_buddy/mcp/tools/monitoring/monitoring_tools.py`
 
 **Available MCP Tools**:
+
 ```python
 @mcp.tool()
 async def start_app_monitoring(project_paths: list[str] | None = None) -> str:
@@ -161,6 +172,7 @@ async def get_active_files(minutes: int = 60) -> str:
 ### 1.3 Dependencies Analysis
 
 **Session-Buddy `pyproject.toml`** (lines 1-254):
+
 ```toml
 dependencies = [
     "aiofiles>=25.1.0",
@@ -186,6 +198,7 @@ dependencies = [
 ### 1.4 Configuration Analysis
 
 **Session-Buddy Configuration** (`settings/session-buddy.yaml`):
+
 ```yaml
 # === Logging Settings ===
 log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -200,11 +213,12 @@ slow_query_threshold: 1.0
 ```
 
 **Oneiric Integration** (from documentation):
+
 - Session-Buddy uses Oneiric for configuration management
 - Oneiric has `otlp` monitoring adapter available but **not configured in Session-Buddy**
 - Reference: `/Users/les/Projects/session-buddy/docs/ONEIRIC_MCP_ANALYSIS.md` line 88
 
----
+______________________________________________________________________
 
 ## 2. Mahavishnu OTel Infrastructure
 
@@ -213,10 +227,12 @@ slow_query_threshold: 1.0
 Mahavishnu has **complete OTel support** with OTLP export:
 
 #### **Core Observability Module**
+
 - **Location**: `/Users/les/Projects/mahavishnu/mahavishnu/core/observability.py`
 - **Implementation**: Full OpenTelemetry SDK with OTLP exporters
 
 **Key Components**:
+
 ```python
 class ObservabilityManager:
     """Centralized observability manager for metrics, tracing, and logging."""
@@ -235,6 +251,7 @@ class ObservabilityManager:
 ```
 
 **Metrics Instruments Created**:
+
 ```python
 self.workflow_counter = self.meter.create_counter(
     "mahavishnu.workflows.executed",
@@ -265,6 +282,7 @@ self.repo_processing_duration_histogram = self.meter.create_histogram(
 ```
 
 **Tracing Capabilities**:
+
 ```python
 def start_workflow_trace(self, workflow_id: str, adapter: str, task_type: str):
     """Start a trace for a workflow execution."""
@@ -293,6 +311,7 @@ def start_repo_trace(self, repo_path: str, workflow_id: str):
 ### 2.2 Configuration
 
 **Mahavishnu Configuration** (`mahavishnu/core/config.py`):
+
 ```python
 class MahavishnuSettings(BaseSettings):
     # Observability configuration
@@ -311,14 +330,16 @@ class MahavishnuSettings(BaseSettings):
 ```
 
 **Configuration Loading Order**:
+
 1. Default values (in code)
-2. `settings/mahavishnu.yaml` (committed)
-3. `settings/local.yaml` (gitignored)
-4. Environment variables: `MAHAVISHNU_{FIELD}`
+1. `settings/mahavishnu.yaml` (committed)
+1. `settings/local.yaml` (gitignored)
+1. Environment variables: `MAHAVISHNU_{FIELD}`
 
 ### 2.3 OpenTelemetry Collector
 
 **OTel Collector Configuration** (`config/otel-collector-config.yaml`):
+
 ```yaml
 receivers:
   # OTLP receiver (gRPC) - for Mahavishnu application
@@ -372,6 +393,7 @@ service:
 ```
 
 **Docker Compose Integration** (`docker-compose.buildpacks.yml`):
+
 ```yaml
 services:
   # OpenTelemetry Collector
@@ -416,6 +438,7 @@ services:
 ### 2.3 Dependencies
 
 **Mahavishnu `pyproject.toml`**:
+
 ```toml
 dependencies = [
     # ... other dependencies ...
@@ -433,6 +456,7 @@ dependencies = [
 Mahavishnu has Session-Buddy integration tools:
 
 **Session-Buddy MCP Tools** (`mahavishnu/mcp/tools/session_buddy_tools.py`):
+
 ```python
 @mcp.tool()
 async def index_code_graph(project_path: str, include_docs: bool = True) -> dict[str, Any]:
@@ -458,11 +482,12 @@ async def send_project_message(
 ```
 
 **Pool Management with Session-Buddy**:
+
 - **Location**: `mahavishnu/pools/session_buddy_pool.py`
 - **Purpose**: Delegates worker management to Session-Buddy instances
 - **Integration**: Session-Buddy manages exactly 3 workers per instance
 
----
+______________________________________________________________________
 
 ## 3. Integration Options
 
@@ -471,6 +496,7 @@ async def send_project_message(
 **Approach**: Add OpenTelemetry SDK to Session-Buddy and push metrics directly to Mahavishnu's OTel Collector.
 
 **Architecture**:
+
 ```
 Session-Buddy → OTLP Exporter → Otel Collector → Jaeger/Prometheus
                                               ↓
@@ -478,6 +504,7 @@ Session-Buddy → OTLP Exporter → Otel Collector → Jaeger/Prometheus
 ```
 
 **Pros**:
+
 - ✅ Real-time metrics streaming
 - ✅ Native OTel support (standard protocol)
 - ✅ No polling overhead
@@ -485,6 +512,7 @@ Session-Buddy → OTLP Exporter → Otel Collector → Jaeger/Prometheus
 - ✅ Unified observability stack
 
 **Cons**:
+
 - ⚠️ Requires OpenTelemetry dependencies in Session-Buddy
 - ⚠️ Configuration changes required
 - ⚠️ Network dependency on OTel Collector
@@ -494,6 +522,7 @@ Session-Buddy → OTLP Exporter → Otel Collector → Jaeger/Prometheus
 **Required Changes**:
 
 1. **Add OpenTelemetry dependencies** to Session-Buddy `pyproject.toml`:
+
 ```toml
 dependencies = [
     # ... existing ...
@@ -505,6 +534,7 @@ dependencies = [
 ```
 
 2. **Create OTel module** in Session-Buddy:
+
 ```python
 # session_buddy/observability/otel.py
 from opentelemetry import metrics, trace
@@ -539,6 +569,7 @@ def init_otel(otlp_endpoint: str = "http://localhost:4317"):
 ```
 
 3. **Bridge existing metrics to OTel**:
+
 ```python
 # session_buddy/observability/metrics_bridge.py
 from opentelemetry import metrics
@@ -594,6 +625,7 @@ class WorkflowMetricsBridge:
 ```
 
 4. **Configuration** (`settings/session-buddy.yaml`):
+
 ```yaml
 # === OpenTelemetry Settings ===
 otel_enabled: true
@@ -602,13 +634,14 @@ otel_service_name: "session-buddy"
 otel_metrics_export_interval: 60  # seconds
 ```
 
----
+______________________________________________________________________
 
 ### 3.2 Option B: MCP Polling (Quick Start)
 
 **Approach**: Mahavishnu polls Session-Buddy's MCP tools for metrics and converts to OTel format.
 
 **Architecture**:
+
 ```
 Mahavishnu → MCP Client → Session-Buddy MCP Server → Metrics
                                               ↓
@@ -616,11 +649,13 @@ Mahavishnu → MCP Client → Session-Buddy MCP Server → Metrics
 ```
 
 **Pros**:
+
 - ✅ No changes to Session-Buddy required
 - ✅ Uses existing MCP tools
 - ✅ Faster to implement (1 day)
 
 **Cons**:
+
 - ⚠️ Polling overhead (network latency)
 - ⚠️ Not real-time (polling interval)
 - ⚠️ Tighter coupling (MCP dependency)
@@ -671,13 +706,14 @@ class SessionBuddyMetricsPoller:
             )
 ```
 
----
+______________________________________________________________________
 
 ### 3.3 Option C: Database Polling (Bridge Pattern)
 
 **Approach**: Mahavishnu reads Session-Buddy's DuckDB database directly and converts to OTel format.
 
 **Architecture**:
+
 ```
 Mahavishnu → DuckDB Reader → Session-Buddy DuckDB → Metrics
                                               ↓
@@ -685,11 +721,13 @@ Mahavishnu → DuckDB Reader → Session-Buddy DuckDB → Metrics
 ```
 
 **Pros**:
+
 - ✅ No Session-Buddy code changes
 - ✅ Direct database access (no network latency)
 - ✅ Historical data access
 
 **Cons**:
+
 - ⚠️ Tightly coupled to database schema
 - ⚠️ Requires file system access
 - ⚠️ Schema changes break integration
@@ -742,13 +780,14 @@ class SessionBuddyDBReader:
                 )
 ```
 
----
+______________________________________________________________________
 
 ### 3.4 Option D: Hybrid Approach (Recommended Production)
 
 **Approach**: Combine Option A (OTLP push) for critical metrics + Option B (MCP polling) for supplemental data.
 
 **Architecture**:
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    Session-Buddy                        │
@@ -764,23 +803,26 @@ class SessionBuddyDBReader:
 ```
 
 **Pros**:
+
 - ✅ Best of both worlds (real-time + historical)
 - ✅ Resilient (fallback to polling if OTLP fails)
 - ✅ Comprehensive observability
 
 **Cons**:
+
 - ⚠️ Higher implementation effort
 - ⚠️ Two integration paths to maintain
 
 **Implementation Effort**: **Medium** (3-4 days)
 
----
+______________________________________________________________________
 
 ## 4. Configuration Requirements
 
 ### 4.1 Session-Buddy Configuration Changes
 
 **Add to `settings/session-buddy.yaml`**:
+
 ```yaml
 # === OpenTelemetry Integration ===
 otel_enabled: true
@@ -814,6 +856,7 @@ otel_trace_sampler_ratio: 0.1  # 10% sampling for production
 ### 4.2 Mahavishnu Configuration Changes
 
 **Add to `settings/mahavishnu.yaml`**:
+
 ```yaml
 # === Session-Buddy Integration ===
 session_buddy:
@@ -841,6 +884,7 @@ session_buddy:
 ### 4.3 OpenTelemetry Collector Configuration
 
 **Update `config/otel-collector-config.yaml`** (add Session-Buddy receiver):
+
 ```yaml
 receivers:
   # Existing Mahavishnu OTLP receiver
@@ -901,6 +945,7 @@ service:
 ### 4.4 Environment Variables
 
 **Session-Buddy**:
+
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4317"
 export OTEL_SERVICE_NAME="session-buddy"
@@ -908,30 +953,34 @@ export OTEL_RESOURCE_ATTRIBUTES="deployment.environment=development"
 ```
 
 **Mahavishnu**:
+
 ```bash
 export MAHAVISHNU_OTLP_ENDPOINT="http://localhost:4317"
 export MAHAVISHNU_METRICS_ENABLED="true"
 export MAHAVISHNU_SESSION_BUDDY_MCP_URL="http://localhost:8678/mcp"
 ```
 
----
+______________________________________________________________________
 
 ## 5. Recommendations
 
 ### 5.1 Recommended Integration Strategy
 
 **Phase 1: Quick Win (Week 1)**
+
 - ✅ Implement **Option B (MCP Polling)** for immediate visibility
 - ✅ Add Session-Buddy metrics to Mahavishnu dashboards
 - ✅ Validate data flow and quality
 
 **Phase 2: Production Integration (Week 2-3)**
+
 - ✅ Implement **Option A (OTLP Push)** for real-time metrics
 - ✅ Add OpenTelemetry dependencies to Session-Buddy
 - ✅ Deploy OTLP instrumentation in Session-Buddy core modules
 - ✅ Configure sampling and resource attributes
 
 **Phase 3: Optimization (Week 4)**
+
 - ✅ Implement **Hybrid Approach (Option D)** for resilience
 - ✅ Add correlation IDs for distributed tracing
 - ✅ Optimize metrics cardinality
@@ -940,6 +989,7 @@ export MAHAVISHNU_SESSION_BUDDY_MCP_URL="http://localhost:8678/mcp"
 ### 5.2 Priority Metrics to Export
 
 **Session Metrics (High Priority)**:
+
 ```yaml
 session_buddy.session.duration_seconds:
   type: histogram
@@ -964,6 +1014,7 @@ session_buddy.session.checkpoints_total:
 ```
 
 **Workflow Metrics (High Priority)**:
+
 ```yaml
 session_buddy.workflow.velocity_commits_per_hour:
   type: gauge
@@ -978,6 +1029,7 @@ session_buddy.workflow.quality_trend:
 ```
 
 **Memory/Cache Metrics (Medium Priority)**:
+
 ```yaml
 session_buddy.memory.usage_bytes:
   type: gauge
@@ -993,6 +1045,7 @@ session_buddy.cache.hit_rate:
 ```
 
 **Activity Metrics (Low Priority)**:
+
 ```yaml
 session_buddy.activity.files_modified_total:
   type: counter
@@ -1008,6 +1061,7 @@ session_buddy.activity.context_switches_total:
 ### 5.3 Distributed Tracing Strategy
 
 **Trace Context Propagation**:
+
 ```python
 # Session-Buddy should inject trace context
 from opentelemetry import trace
@@ -1055,36 +1109,41 @@ def continue_session_trace(session_id: str, operation: str):
 **Grafana Dashboard Panels**:
 
 1. **Session Overview**:
+
    - Total sessions (grouped by project)
    - Average session duration (heatmap by time of day)
    - Quality score trend (time series)
    - Top projects by activity
 
-2. **Workflow Velocity**:
+1. **Workflow Velocity**:
+
    - Commits per hour (gauge)
    - Checkpoints per session (histogram)
    - Files modified rate (counter)
    - Language distribution (pie chart)
 
-3. **Quality Metrics**:
+1. **Quality Metrics**:
+
    - Quality score distribution (histogram)
    - Quality trend direction (stat panel)
    - Most productive time of day (heatmap)
    - Tool usage frequency (bar chart)
 
-4. **Distributed Traces** (Jaeger):
+1. **Distributed Traces** (Jaeger):
+
    - Session lifecycle traces
    - Mahavishnu workflow traces
    - Cross-service trace correlation
    - Error/failure traces
 
----
+______________________________________________________________________
 
 ## 6. Implementation Roadmap
 
 ### 6.1 Week 1: Foundation
 
 **Day 1-2: MCP Polling Integration**
+
 - [ ] Create `mahavishnu/observability/session_buddy_poller.py`
 - [ ] Implement `get_workflow_metrics` polling
 - [ ] Create OTel metric instruments
@@ -1092,12 +1151,14 @@ def continue_session_trace(session_id: str, operation: str):
 - [ ] Test polling end-to-end
 
 **Day 3: Dashboard Setup**
+
 - [ ] Create Grafana dashboard
 - [ ] Add Session-Buddy panels
 - [ ] Import sample metrics
 - [ ] Validate data visualization
 
 **Day 4-5: Documentation & Testing**
+
 - [ ] Write integration documentation
 - [ ] Create integration tests
 - [ ] Performance testing (polling overhead)
@@ -1105,11 +1166,12 @@ def continue_session_trace(session_id: str, operation: str):
 
 **Deliverable**: Working MCP polling with dashboard
 
----
+______________________________________________________________________
 
 ### 6.2 Week 2-3: OTLP Implementation
 
 **Day 6-8: Session-Buddy OTel Setup**
+
 - [ ] Add OpenTelemetry dependencies to Session-Buddy
 - [ ] Create `session_buddy/observability/` module
 - [ ] Implement `init_otel()` function
@@ -1117,6 +1179,7 @@ def continue_session_trace(session_id: str, operation: str):
 - [ ] Test OTLP connection to Mahavishnu collector
 
 **Day 9-11: Metrics Instrumentation**
+
 - [ ] Instrument `WorkflowMetricsEngine` with OTel
 - [ ] Instrument `UsageTracker` with OTel
 - [ ] Instrument `ApplicationMonitor` with OTel
@@ -1124,6 +1187,7 @@ def continue_session_trace(session_id: str, operation: str):
 - [ ] Validate metric export
 
 **Day 12-15: Tracing Instrumentation**
+
 - [ ] Add tracing to session lifecycle
 - [ ] Add tracing to workflow operations
 - [ ] Implement trace context propagation
@@ -1132,17 +1196,19 @@ def continue_session_trace(session_id: str, operation: str):
 
 **Deliverable**: Full OTLP instrumentation in Session-Buddy
 
----
+______________________________________________________________________
 
 ### 6.3 Week 3-4: Production Readiness
 
 **Day 16-18: Hybrid Integration**
+
 - [ ] Implement fallback to MCP polling
 - [ ] Add health checks for OTLP exporter
 - [ ] Create unified metrics aggregator
 - [ ] Test failover scenarios
 
 **Day 19-21: Optimization**
+
 - [ ] Analyze metrics cardinality
 - [ ] Implement metrics whitelisting
 - [ ] Optimize batch sizes
@@ -1150,6 +1216,7 @@ def continue_session_trace(session_id: str, operation: str):
 - [ ] Performance benchmarking
 
 **Day 22-25: Documentation & Deployment**
+
 - [ ] Write deployment guide
 - [ ] Create runbooks for common issues
 - [ ] Document metric semantics
@@ -1158,7 +1225,7 @@ def continue_session_trace(session_id: str, operation: str):
 
 **Deliverable**: Production-ready OTel integration
 
----
+______________________________________________________________________
 
 ## 7. Risk Assessment
 
@@ -1181,17 +1248,17 @@ def continue_session_trace(session_id: str, operation: str):
 | **Retention costs** | Medium | Low | Implement data retention policies |
 | **Monitoring blindness** | High | Low | Alert on export failures, health checks |
 
----
+______________________________________________________________________
 
 ## 8. Success Criteria
 
 ### 8.1 Technical Metrics
 
 - ✅ **99.9%** OTLP export success rate
-- ✅ **<500ms** metric export latency (p95)
-- ✅ **<100ms** tracing overhead per span
-- ✅ **<10%** CPU overhead from OTel instrumentation
-- ✅ **<50MB** additional memory footprint
+- ✅ **\<500ms** metric export latency (p95)
+- ✅ **\<100ms** tracing overhead per span
+- ✅ **\<10%** CPU overhead from OTel instrumentation
+- ✅ **\<50MB** additional memory footprint
 
 ### 8.2 Functional Requirements
 
@@ -1209,7 +1276,7 @@ def continue_session_trace(session_id: str, operation: str):
 - ✅ Alert on workflow velocity drop
 - ✅ Historical trend analysis (30+ days)
 
----
+______________________________________________________________________
 
 ## 9. Code Examples
 
@@ -1348,13 +1415,14 @@ class SessionBuddyMetricsPoller:
                 )
 ```
 
----
+______________________________________________________________________
 
 ## 10. References
 
 ### 10.1 File References
 
 **Session-Buddy Files**:
+
 - `/Users/les/Projects/session-buddy/session_buddy/core/workflow_metrics.py` - Workflow metrics engine
 - `/Users/les/Projects/session-buddy/session_buddy/analytics/usage_tracker.py` - Usage analytics
 - `/Users/les/Projects/session-buddy/session_buddy/app_monitor.py` - Application monitoring
@@ -1364,6 +1432,7 @@ class SessionBuddyMetricsPoller:
 - `/Users/les/Projects/session-buddy/pyproject.toml` - Dependencies
 
 **Mahavishnu Files**:
+
 - `/Users/les/Projects/mahavishnu/mahavishnu/core/observability.py` - OTel implementation
 - `/Users/les/Projects/mahavishnu/mahavishnu/core/config.py` - Configuration
 - `/Users/les/Projects/mahavishnu/config/otel-collector-config.yaml` - OTel Collector config
@@ -1375,7 +1444,6 @@ class SessionBuddyMetricsPoller:
 - [OpenTelemetry Python Documentation](https://opentelemetry.io/docs/instrumentation/python/)
 - [OTLP Specification](https://opentelemetry.io/docs/reference/specification/protocol/otlp/)
 - [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/)
-- [Session-Buddy Architecture](/Users/les/Projects/session-buddy/docs/developer/ARCHITECTURE.md)
 - [Mahavishnu Architecture](/Users/les/Projects/mahavishnu/ARCHITECTURE.md)
 
 ### 10.3 Standards and Protocols
@@ -1385,7 +1453,7 @@ class SessionBuddyMetricsPoller:
 - **Prometheus Remote Write Protocol**: v2.1.0
 - **Model Context Protocol (MCP)**: FastMCP v2.14.4
 
----
+______________________________________________________________________
 
 ## 11. Conclusion
 
@@ -1394,6 +1462,7 @@ Session-Buddy has **no native OpenTelemetry support** but provides comprehensive
 **Recommended Approach**: Hybrid implementation combining OTLP push (for real-time metrics) and MCP polling (for resilience and historical data).
 
 **Key Benefits**:
+
 - ✅ Unified observability stack
 - ✅ Distributed tracing across services
 - ✅ Real-time metrics in dashboards
@@ -1402,7 +1471,7 @@ Session-Buddy has **no native OpenTelemetry support** but provides comprehensive
 
 **Implementation Timeline**: 3-4 weeks for full production deployment
 
----
+______________________________________________________________________
 
 **Report Status**: ✅ Complete
 **Next Steps**: Review with stakeholders, approve Phase 1 (MCP polling), begin implementation

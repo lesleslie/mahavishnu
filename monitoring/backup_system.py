@@ -12,20 +12,18 @@ This module provides:
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
+from enum import Enum
 import hashlib
 import json
 import logging
+from pathlib import Path
 import shutil
 import sqlite3
 import tarfile
 import tempfile
-from contextlib import suppress
-from datetime import datetime, timedelta
-from enum import Enum
-from pathlib import Path
 from typing import Any
 
-import aiosqlite
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
@@ -35,8 +33,10 @@ logger = logging.getLogger(__name__)
 # Backup Types and Status
 # ============================================================================
 
+
 class BackupType(Enum):
     """Types of backups."""
+
     FULL = "full"  # Complete backup of all data
     INCREMENTAL = "incremental"  # Only changes since last backup
     CONFIG = "config"  # Configuration files only
@@ -45,6 +45,7 @@ class BackupType(Enum):
 
 class BackupStatus(Enum):
     """Backup status."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -54,6 +55,7 @@ class BackupStatus(Enum):
 
 class RetentionTier(Enum):
     """Retention policy tiers."""
+
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
@@ -69,6 +71,7 @@ from dataclasses import dataclass, field
 @dataclass
 class BackupMetadata:
     """Metadata about a backup."""
+
     backup_id: str
     timestamp: datetime
     backup_type: BackupType
@@ -86,6 +89,7 @@ class BackupMetadata:
 @dataclass
 class DatabaseBackupConfig:
     """Configuration for database backups."""
+
     name: str
     db_path: str
     enabled: bool = True
@@ -97,6 +101,7 @@ class DatabaseBackupConfig:
 # ============================================================================
 # Enhanced Backup Manager
 # ============================================================================
+
 
 class EcosystemBackupManager:
     """Manages backups across the entire MCP ecosystem."""
@@ -118,9 +123,9 @@ class EcosystemBackupManager:
 
         # Enhanced retention policy (more aggressive than before)
         self.retention_policy = retention_policy or {
-            RetentionTier.DAILY: 30,    # 30 days of daily backups
-            RetentionTier.WEEKLY: 12,   # 12 weeks of weekly backups
-            RetentionTier.MONTHLY: 6,   # 6 months of monthly backups
+            RetentionTier.DAILY: 30,  # 30 days of daily backups
+            RetentionTier.WEEKLY: 12,  # 12 weeks of weekly backups
+            RetentionTier.MONTHLY: 6,  # 6 months of monthly backups
         }
 
         # Database backup configurations
@@ -240,7 +245,7 @@ class EcosystemBackupManager:
 
             logger.info(
                 f"Backup completed: {backup_id} "
-                f"({metadata.size_bytes / (1024*1024):.2f} MB, "
+                f"({metadata.size_bytes / (1024 * 1024):.2f} MB, "
                 f"{backup_duration:.1f}s)"
             )
 
@@ -306,9 +311,9 @@ class EcosystemBackupManager:
         # Use SQLite's dump command
         def dump_database():
             conn = sqlite3.connect(str(db_path))
-            with open(backup_path, 'w') as f:
+            with open(backup_path, "w") as f:
                 for line in conn.iterdump():
-                    f.write('%s\n' % line)
+                    f.write("%s\n" % line)
             conn.close()
 
         # Run in thread pool to avoid blocking
@@ -334,7 +339,7 @@ class EcosystemBackupManager:
         """
         try:
             # Try to read and parse the SQL dump
-            with open(backup_path, 'r') as f:
+            with open(backup_path) as f:
                 sql_content = f.read()
 
             # Basic verification: check it's not empty and has SQL statements
@@ -414,12 +419,16 @@ class EcosystemBackupManager:
 
             # This would need to import Mahavishnu's workflow manager
             # For now, create placeholder
-            with open(workflows_file, 'w') as f:
-                json.dump({
-                    "workflows": [],
-                    "timestamp": datetime.now().isoformat(),
-                    "note": "Workflow state export to be implemented"
-                }, f, indent=2)
+            with open(workflows_file, "w") as f:
+                json.dump(
+                    {
+                        "workflows": [],
+                        "timestamp": datetime.now().isoformat(),
+                        "note": "Workflow state export to be implemented",
+                    },
+                    f,
+                    indent=2,
+                )
 
             return "workflows.json"
 
@@ -445,7 +454,7 @@ class EcosystemBackupManager:
 
         # Write metadata to backup directory
         metadata_path = backup_dir / "metadata.json"
-        with open(metadata_path, 'w') as f:
+        with open(metadata_path, "w") as f:
             metadata_dict = {
                 "backup_id": metadata.backup_id,
                 "timestamp": metadata.timestamp.isoformat(),
@@ -470,12 +479,10 @@ class EcosystemBackupManager:
         metadata.checksum = await self._calculate_checksum(archive_path)
 
         # Calculate compression ratio
-        original_size = sum(
-            f.stat().st_size
-            for f in backup_dir.rglob("*")
-            if f.is_file()
+        original_size = sum(f.stat().st_size for f in backup_dir.rglob("*") if f.is_file())
+        metadata.compression_ratio = (
+            original_size / metadata.size_bytes if metadata.size_bytes > 0 else 0
         )
-        metadata.compression_ratio = original_size / metadata.size_bytes if metadata.size_bytes > 0 else 0
 
         # Remove uncompressed backup directory
         shutil.rmtree(backup_dir)
@@ -494,7 +501,7 @@ class EcosystemBackupManager:
         sha256_hash = hashlib.sha256()
 
         def update_hash():
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 for byte_block in iter(lambda: f.read(4096), b""):
                     sha256_hash.update(byte_block)
 
@@ -522,8 +529,7 @@ class EcosystemBackupManager:
 
             if actual_checksum != expected_checksum:
                 raise ValueError(
-                    f"Checksum mismatch: expected {expected_checksum}, "
-                    f"got {actual_checksum}"
+                    f"Checksum mismatch: expected {expected_checksum}, got {actual_checksum}"
                 )
 
             # Try to extract and verify metadata
@@ -577,7 +583,9 @@ class EcosystemBackupManager:
             for backup_file in backup_files:
                 try:
                     # Extract date from filename
-                    date_str = backup_file.stem.split("_", 1)[1] + "_" + backup_file.stem.split("_", 2)[2]
+                    date_str = (
+                        backup_file.stem.split("_", 1)[1] + "_" + backup_file.stem.split("_", 2)[2]
+                    )
                     backup_date = datetime.strptime(date_str, "%Y%m%d_%H%M%S")
 
                     days_old = (now - backup_date).days
@@ -797,20 +805,20 @@ class EcosystemBackupManager:
         # Daily full backup
         self.scheduler.add_job(
             self._scheduled_daily_backup,
-            'cron',
+            "cron",
             hour=daily_hour,
             minute=0,
-            id='daily_backup',
+            id="daily_backup",
         )
 
         # Weekly full backup
         self.scheduler.add_job(
             self._scheduled_weekly_backup,
-            'cron',
+            "cron",
             day_of_week=weekly_day,
             hour=weekly_hour,
             minute=0,
-            id='weekly_backup',
+            id="weekly_backup",
         )
 
         logger.info(
@@ -893,7 +901,6 @@ class EcosystemBackupManager:
             "total_size_mb": round(total_size / (1024 * 1024), 2),
             "age_distribution": age_distribution,
             "retention_policy": {
-                tier.value: count
-                for tier, count in self.retention_policy.items()
+                tier.value: count for tier, count in self.retention_policy.items()
             },
         }

@@ -1294,11 +1294,7 @@ class FastMCPServer:
         if session_buddy_client:
             # Get the MCP client from Session-Buddy
             try:
-                session_buddy_client = getattr(
-                    session_buddy_client,
-                    "mcp_client",
-                    None
-                )
+                session_buddy_client = getattr(session_buddy_client, "mcp_client", None)
             except Exception:
                 session_buddy_client = None
 

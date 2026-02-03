@@ -5,7 +5,6 @@ from typing import Any
 
 from fastmcp import FastMCP
 
-
 logger = logging.getLogger(__name__)
 
 

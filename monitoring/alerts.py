@@ -10,8 +10,6 @@ This module provides alert rules for detecting and notifying on:
 
 from __future__ import annotations
 
-from typing import Any
-
 # ============================================================================
 # Alert Rule Definitions
 # ============================================================================

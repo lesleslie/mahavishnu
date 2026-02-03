@@ -11,6 +11,7 @@ from .agno_adapter import AgnoAdapter
 # Try to import LlamaIndex adapter (may fail if dependencies not installed)
 try:
     from .llamaindex_adapter import LlamaIndexAdapter
+
     _llamaindex_available = True
 except ImportError:
     LlamaIndexAdapter = None
@@ -19,11 +20,11 @@ except ImportError:
 # Try to import Prefect adapter (may fail if prefect not installed)
 try:
     from .prefect_adapter import PrefectAdapter
+
     _prefect_available = True
 except ImportError:
     PrefectAdapter = None
     _prefect_available = False
-
 
 __all__ = [
     "AgnoAdapter",

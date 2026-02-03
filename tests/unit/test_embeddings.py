@@ -1,7 +1,8 @@
 """Test embeddings functionality."""
 
+
 import pytest
-import asyncio
+
 from mahavishnu.core.embeddings import EmbeddingProvider
 from mahavishnu.core.embeddings_oneiric import (
     EmbeddingConfig,
@@ -51,7 +52,7 @@ class TestOllamaProvider:
     @pytest.mark.asyncio
     @pytest.mark.skipif(
         not __import__("socket").socket().connect_ex(("localhost", 11434)) == 0,
-        reason="Ollama not running"
+        reason="Ollama not running",
     )
     async def test_ollama_available(self):
         """Test that Ollama is available if service is running."""
@@ -63,11 +64,12 @@ class TestOllamaProvider:
     @pytest.mark.asyncio
     @pytest.mark.skipif(
         not __import__("socket").socket().connect_ex(("localhost", 11434)) == 0,
-        reason="Ollama not running"
+        reason="Ollama not running",
     )
     async def test_ollama_generate_embeddings(self):
         """Test generating embeddings with Ollama."""
         import httpx
+
         from mahavishnu.core.embeddings import OllamaProvider
 
         # Check if model is available
@@ -78,7 +80,9 @@ class TestOllamaProvider:
                 models = response.json().get("models", [])
                 model_names = [m["name"] for m in models]
                 if "nomic-embed-text" not in model_names:
-                    pytest.skip("Ollama model 'nomic-embed-text' not pulled. Run: ollama pull nomic-embed-text")
+                    pytest.skip(
+                        "Ollama model 'nomic-embed-text' not pulled. Run: ollama pull nomic-embed-text"
+                    )
         except Exception:
             pytest.skip("Could not verify Ollama model availability")
 

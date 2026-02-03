@@ -166,7 +166,9 @@ class TestWorkerCommands:
                     mock_term_mgr.create = MagicMock(return_value=mock_term_mgr)
                     mock_term_mgr_class.create = MagicMock(return_value=mock_term_mgr)
 
-                    result = runner.invoke(app, ["workers", "spawn", "--type", "terminal-qwen", "--count", "2"])
+                    result = runner.invoke(
+                        app, ["workers", "spawn", "--type", "terminal-qwen", "--count", "2"]
+                    )
 
                     # Command should execute (may fail during execution but should parse)
                     assert result.exit_code in [0, 1]  # May succeed or fail during execution
@@ -201,7 +203,9 @@ class TestPoolCommands:
             mock_app.config.pools.enabled = True
             mock_app_class.return_value = mock_app
 
-            result = runner.invoke(app, ["pool", "spawn", "--type", "mahavishnu", "--name", "test-pool"])
+            result = runner.invoke(
+                app, ["pool", "spawn", "--type", "mahavishnu", "--name", "test-pool"]
+            )
 
             # Command should parse (execution may fail)
             assert "pool" in result.stdout or result.exit_code != 0

@@ -53,13 +53,13 @@ open http://localhost:3000   # Grafana
 - Quick diagnostic script
 - 8 common issues with solutions:
   1. No traces in Jaeger
-  2. Connection refused
-  3. Metrics not in Prometheus
-  4. Logs not in Elasticsearch
-  5. File log receiver issues
-  6. High memory usage
-  7. Mixed telemetry sources
-  8. Batch delays
+  1. Connection refused
+  1. Metrics not in Prometheus
+  1. Logs not in Elasticsearch
+  1. File log receiver issues
+  1. High memory usage
+  1. Mixed telemetry sources
+  1. Batch delays
 - Debugging tools (Zpages, metrics, pprof)
 - Performance tuning
 - Health check scripts
@@ -122,6 +122,7 @@ Complete Python OTLP client with:
 - Command-line interface
 
 **Usage:**
+
 ```bash
 # Primary endpoint
 python python-otlp-client.py --endpoint http://localhost:4317 --service my-app
@@ -214,9 +215,9 @@ cd /Users/les/Projects/mahavishnu/config/clients
 ### Troubleshooting
 
 1. Check collector health: `curl http://localhost:13133/healthy`
-2. View collector logs: `docker logs otel-collector`
-3. Run diagnostics: `./diagnose.sh`
-4. See [OTLP Troubleshooting Guide](OTLP_TROUBLESHOOTING.md)
+1. View collector logs: `docker logs otel-collector`
+1. Run diagnostics: `./diagnose.sh`
+1. See [OTLP Troubleshooting Guide](OTLP_TROUBLESHOOTING.md)
 
 ## Architecture Overview
 
@@ -318,7 +319,7 @@ cd config/clients && make help
 - [Jaeger Documentation](https://www.jaegertracing.io/docs/)
 - [Prometheus Documentation](https://prometheus.io/docs/)
 
----
+______________________________________________________________________
 
 **Last Updated:** 2025-01-31
 **Version:** 1.0.0

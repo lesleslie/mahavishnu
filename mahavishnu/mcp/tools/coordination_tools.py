@@ -5,7 +5,7 @@ Exposes coordination functionality via FastMCP for AI agent access.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastmcp import FastMCP
 
@@ -13,7 +13,6 @@ from mahavishnu.core.coordination.manager import CoordinationManager
 from mahavishnu.core.coordination.models import (
     CrossRepoIssue,
     CrossRepoTodo,
-    Dependency,
     IssueStatus,
     Priority,
     TodoStatus,
@@ -29,11 +28,11 @@ def _get_manager() -> CoordinationManager:
 
 @mcp.tool()
 async def coord_list_issues(
-    status: Optional[str] = None,
-    priority: Optional[str] = None,
-    repo: Optional[str] = None,
-    assignee: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    status: str | None = None,
+    priority: str | None = None,
+    repo: str | None = None,
+    assignee: str | None = None,
+) -> list[dict[str, Any]]:
     """
     List cross-repository issues with optional filtering.
 
@@ -54,14 +53,16 @@ async def coord_list_issues(
         try:
             status_enum = IssueStatus(status)
         except ValueError:
-            raise ValueError(f"Invalid status: {status}. Valid values: {[s.value for s in IssueStatus]}")
+            raise ValueError(
+                f"Invalid status: {status}. Valid values: {[s.value for s in IssueStatus]}"
+            )
 
     issues = mgr.list_issues(status=status_enum, priority=priority, repo=repo, assignee=assignee)
     return [issue.model_dump(mode="json") for issue in issues]
 
 
 @mcp.tool()
-async def coord_get_issue(issue_id: str) -> Dict[str, Any]:
+async def coord_get_issue(issue_id: str) -> dict[str, Any]:
     """
     Get detailed information about a specific issue.
 
@@ -84,13 +85,13 @@ async def coord_get_issue(issue_id: str) -> Dict[str, Any]:
 async def coord_create_issue(
     title: str,
     description: str,
-    repos: List[str],
+    repos: list[str],
     priority: str = "medium",
     severity: str = "normal",
-    assignee: Optional[str] = None,
-    target: Optional[str] = None,
-    labels: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    assignee: str | None = None,
+    target: str | None = None,
+    labels: list[str] | None = None,
+) -> dict[str, Any]:
     """
     Create a new cross-repository issue.
 
@@ -118,7 +119,9 @@ async def coord_create_issue(
     try:
         priority_enum = Priority(priority)
     except ValueError:
-        raise ValueError(f"Invalid priority: {priority}. Valid values: {[p.value for p in Priority]}")
+        raise ValueError(
+            f"Invalid priority: {priority}. Valid values: {[p.value for p in Priority]}"
+        )
 
     # Create issue
     now = datetime.now().isoformat()
@@ -149,9 +152,9 @@ async def coord_create_issue(
 @mcp.tool()
 async def coord_update_issue(
     issue_id: str,
-    status: Optional[str] = None,
-    priority: Optional[str] = None,
-) -> Dict[str, Any]:
+    status: str | None = None,
+    priority: str | None = None,
+) -> dict[str, Any]:
     """
     Update an existing issue.
 
@@ -191,7 +194,7 @@ async def coord_update_issue(
 
 
 @mcp.tool()
-async def coord_close_issue(issue_id: str) -> Dict[str, Any]:
+async def coord_close_issue(issue_id: str) -> dict[str, Any]:
     """
     Close an issue.
 
@@ -211,10 +214,10 @@ async def coord_close_issue(issue_id: str) -> Dict[str, Any]:
 
 @mcp.tool()
 async def coord_list_todos(
-    status: Optional[str] = None,
-    repo: Optional[str] = None,
-    assignee: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    status: str | None = None,
+    repo: str | None = None,
+    assignee: str | None = None,
+) -> list[dict[str, Any]]:
     """
     List todo items with optional filtering.
 
@@ -234,14 +237,16 @@ async def coord_list_todos(
         try:
             status_enum = TodoStatus(status)
         except ValueError:
-            raise ValueError(f"Invalid status: {status}. Valid values: {[s.value for s in TodoStatus]}")
+            raise ValueError(
+                f"Invalid status: {status}. Valid values: {[s.value for s in TodoStatus]}"
+            )
 
     todos = mgr.list_todos(status=status_enum, repo=repo, assignee=assignee)
     return [todo.model_dump(mode="json") for todo in todos]
 
 
 @mcp.tool()
-async def coord_get_todo(todo_id: str) -> Dict[str, Any]:
+async def coord_get_todo(todo_id: str) -> dict[str, Any]:
     """
     Get detailed information about a specific todo.
 
@@ -267,11 +272,11 @@ async def coord_create_todo(
     repo: str,
     estimate_hours: float,
     priority: str = "medium",
-    assignee: Optional[str] = None,
-    blocked_by: Optional[List[str]] = None,
-    labels: Optional[List[str]] = None,
-    acceptance_criteria: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    assignee: str | None = None,
+    blocked_by: list[str] | None = None,
+    labels: list[str] | None = None,
+    acceptance_criteria: list[str] | None = None,
+) -> dict[str, Any]:
     """
     Create a new todo item.
 
@@ -332,7 +337,7 @@ async def coord_create_todo(
 
 
 @mcp.tool()
-async def coord_complete_todo(todo_id: str) -> Dict[str, Any]:
+async def coord_complete_todo(todo_id: str) -> dict[str, Any]:
     """
     Mark a todo as completed.
 
@@ -358,7 +363,7 @@ async def coord_complete_todo(todo_id: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
-async def coord_get_blocking_issues(repo: str) -> List[Dict[str, Any]]:
+async def coord_get_blocking_issues(repo: str) -> list[dict[str, Any]]:
     """
     Get all issues blocking a specific repository.
 
@@ -375,8 +380,8 @@ async def coord_get_blocking_issues(repo: str) -> List[Dict[str, Any]]:
 
 @mcp.tool()
 async def coord_check_dependencies(
-    consumer: Optional[str] = None,
-) -> Dict[str, Any]:
+    consumer: str | None = None,
+) -> dict[str, Any]:
     """
     Validate inter-repository dependencies.
 
@@ -393,7 +398,7 @@ async def coord_check_dependencies(
 
 
 @mcp.tool()
-async def coord_get_repo_status(repo: str) -> Dict[str, Any]:
+async def coord_get_repo_status(repo: str) -> dict[str, Any]:
     """
     Get comprehensive coordination status for a repository.
 
@@ -411,8 +416,12 @@ async def coord_get_repo_status(repo: str) -> Dict[str, Any]:
     return {
         "issues": [issue.model_dump(mode="json") for issue in status["issues"]],
         "todos": [todo.model_dump(mode="json") for todo in status["todos"]],
-        "dependencies_outgoing": [dep.model_dump(mode="json") for dep in status["dependencies_outgoing"]],
-        "dependencies_incoming": [dep.model_dump(mode="json") for dep in status["dependencies_incoming"]],
+        "dependencies_outgoing": [
+            dep.model_dump(mode="json") for dep in status["dependencies_outgoing"]
+        ],
+        "dependencies_incoming": [
+            dep.model_dump(mode="json") for dep in status["dependencies_incoming"]
+        ],
         "blocking": [todo.model_dump(mode="json") for todo in status["blocking"]],
         "blocked_by": [dep.model_dump(mode="json") for dep in status["blocked_by"]],
     }
@@ -420,9 +429,9 @@ async def coord_get_repo_status(repo: str) -> Dict[str, Any]:
 
 @mcp.tool()
 async def coord_list_plans(
-    status: Optional[str] = None,
-    repo: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    status: str | None = None,
+    repo: str | None = None,
+) -> list[dict[str, Any]]:
     """
     List cross-repository plans with optional filtering.
 
@@ -440,10 +449,10 @@ async def coord_list_plans(
 
 @mcp.tool()
 async def coord_list_dependencies(
-    consumer: Optional[str] = None,
-    provider: Optional[str] = None,
-    dependency_type: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    consumer: str | None = None,
+    provider: str | None = None,
+    dependency_type: str | None = None,
+) -> list[dict[str, Any]]:
     """
     List inter-repository dependencies with optional filtering.
 
@@ -456,5 +465,7 @@ async def coord_list_dependencies(
         List of dependencies matching the filters
     """
     mgr = _get_manager()
-    deps = mgr.list_dependencies(consumer=consumer, provider=provider, dependency_type=dependency_type)
+    deps = mgr.list_dependencies(
+        consumer=consumer, provider=provider, dependency_type=dependency_type
+    )
     return [dep.model_dump(mode="json") for dep in deps]

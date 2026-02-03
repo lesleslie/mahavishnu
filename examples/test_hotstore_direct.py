@@ -2,18 +2,18 @@
 """Simple test for OTel trace storage (no embeddings required)."""
 
 import asyncio
-import json
-import sys
 from datetime import UTC, datetime
+import json
 from pathlib import Path
+import sys
 
 # Add projects to Python path
 sys.path.insert(0, str(Path("/Users/les/Projects/mahavishnu")))
 sys.path.insert(0, str(Path("/Users/les/Projects/akosha")))
 
 # Import only HotStore (no OtelIngester to avoid sentence-transformers)
-from akosha.storage import HotStore
 from akosha.models import HotRecord
+from akosha.storage import HotStore
 
 
 async def main():
@@ -42,19 +42,32 @@ async def main():
                 "trace_id": "claude-001",
                 "system_id": "claude",
                 "spans": [
-                    {"name": "HTTP POST /api/rag/query", "start_time": "2026-02-01T15:30:00Z",
-                     "attributes": {"service.name": "claude", "http.status_code": 200}},
-                    {"name": "vector_store.query", "start_time": "2026-02-01T15:30:01Z",
-                     "attributes": {"service.name": "claude", "db.system": "pgvector"}},
-                ]
+                    {
+                        "name": "HTTP POST /api/rag/query",
+                        "start_time": "2026-02-01T15:30:00Z",
+                        "attributes": {"service.name": "claude", "http.status_code": 200},
+                    },
+                    {
+                        "name": "vector_store.query",
+                        "start_time": "2026-02-01T15:30:01Z",
+                        "attributes": {"service.name": "claude", "db.system": "pgvector"},
+                    },
+                ],
             },
             {
                 "trace_id": "claude-002",
                 "system_id": "claude",
                 "spans": [
-                    {"name": "HTTP POST /api/rag/query", "start_time": "2026-02-01T15:31:00Z",
-                     "attributes": {"service.name": "claude", "http.status_code": 500, "error.message": "timeout"}},
-                ]
+                    {
+                        "name": "HTTP POST /api/rag/query",
+                        "start_time": "2026-02-01T15:31:00Z",
+                        "attributes": {
+                            "service.name": "claude",
+                            "http.status_code": 500,
+                            "error.message": "timeout",
+                        },
+                    },
+                ],
             },
         ]
     else:
@@ -70,17 +83,23 @@ async def main():
                 "trace_id": "qwen-001",
                 "system_id": "qwen",
                 "spans": [
-                    {"name": "HTTP POST /api/generate", "start_time": "2026-02-01T15:30:00Z",
-                     "attributes": {"service.name": "qwen", "llm.model": "qwen-72b-chat"}},
-                ]
+                    {
+                        "name": "HTTP POST /api/generate",
+                        "start_time": "2026-02-01T15:30:00Z",
+                        "attributes": {"service.name": "qwen", "llm.model": "qwen-72b-chat"},
+                    },
+                ],
             },
             {
                 "trace_id": "qwen-002",
                 "system_id": "qwen",
                 "spans": [
-                    {"name": "HTTP POST /api/embeddings", "start_time": "2026-02-01T15:32:00Z",
-                     "attributes": {"service.name": "qwen", "embedding.count": 5}},
-                ]
+                    {
+                        "name": "HTTP POST /api/embeddings",
+                        "start_time": "2026-02-01T15:32:00Z",
+                        "attributes": {"service.name": "qwen", "embedding.count": 5},
+                    },
+                ],
             },
         ]
     else:

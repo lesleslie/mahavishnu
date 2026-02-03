@@ -30,7 +30,9 @@ class WorkflowState:
         self.opensearch = opensearch_client
         self.local_states: dict = {}  # Fallback in-memory storage
 
-    async def create(self, workflow_id: str, task: dict[str, Any], repos: list[str]) -> dict[str, Any]:
+    async def create(
+        self, workflow_id: str, task: dict[str, Any], repos: list[str]
+    ) -> dict[str, Any]:
         """Create new workflow state"""
         state = {
             "id": workflow_id,

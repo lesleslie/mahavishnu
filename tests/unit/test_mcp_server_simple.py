@@ -1,7 +1,8 @@
 """Focused tests for Mahavishnu MCP server components."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 class TestMcpretentiousMCPClient:
@@ -39,10 +40,7 @@ class TestMcpretentiousMCPClient:
 
         await client._ensure_started()
 
-        result = await client.call_tool(
-            "mcpretentious-open",
-            {"columns": 100, "rows": 30}
-        )
+        result = await client.call_tool("mcpretentious-open", {"columns": 100, "rows": 30})
 
         assert result["terminal_id"] == "term_123"
         client._client.open_terminal.assert_called_once_with(100, 30)
@@ -58,8 +56,7 @@ class TestMcpretentiousMCPClient:
         await client._ensure_started()
 
         result = await client.call_tool(
-            "mcpretentious-type",
-            {"terminal_id": "term_123", "input": ["hello", "world"]}
+            "mcpretentious-type", {"terminal_id": "term_123", "input": ["hello", "world"]}
         )
 
         assert result == {}
@@ -76,8 +73,7 @@ class TestMcpretentiousMCPClient:
         await client._ensure_started()
 
         result = await client.call_tool(
-            "mcpretentious-read",
-            {"terminal_id": "term_123", "limit_lines": 10}
+            "mcpretentious-read", {"terminal_id": "term_123", "limit_lines": 10}
         )
 
         assert result["output"] == "output text"
@@ -93,10 +89,7 @@ class TestMcpretentiousMCPClient:
 
         await client._ensure_started()
 
-        result = await client.call_tool(
-            "mcpretentious-close",
-            {"terminal_id": "term_123"}
-        )
+        result = await client.call_tool("mcpretentious-close", {"terminal_id": "term_123"})
 
         assert result == {}
         client._client.close_terminal.assert_called_once_with("term_123")
@@ -146,8 +139,8 @@ class TestFastMCPServer:
 
     def test_fastmcp_server_initialization(self):
         """Test FastMCPServer initializes with app and config."""
-        from mahavishnu.mcp.server_core import FastMCPServer
         from mahavishnu.core.config import MahavishnuSettings
+        from mahavishnu.mcp.server_core import FastMCPServer
 
         config = MahavishnuSettings(server_name="Test Server")
         server = FastMCPServer(app=None, config=config)
@@ -170,8 +163,8 @@ class TestMCPServerIntegration:
     @pytest.mark.asyncio
     async def test_run_server_with_config(self):
         """Test running server with custom configuration."""
-        from mahavishnu.mcp.server_core import run_server
         from mahavishnu.core.config import MahavishnuSettings
+        from mahavishnu.mcp.server_core import run_server
 
         config = MahavishnuSettings(
             server_name="Test Server",
@@ -179,7 +172,7 @@ class TestMCPServerIntegration:
         )
 
         # Mock the server creation and run
-        with patch('mahavishnu.mcp.server_core.FastMCPServer') as MockServer:
+        with patch("mahavishnu.mcp.server_core.FastMCPServer") as MockServer:
             mock_server = MagicMock()
             mock_server.run = MagicMock()
             MockServer.return_value = mock_server
@@ -194,7 +187,7 @@ class TestMCPServerIntegration:
         """Test running server with default configuration."""
         from mahavishnu.mcp.server_core import run_server
 
-        with patch('mahavishnu.mcp.server_core.FastMCPServer') as MockServer:
+        with patch("mahavishnu.mcp.server_core.FastMCPServer") as MockServer:
             mock_server = MagicMock()
             mock_server.run = MagicMock()
             MockServer.return_value = mock_server
@@ -211,22 +204,22 @@ class TestMCPComponentLoading:
         """Test that MCP module can be imported."""
         import mahavishnu.mcp.server_core
 
-        assert hasattr(mahavishnu.mcp.server_core, 'McpretentiousMCPClient')
-        assert hasattr(mahavishnu.mcp.server_core, 'FastMCPServer')
-        assert hasattr(mahavishnu.mcp.server_core, 'run_server')
+        assert hasattr(mahavishnu.mcp.server_core, "McpretentiousMCPClient")
+        assert hasattr(mahavishnu.mcp.server_core, "FastMCPServer")
+        assert hasattr(mahavishnu.mcp.server_core, "run_server")
 
     def test_mcp_tools_modules_import(self):
         """Test that all MCP tools modules can be imported."""
-        import mahavishnu.mcp.tools.pool_tools
         import mahavishnu.mcp.tools.coordination_tools
         import mahavishnu.mcp.tools.otel_tools
-        import mahavishnu.mcp.tools.worker_tools
+        import mahavishnu.mcp.tools.pool_tools
         import mahavishnu.mcp.tools.terminal_tools
+        import mahavishnu.mcp.tools.worker_tools
 
         # Verify registration functions exist
-        assert hasattr(mahavishnu.mcp.tools.pool_tools, 'register_pool_tools')
-        assert hasattr(mahavishnu.mcp.tools.coordination_tools, 'register_coordination_tools')
-        assert hasattr(mahavishnu.mcp.tools.otel_tools, 'register_otel_tools')
+        assert hasattr(mahavishnu.mcp.tools.pool_tools, "register_pool_tools")
+        assert hasattr(mahavishnu.mcp.tools.coordination_tools, "register_coordination_tools")
+        assert hasattr(mahavishnu.mcp.tools.otel_tools, "register_otel_tools")
 
 
 class TestMCPEndpointRegistration:
@@ -234,26 +227,28 @@ class TestMCPEndpointRegistration:
 
     def test_pool_tools_signature(self):
         """Test pool tools registration function signature."""
-        from mahavishnu.mcp.tools.pool_tools import register_pool_tools
         import inspect
+
+        from mahavishnu.mcp.tools.pool_tools import register_pool_tools
 
         sig = inspect.signature(register_pool_tools)
 
         # Should accept mcp and pool_manager
         params = list(sig.parameters.keys())
-        assert 'mcp' in params
-        assert 'pool_manager' in params
+        assert "mcp" in params
+        assert "pool_manager" in params
 
     def test_coordination_tools_signature(self):
         """Test coordination tools registration function signature."""
-        from mahavishnu.mcp.tools.coordination_tools import register_coordination_tools
         import inspect
+
+        from mahavishnu.mcp.tools.coordination_tools import register_coordination_tools
 
         sig = inspect.signature(register_coordination_tools)
 
         params = list(sig.parameters.keys())
-        assert 'mcp' in params
-        assert 'workflow_executor' in params
+        assert "mcp" in params
+        assert "workflow_executor" in params
 
 
 class TestMCPErrorHandling:
@@ -274,6 +269,7 @@ class TestMCPErrorHandling:
     async def test_tool_call_error_logging(self, caplog):
         """Test that tool call errors are logged."""
         import logging
+
         from mahavishnu.mcp.server_core import McpretentiousMCPClient
 
         client = McpretentiousMCPClient()
@@ -282,9 +278,8 @@ class TestMCPErrorHandling:
 
         await client._ensure_started()
 
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(Exception):
-                await client.call_tool("mcpretentious-list", {})
+        with caplog.at_level(logging.ERROR), pytest.raises(Exception):
+            await client.call_tool("mcpretentious-list", {})
 
         # Verify error was logged
         assert "Error calling mcpretentious tool" in caplog.text or "List failed" in caplog.text
@@ -300,8 +295,8 @@ class TestMCPConfiguration:
         config = MahavishnuSettings()
 
         # Should have defaults for MCP settings
-        assert hasattr(config, 'mcp_enabled')
-        assert hasattr(config, 'server_name')
+        assert hasattr(config, "mcp_enabled")
+        assert hasattr(config, "server_name")
 
     def test_server_config_customization(self):
         """Test that server configuration can be customized."""

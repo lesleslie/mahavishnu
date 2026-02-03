@@ -7,7 +7,7 @@ that enable coordination work across multiple repositories.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -78,12 +78,14 @@ class Milestone(BaseModel):
     description: str = Field(..., description="Detailed description of the milestone")
     due: str = Field(..., description="Due date (ISO 8601 format)")
     status: TodoStatus = Field(default=TodoStatus.PENDING, description="Milestone status")
-    dependencies: List[str] = Field(default_factory=list, description="List of milestone IDs this depends on")
-    completion_criteria: List[str] = Field(
+    dependencies: list[str] = Field(
+        default_factory=list, description="List of milestone IDs this depends on"
+    )
+    completion_criteria: list[str] = Field(
         default_factory=list,
         description="Criteria that must be met for completion",
     )
-    deliverables: List[str] = Field(
+    deliverables: list[str] = Field(
         default_factory=list,
         description="List of deliverables for this milestone",
     )
@@ -99,20 +101,26 @@ class CrossRepoIssue(BaseModel):
     description: str = Field(..., description="Detailed issue description")
     status: IssueStatus = Field(default=IssueStatus.PENDING, description="Current status")
     priority: Priority = Field(default=Priority.MEDIUM, description="Issue priority")
-    severity: str = Field(default="normal", description="Severity level (bug, feature, migration, etc.)")
-    repos: List[str] = Field(..., description="List of repository nicknames affected by this issue")
+    severity: str = Field(
+        default="normal", description="Severity level (bug, feature, migration, etc.)"
+    )
+    repos: list[str] = Field(..., description="List of repository nicknames affected by this issue")
     created: str = Field(..., description="Creation date (ISO 8601 format)")
     updated: str = Field(..., description="Last update date (ISO 8601 format)")
-    target: Optional[str] = Field(default=None, description="Target completion date (ISO 8601 format)")
-    dependencies: List[str] = Field(default_factory=list, description="List of issue IDs this depends on")
-    blocking: List[str] = Field(default_factory=list, description="List of issue IDs blocked by this")
-    assignee: Optional[str] = Field(default=None, description="Assignee username")
-    labels: List[str] = Field(default_factory=list, description="Labels for categorization")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    target: str | None = Field(default=None, description="Target completion date (ISO 8601 format)")
+    dependencies: list[str] = Field(
+        default_factory=list, description="List of issue IDs this depends on"
+    )
+    blocking: list[str] = Field(
+        default_factory=list, description="List of issue IDs blocked by this"
+    )
+    assignee: str | None = Field(default=None, description="Assignee username")
+    labels: list[str] = Field(default_factory=list, description="Labels for categorization")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
     @field_validator("repos")
     @classmethod
-    def validate_repos(cls, v: List[str]) -> List[str]:
+    def validate_repos(cls, v: list[str]) -> list[str]:
         """Validate that at least one repository is specified."""
         if not v:
             raise ValueError("At least one repository must be specified")
@@ -120,7 +128,7 @@ class CrossRepoIssue(BaseModel):
 
     @field_validator("target")
     @classmethod
-    def validate_target_date(cls, v: Optional[str]) -> Optional[str]:
+    def validate_target_date(cls, v: str | None) -> str | None:
         """Validate target date format if provided."""
         if v:
             try:
@@ -137,15 +145,15 @@ class CrossRepoPlan(BaseModel):
     title: str = Field(..., description="Plan title")
     description: str = Field(..., description="Detailed plan description")
     status: PlanStatus = Field(default=PlanStatus.DRAFT, description="Current status")
-    repos: List[str] = Field(..., description="List of repository nicknames involved in this plan")
+    repos: list[str] = Field(..., description="List of repository nicknames involved in this plan")
     created: str = Field(..., description="Creation date (ISO 8601 format)")
     updated: str = Field(..., description="Last update date (ISO 8601 format)")
     target: str = Field(..., description="Target completion date (ISO 8601 format)")
-    milestones: List[Milestone] = Field(default_factory=list, description="List of milestones")
+    milestones: list[Milestone] = Field(default_factory=list, description="List of milestones")
 
     @field_validator("repos")
     @classmethod
-    def validate_repos(cls, v: List[str]) -> List[str]:
+    def validate_repos(cls, v: list[str]) -> list[str]:
         """Validate that at least one repository is specified."""
         if not v:
             raise ValueError("At least one repository must be specified")
@@ -164,12 +172,16 @@ class CrossRepoTodo(BaseModel):
     created: str = Field(..., description="Creation date (ISO 8601 format)")
     updated: str = Field(..., description="Last update date (ISO 8601 format)")
     estimated_hours: float = Field(..., description="Estimated time to complete (in hours)")
-    actual_hours: Optional[float] = Field(default=None, description="Actual time spent (in hours)")
-    blocked_by: List[str] = Field(default_factory=list, description="List of issue/todo IDs blocking this task")
-    blocking: List[str] = Field(default_factory=list, description="List of todo IDs blocked by this task")
-    assignee: Optional[str] = Field(default=None, description="Assignee username")
-    labels: List[str] = Field(default_factory=list, description="Labels for categorization")
-    acceptance_criteria: List[str] = Field(
+    actual_hours: float | None = Field(default=None, description="Actual time spent (in hours)")
+    blocked_by: list[str] = Field(
+        default_factory=list, description="List of issue/todo IDs blocking this task"
+    )
+    blocking: list[str] = Field(
+        default_factory=list, description="List of todo IDs blocked by this task"
+    )
+    assignee: str | None = Field(default=None, description="Assignee username")
+    labels: list[str] = Field(default_factory=list, description="Labels for categorization")
+    acceptance_criteria: list[str] = Field(
         default_factory=list,
         description="Criteria that must be met for completion",
     )
@@ -186,10 +198,12 @@ class CrossRepoTodo(BaseModel):
 class DependencyValidation(BaseModel):
     """Validation method for a dependency."""
 
-    command: Optional[str] = Field(default=None, description="Shell command to validate dependency")
-    expected_pattern: Optional[str] = Field(default=None, description="Expected output pattern (regex)")
-    health_check: Optional[str] = Field(default=None, description="HTTP health check endpoint")
-    expected_status: Optional[int] = Field(default=None, description="Expected HTTP status code")
+    command: str | None = Field(default=None, description="Shell command to validate dependency")
+    expected_pattern: str | None = Field(
+        default=None, description="Expected output pattern (regex)"
+    )
+    health_check: str | None = Field(default=None, description="HTTP health check endpoint")
+    expected_status: int | None = Field(default=None, description="Expected HTTP status code")
 
 
 class Dependency(BaseModel):
@@ -200,11 +214,13 @@ class Dependency(BaseModel):
     provider: str = Field(..., description="Provider repository nickname")
     type: DependencyType = Field(..., description="Type of dependency")
     version_constraint: str = Field(..., description="Version constraint (e.g., '>=0.2.0')")
-    status: DependencyStatus = Field(default=DependencyStatus.UNKNOWN, description="Dependency status")
+    status: DependencyStatus = Field(
+        default=DependencyStatus.UNKNOWN, description="Dependency status"
+    )
     created: str = Field(..., description="Creation date (ISO 8601 format)")
     updated: str = Field(..., description="Last update date (ISO 8601 format)")
     notes: str = Field(..., description="Additional notes about this dependency")
-    validation: Optional[DependencyValidation] = Field(default=None, description="Validation method")
+    validation: DependencyValidation | None = Field(default=None, description="Validation method")
 
     @field_validator("consumer", "provider")
     @classmethod

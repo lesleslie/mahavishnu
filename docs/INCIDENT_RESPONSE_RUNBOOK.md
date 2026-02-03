@@ -4,18 +4,18 @@
 **Last Updated**: 2026-02-02
 **Scope**: Mahavishnu MCP Ecosystem
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Incident Classification](#incident-classification)
-2. [Escalation Paths](#escalation-paths)
-3. [Common Incident Scenarios](#common-incident-scenarios)
-4. [Diagnostic Commands](#diagnostic-commands)
-5. [Recovery Procedures](#recovery-procedures)
-6. [Post-Incident Process](#post-incident-process)
+1. [Escalation Paths](#escalation-paths)
+1. [Common Incident Scenarios](#common-incident-scenarios)
+1. [Diagnostic Commands](#diagnostic-commands)
+1. [Recovery Procedures](#recovery-procedures)
+1. [Post-Incident Process](#post-incident-process)
 
----
+______________________________________________________________________
 
 ## Incident Classification
 
@@ -31,6 +31,7 @@
 ### Classification Criteria
 
 **P1 - Critical** 🚨
+
 - Service completely unavailable
 - Data corruption or loss
 - Security breach or active attack
@@ -38,6 +39,7 @@
 - > 50% of users affected
 
 **P2 - High** ⚠️
+
 - Major feature non-functional
 - Performance degradation > 50%
 - Single repository failure
@@ -45,6 +47,7 @@
 - > 20% of users affected
 
 **P3 - Medium** ⚡
+
 - Minor feature non-functional
 - Performance degradation < 50%
 - Worker pool partially degraded
@@ -52,28 +55,32 @@
 - > 5% of users affected
 
 **P4 - Low** 📝
+
 - UI/UX issues
 - Typos or documentation errors
 - Non-critical bugs
 - < 5% of users affected
 
----
+______________________________________________________________________
 
 ## Escalation Paths
 
 ### On-Call Structure
 
 **Primary On-Call Engineer**
+
 - **Response Time**: 15 minutes (P1), 1 hour (P2)
 - **Authority**: Can execute recovery procedures, restart services
 - **Escalation**: Escalates to Tech Lead if unresolved after 1 hour
 
 **Tech Lead**
+
 - **Response Time**: 30 minutes (P1), 2 hours (P2)
 - **Authority**: Can approve drastic measures, coordinate team response
 - **Escalation**: Escalates to Engineering Manager if business impact > $10k
 
 **Engineering Manager**
+
 - **Response Time**: 1 hour (P1 only)
 - **Authority**: Can authorize external communication, customer refunds
 - **Escalation**: Escalates to CTO for security incidents
@@ -81,19 +88,22 @@
 ### Contact Information
 
 **On-Call Rotation**
+
 - Schedule: https://on-call.company.com/schedule/mahavishnu
 - Phone: +1-XXX-XXX-XXXX (on-call phone)
 - Slack: #oncall-mahavishnu
 
 **Escalation Chain**
+
 1. **On-Call Engineer** → Slack: @oncall-mahavishnu
-2. **Tech Lead** → Slack: @tech-lead, Phone: +1-XXX-XXXX
-3. **Engineering Manager** → Slack: @eng-manager, Phone: +1-XXX-XXXX
-4. **CTO** → Slack: @cto (P1 or security only)
+1. **Tech Lead** → Slack: @tech-lead, Phone: +1-XXX-XXXX
+1. **Engineering Manager** → Slack: @eng-manager, Phone: +1-XXX-XXXX
+1. **CTO** → Slack: @cto (P1 or security only)
 
 ### External Communication
 
 **Customer Communication**
+
 - **P1**: Within 30 minutes via status page + email
 - **P2**: Within 2 hours via status page
 - **P3/P4**: Next release notes or status page update
@@ -101,18 +111,20 @@
 **Status Page**: https://status.mahavishnu.com
 **Incident Blog**: https://blog.mahavishnu.com/incidents
 
----
+______________________________________________________________________
 
 ## Common Incident Scenarios
 
 ### Scenario 1: High CPU/Memory Usage
 
 **Symptoms**
+
 - Alerts: CPU > 80%, Memory > 80%
 - Slow response times
 - Worker pool exhaustion
 
 **Diagnosis**
+
 ```bash
 # Check system resources
 top -o cpu
@@ -131,12 +143,14 @@ tail -f /var/log/mahavishnu/mcp.log | grep ERROR
 ```
 
 **Root Causes**
+
 1. Memory leak in worker
-2. Infinite loop in adapter
-3. Large request processing
-4. Worker pool not scaling
+1. Infinite loop in adapter
+1. Large request processing
+1. Worker pool not scaling
 
 **Recovery**
+
 ```bash
 # 1. Restart Mahavishnu service
 sudo systemctl restart mahavishnu-mcp
@@ -152,21 +166,24 @@ watch -n 5 'curl -s http://localhost:8680/health | jq .'
 ```
 
 **Prevention**
+
 - Set up memory profiling
 - Add circuit breakers
 - Configure auto-scaling
 - Regular load testing
 
----
+______________________________________________________________________
 
 ### Scenario 2: Database Connection Pool Exhausted
 
 **Symptoms**
+
 - Error: "Pool exhausted" in logs
 - API errors: 500 Internal Server Error
 - Slow database queries
 
 **Diagnosis**
+
 ```bash
 # Check Session-Buddy database
 cd /Users/les/Projects/session-buddy
@@ -186,12 +203,14 @@ grep "slow query" /var/log/session-buddy/app.log | tail -20
 ```
 
 **Root Causes**
+
 1. Too many concurrent requests
-2. Queries not releasing connections
-3. Connection leaks
-4. Database lock contention
+1. Queries not releasing connections
+1. Connection leaks
+1. Database lock contention
 
 **Recovery**
+
 ```bash
 # 1. Restart Session-Buddy (clears connections)
 cd /Users/les/Projects/session-buddy
@@ -211,21 +230,24 @@ sudo systemctl restart mahavishnu-mcp
 ```
 
 **Prevention**
+
 - Configure connection pool limits
 - Add connection timeout
 - Implement connection health checks
 - Archive old sessions regularly
 
----
+______________________________________________________________________
 
 ### Scenario 3: MCP Server Not Responding
 
 **Symptoms**
+
 - Error: "Connection refused" to MCP port
 - Health check failing
 - Tools not accessible
 
 **Diagnosis**
+
 ```bash
 # Check if MCP server is running
 ps aux | grep mahavishnu
@@ -248,12 +270,14 @@ journalctl -u mahavishnu-mcp -n 100
 ```
 
 **Root Causes**
+
 1. MCP server crashed
-2. Port already in use
-3. Configuration error
-4. Missing dependencies
+1. Port already in use
+1. Configuration error
+1. Missing dependencies
 
 **Recovery**
+
 ```bash
 # 1. Check error logs
 tail -50 /var/log/mahavishnu/error.log
@@ -275,21 +299,24 @@ mahavishnu mcp health
 ```
 
 **Prevention**
+
 - Add process monitoring (monit, supervisord)
 - Configure automatic restart
 - Add health check alerts
 - Validate configuration on startup
 
----
+______________________________________________________________________
 
 ### Scenario 4: Rate Limiting Too Aggressive
 
 **Symptoms**
+
 - Error: "Rate limit exceeded" for legitimate users
 - API 429 responses increasing
 - User complaints
 
 **Diagnosis**
+
 ```bash
 # Check rate limit stats
 curl http://localhost:8680/mcp -X POST -H "Content-Type: application/json" -d '{
@@ -305,12 +332,14 @@ grep "rate limit exceeded" /var/log/mahavishnu/access.log | tail -20
 ```
 
 **Root Causes**
+
 1. Rate limits too strict
-2. Burst size too small
-3. Shared IP address (NAT, proxy)
-4. Bot attack consuming quota
+1. Burst size too small
+1. Shared IP address (NAT, proxy)
+1. Bot attack consuming quota
 
 **Recovery**
+
 ```bash
 # 1. Temporarily disable rate limiting (emergency only)
 # Edit settings/mahavishnu.yaml:
@@ -333,21 +362,24 @@ sudo systemctl restart mahavishnu-mcp
 ```
 
 **Prevention**
+
 - Monitor rate limit metrics
 - Set up alerts for high 429 rate
 - Use user-based rate limiting
 - Implement rate limit bypass for admin users
 
----
+______________________________________________________________________
 
 ### Scenario 5: Backup Failure
 
 **Symptoms**
+
 - Alert: "Backup failed" from monitoring
 - Last successful backup > 24 hours ago
 - Backup verification failing
 
 **Diagnosis**
+
 ```bash
 # Check backup logs
 tail -100 /var/log/mahavishnu/backup.log
@@ -367,12 +399,14 @@ cat settings/backup.yaml
 ```
 
 **Root Causes**
+
 1. Disk full
-2. Database locked during backup
-3. Backup script permission error
-4. Network issue (remote backup)
+1. Database locked during backup
+1. Backup script permission error
+1. Network issue (remote backup)
 
 **Recovery**
+
 ```bash
 # 1. Clear disk space if needed
 sudo rm -rf /backup/mahavishnu/old_*
@@ -392,22 +426,25 @@ python -m mahavishnu.scripts.backup_manager --list
 ```
 
 **Prevention**
+
 - Monitor disk space alerts
 - Test backup restoration monthly
 - Configure multiple backup destinations
 - Set up backup failure alerts
 
----
+______________________________________________________________________
 
 ### Scenario 6: Security Incident (Suspected Attack)
 
 **Symptoms**
+
 - Unusual traffic patterns
 - Auth failures increasing
 - Suspicious log entries
 - DDoS attack indicators
 
 **Diagnosis**
+
 ```bash
 # Check request patterns
 tail -10000 /var/log/mahavishnu/access.log | awk '{print $1}' | sort | uniq -c | sort -rn | head -20
@@ -430,12 +467,14 @@ python monitoring/security_audit.py
 ```
 
 **Root Causes**
+
 1. Brute force attack
-2. DDoS attack
-3. SQL injection attempt
-4. Unauthorized access attempt
+1. DDoS attack
+1. SQL injection attempt
+1. Unauthorized access attempt
 
 **Recovery**
+
 ```bash
 # 1. Enable strict rate limiting
 # Edit settings/mahavishnu.yaml:
@@ -468,12 +507,13 @@ sudo systemctl restart mahavishnu-mcp
 ```
 
 **Prevention**
+
 - Implement Web Application Firewall (WAF)
 - Configure fail2ban for brute force
 - Regular security audits
 - Monitor for anomalies with ML
 
----
+______________________________________________________________________
 
 ## Diagnostic Commands
 
@@ -560,7 +600,7 @@ mahavishnu pool list
 mahavishnu pool health
 ```
 
----
+______________________________________________________________________
 
 ## Recovery Procedures
 
@@ -659,7 +699,7 @@ curl http://localhost:8680/health
 sudo systemctl restart mahavishnu-mcp
 ```
 
----
+______________________________________________________________________
 
 ## Post-Incident Process
 
@@ -669,11 +709,12 @@ sudo systemctl restart mahavishnu-mcp
 **Attendees**: On-call engineer, tech lead, engineering manager
 
 **Agenda**:
+
 1. Timeline of events
-2. Root cause analysis
-3. What went well
-4. What could be improved
-5. Action items
+1. Root cause analysis
+1. What went well
+1. What could be improved
+1. Action items
 
 ### 2. Post-Mortem Document
 
@@ -720,6 +761,7 @@ sudo systemctl restart mahavishnu-mcp
 **Tools**: GitHub Issues, JIRA, Linear
 
 **Categories**:
+
 - **Fix**: Correct the immediate issue
 - **Prevent**: Prevent recurrence (process, code, monitoring)
 - **Improve**: Enhance detection or response
@@ -730,6 +772,7 @@ sudo systemctl restart mahavishnu-mcp
 ### 4. Process Improvements
 
 **Common Improvements**:
+
 - Add missing alerts/monitoring
 - Update runbook with new scenario
 - Improve error messages
@@ -737,7 +780,7 @@ sudo systemctl restart mahavishnu-mcp
 - Conduct chaos engineering tests
 - Update training materials
 
----
+______________________________________________________________________
 
 ## Appendix
 
@@ -761,11 +804,10 @@ sudo systemctl restart mahavishnu-mcp
 ### Related Documentation
 
 - [Production Deployment Guide](PRODUCTION_DEPLOYMENT_GUIDE.md)
-- [Disaster Recovery Runbook](DISASTER_RECOVERY_RUNBOOK.md)
 - [Maintenance Procedures](MAINTENANCE_PROCEDURES.md)
 - [Monitoring & Alerting](../monitoring/README.md)
 
----
+______________________________________________________________________
 
 **Last Updated**: 2026-02-02
 **Next Review**: 2026-03-02

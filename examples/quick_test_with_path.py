@@ -2,15 +2,16 @@
 """Quick test script for native OTel ingester with path setup."""
 
 import asyncio
-import sys
 from pathlib import Path
+import sys
 
 # Add projects to Python path
 sys.path.insert(0, str(Path("/Users/les/Projects/mahavishnu")))
 sys.path.insert(0, str(Path("/Users/les/Projects/akosha")))
 
-from mahavishnu.ingesters import OtelIngester
 from akosha.storage import HotStore
+
+from mahavishnu.ingesters import OtelIngester
 
 
 async def main():
@@ -69,7 +70,9 @@ async def main():
     results = await ingester.search_traces("RAG query API call", limit=5)
     print(f"✅ Found {len(results)} results:")
     for i, result in enumerate(results, 1):
-        print(f"   {i}. [{result.get('similarity', 0):.2f}] {result.get('conversation_id', 'unknown')}")
+        print(
+            f"   {i}. [{result.get('similarity', 0):.2f}] {result.get('conversation_id', 'unknown')}"
+        )
 
     # Get trace by ID
     print("\n⏳ Retrieving trace by ID...")

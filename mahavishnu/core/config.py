@@ -181,21 +181,20 @@ class OTelStorageConfig(BaseModel):
         # Validate connection string format
         if not v.startswith(("postgresql://", "postgres://")):
             raise ValueError(
-                f"connection_string must use postgresql:// or postgres:// scheme. "
-                f"Got: {v[:30]}..."
+                f"connection_string must use postgresql:// or postgres:// scheme. Got: {v[:30]}..."
             )
 
         # Basic structure validation (scheme://user:pass@host:port/db)
         if v.count("@") < 1:
             raise ValueError(
-                f"connection_string missing '@' separator. "
-                f"Expected format: postgresql://user:password@host:port/database"
+                "connection_string missing '@' separator. "
+                "Expected format: postgresql://user:password@host:port/database"
             )
 
         if v.count("/") < 3:  # postgresql:// is 2 slashes, need at least one more for database
             raise ValueError(
-                f"connection_string missing database name. "
-                f"Expected format: postgresql://user:password@host:port/database"
+                "connection_string missing database name. "
+                "Expected format: postgresql://user:password@host:port/database"
             )
 
         return v

@@ -292,6 +292,7 @@ async def test_external_api_with_resilience():
 **Problem**: Circuit breaker stays OPEN even after service recovers.
 
 **Solution**:
+
 - Check `recovery_timeout` - make sure enough time has passed
 - Verify service is actually healthy
 - Manually reset: `breaker.reset()`
@@ -301,6 +302,7 @@ async def test_external_api_with_resilience():
 **Problem**: System overwhelmed by retry attempts.
 
 **Solution**:
+
 - Reduce `max_attempts`
 - Increase backoff delay
 - Use circuit breaker to fail fast
@@ -310,6 +312,7 @@ async def test_external_api_with_resilience():
 **Problem**: Functions fail immediately without retry.
 
 **Solution**:
+
 - Verify exception type matches `expected_exception`
 - Check that `max_attempts > 1`
 - Ensure function is async (if using async decorators)
@@ -319,6 +322,7 @@ async def test_external_api_with_resilience():
 **Problem**: Resilience patterns adding too much latency.
 
 **Solution**:
+
 - Use `backoff="fixed"` with small delay for fast operations
 - Reduce `max_attempts` for low-latency requirements
 - Consider removing circuit breaker for internal services
@@ -328,30 +332,31 @@ async def test_external_api_with_resilience():
 ### DO ✓
 
 1. **Use circuit breakers for external service calls** - Prevents cascading failures
-2. **Use retry for transient failures** - Handles network blips
-3. **Combine both for critical paths** - Maximum resilience
-4. **Monitor circuit breaker state** - Track OPEN/CLOSED transitions
-5. **Set appropriate timeouts** - Don't wait indefinitely
-6. **Use exponential backoff** - Prevents thundering herd
-7. **Log all failures** - Essential for debugging
-8. **Test failure scenarios** - Verify resilience works
+1. **Use retry for transient failures** - Handles network blips
+1. **Combine both for critical paths** - Maximum resilience
+1. **Monitor circuit breaker state** - Track OPEN/CLOSED transitions
+1. **Set appropriate timeouts** - Don't wait indefinitely
+1. **Use exponential backoff** - Prevents thundering herd
+1. **Log all failures** - Essential for debugging
+1. **Test failure scenarios** - Verify resilience works
 
 ### DON'T ✗
 
 1. **Don't use retry for non-idempotent operations** - Could cause duplicate actions
-2. **Don't set failure_threshold too low** - Opens circuit too easily
-3. **Don't set recovery_timeout too short** - Doesn't give service time to recover
-4. **Don't use circuit breaker for fast local operations** - Adds unnecessary overhead
-5. **Don't ignore CircuitBreakerError** - Handle it explicitly
-6. **Don't retry on validation errors** - Those won't succeed on retry
-7. **Don't forget to test resilience** - Must verify it works
-8. **Don't set max_attempts too high** - Wastes resources on dead services
+1. **Don't set failure_threshold too low** - Opens circuit too easily
+1. **Don't set recovery_timeout too short** - Doesn't give service time to recover
+1. **Don't use circuit breaker for fast local operations** - Adds unnecessary overhead
+1. **Don't ignore CircuitBreakerError** - Handle it explicitly
+1. **Don't retry on validation errors** - Those won't succeed on retry
+1. **Don't forget to test resilience** - Must verify it works
+1. **Don't set max_attempts too high** - Wastes resources on dead services
 
 ## Migration Guide
 
 ### Step 1: Identify Critical Paths
 
 List all external API calls and database operations:
+
 ```bash
 # Find HTTP client usage
 grep -r "httpx.Client" mahavishnu/
@@ -364,13 +369,15 @@ grep -r "asyncpg.connect" akosha/
 ### Step 2: Add Resilience Incrementally
 
 Start with most critical operations:
+
 1. LLM API calls (highest latency)
-2. Payment processing (highest risk)
-3. User-facing operations (highest impact)
+1. Payment processing (highest risk)
+1. User-facing operations (highest impact)
 
 ### Step 3: Monitor Metrics
 
 Track before and after:
+
 - Error rate
 - Latency (p50, p95, p99)
 - Circuit breaker openings
@@ -379,6 +386,7 @@ Track before and after:
 ### Step 4: Tune Parameters
 
 Adjust based on observed behavior:
+
 - If too many circuit openings → increase `failure_threshold`
 - If too slow → reduce `max_attempts` or `backoff` delay
 - If not resilient enough → increase `recovery_timeout`
@@ -388,7 +396,7 @@ Adjust based on observed behavior:
 ✅ All external API calls protected by circuit breaker
 ✅ All database operations have retry logic
 ✅ Monitoring shows reduced error rate
-✅ Latency remains acceptable (<1s p95)
+✅ Latency remains acceptable (\<1s p95)
 ✅ Circuit breakers prevent cascading failures
 ✅ System recovers automatically when services come back
 ✅ Tests verify resilience patterns work
@@ -399,12 +407,13 @@ Adjust based on observed behavior:
 - [Circuit Breaker Pattern](https://martinfowler.com/bliki/CircuitBreaker.html)
 - [Retry Pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/retry)
 - [Resilience Patterns](https://docs.microsoft.com/en-us/azure/architecture/patterns/category/resiliency)
-- [Example Integration](monitoring/RESILIENCE_EXAMPLES.md)
-- [Test Suite](monitoring/tests/test_resilience.py)
+- [Example Integration](RESILIENCE_EXAMPLES.md)
+- [Test Suite](tests/test_resilience.py)
 
 ## Support
 
 For issues or questions:
+
 - Check test suite: `pytest monitoring/tests/test_resilience.py -v`
 - Review examples: `monitoring/RESILIENCE_EXAMPLES.md`
 - Monitoring guide: `monitoring/MONITORING_GUIDE.md`

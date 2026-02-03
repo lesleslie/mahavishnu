@@ -12,11 +12,12 @@ Complete reference for all Mahavishnu MCP server tools with status indicators, s
 - **[OpenTelemetry Tools](#opentelemetry-tools)** - 4 tools for trace ingestion and search
 
 **Legend:**
+
 - ✅ **Production Ready** - Fully implemented and tested
 - 🚧 **In Development** - Partially implemented, may have limitations
 - ⚠️ **Deprecated** - Planned for removal, use alternatives
 
----
+______________________________________________________________________
 
 ## Pool Management Tools
 
@@ -27,6 +28,7 @@ Manage multi-pool orchestration across local, delegated, and cloud workers.
 Spawn a new worker pool.
 
 **Signature:**
+
 ```python
 async def pool_spawn(
     pool_type: str = "mahavishnu",
@@ -38,6 +40,7 @@ async def pool_spawn(
 ```
 
 **Parameters:**
+
 - `pool_type` - Pool type: `"mahavishnu"`, `"session-buddy"`, `"kubernetes"`
 - `name` - Pool name for identification
 - `min_workers` - Minimum worker count (1-10)
@@ -45,6 +48,7 @@ async def pool_spawn(
 - `worker_type` - Worker type: `"terminal-qwen"`, `"terminal-claude"`, `"container"`
 
 **Returns:**
+
 ```python
 {
     "pool_id": "pool_abc123",
@@ -57,6 +61,7 @@ async def pool_spawn(
 ```
 
 **Example:**
+
 ```python
 result = await pool_spawn(
     pool_type="mahavishnu",
@@ -67,13 +72,14 @@ result = await pool_spawn(
 print(f"Created pool: {result['pool_id']}")
 ```
 
----
+______________________________________________________________________
 
 ### `pool_execute` ✅
 
 Execute task on specific pool.
 
 **Signature:**
+
 ```python
 async def pool_execute(
     pool_id: str,
@@ -83,11 +89,13 @@ async def pool_execute(
 ```
 
 **Parameters:**
+
 - `pool_id` - Target pool ID (from `pool_spawn`)
 - `prompt` - Task prompt for AI worker
 - `timeout` - Execution timeout in seconds (30-3600)
 
 **Returns:**
+
 ```python
 {
     "pool_id": "pool_abc123",
@@ -99,6 +107,7 @@ async def pool_execute(
 ```
 
 **Example:**
+
 ```python
 result = await pool_execute(
     pool_id="pool_abc123",
@@ -108,13 +117,14 @@ result = await pool_execute(
 print(f"Output: {result['output']}")
 ```
 
----
+______________________________________________________________________
 
 ### `pool_route_execute` ✅
 
 Execute task with automatic pool routing.
 
 **Signature:**
+
 ```python
 async def pool_route_execute(
     prompt: str,
@@ -124,11 +134,13 @@ async def pool_route_execute(
 ```
 
 **Parameters:**
+
 - `prompt` - Task prompt
 - `pool_selector` - Selection strategy: `"round_robin"`, `"least_loaded"`, `"random"`, `"affinity"`
 - `timeout` - Execution timeout in seconds
 
 **Returns:**
+
 ```python
 {
     "pool_id": "pool_abc123",
@@ -139,6 +151,7 @@ async def pool_route_execute(
 ```
 
 **Example:**
+
 ```python
 result = await pool_route_execute(
     prompt="Refactor database layer",
@@ -148,18 +161,20 @@ result = await pool_route_execute(
 print(f"Executed on: {result['pool_id']}")
 ```
 
----
+______________________________________________________________________
 
 ### `pool_list` ✅
 
 List all active pools.
 
 **Signature:**
+
 ```python
 async def pool_list() -> list[dict[str, Any]]
 ```
 
 **Returns:**
+
 ```python
 [
     {
@@ -174,19 +189,21 @@ async def pool_list() -> list[dict[str, Any]]
 ```
 
 **Example:**
+
 ```python
 pools = await pool_list()
 for pool in pools:
     print(f"{pool['pool_id']}: {pool['pool_type']} - {pool['status']}")
 ```
 
----
+______________________________________________________________________
 
 ### `pool_monitor` ✅
 
 Monitor pool status and metrics.
 
 **Signature:**
+
 ```python
 async def pool_monitor(
     pool_ids: list[str] | None = None,
@@ -194,9 +211,11 @@ async def pool_monitor(
 ```
 
 **Parameters:**
+
 - `pool_ids` - List of pool IDs (None = all pools)
 
 **Returns:**
+
 ```python
 {
     "pool_abc123": {
@@ -210,19 +229,21 @@ async def pool_monitor(
 ```
 
 **Example:**
+
 ```python
 metrics = await pool_monitor(pool_ids=["pool_abc", "pool_def"])
 for pool_id, pool_metrics in metrics.items():
     print(f"{pool_id}: {pool_metrics['status']}")
 ```
 
----
+______________________________________________________________________
 
 ### `pool_scale` ✅
 
 Scale pool to target worker count.
 
 **Signature:**
+
 ```python
 async def pool_scale(
     pool_id: str,
@@ -231,10 +252,12 @@ async def pool_scale(
 ```
 
 **Parameters:**
+
 - `pool_id` - Pool ID to scale
 - `target_workers` - Target worker count
 
 **Returns:**
+
 ```python
 {
     "pool_id": "pool_abc123",
@@ -245,21 +268,24 @@ async def pool_scale(
 ```
 
 **Error Cases:**
+
 - Returns error if pool doesn't support scaling (e.g., SessionBuddyPool is fixed at 3 workers)
 
 **Example:**
+
 ```python
 result = await pool_scale(pool_id="pool_abc123", target_workers=10)
 print(f"Scaled to {result['actual_workers']} workers")
 ```
 
----
+______________________________________________________________________
 
 ### `pool_close` ✅
 
 Close a specific pool.
 
 **Signature:**
+
 ```python
 async def pool_close(
     pool_id: str,
@@ -267,9 +293,11 @@ async def pool_close(
 ```
 
 **Parameters:**
+
 - `pool_id` - Pool ID to close
 
 **Returns:**
+
 ```python
 {
     "pool_id": "pool_abc123",
@@ -278,23 +306,26 @@ async def pool_close(
 ```
 
 **Example:**
+
 ```python
 result = await pool_close(pool_id="pool_abc123")
 print(f"Pool {result['pool_id']} closed")
 ```
 
----
+______________________________________________________________________
 
 ### `pool_close_all` ✅
 
 Close all active pools.
 
 **Signature:**
+
 ```python
 async def pool_close_all() -> dict[str, Any]
 ```
 
 **Returns:**
+
 ```python
 {
     "pools_closed": 3,
@@ -303,23 +334,26 @@ async def pool_close_all() -> dict[str, Any]
 ```
 
 **Example:**
+
 ```python
 result = await pool_close_all()
 print(f"Closed {result['pools_closed']} pools")
 ```
 
----
+______________________________________________________________________
 
 ### `pool_health` ✅
 
 Get health status of all pools.
 
 **Signature:**
+
 ```python
 async def pool_health() -> dict[str, Any]
 ```
 
 **Returns:**
+
 ```python
 {
     "status": "healthy",
@@ -334,18 +368,20 @@ async def pool_health() -> dict[str, Any]
 ```
 
 **Example:**
+
 ```python
 health = await pool_health()
 print(f"Overall: {health['status']}, Active: {health['pools_active']}")
 ```
 
----
+______________________________________________________________________
 
 ### `pool_search_memory` ✅
 
 Search memory across all pools.
 
 **Signature:**
+
 ```python
 async def pool_search_memory(
     query: str,
@@ -354,10 +390,12 @@ async def pool_search_memory(
 ```
 
 **Parameters:**
+
 - `query` - Semantic search query
 - `limit` - Maximum results to return
 
 **Returns:**
+
 ```python
 [
     {
@@ -371,13 +409,14 @@ async def pool_search_memory(
 ```
 
 **Example:**
+
 ```python
 results = await pool_search_memory(query="API implementation", limit=50)
 for result in results:
     print(f"{result['content'][:100]}... (similarity: {result['similarity']})")
 ```
 
----
+______________________________________________________________________
 
 ## Worker Tools
 
@@ -388,6 +427,7 @@ Orchestrate headless AI workers for parallel task execution.
 Spawn worker instances for task execution.
 
 **Signature:**
+
 ```python
 async def worker_spawn(
     worker_type: str = "terminal-qwen",
@@ -396,27 +436,31 @@ async def worker_spawn(
 ```
 
 **Parameters:**
+
 - `worker_type` - Worker type: `"terminal-qwen"`, `"terminal-claude"`, `"container-executor"`
 - `count` - Number of workers to spawn (1-50)
 
 **Returns:**
+
 ```python
 ["term_abc123", "term_def456", "term_ghi789"]
 ```
 
 **Example:**
+
 ```python
 worker_ids = await worker_spawn(worker_type="terminal-qwen", count=3)
 print(f"Spawned {len(worker_ids)} workers")
 ```
 
----
+______________________________________________________________________
 
 ### `worker_execute` ✅
 
 Execute task on specific worker.
 
 **Signature:**
+
 ```python
 async def worker_execute(
     worker_id: str,
@@ -426,11 +470,13 @@ async def worker_execute(
 ```
 
 **Parameters:**
+
 - `worker_id` - Worker ID (from `worker_spawn`)
 - `prompt` - Task prompt
 - `timeout` - Timeout in seconds (30-3600)
 
 **Returns:**
+
 ```python
 {
     "worker_id": "term_abc123",
@@ -443,6 +489,7 @@ async def worker_execute(
 ```
 
 **Example:**
+
 ```python
 result = await worker_execute(
     worker_id="term_abc123",
@@ -452,13 +499,14 @@ result = await worker_execute(
 print(f"Status: {result['status']}")
 ```
 
----
+______________________________________________________________________
 
 ### `worker_execute_batch` ✅
 
 Execute tasks on multiple workers concurrently.
 
 **Signature:**
+
 ```python
 async def worker_execute_batch(
     worker_ids: list[str],
@@ -468,11 +516,13 @@ async def worker_execute_batch(
 ```
 
 **Parameters:**
+
 - `worker_ids` - List of worker IDs
 - `prompts` - List of prompts (same length as worker_ids)
 - `timeout` - Timeout for all tasks
 
 **Returns:**
+
 ```python
 {
     "term_abc123": {
@@ -489,6 +539,7 @@ async def worker_execute_batch(
 ```
 
 **Example:**
+
 ```python
 results = await worker_execute_batch(
     worker_ids=["term_abc", "term_def"],
@@ -499,18 +550,20 @@ for wid, result in results.items():
     print(f"{wid}: {result['status']}")
 ```
 
----
+______________________________________________________________________
 
 ### `worker_list` ✅
 
 List all active workers.
 
 **Signature:**
+
 ```python
 async def worker_list() -> list[dict]
 ```
 
 **Returns:**
+
 ```python
 [
     {
@@ -523,18 +576,20 @@ async def worker_list() -> list[dict]
 ```
 
 **Example:**
+
 ```python
 workers = await worker_list()
 print(f"Active workers: {len(workers)}")
 ```
 
----
+______________________________________________________________________
 
 ### `worker_monitor` ✅
 
 Monitor worker status in real-time.
 
 **Signature:**
+
 ```python
 async def worker_monitor(
     worker_ids: list[str] | None = None,
@@ -543,10 +598,12 @@ async def worker_monitor(
 ```
 
 **Parameters:**
+
 - `worker_ids` - List of worker IDs (None = all workers)
 - `interval` - Polling interval in seconds (0.1-10.0)
 
 **Returns:**
+
 ```python
 {
     "term_abc123": "running",
@@ -556,19 +613,21 @@ async def worker_monitor(
 ```
 
 **Example:**
+
 ```python
 statuses = await worker_monitor(interval=0.5)
 for wid, status in statuses.items():
     print(f"{wid}: {status}")
 ```
 
----
+______________________________________________________________________
 
 ### `worker_collect_results` ✅
 
 Collect results from completed workers.
 
 **Signature:**
+
 ```python
 async def worker_collect_results(
     worker_ids: list[str] | None = None,
@@ -576,9 +635,11 @@ async def worker_collect_results(
 ```
 
 **Parameters:**
+
 - `worker_ids` - List of worker IDs (None = all workers)
 
 **Returns:**
+
 ```python
 {
     "term_abc123": {
@@ -592,6 +653,7 @@ async def worker_collect_results(
 ```
 
 **Example:**
+
 ```python
 results = await worker_collect_results(["term_abc", "term_def"])
 for wid, result in results.items():
@@ -599,21 +661,24 @@ for wid, result in results.items():
         print(f"{wid}: {result['output'][:100]}...")
 ```
 
----
+______________________________________________________________________
 
 ### `worker_close` ✅
 
 Close a specific worker.
 
 **Signature:**
+
 ```python
 async def worker_close(worker_id: str) -> dict
 ```
 
 **Parameters:**
+
 - `worker_id` - Worker ID to close
 
 **Returns:**
+
 ```python
 {
     "success": true,
@@ -622,23 +687,26 @@ async def worker_close(worker_id: str) -> dict
 ```
 
 **Example:**
+
 ```python
 result = await worker_close("term_abc123")
 print(f"Closed: {result['success']}")
 ```
 
----
+______________________________________________________________________
 
 ### `worker_close_all` ✅
 
 Close all active workers.
 
 **Signature:**
+
 ```python
 async def worker_close_all() -> dict
 ```
 
 **Returns:**
+
 ```python
 {
     "closed_count": 5
@@ -646,23 +714,26 @@ async def worker_close_all() -> dict
 ```
 
 **Example:**
+
 ```python
 result = await worker_close_all()
 print(f"Closed {result['closed_count']} workers")
 ```
 
----
+______________________________________________________________________
 
 ### `worker_health` ✅
 
 Get worker system health.
 
 **Signature:**
+
 ```python
 async def worker_health() -> dict
 ```
 
 **Returns:**
+
 ```python
 {
     "status": "healthy",
@@ -677,12 +748,13 @@ async def worker_health() -> dict
 ```
 
 **Example:**
+
 ```python
 health = await worker_health()
 print(f"Status: {health['status']}, Active: {health['workers_active']}")
 ```
 
----
+______________________________________________________________________
 
 ## Coordination Tools
 
@@ -693,6 +765,7 @@ Track and coordinate work across multiple repositories.
 List cross-repository issues with optional filtering.
 
 **Signature:**
+
 ```python
 async def coord_list_issues(
     status: str | None = None,
@@ -703,12 +776,14 @@ async def coord_list_issues(
 ```
 
 **Parameters:**
+
 - `status` - Filter by status: `"pending"`, `"in_progress"`, `"blocked"`, `"resolved"`, `"closed"`
 - `priority` - Filter by priority: `"critical"`, `"high"`, `"medium"`, `"low"`
 - `repo` - Filter by repository nickname
 - `assignee` - Filter by assignee username
 
 **Returns:**
+
 ```python
 [
     {
@@ -723,19 +798,21 @@ async def coord_list_issues(
 ```
 
 **Example:**
+
 ```python
 issues = await coord_list_issues(status="in_progress", priority="high")
 for issue in issues:
     print(f"{issue['id']}: {issue['title']}")
 ```
 
----
+______________________________________________________________________
 
 ### `coord_get_issue` ✅
 
 Get detailed information about a specific issue.
 
 **Signature:**
+
 ```python
 async def coord_get_issue(
     issue_id: str,
@@ -743,9 +820,11 @@ async def coord_get_issue(
 ```
 
 **Parameters:**
+
 - `issue_id` - Issue identifier (e.g., `"ISSUE-001"`)
 
 **Returns:**
+
 ```python
 {
     "id": "ISSUE-001",
@@ -763,19 +842,21 @@ async def coord_get_issue(
 ```
 
 **Example:**
+
 ```python
 issue = await coord_get_issue("ISSUE-001")
 print(f"Issue: {issue['title']}")
 print(f"Blocking {len(issue['blocking'])} other issues")
 ```
 
----
+______________________________________________________________________
 
 ### `coord_create_issue` ✅
 
 Create a new cross-repository issue.
 
 **Signature:**
+
 ```python
 async def coord_create_issue(
     title: str,
@@ -790,6 +871,7 @@ async def coord_create_issue(
 ```
 
 **Parameters:**
+
 - `title` - Issue title
 - `description` - Detailed issue description
 - `repos` - List of repository nicknames affected
@@ -800,6 +882,7 @@ async def coord_create_issue(
 - `labels` - Labels for categorization (optional)
 
 **Returns:**
+
 ```python
 {
     "id": "ISSUE-001",
@@ -811,6 +894,7 @@ async def coord_create_issue(
 ```
 
 **Example:**
+
 ```python
 issue = await coord_create_issue(
     title="Add authentication",
@@ -822,13 +906,14 @@ issue = await coord_create_issue(
 print(f"Created {issue['id']}")
 ```
 
----
+______________________________________________________________________
 
 ### `coord_update_issue` ✅
 
 Update an existing issue.
 
 **Signature:**
+
 ```python
 async def coord_update_issue(
     issue_id: str,
@@ -838,11 +923,13 @@ async def coord_update_issue(
 ```
 
 **Parameters:**
+
 - `issue_id` - Issue identifier
 - `status` - New status: `"pending"`, `"in_progress"`, `"blocked"`, `"resolved"`, `"closed"`
 - `priority` - New priority: `"critical"`, `"high"`, `"medium"`, `"low"`
 
 **Returns:**
+
 ```python
 {
     "id": "ISSUE-001",
@@ -853,6 +940,7 @@ async def coord_update_issue(
 ```
 
 **Example:**
+
 ```python
 issue = await coord_update_issue(
     issue_id="ISSUE-001",
@@ -861,13 +949,14 @@ issue = await coord_update_issue(
 print(f"Updated {issue['id']} to {issue['status']}")
 ```
 
----
+______________________________________________________________________
 
 ### `coord_close_issue` ✅
 
 Close an issue.
 
 **Signature:**
+
 ```python
 async def coord_close_issue(
     issue_id: str,
@@ -875,9 +964,11 @@ async def coord_close_issue(
 ```
 
 **Parameters:**
+
 - `issue_id` - Issue identifier
 
 **Returns:**
+
 ```python
 {
     "id": "ISSUE-001",
@@ -887,18 +978,20 @@ async def coord_close_issue(
 ```
 
 **Example:**
+
 ```python
 issue = await coord_close_issue("ISSUE-001")
 print(f"Closed {issue['id']}")
 ```
 
----
+______________________________________________________________________
 
 ### `coord_list_todos` ✅
 
 List todo items with optional filtering.
 
 **Signature:**
+
 ```python
 async def coord_list_todos(
     status: str | None = None,
@@ -908,11 +1001,13 @@ async def coord_list_todos(
 ```
 
 **Parameters:**
+
 - `status` - Filter by status: `"pending"`, `"in_progress"`, `"blocked"`, `"completed"`, `"cancelled"`
 - `repo` - Filter by repository nickname
 - `assignee` - Filter by assignee username
 
 **Returns:**
+
 ```python
 [
     {
@@ -927,19 +1022,21 @@ async def coord_list_todos(
 ```
 
 **Example:**
+
 ```python
 todos = await coord_list_todos(repo="my-api", status="pending")
 for todo in todos:
     print(f"{todo['id']}: {todo['task']}")
 ```
 
----
+______________________________________________________________________
 
 ### `coord_get_todo` ✅
 
 Get detailed information about a specific todo.
 
 **Signature:**
+
 ```python
 async def coord_get_todo(
     todo_id: str,
@@ -947,9 +1044,11 @@ async def coord_get_todo(
 ```
 
 **Parameters:**
+
 - `todo_id` - Todo identifier (e.g., `"TODO-001"`)
 
 **Returns:**
+
 ```python
 {
     "id": "TODO-001",
@@ -967,19 +1066,21 @@ async def coord_get_todo(
 ```
 
 **Example:**
+
 ```python
 todo = await coord_get_todo("TODO-001")
 print(f"Task: {todo['task']}")
 print(f"Estimate: {todo['estimated_hours']} hours")
 ```
 
----
+______________________________________________________________________
 
 ### `coord_create_todo` ✅
 
 Create a new todo item.
 
 **Signature:**
+
 ```python
 async def coord_create_todo(
     task: str,
@@ -995,6 +1096,7 @@ async def coord_create_todo(
 ```
 
 **Parameters:**
+
 - `task` - Task description
 - `description` - Detailed task description
 - `repo` - Repository nickname
@@ -1006,6 +1108,7 @@ async def coord_create_todo(
 - `acceptance_criteria` - Criteria for completion (optional)
 
 **Returns:**
+
 ```python
 {
     "id": "TODO-001",
@@ -1018,6 +1121,7 @@ async def coord_create_todo(
 ```
 
 **Example:**
+
 ```python
 todo = await coord_create_todo(
     task="Write unit tests",
@@ -1030,13 +1134,14 @@ todo = await coord_create_todo(
 print(f"Created {todo['id']}")
 ```
 
----
+______________________________________________________________________
 
 ### `coord_complete_todo` ✅
 
 Mark a todo as completed.
 
 **Signature:**
+
 ```python
 async def coord_complete_todo(
     todo_id: str,
@@ -1044,9 +1149,11 @@ async def coord_complete_todo(
 ```
 
 **Parameters:**
+
 - `todo_id` - Todo identifier
 
 **Returns:**
+
 ```python
 {
     "id": "TODO-001",
@@ -1056,18 +1163,20 @@ async def coord_complete_todo(
 ```
 
 **Example:**
+
 ```python
 todo = await coord_complete_todo("TODO-001")
 print(f"Completed {todo['id']}")
 ```
 
----
+______________________________________________________________________
 
 ### `coord_get_blocking_issues` ✅
 
 Get all issues blocking a specific repository.
 
 **Signature:**
+
 ```python
 async def coord_get_blocking_issues(
     repo: str,
@@ -1075,9 +1184,11 @@ async def coord_get_blocking_issues(
 ```
 
 **Parameters:**
+
 - `repo` - Repository nickname
 
 **Returns:**
+
 ```python
 [
     {
@@ -1090,18 +1201,20 @@ async def coord_get_blocking_issues(
 ```
 
 **Example:**
+
 ```python
 blocking = await coord_get_blocking_issues("my-api")
 print(f"Blocking issues: {len(blocking)}")
 ```
 
----
+______________________________________________________________________
 
 ### `coord_check_dependencies` ✅
 
 Validate inter-repository dependencies.
 
 **Signature:**
+
 ```python
 async def coord_check_dependencies(
     consumer: str | None = None,
@@ -1109,9 +1222,11 @@ async def coord_check_dependencies(
 ```
 
 **Parameters:**
+
 - `consumer` - Optional consumer repository to filter by
 
 **Returns:**
+
 ```python
 {
     "total": 10,
@@ -1129,18 +1244,20 @@ async def coord_check_dependencies(
 ```
 
 **Example:**
+
 ```python
 results = await coord_check_dependencies(consumer="my-api")
 print(f"Dependencies: {results['satisfied']}/{results['total']} satisfied")
 ```
 
----
+______________________________________________________________________
 
 ### `coord_get_repo_status` ✅
 
 Get comprehensive coordination status for a repository.
 
 **Signature:**
+
 ```python
 async def coord_get_repo_status(
     repo: str,
@@ -1148,9 +1265,11 @@ async def coord_get_repo_status(
 ```
 
 **Parameters:**
+
 - `repo` - Repository nickname
 
 **Returns:**
+
 ```python
 {
     "issues": [...],
@@ -1163,19 +1282,21 @@ async def coord_get_repo_status(
 ```
 
 **Example:**
+
 ```python
 status = await coord_get_repo_status("my-api")
 print(f"Issues: {len(status['issues'])}")
 print(f"Todos: {len(status['todos'])}")
 ```
 
----
+______________________________________________________________________
 
 ### `coord_list_plans` ✅
 
 List cross-repository plans with optional filtering.
 
 **Signature:**
+
 ```python
 async def coord_list_plans(
     status: str | None = None,
@@ -1184,10 +1305,12 @@ async def coord_list_plans(
 ```
 
 **Parameters:**
+
 - `status` - Filter by status: `"draft"`, `"active"`, `"on_hold"`, `"completed"`, `"cancelled"`
 - `repo` - Filter by repository nickname
 
 **Returns:**
+
 ```python
 [
     {
@@ -1200,19 +1323,21 @@ async def coord_list_plans(
 ```
 
 **Example:**
+
 ```python
 plans = await coord_list_plans(status="active")
 for plan in plans:
     print(f"{plan['id']}: {plan['title']}")
 ```
 
----
+______________________________________________________________________
 
 ### `coord_list_dependencies` ✅
 
 List inter-repository dependencies with optional filtering.
 
 **Signature:**
+
 ```python
 async def coord_list_dependencies(
     consumer: str | None = None,
@@ -1222,11 +1347,13 @@ async def coord_list_dependencies(
 ```
 
 **Parameters:**
+
 - `consumer` - Filter by consumer repository
 - `provider` - Filter by provider repository
 - `dependency_type` - Filter by type: `"runtime"`, `"development"`, `"mcp"`, `"test"`, `"documentation"`
 
 **Returns:**
+
 ```python
 [
     {
@@ -1239,13 +1366,14 @@ async def coord_list_dependencies(
 ```
 
 **Example:**
+
 ```python
 deps = await coord_list_dependencies(consumer="my-api", type="runtime")
 for dep in deps:
     print(f"{dep['consumer']} -> {dep['provider']}")
 ```
 
----
+______________________________________________________________________
 
 ## Repository Messaging Tools
 
@@ -1256,6 +1384,7 @@ Send and receive messages between repositories.
 Send a message from one repository to another.
 
 **Signature:**
+
 ```python
 async def send_repository_message(
     sender_repo: str,
@@ -1267,6 +1396,7 @@ async def send_repository_message(
 ```
 
 **Parameters:**
+
 - `sender_repo` - Repository sending the message
 - `receiver_repo` - Repository receiving the message
 - `message_type` - Type: `"CODE_CHANGE_NOTIFICATION"`, `"WORKFLOW_STATUS_UPDATE"`, etc.
@@ -1274,6 +1404,7 @@ async def send_repository_message(
 - `priority` - Priority: `"LOW"`, `"NORMAL"`, `"HIGH"`, `"CRITICAL"`
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1284,6 +1415,7 @@ async def send_repository_message(
 ```
 
 **Example:**
+
 ```python
 result = await send_repository_message(
     sender_repo="my-api",
@@ -1295,13 +1427,14 @@ result = await send_repository_message(
 print(f"Sent: {result['message_id']}")
 ```
 
----
+______________________________________________________________________
 
 ### `broadcast_repository_message` ✅
 
 Broadcast a message to multiple repositories.
 
 **Signature:**
+
 ```python
 async def broadcast_repository_message(
     sender_repo: str,
@@ -1313,6 +1446,7 @@ async def broadcast_repository_message(
 ```
 
 **Parameters:**
+
 - `sender_repo` - Repository sending the message
 - `message_type` - Type of message
 - `content` - Message content
@@ -1320,6 +1454,7 @@ async def broadcast_repository_message(
 - `priority` - Message priority
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1330,6 +1465,7 @@ async def broadcast_repository_message(
 ```
 
 **Example:**
+
 ```python
 result = await broadcast_repository_message(
     sender_repo="my-api",
@@ -1340,13 +1476,14 @@ result = await broadcast_repository_message(
 print(f"Broadcast to {result['messages_sent']} repos")
 ```
 
----
+______________________________________________________________________
 
 ### `get_repository_messages` ✅
 
 Get messages for a specific repository.
 
 **Signature:**
+
 ```python
 async def get_repository_messages(
     receiver_repo: str,
@@ -1357,12 +1494,14 @@ async def get_repository_messages(
 ```
 
 **Parameters:**
+
 - `receiver_repo` - Repository to get messages for
 - `message_type` - Optional message type filter
 - `limit` - Maximum messages to return
 - `since` - Optional ISO datetime string filter
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1382,6 +1521,7 @@ async def get_repository_messages(
 ```
 
 **Example:**
+
 ```python
 result = await get_repository_messages(
     receiver_repo="my-frontend",
@@ -1391,13 +1531,14 @@ result = await get_repository_messages(
 print(f"Messages: {result['count']}")
 ```
 
----
+______________________________________________________________________
 
 ### `acknowledge_repository_message` ✅
 
 Acknowledge receipt of a message.
 
 **Signature:**
+
 ```python
 async def acknowledge_repository_message(
     message_id: str,
@@ -1406,10 +1547,12 @@ async def acknowledge_repository_message(
 ```
 
 **Parameters:**
+
 - `message_id` - ID of the message to acknowledge
 - `receiver_repo` - Repository acknowledging the message
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1420,6 +1563,7 @@ async def acknowledge_repository_message(
 ```
 
 **Example:**
+
 ```python
 result = await acknowledge_repository_message(
     message_id="msg_abc123",
@@ -1428,13 +1572,14 @@ result = await acknowledge_repository_message(
 print(f"Acknowledged: {result['success']}")
 ```
 
----
+______________________________________________________________________
 
 ### `notify_repository_changes` ✅
 
 Notify other repositories about changes in a repository.
 
 **Signature:**
+
 ```python
 async def notify_repository_changes(
     repo_path: str,
@@ -1443,10 +1588,12 @@ async def notify_repository_changes(
 ```
 
 **Parameters:**
+
 - `repo_path` - Path of the repository with changes
 - `changes` - List of changes to notify about
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1456,6 +1603,7 @@ async def notify_repository_changes(
 ```
 
 **Example:**
+
 ```python
 result = await notify_repository_changes(
     repo_path="/path/to/my-api",
@@ -1467,13 +1615,14 @@ result = await notify_repository_changes(
 print(f"Notified {result['messages_sent']} repos")
 ```
 
----
+______________________________________________________________________
 
 ### `notify_workflow_status` ✅
 
 Notify other repositories about workflow status changes.
 
 **Signature:**
+
 ```python
 async def notify_workflow_status(
     workflow_id: str,
@@ -1484,12 +1633,14 @@ async def notify_workflow_status(
 ```
 
 **Parameters:**
+
 - `workflow_id` - ID of the workflow
 - `status` - New status of the workflow
 - `repo_path` - Repository where workflow is running
 - `target_repos` - Optional list of target repositories
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1499,6 +1650,7 @@ async def notify_workflow_status(
 ```
 
 **Example:**
+
 ```python
 result = await notify_workflow_status(
     workflow_id="wf_abc123",
@@ -1509,13 +1661,14 @@ result = await notify_workflow_status(
 print(f"Notified {result['messages_sent']} repos")
 ```
 
----
+______________________________________________________________________
 
 ### `send_quality_alert` ✅
 
 Send a quality alert to other repositories.
 
 **Signature:**
+
 ```python
 async def send_quality_alert(
     repo_path: str,
@@ -1526,12 +1679,14 @@ async def send_quality_alert(
 ```
 
 **Parameters:**
+
 - `repo_path` - Repository sending the alert
 - `alert_type` - Type of quality alert
 - `description` - Description of the quality issue
 - `severity` - Severity: `"low"`, `"medium"`, `"high"`, `"critical"`
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1542,6 +1697,7 @@ async def send_quality_alert(
 ```
 
 **Example:**
+
 ```python
 result = await send_quality_alert(
     repo_path="/path/to/my-api",
@@ -1552,7 +1708,7 @@ result = await send_quality_alert(
 print(f"Alert sent to {result['messages_sent']} repos")
 ```
 
----
+______________________________________________________________________
 
 ## Session Buddy Tools
 
@@ -1563,6 +1719,7 @@ Integration with Session Buddy for session management and code analysis.
 Index codebase structure for better context in Session Buddy.
 
 **Signature:**
+
 ```python
 async def index_code_graph(
     project_path: str,
@@ -1571,10 +1728,12 @@ async def index_code_graph(
 ```
 
 **Parameters:**
+
 - `project_path` - Path to the project to analyze
 - `include_docs` - Whether to include documentation indexing
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1587,6 +1746,7 @@ async def index_code_graph(
 ```
 
 **Example:**
+
 ```python
 result = await index_code_graph(
     project_path="/path/to/my-project",
@@ -1595,13 +1755,14 @@ result = await index_code_graph(
 print(f"Indexed {result['result']['functions_indexed']} functions")
 ```
 
----
+______________________________________________________________________
 
 ### `get_function_context` 🚧
 
 Get caller/callee context for a function.
 
 **Signature:**
+
 ```python
 async def get_function_context(
     project_path: str,
@@ -1610,10 +1771,12 @@ async def get_function_context(
 ```
 
 **Parameters:**
+
 - `project_path` - Path to the project
 - `function_name` - Name of the function to analyze
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1626,6 +1789,7 @@ async def get_function_context(
 ```
 
 **Example:**
+
 ```python
 result = await get_function_context(
     project_path="/path/to/my-project",
@@ -1634,13 +1798,14 @@ result = await get_function_context(
 print(f"Called by: {result['result']['callers']}")
 ```
 
----
+______________________________________________________________________
 
 ### `find_related_code` 🚧
 
 Find code related by imports/calls.
 
 **Signature:**
+
 ```python
 async def find_related_code(
     project_path: str,
@@ -1649,10 +1814,12 @@ async def find_related_code(
 ```
 
 **Parameters:**
+
 - `project_path` - Path to the project
 - `file_path` - Path to the file to analyze
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1665,6 +1832,7 @@ async def find_related_code(
 ```
 
 **Example:**
+
 ```python
 result = await find_related_code(
     project_path="/path/to/my-project",
@@ -1673,13 +1841,14 @@ result = await find_related_code(
 print(f"Related files: {result['result']['related_files']}")
 ```
 
----
+______________________________________________________________________
 
 ### `index_documentation` 🚧
 
 Extract docstrings and index for semantic search.
 
 **Signature:**
+
 ```python
 async def index_documentation(
     project_path: str,
@@ -1687,9 +1856,11 @@ async def index_documentation(
 ```
 
 **Parameters:**
+
 - `project_path` - Path to the project
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1701,18 +1872,20 @@ async def index_documentation(
 ```
 
 **Example:**
+
 ```python
 result = await index_documentation(project_path="/path/to/my-project")
 print(f"Indexed {result['result']['docstrings_indexed']} docstrings")
 ```
 
----
+______________________________________________________________________
 
 ### `search_documentation` 🚧
 
 Search through indexed documentation.
 
 **Signature:**
+
 ```python
 async def search_documentation(
     query: str,
@@ -1720,9 +1893,11 @@ async def search_documentation(
 ```
 
 **Parameters:**
+
 - `query` - Search query
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1738,19 +1913,21 @@ async def search_documentation(
 ```
 
 **Example:**
+
 ```python
 result = await search_documentation(query="authentication function")
 for match in result['result']:
     print(f"{match['file']}:{match['line']} - {match['content'][:50]}...")
 ```
 
----
+______________________________________________________________________
 
 ### `send_project_message` 🚧
 
 Send message between projects for Session Buddy.
 
 **Signature:**
+
 ```python
 async def send_project_message(
     from_project: str,
@@ -1762,6 +1939,7 @@ async def send_project_message(
 ```
 
 **Parameters:**
+
 - `from_project` - Source project identifier
 - `to_project` - Destination project identifier
 - `subject` - Message subject
@@ -1769,6 +1947,7 @@ async def send_project_message(
 - `priority` - Priority: `"NORMAL"`, `"HIGH"`, `"CRITICAL"`
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1780,6 +1959,7 @@ async def send_project_message(
 ```
 
 **Example:**
+
 ```python
 result = await send_project_message(
     from_project="my-api",
@@ -1791,13 +1971,14 @@ result = await send_project_message(
 print(f"Sent: {result['result']['message_id']}")
 ```
 
----
+______________________________________________________________________
 
 ### `list_project_messages` 🚧
 
 List messages for a project in Session Buddy.
 
 **Signature:**
+
 ```python
 async def list_project_messages(
     project: str,
@@ -1805,9 +1986,11 @@ async def list_project_messages(
 ```
 
 **Parameters:**
+
 - `project` - Project identifier
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1823,13 +2006,14 @@ async def list_project_messages(
 ```
 
 **Example:**
+
 ```python
 result = await list_project_messages(project="my-frontend")
 for msg in result['result']:
     print(f"{msg['subject']} from {msg['from_project']}")
 ```
 
----
+______________________________________________________________________
 
 ## OpenTelemetry Tools
 
@@ -1840,6 +2024,7 @@ Ingest and search OpenTelemetry traces using Akosha HotStore (DuckDB).
 Ingest OpenTelemetry traces from log files or direct trace data.
 
 **Signature:**
+
 ```python
 async def ingest_otel_traces(
     log_files: list[str] | None = None,
@@ -1849,11 +2034,13 @@ async def ingest_otel_traces(
 ```
 
 **Parameters:**
+
 - `log_files` - Optional list of log file paths to ingest (JSON format)
 - `trace_data` - Optional list of trace dictionaries to ingest directly
 - `system_id` - System identifier (e.g., `"claude"`, `"qwen"`, or custom name)
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -1866,6 +2053,7 @@ async def ingest_otel_traces(
 ```
 
 **Example:**
+
 ```python
 result = await ingest_otel_traces(
     log_files=["/path/to/claude_session.json"],
@@ -1874,13 +2062,14 @@ result = await ingest_otel_traces(
 print(f"Ingested {result['traces_ingested']} traces")
 ```
 
----
+______________________________________________________________________
 
 ### `search_otel_traces` ✅
 
 Semantic search over OTel traces using vector embeddings.
 
 **Signature:**
+
 ```python
 async def search_otel_traces(
     query: str,
@@ -1891,12 +2080,14 @@ async def search_otel_traces(
 ```
 
 **Parameters:**
+
 - `query` - Natural language search query (e.g., `"RAG pipeline timeout"`)
 - `system_id` - Optional system filter (e.g., `"claude"`, `"qwen"`)
 - `limit` - Maximum results to return
 - `threshold` - Optional minimum similarity score (0.0-1.0)
 
 **Returns:**
+
 ```python
 [
     {
@@ -1911,6 +2102,7 @@ async def search_otel_traces(
 ```
 
 **Example:**
+
 ```python
 results = await search_otel_traces(
     query="RAG pipeline failed with timeout",
@@ -1922,13 +2114,14 @@ for result in results:
     print(f"{result['content'][:100]}... (similarity: {result['similarity']})")
 ```
 
----
+______________________________________________________________________
 
 ### `get_otel_trace` ✅
 
 Retrieve a specific OTel trace by ID.
 
 **Signature:**
+
 ```python
 async def get_otel_trace(
     trace_id: str,
@@ -1936,9 +2129,11 @@ async def get_otel_trace(
 ```
 
 **Parameters:**
+
 - `trace_id` - Unique trace identifier (conversation_id in HotStore)
 
 **Returns:**
+
 ```python
 {
     "conversation_id": "conv_abc123",
@@ -1952,6 +2147,7 @@ async def get_otel_trace(
 Returns `None` if trace not found.
 
 **Example:**
+
 ```python
 trace = await get_otel_trace(trace_id="conv_abc123")
 if trace:
@@ -1960,18 +2156,20 @@ else:
     print("Trace not found")
 ```
 
----
+______________________________________________________________________
 
 ### `otel_ingester_stats` ✅
 
 Get statistics about the OTel trace ingester.
 
 **Signature:**
+
 ```python
 async def otel_ingester_stats() -> dict[str, Any]
 ```
 
 **Returns:**
+
 ```python
 {
     "storage_backend": "duckdb_hotstore",
@@ -1986,13 +2184,14 @@ async def otel_ingester_stats() -> dict[str, Any]
 ```
 
 **Example:**
+
 ```python
 stats = await otel_ingester_stats()
 print(f"Storage: {stats['storage_backend']}")
 print(f"Status: {stats['status']}")
 ```
 
----
+______________________________________________________________________
 
 ## Summary
 

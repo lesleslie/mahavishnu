@@ -1,18 +1,17 @@
 """Multi-pool orchestration and management."""
 
 import asyncio
+from enum import Enum
 import heapq
 import logging
 import random
 from typing import Any
-from enum import Enum
 
-from .base import BasePool, PoolConfig, PoolStatus
+from ..mcp.protocols.message_bus import MessageBus
+from .base import BasePool, PoolConfig
+from .kubernetes_pool import KubernetesPool
 from .mahavishnu_pool import MahavishnuPool
 from .session_buddy_pool import SessionBuddyPool
-from .kubernetes_pool import KubernetesPool
-from ..mcp.protocols.message_bus import MessageBus, MessageType
-
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +25,7 @@ class PoolSelector(Enum):
         RANDOM: Random pool selection
         AFFINITY: Route to same pool for related tasks
     """
+
     ROUND_ROBIN = "round_robin"
     LEAST_LOADED = "least_loaded"
     RANDOM = "random"
@@ -133,20 +133,14 @@ class PoolManager:
             elif pool_type == "session-buddy":
                 pool = SessionBuddyPool(
                     config=config,
-                    session_buddy_url=config.get(
-                        "session_buddy_url",
-                        "http://localhost:8678/mcp"
-                    ),
+                    session_buddy_url=config.get("session_buddy_url", "http://localhost:8678/mcp"),
                 )
             elif pool_type == "kubernetes":
                 pool = KubernetesPool(
                     config=config,
                     namespace=config.get("namespace", "mahavishnu"),
                     kubeconfig_path=config.get("kubeconfig_path"),
-                    container_image=config.get(
-                        "container_image",
-                        "python:3.13-slim"
-                    ),
+                    container_image=config.get("container_image", "python:3.13-slim"),
                 )
             else:
                 raise ValueError(f"Unknown pool type: {pool_type}")
@@ -161,19 +155,21 @@ class PoolManager:
             heapq.heappush(self._worker_count_heap, (initial_count, pool_id))
 
             # Announce pool creation via message bus
-            await self.message_bus.publish({
-                "type": "pool_created",
-                "source_pool_id": pool_id,
-                "payload": {
-                    "pool_id": pool_id,
-                    "pool_type": pool_type,
-                    "config": {
-                        "name": config.name,
-                        "min_workers": config.min_workers,
-                        "max_workers": config.max_workers,
+            await self.message_bus.publish(
+                {
+                    "type": "pool_created",
+                    "source_pool_id": pool_id,
+                    "payload": {
+                        "pool_id": pool_id,
+                        "pool_type": pool_type,
+                        "config": {
+                            "name": config.name,
+                            "min_workers": config.min_workers,
+                            "max_workers": config.max_workers,
+                        },
                     },
-                },
-            })
+                }
+            )
 
             logger.info(
                 f"Pool {pool_id} spawned successfully (type: {pool_type}, "
@@ -276,14 +272,16 @@ class PoolManager:
                 self._update_pool_worker_count(pool_id, new_count)
 
         # Announce task completion
-        await self.message_bus.publish({
-            "type": "task_completed",
-            "source_pool_id": pool_id,
-            "payload": {
-                "pool_id": pool_id,
-                "result": result,
-            },
-        })
+        await self.message_bus.publish(
+            {
+                "type": "task_completed",
+                "source_pool_id": pool_id,
+                "payload": {
+                    "pool_id": pool_id,
+                    "result": result,
+                },
+            }
+        )
 
         return result
 
@@ -430,11 +428,13 @@ class PoolManager:
             # Note: Heap entry will be cleaned up lazily by _get_least_loaded_pool()
 
             # Announce pool closure
-            await self.message_bus.publish({
-                "type": "pool_closed",
-                "source_pool_id": pool_id,
-                "payload": {"pool_id": pool_id},
-            })
+            await self.message_bus.publish(
+                {
+                    "type": "pool_closed",
+                    "source_pool_id": pool_id,
+                    "payload": {"pool_id": pool_id},
+                }
+            )
 
             logger.info(f"Pool {pool_id} closed")
 
@@ -473,6 +473,7 @@ class PoolManager:
                 logger.info(f"{pool['pool_id']}: {pool['pool_type']} - {pool['status']}")
             ```
         """
+
         # Collect pool information concurrently (10x performance improvement!)
         async def get_pool_info(pool_id: str, pool: BasePool) -> dict[str, Any]:
             """Get information for a single pool."""
@@ -488,17 +489,11 @@ class PoolManager:
             }
 
         # Execute all status checks concurrently
-        tasks = [
-            get_pool_info(pool_id, pool)
-            for pool_id, pool in self._pools.items()
-        ]
+        tasks = [get_pool_info(pool_id, pool) for pool_id, pool in self._pools.items()]
         pools_info = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Filter out exceptions and return valid results
-        return [
-            p for p in pools_info
-            if not isinstance(p, Exception)
-        ]
+        return [p for p in pools_info if not isinstance(p, Exception)]
 
     async def health_check(self) -> dict[str, Any]:
         """Get health status of all pools.

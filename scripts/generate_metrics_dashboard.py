@@ -7,14 +7,14 @@ of test coverage and quality metrics across all repositories.
 """
 
 import argparse
-import json
-import sys
 from datetime import datetime
+import json
 from pathlib import Path
-from typing import Any, Dict
+import sys
+from typing import Any
 
 
-def generate_dashboard(results: list[Dict[str, Any]], avg_coverage: float) -> str:
+def generate_dashboard(results: list[dict[str, Any]], avg_coverage: float) -> str:
     """Generate HTML dashboard from metrics results.
 
     Args:
@@ -30,11 +30,13 @@ def generate_dashboard(results: list[Dict[str, Any]], avg_coverage: float) -> st
     sorted_results = sorted(results, key=lambda x: x["coverage"], reverse=True)
 
     # Generate JavaScript data
-    js_data = json.dumps({
-        "timestamp": timestamp,
-        "avg_coverage": avg_coverage,
-        "repositories": sorted_results,
-    })
+    js_data = json.dumps(
+        {
+            "timestamp": timestamp,
+            "avg_coverage": avg_coverage,
+            "repositories": sorted_results,
+        }
+    )
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -216,7 +218,7 @@ def generate_dashboard(results: list[Dict[str, Any]], avg_coverage: float) -> st
             </div>
             <div class="summary-card">
                 <h3>Files Tested</h3>
-                <div class="value">{sum(r['files_tested'] for r in results)}</div>
+                <div class="value">{sum(r["files_tested"] for r in results)}</div>
             </div>
         </div>
 
@@ -258,8 +260,8 @@ def generate_dashboard(results: list[Dict[str, Any]], avg_coverage: float) -> st
         coverage_width = coverage
         html += f"""
                     <tr>
-                        <td><strong>{repo['repo']}</strong></td>
-                        <td>{repo['role']}</td>
+                        <td><strong>{repo["repo"]}</strong></td>
+                        <td>{repo["role"]}</td>
                         <td>
                             <div>{coverage:.1f}%</div>
                             <div class="coverage-bar">
@@ -270,20 +272,25 @@ def generate_dashboard(results: list[Dict[str, Any]], avg_coverage: float) -> st
                     </tr>
 """
 
-    html += """
+    html += (
+        """
                 </tbody>
             </table>
         </div>
 
         <div class="refresh-info">
-            Generated: """ + timestamp + """
+            Generated: """
+        + timestamp
+        + """
             <br>
             <em>Regenerate with: <code>mahavishnu metrics dashboard --output metrics.html</code></em>
         </div>
     </div>
 
     <script>
-        const data = """ + js_data + """;
+        const data = """
+        + js_data
+        + """;
 
         // Coverage chart
         const coverageCtx = document.getElementById('coverageChart').getContext('2d');
@@ -366,14 +373,13 @@ def generate_dashboard(results: list[Dict[str, Any]], avg_coverage: float) -> st
 </body>
 </html>
 """
+    )
     return html
 
 
 def main() -> int:
     """Generate the metrics dashboard."""
-    parser = argparse.ArgumentParser(
-        description="Generate HTML metrics dashboard"
-    )
+    parser = argparse.ArgumentParser(description="Generate HTML metrics dashboard")
     parser.add_argument(
         "--output",
         "-o",
@@ -386,6 +392,7 @@ def main() -> int:
 
     # Import metrics collection
     import yaml
+
     from scripts.collect_metrics import get_coverage_from_file
 
     # Load repository catalog
@@ -408,12 +415,14 @@ def main() -> int:
         if coverage_file.exists():
             cov_data = get_coverage_from_file(repo_path)
             if "error" not in cov_data:
-                results.append({
-                    "repo": repo_name,
-                    "role": role,
-                    "coverage": cov_data.get("coverage", 0),
-                    "files_tested": cov_data.get("files", 0),
-                })
+                results.append(
+                    {
+                        "repo": repo_name,
+                        "role": role,
+                        "coverage": cov_data.get("coverage", 0),
+                        "files_tested": cov_data.get("files", 0),
+                    }
+                )
 
     if not results:
         print("No coverage data found")

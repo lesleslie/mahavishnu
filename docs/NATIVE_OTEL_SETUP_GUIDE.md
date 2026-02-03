@@ -80,18 +80,19 @@ results = await mcp.call_tool("search_otel_traces", {
 
 **You're done!** No Docker containers, no PostgreSQL setup, no pgvector extension installation. Just Python and DuckDB.
 
----
+______________________________________________________________________
 
 ## Architecture Overview
 
 ### The Problem with Traditional Approaches
 
 Traditional OTel storage requires:
+
 1. **Docker** - Heavy containerization overhead
-2. **PostgreSQL** - Separate database service
-3. **pgvector extension** - Manual installation and configuration
-4. **Connection pooling** - asyncpg, connection management
-5. **Migrations** - Schema setup, extension installation
+1. **PostgreSQL** - Separate database service
+1. **pgvector extension** - Manual installation and configuration
+1. **Connection pooling** - asyncpg, connection management
+1. **Migrations** - Schema setup, extension installation
 
 ### The Native Solution
 
@@ -156,14 +157,14 @@ Mahavishnu uses **Akosha HotStore with DuckDB**:
 └─────────────────────────────────────────────────────────────┘
 ```
 
----
+______________________________________________________________________
 
 ## Why DuckDB > PostgreSQL + pgvector
 
 | Feature | DuckDB (Akosha HotStore) | PostgreSQL + pgvector |
 |---------|-------------------------|----------------------|
 | **Setup Complexity** | ✅ Zero setup - `pip install duckdb` | ❌ Docker container, pgvector extension, config |
-| **Startup Time** | ✅ <100ms (in-memory) | ❌ ~5 seconds (Docker + Postgres) |
+| **Startup Time** | ✅ \<100ms (in-memory) | ❌ ~5 seconds (Docker + Postgres) |
 | **Vector Search** | ✅ Built-in HNSW index | ⚠️ Requires pgvector extension |
 | **Embedding Storage** | ✅ Native `FLOAT[384]` column | ⚠️ Requires custom schema |
 | **Similarity Function** | ✅ Built-in `array_cosine_similarity()` | ⚠️ Requires extension function |
@@ -187,7 +188,7 @@ Mahavishnu uses **Akosha HotStore with DuckDB**:
 | **Memory usage** | 48MB | 198MB | **4.1x less** |
 | **Disk I/O** | Optional (in-memory) | Required (WAL) | **N/A** |
 
----
+______________________________________________________________________
 
 ## Installation Instructions
 
@@ -240,7 +241,7 @@ pip install -e ".[dev]"
 # This includes DuckDB and sentence-transformers
 ```
 
----
+______________________________________________________________________
 
 ## Configuration Examples
 
@@ -331,7 +332,7 @@ otel_storage:
   batch_size: 5
 ```
 
----
+______________________________________________________________________
 
 ## Usage Examples
 
@@ -368,6 +369,7 @@ asyncio.run(ingest_claude_sessions())
 ```
 
 **Expected Output:**
+
 ```
 Found 24 session logs
 Ingested session_001.json: 523 traces
@@ -447,6 +449,7 @@ asyncio.run(search_traces())
 ```
 
 **Expected Output:**
+
 ```
 Query: Claude refused to answer about security vulnerabilities
 ------------------------------------------------------------
@@ -562,7 +565,7 @@ async def mcp_example():
 asyncio.run(mcp_example())
 ```
 
----
+______________________________________________________________________
 
 ## MCP Tool Reference
 
@@ -571,10 +574,12 @@ asyncio.run(mcp_example())
 Ingest OTel trace log files into HotStore.
 
 **Parameters:**
+
 - `log_files` (list[str], required): List of log file paths to ingest
 - `batch_size` (int, optional): Batch size for ingestion. Default: 100
 
 **Returns:**
+
 ```python
 {
     "status": "success",
@@ -586,6 +591,7 @@ Ingest OTel trace log files into HotStore.
 ```
 
 **Example:**
+
 ```python
 await mcp.call_tool("ingest_otel_traces", {
     "log_files": ["/path/to/session.json"],
@@ -598,11 +604,13 @@ await mcp.call_tool("ingest_otel_traces", {
 Semantic search over ingested traces.
 
 **Parameters:**
+
 - `query` (str, required): Natural language search query
 - `limit` (int, optional): Maximum results to return. Default: 10
 - `threshold` (float, optional): Minimum similarity score (0-1). Default: 0.75
 
 **Returns:**
+
 ```python
 [
     {
@@ -617,6 +625,7 @@ Semantic search over ingested traces.
 ```
 
 **Example:**
+
 ```python
 results = await mcp.call_tool("search_otel_traces", {
     "query": "authentication failure",
@@ -630,9 +639,11 @@ results = await mcp.call_tool("search_otel_traces", {
 Retrieve a specific trace by ID.
 
 **Parameters:**
+
 - `trace_id` (str, required): Trace identifier
 
 **Returns:**
+
 ```python
 {
     "trace_id": "trace-abc123",
@@ -649,6 +660,7 @@ Retrieve a specific trace by ID.
 ```
 
 **Example:**
+
 ```python
 trace = await mcp.call_tool("get_trace_by_id", {
     "trace_id": "trace-abc123",
@@ -662,6 +674,7 @@ Get statistics about ingested traces.
 **Parameters:** None
 
 **Returns:**
+
 ```python
 {
     "total_traces": 12458,
@@ -679,11 +692,12 @@ Get statistics about ingested traces.
 ```
 
 **Example:**
+
 ```python
 stats = await mcp.call_tool("get_otel_statistics", {})
 ```
 
----
+______________________________________________________________________
 
 ## Performance Characteristics
 
@@ -697,6 +711,7 @@ stats = await mcp.call_tool("get_otel_statistics", {})
 | 100,000 | 68s | 1,470/s | 3.8GB |
 
 **Factors affecting ingestion:**
+
 - Embedding generation (sentence-transformers) - 80% of time
 - DuckDB inserts - 15% of time
 - Parsing JSON - 5% of time
@@ -711,6 +726,7 @@ stats = await mcp.call_tool("get_otel_statistics", {})
 | 1,000,000 traces | 450ms | 3.8GB |
 
 **HNSW Index Performance:**
+
 - Build time: ~5% of ingestion time
 - Memory overhead: ~1.5x vector size
 - Search complexity: O(log N) vs O(N) for brute force
@@ -718,12 +734,14 @@ stats = await mcp.call_tool("get_otel_statistics", {})
 ### Memory Usage
 
 **In-Memory Mode:**
+
 - Base: ~10MB (DuckDB overhead)
 - Per trace: ~4KB (including embedding)
 - HNSW index: ~1.5x vector size
 - Example: 10,000 traces ≈ 50MB total
 
 **File-Backed Mode:**
+
 - Same memory footprint
 - Disk usage: ~2x memory size
 - Startup penalty: ~200ms (load from disk)
@@ -731,18 +749,19 @@ stats = await mcp.call_tool("get_otel_statistics", {})
 ### Optimization Tips
 
 1. **Use batch ingestion** - Process 100-500 traces per batch
-2. **Tune cache size** - Cache frequently accessed embeddings
-3. **Adjust similarity threshold** - Higher = fewer results, faster
-4. **Choose right embedding model** - Trade speed vs quality
-5. **Use in-memory mode** - For development/testing
+1. **Tune cache size** - Cache frequently accessed embeddings
+1. **Adjust similarity threshold** - Higher = fewer results, faster
+1. **Choose right embedding model** - Trade speed vs quality
+1. **Use in-memory mode** - For development/testing
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
 ### Issue: "Module 'duckdb' not found"
 
 **Solution:**
+
 ```bash
 pip install duckdb
 ```
@@ -750,6 +769,7 @@ pip install duckdb
 ### Issue: "Module 'sentence_transformers' not found"
 
 **Solution:**
+
 ```bash
 pip install sentence-transformers
 ```
@@ -759,6 +779,7 @@ pip install sentence-transformers
 **Cause:** Using file-based path but file doesn't exist.
 
 **Solution:**
+
 ```yaml
 # Use in-memory mode for testing
 database_path: ":memory:"
@@ -773,6 +794,7 @@ chmod 666 /var/lib/mahavishnu/otel.db
 **Cause:** Ingesting too many traces at once.
 
 **Solution:**
+
 ```python
 ingester = OtelIngester(batch_size=50)  # Reduce batch size
 ```
@@ -782,6 +804,7 @@ ingester = OtelIngester(batch_size=50)  # Reduce batch size
 **Cause:** HNSW index not built or too small threshold.
 
 **Solution:**
+
 ```yaml
 # Rebuild index
 similarity_threshold: 0.80  # Increase threshold
@@ -795,6 +818,7 @@ await ingester.rebuild_index()
 **Cause:** Threshold too high or no matching traces.
 
 **Solution:**
+
 ```python
 # Lower threshold
 results = await ingester.search_traces(
@@ -808,6 +832,7 @@ results = await ingester.search_traces(
 **Cause:** Using large embedding model.
 
 **Solution:**
+
 ```yaml
 # Use faster model
 embedding_model: "all-MiniLM-L6-v2"  # 384 dims, fast
@@ -820,6 +845,7 @@ embedding_model: "all-MiniLM-L6-v2"  # 384 dims, fast
 **Cause:** Multiple processes accessing same file.
 
 **Solution:**
+
 ```yaml
 # Use in-memory mode
 database_path: ":memory:"
@@ -828,16 +854,16 @@ database_path: ":memory:"
 database_path: "/tmp/otel_${PROCESS_ID}.db"
 ```
 
----
+______________________________________________________________________
 
 ## Next Steps
 
 1. **Read the API Reference:** `docs/NATIVE_OTEL_API.md`
-2. **Run Examples:** `examples/native_otel_example.py`
-3. **Configure OTel Collector:** `config/otel-collector-config.yaml`
-4. **Integrate with Your App:** Use MCP tools for semantic search
+1. **Run Examples:** `examples/native_otel_example.py`
+1. **Configure OTel Collector:** `config/otel-collector-config.yaml`
+1. **Integrate with Your App:** Use MCP tools for semantic search
 
----
+______________________________________________________________________
 
 ## Additional Resources
 

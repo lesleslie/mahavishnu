@@ -54,16 +54,24 @@ async def process_repository(repo_path: str, task_spec: dict[str, Any]) -> dict[
             quality_factors = {
                 "total_functions": analysis_result.get("functions_indexed", 0),
                 "complex_functions_count": len(complex_funcs),
-                "avg_function_length": sum(f["length"] for f in complex_funcs) / len(complex_funcs) if complex_funcs else 0,
+                "avg_function_length": sum(f["length"] for f in complex_funcs) / len(complex_funcs)
+                if complex_funcs
+                else 0,
                 "max_complexity": max((f["calls_count"] for f in complex_funcs), default=0),
             }
 
             # Calculate quality score (0-100)
             # Base score starts at 100, deduct for complexity issues
             quality_score = 100
-            quality_score -= min(quality_factors["complex_functions_count"] * 2, 20)  # Up to -20 for too many complex functions
-            quality_score -= min(quality_factors["avg_function_length"] / 2, 15)  # Up to -15 for long functions
-            quality_score -= min(quality_factors["max_complexity"], 10)  # Up to -10 for high complexity
+            quality_score -= min(
+                quality_factors["complex_functions_count"] * 2, 20
+            )  # Up to -20 for too many complex functions
+            quality_score -= min(
+                quality_factors["avg_function_length"] / 2, 15
+            )  # Up to -15 for long functions
+            quality_score -= min(
+                quality_factors["max_complexity"], 10
+            )  # Up to -10 for high complexity
             quality_score = max(quality_score, 0)  # Ensure non-negative
 
             result = {

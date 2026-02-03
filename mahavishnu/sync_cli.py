@@ -12,18 +12,16 @@ Usage:
     mahavishnu sync --status      # Show sync status
 """
 
-from pathlib import Path
-from typing import Any
 import hashlib
 import json
+from pathlib import Path
 import time
+from typing import Any
 
-import typer
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-
-from mahavishnu.core.config import MahavishnuSettings
 import structlog
+import typer
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 # Create sync CLI app
 sync_app = typer.Typer(
@@ -42,6 +40,7 @@ def add_sync_commands(main_app: typer.Typer) -> None:
         main_app: Main Typer application to add commands to
     """
     main_app.add_typer(sync_app)
+
 
 # Configuration paths
 CLAUDE_CONFIG = Path.home() / ".claude.json"
@@ -148,9 +147,7 @@ def merge_mcp_servers(
 
     # Filter out skipped servers from Claude's config
     filtered_claude_mcp = {
-        name: config
-        for name, config in claude_mcp.items()
-        if name not in skip_servers
+        name: config for name, config in claude_mcp.items() if name not in skip_servers
     }
 
     # Start with Qwen's servers
@@ -194,7 +191,9 @@ def sync_extensions_claude_to_qwen() -> dict[str, Any]:
             plugin_names.append(name)
 
         logger.info(f"Found {len(plugin_names)} Claude plugins to potentially sync")
-        logger.debug(f"Plugins: {', '.join(plugin_names[:5])}{'...' if len(plugin_names) > 5 else ''}")
+        logger.debug(
+            f"Plugins: {', '.join(plugin_names[:5])}{'...' if len(plugin_names) > 5 else ''}"
+        )
 
         # Note: Actual extension installation requires:
         # qwen extensions install <marketplace-url>:<plugin-name>
@@ -238,7 +237,7 @@ def markdown_to_qwen_markdown(md_content: str, command_name: str) -> str:
     for i, line in enumerate(lines):
         # Claude format: ## description: ...
         if "description:" in line.lower():
-            match = re.search(r'description:\s*(.+?)(?:\s+id:)?$', line, re.IGNORECASE)
+            match = re.search(r"description:\s*(.+?)(?:\s+id:)?$", line, re.IGNORECASE)
             if match:
                 description = match.group(1).strip()
                 prompt_start = i + 1
@@ -266,7 +265,7 @@ def markdown_to_qwen_markdown(md_content: str, command_name: str) -> str:
     prompt_content = "\n".join(prompt_lines).strip()
 
     # Format as Qwen markdown with YAML frontmatter
-    qwen_md = f'''---
+    qwen_md = f"""---
 description: {description}
 ---
 
@@ -274,7 +273,7 @@ description: {description}
 # Original location: ~/.claude/commands/{command_name}.md
 
 {prompt_content}
-'''
+"""
 
     return qwen_md
 
@@ -438,9 +437,7 @@ class ConfigSyncHandler(FileSystemEventHandler):
     and triggers bidirectional sync automatically.
     """
 
-    def __init__(
-        self, dry_run: bool = False, skip_servers: list[str] | None = None
-    ):
+    def __init__(self, dry_run: bool = False, skip_servers: list[str] | None = None):
         """Initialize sync handler.
 
         Args:
@@ -588,9 +585,7 @@ def once(
 
 @sync_app.command()
 def daemon(
-    dry_run: bool = typer.Option(
-        False, "--dry-run", help="Log changes without syncing"
-    ),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Log changes without syncing"),
     skip: list[str] = typer.Option(
         None,
         "--skip",

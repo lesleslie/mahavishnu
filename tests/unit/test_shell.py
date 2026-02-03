@@ -1,6 +1,5 @@
 """Unit tests for Mahavishnu admin shell functionality."""
 
-import asyncio
 from io import StringIO
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -10,7 +9,7 @@ from mahavishnu.core.app import MahavishnuApp
 from mahavishnu.core.workflow_state import WorkflowStatus
 from mahavishnu.shell import MahavishnuShell
 from mahavishnu.shell.formatters import LogFormatter, RepoFormatter, WorkflowFormatter
-from mahavishnu.shell.helpers import errors, ps, sync, top
+from mahavishnu.shell.shell_commands import errors, ps, sync, top
 
 
 @pytest.mark.unit
@@ -184,7 +183,9 @@ class TestShellHelpers:
         mock_app.workflow_state_manager = AsyncMock()
 
         # Create workflow with many errors
-        errors_list = [{"timestamp": f"2025-01-25T{i:02d}:00:00", "message": f"Error {i}"} for i in range(20)]
+        errors_list = [
+            {"timestamp": f"2025-01-25T{i:02d}:00:00", "message": f"Error {i}"} for i in range(20)
+        ]
         mock_app.workflow_state_manager.list_workflows = AsyncMock(
             return_value=[
                 {
@@ -293,10 +294,34 @@ class TestWorkflowFormatter:
         """Test workflow status color mapping."""
         formatter = WorkflowFormatter()
         workflows = [
-            {"id": "wf-1", "status": WorkflowStatus.PENDING, "progress": 0, "adapter": "test", "created_at": ""},
-            {"id": "wf-2", "status": WorkflowStatus.RUNNING, "progress": 50, "adapter": "test", "created_at": ""},
-            {"id": "wf-3", "status": WorkflowStatus.COMPLETED, "progress": 100, "adapter": "test", "created_at": ""},
-            {"id": "wf-4", "status": WorkflowStatus.FAILED, "progress": 0, "adapter": "test", "created_at": ""},
+            {
+                "id": "wf-1",
+                "status": WorkflowStatus.PENDING,
+                "progress": 0,
+                "adapter": "test",
+                "created_at": "",
+            },
+            {
+                "id": "wf-2",
+                "status": WorkflowStatus.RUNNING,
+                "progress": 50,
+                "adapter": "test",
+                "created_at": "",
+            },
+            {
+                "id": "wf-3",
+                "status": WorkflowStatus.COMPLETED,
+                "progress": 100,
+                "adapter": "test",
+                "created_at": "",
+            },
+            {
+                "id": "wf-4",
+                "status": WorkflowStatus.FAILED,
+                "progress": 0,
+                "adapter": "test",
+                "created_at": "",
+            },
         ]
 
         # Should not raise
@@ -319,9 +344,24 @@ class TestLogFormatter:
         """Test formatter filters by log level."""
         formatter = LogFormatter()
         logs = [
-            {"timestamp": "2025-01-25T10:00:00", "level": "ERROR", "message": "Error 1", "workflow_id": "wf-1"},
-            {"timestamp": "2025-01-25T10:00:01", "level": "INFO", "message": "Info 1", "workflow_id": "wf-1"},
-            {"timestamp": "2025-01-25T10:00:02", "level": "ERROR", "message": "Error 2", "workflow_id": "wf-1"},
+            {
+                "timestamp": "2025-01-25T10:00:00",
+                "level": "ERROR",
+                "message": "Error 1",
+                "workflow_id": "wf-1",
+            },
+            {
+                "timestamp": "2025-01-25T10:00:01",
+                "level": "INFO",
+                "message": "Info 1",
+                "workflow_id": "wf-1",
+            },
+            {
+                "timestamp": "2025-01-25T10:00:02",
+                "level": "ERROR",
+                "message": "Error 2",
+                "workflow_id": "wf-1",
+            },
         ]
 
         # Should not raise
@@ -331,8 +371,18 @@ class TestLogFormatter:
         """Test formatter filters by workflow ID."""
         formatter = LogFormatter()
         logs = [
-            {"timestamp": "2025-01-25T10:00:00", "level": "ERROR", "message": "Error 1", "workflow_id": "wf-1"},
-            {"timestamp": "2025-01-25T10:00:01", "level": "ERROR", "message": "Error 2", "workflow_id": "wf-2"},
+            {
+                "timestamp": "2025-01-25T10:00:00",
+                "level": "ERROR",
+                "message": "Error 1",
+                "workflow_id": "wf-1",
+            },
+            {
+                "timestamp": "2025-01-25T10:00:01",
+                "level": "ERROR",
+                "message": "Error 2",
+                "workflow_id": "wf-2",
+            },
         ]
 
         # Should not raise
@@ -359,9 +409,24 @@ class TestLogFormatter:
         """Test formatter with level and workflow filters."""
         formatter = LogFormatter()
         logs = [
-            {"timestamp": "2025-01-25T10:00:00", "level": "ERROR", "message": "Error 1", "workflow_id": "wf-1"},
-            {"timestamp": "2025-01-25T10:00:01", "level": "INFO", "message": "Info 1", "workflow_id": "wf-1"},
-            {"timestamp": "2025-01-25T10:00:02", "level": "ERROR", "message": "Error 2", "workflow_id": "wf-2"},
+            {
+                "timestamp": "2025-01-25T10:00:00",
+                "level": "ERROR",
+                "message": "Error 1",
+                "workflow_id": "wf-1",
+            },
+            {
+                "timestamp": "2025-01-25T10:00:01",
+                "level": "INFO",
+                "message": "Info 1",
+                "workflow_id": "wf-1",
+            },
+            {
+                "timestamp": "2025-01-25T10:00:02",
+                "level": "ERROR",
+                "message": "Error 2",
+                "workflow_id": "wf-2",
+            },
         ]
 
         # Should only show ERROR from wf-1

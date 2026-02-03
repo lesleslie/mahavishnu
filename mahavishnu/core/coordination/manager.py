@@ -5,12 +5,12 @@ This module provides the CoordinationManager class that loads, queries,
 and updates coordination data from ecosystem.yaml.
 """
 
-import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+import re
+from typing import Any
 
-import yaml
 from pydantic import ValidationError
+import yaml
 
 from mahavishnu.core.coordination.models import (
     CrossRepoIssue,
@@ -42,8 +42,8 @@ class CoordinationManager:
             ConfigurationError: If ecosystem.yaml cannot be loaded or parsed
         """
         self.ecosystem_path = Path(ecosystem_path)
-        self._ecosystem: Dict[str, Any] = {}
-        self._coordination: Dict[str, Any] = {}
+        self._ecosystem: dict[str, Any] = {}
+        self._coordination: dict[str, Any] = {}
 
         self._load_ecosystem()
 
@@ -88,7 +88,7 @@ class CoordinationManager:
 
             with open(self.ecosystem_path, "w") as f:
                 yaml.dump(self._ecosystem, f, default_flow_style=False, sort_keys=False)
-        except IOError as e:
+        except OSError as e:
             raise ConfigurationError(
                 f"Failed to write ecosystem.yaml: {e}",
                 details={"path": str(self.ecosystem_path), "error": str(e)},
@@ -98,11 +98,11 @@ class CoordinationManager:
 
     def list_issues(
         self,
-        status: Optional[IssueStatus] = None,
-        priority: Optional[str] = None,
-        repo: Optional[str] = None,
-        assignee: Optional[str] = None,
-    ) -> List[CrossRepoIssue]:
+        status: IssueStatus | None = None,
+        priority: str | None = None,
+        repo: str | None = None,
+        assignee: str | None = None,
+    ) -> list[CrossRepoIssue]:
         """
         List cross-repository issues with optional filtering.
 
@@ -137,7 +137,7 @@ class CoordinationManager:
 
         return issues
 
-    def get_issue(self, issue_id: str) -> Optional[CrossRepoIssue]:
+    def get_issue(self, issue_id: str) -> CrossRepoIssue | None:
         """
         Get a specific issue by ID.
 
@@ -176,7 +176,7 @@ class CoordinationManager:
         issues.append(issue.model_dump(mode="json"))
         self._coordination["issues"] = issues
 
-    def update_issue(self, issue_id: str, updates: Dict[str, Any]) -> None:
+    def update_issue(self, issue_id: str, updates: dict[str, Any]) -> None:
         """
         Update an existing issue.
 
@@ -227,9 +227,9 @@ class CoordinationManager:
 
     def list_plans(
         self,
-        status: Optional[str] = None,
-        repo: Optional[str] = None,
-    ) -> List[CrossRepoPlan]:
+        status: str | None = None,
+        repo: str | None = None,
+    ) -> list[CrossRepoPlan]:
         """
         List cross-repository plans with optional filtering.
 
@@ -258,7 +258,7 @@ class CoordinationManager:
 
         return plans
 
-    def get_plan(self, plan_id: str) -> Optional[CrossRepoPlan]:
+    def get_plan(self, plan_id: str) -> CrossRepoPlan | None:
         """
         Get a specific plan by ID.
 
@@ -278,10 +278,10 @@ class CoordinationManager:
 
     def list_todos(
         self,
-        status: Optional[TodoStatus] = None,
-        repo: Optional[str] = None,
-        assignee: Optional[str] = None,
-    ) -> List[CrossRepoTodo]:
+        status: TodoStatus | None = None,
+        repo: str | None = None,
+        assignee: str | None = None,
+    ) -> list[CrossRepoTodo]:
         """
         List todo items with optional filtering.
 
@@ -313,7 +313,7 @@ class CoordinationManager:
 
         return todos
 
-    def get_todo(self, todo_id: str) -> Optional[CrossRepoTodo]:
+    def get_todo(self, todo_id: str) -> CrossRepoTodo | None:
         """
         Get a specific todo by ID.
 
@@ -333,10 +333,10 @@ class CoordinationManager:
 
     def list_dependencies(
         self,
-        consumer: Optional[str] = None,
-        provider: Optional[str] = None,
-        dependency_type: Optional[str] = None,
-    ) -> List[Dependency]:
+        consumer: str | None = None,
+        provider: str | None = None,
+        dependency_type: str | None = None,
+    ) -> list[Dependency]:
         """
         List dependencies with optional filtering.
 
@@ -368,7 +368,7 @@ class CoordinationManager:
 
         return deps
 
-    def check_dependencies(self, consumer: Optional[str] = None) -> Dict[str, Any]:
+    def check_dependencies(self, consumer: str | None = None) -> dict[str, Any]:
         """
         Validate inter-repository dependencies.
 
@@ -423,7 +423,7 @@ class CoordinationManager:
 
         return results
 
-    def _validate_dependency(self, dep: Dependency) -> Dict[str, Any]:
+    def _validate_dependency(self, dep: Dependency) -> dict[str, Any]:
         """
         Validate a dependency using its validation method.
 
@@ -464,7 +464,7 @@ class CoordinationManager:
 
     # Status and Reporting
 
-    def get_blocking_issues(self, repo: str) -> List[CrossRepoIssue]:
+    def get_blocking_issues(self, repo: str) -> list[CrossRepoIssue]:
         """
         Get all issues blocking a specific repository.
 
@@ -477,7 +477,7 @@ class CoordinationManager:
         issues = self.list_issues(repo=repo)
         return [i for i in issues if i.status not in [IssueStatus.RESOLVED, IssueStatus.CLOSED]]
 
-    def get_repo_status(self, repo: str) -> Dict[str, Any]:
+    def get_repo_status(self, repo: str) -> dict[str, Any]:
         """
         Get comprehensive coordination status for a repository.
 
@@ -502,7 +502,7 @@ class CoordinationManager:
             "blocked_by": self._get_blocking_dependencies(repo),
         }
 
-    def _get_blocking_todos(self, repo: str) -> List[CrossRepoTodo]:
+    def _get_blocking_todos(self, repo: str) -> list[CrossRepoTodo]:
         """
         Get todos in this repository that are blocking other repos.
 
@@ -515,7 +515,7 @@ class CoordinationManager:
         todos = self.list_todos(repo=repo)
         return [t for t in todos if t.blocking and t.status != TodoStatus.COMPLETED]
 
-    def _get_blocking_dependencies(self, repo: str) -> List[Dependency]:
+    def _get_blocking_dependencies(self, repo: str) -> list[Dependency]:
         """
         Get dependencies that are blocking this repository.
 

@@ -28,6 +28,7 @@ llamaindex.execute (top-level)
 #### Span Attributes
 
 **`llamaindex.execute` span:**
+
 - `task.type`: Operation type (ingest, query, ingest_and_query)
 - `task.id`: Task identifier
 - `repos.count`: Number of repositories being processed
@@ -37,6 +38,7 @@ llamaindex.execute (top-level)
 - `execute.status`: "success" or "partial_failure"
 
 **`llamaindex.ingest` span:**
+
 - `repo.path`: Full repository path
 - `repo.name`: Repository name (basename)
 - `llamaindex.operation`: Always "ingest"
@@ -53,6 +55,7 @@ llamaindex.execute (top-level)
 - `ingest.status`: "success", "no_documents", or error status
 
 **`llamaindex.query` span:**
+
 - `repo.path`: Full repository path
 - `repo.name`: Repository name (basename)
 - `query.text`: Truncated query text (max 100 chars)
@@ -63,6 +66,7 @@ llamaindex.execute (top-level)
 - `query.status`: "success" or error status
 
 **Error attributes (when errors occur):**
+
 - `error.message`: Error message
 - `error.type`: Exception type name
 - Span status set to "ERROR"
@@ -75,12 +79,14 @@ All metrics are created with appropriate attributes for filtering and aggregatio
 #### Histograms (Duration Metrics)
 
 **`llamaindex.ingest.duration`** (seconds)
+
 - Attributes:
   - `repo.path`: Repository path
   - `repo.name`: Repository name
   - `vector.backend`: "opensearch" or "memory"
 
 **`llamaindex.query.duration`** (seconds)
+
 - Attributes:
   - `repo.path`: Repository path
   - `repo.name`: Repository name
@@ -90,28 +96,33 @@ All metrics are created with appropriate attributes for filtering and aggregatio
 #### Counters (Cumulative Metrics)
 
 **`llamaindex.documents.count`**
+
 - Attributes:
   - `repo.path`: Repository path
   - `repo.name`: Repository name
 
 **`llamaindex.nodes.count`**
+
 - Attributes:
   - `repo.path`: Repository path
   - `repo.name`: Repository name
 
 **`llamaindex.queries.count`**
+
 - Attributes:
   - `repo.path`: Repository path
   - `repo.name`: Repository name
   - `vector.backend`: "opensearch" or "memory"
 
 **`llamaindex.indexes.count`**
+
 - Attributes:
   - `repo.path`: Repository path
   - `repo.name`: Repository name
   - `vector.backend`: "opensearch" or "memory"
 
 **`llamaindex.errors.count`**
+
 - Attributes:
   - `operation`: "ingest" or "query"
   - `error_type`: Exception type name
@@ -124,30 +135,34 @@ All metrics are created with appropriate attributes for filtering and aggregatio
 When OpenTelemetry is configured with an OTLP exporter (e.g., Jaeger, Tempo), traces will automatically be exported. You can view the distributed traces to understand:
 
 1. End-to-end request flow through the RAG pipeline
-2. Performance bottlenecks in document ingestion or querying
-3. Error propagation across operations
-4. Relationship between parent and child operations
+1. Performance bottlenecks in document ingestion or querying
+1. Error propagation across operations
+1. Relationship between parent and child operations
 
 ### Analyzing Metrics
 
 Metrics can be queried in your observability platform (Prometheus, Grafana, etc.):
 
 **Average ingestion time by repository:**
+
 ```promql
 rate(llamaindex_ingest_duration_sum[5m]) / rate(llamaindex_ingest_duration_count[5m])
 ```
 
 **Error rate by operation type:**
+
 ```promql
 rate(llamaindex_errors_count[5m]) by (operation)
 ```
 
 **Query performance percentiles:**
+
 ```promql
 histogram_quantile(0.95, rate(llamaindex_query_duration_bucket[5m]))
 ```
 
 **Document ingestion throughput:**
+
 ```promql
 rate(llamaindex_documents_count[5m])
 ```
@@ -171,13 +186,14 @@ When `metrics_enabled` is `false` or OpenTelemetry is not installed, the adapter
 The adapter uses the same graceful degradation pattern as `mahavishnu/core/observability.py`:
 
 1. Try to import OpenTelemetry modules
-2. If successful, initialize real tracers and meters
-3. If unavailable or disabled, use mock implementations
-4. All instrumentation code paths work identically regardless of availability
+1. If successful, initialize real tracers and meters
+1. If unavailable or disabled, use mock implementations
+1. All instrumentation code paths work identically regardless of availability
 
 ### Resource Metadata
 
 The adapter creates a dedicated resource for service identification:
+
 ```python
 resource = Resource.create({"service.name": "mahavishnu-llamaindex"})
 ```
@@ -210,12 +226,12 @@ The `get_health()` method now returns telemetry status:
 ## Best Practices
 
 1. **Always use span attributes** for contextual information (repo path, operation type, etc.)
-2. **Record exceptions** in spans using `span.record_exception(e)` for full error context
-3. **Set span status** to ERROR when operations fail
-4. **Use histogram units** (e.g., "s" for seconds) for metric clarity
-5. **Include attributes on metrics** for filtering and aggregation
-6. **Truncate long text** (like query text) to avoid excessive span size
-7. **Use child spans** for logical sub-operations (enhance_documents, parse_nodes, etc.)
+1. **Record exceptions** in spans using `span.record_exception(e)` for full error context
+1. **Set span status** to ERROR when operations fail
+1. **Use histogram units** (e.g., "s" for seconds) for metric clarity
+1. **Include attributes on metrics** for filtering and aggregation
+1. **Truncate long text** (like query text) to avoid excessive span size
+1. **Use child spans** for logical sub-operations (enhance_documents, parse_nodes, etc.)
 
 ## Testing
 
@@ -230,8 +246,8 @@ The instrumentation is designed to be transparent to existing functionality:
 The LlamaIndex adapter integrates with Mahavishnu's central observability system from `mahavishnu/core/observability.py`:
 
 1. Uses the same OTLP endpoint configuration
-2. Shares the same metrics_enabled flag
-3. Follows the same graceful degradation pattern
-4. Uses compatible span and metric naming conventions
+1. Shares the same metrics_enabled flag
+1. Follows the same graceful degradation pattern
+1. Uses compatible span and metric naming conventions
 
 This ensures unified observability across the entire Mahavishnu orchestration platform.

@@ -1,9 +1,10 @@
 """Authentication module for Mahavishnu supporting both JWT and subscription tokens."""
 
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Awaitable
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
-UTC = timezone.utc
+UTC = UTC
 from functools import wraps
 
 from fastapi import HTTPException, Request, status
@@ -126,8 +127,6 @@ def get_auth_from_config(config: Any) -> MultiAuthHandler:
     """
     return MultiAuthHandler(config)
 
-
-from typing import Callable, Awaitable
 
 def require_auth(auth_handler: Any) -> Callable:
     """

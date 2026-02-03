@@ -137,6 +137,7 @@ export MAHAVISHNU_OTEL_INGESTER_SIMILARITY_THRESHOLD=0.7
 Initialize OTel ingester.
 
 **Parameters:**
+
 - `hot_store`: Optional `HotStore` instance (creates own if `None`)
 - `embedding_model`: Sentence transformer model name
 - `cache_size`: Maximum embeddings to cache in memory
@@ -150,6 +151,7 @@ Initialize ingester and HotStore.
 - Initializes database schema
 
 **Raises:**
+
 - `RuntimeError`: If initialization fails
 
 #### `async ingest_trace(trace_data: dict)`
@@ -157,9 +159,11 @@ Initialize ingester and HotStore.
 Ingest a single OTel trace.
 
 **Parameters:**
+
 - `trace_data`: OpenTelemetry trace data dictionary
 
 **Trace Data Format:**
+
 ```python
 {
     "trace_id": "abc123",
@@ -174,6 +178,7 @@ Ingest a single OTel trace.
 ```
 
 **Raises:**
+
 - `ValidationError`: If trace data is invalid
 - `RuntimeError`: If HotStore not initialized
 
@@ -182,9 +187,11 @@ Ingest a single OTel trace.
 Ingest multiple OTel traces in batch.
 
 **Parameters:**
+
 - `traces`: List of OTel trace data dictionaries
 
 **Returns:**
+
 ```python
 {
     "success_count": 95,
@@ -198,12 +205,14 @@ Ingest multiple OTel traces in batch.
 Search traces by semantic similarity.
 
 **Parameters:**
+
 - `query`: Search query text
 - `limit`: Maximum results to return
 - `system_id`: Optional system filter (e.g., "claude", "qwen")
 - `threshold`: Minimum similarity score (0.0-1.0)
 
 **Returns:**
+
 ```python
 [
     {
@@ -222,9 +231,11 @@ Search traces by semantic similarity.
 Retrieve specific trace by ID.
 
 **Parameters:**
+
 - `trace_id`: OpenTelemetry trace ID
 
 **Returns:**
+
 - Trace data dictionary or `None` if not found
 
 #### `async close()`
@@ -241,11 +252,13 @@ Close ingester and cleanup resources.
 Create and initialize OTel ingester.
 
 **Parameters:**
+
 - `hot_store_path`: DuckDB database path (`:memory:` for in-memory)
 - `embedding_model`: Sentence transformer model name
 - `cache_size`: Maximum embeddings to cache
 
 **Returns:**
+
 - Initialized `OtelIngester` instance
 
 ## Advanced Usage
@@ -319,15 +332,15 @@ results = await ingester.search_traces(
 - **Ingestion**: ~1000 traces/second (in-memory HotStore)
 - **Embedding**: ~50 embeddings/second (first time)
 - **Embedding (cached)**: ~10,000 embeddings/second
-- **Search**: <10ms for 100K traces
+- **Search**: \<10ms for 100K traces
 
 ### Optimization Tips
 
 1. **Use In-Memory for Testing**: `hot_store_path=":memory:"`
-2. **Use Persistent for Production**: `hot_store_path="/data/traces.db"`
-3. **Increase Cache Size**: For repeated content, set `cache_size=5000`
-4. **Batch Ingestion**: Use `ingest_batch()` for bulk loads
-5. **Tune Threshold**: Lower threshold (0.6) for more results, higher (0.9) for precision
+1. **Use Persistent for Production**: `hot_store_path="/data/traces.db"`
+1. **Increase Cache Size**: For repeated content, set `cache_size=5000`
+1. **Batch Ingestion**: Use `ingest_batch()` for bulk loads
+1. **Tune Threshold**: Lower threshold (0.6) for more results, higher (0.9) for precision
 
 ## Error Handling
 
@@ -352,11 +365,13 @@ except RuntimeError as e:
 ## Dependencies
 
 Required:
+
 ```bash
 pip install sentence-transformers
 ```
 
 Optional (for persistent storage):
+
 ```bash
 pip install duckdb
 ```

@@ -19,11 +19,12 @@ Example usage:
 from __future__ import annotations
 
 import asyncio
-import functools
-import time
+from collections.abc import Callable
 from enum import Enum
+import functools
 from logging import getLogger
-from typing import Any, Callable, ParamSpec, TypeVar
+import time
+from typing import Any, ParamSpec, TypeVar
 
 # Type aliases
 P = ParamSpec("P")
@@ -36,8 +37,10 @@ logger = getLogger(__name__)
 # Circuit Breaker Implementation
 # ============================================================================
 
+
 class CircuitState(Enum):
     """Circuit breaker states."""
+
     CLOSED = "closed"  # Normal operation, requests pass through
     OPEN = "open"  # Circuit is open, requests fail fast
     HALF_OPEN = "half_open"  # Testing if service has recovered
@@ -45,6 +48,7 @@ class CircuitState(Enum):
 
 class CircuitBreakerError(Exception):
     """Raised when circuit breaker is open and request is rejected."""
+
     pass
 
 
@@ -199,6 +203,7 @@ class CircuitBreaker:
         Returns:
             Wrapped function with circuit breaker protection
         """
+
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             return await self.call(func, *args, **kwargs)
@@ -220,6 +225,7 @@ class CircuitBreaker:
 # ============================================================================
 # Retry Implementation
 # ============================================================================
+
 
 class BackoffStrategy:
     """Backoff strategy for retry attempts."""
@@ -250,7 +256,9 @@ class BackoffStrategy:
         return lambda attempt: base_delay + (attempt * increment)
 
     @staticmethod
-    def exponential(base_delay: float = 1.0, max_delay: float = 60.0, exponent: float = 2.0) -> Callable[[int], float]:
+    def exponential(
+        base_delay: float = 1.0, max_delay: float = 60.0, exponent: float = 2.0
+    ) -> Callable[[int], float]:
         """Exponential backoff with jitter.
 
         Args:
@@ -261,10 +269,12 @@ class BackoffStrategy:
         Returns:
             Function that calculates exponential backoff
         """
+
         def calculate(attempt: int) -> float:
-            delay = min(base_delay * (exponent ** attempt), max_delay)
+            delay = min(base_delay * (exponent**attempt), max_delay)
             # Add jitter to prevent thundering herd
             import random
+
             jitter = random.uniform(0.0, delay * 0.1)  # 10% jitter
             return delay + jitter
 
@@ -273,10 +283,9 @@ class BackoffStrategy:
 
 class MaxRetriesExceededError(Exception):
     """Raised when max retry attempts are exceeded."""
+
     def __init__(self, func_name: str, attempts: int, last_exception: Exception | None = None):
-        super().__init__(
-            f"Function '{func_name}' failed after {attempts} attempts"
-        )
+        super().__init__(f"Function '{func_name}' failed after {attempts} attempts")
         self.func_name = func_name
         self.attempts = attempts
         self.last_exception = last_exception
@@ -365,9 +374,7 @@ class Retry:
                     await asyncio.sleep(delay)
                 else:
                     # Last attempt failed
-                    logger.error(
-                        f"All {self.max_attempts} attempts failed for {func.__name__}"
-                    )
+                    logger.error(f"All {self.max_attempts} attempts failed for {func.__name__}")
                     raise MaxRetriesExceededError(
                         func.__name__, self.max_attempts, last_exception
                     ) from e
@@ -388,6 +395,7 @@ class Retry:
         Returns:
             Wrapped function with retry logic
         """
+
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             return await self.call(func, *args, **kwargs)
@@ -398,6 +406,7 @@ class Retry:
 # ============================================================================
 # Convenience Decorators
 # ============================================================================
+
 
 def circuit_breaker(
     failure_threshold: int = 5,
@@ -420,6 +429,7 @@ def circuit_breaker(
             # Service call protected by circuit breaker
             pass
     """
+
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         breaker = CircuitBreaker(
             failure_threshold=failure_threshold,
@@ -483,6 +493,7 @@ def retry(
 # Combined Decorator
 # ============================================================================
 
+
 def resilient(
     # Circuit breaker params
     failure_threshold: int = 5,
@@ -521,6 +532,7 @@ def resilient(
             # Highly resilient service call
             pass
     """
+
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         # Apply retry first (inner decorator), then circuit breaker (outer)
         retry_decorator = retry(
@@ -544,6 +556,7 @@ def resilient(
 # Fallback Pattern
 # ============================================================================
 
+
 def with_fallback(
     fallback_func: Callable[P, R],
     on_exception: type[Exception] | tuple[type[Exception], ...] = Exception,
@@ -566,15 +579,14 @@ def with_fallback(
             # API call with fallback to cache
             pass
     """
+
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
                 return await func(*args, **kwargs)
             except on_exception as e:
-                logger.warning(
-                    f"Primary function {func.__name__} failed: {e}. Using fallback."
-                )
+                logger.warning(f"Primary function {func.__name__} failed: {e}. Using fallback.")
                 # Call fallback function (can be sync or async)
                 if asyncio.iscoroutinefunction(fallback_func):
                     return await fallback_func(*args, **kwargs)

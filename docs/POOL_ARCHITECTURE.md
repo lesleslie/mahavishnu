@@ -69,17 +69,20 @@ The pool management architecture enables Mahavishnu to orchestrate worker tasks 
 **Purpose**: Direct worker management by Mahavishnu
 
 **Use Cases**:
+
 - Local development and testing
 - Low-latency task execution
 - Debugging and monitoring
 - CI/CD pipeline automation
 
 **Implementation**:
+
 - Wraps existing `WorkerManager`
 - Workers run locally in Mahavishnu's process
 - Supports dynamic scaling (min_workers to max_workers)
 
 **Example**:
+
 ```python
 config = PoolConfig(
     name="local-pool",
@@ -94,6 +97,7 @@ result = await pool_mgr.execute_on_pool(pool_id, {"prompt": "Write code"})
 ```
 
 **Architecture**:
+
 ```
 ┌─────────────────────────────────────┐
 │         MahavishnuPool              │
@@ -119,17 +123,20 @@ result = await pool_mgr.execute_on_pool(pool_id, {"prompt": "Write code"})
 **Purpose**: Delegates worker management to Session-Buddy instances
 
 **Use Cases**:
+
 - Distributed worker management
 - Remote worker execution
 - Session-Buddy memory integration
 - Multi-server deployments
 
 **Implementation**:
+
 - Each Session-Buddy instance manages exactly 3 workers
 - Communication via MCP protocol (HTTP)
 - Fixed worker count (scaling requires spawning more pools)
 
 **Example**:
+
 ```python
 config = PoolConfig(
     name="delegated-pool",
@@ -141,6 +148,7 @@ result = await pool_mgr.execute_on_pool(pool_id, {"prompt": "Analyze code"})
 ```
 
 **Architecture**:
+
 ```
 ┌─────────────────────────────────────┐
 │      SessionBuddyPool              │
@@ -165,17 +173,20 @@ result = await pool_mgr.execute_on_pool(pool_id, {"prompt": "Analyze code"})
 **Purpose**: Kubernetes-native worker deployment
 
 **Use Cases**:
+
 - Cloud deployments
 - Auto-scaling workloads
 - Multi-cluster execution
 - Resource quotas
 
 **Implementation**:
+
 - Deploys workers as K8s Jobs/Pods
 - Python k8s client for job management
 - Auto-scaling via HorizontalPodAutoscaler (HPA)
 
 **Example**:
+
 ```python
 config = PoolConfig(
     name="cloud-pool",
@@ -191,6 +202,7 @@ result = await pool_mgr.execute_on_pool(pool_id, {"prompt": "Process data"})
 ```
 
 **Architecture**:
+
 ```
 ┌─────────────────────────────────────┐
 │      KubernetesPool                 │
@@ -212,14 +224,17 @@ result = await pool_mgr.execute_on_pool(pool_id, {"prompt": "Process data"})
 ## Pool Routing Strategies
 
 ### ROUND_ROBIN
+
 Distributes tasks evenly across all pools in sequence.
 
 **Best For**:
+
 - General load balancing
 - Predictable distribution
 - Fair task allocation
 
 **Example**:
+
 ```python
 result = await pool_mgr.route_task(
     {"prompt": "Task"},
@@ -229,14 +244,17 @@ result = await pool_mgr.route_task(
 ```
 
 ### LEAST_LOADED
+
 Routes to pool with fewest active workers.
 
 **Best For**:
+
 - Optimal resource utilization
 - Preventing overload
 - Dynamic load balancing
 
 **Example**:
+
 ```python
 result = await pool_mgr.route_task(
     {"prompt": "Task"},
@@ -246,14 +264,17 @@ result = await pool_mgr.route_task(
 ```
 
 ### RANDOM
+
 Randomly selects a pool for each task.
 
 **Best For**:
+
 - Even distribution over time
 - Simple strategy
 - Avoiding routing patterns
 
 **Example**:
+
 ```python
 result = await pool_mgr.route_task(
     {"prompt": "Task"},
@@ -263,14 +284,17 @@ result = await pool_mgr.route_task(
 ```
 
 ### AFFINITY
+
 Routes to same pool for related tasks.
 
 **Best For**:
+
 - Task groups requiring same context
 - Caching warm-up
 - Stateful operations
 
 **Example**:
+
 ```python
 result = await pool_mgr.route_task(
     {"prompt": "Follow-up task"},
@@ -421,6 +445,7 @@ export MAHAVISHNU_POOL_DEFAULT_MAX_WORKERS=10
 ### YAML Configuration
 
 **settings/mahavishnu.yaml**:
+
 ```yaml
 # Pool configuration
 pools_enabled: true
@@ -575,6 +600,7 @@ mahavishnu pool search-memory --query "test"
 ## Migration Guide
 
 See [POOL_MIGRATION.md](POOL_MIGRATION.md) for:
+
 - Migrating from WorkerManager to pools
 - Example workflows
 - Best practices
@@ -593,5 +619,4 @@ See [POOL_MIGRATION.md](POOL_MIGRATION.md) for:
 - [BasePool API](#basepool-api)
 - [PoolManager API](#poolmanager-api)
 - [MemoryAggregator API](#memoryaggregator-api)
-- [MCP Tools Specification](../MCP_TOOLS_SPECIFICATION.md)
 - [Implementation Progress](../POOL_IMPLEMENTATION_PROGRESS.md)

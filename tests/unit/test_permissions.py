@@ -1,11 +1,11 @@
 """Unit tests for permissions and JWT manager with comprehensive security validation."""
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from mahavishnu.core.config import MahavishnuSettings
 from mahavishnu.core.errors import ConfigurationError
-from mahavishnu.core.permissions import JWTManager, Permission, Role, RBACManager
+from mahavishnu.core.permissions import JWTManager, Permission, RBACManager
 
 
 class TestJWTManagerSecurity:
@@ -160,7 +160,9 @@ class TestRBACManager:
         # Create user with developer role
         import asyncio
 
-        user = asyncio.run(rbac.create_user("user_1", ["developer"], allowed_repos=["repo1", "repo2"]))
+        user = asyncio.run(
+            rbac.create_user("user_1", ["developer"], allowed_repos=["repo1", "repo2"])
+        )
 
         assert user.user_id == "user_1"
         assert len(user.roles) == 1
@@ -178,7 +180,9 @@ class TestRBACManager:
         admin = asyncio.run(rbac.create_user("admin_user", ["admin"]))
 
         # Admin should have all permissions on any repo
-        has_perm = asyncio.run(rbac.check_permission("admin_user", "any_repo", Permission.WRITE_REPO))
+        has_perm = asyncio.run(
+            rbac.check_permission("admin_user", "any_repo", Permission.WRITE_REPO)
+        )
         assert has_perm is True
 
         # Create viewer user with limited access

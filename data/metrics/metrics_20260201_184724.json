@@ -1,82 +1,82 @@
 {
-  "timestamp": "2026-02-01T18:47:24.224815",
+  "repositories": [
+    {
+      "coverage": 10.0,
+      "files_tested": 87,
+      "name": "mahavishnu",
+      "role": "orchestrator"
+    },
+    {
+      "coverage": 6.0,
+      "files_tested": 154,
+      "name": "session-buddy",
+      "role": "manager"
+    },
+    {
+      "coverage": 4.0,
+      "files_tested": 308,
+      "name": "crackerjack",
+      "role": "inspector"
+    },
+    {
+      "coverage": 38.0,
+      "files_tested": 26,
+      "name": "akosha",
+      "role": "aggregator"
+    },
+    {
+      "coverage": 24.0,
+      "files_tested": 21,
+      "name": "jinja2-async-environment",
+      "role": "foundation"
+    },
+    {
+      "coverage": 20.0,
+      "files_tested": 1,
+      "name": "starlette-async-jinja",
+      "role": "foundation"
+    },
+    {
+      "coverage": 35.0,
+      "files_tested": 16,
+      "name": "excalidraw-mcp",
+      "role": "visualizer"
+    },
+    {
+      "coverage": 20.0,
+      "files_tested": 3,
+      "name": "mailgun-mcp",
+      "role": "tool"
+    },
+    {
+      "coverage": 55.0,
+      "files_tested": 21,
+      "name": "oneiric-mcp",
+      "role": "tool"
+    },
+    {
+      "coverage": 25.0,
+      "files_tested": 54,
+      "name": "opera-cloud-mcp",
+      "role": "tool"
+    },
+    {
+      "coverage": 43.0,
+      "files_tested": 29,
+      "name": "raindropio-mcp",
+      "role": "tool"
+    },
+    {
+      "coverage": 26.0,
+      "files_tested": 13,
+      "name": "unifi-mcp",
+      "role": "tool"
+    }
+  ],
   "summary": {
     "avg_coverage": 25.5,
     "repos_count": 12,
     "total_files_tested": 733
   },
-  "repositories": [
-    {
-      "name": "mahavishnu",
-      "role": "orchestrator",
-      "coverage": 10.0,
-      "files_tested": 87
-    },
-    {
-      "name": "session-buddy",
-      "role": "manager",
-      "coverage": 6.0,
-      "files_tested": 154
-    },
-    {
-      "name": "crackerjack",
-      "role": "inspector",
-      "coverage": 4.0,
-      "files_tested": 308
-    },
-    {
-      "name": "akosha",
-      "role": "aggregator",
-      "coverage": 38.0,
-      "files_tested": 26
-    },
-    {
-      "name": "jinja2-async-environment",
-      "role": "foundation",
-      "coverage": 24.0,
-      "files_tested": 21
-    },
-    {
-      "name": "starlette-async-jinja",
-      "role": "foundation",
-      "coverage": 20.0,
-      "files_tested": 1
-    },
-    {
-      "name": "excalidraw-mcp",
-      "role": "visualizer",
-      "coverage": 35.0,
-      "files_tested": 16
-    },
-    {
-      "name": "mailgun-mcp",
-      "role": "tool",
-      "coverage": 20.0,
-      "files_tested": 3
-    },
-    {
-      "name": "oneiric-mcp",
-      "role": "tool",
-      "coverage": 55.0,
-      "files_tested": 21
-    },
-    {
-      "name": "opera-cloud-mcp",
-      "role": "tool",
-      "coverage": 25.0,
-      "files_tested": 54
-    },
-    {
-      "name": "raindropio-mcp",
-      "role": "tool",
-      "coverage": 43.0,
-      "files_tested": 29
-    },
-    {
-      "name": "unifi-mcp",
-      "role": "tool",
-      "coverage": 26.0,
-      "files_tested": 13
-    }
-  ]
+  "timestamp": "2026-02-01T18:47:24.224815"
 }

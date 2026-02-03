@@ -1,8 +1,9 @@
 """Tests for Agno adapter with real LLM integration."""
 
 import os
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from mahavishnu.core.errors import ConfigurationError
 from mahavishnu.engines.agno_adapter import AgnoAdapter
@@ -124,6 +125,7 @@ async def test_agno_adapter_parallel_execution():
 
     # Force MockAgent usage by mocking _create_agent to trigger ImportError
     with patch("mahavishnu.engines.agno_adapter.AgnoAdapter._create_agent") as mock_create:
+
         async def side_effect(task_type):
             # Return None to trigger MockAgent fallback
             return None
@@ -164,6 +166,7 @@ async def test_agno_adapter_handles_errors_gracefully():
 
     # Mock a repository that raises an error
     with patch("mahavishnu.engines.agno_adapter.AgnoAdapter._process_single_repo") as mock_process:
+
         async def side_effect(repo, task):
             return {"repo": repo, "status": "failed", "error": "Test error", "task_id": "test"}
 

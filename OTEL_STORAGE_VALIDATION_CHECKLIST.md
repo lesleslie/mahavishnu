@@ -353,37 +353,37 @@ asyncio.run(test())
 All of the following must pass:
 
 1. ✓ Configuration files updated correctly
-2. ✓ Documentation complete and accurate
-3. ✓ Database schema created successfully
-4. ✓ Adapter initializes without errors
-5. ✓ Can store and retrieve traces
-6. ✓ Semantic search returns relevant results
-7. ✓ Error handling works correctly
-8. ✓ Performance meets requirements
+1. ✓ Documentation complete and accurate
+1. ✓ Database schema created successfully
+1. ✓ Adapter initializes without errors
+1. ✓ Can store and retrieve traces
+1. ✓ Semantic search returns relevant results
+1. ✓ Error handling works correctly
+1. ✓ Performance meets requirements
 
 ## Troubleshooting
 
 If any validation step fails:
 
 1. Check PostgreSQL is running: `pg_isready`
-2. Verify pgvector extension: `SELECT * FROM pg_extension WHERE extname = 'vector'`
-3. Check connection string format: Must start with `postgresql://`
-4. Review logs: Check database logs and application logs
-5. Consult full documentation: `docs/ONEIRIC_OTEL_STORAGE.md`
-6. Review troubleshooting section in docs
+1. Verify pgvector extension: `SELECT * FROM pg_extension WHERE extname = 'vector'`
+1. Check connection string format: Must start with `postgresql://`
+1. Review logs: Check database logs and application logs
+1. Consult full documentation: `docs/ONEIRIC_OTEL_STORAGE.md`
+1. Review troubleshooting section in docs
 
 ## Next Steps After Validation
 
 Once all validation steps pass:
 
 1. Enable in production configuration
-2. Set up monitoring and alerts
-3. Configure backup strategy
-4. Train team on usage
-5. Integrate with OpenTelemetry SDK
-6. Set up data retention policies
-7. Document custom configurations
-8. Plan for scaling
+1. Set up monitoring and alerts
+1. Configure backup strategy
+1. Train team on usage
+1. Integrate with OpenTelemetry SDK
+1. Set up data retention policies
+1. Document custom configurations
+1. Plan for scaling
 
 ## Support
 

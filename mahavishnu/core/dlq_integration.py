@@ -19,15 +19,13 @@ Example:
     >>> print(f"DLQ size: {stats['queue_size']}")
 """
 
-import asyncio
-from collections.abc import Awaitable, Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 import logging
 from typing import Any
 
-from .dead_letter_queue import DeadLetterQueue, FailedTask, RetryPolicy, DeadLetterStatus
-from .errors import AdapterError, WorkflowError
+from .dead_letter_queue import DeadLetterQueue, FailedTask, RetryPolicy
+from .errors import AdapterError
 from .resilience import ErrorCategory
 
 
@@ -224,9 +222,7 @@ class DLQIntegration:
 
         if not should_enqueue:
             self._stats["skipped_permanent"] += 1
-            self._logger.info(
-                f"Skipping DLQ enqueue for {task_id}: {error_category.value} error"
-            )
+            self._logger.info(f"Skipping DLQ enqueue for {task_id}: {error_category.value} error")
             return None
 
         # Determine retry policy if not provided
@@ -239,8 +235,10 @@ class DLQIntegration:
 
         # Prepare metadata
         dlq_metadata = {
-            "enqueued_at": datetime.now(timezone.utc).isoformat(),
-            "enqueued_by": "automatic" if self._strategy != DLQIntegrationStrategy.MANUAL else "manual",
+            "enqueued_at": datetime.now(UTC).isoformat(),
+            "enqueued_by": "automatic"
+            if self._strategy != DLQIntegrationStrategy.MANUAL
+            else "manual",
             "original_error_type": type(error).__name__,
         }
         if metadata:
@@ -392,7 +390,9 @@ async def create_dlq_integration(app) -> DLQIntegration:
 
         app.dlq = DeadLetterQueue(
             max_size=getattr(app.config, "dlq_max_size", 10000),
-            opensearch_client=app.opensearch_integration.client if app.opensearch_integration else None,
+            opensearch_client=app.opensearch_integration.client
+            if app.opensearch_integration
+            else None,
             observability_manager=app.observability,
         )
 

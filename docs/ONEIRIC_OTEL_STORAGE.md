@@ -52,12 +52,14 @@ Oneiric's OTelStorageAdapter provides intelligent storage and semantic search ca
 ### 1. PostgreSQL Installation
 
 **macOS (Homebrew)**:
+
 ```bash
 brew install postgresql@16
 brew services start postgresql@16
 ```
 
 **Ubuntu/Debian**:
+
 ```bash
 sudo apt update
 sudo apt install postgresql-16 postgresql-contrib-16
@@ -65,6 +67,7 @@ sudo systemctl start postgresql
 ```
 
 **Docker**:
+
 ```bash
 docker run -d \
   --name postgres-otel \
@@ -174,6 +177,7 @@ CREATE TRIGGER update_traces_updated_at
 ```
 
 **Adjust IVFFlat `lists` parameter**:
+
 - `lists = sqrt(num_rows)` is a good starting point
 - For 1M rows: `lists = 1000`
 - For 100K rows: `lists = 300`
@@ -256,6 +260,7 @@ export MAHAVISHNU_OTEL_STORAGE__CACHE_SIZE=1000
 | `paraphrase-multilingual-MiniLM-L12-v2` | 384 | Fast | Good | Multi-language |
 
 **Model Selection**:
+
 - **Speed matters**: Use `all-MiniLM-L6-v2` (384 dims)
 - **Accuracy matters**: Use `all-mpnet-base-v2` (768 dims)
 - **Multi-language**: Use `paraphrase-multilingual-MiniLM-L12-v2`
@@ -558,6 +563,7 @@ locust -f tests/load/test_otel_storage.py --host=http://localhost:5432
 **Problem**: Cannot connect to PostgreSQL
 
 **Solution**:
+
 ```bash
 # Check PostgreSQL is running
 pg_isready -h localhost -p 5432
@@ -574,6 +580,7 @@ sudo ufw allow 5432/tcp
 **Problem**: ERROR: type "vector" does not exist
 
 **Solution**:
+
 ```sql
 -- Install pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -587,6 +594,7 @@ SELECT * FROM pg_extension WHERE extname = 'vector';
 **Problem**: vector must have 384 dimensions
 
 **Solution**:
+
 ```yaml
 # Match embedding dimension to model
 otel_storage:
@@ -599,6 +607,7 @@ otel_storage:
 **Problem**: Semantic search is slow
 
 **Solution**:
+
 ```sql
 -- Recreate index with optimized parameters
 DROP INDEX idx_traces_embedding;
@@ -612,13 +621,13 @@ ANALYZE traces;
 ## Best Practices
 
 1. **Connection Pooling**: Use connection pools to avoid connection overhead
-2. **Batch Writes**: Use batch operations for high-throughput scenarios
-3. **Index Maintenance**: Rebuild IVFFlat indexes periodically for optimal performance
-4. **Monitoring**: Track database metrics (connections, query times, storage)
-5. **Security**: Use environment variables for sensitive credentials
-6. **Backups**: Implement regular PostgreSQL backups
-7. **Schema Validation**: Use Pydantic models to validate trace data
-8. **Error Handling**: Implement proper error handling and retry logic
+1. **Batch Writes**: Use batch operations for high-throughput scenarios
+1. **Index Maintenance**: Rebuild IVFFlat indexes periodically for optimal performance
+1. **Monitoring**: Track database metrics (connections, query times, storage)
+1. **Security**: Use environment variables for sensitive credentials
+1. **Backups**: Implement regular PostgreSQL backups
+1. **Schema Validation**: Use Pydantic models to validate trace data
+1. **Error Handling**: Implement proper error handling and retry logic
 
 ## References
 
@@ -633,10 +642,10 @@ ANALYZE traces;
 To contribute improvements to OTelStorageAdapter:
 
 1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit a pull request
+1. Create a feature branch
+1. Add tests for new functionality
+1. Ensure all tests pass
+1. Submit a pull request
 
 ## License
 

@@ -7,11 +7,17 @@ import typer
 
 # Import backup and recovery CLI
 from .backup_cli import add_backup_commands
+
+# Import coordination CLI
+from .coordination_cli import add_coordination_commands
 from .core.app import MahavishnuApp
 from .core.subscription_auth import MultiAuthHandler
 
 # Import ecosystem management CLI
 from .ecosystem_cli import add_ecosystem_commands
+
+# Import metrics CLI
+from .metrics_cli import add_metrics_commands
 
 # Import monitoring CLI
 from .monitoring_cli import add_monitoring_commands
@@ -21,12 +27,6 @@ from .production_cli import add_production_commands
 
 # Import sync CLI
 from .sync_cli import add_sync_commands
-
-# Import coordination CLI
-from .coordination_cli import add_coordination_commands
-
-# Import metrics CLI
-from .metrics_cli import add_metrics_commands
 
 app = typer.Typer()
 
@@ -84,7 +84,6 @@ async def _async_sweep(tag: str, adapter: str):
 # MCP server management
 mcp_app = typer.Typer(help="MCP server lifecycle management")
 app.add_typer(mcp_app, name="mcp")
-
 
 # Ecosystem management
 ecosystem_app = typer.Typer(help="Ecosystem configuration and management")
@@ -585,7 +584,6 @@ add_coordination_commands(app)
 # Add metrics commands
 add_metrics_commands(app)
 
-
 # Worker management
 workers_app = typer.Typer(help="Worker orchestration and management")
 app.add_typer(workers_app, name="workers")
@@ -609,8 +607,8 @@ def workers_spawn(
     """
 
     async def _spawn():
-        from .workers import WorkerManager
         from .terminal.manager import TerminalManager
+        from .workers import WorkerManager
 
         maha_app = MahavishnuApp()
 
@@ -681,8 +679,8 @@ def workers_execute(
     """
 
     async def _execute():
-        from .workers import WorkerManager
         from .terminal.manager import TerminalManager
+        from .workers import WorkerManager
 
         maha_app = MahavishnuApp()
 
@@ -726,7 +724,7 @@ def workers_execute(
         results = await worker_mgr.execute_batch(worker_ids, tasks)
 
         # Display results
-        typer.echo(f"\n📊 Results:")
+        typer.echo("\n📊 Results:")
         successful = 0
         failed = 0
 
@@ -737,7 +735,9 @@ def workers_execute(
             typer.echo(f"   Duration: {result.duration_seconds:.2f}s")
 
             if result.has_output():
-                output_preview = result.output[:150] + "..." if len(result.output) > 150 else result.output
+                output_preview = (
+                    result.output[:150] + "..." if len(result.output) > 150 else result.output
+                )
                 typer.echo(f"   Output: {output_preview}")
 
             if result.error:
@@ -751,7 +751,7 @@ def workers_execute(
         typer.echo(f"\n📈 Summary: {successful} successful, {failed} failed")
 
         # Cleanup workers
-        typer.echo(f"\n🧹 Cleaning up workers...")
+        typer.echo("\n🧹 Cleaning up workers...")
         for wid in worker_ids:
             await worker_mgr.close_worker(wid)
         typer.echo("✅ All workers closed")
@@ -790,7 +790,7 @@ def pool_spawn(
     """
 
     async def _spawn():
-        from .pools import PoolManager, PoolConfig
+        from .pools import PoolConfig, PoolManager
         from .terminal.manager import TerminalManager
 
         maha_app = MahavishnuApp()
@@ -808,6 +808,7 @@ def pool_spawn(
 
         # Create pool manager
         from .mcp.protocols.message_bus import MessageBus
+
         message_bus = MessageBus()
         pool_mgr = PoolManager(
             terminal_manager=terminal_mgr,
@@ -848,9 +849,6 @@ def pool_list() -> None:
     """
 
     async def _list():
-        from .pools import PoolManager
-        from .terminal.manager import TerminalManager
-
         maha_app = MahavishnuApp()
 
         if not hasattr(maha_app, "pool_manager") or maha_app.pool_manager is None:
@@ -870,7 +868,9 @@ def pool_list() -> None:
                 typer.echo(f"     Type: {pool['pool_type']}")
                 typer.echo(f"     Name: {pool['name']}")
                 typer.echo(f"     Status: {pool['status']}")
-                typer.echo(f"     Workers: {pool['workers']} ({pool['min_workers']}-{pool['max_workers']})")
+                typer.echo(
+                    f"     Workers: {pool['workers']} ({pool['min_workers']}-{pool['max_workers']})"
+                )
                 typer.echo("")
 
         except Exception as e:
@@ -884,7 +884,9 @@ def pool_list() -> None:
 def pool_execute(
     pool_id: str = typer.Argument(..., help="Pool ID to execute on"),
     prompt: str = typer.Option(..., "--prompt", "-p", help="Task prompt"),
-    timeout: int = typer.Option(300, "--timeout", "-T", min=30, max=3600, help="Timeout in seconds"),
+    timeout: int = typer.Option(
+        300, "--timeout", "-T", min=30, max=3600, help="Timeout in seconds"
+    ),
 ) -> None:
     """Execute task on specific pool.
 
@@ -931,7 +933,9 @@ def pool_route(
         "-s",
         help="Pool selector (round_robin, least_loaded, random)",
     ),
-    timeout: int = typer.Option(300, "--timeout", "-T", min=30, max=3600, help="Timeout in seconds"),
+    timeout: int = typer.Option(
+        300, "--timeout", "-T", min=30, max=3600, help="Timeout in seconds"
+    ),
 ) -> None:
     """Execute task with automatic pool routing.
 

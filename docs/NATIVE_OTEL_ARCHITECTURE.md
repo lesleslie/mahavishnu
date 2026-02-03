@@ -222,6 +222,7 @@ results = await mcp.call_tool("search_otel_traces", {
 ## Migration from Docker Approach
 
 **Before (Docker):**
+
 ```bash
 docker run -d --name postgres-otel -p 5432:5432 pgvector/pgvector:pg16
 ./scripts/setup_otel_storage.sh
@@ -231,6 +232,7 @@ docker run -d --name postgres-otel -p 5432:5432 pgvector/pgvector:pg16
 ```
 
 **After (Native):**
+
 ```python
 from akosha.storage import HotStore
 hot_store = HotStore()  # Done!
@@ -241,7 +243,7 @@ await hot_store.initialize()  # Instant!
 
 | Operation | DuckDB HotStore | PostgreSQL + pgvector |
 |-----------|----------------|----------------------|
-| **Startup Time** | <100ms | ~5s (Docker) |
+| **Startup Time** | \<100ms | ~5s (Docker) |
 | **Ingest 1000 traces** | ~500ms | ~1.2s |
 | **Semantic Search** | ~50ms (HNSW) | ~80ms (IVFFlat) |
 | **Memory Usage** | ~50MB (in-memory) | ~200MB (Postgres) |

@@ -8,7 +8,6 @@ import pytest
 
 from mahavishnu.core.app import MahavishnuApp
 from mahavishnu.pools import PoolConfig, PoolManager, PoolSelector
-from mahavishnu.pools.mahavishnu_pool import MahavishnuPool
 
 
 class TestMultiPoolExecution:
@@ -354,9 +353,7 @@ class TestSessionBuddyDelegation:
         with patch("mahavishnu.pools.session_buddy_pool.httpx.AsyncClient") as mock_httpx:
             mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json.return_value = {
-                "result": ["worker_1", "worker_2", "worker_3"]
-            }
+            mock_response.json.return_value = {"result": ["worker_1", "worker_2", "worker_3"]}
             mock_httpx.return_value.__aenter__.return_value.post = AsyncMock(
                 return_value=mock_response
             )
@@ -383,9 +380,7 @@ class TestSessionBuddyDelegation:
             # Mock spawn
             spawn_response = MagicMock()
             spawn_response.status_code = 200
-            spawn_response.json.return_value = {
-                "result": ["worker_1", "worker_2", "worker_3"]
-            }
+            spawn_response.json.return_value = {"result": ["worker_1", "worker_2", "worker_3"]}
 
             # Mock execute
             execute_response = MagicMock()
@@ -688,12 +683,12 @@ class TestConcurrentPoolCollection:
         # Use factory function to properly capture pool_id in closure
         def make_collect_mock(pool_id):
             """Factory to create collect mock with proper closure capture."""
+
             async def collect_mock():
                 if pool_id in ["pool2", "pool5"]:
                     raise RuntimeError(f"Pool {pool_id} collection failed")
-                return [
-                    {"content": f"Memory from {pool_id}", "metadata": {}}
-                ]
+                return [{"content": f"Memory from {pool_id}", "metadata": {}}]
+
             return collect_mock
 
         async def always_healthy():

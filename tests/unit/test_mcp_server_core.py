@@ -1,18 +1,23 @@
 """Comprehensive tests for MCP server core functionality."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from mcp.server.models import InitializationOptions
-from mcp.types import Tool, Prompt, Resource
+from unittest.mock import AsyncMock, patch
 
-from mahavishnu.mcp.server_core import MahavishnuMCPServer
+from mcp.types import Resource, Tool
+import pytest
+
 from mahavishnu.core.config import MahavishnuSettings
+from mahavishnu.mcp.server_core import MahavishnuMCPServer
 
 
 @pytest.fixture
 def mock_settings():
     """Create mock settings for testing."""
-    return MahavishnuSettings(server_name="Test Server", llm_provider="anthropic", observability_enabled=False, llm={model="claude-sonnet-4"})
+    return MahavishnuSettings(
+        server_name="Test Server",
+        llm_provider="anthropic",
+        observability_enabled=False,
+        llm={"model": "claude-sonnet-4"},
+    )
 
 
 @pytest.fixture
@@ -90,9 +95,9 @@ class TestMahavishnuMCPServerTools:
         # Verify tool structure
         for tool in tools:
             assert isinstance(tool, Tool)
-            assert hasattr(tool, 'name')
-            assert hasattr(tool, 'description')
-            assert hasattr(tool, 'inputSchema')
+            assert hasattr(tool, "name")
+            assert hasattr(tool, "description")
+            assert hasattr(tool, "inputSchema")
 
     @pytest.mark.asyncio
     async def test_list_tools_includes_repository_tools(self, server):
@@ -102,9 +107,9 @@ class TestMahavishnuMCPServerTools:
         tool_names = [tool.name for tool in tools]
 
         # Verify key repository tools are present
-        assert 'list_repos' in tool_names
-        assert 'get_repo_info' in tool_names
-        assert 'validate_repo' in tool_names
+        assert "list_repos" in tool_names
+        assert "get_repo_info" in tool_names
+        assert "validate_repo" in tool_names
 
     @pytest.mark.asyncio
     async def test_list_tools_includes_pool_tools(self, server):
@@ -114,10 +119,10 @@ class TestMahavishnuMCPServerTools:
         tool_names = [tool.name for tool in tools]
 
         # Verify pool tools are present
-        assert 'pool_spawn' in tool_names
-        assert 'pool_list' in tool_names
-        assert 'pool_execute' in tool_names
-        assert 'pool_health' in tool_names
+        assert "pool_spawn" in tool_names
+        assert "pool_list" in tool_names
+        assert "pool_execute" in tool_names
+        assert "pool_health" in tool_names
 
     @pytest.mark.asyncio
     async def test_list_tools_includes_coordination_tools(self, server):
@@ -127,9 +132,9 @@ class TestMahavishnuMCPServerTools:
         tool_names = [tool.name for tool in tools]
 
         # Verify coordination tools are present
-        assert 'trigger_workflow' in tool_names
-        assert 'get_workflow_status' in tool_names
-        assert 'list_workflows' in tool_names
+        assert "trigger_workflow" in tool_names
+        assert "get_workflow_status" in tool_names
+        assert "list_workflows" in tool_names
 
 
 class TestMahavishnuMCPServerPrompts:
@@ -148,21 +153,17 @@ class TestMahavishnuMCPServerPrompts:
         """Test getting a specific prompt."""
         # Test getting a prompt that exists
         prompt = await server.get_prompt(
-            name="workflow_orchestration",
-            arguments={"task": "Test task"}
+            name="workflow_orchestration", arguments={"task": "Test task"}
         )
 
         assert prompt is not None
-        assert hasattr(prompt, 'messages')
+        assert hasattr(prompt, "messages")
 
     @pytest.mark.asyncio
     async def test_get_prompt_not_found(self, server):
         """Test getting a non-existent prompt raises error."""
         with pytest.raises(Exception):
-            await server.get_prompt(
-                name="nonexistent_prompt",
-                arguments={}
-            )
+            await server.get_prompt(name="nonexistent_prompt", arguments={})
 
 
 class TestMahavishnuMCPServerResources:
@@ -178,9 +179,9 @@ class TestMahavishnuMCPServerResources:
 
         for resource in resources:
             assert isinstance(resource, Resource)
-            assert hasattr(resource, 'uri')
-            assert hasattr(resource, 'name')
-            assert hasattr(resource, 'description')
+            assert hasattr(resource, "uri")
+            assert hasattr(resource, "name")
+            assert hasattr(resource, "description")
 
     @pytest.mark.asyncio
     async def test_read_resource(self, server):
@@ -204,32 +205,23 @@ class TestMahavishnuMCPServerToolExecution:
     @pytest.mark.asyncio
     async def test_call_tool_list_repos(self, server):
         """Test calling list_repos tool."""
-        result = await server.call_tool(
-            name="list_repos",
-            arguments={}
-        )
+        result = await server.call_tool(name="list_repos", arguments={})
 
         assert result is not None
-        assert hasattr(result, 'content')
+        assert hasattr(result, "content")
         assert len(result.content) > 0
 
     @pytest.mark.asyncio
     async def test_call_tool_with_invalid_arguments(self, server):
         """Test calling tool with invalid arguments raises error."""
         with pytest.raises(Exception):
-            await server.call_tool(
-                name="list_repos",
-                arguments={"invalid_arg": "value"}
-            )
+            await server.call_tool(name="list_repos", arguments={"invalid_arg": "value"})
 
     @pytest.mark.asyncio
     async def test_call_tool_not_found(self, server):
         """Test calling non-existent tool raises error."""
         with pytest.raises(Exception):
-            await server.call_tool(
-                name="nonexistent_tool",
-                arguments={}
-            )
+            await server.call_tool(name="nonexistent_tool", arguments={})
 
 
 class TestMahavishnuMCPServerConfiguration:
@@ -247,7 +239,9 @@ class TestMahavishnuMCPServerConfiguration:
     @pytest.mark.asyncio
     async def test_initialize_with_custom_config(self):
         """Test server initializes with custom configuration."""
-        settings = MahavishnuSettings(server_name="Custom Server", llm_provider="openai", llm={model="gpt-4"})
+        settings = MahavishnuSettings(
+            server_name="Custom Server", llm_provider="openai", llm={"model": "gpt-4"}
+        )
         server = MahavishnuMCPServer(settings=settings)
 
         assert server.settings.server_name == "Custom Server"
@@ -262,18 +256,15 @@ class TestMahavishnuMCPServerErrorHandling:
     async def test_tool_execution_error_handling(self, server):
         """Test that tool execution errors are handled gracefully."""
         # Mock a tool that raises an error
-        with patch.object(server, '_execute_tool', side_effect=Exception("Test error")):
+        with patch.object(server, "_execute_tool", side_effect=Exception("Test error")):
             with pytest.raises(Exception) as exc_info:
-                await server.call_tool(
-                    name="failing_tool",
-                    arguments={}
-                )
+                await server.call_tool(name="failing_tool", arguments={})
             assert "Test error" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_resource_read_error_handling(self, server):
         """Test that resource read errors are handled gracefully."""
-        with patch.object(server, '_read_resource', side_effect=Exception("Read failed")):
+        with patch.object(server, "_read_resource", side_effect=Exception("Read failed")):
             with pytest.raises(Exception) as exc_info:
                 await server.read_resource(uri="failing://resource")
             assert "Read failed" in str(exc_info.value)
@@ -288,8 +279,8 @@ class TestMahavishnuMCPServerHealth:
         health = await server.health_check()
 
         assert health is not None
-        assert 'status' in health
-        assert health['status'] in ['healthy', 'unhealthy', 'degraded']
+        assert "status" in health
+        assert health["status"] in ["healthy", "unhealthy", "degraded"]
 
     @pytest.mark.asyncio
     async def test_health_check_includes_components(self, server):
@@ -297,7 +288,7 @@ class TestMahavishnuMCPServerHealth:
         health = await server.health_check()
 
         # Verify health check includes component details
-        assert 'components' in health or 'details' in health
+        assert "components" in health or "details" in health
 
 
 class TestMahavishnuMCPServerMetrics:
@@ -312,7 +303,7 @@ class TestMahavishnuMCPServerMetrics:
         assert isinstance(metrics, dict)
 
         # Verify common metric keys
-        expected_keys = ['uptime', 'requests_processed', 'errors']
+        expected_keys = ["uptime", "requests_processed", "errors"]
         for key in expected_keys:
             assert key in metrics or any(k.startswith(key) for k in metrics.keys())
 
@@ -322,7 +313,7 @@ class TestMahavishnuMCPServerMetrics:
         metrics = await server.get_metrics()
 
         # Verify tool-related metrics are present
-        assert 'tools' in metrics or 'tool_calls' in metrics
+        assert "tools" in metrics or "tool_calls" in metrics
 
 
 class TestMahavishnuMCPServerLogging:
@@ -332,9 +323,9 @@ class TestMahavishnuMCPServerLogging:
     async def test_logging_configuration(self, server):
         """Test logging is properly configured."""
         assert server.logger is not None
-        assert hasattr(server.logger, 'info')
-        assert hasattr(server.logger, 'error')
-        assert hasattr(server.logger, 'debug')
+        assert hasattr(server.logger, "info")
+        assert hasattr(server.logger, "error")
+        assert hasattr(server.logger, "debug")
 
     @pytest.mark.asyncio
     async def test_log_messages(self, server, caplog):
@@ -356,10 +347,7 @@ class TestMahavishnuMCPServerConcurrency:
         import asyncio
 
         # Create multiple concurrent tool calls
-        tasks = [
-            server.call_tool("list_repos", {})
-            for _ in range(5)
-        ]
+        tasks = [server.call_tool("list_repos", {}) for _ in range(5)]
 
         # Execute all concurrently
         results = await asyncio.gather(*tasks, return_exceptions=True)

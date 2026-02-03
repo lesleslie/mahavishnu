@@ -3,7 +3,7 @@
 **Last Updated**: 2026-02-03
 **Purpose**: Comprehensive visual guide to the Mahavishnu embedding system
 
----
+______________________________________________________________________
 
 ## 📊 Quick Visual Overview
 
@@ -21,11 +21,12 @@ graph LR
     style OPENAI fill:#FFD700
 ```
 
----
+______________________________________________________________________
 
 ## 🎯 Diagram Categories
 
 ### 1. Architecture Diagrams
+
 **Location**: [embedding-architecture.md](embedding-architecture.md)
 
 | Diagram | Description | Use When |
@@ -40,9 +41,10 @@ graph LR
 | **Feature Matrix** | Feature comparison table | Comparing provider capabilities |
 | **MCP Integration** | MCP tool integration flow | Using embeddings via MCP |
 
----
+______________________________________________________________________
 
 ### 2. Setup Guide Diagrams
+
 **Location**: [../EMBEDDINGS_SETUP_GUIDE.md](../EMBEDDINGS_SETUP_GUIDE.md)
 
 | Diagram | Section | Description |
@@ -53,9 +55,10 @@ graph LR
 | **Performance Chart** | Performance Benchmarks | Bar chart comparing providers |
 | **Model Dimensions** | Model Comparison | Visual model comparison by dimensions |
 
----
+______________________________________________________________________
 
 ### 3. Migration Guide Diagrams
+
 **Location**: [../SENTENCE_TRANSFORMERS_ALTERNATIVES.md](../SENTENCE_TRANSFORMERS_ALTERNATIVES.md)
 
 | Diagram | Section | Description |
@@ -64,7 +67,7 @@ graph LR
 | **Platform Matrix** | Quick Comparison | Compatibility table |
 | **Migration Decision Tree** | Migration Guide | Choose migration path based on priorities |
 
----
+______________________________________________________________________
 
 ## 🚀 Quick Start Guides
 
@@ -105,12 +108,13 @@ flowchart LR
 ```
 
 **Configuration Priority** (highest to lowest):
-4. ✅ Environment Variables
-3. ✅ `settings/local.yaml`
-2. ✅ `settings/mahavishnu.yaml`
+4\. ✅ Environment Variables
+3\. ✅ `settings/local.yaml`
+2\. ✅ `settings/mahavishnu.yaml`
+
 1. ✅ Pydantic defaults
 
----
+______________________________________________________________________
 
 ## 📈 Performance Visualization
 
@@ -145,7 +149,7 @@ graph LR
     style SPEED3 fill:#FFD700
 ```
 
----
+______________________________________________________________________
 
 ## 🔧 Troubleshooting Flows
 
@@ -184,31 +188,36 @@ flowchart TD
     style DONE fill:#90EE90
 ```
 
----
+______________________________________________________________________
 
 ## 📚 Recommended Reading Order
 
 ### For New Users
 
 1. **Start Here** → [Quick Overview](../EMBEDDINGS_SETUP_GUIDE.md#quick-overview)
+
    - Architecture overview
    - Provider selection decision tree
 
-2. **Choose Provider** → [Provider Selection](#step-1-choose-your-provider)
+1. **Choose Provider** → [Provider Selection](#step-1-choose-your-provider)
+
    - Decision flowchart
    - Comparison matrix
 
-3. **Setup Guide** → [Setup Guide](../EMBEDDINGS_SETUP_GUIDE.md)
+1. **Setup Guide** → [Setup Guide](../EMBEDDINGS_SETUP_GUIDE.md)
+
    - Option 1: FastEmbed (production)
    - Option 2: Ollama (development)
    - Option 3: OpenAI (cloud)
 
-4. **Configuration** → [Configuration Examples](../EMBEDDINGS_SETUP_GUIDE.md#configuration-examples)
+1. **Configuration** → [Configuration Examples](../EMBEDDINGS_SETUP_GUIDE.md#configuration-examples)
+
    - Oneiric loading pattern
    - YAML configuration
    - Environment variables
 
-5. **Usage** → [Programmatic Usage](../EMBEDDINGS_SETUP_GUIDE.md#programmatic-usage)
+1. **Usage** → [Programmatic Usage](../EMBEDDINGS_SETUP_GUIDE.md#programmatic-usage)
+
    - Basic usage
    - MCP integration
    - Advanced patterns
@@ -216,39 +225,46 @@ flowchart TD
 ### For Migrating Users
 
 1. **Migration Decision** → [Migration Decision Tree](../SENTENCE_TRANSFORMERS_ALTERNATIVES.md#migration-decision-tree)
+
    - Choose migration path
    - Compare solutions
 
-2. **Code Changes** → [Replace sentence-transformers](../SENTENCE_TRANSFORMERS_ALTERNATIVES.md#replace-sentence-transformers-in-code)
+1. **Code Changes** → [Replace sentence-transformers](../SENTENCE_TRANSFORMERS_ALTERNATIVES.md#replace-sentence-transformers-in-code)
+
    - Before/after examples
    - Migration patterns
 
-3. **Testing** → [Verify Migration](../EMBEDDINGS_SETUP_GUIDE.md#troubleshooting)
+1. **Testing** → [Verify Migration](../EMBEDDINGS_SETUP_GUIDE.md#troubleshooting)
+
    - Test embeddings
    - Validate results
 
----
+______________________________________________________________________
 
 ## 🎨 Diagram Rendering
 
 ### View Diagrams
 
 **Option 1: GitHub/GitLab** (Automatic)
+
 - Diagrams render automatically in supported Markdown viewers
 - Just open any `.md` file with Mermaid code blocks
 
 **Option 2: Mermaid Live Editor**
+
 1. Visit https://mermaid.live
-2. Copy Mermaid code from any diagram
-3. Paste into editor
-4. Export as PNG/SVG
+1. Copy Mermaid code from any diagram
+1. Paste into editor
+1. Export as PNG/SVG
 
 **Option 3: VS Code**
+
 - Install Mermaid Preview extension
 - Open Markdown file
 - Right-click → "Mermaid: Open Preview"
 
 **Option 4: Command Line**
+
 ```bash
 # Install Mermaid CLI
 npm install -g @mermaid-js/mermaid-cli
@@ -260,7 +276,7 @@ mmdc -i docs/diagrams/embedding-architecture.md -o output.png
 mmdc -i docs/diagrams/embedding-architecture.md -o output.svg
 ```
 
----
+______________________________________________________________________
 
 ## 🔗 Quick Links
 
@@ -273,18 +289,18 @@ mmdc -i docs/diagrams/embedding-architecture.md -o output.svg
 | **API Documentation** | [../../mahavishnu/core/embeddings_oneiric.py](../../mahavishnu/core/embeddings_oneiric.py) |
 | **Test Examples** | [../../tests/unit/test_embeddings.py](../../tests/unit/test_embeddings.py) |
 
----
+______________________________________________________________________
 
 ## 💡 Tips for Visual Learners
 
 1. **Start with diagrams** - They provide context before reading details
-2. **Follow decision trees** - They guide you to the right solution
-3. **Compare visualizations** - Side-by-side comparisons aid understanding
-4. **Print key diagrams** - Physical reference while implementing
-5. **Use sequence diagrams** - Understand flow and timing
-6. **Check flowcharts** - Troubleshoot issues step-by-step
+1. **Follow decision trees** - They guide you to the right solution
+1. **Compare visualizations** - Side-by-side comparisons aid understanding
+1. **Print key diagrams** - Physical reference while implementing
+1. **Use sequence diagrams** - Understand flow and timing
+1. **Check flowcharts** - Troubleshoot issues step-by-step
 
----
+______________________________________________________________________
 
 **Status**: ✅ Complete
 **Format**: Mermaid v10+ diagrams

@@ -8,28 +8,23 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Any
 
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-# Import monitoring components
-from monitoring.otel import (
-    setup_telemetry,
-    auto_instrument,
-    start_span,
-    add_span_attributes,
-    record_exception,
-    set_span_status,
-)
 from monitoring.metrics import (
     expose_metrics,
-    http_requests_total,
-    http_request_duration_seconds,
     mcp_tool_calls_total,
-    mcp_tool_duration_seconds,
-    track_time,
-    track_calls,
+)
+
+# Import monitoring components
+from monitoring.otel import (
+    add_span_attributes,
+    auto_instrument,
+    record_exception,
+    set_span_status,
+    setup_telemetry,
+    start_span,
 )
 
 # ============================================================================
@@ -70,6 +65,7 @@ auto_instrument(app, "example-mcp-server")
 # Metrics Endpoint
 # ============================================================================
 
+
 @app.get("/metrics")
 async def metrics():
     """Prometheus metrics exposition endpoint.
@@ -83,6 +79,7 @@ async def metrics():
 # Health Check
 # ============================================================================
 
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
@@ -92,6 +89,7 @@ async def health_check():
 # ============================================================================
 # Example MCP Tool with Monitoring
 # ============================================================================
+
 
 @app.post("/tools/calculate")
 async def calculate_tool(operation: str, x: float, y: float):
@@ -108,16 +106,11 @@ async def calculate_tool(operation: str, x: float, y: float):
         try:
             # Add custom attributes to span
             add_span_attributes(
-                tool_name="calculate",
-                operation_type=operation,
-                input_values=f"x={x},y={y}"
+                tool_name="calculate", operation_type=operation, input_values=f"x={x},y={y}"
             )
 
             # Increment tool call counter (success)
-            mcp_tool_calls_total.labels(
-                tool_name="calculate",
-                status="started"
-            ).inc()
+            mcp_tool_calls_total.labels(tool_name="calculate", status="started").inc()
 
             # Execute the operation
             if operation == "add":
@@ -132,10 +125,7 @@ async def calculate_tool(operation: str, x: float, y: float):
                 raise ValueError(f"Unknown operation: {operation}")
 
             # Record success
-            mcp_tool_calls_total.labels(
-                tool_name="calculate",
-                status="success"
-            ).inc()
+            mcp_tool_calls_total.labels(tool_name="calculate", status="success").inc()
 
             set_span_status("OK", f"Calculation successful: {result}")
 
@@ -146,10 +136,7 @@ async def calculate_tool(operation: str, x: float, y: float):
             record_exception(e)
 
             # Increment error counter
-            mcp_tool_calls_total.labels(
-                tool_name="calculate",
-                status="error"
-            ).inc()
+            mcp_tool_calls_total.labels(tool_name="calculate", status="error").inc()
 
             # Set span status to error
             set_span_status("ERROR", str(e))
@@ -161,6 +148,7 @@ async def calculate_tool(operation: str, x: float, y: float):
 # Example Agent Task with Monitoring
 # ============================================================================
 
+
 @app.post("/agent/execute")
 async def execute_agent_task(
     agent_type: str,
@@ -170,19 +158,14 @@ async def execute_agent_task(
     """Example agent task execution with monitoring."""
 
     # Create span for agent task
-    async with start_span("agent_task", {
-        "agent_type": agent_type,
-        "adapter": adapter,
-        "prompt_length": str(len(prompt))
-    }):
+    async with start_span(
+        "agent_task",
+        {"agent_type": agent_type, "adapter": adapter, "prompt_length": str(len(prompt))},
+    ):
         from monitoring.metrics import agent_task_duration_seconds, agent_tasks_total
 
         # Track agent task start
-        agent_tasks_total.labels(
-            agent_type=agent_type,
-            adapter=adapter,
-            status="started"
-        ).inc()
+        agent_tasks_total.labels(agent_type=agent_type, adapter=adapter, status="started").inc()
 
         start_time = time.time()
 
@@ -191,16 +174,11 @@ async def execute_agent_task(
             result = await simulate_agent_execution(agent_type, prompt, adapter)
 
             duration = time.time() - start_time
-            agent_task_duration_seconds.labels(
-                agent_type=agent_type,
-                adapter=adapter
-            ).observe(duration)
+            agent_task_duration_seconds.labels(agent_type=agent_type, adapter=adapter).observe(
+                duration
+            )
 
-            agent_tasks_total.labels(
-                agent_type=agent_type,
-                adapter=adapter,
-                status="success"
-            ).inc()
+            agent_tasks_total.labels(agent_type=agent_type, adapter=adapter, status="success").inc()
 
             add_span_attributes(task_duration=str(duration))
 
@@ -208,16 +186,11 @@ async def execute_agent_task(
 
         except Exception as e:
             duration = time.time() - start_time
-            agent_task_duration_seconds.labels(
-                agent_type=agent_type,
-                adapter=adapter
-            ).observe(duration)
+            agent_task_duration_seconds.labels(agent_type=agent_type, adapter=adapter).observe(
+                duration
+            )
 
-            agent_tasks_total.labels(
-                agent_type=agent_type,
-                adapter=adapter,
-                status="error"
-            ).inc()
+            agent_tasks_total.labels(agent_type=agent_type, adapter=adapter, status="error").inc()
 
             record_exception(e)
             raise
@@ -232,7 +205,7 @@ async def simulate_agent_execution(agent_type: str, prompt: str, adapter: str) -
         "agent_type": agent_type,
         "adapter": adapter,
         "response": f"Processed: {prompt[:50]}...",
-        "status": "completed"
+        "status": "completed",
     }
 
 
@@ -241,7 +214,8 @@ async def simulate_agent_execution(agent_type: str, prompt: str, adapter: str) -
 # ============================================================================
 
 import psutil
-from monitoring.metrics import system_memory_usage_bytes, system_cpu_usage_percent
+
+from monitoring.metrics import system_cpu_usage_percent, system_memory_usage_bytes
 
 
 async def update_system_metrics():
@@ -264,6 +238,7 @@ async def update_system_metrics():
 # ============================================================================
 # Startup Event
 # ============================================================================
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -306,10 +281,4 @@ if __name__ == "__main__":
     print("=" * 60)
     print()
 
-    uvicorn.run(
-        "example_monitoring:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+    uvicorn.run("example_monitoring:app", host="0.0.0.0", port=8000, reload=True, log_level="info")

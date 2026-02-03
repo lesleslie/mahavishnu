@@ -42,9 +42,9 @@
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "legend": false,
               "tooltip": false,
-              "viz": false,
-              "legend": false
+              "viz": false
             },
             "lineInterpolation": "linear",
             "lineWidth": 1,
@@ -106,11 +106,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editable": true,
           "expr": "rate(mcp_http_requests_total[5m])",
           "legendFormat": "{{method}} {{endpoint}}",
-          "refId": "A",
           "range": true,
-          "editable": true
+          "refId": "A"
         }
       ],
       "title": "Request Rate (5m avg)",
@@ -136,9 +136,9 @@
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "legend": false,
               "tooltip": false,
-              "viz": false,
-              "legend": false
+              "viz": false
             },
             "lineInterpolation": "linear",
             "lineWidth": 1,
@@ -204,33 +204,33 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editable": true,
           "expr": "histogram_quantile(0.50, rate(mcp_http_request_duration_seconds_bucket[5m]))",
           "legendFormat": "p50",
-          "refId": "A",
           "range": true,
-          "editable": true
+          "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editable": true,
           "expr": "histogram_quantile(0.95, rate(mcp_http_request_duration_seconds_bucket[5m]))",
           "legendFormat": "p95",
-          "refId": "B",
           "range": true,
-          "editable": true
+          "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editable": true,
           "expr": "histogram_quantile(0.99, rate(mcp_http_request_duration_seconds_bucket[5m]))",
           "legendFormat": "p99",
-          "refId": "C",
           "range": true,
-          "editable": true
+          "refId": "C"
         }
       ],
       "title": "Request Latency (p50, p95, p99)",
@@ -277,11 +277,11 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "values": false,
           "calcs": [
             "lastNotNull"
           ],
-          "fields": ""
+          "fields": "",
+          "values": false
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true,
@@ -294,11 +294,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editable": true,
           "expr": "rate(mcp_tool_calls_total{status=\"success\"}[5m]) / rate(mcp_tool_calls_total[5m]) * 100",
           "legendFormat": "{{tool_name}}",
-          "refId": "A",
           "range": true,
-          "editable": true
+          "refId": "A"
         }
       ],
       "title": "Tool Success Rate %",
@@ -324,9 +324,9 @@
             "fillOpacity": 80,
             "gradientMode": "none",
             "hideFrom": {
+              "legend": false,
               "tooltip": false,
-              "viz": false,
-              "legend": false
+              "viz": false
             },
             "lineInterpolation": "linear",
             "lineWidth": 1,
@@ -384,11 +384,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editable": true,
           "expr": "pool_workers_active",
           "legendFormat": "{{pool_type}}",
-          "refId": "A",
           "range": true,
-          "editable": true
+          "refId": "A"
         }
       ],
       "title": "Active Workers by Pool Type",
@@ -414,9 +414,9 @@
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "legend": false,
               "tooltip": false,
-              "viz": false,
-              "legend": false
+              "viz": false
             },
             "lineInterpolation": "linear",
             "lineWidth": 1,
@@ -474,11 +474,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editable": true,
           "expr": "rate(agent_tasks_total[5m])",
           "legendFormat": "{{agent_type}} ({{adapter}})",
-          "refId": "A",
           "range": true,
-          "editable": true
+          "refId": "A"
         }
       ],
       "title": "Agent Task Rate (by type/adapter)",
@@ -504,9 +504,9 @@
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "legend": false,
               "tooltip": false,
-              "viz": false,
-              "legend": false
+              "viz": false
             },
             "lineInterpolation": "linear",
             "lineWidth": 1,
@@ -564,11 +564,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editable": true,
           "expr": "system_memory_usage_bytes",
           "legendFormat": "{{type}}",
-          "refId": "A",
           "range": true,
-          "editable": true
+          "refId": "A"
         }
       ],
       "title": "Memory Usage (by type)",
@@ -594,9 +594,9 @@
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "legend": false,
               "tooltip": false,
-              "viz": false,
-              "legend": false
+              "viz": false
             },
             "lineInterpolation": "linear",
             "lineWidth": 1,
@@ -610,9 +610,6 @@
               "group": "A",
               "mode": "none"
             },
-            "thresholdsStyle": {
-              "mode": "line"
-            },
             "thresholds": {
               "mode": "absolute",
               "steps": [
@@ -625,6 +622,9 @@
                   "value": 80
                 }
               ]
+            },
+            "thresholdsStyle": {
+              "mode": "line"
             }
           },
           "mappings": [],
@@ -658,11 +658,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editable": true,
           "expr": "system_cpu_usage_percent",
           "legendFormat": "CPU {{core}}",
-          "refId": "A",
           "range": true,
-          "editable": true
+          "refId": "A"
         }
       ],
       "title": "CPU Usage % (by core)",
@@ -709,11 +709,11 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "values": false,
           "calcs": [
             "lastNotNull"
           ],
-          "fields": ""
+          "fields": "",
+          "values": false
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true,
@@ -726,11 +726,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editable": true,
           "expr": "system_disk_usage_percent",
           "legendFormat": "{{mount_point}}",
-          "refId": "A",
           "range": true,
-          "editable": true
+          "refId": "A"
         }
       ],
       "title": "Disk Usage % (by mount)",
@@ -740,7 +740,10 @@
   "refresh": "10s",
   "schemaVersion": 27,
   "style": "dark",
-  "tags": ["mcp", "ecosystem"],
+  "tags": [
+    "mcp",
+    "ecosystem"
+  ],
   "templating": {
     "list": []
   },

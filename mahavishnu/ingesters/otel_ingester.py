@@ -7,9 +7,8 @@ No Docker, PostgreSQL, or pgvector required - pure Python + DuckDB.
 
 from __future__ import annotations
 
-import logging
-import os
 from datetime import UTC, datetime
+import logging
 from typing import TYPE_CHECKING, Any
 
 # Optional import for sentence-transformers
@@ -23,13 +22,9 @@ except ImportError:
     SentenceTransformer: type[Any] | None = None  # type: ignore[misc]
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
-    from akosha.models import HotRecord
     from akosha.storage import HotStore
 
 from mahavishnu.core.errors import ValidationError
-
 
 logger = logging.getLogger(__name__)
 
@@ -212,9 +207,7 @@ class OtelIngester:
                 errors.append(error_msg)
                 logger.warning(error_msg)
 
-        logger.info(
-            f"Batch ingestion complete: {success_count} success, {error_count} errors"
-        )
+        logger.info(f"Batch ingestion complete: {success_count} success, {error_count} errors")
 
         return {
             "success_count": success_count,

@@ -60,7 +60,7 @@ graph TB
     style SERVICE fill:#F0E68C
 ```
 
----
+______________________________________________________________________
 
 ## 2. Provider Selection Flowchart
 
@@ -95,7 +95,7 @@ flowchart TD
     style ERROR fill:#FFB6C1,stroke:#333,stroke-width:3px
 ```
 
----
+______________________________________________________________________
 
 ## 3. Oneiric Configuration Loading Pattern
 
@@ -136,7 +136,7 @@ flowchart TD
     style ERROR fill:#FFB6C1
 ```
 
----
+______________________________________________________________________
 
 ## 4. Embedding Generation Flow
 
@@ -189,7 +189,7 @@ sequenceDiagram
     deactivate Service
 ```
 
----
+______________________________________________________________________
 
 ## 5. Performance Comparison Chart
 
@@ -203,10 +203,11 @@ xychart-beta
 ```
 
 **Legend:**
+
 - 🟦 **Bar**: Subsequent embeddings (warmed cache)
 - 📈 **Line**: First embedding (cold start)
 
----
+______________________________________________________________________
 
 ## 6. Model Dimension Comparison
 
@@ -237,7 +238,7 @@ graph LR
     style AI2 fill:#FFA500
 ```
 
----
+______________________________________________________________________
 
 ## 7. Setup Flowchart - FastEmbed
 
@@ -280,7 +281,7 @@ flowchart TD
     style COMPLETE fill:#FFD700
 ```
 
----
+______________________________________________________________________
 
 ## 8. Setup Flowchart - Ollama
 
@@ -337,7 +338,7 @@ flowchart TD
     style COMPLETE fill:#FFD700
 ```
 
----
+______________________________________________________________________
 
 ## 9. Provider Feature Matrix
 
@@ -401,7 +402,7 @@ graph TD
     style AI6 fill:#90EE90
 ```
 
----
+______________________________________________________________________
 
 ## 10. MCP Integration Flow
 
@@ -452,27 +453,31 @@ sequenceDiagram
     deactivate Server
 ```
 
----
+______________________________________________________________________
 
 ## Usage Instructions
 
 ### Rendering These Diagrams
 
 1. **With Mermaid CLI**:
+
    ```bash
    npm install -g @mermaid-js/mermaid-cli
    mmdc -i docs/diagrams/embedding-architecture.md -o docs/diagrams/embedding-architecture.png
    ```
 
-2. **With Mermaid Live Editor**:
+1. **With Mermaid Live Editor**:
+
    - Copy diagram code to https://mermaid.live
    - Export as PNG/SVG
 
-3. **In Markdown (GitHub/GitLab)**:
+1. **In Markdown (GitHub/GitLab)**:
+
    - Diagrams render automatically in supported Markdown viewers
    - Use fenced code blocks with `mermaid` language
 
-4. **With Mermaid MCP Server**:
+1. **With Mermaid MCP Server**:
+
    ```bash
    # Generate diagram programmatically
    mahavishnu mcp call mermaid generate_mermaid_diagram \
@@ -492,7 +497,7 @@ sequenceDiagram
 See [diagrams/embedding-architecture.md](diagrams/embedding-architecture.md) for source.
 ```
 
----
+______________________________________________________________________
 
 **Last Updated**: 2026-02-03
 **Format**: Mermaid v10+

@@ -5,20 +5,20 @@
 **Target RTO**: 4 hours (Recovery Time Objective)
 **Target RPO**: 24 hours (Recovery Point Objective)
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Roles and Responsibilities](#roles-and-responsibilities)
-3. [Backup Strategy](#backup-strategy)
-4. [Disaster Scenarios](#disaster-scenarios)
-5. [Recovery Procedures](#recovery-procedures)
-6. [Verification Steps](#verification-steps)
-7. [Communication Plan](#communication-plan)
-8. [Post-Incident Review](#post-incident-review)
+1. [Roles and Responsibilities](#roles-and-responsibilities)
+1. [Backup Strategy](#backup-strategy)
+1. [Disaster Scenarios](#disaster-scenarios)
+1. [Recovery Procedures](#recovery-procedures)
+1. [Verification Steps](#verification-steps)
+1. [Communication Plan](#communication-plan)
+1. [Post-Incident Review](#post-incident-review)
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -30,6 +30,7 @@ This runbook provides step-by-step procedures for recovering the MCP ecosystem f
 ### Scope
 
 This runbook covers recovery for:
+
 - **Mahavishnu**: Orchestration server
 - **Session-Buddy**: Session management
 - **Akosha**: Memory aggregation
@@ -43,13 +44,14 @@ This runbook covers recovery for:
 - Security incidents (handled by security team)
 - Application-level bugs (handled by development team)
 
----
+______________________________________________________________________
 
 ## Roles and Responsibilities
 
 ### Primary On-Call Engineer
 
 **Responsibilities**:
+
 - Initial incident assessment
 - Executing recovery procedures
 - Coordinating with stakeholders
@@ -61,6 +63,7 @@ This runbook covers recovery for:
 ### Secondary On-Call Engineer
 
 **Responsibilities**:
+
 - Support primary engineer
 - Handle escalation if primary unavailable
 - Review recovery procedures
@@ -70,6 +73,7 @@ This runbook covers recovery for:
 ### Engineering Manager
 
 **Responsibilities**:
+
 - Major incident decisions
 - Stakeholder communication
 - Resource allocation
@@ -80,13 +84,14 @@ This runbook covers recovery for:
 ### Database Administrator (if available)
 
 **Responsibilities**:
+
 - Database-specific recovery
 - Data integrity verification
 - Performance tuning after recovery
 
 **Contact**: `dba@example.com`
 
----
+______________________________________________________________________
 
 ## Backup Strategy
 
@@ -113,12 +118,13 @@ This runbook covers recovery for:
 ### Backup Components
 
 Each backup includes:
-1. **Database dumps** (Session-Buddy, Akosha)
-2. **Configuration files** (YAML, environment, .mcp.json)
-3. **Workflow states** (Mahavishnu)
-4. **Metadata** (checksums, timestamps, file manifests)
 
----
+1. **Database dumps** (Session-Buddy, Akosha)
+1. **Configuration files** (YAML, environment, .mcp.json)
+1. **Workflow states** (Mahavishnu)
+1. **Metadata** (checksums, timestamps, file manifests)
+
+______________________________________________________________________
 
 ## Disaster Scenarios
 
@@ -129,15 +135,17 @@ Each backup includes:
 **Estimated Recovery Time**: 30-60 minutes
 
 **Symptoms**:
+
 - One MCP server unreachable
 - Health checks failing for specific service
 - API calls to one service timing out
 
 **Recovery Procedure**:
+
 1. [Verify failure](#step-1-verify-failure)
-2. [Check server status](#step-2-check-server-status)
-3. [Restart affected service](#step-3-restart-affected-service)
-4. [Verify recovery](#step-4-verify-recovery)
+1. [Check server status](#step-2-check-server-status)
+1. [Restart affected service](#step-3-restart-affected-service)
+1. [Verify recovery](#step-4-verify-recovery)
 
 ### Scenario 2: Database Corruption
 
@@ -146,16 +154,18 @@ Each backup includes:
 **Estimated Recovery Time**: 1-2 hours
 
 **Symptoms**:
+
 - Database query errors
 - "Database disk image is malformed"
 - Application crashes on database access
 
 **Recovery Procedure**:
+
 1. [Stop all affected services](#step-1-stop-all-affected-services)
-2. [Identify corruption scope](#step-2-identify-corruption-scope)
-3. [Restore from last good backup](#step-3-restore-from-last-good-backup)
-4. [Verify data integrity](#step-4-verify-data-integrity)
-5. [Restart services](#step-5-restart-services)
+1. [Identify corruption scope](#step-2-identify-corruption-scope)
+1. [Restore from last good backup](#step-3-restore-from-last-good-backup)
+1. [Verify data integrity](#step-4-verify-data-integrity)
+1. [Restart services](#step-5-restart-services)
 
 ### Scenario 3: Complete System Failure
 
@@ -164,17 +174,19 @@ Each backup includes:
 **Estimated Recovery Time**: 2-4 hours
 
 **Symptoms**:
+
 - All MCP servers down
 - No services responding
 - Infrastructure failure
 
 **Recovery Procedure**:
+
 1. [Assess infrastructure](#step-1-assess-infrastructure)
-2. [Restore infrastructure](#step-2-restore-infrastructure)
-3. [Restore databases](#step-3-restore-databases)
-4. [Restore configurations](#step-4-restore-configurations)
-5. [Restart all services](#step-5-restart-all-services)
-6. [Verify system health](#step-6-verify-system-health)
+1. [Restore infrastructure](#step-2-restore-infrastructure)
+1. [Restore databases](#step-3-restore-databases)
+1. [Restore configurations](#step-4-restore-configurations)
+1. [Restart all services](#step-5-restart-all-services)
+1. [Verify system health](#step-6-verify-system-health)
 
 ### Scenario 4: Data Loss Event
 
@@ -183,19 +195,21 @@ Each backup includes:
 **Estimated Recovery Time**: 1-3 hours
 
 **Symptoms**:
+
 - Critical data missing
 - User reports of lost data
 - Database integrity errors
 
 **Recovery Procedure**:
-1. [Identify lost data scope](#step-1-identify-lost-data-scope)
-2. [Stop all writes](#step-2-stop-all-writes)
-3. [Select appropriate backup](#step-3-select-appropriate-backup)
-4. [Restore lost data](#step-4-restore-lost-data)
-5. [Verify restored data](#step-5-verify-restored-data)
-6. [Resume normal operations](#step-6-resume-normal-operations)
 
----
+1. [Identify lost data scope](#step-1-identify-lost-data-scope)
+1. [Stop all writes](#step-2-stop-all-writes)
+1. [Select appropriate backup](#step-3-select-appropriate-backup)
+1. [Restore lost data](#step-4-restore-lost-data)
+1. [Verify restored data](#step-5-verify-restored-data)
+1. [Resume normal operations](#step-6-resume-normal-operations)
+
+______________________________________________________________________
 
 ## Recovery Procedures
 
@@ -231,6 +245,7 @@ tail -100 /var/log/mcp/*.log
 ```
 
 **Expected Results**:
+
 - Identify which service(s) are failing
 - Confirm symptoms match scenario
 
@@ -254,6 +269,7 @@ journalctl -u mahavishnu -n 100 --no-pager
 ```
 
 **Common Causes**:
+
 - Out of memory
 - Disk full
 - Port already in use
@@ -285,6 +301,7 @@ tail -f /var/log/mahavishnu/mcp.log
 ```
 
 **Alternative: Using MCP tools**
+
 ```bash
 # If Mahavishnu CLI is available
 mahavishnu mcp restart
@@ -306,6 +323,7 @@ curl http://localhost:8680/metrics
 ```
 
 **Success Criteria**:
+
 - Health endpoint returns 200
 - MCP tools respond correctly
 - No errors in logs
@@ -313,7 +331,7 @@ curl http://localhost:8680/metrics
 
 **If verification fails**: Return to Step 2 or escalate
 
----
+______________________________________________________________________
 
 ### Scenario 2: Database Corruption
 
@@ -347,6 +365,7 @@ sqlite3 /path/to/session_buddy.db ".schema"
 ```
 
 **Expected Errors**:
+
 - "database disk image is malformed"
 - "missing indexes"
 - "rowid missing"
@@ -407,6 +426,7 @@ sqlite3 /path/to/session_buddy.db "SELECT * FROM sessions LIMIT 5"
 ```
 
 **Success Criteria**:
+
 - PRAGMA integrity_check returns "ok"
 - Record counts are reasonable
 - Sample data looks correct
@@ -437,7 +457,7 @@ curl http://localhost:8680/health
 
 **Monitor**: Watch logs for 5 minutes for any errors
 
----
+______________________________________________________________________
 
 ### Scenario 3: Complete System Failure
 
@@ -470,6 +490,7 @@ ps aux | grep -E "mahavishnu|session|akosha" | grep -v grep
 **Objective**: Get basic infrastructure running
 
 **If using Docker**:
+
 ```bash
 # Check Docker daemon
 sudo systemctl status docker
@@ -486,6 +507,7 @@ docker network create mcp-network
 ```
 
 **If using systemd services**:
+
 ```bash
 # Check service status
 systemctl status mahavishnu.service
@@ -497,6 +519,7 @@ sudo systemctl restart session-buddy.service
 ```
 
 **If using manual processes**:
+
 ```bash
 # Kill any orphaned processes
 pkill -KILL -f "mcp|mahavishnu|session-buddy"
@@ -509,9 +532,10 @@ pkill -KILL -f "mcp|mahavishnu|session-buddy"
 [Follow Scenario 2, Steps 3-5 for each database]
 
 **Priority Order**:
+
 1. Session-Buddy (most critical)
-2. Akosha (memory aggregation)
-3. Other databases
+1. Akosha (memory aggregation)
+1. Other databases
 
 #### Step 4: Restore Configurations
 
@@ -543,31 +567,37 @@ cat repos.yaml
 **Objective**: Start all MCP servers in correct order
 
 **Startup Order**:
+
 1. **Session-Buddy** (foundational service)
+
    ```bash
    cd /Users/les/Projects/session-buddy
    session-buddy mcp start
    ```
 
-2. **Akosha** (depends on Session-Buddy)
+1. **Akosha** (depends on Session-Buddy)
+
    ```bash
    cd /Users/les/Projects/akosha
    akosha mcp start
    ```
 
-3. **Crackerjack** (quality control)
+1. **Crackerjack** (quality control)
+
    ```bash
    cd /Users/les/Projects/crackerjack
    crackerjack mcp start
    ```
 
-4. **Mahavishnu** (orchestration)
+1. **Mahavishnu** (orchestration)
+
    ```bash
    cd /Users/les/Projects/mahavishnu
    mahavishnu mcp start
    ```
 
-5. **Tool Servers** (can start in parallel)
+1. **Tool Servers** (can start in parallel)
+
    ```bash
    cd /Users/les/Projects/excalidraw-mcp
    excalidraw mcp start
@@ -600,12 +630,13 @@ tail -100 /var/log/session-buddy/*.log
 ```
 
 **Success Criteria**:
+
 - All health endpoints return 200
 - Mahavishnu can list repositories
 - No critical errors in logs
 - Metrics being collected
 
----
+______________________________________________________________________
 
 ### Scenario 4: Data Loss Event
 
@@ -614,12 +645,14 @@ tail -100 /var/log/session-buddy/*.log
 **Objective**: Understand what data was lost
 
 **Questions to Answer**:
+
 - When did the loss occur?
 - What data was affected?
 - Who reported the loss?
 - What was the user doing when it happened?
 
 **Actions**:
+
 - Interview affected users
 - Check application logs
 - Check database logs
@@ -644,6 +677,7 @@ ps aux | grep -E "mahavishnu|session-buddy|akosha" | grep -v grep
 **Objective**: Find the right backup to restore
 
 **Criteria**:
+
 - Backup must be from **before** the data loss event
 - Most recent backup before event preferred
 - Verify backup integrity
@@ -664,11 +698,13 @@ cat backup_*/metadata.json | jq '.timestamp, .databases_backed_up'
 **Objective**: Restore only the lost data
 
 **Options**:
+
 1. **Full restore**: Replace entire database
-2. **Partial restore**: Restore specific tables/records
-3. **Manual merge**: Combine current and backup data
+1. **Partial restore**: Restore specific tables/records
+1. **Manual merge**: Combine current and backup data
 
 **Full restore example**:
+
 ```bash
 # Backup current database (pre-restore)
 cp /path/to/database.db /path/to/database.db.pre-restore
@@ -678,6 +714,7 @@ sqlite3 /path/to/database.db < backup_*/database.sql
 ```
 
 **Partial restore** (advanced):
+
 ```sql
 -- Create temporary database
 ATTACH '/tmp/backup.db' AS backup_db;
@@ -694,10 +731,11 @@ DETACH backup_db;
 **Objective**: Confirm lost data is recovered
 
 **Verification Steps**:
+
 1. Check record counts
-2. Sample random records
-3. Verify with affected users
-4. Run data integrity checks
+1. Sample random records
+1. Verify with affected users
+1. Run data integrity checks
 
 ```bash
 # Record counts
@@ -728,7 +766,7 @@ tail -f /var/log/session-buddy/*.log
 
 **Extended Monitoring**: Watch logs for 1 hour
 
----
+______________________________________________________________________
 
 ## Verification Steps
 
@@ -737,12 +775,14 @@ tail -f /var/log/session-buddy/*.log
 After any recovery, verify:
 
 **Health Checks**:
+
 - [ ] All services running (`ps aux | grep mcp`)
 - [ ] All health endpoints returning 200
 - [ ] No critical errors in logs
 - [ ] Metrics being collected
 
 **Functional Checks**:
+
 - [ ] Mahavishnu can list repositories
 - [ ] Session-Buddy can store/retrieve sessions
 - [ ] Akosha can search memories
@@ -750,6 +790,7 @@ After any recovery, verify:
 - [ ] Cross-service communication working
 
 **Data Integrity**:
+
 - [ ] Database `PRAGMA integrity_check` returns "ok"
 - [ ] Record counts reasonable
 - [ ] Sample data looks correct
@@ -757,7 +798,8 @@ After any recovery, verify:
 - [ ] No missing indexes
 
 **Performance**:
-- [ ] Response times acceptable (<1s p95)
+
+- [ ] Response times acceptable (\<1s p95)
 - [ ] No unusual resource consumption
 - [ ] No errors in monitoring dashboard
 
@@ -778,7 +820,7 @@ cp /path/to/database.db.pre-restore /path/to/database.db
 
 **Critical**: Always have rollback plan!
 
----
+______________________________________________________________________
 
 ## Communication Plan
 
@@ -799,6 +841,7 @@ cp /path/to/database.db.pre-restore /path/to/database.db
 **Subject**: 🔴 INCIDENT: [Service Name] Down - Severity P1
 
 **Body**:
+
 ```
 Service: [Service Name]
 Severity: P1 - Critical
@@ -822,6 +865,7 @@ Incident ticket: [Link]
 **Subject**: ✅ UPDATE: [Service Name] Recovery in Progress
 
 **Body**:
+
 ```
 Service: [Service Name]
 Status: Recovery in progress
@@ -843,6 +887,7 @@ Estimated time to full recovery: [Time]
 **Subject**: ✅ RESOLVED: [Service Name] Recovered
 
 **Body**:
+
 ```
 Service: [Service Name]
 Status: Fully recovered
@@ -859,18 +904,20 @@ Incident ticket: [Link]
 ### Stakeholder Communication
 
 **Who to Notify**:
+
 - **End users**: If user-facing service affected
 - **Management**: If P1 or P2 severity
 - **Dependent teams**: If your service is their dependency
 - **Customers**: If production customer-facing system
 
 **Channels**:
+
 - Email (for formal notifications)
 - Slack (for status updates)
 - Status page (if available)
 - SMS/Pager (for critical incidents)
 
----
+______________________________________________________________________
 
 ## Post-Incident Review
 
@@ -883,21 +930,25 @@ Incident ticket: [Link]
 ### Review Agenda
 
 1. **Incident Timeline** (10 minutes)
+
    - What happened?
    - When did it happen?
    - How long did it last?
 
-2. **Root Cause Analysis** (15 minutes)
+1. **Root Cause Analysis** (15 minutes)
+
    - Why did it happen?
    - Contributing factors
    - Could it have been prevented?
 
-3. **Response Evaluation** (15 minutes)
+1. **Response Evaluation** (15 minutes)
+
    - What went well in the response?
    - What could have been better?
    - Were runbooks followed?
 
-4. **Action Items** (20 minutes)
+1. **Action Items** (20 minutes)
+
    - Preventive measures
    - Runbook improvements
    - Process changes
@@ -906,6 +957,7 @@ Incident ticket: [Link]
 ### Review Output
 
 **Document**:
+
 - Incident timeline
 - Root cause
 - Impact assessment
@@ -913,11 +965,12 @@ Incident ticket: [Link]
 - Action items with owners and due dates
 
 **Share**:
+
 - Postmortem document with engineering team
 - Summary with management (if high severity)
 - Runbook updates (if needed)
 
----
+______________________________________________________________________
 
 ## Appendix
 
@@ -983,7 +1036,7 @@ journalctl -u service -f
 - [Alerting Rules](monitoring/alerts.py)
 - [Resilience Patterns](monitoring/resilience.py)
 
----
+______________________________________________________________________
 
 ## Change Log
 
@@ -991,12 +1044,12 @@ journalctl -u service -f
 |------|---------|---------|--------|
 | 2026-02-02 | 1.0 | Initial runbook creation | Claude Code |
 
----
+______________________________________________________________________
 
 **Next Review Date**: 2026-03-02
 **Runbook Owner**: Engineering Team
 **Approval**: Engineering Manager
 
----
+______________________________________________________________________
 
 **IMPORTANT**: This runbook must be kept up-to-date. Any changes to backup procedures, service architecture, or contact information must be reflected in this document within 1 week of the change.

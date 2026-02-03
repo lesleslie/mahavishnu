@@ -21,16 +21,19 @@
 ## Quick Links
 
 ### 📚 **Essential Reading**
+
 - **[Getting Started Guide](docs/GETTING_STARTED.md)** - New to Mahavishnu? Start here!
 - **[MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md)** - Complete API documentation for all 49 MCP tools
 - **[Architecture Documentation](ARCHITECTURE.md)** - System architecture and design decisions
 
 ### 🎨 **Visual Learning (Diagrams & Charts)**
+
 - **[Visual Guide](docs/VISUAL_GUIDE.md)** - 🎯 **START HERE** - 50+ diagrams covering architecture, workflows, security, testing, and more!
 - **[Workflow Diagrams](docs/WORKFLOW_DIAGRAMS.md)** - Common operational procedures with step-by-step visualizations
 - **[Architecture Diagram](ARCHITECTURE.md#architecture-diagram)** - Interactive Mermaid diagram of system components
 
 ### 🏗️ **Detailed Guides**
+
 - **[Pool Architecture](docs/POOL_ARCHITECTURE.md)** - Multi-pool orchestration details
 - **[Admin Shell Guide](docs/ADMIN_SHELL.md)** - Interactive debugging and monitoring
 
@@ -94,21 +97,25 @@ Mahavishnu follows a modular, async-first architecture with these core component
 ### Core Components
 
 **Adapter Architecture**
+
 - Async base adapter interface for orchestration engines
 - Pluggable adapters for LlamaIndex (RAG), Prefect (flows), Agno (agents)
 - Easy to add new orchestration backends
 
 **Configuration System**
+
 - Oneiric-based layered configuration (defaults → YAML → env vars)
 - Type-safe Pydantic models with validation
 - Environment variable overrides via `MAHAVISHNU_{GROUP}__{FIELD}`
 
 **Pool Management**
+
 - Multi-pool orchestration across local, delegated, and cloud workers
 - Auto-routing strategies: round_robin, least_loaded, random, affinity
 - Memory aggregation across pools with cross-pool search
 
 **Error Handling**
+
 - Custom exception hierarchy with circuit breaker patterns
 - Structured error context with `message`, `details`, and `to_dict()`
 - Retry logic with exponential backoff
@@ -217,6 +224,7 @@ mahavishnu shell
 ```
 
 Interactive shell commands:
+
 - `ps()` - Show all workflows
 - `top()` - Show active workflows with progress
 - `errors(n=10)` - Show recent errors
@@ -242,16 +250,19 @@ Mahavishnu uses a role-based taxonomy to organize repositories:
 ### Pool Types
 
 **MahavishnuPool** (Direct Management)
+
 - Low-latency local worker execution
 - Dynamic scaling (min_workers to max_workers)
 - Use for: local development, debugging, CI/CD
 
 **SessionBuddyPool** (Delegated)
+
 - Delegates to Session-Buddy instances (3 workers each)
 - Remote execution via MCP protocol
 - Use for: distributed workloads, multi-server deployments
 
 **KubernetesPool** (Cloud-Native)
+
 - Deploys workers as Kubernetes Jobs/Pods
 - Auto-scaling via HPA
 - Use for: production deployments, auto-scaling workloads
@@ -267,6 +278,7 @@ Mahavishnu uses a role-based taxonomy to organize repositories:
 Mahavishnu's MCP server exposes **49 production-ready tools** across 6 categories:
 
 ### Pool Management (10 tools)
+
 - `pool_spawn` - Spawn new worker pool
 - `pool_execute` - Execute task on specific pool
 - `pool_route_execute` - Auto-route to best pool
@@ -279,6 +291,7 @@ Mahavishnu's MCP server exposes **49 production-ready tools** across 6 categorie
 - `pool_search_memory` - Search memory across pools
 
 ### Worker Orchestration (8 tools)
+
 - `worker_spawn` - Spawn worker instances
 - `worker_execute` - Execute task on worker
 - `worker_execute_batch` - Execute on multiple workers
@@ -289,6 +302,7 @@ Mahavishnu's MCP server exposes **49 production-ready tools** across 6 categorie
 - `worker_close_all` - Close all workers
 
 ### Coordination (13 tools)
+
 - `coord_list_issues` - List cross-repository issues
 - `coord_get_issue` - Get issue details
 - `coord_create_issue` - Create new issue
@@ -304,6 +318,7 @@ Mahavishnu's MCP server exposes **49 production-ready tools** across 6 categorie
 - `coord_list_plans` - List plans
 
 ### Repository Messaging (7 tools)
+
 - `send_repository_message` - Send message between repos
 - `broadcast_repository_message` - Broadcast to multiple repos
 - `get_repository_messages` - Get messages for repo
@@ -313,12 +328,14 @@ Mahavishnu's MCP server exposes **49 production-ready tools** across 6 categorie
 - `send_quality_alert` - Send quality alert
 
 ### OpenTelemetry (4 tools)
+
 - `ingest_otel_traces` - Ingest OTel traces
 - `search_otel_traces` - Semantic search traces
 - `get_otel_trace` - Get trace by ID
 - `otel_ingester_stats` - Get ingester stats
 
 ### Session Buddy (7 tools)
+
 - `index_code_graph` - Index codebase structure
 - `get_function_context` - Get function context
 - `find_related_code` - Find related code
@@ -334,9 +351,9 @@ See [MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md) for complete documentatio
 Mahavishnu uses a layered configuration system:
 
 1. Default values in Pydantic models
-2. `settings/mahavishnu.yaml` (committed to git)
-3. `settings/local.yaml` (gitignored, local overrides)
-4. Environment variables: `MAHAVISHNU_{GROUP}__{FIELD}`
+1. `settings/mahavishnu.yaml` (committed to git)
+1. `settings/local.yaml` (gitignored, local overrides)
+1. Environment variables: `MAHAVISHNU_{GROUP}__{FIELD}`
 
 ### Environment Variables
 
@@ -463,6 +480,7 @@ mahavishnu/
 **Quality Score: 92/100 (Excellent - Production Ready)**
 
 **Completed:**
+
 - Security hardening (JWT auth, Claude Code + Qwen support)
 - Async base adapter architecture
 - FastMCP-based MCP server (49 tools)
@@ -477,11 +495,13 @@ mahavishnu/
 - Test infrastructure (12 test files)
 
 **Partially Complete:**
+
 - LlamaIndex adapter (RAG pipelines, fully implemented)
 - Prefect adapter (stub, framework skeleton)
 - Agno adapter (stub, framework skeleton)
 
 **Roadmap:**
+
 - Phase 3: Adapter Implementation (6-9 weeks)
 - Phase 4: Production Features (error recovery, full observability)
 - Phase 5: Comprehensive Testing & Documentation
@@ -494,13 +514,13 @@ mahavishnu/
 We welcome contributions! Please follow these steps:
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes
-4. Run tests: `pytest`
-5. Run quality checks: `ruff check mahavishnu/` and `mypy mahavishnu/`
-6. Commit your changes: `git commit -m 'Add amazing feature'`
-7. Push to branch: `git push origin feature/amazing-feature`
-8. Submit a pull request
+1. Create a feature branch: `git checkout -b feature/amazing-feature`
+1. Make your changes
+1. Run tests: `pytest`
+1. Run quality checks: `ruff check mahavishnu/` and `mypy mahavishnu/`
+1. Commit your changes: `git commit -m 'Add amazing feature'`
+1. Push to branch: `git push origin feature/amazing-feature`
+1. Submit a pull request
 
 ### Development Guidelines
 
@@ -521,7 +541,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **mcp-common** - Shared MCP types and contracts
 - **Crackerjack** - Quality control and testing
 
----
+______________________________________________________________________
 
 **Made with** :heart: **by the Mahavishnu team**
 

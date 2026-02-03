@@ -205,6 +205,7 @@ graph LR
 ```
 
 **Legacy ASCII Diagram** (for reference):
+
 ```
 ┌───────────────────────────────────────────────────────────────────┐
 │          Mahavishnu Memory Interface Service                      │

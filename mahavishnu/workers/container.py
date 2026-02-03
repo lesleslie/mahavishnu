@@ -54,18 +54,54 @@ class ContainerWorker(BaseWorker):
 
         # SECURITY: Whitelist of allowed commands to prevent RCE
         self._ALLOWED_COMMANDS = {
-            "python", "pip", "npm", "node", "ls", "cat", "echo",
-            "grep", "find", "head", "tail", "wc", "pwd", "cd",
-            "mkdir", "touch", "rm", "cp", "mv", "sort", "uniq",
-            "cut", "awk", "sed", "git", "pytest", "black"
+            "python",
+            "pip",
+            "npm",
+            "node",
+            "ls",
+            "cat",
+            "echo",
+            "grep",
+            "find",
+            "head",
+            "tail",
+            "wc",
+            "pwd",
+            "cd",
+            "mkdir",
+            "touch",
+            "rm",
+            "cp",
+            "mv",
+            "sort",
+            "uniq",
+            "cut",
+            "awk",
+            "sed",
+            "git",
+            "pytest",
+            "black",
         }
 
         # SECURITY: Dangerous command patterns to block
         self._DANGEROUS_PATTERNS = [
-            "rm -rf /", "mkfs", "dd if=", "> /dev/sd",
-            "chmod 000", "chown root:", "curl | sh", "wget | sh",
-            "&& rm", "; rm", "| rm", "nc -e", "ncat",
-            "/dev/tcp", "/dev/udp", "bind shell", "reverse shell"
+            "rm -rf /",
+            "mkfs",
+            "dd if=",
+            "> /dev/sd",
+            "chmod 000",
+            "chown root:",
+            "curl | sh",
+            "wget | sh",
+            "&& rm",
+            "; rm",
+            "| rm",
+            "nc -e",
+            "ncat",
+            "/dev/tcp",
+            "/dev/udp",
+            "bind shell",
+            "reverse shell",
         ]
 
         self._MAX_COMMAND_LENGTH = 10000
@@ -119,6 +155,7 @@ class ContainerWorker(BaseWorker):
             Sanitized command string
         """
         import shlex
+
         # Use shlex.quote to escape special characters
         # This prevents shell metacharacter injection
         return shlex.quote(command)
@@ -268,15 +305,17 @@ class ContainerWorker(BaseWorker):
                     await self.session_buddy_client.call_tool(
                         "store_memory",
                         arguments={
-                            "content": json.dumps({
-                                "worker_id": self.container_id,
-                                "command": command,
-                                "output": output,
-                                "error": error_output,
-                                "exit_code": proc.returncode,
-                                "duration_seconds": duration_seconds,
-                                "status": result.status.value,
-                            }),
+                            "content": json.dumps(
+                                {
+                                    "worker_id": self.container_id,
+                                    "command": command,
+                                    "output": output,
+                                    "error": error_output,
+                                    "exit_code": proc.returncode,
+                                    "duration_seconds": duration_seconds,
+                                    "status": result.status.value,
+                                }
+                            ),
                             "metadata": {
                                 "type": "worker_result",
                                 "worker_type": "container-executor",
