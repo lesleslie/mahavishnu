@@ -8,6 +8,44 @@
 
 ---
 
+## Quick Comparison
+
+### Solution Comparison at a Glance
+
+```mermaid
+graph TB
+    subgraph "Problem"
+        ISSUE[❌ sentence-transformers<br/>Requires PyTorch<br/>No Intel Mac wheels<br/>Python 3.13 incompatible]
+    end
+
+    subgraph "Solutions"
+        FAST[✅ FastEmbed<br/>🏭 Production<br/>⚡ Fast<br/>💰 Free<br/>🔒 Local]
+        OLLAMA[✅ Ollama<br/>🔧 Development<br/>⚡⚡ Medium<br/>💰 Free<br/>🏠 Local]
+        OPENAI[✅ OpenAI API<br/>☁️ Cloud<br/>⚡⚡⚡ Fast<br/>💵 Pay-per-use<br/>🌐 Remote]
+    end
+
+    ISSUE --> FAST
+    ISSUE --> OLLAMA
+    ISSUE --> OPENAI
+
+    style ISSUE fill:#FFB6C1
+    style FAST fill:#90EE90,stroke:#333,stroke-width:3px
+    style OLLAMA fill:#87CEEB,stroke:#333,stroke-width:3px
+    style OPENAI fill:#FFD700,stroke:#333,stroke-width:3px
+```
+
+### Platform Compatibility Matrix
+
+| Solution | Intel Mac | Apple Silicon | Linux | Windows | Python 3.13 | Setup |
+|----------|-----------|---------------|-------|---------|-------------|-------|
+| **sentence-transformers** | ❌ | ✅ | ✅ | ✅ | ❌ | Easy |
+| **FastEmbed** | ✅ | ✅ | ✅ | ✅ | ✅ | Easy |
+| **Ollama** | ✅ | ✅ | ✅ | ✅ | ✅ | Medium |
+| **OpenAI API** | ✅ | ✅ | ✅ | ✅ | ✅ | Easy |
+| **ONNX Runtime** | ✅ | ✅ | ✅ | ✅ | ✅ | Hard |
+
+---
+
 ## Recommended Alternatives
 
 ### 1. Hugging Face Transformers (ONNX Runtime) ⭐ RECOMMENDED
@@ -190,6 +228,40 @@ embeddings = model.encode("Hello world")
 ---
 
 ## Migration Guide
+
+### Migration Decision Tree
+
+```mermaid
+flowchart TD
+    START([Migrate from<br/>sentence-transformers]) --> PRIORITY{Primary<br/>Concern?}
+
+    PRIORITY -->|Performance| PERF{Platform?}
+    PRIORITY -->|Privacy| PRIVACY{Need<br/>Local?}
+    PRIORITY -->|Simplicity| SIMPLE{Setup<br/>Complexity?}
+
+    PERF -->|Intel Mac| FAST1[🏭 FastEmbed<br/>✅ Cross-platform<br/>⚡ Fastest]
+    PERF -->|Any| SIMPLE
+
+    PRIVACY -->|Yes| OLLAMA[🔧 Ollama<br/>🏠 Local<br/>🔒 Private]
+    PRIVACY -->|No| SIMPLE
+
+    SIMPLE -->|Easy Setup| OPENAI[☁️ OpenAI<br/>🚀 Zero setup<br/>💵 Pay-per-use]
+    SIMPLE -->|Free| FAST1
+
+    FAST1 --> IMPLEMENT1[Implementation:<br/>pip install fastembed]
+    OLLAMA --> IMPLEMENT2[Implementation:<br/>brew install ollama]
+    OPENAI --> IMPLEMENT3[Implementation:<br/>pip install openai]
+
+    IMPLEMENT1 --> CODE[Update Code:<br/>See examples below]
+    IMPLEMENT2 --> CODE
+    IMPLEMENT3 --> CODE
+
+    CODE --> DONE([✅ Migration Complete])
+
+    style FAST1 fill:#90EE90,stroke:#333,stroke-width:3px
+    style OLLAMA fill:#87CEEB,stroke:#333,stroke-width:3px
+    style OPENAI fill:#FFD700,stroke:#333,stroke-width:3px
+```
 
 ### Replace sentence-transformers in Code
 

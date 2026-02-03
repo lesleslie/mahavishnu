@@ -120,6 +120,91 @@ collection_name="mahavishnu_global"
 
 ## Architecture Diagram
 
+### System Overview
+
+```mermaid
+graph TB
+    subgraph "Mahavishnu Application Layer"
+        APP[Orchestrators & Agents]
+        SERVICE[Memory Integration Service]
+    end
+
+    subgraph "Memory Storage Backends"
+        AGENTDB[AgentDB + PostgreSQL<br/>🤖 Agent Memory]
+        RAG[LlamaIndex + AgentDB<br/>📚 RAG Knowledge Base]
+        BUDDY[Session-Buddy<br/>🧠 Reflection DB]
+    end
+
+    subgraph "Data Flow"
+        QUERY[Unified Query]
+        DEDUP[Deduplication & Merging]
+        RESULTS[Merged Results]
+    end
+
+    APP --> SERVICE
+    SERVICE --> QUERY
+    QUERY --> AGENTDB
+    QUERY --> RAG
+    QUERY --> BUDDY
+
+    AGENTDB --> DEDUP
+    RAG --> DEDUP
+    BUDDY --> DEDUP
+
+    DEDUP --> RESULTS
+    RESULTS --> APP
+
+    style SERVICE fill:#FFD700,stroke:#333,stroke-width:3px
+    style AGENTDB fill:#90EE90
+    style RAG fill:#87CEEB
+    style BUDDY fill:#DDA0DD
+    style DEDUP fill:#FFA500
+```
+
+### Component Details
+
+```mermaid
+graph LR
+    subgraph "Memory Integration Service"
+        API[Unified API]
+        SEARCH[Cross-System Search]
+        SYNC[Memory Sync Service]
+        DEDUP[Deduplication Engine]
+    end
+
+    subgraph "AgentDB + PostgreSQL"
+        AGENT1[Agent Conversations]
+        AGENT2[Tool Usage]
+        AGENT3[Reasoning Traces]
+    end
+
+    subgraph "LlamaIndex + AgentDB"
+        RAG1[Vector Embeddings]
+        RAG2[Document Chunks]
+        RAG3[Semantic Search]
+    end
+
+    subgraph "Session-Buddy"
+        BUDDY1[Project Memory]
+        BUDDY2[Global Intelligence]
+        BUDDY3[Cross-Project Insights]
+    end
+
+    API --> SEARCH
+    API --> SYNC
+    SEARCH --> DEDUP
+
+    SEARCH --> AGENT1
+    SEARCH --> RAG1
+    SEARCH --> BUDDY1
+
+    style API fill:#FFD700
+    style SEARCH fill:#FFA500
+    style SYNC fill:#FFA500
+    style DEDUP fill:#FFA500
+```
+
+**Legacy ASCII Diagram** (for reference):
 ```
 ┌───────────────────────────────────────────────────────────────────┐
 │          Mahavishnu Memory Interface Service                      │
@@ -225,6 +310,41 @@ collection_name="mahavishnu_global"
 **Decision:** Rejected because existing solutions (Session-Buddy, AgentDB) are well-designed and proven.
 
 ## Implementation Plan
+
+### Implementation Timeline
+
+```mermaid
+gantt
+    title Memory Architecture Implementation Timeline
+    dateFormat  YYYY-MM-DD
+    section Foundation
+    Core Memory Integration           :a1, 2025-01-27, 3d
+    Create MahavishnuMemoryIntegration :a2, after a1, 2d
+    Set up Session-Buddy collections   :a3, after a1, 2d
+    Add AgentDB + PostgreSQL          :a4, after a1, 3d
+    Basic unified search              :a5, after a4, 2d
+
+    section RAG Integration
+    LlamaIndex + AgentDB backend      :b1, after a5, 4d
+    RAG ingestion workflows           :b2, after b1, 3d
+    Unified RAG search                :b3, after b2, 2d
+
+    section Cross-Project
+    Session-Buddy project registration :c1, after b3, 2d
+    Define dependencies from repos    :c2, after c1, 1d
+    Enable cross-project search        :c3, after c2, 2d
+
+    section Advanced
+    Memory sharing protocols           :d1, after c3, 3d
+    Knowledge graph visualization     :d2, after d1, 3d
+    Memory sync service               :d3, after d2, 2d
+
+    section Quality
+    Comprehensive test suite          :e1, after d3, 3d
+    Performance benchmarks            :e2, after e1, 2d
+    Complete documentation            :e3, after e1, 2d
+    Usage examples                    :e4, after e3, 1d
+```
 
 ### Phase 1: Core Memory Integration (Foundation)
 
