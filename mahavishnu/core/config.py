@@ -544,6 +544,132 @@ class LLMConfig(BaseModel):
 
     model_config = {"extra": "forbid"}
 
+class OneiricMCPConfig(BaseModel):
+    """Oneiric MCP integration configuration for adapter discovery."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable Oneiric MCP integration for dynamic adapter discovery",
+    )
+    grpc_host: str = Field(
+        default="localhost",
+        description="Oneiric MCP gRPC server host",
+    )
+    grpc_port: int = Field(
+        default=8679,
+        ge=1,
+        le=65535,
+        description="Oneiric MCP gRPC server port (8679 for insecure dev, 8680 for TLS)",
+    )
+    use_tls: bool = Field(
+        default=False,
+        description="Use TLS/mTLS for gRPC connection (production mode)",
+    )
+    timeout_sec: int = Field(
+        default=30,
+        ge=5,
+        le=120,
+        description="gRPC request timeout in seconds (5-120)",
+    )
+    cache_ttl_sec: int = Field(
+        default=300,
+        ge=0,
+        le=3600,
+        description="Adapter list cache TTL in seconds (0 to disable, default: 300)",
+    )
+    jwt_enabled: bool = Field(
+        default=False,
+        description="Enable JWT authentication for Oneiric MCP (production mode)",
+    )
+    jwt_secret: str | None = Field(
+        default=None,
+        description="JWT secret key for Oneiric MCP authentication (set via MAHAVISHNU_ONEIRIC_MCP__JWT_SECRET)",
+    )
+    jwt_project: str = Field(
+        default="mahavishnu",
+        description="Project name for JWT token scoping",
+    )
+    tls_cert_path: str | None = Field(
+        default=None,
+        description="Path to TLS client certificate (required for TLS/mTLS)",
+    )
+    tls_key_path: str | None = Field(
+        default=None,
+        description="Path to TLS client private key (required for TLS/mTLS)",
+    )
+    tls_ca_path: str | None = Field(
+        default=None,
+        description="Path to TLS CA certificate (required for mTLS)",
+    )
+    circuit_breaker_threshold: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Adapter failures before circuit breaker opens (1-10)",
+    )
+    circuit_breaker_duration_sec: int = Field(
+        default=300,
+        ge=60,
+        le=3600,
+        description="Seconds to block adapter after circuit breaker opens (60-3600)",
+    )
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def validate_jwt_secret(cls, v: str | None, info) -> str | None:
+        """Validate JWT secret configuration.
+
+        Args:
+            v: JWT secret value
+            info: Field validation info
+
+        Returns:
+            Validated JWT secret
+
+        Raises:
+            ValueError: If JWT enabled but secret not provided
+        """
+        jwt_enabled = info.data.get("jwt_enabled", False)
+
+        if jwt_enabled and not v:
+            raise ValueError(
+                "jwt_secret must be set via MAHAVISHNU_ONEIRIC_MCP__JWT_SECRET "
+                "environment variable when jwt_enabled is true"
+            )
+
+        return v
+
+    @field_validator("use_tls")
+    @classmethod
+    def validate_tls_config(cls, v: bool, info) -> bool:
+        """Validate TLS configuration.
+
+        Args:
+            v: use_tls value
+            info: Field validation info
+
+        Returns:
+            Validated use_tls value
+
+        Raises:
+            ValueError: If TLS enabled but certificates not configured
+        """
+        if v:
+            cert_path = info.data.get("tls_cert_path")
+            key_path = info.data.get("tls_key_path")
+
+            if not cert_path or not key_path:
+                raise ValueError(
+                    "tls_cert_path and tls_key_path must be provided when use_tls is true. "
+                    "Set via MAHAVISHNU_ONEIRIC_MCP__TLS_CERT_PATH and "
+                    "MAHAVISHNU_ONEIRIC_MCP__TLS_KEY_PATH environment variables."
+                )
+
+        return v
+
+    model_config = {"extra": "forbid"}
+
+
 
 class MahavishnuSettings(BaseSettings):
     """Mahavishnu configuration extending MCPServerSettings.
@@ -717,6 +843,12 @@ class MahavishnuSettings(BaseSettings):
     llm: LLMConfig = Field(
         default_factory=LLMConfig,
         description="LLM configuration for LlamaIndex and Agno",
+    )
+
+    # Oneiric MCP integration
+    oneiric_mcp: OneiricMCPConfig = Field(
+        default_factory=OneiricMCPConfig,
+        description="Oneiric MCP integration for dynamic adapter discovery",
     )
 
     @field_validator("repos_path")

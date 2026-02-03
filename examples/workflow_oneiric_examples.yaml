@@ -1,0 +1,380 @@
+# Example workflows demonstrating Oneiric MCP integration
+#
+# These workflows show how to use Oneiric MCP adapter discovery within
+# Mahavishnu workflow orchestration.
+#
+# Prerequisites:
+# 1. Oneiric MCP server running (port 8679 for insecure dev)
+# 2. Mahavishnu configured with oneiric_mcp.enabled=true
+# 3. Adapters registered in Oneiric MCP registry
+
+workflows:
+  # Example 1: Dynamic storage adapter selection
+  - name: "backup-with-dynamic-storage"
+    description: "Backup repositories using dynamically discovered storage adapter"
+    version: "1.0.0"
+
+    steps:
+      # Step 1: Discover available storage adapters
+      - name: "discover-storage"
+        tool: "oneiric_list_adapters"
+        params:
+          domain: "adapter"
+          category: "storage"
+          healthy_only: true
+        outputs:
+          - storage_adapters
+
+      # Step 2: Select S3 adapter if available
+      - name: "select-s3-adapter"
+        tool: "oneiric_resolve_adapter"
+        params:
+          domain: "adapter"
+          category: "storage"
+          provider: "s3"
+        condition: "${steps.discover-storage.count > 0}"
+        outputs:
+          - s3_adapter
+
+      # Step 3: Verify S3 adapter health
+      - name: "verify-adapter-health"
+        tool: "oneiric_check_health"
+        params:
+          adapter_id: "${steps.select-s3-adapter.adapter.adapter_id}"
+        outputs:
+          - health_status
+
+      # Step 4: Fallback to SQLite if S3 unavailable
+      - name: "fallback-sqlite"
+        tool: "oneiric_resolve_adapter"
+        params:
+          domain: "adapter"
+          category: "storage"
+          provider: "sqlite"
+        condition: "${steps.verify-adapter-health.healthy == false}"
+        outputs:
+          - fallback_adapter
+
+      # Step 5: Perform backup with selected adapter
+      - name: "execute-backup"
+        tool: "coord_backup_repositories"
+        params:
+          adapter: "${steps.verify-adapter-health.healthy ? steps.select-s3-adapter.adapter : steps.fallback-sqlite.adapter}"
+          repos: "${input.repos}"
+          destination: "backup-${timestamp}"
+
+    inputs:
+      - name: "repos"
+        type: "list[string]"
+        description: "List of repository paths to backup"
+        required: true
+
+  # Example 2: Orchestration adapter resolution
+  - name: "execute-with-prefect"
+    description: "Execute workflow using Prefect orchestration adapter"
+    version: "1.0.0"
+
+    steps:
+      # Step 1: Resolve Prefect orchestration adapter
+      - name: "resolve-prefect"
+        tool: "oneiric_resolve_adapter"
+        params:
+          domain: "adapter"
+          category: "orchestration"
+          provider: "prefect"
+          healthy_only: true
+        outputs:
+          - prefect_adapter
+
+      # Step 2: Verify adapter health
+      - name: "check-prefect-health"
+        tool: "oneiric_check_health"
+        params:
+          adapter_id: "${steps.resolve-prefect.adapter.adapter_id}"
+        outputs:
+          - health
+
+      # Step 3: Execute Prefect flow if healthy
+      - name: "execute-flow"
+        tool: "worker_execute_flow"
+        params:
+          adapter_factory: "${steps.resolve-prefect.adapter.factory_path}"
+          flow_definition: "${input.flow_def}"
+          flow_parameters: "${input.parameters}"
+        condition: "${steps.check-prefect-health.healthy == true}"
+
+      # Step 4: Error if Prefect unavailable
+      - name: "handle-unavailable"
+        tool: "error"
+        params:
+          message: "Prefect orchestration adapter not available or unhealthy"
+        condition: "${steps.check-prefect-health.healthy == false}"
+
+    inputs:
+      - name: "flow_def"
+        type: "dict"
+        description: "Prefect flow definition"
+        required: true
+      - name: "parameters"
+        type: "dict"
+        description: "Flow parameters"
+        default: {}
+
+  # Example 3: Cache adapter selection with fallback chain
+  - name: "setup-distributed-caching"
+    description: "Setup distributed caching with multiple adapter fallbacks"
+    version: "1.0.0"
+
+    steps:
+      # Step 1: Try Redis first (preferred cache)
+      - name: "try-redis"
+        tool: "oneiric_resolve_adapter"
+        params:
+          domain: "adapter"
+          category: "cache"
+          provider: "redis"
+          healthy_only: true
+        outputs:
+          - redis_adapter
+        continue_on_error: true
+
+      # Step 2: Fallback to Memcached if Redis unavailable
+      - name: "try-memcached"
+        tool: "oneiric_resolve_adapter"
+        params:
+          domain: "adapter"
+          category: "cache"
+          provider: "memcached"
+          healthy_only: true
+        condition: "${steps.try-redis.found == false}"
+        outputs:
+          - memcached_adapter
+        continue_on_error: true
+
+      # Step 3: Final fallback to in-memory cache
+      - name: "use-memory-cache"
+        tool: "oneiric_resolve_adapter"
+        params:
+          domain: "adapter"
+          category: "cache"
+          provider: "memory"
+        condition: "${steps.try-memcached.found == false}"
+        outputs:
+          - memory_adapter
+
+      # Step 4: Configure selected cache adapter
+      - name: "configure-cache"
+        tool: "coord_configure_cache"
+        params:
+          adapter_factory: "${steps.try-redis.found ? steps.try-redis.adapter.factory_path : (steps.try-memcached.found ? steps.try-memcached.adapter.factory_path : steps.use-memory-cache.adapter.factory_path)}"
+          ttl_seconds: 3600
+          max_size_mb: 1024
+
+    outputs:
+      - name: "cache_type"
+        value: "${steps.try-redis.found ? 'redis' : (steps.try-memcached.found ? 'memcached' : 'memory')}"
+      - name: "cache_adapter_id"
+        value: "${steps.try-redis.found ? steps.try-redis.adapter.adapter_id : (steps.try-memcached.found ? steps.try-memcached.adapter.adapter_id : steps.use-memory-cache.adapter.adapter_id)}"
+
+  # Example 4: Health monitoring workflow
+  - name: "monitor-adapter-health"
+    description: "Monitor health of critical adapters and alert on failures"
+    version: "1.0.0"
+    schedule: "*/5 * * * *"  # Every 5 minutes
+
+    steps:
+      # Step 1: List all Mahavishnu adapters
+      - name: "list-adapters"
+        tool: "oneiric_list_adapters"
+        params:
+          project: "mahavishnu"
+        outputs:
+          - all_adapters
+
+      # Step 2: Check health of each adapter
+      - name: "check-health-parallel"
+        tool: "oneiric_check_health"
+        params:
+          adapter_id: "${adapter.adapter_id}"
+        iterate_over: "${steps.list-adapters.adapters}"
+        outputs:
+          - health_results
+
+      # Step 3: Filter unhealthy adapters
+      - name: "filter-unhealthy"
+        tool: "filter"
+        params:
+          items: "${steps.check-health-parallel.health_results}"
+          condition: "${item.healthy == false}"
+        outputs:
+          - unhealthy_adapters
+
+      # Step 4: Send alert if unhealthy adapters found
+      - name: "send-alert"
+        tool: "send_quality_alert"
+        params:
+          severity: "warning"
+          message: "Unhealthy adapters detected: ${unhealthy_adapters.length}"
+          details: "${steps.filter-unhealthy.unhealthy_adapters}"
+        condition: "${steps.filter-unhealthy.unhealthy_adapters.length > 0}"
+
+      # Step 5: Log health status
+      - name: "log-health"
+        tool: "log"
+        params:
+          level: "info"
+          message: "Adapter health check: ${steps.check-health-parallel.health_results.length} adapters checked, ${steps.filter-unhealthy.unhealthy_adapters.length} unhealthy"
+
+  # Example 5: Dynamic pool configuration
+  - name: "configure-pool-with-adapter"
+    description: "Configure worker pool with dynamically discovered memory adapter"
+    version: "1.0.0"
+
+    steps:
+      # Step 1: Discover memory aggregation adapters
+      - name: "list-memory-adapters"
+        tool: "oneiric_list_adapters"
+        params:
+          domain: "adapter"
+          category: "memory"
+          healthy_only: true
+        outputs:
+          - memory_adapters
+
+      # Step 2: Select best memory adapter (prefer Redis)
+      - name: "select-memory-adapter"
+        tool: "oneiric_resolve_adapter"
+        params:
+          domain: "adapter"
+          category: "memory"
+          provider: "redis"
+        continue_on_error: true
+        outputs:
+          - redis_adapter
+
+      # Step 3: Fallback to file-based memory
+      - name: "fallback-file-memory"
+        tool: "oneiric_resolve_adapter"
+        params:
+          domain: "adapter"
+          category: "memory"
+          provider: "file"
+        condition: "${steps.select-memory-adapter.found == false}"
+        outputs:
+          - file_adapter
+
+      # Step 4: Configure pool with selected memory adapter
+      - name: "configure-pool"
+        tool: "pool_configure"
+        params:
+          pool_name: "${input.pool_name}"
+          memory_adapter: "${steps.select-memory-adapter.found ? steps.select-memory-adapter.adapter.factory_path : steps.fallback-file-memory.adapter.factory_path}"
+          memory_config:
+            ttl_seconds: 300
+            max_size: 10000
+
+    inputs:
+      - name: "pool_name"
+        type: "string"
+        description: "Name of pool to configure"
+        required: true
+
+  # Example 6: Adapter discovery and testing
+  - name: "discover-and-test-adapters"
+    description: "Discover all available adapters and run health tests"
+    version: "1.0.0"
+
+    steps:
+      # Step 1: Invalidate cache to ensure fresh discovery
+      - name: "invalidate-cache"
+        tool: "oneiric_invalidate_cache"
+
+      # Step 2: List all available adapters
+      - name: "list-all-adapters"
+        tool: "oneiric_list_adapters"
+        params:
+          use_cache: false
+        outputs:
+          - all_adapters
+
+      # Step 3: Group adapters by category
+      - name: "group-by-category"
+        tool: "group_by"
+        params:
+          items: "${steps.list-all-adapters.adapters}"
+          key: "category"
+        outputs:
+          - adapters_by_category
+
+      # Step 4: Test each adapter
+      - name: "test-adapters"
+        tool: "oneiric_check_health"
+        params:
+          adapter_id: "${adapter.adapter_id}"
+        iterate_over: "${steps.list-all-adapters.adapters}"
+        outputs:
+          - test_results
+
+      # Step 5: Generate report
+      - name: "generate-report"
+        tool: "create_report"
+        params:
+          title: "Adapter Discovery and Test Report"
+          sections:
+            - name: "Summary"
+              content: "Discovered ${steps.list-all-adapters.adapters.length} adapters across ${steps.group-by-category.keys.length} categories"
+            - name: "By Category"
+              content: "${steps.group-by-category.adapters_by_category}"
+            - name: "Health Test Results"
+              content: "${steps.test-adapters.test_results}"
+
+    outputs:
+      - name: "total_adapters"
+        value: "${steps.list-all-adapters.adapters.length}"
+      - name: "healthy_adapters"
+        value: "${steps.test-adapters.test_results.filter(r => r.healthy).length}"
+      - name: "categories"
+        value: "${steps.group-by-category.adapters_by_category.keys}"
+
+  # Example 7: Cross-repository coordination with adapter discovery
+  - name: "coordination-with-discovery"
+    description: "Setup cross-repository coordination with dynamic adapter discovery"
+    version: "1.0.0"
+
+    steps:
+      # Step 1: Discover coordination adapters
+      - name: "list-coordination-adapters"
+        tool: "oneiric_list_adapters"
+        params:
+          domain: "service"
+          category: "coordination"
+          healthy_only: true
+        outputs:
+          - coordination_adapters
+
+      # Step 2: Check Oneiric MCP integration health
+      - name: "check-integration-health"
+        tool: "oneiric_health_check"
+        outputs:
+          - health_status
+
+      # Step 3: Setup coordination if healthy
+      - name: "setup-coordination"
+        tool: "coord_setup"
+        params:
+          adapter: "${steps.list-coordination-adapters.adapters.0}"
+          repos: "${input.repos}"
+        condition: "${steps.check-integration-health.status == 'healthy'}"
+
+      # Step 4: Register repositories for coordination
+      - name: "register-repos"
+        tool: "coord_register_repos"
+        params:
+          repos: "${input.repos}"
+          coordination_adapter: "${steps.list-coordination-adapters.adapters.0.adapter_id}"
+
+    inputs:
+      - name: "repos"
+        type: "list[string]"
+        description: "List of repository paths to coordinate"
+        required: true

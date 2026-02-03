@@ -230,7 +230,7 @@ wheels = [
 ]
 
 [[package]]
-name = "asteroid"
+name = "astroid"
 version = "4.0.3"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a1/ca/c17d0f83016532a1ad87d1de96837164c99d47a3b6bbba28bd597c25b37a/astroid-4.0.3.tar.gz", hash = "sha256:08d1de40d251cc3dc4a7a12726721d475ac189e4e583d596ece7422bc176bda3", size = 406224, upload-time = "2026-01-03T22:14:26.096Z" }
@@ -2353,8 +2353,10 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
+    { name = "aiosqlite" },
     { name = "asyncpg" },
     { name = "crackerjack" },
+    { name = "cryptography" },
     { name = "fastembed" },
     { name = "fastmcp" },
     { name = "gitpython" },
@@ -2465,6 +2467,7 @@ dev = [
 requires-dist = [
     { name = "agno", marker = "extra == 'agno'", specifier = ">=0.1.7" },
     { name = "aiofiles", specifier = ">=25.1.0" },
+    { name = "aiosqlite", specifier = ">=0.20.0" },
     { name = "asyncpg", specifier = ">=0.29.0" },
     { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.9.3" },
     { name = "codespell", marker = "extra == 'dev'", specifier = ">=2.4.1" },
@@ -2472,6 +2475,7 @@ requires-dist = [
     { name = "crackerjack", specifier = ">=0.50.1" },
     { name = "crackerjack", marker = "extra == 'dev'", specifier = ">=0.50.1" },
     { name = "creosote", marker = "extra == 'dev'", specifier = ">=4.1.0" },
+    { name = "cryptography", specifier = ">=44.0.0" },
     { name = "fastembed", specifier = ">=0.2.0" },
     { name = "fastmcp", specifier = ">=3.0.0b1" },
     { name = "gitpython", specifier = ">=3.1.46" },
@@ -4092,7 +4096,7 @@ name = "pylint"
 version = "4.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "asteroid" },
+    { name = "astroid" },
     { name = "colorama", marker = "sys_platform == 'win32'" },
     { name = "dill" },
     { name = "isort" },
