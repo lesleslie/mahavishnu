@@ -53,6 +53,9 @@ QWEN_COMMANDS_DIR = Path.home() / ".qwen" / "commands"
 CLAUDE_AGENTS_DIR = Path.home() / ".claude" / "agents"
 CLAUDE_PLUGINS_FILE = Path.home() / ".claude" / "plugins" / "installed_plugins.json"
 
+# MCP servers to skip during sync (servers that should not be synced to Qwen)
+DEFAULT_SKIP_SERVERS = ["homebrew", "pycharm"]
+
 # Sync types
 SYNC_TYPE_MCP = "mcp_servers"
 SYNC_TYPE_EXTENSIONS = "extensions"
@@ -116,30 +119,50 @@ def save_json_atomically(path: Path, data: dict[str, Any]) -> None:
     logger.debug(f"Saved {path} atomically")
 
 
-def merge_mcp_servers(claude: dict[str, Any], qwen: dict[str, Any]) -> dict[str, Any]:
+def merge_mcp_servers(
+    claude: dict[str, Any],
+    qwen: dict[str, Any],
+    skip_servers: list[str] | None = None,
+) -> dict[str, Any]:
     """Merge MCP servers from both configs.
 
     Strategy:
     - Servers unique to one side: add to other
     - Servers on both sides: Claude takes precedence (last-write-wins)
     - Preserve server metadata (type, url, command, args)
+    - Skip servers in skip_servers list (won't be synced)
 
     Args:
         claude: Claude config dict
         qwen: Qwen config dict
+        skip_servers: List of server names to skip syncing (default: DEFAULT_SKIP_SERVERS)
 
     Returns:
         Merged mcpServers dict
     """
+    if skip_servers is None:
+        skip_servers = DEFAULT_SKIP_SERVERS
+
     claude_mcp = claude.get("mcpServers", {})
     qwen_mcp = qwen.get("mcpServers", {})
+
+    # Filter out skipped servers from Claude's config
+    filtered_claude_mcp = {
+        name: config
+        for name, config in claude_mcp.items()
+        if name not in skip_servers
+    }
 
     # Start with Qwen's servers
     merged = {**qwen_mcp}
     # Overwrite/add Claude's servers (Claude takes precedence)
-    merged.update(claude_mcp)
+    merged.update(filtered_claude_mcp)
 
-    logger.debug(f"Merged {len(claude_mcp)} Claude + {len(qwen_mcp)} Qwen MCP servers")
+    skipped_count = len(claude_mcp) - len(filtered_claude_mcp)
+    logger.debug(
+        f"Merged {len(filtered_claude_mcp)} Claude + {len(qwen_mcp)} Qwen MCP servers "
+        f"(skipped {skipped_count}: {', '.join(skip_servers)})"
+    )
     return merged
 
 
@@ -313,11 +336,15 @@ def sync_commands_claude_to_qwen() -> dict[str, Any]:
     return stats
 
 
-def sync_claude_to_qwen(sync_types: list[str] | None = None) -> dict[str, Any]:
+def sync_claude_to_qwen(
+    sync_types: list[str] | None = None,
+    skip_servers: list[str] | None = None,
+) -> dict[str, Any]:
     """Sync Claude config → Qwen config.
 
     Args:
         sync_types: List of sync types to perform (default: all)
+        skip_servers: List of server names to skip syncing (default: DEFAULT_SKIP_SERVERS)
 
     Returns:
         Sync result with stats
@@ -325,21 +352,37 @@ def sync_claude_to_qwen(sync_types: list[str] | None = None) -> dict[str, Any]:
     if sync_types is None:
         sync_types = [SYNC_TYPE_MCP, SYNC_TYPE_EXTENSIONS, SYNC_TYPE_COMMANDS]
 
+    if skip_servers is None:
+        skip_servers = DEFAULT_SKIP_SERVERS
+
     logger.info("Syncing Claude → Qwen")
 
     claude = load_json_safely(CLAUDE_CONFIG)
     qwen = load_json_safely(QWEN_CONFIG)
 
-    stats = {"mcp_servers": 0, "plugins_found": 0, "commands_synced": 0, "errors": []}
+    stats = {
+        "mcp_servers": 0,
+        "mcp_servers_skipped": 0,
+        "plugins_found": 0,
+        "commands_synced": 0,
+        "errors": [],
+    }
 
     # Sync MCP servers
     if SYNC_TYPE_MCP in sync_types:
         try:
             if "mcpServers" in claude:
-                qwen["mcpServers"] = merge_mcp_servers(claude, qwen)
-                stats["mcp_servers"] = len(claude["mcpServers"])
+                claude_mcp_count = len(claude["mcpServers"])
+                qwen["mcpServers"] = merge_mcp_servers(claude, qwen, skip_servers)
+                stats["mcp_servers"] = claude_mcp_count
+                stats["mcp_servers_skipped"] = len(
+                    [s for s in claude["mcpServers"] if s in skip_servers]
+                )
                 save_json_atomically(QWEN_CONFIG, qwen)
-                logger.info(f"✅ Synced {stats['mcp_servers']} MCP servers to Qwen")
+                logger.info(
+                    f"✅ Synced {stats['mcp_servers']} MCP servers to Qwen "
+                    f"(skipped {stats['mcp_servers_skipped']}: {', '.join(skip_servers)})"
+                )
         except Exception as e:
             error_msg = f"Failed to sync MCP servers: {e}"
             logger.error(error_msg)
@@ -395,14 +438,18 @@ class ConfigSyncHandler(FileSystemEventHandler):
     and triggers bidirectional sync automatically.
     """
 
-    def __init__(self, dry_run: bool = False):
+    def __init__(
+        self, dry_run: bool = False, skip_servers: list[str] | None = None
+    ):
         """Initialize sync handler.
 
         Args:
             dry_run: If True, log but don't perform sync
+            skip_servers: List of server names to skip syncing
         """
         super().__init__()
         self.dry_run = dry_run
+        self.skip_servers = skip_servers if skip_servers is not None else DEFAULT_SKIP_SERVERS
         self.last_hash = {
             "claude": file_hash(CLAUDE_CONFIG),
             "qwen": file_hash(QWEN_CONFIG),
@@ -426,7 +473,7 @@ class ConfigSyncHandler(FileSystemEventHandler):
             if current_hash != self.last_hash["claude"]:
                 logger.info("🔄 Claude config changed, syncing to Qwen...")
                 if not self.dry_run:
-                    sync_claude_to_qwen()
+                    sync_claude_to_qwen(skip_servers=self.skip_servers)
                 self.last_hash["claude"] = current_hash
                 self.sync_count["claude_to_qwen"] += 1
 
@@ -455,6 +502,12 @@ def once(
         "-t",
         help="Sync types to include (mcp, extensions, commands). Can be specified multiple times.",
     ),
+    skip: list[str] = typer.Option(
+        None,
+        "--skip",
+        "-s",
+        help="MCP servers to skip syncing (default: homebrew, pycharm). Can be specified multiple times.",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ) -> None:
     """Run sync once and exit.
@@ -466,8 +519,14 @@ def once(
     - extensions: Plugins/extensions tracking
     - commands: Convert Claude .md commands to Qwen .toml
 
+    Skip list:
+    - By default, skips: homebrew, pycharm
+    - Use --skip to customize which servers to skip
+    - Use --skip-empty to skip nothing (sync all servers)
+
     Examples:
-        mahavishnu sync once                           # Sync all types
+        mahavishnu sync once                           # Sync all types (skip homebrew, pycharm)
+        mahavishnu sync once --skip homebrew pycharm   # Custom skip list
         mahavishnu sync once --type mcp --type commands  # Sync only MCP + commands
         mahavishnu sync once --direction claude-to-qwen  # One-way sync
     """
@@ -491,12 +550,17 @@ def once(
         # Default: sync all types
         sync_types = None
 
+    # Set skip servers
+    skip_servers = skip if skip else None
+
     logger.info("Starting one-time sync...")
+    if skip_servers:
+        logger.info(f"Skipping MCP servers: {', '.join(skip_servers)}")
 
     stats = []
 
     if direction in ("both", "claude-to-qwen"):
-        result = sync_claude_to_qwen(sync_types)
+        result = sync_claude_to_qwen(sync_types, skip_servers)
         stats.append(("Claude → Qwen", result))
 
     if direction in ("both", "qwen-to-claude"):
@@ -508,6 +572,8 @@ def once(
     for direction_name, result in stats:
         typer.echo(f"  {direction_name}:")
         typer.echo(f"    MCP servers: {result.get('mcp_servers', 0)}")
+        if result.get("mcp_servers_skipped", 0) > 0:
+            typer.echo(f"    MCP servers skipped: {result['mcp_servers_skipped']}")
         if "plugins_found" in result:
             typer.echo(f"    Plugins found: {result['plugins_found']}")
         if "commands_synced" in result:
@@ -525,21 +591,40 @@ def daemon(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Log changes without syncing"
     ),
+    skip: list[str] = typer.Option(
+        None,
+        "--skip",
+        "-s",
+        help="MCP servers to skip syncing (default: homebrew, pycharm). Can be specified multiple times.",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ) -> None:
     """Run sync daemon (monitors for file changes).
 
     Starts a background process that watches ~/.claude.json and ~/.qwen/settings.json
     and automatically syncs changes between them.
+
+    Skip list:
+    - By default, skips: homebrew, pycharm
+    - Use --skip to customize which servers to skip
+
+    Examples:
+        mahavishnu sync daemon                          # Skip homebrew, pycharm
+        mahavishnu sync daemon --skip homebrew neo4j    # Custom skip list
     """
     if verbose:
         import structlog
 
         structlog.configure(logger_factory=structlog.PrintLoggerFactory())
 
-    logger.info("Starting Claude-Qwen sync daemon...")
+    # Set skip servers
+    skip_servers = skip if skip else DEFAULT_SKIP_SERVERS
 
-    handler = ConfigSyncHandler(dry_run=dry_run)
+    logger.info("Starting Claude-Qwen sync daemon...")
+    if skip_servers:
+        logger.info(f"Skipping MCP servers: {', '.join(skip_servers)}")
+
+    handler = ConfigSyncHandler(dry_run=dry_run, skip_servers=skip_servers)
     observer = Observer()
 
     # Watch Claude config

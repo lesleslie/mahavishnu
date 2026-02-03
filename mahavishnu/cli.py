@@ -25,6 +25,9 @@ from .sync_cli import add_sync_commands
 # Import coordination CLI
 from .coordination_cli import add_coordination_commands
 
+# Import metrics CLI
+from .metrics_cli import add_metrics_commands
+
 app = typer.Typer()
 
 
@@ -578,6 +581,9 @@ add_sync_commands(app)
 
 # Add cross-repository coordination commands
 add_coordination_commands(app)
+
+# Add metrics commands
+add_metrics_commands(app)
 
 
 # Worker management

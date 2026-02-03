@@ -8,7 +8,8 @@ from enum import Enum
 import jwt
 from pydantic import BaseModel
 
-from ..core.config import MahavishnuSettings
+from .config import MahavishnuSettings
+from .errors import ConfigurationError
 
 
 class Permission(str, Enum):
@@ -156,9 +157,28 @@ class RBACManager:
 class JWTManager:
     """JWT token management for authentication."""
 
+    # Minimum entropy requirements for JWT secrets
+    MIN_SECRET_LENGTH = 32  # characters
+
     def __init__(self, config: MahavishnuSettings):
         self.config = config
-        self.secret = config.auth_secret or "fallback_secret_for_testing"
+
+        # Critical security: Never use hardcoded secrets
+        if not config.auth_secret:
+            raise ConfigurationError(
+                "MAHAVISHNU_AUTH_SECRET environment variable must be set. "
+                "Generate a secure secret with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+            )
+
+        # Validate minimum entropy (length check as proxy for entropy)
+        if len(config.auth_secret) < self.MIN_SECRET_LENGTH:
+            raise ConfigurationError(
+                f"JWT secret must be at least {self.MIN_SECRET_LENGTH} characters long. "
+                f"Current length: {len(config.auth_secret)} characters. "
+                "Generate a secure secret with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+            )
+
+        self.secret = config.auth_secret
         self.algorithm = config.auth_algorithm
         self.expire_minutes = config.auth_expire_minutes
 
