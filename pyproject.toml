@@ -56,6 +56,11 @@ dependencies = [
     "session-buddy>=0.11.1",
     # Git operations
     "gitpython>=3.1.46",
+    # Async SQLite (for EventBus persistence)
+    "aiosqlite>=0.20.0",
+    # Encrypted SQLite (AES-256 encryption for sensitive data)
+    # Uses cryptography.fernet (Python 3.13+ compatible, no C extensions)
+    "cryptography>=44.0.0",
     # Terminal management
     "iterm2>=2.13",  # iTerm2 Python API (optional, for iTerm2 adapter)
     # Admin shell
@@ -107,6 +112,7 @@ dev = [
     "bandit>=1.9.3",  # Security linting
     "safety>=2.3.4",  # Dependency vulnerability scanning
     "creosote>=4.1.0",  # Detect unused dependencies
+    "detect-secrets>=1.4.0",  # Secret scanning in code
 
     # Code modernization & complexity
     "refurb>=2.2.0",  # Modern Python suggestions

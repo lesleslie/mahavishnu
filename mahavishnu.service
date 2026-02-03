@@ -1,0 +1,68 @@
+# Mahavishnu Orchestrator - Systemd Service Unit
+#
+# Installation:
+#   1. Copy this file to /etc/systemd/system/mahavishnu.service
+#   2. Run: sudo systemctl daemon-reload
+#   3. Run: sudo systemctl enable mahavishnu
+#   4. Run: sudo systemctl start mahavishnu
+#
+# Usage:
+#   sudo systemctl start mahavishnu    # Start service
+#   sudo systemctl stop mahavishnu     # Stop service
+#   sudo systemctl restart mahavishnu  # Restart service
+#   sudo systemctl status mahavishnu   # Check status
+#   journalctl -u mahavishnu -f        # View logs
+
+[Unit]
+Description=Mahavishnu Multi-Engine Orchestrator
+Documentation=https://github.com/yourusername/mahavishnu
+After=network.target
+Wants=network-online.target
+
+[Service]
+# Type: forking (daemon process)
+Type=forking
+
+# User and group to run the service as
+# Change these to appropriate values for your system
+User=mahavishnu
+Group=mahavishnu
+
+# Working directory
+WorkingDirectory=/opt/mahavishnu
+
+# Virtual environment and command
+Environment="PATH=/opt/mahavishnu/.venv/bin"
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/opt/mahavishnu/.venv/bin/python -m mahavishnu.cli mcp start --daemon
+ExecStop=/opt/mahavishnu/.venv/bin/python -m mahavishnu.cli mcp stop
+ExecReload=/bin/kill -HUP $MAINPID
+PIDFile=/var/run/mahavishnu/mahavishnu.pid
+
+# Auto-restart configuration
+# Restart on failure, but not on normal exit
+Restart=on-failure
+RestartSec=10s
+# Max restart attempts within time window
+StartLimitInterval=60s
+StartLimitBurst=5
+
+# Resource limits
+LimitNOFILE=65536
+MemoryMax=2G
+CPUQuota=200%
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/mahavishnu/data /var/log/mahavishnu /var/run/mahavishnu
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mahavishnu
+
+[Install]
+WantedBy=multi-user.target
