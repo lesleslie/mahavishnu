@@ -1,0 +1,345 @@
+# Alert Rules for Mahavishnu MCP Ecosystem
+#
+# These rules define when alerts should be triggered based on Prometheus metrics.
+# Customize thresholds based on your environment and SLA requirements.
+
+groups:
+  # Mahavishnu MCP Server Alerts
+  - name: mahavishnu_mcp_alerts
+    interval: 30s
+    rules:
+      # P1: Service Down
+      - alert: MahavishnuMCPServiceDown
+        expr: up{job="mahavishnu-mcp"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: mahavishnu-mcp
+          tier: p1
+        annotations:
+          summary: "Mahavishnu MCP service is down"
+          description: "Mahavishnu MCP service has been down for more than 1 minute on instance {{ $labels.instance }}."
+          runbook_url: "https://docs.mahavishnu.com/runbooks/service-down.html"
+
+      # P1: High Error Rate
+      - alert: MahavishnuMCPHighErrorRate
+        expr: |
+          (
+            sum(rate(mahavishnu_mcp_errors_total{job="mahavishnu-mcp"}[5m]))
+            /
+            sum(rate(mahavishnu_mcp_requests_total{job="mahavishnu-mcp"}[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: mahavishnu-mcp
+          tier: p1
+        annotations:
+          summary: "Mahavishnu MCP error rate above 5%"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes on instance {{ $labels.instance }}."
+
+      # P2: High Latency
+      - alert: MahavishnuMCPHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(mahavishnu_mcp_request_duration_seconds_bucket{job="mahavishnu-mcp"}[5m])) by (le)
+          ) > 1.0
+        for: 10m
+        labels:
+          severity: warning
+          service: mahavishnu-mcp
+          tier: p2
+        annotations:
+          summary: "Mahavishnu MCP p95 latency above 1s"
+          description: "p95 latency is {{ $value }}s for the last 10 minutes on instance {{ $labels.instance }}."
+
+      # P2: High Memory Usage
+      - alert: MahavishnuMCPHighMemoryUsage
+        expr: |
+          (
+            process_resident_memory_bytes{job="mahavishnu-mcp"}
+            /
+            node_memory_MemTotal_bytes{job="mahavishnu-mcp"}
+          ) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: mahavishnu-mcp
+          tier: p2
+        annotations:
+          summary: "Mahavishnu MCP memory usage above 80%"
+          description: "Memory usage is {{ $value | humanizePercentage }} on instance {{ $labels.instance }}."
+
+      # P3: Worker Pool Exhaustion
+      - alert: MahavishnuMCPWorkerPoolExhausted
+        expr: mahavishnu_worker_pool_available_workers{job="mahavishnu-mcp"} < 2
+        for: 5m
+        labels:
+          severity: warning
+          service: mahavishnu-mcp
+          tier: p3
+        annotations:
+          summary: "Worker pool has less than 2 available workers"
+          description: "Only {{ $value }} workers available in pool {{ $labels.pool_name }} on instance {{ $labels.instance }}."
+
+  # Session-Buddy Alerts
+  - name: session_buddy_alerts
+    interval: 30s
+    rules:
+      # P1: Service Down
+      - alert: SessionBuddyServiceDown
+        expr: up{job="session-buddy"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: session-buddy
+          tier: p1
+        annotations:
+          summary: "Session-Buddy service is down"
+          description: "Session-Buddy service has been down for more than 1 minute on instance {{ $labels.instance }}."
+
+      # P1: Database Connection Pool Exhausted
+      - alert: SessionBuddyDBPoolExhausted
+        expr: session_buddy_db_pool_available_connections{job="session-buddy"} < 1
+        for: 5m
+        labels:
+          severity: critical
+          service: session-buddy
+          tier: p1
+        annotations:
+          summary: "Session-Buddy database connection pool exhausted"
+          description: "No available database connections on instance {{ $labels.instance }}."
+
+      # P2: High Error Rate
+      - alert: SessionBuddyHighErrorRate
+        expr: |
+          (
+            sum(rate(session_buddy_errors_total{job="session-buddy"}[5m]))
+            /
+            sum(rate(session_buddy_requests_total{job="session-buddy"}[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: session-buddy
+          tier: p2
+        annotations:
+          summary: "Session-Buddy error rate above 5%"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes on instance {{ $labels.instance }}."
+
+      # P3: Database Size Growing
+      - alert: SessionBuddyDBSizeGrowing
+        expr: |
+          (
+            session_buddy_db_size_bytes{job="session-buddy"}
+            /
+            session_buddy_db_size_bytes{job="session-buddy"} offset 1d
+          ) > 1.5
+        for: 1h
+        labels:
+          severity: warning
+          service: session-buddy
+          tier: p3
+        annotations:
+          summary: "Session-Buddy database size increased > 50% in 1 day"
+          description: "Database size is {{ $value | humanizePercentage }} of yesterday's size on instance {{ $labels.instance }}."
+
+  # Akosha Alerts
+  - name: akosha_alerts
+    interval: 30s
+    rules:
+      # P1: Service Down
+      - alert: AkoshaServiceDown
+        expr: up{job="akosha"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: akosha
+          tier: p1
+        annotations:
+          summary: "Akosha service is down"
+          description: "Akosha service has been down for more than 1 minute on instance {{ $labels.instance }}."
+
+      # P1: PostgreSQL Connection Issues
+      - alert: AkoshaPostgreSQLDown
+        expr: pg_up{job="akosha"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: akosha
+          tier: p1
+        annotations:
+          summary: "Akosha PostgreSQL database is down"
+          description: "PostgreSQL database has been down for more than 1 minute on instance {{ $labels.instance }}."
+
+      # P2: High Memory Usage
+      - alert: AkoshaHighMemoryUsage
+        expr: |
+          (
+            process_resident_memory_bytes{job="akosha"}
+            /
+            node_memory_MemTotal_bytes{job="akosha"}
+          ) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: akosha
+          tier: p2
+        annotations:
+          summary: "Akosha memory usage above 80%"
+          description: "Memory usage is {{ $value | humanizePercentage }} on instance {{ $labels.instance }}."
+
+  # System Resource Alerts
+  - name: system_resource_alerts
+    interval: 1m
+    rules:
+      # P1: Disk Space Low
+      - alert: DiskSpaceLow
+        expr: |
+          (
+            (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})
+            < 0.2
+          )
+        for: 10m
+        labels:
+          severity: critical
+          tier: p1
+        annotations:
+          summary: "Disk space below 20%"
+          description: "Disk space is {{ $value | humanizePercentage }} on instance {{ $labels.instance }}."
+
+      # P2: CPU Usage High
+      - alert: CPUUsageHigh
+        expr: |
+          (
+            100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+          ) > 80
+        for: 15m
+        labels:
+          severity: warning
+          tier: p2
+        annotations:
+          summary: "CPU usage above 80% for 15 minutes"
+          description: "CPU usage is {{ $value }}% on instance {{ $labels.instance }}."
+
+      # P2: Memory Usage High
+      - alert: MemoryUsageHigh
+        expr: |
+          (
+            (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))
+            > 0.8
+          )
+        for: 10m
+        labels:
+          severity: warning
+          tier: p2
+        annotations:
+          summary: "Memory usage above 80%"
+          description: "Memory usage is {{ $value | humanizePercentage }} on instance {{ $labels.instance }}."
+
+      # P3: Load Average High
+      - alert: LoadAverageHigh
+        expr: |
+          (
+            node_load5{job="node"}
+            /
+            count by (instance) (node_cpu_seconds_total{mode="idle"})
+          ) > 2
+        for: 15m
+        labels:
+          severity: warning
+          tier: p3
+        annotations:
+          summary: "Load average high"
+          description: "5-minute load average is {{ $value }} on instance {{ $labels.instance }}."
+
+  # Backup Alerts
+  - name: backup_alerts
+    interval: 5m
+    rules:
+      # P1: Backup Failed
+      - alert: BackupFailed
+        expr: mahavishnu_backup_success{job="mahavishnu-backup"} == 0
+        for: 1h
+        labels:
+          severity: critical
+          tier: p1
+        annotations:
+          summary: "Mahavishnu backup failed"
+          description: "Last backup was unsuccessful. Check backup logs on instance {{ $labels.instance }}."
+
+      # P2: Backup Old
+      - alert: BackupOld
+        expr: |
+          (
+            time() - mahavishnu_backup_last_success_timestamp{job="mahavishnu-backup"}
+          ) > 86400
+        for: 1h
+        labels:
+          severity: warning
+          tier: p2
+        annotations:
+          summary: "Last successful backup was more than 24 hours ago"
+          description: "Last successful backup was {{ $value | humanizeDuration }} ago on instance {{ $labels.instance }}."
+
+      # P3: Backup Size Increasing
+      - alert: BackupSizeIncreasing
+        expr: |
+          (
+            mahavishnu_backup_size_bytes{job="mahavishnu-backup"}
+            /
+            mahavishnu_backup_size_bytes{job="mahavishnu-backup"} offset 7d
+          ) > 2
+        for: 1h
+        labels:
+          severity: warning
+          tier: p3
+        annotations:
+          summary: "Backup size doubled in 7 days"
+          description: "Backup size is {{ $value | humanizePercentage }} of size 7 days ago on instance {{ $labels.instance }}."
+
+  # Security Alerts
+  - name: security_alerts
+    interval: 1m
+    rules:
+      # P1: High Rate of Auth Failures
+      - alert: HighAuthFailureRate
+        expr: |
+          (
+            sum(rate(mahavishnu_auth_failures_total{job="mahavishnu-mcp"}[5m]))
+            /
+            sum(rate(mahavishnu_auth_attempts_total{job="mahavishnu-mcp"}[5m]))
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          tier: p1
+        annotations:
+          summary: "High authentication failure rate detected"
+          description: "Auth failure rate is {{ $value | humanizePercentage }} for the last 5 minutes. Possible brute force attack on instance {{ $labels.instance }}."
+
+      # P2: High Rate Limit Violations
+      - alert: HighRateLimitViolations
+        expr: |
+          sum(rate(mahavishnu_rate_limit_violations_total{job="mahavishnu-mcp"}[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          tier: p2
+        annotations:
+          summary: "High rate of rate limit violations"
+          description: "{{ $value }} rate limit violations per second for the last 5 minutes on instance {{ $labels.instance }}."
+
+      # P3: Suspicious User Agent
+      - alert: SuspiciousUserAgent
+        expr: |
+          sum by (user_agent) (
+            rate(mahavishnu_requests_total{job="mahavishnu-mcp"}[5m])
+          ) > 10
+        for: 5m
+        labels:
+          severity: warning
+          tier: p3
+        annotations:
+          summary: "Suspicious user agent activity"
+          description: "User agent {{ $labels.user_agent }} is making {{ $value }} requests per second on instance {{ $labels.instance }}."
