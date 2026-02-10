@@ -33,22 +33,29 @@ Example:
     >>> await dlq.start_retry_processor()
 """
 
+from __future__ import annotations
+
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any, Optional
 
-# Try to import OpenSearch, with fallback if not available
+if TYPE_CHECKING:
+    try:
+        from opensearchpy import AsyncOpenSearch
+    except ImportError:
+        AsyncOpenSearch = Any  # type: ignore
+
+# Try to import OpenSearch at runtime, with fallback if not available
 try:
-    from opensearchpy import AsyncOpenSearch
-
+    from opensearchpy import AsyncOpenSearch as _AsyncOpenSearch
     OPENSEARCH_AVAILABLE = True
 except ImportError:
+    _AsyncOpenSearch = None
     OPENSEARCH_AVAILABLE = False
-    AsyncOpenSearch = None
 
 
 class RetryPolicy(str, Enum):
@@ -203,6 +210,16 @@ class DeadLetterQueue:
         opensearch_client: AsyncOpenSearch | None = None,
         observability_manager: Any = None,
     ):
+        """Initialize the Dead Letter Queue.
+
+        Args:
+            max_size: Maximum number of tasks to keep in queue
+            opensearch_client: Optional OpenSearch client for persistent storage
+            observability_manager: Optional observability manager for metrics
+        """
+        self._max_size = max_size
+        self._opensearch: Any = opensearch_client
+        self._observability = observability_manager
         """Initialize the Dead Letter Queue.
 
         Args:

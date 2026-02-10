@@ -1,0 +1,817 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Mahavishnu Learning Telemetry Dashboard",
+    "tags": ["mahavishnu", "learning", "telemetry", "duckdb"],
+    "style": "dark",
+    "timezone": "utc",
+    "refresh": "1m",
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Execution Count (Last 24 Hours)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "COUNT(*) FROM executions WHERE timestamp >= NOW() - INTERVAL '24 hours'",
+            "legendFormat": "Executions",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "blue"},
+                {"value": 100, "color": "green"},
+                {"value": 1000, "color": "yellow"}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        },
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Success Rate (Last 24 Hours)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "SELECT (SUM(CASE WHEN success = TRUE THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) FROM executions WHERE timestamp >= NOW() - INTERVAL '24 hours'",
+            "legendFormat": "Success Rate",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "min": 0,
+            "max": 100,
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 90, "color": "yellow"},
+                {"value": 95, "color": "green"}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        },
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area"
+        }
+      },
+      {
+        "id": 3,
+        "title": "Average Quality Score (Last 24 Hours)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "SELECT AVG(quality_score) FROM executions WHERE timestamp >= NOW() - INTERVAL '24 hours' AND quality_score IS NOT NULL",
+            "legendFormat": "Quality",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 1,
+            "min": 0,
+            "max": 100,
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 60, "color": "yellow"},
+                {"value": 75, "color": "green"},
+                {"value": 90, "color": "blue"}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        },
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area"
+        }
+      },
+      {
+        "id": 4,
+        "title": "Total Cost (Last 24 Hours)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "SELECT SUM(actual_cost) FROM executions WHERE timestamp >= NOW() - INTERVAL '24 hours'",
+            "legendFormat": "Cost",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "decimals": 4,
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "yellow"},
+                {"value": 5, "color": "red"}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        },
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area"
+        }
+      },
+      {
+        "id": 5,
+        "title": "Executions Over Time (Last 7 Days)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "SELECT DATE_TRUNC('hour', timestamp) as time, COUNT(*) as executions FROM executions WHERE timestamp >= NOW() - INTERVAL '7 days' GROUP BY time ORDER BY time",
+            "legendFormat": "Executions",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 4
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Success Rate Over Time (Last 7 Days)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "SELECT DATE_TRUNC('day', timestamp) as time, (SUM(CASE WHEN success = TRUE THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as success_rate FROM executions WHERE timestamp >= NOW() - INTERVAL '7 days' GROUP BY time ORDER BY time",
+            "legendFormat": "Success Rate",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 90, "color": "yellow"},
+                {"value": 95, "color": "green"}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 4
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "bottom"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Success Rate by Model Tier",
+        "type": "bargauge",
+        "targets": [
+          {
+            "expr": "SELECT model_tier, (SUM(CASE WHEN success = TRUE THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as success_rate FROM executions WHERE timestamp >= NOW() - INTERVAL '7 days' GROUP BY model_tier ORDER BY success_rate DESC",
+            "legendFormat": "{{model_tier}}",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 80, "color": "yellow"},
+                {"value": 90, "color": "green"}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 12
+        },
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient",
+          "showUnfilled": true
+        }
+      },
+      {
+        "id": 8,
+        "title": "Average Duration by Model Tier (Seconds)",
+        "type": "bargauge",
+        "targets": [
+          {
+            "expr": "SELECT model_tier, AVG(duration_seconds) as avg_duration FROM executions WHERE timestamp >= NOW() - INTERVAL '7 days' GROUP BY model_tier ORDER BY avg_duration DESC",
+            "legendFormat": "{{model_tier}}",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 10, "color": "yellow"},
+                {"value": 30, "color": "red"}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 12
+        },
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient",
+          "showUnfilled": true
+        }
+      },
+      {
+        "id": 9,
+        "title": "Cost by Model Tier (Last 7 Days)",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "SELECT model_tier, SUM(actual_cost) as total_cost FROM executions WHERE timestamp >= NOW() - INTERVAL '7 days' GROUP BY model_tier ORDER BY total_cost DESC",
+            "legendFormat": "{{model_tier}}",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 12
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right"
+          },
+          "pieType": "donut"
+        }
+      },
+      {
+        "id": 10,
+        "title": "Pool Performance Comparison (Last 7 Days)",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "SELECT pool_type, COUNT(*) as executions, (SUM(CASE WHEN success = TRUE THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as success_rate, AVG(duration_seconds) as avg_duration, AVG(actual_cost) as avg_cost FROM executions WHERE pool_type IS NOT NULL AND timestamp >= NOW() - INTERVAL '7 days' GROUP BY pool_type ORDER BY executions DESC",
+            "legendFormat": "{{pool_type}}",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true,
+            "format": "table"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "pool_type": "Pool Type",
+                "executions": "Executions",
+                "success_rate": "Success Rate %",
+                "avg_duration": "Avg Duration (s)",
+                "avg_cost": "Avg Cost ($)"
+              }
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "left",
+              "filterable": true
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 90, "color": "yellow"},
+                {"value": 95, "color": "green"}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 20
+        },
+        "options": {
+          "showHeader": true
+        }
+      },
+      {
+        "id": 11,
+        "title": "Top Repositories by Execution Count (Last 30 Days)",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "SELECT repo, COUNT(*) as executions, AVG(quality_score) as avg_quality, AVG(duration_seconds) as avg_duration, SUM(actual_cost) as total_cost FROM executions WHERE timestamp >= NOW() - INTERVAL '30 days' GROUP BY repo ORDER BY executions DESC LIMIT 10",
+            "legendFormat": "{{repo}}",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true,
+            "format": "table"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "repo": "Repository",
+                "executions": "Executions",
+                "avg_quality": "Avg Quality",
+                "avg_duration": "Avg Duration (s)",
+                "total_cost": "Total Cost ($)"
+              }
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "left"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 20
+        },
+        "options": {
+          "showHeader": true
+        }
+      },
+      {
+        "id": 12,
+        "title": "Duration Percentiles (Last 7 Days)",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "SELECT PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY duration_seconds) as p50, PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_seconds) as p95, PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY duration_seconds) as p99 FROM executions WHERE timestamp >= NOW() - INTERVAL '7 days'",
+            "legendFormat": "Duration",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "min": 0,
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 5, "color": "yellow"},
+                {"value": 15, "color": "red"}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 0,
+          "y": 28
+        },
+        "options": {
+          "orientation": "auto",
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true
+        }
+      },
+      {
+        "id": 13,
+        "title": "Quality Score Distribution (Last 30 Days)",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "SELECT CASE WHEN quality_score >= 90 THEN 'excellent' WHEN quality_score >= 75 THEN 'good' WHEN quality_score >= 60 THEN 'fair' ELSE 'poor' END as quality_tier, COUNT(*) as count FROM executions WHERE quality_score IS NOT NULL AND timestamp >= NOW() - INTERVAL '30 days' GROUP BY quality_tier ORDER BY count DESC",
+            "legendFormat": "{{quality_tier}}",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 50, "color": "yellow"},
+                {"value": 100, "color": "green"}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 28
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right"
+          },
+          "pieType": "donut"
+        }
+      },
+      {
+        "id": 14,
+        "title": "Task Type Distribution (Last 30 Days)",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "SELECT task_type, COUNT(*) as executions, AVG(duration_seconds) as avg_duration, AVG(quality_score) as avg_quality FROM executions WHERE timestamp >= NOW() - INTERVAL '30 days' GROUP BY task_type ORDER BY executions DESC LIMIT 15",
+            "legendFormat": "{{task_type}}",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true,
+            "format": "table"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "task_type": "Task Type",
+                "executions": "Executions",
+                "avg_duration": "Avg Duration (s)",
+                "avg_quality": "Avg Quality"
+              }
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "left"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 34
+        },
+        "options": {
+          "showHeader": true
+        }
+      },
+      {
+        "id": 15,
+        "title": "Top Error Types (Last 7 Days)",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "SELECT error_type, COUNT(*) as count, MAX(timestamp) as last_occurrence FROM executions WHERE error_type IS NOT NULL AND timestamp >= NOW() - INTERVAL '7 days' GROUP BY error_type ORDER BY count DESC LIMIT 10",
+            "legendFormat": "{{error_type}}",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true,
+            "format": "table"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "error_type": "Error Type",
+                "count": "Count",
+                "last_occurrence": "Last Occurrence"
+              }
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "left"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 10, "color": "yellow"},
+                {"value": 50, "color": "red"}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 34
+        },
+        "options": {
+          "showHeader": true
+        }
+      },
+      {
+        "id": 16,
+        "title": "Database Size Growth (Last 30 Days)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "SELECT COUNT(*) as total_rows FROM executions WHERE timestamp >= NOW() - INTERVAL '30 days'",
+            "legendFormat": "Rows",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0,
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "blue"},
+                {"value": 10000, "color": "green"},
+                {"value": 100000, "color": "yellow"}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 12,
+          "x": 0,
+          "y": 42
+        },
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area"
+        }
+      },
+      {
+        "id": 17,
+        "title": "Average Routing Confidence (Last 7 Days)",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "SELECT AVG(routing_confidence) * 100 as avg_confidence FROM executions WHERE routing_confidence IS NOT NULL AND timestamp >= NOW() - INTERVAL '7 days'",
+            "legendFormat": "Confidence",
+            "refId": "A",
+            "datasource": {
+              "type": "grafana-simple-datasource",
+              "uid": "duckdb-learning"
+            },
+            "rawQuery": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 70, "color": "yellow"},
+                {"value": 90, "color": "green"}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 12,
+          "x": 12,
+          "y": 42
+        },
+        "options": {
+          "orientation": "auto",
+          "showThresholdLabels": true,
+          "showThresholdMarkers": true
+        }
+      }
+    ]
+  }
+}
