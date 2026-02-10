@@ -52,7 +52,7 @@ class TestITerm2Adapter:
     def mock_screen_contents(self):
         """Create mock screen contents."""
         screen = Mock()
-        screen.contents = "line1\nline2\nline3\n"
+        screen.contents = "line1\nline2\nline3"  # No trailing newline
         return screen
 
     @pytest.mark.asyncio
@@ -77,10 +77,12 @@ class TestITerm2Adapter:
         with (
             patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True),
             patch("mahavishnu.terminal.adapters.iterm2.iterm2") as mock_iterm2,
+            patch("mahavishnu.terminal.pool.iterm2") as mock_pool_iterm2,
         ):
-            # Setup mocks
-            mock_iterm2.Connection.async_connect = AsyncMock(return_value=mock_connection)
-            mock_iterm2.AsyncApp.async_get = AsyncMock(return_value=mock_app)
+            # Setup mocks for both adapter and pool
+            for mock_mod in [mock_iterm2, mock_pool_iterm2]:
+                mock_mod.Connection.async_connect = AsyncMock(return_value=mock_connection)
+                mock_mod.AsyncApp.async_get = AsyncMock(return_value=mock_app)
 
             adapter = ITerm2Adapter()
             await adapter._ensure_connected()
@@ -97,10 +99,12 @@ class TestITerm2Adapter:
         with (
             patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True),
             patch("mahavishnu.terminal.adapters.iterm2.iterm2") as mock_iterm2,
+            patch("mahavishnu.terminal.pool.iterm2") as mock_pool_iterm2,
         ):
-            # Setup mocks
-            mock_iterm2.Connection.async_connect = AsyncMock(return_value=mock_connection)
-            mock_iterm2.AsyncApp.async_get = AsyncMock(return_value=mock_app)
+            # Setup mocks for both adapter and pool
+            for mock_mod in [mock_iterm2, mock_pool_iterm2]:
+                mock_mod.Connection.async_connect = AsyncMock(return_value=mock_connection)
+                mock_mod.AsyncApp.async_get = AsyncMock(return_value=mock_app)
             mock_app.current_terminal_window = mock_window
             mock_window.async_create_tab = AsyncMock(return_value=mock_tab)
             mock_tab.sessions = [mock_session]
@@ -158,7 +162,7 @@ class TestITerm2Adapter:
 
             output = await adapter.capture_output("test_session_123")
 
-            assert output == "line1\nline2\nline3\n"
+            assert output == "line1\nline2\nline3"
             mock_session.async_get_screen_contents.assert_called_once()
 
     @pytest.mark.asyncio
@@ -181,7 +185,7 @@ class TestITerm2Adapter:
 
             output = await adapter.capture_output("test_session_123", lines=2)
 
-            assert output == "line2\nline3\n"  # Last 2 lines
+            assert output == "line2\nline3"  # Last 2 lines
 
     @pytest.mark.asyncio
     async def test_close_session(self, mock_connection, mock_tab):
@@ -236,6 +240,7 @@ class TestITerm2Adapter:
             adapter = ITerm2Adapter()
             adapter._connected = True
             adapter._connection = mock_connection
+            adapter._owns_connection = True  # Indicate we own this connection
             adapter._sessions = {
                 "test_session_123": {
                     "session": Mock(),

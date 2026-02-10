@@ -2,10 +2,10 @@
 
 from typing import Any
 
-from messaging.types import Priority
+from ...messaging import MessagePriority
 
-from .auth import require_mcp_auth
-from ..core.permissions import Permission, RBACManager
+from ..auth import require_mcp_auth
+from ...core.permissions import Permission, RBACManager
 
 
 def register_session_buddy_tools(server, session_manager, mcp_client, rbac_manager: RBACManager | None = None):
@@ -194,11 +194,11 @@ def register_session_buddy_tools(server, session_manager, mcp_client, rbac_manag
 
             # Convert priority string to enum
             try:
-                priority_enum = Priority(priority.upper())
+                priority_enum = MessagePriority(priority.upper())
             except ValueError:
                 return {
                     "status": "error",
-                    "error": f"Invalid priority: {priority}. Valid values: {list(Priority)}",
+                    "error": f"Invalid priority: {priority}. Valid values: {list(MessagePriority)}",
                 }
 
             integration = SessionBuddyIntegration(app)
