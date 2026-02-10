@@ -9,7 +9,7 @@ health_ttl_seconds: 60.0
 log_level: INFO
 
 # Repository manifest path
-repos_path: settings/repos.yaml
+repos_path: settings/ecosystem.yaml
 
 # Concurrency settings
 max_concurrent_workflows: 10

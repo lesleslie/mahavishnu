@@ -365,41 +365,51 @@ class MahavishnuApp:
             ) from e
 
     def _load_repos(self) -> None:
-        """Load repository configurations from repos.yaml.
+        """Load repository configurations from ecosystem.yaml.
 
         Raises:
-            ConfigurationError: If repos.yaml is not found or invalid
+            ConfigurationError: If ecosystem.yaml is not found or invalid
         """
         repos_path = _validate_path(self.config.repos_path).expanduser()
 
         if not repos_path.exists():
             raise ConfigurationError(
-                message=f"Repository manifest not found: {repos_path}",
+                message=f"Ecosystem configuration not found: {repos_path}",
                 details={
                     "repos_path": str(repos_path),
-                    "suggestion": "Create repos.yaml with repository definitions",
+                    "suggestion": "Create settings/ecosystem.yaml with repository configurations",
                 },
             )
 
         try:
             with repos_path.open() as f:
-                self.repos_config = yaml.safe_load(f)
+                ecosystem_config = yaml.safe_load(f)
 
-            # Validate structure
-            if "repos" not in self.repos_config:
+            # Validate structure - ecosystem.yaml has a 'repos' key
+            if "repos" not in ecosystem_config:
                 raise ConfigurationError(
-                    message="Invalid repos.yaml: missing 'repos' key",
+                    message="Invalid ecosystem.yaml: missing 'repos' key",
                     details={"repos_path": str(repos_path)},
                 )
 
+            # Extract repos section from ecosystem.yaml
+            self.repos_config = {"repos": ecosystem_config["repos"]}
+
+            # Load roles if present in ecosystem.yaml
+            if "roles" in ecosystem_config:
+                self.roles_config = ecosystem_config["roles"]
+
+            logger = __import__("logging").getLogger(__name__)
+            logger.info(f"Loaded {len(ecosystem_config.get('repos', []))} repositories from ecosystem.yaml")
+
         except yaml.YAMLError as e:
             raise ConfigurationError(
-                message=f"Invalid YAML in repos.yaml: {e}",
+                message=f"Invalid YAML in ecosystem.yaml: {e}",
                 details={"repos_path": str(repos_path), "error": str(e)},
             ) from e
         except Exception as e:
             raise ConfigurationError(
-                message=f"Failed to load repos.yaml: {e}",
+                message=f"Failed to load ecosystem.yaml: {e}",
                 details={"repos_path": str(repos_path), "error": str(e)},
             ) from e
 

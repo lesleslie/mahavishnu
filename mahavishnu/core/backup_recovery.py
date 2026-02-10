@@ -120,7 +120,7 @@ class BackupManager:
         """Backup configuration files."""
         try:
             # Copy configuration files
-            config_sources = ["./settings/mahavishnu.yaml", "./settings/local.yaml", "./repos.yaml"]
+            config_sources = ["./settings/mahavishnu.yaml", "./settings/local.yaml", "./settings/ecosystem.yaml"]
 
             for config_source in config_sources:
                 source_path = Path(config_source)
@@ -237,6 +237,11 @@ class BackupManager:
 
                 # Extract archive
                 with tarfile.open(backup_path, "r:gz") as tar:
+                    # Check for path traversal attacks
+                    for member in tar.getmembers():
+                        if "../" in member.name or member.name.startswith("/"):
+                            raise ValueError(f"Path traversal attempt detected in backup: {member.name}")
+
                     tar.extractall(path=temp_path)
 
                 # Restore configuration

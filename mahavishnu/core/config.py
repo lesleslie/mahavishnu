@@ -725,8 +725,8 @@ class MahavishnuSettings(BaseSettings):
 
     # Repository configuration
     repos_path: str = Field(
-        default="settings/repos.yaml",
-        description="Path to repos.yaml repository manifest",
+        default="settings/ecosystem.yaml",
+        description="Path to ecosystem.yaml configuration file",
     )
     allowed_repo_paths: list[str] = Field(
         default_factory=lambda: ["/Users/les/Projects"],

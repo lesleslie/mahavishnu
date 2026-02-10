@@ -1,7 +1,7 @@
 """LlamaIndex adapter implementation for RAG pipelines.
 
 This adapter provides:
-- Repository/document ingestion from repos.yaml
+- Repository/document ingestion from ecosystem.yaml
 - Embedding with Ollama (local models)
 - Vector store management
 - RAG query capabilities

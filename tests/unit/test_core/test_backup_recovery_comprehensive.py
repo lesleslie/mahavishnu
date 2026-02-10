@@ -73,7 +73,7 @@ class TestBackupManager:
         """Create mock MahavishnuApp instance."""
         app = MagicMock()
         app.config = MagicMock()
-        app.config.backup_directory = tempfile.gettempdir()
+        app.config.backup_directory = tempfile.mkdtemp()
         app.config.backup_schedule = {
             "daily": 7,
             "weekly": 4,
@@ -349,12 +349,30 @@ class TestDisasterRecoveryManager:
     def mock_app(self):
         """Create mock MahavishnuApp instance."""
         app = MagicMock()
+        app.config = MagicMock()
+        app.config.backup_directory = tempfile.mkdtemp()
+        app.config.backup_schedule = {"daily": 7, "weekly": 4, "monthly": 12}
+        app.workflow_state_manager = AsyncMock()
+        app.workflow_state_manager.list_workflows = AsyncMock(return_value=[])
         return app
 
     @pytest.fixture
-    def recovery_manager(self, mock_app):
-        """Create DisasterRecoveryManager instance."""
-        return DisasterRecoveryManager(mock_app)
+    def backup_manager(self, mock_app):
+        """Create a mock backup manager with test backup directory."""
+        temp_dir = Path(tempfile.mkdtemp())
+        backups_dir = temp_dir / "backups"
+        backups_dir.mkdir(exist_ok=True)
+
+        manager = MagicMock(spec=BackupManager)
+        manager.backup_dir = backups_dir
+        return manager
+
+    @pytest.fixture
+    def recovery_manager(self, mock_app, backup_manager):
+        """Create DisasterRecoveryManager instance with mocked backup manager."""
+        manager = DisasterRecoveryManager(mock_app)
+        manager.backup_manager = backup_manager
+        return manager
 
     @pytest.mark.asyncio
     async def test_run_disaster_recovery_check_healthy(self, recovery_manager):
@@ -538,12 +556,38 @@ class TestBackupAndRecoveryCLI:
     def mock_app(self):
         """Create mock MahavishnuApp instance."""
         app = MagicMock()
+        app.config = MagicMock()
+        app.config.backup_directory = tempfile.mkdtemp()
+        app.config.backup_schedule = {"daily": 7, "weekly": 4, "monthly": 12}
+        app.workflow_state_manager = AsyncMock()
+        app.workflow_state_manager.list_workflows = AsyncMock(return_value=[])
         return app
 
     @pytest.fixture
-    def cli(self, mock_app):
+    def backup_manager(self, mock_app):
+        """Create a mock backup manager with test backup directory."""
+        temp_dir = Path(tempfile.mkdtemp())
+        backups_dir = temp_dir / "backups"
+        backups_dir.mkdir(exist_ok=True)
+
+        manager = MagicMock(spec=BackupManager)
+        manager.backup_dir = backups_dir
+        return manager
+
+    @pytest.fixture
+    def recovery_manager(self, mock_app, backup_manager):
+        """Create a mock recovery manager with test backup directory."""
+        manager = MagicMock(spec=DisasterRecoveryManager)
+        manager.backup_manager = backup_manager
+        return manager
+
+    @pytest.fixture
+    def cli(self, mock_app, backup_manager, recovery_manager):
         """Create BackupAndRecoveryCLI instance."""
-        return BackupAndRecoveryCLI(mock_app)
+        cli = BackupAndRecoveryCLI(mock_app)
+        cli.backup_manager = backup_manager
+        cli.recovery_manager = recovery_manager
+        return cli
 
     @pytest.mark.asyncio
     async def test_create_backup_success(self, cli):
