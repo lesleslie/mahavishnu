@@ -4,6 +4,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+# Skip if prefect is not installed (optional dependency)
+prefect = pytest.importorskip("prefect")
+
 from mahavishnu.engines.prefect_adapter import PrefectAdapter, process_repository
 
 
