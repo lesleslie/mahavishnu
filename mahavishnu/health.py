@@ -12,7 +12,7 @@ Endpoints:
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
 
 logger = __import__("logging").getLogger(__name__)
@@ -22,8 +22,10 @@ logger = __import__("logging").getLogger(__name__)
 # HEALTH CHECK MODELS
 # =============================================================================
 
+
 class HealthResponse(BaseModel):
     """Health check response."""
+
     status: str  # "healthy" or "unhealthy"
     timestamp: str
     uptime_seconds: float
@@ -31,6 +33,7 @@ class HealthResponse(BaseModel):
 
 class ReadinessResponse(BaseModel):
     """Readiness check response."""
+
     ready: bool
     timestamp: str
     checks: dict[str, Any]
@@ -38,6 +41,7 @@ class ReadinessResponse(BaseModel):
 
 class MetricsResponse(BaseModel):
     """Metrics response."""
+
     status: str
     timestamp: str
     metrics: dict[str, Any]
@@ -46,6 +50,7 @@ class MetricsResponse(BaseModel):
 # =============================================================================
 # HEALTH CHECK APPLICATION
 # =============================================================================
+
 
 def create_health_app(
     server_name: str = "mahavishnu",
@@ -154,11 +159,11 @@ def create_health_app(
 # READINESS CHECKS
 # =============================================================================
 
+
 def _check_database() -> bool:
     """Check if database connection is healthy."""
     try:
         # Try to import and check database
-        from ..core.config import MahavishnuSettings
         from ..storage.encrypted_sqlite import EncryptedSQLite
 
         # Try to connect to a test database
@@ -190,11 +195,13 @@ def _check_adapters() -> bool:
 
         config = MahavishnuSettings()
         # Check if at least one adapter is configured
-        has_adapter = any([
-            config.adapters_prefect,
-            config.adapters_llamaindex,
-            config.adapters_agno,
-        ])
+        has_adapter = any(
+            [
+                config.adapters_prefect,
+                config.adapters_llamaindex,
+                config.adapters_agno,
+            ]
+        )
 
         return has_adapter
     except Exception:
@@ -204,6 +211,7 @@ def _check_adapters() -> bool:
 # =============================================================================
 # CONVENIENCE FUNCTIONS
 # =============================================================================
+
 
 async def run_health_server(
     host: str = "0.0.0.0",

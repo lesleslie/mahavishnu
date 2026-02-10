@@ -521,7 +521,7 @@ mahavishnu prefect flow-runs list --limit 20
 ┏━━━━━━━━┳━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━┓
 ┃ Run ID ┃ Flow  ┃ Status ┃ Start Time   ┃Duratn┃
 ┡━━━━━━━━╇━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━┩
-│run-001.│my-flow│✓complet│2024-01-01 12:00│45.2s │
+│run-001.│my-flow│✓complete│2024-01-01 12:00│45.2s │
 │run-002.│etl-job│✗failed │2024-01-01 11:00│12.1s │
 │run-003.│my-flow│↻running│2024-01-01 13:00│  -   │
 └────────┴───────┴────────┴──────────────┴──────┘

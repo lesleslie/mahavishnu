@@ -13,9 +13,9 @@ Features:
 """
 
 import asyncio
-import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+import logging
 from typing import Any
 
 import grpc.aio
@@ -25,13 +25,11 @@ logger = logging.getLogger(__name__)
 # Try to import Oneiric MCP gRPC modules
 try:
     from oneiric_mcp.grpc import registry_pb2, registry_pb2_grpc
+
     ONEIRIC_MCP_AVAILABLE = True
 except ImportError:
     ONEIRIC_MCP_AVAILABLE = False
-    logger.warning(
-        "Oneiric MCP gRPC modules not available. "
-        "Install with: pip install oneiric-mcp"
-    )
+    logger.warning("Oneiric MCP gRPC modules not available. Install with: pip install oneiric-mcp")
 
 
 @dataclass
@@ -148,8 +146,7 @@ class AdapterCircuitBreaker:
             if adapter_id in self.blocked_until:
                 if datetime.now(UTC) < self.blocked_until[adapter_id]:
                     logger.debug(
-                        f"Adapter {adapter_id} is blocked until "
-                        f"{self.blocked_until[adapter_id]}"
+                        f"Adapter {adapter_id} is blocked until {self.blocked_until[adapter_id]}"
                     )
                     return False
                 else:
@@ -203,8 +200,7 @@ class OneiricMCPClient:
         """
         if not ONEIRIC_MCP_AVAILABLE:
             raise ImportError(
-                "Oneiric MCP gRPC modules not available. "
-                "Install with: pip install oneiric-mcp"
+                "Oneiric MCP gRPC modules not available. Install with: pip install oneiric-mcp"
             )
 
         self.config = config or OneiricMCPConfig()
@@ -291,8 +287,10 @@ class OneiricMCPClient:
                     self._channel, timeout=self.config.timeout_sec
                 )
                 self._connected = True
-                logger.info(f"Connected to Oneiric MCP at {self.config.grpc_host}:{self.config.grpc_port}")
-            except asyncio.TimeoutError:
+                logger.info(
+                    f"Connected to Oneiric MCP at {self.config.grpc_host}:{self.config.grpc_port}"
+                )
+            except TimeoutError:
                 self._connected = False
                 raise ConnectionError(
                     f"Timeout connecting to Oneiric MCP at "
@@ -384,14 +382,10 @@ class OneiricMCPClient:
 
         try:
             # Call gRPC
-            response = await self._stub.ListAdapters(
-                request, timeout=self.config.timeout_sec
-            )
+            response = await self._stub.ListAdapters(request, timeout=self.config.timeout_sec)
 
             # Convert to AdapterEntry objects
-            adapters = [
-                AdapterEntry.from_pb2(pb2_adapter) for pb2_adapter in response.adapters
-            ]
+            adapters = [AdapterEntry.from_pb2(pb2_adapter) for pb2_adapter in response.adapters]
 
             # Cache results
             self._cache[cache_key] = (adapters, datetime.now(UTC))
@@ -441,9 +435,7 @@ class OneiricMCPClient:
         request = registry_pb2.GetRequest(adapter_id=adapter_id)
 
         try:
-            response = await self._stub.GetAdapter(
-                request, timeout=self.config.timeout_sec
-            )
+            response = await self._stub.GetAdapter(request, timeout=self.config.timeout_sec)
             adapter = AdapterEntry.from_pb2(response.adapter)
             await self._circuit_breaker.record_success(adapter_id)
             return adapter
@@ -490,9 +482,7 @@ class OneiricMCPClient:
         request = registry_pb2.HealthCheckRequest(adapter_id=adapter_id)
 
         try:
-            response = await self._stub.HealthCheck(
-                request, timeout=self.config.timeout_sec
-            )
+            response = await self._stub.HealthCheck(request, timeout=self.config.timeout_sec)
             is_healthy = response.healthy
 
             if is_healthy:
@@ -580,9 +570,7 @@ class OneiricMCPClient:
         request = registry_pb2.HeartbeatRequest(adapter_id=adapter_id)
 
         try:
-            response = await self._stub.Heartbeat(
-                request, timeout=self.config.timeout_sec
-            )
+            response = await self._stub.Heartbeat(request, timeout=self.config.timeout_sec)
             return response.registered
 
         except grpc.aio.AioRpcError as e:

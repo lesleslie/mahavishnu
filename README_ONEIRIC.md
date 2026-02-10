@@ -46,6 +46,7 @@ python examples/quickstart_oneiric.py
 ```
 
 Expected output:
+
 ```
 ============================================================
 Oneiric MCP Integration - Quick Start
@@ -164,21 +165,27 @@ workflows:
 ## Key Features
 
 ### ✓ Dynamic Adapter Discovery
+
 Query adapters by domain, category, provider at runtime
 
 ### ✓ Health Monitoring
+
 Check adapter health before use, automatic circuit breaker
 
 ### ✓ Smart Caching
+
 5-minute cache by default, configurable, automatic invalidation
 
 ### ✓ Fallback Strategies
+
 Try multiple adapters automatically, graceful degradation
 
 ### ✓ Production Ready
+
 TLS/mTLS, JWT auth, circuit breaker, comprehensive logging
 
 ### ✓ Easy Integration
+
 6 MCP tools, Python API, YAML workflow support
 
 ## MCP Tools Reference
@@ -329,9 +336,10 @@ ConnectionError: Timeout connecting to Oneiric MCP at localhost:8679
 ```
 
 **Solutions:**
+
 1. Start Oneiric MCP server: `cd /Users/les/Projects/oneiric-mcp && python -m oneiric_mcp --port 8679`
-2. Check port: `telnet localhost 8679`
-3. Verify config: Check `oneiric_mcp.grpc_port` in settings
+1. Check port: `telnet localhost 8679`
+1. Verify config: Check `oneiric_mcp.grpc_port` in settings
 
 ### Problem: No Adapters Found
 
@@ -340,9 +348,10 @@ ConnectionError: Timeout connecting to Oneiric MCP at localhost:8679
 ```
 
 **Solutions:**
+
 1. Register adapters in Oneiric MCP
-2. Check Oneiric MCP server logs
-3. Try without filters: `await client.list_adapters()`
+1. Check Oneiric MCP server logs
+1. Try without filters: `await client.list_adapters()`
 
 ### Problem: Adapter Unhealthy
 
@@ -351,10 +360,11 @@ ConnectionError: Timeout connecting to Oneiric MCP at localhost:8679
 ```
 
 **Solutions:**
+
 1. Check adapter health status in Oneiric MCP
-2. Verify adapter is running
-3. Check adapter's health check URL
-4. Use fallback adapter
+1. Verify adapter is running
+1. Check adapter's health check URL
+1. Use fallback adapter
 
 ## Performance
 
@@ -394,22 +404,27 @@ Adapters that fail 3 times are blocked for 5 minutes:
 ## Files Delivered
 
 ### Core Implementation
+
 - `mahavishnu/core/oneiric_client.py` - gRPC client (600+ lines)
 - `mahavishnu/core/config.py` - Configuration (updated with OneiricMCPConfig)
 
 ### MCP Tools
+
 - `mahavishnu/mcp/tools/oneiric_tools.py` - 6 MCP tools (400+ lines)
 
 ### Examples
+
 - `examples/quickstart_oneiric.py` - Quick start script
 - `examples/oneiric_workflow_examples.py` - 7 Python examples
 - `examples/workflow_oneiric_examples.yaml` - 7 YAML workflows
 
 ### Tests
+
 - `tests/unit/test_oneiric_client.py` - Unit tests
 - `tests/integration/test_oneiric_integration.py` - Integration tests
 
 ### Documentation
+
 - `ONEIRIC_MCP_INTEGRATION.md` - Design document
 - `ONEIRIC_MCP_INTEGRATION_SUMMARY.md` - Implementation summary
 - `docs/ONEIRIC_MCP_INTEGRATION.md` - User guide
@@ -418,17 +433,17 @@ Adapters that fail 3 times are blocked for 5 minutes:
 
 ✓ Functional - Mahavishnu can query and resolve adapters from Oneiric MCP
 ✓ Reliable - Graceful fallback when Oneiric MCP unavailable
-✓ Performant - <100ms cached, <500ms uncached queries
+✓ Performant - \<100ms cached, \<500ms uncached queries
 ✓ Secure - JWT auth and TLS support for production
 ✓ Observable - Full logging, health checks, error reporting
 
 ## Next Steps
 
 1. **Get Started:** Run `python examples/quickstart_oneiric.py`
-2. **Try Examples:** Run `python examples/oneiric_workflow_examples.py`
-3. **Read Documentation:** See `docs/ONEIRIC_MCP_INTEGRATION.md`
-4. **Configure Production:** Enable TLS, JWT, monitoring
-5. **Register Adapters:** Add your adapters to Oneiric MCP registry
+1. **Try Examples:** Run `python examples/oneiric_workflow_examples.py`
+1. **Read Documentation:** See `docs/ONEIRIC_MCP_INTEGRATION.md`
+1. **Configure Production:** Enable TLS, JWT, monitoring
+1. **Register Adapters:** Add your adapters to Oneiric MCP registry
 
 ## Support
 
@@ -437,6 +452,6 @@ Adapters that fail 3 times are blocked for 5 minutes:
 - **Examples:** Check examples/ directory
 - **Tests:** Run unit tests for usage patterns
 
----
+______________________________________________________________________
 
 **Integration complete and ready for use!** 🎉

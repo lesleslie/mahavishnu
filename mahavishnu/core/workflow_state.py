@@ -1,7 +1,7 @@
 """Workflow state tracking for Mahavishnu."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 # Try to import OpenSearch, with fallback if not available
@@ -14,7 +14,7 @@ except ImportError:
     AsyncOpenSearch = None
 
 
-class WorkflowStatus(str, Enum):
+class WorkflowStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"

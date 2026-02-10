@@ -14,11 +14,10 @@ Tools:
 import logging
 from typing import Any
 
-from mcp_common.models import ToolMetadata, ToolCategory
-from mcp_common.ui import ServerPanels
+from mcp_common.models import ToolCategory, ToolMetadata
 
-from ...core.oneiric_client import AdapterEntry, OneiricMCPClient, OneiricMCPConfig
 from ...core.app import app
+from ...core.oneiric_client import AdapterEntry, OneiricMCPClient
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +229,7 @@ async def oneiric_resolve_adapter(
             return {
                 "found": False,
                 "adapter": None,
-                "error": f"No adapter found matching the criteria",
+                "error": "No adapter found matching the criteria",
             }
 
     except Exception as e:

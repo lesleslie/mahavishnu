@@ -501,7 +501,7 @@ class CoordinationManagerWithMemory:
             updates: Dictionary of fields to update
         """
         # Get old issue for comparison
-        old_issue = self.get_issue(issue_id)
+        self.get_issue(issue_id)
 
         self.update_issue(issue_id, updates)
 

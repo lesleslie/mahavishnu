@@ -11,6 +11,7 @@ Auto-restart ensures that Mahavishnu recovers automatically from crashes, failur
 ### Option 1: Systemd (Recommended for Linux)
 
 **Pros:**
+
 - Native to modern Linux distributions
 - Built-in dependency management
 - Journal log integration
@@ -38,6 +39,7 @@ sudo systemctl status mahavishnu
 **Auto-Restart Configuration:**
 
 The service file includes:
+
 - `Restart=on-failure` - Restart only on failure (not on normal exit)
 - `RestartSec=10s` - Wait 10 seconds before restarting
 - `StartLimitInterval=60s` - Reset failure count after 60 seconds
@@ -66,6 +68,7 @@ sudo systemctl disable mahavishnu
 ### Option 2: Supervisord (Cross-Platform)
 
 **Pros:**
+
 - Works on Linux, macOS, and Windows
 - Simple configuration
 - Built-in log management
@@ -97,6 +100,7 @@ sudo supervisorctl status mahavishnu
 **Auto-Restart Configuration:**
 
 The supervisord config includes:
+
 - `autorestart=true` - Restart on failure
 - `startretries=5` - Maximum restart attempts
 - `stopwaitsecs=10` - Wait time for graceful shutdown
@@ -127,16 +131,19 @@ Mahavishnu includes health check endpoints for monitoring systems:
 ### Endpoints
 
 - **GET /health** - Liveness probe (is the server alive?)
+
   ```bash
   curl http://localhost:8080/health
   ```
 
 - **GET /ready** - Readiness probe (can the server handle requests?)
+
   ```bash
   curl http://localhost:8080/ready
   ```
 
 - **GET /metrics** - Prometheus metrics
+
   ```bash
   curl http://localhost:8080/metrics
   ```
@@ -232,16 +239,19 @@ sudo journalctl -u mahavishnu --since "1 minute ago"
 Monitor auto-restart events using:
 
 1. **Journalctl (systemd):**
+
    ```bash
    sudo journalctl -u mahavishnu -f
    ```
 
-2. **Supervisorctl (supervisord):**
+1. **Supervisorctl (supervisord):**
+
    ```bash
    sudo supervisorctl tail -f mahavishnu
    ```
 
-3. **SLO Metrics:**
+1. **SLO Metrics:**
+
    - Track uptime percentage
    - Monitor restart frequency
    - Alert on excessive restarts (>5 per hour)
@@ -294,10 +304,10 @@ sudo journalctl -u mahavishnu-health -f
 ## Best Practices
 
 1. **Set appropriate resource limits** - Prevent memory leaks from affecting the host
-2. **Monitor restart frequency** - Excessive restarts indicate application issues
-3. **Use health checks** - Integrate with monitoring systems (Prometheus, Grafana)
-4. **Log everything** - Centralized logging helps diagnose issues
-5. **Test crash recovery** - Verify auto-restart works before production deployment
+1. **Monitor restart frequency** - Excessive restarts indicate application issues
+1. **Use health checks** - Integrate with monitoring systems (Prometheus, Grafana)
+1. **Log everything** - Centralized logging helps diagnose issues
+1. **Test crash recovery** - Verify auto-restart works before production deployment
 
 ## Integration with Monitoring
 
@@ -324,10 +334,10 @@ groups:
 ## Security Considerations
 
 1. **Run as non-root user** - Service files use dedicated `mahavishnu` user
-2. **Restrict file permissions** - Only user can write to application directory
-3. **Enable NoNewPrivileges** - Prevent privilege escalation
-4. **Use PrivateTmp** - Isolate /tmp directory
-5. **Protect system directories** - Read-only access to critical paths
+1. **Restrict file permissions** - Only user can write to application directory
+1. **Enable NoNewPrivileges** - Prevent privilege escalation
+1. **Use PrivateTmp** - Isolate /tmp directory
+1. **Protect system directories** - Read-only access to critical paths
 
 ## Conclusion
 

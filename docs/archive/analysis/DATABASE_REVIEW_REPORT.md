@@ -162,11 +162,11 @@ CREATE TABLE executions (
    WHERE success = FALSE;
    ```
 
-3. **Consider BRIN Index** (P2 - Experimental):
+3. **Consider BRING Index** (P2 - Experimental):
    ```sql
-   -- For very large datasets (>10M rows), BRIN is more space-efficient
+   -- For very large datasets (>10M rows), BRING is more space-efficient
    CREATE INDEX idx_executions_timestamp_brin
-   ON executions USING BRIN (timestamp);
+   ON executions USING BRING (timestamp);
    ```
 
 ---
@@ -240,7 +240,7 @@ CREATE TABLE executions (
 - ✅ **Percentile Functions**: P95 duration for performance monitoring
 
 **Observations**:
-- ✅ **View Recalculation**: DuckDB recalcuates views on query (not materialized in traditional sense)
+- ✅ **View Recalculation**: DuckDB recalculates views on query (not materialized in traditional sense)
 - ⚠️ **No Refresh Strategy**: Views recalculate on every query (acceptable for current scale)
 - ⚠️ **90-day Window**: Long window in solution_patterns_mv may be expensive
 

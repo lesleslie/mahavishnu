@@ -3,6 +3,7 @@
 ## What is Property-Based Testing?
 
 Traditional testing checks if specific inputs produce expected outputs:
+
 ```python
 def test_pool_config():
     config = PoolConfig(min_workers=2, max_workers=5)
@@ -11,6 +12,7 @@ def test_pool_config():
 ```
 
 Property-based testing checks if **invariants** (properties that must ALWAYS be true) hold for THOUSANDS of randomly generated inputs:
+
 ```python
 @given(st.integers(min_value=1, max_value=10),
        st.integers(min_value=10, max_value=100))
@@ -24,7 +26,9 @@ def test_min_workers_le_max_workers(min_workers, max_workers):
 ## Key Concepts
 
 ### 1. Properties (Invariants)
+
 A property is something that must ALWAYS be true:
+
 - ✅ Round-trip: `serialize(deserialize(x)) == x`
 - ✅ Idempotence: `f(f(x)) == f(x)`
 - ✅ Commutativity: `f(x, y) == f(y, x)`
@@ -32,7 +36,9 @@ A property is something that must ALWAYS be true:
 - ✅ Security: `validate("../../../etc/passwd")` raises error
 
 ### 2. Strategies (Generators)
+
 Hypothesis strategies generate test data:
+
 ```python
 # Basic strategies
 st.integers(min_value=0, max_value=100)
@@ -54,6 +60,7 @@ st.integers().filter(lambda x: x > 0)  # or use assume()
 ```
 
 ### 3. The @given Decorator
+
 ```python
 from hypothesis import given, settings, assume
 
@@ -72,6 +79,7 @@ def test_string_operations(s):
 ## Common Patterns
 
 ### Pattern 1: Round-Trip Serialization
+
 ```python
 @given(st_pydantic.from_type(PoolConfig))
 def test_roundtrip_serialization(config):
@@ -87,6 +95,7 @@ def test_roundtrip_serialization(config):
 ```
 
 ### Pattern 2: Boundary Validation
+
 ```python
 @given(st.floats(min_value=0.0, max_value=500.0))
 def test_timeout_upper_bound(timeout):
@@ -98,6 +107,7 @@ def test_timeout_upper_bound(timeout):
 ```
 
 ### Pattern 3: Security Invariants
+
 ```python
 @given(st.text())
 def test_path_traversal_prevention(path):
@@ -109,6 +119,7 @@ def test_path_traversal_prevention(path):
 ```
 
 ### Pattern 4: Mathematical Properties
+
 ```python
 @given(st.floats(min_value=0.0, max_value=100.0),
        st.floats(min_value=0.0, max_value=100.0))
@@ -119,6 +130,7 @@ def test_cost_error_non_negative(estimate, actual):
 ```
 
 ### Pattern 5: Idempotence
+
 ```python
 @given(st.text())
 def test_sanitization_idempotent(filename):
@@ -131,6 +143,7 @@ def test_sanitization_idempotent(filename):
 ## Hypothesis Settings
 
 ### Common Settings
+
 ```python
 from hypothesis import settings
 from hypothesis.strategies import composite
@@ -163,6 +176,7 @@ def test_specific_failure(text):
 ## Working with Pydantic Models
 
 ### Auto-Generate Models
+
 ```python
 from hypothesis.extra import pydantic as st_pydantic
 
@@ -176,6 +190,7 @@ def test_pool_config_properties(config):
 ```
 
 ### Generate Partial Models
+
 ```python
 from hypothesis.strategies import builds
 
@@ -188,7 +203,9 @@ def test_partial_pool_config(config):
 ## Debugging Failures
 
 ### Shrinking
+
 Hypothesis automatically shrinks failing examples to minimal cases:
+
 ```
 Falsifying example:
 test_addition(
@@ -203,6 +220,7 @@ test_addition(
 ```
 
 ### Reproducing Failures
+
 ```python
 # Hypothesis provides a decorator for exact reproduction
 @reproduce_failure('6.148.13', b'AA...')
@@ -212,6 +230,7 @@ def test_reproduce(text):
 ```
 
 ### Verbosity Levels
+
 ```python
 from hypothesis import Verbosity
 
@@ -224,6 +243,7 @@ def test_verbose(x):
 ## Best Practices
 
 ### 1. Use `assume()` to Filter
+
 ```python
 # BAD: Test slow for invalid inputs
 @given(st.integers())
@@ -240,6 +260,7 @@ def test_positive_only(x):
 ```
 
 ### 2. Test Invariants, Not Implementation
+
 ```python
 # BAD: Tests specific implementation
 @given(st.integers())
@@ -256,6 +277,7 @@ def test_sort_invariants(arr):
 ```
 
 ### 3. Use Custom Strategies for Complex Data
+
 ```python
 from hypothesis.strategies import composite
 
@@ -272,6 +294,7 @@ def test_timeout_bounds(timeout):
 ```
 
 ### 4. Test Security Properties
+
 ```python
 @given(st.text())
 def test_sql_injection_prevention(query):
@@ -282,6 +305,7 @@ def test_sql_injection_prevention(query):
 ```
 
 ### 5. Test Round-Trip Consistency
+
 ```python
 @given(st_pydantic.from_type(ExecutionRecord))
 def test_serialization_roundtrip(record):
@@ -301,6 +325,7 @@ def test_serialization_roundtrip(record):
 ## Running Property Tests
 
 ### Basic Commands
+
 ```bash
 # Run all property tests
 pytest -m property
@@ -325,6 +350,7 @@ pytest -m property --hypothesis-seed=1234  # Reproducible random seed
 ```
 
 ### CI/CD Integration
+
 ```yaml
 # .github/workflows/test.yml
 - name: Run property tests
@@ -335,6 +361,7 @@ pytest -m property --hypothesis-seed=1234  # Reproducible random seed
 ## Common Pitfalls
 
 ### 1. Too Many Assumptions
+
 ```python
 # BAD: Filters out most examples
 @given(st.integers())
@@ -351,6 +378,7 @@ def test_good(x):
 ```
 
 ### 2. Testing Implementation Details
+
 ```python
 # BAD: Tests internal state
 @given(st.integers())
@@ -366,6 +394,7 @@ def test_behavior(x):
 ```
 
 ### 3. Ignoring Flaky Tests
+
 ```python
 # BAD: Retry on failure
 @given(st.integers())
@@ -394,6 +423,7 @@ def test_deterministic(x):
 ## Summary
 
 Property-based testing with Hypothesis:
+
 - ✅ Tests thousands of examples automatically
 - ✅ Finds edge cases you'd never think of
 - ✅ Provides shrinkable, reproducible failures

@@ -5,11 +5,11 @@ This module provides secure path validation to prevent directory traversal
 attacks and other filesystem-based security vulnerabilities.
 """
 
-from pathlib import Path
-from typing import Literal
-import os
-import stat
 from functools import lru_cache
+import os
+from pathlib import Path
+import stat
+from typing import Literal
 
 
 class PathValidationError(Exception):
@@ -170,16 +170,14 @@ class PathValidator:
                 else self.allowed_base_dirs
             )
 
-            if base_dirs:
-                if not any(
-                    self._is_path_within_base(resolved_path, base_dir)
-                    for base_dir in base_dirs
-                ):
-                    raise PathValidationError(
-                        message="Path is outside allowed directories",
-                        path=str(resolved_path),
-                        details=f"Path must be within one of: {[str(d) for d in base_dirs]}",
-                    )
+            if base_dirs and not any(
+                self._is_path_within_base(resolved_path, base_dir) for base_dir in base_dirs
+            ):
+                raise PathValidationError(
+                    message="Path is outside allowed directories",
+                    path=str(resolved_path),
+                    details=f"Path must be within one of: {[str(d) for d in base_dirs]}",
+                )
 
             # Final safety check for directory traversal in resolved path
             # (shouldn't happen if resolve() worked correctly, but be defensive)
@@ -279,9 +277,7 @@ class PathValidator:
                     "Cargo.toml",
                     "go.mod",
                 ]
-                has_repo_files = any(
-                    (validated_path / f).exists() for f in common_files
-                )
+                has_repo_files = any((validated_path / f).exists() for f in common_files)
 
                 if not has_repo_files:
                     raise PathValidationError(

@@ -11,21 +11,23 @@ Example events:
 """
 
 import asyncio
+from collections.abc import Callable
+import contextlib
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 import json
 import logging
-from collections.abc import Callable
-from dataclasses import dataclass, asdict
-from datetime import datetime, UTC, timedelta
-from enum import Enum
 from pathlib import Path
 from typing import Any
 import uuid
+
 import aiosqlite
 
 logger = logging.getLogger(__name__)
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     """Event types for system-wide communication.
 
     Code Indexing Events:
@@ -179,10 +181,16 @@ class SQLiteEventStorage:
 
         # Indexes
         await self._conn.execute("CREATE INDEX IF NOT EXISTS idx_events_type ON events(type)")
-        await self._conn.execute("CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)")
+        await self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)"
+        )
         await self._conn.execute("CREATE INDEX IF NOT EXISTS idx_events_source ON events(source)")
-        await self._conn.execute("CREATE INDEX IF NOT EXISTS idx_deliveries_event ON event_deliveries(event_id)")
-        await self._conn.execute("CREATE INDEX IF NOT EXISTS idx_deliveries_subscriber ON event_deliveries(subscriber)")
+        await self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_deliveries_event ON event_deliveries(event_id)"
+        )
+        await self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_deliveries_subscriber ON event_deliveries(subscriber)"
+        )
 
         # Enable WAL mode for better concurrency
         await self._conn.execute("PRAGMA journal_mode=WAL")
@@ -348,9 +356,7 @@ class SQLiteEventStorage:
 
         cutoff = datetime.now(UTC) - timedelta(days=retention_days)
 
-        cursor = await conn.execute(
-            "DELETE FROM events WHERE timestamp < ?", (cutoff.isoformat(),)
-        )
+        cursor = await conn.execute("DELETE FROM events WHERE timestamp < ?", (cutoff.isoformat(),))
         deleted_count = cursor.rowcount
         await conn.commit()
 
@@ -413,9 +419,7 @@ class EventBus:
         self._running = False
         self._delivery_task: asyncio.Task | None = None
 
-        logger.info(
-            f"EventBus initialized (backend={storage_backend}, path={storage_path})"
-        )
+        logger.info(f"EventBus initialized (backend={storage_backend}, path={storage_path})")
 
     async def start(self) -> None:
         """Start event bus (connect to storage, start delivery loop)."""
@@ -438,10 +442,8 @@ class EventBus:
 
         if self._delivery_task:
             self._delivery_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._delivery_task
-            except asyncio.CancelledError:
-                pass
 
         if self._storage:
             await self._storage.close()
@@ -482,9 +484,7 @@ class EventBus:
         # Deliver to subscribers (async fire-and-forget)
         asyncio.create_task(self._deliver_event(event))
 
-        logger.debug(
-            f"Event published: {event_type.value} (id={event.id}, source={source})"
-        )
+        logger.debug(f"Event published: {event_type.value} (id={event.id}, source={source})")
 
         return event
 
@@ -540,7 +540,7 @@ class EventBus:
                     # Check delivery table
                     cursor = await self._storage._conn.execute(
                         "SELECT 1 FROM event_deliveries WHERE event_id = ? AND subscriber = ?",
-                        (event.id, subscriber_name)
+                        (event.id, subscriber_name),
                     )
                     already_delivered = await cursor.fetchone()
 
@@ -551,7 +551,9 @@ class EventBus:
                         continue
 
                 # Call subscriber handler
-                logger.info(f"[EventBus] Delivering: {event.type.value} -> {subscriber_name} (id={event.id}, check_delivered={check_delivered})")
+                logger.info(
+                    f"[EventBus] Delivering: {event.type.value} -> {subscriber_name} (id={event.id}, check_delivered={check_delivered})"
+                )
                 await handler(event)
 
                 # Mark as delivered
@@ -563,9 +565,7 @@ class EventBus:
                 )
 
             except Exception as e:
-                logger.error(
-                    f"Subscriber error: {event.type.value} -> {subscriber_name}: {e}"
-                )
+                logger.error(f"Subscriber error: {event.type.value} -> {subscriber_name}: {e}")
 
     async def _delivery_loop(self) -> None:
         """Background task to deliver undelivered events on startup.
@@ -687,9 +687,7 @@ async def init_event_bus(
     """
     global _event_bus_instance
 
-    _event_bus_instance = EventBus(
-        storage_backend=storage_backend, storage_path=storage_path
-    )
+    _event_bus_instance = EventBus(storage_backend=storage_backend, storage_path=storage_path)
     await _event_bus_instance.start()
 
     logger.info("Global EventBus initialized")

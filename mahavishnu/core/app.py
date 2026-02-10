@@ -400,7 +400,9 @@ class MahavishnuApp:
                 self.roles_config = ecosystem_config["roles"]
 
             logger = __import__("logging").getLogger(__name__)
-            logger.info(f"Loaded {len(ecosystem_config.get('repos', []))} repositories from ecosystem.yaml")
+            logger.info(
+                f"Loaded {len(ecosystem_config.get('repos', []))} repositories from ecosystem.yaml"
+            )
 
         except yaml.YAMLError as e:
             raise ConfigurationError(

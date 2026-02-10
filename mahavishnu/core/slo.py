@@ -9,17 +9,18 @@ Key SLOs:
 - Event delivery: 99.5% success rate
 """
 
+from datetime import UTC, datetime, timedelta
 import logging
-import time
-from datetime import datetime, UTC, timedelta
 from typing import Any
 
 # Prometheus metrics (if available)
 try:
-    from prometheus_client import Counter, Histogram, Gauge
+    from prometheus_client import Counter, Gauge, Histogram
+
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
+
     # Create mock classes for development
     class Counter:
         def __init__(self, *args, **kwargs):
@@ -51,6 +52,7 @@ except ImportError:
         def set(self, *args, **kwargs):
             pass
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -60,22 +62,20 @@ logger = logging.getLogger(__name__)
 
 # Code freshness metrics
 code_index_freshness_seconds = Gauge(
-    "code_index_freshness_seconds",
-    "Time since last successful index per repo",
-    ["repo"]
+    "code_index_freshness_seconds", "Time since last successful index per repo", ["repo"]
 )
 
 code_index_freshness_slo_compliance = Gauge(
     "code_index_freshness_slo_compliance",
     "Freshness SLO compliance percentage (95% within 5 min)",
-    ["window_minutes"]
+    ["window_minutes"],
 )
 
 # Polling metrics
 code_index_poll_total = Counter(
     "code_index_poll_total",
     "Total number of git polls performed",
-    ["repo", "status"]  # status: success | failure
+    ["repo", "status"],  # status: success | failure
 )
 
 code_index_poll_duration_seconds = Histogram(
@@ -86,16 +86,14 @@ code_index_poll_duration_seconds = Histogram(
 )
 
 code_index_poll_success_rate = Gauge(
-    "code_index_poll_success_rate",
-    "Polling success rate (99% SLO)",
-    ["window_minutes"]
+    "code_index_poll_success_rate", "Polling success rate (99% SLO)", ["window_minutes"]
 )
 
 # Re-index metrics
 code_index_reindex_total = Counter(
     "code_index_reindex_total",
     "Total number of repository re-indexes",
-    ["repo", "status"]  # status: success | failure
+    ["repo", "status"],  # status: success | failure
 )
 
 code_index_reindex_duration_seconds = Histogram(
@@ -107,15 +105,13 @@ code_index_reindex_duration_seconds = Histogram(
 
 # Event delivery metrics
 code_index_events_published_total = Counter(
-    "code_index_events_published_total",
-    "Total number of events published",
-    ["event_type"]
+    "code_index_events_published_total", "Total number of events published", ["event_type"]
 )
 
 code_index_events_delivered_total = Counter(
     "code_index_events_delivered_total",
     "Total number of events delivered to subscribers",
-    ["event_type", "subscriber", "status"]
+    ["event_type", "subscriber", "status"],
 )
 
 code_index_event_delivery_latency_seconds = Histogram(
@@ -128,25 +124,25 @@ code_index_event_delivery_latency_seconds = Histogram(
 code_index_event_delivery_success_rate = Gauge(
     "code_index_event_delivery_success_rate",
     "Event delivery success rate (99.5% SLO)",
-    ["window_minutes"]
+    ["window_minutes"],
 )
 
 # Availability metrics
 code_index_availability_up = Gauge(
-    "code_index_availability_up",
-    "Whether code index service is up (1) or down (0)"
+    "code_index_availability_up", "Whether code index service is up (1) or down (0)"
 )
 
 code_index_availability_slo_compliance = Gauge(
     "code_index_availability_slo_compliance",
     "Availability SLO compliance percentage (99.9%)",
-    ["window_hours"]
+    ["window_hours"],
 )
 
 
 # =============================================================================
 # SLO CALCULATIONS
 # =============================================================================
+
 
 class SLOCalculator:
     """Calculate SLO compliance from metrics."""
@@ -232,9 +228,7 @@ class SLOCalculator:
         success_rate = (total_success / total_attempts * 100) if total_attempts > 0 else 100
 
         # Update Prometheus metric
-        code_index_poll_success_rate.labels(window_minutes=window_minutes).set(
-            success_rate
-        )
+        code_index_poll_success_rate.labels(window_minutes=window_minutes).set(success_rate)
 
         return {
             "success_rate_pct": round(success_rate, 2),
@@ -275,9 +269,7 @@ class SLOCalculator:
         now = datetime.now(UTC)
         window_start = now - timedelta(hours=window_hours)
 
-        checks_in_window = [
-            c for c in uptime_checks if c["timestamp"] >= window_start
-        ]
+        checks_in_window = [c for c in uptime_checks if c["timestamp"] >= window_start]
 
         if not checks_in_window:
             return {
@@ -296,9 +288,7 @@ class SLOCalculator:
             if not check["up"] and current_downtime_start is None:
                 current_downtime_start = check["timestamp"]
             elif check["up"] and current_downtime_start is not None:
-                downtime_periods.append(
-                    (current_downtime_start, check["timestamp"])
-                )
+                downtime_periods.append((current_downtime_start, check["timestamp"]))
                 current_downtime_start = None
 
         # If currently in downtime
@@ -306,9 +296,7 @@ class SLOCalculator:
             downtime_periods.append((current_downtime_start, now))
 
         # Sum downtime
-        downtime_seconds = sum(
-            (end - start).total_seconds() for start, end in downtime_periods
-        )
+        downtime_seconds = sum((end - start).total_seconds() for start, end in downtime_periods)
 
         window_seconds = window_hours * 3600
         uptime_seconds = window_seconds - downtime_seconds
@@ -390,6 +378,7 @@ def check_slo_threshold(slo_type: str, value: float) -> dict[str, Any]:
 # SLO REPORTING
 # =============================================================================
 
+
 def generate_slo_report(
     freshness_data: dict[str, Any],
     polling_data: dict[str, Any],
@@ -405,11 +394,13 @@ def generate_slo_report(
     Returns:
         SLO report with overall status
     """
-    overall_meets_slo = all([
-        freshness_data.get("meets_slo", True),
-        polling_data.get("meets_slo", True),
-        availability_data.get("meets_slo", True),
-    ])
+    overall_meets_slo = all(
+        [
+            freshness_data.get("meets_slo", True),
+            polling_data.get("meets_slo", True),
+            availability_data.get("meets_slo", True),
+        ]
+    )
 
     return {
         "timestamp": datetime.now(UTC).isoformat(),
@@ -443,9 +434,7 @@ def _generate_recommendations(
             f"Consider optimizing re-index performance for {len(violating_repos)} repos."
         )
         for repo in violating_repos[:3]:  # Show top 3
-            recommendations.append(
-                f"   - {repo['repo']}: {repo['age_minutes']:.1f} minutes stale"
-            )
+            recommendations.append(f"   - {repo['repo']}: {repo['age_minutes']:.1f} minutes stale")
 
     # Polling recommendations
     if not polling.get("meets_slo", True):
@@ -461,12 +450,8 @@ def _generate_recommendations(
             f"⚠️ Availability SLO violated ({availability['availability_pct']}% < 99.9%). "
             f"Downtime: {downtime_secs / 60:.1f} minutes in last {availability.get('window_hours', 24)}h."
         )
-        recommendations.append(
-            "   → Implement auto-restart mechanism (systemd/supervisord)"
-        )
-        recommendations.append(
-            "   → Add health check probes with liveness/readiness endpoints"
-        )
+        recommendations.append("   → Implement auto-restart mechanism (systemd/supervisord)")
+        recommendations.append("   → Add health check probes with liveness/readiness endpoints")
 
     if recommendations:
         recommendations.insert(
@@ -482,6 +467,7 @@ def _generate_recommendations(
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
+
 
 def record_poll(repo: str, status: str, duration_seconds: float) -> None:
     """Record poll metric.
@@ -522,7 +508,9 @@ def record_event_published(event_type: str) -> None:
     code_index_events_published_total.labels(event_type=event_type).inc()
 
 
-def record_event_delivered(event_type: str, subscriber: str, status: str, latency_seconds: float) -> None:
+def record_event_delivered(
+    event_type: str, subscriber: str, status: str, latency_seconds: float
+) -> None:
     """Record event delivered metric.
 
     Args:

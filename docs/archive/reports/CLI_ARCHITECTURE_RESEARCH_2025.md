@@ -656,7 +656,7 @@ with Progress(
 **Key Libraries**:
 - **clap**: Argument parser (v4.x, mature)
 - **crossterm**: Terminal manipulation (cross-platform)
-- **ratatui**: TUI framework (successor to tui-rs)
+- **ratatouille**: TUI framework (successor to tui-rs)
 - **tokio**: Async runtime
 
 **Patterns to Borrow**:

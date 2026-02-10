@@ -4,18 +4,20 @@ Implements in-memory rate limiting with configurable limits and strategies.
 Supports IP-based, user-based, and token-based rate limiting.
 """
 
-import asyncio
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
 from logging import getLogger
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+
+if TYPE_CHECKING:
+    import asyncio
 
 logger = getLogger(__name__)
 

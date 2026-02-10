@@ -10,11 +10,12 @@ Key Features:
 - Pydantic SecretStr for credential handling
 """
 
-import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
 from functools import wraps
+import logging
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import SecretStr
 
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # AUDIT LOGGING
 # =============================================================================
+
 
 class AuditLogger:
     """Audit logger for security events."""
@@ -86,8 +88,7 @@ class AuditLogger:
 
         # Also log to standard logger for immediate visibility
         log_message = (
-            f"[{timestamp}] {event_type}: user={user_id}, tool={tool_name}, "
-            f"result={result}"
+            f"[{timestamp}] {event_type}: user={user_id}, tool={tool_name}, result={result}"
         )
 
         if error:
@@ -113,18 +114,27 @@ class AuditLogger:
         redacted = {}
 
         sensitive_keys = {
-            "password", "token", "key", "secret", "credential",
-            "api_key", "apikey", "auth_token", "access_token",
-            "ssh_key", "private_key", "passphrase",
+            "password",
+            "token",
+            "key",
+            "secret",
+            "credential",
+            "api_key",
+            "apikey",
+            "auth_token",
+            "access_token",
+            "ssh_key",
+            "private_key",
+            "passphrase",
         }
 
         for key, value in params.items():
             key_lower = key.lower()
 
             # Check if this is a sensitive key
-            if any(sensitive in key_lower for sensitive in sensitive_keys):
-                redacted[key] = "***REDACTED***"
-            elif isinstance(value, SecretStr):
+            if any(sensitive in key_lower for sensitive in sensitive_keys) or isinstance(
+                value, SecretStr
+            ):
                 redacted[key] = "***REDACTED***"
             elif isinstance(value, dict):
                 redacted[key] = AuditLogger._redact_secrets(value)
@@ -151,6 +161,7 @@ def get_audit_logger() -> AuditLogger:
 # =============================================================================
 # MCP AUTHORIZATION DECORATOR
 # =============================================================================
+
 
 def require_mcp_auth(
     rbac_manager: RBACManager | None = None,
@@ -193,7 +204,7 @@ def require_mcp_auth(
             # Extract authentication context from kwargs
             # FastMCP tools pass parameters as kwargs
             user_id = kwargs.get("user_id")
-            auth_method = kwargs.get("auth_method", "unknown")
+            kwargs.get("auth_method", "unknown")
 
             # Check authentication
             if not user_id:
@@ -316,6 +327,7 @@ def require_mcp_auth(
 # AUTHENTICATION CONTEXT EXTRACTORS
 # =============================================================================
 
+
 async def extract_auth_from_request(request: dict[str, Any]) -> dict[str, Any]:
     """Extract authentication context from MCP request.
 
@@ -375,11 +387,14 @@ async def extract_auth_from_request(request: dict[str, Any]) -> dict[str, Any]:
 # CREDENTIAL MANAGEMENT
 # =============================================================================
 
+
 class CredentialManager:
     """Manager for secure credential handling."""
 
     @staticmethod
-    def redact_from_dict(data: dict[str, Any], sensitive_keys: list[str] | None = None) -> dict[str, Any]:
+    def redact_from_dict(
+        data: dict[str, Any], sensitive_keys: list[str] | None = None
+    ) -> dict[str, Any]:
         """Redact sensitive values from dictionary.
 
         Args:
@@ -391,9 +406,19 @@ class CredentialManager:
         """
         if sensitive_keys is None:
             sensitive_keys = [
-                "password", "token", "key", "secret", "credential",
-                "api_key", "apikey", "auth_token", "access_token",
-                "ssh_key", "private_key", "passphrase", "jwt_secret",
+                "password",
+                "token",
+                "key",
+                "secret",
+                "credential",
+                "api_key",
+                "apikey",
+                "auth_token",
+                "access_token",
+                "ssh_key",
+                "private_key",
+                "passphrase",
+                "jwt_secret",
             ]
 
         redacted = {}
@@ -432,8 +457,6 @@ class CredentialManager:
             ValueError: If secret is too short
         """
         if len(value) < min_length:
-            raise ValueError(
-                f"Secret too short: {len(value)} characters (minimum {min_length})"
-            )
+            raise ValueError(f"Secret too short: {len(value)} characters (minimum {min_length})")
 
         return SecretStr(value)

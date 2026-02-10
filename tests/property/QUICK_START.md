@@ -120,10 +120,10 @@ input = '../../../etc/passwd'
 ### What To Do When Test Fails
 
 1. **Copy the failing example** from the output
-2. **Create a regression test** with that example
-3. **Fix the bug** in the code
-4. **Verify the fix** with both tests
-5. **Run full suite** to ensure no regressions
+1. **Create a regression test** with that example
+1. **Fix the bug** in the code
+1. **Verify the fix** with both tests
+1. **Run full suite** to ensure no regressions
 
 ## Common Issues
 
@@ -228,11 +228,11 @@ st_pydantic.from_type(MyModel)
 ## Best Practices
 
 1. **Start Small:** Begin with simple properties
-2. **Use assume():** Filter invalid inputs early
-3. **Set Deadlines:** Use `@settings(deadline=None)` for slow tests
-4. **Document Invariants:** Explain what property is being tested
-5. **Independent Tests:** Each test should verify one property
-6. **Reproducible Seeds:** Use seeds for debugging failures
+1. **Use assume():** Filter invalid inputs early
+1. **Set Deadlines:** Use `@settings(deadline=None)` for slow tests
+1. **Document Invariants:** Explain what property is being tested
+1. **Independent Tests:** Each test should verify one property
+1. **Reproducible Seeds:** Use seeds for debugging failures
 
 ## CI/CD Integration
 

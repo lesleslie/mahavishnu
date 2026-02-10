@@ -11,9 +11,9 @@ This document describes the integration between Oneiric MCP and Mahavishnu to en
 ## Integration Goals
 
 1. **Dynamic Adapter Discovery**: Mahavishnu workflows can query Oneiric's universal adapter registry
-2. **gRPC Registry Connection**: Direct gRPC client for high-performance adapter queries
-3. **Health Monitoring**: Track adapter health in workflow execution
-4. **Fallback Strategy**: Graceful degradation when Oneiric MCP is unavailable
+1. **gRPC Registry Connection**: Direct gRPC client for high-performance adapter queries
+1. **Health Monitoring**: Track adapter health in workflow execution
+1. **Fallback Strategy**: Graceful degradation when Oneiric MCP is unavailable
 
 ## Architecture
 
@@ -50,11 +50,11 @@ This document describes the integration between Oneiric MCP and Mahavishnu to en
 ### Data Flow
 
 1. **Workflow Definition**: Specifies adapter requirements (domain, category, provider)
-2. **Adapter Query**: Query Oneiric MCP for available adapters
-3. **Health Check**: Verify adapter health before execution
-4. **Resolution**: Resolve adapter factory and instantiate
-5. **Execution**: Execute workflow with resolved adapter
-6. **Monitoring**: Track adapter health during execution
+1. **Adapter Query**: Query Oneiric MCP for available adapters
+1. **Health Check**: Verify adapter health before execution
+1. **Resolution**: Resolve adapter factory and instantiate
+1. **Execution**: Execute workflow with resolved adapter
+1. **Monitoring**: Track adapter health during execution
 
 ## Implementation Plan
 
@@ -119,9 +119,9 @@ class OneiricMCPClient:
 **MCP Tools:**
 
 1. **`oneiric_list_adapters`** - List available adapters
-2. **`oneiric_resolve_adapter`** - Resolve adapter by domain/category/provider
-3. **`oneiric_check_health`** - Check adapter health
-4. **`oneiric_get_adapter`** - Get adapter details by ID
+1. **`oneiric_resolve_adapter`** - Resolve adapter by domain/category/provider
+1. **`oneiric_check_health`** - Check adapter health
+1. **`oneiric_get_adapter`** - Get adapter details by ID
 
 ### Phase 3: Workflow Integration (P1)
 
@@ -256,9 +256,9 @@ pytest tests/e2e/test_workflow_with_oneiric.py
 ### Fallback Strategy
 
 1. **Oneiric MCP Unavailable**: Use local adapter registry
-2. **Adapter Not Found**: Raise specific error with suggestions
-3. **Adapter Unhealthy**: Mark unhealthy, try next candidate
-4. **Resolution Timeout**: Use cached adapter list if available
+1. **Adapter Not Found**: Raise specific error with suggestions
+1. **Adapter Unhealthy**: Mark unhealthy, try next candidate
+1. **Resolution Timeout**: Use cached adapter list if available
 
 ### Circuit Breaker
 
@@ -506,10 +506,10 @@ steps:
 ## Success Criteria
 
 1. **Functional**: Mahavishnu can query and resolve adapters from Oneiric MCP
-2. **Reliable**: Graceful fallback when Oneiric MCP is unavailable
-3. **Performant**: <100ms for cached adapter queries, <500ms for uncached
-4. **Secure**: JWT authentication and TLS in production
-5. **Observable**: Full metrics and logging for integration health
+1. **Reliable**: Graceful fallback when Oneiric MCP is unavailable
+1. **Performant**: \<100ms for cached adapter queries, \<500ms for uncached
+1. **Secure**: JWT authentication and TLS in production
+1. **Observable**: Full metrics and logging for integration health
 
 ## References
 

@@ -566,8 +566,8 @@ def test_all_statuses(status):
 If you get `fixture 'xyz' not found`, ensure:
 
 1. The fixture is defined in a conftest.py or fixtures module
-2. The tests are in the correct directory structure
-3. pytest is run from the project root
+1. The tests are in the correct directory structure
+1. pytest is run from the project root
 
 ### Import Errors
 

@@ -1444,7 +1444,7 @@ Located in `oneiric/shell/core.py`.
 - `add_helper(name, func)` - Add helper function
 - `add_object(name, obj)` - Add object to namespace
 
-**Overrideable Methods**:
+**Overridable Methods**:
 - `_get_banner()` - Custom banner
 - `_get_component_name()` - Component name for CLI discovery
 - `_register_magics()` - Register magic commands

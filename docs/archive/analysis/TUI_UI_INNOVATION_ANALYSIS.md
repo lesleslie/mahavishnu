@@ -217,7 +217,7 @@ signal.signal(signal.SIGWINCH, handle_resize)
 | **Rich** | Python | ⭐⭐⭐⭐⭐ (Stable) | Display only | No reactivity | Low | **For output only** |
 | **Urwid** | Python | ⭐⭐⭐⭐ (Mature) | Basic widgets | Event-loop | High | Good for low-level |
 | **bubbletea** | Go | ⭐⭐⭐⭐ (Production) | Elm-inspired | Tea model | Medium | If using Go |
-| **ratatui** | Rust | ⭐⭐⭐⭐ (Rising) | Widget library | Immediate mode | Medium | For Rust projects |
+| **ratatouille** | Rust | ⭐⭐⭐⭐ (Rising) | Widget library | Immediate mode | Medium | For Rust projects |
 
 ### Textual Framework Deep Dive
 
@@ -852,7 +852,7 @@ async with Progress() as progress:
 
 ### Testing Methods
 
-#### 1. Guerilla Testing
+#### 1. Guerrilla Testing
 
 **Quick feedback from developers**
 

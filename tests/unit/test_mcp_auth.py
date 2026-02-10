@@ -319,7 +319,7 @@ def test_credential_manager_custom_sensitive_keys():
         data, sensitive_keys=["custom_secret"]
     )
 
-    assert redacted["custom_secret"] == "valu***"
+    assert redacted["custom_secret"] == "value***"
     assert redacted["public_field"] == "public_value"
 
 

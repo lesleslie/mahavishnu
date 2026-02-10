@@ -309,7 +309,7 @@ class SessionBuddyPool(BasePool):
         """
         from .base import PoolMetrics
 
-        health = await self.health_check()
+        await self.health_check()
 
         # Calculate average task duration
         avg_duration = (

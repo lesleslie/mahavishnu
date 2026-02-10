@@ -36,14 +36,16 @@ Example:
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+import contextlib
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     try:
         from opensearchpy import AsyncOpenSearch
     except ImportError:
@@ -52,13 +54,14 @@ if TYPE_CHECKING:
 # Try to import OpenSearch at runtime, with fallback if not available
 try:
     from opensearchpy import AsyncOpenSearch as _AsyncOpenSearch
+
     OPENSEARCH_AVAILABLE = True
 except ImportError:
     _AsyncOpenSearch = None
     OPENSEARCH_AVAILABLE = False
 
 
-class RetryPolicy(str, Enum):
+class RetryPolicy(StrEnum):
     """Retry policy strategies for failed tasks."""
 
     NEVER = "never"  # Never retry - manual intervention only
@@ -69,7 +72,7 @@ class RetryPolicy(str, Enum):
     IMMEDIATE = "immediate"  # Retry immediately on next processor cycle
 
 
-class DeadLetterStatus(str, Enum):
+class DeadLetterStatus(StrEnum):
     """Status of a dead letter task."""
 
     PENDING = "pending"  # Waiting for retry
@@ -136,7 +139,7 @@ class FailedTask:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "FailedTask":
+    def from_dict(cls, data: dict[str, Any]) -> FailedTask:
         """Create FailedTask from dictionary."""
         # Convert ISO format strings back to datetime objects
         failed_at = (
@@ -450,10 +453,8 @@ class DeadLetterQueue:
 
         if self._retry_task:
             self._retry_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._retry_task
-            except asyncio.CancelledError:
-                pass
 
         self._retry_task = None
         self._logger.info("Stopped DLQ retry processor")
@@ -490,7 +491,7 @@ class DeadLetterQueue:
                 await self._update_task_persistence(failed_task)
 
                 # Attempt retry
-                result = await callback(failed_task.task, failed_task.repos)
+                await callback(failed_task.task, failed_task.repos)
 
                 # Success! Remove from queue
                 async with self._lock:

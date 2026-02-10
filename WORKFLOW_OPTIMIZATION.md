@@ -3,6 +3,7 @@
 ## Quick Actions Added
 
 ### 1. Pre-commit Hook Template
+
 ```yaml
 # .pre-commit-config.yaml
 repos:
@@ -27,6 +28,7 @@ repos:
 ```
 
 ### 2. Test Runner Script
+
 ```bash
 #!/bin/bash
 # quick-test.sh
@@ -35,6 +37,7 @@ pytest tests/unit/ -x --tb=short -q "$@"
 ```
 
 ### 3. Commit Template
+
 ```bash
 #!/bin/bash
 # smart-commit.sh
@@ -55,30 +58,35 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## MCP Tool Optimization
 
 ### Current Tool Usage
+
 - Mahavishnu MCP: 🟢 Active (localhost:8680)
 - Session-Buddy: 🟢 Active (localhost:8678)
 - Crackerjack: 🟢 Active (localhost:8676)
 - Akosha: 🟢 Active (localhost:8682)
 
 ### Optimization Recommendations
+
 1. Reduce MCP server startup time
-2. Cache frequently-accessed tools
-3. Batch similar operations
-4. Use async tool calls where possible
+1. Cache frequently-accessed tools
+1. Batch similar operations
+1. Use async tool calls where possible
 
 ## Context Management
 
 ### Compaction Triggers
+
 - After 80K tokens used
 - After large file operations
 - Before major code reviews
 
 ### Checkpoint Intervals
+
 - After completing features
 - After fixing tests
 - Every 10 file modifications
 
 ### Cleanup Automation
+
 - Auto-remove temporary files
 - Clean cache on checkpoint
 - Archive old session logs
@@ -86,6 +94,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Workflow Shortcuts
 
 ### Common Operations
+
 ```bash
 # Quick test run
 pytest tests/unit/ -x -q
@@ -93,7 +102,7 @@ pytest tests/unit/ -x -q
 # Format code
 ruff format .
 
-# Lint code  
+# Lint code
 ruff check .
 
 # Type check
@@ -107,6 +116,7 @@ pytest --cov=mahavishnu --cov-report=html
 ```
 
 ### Git Hygiene
+
 ```bash
 # Interactive staging
 git add -i
@@ -120,4 +130,3 @@ git branch -d $(git branch --merged | grep -v main)
 # Prune remote
 git remote prune origin
 ```
-
