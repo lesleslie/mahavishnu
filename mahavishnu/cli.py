@@ -220,7 +220,7 @@ def list_repos(
     role: str | None = typer.Option(None, "--role", "-r", help="Filter repositories by role"),
 ) -> None:
     """
-    List repositories in repos.yaml.
+    List repositories in ecosystem.yaml.
 
     Can filter by tag or role (but not both).
     """

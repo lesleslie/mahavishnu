@@ -9,7 +9,7 @@ def test_default_config_values():
     """Test that default configuration values are set correctly."""
     config = MahavishnuSettings()
 
-    assert config.repos_path == "settings/repos.yaml"
+    assert config.repos_path == "settings/ecosystem.yaml"
     assert config.max_concurrent_workflows == 10
     assert config.adapters.prefect_enabled is True
     assert config.adapters.llamaindex_enabled is False  # Disabled in settings/mahavishnu.yaml

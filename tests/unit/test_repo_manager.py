@@ -15,10 +15,8 @@ from mahavishnu.core.repo_models import (
 
 @pytest.fixture
 def sample_repos_path(tmp_path: Path) -> Path:
-    """Create a sample repos.yaml file."""
+    """Create a sample ecosystem.yaml file."""
     repos_data = {
-        "version": "1.0",
-        "schema_version": "1.0",
         "repos": [
             {
                 "name": "test-repo-1",
@@ -44,7 +42,7 @@ def sample_repos_path(tmp_path: Path) -> Path:
         ],
     }
 
-    repos_file = tmp_path / "repos.yaml"
+    repos_file = tmp_path / "ecosystem.yaml"
     with repos_file.open("w") as f:
         yaml.dump(repos_data, f)
 

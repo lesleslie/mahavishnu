@@ -42,7 +42,7 @@ def collect_metrics(
 ):
     """Collect metrics across all repositories in the ecosystem.
 
-    This command scans all repositories defined in settings/repos.yaml,
+    This command scans all repositories defined in settings/ecosystem.yaml,
     collects test coverage data, and generates a comprehensive report.
 
     Example:
@@ -145,7 +145,7 @@ def show_status(
     console.print("[cyan]📊 Mahavishnu Ecosystem Metrics Status[/cyan]\n")
 
     # Load repository catalog
-    repos_path = Path("settings/repos.yaml")
+    repos_path = Path("settings/ecosystem.yaml")
     with open(repos_path) as f:
         data = yaml.safe_load(f)
 
