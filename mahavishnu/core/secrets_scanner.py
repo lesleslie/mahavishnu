@@ -11,12 +11,11 @@ Key Features:
 - Custom secret pattern support
 """
 
-import asyncio
+from enum import StrEnum
 import logging
+from pathlib import Path
 import re
 import subprocess
-from enum import Enum
-from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -26,15 +25,18 @@ logger = logging.getLogger(__name__)
 # SECRET DETECTION RESULTS
 # =============================================================================
 
-class SecretSeverity(str, Enum):
+
+class SecretSeverity(StrEnum):
     """Severity level for detected secrets."""
+
     LOW = "low"  # Unlikely to be a real secret (e.g., "password123")
     MEDIUM = "medium"  # Possibly a secret (e.g., random string)
     HIGH = "high"  # Likely a real secret (e.g., API key format)
 
 
-class SecretType(str, Enum):
+class SecretType(StrEnum):
     """Type of detected secret."""
+
     API_KEY = "api_key"
     AWS_KEY = "aws_key"
     SSH_KEY = "ssh_key"
@@ -140,6 +142,7 @@ class SecretScanResult:
 # SECRET SCANNER
 # =============================================================================
 
+
 class SecretsScanner:
     """Scanner for detecting secrets in code using detect-secrets."""
 
@@ -174,9 +177,7 @@ class SecretsScanner:
             if result.returncode == 0:
                 logger.info(f"detect-secrets installed: {result.stdout.strip()}")
         except FileNotFoundError:
-            logger.warning(
-                "detect-secrets not found. Install with: pip install detect-secrets"
-            )
+            logger.warning("detect-secrets not found. Install with: pip install detect-secrets")
             raise RuntimeError(
                 "detect-secrets is required for secrets scanning. "
                 "Install with: pip install detect-secrets"
@@ -210,7 +211,8 @@ class SecretsScanner:
                     "scan",
                     str(directory),
                     "--all-files",
-                    "--baseline", "/dev/null",  # No baseline, scan everything
+                    "--baseline",
+                    "/dev/null",  # No baseline, scan everything
                 ],
                 capture_output=True,
                 text=True,
@@ -312,7 +314,9 @@ class SecretsScanner:
 
         return secrets
 
-    def _classify_secret(self, detection_part: str, matched_string: str) -> tuple[SecretType, SecretSeverity]:
+    def _classify_secret(
+        self, detection_part: str, matched_string: str
+    ) -> tuple[SecretType, SecretSeverity]:
         """Classify secret type and severity.
 
         Args:
@@ -434,6 +438,7 @@ class SecretsScanner:
 # SECRET REDACTOR
 # =============================================================================
 
+
 class SecretRedactor:
     """Redact secrets from code before indexing."""
 
@@ -483,7 +488,7 @@ class SecretRedactor:
 
         try:
             # Read file
-            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            with open(file_path, encoding="utf-8", errors="ignore") as f:
                 code = f.read()
 
             # Redact secrets
@@ -505,6 +510,7 @@ class SecretRedactor:
 # =============================================================================
 # PRE-INDEXING VALIDATOR
 # =============================================================================
+
 
 class PreIndexValidator:
     """Validate code repository before indexing."""
@@ -563,6 +569,7 @@ class PreIndexValidator:
 # =============================================================================
 # CONVENIENCE FUNCTIONS
 # =============================================================================
+
 
 async def scan_and_validate(
     repo_path: Path | str,

@@ -85,7 +85,7 @@ class SSHWorker(BaseWorker):
     - Non-interactive commands (stdout/stderr capture)
     - Interactive sessions with PTY allocation
     - SFTP file upload/download
-    - Connection pooling (re-use SSH connections)
+    - Connection pooling (reuse SSH connections)
     - Key-based and password authentication
 
     Example:
@@ -222,7 +222,7 @@ async def ssh_sftp_transfer(
 **Library:** `asyncssh` (async, Python 3.10+, well-maintained)
 
 **Key Features:**
-1. **Connection Pooling** - Re-use SSH connections for multiple commands
+1. **Connection Pooling** - Reuse SSH connections for multiple commands
 2. **PTY Allocation** - Use `SSHServerConnection.create_process()` with `term_type`
 3. **Key Management** - Support `~/.ssh/id_rsa`, encrypted keys, agent forwarding
 4. **Timeout Handling** - Connect timeout (30s) + command timeout (300s default)
@@ -256,7 +256,7 @@ await session_buddy.call_tool(
 ### Testing Strategy
 
 **Unit Tests:**
-- Test connection pooling (re-use connections)
+- Test connection pooling (reuse connections)
 - Test timeout handling (connect + command timeout)
 - Test error scenarios (host unreachable, auth failure)
 - Test SFTP upload/download
@@ -470,7 +470,7 @@ async def mqtt_trigger_ota(
 1. **QoS Levels** - Support QoS 0 (fire and forget), QoS 1 (at least once), QoS 2 (exactly once)
 2. **TLS/SSL** - Secure communication with certificate verification
 3. **Wildcards** - Subscribe to patterns like `sensors/+/temperature`
-4. **Connection Pooling** - Re-use MQTT connections
+4. **Connection Pooling** - Reuse MQTT connections
 5. **Last Will** - Notify if Mahavishnu disconnects unexpectedly
 6. **Retained Messages** - Device state persistence
 7. **Batch Publishing** - Publish to multiple devices efficiently

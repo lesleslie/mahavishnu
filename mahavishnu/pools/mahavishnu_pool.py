@@ -167,7 +167,7 @@ class MahavishnuPool(BasePool):
 
         # Map task IDs to results
         task_results = {}
-        for task_id, (_, result) in enumerate(zip(tasks, results.values())):
+        for task_id, (_, result) in enumerate(zip(tasks, results.values(), strict=False)):
             task_results[task_id] = {
                 "pool_id": self.pool_id,
                 "worker_id": result.worker_id,
@@ -259,7 +259,7 @@ class MahavishnuPool(BasePool):
         """
         from .base import PoolMetrics
 
-        health = await self.health_check()
+        await self.health_check()
 
         # Calculate average task duration
         avg_duration = (
@@ -287,7 +287,7 @@ class MahavishnuPool(BasePool):
 
         # Transform WorkerResults to memory format
         memory_items = []
-        for worker_id, result in results.items():
+        for _worker_id, result in results.items():
             memory_items.append(
                 {
                     "content": result.output or "",

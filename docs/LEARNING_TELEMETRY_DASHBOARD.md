@@ -13,6 +13,7 @@ The Learning Telemetry Dashboard provides comprehensive monitoring and analytics
 ### Prerequisites
 
 1. **Grafana Installation:**
+
    ```bash
    # macOS
    brew install grafana
@@ -24,7 +25,8 @@ The Learning Telemetry Dashboard provides comprehensive monitoring and analytics
    docker run -d -p 3000:3000 --name grafana grafana/grafana
    ```
 
-2. **DuckDB Plugin for Grafana:**
+1. **DuckDB Plugin for Grafana:**
+
    ```bash
    grafana-cli plugins install duckdb-datasource
 
@@ -34,7 +36,8 @@ The Learning Telemetry Dashboard provides comprehensive monitoring and analytics
    docker restart grafana  # Docker
    ```
 
-3. **Learning Database:**
+1. **Learning Database:**
+
    ```bash
    # Initialize the learning database
    python scripts/migrate_learning_db.py
@@ -57,64 +60,74 @@ The Learning Telemetry Dashboard provides comprehensive monitoring and analytics
 #### 1. Configure DuckDB Datasource
 
 In Grafana UI:
+
 1. Go to **Configuration → Data Sources**
-2. Click **Add data source**
-3. Select **DuckDB**
-4. Configure:
+1. Click **Add data source**
+1. Select **DuckDB**
+1. Configure:
    - **Name:** `DuckDB Learning`
    - **Path:** `/path/to/mahavishnu/data/learning.db`
    - **UID:** `duckdb-learning`
-5. Click **Save & Test**
+1. Click **Save & Test**
 
 #### 2. Import Dashboard
 
 1. Go to **Dashboards → Import**
-2. Click **Upload JSON file**
-3. Select `grafana/dashboards/learning-telemetry.json`
-4. Select **DuckDB Learning** as datasource
-5. Click **Import**
+1. Click **Upload JSON file**
+1. Select `grafana/dashboards/learning-telemetry.json`
+1. Select **DuckDB Learning** as datasource
+1. Click **Import**
 
 ## Dashboard Panels
 
 ### Summary Statistics (Top Row)
 
 1. **Execution Count (Last 24 Hours)**
+
    - Total number of task executions
    - Thresholds: 0 (blue), 100 (green), 1000 (yellow)
 
-2. **Success Rate (Last 24 Hours)**
+1. **Success Rate (Last 24 Hours)**
+
    - Percentage of successful executions
    - Thresholds: 0% (red), 90% (yellow), 95% (green)
 
-3. **Average Quality Score (Last 24 Hours)**
+1. **Average Quality Score (Last 24 Hours)**
+
    - Mean quality score (0-100)
    - Thresholds: 0 (red), 60 (yellow), 75 (green), 90 (blue)
 
-4. **Total Cost (Last 24 Hours)**
+1. **Total Cost (Last 24 Hours)**
+
    - Sum of actual costs in USD
    - Thresholds: $0 (green), $1 (yellow), $5 (red)
 
 ### Time Series Panels
 
 1. **Executions Over Time (Last 7 Days)**
+
    - Hourly execution counts
    - Identifies traffic patterns and trends
 
-2. **Success Rate Over Time (Last 7 Days)**
+1. **Success Rate Over Time (Last 7 Days)**
+
    - Daily success rate percentages
    - Shows reliability trends
 
 ### Performance Analysis
 
 1. **Success Rate by Model Tier**
+
    - Horizontal bar gauge comparing model tiers
    - Helps identify best/worst performing tiers
 
-2. **Average Duration by Model Tier**
+1. **Average Duration by Model Tier**
+
    - Execution time comparison across tiers
    - Identifies performance bottlenecks
 
-3. **Cost by Model Tier (Last 7 Days)**
+1. **Cost by Model Tier (Last 7 Days)**
+
    - Donut chart showing cost distribution
    - Tracks spending across model tiers
 
@@ -136,27 +149,33 @@ In Grafana UI:
 ### Quality & Error Analysis
 
 1. **Duration Percentiles (Last 7 Days)**
+
    - P50, P95, P99 duration values
    - Identifies outliers and tail latency
 
-2. **Quality Score Distribution (Last 30 Days)**
+1. **Quality Score Distribution (Last 30 Days)**
+
    - Pie chart of quality tiers (excellent/good/fair/poor)
 
-3. **Task Type Distribution (Last 30 Days)**
+1. **Task Type Distribution (Last 30 Days)**
+
    - Top 15 task types by execution count
    - Shows duration and quality metrics
 
-4. **Top Error Types (Last 7 Days)**
+1. **Top Error Types (Last 7 Days)**
+
    - Most frequent error types
    - Shows count and last occurrence time
 
 ### Database Health
 
 1. **Database Size Growth (Last 30 Days)**
+
    - Total number of execution records
    - Tracks database growth
 
-2. **Average Routing Confidence (Last 7 Days)**
+1. **Average Routing Confidence (Last 7 Days)**
+
    - Mean routing confidence percentage
    - Indicates routing accuracy
 
@@ -219,6 +238,7 @@ export LEARNING_DB_PATH="/path/to/mahavishnu/data/learning.db"
 Default refresh: `1 minute`
 
 Recommended intervals by panel type:
+
 - Summary stats: 30s - 1m
 - Time series (7 days): 5m
 - Time series (24 hours): 1m
@@ -230,6 +250,7 @@ Recommended intervals by panel type:
 Default: `Last 24 hours`
 
 Recommended time ranges for analysis:
+
 - Real-time monitoring: Last 1 hour
 - Daily operations: Last 24 hours
 - Weekly trends: Last 7 days
@@ -242,17 +263,21 @@ Recommended time ranges for analysis:
 **Problem:** All panels show "No Data"
 
 **Solutions:**
+
 1. Verify learning database has records:
+
    ```bash
    python -c "import duckdb; con = duckdb.connect('data/learning.db'); print(con.execute('SELECT COUNT(*) FROM executions').fetchone()[0])"
    ```
 
-2. Check datasource connection:
+1. Check datasource connection:
+
    - Go to Configuration → Data Sources
    - Click "Test" button
    - Verify no connection errors
 
-3. Verify DuckDB plugin is installed:
+1. Verify DuckDB plugin is installed:
+
    ```bash
    grafana-cli plugins ls | grep duckdb
    ```
@@ -262,9 +287,10 @@ Recommended time ranges for analysis:
 **Problem:** "Failed to connect to datasource"
 
 **Solutions:**
+
 1. Verify database path is correct and accessible
-2. Check Grafana has file system permissions
-3. Ensure database file is not corrupted:
+1. Check Grafana has file system permissions
+1. Ensure database file is not corrupted:
    ```bash
    python -c "import duckdb; con = duckdb.connect('data/learning.db'); con.execute('SELECT 1').fetchall()"
    ```
@@ -274,14 +300,17 @@ Recommended time ranges for analysis:
 **Problem:** DuckDB datasource type not available
 
 **Solutions:**
+
 1. Install the plugin:
+
    ```bash
    grafana-cli plugins install duckdb-datasource
    ```
 
-2. Restart Grafana after installation
+1. Restart Grafana after installation
 
-3. Verify installation:
+1. Verify installation:
+
    ```bash
    grafana-cli plugins ls | grep duckdb
    ```
@@ -291,7 +320,9 @@ Recommended time ranges for analysis:
 **Problem:** Dashboard panels take long to load
 
 **Solutions:**
+
 1. Create materialized views for frequently queried data:
+
    ```sql
    CREATE MATERIALIZED VIEW tier_performance_mv AS
    SELECT
@@ -304,44 +335,51 @@ Recommended time ranges for analysis:
    GROUP BY model_tier;
    ```
 
-2. Add indexes on frequently queried columns:
+1. Add indexes on frequently queried columns:
+
    ```sql
    CREATE INDEX idx_executions_timestamp ON executions(timestamp);
    CREATE INDEX idx_executions_model_tier ON executions(model_tier);
    ```
 
-3. Reduce time range for time series queries
-4. Increase refresh interval
+1. Reduce time range for time series queries
+
+1. Increase refresh interval
 
 ### Permission Denied Errors
 
 **Problem:** Setup script fails with permission errors
 
 **Solutions:**
+
 1. Ensure script is executable:
+
    ```bash
    chmod +x scripts/setup_learning_dashboard.sh
    ```
 
-2. Check Grafana API credentials are correct
+1. Check Grafana API credentials are correct
 
-3. Verify user has datasource creation permissions
+1. Verify user has datasource creation permissions
 
 ## Alerting Setup
 
 ### Example Alerts
 
 1. **Low Success Rate Alert:**
+
    - Condition: Success rate < 90% for 5 minutes
    - Severity: Warning
    - Notification: Email/Slack
 
-2. **High Cost Alert:**
+1. **High Cost Alert:**
+
    - Condition: Hourly cost > $10
    - Severity: Warning
    - Notification: Email
 
-3. **Database Size Alert:**
+1. **Database Size Alert:**
+
    - Condition: Database > 1GB
    - Severity: Info
    - Notification: Email
@@ -349,9 +387,9 @@ Recommended time ranges for analysis:
 ### Setting Up Alerts
 
 1. Click alert icon on any panel
-2. Set alert conditions
-3. Configure notification channels
-4. Test alert
+1. Set alert conditions
+1. Configure notification channels
+1. Test alert
 
 ## Advanced Configuration
 
@@ -360,10 +398,10 @@ Recommended time ranges for analysis:
 To add custom queries to the dashboard:
 
 1. Edit panel in Grafana UI
-2. Modify SQL query
-3. Test query
-4. Save dashboard
-5. Export updated JSON:
+1. Modify SQL query
+1. Test query
+1. Save dashboard
+1. Export updated JSON:
    ```bash
    curl -u admin:admin http://localhost:3000/api/dashboards/db/learning-telemetry > learning-telemetry-updated.json
    ```
@@ -373,9 +411,9 @@ To add custom queries to the dashboard:
 For development, staging, and production:
 
 1. Create separate datasources for each environment
-2. Duplicate dashboard for each environment
-3. Update datasource references
-4. Set environment-specific time ranges
+1. Duplicate dashboard for each environment
+1. Update datasource references
+1. Set environment-specific time ranges
 
 ### Export Dashboard
 
@@ -411,14 +449,17 @@ CREATE INDEX idx_executions_success ON executions(success) WHERE success = FALSE
 ### Dashboard Optimization
 
 1. **Reduce query frequency:**
+
    - Set longer refresh intervals for historical data
    - Use 5-10 minute refresh for 30-day queries
 
-2. **Optimize query time ranges:**
+1. **Optimize query time ranges:**
+
    - Use shorter time ranges for real-time monitoring
    - Create separate dashboards for different time scales
 
-3. **Cache results:**
+1. **Cache results:**
+
    - Enable query caching in Grafana
    - Set cache TTL to match refresh interval
 
@@ -479,14 +520,15 @@ FROM executions;
 For issues or questions:
 
 1. Check this guide's troubleshooting section
-2. Review Grafana logs: `/var/log/grafana/` or Docker logs
-3. Review setup script log: `scripts/setup_learning_dashboard.log`
-4. Check DuckDB documentation: https://duckdb.org/docs/
-5. Check Grafana documentation: https://grafana.com/docs/
+1. Review Grafana logs: `/var/log/grafana/` or Docker logs
+1. Review setup script log: `scripts/setup_learning_dashboard.log`
+1. Check DuckDB documentation: https://duckdb.org/docs/
+1. Check Grafana documentation: https://grafana.com/docs/
 
 ## Changelog
 
 ### v1.0.0 (2026-02-09)
+
 - Initial release
 - 17 panels covering key telemetry metrics
 - Automated setup script

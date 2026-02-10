@@ -10,12 +10,11 @@ Key Features:
 - Comprehensive pattern matching for various credential types
 """
 
-import logging
-import re
+from enum import StrEnum
 import json
-from datetime import UTC, datetime
-from enum import Enum
+import logging
 from pathlib import Path
+import re
 from typing import Any
 
 from pydantic import SecretStr
@@ -27,8 +26,10 @@ logger = logging.getLogger(__name__)
 # CREDENTIAL TYPES
 # =============================================================================
 
-class CredentialType(str, Enum):
+
+class CredentialType(StrEnum):
     """Type of credential to redact."""
+
     SSH_PRIVATE_KEY = "ssh_private_key"
     SSH_PUBLIC_KEY = "ssh_public_key"
     API_KEY = "api_key"
@@ -49,65 +50,66 @@ class CredentialType(str, Enum):
 # CREDENTIAL PATTERNS
 # =============================================================================
 
+
 class CredentialPatterns:
     """Regular expression patterns for detecting credentials."""
 
     # SSH private keys (RSA, ECDSA, Ed25519, DSA)
     SSH_PRIVATE_KEY_PATTERNS = [
-        r'-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----',
-        r'-----BEGIN\s+EC\s+PRIVATE\s+KEY-----',
-        r'-----BEGIN\s+OPENSSH\s+PRIVATE\s+KEY-----',
-        r'-----BEGIN\s+DSA\s+PRIVATE\s+KEY-----',
-        r'-----BEGIN\s+PGP\s+PRIVATE\s+KEY-----',
+        r"-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----",
+        r"-----BEGIN\s+EC\s+PRIVATE\s+KEY-----",
+        r"-----BEGIN\s+OPENSSH\s+PRIVATE\s+KEY-----",
+        r"-----BEGIN\s+DSA\s+PRIVATE\s+KEY-----",
+        r"-----BEGIN\s+PGP\s+PRIVATE\s+KEY-----",
     ]
 
     # SSH public keys
     SSH_PUBLIC_KEY_PATTERNS = [
-        r'ssh-rsa\s+[A-Za-z0-9+/]+[=]{0,2}\s+\S+',
-        r'ssh-ed25519\s+[A-Za-z0-9+/]+[=]{0,2}\s+\S+',
-        r'ssh-ecdsa\s+[A-Za-z0-9+/]+[=]{0,2}\s+\S+',
-        r'ssh-dss\s+[A-Za-z0-9+/]+[=]{0,2}\s+\S+',
+        r"ssh-rsa\s+[A-Za-z0-9+/]+[=]{0,2}\s+\S+",
+        r"ssh-ed25519\s+[A-Za-z0-9+/]+[=]{0,2}\s+\S+",
+        r"ssh-ecdsa\s+[A-Za-z0-9+/]+[=]{0,2}\s+\S+",
+        r"ssh-dss\s+[A-Za-z0-9+/]+[=]{0,2}\s+\S+",
     ]
 
     # API keys (common patterns)
     API_KEY_PATTERNS = [
         r'(?i)(api[_-]?key|apikey)["\']?\s*[:=]\s*["\']?([a-zA-Z0-9_\-]{20,})["\']?',
-        r'(?i)(sk_|ak_|ai_|api_)[a-zA-Z0-9_\-]{15,}',
+        r"(?i)(sk_|ak_|ai_|api_)[a-zA-Z0-9_\-]{15,}",
         r'(?i)(key|token)["\']?\s*[:=]\s*["\']?([a-zA-Z0-9_\-]{32,})["\']?',
         # AWS access keys
-        r'AKIA[0-9A-Z]{16,}',
+        r"AKIA[0-9A-Z]{16,}",
         # GitHub personal access tokens (31-40 characters after ghp_/gho_/etc)
-        r'ghp_[a-zA-Z0-9]{31,}',
-        r'gho_[a-zA-Z0-9]{31,}',
-        r'ghu_[a-zA-Z0-9]{31,}',
-        r'ghs_[a-zA-Z0-9]{31,}',
-        r'ghr_[a-zA-Z0-9]{31,}',
+        r"ghp_[a-zA-Z0-9]{31,}",
+        r"gho_[a-zA-Z0-9]{31,}",
+        r"ghu_[a-zA-Z0-9]{31,}",
+        r"ghs_[a-zA-Z0-9]{31,}",
+        r"ghr_[a-zA-Z0-9]{31,}",
         # Stripe API keys
-        r'sk_(live|test)_[0-9a-zA-Z]{24,}',
+        r"sk_(live|test)_[0-9a-zA-Z]{24,}",
     ]
 
     # Bearer tokens
     BEARER_TOKEN_PATTERNS = [
-        r'Bearer\s+[A-Za-z0-9_\-\.~=]{20,}',
-        r'authorization:\s*Bearer\s+[A-Za-z0-9_\-\.~=]{20,}',
+        r"Bearer\s+[A-Za-z0-9_\-\.~=]{20,}",
+        r"authorization:\s*Bearer\s+[A-Za-z0-9_\-\.~=]{20,}",
     ]
 
     # Database URLs
     DATABASE_URL_PATTERNS = [
-        r'(postgresql|mysql|sqlite|mongodb|redis)://[^:]+:[^@]+@',
-        r'(postgres|mysql|mongodb|redis)://[^:]+:[^@]+@',
+        r"(postgresql|mysql|sqlite|mongodb|redis)://[^:]+:[^@]+@",
+        r"(postgres|mysql|mongodb|redis)://[^:]+:[^@]+@",
     ]
 
     # Connection strings
     CONNECTION_STRING_PATTERNS = [
-        r'(Server|Host|Data Source)[^;=;]*[=;][^;:]+:[^;@]+',
-        r'(User ID|Username)[^;=]*[=;][^;]+;(Password|Pass)[^;=]*[=;][^;]+',
+        r"(Server|Host|Data Source)[^;=;]*[=;][^;:]+:[^;@]+",
+        r"(User ID|Username)[^;=]*[=;][^;]+;(Password|Pass)[^;=]*[=;][^;]+",
     ]
 
     # Basic authentication
     BASIC_AUTH_PATTERNS = [
-        r'basic\s+[A-Za-z0-9+/=]{20,}',
-        r'authorization:\s*basic\s+[A-Za-z0-9+/=]{20,}',
+        r"basic\s+[A-Za-z0-9+/=]{20,}",
+        r"authorization:\s*basic\s+[A-Za-z0-9+/=]{20,}",
     ]
 
     # Session IDs and cookies
@@ -118,8 +120,8 @@ class CredentialPatterns:
 
     # Certificates
     CERTIFICATE_PATTERNS = [
-        r'-----BEGIN\s+CERTIFICATE-----',
-        r'-----BEGIN\s+X509\s+CERTIFICATE-----',
+        r"-----BEGIN\s+CERTIFICATE-----",
+        r"-----BEGIN\s+X509\s+CERTIFICATE-----",
     ]
 
     @classmethod
@@ -141,6 +143,7 @@ class CredentialPatterns:
 # =============================================================================
 # CREDENTIAL REDACTOR
 # =============================================================================
+
 
 class CredentialRedactor:
     """Redact credentials from strings and dictionaries."""
@@ -182,7 +185,7 @@ class CredentialRedactor:
                             pattern,
                             self._replacement_for_type(cred_type),
                             redacted,
-                            flags=re.IGNORECASE | re.MULTILINE
+                            flags=re.IGNORECASE | re.MULTILINE,
                         )
                 except re.error:
                     # Skip invalid patterns
@@ -195,12 +198,13 @@ class CredentialRedactor:
         if re.search(pattern, text, re.IGNORECASE | re.MULTILINE):
             # Find the entire key block
             match = re.search(
-                pattern + r'.*?-----END\s+(RSA\s+|EC\s+|OPENSSH\s+|DSA\s+|PGP\s+)?PRIVATE\s+KEY-----',
+                pattern
+                + r".*?-----END\s+(RSA\s+|EC\s+|OPENSSH\s+|DSA\s+|PGP\s+)?PRIVATE\s+KEY-----",
                 text,
-                flags=re.IGNORECASE | re.DOTALL | re.MULTILINE
+                flags=re.IGNORECASE | re.DOTALL | re.MULTILINE,
             )
             if match:
-                return text[:match.start()] + self.redaction_string + text[match.end():]
+                return text[: match.start()] + self.redaction_string + text[match.end() :]
         return text
 
     def _redact_certificate(self, text: str, pattern: str) -> str:
@@ -208,19 +212,21 @@ class CredentialRedactor:
         if re.search(pattern, text, re.IGNORECASE | re.MULTILINE):
             # Find the entire certificate block
             match = re.search(
-                pattern + r'.*?-----END\s+(X509\s+)?CERTIFICATE-----',
+                pattern + r".*?-----END\s+(X509\s+)?CERTIFICATE-----",
                 text,
-                flags=re.IGNORECASE | re.DOTALL | re.MULTILINE
+                flags=re.IGNORECASE | re.DOTALL | re.MULTILINE,
             )
             if match:
-                return text[:match.start()] + self.redaction_string + text[match.end():]
+                return text[: match.start()] + self.redaction_string + text[match.end() :]
         return text
 
     def _replacement_for_type(self, cred_type: str) -> str:
         """Get replacement string for credential type."""
         return f"[REDACTED:{cred_type.upper()}]"
 
-    def redact_dict(self, data: dict[str, Any], sensitive_keys: list[str] | None = None) -> dict[str, Any]:
+    def redact_dict(
+        self, data: dict[str, Any], sensitive_keys: list[str] | None = None
+    ) -> dict[str, Any]:
         """Redact credentials from dictionary.
 
         Args:
@@ -232,11 +238,33 @@ class CredentialRedactor:
         """
         if sensitive_keys is None:
             sensitive_keys = [
-                "password", "passwd", "pass", "secret", "token", "key", "credential",
-                "api_key", "apikey", "auth_token", "access_token", "refresh_token",
-                "ssh_key", "private_key", "passphrase", "jwt_secret", "session_token",
-                "bearer_token", "basic_auth", "authorization", "cookie", "session_id",
-                "connection_string", "database_url", "db_url", "dsn", "host",
+                "password",
+                "passwd",
+                "pass",
+                "secret",
+                "token",
+                "key",
+                "credential",
+                "api_key",
+                "apikey",
+                "auth_token",
+                "access_token",
+                "refresh_token",
+                "ssh_key",
+                "private_key",
+                "passphrase",
+                "jwt_secret",
+                "session_token",
+                "bearer_token",
+                "basic_auth",
+                "authorization",
+                "cookie",
+                "session_id",
+                "connection_string",
+                "database_url",
+                "db_url",
+                "dsn",
+                "host",
             ]
 
         redacted = {}
@@ -266,8 +294,10 @@ class CredentialRedactor:
             elif isinstance(value, list):
                 # Redact list items
                 redacted[key] = [
-                    self.redact_dict(item, sensitive_keys) if isinstance(item, dict)
-                    else self.redact_string if is_sensitive
+                    self.redact_dict(item, sensitive_keys)
+                    if isinstance(item, dict)
+                    else self.redact_string
+                    if is_sensitive
                     else item
                     for item in value
                 ]
@@ -302,6 +332,7 @@ class CredentialRedactor:
 # SECURE LOGGER
 # =============================================================================
 
+
 class SecureLogger:
     """Secure logger with automatic credential redaction."""
 
@@ -327,21 +358,14 @@ class SecureLogger:
 
             # Add file handler
             handler = logging.FileHandler(log_path)
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            )
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
 
         # Ensure logger level is set
         self.logger.setLevel(logging.DEBUG)
 
-    def _redact_and_log(
-        self,
-        level: int,
-        message: str,
-        **kwargs: Any
-    ) -> None:
+    def _redact_and_log(self, level: int, message: str, **kwargs: Any) -> None:
         """Redact credentials and log message.
 
         Args:
@@ -401,6 +425,7 @@ class SecureLogger:
 # =============================================================================
 # CONVENIENCE FUNCTIONS
 # =============================================================================
+
 
 def get_secure_logger(
     name: str,

@@ -403,6 +403,8 @@ nav = [
 
 [dependency-groups]
 dev = [
+    "akosha>=0.2.0",
     "crackerjack>=0.50.1",
+    "dhruva>=0.6.0",
     "session-buddy>=0.11.1",
 ]

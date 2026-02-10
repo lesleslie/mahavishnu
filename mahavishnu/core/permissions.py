@@ -3,7 +3,7 @@
 from datetime import UTC, datetime, timedelta
 
 UTC = UTC
-from enum import Enum
+from enum import StrEnum
 
 import jwt
 from pydantic import BaseModel
@@ -12,7 +12,7 @@ from .config import MahavishnuSettings
 from .errors import ConfigurationError
 
 
-class Permission(str, Enum):
+class Permission(StrEnum):
     READ_REPO = "read_repo"
     WRITE_REPO = "write_repo"
     EXECUTE_WORKFLOW = "execute_workflow"

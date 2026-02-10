@@ -6,13 +6,13 @@ that enable coordination work across multiple repositories.
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class IssueStatus(str, Enum):
+class IssueStatus(StrEnum):
     """Status of a cross-repository issue."""
 
     PENDING = "pending"
@@ -22,7 +22,7 @@ class IssueStatus(str, Enum):
     CLOSED = "closed"
 
 
-class Priority(str, Enum):
+class Priority(StrEnum):
     """Priority level for issues and todos."""
 
     CRITICAL = "critical"
@@ -31,7 +31,7 @@ class Priority(str, Enum):
     LOW = "low"
 
 
-class PlanStatus(str, Enum):
+class PlanStatus(StrEnum):
     """Status of a cross-repository plan."""
 
     DRAFT = "draft"
@@ -41,7 +41,7 @@ class PlanStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class TodoStatus(str, Enum):
+class TodoStatus(StrEnum):
     """Status of a task/todo item."""
 
     PENDING = "pending"
@@ -51,7 +51,7 @@ class TodoStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class DependencyType(str, Enum):
+class DependencyType(StrEnum):
     """Type of dependency between repositories."""
 
     RUNTIME = "runtime"
@@ -61,7 +61,7 @@ class DependencyType(str, Enum):
     DOCUMENTATION = "documentation"
 
 
-class DependencyStatus(str, Enum):
+class DependencyStatus(StrEnum):
     """Status of a dependency."""
 
     SATISFIED = "satisfied"

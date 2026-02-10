@@ -389,16 +389,16 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      
+
       - name: Install dependencies
         run: |
           pip install mahavishnu[all]
-      
+
       - name: Generate diagrams
         run: |
           mahavishnu diagram generate . --type architecture --output docs/architecture.svg
           mahavishnu diagram generate . --type dependency --output docs/dependencies.svg
-      
+
       - name: Upload diagrams
         uses: actions/upload-artifact@v3
         with:

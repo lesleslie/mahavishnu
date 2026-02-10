@@ -4,20 +4,21 @@
 
 **Use `asyncssh`** - It's actively maintained, async-native, and perfect for Mahavishnu's asyncio architecture.
 
----
+______________________________________________________________________
 
 ## ❌ Myth: "Python has native SSH now"
 
 **False.** Python does **NOT** have built-in SSH support in the standard library.
 
 You might be thinking of:
+
 - **Python 3.12+ improvements** - Better async/await, but NO SSH
 - **OpenSSH integration** - macOS/Linux have `ssh` command, but that's subprocess (not Python)
 - **MSS (Microsoft SSH)** - Windows PowerShell SSH, not Python
 
 **Reality:** Third-party libraries are still required (asyncssh, paramiko, etc.)
 
----
+______________________________________________________________________
 
 ## Library Comparison
 
@@ -35,11 +36,12 @@ You might be thinking of:
 | **Key Types** | RSA, DSA, ECDSA, Ed25519 | RSA, DSA, ECDSA, Ed25519 |
 | **Performance** | ⚡ Fast (async) | 🐌 Slower (sync) |
 
----
+______________________________________________________________________
 
 ## Why asyncssh is Better for Mahavishnu
 
 ### 1. **Async/Await Compatibility**
+
 ```python
 # asyncssh - Native async
 async def execute_command(host: str, command: str):
@@ -58,16 +60,19 @@ async def execute_command(host: str, command: str):
 ```
 
 ### 2. **Better Performance**
+
 - **asyncssh**: Non-blocking, can handle 100+ concurrent SSH connections
 - **paramiko**: Blocking, limited by thread pool size (typically 4-8 threads)
 
 **Benchmark Results** (100 concurrent SSH commands):
+
 ```
 asyncssh: 5.2s (100 concurrent connections)
 paramiko: 18.7s (limited by thread pool of 8)
 ```
 
 ### 3. **PTY Support Out of the Box**
+
 ```python
 # asyncssh - PTY allocation (native)
 conn = await asyncssh.connect(host)
@@ -84,6 +89,7 @@ channel = client.invoke_shell()
 ```
 
 ### 4. **Connection Pooling**
+
 ```python
 # asyncssh - Connection pooling (built-in)
 class SSHConnectionPool:
@@ -97,22 +103,24 @@ class SSHConnectionPool:
 # Need to implement your own pool logic
 ```
 
----
+______________________________________________________________________
 
 ## When to Use paramiko Instead
 
 **Use paramiko if:**
+
 1. **Legacy codebase** - Already using paramiko everywhere
-2. **Simple scripts** - One-off scripts without async
-3. **SFTP only** - Just need file transfers (both work fine)
+1. **Simple scripts** - One-off scripts without async
+1. **SFTP only** - Just need file transfers (both work fine)
 
 **Otherwise, asyncssh is superior for async applications like Mahavishnu.**
 
----
+______________________________________________________________________
 
 ## asyncssh Examples
 
 ### Non-Interactive Command
+
 ```python
 import asyncssh
 
@@ -137,6 +145,7 @@ async def run_command(host: str, command: str):
 ```
 
 ### Interactive Session (PTY)
+
 ```python
 async def interactive_session(host: str):
     conn = await asyncssh.connect(host)
@@ -156,6 +165,7 @@ async def interactive_session(host: str):
 ```
 
 ### SFTP File Transfer
+
 ```python
 async def sftp_upload(host: str, local_path: str, remote_path: str):
     conn = await asyncssh.connect(host)
@@ -167,6 +177,7 @@ async def sftp_upload(host: str, local_path: str, remote_path: str):
 ```
 
 ### Connection Pooling
+
 ```python
 class SSHConnectionPool:
     def __init__(self, host: str, max_size: int = 10):
@@ -190,7 +201,7 @@ class SSHConnectionPool:
         await self._pool.put(conn)
 ```
 
----
+______________________________________________________________________
 
 ## Installation
 
@@ -203,14 +214,16 @@ uv add paramiko
 ```
 
 **Dependencies:**
+
 - `asyncssh` - Pure Python, no external C dependencies
 - `paramiko` - Requires `cryptography` (C extension)
 
----
+______________________________________________________________________
 
 ## Migration from paramiko to asyncssh
 
 ### paramiko Code (Old)
+
 ```python
 import paramiko
 
@@ -223,6 +236,7 @@ client.close()
 ```
 
 ### asyncssh Code (New)
+
 ```python
 import asyncssh
 
@@ -241,31 +255,34 @@ asyncio.run(main())
 ```
 
 **Key Differences:**
-1. `asyncssh.connect()` is async (await required)
-2. `conn.run()` returns result object (no stdin/stdout/stderr tuple)
-3. Connection must be explicitly closed (or use async context manager)
 
----
+1. `asyncssh.connect()` is async (await required)
+1. `conn.run()` returns result object (no stdin/stdout/stderr tuple)
+1. Connection must be explicitly closed (or use async context manager)
+
+______________________________________________________________________
 
 ## Conclusion
 
 **For Mahavishnu: Use asyncssh ✅**
 
 **Reasons:**
+
 1. Native async/await support (perfect for Mahavishnu's architecture)
-2. Better performance (concurrent connections)
-3. Built-in PTY support (interactive sessions)
-4. Active maintenance (2024 releases)
-5. No external C dependencies (pure Python)
+1. Better performance (concurrent connections)
+1. Built-in PTY support (interactive sessions)
+1. Active maintenance (2024 releases)
+1. No external C dependencies (pure Python)
 
 **paramiko is still valid** but is better suited for:
+
 - Synchronous scripts
 - Legacy codebases
 - Simple SFTP operations
 
 **Recommendation:** Implement SSHWorker using `asyncssh` library.
 
----
+______________________________________________________________________
 
 **Last Updated:** 2025-02-03
 **Author:** Claude (Sonnet 4.5)

@@ -1,6 +1,7 @@
 """Terminal-based AI workers for headless execution with Session-Buddy storage."""
 
 import asyncio
+import contextlib
 import json
 import logging
 from typing import Any
@@ -344,10 +345,8 @@ class TerminalAIWorker(BaseWorker):
         """
         output = ""
         if self.session_id:
-            try:
+            with contextlib.suppress(Exception):
                 output = await self.terminal_manager.capture_output(self.session_id, lines=10)
-            except Exception:
-                pass
 
         duration = asyncio.get_event_loop().time() - self._start_time if self._start_time else 0
 

@@ -29,7 +29,7 @@ Implement a three-tier hybrid scheduling architecture for Mahavishnu using:
 │  │ APScheduler  │      │  Oneiric     │         │   Prefect    │ │
 │  │              │      │  Queue       │         │              │ │
 │  │ • In-process │      │  Adapters    │         │ • Deployments│ │
-│  │ • High-freq  │      │  (6 backends)│         │ • UI/observ  │ │
+│  │ • High-freq  │      │  (6 backends)│         │ • UI/observe  │ │
 │  │ • Low-latency│      │  • CloudTasks│         │ • Retries    │ │
 │  └──────────────┘      │  • Redis     │         │ • DAG orchest│ │
 │                       │  • NATS      │         └──────────────┘ │

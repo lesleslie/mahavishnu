@@ -20,7 +20,7 @@ Example:
 """
 
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 import logging
 from typing import Any
 
@@ -29,7 +29,7 @@ from .errors import AdapterError
 from .resilience import ErrorCategory
 
 
-class DLQIntegrationStrategy(str, Enum):
+class DLQIntegrationStrategy(StrEnum):
     """Integration strategy for DLQ with workflow execution."""
 
     AUTOMATIC = "automatic"  # Automatically enqueue all failed workflows
@@ -344,7 +344,7 @@ class DLQIntegration:
                         "adapter": adapter_name,
                         "error": str(e),
                         "error_type": type(e).__name__,
-                        "dlq_reason": "skipped_by_policy" or "dlq_full",
+                        "dlq_reason": "skipped_by_policy",
                     },
                 ) from e
 

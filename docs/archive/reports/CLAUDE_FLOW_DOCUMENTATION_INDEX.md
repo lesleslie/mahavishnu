@@ -100,15 +100,15 @@ model_routing:
   enabled: true
   default_tier: "medium"
   auto_tier_selection: true
-  
+
   small_tier:
     models: ["haiku", "gemma-7b"]
     cost_per_1k_tokens: 0.00025  # 98% savings
-    
+
   medium_tier:
     models: ["sonnet", "mixtral-8x7b"]
     cost_per_1k_tokens: 0.003    # 80% savings
-    
+
   large_tier:
     models: ["opus", "claude-3-opus"]
     cost_per_1k_tokens: 0.015    # 0% savings

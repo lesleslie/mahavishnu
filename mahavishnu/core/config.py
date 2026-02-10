@@ -544,6 +544,7 @@ class LLMConfig(BaseModel):
 
     model_config = {"extra": "forbid"}
 
+
 class OneiricMCPConfig(BaseModel):
     """Oneiric MCP integration configuration for adapter discovery."""
 
@@ -668,7 +669,6 @@ class OneiricMCPConfig(BaseModel):
         return v
 
     model_config = {"extra": "forbid"}
-
 
 
 class MahavishnuSettings(BaseSettings):

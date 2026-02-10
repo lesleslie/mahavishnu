@@ -86,16 +86,19 @@ results = conn.execute(f"""
 ## Troubleshooting
 
 **Ollama not running:**
+
 ```bash
 ollama serve
 ```
 
 **Model not found:**
+
 ```bash
 ollama pull nomic-embed-text
 ```
 
 **Database not initialized:**
+
 ```bash
 python scripts/init_learning_db.py --db-path data/learning.db
 ```

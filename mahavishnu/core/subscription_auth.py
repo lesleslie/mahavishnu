@@ -7,7 +7,7 @@ that use subscription tokens, in addition to the existing JWT authentication.
 from datetime import UTC, datetime, timedelta
 
 UTC = UTC
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import jwt
@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from .errors import AuthenticationError
 
 
-class AuthMethod(str, Enum):
+class AuthMethod(StrEnum):
     """Enumeration of supported authentication methods."""
 
     JWT = "jwt"

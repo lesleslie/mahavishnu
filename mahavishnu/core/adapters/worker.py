@@ -103,7 +103,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
 
         # Distribute repos across workers (round-robin)
         tasks = []
-        for i, worker_id in enumerate(worker_ids):
+        for i, _worker_id in enumerate(worker_ids):
             repo = repos[i % len(repos)] if repos else None
             task_spec = {
                 "prompt": f"Working in {repo}. {prompt}" if repo else prompt,
@@ -169,10 +169,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         workers_active = health.get("workers_active", 0)
         max_concurrent = health.get("max_concurrent", 10)
 
-        if workers_active == 0 or workers_active < max_concurrent:
-            status = "healthy"
-        else:
-            status = "degraded"
+        status = "healthy" if workers_active == 0 or workers_active < max_concurrent else "degraded"
 
         return {
             "status": status,

@@ -175,7 +175,7 @@ def sync_extensions_claude_to_qwen() -> dict[str, Any]:
     logger.info("Syncing Claude plugins → Qwen extensions")
 
     claude_settings = load_json_safely(CLAUDE_SETTINGS)
-    plugins_manifest = load_json_safely(CLAUDE_PLUGINS_FILE)
+    load_json_safely(CLAUDE_PLUGINS_FILE)
 
     stats = {"plugins_found": 0, "errors": []}
 
@@ -185,7 +185,7 @@ def sync_extensions_claude_to_qwen() -> dict[str, Any]:
 
         # Extract plugin names (remove marketplace suffix)
         plugin_names = []
-        for plugin_id in enabled_plugins.keys():
+        for plugin_id in enabled_plugins:
             # Format: "plugin-name@marketplace" → "plugin-name"
             name = plugin_id.split("@")[0]
             plugin_names.append(name)

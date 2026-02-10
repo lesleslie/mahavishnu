@@ -465,7 +465,7 @@ async def test_list_pools():
 
 ### User Testing
 
-**Guerilla Testing Protocol**:
+**Guerrilla Testing Protocol**:
 
 1. **Recruit**: 3-5 developers
 2. **Tasks**:

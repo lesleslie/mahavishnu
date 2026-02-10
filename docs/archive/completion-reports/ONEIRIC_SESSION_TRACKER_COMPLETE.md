@@ -128,7 +128,7 @@ async def _check_availability(self) -> bool:
             # Reset circuit breaker
             self._circuit_open_until = None
             self._consecutive_failures = 0
-    
+
     try:
         session = await self._get_session()
         await session.call_tool("health_check", {})
@@ -169,7 +169,7 @@ async def emit_session_start(...) -> str | None:
 def _get_user_info() -> dict[str, str]:
     username = os.getenv("USER") or os.getenv("USERNAME") or "unknown"
     home = os.path.expanduser("~")
-    
+
     # Sanitize input (truncate, limit length)
     return {
         "username": username[:100],  # Truncate long values

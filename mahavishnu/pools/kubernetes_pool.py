@@ -173,7 +173,7 @@ class KubernetesPool(BasePool):
         start_time = time.time()
         try:
             batch_api = client.BatchV1Api()
-            job = batch_api.create_namespaced_job(
+            batch_api.create_namespaced_job(
                 namespace=self.namespace,
                 body=job_spec,
             )
@@ -345,7 +345,7 @@ class KubernetesPool(BasePool):
         # Store in Session-Buddy via MCP
         memory_items = []
 
-        for task_id, job_name in self._active_jobs.items():
+        for _task_id, job_name in self._active_jobs.items():
             try:
                 logs = self._get_job_logs(job_name)
                 memory_items.append(

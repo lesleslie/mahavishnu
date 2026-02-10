@@ -1,6 +1,7 @@
 """Aggregate memory from pools and sync to Session-Buddy/Akosha."""
 
 import asyncio
+import contextlib
 from datetime import datetime, timedelta
 import logging
 import time
@@ -182,10 +183,8 @@ class MemoryAggregator:
         """
         if self._sync_task:
             self._sync_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._sync_task
-            except asyncio.CancelledError:
-                pass
 
         await self._mcp_client.aclose()
         logger.info("MemoryAggregator stopped")

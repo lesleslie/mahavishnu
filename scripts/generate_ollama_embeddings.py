@@ -392,7 +392,7 @@ async def test_semantic_search(
 
             # Create array string for SQL
             array_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
-            
+
             # Perform semantic search
             search_start = time.time()
             search_results = conn.execute(

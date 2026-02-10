@@ -16,16 +16,17 @@ Architecture:
 - Graceful degradation if encryption unavailable (with warning)
 """
 
-import os
+import base64
 import logging
-import sqlite3
-import shutil
+import os
 from pathlib import Path
+import shutil
+import sqlite3
 from typing import Any
+
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-import base64
 
 logger = logging.getLogger(__name__)
 
@@ -274,11 +275,10 @@ class EncryptedSQLite:
             self._conn = None
 
         # Encrypt database on close
-        if self._using_encryption and self.db_path.exists():
-            if self._encrypt_database():
-                # Delete plaintext database after successful encryption
-                self.db_path.unlink()
-                logger.debug("Plaintext database removed after encryption")
+        if self._using_encryption and self.db_path.exists() and self._encrypt_database():
+            # Delete plaintext database after successful encryption
+            self.db_path.unlink()
+            logger.debug("Plaintext database removed after encryption")
 
         logger.info("Database connection closed and encrypted")
 
@@ -300,9 +300,7 @@ class EncryptedSQLite:
 
         return self._conn.execute(sql, parameters)
 
-    def executemany(
-        self, sql: str, parameters: list[tuple[Any, ...]]
-    ) -> sqlite3.Cursor:
+    def executemany(self, sql: str, parameters: list[tuple[Any, ...]]) -> sqlite3.Cursor:
         """Execute multiple SQL statements with parameters.
 
         Args:
@@ -532,6 +530,7 @@ class EncryptedSQLitePool:
 # KEY MANAGEMENT UTILITIES
 # =============================================================================
 
+
 def generate_encryption_key(length: int = 32) -> str:
     """Generate cryptographically secure encryption key.
 
@@ -575,6 +574,7 @@ def validate_encryption_key(key: str, min_length: int = 32) -> bool:
 # =============================================================================
 # MIGRATION UTILITIES
 # =============================================================================
+
 
 async def migrate_plaintext_to_encrypted(
     plaintext_db: Path | str,

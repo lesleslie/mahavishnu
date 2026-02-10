@@ -11,13 +11,13 @@ Mahavishnu integrates with Oneiric MCP to provide dynamic adapter discovery and 
 ## Table of Contents
 
 1. [Architecture](#architecture)
-2. [Configuration](#configuration)
-3. [MCP Tools](#mcp-tools)
-4. [Python API](#python-api)
-5. [Workflow Integration](#workflow-integration)
-6. [Examples](#examples)
-7. [Testing](#testing)
-8. [Troubleshooting](#troubleshooting)
+1. [Configuration](#configuration)
+1. [MCP Tools](#mcp-tools)
+1. [Python API](#python-api)
+1. [Workflow Integration](#workflow-integration)
+1. [Examples](#examples)
+1. [Testing](#testing)
+1. [Troubleshooting](#troubleshooting)
 
 ## Architecture
 
@@ -120,6 +120,7 @@ export MAHAVISHNU_ONEIRIC_MCP__TLS_CA_PATH=/path/to/ca.crt
 List available adapters with optional filtering.
 
 **Parameters:**
+
 - `project` (optional): Filter by project name
 - `domain` (optional): Filter by domain (e.g., "adapter", "service")
 - `category` (optional): Filter by category (e.g., "storage", "orchestration")
@@ -127,6 +128,7 @@ List available adapters with optional filtering.
 - `use_cache` (optional): Use cached results (default: true)
 
 **Returns:**
+
 ```python
 {
     "count": 5,
@@ -148,6 +150,7 @@ List available adapters with optional filtering.
 ```
 
 **Example:**
+
 ```python
 # List all healthy storage adapters
 result = await oneiric_list_adapters(
@@ -165,6 +168,7 @@ for adapter in result['adapters']:
 Resolve best-matching adapter by domain, category, and provider.
 
 **Parameters:**
+
 - `domain` (required): Adapter domain
 - `category` (required): Adapter category
 - `provider` (required): Adapter provider
@@ -172,6 +176,7 @@ Resolve best-matching adapter by domain, category, and provider.
 - `healthy_only` (optional): Only return healthy adapters (default: true)
 
 **Returns:**
+
 ```python
 {
     "found": true,
@@ -183,6 +188,7 @@ Resolve best-matching adapter by domain, category, and provider.
 ```
 
 **Example:**
+
 ```python
 # Resolve S3 storage adapter
 result = await oneiric_resolve_adapter(
@@ -202,9 +208,11 @@ if result['found']:
 Check health status of a specific adapter.
 
 **Parameters:**
+
 - `adapter_id` (required): Adapter's unique ID
 
 **Returns:**
+
 ```python
 {
     "healthy": true,
@@ -213,6 +221,7 @@ Check health status of a specific adapter.
 ```
 
 **Example:**
+
 ```python
 # Check adapter health before use
 health = await oneiric_check_health("mahavishnu.adapter.storage.s3")
@@ -228,9 +237,11 @@ else:
 Get detailed information about a specific adapter.
 
 **Parameters:**
+
 - `adapter_id` (required): Adapter's unique ID
 
 **Returns:**
+
 ```python
 {
     "found": true,
@@ -252,6 +263,7 @@ Get detailed information about a specific adapter.
 ```
 
 **Example:**
+
 ```python
 # Get adapter details
 result = await oneiric_get_adapter("mahavishnu.adapter.storage.s3")
@@ -267,6 +279,7 @@ if result['found']:
 Invalidate the adapter list cache.
 
 **Returns:**
+
 ```python
 {
     "success": true,
@@ -275,6 +288,7 @@ Invalidate the adapter list cache.
 ```
 
 **Example:**
+
 ```python
 # Invalidate cache after registering new adapter
 await oneiric_invalidate_cache()
@@ -288,6 +302,7 @@ adapters = await oneiric_list_adapters()
 Check overall health of Oneiric MCP integration.
 
 **Returns:**
+
 ```python
 {
     "status": "healthy",
@@ -298,6 +313,7 @@ Check overall health of Oneiric MCP integration.
 ```
 
 **Example:**
+
 ```python
 # Check integration health before critical workflow
 health = await oneiric_health_check()
@@ -716,13 +732,13 @@ logging.getLogger('mahavishnu.core.oneiric_client').setLevel(logging.DEBUG)
 ## Best Practices
 
 1. **Always close client**: Use `async with` or `finally` block
-2. **Enable caching in production**: Set `cache_ttl_sec=300`
-3. **Use circuit breaker**: Prevent cascading failures
-4. **Implement fallback chains**: Try multiple adapters
-5. **Monitor health**: Check adapter health before critical operations
-6. **Handle connection errors**: Graceful degradation when Oneiric MCP unavailable
-7. **Use parallel queries**: Batch adapter discovery for better performance
-8. **Invalidate cache strategically**: After adapter registration changes
+1. **Enable caching in production**: Set `cache_ttl_sec=300`
+1. **Use circuit breaker**: Prevent cascading failures
+1. **Implement fallback chains**: Try multiple adapters
+1. **Monitor health**: Check adapter health before critical operations
+1. **Handle connection errors**: Graceful degradation when Oneiric MCP unavailable
+1. **Use parallel queries**: Batch adapter discovery for better performance
+1. **Invalidate cache strategically**: After adapter registration changes
 
 ## References
 

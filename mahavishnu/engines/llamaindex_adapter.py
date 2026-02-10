@@ -167,7 +167,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         try:
             if OTEL_AVAILABLE and getattr(self.config, "metrics_enabled", False):
                 # Create resource for this adapter
-                resource = Resource.create({"service.name": "mahavishnu-llamaindex"})
+                Resource.create({"service.name": "mahavishnu-llamaindex"})
 
                 # Get tracer and meter providers
                 tracer_provider = trace.get_tracer_provider()
@@ -279,7 +279,6 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             },
         ) as span:
             start_time = time.time()
-            error_occurred = False
 
             try:
                 repo = Path(repo_path)
@@ -357,7 +356,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 # Enhance documents with code graph context
                 with self.tracer.start_as_current_span(
                     "llamaindex.enhance_documents", attributes={"doc.count": len(documents)}
-                ) as enhance_span:
+                ):
                     for doc in documents:
                         file_path = Path(doc.metadata.get("file_path", ""))
                         if file_path.exists():
@@ -458,7 +457,6 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 }
 
             except Exception as e:
-                error_occurred = True
                 error_msg = f"Ingestion failed: {e}"
 
                 # Record error in span

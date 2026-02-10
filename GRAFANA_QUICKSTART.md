@@ -13,31 +13,34 @@
 - ✅ Grafana running on port 3030
 - ✅ Dashboard deployed with 17 panels
 - ✅ SQLite datasource plugin installed
-- ⚠️  DuckDB datasource requires bridge server
+- ⚠️ DuckDB datasource requires bridge server
 
 ## Quick Start Steps
 
 ### Option 1: View Dashboard (No Data)
 
 1. Open Grafana: http://localhost:3030
-2. Login with admin/admin
-3. Navigate to: http://localhost:3030/d/e24a0cf5-28cf-4bc7-82bc-46e876c7e4d9
-4. Dashboard will load but panels may show no data until datasource is configured
+1. Login with admin/admin
+1. Navigate to: http://localhost:3030/d/e24a0cf5-28cf-4bc7-82bc-46e876c7e4d9
+1. Dashboard will load but panels may show no data until datasource is configured
 
 ### Option 2: Deploy Bridge Server (Recommended)
 
 1. **Start the bridge server:**
+
    ```bash
    cd /Users/les/Projects/mahavishnu
    python scripts/duckdb_grafana_server.py --port 8080
    ```
 
-2. **Verify bridge server is running:**
+1. **Verify bridge server is running:**
+
    ```bash
    curl http://localhost:8080/health
    ```
 
-3. **Add JSON datasource in Grafana:**
+1. **Add JSON datasource in Grafana:**
+
    - Go to: http://localhost:3030/datasources
    - Click "Add data source"
    - Select "JSON" (or "Infinity" plugin)
@@ -45,7 +48,8 @@
    - Name: `DuckDB Learning`
    - Save & Test
 
-4. **Update dashboard panels:**
+1. **Update dashboard panels:**
+
    - Edit dashboard
    - Change datasource to JSON
    - Use query names from bridge server
@@ -75,15 +79,18 @@ The bridge server provides 17 pre-configured queries:
 ## Troubleshooting
 
 **Dashboard shows "Not found":**
+
 - Use direct URL: http://localhost:3030/d/e24a0cf5-28cf-4bc7-82bc-46e876c7e4d9
 - Or search for "learning" in Grafana
 
 **Panels show no data:**
+
 - Verify bridge server is running
 - Check datasource connection
 - Ensure database has records
 
 **Database locked:**
+
 - Wait for embedding generation to complete
 - Check: `ps aux | grep generate_ollama_embeddings`
 

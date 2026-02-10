@@ -160,10 +160,7 @@ class PrefectAdapter(OrchestratorAdapter):
                 state = await client.wait_for_flow_run(flow_run_id)
 
                 # Get actual results from flow run
-                if state.is_completed():
-                    results = state.result()
-                else:
-                    results = []
+                results = state.result() if state.is_completed() else []
 
                 return {
                     "status": "completed" if state.is_completed() else "failed",

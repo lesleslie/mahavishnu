@@ -2,13 +2,14 @@
 
 from typing import Any
 
-from ...messaging import MessagePriority
-
-from ..auth import require_mcp_auth
 from ...core.permissions import Permission, RBACManager
+from ...messaging import MessagePriority
+from ..auth import require_mcp_auth
 
 
-def register_session_buddy_tools(server, session_manager, mcp_client, rbac_manager: RBACManager | None = None):
+def register_session_buddy_tools(
+    server, session_manager, mcp_client, rbac_manager: RBACManager | None = None
+):
     """Register Session Buddy integration tools with the MCP server."""
 
     @server.tool()
@@ -17,7 +18,9 @@ def register_session_buddy_tools(server, session_manager, mcp_client, rbac_manag
         required_permission=Permission.READ_REPO,
         require_repo_param="project_path",
     )
-    async def index_code_graph(project_path: str, include_docs: bool = True, user_id: str | None = None) -> dict[str, Any]:
+    async def index_code_graph(
+        project_path: str, include_docs: bool = True, user_id: str | None = None
+    ) -> dict[str, Any]:
         """Index codebase structure for better context in Session Buddy.
 
         Args:
@@ -50,7 +53,9 @@ def register_session_buddy_tools(server, session_manager, mcp_client, rbac_manag
         required_permission=Permission.READ_REPO,
         require_repo_param="project_path",
     )
-    async def get_function_context(project_path: str, function_name: str, user_id: str | None = None) -> dict[str, Any]:
+    async def get_function_context(
+        project_path: str, function_name: str, user_id: str | None = None
+    ) -> dict[str, Any]:
         """Get caller/callee context for a function for Session Buddy.
 
         Args:
@@ -81,7 +86,9 @@ def register_session_buddy_tools(server, session_manager, mcp_client, rbac_manag
         required_permission=Permission.READ_REPO,
         require_repo_param="project_path",
     )
-    async def find_related_code(project_path: str, file_path: str, user_id: str | None = None) -> dict[str, Any]:
+    async def find_related_code(
+        project_path: str, file_path: str, user_id: str | None = None
+    ) -> dict[str, Any]:
         """Find code related by imports/calls for Session Buddy.
 
         Args:
@@ -237,4 +244,3 @@ def register_session_buddy_tools(server, session_manager, mcp_client, rbac_manag
             return {"status": "error", "error": f"Failed to list project messages: {e}"}
 
     print("✅ Registered 7 Session Buddy integration tools with MCP server (with authorization)")
-

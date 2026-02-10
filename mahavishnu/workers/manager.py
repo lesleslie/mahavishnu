@@ -193,7 +193,7 @@ class WorkerManager:
             return worker_id, result
 
         # Execute all tasks concurrently
-        coros = [execute_one(wid, task) for wid, task in zip(worker_ids, tasks)]
+        coros = [execute_one(wid, task) for wid, task in zip(worker_ids, tasks, strict=False)]
         results = await asyncio.gather(*coros)
 
         logger.info(f"Completed {len(results)} worker tasks")

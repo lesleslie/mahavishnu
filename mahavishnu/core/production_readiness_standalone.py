@@ -399,7 +399,7 @@ class ProductionReadinessChecker:
 
         try:
             # Run pytest with coverage (unit tests only for faster execution)
-            result = subprocess.run(
+            subprocess.run(
                 ["pytest", "-m", "unit", "--cov=mahavishnu", "--cov-report=xml", "--tb=no", "-q"],
                 cwd=self.project_root,
                 capture_output=True,

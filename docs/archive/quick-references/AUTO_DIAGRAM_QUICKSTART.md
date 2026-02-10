@@ -81,13 +81,13 @@ from mahavishnu.integrations.auto_diagram import DiagramGenerator
 
 async def main():
     generator = DiagramGenerator()
-    
+
     # Generate diagram
     diagram = await generator.generate_architecture_diagram(
         root_path=".",
         name="my_architecture",
     )
-    
+
     # Export
     await generator.export_diagram(diagram, "architecture.svg")
 

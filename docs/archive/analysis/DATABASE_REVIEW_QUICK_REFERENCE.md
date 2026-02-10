@@ -84,7 +84,7 @@
 ### Recommended Additions
 **P1**: `idx_executions_tier_covering` - Covering index for tier performance dashboard
 **P2**: Partial indexes for successful/failed executions
-**P2**: BRIN index for large-scale time-series data
+**P2**: BRING index for large-scale time-series data
 
 ---
 

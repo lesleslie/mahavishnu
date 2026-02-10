@@ -261,7 +261,7 @@ class MessageBus:
         Returns:
             Statistics dictionary
         """
-        queue_sizes = {pool_id: self.get_queue_size(pool_id) for pool_id in self._queues.keys()}
+        queue_sizes = {pool_id: self.get_queue_size(pool_id) for pool_id in self._queues}
 
         subscriber_counts = {
             msg_type.value: len(handlers) for msg_type, handlers in self._subscribers.items()
