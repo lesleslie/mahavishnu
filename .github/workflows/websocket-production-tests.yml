@@ -1,0 +1,241 @@
+# GitHub Actions Workflow: WebSocket Production Tests
+# Runs production integration tests for WebSocket deployment
+
+name: WebSocket Production Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'mahavishnu/websocket/**'
+      - 'mcp-common/mcp_common/websocket/**'
+      - 'tests/production/**'
+      - '.github/workflows/websocket-production-tests.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'mahavishnu/websocket/**'
+      - 'mcp-common/mcp_common/websocket/**'
+      - 'tests/production/**'
+  workflow_dispatch:
+    inputs:
+      run_slow_tests:
+        description: 'Run slow performance tests'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.11'
+  MAHAVISHNU_JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+
+jobs:
+  # Pre-deployment checks
+  pre-deployment-checks:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio pytest-cov
+          pip install websockets cryptography
+          pip install -e ./mcp-common
+          pip install -e .
+
+      - name: Run linting
+        run: |
+          pip install ruff
+          ruff check mahavishnu/websocket/
+          ruff check tests/production/
+
+      - name: Type checking
+        run: |
+          pip install mypy
+          mypy mahavishnu/websocket/
+
+  # Unit tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: pre-deployment-checks
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio pytest-cov
+          pip install websockets cryptography
+          pip install -e ./mcp-common
+          pip install -e .
+
+      - name: Run unit tests
+        run: |
+          pytest tests/unit/ -v -m "unit" --cov=mahavishnu --cov-report=xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unit-tests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  # Production integration tests
+  production-tests:
+    name: Production Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    strategy:
+      matrix:
+        test-group:
+          - authentication
+          - tls
+          - lifecycle
+          - performance
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio pytest-cov pytest-timeout
+          pip install websockets cryptography aiohttp
+          pip install -e ./mcp-common
+          pip install -e .
+
+      - name: Generate test certificate
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout /tmp/key.pem \
+            -out /tmp/cert.pem \
+            -days 1 \
+            -subj "/CN=localhost"
+
+      - name: Run production tests
+        env:
+          TEST_CERT_PATH: /tmp/cert.pem
+          TEST_KEY_PATH: /tmp/key.pem
+        run: |
+          if [ "${{ matrix.test-group }}" == "performance" ]; then
+            if [ "${{ github.event.inputs.run_slow_tests }}" != "true" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+              echo "Skipping slow performance tests (use workflow_dispatch to run)"
+              exit 0
+            fi
+          fi
+
+          pytest tests/production/test_websocket_deployment.py \
+            -v \
+            -m "production and ${{ matrix.test-group }}" \
+            --timeout=300 \
+            --cov=mahavishnu \
+            --cov-report=xml \
+            --cov-report=html
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.test-group }}
+          path: |
+            htmlcov/
+            .coverage
+          retention-days: 7
+
+      - name: Upload coverage
+        if: success()
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: production-${{ matrix.test-group }}
+          name: production-${{ matrix.test-group }}
+          fail_ci_if_error: false
+
+  # Security scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: pre-deployment-checks
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit safety
+          pip install -e ./mcp-common
+          pip install -e .
+
+      - name: Run Bandit security linter
+        run: |
+          bandit -r mahavishnu/websocket/ -f json -o bandit-report.json || true
+
+      - name: Check for security vulnerabilities
+        run: |
+          safety check --json --output safety-report.json || true
+
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+          retention-days: 30
+
+  # Pre-deployment checklist
+  pre-deployment-checklist:
+    name: Pre-deployment Checklist
+    runs-on: ubuntu-latest
+    needs: [unit-tests, production-tests, security-scan]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: All checks passed
+        run: |
+          echo "Production Test Summary"
+          echo "======================="
+          echo ""
+          echo "All tests passed successfully!"
+          echo ""
+          echo "Pre-deployment checklist:"
+          echo "  [ ] Review test results"
+          echo "  [ ] Update configuration files"
+          echo "  [ ] Backup current deployment"
+          echo "  [ ] Deploy to staging first"
+          echo "  [ ] Run smoke tests on staging"
+          echo "  [ ] Deploy to production"
+          echo "  [ ] Verify production deployment"
+          echo "  [ ] Monitor logs and metrics"
