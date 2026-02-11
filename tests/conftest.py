@@ -8,59 +8,69 @@ allowing the production readiness checker to run only unit tests with the
 import pytest
 
 # Import fixtures from fixtures package for global availability
-from tests.fixtures.workflow_fixtures import (
-    WorkflowFixtures,
-    sample_workflow,
-    completed_workflow,
-    failed_workflow,
-    partial_workflow,
-    pending_workflow,
-    multiple_workflows,
-    mock_workflow_state_manager,
-    sample_task,
-    sample_repos,
-    workflow_fixtures,
-)
+# Use try/except to handle cases where fixtures might not be available
+try:
+    from tests.fixtures.workflow_fixtures import (
+        WorkflowFixtures,
+        sample_workflow,
+        completed_workflow,
+        failed_workflow,
+        partial_workflow,
+        pending_workflow,
+        multiple_workflows,
+        mock_workflow_state_manager,
+        sample_task,
+        sample_repos,
+        workflow_fixtures,
+    )
+except ImportError:
+    pass
 
-from tests.fixtures.shell_fixtures import (
-    ShellFixtures,
-    mock_shell_output,
-    mock_repos_list,
-    mock_workflow_status,
-    mock_error_output,
-    mock_terminal_output,
-    mock_shell_commands,
-    mock_role_output,
-    mock_opensearch_logs,
-    mock_health_check_output,
-    shell_fixtures,
-    mock_rich_console,
-    mock_workflow_formatter,
-    mock_log_formatter,
-    mock_repo_formatter,
-)
+try:
+    from tests.fixtures.shell_fixtures import (
+        ShellFixtures,
+        mock_shell_output,
+        mock_repos_list,
+        mock_workflow_status,
+        mock_error_output,
+        mock_terminal_output,
+        mock_shell_commands,
+        mock_role_output,
+        mock_opensearch_logs,
+        mock_health_check_output,
+        shell_fixtures,
+        mock_rich_console,
+        mock_workflow_formatter,
+        mock_log_formatter,
+        mock_repo_formatter,
+    )
+except ImportError:
+    pass
 
-from tests.fixtures.conftest import (
-    IntegrationFixtures,
-    integration_fixtures,
-    mock_config,
-    mock_app,
-    mock_adapter,
-    temp_dir,
-    temp_git_repo,
-    temp_config_file,
-    temp_repos_file,
-    mock_event_loop,
-    sample_user_id,
-    sample_workflow_id,
-    sample_timestamp,
-    clean_env,
-    test_env_vars,
-    async_mock_app,
-    mock_performance_tracker,
-    mock_logger,
-    mock_filesystem,
-)
+try:
+    from tests.fixtures.conftest import (
+        IntegrationFixtures,
+        integration_fixtures,
+        mock_config,
+        mock_app,
+        mock_adapter,
+        temp_dir,
+        temp_git_repo,
+        temp_config_file,
+        temp_repos_file,
+        mock_event_loop,
+        sample_user_id,
+        sample_workflow_id,
+        sample_timestamp,
+        clean_env,
+        test_env_vars,
+        async_mock_app,
+        mock_performance_tracker,
+        mock_logger,
+        mock_filesystem,
+    )
+except ImportError:
+    pass
 
 
 def pytest_collection_modifyitems(items, config):
