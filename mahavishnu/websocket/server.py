@@ -7,7 +7,6 @@ about workflow execution, worker pool status, and orchestration events.
 from __future__ import annotations
 
 import logging
-import uuid
 from typing import Any, Optional
 
 from mcp_common.websocket import (
@@ -22,6 +21,9 @@ from mcp_common.websocket.protocol import EventTypes
 
 # Import authentication
 from mahavishnu.websocket.auth import get_authenticator
+
+# Import TLS configuration
+from mahavishnu.websocket.tls_config import load_ssl_context, get_websocket_tls_config
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,21 @@ class MahavishnuWebSocketServer(WebSocketServer):
         >>> pool_mgr = PoolManager()
         >>> server = MahavishnuWebSocketServer(pool_manager=pool_mgr)
         >>> await server.start()
+
+    With TLS:
+        >>> server = MahavishnuWebSocketServer(
+        ...     pool_manager=pool_mgr,
+        ...     cert_file="/path/to/cert.pem",
+        ...     key_file="/path/to/key.pem"
+        ... )
+        >>> await server.start()
+
+    With auto-generated development certificate:
+        >>> server = MahavishnuWebSocketServer(
+        ...     pool_manager=pool_mgr,
+        ...     tls_enabled=True
+        ... )
+        >>> await server.start()
     """
 
     def __init__(
@@ -63,6 +80,12 @@ class MahavishnuWebSocketServer(WebSocketServer):
         max_connections: int = 1000,
         message_rate_limit: int = 100,
         require_auth: bool = False,
+        cert_file: str | None = None,
+        key_file: str | None = None,
+        ca_file: str | None = None,
+        tls_enabled: bool = False,
+        verify_client: bool = False,
+        auto_cert: bool = False,
     ):
         """Initialize Mahavishnu WebSocket server.
 
@@ -73,8 +96,32 @@ class MahavishnuWebSocketServer(WebSocketServer):
             max_connections: Maximum concurrent connections (default: 1000)
             message_rate_limit: Messages per second per connection (default: 100)
             require_auth: Require JWT authentication for connections
+            cert_file: Path to TLS certificate file (PEM format)
+            key_file: Path to TLS private key file (PEM format)
+            ca_file: Path to CA file for client verification
+            tls_enabled: Enable TLS (generates self-signed cert if no cert provided)
+            verify_client: Verify client certificates
+            auto_cert: Auto-generate self-signed certificate for development
         """
         authenticator = get_authenticator()
+
+        # Load TLS configuration if enabled
+        ssl_context = None
+        if tls_enabled or cert_file or key_file:
+            tls_config = load_ssl_context(
+                cert_file=cert_file,
+                key_file=key_file,
+                ca_file=ca_file,
+                verify_client=verify_client,
+            )
+            ssl_context = tls_config["ssl_context"]
+
+        # If TLS enabled but no context yet, check environment
+        if tls_enabled and ssl_context is None:
+            env_config = get_websocket_tls_config()
+            if env_config["tls_enabled"] and env_config["cert_file"]:
+                tls_config = load_ssl_context()
+                ssl_context = tls_config["ssl_context"]
 
         super().__init__(
             host=host,
@@ -83,11 +130,19 @@ class MahavishnuWebSocketServer(WebSocketServer):
             message_rate_limit=message_rate_limit,
             authenticator=authenticator,
             require_auth=require_auth,
+            ssl_context=ssl_context,
+            cert_file=cert_file,
+            key_file=key_file,
+            ca_file=ca_file,
+            tls_enabled=tls_enabled,
+            verify_client=verify_client,
+            auto_cert=auto_cert,
         )
 
         self.pool_manager = pool_manager
         logger.info(
-            f"MahavishnuWebSocketServer initialized: {host}:{port}"
+            f"MahavishnuWebSocketServer initialized: {host}:{port} "
+            f"(TLS: {ssl_context is not None})"
         )
 
     async def on_connect(self, websocket: Any, connection_id: str) -> None:
@@ -110,6 +165,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
                 "server": "mahavishnu",
                 "message": "Connected to Mahavishnu orchestration",
                 "authenticated": user is not None,
+                "secure": self.ssl_context is not None,
             },
         )
         await websocket.send(WebSocketProtocol.encode(welcome))
@@ -432,3 +488,6 @@ class MahavishnuWebSocketServer(WebSocketServer):
         from datetime import datetime, UTC
 
         return datetime.now(UTC).isoformat()
+
+
+import uuid
