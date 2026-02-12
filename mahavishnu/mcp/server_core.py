@@ -1228,6 +1228,9 @@ class FastMCPServer:
         # Register Session Buddy integration tools
         self._register_session_buddy_tools()
 
+        # Register Git analytics tools for symbiotic ecosystem
+        self._register_git_analytics_tools()
+
         # Register worker orchestration tools if enabled
         self._register_worker_tools()
 
@@ -1268,6 +1271,13 @@ class FastMCPServer:
 
         register_session_buddy_tools(self.server, self.app, self.mcp_client)
         logger.info("Registered Session Buddy integration tools with MCP server")
+
+    def _register_git_analytics_tools(self):
+        """Register Git analytics tools for symbiotic ecosystem integration."""
+        from ..mcp.tools.git_analytics import register_git_analytics_tools
+
+        register_git_analytics_tools(self.server, self.mcp_client)
+        logger.info("Registered 3 Git analytics tools with MCP server")
 
     def _register_repository_messaging_tools(self):
         """Register repository messaging tools with MCP server."""

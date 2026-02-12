@@ -28,6 +28,15 @@ from .production_cli import add_production_commands
 # Import sync CLI
 from .sync_cli import add_sync_commands
 
+# Import content ingestion CLI
+from .ingestion_cli import add_ingestion_commands
+
+# Import quality evaluation CLI
+from .quality_cli import add_quality_commands
+
+# Import adaptive routing CLI
+from .routing_cli import add_routing_commands
+
 app = typer.Typer()
 
 
@@ -89,6 +98,11 @@ app.add_typer(mcp_app, name="mcp")
 ecosystem_app = typer.Typer(help="Ecosystem configuration and management")
 app.add_typer(ecosystem_app, name="ecosystem")
 
+# Content ingestion
+add_ingestion_commands()
+
+# Quality evaluation
+add_quality_commands()
 
 @mcp_app.command("start")
 def mcp_start(
@@ -583,6 +597,9 @@ add_coordination_commands(app)
 
 # Add metrics commands
 add_metrics_commands(app)
+
+# Add routing commands
+add_routing_commands(app)
 
 # Worker management
 workers_app = typer.Typer(help="Worker orchestration and management")

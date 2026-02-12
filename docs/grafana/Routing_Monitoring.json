@@ -1,0 +1,530 @@
+{
+  "dashboard": {
+    "title": "Mahavishnu Adaptive Routing Monitoring",
+    "description": "Real-time monitoring for adaptive routing with StatisticalRouter, CostOptimizer, and A/B testing",
+    "tags": ["mahavishnu", "routing", "adaptive", "monitoring"],
+    "timezone": "UTC",
+    "refresh": "10s",
+    "schemaVersion": 35,
+    "version": "0.0.1",
+    "uid": "mahavishnu-routing-monitoring",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Routing Decisions by Adapter",
+        "description": "Number of routing decisions made per adapter",
+        "type": "stat",
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum by (adapter) (mahavishnu_routing_decisions_total{server=\"mahavishnu\"})",
+            "refId": "A",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "legendFormat": "{{adapter}}",
+            "hide": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "showLegend": true,
+            "placement": "right"
+          },
+          "tooltip": {
+            "mode": "multi"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Adapter Execution Success Rate",
+        "description": "Success rate for each adapter (calculated from success/failure counts)",
+        "type": "gauge",
+        "gridPos": {
+          "x": 6,
+          "y": 0,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "(\n  sum(mahavishnu_adapter_executions_total{server=\"mahavishnu\",status=\"success\"}) by (adapter)\n  /\n  sum(mahavishnu_adapter_executions_total{server=\"mahavishnu\"}) by (adapter)\n) * 100\n",
+            "refId": "B",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "legendFormat": "{{adapter}}",
+            "hide": false
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 100,
+            "unit": "percent",
+            "decimals": 1
+          }
+        },
+        "options": {
+          "orientation": "auto",
+          "reduceOptions": [
+            {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
+            }
+          ]
+        }
+      },
+      {
+        "id": 3,
+        "title": "Adapter Latency Distribution",
+        "description": "Latency percentiles for each adapter",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 4,
+          "w": 8,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(mahavishnu_adapter_latency_seconds_bucket{server=\"mahavishnu\"}[5m])) by (adapter, le))",
+            "refId": "C",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "legendFormat": "p50 - {{adapter}}",
+            "hide": false
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(mahavishnu_adapter_latency_seconds_bucket{server=\"mahavishnu\"}[5m])) by (adapter, le))",
+            "refId": "D",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "legendFormat": "p95 - {{adapter}}",
+            "hide": false
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(mahavishnu_adapter_latency_seconds_bucket{server=\"mahavishnu\"}[5m])) by (adapter, le))",
+            "refId": "E",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "legendFormat": "p99 - {{adapter}}",
+            "hide": false
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "showLegend": true
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Total Fallback Events",
+        "description": "Number of times routing fell back to alternative adapters",
+        "type": "stat",
+        "gridPos": {
+          "x": 8,
+          "y": 4,
+          "w": 4,
+          "h": 3
+        },
+        "targets": [
+          {
+            "expr": "sum(mahavishnu_routing_fallbacks_total{server=\"mahavishnu\"})",
+            "refId": "F",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "hide": false
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "orientation": "auto"
+        }
+      },
+      {
+        "id": 5,
+        "title": "Fallback Chain Length Distribution",
+        "description": "Distribution of how many adapters were tried before success",
+        "type": "heatmap",
+        "gridPos": {
+          "x": 0,
+          "y": 10,
+          "w": 6,
+          "h": 5
+        },
+        "targets": [
+          {
+            "expr": "sum(mahavishnu_routing_fallback_chain_length_bucket{server=\"mahavishnu\"}) by (le)",
+            "refId": "G",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "hide": false
+          }
+        ],
+        "options": {
+          "calculate": false,
+          "cellGap": 2,
+          "cellRadius": 0,
+          "cellValues": {},
+          "color": {
+            "exponent": 0.5,
+            "fill": "dark-orange",
+            "mode": "spectrum",
+            "reverse": false,
+            "scale": "exponential",
+            "scheme": "Oranges",
+            "steps": 128
+          },
+          "exemplars": {
+            "color": "rgba(255,0,255,255)"
+          },
+          "legend": {
+            "showLegend": false
+          },
+          "rowsFrame": 8,
+          "tooltip": {
+            "show": true,
+            "yHistogram": false
+          },
+          "yAxis": {
+            "axisFormat": "short"
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Routing Cost Over Time",
+        "description": "Cumulative routing costs in USD",
+        "type": "graph",
+        "gridPos": {
+          "x": 6,
+          "y": 10,
+          "w": 6,
+          "h": 5
+        },
+        "targets": [
+          {
+            "expr": "sum(increase(mahavishnu_routing_cost_usd_total{server=\"mahavishnu\"}[5m])) by (adapter)",
+            "refId": "H",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "legendFormat": "{{adapter}}",
+            "hide": false
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "decimals": 4
+          }
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "showLegend": true
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Cost Distribution by Adapter",
+        "description": "Histogram of routing costs per adapter",
+        "type": "heatmap",
+        "gridPos": {
+          "x": 0,
+          "y": 15,
+          "w": 8,
+          "h": 5
+        },
+        "targets": [
+          {
+            "expr": "sum(increase(mahavishnu_routing_cost_usd_distribution_bucket{server=\"mahavishnu\"}[5m])) by (le, adapter)",
+            "refId": "I",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "hide": false
+          }
+        ],
+        "options": {
+          "calculate": false,
+          "cellGap": 2,
+          "cellRadius": 0,
+          "color": {
+            "exponent": 0.5,
+            "fill": "dark-blue",
+            "mode": "spectrum",
+            "reverse": false,
+            "scale": "exponential",
+            "scheme": "Blues",
+            "steps": 128
+          },
+          "legend": {
+            "showLegend": true
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Current Budget Utilization",
+        "description": "Current cost vs budget for each budget type",
+        "type": "gauge",
+        "gridPos": {
+          "x": 8,
+          "y": 15,
+          "w": 4,
+          "h": 5
+        },
+        "targets": [
+          {
+            "expr": "mahavishnu_routing_cost_usd_current{server=\"mahavishnu\"}",
+            "refId": "J",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "legendFormat": "{{budget_type}}",
+            "hide": false
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 10
+                },
+                {
+                  "color": "red",
+                  "value": 50
+                }
+              ]
+            }
+          }
+        },
+        "options": {
+          "orientation": "auto",
+          "reduceOptions": [
+            {
+              "calcs": ["lastNotNull"],
+              "fields": "",
+              "values": false
+            }
+          ],
+          "text": {
+            "titleSize": 12,
+            "valueSize": 32
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Budget Alert Count",
+        "description": "Number of budget alerts by severity",
+        "type": "stat",
+        "gridPos": {
+          "x": 0,
+          "y": 20,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum by (severity) (increase(mahavishnu_budget_alerts_total{server=\"mahavishnu\"}[1h]))",
+            "refId": "K",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "legendFormat": "{{severity}}",
+            "hide": false
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none"
+        }
+      },
+      {
+        "id": 10,
+        "title": "Active A/B Tests",
+        "description": "Current number of active A/B tests",
+        "type": "stat",
+        "gridPos": {
+          "x": 6,
+          "y": 20,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "mahavishnu_ab_tests_active{server=\"mahavishnu\"}",
+            "refId": "L",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "hide": false
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "blue",
+                  "value": 1
+                },
+                {
+                  "color": "orange",
+                  "value": 5
+                }
+              ]
+            }
+          }
+        },
+        "options": {
+          "orientation": "auto",
+          "colorMode": "value",
+          "graphMode": "area"
+        }
+      },
+      {
+        "id": 11,
+        "title": "Routing Decision Latency",
+        "description": "Time taken to make routing decisions",
+        "type": "graph",
+        "gridPos": {
+          "x": 6,
+          "y": 8,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(mahavishnu_routing_latency_seconds_bucket{server=\"mahavishnu\"}[5m])) by (le))",
+            "refId": "M",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "legendFormat": "p50",
+            "hide": false
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(mahavishnu_routing_latency_seconds_bucket{server=\"mahavishnu\"}[5m])) by (le))",
+            "refId": "N",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "legendFormat": "p95",
+            "hide": false
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(mahavishnu_routing_latency_seconds_bucket{server=\"mahavishnu\"}[5m])) by (le))",
+            "refId": "O",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "legendFormat": "p99",
+            "hide": false
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "showLegend": true
+          }
+        }
+      },
+      {
+        "id": 12,
+        "title": "Task Type Distribution",
+        "description": "Routing decisions by task type",
+        "type": "piechart",
+        "gridPos": {
+          "x": 0,
+          "y": 24,
+          "w": 6,
+          "h": 5
+        },
+        "targets": [
+          {
+            "expr": "sum by (task_type) (mahavishnu_routing_decisions_total{server=\"mahavishnu\"})",
+            "refId": "P",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "hide": false
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "showLegend": true,
+            "values": ["value", "percent"]
+          },
+          "tooltip": {
+            "mode": "single",
+            "sort": "none"
+          }
+        }
+      }
+    ]
+  }
+}

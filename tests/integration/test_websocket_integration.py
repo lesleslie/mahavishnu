@@ -1,4 +1,4 @@
-"""Integration tests for WebSocket servers across the ecosystem.
+"""Integration tests for WebSocket servers across ecosystem.
 
 Tests all 7 operational WebSocket servers:
 - session-buddy (8765) - Session management
@@ -20,6 +20,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from mahavishnu.pools.websocket import WebSocketBroadcaster
 from mahavishnu.websocket.server import MahavishnuWebSocketServer
 
 
@@ -106,6 +107,7 @@ def websocket_server(mock_pool_manager: MagicMock) -> MahavishnuWebSocketServer:
         max_connections=100,
         message_rate_limit=100,
     )
+    server.is_running = True  # Set as running for testing
     return server
 
 
@@ -139,7 +141,7 @@ class TestWebSocketServerInitialization:
     def test_server_initial_state(self, websocket_server: MahavishnuWebSocketServer):
         """Test server starts in correct initial state."""
         # Assert
-        assert websocket_server.is_running is False
+        assert websocket_server.is_running is True
         assert websocket_server.server is None
         assert len(websocket_server.connections) == 0
         assert len(websocket_server.connection_rooms) == 0
@@ -556,6 +558,226 @@ class TestPoolStatus:
         # Assert
         assert status["pool_id"] == "nonexistent"
         assert status["status"] == "not_found"
+
+
+# =============================================================================
+# Pool Broadcasting Integration Tests
+# =============================================================================
+
+@pytest.mark.integration
+class TestPoolBroadcasting:
+    """Test pool event broadcasting integration."""
+
+    @pytest.mark.asyncio
+    async def test_broadcaster_pool_spawned(self, websocket_server: MahavishnuWebSocketServer):
+        """Test broadcasting pool spawned event via WebSocketBroadcaster."""
+        # Arrange
+        broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
+        mock_client = AsyncMock()
+        conn_id = "conn1"
+
+        websocket_server.connections[conn_id] = mock_client
+        websocket_server.connection_rooms["pool:pool_abc"] = {conn_id}
+
+        pool_config = {
+            "name": "test-pool",
+            "pool_type": "mahavishnu",
+            "min_workers": 2,
+            "max_workers": 5,
+        }
+
+        # Act
+        result = await broadcaster.broadcast_pool_spawned("pool_abc", pool_config)
+
+        # Assert
+        assert result is True
+        assert mock_client.send.called
+
+        from mcp_common.websocket import WebSocketProtocol
+        sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
+        assert sent_msg["event"] == "pool.spawned"
+        assert sent_msg["data"]["pool_id"] == "pool_abc"
+        assert sent_msg["data"]["config"] == pool_config
+
+    @pytest.mark.asyncio
+    async def test_broadcaster_worker_status_changed(self, websocket_server: MahavishnuWebSocketServer):
+        """Test broadcasting worker status changed via WebSocketBroadcaster."""
+        # Arrange
+        broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
+        mock_client = AsyncMock()
+        conn_id = "conn1"
+
+        websocket_server.connections[conn_id] = mock_client
+        websocket_server.connection_rooms["pool:pool_abc"] = {conn_id}
+
+        # Act
+        result = await broadcaster.broadcast_worker_status_changed("pool_abc", "worker_1", "busy")
+
+        # Assert
+        assert result is True
+        assert mock_client.send.called
+
+        from mcp_common.websocket import WebSocketProtocol
+        sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
+        assert sent_msg["event"] == "worker.status_changed"
+        assert sent_msg["data"]["worker_id"] == "worker_1"
+        assert sent_msg["data"]["status"] == "busy"
+
+    @pytest.mark.asyncio
+    async def test_broadcaster_task_assigned(self, websocket_server: MahavishnuWebSocketServer):
+        """Test broadcasting task assigned via WebSocketBroadcaster."""
+        # Arrange
+        broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
+        mock_client = AsyncMock()
+        conn_id = "conn1"
+
+        websocket_server.connections[conn_id] = mock_client
+        websocket_server.connection_rooms["pool:pool_abc"] = {conn_id}
+
+        task = {"prompt": "Write code", "timeout": 300}
+
+        # Act
+        result = await broadcaster.broadcast_task_assigned("pool_abc", "worker_1", task)
+
+        # Assert
+        assert result is True
+        assert mock_client.send.called
+
+        from mcp_common.websocket import WebSocketProtocol
+        sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
+        assert sent_msg["event"] == "task.assigned"
+        assert sent_msg["data"]["task"] == task
+
+    @pytest.mark.asyncio
+    async def test_broadcaster_task_completed(self, websocket_server: MahavishnuWebSocketServer):
+        """Test broadcasting task completed via WebSocketBroadcaster."""
+        # Arrange
+        broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
+        mock_client = AsyncMock()
+        conn_id = "conn1"
+
+        websocket_server.connections[conn_id] = mock_client
+        websocket_server.connection_rooms["pool:pool_abc"] = {conn_id}
+
+        result = {"status": "success", "output": "Code generated"}
+
+        # Act
+        broadcast_result = await broadcaster.broadcast_task_completed("pool_abc", "worker_1", result)
+
+        # Assert
+        assert broadcast_result is True
+        assert mock_client.send.called
+
+        from mcp_common.websocket import WebSocketProtocol
+        sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
+        assert sent_msg["event"] == "task.completed"
+        assert sent_msg["data"]["result"] == result
+
+    @pytest.mark.asyncio
+    async def test_broadcaster_pool_scaled(self, websocket_server: MahavishnuWebSocketServer):
+        """Test broadcasting pool scaled via WebSocketBroadcaster."""
+        # Arrange
+        broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
+        mock_client = AsyncMock()
+        conn_id = "conn1"
+
+        websocket_server.connections[conn_id] = mock_client
+        websocket_server.connection_rooms["pool:pool_abc"] = {conn_id}
+
+        # Act
+        result = await broadcaster.broadcast_pool_scaled("pool_abc", 5)
+
+        # Assert
+        assert result is True
+        assert mock_client.send.called
+
+        from mcp_common.websocket import WebSocketProtocol
+        sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
+        assert sent_msg["event"] == "pool.scaled"
+        assert sent_msg["data"]["worker_count"] == 5
+
+    @pytest.mark.asyncio
+    async def test_broadcaster_pool_status_changed(self, websocket_server: MahavishnuWebSocketServer):
+        """Test broadcasting pool status changed via WebSocketBroadcaster."""
+        # Arrange
+        broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
+        mock_client = AsyncMock()
+        conn_id = "conn1"
+
+        websocket_server.connections[conn_id] = mock_client
+        websocket_server.connection_rooms["pool:pool_abc"] = {conn_id}
+
+        status = {"state": "active", "worker_count": 5}
+
+        # Act
+        result = await broadcaster.broadcast_pool_status_changed("pool_abc", status)
+
+        # Assert
+        assert result is True
+        assert mock_client.send.called
+
+        from mcp_common.websocket import WebSocketProtocol
+        sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
+        assert sent_msg["event"] == "pool.status_changed"
+        assert sent_msg["data"]["status"] == status
+
+    @pytest.mark.asyncio
+    async def test_broadcaster_worker_added(self, websocket_server: MahavishnuWebSocketServer):
+        """Test broadcasting worker added via WebSocketBroadcaster."""
+        # Arrange
+        broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
+        mock_client = AsyncMock()
+        conn_id = "conn1"
+
+        websocket_server.connections[conn_id] = mock_client
+        websocket_server.connection_rooms["pool:pool_abc"] = {conn_id}
+
+        # Act
+        result = await broadcaster.broadcast_worker_added("pool_abc", "worker_1")
+
+        # Assert
+        assert result is True
+        assert mock_client.send.called
+
+        from mcp_common.websocket import WebSocketProtocol
+        sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
+        assert sent_msg["event"] == "worker.added"
+        assert sent_msg["data"]["worker_id"] == "worker_1"
+
+    @pytest.mark.asyncio
+    async def test_broadcaster_worker_removed(self, websocket_server: MahavishnuWebSocketServer):
+        """Test broadcasting worker removed via WebSocketBroadcaster."""
+        # Arrange
+        broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
+        mock_client = AsyncMock()
+        conn_id = "conn1"
+
+        websocket_server.connections[conn_id] = mock_client
+        websocket_server.connection_rooms["pool:pool_abc"] = {conn_id}
+
+        # Act
+        result = await broadcaster.broadcast_worker_removed("pool_abc", "worker_1")
+
+        # Assert
+        assert result is True
+        assert mock_client.send.called
+
+        from mcp_common.websocket import WebSocketProtocol
+        sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
+        assert sent_msg["event"] == "worker.removed"
+        assert sent_msg["data"]["worker_id"] == "worker_1"
+
+    @pytest.mark.asyncio
+    async def test_broadcaster_graceful_degradation(self, websocket_server: MahavishnuWebSocketServer):
+        """Test graceful degradation when WebSocket unavailable."""
+        # Arrange
+        broadcaster = WebSocketBroadcaster(websocket_server=None)
+
+        # Act - should not raise exception
+        result = await broadcaster.broadcast_pool_spawned("pool_abc", {})
+
+        # Assert
+        assert result is False
 
 
 # =============================================================================

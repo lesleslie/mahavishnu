@@ -36,6 +36,8 @@ dependencies = [
     "opentelemetry-sdk>=1.38.0",
     "opentelemetry-instrumentation>=0.59b0",
     "opentelemetry-exporter-otlp-proto-grpc>=1.38.0",
+    # Prometheus metrics
+    "prometheus-client>=0.21.0",
     "structlog>=25.5.0",
     # OpenTelemetry trace storage with semantic search
     "asyncpg>=0.29.0",  # Async PostgreSQL driver for OTel trace storage
@@ -133,7 +135,7 @@ all = [
 
 # Core components (recommended)
 core = [
-    "mahavishnu[prefect,agno,dev]",
+    "mahavishnu[prefect,agno,dev,ingestion]",
 ]
 
 # RAG and knowledge base focus (optional - has httpx conflicts with fastmcp)
@@ -183,6 +185,18 @@ ollama = [
     # Install: brew install ollama && ollama pull nomic-embed-text
     # Docs: https://ollama.com | GitHub: https://github.com/ollama/ollama
     "httpx>=0.27.0",  # HTTP client for Ollama API
+]
+
+# Content ingestion (optional - for ingesting blogs, webpages, and books)
+# NOTE: Requires PDF and EPUB libraries for document processing
+ingestion = [
+    # PDF processing
+    "pypdf>=5.0.0",  # Fast, pure Python PDF library (no C extensions)
+    # EPUB processing
+    "ebooklib>=1.2.0",  # EPUB ebook reading
+    # Web content fetching (optional alternative to web_reader MCP server)
+    "beautifulsoup4>=4.12.0",  # HTML parsing for web scraping
+    "httpx[http2]>=0.28.0",  # HTTP client with HTTP/2 support
 ]
 
 [tool.hatch.metadata]

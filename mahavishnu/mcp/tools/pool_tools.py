@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from fastmcp import FastMCP
+from mahavishnu.core.workflow_models import PoolExecution
 
 logger = logging.getLogger(__name__)
 
