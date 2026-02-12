@@ -1,0 +1,298 @@
+{
+  "dashboard": {
+    "title": "Mahavishnu Pool Monitoring",
+    "description": "Real-time monitoring for Mahavishnu multi-pool orchestration system",
+    "tags": ["mahavishnu", "pools", "monitoring"],
+    "timezone": "UTC",
+    "refresh": "10s",
+    "schemaVersion": 35,
+    "version": "0.0.1"
+    "id": null,
+    "uid": "mahavishnu-pool-monitoring"
+    "id": null
+    "id": null
+    "id": null
+    "id": null
+    "id": null
+    "id": null,
+    "id": null,
+    "id": null,
+    "id": null,
+    "id": null,
+    "id": null,
+    "id": null,
+    "id": null
+    },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Pool Health Overview",
+      "description": "Real-time health status of all Mahavishnu pools (MahavishnuPool, SessionBuddyPool, KubernetesPool)",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "sum mahavishnu_pool_health_total",
+          "refId": "A",
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-health"
+          },
+          "hide": false,
+          "editorMode": "code",
+          "format": "table",
+          "instant": true,
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "showLegend": false,
+              "calcs": ["last"],
+              "legendValues": [
+                {"text": "Healthy", "value": 1},
+                {"text": "Degraded", "value": 2},
+                {"text": "Unhealthy", "value": 3}
+              ]
+            }
+          },
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-health"
+          }
+        }
+      ]
+    },
+    {
+      "expr": "sum mahavishnu_pool_active_workers",
+      "refId": "B",
+      "datasource": {
+        "type": "mahavishnu_prometheus",
+        "uid": "mahavishnu-pool-metrics"
+      },
+      "hide": false,
+      "editorMode": "code",
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "datasource": {
+        "type": "mahavishnu_prometheus",
+        "uid": "mahavishnu-pool-metrics"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "showLegend": true,
+          "calcs": ["last"],
+          "legendValues": [
+                {"text": "MahavishnuPool", "value": 1, "color": "#3B7FF"},
+                {"text": "SessionBuddyPool", "value": 2, "color": "#F2C637"},
+                {"text": "KubernetesPool", "value": 3, "color": "#31A0F3"}
+              ]
+            }
+          },
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-metrics"
+          },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 8,
+        "h": 5
+      },
+      "targets": [
+        {
+          "expr": "sum mahavishnu_pool_tasks_completed",
+          "refId": "C",
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-stats"
+          },
+          "hide": false,
+          "editorMode": "code",
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1000000
+            },
+            "overrides": []
+          },
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-stats"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 8,
+            "w": 5,
+            "h": 4
+          }
+        },
+        {
+          "expr": "sum mahavishnu_pool_tasks_failed",
+          "refId": "D",
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-stats"
+          },
+          "hide": false,
+          "editorMode": "code",
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 100000
+            },
+            "overrides": []
+          },
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-stats"
+          },
+          "gridPos": {
+            "x": 1,
+            "y": 8,
+            "w": 5,
+            "h": 4
+          }
+        },
+        {
+          "expr": "sum mahavishnu_pool_avg_duration",
+          "refId": "E",
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-stats"
+          },
+          "hide": false,
+          "editorMode": "code",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "min": 0,
+              "max": 300
+            },
+            "overrides": []
+          },
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-stats"
+          },
+          "gridPos": {
+            "x": 2,
+            "y": 8,
+            "w": 5,
+            "h": 4
+          },
+          "targets": [
+        {
+          "expr": "mahavishnu_pool_healthy_pools",
+          "refId": "F",
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-health"
+          },
+          "hide": false,
+          "editorMode": "code",
+          "gridPos": {
+            "x": 0,
+            "y": 4,
+            "w": 5,
+            "h": 3
+          },
+          "targets": [
+        {
+          "expr": "mahavishnu_pool_degraded_pools",
+          "refId": "G",
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-health"
+          },
+          "hide": false,
+          "editorMode": "code",
+          "gridPos": {
+            "x": 1,
+            "y": 4,
+            "w": 5,
+            "h": 3
+          },
+          "targets": [
+        {
+          "expr": "mahavishnu_pool_unhealthy_pools",
+          "refId": "H",
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-health"
+          },
+          "hide": false,
+          "editorMode": "code",
+          "gridPos": {
+            "x": 2,
+            "y": 4,
+            "w": 5,
+            "h": 3
+          },
+          "targets": [
+        {
+          "expr": "sum mahavishnu_pool_throughput",
+          "refId": "I",
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-metrics"
+          },
+          "hide": false,
+          "editorMode": "code",
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 100
+            },
+            "overrides": []
+          },
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-metrics"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 4,
+            "w": 12,
+            "h": 4
+          },
+          "targets": [
+        {
+          "expr": "rate mahavishnu_pool_tasks_per_second",
+          "refId": "J",
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-stats"
+          },
+          "hide": false,
+          "editorMode": "code",
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 50
+            },
+            "overrides": []
+          },
+          "datasource": {
+            "type": "mahavishnu_prometheus",
+            "uid": "mahavishnu-pool-metrics"
+          },
+          "gridPos": {
+            "x": 1,
+            "y": 8,
+            "w": 5,
+            "h": 4
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 """Core application module for Mahavishnu with Oneiric integration.
 
 This module provides the main application class that manages configuration,
-repository loading, and adapter initialization using Oneiric patterns.
+repository loading and adapter initialization using Oneiric patterns.
 """
 
 import asyncio
@@ -46,7 +46,7 @@ def _validate_path(path_str: str, allowed_base_paths: list[str] | None = None) -
     """
     path = Path(path_str)
 
-    # Resolve the path to its absolute form
+    # Resolve path to its absolute form
     abs_path = path.resolve()
 
     # Check for directory traversal patterns
@@ -58,7 +58,7 @@ def _validate_path(path_str: str, allowed_base_paths: list[str] | None = None) -
     ):
         raise ValidationError(
             message=f"Invalid path contains directory traversal: {path_str}",
-            details={"path": path_str, "suggestion": "Remove any '..' sequences from the path"},
+            details={"path": path_str, "suggestion": "Remove any '..' sequences from path"},
         )
 
     # Check if path is within allowed boundaries
@@ -108,7 +108,7 @@ class MahavishnuApp:
     """
 
     def __init__(self, config: MahavishnuSettings | None = None) -> None:
-        """Initialize the Mahavishnu application.
+        """Initialize Mahavishnu application.
 
         Args:
             config: Optional configuration. If not provided, loads from
@@ -175,6 +175,25 @@ class MahavishnuApp:
         # Initialize monitoring and alerting service
         self.monitoring_service = MonitoringService(self)
 
+        # Initialize routing metrics server (Prometheus)
+        self.routing_metrics_server = None
+        try:
+            from .routing_metrics import start_routing_metrics_server
+            # Start metrics server on configured port
+            # Note: start_routing_metrics_server() is synchronous and returns a Thread object
+            # The server runs in a background thread, so we just store the thread reference
+            metrics_port = getattr(self.config.monitoring, "routing_metrics_port", 9091)
+            self.routing_metrics_server = start_routing_metrics_server(port=metrics_port)
+            logger = __import__("logging").getLogger(__name__)
+            if self.routing_metrics_server:
+                logger.info(f"Routing metrics server started on port {metrics_port}")
+            else:
+                logger.warning(f"Routing metrics server failed to start on port {metrics_port}")
+        except ImportError:
+            logger.warning("Routing metrics module not available, skipping metrics server startup")
+        except Exception as e:
+            logger.error(f"Failed to start routing metrics server: {e}")
+
         # Initialize backup and recovery managers
         from .backup_recovery import BackupManager, DisasterRecoveryManager
 
@@ -219,7 +238,7 @@ class MahavishnuApp:
             return None
 
     async def start_poller(self) -> None:
-        """Start the Session-Buddy poller if configured.
+        """Start Session-Buddy poller if configured.
 
         This method should be called after the async event loop is running.
         It's safe to call multiple times (idempotent).
@@ -234,7 +253,7 @@ class MahavishnuApp:
             logger.info("Session-Buddy poller started")
 
     async def stop_poller(self) -> None:
-        """Stop the Session-Buddy poller.
+        """Stop Session-Buddy poller and routing metrics server.
 
         This method should be called before shutting down the application.
         It's safe to call multiple times (idempotent).
@@ -242,6 +261,16 @@ class MahavishnuApp:
         Example:
             >>> await app.stop_poller()  # Stop polling
         """
+        # Stop routing metrics server
+        # Note: The Prometheus HTTP server runs as a daemon thread and will
+        # be automatically terminated when the main process exits. We don't need
+        # to explicitly stop it - just clear our reference.
+        if self.routing_metrics_server:
+            logger = __import__("logging").getLogger(__name__)
+            logger.info("Routing metrics server reference cleared")
+            self.routing_metrics_server = None
+
+        # Stop Session-Buddy poller
         if self.session_buddy_poller and self.session_buddy_poller._running:
             await self.session_buddy_poller.stop()
             logger = __import__("logging").getLogger(__name__)
@@ -318,6 +347,9 @@ class MahavishnuApp:
 
         Returns:
             MemoryAggregator instance or None if initialization fails
+
+        Note:
+            MemoryAggregator requires Session-Buddy and Akosha MCP connections.
         """
         try:
             from ..pools.memory_aggregator import MemoryAggregator
@@ -605,7 +637,7 @@ class MahavishnuApp:
         return validated_repos
 
     def _check_user_repo_permission(self, user_id: str, repo_path: str) -> bool:
-        """Check if user has read permission for the repository."""
+        """Check if user has read permission for repository."""
         import asyncio
 
         try:
@@ -744,7 +776,7 @@ class MahavishnuApp:
         repos: list[str] | None = None,
         user_id: str | None = None,
     ) -> dict[str, Any]:
-        """Execute a workflow using the specified adapter.
+        """Execute a workflow using specified adapter.
 
         Args:
             task: Task specification with 'type' and 'params' keys
@@ -1090,11 +1122,11 @@ class MahavishnuApp:
             if repo_counter:
                 repo_counter.add(len(validated_repos), {"adapter": adapter_name})
 
-            # Start workflow trace (span is ended automatically on context exit)
-            with self.observability.start_workflow_trace(
-                workflow_id, adapter_name, task.get("type", "unknown")
-            ) as workflow_span:
-                _ = workflow_span  # Mark as intentionally used
+        # Start workflow trace (span is ended automatically on context exit)
+        with self.observability.start_workflow_trace(
+            workflow_id, adapter_name, task.get("type", "unknown")
+        ) as workflow_span:
+            _ = workflow_span  # Mark as intentionally used
 
         # Process repos in parallel with concurrency control
         semaphore = self.semaphore

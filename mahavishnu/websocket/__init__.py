@@ -13,5 +13,11 @@ Example:
 """
 
 from .server import MahavishnuWebSocketServer
+from .metrics import WebSocketMetrics, get_metrics, start_metrics_server
 
-__all__ = ["MahavishnuWebSocketServer"]
+__all__ = [
+    "MahavishnuWebSocketServer",
+    "WebSocketMetrics",
+    "get_metrics",
+    "start_metrics_server",
+]

@@ -75,6 +75,16 @@ except ImportError:
 
 def pytest_collection_modifyitems(items, config):
     """Automatically mark all tests in tests/unit/ as unit tests."""
+    # Add Oneiric to path for ULID resolution imports
+    import sys
+    import os
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)  # mahavishnu/
+    oneiric_path = os.path.join(project_root, "../oneiric")
+    oneiric_path = os.path.abspath(oneiric_path)
+    if oneiric_path not in sys.path:
+        sys.path.insert(0, oneiric_path)
+
     for item in items:
         # Mark tests in tests/unit/ directory as unit tests
         if "/tests/unit/" in str(item.fspath):

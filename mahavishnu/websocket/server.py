@@ -25,6 +25,9 @@ from mahavishnu.websocket.auth import get_authenticator
 # Import TLS configuration
 from mahavishnu.websocket.tls_config import load_ssl_context, get_websocket_tls_config
 
+# Import metrics
+from mahavishnu.websocket.metrics import get_metrics, start_metrics_server
+
 logger = logging.getLogger(__name__)
 
 
@@ -139,6 +142,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
             auto_cert=auto_cert,
         )
 
+        # Initialize metrics
+        self.metrics = get_metrics("mahavishnu")
+
         self.pool_manager = pool_manager
         logger.info(
             f"MahavishnuWebSocketServer initialized: {host}:{port} "
@@ -156,6 +162,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
         user_id = user.get("user_id") if user else "anonymous"
 
         logger.info(f"Client connected: {connection_id} (user: {user_id})")
+
+        # Track connection metrics
+        self.metrics.adjust_connections(1)
 
         # Send welcome message
         welcome = WebSocketProtocol.create_event(
@@ -178,6 +187,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
             connection_id: Unique connection identifier
         """
         logger.info(f"Client disconnected: {connection_id}")
+
+        # Track connection metrics
+        self.metrics.adjust_connections(-1)
 
         # Clean up room subscriptions
         await self.leave_all_rooms(connection_id)

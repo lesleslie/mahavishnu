@@ -6,6 +6,7 @@ This package provides a multi-pool orchestration system that enables:
 - Kubernetes pool support (K8s-native worker deployment)
 - Inter-pool communication (async message passing between pools)
 - Unified memory flow (Local pool → Session-Buddy → Akosha)
+- Real-time WebSocket broadcasting of pool events
 
 Example:
     ```python
@@ -31,6 +32,7 @@ Example:
 from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 from .manager import PoolManager, PoolSelector
 from .memory_aggregator import MemoryAggregator
+from .websocket import WebSocketBroadcaster, create_broadcaster
 
 __all__ = [
     "BasePool",
@@ -40,4 +42,6 @@ __all__ = [
     "PoolManager",
     "PoolSelector",
     "MemoryAggregator",
+    "WebSocketBroadcaster",
+    "create_broadcaster",
 ]
