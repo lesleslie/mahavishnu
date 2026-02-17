@@ -159,3 +159,21 @@ oneiric/
 backups/
 data/
 
+# ============================================================================
+# XDG Base Directory Compliance
+# ============================================================================
+# XDG-compliant data directories (platformdirs)
+# See: https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+
+# Local data directory (writable data, state, plugins)
+.local/
+.local/share/mahavishnu/
+.local/state/mahavishnu/
+
+# Config directory (user configuration)
+.config/mahavishnu/
+
+# Cache directory (non-essential, can be deleted)
+.cache/
+.cache/mahavishnu/
+

@@ -22,6 +22,7 @@ from pydantic import SecretStr
 # Import from parent modules to avoid circular import
 from ..core.auth import AuthenticationError
 from ..core.permissions import Permission, RBACManager
+from ..core.paths import get_audit_path, ensure_directories, migrate_legacy_data
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +35,22 @@ logger = logging.getLogger(__name__)
 class AuditLogger:
     """Audit logger for security events."""
 
-    def __init__(self, log_path: Path | str = "data/audit.log"):
+    def __init__(self, log_path: Path | str | None = None):
         """Initialize audit logger.
 
         Args:
-            log_path: Path to audit log file
+            log_path: Path to audit log file (defaults to XDG-compliant path)
         """
+        if log_path is None:
+            ensure_directories()
+            log_path = get_audit_path("audit.log")
+
+            # Migrate legacy data if exists
+            legacy_path = Path("data/audit.log")
+            if legacy_path.exists():
+                migrate_legacy_data(legacy_path, log_path)
+                logger.info(f"Migrated audit log from {legacy_path} to {log_path}")
+
         self.log_path = Path(log_path)
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
 
