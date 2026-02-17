@@ -28,6 +28,8 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+from ..core.paths import get_data_path, ensure_directories
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,7 +49,9 @@ class EncryptedSQLite:
     Usage:
         ```python
         # Get encryption key from environment
-        db = EncryptedSQLite("data/sensitive.db")
+        from ..core.paths import get_data_path
+
+        db = EncryptedSQLite(get_data_path("sensitive.db"))
         await db.connect()
 
         # Use like regular SQLite connection
@@ -56,6 +60,13 @@ class EncryptedSQLite:
 
         await db.close()
         ```
+
+    Note:
+        For XDG Base Directory compliance, use get_data_path() to generate
+        XDG-compliant paths. Data will be stored in:
+        - Linux: ~/.local/share/mahavishnu/
+        - macOS: ~/Library/Application Support/mahavishnu/
+        - Windows: C:\\Users\\<user>\\AppData\\Local\\mahavishnu\\
     """
 
     def __init__(

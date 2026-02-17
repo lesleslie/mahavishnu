@@ -24,6 +24,8 @@ import uuid
 
 import aiosqlite
 
+from .paths import get_data_path, ensure_directories, migrate_legacy_data
+
 logger = logging.getLogger(__name__)
 
 
@@ -129,12 +131,22 @@ class SQLiteEventStorage:
     - Event history queries
     """
 
-    def __init__(self, db_path: Path | str = "data/events.db"):
+    def __init__(self, db_path: Path | str | None = None):
         """Initialize event storage.
 
         Args:
-            db_path: Path to SQLite database file
+            db_path: Path to SQLite database file (defaults to XDG-compliant path)
         """
+        if db_path is None:
+            ensure_directories()
+            db_path = get_data_path("events.db")
+
+            # Migrate legacy data if exists
+            legacy_path = Path("data/events.db")
+            if legacy_path.exists():
+                migrate_legacy_data(legacy_path, db_path)
+                logger.info(f"Migrated events database from {legacy_path} to {db_path}")
+
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn: aiosqlite.Connection | None = None
@@ -403,14 +415,24 @@ class EventBus:
     def __init__(
         self,
         storage_backend: str = "sqlite",
-        storage_path: str | Path = "data/events.db",
+        storage_path: str | Path | None = None,
     ):
         """Initialize event bus.
 
         Args:
             storage_backend: Storage backend ('sqlite' or 'redis')
-            storage_path: Path to storage (SQLite file or Redis URL)
+            storage_path: Path to storage (defaults to XDG-compliant path if None)
         """
+        if storage_path is None:
+            ensure_directories()
+            storage_path = get_data_path("events.db")
+
+            # Migrate legacy data if exists
+            legacy_path = Path("data/events.db")
+            if legacy_path.exists():
+                migrate_legacy_data(legacy_path, storage_path)
+                logger.info(f"Migrated events database from {legacy_path} to {storage_path}")
+
         self.storage_backend = storage_backend
         self.storage_path = Path(storage_path)
         self._storage: SQLiteEventStorage | None = None
@@ -674,13 +696,13 @@ def get_event_bus() -> EventBus:
 
 
 async def init_event_bus(
-    storage_backend: str = "sqlite", storage_path: str | Path = "data/events.db"
+    storage_backend: str = "sqlite", storage_path: str | Path | None = None
 ) -> EventBus:
     """Initialize global EventBus instance.
 
     Args:
         storage_backend: Storage backend ('sqlite' or 'redis')
-        storage_path: Path to storage
+        storage_path: Path to storage (defaults to XDG-compliant path if None)
 
     Returns:
         Initialized EventBus instance
