@@ -1,13 +1,13 @@
 """Metrics storage schema definition for adaptive routing.
 
-Defines Dhruva key structures for collecting adapter performance
+Defines Pydantic models for collecting adapter performance
 data, success rates, costs, and execution metrics.
 
-Key Design Principles:
-1. ULID-based keys for atomicity
-2. TTL for automatic cleanup
-3. Aggregation for performance
-4. Separation of raw records from computed stats
+Key Design:
+- ULID-based keys for atomicity
+- TTL for automatic cleanup
+- Aggregation for performance
+- Separation of raw records from computed stats
 """
 
 from __future__ import annotations
@@ -16,7 +16,8 @@ from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
+from pydantic import field_validator
 
 try:
     from oneiric.core.ulid import generate_config_id
@@ -117,10 +118,7 @@ class AdapterStats(BaseModel):
 
     adapter: AdapterType = Field(...)
 
-    date: str = Field(
-        ...,
-        description="Date in YYYY-MM-DD format for this stat"
-    )
+    date: str = Field(...)
 
     success_rate: float = Field(
         ...,
@@ -258,7 +256,7 @@ class RoutingDecision(BaseModel):
     """Routing decision record for analysis.
 
     Stored with ULID key: route:{ulid}
-    TTL: 365 days (keep for 1 year for analysis)
+    TTL: 365 days
     """
 
     decision_id: str = Field(
@@ -359,47 +357,6 @@ class ABTest(BaseModel):
 
     class Config:
         json_encoders = {str: lambda v: v.isoformat() if isinstance(v, datetime) else v}
-
-
-# Dhruva Key Patterns
-
-Execution Records
-- Key: exec:{execution_ulid}
-- TTL: 90 days
-- Purpose: Raw execution data for aggregation
-
-Adapter Statistics
-- Key: stats:adapter:{adapter_type}:{date}
-- TTL: 30 days
-- Purpose: Daily aggregated stats per adapter
-- Update: Daily at 3 AM UTC (automatic aggregation job)
-
-Task Type Performance
-- Key: stats:task:{task_type}:{date}
-- TTL: 7 days
-- Purpose: Task-type routing decisions
-- Update: Daily recalculation
-
-Cost Tracking
-- Key: cost:execution:{execution_ulid}
-- TTL: 90 days
-- Purpose: Per-execution cost data
-
-Routing Decisions
-- Key: route:{decision_ulid}
-- TTL: 365 days
-- Purpose: Audit trail for A/B testing and routing analysis
-
-## A/B Tests
-- **Key**: `experiment:{experiment_ulid}`
-- **TTL**: 30 days
-- **Purpose**: Controlled experiments for validation
-
-## Compaction Strategy
-1. **Daily**: Compact execution records older than 90 days
-2. **Weekly**: Delete task-type stats older than 30 days
-3. **Monthly**: Delete adapter stats older than 365 days
-4. **Yearly**: Archive routing decisions older than 1 year to cold storage
 
 
 # Utility Functions

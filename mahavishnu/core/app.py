@@ -190,8 +190,10 @@ class MahavishnuApp:
             else:
                 logger.warning(f"Routing metrics server failed to start on port {metrics_port}")
         except ImportError:
+            logger = __import__("logging").getLogger(__name__)
             logger.warning("Routing metrics module not available, skipping metrics server startup")
         except Exception as e:
+            logger = __import__("logging").getLogger(__name__)
             logger.error(f"Failed to start routing metrics server: {e}")
 
         # Initialize backup and recovery managers
@@ -460,6 +462,9 @@ class MahavishnuApp:
         Raises:
             ConfigurationError: If adapter initialization fails
         """
+        # Initialize logger at method scope for use in exception handlers
+        logger = __import__("logging").getLogger(__name__)
+
         adapter_classes: dict[str, type] = {}
         enabled_adapters: dict[str, bool] = {}
 
@@ -472,7 +477,6 @@ class MahavishnuApp:
                 enabled_adapters["prefect"] = True
             except ImportError:
                 # Prefect not available, skip this adapter
-                logger = __import__("logging").getLogger(__name__)
                 logger.warning("Prefect adapter not available due to missing dependencies")
                 pass
 
@@ -485,7 +489,6 @@ class MahavishnuApp:
                 enabled_adapters["llamaindex"] = True
             except ImportError:
                 # LlamaIndex not available, skip this adapter
-                logger = __import__("logging").getLogger(__name__)
                 logger.warning("LlamaIndex adapter not available due to missing dependencies")
                 pass
 
@@ -498,7 +501,6 @@ class MahavishnuApp:
                 enabled_adapters["agno"] = True
             except ImportError:
                 # Agno not available, skip this adapter
-                logger = __import__("logging").getLogger(__name__)
                 logger.warning("Agno adapter not available due to missing dependencies")
                 pass
 
@@ -517,7 +519,6 @@ class MahavishnuApp:
                 self._worker_manager_cls = WorkerManager
             except ImportError:
                 # Worker components not available
-                logger = __import__("logging").getLogger(__name__)
                 logger.warning("Worker adapter not available due to missing dependencies")
                 pass
 

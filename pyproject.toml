@@ -193,7 +193,6 @@ ingestion = [
     # PDF processing
     "pypdf>=5.0.0",  # Fast, pure Python PDF library (no C extensions)
     # EPUB processing
-    "ebooklib>=1.2.0",  # EPUB ebook reading
     # Web content fetching (optional alternative to web_reader MCP server)
     "beautifulsoup4>=4.12.0",  # HTML parsing for web scraping
     "httpx[http2]>=0.28.0",  # HTTP client with HTTP/2 support

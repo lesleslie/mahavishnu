@@ -1,0 +1,215 @@
+{
+  "servers": {
+    "session-mgmt": {
+      "type": "http",
+      "url": "http://localhost:8678/mcp",
+      "version": null
+    },
+    "crackerjack": {
+      "type": "http",
+      "url": "http://localhost:8676/mcp",
+      "version": null
+    },
+    "macos_automator": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@steipete/macos-automator-mcp@0.4.1"
+      ],
+      "package": "@steipete/macos-automator-mcp@0.4.1",
+      "version": "0.4.1",
+      "env": null
+    },
+    "memory": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory@2025.9.25"
+      ],
+      "package": "@modelcontextprotocol/server-memory@2025.9.25",
+      "version": "2025.9.25",
+      "env": null
+    },
+    "sequential-thinking": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking@2025.7.1"
+      ],
+      "package": "@modelcontextprotocol/server-sequential-thinking@2025.7.1",
+      "version": "2025.7.1",
+      "env": null
+    },
+    "rust-filesystem": {
+      "type": "stdio",
+      "command": "rust-mcp-filesystem",
+      "args": [
+        "-w",
+        "~/Projects"
+      ],
+      "package": "~/Projects",
+      "version": null,
+      "env": null
+    },
+    "mermaid": {
+      "type": "http",
+      "url": "http://localhost:3033/mcp",
+      "version": null
+    },
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@1.0.20"
+      ],
+      "package": "@upstash/context7-mcp@1.0.20",
+      "version": "1.0.20",
+      "env": null
+    },
+    "excalidraw": {
+      "type": "http",
+      "url": "http://localhost:3032/mcp",
+      "version": null
+    },
+    "cloud-run": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "https://github.com/GoogleCloudPlatform/cloud-run-mcp"
+      ],
+      "package": "https://github.com/GoogleCloudPlatform/cloud-run-mcp",
+      "version": null,
+      "env": null
+    },
+    "logfire": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "logfire-mcp@latest"
+      ],
+      "package": "logfire-mcp@latest",
+      "version": "latest",
+      "env": null
+    },
+    "sentry": {
+      "type": "http",
+      "url": "https://mcp.sentry.dev/mcp",
+      "version": null
+    },
+    "turso-cloud": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-turso-cloud"
+      ],
+      "package": "mcp-turso-cloud",
+      "version": null,
+      "env": null
+    },
+    "upstash": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/mcp-server@0.2.0",
+        "run"
+      ],
+      "package": "@upstash/mcp-server@0.2.0",
+      "version": "0.2.0",
+      "env": null
+    },
+    "peekaboo": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@steipete/peekaboo-mcp@2.0.3"
+      ],
+      "package": "@steipete/peekaboo-mcp@2.0.3",
+      "version": "2.0.3",
+      "env": null
+    },
+    "github": {
+      "type": "http",
+      "url": "http://localhost:3038/mcp",
+      "version": null
+    },
+    "gitlab": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@zereight/mcp-gitlab@2.0.5"
+      ],
+      "package": "@zereight/mcp-gitlab@2.0.5",
+      "version": "2.0.5",
+      "env": null
+    },
+    "penpot": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "penpot-mcp"
+      ],
+      "package": "penpot-mcp",
+      "version": null,
+      "env": null
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ],
+      "package": "@playwright/mcp@latest",
+      "version": "latest",
+      "env": null
+    }
+  },
+  "categories": {
+    "development": [
+      "rust-filesystem"
+    ],
+    "git": [
+      "github",
+      "gitlab"
+    ],
+    "cloud": [
+      "cloud-run",
+      "turso-cloud",
+      "upstash"
+    ],
+    "monitoring": [
+      "logfire",
+      "sentry"
+    ],
+    "design": [
+      "mermaid",
+      "excalidraw",
+      "penpot"
+    ],
+    "testing": [
+      "playwright"
+    ],
+    "ai": [
+      "memory",
+      "sequential-thinking",
+      "context7"
+    ],
+    "automation": [
+      "macos_automator",
+      "peekaboo"
+    ],
+    "custom": [
+      "session-mgmt",
+      "crackerjack"
+    ]
+  },
+  "total_servers": 19
+}
