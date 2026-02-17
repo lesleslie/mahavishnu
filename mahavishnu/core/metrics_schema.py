@@ -16,7 +16,7 @@ from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic import field_validator
 
 try:
@@ -105,8 +105,7 @@ class ExecutionRecord(BaseModel):
         description="Additional execution context"
     )
 
-    class Config:
-        json_encoders = {str: lambda v: v.isoformat() if isinstance(v, datetime) else v}
+    model_config = ConfigDict(mode='json')
 
 
 class AdapterStats(BaseModel):
@@ -185,8 +184,7 @@ class AdapterStats(BaseModel):
         description="Statistical confidence (0-1)"
     )
 
-    class Config:
-        json_encoders = {str: lambda v: v.isoformat() if isinstance(v, datetime) else v}
+    model_config = ConfigDict(mode='json')
 
 
 class TaskTypeStats(BaseModel):
@@ -355,8 +353,7 @@ class ABTest(BaseModel):
         description="Winning adapter if experiment completed"
     )
 
-    class Config:
-        json_encoders = {str: lambda v: v.isoformat() if isinstance(v, datetime) else v}
+    model_config = ConfigDict(mode='json')
 
 
 # Utility Functions

@@ -3,6 +3,7 @@
 import asyncio
 from contextlib import suppress
 from datetime import datetime
+from importlib.metadata import version
 from logging import getLogger
 from typing import Any
 
@@ -17,6 +18,12 @@ from ..terminal.manager import TerminalManager
 from ..terminal.mcp_client import McpretentiousClient
 
 logger = getLogger(__name__)
+
+# Get version from package metadata
+try:
+    __version__ = version("mahavishnu")
+except Exception:
+    __version__ = "0.0.0-unknown"
 
 
 class McpretentiousMCPClient:
@@ -109,7 +116,7 @@ class FastMCPServer:
         else:
             self.app = app
         self.auth_handler = get_auth_from_config(self.app.config)
-        self.server = FastMCP(name="Mahavishnu Orchestrator", version="1.0.0")
+        self.server = FastMCP(name="Mahavishnu Orchestrator", version=__version__)
 
         # Initialize MCP client wrapper
         self.mcp_client = McpretentiousMCPClient()

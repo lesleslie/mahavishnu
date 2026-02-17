@@ -9,7 +9,7 @@ from typing import Any, Dict, List
 from datetime import datetime, timedelta
 
 from ...core.permissions import Permission, RBACManager
-from ...auth import require_mcp_auth
+from ...mcp.auth import require_mcp_auth
 
 
 def register_git_analytics_tools(

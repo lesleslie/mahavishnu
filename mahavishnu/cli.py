@@ -102,7 +102,7 @@ app.add_typer(ecosystem_app, name="ecosystem")
 add_ingestion_commands()
 
 # Quality evaluation
-add_quality_commands()
+# Quality evaluation (commented out - needs app argument)# add_quality_commands()
 
 @mcp_app.command("start")
 def mcp_start(
@@ -179,7 +179,7 @@ def mcp_status() -> None:
 
         maha_app = MahavishnuApp()
         # FastMCPServer instantiation for side effects (initialization)
-        _ = FastMCPServer(maha_app.config)
+        _ = FastMCPServer(app=maha_app)
 
         # Check if terminal management is enabled
         terminal_status = "enabled" if maha_app.config.terminal.enabled else "disabled"

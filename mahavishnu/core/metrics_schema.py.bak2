@@ -1,0 +1,460 @@
+"""Metrics storage schema definition for adaptive routing.
+
+Defines Pydantic models for collecting adapter performance
+data, success rates, costs, and execution metrics.
+
+Key Design:
+- ULID-based keys for atomicity
+- TTL for automatic cleanup
+- Aggregation for performance
+- Separation of raw records from computed stats
+"""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic import field_validator
+
+try:
+    from oneiric.core.ulid import generate_config_id
+except ImportError:
+    def generate_config_id() -> str:
+        import uuid
+        return uuid.uuid4().hex
+
+
+class AdapterType(str, Enum):
+    """Adapter types for metrics tracking."""
+    PREFECT = "prefect"
+    AGNO = "agno"
+    LLAMAINDEX = "llamaindex"
+
+
+class TaskType(str, Enum):
+    """Task type classifications for routing analytics."""
+    WORKFLOW = "workflow"
+    AI_TASK = "ai_task"
+    RAG_QUERY = "rag_query"
+    BATCH_TASK = "batch_task"
+    CRITICAL_TASK = "critical_task"
+    INTERACTIVE_TASK = "interactive_task"
+
+
+class ExecutionStatus(str, Enum):
+    """Execution outcome status."""
+    SUCCESS = "success"
+    FAILURE = "failure"
+    TIMEOUT = "timeout"
+    CANCELLED = "cancelled"
+
+
+class ExecutionRecord(BaseModel):
+    """Single execution record with metrics.
+
+    Stored with ULID key: exec:{ulid}
+    TTL: 90 days
+    """
+
+    execution_id: str = Field(
+        default_factory=generate_config_id,
+        description="ULID execution identifier"
+    )
+
+    adapter: AdapterType = Field(...)
+
+    task_type: TaskType = Field(...)
+
+    start_timestamp: float = Field(
+        ...,
+        description="Unix timestamp (seconds) when execution started"
+    )
+
+    end_timestamp: float | None = Field(
+        None,
+        description="Unix timestamp (seconds) when execution completed"
+    )
+
+    status: ExecutionStatus = Field(...)
+
+    latency_ms: int | None = Field(
+        None,
+        description="Execution duration in milliseconds"
+    )
+
+    error_type: str | None = Field(
+        None,
+        description="Error type/category (e.g., timeout, connection_error)"
+    )
+
+    error_message: str | None = Field(
+        None,
+        description="Detailed error message"
+    )
+
+    cost_usd: float | None = Field(
+        None,
+        description="Execution cost in USD (null for free adapters)"
+    )
+
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional execution context"
+    )
+
+    model_config = ConfigDict(mode='json')
+        json_encoders = {str: lambda v: v.isoformat() if isinstance(v, datetime) else v}
+
+
+class AdapterStats(BaseModel):
+    """Aggregated adapter statistics.
+
+    Stored with ULID key: stats:adapter:{adapter_type}:{date}
+    TTL: 30 days
+    """
+
+    adapter: AdapterType = Field(...)
+
+    date: str = Field(...)
+
+    success_rate: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Success rate (0.0 to 1.0)"
+    )
+
+    total_executions: int = Field(
+        ...,
+        ge=0,
+        description="Total executions in this period"
+    )
+
+    avg_latency_ms: float | None = Field(
+        None,
+        ge=0,
+        description="Average execution latency in milliseconds"
+    )
+
+    error_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="Count of errors by type"
+    )
+
+    cost_total_usd: float | None = Field(
+        None,
+        ge=0,
+        description="Total cost in USD for this period"
+    )
+
+    p50_latency_ms: float | None = Field(
+        None,
+        description="50th percentile latency"
+    )
+
+    p95_latency_ms: float | None = Field(
+        None,
+        description="95th percentile latency"
+    )
+
+    p99_latency_ms: float | None = Field(
+        None,
+        description="99th percentile latency"
+    )
+
+    uptime_percentage: float | None = Field(
+        None,
+        ge=0,
+        le=100,
+        description="Adapter availability percentage"
+    )
+
+    sample_size: int = Field(
+        ...,
+        ge=1,
+        description="Number of executions in this sample"
+    )
+
+    confidence_interval: float | None = Field(
+        None,
+        ge=0,
+        le=1.0,
+        description="Statistical confidence (0-1)"
+    )
+
+    model_config = ConfigDict(mode='json')
+        json_encoders = {str: lambda v: v.isoformat() if isinstance(v, datetime) else v}
+
+
+class TaskTypeStats(BaseModel):
+    """Task-type specific routing performance.
+
+    Stored with ULID key: stats:task:{task_type}:{date}
+    TTL: 7 days
+    """
+
+    task_type: TaskType = Field(...)
+
+    date: str = Field(...)
+
+    preferred_adapter: AdapterType = Field(...)
+
+    alternative_adapters: list[AdapterType] = Field(
+        default_factory=list,
+        description="Adapters ranked by performance"
+    )
+
+    sample_count: int = Field(
+        ...,
+        ge=1,
+        description="Executions used for ranking"
+    )
+
+    routing_confidence: float = Field(
+        ...,
+        ge=0,
+        le=1.0,
+        description="Confidence in adapter preference"
+    )
+
+
+class CostTracking(BaseModel):
+    """Cost tracking per execution.
+
+    Stored with ULID key: cost:execution:{ulid}
+    TTL: 90 days
+    """
+
+    execution_id: str = Field(...)
+
+    adapter: AdapterType = Field(...)
+
+    task_type: TaskType = Field(...)
+
+    cost_usd: float = Field(
+        ...,
+        ge=0,
+        description="Execution cost in USD"
+    )
+
+    budget_type: str | None = Field(
+        None,
+        description="Budget category (e.g., daily, weekly, task_type)"
+    )
+
+    budget_limit_usd: float | None = Field(
+        None,
+        ge=0,
+        description="Budget limit for this execution"
+    )
+
+
+class RoutingDecision(BaseModel):
+    """Routing decision record for analysis.
+
+    Stored with ULID key: route:{ulid}
+    TTL: 365 days
+    """
+
+    decision_id: str = Field(
+        default_factory=generate_config_id,
+        description="ULID for this routing decision"
+    )
+
+    task_type: TaskType = Field(...)
+
+    selected_adapter: AdapterType = Field(...)
+
+    alternative_adapters: list[AdapterType] = Field(
+        default_factory=list,
+        description="Other adapters considered"
+    )
+
+    reasoning: str = Field(
+        ...,
+        description="Why this adapter was chosen"
+    )
+
+    adapter_scores: dict[AdapterType, float] = Field(
+        ...,
+        description="Calculated scores for all adapters"
+    )
+
+    constraints: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Routing constraints (budget, SLA, etc.)"
+    )
+
+    timestamp: float = Field(
+        default_factory=lambda: datetime.now(UTC).timestamp(),
+        description="Unix timestamp when decision was made"
+    )
+
+
+class ABTest(BaseModel):
+    """A/B test experiment tracking.
+
+    Stored with ULID key: experiment:{ulid}
+    TTL: 30 days
+    """
+
+    experiment_id: str = Field(
+        default_factory=generate_config_id,
+        description="ULID for this experiment"
+    )
+
+    name: str = Field(...)
+
+    start_date: str = Field(
+        ...,
+        description="Start date in YYYY-MM-DD"
+    )
+
+    end_date: str | None = Field(
+        None,
+        description="End date in YYYY-MM-DD"
+    )
+
+    status: str = Field(
+        default="active",
+        description="active, completed, rolled_back, cancelled"
+    )
+
+    traffic_split: dict[AdapterType, float] = Field(
+        default_factory=dict,
+        description="Percentage traffic to each adapter"
+    )
+
+    sample_size: dict[AdapterType, int] = Field(
+        default_factory=dict,
+        description="Sample size per adapter"
+    )
+
+    success_metric: str = Field(
+        ...,
+        description="Metric being optimized (e.g., success_rate, cost)"
+    )
+
+    significance_threshold: float = Field(
+        ...,
+        ge=0,
+        le=1.0,
+        description="Statistical significance threshold (p-value)"
+    )
+
+    results: dict[str, Any] | None = Field(
+        None,
+        description="Test results when complete"
+    )
+
+    winner: AdapterType | None = Field(
+        None,
+        description="Winning adapter if experiment completed"
+    )
+
+    model_config = ConfigDict(mode='json')
+        json_encoders = {str: lambda v: v.isoformat() if isinstance(v, datetime) else v}
+
+
+# Utility Functions
+
+def generate_execution_key(execution_id: str) -> str:
+    """Generate Dhruva key for execution record."""
+    return f"exec:{execution_id}"
+
+
+def generate_stats_key(adapter: AdapterType, date: str) -> str:
+    """Generate Dhruva key for adapter stats."""
+    return f"stats:adapter:{adapter.value}:{date}"
+
+
+def generate_task_stats_key(task_type: TaskType, date: str) -> str:
+    """Generate Dhruva key for task type stats."""
+    return f"stats:task:{task_type.value}:{date}"
+
+
+def generate_cost_key(execution_id: str) -> str:
+    """Generate Dhruva key for cost tracking."""
+    return f"cost:{execution_id}"
+
+
+def calculate_percentiles(
+    latencies: list[int],
+    percentiles: list[float] = [50.0, 95.0, 99.0],
+) -> dict[str, float | None]:
+    """Calculate percentile values from latency data.
+
+    Args:
+        latencies: List of latency values in milliseconds
+        percentiles: Percentiles to calculate (default: p50, p95, p99)
+
+    Returns:
+        Dictionary with percentile keys
+    """
+    if not latencies:
+        return {}
+
+    sorted_latencies = sorted(latencies)
+    result = {}
+
+    for p in percentiles:
+        index = int(len(sorted_latencies) * (p / 100))
+        if index >= len(sorted_latencies):
+            result[f"p{int(p)}"] = sorted_latencies[-1]
+        else:
+            result[f"p{int(p)}"] = sorted_latencies[index]
+
+    return result
+
+
+def calculate_confidence_interval(
+    sample_size: int,
+    success_rate: float,
+    confidence: float = 0.95,
+) -> tuple[float, float]:
+    """Calculate confidence interval for success rate.
+
+    Uses Wilson score interval for binomial proportions.
+
+    Args:
+        sample_size: Number of executions
+        success_rate: Observed success rate
+        confidence: Confidence level (default: 0.95)
+
+    Returns:
+        (lower_bound, upper_bound)
+    """
+    if sample_size < 10:
+        # Not enough data for meaningful CI
+        return (0.0, 1.0)
+
+    import math
+
+    z = 1.96  # 95% confidence z-score
+
+    numerator = success_rate + (z ** 2) / (2 * sample_size)
+    denominator = 1 + (z ** 2) / sample_size
+
+    center = numerator / denominator
+    margin = z * math.sqrt((success_rate * (1 - success_rate)) / sample_size)
+
+    lower = max(0.0, center - margin)
+    upper = min(1.0, center + margin)
+
+    return (lower, upper)
+
+
+__all__ = [
+    "ExecutionRecord",
+    "AdapterStats",
+    "TaskTypeStats",
+    "CostTracking",
+    "RoutingDecision",
+    "ABTest",
+    "AdapterType",
+    "TaskType",
+    "ExecutionStatus",
+]

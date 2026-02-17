@@ -1,0 +1,135 @@
+{
+  "essentials": {
+    "description": "Essential agents for all Claude Code projects",
+    "agents": [
+      "agent-creation-specialist",
+      "code-reviewer",
+      "context-manager",
+      "documentation-specialist",
+      "general-assistant",
+      "javascript-pro",
+      "mermaid-expert",
+      "prompt-engineer",
+      "python-pro",
+      "refactoring-specialist",
+      "reference-builder",
+      "search-specialist",
+      "tutorial-engineer",
+      "typescript-pro"
+    ]
+  },
+  "programming-languages-advanced": {
+    "description": "Advanced programming language specialists",
+    "agents": [
+      "c-pro",
+      "cpp-pro",
+      "flutter-expert",
+      "golang-pro",
+      "java-pro",
+      "pyo3-specialist",
+      "rust-pro"
+    ]
+  },
+  "database-specialists": {
+    "description": "Database and storage specialists",
+    "agents": [
+      "database-operations-specialist",
+      "mysql-specialist",
+      "postgresql-specialist",
+      "redis-specialist",
+      "sql-pro",
+      "sqlite-specialist",
+      "vector-database-specialist"
+    ]
+  },
+  "frontend-specialists": {
+    "description": "Frontend development and design specialists",
+    "agents": [
+      "accessibility-auditor",
+      "accessibility-specialist",
+      "content-designer",
+      "css-architect",
+      "frontend-developer",
+      "htmx-specialist",
+      "mobile-developer",
+      "pwa-specialist",
+      "responsive-design-specialist",
+      "tui-designer",
+      "web-components-specialist"
+    ]
+  },
+  "backend-specialists": {
+    "description": "Backend architecture and API specialists",
+    "agents": [
+      "api-security-specialist",
+      "authentication-specialist",
+      "graphql-architect",
+      "grpc-specialist",
+      "payment-integration",
+      "websocket-specialist"
+    ]
+  },
+  "devops-infrastructure": {
+    "description": "DevOps, deployment, and infrastructure specialists",
+    "agents": [
+      "data-retention-specialist",
+      "deployment-engineer",
+      "devops-troubleshooter",
+      "docker-specialist",
+      "finops-specialist",
+      "incident-responder",
+      "jinja2-template-designer",
+      "ml-engineer",
+      "observability-incident-lead",
+      "pycharm-plugin-creator",
+      "terraform-specialist"
+    ]
+  },
+  "ai-ml-specialists": {
+    "description": "AI, ML, and data science specialists",
+    "agents": [
+      "ai-engineer",
+      "data-engineer",
+      "data-pipeline-engineer",
+      "data-scientist",
+      "gemini-consultant",
+      "liquid-ai-specialist",
+      "mlops-engineer",
+      "support-analytics-specialist"
+    ]
+  },
+  "security-testing": {
+    "description": "Security, testing, and quality assurance specialists",
+    "agents": [
+      "claude-environment-auditor",
+      "critical-audit-specialist",
+      "legal-advisor",
+      "privacy-officer",
+      "pytest-hypothesis-specialist",
+      "security-auditor"
+    ]
+  },
+  "project-frameworks": {
+    "description": "Project-specific framework specialists",
+    "agents": [
+      "acb-specialist",
+      "fastblocks-specialist",
+      "htmy-specialist",
+      "mcp-integration-expert",
+      "starlette-specialist"
+    ]
+  },
+  "leadership-management": {
+    "description": "Leadership, product, and organizational specialists",
+    "agents": [
+      "architecture-council",
+      "customer-success-lead",
+      "delivery-lead",
+      "developer-enablement-lead",
+      "product-manager",
+      "qa-strategist",
+      "release-manager",
+      "ux-researcher"
+    ]
+  }
+}

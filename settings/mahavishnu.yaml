@@ -18,7 +18,7 @@ max_concurrent_workflows: 10
 adapters:
   prefect_enabled: true  # High-level orchestration with dynamic flows
   llamaindex_enabled: false  # RAG pipelines for ingesting repos/docs, embedding with Ollama
-  agno_enabled: true  # Fast, scalable single/multi-agents with memory and tools
+  agno_enabled: false  # Fast, scalable single/multi-agents with memory and tools
 
 # LLM configuration for LlamaIndex and Agno
 llm:

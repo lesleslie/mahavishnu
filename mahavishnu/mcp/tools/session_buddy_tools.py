@@ -4,7 +4,7 @@ from typing import Any
 
 from ...core.permissions import Permission, RBACManager
 from ...messaging import MessagePriority
-from ..auth import require_mcp_auth
+from ...mcp.auth import require_mcp_auth
 
 
 def register_session_buddy_tools(

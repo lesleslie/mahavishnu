@@ -9,7 +9,7 @@ from typing import Any
 from mcp_common.code_graph import CodeGraphAnalyzer
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from ..core.adapters import OrchestratorAdapter
+from ..core.adapters import AdapterCapabilities, AdapterType, OrchestratorAdapter
 
 
 class AgnoAdapter(OrchestratorAdapter):
@@ -18,6 +18,32 @@ class AgnoAdapter(OrchestratorAdapter):
     def __init__(self, config):
         """Initialize the Agno adapter with configuration."""
         self.config = config
+        self._adapter_type = AdapterType.AGNO
+        self._name = "agno"
+        self._capabilities = AdapterCapabilities(
+            can_deploy_flows=False,
+            can_monitor_execution=True,
+            can_cancel_workflows=False,
+            can_sync_state=False,
+            supports_batch_execution=True,
+            has_cloud_ui=False,
+            supports_multi_agent=True,
+        )
+
+    @property
+    def adapter_type(self) -> AdapterType:
+        """Return adapter type enum."""
+        return self._adapter_type
+
+    @property
+    def name(self) -> str:
+        """Return adapter name."""
+        return self._name
+
+    @property
+    def capabilities(self) -> AdapterCapabilities:
+        """Return adapter capabilities."""
+        return self._capabilities
 
     async def _create_agent(self, task_type: str):
         """Create Agno agent for task type"""

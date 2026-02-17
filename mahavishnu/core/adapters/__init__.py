@@ -1,5 +1,9 @@
 """Adapters module for Mahavishnu."""
 
-from .base import OrchestratorAdapter
+from .base import AdapterCapabilities, AdapterType, OrchestratorAdapter
 
-__all__ = ["OrchestratorAdapter"]
+__all__ = [
+    "OrchestratorAdapter",
+    "AdapterType",
+    "AdapterCapabilities",
+]
