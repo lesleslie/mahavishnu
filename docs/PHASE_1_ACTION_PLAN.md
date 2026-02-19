@@ -50,20 +50,20 @@
 
 ### Day 3-4: Migration Scripts
 
-- [ ] Create Alembic migration framework
-- [ ] Write SQLite → PostgreSQL migration
-- [ ] Implement dual-write strategy (ADR-003)
-- [ ] Add data validation scripts
+- [x] Create Alembic migration framework
+- [x] Write SQLite → PostgreSQL migration
+- [x] Implement dual-write strategy (ADR-003)
+- [x] Add data validation scripts
 
-**Files**: `migrations/`, `mahavishnu/core/migrator.py`
+**Files**: `migrations/env.py`, `alembic.ini`, `mahavishnu/core/migrator.py`, `tests/unit/test_migrator.py`
 
 ### Day 5: Event Sourcing
 
-- [ ] Create task event log table
-- [ ] Implement event sourcing for task history
-- [ ] Add event replay capability
+- [x] Create task event log table (in init.sql)
+- [x] Implement event sourcing for task history
+- [x] Add event replay capability
 
-**Files**: `mahavishnu/core/event_store.py`
+**Files**: `mahavishnu/core/event_store.py`, `tests/unit/test_event_store.py`
 
 ---
 
