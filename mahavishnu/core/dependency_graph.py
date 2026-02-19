@@ -314,20 +314,25 @@ class DependencyGraph:
     def is_blocked(self, task_id: str) -> bool:
         """Check if a task is blocked by unsatisfied dependencies.
 
+        A task is blocked if any dependency is PENDING or FAILED.
+        SATISFIED and CANCELLED dependencies don't block.
+
         Args:
             task_id: Task to check
 
         Returns:
-            True if task has pending dependencies
+            True if task has blocking dependencies
         """
         for dep_id in self._dependencies.get(task_id, set()):
             edge = self._edges.get((dep_id, task_id))
-            if edge and edge.status == DependencyStatus.PENDING:
+            if edge and edge.status in (DependencyStatus.PENDING, DependencyStatus.FAILED):
                 return True
         return False
 
     def get_blocking_tasks(self, task_id: str) -> list[str]:
         """Get tasks blocking a given task.
+
+        Includes tasks with PENDING or FAILED status.
 
         Args:
             task_id: Task to query
@@ -338,7 +343,7 @@ class DependencyGraph:
         blocking = []
         for dep_id in self._dependencies.get(task_id, set()):
             edge = self._edges.get((dep_id, task_id))
-            if edge and edge.status == DependencyStatus.PENDING:
+            if edge and edge.status in (DependencyStatus.PENDING, DependencyStatus.FAILED):
                 blocking.append(dep_id)
         return blocking
 
