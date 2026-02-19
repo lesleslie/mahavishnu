@@ -107,6 +107,21 @@ class MahavishnuApp:
         ... )
     """
 
+    @classmethod
+    def load(cls) -> "MahavishnuApp":
+        """Load Mahavishnu application with default configuration.
+
+        This is a convenience classmethod that creates a new instance
+        with configuration loaded from Oneiric-compatible sources.
+
+        Returns:
+            Initialized MahavishnuApp instance
+
+        Raises:
+            ConfigurationError: If configuration loading fails
+        """
+        return cls()
+
     def __init__(self, config: MahavishnuSettings | None = None) -> None:
         """Initialize Mahavishnu application.
 
@@ -202,6 +217,29 @@ class MahavishnuApp:
         self.backup_manager = BackupManager(self)
         self.recovery_manager = DisasterRecoveryManager(self)
 
+        # Initialize worktree coordinator (Phase 1 integration)
+        self.worktree_coordinator = None
+        try:
+            from .worktree_coordination import WorktreeCoordinator
+            from .repo_manager import RepositoryManager
+            from .coordination.manager import CoordinationManager
+
+            # Create repository manager (loads from repos_path)
+            repos_path = _validate_path(self.config.repos_path).expanduser()
+            self.repository_manager = RepositoryManager(repos_path)
+
+            # Create coordination manager
+            self.coordination_manager = CoordinationManager(self.config)
+
+            # Initialize worktree coordinator (will be loaded asynchronously)
+            self.worktree_coordinator = None  # Will be initialized in async context
+
+            logger = __import__("logging").getLogger(__name__)
+            logger.info("WorktreeCoordinator components initialized")
+        except Exception as e:
+            logger = __import__("logging").getLogger(__name__)
+            logger.warning(f"Failed to initialize WorktreeCoordinator: {e}")
+
         # Initialize Session-Buddy poller for telemetry collection
         self.session_buddy_poller = None
         if self.config.session_buddy_polling.enabled:
@@ -277,6 +315,35 @@ class MahavishnuApp:
             await self.session_buddy_poller.stop()
             logger = __import__("logging").getLogger(__name__)
             logger.info("Session-Buddy poller stopped")
+
+    async def initialize_worktree_coordinator(self) -> None:
+        """Initialize WorktreeCoordinator after async event loop is running.
+
+        This method should be called after the async event loop is running.
+        It's safe to call multiple times (idempotent).
+
+        Example:
+            >>> app = MahavishnuApp()
+            >>> await app.initialize_worktree_coordinator()
+        """
+        if self.worktree_coordinator is None and hasattr(self, 'repository_manager'):
+            try:
+                # Load repository manifest asynchronously
+                await self.repository_manager.load()
+
+                # Create worktree coordinator
+                from .worktree_coordination import WorktreeCoordinator
+
+                self.worktree_coordinator = WorktreeCoordinator(
+                    repo_manager=self.repository_manager,
+                    coordination_manager=self.coordination_manager,
+                )
+
+                logger = __import__("logging").getLogger(__name__)
+                logger.info("WorktreeCoordinator initialized")
+            except Exception as e:
+                logger = __import__("logging").getLogger(__name__)
+                logger.warning(f"Failed to initialize WorktreeCoordinator: {e}")
 
     def _init_terminal_manager(self) -> "TerminalManager | None":
         """Initialize terminal manager with mcpretentious adapter.

@@ -37,7 +37,13 @@ from .quality_cli import add_quality_commands
 # Import adaptive routing CLI
 from .routing_cli import add_routing_commands
 
+# Import worktree management CLI
+from .worktree_cli import worktree_app
+
 app = typer.Typer()
+
+# Add worktree sub-app
+app.add_typer(worktree_app, name="worktree")
 
 
 @app.command()

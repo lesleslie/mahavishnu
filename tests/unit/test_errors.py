@@ -15,7 +15,9 @@ def test_configuration_error():
     """Test ConfigurationError functionality."""
     error = ConfigurationError(message="Test config error", details={"key": "value"})
 
-    assert str(error) == "Test config error"
+    # New error format includes error code and recovery guidance
+    assert "Test config error" in str(error)
+    assert "MHV-001" in str(error)
     assert error.details == {"key": "value"}
     assert error.message == "Test config error"
 
@@ -24,7 +26,9 @@ def test_validation_error():
     """Test ValidationError functionality."""
     error = ValidationError(message="Test validation error", details={"field": "value"})
 
-    assert str(error) == "Test validation error"
+    # New error format includes error code and recovery guidance
+    assert "Test validation error" in str(error)
+    assert "MHV-003" in str(error)
     assert error.details == {"field": "value"}
     assert error.message == "Test validation error"
 
@@ -33,6 +37,8 @@ def test_adapter_error():
     """Test AdapterError functionality."""
     error = AdapterError(message="Test adapter error", details={"adapter": "test"})
 
-    assert str(error) == "Test adapter error"
+    # New error format includes error code and recovery guidance
+    assert "Test adapter error" in str(error)
+    assert "MHV-007" in str(error)
     assert error.details == {"adapter": "test"}
     assert error.message == "Test adapter error"
