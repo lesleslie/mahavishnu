@@ -71,12 +71,12 @@
 
 ### Day 1-2: Core CRUD
 
-- [ ] Implement TaskStore class
-- [ ] Create, read, update, delete operations
-- [ ] Add batch operations
-- [ ] Implement task relationships (dependencies)
+- [x] Implement TaskStore class
+- [x] Create, read, update, delete operations
+- [x] Add batch operations
+- [x] Implement task relationships (dependencies)
 
-**Files**: `mahavishnu/core/task_store.py`
+**Files**: `mahavishnu/core/task_store.py`, `tests/unit/test_task_store.py`
 
 ### Day 3: Error Messages
 
