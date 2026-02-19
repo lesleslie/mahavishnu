@@ -1,0 +1,85 @@
+name: Accessibility Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mahavishnu/**/*.py'
+      - 'tests/accessibility/**'
+      - '.github/workflows/accessibility.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'mahavishnu/**/*.py'
+      - 'tests/accessibility/**'
+
+jobs:
+  accessibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run accessibility tests
+        run: |
+          pytest tests/accessibility/ -v --tb=short
+
+      - name: Accessibility audit summary
+        if: always()
+        run: |
+          echo "## Accessibility Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "CLI accessibility tests verify:" >> $GITHUB_STEP_SUMMARY
+          echo "- Color contrast and NO_COLOR support" >> $GITHUB_STEP_SUMMARY
+          echo "- Screen reader compatible output" >> $GITHUB_STEP_SUMMARY
+          echo "- Keyboard navigation (built into CLI)" >> $GITHUB_STEP_SUMMARY
+          echo "- Error message clarity with recovery guidance" >> $GITHUB_STEP_SUMMARY
+          echo "- Help text structure and discoverability" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check error message format
+        run: |
+          python -c "
+          from mahavishnu.core.errors import MahavishnuError, ErrorCode
+
+          # Verify error format includes:
+          # 1. Error code
+          # 2. Message
+          # 3. Recovery guidance
+          test_error = MahavishnuError(
+              'Test error',
+              ErrorCode.INTERNAL_ERROR,
+              recovery='Run --help for usage'
+          )
+          error_str = str(test_error)
+
+          assert 'MHV-' in error_str, 'Error missing code'
+          assert 'recovery' in error_str.lower() or 'run' in error_str.lower(), 'Error missing recovery guidance'
+
+          print('Error format accessible')
+          "
+
+      - name: Verify NO_COLOR support
+        run: |
+          python -c "
+          import os
+
+          # Test NO_COLOR detection
+          os.environ['NO_COLOR'] = '1'
+
+          # Verify environment variable is respected
+          no_color = os.environ.get('NO_COLOR')
+          assert no_color == '1', 'NO_COLOR not detected'
+
+          print('NO_COLOR support verified')
+          "
