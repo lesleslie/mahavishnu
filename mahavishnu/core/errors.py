@@ -100,6 +100,7 @@ class MahavishnuError(Exception):
             "Check database connectivity",
             "Verify database credentials in environment",
             "Check if PostgreSQL is running",
+            "Run 'docker-compose up -d postgres' if using Docker",
         ],
         ErrorCode.VALIDATION_ERROR: [
             "Check input values match expected format",
@@ -121,20 +122,115 @@ class MahavishnuError(Exception):
             "Reduce request frequency",
             "Contact support if limit seems incorrect",
         ],
+        ErrorCode.INTERNAL_ERROR: [
+            "An unexpected error occurred",
+            "Try the operation again",
+            "Check logs for more details",
+            "Report issue if problem persists",
+        ],
         ErrorCode.TIMEOUT_ERROR: [
             "The operation took too long",
             "Try again with a simpler request",
             "Check system health if timeouts persist",
         ],
+        ErrorCode.RESOURCE_NOT_FOUND: [
+            "The requested resource does not exist",
+            "Check the resource identifier",
+            "Verify resource hasn't been deleted",
+        ],
+        ErrorCode.OPERATION_CANCELLED: [
+            "The operation was cancelled",
+            "Check if timeout was reached",
+            "Retry the operation if needed",
+        ],
         ErrorCode.TASK_NOT_FOUND: [
             "Verify the task ID is correct",
             "Check if task was deleted",
-            "Use 'mhv list-tasks' to see available tasks",
+            "Use 'mhv tl' to see available tasks",
+            "Task IDs are case-sensitive",
+        ],
+        ErrorCode.TASK_CREATION_FAILED: [
+            "Check that all required fields are provided",
+            "Verify repository name is valid",
+            "Ensure title is 3-500 characters",
+            "Run 'mhv tc --help' for usage",
+        ],
+        ErrorCode.TASK_UPDATE_FAILED: [
+            "Verify the task ID is correct",
+            "Check that at least one field is being updated",
+            "Ensure task is not deleted",
+            "Run 'mhv tu --help' for usage",
+        ],
+        ErrorCode.TASK_DELETION_FAILED: [
+            "Verify the task ID is correct",
+            "Check if task has dependencies",
+            "Remove dependencies first if needed",
+        ],
+        ErrorCode.TASK_ALREADY_COMPLETED: [
+            "Task is already marked as completed",
+            "No further action needed",
+            "Use 'mhv tu' to change status if needed",
+        ],
+        ErrorCode.TASK_BLOCKED: [
+            "Task has unresolved dependencies",
+            "Complete blocking tasks first",
+            "Use 'mhv tl' to check dependency status",
+        ],
+        ErrorCode.TASK_INVALID_STATUS: [
+            "Invalid status transition attempted",
+            "Check valid status values: pending, in_progress, completed, failed, cancelled, blocked",
+            "Some transitions may require intermediate steps",
+        ],
+        ErrorCode.TASK_DEADLINE_PASSED: [
+            "Task deadline has passed",
+            "Update deadline if more time needed",
+            "Mark task as failed if no longer relevant",
+        ],
+        ErrorCode.TASK_ASSIGNMENT_FAILED: [
+            "Could not assign task to user",
+            "Verify user email or username is correct",
+            "Check user has appropriate permissions",
+        ],
+        ErrorCode.TASK_DEPENDENCY_CYCLE: [
+            "Circular dependency detected",
+            "Remove one of the dependencies to break the cycle",
+            "Use 'mhv tl' to view task relationships",
         ],
         ErrorCode.REPOSITORY_NOT_FOUND: [
             "Add repository to settings/repos.yaml",
             "Run 'mhv validate-config' to verify",
             "Check repository path is correct",
+            "Use 'mhv lr' to list configured repos",
+        ],
+        ErrorCode.REPOSITORY_NOT_CONFIGURED: [
+            "Repository is not in configuration",
+            "Add entry to settings/repos.yaml",
+            "Run 'mhv init' to create default config",
+        ],
+        ErrorCode.WORKTREE_CREATION_FAILED: [
+            "Check git repository is valid",
+            "Ensure branch name is correct",
+            "Verify disk space is available",
+        ],
+        ErrorCode.WORKTREE_NOT_FOUND: [
+            "Worktree does not exist",
+            "Check worktree path is correct",
+            "Use 'git worktree list' to see worktrees",
+        ],
+        ErrorCode.WORKTREE_CLEANUP_FAILED: [
+            "Could not remove worktree",
+            "Check for uncommitted changes",
+            "Manually remove if needed",
+        ],
+        ErrorCode.REPOSITORY_CLONE_FAILED: [
+            "Check repository URL is correct",
+            "Verify network connectivity",
+            "Ensure git credentials are configured",
+        ],
+        ErrorCode.REPOSITORY_ACCESS_DENIED: [
+            "Permission denied for repository",
+            "Check file system permissions",
+            "Verify git credentials",
         ],
         ErrorCode.WEBHOOK_SIGNATURE_INVALID: [
             "Webhook signature verification failed",
@@ -146,15 +242,34 @@ class MahavishnuError(Exception):
             "No action needed if this was an automatic retry",
             "Contact support if you see this unexpectedly",
         ],
+        ErrorCode.GITHUB_API_ERROR: [
+            "GitHub API request failed",
+            "Check GITHUB_TOKEN is set",
+            "Verify API rate limits",
+            "Try again in a few minutes",
+        ],
+        ErrorCode.GITLAB_API_ERROR: [
+            "GitLab API request failed",
+            "Check GITLAB_TOKEN is set",
+            "Verify GitLab instance is accessible",
+        ],
         ErrorCode.EMBEDDING_SERVICE_ERROR: [
             "Embedding service is unavailable",
             "Try using local embeddings (Ollama/fastembed)",
             "Check OpenAI API status if using OpenAI",
+            "Run 'ollama serve' if using Ollama",
         ],
         ErrorCode.NLP_PARSER_ERROR: [
             "Could not parse natural language input",
             "Try rephrasing your request",
             "Use structured command syntax instead",
+            "Example: 'mhv tc \"Task title\" -r repo'",
+        ],
+        ErrorCode.EXTERNAL_SERVICE_UNAVAILABLE: [
+            "External service is not responding",
+            "Check service status",
+            "Try again later",
+            "Use fallback options if available",
         ],
     }
 
@@ -387,4 +502,220 @@ class WorkflowError(MahavishnuError):
             error_message,
             ErrorCode.INTERNAL_ERROR,
             details={"workflow_id": workflow_id, "step": step, **(details or {})},
+        )
+
+
+# ============================================================================
+# Error Helper Functions
+# ============================================================================
+
+
+def get_contextual_help(error_code: ErrorCode, context: dict | None = None) -> str:
+    """Get contextual help message for an error.
+
+    Args:
+        error_code: The error code to get help for
+        context: Optional context dict with additional info
+
+    Returns:
+        Formatted help string with recovery steps
+    """
+    guidance = MahavishnuError.RECOVERY_GUIDANCE.get(error_code.value, ["Contact support for assistance"])
+
+    help_text = f"\n{'='*60}\n"
+    help_text += f"Error: {error_code.name.replace('_', ' ')}\n"
+    help_text += f"Code: {error_code.value}\n"
+    help_text += f"{'='*60}\n\n"
+    help_text += "How to resolve:\n"
+    for i, step in enumerate(guidance, 1):
+        help_text += f"  {i}. {step}\n"
+
+    if context:
+        help_text += f"\nContext:\n"
+        for key, value in context.items():
+            help_text += f"  • {key}: {value}\n"
+
+    help_text += f"\nDocumentation: https://docs.mahavishnu.org/errors/{error_code.value.lower()}\n"
+
+    return help_text
+
+
+def format_error_for_cli(error: MahavishnuError, verbose: bool = False) -> str:
+    """Format an error for CLI display.
+
+    Args:
+        error: The error to format
+        verbose: Include full details if True
+
+    Returns:
+        Formatted error string for terminal
+    """
+    if verbose:
+        return str(error)
+
+    # Brief format
+    lines = [
+        f"Error [{error.error_code.value}]: {error.message}",
+    ]
+
+    if error.recovery:
+        lines.append(f"Try: {error.recovery[0]}")
+
+    lines.append("Run with --verbose for more details")
+
+    return "\n".join(lines)
+
+
+def create_error_from_exception(
+    exc: Exception,
+    error_code: ErrorCode = ErrorCode.INTERNAL_ERROR,
+    context: dict | None = None,
+) -> MahavishnuError:
+    """Create a MahavishnuError from a generic exception.
+
+    Useful for wrapping third-party exceptions with recovery guidance.
+
+    Args:
+        exc: The original exception
+        error_code: Error code to use
+        context: Additional context
+
+    Returns:
+        MahavishnuError with recovery guidance
+    """
+    details = {
+        "original_type": type(exc).__name__,
+        "original_message": str(exc),
+        **(context or {}),
+    }
+
+    return MahavishnuError(
+        message=str(exc),
+        error_code=error_code,
+        details=details,
+    )
+
+
+# ============================================================================
+# Error Templates for Common Scenarios
+# ============================================================================
+
+class ErrorTemplates:
+    """Templates for common error scenarios."""
+
+    @staticmethod
+    def task_create_validation(title: str, repository: str, issues: list[str]) -> ValidationError:
+        """Create a validation error for task creation.
+
+        Args:
+            title: Task title that failed validation
+            repository: Repository name
+            issues: List of validation issues
+
+        Returns:
+            ValidationError with detailed recovery steps
+        """
+        recovery = []
+        if any("title" in i.lower() for i in issues):
+            recovery.append("Title must be 3-500 characters")
+        if any("repository" in i.lower() for i in issues):
+            recovery.append("Repository must be configured in repos.yaml")
+            recovery.append("Use 'mhv lr' to list available repositories")
+
+        recovery.extend([
+            "Example: mhv tc \"Valid task title\" -r mahavishnu",
+            "Run 'mhv tc --help' for all options",
+        ])
+
+        return ValidationError(
+            message=f"Task creation failed: {'; '.join(issues)}",
+            details={
+                "title": title,
+                "repository": repository,
+                "issues": issues,
+            },
+        )
+
+    @staticmethod
+    def database_connection_failed(host: str, port: int, original_error: str) -> DatabaseError:
+        """Create a database connection error with context.
+
+        Args:
+            host: Database host
+            port: Database port
+            original_error: Original error message
+
+        Returns:
+            DatabaseError with recovery steps
+        """
+        return DatabaseError(
+            message=f"Could not connect to database at {host}:{port}",
+            details={
+                "host": host,
+                "port": port,
+                "original_error": original_error,
+            },
+        )
+
+    @staticmethod
+    def search_failed(query: str, reason: str) -> ExternalServiceError:
+        """Create a search error with context.
+
+        Args:
+            query: Search query that failed
+            reason: Reason for failure
+
+        Returns:
+            ExternalServiceError with recovery steps
+        """
+        return ExternalServiceError(
+            service="embedding",
+            message=f"Search failed for '{query}': {reason}",
+            details={
+                "query": query,
+                "reason": reason,
+            },
+        )
+
+    @staticmethod
+    def config_file_error(file_path: str, issue: str) -> ConfigurationError:
+        """Create a configuration file error.
+
+        Args:
+            file_path: Path to config file
+            issue: Description of the issue
+
+        Returns:
+            ConfigurationError with recovery steps
+        """
+        return ConfigurationError(
+            message=f"Configuration error in {file_path}: {issue}",
+            details={
+                "file_path": file_path,
+                "issue": issue,
+            },
+        )
+
+    @staticmethod
+    def webhook_failed(event_type: str, reason: str, payload_id: str | None = None) -> WebhookAuthError:
+        """Create a webhook error with context.
+
+        Args:
+            event_type: Type of webhook event
+            reason: Reason for failure
+            payload_id: Optional payload ID
+
+        Returns:
+            WebhookAuthError with recovery steps
+        """
+        details = {
+            "event_type": event_type,
+            "reason": reason,
+        }
+        if payload_id:
+            details["payload_id"] = payload_id
+
+        return WebhookAuthError(
+            message=f"Webhook processing failed: {reason}",
+            details=details,
         )

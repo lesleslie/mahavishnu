@@ -80,11 +80,11 @@
 
 ### Day 3: Error Messages
 
-- [ ] Implement error messages with recovery guidance
-- [ ] Add contextual help for common errors
-- [ ] Create error message templates
+- [x] Implement error messages with recovery guidance
+- [x] Add contextual help for common errors
+- [x] Create error message templates
 
-**Files**: `mahavishnu/core/errors.py` (extend)
+**Files**: `mahavishnu/core/errors.py`, `tests/unit/test_errors_extended.py` (20 tests)
 
 ### Day 4-5: CLI Shorthands
 
