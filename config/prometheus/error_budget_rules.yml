@@ -1,0 +1,246 @@
+# Error Budget Alerting Rules for Mahavishnu Task Orchestration
+#
+# These rules monitor error budget consumption and trigger alerts
+# when budget levels fall below defined thresholds.
+#
+# See: docs/runbooks/error_budget_enforcement.md
+
+groups:
+  - name: error_budget_availability
+    interval: 1m
+    rules:
+      # Availability error budget - 99.9% SLO (43.2 min/month)
+      - alert: ErrorBudgetWarning
+        expr: |
+          (
+            (0.999 - (1 - sum(rate(task_operations_total{status="error"}[30d])) / sum(rate(task_operations_total[30d]))))
+            / 0.001
+          ) < 0.25
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+          slo: availability
+        annotations:
+          summary: "Error budget below 25%"
+          description: |
+            Only {{ $value | humanizePercentage }} of availability error budget remaining.
+            Current SLO: {{ $value | humanizePercentage }}
+            Consider reviewing recent incidents and upcoming releases.
+          runbook_url: "https://runbooks.example.com/error_budget_enforcement"
+
+      - alert: ErrorBudgetCritical
+        expr: |
+          (
+            (0.999 - (1 - sum(rate(task_operations_total{status="error"}[30d])) / sum(rate(task_operations_total[30d]))))
+            / 0.001
+          ) < 0.10
+        for: 5m
+        labels:
+          severity: critical
+          team: sre
+          slo: availability
+        annotations:
+          summary: "Error budget below 10% - FEATURE FREEZE REQUIRED"
+          description: |
+            CRITICAL: Only {{ $value | humanizePercentage }} of error budget remaining.
+            Feature freeze is now MANDATORY per error budget enforcement policy.
+            All feature work must stop until budget recovers.
+          runbook_url: "https://runbooks.example.com/error_budget_enforcement"
+
+      - alert: ErrorBudgetExhausted
+        expr: |
+          (
+            (0.999 - (1 - sum(rate(task_operations_total{status="error"}[30d])) / sum(rate(task_operations_total[30d]))))
+            / 0.001
+          ) <= 0
+        for: 1m
+        labels:
+          severity: page
+          team: sre
+          slo: availability
+        annotations:
+          summary: "ERROR BUDGET EXHAUSTED - EMERGENCY MODE"
+          description: |
+            EMERGENCY: Error budget has been exhausted.
+            All feature work must stop immediately.
+            Page on-call engineer and begin incident response.
+          runbook_url: "https://runbooks.example.com/error_budget_enforcement"
+
+  - name: error_budget_burn_rate
+    interval: 1m
+    rules:
+      # Burn rate alerts - detect fast budget consumption
+      - alert: ErrorBudgetBurnRateHigh
+        expr: |
+          (
+            sum(rate(task_operations_total{status="error"}[1h]))
+            / sum(rate(task_operations_total[1h]))
+          ) / 0.001 > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "Error budget burning 2x faster than normal"
+          description: |
+            Current burn rate: {{ $value | humanize }}x normal
+            If sustained, budget will be exhausted in {{ 43200 / $value | humanize }} minutes.
+          runbook_url: "https://runbooks.example.com/error_budget_enforcement#burn-rate-alerts"
+
+      - alert: ErrorBudgetBurnRateCritical
+        expr: |
+          (
+            sum(rate(task_operations_total{status="error"}[30m]))
+            / sum(rate(task_operations_total[30m]))
+          ) / 0.001 > 10
+        for: 2m
+        labels:
+          severity: critical
+          team: sre
+        annotations:
+          summary: "Error budget burning 10x faster than normal"
+          description: |
+            CRITICAL: Current burn rate: {{ $value | humanize }}x normal
+            Immediate action required to prevent budget exhaustion.
+          runbook_url: "https://runbooks.example.com/error_budget_enforcement#burn-rate-alerts"
+
+      - alert: ErrorBudgetBurnRateEmergency
+        expr: |
+          (
+            sum(rate(task_operations_total{status="error"}[5m]))
+            / sum(rate(task_operations_total[5m]))
+          ) / 0.001 > 50
+        for: 1m
+        labels:
+          severity: page
+          team: sre
+        annotations:
+          summary: "Error budget burning 50x+ faster than normal - PAGE IMMEDIATELY"
+          description: |
+            EMERGENCY: Current burn rate: {{ $value | humanize }}x normal
+            Budget will be exhausted in minutes. Page on-call immediately.
+          runbook_url: "https://runbooks.example.com/error_budget_enforcement#burn-rate-alerts"
+
+  - name: slo_latency
+    interval: 30s
+    rules:
+      # Latency SLO alerts - Task creation
+      - alert: TaskCreationLatencyP99High
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(task_creation_duration_seconds_bucket[5m])) by (le)
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+          slo: latency
+        annotations:
+          summary: "Task creation P99 latency exceeding SLO"
+          description: |
+            P99 latency: {{ $value | humanizeDuration }}
+            SLO target: 500ms
+            This is consuming error budget.
+          runbook_url: "https://runbooks.example.com/slos#latency"
+
+      - alert: TaskCreationLatencyP99Critical
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(task_creation_duration_seconds_bucket[5m])) by (le)
+          ) > 1.0
+        for: 5m
+        labels:
+          severity: critical
+          team: sre
+          slo: latency
+        annotations:
+          summary: "Task creation P99 latency at 2x SLO target"
+          description: |
+            P99 latency: {{ $value | humanizeDuration }}
+            SLO target: 500ms
+            This is a significant SLO breach requiring immediate attention.
+          runbook_url: "https://runbooks.example.com/slos#latency"
+
+      # Latency SLO alerts - Task queries
+      - alert: TaskQueryLatencyP99High
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(task_query_duration_seconds_bucket[5m])) by (le)
+          ) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+          slo: latency
+        annotations:
+          summary: "Task query P99 latency exceeding SLO"
+          description: |
+            P99 latency: {{ $value | humanizeDuration }}
+            SLO target: 200ms
+            This is consuming error budget.
+          runbook_url: "https://runbooks.example.com/slos#latency"
+
+  - name: slo_availability
+    interval: 30s
+    rules:
+      # Short-term availability alerts
+      - alert: AvailabilityDrop5m
+        expr: |
+          sum(rate(task_operations_total{status="success"}[5m]))
+          / sum(rate(task_operations_total[5m])) < 0.99
+        for: 2m
+        labels:
+          severity: warning
+          team: sre
+          slo: availability
+        annotations:
+          summary: "Availability dropped below 99% in last 5 minutes"
+          description: |
+            Current availability: {{ $value | humanizePercentage }}
+            This may indicate an emerging incident.
+          runbook_url: "https://runbooks.example.com/slos#availability"
+
+      - alert: AvailabilityDropCritical
+        expr: |
+          sum(rate(task_operations_total{status="success"}[5m]))
+          / sum(rate(task_operations_total[5m])) < 0.95
+        for: 1m
+        labels:
+          severity: critical
+          team: sre
+          slo: availability
+        annotations:
+          summary: "Availability dropped below 95% - INCIDENT"
+          description: |
+            CRITICAL: Current availability: {{ $value | humanizePercentage }}
+            This is a significant outage requiring immediate response.
+          runbook_url: "https://runbooks.example.com/slos#availability"
+
+  - name: error_budget_recording
+    interval: 1m
+    rules:
+      # Recording rules for error budget calculations
+      - record: slo:task_operations:availability:ratio5m
+        expr: |
+          sum(rate(task_operations_total{status="success"}[5m]))
+          / sum(rate(task_operations_total[5m]))
+
+      - record: slo:task_operations:availability:ratio30d
+        expr: |
+          sum(rate(task_operations_total{status="success"}[30d]))
+          / sum(rate(task_operations_total[30d]))
+
+      - record: slo:task_operations:error_budget:remaining
+        expr: |
+          (
+            (0.999 - (1 - slo:task_operations:availability:ratio30d))
+            / 0.001
+          )
+
+      - record: slo:task_operations:burn_rate:ratio1h
+        expr: |
+          (
+            sum(rate(task_operations_total{status="error"}[1h]))
+            / sum(rate(task_operations_total[1h]))
+          ) / 0.001

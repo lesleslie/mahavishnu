@@ -1250,6 +1250,9 @@ class FastMCPServer:
         # Register OTel trace management tools
         self._register_otel_tools()
 
+        # Register worktree management tools
+        await self._register_worktree_tools()
+
         await self.server.run_http_async(host=host, port=port)
 
     async def stop(self) -> None:
@@ -1355,6 +1358,18 @@ class FastMCPServer:
 
         register_otel_tools(self.server, self.app, self.mcp_client)
         logger.info("Registered 4 OTel trace management tools with MCP server")
+
+    async def register_worktree_tools(self):
+        """Register worktree management tools."""
+        if not self.app.worktree_coordinator:
+            logger.info("WorktreeCoordinator not initialized, skipping tool registration")
+            return
+
+        # Import and register worktree tools
+        from ..mcp.tools.worktree_tools import register_worktree_tools
+
+        register_worktree_tools(self.server, self.app)
+        logger.info("Registered 6 worktree management tools with MCP server")
 
 
 async def run_server(config=None):
