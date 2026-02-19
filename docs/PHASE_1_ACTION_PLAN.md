@@ -88,11 +88,11 @@
 
 ### Day 4-5: CLI Shorthands
 
-- [ ] Add command shorthands (mhv tc, mhv ts, etc.)
-- [ ] Implement smart defaults
-- [ ] Add auto-completion support
+- [x] Add command shorthands (mhv tc, mhv ts, etc.)
+- [x] Implement smart defaults
+- [x] Add auto-completion support
 
-**Files**: `mahavishnu/cli.py`
+**Files**: `mahavishnu/task_cli.py`, `tests/unit/test_task_cli.py` (40 tests)
 
 ---
 
@@ -100,28 +100,28 @@
 
 ### Day 1-2: Embedding Generation
 
-- [ ] Set up embedding model (Ollama/fastembed)
-- [ ] Create embedding generation service
-- [ ] Add batch embedding support
+- [x] Set up embedding model (Ollama/fastembed)
+- [x] Create embedding generation service
+- [x] Add batch embedding support
 
 **Files**: `mahavishnu/core/embeddings.py`
 
 ### Day 3-4: Vector Search
 
-- [ ] Enable pgvector extension
-- [ ] Create vector index (HNSW)
-- [ ] Implement similarity search
-- [ ] Add hybrid search (vector + FTS)
+- [x] Enable pgvector extension
+- [x] Create vector index (HNSW)
+- [x] Implement similarity search
+- [x] Add hybrid search (vector + FTS)
 
-**Files**: `mahavishnu/core/vector_search.py`
+**Files**: `mahavishnu/core/vector_search.py`, `tests/unit/test_vector_search.py` (32 tests)
 
 ### Day 5: Command Palette
 
-- [ ] Implement Ctrl+K fuzzy search
-- [ ] Add command categories
-- [ ] Create command palette UI
+- [x] Implement Ctrl+K fuzzy search
+- [x] Add command categories
+- [x] Create command palette UI
 
-**Files**: `mahavishnu/tui/command_palette.py`
+**Files**: `mahavishnu/tui/command_palette.py`, `tests/unit/test_command_palette.py` (37 tests)
 
 ---
 
@@ -129,20 +129,20 @@
 
 ### Day 1-2: Interactive Tutorial
 
-- [ ] Create tutorial flow
-- [ ] Add step-by-step guidance
-- [ ] Implement progress tracking
-- [ ] Add skip option
+- [x] Create tutorial flow
+- [x] Add step-by-step guidance
+- [x] Implement progress tracking
+- [x] Add skip option
 
-**Files**: `mahavishnu/core/onboarding.py`
+**Files**: `mahavishnu/core/onboarding.py`, `tests/unit/test_onboarding.py` (28 tests)
 
 ### Day 3: Configuration Validation
 
-- [ ] Validate repos.yaml on startup
-- [ ] Add helpful error messages
-- [ ] Create configuration wizard
+- [x] Validate repos.yaml on startup
+- [x] Add helpful error messages
+- [x] Create configuration wizard
 
-**Files**: `mahavishnu/core/config_validator.py`
+**Files**: `mahavishnu/core/config_validator.py`, `tests/unit/test_config_validator.py` (24 tests)
 
 ### Day 4-5: User Testing
 
@@ -163,9 +163,9 @@
 
 ### Day 3: Quick Start Guide
 
-- [ ] Write 5-minute quick start
-- [ ] Create demo screencast
-- [ ] Add API examples
+- [x] Write 5-minute quick start
+- [x] Create demo screencast
+- [x] Add API examples
 
 **Files**: `docs/QUICK_START.md`
 
