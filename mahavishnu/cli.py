@@ -40,10 +40,16 @@ from .routing_cli import add_routing_commands
 # Import worktree management CLI
 from .worktree_cli import worktree_app
 
+# Import comprehensive help system
+from .cli.help_cli import help_group
+
 app = typer.Typer()
 
 # Add worktree sub-app
 app.add_typer(worktree_app, name="worktree")
+
+# Add comprehensive help system
+app.add_typer(help_group, name="help")
 
 
 @app.command()
