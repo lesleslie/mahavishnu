@@ -41,12 +41,12 @@
 
 ### Day 1-2: Database Setup
 
-- [ ] Create PostgreSQL schema
-- [ ] Set up asyncpg connection pooling
-- [ ] Implement database configuration
-- [ ] Create Docker Compose for local PostgreSQL
+- [x] Create PostgreSQL schema
+- [x] Set up asyncpg connection pooling
+- [x] Implement database configuration
+- [x] Create Docker Compose for local PostgreSQL
 
-**Files**: `mahavishnu/core/database.py`, `docker-compose.yml`
+**Files**: `mahavishnu/core/database.py`, `docker-compose.yml`, `migrations/init.sql`, `tests/unit/test_database.py`
 
 ### Day 3-4: Migration Scripts
 
