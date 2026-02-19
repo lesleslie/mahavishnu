@@ -474,3 +474,56 @@ async def embed(
     service = get_embedding_service(provider)
     result = await service.embed(texts)
     return result.embeddings
+
+
+def cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Calculate cosine similarity between two vectors.
+
+    Args:
+        a: First vector
+        b: Second vector
+
+    Returns:
+        Cosine similarity score between -1 and 1
+
+    Example:
+        >>> similarity = cosine_similarity([1, 0, 0], [1, 0, 0])
+        >>> similarity
+        1.0
+    """
+    import math
+
+    if len(a) != len(b):
+        raise ValueError("Vectors must have the same length")
+
+    dot_product = sum(x * y for x, y in zip(a, b))
+    norm_a = math.sqrt(sum(x * x for x in a))
+    norm_b = math.sqrt(sum(x * x for x in b))
+
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+
+    return dot_product / (norm_a * norm_b)
+
+
+def euclidean_distance(a: list[float], b: list[float]) -> float:
+    """Calculate Euclidean distance between two vectors.
+
+    Args:
+        a: First vector
+        b: Second vector
+
+    Returns:
+        Euclidean distance (0 for identical vectors)
+
+    Example:
+        >>> distance = euclidean_distance([0, 0], [3, 4])
+        >>> distance
+        5.0
+    """
+    import math
+
+    if len(a) != len(b):
+        raise ValueError("Vectors must have the same length")
+
+    return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))
