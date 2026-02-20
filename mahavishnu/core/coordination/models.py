@@ -11,15 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
-
-class IssueStatus(StrEnum):
-    """Status of a cross-repository issue."""
-
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    BLOCKED = "blocked"
-    RESOLVED = "resolved"
-    CLOSED = "closed"
+from mahavishnu.core.status import DependencyStatus, IssueStatus, PlanStatus, TodoStatus
 
 
 class Priority(StrEnum):
@@ -31,26 +23,6 @@ class Priority(StrEnum):
     LOW = "low"
 
 
-class PlanStatus(StrEnum):
-    """Status of a cross-repository plan."""
-
-    DRAFT = "draft"
-    ACTIVE = "active"
-    ON_HOLD = "on_hold"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
-
-
-class TodoStatus(StrEnum):
-    """Status of a task/todo item."""
-
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    BLOCKED = "blocked"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
-
-
 class DependencyType(StrEnum):
     """Type of dependency between repositories."""
 
@@ -59,15 +31,6 @@ class DependencyType(StrEnum):
     MCP = "mcp"
     TEST = "test"
     DOCUMENTATION = "documentation"
-
-
-class DependencyStatus(StrEnum):
-    """Status of a dependency."""
-
-    SATISFIED = "satisfied"
-    UNSATISFIED = "unsatisfied"
-    UNKNOWN = "unknown"
-    DEPRECATED = "deprecated"
 
 
 class Milestone(BaseModel):
