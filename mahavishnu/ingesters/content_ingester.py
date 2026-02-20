@@ -22,6 +22,8 @@ Example:
 from __future__ import annotations
 
 import asyncio
+import ipaddress
+import socket
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
@@ -36,6 +38,34 @@ import structlog
 
 from ..core.embeddings import EmbeddingProvider, EmbeddingService, get_embedding_service
 from ..core.observability import observe, span
+
+
+# SSRF protection: blocked IP ranges
+BLOCKED_IP_RANGES = [
+    ipaddress.ip_network('10.0.0.0/8'),        # Private Class A
+    ipaddress.ip_network('172.16.0.0/12'),     # Private Class B
+    ipaddress.ip_network('192.168.0.0/16'),    # Private Class C
+    ipaddress.ip_network('127.0.0.0/8'),       # Loopback
+    ipaddress.ip_network('169.254.0.0/16'),    # Link-local (cloud metadata)
+    ipaddress.ip_network('0.0.0.0/8'),         # Current network
+    ipaddress.ip_network('224.0.0.0/4'),       # Multicast
+    ipaddress.ip_network('240.0.0.0/4'),       # Reserved
+    ipaddress.ip_network('::1/128'),           # IPv6 loopback
+    ipaddress.ip_network('fe80::/10'),         # IPv6 link-local
+    ipaddress.ip_network('fc00::/7'),          # IPv6 private
+]
+
+# Blocked hostnames for SSRF protection
+BLOCKED_HOSTNAMES = [
+    'localhost',
+    'localhost.localdomain',
+    'ip6-localhost',
+    'ip6-loopback',
+    'metadata.google.internal',    # GCP metadata
+    'metadata',                     # Azure metadata
+    'kubernetes.default',           # K8s internal
+    'kubernetes.default.svc',       # K8s internal
+]
 
 
 __all__ = [
@@ -307,6 +337,53 @@ class ContentIngester:
 
         return chunks
 
+    def _validate_url(self, url: str) -> None:
+        """Validate URL for SSRF protection.
+
+        Args:
+            url: URL to validate
+
+        Raises:
+            ValueError: If URL is blocked or invalid
+        """
+        parsed = urllib.parse.urlparse(url)
+
+        # Only allow http and https schemes
+        if parsed.scheme not in ('http', 'https'):
+            raise ValueError(f"Blocked scheme: {parsed.scheme}. Only http and https are allowed.")
+
+        # Block file:// protocol explicitly
+        if parsed.scheme == 'file':
+            raise ValueError("file:// protocol is not allowed.")
+
+        hostname = parsed.hostname
+        if not hostname:
+            raise ValueError("Invalid URL: no hostname")
+
+        # Check blocked hostnames
+        hostname_lower = hostname.lower()
+        for blocked in BLOCKED_HOSTNAMES:
+            if hostname_lower == blocked or hostname_lower.endswith(f'.{blocked}'):
+                raise ValueError(f"Blocked hostname: {hostname}")
+
+        # Resolve hostname and check IP ranges
+        try:
+            # Get all IP addresses for the hostname
+            addr_info = socket.getaddrinfo(hostname, parsed.port or (443 if parsed.scheme == 'https' else 80))
+            for family, _, _, _, sockaddr in addr_info:
+                ip_str = sockaddr[0]
+                try:
+                    ip = ipaddress.ip_address(ip_str)
+                    for blocked_range in BLOCKED_IP_RANGES:
+                        if ip in blocked_range:
+                            raise ValueError(f"Blocked IP range: {ip} is in {blocked_range}")
+                except ValueError:
+                    # Not a valid IP, skip
+                    pass
+        except socket.gaierror as e:
+            # DNS resolution failed - could be intentional for SSRF
+            raise ValueError(f"DNS resolution failed for {hostname}: {e}") from e
+
     @observe(span_name="content_ingester.fetch_url")
     async def _fetch_url(self, url: str) -> dict[str, Any]:
         """Fetch content from URL using web_reader MCP server.
@@ -319,7 +396,11 @@ class ContentIngester:
 
         Raises:
             RuntimeError: If fetch fails
+            ValueError: If URL is blocked (SSRF protection)
         """
+        # SSRF protection: validate URL before fetching
+        self._validate_url(url)
+
         if not self._web_reader_client:
             raise RuntimeError("Ingester not initialized")
 
