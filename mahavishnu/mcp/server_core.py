@@ -1251,7 +1251,10 @@ class FastMCPServer:
         self._register_otel_tools()
 
         # Register worktree management tools
-        await self._register_worktree_tools()
+        self.register_worktree_tools()
+
+        # Register self-improvement tools
+        self._register_self_improvement_tools()
 
         await self.server.run_http_async(host=host, port=port)
 
@@ -1370,6 +1373,13 @@ class FastMCPServer:
 
         register_worktree_tools(self.server, self.app)
         logger.info("Registered 6 worktree management tools with MCP server")
+
+    def _register_self_improvement_tools(self) -> None:
+        """Register self-improvement tools with MCP server."""
+        from ..mcp.tools.self_improvement_tools import register_self_improvement_tools
+
+        register_self_improvement_tools(self.server, self.app)
+        logger.info("Registered 4 self-improvement tools with MCP server")
 
 
 async def run_server(config=None):
