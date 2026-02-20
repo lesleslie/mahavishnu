@@ -24,23 +24,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import StrEnum
 import logging
 from typing import Any
 import uuid
 
+from mahavishnu.core.status import DeploymentStatus
+
 logger = logging.getLogger(__name__)
-
-
-class DeploymentStatus(StrEnum):
-    """Deployment status types."""
-
-    PENDING = "pending"
-    DEPLOYING = "deploying"
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    FAILED = "failed"
-    ROLLING_BACK = "rolling_back"
 
 
 @dataclass

@@ -29,23 +29,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import StrEnum
 import hashlib
 import logging
 import time
 from typing import Any
 
+from mahavishnu.core.status import MigrationStatus
+
 logger = logging.getLogger(__name__)
-
-
-class MigrationStatus(StrEnum):
-    """Migration status types."""
-
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    ROLLED_BACK = "rolled_back"
 
 
 @dataclass
