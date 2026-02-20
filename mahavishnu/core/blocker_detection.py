@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import re
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -307,7 +307,7 @@ class BlockerDetector:
     ) -> list[dict[str, Any]]:
         """Calculate blocker trend over time."""
         trend: list[dict[str, Any]] = []
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         for i in range(7):
             day_start = now - timedelta(days=i + 1)

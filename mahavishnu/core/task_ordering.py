@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -409,7 +409,7 @@ class TaskOrderer:
             else:
                 deadline_dt = deadline
 
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             time_until = deadline_dt - now
 
             if time_until.total_seconds() < 0:
@@ -442,7 +442,7 @@ class TaskOrderer:
             else:
                 deadline_dt = deadline
 
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             time_until = deadline_dt - now
 
             if time_until.total_seconds() < 0:
@@ -662,9 +662,9 @@ class TaskOrderer:
                 else:
                     deadline_dt = deadline
 
-                if deadline_dt < datetime.utcnow():
+                if deadline_dt < datetime.now(UTC):
                     return "critical"
-                elif (deadline_dt - datetime.utcnow()).days <= 3:
+                elif (deadline_dt - datetime.now(UTC)).days <= 3:
                     return "urgent"
             except (ValueError, TypeError):
                 pass
