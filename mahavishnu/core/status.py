@@ -89,7 +89,7 @@ class MigrationStatus(StrEnum):
     """
 
     PENDING = "pending"
-    IN_PROGRESS = "in_progress"
+    RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
     ROLLED_BACK = "rolled_back"
