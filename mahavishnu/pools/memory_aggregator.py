@@ -117,7 +117,7 @@ class MemoryAggregator:
         return synced_count
 
     async def _insert_batch_to_session_buddy(self, batch: list[dict[str, Any]]) -> int:
-        """Insert a single batch to Session-Buddy.
+        """Insert a single batch to Session-Buddy using parallel requests.
 
         Args:
             batch: List of memory items (max _BATCH_SIZE)
@@ -125,9 +125,8 @@ class MemoryAggregator:
         Returns:
             Number of successfully stored items
         """
-        batch_synced = 0
-
-        for memory_item in batch:
+        async def store_single_item(memory_item: dict[str, Any]) -> bool:
+            """Store a single memory item, returning success status."""
             try:
                 response = await self._mcp_client.post(
                     f"{self.session_buddy_url}/tools/call",
@@ -138,13 +137,23 @@ class MemoryAggregator:
                 )
 
                 if response.status_code == 200:
-                    batch_synced += 1
+                    return True
                 else:
                     logger.warning(f"Failed to store memory: {response.text[:200]}")
+                    return False
 
             except httpx.HTTPError as e:
                 logger.error(f"Error storing memory: {e}")
+                return False
 
+        # Execute all requests in parallel using asyncio.gather
+        results = await asyncio.gather(
+            *[store_single_item(item) for item in batch],
+            return_exceptions=True,
+        )
+
+        # Count successful inserts
+        batch_synced = sum(1 for r in results if r is True)
         return batch_synced
 
     async def start_periodic_sync(

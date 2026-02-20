@@ -90,6 +90,9 @@ class PoolManager:
         # Track current worker counts for validation (lazy deletion)
         self._pool_worker_counts: dict[str, int] = {}
 
+        # Thread-safe access to heap and worker counts
+        self._heap_lock = asyncio.Lock()
+
         logger.info("PoolManager initialized with O(log n) heap routing and concurrent collection")
 
     async def spawn_pool(
@@ -182,11 +185,13 @@ class PoolManager:
             logger.error(f"Failed to spawn pool: {e}")
             raise
 
-    def _update_pool_worker_count(self, pool_id: str, new_count: int) -> None:
+    async def _update_pool_worker_count(self, pool_id: str, new_count: int) -> None:
         """Update pool's worker count in heap.
 
         Uses lazy deletion strategy: adds new entry to heap without removing old one.
         Old entries are skipped when encountered (stale count detection).
+
+        Thread-safe via asyncio.Lock for concurrent access.
 
         Args:
             pool_id: Pool identifier
@@ -195,39 +200,42 @@ class PoolManager:
         if pool_id not in self._pool_worker_counts:
             return
 
-        self._pool_worker_counts[pool_id] = new_count
-        heapq.heappush(self._worker_count_heap, (new_count, pool_id))
+        async with self._heap_lock:
+            self._pool_worker_counts[pool_id] = new_count
+            heapq.heappush(self._worker_count_heap, (new_count, pool_id))
 
         # Note: Old (old_count, pool_id) entry still in heap
         # It will be skipped via stale count check in _get_least_loaded_pool()
         # This is lazy deletion - simpler and faster than explicit removal
 
-    def _get_least_loaded_pool(self) -> str | None:
+    async def _get_least_loaded_pool(self) -> str | None:
         """Get least-loaded pool ID using heap (O(log n) amortized).
 
         Handles stale entries from lazy deletion by checking counts match.
+        Thread-safe via asyncio.Lock for concurrent access.
 
         Returns:
             Pool ID with fewest workers, or None if no pools available
         """
-        while self._worker_count_heap:
-            worker_count, pool_id = self._worker_count_heap[0]
+        async with self._heap_lock:
+            while self._worker_count_heap:
+                worker_count, pool_id = self._worker_count_heap[0]
 
-            # Check if entry is stale (lazy deletion)
-            if pool_id not in self._pools:
-                # Pool was closed - remove stale entry
-                heapq.heappop(self._worker_count_heap)
-                continue
+                # Check if entry is stale (lazy deletion)
+                if pool_id not in self._pools:
+                    # Pool was closed - remove stale entry
+                    heapq.heappop(self._worker_count_heap)
+                    continue
 
-            # Check if count matches current tracked count
-            current_count = self._pool_worker_counts.get(pool_id)
-            if current_count is None or worker_count != current_count:
-                # Stale entry - pool was rescaled
-                heapq.heappop(self._worker_count_heap)
-                continue
+                # Check if count matches current tracked count
+                current_count = self._pool_worker_counts.get(pool_id)
+                if current_count is None or worker_count != current_count:
+                    # Stale entry - pool was rescaled
+                    heapq.heappop(self._worker_count_heap)
+                    continue
 
-            # Valid entry found - return pool_id without popping
-            return pool_id
+                # Valid entry found - return pool_id without popping
+                return pool_id
 
         return None
 
@@ -269,7 +277,7 @@ class PoolManager:
         if pool_id in self._pool_worker_counts:
             old_count = self._pool_worker_counts[pool_id]
             if new_count != old_count:
-                self._update_pool_worker_count(pool_id, new_count)
+                await self._update_pool_worker_count(pool_id, new_count)
 
         # Announce task completion
         await self.message_bus.publish(
@@ -331,8 +339,8 @@ class PoolManager:
                 raise ValueError("pool_affinity required for AFFINITY strategy")
             pool_id = pool_affinity
         elif selector == PoolSelector.LEAST_LOADED:
-            # O(log n) heap-based lookup
-            pool_id = self._get_least_loaded_pool()
+            # O(log n) heap-based lookup (thread-safe)
+            pool_id = await self._get_least_loaded_pool()
             if pool_id is None:
                 raise RuntimeError("No pools available for routing")
             logger.debug(f"Least loaded pool: {pool_id}")
