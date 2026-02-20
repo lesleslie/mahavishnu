@@ -55,7 +55,7 @@ repos:
 
 coordination:
   issues:
-    # P0 Issues - Critical
+    # P0 Issues - Critical (ALL FIXED)
     - id: MHV-001
       title: "asyncio.run() called in sync context"
       description: |
@@ -64,11 +64,13 @@ coordination:
         This creates a nested event loop scenario that Python does not support.
       severity: critical
       priority: P0
-      status: pending
+      status: fixed
+      resolution: "Added ThreadPoolExecutor fallback for async context detection"
       pool: python
       affected_files:
         - mahavishnu/core/app.py
       created_at: 2026-02-20T12:00:00Z
+      fixed_at: 2026-02-20T16:30:00Z
       labels:
         - async
         - bug
@@ -82,11 +84,13 @@ coordination:
         Need to add: import logging; logger = logging.getLogger(__name__)
       severity: critical
       priority: P0
-      status: pending
+      status: fixed
+      resolution: "Added structlog import and logger initialization"
       pool: python
       affected_files:
         - mahavishnu/core/unified_orchestrator.py
       created_at: 2026-02-20T12:00:00Z
+      fixed_at: 2026-02-20T16:30:00Z
       labels:
         - bug
         - import-error
@@ -102,7 +106,8 @@ coordination:
         Each needs asyncio.Event for clean shutdown.
       severity: critical
       priority: P0
-      status: pending
+      status: fixed
+      resolution: "Added asyncio.Event shutdown handling to all 4 background loops"
       pool: python
       affected_files:
         - mahavishnu/core/resilience.py
@@ -110,12 +115,13 @@ coordination:
         - mahavishnu/pools/memory_aggregator.py
         - mahavishnu/terminal/pool.py
       created_at: 2026-02-20T12:00:00Z
+      fixed_at: 2026-02-20T16:30:00Z
       labels:
         - async
         - shutdown
         - graceful-stop
 
-    # P1 Issues - Important
+    # P1 Issues - Important (ALL FIXED)
     - id: MHV-004
       title: "N+1 HTTP pattern in batch insert"
       description: |
@@ -124,11 +130,13 @@ coordination:
         for parallel requests or implement a batch endpoint.
       severity: high
       priority: P1
-      status: pending
+      status: fixed
+      resolution: "Implemented parallel batch inserts with asyncio.gather"
       pool: perf
       affected_files:
         - mahavishnu/pools/memory_aggregator.py
       created_at: 2026-02-20T12:00:00Z
+      fixed_at: 2026-02-20T16:45:00Z
       labels:
         - performance
         - http
@@ -145,11 +153,13 @@ coordination:
         Needs URL validation and allowlist/blocklist.
       severity: high
       priority: P1
-      status: pending
+      status: fixed
+      resolution: "Added URL validation with IP blocklist and scheme checking"
       pool: security
       affected_files:
         - mahavishnu/ingesters/content_ingester.py
       created_at: 2026-02-20T12:00:00Z
+      fixed_at: 2026-02-20T16:45:00Z
       labels:
         - security
         - ssrf
@@ -164,11 +174,13 @@ coordination:
         Needs threading.Lock or asyncio.Lock protection.
       severity: high
       priority: P1
-      status: pending
+      status: fixed
+      resolution: "Added asyncio.Lock for thread-safe heap and dict access"
       pool: python
       affected_files:
         - mahavishnu/pools/manager.py
       created_at: 2026-02-20T12:00:00Z
+      fixed_at: 2026-02-20T16:45:00Z
       labels:
         - concurrency
         - race-condition
@@ -178,16 +190,12 @@ coordination:
       title: "datetime.utcnow() deprecation"
       description: |
         Python 3.12+ deprecates datetime.utcnow() in favor of datetime.now(UTC).
-        Six files use the deprecated pattern:
-        - mahavishnu/core/dependency_graph.py
-        - mahavishnu/core/task_ordering.py
-        - mahavishnu/core/pattern_detection.py
-        - mahavishnu/core/predictions.py
-        - mahavishnu/models/pattern.py
+        Six files use the deprecated pattern.
         Should migrate to: datetime.now(timezone.utc) or datetime.now(UTC)
       severity: medium
       priority: P2
-      status: pending
+      status: fixed
+      resolution: "Updated all occurrences to datetime.now(UTC)"
       pool: python
       affected_files:
         - mahavishnu/core/dependency_graph.py
@@ -195,7 +203,9 @@ coordination:
         - mahavishnu/core/pattern_detection.py
         - mahavishnu/core/predictions.py
         - mahavishnu/models/pattern.py
+        - mahavishnu/core/blocker_detection.py
       created_at: 2026-02-20T12:00:00Z
+      fixed_at: 2026-02-20T17:00:00Z
       labels:
         - deprecation
         - python-3.12
@@ -213,7 +223,7 @@ coordination:
         - WorkerStatus
       severity: medium
       priority: P2
-      status: pending
+      status: in_progress
       pool: python
       affected_files:
         - mahavishnu/core/task_store.py
