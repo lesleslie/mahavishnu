@@ -12,8 +12,11 @@ Architecture:
 from __future__ import annotations
 
 import asyncio
+import structlog
 from datetime import UTC, datetime
 from typing import Any
+
+logger = structlog.get_logger()
 
 from mahavishnu.core.task_router import TaskRouter, AdapterManager, StateManager
 from mahavishnu.core.adapters.base import AdapterType

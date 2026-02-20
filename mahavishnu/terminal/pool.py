@@ -58,6 +58,7 @@ class ITerm2ConnectionPool:
         self._pool: dict[str, Any] = {}  # conn_id -> {conn, created_at, last_used, in_use}
         self._lock = asyncio.Lock()
         self._health_check_task: asyncio.Task | None = None
+        self._shutdown_event = asyncio.Event()
 
         logger.info(
             f"Initialized iTerm2 connection pool (max_size={max_size}, "
@@ -136,12 +137,20 @@ class ITerm2ConnectionPool:
 
         Should be called before shutdown.
         """
+        # Signal graceful shutdown first
+        self._shutdown_event.set()
+
         async with self._lock:
-            # Stop health check task
+            # Stop health check task (with timeout for graceful shutdown)
             if self._health_check_task:
-                self._health_check_task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await self._health_check_task
+                try:
+                    await asyncio.wait_for(self._health_check_task, timeout=5.0)
+                except asyncio.TimeoutError:
+                    self._health_check_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await self._health_check_task
+                except asyncio.CancelledError:
+                    pass
                 self._health_check_task = None
 
             # Close all connections
@@ -198,9 +207,18 @@ class ITerm2ConnectionPool:
 
     async def _health_check_loop(self) -> None:
         """Background health check loop."""
-        while True:
+        while not self._shutdown_event.is_set():
             try:
-                await asyncio.sleep(self.health_check_interval)
+                # Sleep with shutdown check
+                try:
+                    await asyncio.wait_for(
+                        self._shutdown_event.wait(),
+                        timeout=self.health_check_interval
+                    )
+                    break  # Shutdown signaled
+                except asyncio.TimeoutError:
+                    pass  # Normal timeout, continue loop
+
                 await self._remove_stale_connections()
             except asyncio.CancelledError:
                 break

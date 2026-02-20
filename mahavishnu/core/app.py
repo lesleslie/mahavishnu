@@ -705,14 +705,32 @@ class MahavishnuApp:
         return validated_repos
 
     def _check_user_repo_permission(self, user_id: str, repo_path: str) -> bool:
-        """Check if user has read permission for repository."""
+        """Check if user has read permission for repository.
+
+        Handles both sync and async contexts safely. When called from an async
+        context, uses the running event loop. When called from sync context,
+        creates a new event loop.
+        """
         import asyncio
 
         try:
-            has_permission = asyncio.run(
-                self.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO)
-            )
-            return has_permission
+            # Check if there's already a running event loop
+            try:
+                loop = asyncio.get_running_loop()
+                # We're in an async context - schedule the coroutine
+                # Create a Future and run the coroutine in the current loop
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(
+                        asyncio.run,
+                        self.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO)
+                    )
+                    return future.result(timeout=5.0)
+            except RuntimeError:
+                # No running loop - safe to use asyncio.run()
+                return asyncio.run(
+                    self.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO)
+                )
         except Exception:
             # If permission check fails, still allow access for backward compatibility
             return True

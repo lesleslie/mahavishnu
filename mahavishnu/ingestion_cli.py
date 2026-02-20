@@ -292,7 +292,7 @@ def add_ingestion_commands() -> None:
     Call this from main cli.py to register ingestion commands.
     """
     # Import main app
-    from .cli import app
+    from ._main_cli import app
 
     # Add ingestion app as sub-command
     app.add_typer(ingestion_app, name="ingest")
