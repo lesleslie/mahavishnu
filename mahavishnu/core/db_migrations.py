@@ -27,18 +27,18 @@ Usage:
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import StrEnum
 import hashlib
 import logging
 import time
-from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class MigrationStatus(str, Enum):
+class MigrationStatus(StrEnum):
     """Migration status types."""
 
     PENDING = "pending"
@@ -205,10 +205,7 @@ class MigrationManager:
         Returns:
             List of pending migrations
         """
-        return [
-            m for m in self.migrations.values()
-            if m.status == MigrationStatus.PENDING
-        ]
+        return [m for m in self.migrations.values() if m.status == MigrationStatus.PENDING]
 
     def get_completed_migrations(self) -> list[Migration]:
         """Get all completed migrations.
@@ -216,10 +213,7 @@ class MigrationManager:
         Returns:
             List of completed migrations
         """
-        return [
-            m for m in self.migrations.values()
-            if m.status == MigrationStatus.COMPLETED
-        ]
+        return [m for m in self.migrations.values() if m.status == MigrationStatus.COMPLETED]
 
     def get_current_version(self) -> str:
         """Get current database version.
@@ -392,11 +386,12 @@ class MigrationManager:
         current = self.get_current_version()
 
         for migration in self.migrations.values():
-            if migration.status == MigrationStatus.PENDING:
-                # Check if this migration is needed for target
-                if self._version_compare(migration.version, current) > 0:
-                    if self._version_compare(migration.version, target_version) <= 0:
-                        to_run.append(migration.id)
+            if (
+                migration.status == MigrationStatus.PENDING
+                and self._version_compare(migration.version, current) > 0
+                and self._version_compare(migration.version, target_version) <= 0
+            ):
+                to_run.append(migration.id)
 
         return MigrationPlan(
             migrations_to_run=to_run,
@@ -416,7 +411,7 @@ class MigrationManager:
         parts1 = [int(p) for p in v1.split(".")]
         parts2 = [int(p) for p in v2.split(".")]
 
-        for p1, p2 in zip(parts1, parts2):
+        for p1, p2 in zip(parts1, parts2, strict=False):
             if p1 < p2:
                 return -1
             if p1 > p2:
@@ -439,8 +434,7 @@ class MigrationManager:
             for dep_id in migration.dependencies:
                 if dep_id not in self.migrations:
                     logger.error(
-                        f"Migration {migration.id} depends on "
-                        f"non-existent migration {dep_id}"
+                        f"Migration {migration.id} depends on non-existent migration {dep_id}"
                     )
                     return False
         return True

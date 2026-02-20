@@ -19,19 +19,22 @@ Usage:
 
 from __future__ import annotations
 
-import json
-import logging
 import asyncio
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
-from typing import Any, Callable, Coroutine
+from datetime import UTC, datetime
+from enum import StrEnum
+import json
+import logging
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Coroutine
 
 logger = logging.getLogger(__name__)
 
 
-class MetricType(str, Enum):
+class MetricType(StrEnum):
     """Prometheus metric types."""
 
     COUNTER = "counter"
@@ -40,7 +43,7 @@ class MetricType(str, Enum):
     SUMMARY = "summary"
 
 
-class AlertSeverity(str, Enum):
+class AlertSeverity(StrEnum):
     """Alert severity levels."""
 
     INFO = "info"
@@ -49,7 +52,7 @@ class AlertSeverity(str, Enum):
     EMERGENCY = "emergency"
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """Health check status."""
 
     HEALTHY = "healthy"
@@ -360,18 +363,17 @@ class AlertManager:
             threshold = float(threshold_str)
         except ValueError:
             return False
-        if operator == ">":
-            return value > threshold
-        elif operator == ">=":
-            return value >= threshold
-        elif operator == "<":
-            return value < threshold
-        elif operator == "<=":
-            return value <= threshold
-        elif operator == "==":
-            return value == threshold
-        elif operator == "!=":
-            return value != threshold
+
+        ops = {
+            ">": lambda a, b: a > b,
+            ">=": lambda a, b: a >= b,
+            "<": lambda a, b: a < b,
+            "<=": lambda a, b: a <= b,
+            "==": lambda a, b: a == b,
+            "!=": lambda a, b: a != b,
+        }
+        if operator in ops:
+            return ops[operator](value, threshold)
         return False
 
 
@@ -380,8 +382,7 @@ class HealthChecker:
 
     def __init__(self) -> None:
         self.checks: dict[
-            str,
-            Callable[[], HealthCheckResult | Coroutine[Any, Any, HealthCheckResult]]
+            str, Callable[[], HealthCheckResult | Coroutine[Any, Any, HealthCheckResult]]
         ] = {}
 
     def register_check(

@@ -25,13 +25,14 @@ Usage:
 
 from __future__ import annotations
 
-import yaml
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
+import yaml
 
-class ManifestType(str, Enum):
+
+class ManifestType(StrEnum):
     """Kubernetes manifest types."""
 
     DEPLOYMENT = "Deployment"
@@ -331,9 +332,7 @@ class K8sManifestGenerator:
 
         # Add environment variables
         if config.env:
-            container["env"] = [
-                {"name": k, "value": v} for k, v in config.env.items()
-            ]
+            container["env"] = [{"name": k, "value": v} for k, v in config.env.items()]
 
         # Build pod spec
         pod_spec: dict[str, Any] = {
@@ -510,16 +509,18 @@ class K8sManifestGenerator:
         ]
 
         if config.memory_target:
-            metrics.append({
-                "type": "Resource",
-                "resource": {
-                    "name": "memory",
-                    "target": {
-                        "type": "Utilization",
-                        "averageUtilization": config.memory_target,
+            metrics.append(
+                {
+                    "type": "Resource",
+                    "resource": {
+                        "name": "memory",
+                        "target": {
+                            "type": "Utilization",
+                            "averageUtilization": config.memory_target,
+                        },
                     },
-                },
-            })
+                }
+            )
 
         manifest: dict[str, Any] = {
             "apiVersion": self._autoscaling_api_version,
@@ -646,9 +647,7 @@ class K8sManifestGenerator:
         # Multiple manifests with document separator
         yaml_docs = []
         for manifest in manifests:
-            yaml_docs.append(
-                yaml.dump(manifest, default_flow_style=False, sort_keys=False)
-            )
+            yaml_docs.append(yaml.dump(manifest, default_flow_style=False, sort_keys=False))
 
         return "---\n".join(yaml_docs)
 
