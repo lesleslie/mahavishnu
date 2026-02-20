@@ -667,6 +667,7 @@ class ResiliencePatterns:
     def __init__(self, app):
         self.app = app
         self.recovery_manager = ErrorRecoveryManager(app)
+        self._shutdown_event = asyncio.Event()
 
     async def resilient_workflow_execution(
         self,
@@ -702,16 +703,35 @@ class ResiliencePatterns:
         """Start the background monitoring and healing service."""
 
         async def monitoring_loop():
-            while True:
+            while not self._shutdown_event.is_set():
                 try:
                     await self.recovery_manager.monitor_and_heal_workflows()
-                    # Check every 5 minutes
-                    await asyncio.sleep(300)
+                    # Check every 5 minutes (with shutdown check)
+                    try:
+                        await asyncio.wait_for(
+                            self._shutdown_event.wait(),
+                            timeout=300
+                        )
+                        break  # Shutdown signaled
+                    except asyncio.TimeoutError:
+                        pass  # Normal timeout, continue loop
                 except Exception as e:
                     self.app.logger.error(f"Error in monitoring loop: {e}")
-                    # Wait a bit before retrying
-                    await asyncio.sleep(60)
+                    # Wait a bit before retrying (with shutdown check)
+                    try:
+                        await asyncio.wait_for(
+                            self._shutdown_event.wait(),
+                            timeout=60
+                        )
+                        break  # Shutdown signaled
+                    except asyncio.TimeoutError:
+                        pass  # Normal timeout, continue loop
 
         # Run the monitoring loop in the background
         asyncio.create_task(monitoring_loop())
         self.app.logger.info("Started resilience monitoring service")
+
+    async def stop_monitoring_service(self):
+        """Stop the background monitoring service gracefully."""
+        self._shutdown_event.set()
+        self.app.logger.info("Stopped resilience monitoring service")

@@ -58,6 +58,7 @@ class MemoryAggregator:
 
         self._mcp_client = httpx.AsyncClient(timeout=300.0)
         self._sync_task: asyncio.Task | None = None
+        self._shutdown_event = asyncio.Event()
 
         logger.info(f"MemoryAggregator initialized (sync_interval={sync_interval}s)")
 
@@ -162,13 +163,21 @@ class MemoryAggregator:
         """
 
         async def sync_loop():
-            while True:
+            while not self._shutdown_event.is_set():
                 try:
                     await self.collect_and_sync(pool_manager)
                 except Exception as e:
                     logger.error(f"Memory sync error: {e}")
 
-                await asyncio.sleep(self.sync_interval)
+                # Sleep with shutdown check
+                try:
+                    await asyncio.wait_for(
+                        self._shutdown_event.wait(),
+                        timeout=self.sync_interval
+                    )
+                    break  # Shutdown signaled
+                except asyncio.TimeoutError:
+                    pass  # Normal timeout, continue loop
 
         self._sync_task = asyncio.create_task(sync_loop())
         logger.info("Started periodic memory sync")
@@ -181,10 +190,18 @@ class MemoryAggregator:
             await aggregator.stop()
             ```
         """
+        # Signal graceful shutdown
+        self._shutdown_event.set()
+
         if self._sync_task:
-            self._sync_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await self._sync_task
+            # Give the task a moment to complete gracefully
+            try:
+                await asyncio.wait_for(self._sync_task, timeout=5.0)
+            except asyncio.TimeoutError:
+                # Force cancel if it doesn't stop gracefully
+                self._sync_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await self._sync_task
 
         await self._mcp_client.aclose()
         logger.info("MemoryAggregator stopped")

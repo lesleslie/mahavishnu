@@ -75,7 +75,7 @@ dependencies = [
 ]
 
 [project.scripts]
-mahavishnu = "mahavishnu.cli:app"
+mahavishnu = "mahavishnu._main_cli:app"
 
 # =============================================================================
 # ORCHESTRATION ADAPTERS - Core Components

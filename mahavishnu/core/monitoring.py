@@ -197,7 +197,7 @@ class AlertManager:
 
     async def _monitoring_loop(self):
         """Background monitoring loop."""
-        while True:
+        while not self._shutdown_event.is_set():
             try:
                 # Run various health checks
                 await self._check_system_health()
@@ -205,11 +205,31 @@ class AlertManager:
                 await self._check_resource_usage()
                 await self._check_backup_status()
 
-                # Sleep before next check
-                await asyncio.sleep(30)  # Check every 30 seconds
+                # Sleep before next check (with shutdown check)
+                try:
+                    await asyncio.wait_for(
+                        self._shutdown_event.wait(),
+                        timeout=30
+                    )
+                    break  # Shutdown signaled
+                except asyncio.TimeoutError:
+                    pass  # Normal timeout, continue loop
             except Exception as e:
                 self.logger.error(f"Error in monitoring loop: {e}")
-                await asyncio.sleep(60)  # Wait longer if there's an error
+                # Wait longer if there's an error (with shutdown check)
+                try:
+                    await asyncio.wait_for(
+                        self._shutdown_event.wait(),
+                        timeout=60
+                    )
+                    break  # Shutdown signaled
+                except asyncio.TimeoutError:
+                    pass  # Normal timeout, continue loop
+
+    async def stop(self):
+        """Stop the monitoring service gracefully."""
+        self._shutdown_event.set()
+        self.logger.info("Monitoring service stopped")
 
     async def _check_system_health(self):
         """Check overall system health."""
@@ -599,6 +619,7 @@ class MonitoringService:
         self.app = app
         self.alert_manager = AlertManager(app)
         self.dashboard = MonitoringDashboard(app)
+        self._shutdown_event = asyncio.Event()
 
         # Set up the dashboard to use the alert manager
         self.dashboard.set_alert_manager(self.alert_manager)
