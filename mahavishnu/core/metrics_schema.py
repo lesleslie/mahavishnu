@@ -19,6 +19,8 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import field_validator
 
+from mahavishnu.core.status import ExecutionStatus
+
 try:
     from oneiric.core.ulid import generate_config_id
 except ImportError:
@@ -42,14 +44,6 @@ class TaskType(str, Enum):
     BATCH_TASK = "batch_task"
     CRITICAL_TASK = "critical_task"
     INTERACTIVE_TASK = "interactive_task"
-
-
-class ExecutionStatus(str, Enum):
-    """Execution outcome status."""
-    SUCCESS = "success"
-    FAILURE = "failure"
-    TIMEOUT = "timeout"
-    CANCELLED = "cancelled"
 
 
 class ExecutionRecord(BaseModel):

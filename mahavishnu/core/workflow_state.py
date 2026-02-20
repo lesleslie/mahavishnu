@@ -1,8 +1,9 @@
 """Workflow state tracking for Mahavishnu."""
 
 from datetime import datetime
-from enum import StrEnum
 from typing import Any
+
+from mahavishnu.core.status import WorkflowStatus
 
 # Try to import OpenSearch, with fallback if not available
 try:
@@ -12,15 +13,6 @@ try:
 except ImportError:
     OPENSEARCH_AVAILABLE = False
     AsyncOpenSearch = None
-
-
-class WorkflowStatus(StrEnum):
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-    TIMEOUT = "timeout"
 
 
 class WorkflowState:

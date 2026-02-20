@@ -2,30 +2,9 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Any
 
-
-class PoolStatus(Enum):
-    """Pool execution status.
-
-    Attributes:
-        PENDING: Pool created but not initialized
-        INITIALIZING: Pool is starting up and spawning workers
-        RUNNING: Pool is active and accepting tasks
-        SCALING: Pool is scaling up or down
-        DEGRADED: Pool is running but with reduced capacity
-        STOPPED: Pool has been gracefully shut down
-        FAILED: Pool has encountered a critical error
-    """
-
-    PENDING = "pending"
-    INITIALIZING = "initializing"
-    RUNNING = "running"
-    SCALING = "scaling"
-    DEGRADED = "degraded"
-    STOPPED = "stopped"
-    FAILED = "failed"
+from mahavishnu.core.status import PoolStatus
 
 
 @dataclass

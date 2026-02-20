@@ -43,6 +43,8 @@ from enum import StrEnum
 import logging
 from typing import TYPE_CHECKING, Any
 
+from mahavishnu.core.status import DeadLetterStatus
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -70,16 +72,6 @@ class RetryPolicy(StrEnum):
         "exponential"  # Exponential backoff: 1min, 2min, 4min, 8min, ... (capped at 60min)
     )
     IMMEDIATE = "immediate"  # Retry immediately on next processor cycle
-
-
-class DeadLetterStatus(StrEnum):
-    """Status of a dead letter task."""
-
-    PENDING = "pending"  # Waiting for retry
-    RETRYING = "retrying"  # Currently being retried
-    EXHAUSTED = "exhausted"  # All retries exhausted
-    COMPLETED = "completed"  # Successfully recovered
-    ARCHIVED = "archived"  # Manually archived
 
 
 @dataclass
