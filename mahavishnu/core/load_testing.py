@@ -23,18 +23,18 @@ Usage:
 
 from __future__ import annotations
 
-import json
-import logging
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
+import json
+import logging
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class MetricType(str, Enum):
+class MetricType(StrEnum):
     """Performance metric types."""
 
     LATENCY = "latency"
@@ -104,9 +104,7 @@ class LoadTestConfig:
         """
         headers_js = ""
         if self.headers:
-            headers_str = ", ".join(
-                f'"{k}": "{v}"' for k, v in self.headers.items()
-            )
+            headers_str = ", ".join(f'"{k}": "{v}"' for k, v in self.headers.items())
             headers_js = f", headers: {{ {headers_str} }}"
 
         stages = ""
@@ -374,11 +372,13 @@ class LoadTestRunner:
         except FileNotFoundError:
             logger.warning("k6 not found, returning mock output")
             # Return mock output for testing
-            return json.dumps({
-                "http_reqs": {"count": 1000, "rate": 100.0},
-                "http_req_duration": {"avg": 50.0, "p(95)": 150.0, "p(99)": 200.0},
-                "http_req_failed": {"value": 0.01},
-            })
+            return json.dumps(
+                {
+                    "http_reqs": {"count": 1000, "rate": 100.0},
+                    "http_req_duration": {"avg": 50.0, "p(95)": 150.0, "p(99)": 200.0},
+                    "http_req_failed": {"value": 0.01},
+                }
+            )
 
     def parse_k6_output(self, output: str) -> list[PerformanceMetric]:
         """Parse k6 JSON output.
@@ -405,9 +405,7 @@ class LoadTestRunner:
                     timestamp_str = point_data.get("time", datetime.now(UTC).isoformat())
 
                     try:
-                        timestamp = datetime.fromisoformat(
-                            timestamp_str.replace("Z", "+00:00")
-                        )
+                        timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
                     except ValueError:
                         timestamp = datetime.now(UTC)
 
@@ -421,12 +419,14 @@ class LoadTestRunner:
                     else:
                         metric_type = MetricType.LATENCY
 
-                    metrics.append(PerformanceMetric(
-                        metric_type=metric_type,
-                        name=metric_name,
-                        value=float(value),
-                        timestamp=timestamp,
-                    ))
+                    metrics.append(
+                        PerformanceMetric(
+                            metric_type=metric_type,
+                            name=metric_name,
+                            value=float(value),
+                            timestamp=timestamp,
+                        )
+                    )
             except json.JSONDecodeError:
                 continue
 
@@ -448,57 +448,69 @@ class LoadTestRunner:
         if "http_reqs" in data:
             reqs_data = data["http_reqs"]
             if "count" in reqs_data:
-                metrics.append(PerformanceMetric(
-                    metric_type=MetricType.THROUGHPUT,
-                    name="http_reqs",
-                    value=float(reqs_data["count"]),
-                    timestamp=timestamp,
-                ))
+                metrics.append(
+                    PerformanceMetric(
+                        metric_type=MetricType.THROUGHPUT,
+                        name="http_reqs",
+                        value=float(reqs_data["count"]),
+                        timestamp=timestamp,
+                    )
+                )
             if "rate" in reqs_data:
-                metrics.append(PerformanceMetric(
-                    metric_type=MetricType.THROUGHPUT,
-                    name="http_reqs_rate",
-                    value=float(reqs_data["rate"]),
-                    timestamp=timestamp,
-                ))
+                metrics.append(
+                    PerformanceMetric(
+                        metric_type=MetricType.THROUGHPUT,
+                        name="http_reqs_rate",
+                        value=float(reqs_data["rate"]),
+                        timestamp=timestamp,
+                    )
+                )
 
         # Parse http_req_duration
         if "http_req_duration" in data:
             dur_data = data["http_req_duration"]
             if "avg" in dur_data:
-                metrics.append(PerformanceMetric(
-                    metric_type=MetricType.LATENCY,
-                    name="http_req_duration",
-                    value=float(dur_data["avg"]),
-                    timestamp=timestamp,
-                ))
+                metrics.append(
+                    PerformanceMetric(
+                        metric_type=MetricType.LATENCY,
+                        name="http_req_duration",
+                        value=float(dur_data["avg"]),
+                        timestamp=timestamp,
+                    )
+                )
             if "p(95)" in dur_data:
-                metrics.append(PerformanceMetric(
-                    metric_type=MetricType.P95,
-                    name="http_req_duration",
-                    value=float(dur_data["p(95)"]),
-                    timestamp=timestamp,
-                    tags={"percentile": "p95"},
-                ))
+                metrics.append(
+                    PerformanceMetric(
+                        metric_type=MetricType.P95,
+                        name="http_req_duration",
+                        value=float(dur_data["p(95)"]),
+                        timestamp=timestamp,
+                        tags={"percentile": "p95"},
+                    )
+                )
             if "p(99)" in dur_data:
-                metrics.append(PerformanceMetric(
-                    metric_type=MetricType.P99,
-                    name="http_req_duration",
-                    value=float(dur_data["p(99)"]),
-                    timestamp=timestamp,
-                    tags={"percentile": "p99"},
-                ))
+                metrics.append(
+                    PerformanceMetric(
+                        metric_type=MetricType.P99,
+                        name="http_req_duration",
+                        value=float(dur_data["p(99)"]),
+                        timestamp=timestamp,
+                        tags={"percentile": "p99"},
+                    )
+                )
 
         # Parse http_req_failed
         if "http_req_failed" in data:
             fail_data = data["http_req_failed"]
             if "value" in fail_data:
-                metrics.append(PerformanceMetric(
-                    metric_type=MetricType.ERROR_RATE,
-                    name="http_req_failed",
-                    value=float(fail_data["value"]),
-                    timestamp=timestamp,
-                ))
+                metrics.append(
+                    PerformanceMetric(
+                        metric_type=MetricType.ERROR_RATE,
+                        name="http_req_failed",
+                        value=float(fail_data["value"]),
+                        timestamp=timestamp,
+                    )
+                )
 
         return metrics
 
@@ -566,12 +578,14 @@ class BenchmarkSuite:
         if final_current is None:
             final_current = 0.0
 
-        self.benchmarks.append(BenchmarkResult(
-            name=name,
-            baseline_value=final_baseline,
-            current_value=final_current,
-            unit=unit,
-        ))
+        self.benchmarks.append(
+            BenchmarkResult(
+                name=name,
+                baseline_value=final_baseline,
+                current_value=final_current,
+                unit=unit,
+            )
+        )
 
     def run(self) -> list[BenchmarkResult]:
         """Run all benchmarks.
@@ -649,12 +663,14 @@ class BenchmarkSuite:
         """
         try:
             data = json.loads(json_str)
-            self.benchmarks.append(BenchmarkResult(
-                name=data.get("name", ""),
-                baseline_value=data.get("baseline_value", 0.0),
-                current_value=data.get("current_value", 0.0),
-                unit=data.get("unit", ""),
-            ))
+            self.benchmarks.append(
+                BenchmarkResult(
+                    name=data.get("name", ""),
+                    baseline_value=data.get("baseline_value", 0.0),
+                    current_value=data.get("current_value", 0.0),
+                    unit=data.get("unit", ""),
+                )
+            )
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse benchmark JSON: {e}")
 

@@ -22,17 +22,17 @@ Usage:
 
 from __future__ import annotations
 
-import logging
-import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
+import logging
 from typing import Any
+import uuid
 
 logger = logging.getLogger(__name__)
 
 
-class DeploymentStatus(str, Enum):
+class DeploymentStatus(StrEnum):
     """Deployment status types."""
 
     PENDING = "pending"
@@ -226,10 +226,7 @@ class DeploymentManager:
         Returns:
             Previous version or None
         """
-        inactive_versions = [
-            v for v in self.versions
-            if v.status == DeploymentStatus.INACTIVE
-        ]
+        inactive_versions = [v for v in self.versions if v.status == DeploymentStatus.INACTIVE]
         if inactive_versions:
             return inactive_versions[-1]
         return None
