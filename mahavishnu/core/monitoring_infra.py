@@ -28,6 +28,8 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any
 
+from mahavishnu.core.status import HealthStatus
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
 
@@ -50,14 +52,6 @@ class AlertSeverity(StrEnum):
     WARNING = "warning"
     CRITICAL = "critical"
     EMERGENCY = "emergency"
-
-
-class HealthStatus(StrEnum):
-    """Health check status."""
-
-    HEALTHY = "healthy"
-    DEGRADED = "degraded"
-    UNHEALTHY = "unhealthy"
 
 
 @dataclass
