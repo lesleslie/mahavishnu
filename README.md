@@ -3,7 +3,7 @@
 [![Quality Score](https://img.shields.io/badge/Quality-92%2F100-brightgreen)](https://github.com/yourusername/mahavishnu)
 [![Security](https://img.shields.io/badge/Security-95%2F100-brightgreen)](SECURITY_CHECKLIST.md)
 [![Performance](https://img.shields.io/badge/Performance-90%2F100-brightgreen)](docs/PRODUCTION_DEPLOYMENT_GUIDE.md)
-[![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.13%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **Mahavishnu** is a world-class multi-engine orchestration platform that provides unified interfaces for managing workflows across multiple repositories. It enables intelligent workflow routing, cross-repository coordination, and headless AI worker orchestration.
@@ -124,7 +124,7 @@ Mahavishnu follows a modular, async-first architecture with these core component
 
 ### Prerequisites
 
-- Python 3.11 or later
+- Python 3.13 or later
 - uv (recommended) or pip
 - git
 
