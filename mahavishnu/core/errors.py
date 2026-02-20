@@ -2,12 +2,12 @@
 Error code system for Mahavishnu Task Orchestration.
 
 This module provides a structured error handling system with:
-- Error codes (MHV-001 to MHV-399)
+- Error codes (MHV-001 to MHV-499)
 - Recovery guidance for each error
 - Structured error responses for API/MCP tools
 
 Created: 2026-02-18
-Version: 3.1
+Version: 3.2
 Related: 4-Agent Opus Review P0 issue - error code system
 """
 
@@ -25,6 +25,8 @@ class ErrorCode(str, Enum):
     - MHV-100 to MHV-199: Task errors
     - MHV-200 to MHV-299: Repository errors
     - MHV-300 to MHV-399: External integration errors
+    - MHV-400 to MHV-449: Prefect/Orchestration errors
+    - MHV-450 to MHV-499: Agno/Multi-agent errors
 
     Each error code has:
     - A descriptive name
@@ -73,6 +75,27 @@ class ErrorCode(str, Enum):
     EMBEDDING_SERVICE_ERROR = "MHV-304"
     NLP_PARSER_ERROR = "MHV-305"
     EXTERNAL_SERVICE_UNAVAILABLE = "MHV-306"
+
+    # Prefect/Orchestration errors (400-449)
+    PREFECT_CONNECTION_ERROR = "MHV-400"
+    PREFECT_DEPLOYMENT_NOT_FOUND = "MHV-401"
+    PREFECT_FLOW_NOT_FOUND = "MHV-402"
+    PREFECT_FLOW_RUN_FAILED = "MHV-403"
+    PREFECT_SCHEDULE_INVALID = "MHV-404"
+    PREFECT_WORK_POOL_UNAVAILABLE = "MHV-405"
+    PREFECT_API_ERROR = "MHV-406"
+    PREFECT_TIMEOUT = "MHV-407"
+    PREFECT_AUTHENTICATION_ERROR = "MHV-408"
+    PREFECT_RATE_LIMITED = "MHV-409"
+    PREFECT_STATE_SYNC_ERROR = "MHV-410"
+
+    # Agno/Multi-agent errors (450-499)
+    AGNO_AGENT_NOT_FOUND = "MHV-450"
+    AGNO_TEAM_NOT_FOUND = "MHV-451"
+    AGNO_LLM_PROVIDER_ERROR = "MHV-452"
+    AGNO_TOOL_EXECUTION_ERROR = "MHV-453"
+    AGNO_MEMORY_ERROR = "MHV-454"
+    AGNO_STREAMING_ERROR = "MHV-455"
 
 
 class MahavishnuError(Exception):
@@ -270,6 +293,110 @@ class MahavishnuError(Exception):
             "Check service status",
             "Try again later",
             "Use fallback options if available",
+        ],
+        # Prefect/Orchestration error recovery guidance
+        ErrorCode.PREFECT_CONNECTION_ERROR: [
+            "Check if Prefect server is running",
+            "Verify PREFECT_API_URL environment variable",
+            "Run 'prefect server start' to start local server",
+            "Check network connectivity to Prefect Cloud",
+        ],
+        ErrorCode.PREFECT_DEPLOYMENT_NOT_FOUND: [
+            "Verify the deployment name is correct",
+            "Check if deployment was deleted",
+            "Use 'prefect deployment ls' to list deployments",
+            "Ensure deployment is in the correct workspace",
+        ],
+        ErrorCode.PREFECT_FLOW_NOT_FOUND: [
+            "Verify the flow name is correct",
+            "Check if flow is registered with Prefect",
+            "Use 'prefect flow ls' to list available flows",
+            "Ensure flow module is importable",
+        ],
+        ErrorCode.PREFECT_FLOW_RUN_FAILED: [
+            "Check flow run logs for error details",
+            "Verify all task dependencies are met",
+            "Check for resource constraints (memory, CPU)",
+            "Use 'prefect flow-run inspect <id>' for details",
+        ],
+        ErrorCode.PREFECT_SCHEDULE_INVALID: [
+            "Verify cron expression or interval format",
+            "Check timezone configuration",
+            "Ensure schedule doesn't conflict with existing schedules",
+            "Use 'prefect deployment schedule validate' to test",
+        ],
+        ErrorCode.PREFECT_WORK_POOL_UNAVAILABLE: [
+            "Check if work pool is paused",
+            "Verify work pool has available workers",
+            "Use 'prefect work-pool inspect <name>' for status",
+            "Start workers with 'prefect worker start --pool <name>'",
+        ],
+        ErrorCode.PREFECT_API_ERROR: [
+            "Prefect API request failed",
+            "Check PREFECT_API_KEY is set correctly",
+            "Verify API endpoint is accessible",
+            "Try again after a brief wait",
+        ],
+        ErrorCode.PREFECT_TIMEOUT: [
+            "Flow or task execution timed out",
+            "Increase timeout in flow/task configuration",
+            "Optimize flow for better performance",
+            "Check for deadlocks or infinite loops",
+        ],
+        ErrorCode.PREFECT_AUTHENTICATION_ERROR: [
+            "Prefect authentication failed",
+            "Verify PREFECT_API_KEY is valid",
+            "Check if API key has required permissions",
+            "Re-authenticate with 'prefect auth login'",
+        ],
+        ErrorCode.PREFECT_RATE_LIMITED: [
+            "Prefect API rate limit exceeded",
+            "Reduce request frequency",
+            "Wait before retrying",
+            "Consider upgrading Prefect Cloud plan",
+        ],
+        ErrorCode.PREFECT_STATE_SYNC_ERROR: [
+            "Failed to sync flow run state",
+            "Check Prefect server connectivity",
+            "Verify event queue is not backed up",
+            "Use 'prefect flow-run inspect' to check current state",
+        ],
+        # Agno/Multi-agent error recovery guidance
+        ErrorCode.AGNO_AGENT_NOT_FOUND: [
+            "Verify the agent name is correct",
+            "Check if agent is registered in configuration",
+            "Use 'mahavishnu agent list' to see available agents",
+            "Ensure agent module is importable",
+        ],
+        ErrorCode.AGNO_TEAM_NOT_FOUND: [
+            "Verify the team name is correct",
+            "Check if team is defined in configuration",
+            "Use 'mahavishnu team list' to see available teams",
+            "Create team with 'mahavishnu team create'",
+        ],
+        ErrorCode.AGNO_LLM_PROVIDER_ERROR: [
+            "LLM provider request failed",
+            "Check API key for the LLM provider",
+            "Verify provider is accessible",
+            "Try fallback provider if configured",
+        ],
+        ErrorCode.AGNO_TOOL_EXECUTION_ERROR: [
+            "Agent tool execution failed",
+            "Check tool input parameters",
+            "Verify tool has required permissions",
+            "Review tool logs for detailed error",
+        ],
+        ErrorCode.AGNO_MEMORY_ERROR: [
+            "Agent memory operation failed",
+            "Check memory storage configuration",
+            "Verify database connectivity for memory backend",
+            "Clear memory cache if corrupted",
+        ],
+        ErrorCode.AGNO_STREAMING_ERROR: [
+            "Agent response streaming failed",
+            "Check WebSocket connection status",
+            "Verify streaming is enabled for agent",
+            "Try non-streaming mode as fallback",
         ],
     }
 
@@ -505,6 +632,40 @@ class WorkflowError(MahavishnuError):
         )
 
 
+class PrefectError(MahavishnuError):
+    """
+    Prefect orchestration error.
+
+    Used for Prefect-specific failures including connection issues,
+    flow/deployment errors, and work pool problems.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        error_code: ErrorCode = ErrorCode.PREFECT_API_ERROR,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(message, error_code, details=details)
+
+
+class AgnoError(MahavishnuError):
+    """
+    Agno multi-agent error.
+
+    Used for Agno-specific failures including agent/team errors,
+    LLM provider issues, and tool execution problems.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        error_code: ErrorCode = ErrorCode.AGNO_AGENT_NOT_FOUND,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(message, error_code, details=details)
+
+
 # ============================================================================
 # Error Helper Functions
 # ============================================================================
@@ -533,7 +694,7 @@ def get_contextual_help(error_code: ErrorCode, context: dict | None = None) -> s
     if context:
         help_text += f"\nContext:\n"
         for key, value in context.items():
-            help_text += f"  • {key}: {value}\n"
+            help_text += f"  - {key}: {value}\n"
 
     help_text += f"\nDocumentation: https://docs.mahavishnu.org/errors/{error_code.value.lower()}\n"
 
@@ -718,4 +879,90 @@ class ErrorTemplates:
         return WebhookAuthError(
             message=f"Webhook processing failed: {reason}",
             details=details,
+        )
+
+    @staticmethod
+    def prefect_flow_failed(flow_name: str, flow_run_id: str, reason: str) -> PrefectError:
+        """Create a Prefect flow run error.
+
+        Args:
+            flow_name: Name of the flow that failed
+            flow_run_id: ID of the failed flow run
+            reason: Reason for failure
+
+        Returns:
+            PrefectError with recovery steps
+        """
+        return PrefectError(
+            message=f"Flow '{flow_name}' run {flow_run_id} failed: {reason}",
+            error_code=ErrorCode.PREFECT_FLOW_RUN_FAILED,
+            details={
+                "flow_name": flow_name,
+                "flow_run_id": flow_run_id,
+                "reason": reason,
+            },
+        )
+
+    @staticmethod
+    def prefect_connection_failed(api_url: str, original_error: str) -> PrefectError:
+        """Create a Prefect connection error.
+
+        Args:
+            api_url: Prefect API URL that failed
+            original_error: Original error message
+
+        Returns:
+            PrefectError with recovery steps
+        """
+        return PrefectError(
+            message=f"Failed to connect to Prefect at {api_url}",
+            error_code=ErrorCode.PREFECT_CONNECTION_ERROR,
+            details={
+                "api_url": api_url,
+                "original_error": original_error,
+            },
+        )
+
+    @staticmethod
+    def agno_agent_failed(agent_name: str, task: str, reason: str) -> AgnoError:
+        """Create an Agno agent error.
+
+        Args:
+            agent_name: Name of the agent that failed
+            task: Task the agent was attempting
+            reason: Reason for failure
+
+        Returns:
+            AgnoError with recovery steps
+        """
+        return AgnoError(
+            message=f"Agent '{agent_name}' failed on task '{task}': {reason}",
+            error_code=ErrorCode.AGNO_TOOL_EXECUTION_ERROR,
+            details={
+                "agent_name": agent_name,
+                "task": task,
+                "reason": reason,
+            },
+        )
+
+    @staticmethod
+    def agno_llm_error(provider: str, model: str, reason: str) -> AgnoError:
+        """Create an Agno LLM provider error.
+
+        Args:
+            provider: LLM provider name
+            model: Model being used
+            reason: Reason for failure
+
+        Returns:
+            AgnoError with recovery steps
+        """
+        return AgnoError(
+            message=f"LLM provider '{provider}' error with model '{model}': {reason}",
+            error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
+            details={
+                "provider": provider,
+                "model": model,
+                "reason": reason,
+            },
         )

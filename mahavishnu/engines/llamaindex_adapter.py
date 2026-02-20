@@ -31,7 +31,11 @@ except ImportError:
 # Import code graph analyzer
 from mcp_common.code_graph import CodeGraphAnalyzer
 
-from ..core.adapters.base import OrchestratorAdapter
+from ..core.adapters.base import (
+    AdapterCapabilities,
+    AdapterType,
+    OrchestratorAdapter,
+)
 
 # Try to import OpenTelemetry components
 try:
@@ -106,6 +110,29 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         ...     "params": {"repo_path": "/path/to/repo"}
         ... }, [])
     """
+
+    @property
+    def adapter_type(self) -> AdapterType:
+        """Return the adapter type identifier."""
+        return AdapterType.LLAMAINDEX
+
+    @property
+    def name(self) -> str:
+        """Return the adapter name."""
+        return "llamaindex"
+
+    @property
+    def capabilities(self) -> AdapterCapabilities:
+        """Return adapter capabilities."""
+        return AdapterCapabilities(
+            can_deploy_flows=True,           # RAG pipelines
+            can_monitor_execution=True,      # Query tracking
+            can_cancel_workflows=True,       # Can cancel queries
+            can_sync_state=False,            # State sync not implemented
+            supports_batch_execution=True,   # Multiple queries
+            supports_multi_agent=False,      # Single query engine
+            has_cloud_ui=False,              # Local engine
+        )
 
     def __init__(self, config):
         """Initialize the LlamaIndex adapter with configuration.
