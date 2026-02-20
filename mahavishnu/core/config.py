@@ -11,12 +11,351 @@ Architecture:
     - YAML files use nested structure matching the model hierarchy
 """
 
+from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
 from ..terminal.config import TerminalSettings
+
+# ============================================================================
+# Agno Adapter Configuration (Phase 1)
+# ============================================================================
+
+
+class LLMProvider(str, Enum):
+    """Supported LLM providers for Agno agents."""
+
+    ANTHROPIC = "anthropic"
+    OPENAI = "openai"
+    OLLAMA = "ollama"
+
+
+class MemoryBackend(str, Enum):
+    """Memory backend storage types for Agno agents."""
+
+    SQLITE = "sqlite"
+    POSTGRES = "postgres"
+    NONE = "none"
+
+
+class AgnoLLMConfig(BaseModel):
+    """LLM provider configuration for Agno agents.
+
+    Configuration can be set via:
+    1. settings/mahavishnu.yaml under agno.llm
+    2. settings/local.yaml
+    3. Environment variables: MAHAVISHNU_AGNO__LLM__PROVIDER, etc.
+
+    Example YAML:
+        agno:
+          llm:
+            provider: ollama
+            model_id: qwen2.5:7b
+            base_url: http://localhost:11434
+            temperature: 0.7
+    """
+
+    provider: LLMProvider = Field(
+        default=LLMProvider.OLLAMA,
+        description="LLM provider (anthropic, openai, ollama)",
+    )
+    model_id: str = Field(
+        default="qwen2.5:7b",
+        description="Model identifier (e.g., claude-sonnet-4-6, gpt-4o, qwen2.5:7b)",
+    )
+    api_key_env: str | None = Field(
+        default=None,
+        description="Environment variable name for API key",
+    )
+    base_url: str | None = Field(
+        default="http://localhost:11434",
+        description="Base URL for Ollama or custom endpoints",
+    )
+    temperature: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=2.0,
+        description="Sampling temperature",
+    )
+    max_tokens: int = Field(
+        default=4096,
+        ge=1,
+        le=128000,
+        description="Maximum tokens per response",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
+class AgnoMemoryConfig(BaseModel):
+    """Memory and storage configuration for Agno agents.
+
+    Memory allows agents to retain context across conversations.
+
+    Example YAML:
+        agno:
+          memory:
+            enabled: true
+            backend: sqlite
+            db_path: data/agno.db
+            num_history_runs: 10
+    """
+
+    enabled: bool = Field(default=True, description="Enable agent memory")
+    backend: MemoryBackend = Field(
+        default=MemoryBackend.SQLITE,
+        description="Memory backend storage type",
+    )
+    db_path: str = Field(
+        default="data/agno.db",
+        description="SQLite database path (for sqlite backend)",
+    )
+    connection_string: str | None = Field(
+        default=None,
+        description="PostgreSQL connection string (set via env)",
+    )
+    num_history_runs: int = Field(
+        default=10,
+        ge=0,
+        le=100,
+        description="Number of historical runs to retain",
+    )
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("connection_string")
+    @classmethod
+    def validate_connection_string(cls, v: str | None, info) -> str | None:
+        """Validate PostgreSQL connection string when using postgres backend."""
+        backend = info.data.get("backend")
+        if backend == MemoryBackend.POSTGRES and not v:
+            raise ValueError(
+                "connection_string must be set via MAHAVISHNU_AGNO__MEMORY__CONNECTION_STRING "
+                "when using postgres backend"
+            )
+        return v
+
+
+class AgnoToolsConfig(BaseModel):
+    """Tool integration configuration for Agno agents.
+
+    Tools allow agents to interact with external systems via MCP.
+
+    Example YAML:
+        agno:
+          tools:
+            mcp_server_url: http://localhost:8677/mcp
+            mcp_transport: sse
+            enabled_tools:
+              - search_code
+              - read_file
+              - write_file
+    """
+
+    mcp_server_url: str = Field(
+        default="http://localhost:8677/mcp",
+        description="Mahavishnu MCP server URL for native tool integration",
+    )
+    mcp_transport: str = Field(
+        default="sse",
+        description="MCP transport protocol (sse, stdio)",
+    )
+    enabled_tools: list[str] = Field(
+        default_factory=lambda: [
+            "search_code",
+            "read_file",
+            "write_file",
+            "list_repos",
+            "get_repo_info",
+            "run_command",
+        ],
+        description="List of enabled MCP tools",
+    )
+    tool_timeout_seconds: int = Field(
+        default=60,
+        ge=5,
+        le=600,
+        description="Tool execution timeout in seconds",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
+class AgnoAdapterConfig(BaseModel):
+    """Complete Agno adapter configuration.
+
+    Agno provides multi-agent AI orchestration capabilities.
+
+    Configuration can be set via:
+    1. settings/mahavishnu.yaml under agno:
+    2. settings/local.yaml
+    3. Environment variables: MAHAVISHNU_AGNO__ENABLED, etc.
+
+    Example YAML:
+        agno:
+          enabled: true
+          llm:
+            provider: ollama
+            model_id: qwen2.5:7b
+          memory:
+            enabled: true
+            backend: sqlite
+          tools:
+            mcp_server_url: http://localhost:8677/mcp
+          default_timeout_seconds: 300
+          max_concurrent_agents: 5
+
+    Example Environment Variables:
+        MAHAVISHNU_AGNO__ENABLED=true
+        MAHAVISHNU_AGNO__LLM__PROVIDER=anthropic
+        MAHAVISHNU_AGNO__LLM__MODEL_ID=claude-sonnet-4-6
+    """
+
+    enabled: bool = Field(default=True, description="Enable Agno adapter")
+
+    llm: AgnoLLMConfig = Field(
+        default_factory=AgnoLLMConfig,
+        description="LLM provider configuration",
+    )
+
+    memory: AgnoMemoryConfig = Field(
+        default_factory=AgnoMemoryConfig,
+        description="Memory and storage configuration",
+    )
+
+    tools: AgnoToolsConfig = Field(
+        default_factory=AgnoToolsConfig,
+        description="Tool integration configuration",
+    )
+
+    teams_config_path: str = Field(
+        default="settings/agno_teams",
+        description="Path to team configuration files",
+    )
+
+    default_timeout_seconds: int = Field(
+        default=300,
+        ge=30,
+        le=3600,
+        description="Default agent execution timeout",
+    )
+
+    max_concurrent_agents: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description="Maximum concurrent agent executions",
+    )
+
+    telemetry_enabled: bool = Field(
+        default=True,
+        description="Enable OpenTelemetry instrumentation",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
+# ============================================================================
+# Existing Configuration Classes
+# ============================================================================
+
+
+class PrefectConfig(BaseModel):
+    """Prefect adapter configuration for workflow orchestration.
+
+    Configuration can be set via:
+    1. settings/mahavishnu.yaml (committed)
+    2. settings/local.yaml (gitignored, local dev)
+    3. Environment variables: MAHAVISHNU_PREFECT__API_URL, etc.
+
+    Example YAML:
+        prefect:
+          enabled: true
+          api_url: "http://localhost:4200"
+          work_pool: "default"
+          timeout_seconds: 300
+
+    Example Environment Variables:
+        MAHAVISHNU_PREFECT__API_URL="http://localhost:4200"
+        MAHAVISHNU_PREFECT__API_KEY="pnu_xxxxxxxxxxxxx"
+    """
+
+    enabled: bool = Field(
+        default=True,
+        description="Enable Prefect adapter for workflow orchestration",
+    )
+    api_url: str = Field(
+        default="http://localhost:4200",
+        description="Prefect API URL (Server or Cloud)",
+    )
+    api_key: str | None = Field(
+        default=None,
+        description="Prefect API key (required for Prefect Cloud)",
+    )
+    workspace: str | None = Field(
+        default=None,
+        description="Prefect Cloud workspace (format: account/workspace)",
+    )
+    work_pool: str = Field(
+        default="default",
+        description="Default work pool for flow execution",
+    )
+    timeout_seconds: int = Field(
+        default=300,
+        ge=10,
+        le=3600,
+        description="Default timeout for API operations (10-3600)",
+    )
+    max_retries: int = Field(
+        default=3,
+        ge=0,
+        le=10,
+        description="Maximum retry attempts for failed operations",
+    )
+    retry_delay_seconds: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=60.0,
+        description="Base delay between retries (exponential backoff)",
+    )
+    enable_telemetry: bool = Field(
+        default=True,
+        description="Enable OpenTelemetry instrumentation",
+    )
+    sync_interval_seconds: int = Field(
+        default=60,
+        ge=10,
+        le=600,
+        description="Interval for state synchronization (10-600)",
+    )
+    webhook_secret: str | None = Field(
+        default=None,
+        description="Secret for validating Prefect webhooks",
+    )
+
+    @model_validator(mode="after")
+    def validate_cloud_config(self) -> "PrefectConfig":
+        """Validate configuration for Prefect Cloud.
+
+        Ensures API key is provided when workspace is specified,
+        as Prefect Cloud requires authentication.
+
+        Returns:
+            Validated PrefectConfig instance
+
+        Raises:
+            ValueError: If workspace is set but api_key is missing
+        """
+        if self.workspace and not self.api_key:
+            raise ValueError(
+                "api_key must be set when workspace is specified. "
+                "Set via MAHAVISHNU_PREFECT__API_KEY environment variable."
+            )
+        return self
+
+    model_config = {"extra": "forbid"}
 
 
 class PoolConfig(BaseModel):
@@ -693,11 +1032,17 @@ class MahavishnuSettings(BaseSettings):
         auth:
             enabled: true
             secret: your-secret-key
+        agno:
+            enabled: true
+            llm:
+                provider: ollama
+                model_id: qwen2.5:7b
 
     Example Environment Variables:
         MAHAVISHNU_POOLS__ENABLED=true
         MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING=postgresql://...
         MAHAVISHNU_AUTH__SECRET=your-secret-key
+        MAHAVISHNU_AGNO__LLM__PROVIDER=anthropic
     """
 
     model_config = SettingsConfigDict(
@@ -760,6 +1105,12 @@ class MahavishnuSettings(BaseSettings):
     )
 
     # ===== Grouped Configuration =====
+
+    # Prefect adapter configuration
+    prefect: PrefectConfig = Field(
+        default_factory=PrefectConfig,
+        description="Prefect adapter configuration",
+    )
 
     # Pool management
     pools: PoolConfig = Field(
@@ -845,6 +1196,12 @@ class MahavishnuSettings(BaseSettings):
         description="LLM configuration for LlamaIndex and Agno",
     )
 
+    # Agno adapter configuration (Phase 1)
+    agno: AgnoAdapterConfig = Field(
+        default_factory=AgnoAdapterConfig,
+        description="Agno multi-agent adapter configuration",
+    )
+
     # Oneiric MCP integration
     oneiric_mcp: OneiricMCPConfig = Field(
         default_factory=OneiricMCPConfig,
@@ -881,3 +1238,37 @@ class MahavishnuSettings(BaseSettings):
             dotenv_settings,
             file_secret_settings,
         )
+
+
+# ============================================================================
+# Exports
+# ============================================================================
+
+__all__ = [
+    # Enums
+    "LLMProvider",
+    "MemoryBackend",
+    # Agno configuration
+    "AgnoAdapterConfig",
+    "AgnoLLMConfig",
+    "AgnoMemoryConfig",
+    "AgnoToolsConfig",
+    # Other configurations
+    "PrefectConfig",
+    "PoolConfig",
+    "OTelStorageConfig",
+    "OTelIngesterConfig",
+    "OpenSearchConfig",
+    "AuthConfig",
+    "SubscriptionAuthConfig",
+    "SessionBuddyPollingConfig",
+    "QualityControlConfig",
+    "SessionConfig",
+    "ResilienceConfig",
+    "ObservabilityConfig",
+    "WorkerConfig",
+    "AdapterConfig",
+    "LLMConfig",
+    "OneiricMCPConfig",
+    "MahavishnuSettings",
+]

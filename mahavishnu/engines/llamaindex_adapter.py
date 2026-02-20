@@ -7,6 +7,7 @@ This adapter provides:
 - RAG query capabilities
 - Integration with Agno for agent knowledge bases
 - OpenTelemetry instrumentation for tracing and metrics
+- Structured error handling with MahavishnuError
 """
 
 from pathlib import Path
@@ -36,6 +37,12 @@ from ..core.adapters.base import (
     AdapterType,
     OrchestratorAdapter,
 )
+from ..core.errors import (
+    AdapterError,
+    ErrorCode,
+    ExternalServiceError,
+    MahavishnuError,
+)
 
 # Try to import OpenTelemetry components
 try:
@@ -46,49 +53,177 @@ try:
 except ImportError:
     OTEL_AVAILABLE = False
 
-    # Define minimal fallback classes for graceful degradation
-    class MockCounter:
-        def add(self, amount: int, attributes: dict[str, str] = None):
-            pass
 
-    class MockHistogram:
-        def record(self, amount: float, attributes: dict[str, str] = None):
-            pass
+# Always define minimal fallback classes for graceful degradation
+# These are used when OpenTelemetry is not available OR when metrics are disabled
+class MockCounter:
+    """No-op counter for fallback instrumentation."""
 
-    class MockTracer:
-        def start_as_current_span(self, name: str, attributes: dict[str, str] = None):
-            class MockSpan:
-                def __enter__(self):
-                    return self
+    def add(self, amount: int, attributes: dict[str, str] = None) -> None:
+        """No-op add method."""
+        pass
 
-                def __exit__(self, *args):
-                    pass
 
-                def set_attribute(self, key: str, value: str | int | float | bool):
-                    pass
+class MockHistogram:
+    """No-op histogram for fallback instrumentation."""
 
-                def set_status(self, status):
-                    pass
+    def record(self, amount: float, attributes: dict[str, str] = None) -> None:
+        """No-op record method."""
+        pass
 
-                def record_exception(self, exception):
-                    pass
 
-            return MockSpan()
+class MockSpan:
+    """No-op span for fallback instrumentation."""
 
-    class MockMeter:
-        def create_counter(self, name: str, **kwargs) -> MockCounter:
-            return MockCounter()
+    def __enter__(self):
+        """Enter context manager."""
+        return self
 
-        def create_histogram(self, name: str, **kwargs) -> MockHistogram:
-            return MockHistogram()
+    def __exit__(self, *args) -> None:
+        """Exit context manager."""
+        pass
 
-    class MockTraceProvider:
-        def get_tracer(self, name: str, version: str = None) -> MockTracer:
-            return MockTracer()
+    def set_attribute(self, key: str, value: str | int | float | bool) -> None:
+        """No-op set_attribute method."""
+        pass
 
-    class MockMeterProvider:
-        def get_meter(self, name: str, version: str = None) -> MockMeter:
-            return MockMeter()
+    def set_status(self, status) -> None:
+        """No-op set_status method."""
+        pass
+
+    def record_exception(self, exception) -> None:
+        """No-op record_exception method."""
+        pass
+
+
+class MockTracer:
+    """No-op tracer for fallback instrumentation."""
+
+    def start_as_current_span(self, name: str, attributes: dict[str, str] = None) -> MockSpan:
+        """Return a no-op span."""
+        return MockSpan()
+
+
+class MockMeter:
+    """No-op meter for fallback instrumentation."""
+
+    def create_counter(self, name: str, **kwargs) -> MockCounter:
+        """Return a no-op counter."""
+        return MockCounter()
+
+    def create_histogram(self, name: str, **kwargs) -> MockHistogram:
+        """Return a no-op histogram."""
+        return MockHistogram()
+
+
+class LlamaIndexIngestionError(AdapterError):
+    """Error during document ingestion operations.
+
+    Attributes:
+        repo_path: Path to the repository that failed ingestion
+        original_error: The underlying exception that caused the failure
+    """
+
+    def __init__(
+        self,
+        message: str,
+        repo_path: str | None = None,
+        original_error: Exception | None = None,
+        details: dict | None = None,
+    ) -> None:
+        error_details = details or {}
+        if repo_path:
+            error_details["repo_path"] = repo_path
+        if original_error:
+            error_details["original_error_type"] = type(original_error).__name__
+            error_details["original_error_message"] = str(original_error)
+        super().__init__(message, details=error_details, adapter_name="llamaindex")
+        self.repo_path = repo_path
+        self.original_error = original_error
+
+
+class LlamaIndexQueryError(AdapterError):
+    """Error during query operations.
+
+    Attributes:
+        query: The query that failed
+        index_id: The index ID that was being queried
+        original_error: The underlying exception that caused the failure
+    """
+
+    def __init__(
+        self,
+        message: str,
+        query: str | None = None,
+        index_id: str | None = None,
+        original_error: Exception | None = None,
+        details: dict | None = None,
+    ) -> None:
+        error_details = details or {}
+        if query:
+            error_details["query"] = query[:100]  # Truncate for logging
+        if index_id:
+            error_details["index_id"] = index_id
+        if original_error:
+            error_details["original_error_type"] = type(original_error).__name__
+            error_details["original_error_message"] = str(original_error)
+        super().__init__(message, details=error_details, adapter_name="llamaindex")
+        self.query = query
+        self.index_id = index_id
+        self.original_error = original_error
+
+
+class LlamaIndexIndexNotFoundError(AdapterError):
+    """Error when a requested index is not found.
+
+    Attributes:
+        index_id: The index ID that was not found
+        repo_path: The repository path associated with the index lookup
+    """
+
+    def __init__(
+        self,
+        index_id: str | None = None,
+        repo_path: str | None = None,
+        details: dict | None = None,
+    ) -> None:
+        message = f"Index not found: {index_id or 'unknown'}"
+        if repo_path:
+            message = f"No index found for repository: {repo_path}"
+        error_details = details or {}
+        if index_id:
+            error_details["index_id"] = index_id
+        if repo_path:
+            error_details["repo_path"] = repo_path
+        super().__init__(message, details=error_details, adapter_name="llamaindex")
+        self.index_id = index_id
+        self.repo_path = repo_path
+
+
+class LlamaIndexEmbeddingError(ExternalServiceError):
+    """Error during embedding generation with Ollama.
+
+    Attributes:
+        model: The embedding model being used
+        original_error: The underlying exception that caused the failure
+    """
+
+    def __init__(
+        self,
+        message: str,
+        model: str | None = None,
+        original_error: Exception | None = None,
+        details: dict | None = None,
+    ) -> None:
+        error_details = details or {}
+        if model:
+            error_details["model"] = model
+        if original_error:
+            error_details["original_error_type"] = type(original_error).__name__
+            error_details["original_error_message"] = str(original_error)
+        super().__init__("embedding", message, details=error_details)
+        self.model = model
+        self.original_error = original_error
 
 
 class LlamaIndexAdapter(OrchestratorAdapter):
@@ -102,6 +237,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
     - Integration with Agno agents
     - Distributed tracing with OpenTelemetry
     - Metrics for operations and performance
+    - Structured error handling with MahavishnuError
 
     Example:
         >>> adapter = LlamaIndexAdapter(config)
@@ -125,16 +261,16 @@ class LlamaIndexAdapter(OrchestratorAdapter):
     def capabilities(self) -> AdapterCapabilities:
         """Return adapter capabilities."""
         return AdapterCapabilities(
-            can_deploy_flows=True,           # RAG pipelines
-            can_monitor_execution=True,      # Query tracking
-            can_cancel_workflows=True,       # Can cancel queries
-            can_sync_state=False,            # State sync not implemented
-            supports_batch_execution=True,   # Multiple queries
-            supports_multi_agent=False,      # Single query engine
-            has_cloud_ui=False,              # Local engine
+            can_deploy_flows=True,  # RAG pipelines
+            can_monitor_execution=True,  # Query tracking
+            can_cancel_workflows=True,  # Can cancel queries
+            can_sync_state=False,  # State sync not implemented
+            supports_batch_execution=True,  # Multiple queries
+            supports_multi_agent=False,  # Single query engine
+            has_cloud_ui=False,  # Local engine
         )
 
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         """Initialize the LlamaIndex adapter with configuration.
 
         Args:
@@ -142,6 +278,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
         Raises:
             ImportError: If LlamaIndex dependencies are not available
+            AdapterError: If adapter initialization fails
         """
         if not LLAMAINDEX_AVAILABLE:
             raise ImportError(
@@ -157,9 +294,18 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         ollama_model = getattr(config, "llm_model", "nomic-embed-text")
         ollama_base_url = getattr(config, "ollama_base_url", "http://localhost:11434")
 
-        # Configure LlamaIndex settings
-        Settings.embed_model = OllamaEmbedding(model_name=ollama_model, base_url=ollama_base_url)
-        Settings.llm = Ollama(model=ollama_model, base_url=ollama_base_url)
+        try:
+            # Configure LlamaIndex settings
+            Settings.embed_model = OllamaEmbedding(
+                model_name=ollama_model, base_url=ollama_base_url
+            )
+            Settings.llm = Ollama(model=ollama_model, base_url=ollama_base_url)
+        except Exception as e:
+            raise LlamaIndexEmbeddingError(
+                f"Failed to initialize Ollama embedding model: {e}",
+                model=ollama_model,
+                original_error=e,
+            ) from e
 
         # Configure node parser for chunking
         self.node_parser = SentenceSplitter(chunk_size=1024, chunk_overlap=20, separator=" ")
@@ -186,7 +332,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         # Initialize OpenTelemetry instrumentation
         self._init_otel_instrumentation()
 
-    def _init_otel_instrumentation(self):
+    def _init_otel_instrumentation(self) -> None:
         """Initialize OpenTelemetry components for tracing and metrics.
 
         Uses fallback no-op implementations if OpenTelemetry is not available.
@@ -247,7 +393,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             print(f"Warning: Failed to initialize OpenTelemetry instrumentation: {e}")
             self._init_fallback_instrumentation()
 
-    def _init_fallback_instrumentation(self):
+    def _init_fallback_instrumentation(self) -> None:
         """Initialize fallback no-op instrumentation when OTel is unavailable."""
         self.tracer = MockTracer()
         self.meter = MockMeter()
@@ -275,6 +421,59 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             return query
         return query[:max_length] + "..."
 
+    def _wrap_exception(
+        self,
+        error: Exception,
+        operation: str,
+        context: dict[str, Any] | None = None,
+    ) -> MahavishnuError:
+        """Wrap a generic exception in an appropriate MahavishnuError.
+
+        Args:
+            error: The original exception
+            operation: The operation that failed ('ingest', 'query', etc.)
+            context: Additional context for the error
+
+        Returns:
+            An appropriate MahavishnuError subclass
+        """
+        context = context or {}
+        error_type = type(error).__name__
+        error_message = str(error)
+
+        # Check for specific error types
+        if "embedding" in error_message.lower() or "ollama" in error_message.lower():
+            return LlamaIndexEmbeddingError(
+                message=error_message,
+                model=context.get("model"),
+                original_error=error,
+                details=context,
+            )
+
+        if operation == "ingest":
+            return LlamaIndexIngestionError(
+                message=error_message,
+                repo_path=context.get("repo_path"),
+                original_error=error,
+                details=context,
+            )
+
+        if operation == "query":
+            return LlamaIndexQueryError(
+                message=error_message,
+                query=context.get("query"),
+                index_id=context.get("index_id"),
+                original_error=error,
+                details=context,
+            )
+
+        # Default to AdapterError
+        return AdapterError(
+            message=error_message,
+            adapter_name="llamaindex",
+            details={"operation": operation, "error_type": error_type, **context},
+        )
+
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
     async def _ingest_repository(
         self, repo_path: str, task_params: dict[str, Any]
@@ -294,6 +493,10 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
         Returns:
             Ingestion result with document count and index ID
+
+        Raises:
+            LlamaIndexIngestionError: If ingestion fails after retries
+            ValidationError: If repository path is invalid
         """
         # Start span for ingestion operation
         with self.tracer.start_as_current_span(
@@ -322,10 +525,12 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                             "repo.path": repo_path,
                         },
                     )
+                    # Return structured error info without raising
                     return {
                         "repo": repo_path,
                         "status": "failed",
                         "error": error_msg,
+                        "error_code": ErrorCode.RESOURCE_NOT_FOUND.value,
                         "task_id": task_params.get("id", "unknown"),
                     }
 
@@ -502,16 +707,25 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     },
                 )
 
+                # Create structured error for logging/debugging
+                structured_error = self._wrap_exception(
+                    e,
+                    "ingest",
+                    {"repo_path": repo_path, "task_id": task_params.get("id", "unknown")},
+                )
+
                 return {
                     "repo": repo_path,
                     "status": "failed",
                     "error": error_msg,
+                    "error_code": structured_error.error_code.value,
+                    "error_details": structured_error.details,
                     "task_id": task_params.get("id", "unknown"),
                 }
 
     async def _get_document_context(
         self, graph_analyzer: CodeGraphAnalyzer, file_path: Path
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Get context for a document from the code graph analyzer.
 
         Args:
@@ -584,6 +798,11 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
         Returns:
             Query results with relevant documents
+
+        Raises:
+            LlamaIndexQueryError: If query execution fails
+            LlamaIndexIndexNotFoundError: If index is not found
+            ValidationError: If query parameters are invalid
         """
         query_text = task_params.get("query", "")
         index_id = task_params.get("index_id")
@@ -619,6 +838,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                         "repo": repo_path,
                         "status": "failed",
                         "error": error_msg,
+                        "error_code": ErrorCode.VALIDATION_ERROR.value,
                         "task_id": task_params.get("id", "unknown"),
                     }
 
@@ -649,6 +869,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                                 "repo": repo_path,
                                 "status": "failed",
                                 "error": error_msg,
+                                "error_code": ErrorCode.RESOURCE_NOT_FOUND.value,
                                 "task_id": task_params.get("id", "unknown"),
                             }
                         index = self.indices[index_id]
@@ -747,10 +968,24 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     },
                 )
 
+                # Create structured error for logging/debugging
+                structured_error = self._wrap_exception(
+                    e,
+                    "query",
+                    {
+                        "repo_path": repo_path,
+                        "query": query_text,
+                        "index_id": index_id,
+                        "task_id": task_params.get("id", "unknown"),
+                    },
+                )
+
                 return {
                     "repo": repo_path,
                     "status": "failed",
                     "error": error_msg,
+                    "error_code": structured_error.error_code.value,
+                    "error_details": structured_error.details,
                     "task_id": task_params.get("id", "unknown"),
                 }
 
@@ -833,6 +1068,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                             "repo": repo,
                             "status": "failed",
                             "error": f"Unknown task type: {task_type}",
+                            "error_code": ErrorCode.VALIDATION_ERROR.value,
                             "task_id": task.get("id", "unknown"),
                         }
                     )
@@ -884,3 +1120,12 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
         except Exception as e:
             return {"status": "unhealthy", "details": {"error": str(e), "configured": True}}
+
+
+__all__ = [
+    "LlamaIndexAdapter",
+    "LlamaIndexIngestionError",
+    "LlamaIndexQueryError",
+    "LlamaIndexIndexNotFoundError",
+    "LlamaIndexEmbeddingError",
+]
