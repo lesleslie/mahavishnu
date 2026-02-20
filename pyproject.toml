@@ -32,7 +32,7 @@ dependencies = [
     "tomli>=2.2.1",
     "aiofiles>=25.1.0",  # Async file I/O for config loading (compatible with crackerjack)
     # XDG Base Directory compliance
-    "platformdirs>=5.0.0",
+    "platformdirs>=4.0.0",
     # Observability
     "opentelemetry-api>=1.38.0",
     "opentelemetry-sdk>=1.38.0",
@@ -421,5 +421,6 @@ dev = [
     "akosha>=0.2.0",
     "crackerjack>=0.50.1",
     "dhruva>=0.6.0",
+    "iterm2>=2.13",
     "session-buddy>=0.11.1",
 ]
