@@ -223,7 +223,8 @@ coordination:
         - WorkerStatus
       severity: medium
       priority: P2
-      status: in_progress
+      status: fixed
+      resolution: "Consolidated 18 status enums into unified module at mahavishnu/core/status.py"
       pool: python
       affected_files:
         - mahavishnu/core/task_store.py
@@ -231,6 +232,7 @@ coordination:
         - mahavishnu/core/progress_tracker.py
         - mahavishnu/core/coordination/models.py
       created_at: 2026-02-20T12:00:00Z
+      fixed_at: 2026-02-20T19:30:00Z
       labels:
         - refactoring
         - deduplication
