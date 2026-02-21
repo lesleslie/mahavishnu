@@ -2,6 +2,25 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Ecosystem Context
+
+Mahavishnu is part of the **Bodai Ecosystem** - a collection of interconnected components:
+
+| Component | Role | Port | Description |
+|-----------|------|------|-------------|
+| **Mahavishnu** | Orchestrator | 8680 | Multi-engine workflow orchestration (this repo) |
+| [Akosha](https://github.com/lesleslie/akosha) | Seer | 8682 | Cross-system intelligence & embeddings |
+| [Dhruva](https://github.com/lesleslie/dhruva) | Curator | 8683 | Persistent object storage with ACID |
+| [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder | 8678 | Session lifecycle & knowledge graphs |
+| [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector | 8676 | Quality gates & CI/CD validation |
+| [Oneiric](https://github.com/lesleslie/oneiric) | Resolver | N/A | Conflict resolution library |
+
+**Key Interactions:**
+- Routes tasks to **Akosha** for intelligence operations
+- Persists state to **Dhruva** for recovery
+- Tracks context in **Session-Buddy**
+- Validates with **Crackerjack** before execution
+
 ## Project Overview
 
 Mahavishnu is a multi-engine orchestration platform that provides a unified interface for managing workflows across multiple repositories. It currently provides:

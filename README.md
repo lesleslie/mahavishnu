@@ -1,12 +1,27 @@
 # Mahavishnu - Multi-Engine Orchestration Platform
 
-[![Quality Score](https://img.shields.io/badge/Quality-92%2F100-brightgreen)](https://github.com/yourusername/mahavishnu)
+[![Quality Score](https://img.shields.io/badge/Quality-92%2F100-brightgreen)](https://github.com/lesleslie/mahavishnu)
 [![Security](https://img.shields.io/badge/Security-95%2F100-brightgreen)](SECURITY_CHECKLIST.md)
 [![Performance](https://img.shields.io/badge/Performance-90%2F100-brightgreen)](docs/PRODUCTION_DEPLOYMENT_GUIDE.md)
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+> **Etymology**: From Sanskrit *maha* (great) + *Vishnu* (the preserver in Hindu trinity)
+>
+> Part of the [Bodai Ecosystem](https://github.com/lesleslie/bodai) - The Orchestrator component
+
 **Mahavishnu** is a world-class multi-engine orchestration platform that provides unified interfaces for managing workflows across multiple repositories. It enables intelligent workflow routing, cross-repository coordination, and headless AI worker orchestration.
+
+## Ecosystem Components
+
+| Component | Role | Port | Description |
+|-----------|------|------|-------------|
+| [Mahavishnu](https://github.com/lesleslie/mahavishnu) | Orchestrator | 8680 | Multi-engine workflow orchestration |
+| [Akosha](https://github.com/lesleslie/akosha) | Seer | 8682 | Cross-system intelligence & embeddings |
+| [Dhruva](https://github.com/lesleslie/dhruva) | Curator | 8683 | Persistent object storage with ACID |
+| [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder | 8678 | Session lifecycle & knowledge graphs |
+| [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector | 8676 | Quality gates & CI/CD validation |
+| [Oneiric](https://github.com/lesleslie/oneiric) | Resolver | N/A | Conflict resolution library |
 
 ## Features
 
@@ -132,7 +147,7 @@ Mahavishnu follows a modular, async-first architecture with these core component
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/mahavishnu.git
+git clone https://github.com/lesleslie/mahavishnu.git
 cd mahavishnu
 
 # Create virtual environment
