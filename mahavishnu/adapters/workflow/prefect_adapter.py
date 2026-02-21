@@ -1,5 +1,19 @@
 """Prefect adapter for Mahavishnu orchestration.
 
+.. deprecated:: 0.3.0
+    This adapter is deprecated. Use the complete implementation at
+    ``mahavishnu.engines.prefect_adapter`` instead, which includes:
+    - Full Prefect SDK integration with get_client()
+    - Deployment CRUD operations
+    - Schedule management (cron, interval, rrule)
+    - Flow registry integration
+    - Comprehensive error mapping
+
+    To migrate, change imports from:
+        from mahavishnu.adapters.workflow.prefect_adapter import PrefectAdapter
+    To:
+        from mahavishnu.engines.prefect_adapter import PrefectAdapter
+
 Implements OrchestratorAdapter interface for Prefect workflow orchestration.
 Provides workflow deployment, execution monitoring, state synchronization,
 and integration with Prefect Cloud/Server.
@@ -8,6 +22,17 @@ Prefect: https://www.prefect.io/
 """
 
 from __future__ import annotations
+
+import warnings
+
+# Emit deprecation warning at import time
+warnings.warn(
+    "mahavishnu.adapters.workflow.prefect_adapter is deprecated. "
+    "Use mahavishnu.engines.prefect_adapter instead, which has complete "
+    "Prefect SDK integration including deployments, schedules, and flow registry.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 import asyncio
 import logging

@@ -8,18 +8,27 @@ No Docker, PostgreSQL, or pgvector required - pure Python + DuckDB.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from enum import StrEnum
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-# Optional import for sentence-transformers
+# Feature detection for embedding backends
+# Try sentence-transformers first (best quality), then fastembed (cross-platform)
 try:
     from sentence_transformers import SentenceTransformer
 
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
-    # Define as type alias for None when not available
     SentenceTransformer: type[Any] | None = None  # type: ignore[misc]
+
+try:
+    from fastembed import TextEmbedding
+
+    FASTEMBED_AVAILABLE = True
+except ImportError:
+    FASTEMBED_AVAILABLE = False
+    TextEmbedding: type[Any] | None = None  # type: ignore[misc]
 
 if TYPE_CHECKING:
     from akosha.storage import HotStore
@@ -29,11 +38,173 @@ from mahavishnu.core.errors import ValidationError
 logger = logging.getLogger(__name__)
 
 
+class EmbeddingBackend(StrEnum):
+    """Available embedding backends for OTel trace search."""
+
+    SENTENCE_TRANSFORMERS = "sentence_transformers"
+    FASTEMBED = "fastembed"
+    TEXT_ONLY = "text_only"
+
+
+@runtime_checkable
+class EmbeddingModel(Protocol):
+    """Protocol for embedding model backends."""
+
+    def encode(self, text: str) -> list[float]:
+        """Generate embedding for text.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            Embedding vector
+        """
+        ...
+
+    @property
+    def dimension(self) -> int:
+        """Return embedding dimension."""
+        ...
+
+
+class SentenceTransformersWrapper:
+    """Wrapper for sentence-transformers model."""
+
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2") -> None:
+        """Initialize sentence-transformers wrapper.
+
+        Args:
+            model_name: Model name to load
+        """
+        if not SENTENCE_TRANSFORMERS_AVAILABLE or SentenceTransformer is None:
+            raise ImportError("sentence-transformers not available")
+        self._model = SentenceTransformer(model_name)
+        self._model_name = model_name
+        # all-MiniLM-L6-v2 has 384 dimensions
+        self._dimension = 384
+
+    def encode(self, text: str) -> list[float]:
+        """Generate embedding for text.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            Embedding vector
+        """
+        return self._model.encode(text, convert_to_numpy=True).tolist()
+
+    @property
+    def dimension(self) -> int:
+        """Return embedding dimension."""
+        return self._dimension
+
+
+class FastEmbedWrapper:
+    """Wrapper for fastembed model."""
+
+    def __init__(self, model_name: str = "BAAI/bge-small-en-v1.5") -> None:
+        """Initialize fastembed wrapper.
+
+        Args:
+            model_name: Model name to load
+        """
+        if not FASTEMBED_AVAILABLE or TextEmbedding is None:
+            raise ImportError("fastembed not available")
+        self._model = TextEmbedding(model_name=model_name)
+        self._model_name = model_name
+        # BAAI/bge-small-en-v1.5 has 384 dimensions
+        self._dimension = 384
+
+    def encode(self, text: str) -> list[float]:
+        """Generate embedding for text.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            Embedding vector
+        """
+        # fastembed returns a generator, get first result
+        embeddings = list(self._model.embed([text]))
+        return embeddings[0].tolist()
+
+    @property
+    def dimension(self) -> int:
+        """Return embedding dimension."""
+        return self._dimension
+
+
+class TextOnlyEmbedder:
+    """Fallback embedder that returns zero vectors.
+
+    Used when no embedding library is available. Semantic search will
+    fall back to text-based matching in the HotStore.
+    """
+
+    def __init__(self, dimension: int = 384) -> None:
+        """Initialize text-only embedder.
+
+        Args:
+            dimension: Embedding dimension (for compatibility)
+        """
+        self._dimension = dimension
+
+    def encode(self, text: str) -> list[float]:
+        """Return zero embedding.
+
+        Args:
+            text: Text (ignored)
+
+        Returns:
+            Zero vector of specified dimension
+        """
+        return [0.0] * self._dimension
+
+    @property
+    def dimension(self) -> int:
+        """Return embedding dimension."""
+        return self._dimension
+
+
+def get_available_backends() -> list[EmbeddingBackend]:
+    """Get list of available embedding backends.
+
+    Returns:
+        List of available backends in preference order
+    """
+    backends: list[EmbeddingBackend] = []
+    if SENTENCE_TRANSFORMERS_AVAILABLE:
+        backends.append(EmbeddingBackend.SENTENCE_TRANSFORMERS)
+    if FASTEMBED_AVAILABLE:
+        backends.append(EmbeddingBackend.FASTEMBED)
+    backends.append(EmbeddingBackend.TEXT_ONLY)  # Always available
+    return backends
+
+
+def get_default_backend() -> EmbeddingBackend:
+    """Get the default embedding backend based on availability.
+
+    Returns:
+        Best available backend
+    """
+    if SENTENCE_TRANSFORMERS_AVAILABLE:
+        return EmbeddingBackend.SENTENCE_TRANSFORMERS
+    if FASTEMBED_AVAILABLE:
+        return EmbeddingBackend.FASTEMBED
+    return EmbeddingBackend.TEXT_ONLY
+
+
 class OtelIngester:
     """OpenTelemetry trace ingester for Akosha HotStore.
 
     Converts OTel trace data into HotRecord format with semantic embeddings
     for efficient similarity search in DuckDB.
+
+    Supports multiple embedding backends with graceful degradation:
+    - sentence-transformers (best quality, requires PyTorch)
+    - fastembed (cross-platform, uses ONNX Runtime)
+    - text-only (fallback, no embeddings)
 
     Example:
         >>> from akosha.storage import HotStore
@@ -49,28 +220,102 @@ class OtelIngester:
         hot_store: HotStore | None = None,
         embedding_model: str = "all-MiniLM-L6-v2",
         cache_size: int = 1000,
+        preferred_backend: EmbeddingBackend | str | None = None,
     ) -> None:
         """Initialize OTel ingester.
 
         Args:
             hot_store: Optional HotStore instance (creates own if None)
-            embedding_model: Sentence transformer model name
+            embedding_model: Embedding model name (backend-specific)
             cache_size: Maximum embeddings to cache in memory
+            preferred_backend: Preferred embedding backend. If None, uses best
+                available. Options: "sentence_transformers", "fastembed", "text_only"
 
         Raises:
-            ImportError: If sentence-transformers is not installed
+            ImportError: If preferred_backend is unavailable
         """
-        if not SENTENCE_TRANSFORMERS_AVAILABLE:
-            raise ImportError(
-                "sentence-transformers is required for OTel ingester. "
-                "Install with: pip install sentence-transformers"
-            )
-
         self._hot_store = hot_store
         self._embedding_model_name = embedding_model
         self._cache_size = cache_size
-        self._model: SentenceTransformer | None = None
         self._embedding_cache: dict[str, list[float]] = {}
+
+        # Determine embedding backend
+        if preferred_backend is not None:
+            # Convert string to enum if needed
+            if isinstance(preferred_backend, str):  # pyright: ignore[reportUnnecessaryIsInstance]
+                preferred_backend = EmbeddingBackend(preferred_backend)
+            self._backend = preferred_backend
+        else:
+            self._backend = get_default_backend()
+
+        # Initialize embedding model lazily
+        self._embedder: EmbeddingModel | None = None
+        self._embedding_dimension = 384
+
+        # Log available backends
+        available = get_available_backends()
+        logger.info(f"Available embedding backends: {[b.value for b in available]}")
+        logger.info(f"Selected backend: {self._backend.value}")
+
+    @property
+    def backend(self) -> EmbeddingBackend:
+        """Get current embedding backend."""
+        return self._backend
+
+    @property
+    def embedding_dimension(self) -> int:
+        """Get embedding dimension."""
+        return self._embedding_dimension
+
+    def _create_embedder(self) -> EmbeddingModel:
+        """Create embedding model based on selected backend.
+
+        Returns:
+            Embedding model instance
+
+        Raises:
+            ImportError: If selected backend is unavailable
+        """
+        if self._backend == EmbeddingBackend.SENTENCE_TRANSFORMERS:
+            if not SENTENCE_TRANSFORMERS_AVAILABLE:
+                raise ImportError(
+                    "sentence-transformers is not available. "
+                    "Install with: pip install sentence-transformers"
+                )
+            logger.info(f"Loading sentence-transformers model: {self._embedding_model_name}")
+            return SentenceTransformersWrapper(self._embedding_model_name)
+
+        elif self._backend == EmbeddingBackend.FASTEMBED:
+            if not FASTEMBED_AVAILABLE:
+                raise ImportError("fastembed is not available. Install with: pip install fastembed")
+            # Map sentence-transformers model names to fastembed equivalents
+            fastembed_model = self._map_to_fastembed_model(self._embedding_model_name)
+            logger.info(f"Loading fastembed model: {fastembed_model}")
+            return FastEmbedWrapper(fastembed_model)
+
+        else:  # TEXT_ONLY
+            logger.warning(
+                "Using text-only mode. Semantic search will be degraded. "
+                "Install sentence-transformers or fastembed for full functionality."
+            )
+            return TextOnlyEmbedder()
+
+    def _map_to_fastembed_model(self, model_name: str) -> str:
+        """Map sentence-transformers model names to fastembed equivalents.
+
+        Args:
+            model_name: Sentence-transformers model name
+
+        Returns:
+            Fastembed-compatible model name
+        """
+        # Common mappings
+        model_map = {
+            "all-MiniLM-L6-v2": "BAAI/bge-small-en-v1.5",
+            "all-mpnet-base-v2": "BAAI/bge-base-en-v1.5",
+            "paraphrase-MiniLM-L6-v2": "BAAI/bge-small-en-v1.5",
+        }
+        return model_map.get(model_name, "BAAI/bge-small-en-v1.5")
 
     async def initialize(self) -> None:
         """Initialize ingester and HotStore.
@@ -89,17 +334,57 @@ class OtelIngester:
                 self._hot_store = HotStore(database_path=":memory:")
                 await self._hot_store.initialize()
 
-            # Load embedding model (lazy load, not thread-safe)
-            if self._model is None:
-                logger.info(f"Loading sentence transformer model: {self._embedding_model_name}")
-                self._model = SentenceTransformer(self._embedding_model_name)
-                logger.info("Embedding model loaded successfully")
+            # Initialize embedding model
+            if self._embedder is None:
+                try:
+                    self._embedder = self._create_embedder()
+                    self._embedding_dimension = self._embedder.dimension
+                    logger.info(
+                        f"Embedding model loaded successfully "
+                        f"(backend={self._backend.value}, dim={self._embedding_dimension})"
+                    )
+                except ImportError as e:
+                    # Try fallback backends
+                    logger.warning(f"Failed to load {self._backend.value}: {e}")
+                    self._embedder = self._try_fallback_backends()
+                    if self._embedder is not None:
+                        self._embedding_dimension = self._embedder.dimension
+                        logger.info(f"Using fallback embedding backend: {self._backend.value}")
 
             logger.info("OTel ingester initialized")
 
         except Exception as e:
             logger.error(f"Failed to initialize OTel ingester: {e}")
             raise RuntimeError(f"OTel ingester initialization failed: {e}") from e
+
+    def _try_fallback_backends(self) -> EmbeddingModel | None:
+        """Try fallback embedding backends.
+
+        Returns:
+            Embedding model or None if all backends fail
+        """
+        # Try backends in order of preference
+        for backend in [
+            EmbeddingBackend.SENTENCE_TRANSFORMERS,
+            EmbeddingBackend.FASTEMBED,
+            EmbeddingBackend.TEXT_ONLY,
+        ]:
+            if backend == self._backend:
+                continue  # Skip already tried backend
+
+            try:
+                self._backend = backend
+                embedder = self._create_embedder()
+                logger.info(f"Successfully initialized fallback backend: {backend.value}")
+                return embedder
+            except ImportError as e:
+                logger.debug(f"Fallback backend {backend.value} unavailable: {e}")
+                continue
+
+        # This should never happen since TEXT_ONLY always works
+        logger.error("All embedding backends failed, using text-only")
+        self._backend = EmbeddingBackend.TEXT_ONLY
+        return TextOnlyEmbedder()
 
     async def ingest_trace(self, trace_data: dict[str, Any]) -> None:
         """Ingest a single OTel trace into HotStore.
@@ -246,12 +531,12 @@ class OtelIngester:
         if not self._hot_store:
             raise RuntimeError("HotStore not initialized. Call initialize() first.")
 
-        if not self._model:
+        if not self._embedder:
             raise RuntimeError("Embedding model not loaded. Call initialize() first.")
 
         try:
             # Generate query embedding
-            query_embedding = self._model.encode(query, convert_to_numpy=True).tolist()
+            query_embedding = self._embedder.encode(query)
 
             # Search HotStore
             results = await self._hot_store.search_similar(
@@ -285,7 +570,7 @@ class OtelIngester:
             # Note: HotStore doesn't have a direct get_by_id method,
             # so we use search with the trace_id as query
             results = await self._hot_store.search_similar(
-                query_embedding=[0.0] * 384,  # Dummy embedding, will filter below
+                query_embedding=[0.0] * self._embedding_dimension,  # Dummy embedding
                 limit=1000,
                 threshold=0.0,  # Get all results
             )
@@ -325,18 +610,18 @@ class OtelIngester:
             content: Text content to embed
 
         Returns:
-            Embedding vector (384 dimensions)
+            Embedding vector
         """
         # Check cache
         if content in self._embedding_cache:
             return self._embedding_cache[content]
 
-        if not self._model:
+        if not self._embedder:
             raise RuntimeError("Embedding model not loaded")
 
         try:
             # Generate embedding
-            embedding = self._model.encode(content, convert_to_numpy=True).tolist()
+            embedding = self._embedder.encode(content)
 
             # Update cache (with size limit)
             if len(self._embedding_cache) >= self._cache_size:
@@ -350,7 +635,7 @@ class OtelIngester:
         except Exception as e:
             logger.error(f"Failed to generate embedding: {e}")
             # Return zero embedding on error
-            return [0.0] * 384
+            return [0.0] * self._embedding_dimension
 
     def _extract_system_id(self, spans: list[dict[str, Any]]) -> str:
         """Extract system_id from span attributes.
@@ -463,13 +748,15 @@ async def create_otel_ingester(
     hot_store_path: str = ":memory:",
     embedding_model: str = "all-MiniLM-L6-v2",
     cache_size: int = 1000,
+    preferred_backend: EmbeddingBackend | str | None = None,
 ) -> OtelIngester:
     """Create and initialize OTel ingester.
 
     Args:
         hot_store_path: DuckDB database path (":memory:" for in-memory)
-        embedding_model: Sentence transformer model name
+        embedding_model: Embedding model name
         cache_size: Maximum embeddings to cache in memory
+        preferred_backend: Preferred embedding backend (auto-detected if None)
 
     Returns:
         Initialized OtelIngester instance
@@ -488,6 +775,7 @@ async def create_otel_ingester(
         hot_store=hot_store,
         embedding_model=embedding_model,
         cache_size=cache_size,
+        preferred_backend=preferred_backend,
     )
     await ingester.initialize()
 

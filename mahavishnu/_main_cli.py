@@ -41,15 +41,16 @@ from .routing_cli import add_routing_commands
 from .worktree_cli import worktree_app
 
 # Import comprehensive help system
-from .cli.help_cli import help_group
+# NOTE: help_cli uses Click which is incompatible with Typer's add_typer()
+# from .cli.help_cli import help_group
 
 app = typer.Typer()
 
 # Add worktree sub-app
 app.add_typer(worktree_app, name="worktree")
 
-# Add comprehensive help system
-app.add_typer(help_group, name="help")
+# Add comprehensive help system - DISABLED due to Click/Typer incompatibility
+# app.add_typer(help_group, name="help")
 
 
 @app.command()

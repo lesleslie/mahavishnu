@@ -7,7 +7,7 @@ This module provides a structured error handling system with:
 - Structured error responses for API/MCP tools
 
 Created: 2026-02-18
-Version: 3.2
+Version: 3.3
 Related: 4-Agent Opus Review P0 issue - error code system
 """
 
@@ -88,6 +88,8 @@ class ErrorCode(str, Enum):
     PREFECT_AUTHENTICATION_ERROR = "MHV-408"
     PREFECT_RATE_LIMITED = "MHV-409"
     PREFECT_STATE_SYNC_ERROR = "MHV-410"
+    ADAPTER_INITIALIZATION_ERROR = "MHV-411"
+    WORKFLOW_EXECUTION_ERROR = "MHV-412"
 
     # Agno/Multi-agent errors (450-499)
     AGNO_AGENT_NOT_FOUND = "MHV-450"
@@ -361,6 +363,20 @@ class MahavishnuError(Exception):
             "Verify event queue is not backed up",
             "Use 'prefect flow-run inspect' to check current state",
         ],
+        ErrorCode.ADAPTER_INITIALIZATION_ERROR: [
+            "Check adapter configuration in settings/mahavishnu.yaml",
+            "Verify all required dependencies are installed",
+            "Check adapter-specific environment variables",
+            "Review adapter logs for detailed error information",
+            "Ensure adapter is enabled in configuration",
+        ],
+        ErrorCode.WORKFLOW_EXECUTION_ERROR: [
+            "Check workflow configuration and parameters",
+            "Verify all required inputs are provided",
+            "Review workflow logs for step-by-step error details",
+            "Check for resource constraints (memory, CPU, disk)",
+            "Ensure dependent services are accessible",
+        ],
         # Agno/Multi-agent error recovery guidance
         ErrorCode.AGNO_AGENT_NOT_FOUND: [
             "Verify the agent name is correct",
@@ -525,6 +541,121 @@ class AdapterError(MahavishnuError):
         )
 
 
+class AdapterInitializationError(MahavishnuError):
+    """
+    Error raised when an adapter fails to initialize.
+
+    This error is raised during adapter startup when required dependencies
+    are missing, configuration is invalid, or external services are
+    unavailable.
+
+    Attributes:
+        adapter_name: Name of the adapter that failed to initialize
+        message: Human-readable error description
+        details: Additional context (missing_deps, config_issues, etc.)
+
+    Example:
+        >>> raise AdapterInitializationError(
+        ...     adapter_name="prefect",
+        ...     message="Failed to connect to Prefect server",
+        ...     details={"api_url": "http://localhost:4200", "reason": "Connection refused"}
+        ... )
+    """
+
+    def __init__(
+        self,
+        adapter_name: str,
+        message: str,
+        details: dict | None = None,
+    ) -> None:
+        """
+        Initialize adapter initialization error.
+
+        Args:
+            adapter_name: Name of the adapter (e.g., "prefect", "agno", "llamaindex")
+            message: Description of what failed during initialization
+            details: Additional context including:
+                - missing_deps: List of missing Python packages
+                - config_issues: List of configuration problems
+                - api_url: URL that failed to connect (if applicable)
+                - original_error: Original exception message
+        """
+        full_message = f"Adapter '{adapter_name}' initialization failed: {message}"
+        merged_details = {
+            "adapter_name": adapter_name,
+            **(details or {}),
+        }
+        super().__init__(
+            full_message,
+            ErrorCode.ADAPTER_INITIALIZATION_ERROR,
+            details=merged_details,
+        )
+
+
+class WorkflowExecutionError(MahavishnuError):
+    """
+    Error raised when a workflow execution fails.
+
+    This error is raised during workflow execution when a step fails,
+    dependencies are not met, or external services return errors.
+
+    Attributes:
+        workflow_id: Unique identifier for the workflow
+        message: Human-readable error description
+        details: Additional context (step_name, adapter, etc.)
+
+    Example:
+        >>> raise WorkflowExecutionError(
+        ...     workflow_id="wf_abc123",
+        ...     message="Step 'deploy' failed after 3 retries",
+        ...     step_name="deploy",
+        ...     details={"retry_count": 3, "last_error": "Connection timeout"}
+        ... )
+    """
+
+    def __init__(
+        self,
+        workflow_id: str,
+        message: str,
+        step_name: str | None = None,
+        adapter_name: str | None = None,
+        details: dict | None = None,
+    ) -> None:
+        """
+        Initialize workflow execution error.
+
+        Args:
+            workflow_id: Unique identifier for the workflow execution
+            message: Description of what failed during execution
+            step_name: Optional name of the step that failed
+            adapter_name: Optional name of the adapter running the workflow
+            details: Additional context including:
+                - retry_count: Number of retry attempts
+                - last_error: Final error message
+                - execution_time: Time elapsed before failure
+                - resource_usage: CPU/memory usage at failure
+        """
+        if step_name:
+            full_message = f"Workflow '{workflow_id}' failed at step '{step_name}': {message}"
+        else:
+            full_message = f"Workflow '{workflow_id}' execution failed: {message}"
+
+        merged_details = {
+            "workflow_id": workflow_id,
+            **(details or {}),
+        }
+        if step_name:
+            merged_details["step_name"] = step_name
+        if adapter_name:
+            merged_details["adapter_name"] = adapter_name
+
+        super().__init__(
+            full_message,
+            ErrorCode.WORKFLOW_EXECUTION_ERROR,
+            details=merged_details,
+        )
+
+
 class AuthenticationError(MahavishnuError):
     """
     Authentication error for credential/validation failures.
@@ -613,6 +744,9 @@ class WorkflowError(MahavishnuError):
 
     Used for workflow orchestration failures, step execution errors,
     and workflow state management issues.
+
+    Note: For more specific workflow execution errors with proper error codes,
+    consider using WorkflowExecutionError instead.
     """
 
     def __init__(
@@ -965,4 +1099,66 @@ class ErrorTemplates:
                 "model": model,
                 "reason": reason,
             },
+        )
+
+    @staticmethod
+    def adapter_init_failed(
+        adapter_name: str,
+        reason: str,
+        missing_deps: list[str] | None = None,
+        config_issues: list[str] | None = None,
+    ) -> AdapterInitializationError:
+        """Create an adapter initialization error.
+
+        Args:
+            adapter_name: Name of the adapter that failed
+            reason: Primary reason for failure
+            missing_deps: Optional list of missing dependencies
+            config_issues: Optional list of configuration problems
+
+        Returns:
+            AdapterInitializationError with recovery steps
+        """
+        details: dict = {"reason": reason}
+        if missing_deps:
+            details["missing_deps"] = missing_deps
+        if config_issues:
+            details["config_issues"] = config_issues
+
+        return AdapterInitializationError(
+            adapter_name=adapter_name,
+            message=reason,
+            details=details,
+        )
+
+    @staticmethod
+    def workflow_step_failed(
+        workflow_id: str,
+        step_name: str,
+        reason: str,
+        adapter_name: str | None = None,
+        retry_count: int | None = None,
+    ) -> WorkflowExecutionError:
+        """Create a workflow execution error for step failure.
+
+        Args:
+            workflow_id: Unique identifier for the workflow
+            step_name: Name of the step that failed
+            reason: Reason for failure
+            adapter_name: Optional name of the adapter
+            retry_count: Optional number of retries attempted
+
+        Returns:
+            WorkflowExecutionError with recovery steps
+        """
+        details: dict = {"reason": reason}
+        if retry_count is not None:
+            details["retry_count"] = retry_count
+
+        return WorkflowExecutionError(
+            workflow_id=workflow_id,
+            message=reason,
+            step_name=step_name,
+            adapter_name=adapter_name,
+            details=details,
         )
