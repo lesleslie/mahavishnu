@@ -2,13 +2,19 @@
 
 This module implements a WebSocket server that broadcasts real-time updates
 about workflow execution, worker pool status, and orchestration events.
+
+Security Features:
+- Token bucket rate limiting per connection
+- JWT authentication support
+- TLS/WSS encryption
+- Connection limits
 """
 
 from __future__ import annotations
 
 import logging
+from typing import Any
 import uuid
-from typing import Any, Optional
 
 from mcp_common.websocket import (
     MessageType,
@@ -23,11 +29,14 @@ from mcp_common.websocket.protocol import EventTypes
 # Import authentication
 from mahavishnu.websocket.auth import get_authenticator
 
-# Import TLS configuration
-from mahavishnu.websocket.tls_config import load_ssl_context, get_websocket_tls_config
-
 # Import metrics
-from mahavishnu.websocket.metrics import get_metrics, start_metrics_server
+from mahavishnu.websocket.metrics import get_metrics
+
+# Import rate limiting
+from mahavishnu.websocket.rate_limiter import RateLimitResult, TokenBucketRateLimiter
+
+# Import TLS configuration
+from mahavishnu.websocket.tls_config import get_websocket_tls_config, load_ssl_context
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +50,12 @@ class MahavishnuWebSocketServer(WebSocketServer):
     - Task assignments and completions
     - System orchestration metrics
 
+    Security Features:
+    - Token bucket rate limiting per connection (configurable)
+    - JWT authentication support
+    - TLS/WSS encryption
+    - Maximum connection limits
+
     Channels:
     - workflow:{workflow_id} - Workflow-specific updates
     - pool:{pool_id} - Pool status updates
@@ -51,6 +66,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
         pool_manager: PoolManager instance for orchestration state
         host: Server host address
         port: Server port number (default: 8690)
+        rate_limiter: TokenBucketRateLimiter for message rate limiting
 
     Example:
         >>> from mahavishnu.pools import PoolManager
@@ -74,6 +90,12 @@ class MahavishnuWebSocketServer(WebSocketServer):
         ...     tls_enabled=True
         ... )
         >>> await server.start()
+
+    With custom rate limiting:
+        >>> server = MahavishnuWebSocketServer(
+        ...     pool_manager=pool_mgr,
+        ...     message_rate_limit=50  # 50 messages per second
+        ... )
     """
 
     def __init__(
@@ -146,14 +168,36 @@ class MahavishnuWebSocketServer(WebSocketServer):
         # Initialize metrics
         self.metrics = get_metrics("mahavishnu")
 
+        # Initialize rate limiter with configured rate
+        # Burst size is 1.5x the rate to allow small bursts
+        self.rate_limiter = TokenBucketRateLimiter(
+            rate=float(message_rate_limit),
+            burst_size=float(message_rate_limit) * 1.5,
+        )
+
         self.pool_manager = pool_manager
+
+        # Track connection IDs for rate limiting
+        self._connection_ids: dict[Any, str] = {}
+
+        # Security warning for non-localhost without TLS
+        if not tls_enabled and host not in ("127.0.0.1", "localhost", "::1"):
+            logger.warning(
+                "SECURITY WARNING: WebSocket server running without TLS on non-localhost "
+                f"interface {host}. This exposes traffic to interception. "
+                "Set tls_enabled=True or bind to 127.0.0.1 for development."
+            )
+
         logger.info(
             f"MahavishnuWebSocketServer initialized: {host}:{port} "
-            f"(TLS: {ssl_context is not None})"
+            f"(TLS: {ssl_context is not None}, rate_limit: {message_rate_limit}/s)"
         )
 
     async def on_connect(self, websocket: Any, connection_id: str) -> None:
         """Handle new WebSocket connection.
+
+        Initializes rate limiting bucket for the connection and sends
+        welcome message with connection metadata.
 
         Args:
             websocket: WebSocket connection object
@@ -161,6 +205,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
         """
         user = getattr(websocket, "user", None)
         user_id = user.get("user_id") if user else "anonymous"
+
+        # Store connection ID mapping for rate limiting
+        self._connection_ids[websocket] = connection_id
 
         logger.info(f"Client connected: {connection_id} (user: {user_id})")
 
@@ -176,12 +223,15 @@ class MahavishnuWebSocketServer(WebSocketServer):
                 "message": "Connected to Mahavishnu orchestration",
                 "authenticated": user is not None,
                 "secure": self.ssl_context is not None,
+                "rate_limit": self.message_rate_limit,
             },
         )
         await websocket.send(WebSocketProtocol.encode(welcome))
 
     async def on_disconnect(self, websocket: Any, connection_id: str) -> None:
         """Handle WebSocket disconnection.
+
+        Cleans up rate limiting bucket and room subscriptions.
 
         Args:
             websocket: WebSocket connection object
@@ -192,16 +242,40 @@ class MahavishnuWebSocketServer(WebSocketServer):
         # Track connection metrics
         self.metrics.adjust_connections(-1)
 
+        # Clean up rate limiter bucket for this connection
+        self.rate_limiter.remove_connection(connection_id)
+
+        # Clean up connection ID mapping
+        self._connection_ids.pop(websocket, None)
+
         # Clean up room subscriptions
         await self.leave_all_rooms(connection_id)
 
     async def on_message(self, websocket: Any, message: WebSocketMessage) -> None:
-        """Handle incoming WebSocket message.
+        """Handle incoming WebSocket message with rate limiting.
+
+        Applies token bucket rate limiting before processing messages.
+        Messages exceeding the rate limit are dropped and an error is sent.
 
         Args:
             websocket: WebSocket connection object
             message: Decoded message
         """
+        # Get connection ID for rate limiting
+        connection_id = self._connection_ids.get(websocket)
+        if not connection_id:
+            connection_id = getattr(websocket, "id", str(uuid.uuid4()))
+            self._connection_ids[websocket] = connection_id
+
+        # Apply rate limiting
+        rate_result = self.rate_limiter.check(connection_id)
+
+        if rate_result.limited:
+            # Message rate limited - send error and drop
+            await self._send_rate_limit_error(websocket, message, rate_result)
+            return
+
+        # Process message normally
         if message.type == MessageType.REQUEST:
             await self._handle_request(websocket, message)
         elif message.type == MessageType.EVENT:
@@ -209,9 +283,37 @@ class MahavishnuWebSocketServer(WebSocketServer):
         else:
             logger.warning(f"Unhandled message type: {message.type}")
 
-    async def _handle_request(
-        self, websocket: Any, message: WebSocketMessage
+    async def _send_rate_limit_error(
+        self,
+        websocket: Any,
+        message: WebSocketMessage,
+        rate_result: RateLimitResult,
     ) -> None:
+        """Send rate limit error to client.
+
+        Args:
+            websocket: WebSocket connection object
+            message: Original message that was rate limited
+            rate_result: Rate limit check result
+        """
+        # Track rate limit error in metrics
+        self.metrics.inc_error("rate_limit")
+
+        # Create and send error response
+        error = WebSocketProtocol.create_error(
+            error_code="RATE_LIMIT_EXCEEDED",
+            error_message=(
+                f"Message rate limit exceeded. Retry after {rate_result.retry_after:.3f} seconds."
+            ),
+            correlation_id=message.correlation_id,
+        )
+
+        try:
+            await websocket.send(WebSocketProtocol.encode(error))
+        except Exception as e:
+            logger.debug(f"Failed to send rate limit error: {e}")
+
+    async def _handle_request(self, websocket: Any, message: WebSocketMessage) -> None:
         """Handle request message (expects response).
 
         Args:
@@ -235,26 +337,24 @@ class MahavishnuWebSocketServer(WebSocketServer):
                 return
 
             if channel:
-                connection_id = getattr(websocket, "id", str(uuid.uuid4()))
+                connection_id = self._connection_ids.get(websocket, str(uuid.uuid4()))
                 await self.join_room(channel, connection_id)
 
                 # Send confirmation
                 response = WebSocketProtocol.create_response(
-                    message,
-                    {"status": "subscribed", "channel": channel}
+                    message, {"status": "subscribed", "channel": channel}
                 )
                 await websocket.send(WebSocketProtocol.encode(response))
 
         elif message.event == "unsubscribe":
             channel = message.data.get("channel")
             if channel:
-                connection_id = getattr(websocket, "id", str(uuid.uuid4()))
+                connection_id = self._connection_ids.get(websocket, str(uuid.uuid4()))
                 await self.leave_room(channel, connection_id)
 
                 # Send confirmation
                 response = WebSocketProtocol.create_response(
-                    message,
-                    {"status": "unsubscribed", "channel": channel}
+                    message, {"status": "unsubscribed", "channel": channel}
                 )
                 await websocket.send(WebSocketProtocol.encode(response))
 
@@ -366,11 +466,20 @@ class MahavishnuWebSocketServer(WebSocketServer):
             logger.error(f"Error getting workflow status: {e}")
             return {"workflow_id": workflow_id, "status": "error", "error": str(e)}
 
+    def get_rate_limit_stats(self, connection_id: str | None = None) -> dict[str, Any]:
+        """Get rate limiting statistics.
+
+        Args:
+            connection_id: Optional specific connection to get stats for
+
+        Returns:
+            Dictionary with rate limit statistics
+        """
+        return self.rate_limiter.get_stats(connection_id)
+
     # Broadcast methods for orchestration events
 
-    async def broadcast_workflow_started(
-        self, workflow_id: str, metadata: dict
-    ) -> None:
+    async def broadcast_workflow_started(self, workflow_id: str, metadata: dict) -> None:
         """Broadcast workflow started event.
 
         Args:
@@ -379,12 +488,8 @@ class MahavishnuWebSocketServer(WebSocketServer):
         """
         event = WebSocketProtocol.create_event(
             EventTypes.WORKFLOW_STARTED,
-            {
-                "workflow_id": workflow_id,
-                "timestamp": self._get_timestamp(),
-                **metadata
-            },
-            room=f"workflow:{workflow_id}"
+            {"workflow_id": workflow_id, "timestamp": self._get_timestamp(), **metadata},
+            room=f"workflow:{workflow_id}",
         )
         await self.broadcast_to_room(f"workflow:{workflow_id}", event)
 
@@ -406,13 +511,11 @@ class MahavishnuWebSocketServer(WebSocketServer):
                 "result": result,
                 "timestamp": self._get_timestamp(),
             },
-            room=f"workflow:{workflow_id}"
+            room=f"workflow:{workflow_id}",
         )
         await self.broadcast_to_room(f"workflow:{workflow_id}", event)
 
-    async def broadcast_workflow_completed(
-        self, workflow_id: str, final_result: dict
-    ) -> None:
+    async def broadcast_workflow_completed(self, workflow_id: str, final_result: dict) -> None:
         """Broadcast workflow completed event.
 
         Args:
@@ -426,13 +529,11 @@ class MahavishnuWebSocketServer(WebSocketServer):
                 "result": final_result,
                 "timestamp": self._get_timestamp(),
             },
-            room=f"workflow:{workflow_id}"
+            room=f"workflow:{workflow_id}",
         )
         await self.broadcast_to_room(f"workflow:{workflow_id}", event)
 
-    async def broadcast_workflow_failed(
-        self, workflow_id: str, error: str
-    ) -> None:
+    async def broadcast_workflow_failed(self, workflow_id: str, error: str) -> None:
         """Broadcast workflow failed event.
 
         Args:
@@ -446,7 +547,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
                 "error": error,
                 "timestamp": self._get_timestamp(),
             },
-            room=f"workflow:{workflow_id}"
+            room=f"workflow:{workflow_id}",
         )
         await self.broadcast_to_room(f"workflow:{workflow_id}", event)
 
@@ -468,13 +569,11 @@ class MahavishnuWebSocketServer(WebSocketServer):
                 "pool_id": pool_id,
                 "timestamp": self._get_timestamp(),
             },
-            room=f"pool:{pool_id}"
+            room=f"pool:{pool_id}",
         )
         await self.broadcast_to_room(f"pool:{pool_id}", event)
 
-    async def broadcast_pool_status_changed(
-        self, pool_id: str, status: dict
-    ) -> None:
+    async def broadcast_pool_status_changed(self, pool_id: str, status: dict) -> None:
         """Broadcast pool status changed event.
 
         Args:
@@ -488,7 +587,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
                 "status": status,
                 "timestamp": self._get_timestamp(),
             },
-            room=f"pool:{pool_id}"
+            room=f"pool:{pool_id}",
         )
         await self.broadcast_to_room(f"pool:{pool_id}", event)
 
@@ -498,6 +597,6 @@ class MahavishnuWebSocketServer(WebSocketServer):
         Returns:
             ISO-formatted timestamp string
         """
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
 
         return datetime.now(UTC).isoformat()
