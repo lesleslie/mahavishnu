@@ -4,9 +4,8 @@ Adapters are imported with lazy loading to avoid dependency issues.
 Individual adapters can be imported when needed.
 """
 
-import sys
-
 from .agno_adapter import AgnoAdapter
+from .goal_team_factory import GoalDrivenTeamFactory, ParsedGoal, SkillConfig
 
 # Try to import LlamaIndex adapter (may fail if dependencies not installed)
 try:
@@ -28,6 +27,9 @@ except ImportError:
 
 __all__ = [
     "AgnoAdapter",
+    "GoalDrivenTeamFactory",
+    "ParsedGoal",
+    "SkillConfig",
 ]
 
 # Only add adapters that are available
