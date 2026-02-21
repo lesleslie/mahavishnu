@@ -11,6 +11,8 @@ Features:
     - Support for Prefect Server and Prefect Cloud
     - Configurable retries with exponential backoff
     - Deployment CRUD operations (Phase 2)
+    - Schedule management (Phase 3)
+    - Flow registry integration (Phase 3)
 
 Configuration (settings/mahavishnu.yaml):
     prefect:
@@ -38,6 +40,13 @@ Example:
         deployment_name="production",
         schedule=CronSchedule(cron="0 9 * * *"),
     )
+
+    # Phase 3: Schedule management
+    await adapter.set_deployment_schedule(deployment.id, schedule)
+
+    # Phase 3: Flow registry
+    flow_id = adapter.register_flow(my_flow_func, "my-flow", tags=["etl"])
+
     await adapter.shutdown()
     ```
 """
@@ -47,7 +56,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import httpx
 from mcp_common.code_graph import CodeGraphAnalyzer
@@ -80,6 +89,7 @@ from .prefect_models import (
     FlowRunResponse,
     WorkPoolResponse,
 )
+from .prefect_registry import FlowRegistry, get_flow_registry
 from .prefect_schedules import (
     CronSchedule,
     IntervalSchedule,
@@ -390,6 +400,8 @@ class PrefectAdapter(OrchestratorAdapter):
     - Error mapping to Mahavishnu error hierarchy
     - Support for both Prefect Server and Prefect Cloud
     - Deployment CRUD operations (Phase 2)
+    - Schedule management (Phase 3)
+    - Flow registry integration (Phase 3)
 
     Attributes:
         config: PrefectConfig instance with adapter settings
@@ -415,6 +427,15 @@ class PrefectAdapter(OrchestratorAdapter):
             deployment_name="production",
             schedule=CronSchedule(cron="0 9 * * *"),
         )
+
+        # Phase 3: Schedule management
+        from mahavishnu.engines.prefect_schedules import create_daily_schedule
+        schedule = create_daily_schedule(hour=9)
+        await adapter.set_deployment_schedule(deployment.id, schedule)
+
+        # Phase 3: Flow registry
+        flow_id = adapter.register_flow(my_flow, "my-flow", tags=["etl"])
+
         await adapter.shutdown()
         ```
     """
@@ -429,6 +450,7 @@ class PrefectAdapter(OrchestratorAdapter):
         self._client: Any = None
         self._initialized = False
         self._client_context: Any = None
+        self._flow_registry: FlowRegistry | None = None
 
     # =========================================================================
     # OrchestratorAdapter Interface Properties
@@ -491,6 +513,7 @@ class PrefectAdapter(OrchestratorAdapter):
         1. Creates the Prefect orchestration client
         2. Verifies connection to Prefect server/cloud
         3. Marks the adapter as initialized
+        4. Initializes the flow registry
 
         Raises:
             PrefectError: If connection cannot be established
@@ -504,6 +527,9 @@ class PrefectAdapter(OrchestratorAdapter):
             async with self._get_client_context() as client:
                 # Verify connection by reading server info
                 await client.read_health()
+
+            # Initialize flow registry
+            self._flow_registry = get_flow_registry()
 
             self._initialized = True
             logger.info(
@@ -536,6 +562,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         self._client = None
         self._initialized = False
+        self._flow_registry = None
         logger.info("PrefectAdapter shutdown complete")
 
     @asynccontextmanager
@@ -1451,6 +1478,268 @@ class PrefectAdapter(OrchestratorAdapter):
             raise error from exc
 
     # =========================================================================
+    # Phase 3: Schedule Management
+    # =========================================================================
+
+    async def set_deployment_schedule(
+        self,
+        deployment_id: str,
+        schedule: ScheduleConfig,
+    ) -> DeploymentResponse:
+        """Set or update a deployment's schedule.
+
+        This method sets a new schedule for an existing deployment.
+        Any existing schedule will be replaced.
+
+        Args:
+            deployment_id: UUID of the deployment
+            schedule: Schedule configuration (CronSchedule, IntervalSchedule, or RRuleSchedule)
+
+        Returns:
+            DeploymentResponse with updated deployment details
+
+        Raises:
+            PrefectError: If schedule update fails or deployment not found
+
+        Example:
+            ```python
+            from mahavishnu.engines.prefect_schedules import create_daily_schedule
+
+            # Set a daily schedule
+            schedule = create_daily_schedule(hour=9, minute=30)
+            deployment = await adapter.set_deployment_schedule("dep-123", schedule)
+
+            # Set a cron schedule
+            from mahavishnu.engines.prefect_schedules import CronSchedule
+            schedule = CronSchedule(cron="0 */6 * * *")  # Every 6 hours
+            deployment = await adapter.set_deployment_schedule("dep-123", schedule)
+            ```
+        """
+        return await self.update_deployment(deployment_id, schedule=schedule)
+
+    async def clear_deployment_schedule(self, deployment_id: str) -> DeploymentResponse:
+        """Clear a deployment's schedule.
+
+        Removes the schedule from a deployment, making it only triggerable
+        manually via trigger_flow_run().
+
+        Args:
+            deployment_id: UUID of the deployment
+
+        Returns:
+            DeploymentResponse with updated deployment details
+
+        Raises:
+            PrefectError: If schedule clear fails or deployment not found
+
+        Example:
+            ```python
+            # Remove schedule from deployment
+            deployment = await adapter.clear_deployment_schedule("dep-123")
+            assert deployment.schedule is None
+            ```
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        try:
+            async with self._get_client_context() as client:
+                # Set schedule to None to clear it
+                deployment = await client.update_deployment(
+                    deployment_id,
+                    schedule=None,
+                )
+
+                logger.info(
+                    "Cleared deployment schedule",
+                    extra={"deployment_id": deployment_id},
+                )
+
+                return _deployment_to_response(deployment)
+
+        except PrefectError:
+            raise
+        except Exception as exc:
+            error = _map_prefect_exception(
+                exc,
+                f"clear_deployment_schedule({deployment_id})",
+                self.config.api_url,
+            )
+            logger.error(
+                "Failed to clear deployment schedule",
+                extra={"error": str(error), "deployment_id": deployment_id},
+            )
+            raise error from exc
+
+    async def get_deployment_schedule(
+        self,
+        deployment_id: str,
+    ) -> ScheduleConfig | None:
+        """Get a deployment's current schedule.
+
+        Retrieves the schedule configuration from a deployment.
+
+        Args:
+            deployment_id: UUID of the deployment
+
+        Returns:
+            ScheduleConfig if schedule exists, None otherwise
+
+        Raises:
+            PrefectError: If retrieval fails or deployment not found
+
+        Example:
+            ```python
+            schedule = await adapter.get_deployment_schedule("dep-123")
+            if schedule:
+                print(f"Schedule type: {schedule.type}")
+                if isinstance(schedule, CronSchedule):
+                    print(f"Cron: {schedule.cron}")
+            ```
+        """
+        deployment = await self.get_deployment(deployment_id)
+
+        if not deployment.schedule:
+            return None
+
+        # Convert dict schedule back to ScheduleConfig
+        schedule_dict = deployment.schedule
+
+        if "cron" in schedule_dict:
+            return CronSchedule(
+                cron=schedule_dict["cron"],
+                timezone=schedule_dict.get("timezone", "UTC"),
+                day_or=schedule_dict.get("day_or", True),
+            )
+        elif "interval" in schedule_dict:
+            anchor = None
+            if "anchor_date" in schedule_dict:
+                anchor = datetime.fromisoformat(schedule_dict["anchor_date"])
+            return IntervalSchedule(
+                interval_seconds=schedule_dict["interval"],
+                anchor_date=anchor,
+            )
+        elif "rrule" in schedule_dict:
+            return RRuleSchedule(
+                rrule=schedule_dict["rrule"],
+                timezone=schedule_dict.get("timezone", "UTC"),
+            )
+
+        return None
+
+    # =========================================================================
+    # Phase 3: Flow Registry Integration
+    # =========================================================================
+
+    def register_flow(
+        self,
+        flow_func: Callable,
+        name: str,
+        tags: list[str] | None = None,
+    ) -> str:
+        """Register a flow function in the flow registry.
+
+        The flow registry maintains an in-memory collection of flows
+        that can be deployed and executed.
+
+        Args:
+            flow_func: The Prefect flow function (decorated with @flow)
+            name: Human-readable name for the flow
+            tags: Optional list of tags for categorization
+
+        Returns:
+            Unique flow ID string
+
+        Example:
+            ```python
+            from prefect import flow
+
+            @flow(name="data-pipeline")
+            async def my_data_pipeline():
+                pass
+
+            # Register with adapter
+            flow_id = adapter.register_flow(
+                my_data_pipeline,
+                name="data-pipeline",
+                tags=["etl", "production"],
+            )
+            ```
+        """
+        if self._flow_registry is None:
+            self._flow_registry = get_flow_registry()
+
+        return self._flow_registry.register_flow(flow_func, name, tags)
+
+    def list_registered_flows(
+        self,
+        tags: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """List registered flows from the flow registry.
+
+        Args:
+            tags: Optional list of tags to filter by (AND logic)
+
+        Returns:
+            List of flow metadata dictionaries
+
+        Example:
+            ```python
+            # List all registered flows
+            all_flows = adapter.list_registered_flows()
+
+            # List flows with specific tag
+            prod_flows = adapter.list_registered_flows(tags=["production"])
+            ```
+        """
+        if self._flow_registry is None:
+            self._flow_registry = get_flow_registry()
+
+        return self._flow_registry.list_flows(tags)
+
+    def get_registered_flow(self, flow_id: str) -> Callable | None:
+        """Get a registered flow function by ID.
+
+        Args:
+            flow_id: The unique flow identifier
+
+        Returns:
+            Flow function if found, None otherwise
+
+        Example:
+            ```python
+            flow_func = adapter.get_registered_flow("abc-123")
+            if flow_func:
+                result = await flow_func()
+            ```
+        """
+        if self._flow_registry is None:
+            self._flow_registry = get_flow_registry()
+
+        return self._flow_registry.get_flow(flow_id)
+
+    def unregister_flow(self, flow_id: str) -> bool:
+        """Remove a flow from the registry.
+
+        Args:
+            flow_id: The unique flow identifier
+
+        Returns:
+            True if removed, False if not found
+
+        Example:
+            ```python
+            success = adapter.unregister_flow("abc-123")
+            if success:
+                print("Flow removed from registry")
+            ```
+        """
+        if self._flow_registry is None:
+            self._flow_registry = get_flow_registry()
+
+        return self._flow_registry.unregister_flow(flow_id)
+
+    # =========================================================================
     # Additional Utility Methods
     # =========================================================================
 
@@ -1480,4 +1769,7 @@ __all__ = [
     "DeploymentResponse",
     "FlowRunResponse",
     "WorkPoolResponse",
+    # Re-export registry for convenience
+    "FlowRegistry",
+    "get_flow_registry",
 ]

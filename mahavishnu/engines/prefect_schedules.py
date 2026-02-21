@@ -3,15 +3,29 @@
 This module provides Pydantic models for defining schedules in Prefect deployments.
 Supports cron, interval, and RRULE schedule types with validation.
 
+Also provides convenience helper functions for common schedule patterns.
+
 Example:
     ```python
     from mahavishnu.engines.prefect_schedules import CronSchedule, IntervalSchedule
+    from mahavishnu.engines.prefect_schedules import (
+        create_hourly_schedule,
+        create_daily_schedule,
+        create_weekly_schedule,
+        create_monthly_schedule,
+    )
 
     # Cron schedule
     cron = CronSchedule(cron="0 9 * * *", timezone="America/New_York")
 
     # Interval schedule
     interval = IntervalSchedule(interval_seconds=3600)  # Every hour
+
+    # Convenience helpers
+    hourly = create_hourly_schedule(minute=30)  # Every hour at minute 30
+    daily = create_daily_schedule(hour=9, minute=0)  # Every day at 9:00 AM
+    weekly = create_weekly_schedule(day_of_week=1, hour=9)  # Every Monday at 9 AM
+    monthly = create_monthly_schedule(day_of_month=1, hour=0)  # 1st of month at midnight
     ```
 """
 
@@ -259,10 +273,236 @@ def schedule_to_prefect_dict(schedule: ScheduleConfig) -> dict:
         raise ValueError(f"Unknown schedule type: {type(schedule)}")
 
 
+# =============================================================================
+# Schedule Helper Functions (Phase 3)
+# =============================================================================
+
+
+def create_hourly_schedule(minute: int = 0) -> IntervalSchedule:
+    """Create an hourly schedule.
+
+    Creates an interval schedule that runs every hour. The minute parameter
+    determines the offset within the hour for the first run.
+
+    Note: This returns an IntervalSchedule. For cron-based hourly schedules
+    (e.g., "at minute X of every hour"), use CronSchedule directly.
+
+    Args:
+        minute: Minute offset within the hour (0-59). Defaults to 0.
+            This sets the anchor for the interval.
+
+    Returns:
+        IntervalSchedule configured for hourly execution
+
+    Raises:
+        ValueError: If minute is not in range 0-59
+
+    Example:
+        ```python
+        from mahavishnu.engines.prefect_schedules import create_hourly_schedule
+
+        # Run every hour on the hour
+        schedule = create_hourly_schedule()
+
+        # Run every hour at minute 30
+        schedule = create_hourly_schedule(minute=30)
+
+        # Use with deployment
+        deployment = await adapter.create_deployment(
+            flow_name="my-flow",
+            deployment_name="hourly",
+            schedule=schedule,
+        )
+        ```
+    """
+    if not 0 <= minute <= 59:
+        raise ValueError(f"minute must be between 0 and 59, got {minute}")
+
+    # Use anchor date to align to specific minute
+    anchor = datetime(2024, 1, 1, 0, minute, 0)
+
+    return IntervalSchedule(
+        interval_seconds=3600,  # 1 hour in seconds
+        anchor_date=anchor,
+    )
+
+
+def create_daily_schedule(
+    hour: int,
+    minute: int = 0,
+    timezone: str = "UTC",
+) -> CronSchedule:
+    """Create a daily schedule.
+
+    Creates a cron schedule that runs once per day at the specified time.
+
+    Args:
+        hour: Hour of day (0-23)
+        minute: Minute of hour (0-59). Defaults to 0.
+        timezone: Timezone for schedule execution. Defaults to "UTC".
+
+    Returns:
+        CronSchedule configured for daily execution
+
+    Raises:
+        ValueError: If hour or minute is out of valid range
+
+    Example:
+        ```python
+        from mahavishnu.engines.prefect_schedules import create_daily_schedule
+
+        # Run every day at midnight UTC
+        schedule = create_daily_schedule(hour=0)
+
+        # Run every day at 9:30 AM EST
+        schedule = create_daily_schedule(
+            hour=9,
+            minute=30,
+            timezone="America/New_York",
+        )
+
+        # Use with deployment
+        deployment = await adapter.create_deployment(
+            flow_name="etl-flow",
+            deployment_name="daily-etl",
+            schedule=schedule,
+        )
+        ```
+    """
+    if not 0 <= hour <= 23:
+        raise ValueError(f"hour must be between 0 and 23, got {hour}")
+    if not 0 <= minute <= 59:
+        raise ValueError(f"minute must be between 0 and 59, got {minute}")
+
+    cron_expr = f"{minute} {hour} * * *"
+
+    return CronSchedule(cron=cron_expr, timezone=timezone)
+
+
+def create_weekly_schedule(
+    day_of_week: int,
+    hour: int,
+    minute: int = 0,
+    timezone: str = "UTC",
+) -> CronSchedule:
+    """Create a weekly schedule.
+
+    Creates a cron schedule that runs once per week on the specified day.
+
+    Args:
+        day_of_week: Day of week (0=Sunday, 1=Monday, ..., 6=Saturday)
+        hour: Hour of day (0-23)
+        minute: Minute of hour (0-59). Defaults to 0.
+        timezone: Timezone for schedule execution. Defaults to "UTC".
+
+    Returns:
+        CronSchedule configured for weekly execution
+
+    Raises:
+        ValueError: If day_of_week, hour, or minute is out of valid range
+
+    Example:
+        ```python
+        from mahavishnu.engines.prefect_schedules import create_weekly_schedule
+
+        # Run every Monday at 9 AM UTC
+        schedule = create_weekly_schedule(day_of_week=1, hour=9)
+
+        # Run every Friday at 5 PM EST
+        schedule = create_weekly_schedule(
+            day_of_week=5,
+            hour=17,
+            timezone="America/New_York",
+        )
+
+        # Use with deployment
+        deployment = await adapter.create_deployment(
+            flow_name="weekly-report",
+            deployment_name="weekly",
+            schedule=schedule,
+        )
+        ```
+    """
+    if not 0 <= day_of_week <= 6:
+        raise ValueError(f"day_of_week must be between 0 (Sunday) and 6 (Saturday), got {day_of_week}")
+    if not 0 <= hour <= 23:
+        raise ValueError(f"hour must be between 0 and 23, got {hour}")
+    if not 0 <= minute <= 59:
+        raise ValueError(f"minute must be between 0 and 59, got {minute}")
+
+    cron_expr = f"{minute} {hour} * * {day_of_week}"
+
+    return CronSchedule(cron=cron_expr, timezone=timezone)
+
+
+def create_monthly_schedule(
+    day_of_month: int,
+    hour: int,
+    minute: int = 0,
+    timezone: str = "UTC",
+) -> CronSchedule:
+    """Create a monthly schedule.
+
+    Creates a cron schedule that runs once per month on the specified day.
+
+    Note: If day_of_month is greater than the number of days in a month,
+    the schedule will not run in shorter months (e.g., day 31 won't run in February).
+
+    Args:
+        day_of_month: Day of month (1-31)
+        hour: Hour of day (0-23)
+        minute: Minute of hour (0-59). Defaults to 0.
+        timezone: Timezone for schedule execution. Defaults to "UTC".
+
+    Returns:
+        CronSchedule configured for monthly execution
+
+    Raises:
+        ValueError: If day_of_month, hour, or minute is out of valid range
+
+    Example:
+        ```python
+        from mahavishnu.engines.prefect_schedules import create_monthly_schedule
+
+        # Run on the 1st of every month at midnight UTC
+        schedule = create_monthly_schedule(day_of_month=1, hour=0)
+
+        # Run on the 15th of every month at noon PST
+        schedule = create_monthly_schedule(
+            day_of_month=15,
+            hour=12,
+            timezone="America/Los_Angeles",
+        )
+
+        # Use with deployment
+        deployment = await adapter.create_deployment(
+            flow_name="monthly-billing",
+            deployment_name="monthly",
+            schedule=schedule,
+        )
+        ```
+    """
+    if not 1 <= day_of_month <= 31:
+        raise ValueError(f"day_of_month must be between 1 and 31, got {day_of_month}")
+    if not 0 <= hour <= 23:
+        raise ValueError(f"hour must be between 0 and 23, got {hour}")
+    if not 0 <= minute <= 59:
+        raise ValueError(f"minute must be between 0 and 59, got {minute}")
+
+    cron_expr = f"{minute} {hour} {day_of_month} * *"
+
+    return CronSchedule(cron=cron_expr, timezone=timezone)
+
+
 __all__ = [
     "CronSchedule",
     "IntervalSchedule",
     "RRuleSchedule",
     "ScheduleConfig",
     "schedule_to_prefect_dict",
+    # Schedule helper functions (Phase 3)
+    "create_hourly_schedule",
+    "create_daily_schedule",
+    "create_weekly_schedule",
+    "create_monthly_schedule",
 ]
