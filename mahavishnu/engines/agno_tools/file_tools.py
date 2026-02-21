@@ -5,6 +5,9 @@ Agno agents for reading, writing, and exploring code repositories.
 
 All tools use Agno's native @tool decorator for seamless integration.
 The actual implementations are separate functions for testing.
+
+SECURITY: All file operations include path traversal prevention (CVE-MHV-001).
+Paths are validated to ensure they remain within allowed base directories.
 """
 
 from __future__ import annotations
@@ -104,40 +107,184 @@ BLOCKED_PATHS = {
     ".ruff_cache",
 }
 
+# Default allowed base directories - can be overridden via configuration
+DEFAULT_ALLOWED_BASE_DIRS = [
+    Path("/Users/les/Projects"),
+    Path.cwd(),  # Current working directory
+]
+
+
+def _get_allowed_base_dirs() -> list[Path]:
+    """Get list of allowed base directories from configuration.
+
+    Returns:
+        List of resolved Path objects for allowed base directories.
+    """
+    try:
+        from mahavishnu.core.config import MahavishnuSettings
+
+        settings = MahavishnuSettings()
+        if settings.allowed_repo_paths:
+            return [Path(p).expanduser().resolve() for p in settings.allowed_repo_paths]
+    except Exception:
+        logger.debug("Could not load allowed_repo_paths from configuration, using defaults")
+
+    return [p.resolve() for p in DEFAULT_ALLOWED_BASE_DIRS]
+
+
+def _validate_path_within_allowed(resolved_path: Path, allowed_dirs: list[Path]) -> None:
+    """Validate that a resolved path is within one of the allowed base directories.
+
+    SECURITY: This is the core path traversal prevention check.
+    It ensures that after resolving all symlinks and .. sequences,
+    the path is still within an allowed directory.
+
+    Args:
+        resolved_path: The fully resolved absolute path to check.
+        allowed_dirs: List of allowed base directories.
+
+    Raises:
+        AgnoError: If path escapes all allowed directories.
+    """
+    for allowed_dir in allowed_dirs:
+        # Use is_relative_to for Python 3.9+, fallback to string comparison
+        try:
+            if resolved_path.is_relative_to(allowed_dir):
+                return  # Path is within this allowed directory
+        except AttributeError:
+            # Python < 3.9 fallback
+            try:
+                resolved_path.relative_to(allowed_dir)
+                return  # Path is within this allowed directory
+            except ValueError:
+                continue
+
+    # Path is not within any allowed directory - security violation
+    logger.warning(
+        "SECURITY: Path traversal attempt blocked - path outside allowed directories",
+        extra={
+            "resolved_path": str(resolved_path),
+            "allowed_dirs": [str(d) for d in allowed_dirs],
+        },
+    )
+    raise AgnoError(
+        "Access denied: path is outside allowed directories",
+        error_code=ErrorCode.AGNO_TOOL_EXECUTION_ERROR,
+        details={
+            "error_type": "path_traversal_blocked",
+            # Don't reveal internal paths in error messages
+        },
+    )
+
+
+def _detect_path_traversal_attempts(path: str) -> None:
+    """Detect obvious path traversal attempts in the raw path string.
+
+    This provides an additional layer of security by catching traversal
+    attempts before resolution, which helps with logging and detection.
+
+    Args:
+        path: The raw path string to check.
+
+    Raises:
+        AgnoError: If obvious path traversal patterns are detected.
+    """
+    # Normalize path separators for detection
+    normalized = path.replace("\\", "/")
+
+    # Check for parent directory traversal
+    # Match patterns like ../ or /.. or just ..
+    traversal_patterns = [
+        "../",  # Unix-style parent
+        "/..",  # Parent at end or middle
+        "\\..\\",  # Windows-style parent
+        "..\\",  # Windows-style parent
+    ]
+
+    for pattern in traversal_patterns:
+        if pattern in normalized:
+            logger.warning(
+                "SECURITY: Path traversal pattern detected in input path",
+                extra={
+                    "pattern_detected": pattern,
+                    # Don't log the actual path to avoid leaking in logs
+                },
+            )
+            raise AgnoError(
+                "Access denied: path contains invalid traversal sequences",
+                error_code=ErrorCode.AGNO_TOOL_EXECUTION_ERROR,
+                details={
+                    "error_type": "path_traversal_detected",
+                    "pattern": pattern,
+                },
+            )
+
+    # Check for null bytes (path injection)
+    if "\x00" in path or "%00" in path:
+        logger.warning("SECURITY: Null byte injection attempt detected")
+        raise AgnoError(
+            "Access denied: invalid characters in path",
+            error_code=ErrorCode.AGNO_TOOL_EXECUTION_ERROR,
+            details={"error_type": "null_byte_injection"},
+        )
+
 
 def _validate_path(path: str) -> Path:
     """Validate file path for security.
+
+    SECURITY: Implements defense-in-depth path traversal prevention:
+    1. Detects obvious traversal patterns in raw input
+    2. Resolves path to absolute form (follows symlinks, normalizes ..)
+    3. Validates resolved path is within allowed base directories
+    4. Checks for blocked paths (sensitive directories)
 
     Args:
         path: File path to validate
 
     Returns:
-        Resolved Path object
+        Resolved Path object that is safe to use
 
     Raises:
-        AgnoError: If path is invalid or unsafe
+        AgnoError: If path is invalid, contains traversal attempts,
+                   or is outside allowed directories
     """
     try:
+        # Layer 1: Detect obvious traversal attempts in raw input
+        _detect_path_traversal_attempts(path)
+
+        # Layer 2: Resolve to absolute path (follows symlinks, normalizes ..)
         resolved = Path(path).resolve()
 
-        # Check for blocked paths
+        # Layer 3: Validate path is within allowed base directories
+        allowed_dirs = _get_allowed_base_dirs()
+        _validate_path_within_allowed(resolved, allowed_dirs)
+
+        # Layer 4: Check for blocked paths (existing security check)
+        path_str = str(resolved)
         for blocked in BLOCKED_PATHS:
-            if blocked in str(resolved):
+            # Check both as directory component and as exact match
+            if f"/{blocked}/" in path_str or path_str.endswith(f"/{blocked}"):
+                logger.warning(
+                    "SECURITY: Access to blocked path denied",
+                    extra={"blocked_directory": blocked},
+                )
                 raise AgnoError(
-                    f"Access denied: path contains blocked directory '{blocked}'",
+                    "Access denied: path contains blocked directory",
                     error_code=ErrorCode.AGNO_TOOL_EXECUTION_ERROR,
-                    details={"path": path, "blocked": blocked},
+                    details={"error_type": "blocked_path", "blocked": blocked},
                 )
 
         return resolved
 
+    except AgnoError:
+        # Re-raise our security errors
+        raise
     except Exception as e:
-        if isinstance(e, AgnoError):
-            raise
+        # Wrap other exceptions
         raise AgnoError(
-            f"Invalid path: {path}",
+            "Invalid path provided",
             error_code=ErrorCode.AGNO_TOOL_EXECUTION_ERROR,
-            details={"path": path, "error": str(e)},
+            details={"error_type": "invalid_path", "error": str(e)},
         ) from e
 
 
@@ -355,6 +502,35 @@ def _search_files_impl(pattern: str, directory: str) -> list[str]:
 
         # Only include files, not directories
         if match.is_file():
+            # SECURITY: Verify each match is still within allowed directory
+            # This prevents symlink attacks where rglob might escape
+            try:
+                match_resolved = match.resolve()
+                allowed_dirs = _get_allowed_base_dirs()
+                path_allowed = False
+                for allowed_dir in allowed_dirs:
+                    try:
+                        if match_resolved.is_relative_to(allowed_dir):
+                            path_allowed = True
+                            break
+                    except AttributeError:
+                        try:
+                            match_resolved.relative_to(allowed_dir)
+                            path_allowed = True
+                            break
+                        except ValueError:
+                            continue
+
+                if not path_allowed:
+                    logger.warning(
+                        "SECURITY: Skipping search result outside allowed directory",
+                        extra={"match": str(match)},
+                    )
+                    continue
+            except Exception as e:
+                logger.warning(f"Could not validate search result path: {e}")
+                continue
+
             # Return relative path
             rel_path = match.relative_to(validated_path)
             matches.append(str(rel_path))
@@ -452,4 +628,9 @@ __all__ = [
     "_write_file_impl",
     "_list_directory_impl",
     "_search_files_impl",
+    # Security functions (for testing)
+    "_validate_path",
+    "_validate_path_within_allowed",
+    "_detect_path_traversal_attempts",
+    "_get_allowed_base_dirs",
 ]

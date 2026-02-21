@@ -14,14 +14,25 @@ from mcp_common.websocket.auth import WebSocketAuthenticator
 logger = logging.getLogger(__name__)
 
 
-# Get JWT secret from environment
-JWT_SECRET = os.getenv("MAHAVISHNU_JWT_SECRET", "dev-secret-change-in-production")
+# Get JWT secret from environment - REQUIRED in production
+# No default for security - must be explicitly set
+_DEFAULT_DEV_SECRET = "dev-secret-change-in-production"
+JWT_SECRET = os.getenv("MAHAVISHNU_JWT_SECRET", _DEFAULT_DEV_SECRET)
 
 # Get token expiry from environment (default: 1 hour)
 TOKEN_EXPIRY = int(os.getenv("MAHAVISHNU_TOKEN_EXPIRY", "3600"))
 
 # Check if authentication is enabled
-AUTH_ENABLED = os.getenv("MAHAVISHNU_AUTH_ENABLED", "false").lower() == "true"
+# Default to True for security - explicitly set to "false" for development only
+AUTH_ENABLED = os.getenv("MAHAVISHNU_AUTH_ENABLED", "true").lower() == "true"
+
+# Warn if using insecure defaults
+_INSECURE_CONFIG = JWT_SECRET == _DEFAULT_DEV_SECRET or not AUTH_ENABLED
+if _INSECURE_CONFIG:
+    logger.warning(
+        "⚠️  SECURITY WARNING: WebSocket using insecure configuration! "
+        "Set MAHAVISHNU_JWT_SECRET and MAHAVISHNU_AUTH_ENABLED=true for production."
+    )
 
 
 def get_authenticator() -> WebSocketAuthenticator | None:

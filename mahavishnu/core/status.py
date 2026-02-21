@@ -239,6 +239,7 @@ class DependencyStatus(StrEnum):
     DEPRECATED = "deprecated"
     PENDING = "pending"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 # =============================================================================

@@ -7,6 +7,7 @@ about workflow execution, worker pool status, and orchestration events.
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import Any, Optional
 
 from mcp_common.websocket import (
@@ -500,6 +501,3 @@ class MahavishnuWebSocketServer(WebSocketServer):
         from datetime import datetime, UTC
 
         return datetime.now(UTC).isoformat()
-
-
-import uuid
