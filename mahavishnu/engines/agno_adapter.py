@@ -6,6 +6,7 @@ for agent-based workflows with multi-agent team support.
 Key Features:
 - Multi-agent team orchestration
 - Native MCP tool integration
+- Native Agno tools (file operations, code analysis)
 - Multiple LLM provider support (Anthropic, OpenAI, Ollama)
 - Memory and session management
 - OpenTelemetry instrumentation
@@ -168,6 +169,10 @@ class AgnoToolsConfig(BaseModel):
         ge=5,
         le=600,
         description="Tool execution timeout in seconds",
+    )
+    enable_native_tools: bool = Field(
+        default=True,
+        description="Enable native Agno tools (file operations, code analysis)",
     )
 
     model_config = {"extra": "forbid"}
@@ -481,6 +486,70 @@ class MCPToolsRegistry:
 
 
 # ============================================================================
+# Native Tools Registry (Phase 3)
+# ============================================================================
+
+
+class NativeToolsRegistry:
+    """Registry for native Agno tools.
+
+    Provides file operations and code analysis tools that can be used
+    directly by Agno agents without MCP integration.
+    """
+
+    def __init__(self, enabled: bool = True):
+        """Initialize native tools registry.
+
+        Args:
+            enabled: Whether to enable native tools
+        """
+        self.enabled = enabled
+        self._tools: list[Any] = []
+
+    def get_tools(self) -> list[Any]:
+        """Get list of native tool functions.
+
+        Returns:
+            List of native tool functions
+        """
+        if not self.enabled:
+            return []
+
+        if self._tools:
+            return self._tools
+
+        try:
+            # Import native tools from agno_tools module
+            from .agno_tools import ALL_TOOLS
+
+            self._tools = list(ALL_TOOLS)
+            logger.debug(f"Loaded {len(self._tools)} native tools")
+            return self._tools
+
+        except ImportError as e:
+            logger.warning(f"Failed to import native tools: {e}")
+            return []
+
+    def get_available_tools(self) -> list[str]:
+        """Get list of available native tool names.
+
+        Returns:
+            List of tool names
+        """
+        tools = self.get_tools()
+        names = []
+        for t in tools:
+            # Agno Function objects have a .name attribute
+            if hasattr(t, "name"):
+                names.append(t.name)
+            elif hasattr(t, "__name__"):
+                names.append(t.__name__)
+            else:
+                names.append(str(t))
+        return names
+
+
+# ============================================================================
 # Main AgnoAdapter Implementation
 # ============================================================================
 
@@ -494,6 +563,7 @@ class AgnoAdapter(OrchestratorAdapter):
     Key Capabilities:
     - Multi-agent team orchestration (supports_multi_agent=True)
     - Native MCP tool integration
+    - Native Agno tools (file operations, code analysis) (Phase 3)
     - Multiple LLM providers (Anthropic, OpenAI, Ollama)
     - Memory and session management
     - Batch execution support
@@ -547,6 +617,7 @@ class AgnoAdapter(OrchestratorAdapter):
         self._initialized = False
         self._llm_factory: LLMProviderFactory | None = None
         self._mcp_registry: MCPToolsRegistry | None = None
+        self._native_tools_registry: NativeToolsRegistry | None = None
         self._agents: dict[str, Agent] = {}
         self._teams: dict[str, Team] = {}
         self._semaphore: asyncio.Semaphore | None = None
@@ -613,8 +684,9 @@ class AgnoAdapter(OrchestratorAdapter):
         1. Validates Agno SDK version
         2. Initializes LLM provider factory
         3. Initializes MCP tools registry
-        4. Sets up concurrency semaphore
-        5. Initializes team manager (Phase 2)
+        4. Initializes native tools registry (Phase 3)
+        5. Sets up concurrency semaphore
+        6. Initializes team manager (Phase 2)
 
         Raises:
             AgnoError: If initialization fails
@@ -636,6 +708,11 @@ class AgnoAdapter(OrchestratorAdapter):
             self._mcp_registry = MCPToolsRegistry(self.agno_config.tools)
             await self._mcp_registry.initialize()
 
+            # Initialize native tools registry (Phase 3)
+            self._native_tools_registry = NativeToolsRegistry(
+                enabled=self.agno_config.tools.enable_native_tools
+            )
+
             # Set up concurrency semaphore
             self._semaphore = asyncio.Semaphore(self.agno_config.max_concurrent_agents)
 
@@ -646,7 +723,8 @@ class AgnoAdapter(OrchestratorAdapter):
             logger.info(
                 f"AgnoAdapter initialized successfully: "
                 f"provider={self.agno_config.llm.provider.value}, "
-                f"model={self.agno_config.llm.model_id}"
+                f"model={self.agno_config.llm.model_id}, "
+                f"native_tools={len(self.get_available_tools())}"
             )
 
         except Exception as e:
@@ -661,11 +739,12 @@ class AgnoAdapter(OrchestratorAdapter):
         """Initialize the agent team manager for multi-agent orchestration."""
         from .agno_teams.manager import AgentTeamManager
 
-        mcp_tools = self._mcp_registry.get_tools() if self._mcp_registry else []
+        # Get all tools (MCP + native)
+        all_tools = self._get_all_tools()
 
         self._team_manager = AgentTeamManager(
             llm_factory=self._llm_factory,
-            mcp_tools=mcp_tools,
+            mcp_tools=all_tools,
             max_concurrent_agents=self.agno_config.max_concurrent_agents,
         )
 
@@ -692,6 +771,34 @@ class AgnoAdapter(OrchestratorAdapter):
                 error_code=ErrorCode.CONFIGURATION_ERROR,
                 details={"import_error": str(e)},
             )
+
+    def _get_all_tools(self) -> list[Any]:
+        """Get all available tools (MCP + native).
+
+        Returns:
+            Combined list of MCP and native tools
+        """
+        tools = []
+
+        # Add MCP tools
+        if self._mcp_registry:
+            tools.extend(self._mcp_registry.get_tools())
+
+        # Add native tools (Phase 3)
+        if self._native_tools_registry:
+            tools.extend(self._native_tools_registry.get_tools())
+
+        return tools
+
+    def get_available_tools(self) -> list[str]:
+        """Get list of available native tool names.
+
+        Returns:
+            List of tool names that can be used by agents
+        """
+        if self._native_tools_registry:
+            return self._native_tools_registry.get_available_tools()
+        return []
 
     # ========================================================================
     # Team Management Methods (Phase 2)
@@ -829,7 +936,7 @@ class AgnoAdapter(OrchestratorAdapter):
             name: Agent name
             role: Agent role description
             instructions: Agent instructions
-            tools: Optional list of tools
+            tools: Optional list of tools (defaults to all available tools)
             model: Optional LLM model (uses default if not provided)
 
         Returns:
@@ -844,7 +951,8 @@ class AgnoAdapter(OrchestratorAdapter):
             model = self._llm_factory.create_model()
 
         if tools is None:
-            tools = self._mcp_registry.get_tools() if self._mcp_registry else []
+            # Use all available tools (MCP + native) (Phase 3)
+            tools = self._get_all_tools()
 
         try:
             agent = Agent(
@@ -858,7 +966,7 @@ class AgnoAdapter(OrchestratorAdapter):
             # Cache the agent
             self._agents[name] = agent
 
-            logger.debug(f"Created agent: name={name}, role={role}")
+            logger.debug(f"Created agent: name={name}, role={role}, tools={len(tools)}")
             return agent
 
         except Exception as e:
@@ -1045,17 +1153,30 @@ for code quality, potential improvements, and best practices. Focus on:
 - Code structure and organization
 - Potential bugs or issues
 - Performance considerations
-- Documentation completeness""",
+- Documentation completeness
+
+Use available tools like read_file, analyze_code, and search_code to explore the codebase.""",
 
             "quality_check": """You are a quality assurance agent. Evaluate the
 repository against quality standards. Check for:
 - Code style compliance
 - Test coverage indicators
 - Security best practices
-- Maintainability concerns""",
+- Maintainability concerns
+
+Use available tools to examine code files and provide a detailed assessment.""",
 
             "default": """You are a helpful AI assistant. Process the given task
-using available tools and provide clear, actionable responses.""",
+using available tools and provide clear, actionable responses.
+
+Available tools include:
+- read_file: Read file contents
+- write_file: Write content to files
+- list_directory: List directory contents
+- search_files: Search for files by pattern
+- analyze_code: Analyze Python code for complexity and issues
+- search_code: Search for code patterns in repositories
+- get_function_signature: Get function signatures from code""",
         }
         return instructions.get(task_type, instructions["default"])
 
@@ -1081,14 +1202,14 @@ using available tools and provide clear, actionable responses.""",
             return f"""Analyze the repository at {repo} for code quality and
 improvement opportunities. Focus on: {params.get('focus', 'general analysis')}.
 
-Use available tools to explore the codebase and provide specific,
+Use available tools (read_file, list_directory, search_files, analyze_code) to explore the codebase and provide specific,
 actionable recommendations."""
 
         if task_type == "quality_check":
             return f"""Perform a quality check on the repository at {repo}.
 Evaluate against: {params.get('standards', 'Python best practices')}.
 
-Provide a compliance score and list any issues found."""
+Use available tools to examine the code and provide a compliance score and list any issues found."""
 
         # Default prompt
         return f"""Process the following task for repository {repo}:
@@ -1193,6 +1314,7 @@ Use available tools to complete the task and provide a summary."""
             if self._mcp_registry
             else False,
             "team_manager_initialized": self._team_manager is not None,
+            "native_tools_count": len(self.get_available_tools()),
         }
 
         # Determine health status
@@ -1243,6 +1365,7 @@ Use available tools to complete the task and provide a summary."""
         self._initialized = False
         self._llm_factory = None
         self._mcp_registry = None
+        self._native_tools_registry = None
         self._semaphore = None
 
         logger.info("AgnoAdapter shutdown complete")
@@ -1262,6 +1385,7 @@ __all__ = [
     "MemoryBackend",
     "LLMProviderFactory",
     "MCPToolsRegistry",
+    "NativeToolsRegistry",
     "AgentRunResult",
     "TeamRunResult",
 ]
