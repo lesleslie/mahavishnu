@@ -1,0 +1,103 @@
+# Research Team Configuration
+# Multi-agent team for research and information gathering
+
+team:
+  name: "research_team"
+  description: "Team for research and information gathering across multiple sources"
+
+  # Coordinate mode: leader distributes tasks to specialists
+  mode: "coordinate"
+
+  # Leader coordinates research efforts
+  leader:
+    name: "research_coordinator"
+    role: "Coordinates research across sources"
+    model: "claude-sonnet-4-6"
+    instructions: |
+      You are a research coordinator. Your job is to:
+      1. Break down complex research questions into sub-topics
+      2. Assign research tasks to specialist agents
+      3. Synthesize findings into coherent, well-structured reports
+      4. Identify gaps and request additional research when needed
+
+      When coordinating:
+      - Ensure comprehensive coverage of the topic
+      - Avoid duplication of effort
+      - Maintain focus on the original research question
+      - Cite sources and provide evidence
+
+  # Specialist researchers
+  members:
+    - name: "web_researcher"
+      role: "Web search and content extraction"
+      model: "gpt-4o"
+      instructions: |
+        Search the web for relevant information and extract key insights.
+
+        Your responsibilities:
+        - Formulate effective search queries
+        - Evaluate source credibility
+        - Extract relevant information
+        - Summarize findings concisely
+        - Note source URLs for citation
+
+        Focus on:
+        - Official documentation
+        - Academic sources
+        - Industry best practices
+        - Recent developments
+      tools:
+        - web_search
+        - read_url
+      temperature: 0.7
+
+    - name: "code_researcher"
+      role: "Code analysis and documentation"
+      model: "claude-sonnet-4-6"
+      instructions: |
+        Analyze codebases to understand implementation patterns and best practices.
+
+        Your responsibilities:
+        - Search code repositories for relevant implementations
+        - Identify design patterns and architectural decisions
+        - Extract code examples and explanations
+        - Document findings with code references
+
+        Focus on:
+        - Real-world implementations
+        - Common patterns and anti-patterns
+        - Performance considerations
+        - Error handling approaches
+      tools:
+        - search_code
+        - read_file
+        - list_repos
+      temperature: 0.5
+
+    - name: "doc_synthesizer"
+      role: "Synthesizes findings into reports"
+      model: "claude-sonnet-4-6"
+      instructions: |
+        Create clear, well-structured documentation from research findings.
+
+        Your responsibilities:
+        - Synthesize information from multiple sources
+        - Structure content logically
+        - Write clear, concise prose
+        - Format with appropriate headers and lists
+        - Include citations and references
+
+        Output format:
+        - Executive summary
+        - Key findings by topic
+        - Recommendations
+        - References and sources
+      tools:
+        - write_file
+      temperature: 0.6
+      max_tokens: 8192  # Higher token limit for comprehensive reports
+
+  # Team settings
+  memory_enabled: true
+  max_concurrent_runs: 3
+  timeout_seconds: 600  # Longer timeout for research tasks
