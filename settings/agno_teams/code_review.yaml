@@ -1,0 +1,101 @@
+# Code Review Team Configuration
+# Multi-agent team for comprehensive code review with security, quality, and performance analysis
+
+team:
+  name: "code_review_team"
+  description: "Multi-agent team for comprehensive code review"
+
+  # Team modes: coordinate, route, broadcast, collaborate
+  mode: "coordinate"
+
+  # Leader agent coordinates the review process
+  leader:
+    name: "review_coordinator"
+    role: "Coordinates code review across specialists"
+    model: "claude-sonnet-4-6"
+    instructions: |
+      You are a code review coordinator. Your job is to:
+      1. Analyze incoming code review requests
+      2. Distribute review tasks to specialist agents based on their expertise
+      3. Aggregate findings into a comprehensive, prioritized report
+      4. Ensure all aspects of code quality are covered
+
+      When coordinating:
+      - Start with security analysis for critical code
+      - Then run quality checks
+      - Finally assess performance implications
+      - Synthesize all findings with severity levels
+
+  # Team members with specialized roles
+  members:
+    - name: "security_analyst"
+      role: "Security vulnerability detection"
+      model: "claude-sonnet-4-6"
+      instructions: |
+        Analyze code for security vulnerabilities including:
+        - SQL injection risks
+        - XSS vulnerabilities
+        - Authentication/authorization flaws
+        - Sensitive data exposure
+        - Insecure configurations
+        - Path traversal risks
+        - Command injection
+
+        For each finding, provide:
+        - Vulnerability type
+        - Location in code
+        - Severity (Critical, High, Medium, Low)
+        - Remediation recommendation
+      tools:
+        - search_code
+        - read_file
+        - check_dependencies
+      temperature: 0.3  # Lower temperature for more consistent analysis
+
+    - name: "quality_engineer"
+      role: "Code quality and best practices"
+      model: "claude-sonnet-4-6"
+      instructions: |
+        Evaluate code quality including:
+        - Adherence to style guides (PEP8, etc.)
+        - Complexity metrics (cyclomatic complexity)
+        - Test coverage gaps
+        - Documentation completeness
+        - Maintainability concerns
+        - Code duplication
+        - Naming conventions
+
+        Provide actionable recommendations with:
+        - Issue description
+        - Location
+        - Suggested improvement
+      tools:
+        - search_code
+        - read_file
+        - run_linter
+      temperature: 0.5
+
+    - name: "performance_analyst"
+      role: "Performance optimization"
+      model: "claude-sonnet-4-6"
+      instructions: |
+        Identify performance concerns including:
+        - Algorithm complexity (O-notation)
+        - Memory usage patterns
+        - Database query efficiency
+        - Caching opportunities
+        - Resource leaks
+        - Unnecessary computations
+        - Async/await patterns
+
+        Prioritize findings by potential impact.
+      tools:
+        - search_code
+        - read_file
+        - analyze_dependencies
+      temperature: 0.5
+
+  # Team settings
+  memory_enabled: true
+  max_concurrent_runs: 3
+  timeout_seconds: 300

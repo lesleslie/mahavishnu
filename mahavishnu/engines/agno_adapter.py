@@ -41,6 +41,9 @@ if TYPE_CHECKING:
     from agno.run.agent import RunOutput
     from agno.team import Team
 
+    from .agno_teams.config import TeamConfig
+    from .agno_teams.manager import AgentTeamManager
+
 logger = logging.getLogger(__name__)
 
 
@@ -504,10 +507,22 @@ class AgnoAdapter(OrchestratorAdapter):
         adapter = AgnoAdapter(config=settings)
         await adapter.initialize()
 
+        # Single agent execution
         result = await adapter.execute(
             task={"type": "code_sweep", "params": {}},
             repos=["/path/to/repo"]
         )
+
+        # Multi-agent team execution (Phase 2)
+        from mahavishnu.engines.agno_teams import TeamConfig, TeamMode
+        team_config = TeamConfig(
+            name="review_team",
+            mode=TeamMode.COORDINATE,
+            leader=MemberConfig(...),
+            members=[MemberConfig(...)],
+        )
+        team_id = await adapter.create_team(team_config)
+        result = await adapter.run_team(team_id, "Review this code")
 
         await adapter.shutdown()
         ```
@@ -535,6 +550,7 @@ class AgnoAdapter(OrchestratorAdapter):
         self._agents: dict[str, Agent] = {}
         self._teams: dict[str, Team] = {}
         self._semaphore: asyncio.Semaphore | None = None
+        self._team_manager: AgentTeamManager | None = None
 
         # Set up capabilities
         self._capabilities = AdapterCapabilities(
@@ -581,6 +597,15 @@ class AgnoAdapter(OrchestratorAdapter):
         """Return adapter capabilities."""
         return self._capabilities
 
+    @property
+    def agent_team_manager(self) -> AgentTeamManager | None:
+        """Get the agent team manager instance.
+
+        Returns:
+            AgentTeamManager instance if initialized, None otherwise.
+        """
+        return self._team_manager
+
     async def initialize(self) -> None:
         """Initialize Agno adapter.
 
@@ -589,6 +614,7 @@ class AgnoAdapter(OrchestratorAdapter):
         2. Initializes LLM provider factory
         3. Initializes MCP tools registry
         4. Sets up concurrency semaphore
+        5. Initializes team manager (Phase 2)
 
         Raises:
             AgnoError: If initialization fails
@@ -613,6 +639,9 @@ class AgnoAdapter(OrchestratorAdapter):
             # Set up concurrency semaphore
             self._semaphore = asyncio.Semaphore(self.agno_config.max_concurrent_agents)
 
+            # Initialize team manager (Phase 2)
+            await self._initialize_team_manager()
+
             self._initialized = True
             logger.info(
                 f"AgnoAdapter initialized successfully: "
@@ -627,6 +656,20 @@ class AgnoAdapter(OrchestratorAdapter):
                 error_code=ErrorCode.CONFIGURATION_ERROR,
                 details={"error": str(e)},
             )
+
+    async def _initialize_team_manager(self) -> None:
+        """Initialize the agent team manager for multi-agent orchestration."""
+        from .agno_teams.manager import AgentTeamManager
+
+        mcp_tools = self._mcp_registry.get_tools() if self._mcp_registry else []
+
+        self._team_manager = AgentTeamManager(
+            llm_factory=self._llm_factory,
+            mcp_tools=mcp_tools,
+            max_concurrent_agents=self.agno_config.max_concurrent_agents,
+        )
+
+        logger.debug("AgentTeamManager initialized")
 
     def _validate_agno_sdk(self) -> None:
         """Validate Agno SDK is available with correct version.
@@ -649,6 +692,128 @@ class AgnoAdapter(OrchestratorAdapter):
                 error_code=ErrorCode.CONFIGURATION_ERROR,
                 details={"import_error": str(e)},
             )
+
+    # ========================================================================
+    # Team Management Methods (Phase 2)
+    # ========================================================================
+
+    async def create_team(self, config: "TeamConfig") -> str:
+        """Create an agent team from configuration.
+
+        Args:
+            config: TeamConfig instance defining the team structure.
+
+        Returns:
+            Unique team ID string.
+
+        Raises:
+            AgnoError: If team creation fails or adapter not initialized.
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        if not self._team_manager:
+            raise AgnoError(
+                "Team manager not initialized",
+                error_code=ErrorCode.CONFIGURATION_ERROR,
+            )
+
+        return await self._team_manager.create_team(config)
+
+    async def create_team_from_yaml(self, yaml_path: str) -> str:
+        """Create a team from a YAML configuration file.
+
+        Args:
+            yaml_path: Path to the YAML configuration file.
+
+        Returns:
+            Unique team ID string.
+
+        Raises:
+            AgnoError: If file loading or team creation fails.
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        if not self._team_manager:
+            raise AgnoError(
+                "Team manager not initialized",
+                error_code=ErrorCode.CONFIGURATION_ERROR,
+            )
+
+        return await self._team_manager.create_team_from_yaml(yaml_path)
+
+    async def run_team(
+        self,
+        team_id: str,
+        task: str,
+        mode: str | None = None,
+        session_id: str | None = None,
+    ) -> TeamRunResult:
+        """Run a team task and return aggregated results.
+
+        Args:
+            team_id: Team ID returned from create_team().
+            task: Task/prompt for the team to process.
+            mode: Optional mode override (coordinate, route, broadcast).
+            session_id: Optional session ID for memory continuity.
+
+        Returns:
+            TeamRunResult with responses from all participating agents.
+
+        Raises:
+            AgnoError: If team execution fails or team not found.
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        if not self._team_manager:
+            raise AgnoError(
+                "Team manager not initialized",
+                error_code=ErrorCode.CONFIGURATION_ERROR,
+            )
+
+        return await self._team_manager.run_team(team_id, task, mode, session_id)
+
+    async def get_team(self, team_id: str) -> "Team | None":
+        """Get a team instance by ID.
+
+        Args:
+            team_id: Team ID to look up.
+
+        Returns:
+            Team instance if found, None otherwise.
+        """
+        if not self._team_manager:
+            return None
+        return await self._team_manager.get_team(team_id)
+
+    def list_teams(self) -> list[str]:
+        """List all team IDs.
+
+        Returns:
+            List of team ID strings.
+        """
+        if not self._team_manager:
+            return []
+        return self._team_manager.list_teams()
+
+    async def delete_team(self, team_id: str) -> bool:
+        """Delete a team and cleanup resources.
+
+        Args:
+            team_id: Team ID to delete.
+
+        Returns:
+            True if team was deleted, False if not found.
+        """
+        if not self._team_manager:
+            return False
+        return await self._team_manager.delete_team(team_id)
+
+    # ========================================================================
+    # Single Agent Methods (Phase 1)
+    # ========================================================================
 
     async def _create_agent(
         self,
@@ -1023,9 +1188,11 @@ Use available tools to complete the task and provide a summary."""
             else None,
             "model_id": self.agno_config.llm.model_id if self.agno_config else None,
             "agents_cached": len(self._agents),
+            "teams_count": len(self._teams),
             "mcp_tools_initialized": self._mcp_registry._initialized
             if self._mcp_registry
             else False,
+            "team_manager_initialized": self._team_manager is not None,
         }
 
         # Determine health status
@@ -1053,10 +1220,16 @@ Use available tools to complete the task and provide a summary."""
 
         This method:
         1. Closes MCP tools connections
-        2. Clears agent cache
-        3. Resets initialization state
+        2. Shuts down team manager
+        3. Clears agent cache
+        4. Resets initialization state
         """
         logger.info("Shutting down AgnoAdapter...")
+
+        # Shutdown team manager
+        if self._team_manager:
+            await self._team_manager.shutdown()
+            self._team_manager = None
 
         # Close MCP tools
         if self._mcp_registry:
