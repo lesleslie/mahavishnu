@@ -9,12 +9,15 @@ Commands:
     mahavishnu team parse    - Parse a goal to preview team configuration
     mahavishnu team skills   - List all available skills for team creation
     mahavishnu team list     - List all active goal-driven teams
+    mahavishnu team learning - Show team learning statistics
+    mahavishnu team flags    - Show feature flag status
 
 Example:
     $ mahavishnu team create --goal "Review code for security vulnerabilities"
     $ mahavishnu team parse "Analyze performance bottlenecks"
     $ mahavishnu team skills
     $ mahavishnu team list
+    $ mahavishnu team learning
 """
 
 from __future__ import annotations
@@ -444,6 +447,200 @@ def list_teams(
             console.print()
 
 
+@app.command("learning")
+def learning_stats(
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed learning stats"),
+    clear: bool = typer.Option(False, "--clear", help="Clear all learning data"),
+    export: bool = typer.Option(False, "--export", help="Export learning stats as JSON"),
+) -> None:
+    """Show team learning statistics.
+
+    Displays statistics about team execution outcomes that have been
+    recorded for the learning system. This includes success rates by
+    skill combination, mode performance, and recent outcomes.
+
+    Examples:
+        $ mahavishnu team learning
+        $ mahavishnu team learning --verbose
+        $ mahavishnu team learning --export
+        $ mahavishnu team learning --clear
+    """
+    # Check feature flags
+    _check_feature_flags()
+
+    if not is_feature_enabled("learning_system_enabled"):
+        console.print("\n[yellow]Learning system is disabled.[/yellow]")
+        console.print("[dim]Enable learning_system_enabled in goal_teams.feature_flags[/dim]")
+        raise typer.Exit(code=1)
+
+    from mahavishnu.core.team_learning import get_learning_engine, reset_learning_engine
+
+    engine = get_learning_engine()
+
+    # Handle clear flag
+    if clear:
+        if typer.confirm("Are you sure you want to clear all learning data?"):
+            reset_learning_engine()
+            console.print("\n[green]Learning data cleared successfully.[/green]")
+        return
+
+    # Handle export flag
+    if export:
+        import json
+        data = engine.export_stats()
+        console.print("\n[bold cyan]Learning Data Export[/bold cyan]\n")
+        console.print(Syntax(json.dumps(data, indent=2), "json", theme="monokai"))
+        return
+
+    # Get learning summary
+    summary = engine.get_learning_summary()
+
+    console.print("\n[bold cyan]Team Learning Statistics[/bold cyan]\n")
+
+    # Summary table
+    table = Table(show_header=False, box=None)
+    table.add_column("Property", style="cyan")
+    table.add_column("Value", style="white")
+
+    table.add_row("Total Outcomes", str(summary["total_outcomes"]))
+    table.add_row("Skill Combinations", str(summary["skill_combinations"]))
+    table.add_row("Intents Tracked", str(summary["intents_tracked"]))
+    table.add_row("Modes Tracked", str(summary["modes_tracked"]))
+    table.add_row("Intent-Mode Combos", str(summary["intent_mode_combinations"]))
+    table.add_row("Recent Success Rate", f"{summary['recent_success_rate']:.0%}")
+
+    console.print(table)
+
+    # Show mode performance
+    if summary["mode_performance"]:
+        console.print("\n[bold]Mode Performance:[/bold]")
+        mode_table = Table(show_header=True, header_style="bold magenta")
+        mode_table.add_column("Mode", style="cyan")
+        mode_table.add_column("Success Rate", style="green")
+        mode_table.add_column("Avg Latency", style="yellow")
+        mode_table.add_column("Executions", style="white")
+
+        for mode, stats in summary["mode_performance"].items():
+            mode_table.add_row(
+                mode,
+                f"{stats['success_rate']:.0%}",
+                f"{stats['avg_latency_ms']:.0f}ms",
+                str(stats["executions"]),
+            )
+
+        console.print(mode_table)
+
+    # Show intent performance
+    if summary["intent_performance"]:
+        console.print("\n[bold]Intent Performance:[/bold]")
+        intent_table = Table(show_header=True, header_style="bold magenta")
+        intent_table.add_column("Intent", style="cyan")
+        intent_table.add_column("Success Rate", style="green")
+        intent_table.add_column("Avg Latency", style="yellow")
+        intent_table.add_column("Executions", style="white")
+
+        for intent, stats in summary["intent_performance"].items():
+            intent_table.add_row(
+                intent,
+                f"{stats['success_rate']:.0%}",
+                f"{stats['avg_latency_ms']:.0f}ms",
+                str(stats["executions"]),
+            )
+
+        console.print(intent_table)
+
+    # Show top skills
+    if summary["top_skills"]:
+        console.print("\n[bold]Top Performing Skill Combinations:[/bold]")
+        skills_table = Table(show_header=True, header_style="bold magenta")
+        skills_table.add_column("Skills", style="cyan")
+        skills_table.add_column("Success Rate", style="green")
+        skills_table.add_column("Avg Latency", style="yellow")
+        skills_table.add_column("Executions", style="white")
+
+        for skill_data in summary["top_skills"]:
+            skills_table.add_row(
+                skill_data["skills"][:40] + "..." if len(skill_data["skills"]) > 40 else skill_data["skills"],
+                f"{skill_data['success_rate']:.0%}",
+                f"{skill_data['avg_latency_ms']:.0f}ms",
+                str(skill_data["executions"]),
+            )
+
+        console.print(skills_table)
+
+    # Verbose output
+    if verbose:
+        # Show recent outcomes
+        recent = engine.get_recent_outcomes(limit=5)
+        if recent:
+            console.print("\n[bold]Recent Outcomes:[/bold]")
+            for i, outcome in enumerate(recent, 1):
+                status = "[green]success[/green]" if outcome["success"] else "[red]failed[/red]"
+                console.print(f"  {i}. {outcome['team_id']} - {status} ({outcome['latency_ms']:.0f}ms)")
+                console.print(f"     Mode: {outcome['team_mode']}, Intent: {outcome['parsed_intent']}")
+
+    console.print("\n[dim]Use --verbose for more details, --export for JSON, or --clear to reset[/dim]")
+
+
+@app.command("recommend")
+def recommend_mode(
+    intent: str = typer.Argument(..., help="Intent to get recommendation for"),
+) -> None:
+    """Get recommended mode for an intent based on learning data.
+
+    Analyzes historical execution data to recommend the best team mode
+    for a given intent.
+
+    Examples:
+        $ mahavishnu team recommend review
+        $ mahavishnu team recommend test
+    """
+    # Check feature flags
+    _check_feature_flags()
+
+    if not is_feature_enabled("learning_system_enabled"):
+        console.print("\n[yellow]Learning system is disabled.[/yellow]")
+        console.print("[dim]Enable learning_system_enabled in goal_teams.feature_flags[/dim]")
+        raise typer.Exit(code=1)
+
+    from mahavishnu.core.team_learning import get_learning_engine
+
+    engine = get_learning_engine()
+    recommendation = engine.get_mode_recommendation(intent)
+
+    console.print(f"\n[bold cyan]Mode Recommendation for '{intent}'[/bold cyan]\n")
+
+    if recommendation is None:
+        # Fallback mode based on intent
+        fallback_map = {
+            "review": "coordinate",
+            "build": "coordinate",
+            "test": "coordinate",
+            "fix": "route",
+            "refactor": "coordinate",
+            "document": "route",
+            "analyze": "broadcast",
+        }
+        fallback = fallback_map.get(intent, "coordinate")
+        console.print(f"[yellow]Insufficient learning data for intent '{intent}'.[/yellow]")
+        console.print(f"[dim]Fallback mode: {fallback}[/dim]")
+        console.print("[dim]Record more team executions to enable learning-based recommendations.[/dim]")
+        return
+
+    # Display recommendation
+    table = Table(show_header=False, box=None)
+    table.add_column("Property", style="cyan")
+    table.add_column("Value", style="white")
+
+    table.add_row("Recommended Mode", f"[green bold]{recommendation.mode}[/green bold]")
+    table.add_row("Confidence", f"{recommendation.confidence:.0%}")
+    table.add_row("Success Rate", f"{recommendation.success_rate:.0%}")
+    table.add_row("Sample Count", str(recommendation.sample_count))
+    table.add_row("Reason", recommendation.reason)
+
+    console.print(table)
+
+
 @app.command("flags")
 def show_feature_flags() -> None:
     """Show current feature flag status for Goal-Driven Teams.
@@ -503,4 +700,6 @@ __all__ = [
     "list_skills",
     "list_teams",
     "show_feature_flags",
+    "learning_stats",
+    "recommend_mode",
 ]

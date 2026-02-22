@@ -8,22 +8,24 @@ Context Variables:
     - llm_factory: Factory for creating LLM instances
     - agno_adapter: Agno adapter instance for team execution
     - websocket_server: WebSocket server for real-time event broadcasting
+    - learning_engine: Learning engine for goal-driven team optimization
 
 Usage:
-    from mahavishnu.core.context import get_llm_factory, get_agno_adapter, get_websocket_server
+    from mahavishnu.core.context import get_llm_factory, get_agno_adapter, get_websocket_server, get_learning_engine_from_context
 
     # In application initialization
     from mahavishnu.core.context import set_app_context
-    set_app_context(llm_factory=my_factory, agno_adapter=my_adapter, websocket_server=ws_server)
+    set_app_context(llm_factory=my_factory, agno_adapter=my_adapter, websocket_server=ws_server, learning_engine=my_engine)
 
     # In any module
     llm_factory = get_llm_factory()
     agno_adapter = get_agno_adapter()
     ws_server = get_websocket_server()
+    learning_engine = get_learning_engine_from_context()
 
 Created: 2026-02-21
-Version: 1.1
-Related: Goal-Driven Teams Phase 1 foundation, WebSocket broadcasting
+Version: 1.2
+Related: Goal-Driven Teams Phase 1 foundation, WebSocket broadcasting, Phase 3 Learning System
 """
 
 from __future__ import annotations
@@ -89,6 +91,7 @@ _agno_adapter: ContextVar[AgnoAdapter | None] = ContextVar("agno_adapter", defau
 _websocket_server: ContextVar[MahavishnuWebSocketServer | None] = ContextVar(
     "websocket_server", default=None
 )
+_learning_engine: ContextVar[Any | None] = ContextVar("learning_engine", default=None)
 
 
 # Re-export ContextNotInitializedError from errors for convenience
@@ -160,10 +163,28 @@ def get_websocket_server() -> MahavishnuWebSocketServer | None:
     return _websocket_server.get()
 
 
+def get_learning_engine_from_context() -> Any | None:
+    """Get the learning engine from context.
+
+    Unlike other getters, this returns None if not set instead of raising,
+    because the learning engine is optional and can use the global singleton.
+
+    Returns:
+        The TeamLearningEngine instance, or None if not configured
+
+    Example:
+        >>> engine = get_learning_engine_from_context()
+        >>> if engine:
+        ...     engine.record_outcome(outcome)
+    """
+    return _learning_engine.get()
+
+
 def set_app_context(
     llm_factory: LLMFactory | None = None,
     agno_adapter: AgnoAdapter | None = None,
     websocket_server: MahavishnuWebSocketServer | None = None,
+    learning_engine: Any | None = None,
 ) -> None:
     """Set application context variables for dependency injection.
 
@@ -174,6 +195,7 @@ def set_app_context(
         llm_factory: Optional LLM factory for creating LLM instances
         agno_adapter: Optional Agno adapter for team execution
         websocket_server: Optional WebSocket server for real-time broadcasting
+        learning_engine: Optional learning engine for team optimization
 
     Example:
         >>> from mahavishnu.core.context import set_app_context
@@ -181,6 +203,7 @@ def set_app_context(
         ...     llm_factory=my_llm_factory,
         ...     agno_adapter=app.adapters.get("agno"),
         ...     websocket_server=ws_server,
+        ...     learning_engine=my_learning_engine,
         ... )
     """
     if llm_factory is not None:
@@ -191,6 +214,9 @@ def set_app_context(
 
     if websocket_server is not None:
         _websocket_server.set(websocket_server)
+
+    if learning_engine is not None:
+        _learning_engine.set(learning_engine)
 
 
 def clear_app_context() -> None:
@@ -205,6 +231,7 @@ def clear_app_context() -> None:
     _llm_factory.set(None)
     _agno_adapter.set(None)
     _websocket_server.set(None)
+    _learning_engine.set(None)
 
 
 def is_context_initialized() -> bool:
@@ -212,7 +239,7 @@ def is_context_initialized() -> bool:
 
     Returns:
         True if both llm_factory and agno_adapter are set
-        (websocket_server is optional)
+        (websocket_server and learning_engine are optional)
 
     Example:
         >>> if is_context_initialized():
@@ -284,6 +311,7 @@ class AppContext:
         llm_factory: LLMFactory | None = None,
         agno_adapter: AgnoAdapter | None = None,
         websocket_server: MahavishnuWebSocketServer | None = None,
+        learning_engine: Any | None = None,
     ) -> None:
         """Initialize context manager.
 
@@ -291,19 +319,23 @@ class AppContext:
             llm_factory: Optional LLM factory
             agno_adapter: Optional Agno adapter
             websocket_server: Optional WebSocket server
+            learning_engine: Optional learning engine
         """
         self._llm_factory = llm_factory
         self._agno_adapter = agno_adapter
         self._websocket_server = websocket_server
+        self._learning_engine = learning_engine
         self._old_llm_factory: LLMFactory | None = None
         self._old_agno_adapter: AgnoAdapter | None = None
         self._old_websocket_server: MahavishnuWebSocketServer | None = None
+        self._old_learning_engine: Any | None = None
 
     def __enter__(self) -> AppContext:
         """Enter context and set variables."""
         self._old_llm_factory = _llm_factory.get()
         self._old_agno_adapter = _agno_adapter.get()
         self._old_websocket_server = _websocket_server.get()
+        self._old_learning_engine = _learning_engine.get()
 
         if self._llm_factory is not None:
             _llm_factory.set(self._llm_factory)
@@ -311,6 +343,8 @@ class AppContext:
             _agno_adapter.set(self._agno_adapter)
         if self._websocket_server is not None:
             _websocket_server.set(self._websocket_server)
+        if self._learning_engine is not None:
+            _learning_engine.set(self._learning_engine)
 
         return self
 
@@ -319,6 +353,7 @@ class AppContext:
         _llm_factory.set(self._old_llm_factory)
         _agno_adapter.set(self._old_agno_adapter)
         _websocket_server.set(self._old_websocket_server)
+        _learning_engine.set(self._old_learning_engine)
 
 
 # ============================================================================
@@ -332,6 +367,7 @@ __all__ = [
     "get_llm_factory",
     "get_agno_adapter",
     "get_websocket_server",
+    "get_learning_engine_from_context",
     # Context setters
     "set_app_context",
     "clear_app_context",

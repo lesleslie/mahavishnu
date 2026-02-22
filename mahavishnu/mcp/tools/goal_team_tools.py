@@ -4,8 +4,8 @@ This module provides MCP tools for creating and managing agent teams
 from natural language goals using the GoalDrivenTeamFactory.
 
 Created: 2026-02-21
-Version: 1.3
-Related: Goal-Driven Teams Phase 1 - MCP tool integration with feature flags, Prometheus metrics and WebSocket broadcasting
+Version: 1.4
+Related: Goal-Driven Teams Phase 1 + Phase 3 - MCP tool integration with feature flags, Prometheus metrics, WebSocket broadcasting, and learning
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import time
+from datetime import UTC, datetime
 from typing import Any
 
 from fastmcp import FastMCP  # noqa: TC002
@@ -346,6 +347,8 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
                     )
 
                 run_result = await agno_adapter.run_team(team_id, task)
+                latency_ms = (time.monotonic() - start_time) * 1000
+
                 result["run_result"] = {
                     "success": run_result.success,
                     "responses": [
@@ -361,13 +364,46 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
 
                 # Broadcast execution completed (if WebSocket broadcasts enabled)
                 if ws_server and is_feature_enabled("websocket_broadcasts_enabled"):
-                    duration_ms = (time.monotonic() - start_time) * 1000
                     await ws_server.broadcast_team_execution_completed(
                         team_id=team_id,
                         success=run_result.success,
-                        duration_ms=duration_ms,
+                        duration_ms=latency_ms,
                         user_id=user_id,
                     )
+
+                # Record learning outcome (if learning system enabled)
+                if is_feature_enabled("learning_system_enabled"):
+                    try:
+                        from mahavishnu.core.team_learning import (
+                            TeamExecutionOutcome,
+                            get_learning_engine,
+                        )
+
+                        outcome = TeamExecutionOutcome(
+                            team_id=team_id,
+                            goal=goal,
+                            parsed_intent=parsed.intent,
+                            parsed_domain=parsed.domain,
+                            parsed_skills=parsed.skills,
+                            team_mode=team_config.mode.value,
+                            task=task,
+                            success=run_result.success,
+                            latency_ms=latency_ms,
+                            tokens_used=run_result.total_tokens,
+                            timestamp=datetime.now(UTC),
+                        )
+                        get_learning_engine().record_outcome(outcome)
+
+                        # Record learning metrics
+                        metrics.record_learning_outcome(
+                            success=run_result.success,
+                            mode=team_config.mode.value,
+                            latency_ms=latency_ms,
+                        )
+
+                        logger.debug(f"Recorded learning outcome for team {team_id}")
+                    except Exception as e:
+                        logger.warning(f"Failed to record learning outcome: {e}")
 
             logger.info(
                 f"Created team from goal: team_id={team_id}, "
@@ -559,6 +595,27 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
             # Generate suggested team config
             team_config = await factory.create_team_from_goal(goal)
 
+            # Check learning system for mode recommendation (Phase 3)
+            recommended_mode = None
+            if is_feature_enabled("learning_system_enabled"):
+                try:
+                    from mahavishnu.core.team_learning import get_learning_engine
+
+                    engine = get_learning_engine()
+                    recommendation = engine.get_mode_recommendation(parsed.intent)
+                    if recommendation:
+                        recommended_mode = recommendation.model_dump()
+
+                        # Record recommendation
+                        metrics.record_mode_recommendation(
+                            intent=parsed.intent,
+                            mode=recommendation.mode,
+                            confidence=recommendation.confidence,
+                            used=False,  # Just a preview
+                        )
+                except Exception as e:
+                    logger.debug(f"Could not get mode recommendation: {e}")
+
             return {
                 "success": True,
                 "parsed": {
@@ -583,6 +640,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
                     ],
                     "has_leader": team_config.leader is not None,
                 },
+                "recommended_mode": recommended_mode,
             }
 
         except FeatureDisabledError as e:
@@ -720,4 +778,4 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
                 "count": 0,
             }
 
-    logger.info("Registered 3 goal-driven team tools with feature flags, Prometheus metrics and WebSocket broadcasting")
+    logger.info("Registered 3 goal-driven team tools with feature flags, Prometheus metrics, WebSocket broadcasting, and learning integration")
