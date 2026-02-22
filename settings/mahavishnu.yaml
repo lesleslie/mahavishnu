@@ -17,8 +17,8 @@ max_concurrent_workflows: 10
 # Adapter configuration
 adapters:
   prefect_enabled: true  # High-level orchestration with dynamic flows
-  llamaindex_enabled: false  # RAG pipelines for ingesting repos/docs, embedding with Ollama
-  agno_enabled: false  # Fast, scalable single/multi-agents with memory and tools
+  llamaindex_enabled: true  # RAG pipelines for ingesting repos/docs, embedding with Ollama
+  agno_enabled: true  # Fast, scalable single/multi-agents with memory and tools
 
 # LLM configuration for LlamaIndex and Agno
 llm:
@@ -143,3 +143,15 @@ terminal:
   # Adapter preference: "auto" (detect iTerm2, fallback to mcpretentious),
   # "iterm2" (native iTerm2 Python API), or "mcpretentious" (PTY-based)
   adapter_preference: "auto"
+
+# Goal-Driven Teams configuration
+goal_teams:
+  enabled: false  # Enable Goal-Driven Teams feature
+  goal_parsing:
+    min_length: 10  # Minimum goal length in characters
+    max_length: 2000  # Maximum goal length in characters
+    fallback_strategy: "simple"  # Fallback when goal parsing fails (simple, reject, default_team)
+  limits:
+    max_teams_per_user: 10  # Maximum active teams per user
+    team_ttl_hours: 24  # Team time-to-live in hours (0 for no expiry)
+    max_concurrent_executions: 5  # Maximum concurrent team executions

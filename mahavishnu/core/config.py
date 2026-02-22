@@ -1010,6 +1010,141 @@ class OneiricMCPConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+# ============================================================================
+# Goal-Driven Teams Configuration
+# ============================================================================
+
+
+class FallbackStrategy(str, Enum):
+    """Fallback strategy when goal parsing fails."""
+
+    SIMPLE = "simple"  # Use simple keyword extraction
+    REJECT = "reject"  # Reject the goal with error
+    DEFAULT_TEAM = "default_team"  # Use a default team configuration
+
+
+class GoalParsingConfig(BaseModel):
+    """Goal parsing configuration for Goal-Driven Teams.
+
+    Configuration can be set via:
+    1. settings/mahavishnu.yaml under goal_teams.goal_parsing
+    2. settings/local.yaml
+    3. Environment variables: MAHAVISHNU_GOAL_TEAMS__GOAL_PARSING__MIN_LENGTH, etc.
+
+    Example YAML:
+        goal_teams:
+          goal_parsing:
+            min_length: 10
+            max_length: 2000
+            fallback_strategy: simple
+    """
+
+    min_length: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Minimum goal length in characters",
+    )
+    max_length: int = Field(
+        default=2000,
+        ge=100,
+        le=10000,
+        description="Maximum goal length in characters",
+    )
+    fallback_strategy: FallbackStrategy = Field(
+        default=FallbackStrategy.SIMPLE,
+        description="Fallback strategy when goal parsing fails",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
+class GoalTeamsLimitsConfig(BaseModel):
+    """Limits configuration for Goal-Driven Teams.
+
+    Configuration can be set via:
+    1. settings/mahavishnu.yaml under goal_teams.limits
+    2. settings/local.yaml
+    3. Environment variables: MAHAVISHNU_GOAL_TEAMS__LIMITS__MAX_TEAMS_PER_USER, etc.
+
+    Example YAML:
+        goal_teams:
+          limits:
+            max_teams_per_user: 10
+            team_ttl_hours: 24
+            max_concurrent_executions: 5
+    """
+
+    max_teams_per_user: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum active teams per user",
+    )
+    team_ttl_hours: int = Field(
+        default=24,
+        ge=0,
+        le=168,
+        description="Team time-to-live in hours (0 for no expiry, max 1 week)",
+    )
+    max_concurrent_executions: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description="Maximum concurrent team executions",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
+class GoalTeamsConfig(BaseModel):
+    """Goal-Driven Teams configuration.
+
+    Goal-Driven Teams allow users to specify natural language goals
+    that are automatically parsed and routed to appropriate teams.
+
+    Configuration can be set via:
+    1. settings/mahavishnu.yaml under goal_teams:
+    2. settings/local.yaml
+    3. Environment variables: MAHAVISHNU_GOAL_TEAMS__ENABLED, etc.
+
+    Example YAML:
+        goal_teams:
+          enabled: true
+          goal_parsing:
+            min_length: 10
+            max_length: 2000
+            fallback_strategy: simple
+          limits:
+            max_teams_per_user: 10
+            team_ttl_hours: 24
+            max_concurrent_executions: 5
+
+    Example Environment Variables:
+        MAHAVISHNU_GOAL_TEAMS__ENABLED=true
+        MAHAVISHNU_GOAL_TEAMS__GOAL_PARSING__MIN_LENGTH=20
+        MAHAVISHNU_GOAL_TEAMS__LIMITS__MAX_TEAMS_PER_USER=20
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable Goal-Driven Teams feature",
+    )
+
+    goal_parsing: GoalParsingConfig = Field(
+        default_factory=GoalParsingConfig,
+        description="Goal parsing configuration",
+    )
+
+    limits: GoalTeamsLimitsConfig = Field(
+        default_factory=GoalTeamsLimitsConfig,
+        description="Limits and quotas configuration",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
+
 class MahavishnuSettings(BaseSettings):
     """Mahavishnu configuration extending MCPServerSettings.
 
@@ -1208,6 +1343,13 @@ class MahavishnuSettings(BaseSettings):
         description="Oneiric MCP integration for dynamic adapter discovery",
     )
 
+    # Goal-Driven Teams configuration
+    goal_teams: GoalTeamsConfig = Field(
+        default_factory=GoalTeamsConfig,
+        description="Goal-Driven Teams configuration",
+    )
+
+
     @field_validator("repos_path")
     @classmethod
     def validate_repos_path(cls, v: str) -> str:
@@ -1248,6 +1390,7 @@ __all__ = [
     # Enums
     "LLMProvider",
     "MemoryBackend",
+    "FallbackStrategy",
     # Agno configuration
     "AgnoAdapterConfig",
     "AgnoLLMConfig",
@@ -1270,5 +1413,9 @@ __all__ = [
     "AdapterConfig",
     "LLMConfig",
     "OneiricMCPConfig",
+    # Goal-Driven Teams configuration
+    "GoalParsingConfig",
+    "GoalTeamsLimitsConfig",
+    "GoalTeamsConfig",
     "MahavishnuSettings",
 ]

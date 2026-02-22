@@ -40,6 +40,9 @@ from .routing_cli import add_routing_commands
 # Import worktree management CLI
 from .worktree_cli import worktree_app
 
+# Import team CLI
+from .cli.team_cli import add_team_commands
+
 # Import comprehensive help system
 # NOTE: help_cli uses Click which is incompatible with Typer's add_typer()
 # from .cli.help_cli import help_group
@@ -613,6 +616,9 @@ add_metrics_commands(app)
 
 # Add routing commands
 add_routing_commands(app)
+
+# Add team commands
+add_team_commands(app)
 
 # Worker management
 workers_app = typer.Typer(help="Worker orchestration and management")
