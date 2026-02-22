@@ -4,6 +4,7 @@ Provides adapters for different workflow orchestration engines:
 - Prefect: Workflow orchestration with Prefect Cloud
 - Agno: Multi-agent AI task execution
 - LlamaIndex: RAG pipeline orchestration
+- Pgvector: Production vector storage with HNSW indexing
 
 Each adapter implements the OrchestratorAdapter interface.
 
@@ -20,11 +21,23 @@ except ImportError:
     _prefect_available = False
 
 from mahavishnu.adapters.ai.agno_adapter import AgnoAdapter
+from mahavishnu.adapters.pgvector_adapter import (
+    HNSWConfig,
+    IVFFlatConfig,
+    IndexType,
+    PgvectorAdapter,
+    PgvectorSettings,
+)
 from mahavishnu.adapters.rag.llamaindex_adapter import LlamaIndexAdapter
 
 __all__ = [
     "AgnoAdapter",
+    "HNSWConfig",
+    "IVFFlatConfig",
+    "IndexType",
     "LlamaIndexAdapter",
+    "PgvectorAdapter",
+    "PgvectorSettings",
 ]
 
 # Only add PrefectAdapter if available

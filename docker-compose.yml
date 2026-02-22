@@ -3,11 +3,17 @@
 # Services:
 # - postgres: PostgreSQL 15+ with pgvector extension
 # - redis: Redis for caching (optional)
+# - backup: PostgreSQL backup service (optional)
 #
 # Usage:
 #   docker-compose up -d
 #   docker-compose down
 #   docker-compose logs -f postgres
+#
+# Security Notes:
+# - Redis AUTH is disabled by default for local dev (enable in production)
+# - TLS is disabled by default (enable in production)
+# - Resource limits are configured for development (increase for production)
 
 services:
   postgres:
@@ -31,6 +37,15 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    # Resource limits (adjust for production)
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
     command: >
       postgres
       -c max_connections=100
@@ -48,7 +63,7 @@ services:
       # Enable pgvector
       -c shared_preload_libraries='vector'
 
-  # Optional Redis for caching
+  # Redis for embedding cache and session storage
   redis:
     image: redis:7-alpine
     container_name: mahavishnu-redis
@@ -62,7 +77,50 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    command: redis-server --appendonly yes
+    # Resource limits (adjust for production)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    # Redis configuration with security options
+    # For production: enable AUTH and TLS
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 3gb
+      --maxmemory-policy allkeys-lru
+      # Enable AUTH in production (uncomment and set strong password)
+      # --requirepass ${REDIS_PASSWORD:-}
+      # Enable TLS in production
+      # --tls-port 6379
+      # --tls-cert-file /etc/redis/tls/redis.crt
+      # --tls-key-file /etc/redis/tls/redis.key
+      # --tls-ca-cert-file /etc/redis/tls/ca.crt
+
+  # Optional: PostgreSQL backup service
+  # Uncomment to enable automated daily backups
+  # backup:
+  #   image: prodrigestivill/postgres-backup-local
+  #   container_name: mahavishnu-backup
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_HOST: postgres
+  #     POSTGRES_DB: mahavishnu
+  #     POSTGRES_USER: mahavishnu
+  #     POSTGRES_PASSWORD: mahavishnu_dev
+  #     SCHEDULE: "@daily"
+  #     BACKUP_KEEP_DAYS: 30
+  #     BACKUP_KEEP_WEEKS: 4
+  #     BACKUP_KEEP_MONTHS: 6
+  #   volumes:
+  #     - ./backups:/backups
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
 
   # Optional: Adminer for database management UI
   adminer:

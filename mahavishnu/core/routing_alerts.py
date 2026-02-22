@@ -37,6 +37,9 @@ class AlertType(str, Enum):
     ADAPTER_DEGRADATION = "adapter_degradation"
     """Adapter success rate dropped below threshold."""
 
+    ADAPTER_UNHEALTHY = "adapter_unhealthy"
+    """Adapter health check failed or marked as unhealthy."""
+
     COST_SPIKE = "cost_spike"
     """Unusual increase in routing costs."""
 

@@ -84,6 +84,28 @@ class LLMFactory(Protocol):
         """
         ...
 
+    def create_embedding(
+        self,
+        provider: str | None = None,
+        model_id: str | None = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Create an embedding model instance.
+
+        Args:
+            provider: Optional provider override (e.g., "ollama", "openai")
+            model_id: Optional model ID override (e.g., "nomic-embed-text")
+            **kwargs: Additional provider-specific arguments
+
+        Returns:
+            Configured embedding model instance
+
+        Example:
+            >>> factory = get_llm_factory()
+            >>> embed_model = factory.create_embedding(provider="ollama")
+        """
+        ...
+
 
 # Context variables for dependency injection
 _llm_factory: ContextVar[LLMFactory | None] = ContextVar("llm_factory", default=None)

@@ -2623,7 +2623,7 @@ requires-dist = [
     { name = "jsonmerge", specifier = ">=1.9.0" },
     { name = "mahavishnu", extras = ["prefect", "agno", "dev"], marker = "extra == 'all'" },
     { name = "mahavishnu", extras = ["prefect", "agno", "dev", "ingestion"], marker = "extra == 'core'" },
-    { name = "mcp-common", specifier = ">=0.4.0" },
+    { name = "mcp-common", extras = ["treesitter"], specifier = ">=0.9.4" },
     { name = "oneiric", specifier = ">=0.3.12" },
     { name = "opentelemetry-api", specifier = ">=1.38.0" },
     { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.38.0" },

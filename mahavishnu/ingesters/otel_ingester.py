@@ -1,8 +1,12 @@
-"""OpenTelemetry trace ingester using Akosha's HotStore (DuckDB).
+"""OpenTelemetry trace ingester with dual storage support.
 
-This module provides a native OTel trace ingestion system that converts OpenTelemetry
-trace data into Akosha HotRecord format for semantic search and storage in DuckDB.
-No Docker, PostgreSQL, or pgvector required - pure Python + DuckDB.
+This module provides an OTel trace ingestion system with two storage backends:
+1. DuckDB (via Akosha HotStore): Fast local development, in-memory
+2. PostgreSQL + pgvector: Production persistence with HNSW indexing
+
+Storage selection:
+- Use DuckDB for: Development, testing, small datasets
+- Use PostgreSQL for: Production, persistence, large datasets (>100K vectors)
 """
 
 from __future__ import annotations
@@ -41,9 +45,17 @@ logger = logging.getLogger(__name__)
 class EmbeddingBackend(StrEnum):
     """Available embedding backends for OTel trace search."""
 
+    AKOSHA = "akosha"  # Central embedding service via MCP
     SENTENCE_TRANSFORMERS = "sentence_transformers"
     FASTEMBED = "fastembed"
     TEXT_ONLY = "text_only"
+
+
+class StorageType(StrEnum):
+    """Available storage backends for OTel traces."""
+
+    DUCKDB = "duckdb"  # Akosha HotStore (development, in-memory)
+    POSTGRESQL = "postgresql"  # pgvector with HNSW (production)
 
 
 @runtime_checkable
@@ -167,6 +179,183 @@ class TextOnlyEmbedder:
         return self._dimension
 
 
+class AkoshaEmbedder:
+    """Embedder that uses Akosha MCP for centralized embedding generation.
+
+    Routes all embedding requests through the Akosha MCP server, providing:
+    - Centralized embedding service for the entire ecosystem
+    - Consistent embeddings across all components
+    - Multi-provider fallback (ONNX -> mock) handled by Akosha
+    """
+
+    def __init__(
+        self,
+        akosha_url: str = "http://localhost:8682/mcp",
+        timeout: float = 30.0,
+        dimension: int = 384,
+    ) -> None:
+        """Initialize Akosha embedder.
+
+        Args:
+            akosha_url: Akosha MCP server URL
+            timeout: Request timeout in seconds
+            dimension: Expected embedding dimension (default 384 for all-MiniLM-L6-v2)
+        """
+        self._akosha_url = akosha_url
+        self._timeout = timeout
+        self._dimension = dimension
+        self._client: Any = None  # httpx.AsyncClient, lazy loaded
+        self._available: bool | None = None
+
+    async def _get_client(self) -> Any:
+        """Get or create HTTP client."""
+        if self._client is None:
+            import httpx
+
+            self._client = httpx.AsyncClient(
+                base_url=self._akosha_url,
+                timeout=httpx.Timeout(self._timeout, connect=10.0),
+            )
+        return self._client
+
+    async def check_available(self) -> bool:
+        """Check if Akosha MCP is available.
+
+        Returns:
+            True if Akosha embedding service is accessible
+        """
+        if self._available is not None:
+            return self._available
+
+        try:
+            client = await self._get_client()
+            # Try to generate a test embedding
+            response = await client.post(
+                "/tools/call",
+                json={
+                    "name": "generate_embedding",
+                    "arguments": {"text": "test"},
+                },
+            )
+            self._available = response.status_code == 200
+            if self._available:
+                logger.info("akosha_embedding_service_available")
+            return self._available
+        except Exception as e:
+            logger.warning(f"akosha_embedding_service_unavailable: {e}")
+            self._available = False
+            return False
+
+    def encode(self, text: str) -> list[float]:
+        """Generate embedding for text (synchronous wrapper).
+
+        Note: This is a synchronous wrapper for the async implementation.
+        For batch operations, use encode_batch_async directly.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            Embedding vector, or zero vector on error
+        """
+        import asyncio
+
+        try:
+            loop = asyncio.get_running_loop()
+            # We're in an async context, create a task
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, self._encode_async(text))
+                return future.result()
+        except RuntimeError:
+            # No running loop, we can use asyncio.run
+            return asyncio.run(self._encode_async(text))
+
+    async def _encode_async(self, text: str) -> list[float]:
+        """Generate embedding for text asynchronously.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            Embedding vector
+        """
+        try:
+            client = await self._get_client()
+            response = await client.post(
+                "/tools/call",
+                json={
+                    "name": "generate_embedding",
+                    "arguments": {"text": text},
+                },
+            )
+            response.raise_for_status()
+
+            result = response.json()
+            # Parse MCP response format
+            if "content" in result and len(result["content"]) > 0:
+                content = result["content"][0]
+                if content.get("type") == "text":
+                    import json
+
+                    data = json.loads(content["text"])
+                    return data.get("embedding", [0.0] * self._dimension)
+
+            logger.warning(f"unexpected_akosha_response: {result}")
+            return [0.0] * self._dimension
+
+        except Exception as e:
+            logger.error(f"akosha_embedding_failed: {e}")
+            return [0.0] * self._dimension
+
+    async def encode_batch_async(self, texts: list[str]) -> list[list[float]]:
+        """Generate embeddings for multiple texts.
+
+        Args:
+            texts: List of texts to embed
+
+        Returns:
+            List of embedding vectors
+        """
+        try:
+            client = await self._get_client()
+            response = await client.post(
+                "/tools/call",
+                json={
+                    "name": "generate_batch_embeddings",
+                    "arguments": {"texts": texts},
+                },
+            )
+            response.raise_for_status()
+
+            result = response.json()
+            if "content" in result and len(result["content"]) > 0:
+                content = result["content"][0]
+                if content.get("type") == "text":
+                    import json
+
+                    data = json.loads(content["text"])
+                    return data.get("embeddings", [[0.0] * self._dimension] * len(texts))
+
+            return [[0.0] * self._dimension] * len(texts)
+
+        except Exception as e:
+            logger.error(f"akosha_batch_embedding_failed: {e}")
+            return [[0.0] * self._dimension] * len(texts)
+
+    @property
+    def dimension(self) -> int:
+        """Return embedding dimension."""
+        return self._dimension
+
+    async def close(self) -> None:
+        """Close HTTP client."""
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+
+
 def get_available_backends() -> list[EmbeddingBackend]:
     """Get list of available embedding backends.
 
@@ -174,6 +363,8 @@ def get_available_backends() -> list[EmbeddingBackend]:
         List of available backends in preference order
     """
     backends: list[EmbeddingBackend] = []
+    # Akosha is preferred as centralized embedding service
+    backends.append(EmbeddingBackend.AKOSHA)
     if SENTENCE_TRANSFORMERS_AVAILABLE:
         backends.append(EmbeddingBackend.SENTENCE_TRANSFORMERS)
     if FASTEMBED_AVAILABLE:
@@ -185,34 +376,45 @@ def get_available_backends() -> list[EmbeddingBackend]:
 def get_default_backend() -> EmbeddingBackend:
     """Get the default embedding backend based on availability.
 
+    Akosha is preferred as the centralized embedding service for the ecosystem.
+
     Returns:
         Best available backend
     """
-    if SENTENCE_TRANSFORMERS_AVAILABLE:
-        return EmbeddingBackend.SENTENCE_TRANSFORMERS
-    if FASTEMBED_AVAILABLE:
-        return EmbeddingBackend.FASTEMBED
-    return EmbeddingBackend.TEXT_ONLY
+    # Prefer Akosha as centralized embedding service
+    return EmbeddingBackend.AKOSHA
 
 
 class OtelIngester:
-    """OpenTelemetry trace ingester for Akosha HotStore.
+    """OpenTelemetry trace ingester with dual storage support.
 
-    Converts OTel trace data into HotRecord format with semantic embeddings
-    for efficient similarity search in DuckDB.
+    Converts OTel trace data into vector format with semantic embeddings
+    for efficient similarity search.
 
-    Supports multiple embedding backends with graceful degradation:
+    Storage Backends:
+    - DuckDB (HotStore): Fast local development, in-memory
+    - PostgreSQL + pgvector: Production persistence with HNSW indexing
+
+    Embedding Backends:
+    - akosha (default, centralized service via MCP)
     - sentence-transformers (best quality, requires PyTorch)
     - fastembed (cross-platform, uses ONNX Runtime)
     - text-only (fallback, no embeddings)
 
     Example:
-        >>> from akosha.storage import HotStore
-        >>> ingester = OtelIngester()
+        >>> # DuckDB (development) with Akosha embeddings
+        >>> ingester = OtelIngester(storage_type="duckdb")
         >>> await ingester.initialize()
         >>> await ingester.ingest_trace(trace_data)
         >>> results = await ingester.search_traces("error handling")
         >>> await ingester.close()
+
+        >>> # PostgreSQL (production)
+        >>> ingester = OtelIngester(
+        ...     storage_type="postgresql",
+        ...     pgvector_dsn="postgresql://user:pass@localhost/mahavishnu"
+        ... )
+        >>> await ingester.initialize()
     """
 
     def __init__(
@@ -221,20 +423,38 @@ class OtelIngester:
         embedding_model: str = "all-MiniLM-L6-v2",
         cache_size: int = 1000,
         preferred_backend: EmbeddingBackend | str | None = None,
+        storage_type: StorageType | str = StorageType.DUCKDB,
+        pgvector_dsn: str | None = None,
+        pgvector_collection: str = "otel_traces",
+        akosha_url: str = "http://localhost:8682/mcp",
     ) -> None:
         """Initialize OTel ingester.
 
         Args:
-            hot_store: Optional HotStore instance (creates own if None)
+            hot_store: Optional HotStore instance (creates own if None, DuckDB only)
             embedding_model: Embedding model name (backend-specific)
             cache_size: Maximum embeddings to cache in memory
-            preferred_backend: Preferred embedding backend. If None, uses best
-                available. Options: "sentence_transformers", "fastembed", "text_only"
+            preferred_backend: Preferred embedding backend. If None, uses Akosha
+                by default. Options: "akosha", "sentence_transformers", "fastembed", "text_only"
+            storage_type: Storage backend type ("duckdb" or "postgresql")
+            pgvector_dsn: PostgreSQL DSN for pgvector storage (required if storage_type="postgresql")
+            pgvector_collection: Collection/table name for pgvector (default: "otel_traces")
+            akosha_url: Akosha MCP server URL for centralized embeddings
 
         Raises:
             ImportError: If preferred_backend is unavailable
         """
-        self._hot_store = hot_store
+        # Convert string to enum if needed
+        if isinstance(storage_type, str):
+            storage_type = StorageType(storage_type)
+
+        self._storage_type = storage_type
+        self._pgvector_dsn = pgvector_dsn
+        self._pgvector_collection = pgvector_collection
+        self._akosha_url = akosha_url  # Akosha MCP URL for centralized embeddings
+        self._hot_store = hot_store  # Only used for DuckDB
+        self._pgvector_adapter: Any = None  # PgvectorAdapter, lazy loaded
+
         self._embedding_model_name = embedding_model
         self._cache_size = cache_size
         self._embedding_cache: dict[str, list[float]] = {}
@@ -252,15 +472,21 @@ class OtelIngester:
         self._embedder: EmbeddingModel | None = None
         self._embedding_dimension = 384
 
-        # Log available backends
+        # Log configuration
         available = get_available_backends()
         logger.info(f"Available embedding backends: {[b.value for b in available]}")
         logger.info(f"Selected backend: {self._backend.value}")
+        logger.info(f"Storage type: {self._storage_type.value}")
 
     @property
     def backend(self) -> EmbeddingBackend:
         """Get current embedding backend."""
         return self._backend
+
+    @property
+    def storage_type(self) -> StorageType:
+        """Get current storage type."""
+        return self._storage_type
 
     @property
     def embedding_dimension(self) -> int:
@@ -276,7 +502,11 @@ class OtelIngester:
         Raises:
             ImportError: If selected backend is unavailable
         """
-        if self._backend == EmbeddingBackend.SENTENCE_TRANSFORMERS:
+        if self._backend == EmbeddingBackend.AKOSHA:
+            logger.info(f"Using Akosha centralized embedding service: {self._akosha_url}")
+            return AkoshaEmbedder(akosha_url=self._akosha_url)
+
+        elif self._backend == EmbeddingBackend.SENTENCE_TRANSFORMERS:
             if not SENTENCE_TRANSFORMERS_AVAILABLE:
                 raise ImportError(
                     "sentence-transformers is not available. "
@@ -318,21 +548,21 @@ class OtelIngester:
         return model_map.get(model_name, "BAAI/bge-small-en-v1.5")
 
     async def initialize(self) -> None:
-        """Initialize ingester and HotStore.
+        """Initialize ingester and storage backend.
 
-        Creates HotStore if not provided, loads embedding model,
-        and initializes database schema.
+        Creates storage backend (HotStore or pgvector) if not provided,
+        loads embedding model, and initializes database schema.
 
         Raises:
             RuntimeError: If initialization fails
+            ValueError: If PostgreSQL storage is selected but no DSN provided
         """
         try:
-            # Initialize HotStore
-            if self._hot_store is None:
-                from akosha.storage import HotStore
-
-                self._hot_store = HotStore(database_path=":memory:")
-                await self._hot_store.initialize()
+            # Initialize storage backend
+            if self._storage_type == StorageType.POSTGRESQL:
+                await self._initialize_pgvector()
+            else:
+                await self._initialize_duckdb()
 
             # Initialize embedding model
             if self._embedder is None:
@@ -351,11 +581,45 @@ class OtelIngester:
                         self._embedding_dimension = self._embedder.dimension
                         logger.info(f"Using fallback embedding backend: {self._backend.value}")
 
-            logger.info("OTel ingester initialized")
+            logger.info(f"OTel ingester initialized (storage={self._storage_type.value})")
 
         except Exception as e:
             logger.error(f"Failed to initialize OTel ingester: {e}")
             raise RuntimeError(f"OTel ingester initialization failed: {e}") from e
+
+    async def _initialize_duckdb(self) -> None:
+        """Initialize DuckDB (HotStore) storage backend."""
+        if self._hot_store is None:
+            from akosha.storage import HotStore
+
+            self._hot_store = HotStore(database_path=":memory:")
+            await self._hot_store.initialize()
+        logger.info("DuckDB (HotStore) storage initialized")
+
+    async def _initialize_pgvector(self) -> None:
+        """Initialize PostgreSQL + pgvector storage backend."""
+        if not self._pgvector_dsn:
+            raise ValueError(
+                "pgvector_dsn is required when storage_type='postgresql'. "
+                "Set the MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING environment variable."
+            )
+
+        from mahavishnu.adapters import HNSWConfig, PgvectorAdapter, PgvectorSettings
+
+        settings = PgvectorSettings(
+            dsn=self._pgvector_dsn,
+            ensure_extension=True,
+        )
+        self._pgvector_adapter = PgvectorAdapter(settings)
+        await self._pgvector_adapter.init()
+
+        # Ensure collection exists with correct dimension
+        await self._pgvector_adapter.create_collection(
+            name=self._pgvector_collection,
+            dimension=self._embedding_dimension,
+            distance_metric="cosine",
+        )
+        logger.info(f"PostgreSQL + pgvector storage initialized (collection={self._pgvector_collection})")
 
     def _try_fallback_backends(self) -> EmbeddingModel | None:
         """Try fallback embedding backends.
@@ -363,8 +627,9 @@ class OtelIngester:
         Returns:
             Embedding model or None if all backends fail
         """
-        # Try backends in order of preference
+        # Try backends in order of preference (Akosha first for centralized service)
         for backend in [
+            EmbeddingBackend.AKOSHA,
             EmbeddingBackend.SENTENCE_TRANSFORMERS,
             EmbeddingBackend.FASTEMBED,
             EmbeddingBackend.TEXT_ONLY,
@@ -377,7 +642,7 @@ class OtelIngester:
                 embedder = self._create_embedder()
                 logger.info(f"Successfully initialized fallback backend: {backend.value}")
                 return embedder
-            except ImportError as e:
+            except (ImportError, Exception) as e:
                 logger.debug(f"Fallback backend {backend.value} unavailable: {e}")
                 continue
 
@@ -387,14 +652,14 @@ class OtelIngester:
         return TextOnlyEmbedder()
 
     async def ingest_trace(self, trace_data: dict[str, Any]) -> None:
-        """Ingest a single OTel trace into HotStore.
+        """Ingest a single OTel trace into storage backend.
 
         Args:
             trace_data: OpenTelemetry trace data dictionary
 
         Raises:
             ValidationError: If trace data is invalid
-            RuntimeError: If HotStore is not initialized
+            RuntimeError: If storage backend is not initialized
 
         Trace Data Format:
             {
@@ -409,6 +674,14 @@ class OtelIngester:
                 ]
             }
         """
+        # Route to appropriate storage backend
+        if self._storage_type == StorageType.POSTGRESQL:
+            await self._ingest_trace_pgvector(trace_data)
+        else:
+            await self._ingest_trace_duckdb(trace_data)
+
+    async def _ingest_trace_duckdb(self, trace_data: dict[str, Any]) -> None:
+        """Ingest trace into DuckDB (HotStore)."""
         if not self._hot_store:
             raise RuntimeError("HotStore not initialized. Call initialize() first.")
 
@@ -463,6 +736,62 @@ class OtelIngester:
         except Exception as e:
             logger.error(f"Failed to ingest trace {trace_data.get('trace_id', 'unknown')}: {e}")
             # Don't fail - log and continue for other traces
+
+    async def _ingest_trace_pgvector(self, trace_data: dict[str, Any]) -> None:
+        """Ingest trace into PostgreSQL + pgvector."""
+        if not self._pgvector_adapter:
+            raise RuntimeError("pgvector adapter not initialized. Call initialize() first.")
+
+        try:
+            # Validate required fields
+            trace_id = trace_data.get("trace_id")
+            if not trace_id:
+                raise ValidationError("trace_data missing required field: trace_id")
+
+            spans = trace_data.get("spans", [])
+            if not spans:
+                logger.warning(f"Trace {trace_id} has no spans, skipping")
+                return
+
+            # Extract system_id from service.name attribute
+            system_id = self._extract_system_id(spans)
+
+            # Build content from span names
+            content = self._build_content(spans)
+
+            # Generate embedding (cached)
+            embedding = await self._get_embedding(content)
+
+            # Extract timestamp from first span
+            timestamp = self._extract_timestamp(spans)
+
+            # Store all attributes as metadata
+            metadata = {
+                "trace_id": trace_id,
+                "system_id": system_id,
+                "span_count": len(spans),
+                "attributes": self._extract_attributes(spans),
+                "content": content,
+                "timestamp": timestamp.isoformat(),
+            }
+
+            # Insert into pgvector
+            await self._pgvector_adapter.upsert(
+                collection=self._pgvector_collection,
+                documents=[
+                    {
+                        "id": trace_id,
+                        "vector": embedding,
+                        "metadata": metadata,
+                    }
+                ],
+            )
+            logger.debug(f"Ingested trace {trace_id} with {len(spans)} spans into pgvector")
+
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to ingest trace {trace_data.get('trace_id', 'unknown')}: {e}")
 
     async def ingest_batch(self, traces: list[dict[str, Any]]) -> dict[str, Any]:
         """Ingest multiple OTel traces in batch.
@@ -528,9 +857,6 @@ class OtelIngester:
                     ...
                 ]
         """
-        if not self._hot_store:
-            raise RuntimeError("HotStore not initialized. Call initialize() first.")
-
         if not self._embedder:
             raise RuntimeError("Embedding model not loaded. Call initialize() first.")
 
@@ -538,13 +864,15 @@ class OtelIngester:
             # Generate query embedding
             query_embedding = self._embedder.encode(query)
 
-            # Search HotStore
-            results = await self._hot_store.search_similar(
-                query_embedding=query_embedding,
-                system_id=system_id,
-                limit=limit,
-                threshold=threshold,
-            )
+            # Route to appropriate storage backend
+            if self._storage_type == StorageType.POSTGRESQL:
+                results = await self._search_pgvector(
+                    query_embedding, limit, system_id, threshold
+                )
+            else:
+                results = await self._search_duckdb(
+                    query_embedding, limit, system_id, threshold
+                )
 
             logger.info(f"Search for '{query}' returned {len(results)} results")
             return results
@@ -552,6 +880,65 @@ class OtelIngester:
         except Exception as e:
             logger.error(f"Search failed for query '{query}': {e}")
             return []
+
+    async def _search_duckdb(
+        self,
+        query_embedding: list[float],
+        limit: int,
+        system_id: str | None,
+        threshold: float,
+    ) -> list[dict[str, Any]]:
+        """Search DuckDB (HotStore) backend."""
+        if not self._hot_store:
+            raise RuntimeError("HotStore not initialized. Call initialize() first.")
+
+        return await self._hot_store.search_similar(
+            query_embedding=query_embedding,
+            system_id=system_id,
+            limit=limit,
+            threshold=threshold,
+        )
+
+    async def _search_pgvector(
+        self,
+        query_embedding: list[float],
+        limit: int,
+        system_id: str | None,
+        threshold: float,
+    ) -> list[dict[str, Any]]:
+        """Search PostgreSQL + pgvector backend."""
+        if not self._pgvector_adapter:
+            raise RuntimeError("pgvector adapter not initialized. Call initialize() first.")
+
+        # Build filter expression
+        filter_expr = None
+        if system_id:
+            filter_expr = {"system_id": system_id}
+
+        # Search with HNSW index
+        results = await self._pgvector_adapter.search(
+            collection=self._pgvector_collection,
+            query_vector=query_embedding,
+            limit=limit,
+            filter_expr=filter_expr,
+            include_vectors=False,
+        )
+
+        # Filter by threshold and format results
+        formatted = []
+        for result in results:
+            # Convert distance to similarity (cosine distance = 1 - similarity)
+            similarity = 1 - result["score"]
+            if similarity >= threshold:
+                formatted.append({
+                    "conversation_id": result["id"],
+                    "content": result["metadata"].get("content", ""),
+                    "timestamp": result["metadata"].get("timestamp", ""),
+                    "metadata": result["metadata"],
+                    "similarity": similarity,
+                })
+
+        return formatted
 
     async def get_trace_by_id(self, trace_id: str) -> dict[str, Any] | None:
         """Retrieve specific trace by ID.
@@ -562,6 +949,13 @@ class OtelIngester:
         Returns:
             Trace data dictionary or None if not found
         """
+        if self._storage_type == StorageType.POSTGRESQL:
+            return await self._get_trace_pgvector(trace_id)
+        else:
+            return await self._get_trace_duckdb(trace_id)
+
+    async def _get_trace_duckdb(self, trace_id: str) -> dict[str, Any] | None:
+        """Get trace from DuckDB backend."""
         if not self._hot_store:
             raise RuntimeError("HotStore not initialized. Call initialize() first.")
 
@@ -588,17 +982,49 @@ class OtelIngester:
             logger.error(f"Failed to get trace {trace_id}: {e}")
             return None
 
+    async def _get_trace_pgvector(self, trace_id: str) -> dict[str, Any] | None:
+        """Get trace from PostgreSQL + pgvector backend."""
+        if not self._pgvector_adapter:
+            raise RuntimeError("pgvector adapter not initialized. Call initialize() first.")
+
+        try:
+            results = await self._pgvector_adapter.get(
+                collection=self._pgvector_collection,
+                ids=[trace_id],
+                include_vectors=False,
+            )
+
+            if results:
+                result = results[0]
+                return {
+                    "conversation_id": result["id"],
+                    "content": result["metadata"].get("content", ""),
+                    "timestamp": result["metadata"].get("timestamp", ""),
+                    "metadata": result["metadata"],
+                }
+
+            logger.debug(f"Trace {trace_id} not found")
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to get trace {trace_id}: {e}")
+            return None
+
     async def close(self) -> None:
         """Close ingester and cleanup resources.
 
-        Closes HotStore connection and clears embedding cache.
+        Closes storage backend connections and clears embedding cache.
         """
         try:
-            if self._hot_store:
-                await self._hot_store.close()
+            if self._storage_type == StorageType.POSTGRESQL:
+                if self._pgvector_adapter:
+                    await self._pgvector_adapter.cleanup()
+            else:
+                if self._hot_store:
+                    await self._hot_store.close()
 
             self._embedding_cache.clear()
-            logger.info("OTel ingester closed")
+            logger.info(f"OTel ingester closed (storage={self._storage_type.value})")
 
         except Exception as e:
             logger.error(f"Error closing OTel ingester: {e}")
@@ -749,6 +1175,10 @@ async def create_otel_ingester(
     embedding_model: str = "all-MiniLM-L6-v2",
     cache_size: int = 1000,
     preferred_backend: EmbeddingBackend | str | None = None,
+    storage_type: StorageType | str = StorageType.DUCKDB,
+    pgvector_dsn: str | None = None,
+    pgvector_collection: str = "otel_traces",
+    akosha_url: str = "http://localhost:8682/mcp",
 ) -> OtelIngester:
     """Create and initialize OTel ingester.
 
@@ -756,27 +1186,49 @@ async def create_otel_ingester(
         hot_store_path: DuckDB database path (":memory:" for in-memory)
         embedding_model: Embedding model name
         cache_size: Maximum embeddings to cache in memory
-        preferred_backend: Preferred embedding backend (auto-detected if None)
+        preferred_backend: Preferred embedding backend (uses Akosha by default)
+        storage_type: Storage backend ("duckdb" or "postgresql")
+        pgvector_dsn: PostgreSQL DSN (required if storage_type="postgresql")
+        pgvector_collection: pgvector collection name (default: "otel_traces")
+        akosha_url: Akosha MCP server URL for centralized embeddings
 
     Returns:
         Initialized OtelIngester instance
 
     Example:
+        >>> # DuckDB (development)
         >>> ingester = await create_otel_ingester()
         >>> await ingester.ingest_trace(trace_data)
         >>> await ingester.close()
-    """
-    from akosha.storage import HotStore
 
-    hot_store = HotStore(database_path=hot_store_path)
-    await hot_store.initialize()
+        >>> # PostgreSQL (production)
+        >>> ingester = await create_otel_ingester(
+        ...     storage_type="postgresql",
+        ...     pgvector_dsn="postgresql://user:pass@localhost/mahavishnu"
+        ... )
+    """
+    # Convert string to enum if needed
+    if isinstance(storage_type, str):
+        storage_type = StorageType(storage_type)
 
     ingester = OtelIngester(
-        hot_store=hot_store,
         embedding_model=embedding_model,
         cache_size=cache_size,
         preferred_backend=preferred_backend,
+        storage_type=storage_type,
+        pgvector_dsn=pgvector_dsn,
+        pgvector_collection=pgvector_collection,
+        akosha_url=akosha_url,
     )
+
+    # For DuckDB, create HotStore if path provided
+    if storage_type == StorageType.DUCKDB and hot_store_path:
+        from akosha.storage import HotStore
+
+        hot_store = HotStore(database_path=hot_store_path)
+        await hot_store.initialize()
+        ingester._hot_store = hot_store  # noqa: SLF001
+
     await ingester.initialize()
 
     return ingester

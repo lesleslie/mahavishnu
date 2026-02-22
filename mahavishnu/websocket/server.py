@@ -821,3 +821,138 @@ class MahavishnuWebSocketServer(WebSocketServer):
         from datetime import UTC, datetime
 
         return datetime.now(UTC).isoformat()
+
+    # Broadcast methods for Adapter Registry events
+
+    async def broadcast_adapter_registered(
+        self,
+        adapter_id: str,
+        adapter_name: str,
+        capabilities: list[str],
+        provider: str,
+        source: str,
+    ) -> None:
+        """Broadcast when a new adapter is registered.
+
+        Args:
+            adapter_id: Unique adapter identifier
+            adapter_name: Human-readable adapter name
+            capabilities: List of adapter capabilities
+            provider: Provider name (e.g., "prefect", "agno")
+            source: Registration source ("entry_point", "oneiric_mcp", "manual")
+        """
+        event_data = {
+            "adapter_id": adapter_id,
+            "adapter_name": adapter_name,
+            "capabilities": capabilities,
+            "provider": provider,
+            "source": source,
+            "timestamp": self._get_timestamp(),
+        }
+
+        # Broadcast to global adapters channel
+        event = WebSocketProtocol.create_event(
+            "adapter.registered",
+            event_data,
+            room="adapters",
+        )
+        await self.broadcast_to_room("adapters", event)
+
+    async def broadcast_adapter_health_changed(
+        self,
+        adapter_id: str,
+        adapter_name: str,
+        old_status: str,
+        new_status: str,
+        details: dict | None = None,
+    ) -> None:
+        """Broadcast when adapter health status changes.
+
+        Args:
+            adapter_id: Unique adapter identifier
+            adapter_name: Human-readable adapter name
+            old_status: Previous health status
+            new_status: New health status ("healthy", "degraded", "unhealthy")
+            details: Optional additional details (latency, error message, etc.)
+        """
+        event_data = {
+            "adapter_id": adapter_id,
+            "adapter_name": adapter_name,
+            "old_status": old_status,
+            "new_status": new_status,
+            "details": details or {},
+            "timestamp": self._get_timestamp(),
+        }
+
+        # Broadcast to global adapters channel
+        event = WebSocketProtocol.create_event(
+            "adapter.health_changed",
+            event_data,
+            room="adapters",
+        )
+        await self.broadcast_to_room("adapters", event)
+
+    async def broadcast_adapter_enabled(
+        self,
+        adapter_id: str,
+        adapter_name: str,
+        enabled: bool,
+        reason: str | None = None,
+    ) -> None:
+        """Broadcast when adapter is enabled or disabled.
+
+        Args:
+            adapter_id: Unique adapter identifier
+            adapter_name: Human-readable adapter name
+            enabled: Whether adapter is now enabled
+            reason: Optional reason for the change
+        """
+        event_data = {
+            "adapter_id": adapter_id,
+            "adapter_name": adapter_name,
+            "enabled": enabled,
+            "reason": reason,
+            "timestamp": self._get_timestamp(),
+        }
+
+        # Broadcast to global adapters channel
+        event = WebSocketProtocol.create_event(
+            "adapter.enabled" if enabled else "adapter.disabled",
+            event_data,
+            room="adapters",
+        )
+        await self.broadcast_to_room("adapters", event)
+
+    async def broadcast_routing_decision(
+        self,
+        task_type: str,
+        selected_adapter: str,
+        capabilities_matched: list[str],
+        latency_ms: float,
+        fallback_used: bool,
+    ) -> None:
+        """Broadcast when a routing decision is made.
+
+        Args:
+            task_type: Type of task being routed
+            selected_adapter: Name of the selected adapter
+            capabilities_matched: Capabilities that matched the task requirements
+            latency_ms: Time taken to make the routing decision
+            fallback_used: Whether this was a fallback selection
+        """
+        event_data = {
+            "task_type": task_type,
+            "selected_adapter": selected_adapter,
+            "capabilities_matched": capabilities_matched,
+            "latency_ms": round(latency_ms, 2),
+            "fallback_used": fallback_used,
+            "timestamp": self._get_timestamp(),
+        }
+
+        # Broadcast to global adapters channel
+        event = WebSocketProtocol.create_event(
+            "adapter.routing_decision",
+            event_data,
+            room="adapters",
+        )
+        await self.broadcast_to_room("adapters", event)

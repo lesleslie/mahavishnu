@@ -407,6 +407,52 @@ class PoolConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class HNSWIndexConfig(BaseModel):
+    """HNSW index configuration for high-performance vector search.
+
+    HNSW (Hierarchical Navigable Small World) is an approximate nearest
+    neighbor search algorithm optimized for high-dimensional vectors.
+
+    Performance Targets:
+    - 10K+ queries per second with proper tuning
+    - ~10-20ms query latency (vs ~100ms for exact search)
+
+    Configuration can be set via:
+    1. settings/mahavishnu.yaml under otel_storage.hnsw
+    2. settings/local.yaml
+    3. Environment variables: MAHAVISHNU_OTEL_STORAGE__HNSW__M, etc.
+
+    Example YAML:
+        otel_storage:
+          enabled: true
+          hnsw:
+            m: 16
+            ef_construction: 64
+            ef_search: 40
+    """
+
+    m: int = Field(
+        default=16,
+        ge=4,
+        le=48,
+        description="Number of bi-directional links per node (4-48, higher = better recall, more memory)",
+    )
+    ef_construction: int = Field(
+        default=64,
+        ge=16,
+        le=256,
+        description="Search depth during index construction (16-256, higher = better index quality, slower build)",
+    )
+    ef_search: int = Field(
+        default=40,
+        ge=10,
+        le=200,
+        description="Search depth during queries (10-200, higher = better recall, slower search)",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
 class OTelStorageConfig(BaseModel):
     """OpenTelemetry trace storage with PostgreSQL + pgvector."""
 
@@ -429,10 +475,10 @@ class OTelStorageConfig(BaseModel):
         description="Vector dimension for embeddings (128-1024)",
     )
     cache_size: int = Field(
-        default=1000,
+        default=10000,
         ge=100,
-        le=10000,
-        description="Maximum number of embeddings to cache in memory",
+        le=100000,
+        description="Maximum number of embeddings to cache in memory (increased from 1000)",
     )
     similarity_threshold: float = Field(
         default=0.85,
@@ -463,6 +509,12 @@ class OTelStorageConfig(BaseModel):
         ge=3,
         le=20,
         description="Failures before circuit breaker opens",
+    )
+
+    # HNSW index configuration for 10K+ QPS
+    hnsw: HNSWIndexConfig = Field(
+        default_factory=HNSWIndexConfig,
+        description="HNSW index configuration for high-performance vector search",
     )
 
     @field_validator("connection_string")
@@ -879,6 +931,59 @@ class LLMConfig(BaseModel):
     ollama_base_url: str = Field(
         default="http://localhost:11434",
         description="Ollama API endpoint for local LLM access",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
+class AdapterRegistryConfig(BaseModel):
+    """Adapter registry configuration for security and discovery control.
+
+    Configuration can be set via:
+    1. settings/mahavishnu.yaml under adapter_registry:
+    2. settings/local.yaml
+    3. Environment variables: MAHAVISHNU_ADAPTER_REGISTRY__ENABLED, etc.
+
+    Example YAML:
+        adapter_registry:
+          enabled: true
+          allowlist_patterns:
+            - "mahavishnu.adapters.*"
+            - "mahavishnu.engines.*"
+          verify_signatures: false
+          reject_unsigned: false
+    """
+
+    enabled: bool = Field(
+        default=True,
+        description="Enable hybrid adapter registry with Oneiric discovery",
+    )
+    allowlist_patterns: list[str] = Field(
+        default_factory=lambda: [
+            "mahavishnu.adapters.*",
+            "mahavishnu.engines.*",
+        ],
+        description="Allowed adapter module patterns (security filter)",
+    )
+    verify_signatures: bool = Field(
+        default=False,
+        description="Verify adapter signatures (future security feature)",
+    )
+    reject_unsigned: bool = Field(
+        default=False,
+        description="Reject unsigned adapters in production mode",
+    )
+    cache_ttl_seconds: int = Field(
+        default=300,
+        ge=0,
+        le=3600,
+        description="Adapter metadata cache TTL (0 to disable)",
+    )
+    discovery_timeout_seconds: int = Field(
+        default=30,
+        ge=5,
+        le=120,
+        description="Timeout for adapter discovery operations",
     )
 
     model_config = {"extra": "forbid"}
@@ -1419,6 +1524,12 @@ class MahavishnuSettings(BaseSettings):
         description="Oneiric MCP integration for dynamic adapter discovery",
     )
 
+    # Adapter registry configuration
+    adapter_registry: AdapterRegistryConfig = Field(
+        default_factory=AdapterRegistryConfig,
+        description="Hybrid adapter registry configuration",
+    )
+
     # Goal-Driven Teams configuration
     goal_teams: GoalTeamsConfig = Field(
         default_factory=GoalTeamsConfig,
@@ -1475,6 +1586,7 @@ __all__ = [
     # Other configurations
     "PrefectConfig",
     "PoolConfig",
+    "HNSWIndexConfig",
     "OTelStorageConfig",
     "OTelIngesterConfig",
     "OpenSearchConfig",
@@ -1489,6 +1601,7 @@ __all__ = [
     "AdapterConfig",
     "LLMConfig",
     "OneiricMCPConfig",
+    "AdapterRegistryConfig",
     # Goal-Driven Teams configuration
     "GoalParsingConfig",
     "GoalTeamsLimitsConfig",

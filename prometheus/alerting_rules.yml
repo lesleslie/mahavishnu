@@ -1,0 +1,212 @@
+# Prometheus Alerting Rules for Mahavishnu RAG System
+#
+# These rules monitor the health and performance of the embedding
+# and vector search infrastructure.
+#
+# Usage:
+#   Copy to Prometheus configuration directory and add to prometheus.yml:
+#   rule_files:
+#     - "alerting_rules.yml"
+
+groups:
+  - name: mahavishnu-embedding
+    interval: 30s
+    rules:
+      # Embedding latency alerts
+      - alert: EmbeddingLatencyHigh
+        expr: histogram_quantile(0.95, rate(embedding_latency_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: embedding
+        annotations:
+          summary: "Embedding latency P95 > 500ms"
+          description: "Embedding generation is slow. P95 latency is {{ $value | humanizeDuration }}. Check provider health and batch sizes."
+
+      - alert: EmbeddingLatencyCritical
+        expr: histogram_quantile(0.99, rate(embedding_latency_seconds_bucket[5m])) > 2.0
+        for: 2m
+        labels:
+          severity: critical
+          component: embedding
+        annotations:
+          summary: "Embedding latency P99 > 2s"
+          description: "Embedding generation is critically slow. P99 latency is {{ $value | humanizeDuration }}. Immediate investigation required."
+
+      # Cache hit rate alerts
+      - alert: CacheHitRateLow
+        expr: |
+          (
+            sum(rate(cache_hits_total[5m]))
+            /
+            (sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])))
+          ) < 0.5
+        for: 10m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Cache hit rate below 50%"
+          description: "Current hit rate is {{ $value | humanizePercentage }}. Consider increasing cache size or warming cache."
+
+      - alert: CacheHitRateCritical
+        expr: |
+          (
+            sum(rate(cache_hits_total[5m]))
+            /
+            (sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])))
+          ) < 0.2
+        for: 5m
+        labels:
+          severity: critical
+          component: cache
+        annotations:
+          summary: "Cache hit rate below 20%"
+          description: "Current hit rate is {{ $value | humanizePercentage }}. Cache may be undersized or traffic pattern changed."
+
+  - name: mahavishnu-vector-search
+    interval: 30s
+    rules:
+      # Vector search latency alerts
+      - alert: VectorSearchSlow
+        expr: histogram_quantile(0.95, rate(vector_search_latency_seconds_bucket[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: vector_search
+        annotations:
+          summary: "Vector search P95 > 100ms"
+          description: "Vector search is slow. P95 latency is {{ $value | humanizeDuration }}. Check HNSW index configuration."
+
+      - alert: VectorSearchCritical
+        expr: histogram_quantile(0.99, rate(vector_search_latency_seconds_bucket[5m])) > 0.5
+        for: 2m
+        labels:
+          severity: critical
+          component: vector_search
+        annotations:
+          summary: "Vector search P99 > 500ms"
+          description: "Vector search is critically slow. P99 latency is {{ $value | humanizeDuration }}. May need index rebuild."
+
+  - name: mahavishnu-database
+    interval: 30s
+    rules:
+      # PostgreSQL connection alerts
+      - alert: PostgresConnectionsHigh
+        expr: |
+          pg_stat_activity_count / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "PostgreSQL connections > 80% utilized"
+          description: "Connection pool is {{ $value | humanizePercentage }} full. Consider increasing max_connections or adding PgBouncer."
+
+      - alert: PostgresConnectionsExhausted
+        expr: |
+          pg_stat_activity_count / pg_settings_max_connections > 0.9
+        for: 2m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "PostgreSQL connections > 90% utilized"
+          description: "Connection pool is almost exhausted. Immediate action required to prevent connection failures."
+
+      # PostgreSQL replication lag
+      - alert: PostgresReplicationLag
+        expr: pg_replication_lag_seconds > 10
+        for: 2m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "PostgreSQL replication lag > 10s"
+          description: "Replication lag is {{ $value }}s. Standby may be falling behind."
+
+  - name: mahavishnu-redis
+    interval: 30s
+    rules:
+      # Redis memory alerts
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis memory > 80% utilized"
+          description: "Redis memory is {{ $value | humanizePercentage }} full. Consider increasing maxmemory."
+
+      - alert: RedisMemoryCritical
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          component: cache
+        annotations:
+          summary: "Redis memory > 95% utilized"
+          description: "Redis memory is almost full. Evictions may occur. Immediate action required."
+
+      # Redis connection alerts
+      - alert: RedisConnectionsHigh
+        expr: redis_connected_clients > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis has many connected clients"
+          description: "Redis has {{ $value }} connected clients. May need connection pooling."
+
+  - name: mahavishnu-circuit-breaker
+    interval: 30s
+    rules:
+      # Circuit breaker alerts
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state == 2  # OPEN state
+        for: 1m
+        labels:
+          severity: warning
+          component: resilience
+        annotations:
+          summary: "Circuit breaker is open for {{ $labels.service }}"
+          description: "Circuit breaker for {{ $labels.service }} has been open for over 1 minute. Check upstream service health."
+
+      - alert: MultipleCircuitBreakersOpen
+        expr: count(circuit_breaker_state == 2) > 2
+        for: 1m
+        labels:
+          severity: critical
+          component: resilience
+        annotations:
+          summary: "Multiple circuit breakers are open"
+          description: "{{ $value }} circuit breakers are open. System may be experiencing cascading failures."
+
+  - name: mahavishnu-throughput
+    interval: 60s
+    rules:
+      # QPS alerts based on plan targets
+      - alert: QPSTooLow
+        expr: |
+          sum(rate(routing_decisions_total[5m])) < 100
+        for: 10m
+        labels:
+          severity: info
+          component: throughput
+        annotations:
+          summary: "QPS below 100 queries/second"
+          description: "Current QPS is {{ $value | printf \"%.0f\" }}. This may indicate low traffic or a problem."
+
+      # Batch embedding throughput
+      - alert: BatchEmbeddingThroughputLow
+        expr: |
+          sum(rate(embedding_batch_embeddings_total[5m])) < 50
+        for: 10m
+        labels:
+          severity: warning
+          component: embedding
+        annotations:
+          summary: "Batch embedding throughput below 50/s"
+          description: "Current throughput is {{ $value | printf \"%.0f\" }} embeddings/s. Target is 80/s."

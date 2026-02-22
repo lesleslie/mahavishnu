@@ -1262,6 +1262,12 @@ class FastMCPServer:
         # Register team learning tools
         self._register_team_learning_tools()
 
+        # Register tree-sitter code analysis tools
+        self._register_treesitter_tools()
+
+        # Register adapter registry tools
+        self._register_adapter_registry_tools()
+
         await self.server.run_http_async(host=host, port=port)
 
     async def stop(self) -> None:
@@ -1424,7 +1430,33 @@ class FastMCPServer:
         register_team_learning_tools(self.server)
         logger.info("Registered 5 team learning tools with MCP server")
 
+    def _register_treesitter_tools(self) -> None:
+        """Register tree-sitter code analysis tools with MCP server."""
+        try:
+            from ..mcp.tools.treesitter_tools import register_treesitter_tools
+
+            register_treesitter_tools(self.server)
+            logger.info("Registered 7 tree-sitter code analysis tools with MCP server")
+        except ImportError as e:
+            logger.info(f"Tree-sitter tools not available (mcp-common[treesitter] not installed): {e}")
+
         logger.info("Registered 4 self-improvement tools with MCP server")
+
+    def _register_adapter_registry_tools(self) -> None:
+        """Register adapter registry management tools with MCP server."""
+        # Check if adapter registry is enabled in config
+        adapter_registry_config = getattr(self.app.config, "adapter_registry", None)
+        if adapter_registry_config and not adapter_registry_config.enabled:
+            logger.info("Adapter registry disabled, skipping tool registration")
+            return
+
+        try:
+            from ..mcp.tools.adapter_registry_tools import register_adapter_registry_tools
+
+            register_adapter_registry_tools(self.server)
+            logger.info("Registered 7 adapter registry management tools with MCP server")
+        except ImportError as e:
+            logger.warning(f"Adapter registry tools not available: {e}")
 
 
 async def run_server(config=None):
