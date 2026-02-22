@@ -1256,6 +1256,12 @@ class FastMCPServer:
         # Register self-improvement tools
         self._register_self_improvement_tools()
 
+        # Register goal-driven team tools
+        self._register_goal_team_tools()
+
+        # Register team learning tools
+        self._register_team_learning_tools()
+
         await self.server.run_http_async(host=host, port=port)
 
     async def stop(self) -> None:
@@ -1379,6 +1385,45 @@ class FastMCPServer:
         from ..mcp.tools.self_improvement_tools import register_self_improvement_tools
 
         register_self_improvement_tools(self.server, self.app)
+
+    def _register_goal_team_tools(self) -> None:
+        """Register goal-driven team management tools with MCP server."""
+        # Check if goal-driven teams feature is enabled
+        from ..core.feature_flags import is_feature_enabled
+
+        if not is_feature_enabled("enabled"):
+            logger.info("Goal-Driven Teams disabled, skipping tool registration")
+            return
+
+        if not is_feature_enabled("mcp_tools_enabled"):
+            logger.info("Goal-Driven Teams MCP tools disabled, skipping tool registration")
+            return
+
+        # Import and register goal team tools
+        from ..mcp.tools.goal_team_tools import register_goal_team_tools
+
+        register_goal_team_tools(self.server)
+        logger.info("Registered 3 goal-driven team tools with MCP server")
+
+    def _register_team_learning_tools(self) -> None:
+        """Register team learning tools with MCP server."""
+        # Check if learning system is enabled
+        from ..core.feature_flags import is_feature_enabled
+
+        if not is_feature_enabled("enabled"):
+            logger.debug("Goal-Driven Teams disabled, skipping learning tool registration")
+            return
+
+        if not is_feature_enabled("learning_system_enabled"):
+            logger.info("Learning system disabled, skipping learning tool registration")
+            return
+
+        # Import and register team learning tools
+        from ..mcp.tools.team_learning_tools import register_team_learning_tools
+
+        register_team_learning_tools(self.server)
+        logger.info("Registered 5 team learning tools with MCP server")
+
         logger.info("Registered 4 self-improvement tools with MCP server")
 
 

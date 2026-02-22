@@ -6,6 +6,7 @@ Metrics Categories:
 - Team execution: team_executions_total, team_execution_duration_seconds
 - Skill usage: skill_usage_total
 - Errors: team_errors_total by error_code
+- Learning: outcomes_recorded_total, recommendations_total, feedback_total
 
 Design:
 - Prometheus Counter for cumulative tracking
@@ -15,8 +16,8 @@ Design:
 - Context manager for timing operations
 
 Created: 2026-02-21
-Version: 1.0
-Related: Goal-Driven Teams Phase 1 - Prometheus metrics integration
+Version: 1.1
+Related: Goal-Driven Teams Phase 1 + Phase 3 - Prometheus metrics integration with learning
 """
 
 from __future__ import annotations
@@ -99,6 +100,7 @@ class GoalTeamMetrics:
     - Skill usage per team
     - Error tracking by error code
     - Active team count gauge
+    - Learning system metrics (outcomes, recommendations, feedback)
 
     Uses lazy metric initialization to avoid duplicate registration errors.
 
@@ -119,6 +121,12 @@ class GoalTeamMetrics:
 
         # Record errors
         metrics.record_error(error_code="MHV-465")
+
+        # Record learning outcome
+        metrics.record_learning_outcome(success=True, mode="coordinate")
+
+        # Record mode recommendation
+        metrics.record_mode_recommendation(intent="review", mode="coordinate", confidence=0.85)
         ```
     """
 
@@ -145,12 +153,23 @@ class GoalTeamMetrics:
         self._skill_usage_counter: Counter | None = None
         self._errors_counter: Counter | None = None
 
+        # Learning counter metrics (Phase 3)
+        self._learning_outcomes_counter: Counter | None = None
+        self._learning_recommendations_counter: Counter | None = None
+        self._learning_feedback_counter: Counter | None = None
+
         # Gauge metrics
         self._active_teams_gauge: Gauge | None = None
+
+        # Learning gauge metrics (Phase 3)
+        self._learning_success_rate_gauge: Gauge | None = None
 
         # Histogram metrics
         self._team_creation_histogram: Histogram | None = None
         self._parsing_confidence_histogram: Histogram | None = None
+
+        # Learning histogram metrics (Phase 3)
+        self._learning_latency_histogram: Histogram | None = None
 
         # Info metrics
         self._team_info: Info | None = None
@@ -245,6 +264,61 @@ class GoalTeamMetrics:
             )
         except ValueError:
             logger.debug(f"Reusing existing team info metric: {self.server_name}")
+
+        # ====================================================================
+        # Learning System Metrics (Phase 3)
+        # ====================================================================
+
+        # Create learning outcomes counter
+        try:
+            self._learning_outcomes_counter = Counter(
+                "mahavishnu_goal_teams_learning_outcomes_recorded_total",
+                "Total team execution outcomes recorded for learning",
+                ["server", "success", "mode"],
+            )
+        except ValueError:
+            logger.debug(f"Reusing existing learning outcomes counter: {self.server_name}")
+
+        # Create learning recommendations counter
+        try:
+            self._learning_recommendations_counter = Counter(
+                "mahavishnu_goal_teams_learning_recommendations_total",
+                "Total mode recommendations made by learning system",
+                ["server", "intent", "mode", "used"],
+            )
+        except ValueError:
+            logger.debug(f"Reusing existing learning recommendations counter: {self.server_name}")
+
+        # Create learning feedback counter
+        try:
+            self._learning_feedback_counter = Counter(
+                "mahavishnu_goal_teams_learning_feedback_total",
+                "Total user feedback recorded for learning",
+                ["server", "feedback_type"],
+            )
+        except ValueError:
+            logger.debug(f"Reusing existing learning feedback counter: {self.server_name}")
+
+        # Create learning success rate gauge
+        try:
+            self._learning_success_rate_gauge = Gauge(
+                "mahavishnu_goal_teams_learning_success_rate",
+                "Current success rate from learning data",
+                ["server"],
+            )
+        except ValueError:
+            logger.debug(f"Reusing existing learning success rate gauge: {self.server_name}")
+
+        # Create learning latency histogram
+        try:
+            self._learning_latency_histogram = Histogram(
+                "mahavishnu_goal_teams_learning_latency_seconds",
+                "Distribution of team execution latencies",
+                ["server", "mode"],
+                buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0),
+            )
+        except ValueError:
+            logger.debug(f"Reusing existing learning latency histogram: {self.server_name}")
 
         self._metrics_initialized = True
         logger.info(f"Initialized Prometheus goal team metrics for server: {self.server_name}")
@@ -467,6 +541,94 @@ class GoalTeamMetrics:
             )
 
     # ========================================================================
+    # Learning System Metrics (Phase 3)
+    # ========================================================================
+
+    def record_learning_outcome(
+        self,
+        success: bool,
+        mode: str,
+        latency_ms: float | None = None,
+    ) -> None:
+        """Record a learning outcome event.
+
+        Args:
+            success: Whether the execution succeeded
+            mode: Team mode used
+            latency_ms: Optional execution latency in milliseconds
+        """
+        self._ensure_enabled()
+        if self._learning_outcomes_counter:
+            self._learning_outcomes_counter.labels(
+                server=self.server_name,
+                success=str(success).lower(),
+                mode=mode,
+            ).inc()
+            logger.debug(f"Recorded learning outcome: success={success}, mode={mode}")
+
+        # Record latency if provided
+        if latency_ms is not None and self._learning_latency_histogram:
+            self._learning_latency_histogram.labels(
+                server=self.server_name,
+                mode=mode,
+            ).observe(latency_ms / 1000.0)  # Convert to seconds
+
+    def record_mode_recommendation(
+        self,
+        intent: str,
+        mode: str,
+        confidence: float,
+        used: bool = True,
+    ) -> None:
+        """Record a mode recommendation event.
+
+        Args:
+            intent: Intent the recommendation was for
+            mode: Recommended mode
+            confidence: Confidence score of the recommendation
+            used: Whether the recommendation was used
+        """
+        self._ensure_enabled()
+        if self._learning_recommendations_counter:
+            self._learning_recommendations_counter.labels(
+                server=self.server_name,
+                intent=intent,
+                mode=mode,
+                used=str(used).lower(),
+            ).inc()
+            logger.debug(
+                f"Recorded mode recommendation: intent={intent}, mode={mode}, "
+                f"confidence={confidence:.2f}, used={used}"
+            )
+
+    def record_user_feedback(self, feedback_type: str) -> None:
+        """Record user feedback event.
+
+        Args:
+            feedback_type: Type of feedback ("positive" or "negative")
+        """
+        self._ensure_enabled()
+        if self._learning_feedback_counter:
+            self._learning_feedback_counter.labels(
+                server=self.server_name,
+                feedback_type=feedback_type,
+            ).inc()
+            logger.debug(f"Recorded user feedback: {feedback_type}")
+
+    def set_learning_success_rate(self, rate: float) -> None:
+        """Set the current learning success rate.
+
+        Args:
+            rate: Success rate (0.0-1.0)
+        """
+        self._ensure_enabled()
+        if self._learning_success_rate_gauge:
+            self._learning_success_rate_gauge.labels(
+                server=self.server_name,
+            ).set(rate)
+            logger.debug(f"Set learning success rate: {rate:.2%}")
+
+    # ========================================================================
     # Utility Methods
     # ========================================================================
 
@@ -487,6 +649,11 @@ class GoalTeamMetrics:
             "active_teams_tracking": self._active_teams_gauge is not None,
             "duration_tracking": self._team_creation_histogram is not None,
             "confidence_tracking": self._parsing_confidence_histogram is not None,
+            "learning_outcomes_tracking": self._learning_outcomes_counter is not None,
+            "learning_recommendations_tracking": self._learning_recommendations_counter is not None,
+            "learning_feedback_tracking": self._learning_feedback_counter is not None,
+            "learning_success_rate_tracking": self._learning_success_rate_gauge is not None,
+            "learning_latency_tracking": self._learning_latency_histogram is not None,
         }
 
 
