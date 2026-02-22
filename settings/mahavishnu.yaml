@@ -146,7 +146,7 @@ terminal:
 
 # Goal-Driven Teams configuration
 goal_teams:
-  enabled: false  # Enable Goal-Driven Teams feature
+  enabled: true  # Master switch for Goal-Driven Teams feature
   goal_parsing:
     min_length: 10  # Minimum goal length in characters
     max_length: 2000  # Maximum goal length in characters
@@ -155,3 +155,15 @@ goal_teams:
     max_teams_per_user: 10  # Maximum active teams per user
     team_ttl_hours: 24  # Team time-to-live in hours (0 for no expiry)
     max_concurrent_executions: 5  # Maximum concurrent team executions
+  feature_flags:
+    # Core feature flags
+    mcp_tools_enabled: true  # Enable MCP tools for goal-driven teams
+    cli_commands_enabled: true  # Enable CLI commands for goal-driven teams
+    # Advanced feature flags
+    llm_fallback_enabled: true  # Enable LLM fallback for goal parsing
+    websocket_broadcasts_enabled: true  # Enable WebSocket broadcasts for team events
+    prometheus_metrics_enabled: true  # Enable Prometheus metrics for team monitoring
+    # Experimental features
+    learning_system_enabled: false  # Enable learning system (Phase 3)
+    auto_mode_selection_enabled: true  # Enable automatic mode selection
+    custom_skills_enabled: false  # Enable custom skills for team creation

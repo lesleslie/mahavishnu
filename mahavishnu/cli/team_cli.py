@@ -29,6 +29,7 @@ from rich.table import Table
 import typer
 
 from mahavishnu.core.errors import GoalParsingError, GoalTeamError
+from mahavishnu.core.feature_flags import is_feature_enabled
 from mahavishnu.engines.agno_teams.config import TeamConfig, TeamMode
 from mahavishnu.engines.goal_team_factory import (
     SKILL_MAPPING,
@@ -44,9 +45,30 @@ app = typer.Typer(
 console = Console()
 
 
+def _check_feature_flags() -> None:
+    """Check if Goal-Driven Teams CLI is enabled.
+
+    Raises:
+        typer.Exit: If the feature is disabled
+    """
+    if not is_feature_enabled("enabled"):
+        console.print("\n[yellow]Goal-Driven Teams feature is disabled.[/yellow]")
+        console.print("[dim]Enable it in settings/mahavishnu.yaml under goal_teams.enabled[/dim]")
+        raise typer.Exit(code=1)
+
+    if not is_feature_enabled("cli_commands_enabled"):
+        console.print("\n[yellow]Goal-Driven Teams CLI commands are disabled.[/yellow]")
+        console.print("[dim]Enable cli_commands_enabled in goal_teams.feature_flags[/dim]")
+        raise typer.Exit(code=1)
+
+
 def _get_factory() -> GoalDrivenTeamFactory:
     """Get or create the GoalDrivenTeamFactory instance."""
-    return GoalDrivenTeamFactory()
+    # Check if LLM fallback is enabled
+    use_llm_fallback = is_feature_enabled("llm_fallback_enabled")
+    return GoalDrivenTeamFactory(
+        llm_factory=None  # CLI doesn't have access to LLM factory context
+    )
 
 
 def _display_parsed_goal(parsed: ParsedGoal) -> None:
@@ -199,6 +221,9 @@ def create_team(
         $ mahavishnu team create -g "Write tests" --dry-run
         $ mahavishnu team create -g "Debug this issue" --run --task "Fix the login bug"
     """
+    # Check feature flags
+    _check_feature_flags()
+
     async def _create():
         try:
             factory = _get_factory()
@@ -281,6 +306,9 @@ def parse_goal_cmd(
         $ mahavishnu team parse "Review code for security issues"
         $ mahavishnu team parse "Build a REST API with tests" --verbose
     """
+    # Check feature flags
+    _check_feature_flags()
+
     async def _parse():
         try:
             factory = _get_factory()
@@ -320,6 +348,9 @@ def list_skills(
         $ mahavishnu team skills
         $ mahavishnu team skills --verbose
     """
+    # Check feature flags
+    _check_feature_flags()
+
     console.print("\n[bold cyan]Available Skills for Goal-Driven Teams[/bold cyan]\n")
 
     # Create skills table
@@ -375,6 +406,9 @@ def list_teams(
         $ mahavishnu team list
         $ mahavishnu team list --verbose
     """
+    # Check feature flags
+    _check_feature_flags()
+
     if not _active_teams:
         console.print("\n[yellow]No active teams found.[/yellow]")
         console.print("[dim]Create a team with: mahavishnu team create --goal \"your goal\"[/dim]")
@@ -410,6 +444,48 @@ def list_teams(
             console.print()
 
 
+@app.command("flags")
+def show_feature_flags() -> None:
+    """Show current feature flag status for Goal-Driven Teams.
+
+    Displays all feature flags and their current enabled/disabled status.
+
+    Example:
+        $ mahavishnu team flags
+    """
+    from mahavishnu.core.feature_flags import get_all_feature_flags
+
+    console.print("\n[bold cyan]Goal-Driven Teams Feature Flags[/bold cyan]\n")
+
+    flags = get_all_feature_flags()
+
+    # Create flags table
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Flag", style="cyan")
+    table.add_column("Status", style="white")
+    table.add_column("Description", style="dim")
+
+    descriptions = {
+        "enabled": "Master switch for Goal-Driven Teams",
+        "mcp_tools_enabled": "Enable MCP tools for team creation",
+        "cli_commands_enabled": "Enable CLI commands",
+        "llm_fallback_enabled": "Enable LLM fallback for goal parsing",
+        "websocket_broadcasts_enabled": "Enable WebSocket broadcasts",
+        "prometheus_metrics_enabled": "Enable Prometheus metrics",
+        "learning_system_enabled": "Enable learning system (Phase 3)",
+        "auto_mode_selection_enabled": "Enable automatic mode selection",
+        "custom_skills_enabled": "Enable custom skills",
+    }
+
+    for flag_name, is_enabled in flags.items():
+        status = "[green]enabled[/green]" if is_enabled else "[red]disabled[/red]"
+        description = descriptions.get(flag_name, "")
+        table.add_row(flag_name, status, description)
+
+    console.print(table)
+    console.print("\n[dim]Configure feature flags in settings/mahavishnu.yaml under goal_teams.feature_flags[/dim]")
+
+
 def add_team_commands(main_app: typer.Typer) -> None:
     """Add team commands to the main CLI app.
 
@@ -426,4 +502,5 @@ __all__ = [
     "parse_goal_cmd",
     "list_skills",
     "list_teams",
+    "show_feature_flags",
 ]

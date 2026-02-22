@@ -7,32 +7,37 @@ that need to be accessed across the application without explicit passing.
 Context Variables:
     - llm_factory: Factory for creating LLM instances
     - agno_adapter: Agno adapter instance for team execution
+    - websocket_server: WebSocket server for real-time event broadcasting
 
 Usage:
-    from mahavishnu.core.context import get_llm_factory, get_agno_adapter
+    from mahavishnu.core.context import get_llm_factory, get_agno_adapter, get_websocket_server
 
     # In application initialization
     from mahavishnu.core.context import set_app_context
-    set_app_context(llm_factory=my_factory, agno_adapter=my_adapter)
+    set_app_context(llm_factory=my_factory, agno_adapter=my_adapter, websocket_server=ws_server)
 
     # In any module
     llm_factory = get_llm_factory()
     agno_adapter = get_agno_adapter()
+    ws_server = get_websocket_server()
 
 Created: 2026-02-21
-Version: 1.0
-Related: Goal-Driven Teams Phase 1 foundation
+Version: 1.1
+Related: Goal-Driven Teams Phase 1 foundation, WebSocket broadcasting
 """
 
 from __future__ import annotations
 
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, Callable, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from .errors import ContextNotInitializedError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ..engines.agno_adapter import AgnoAdapter
+    from ..websocket.server import MahavishnuWebSocketServer
 
 
 @runtime_checkable
@@ -80,7 +85,10 @@ class LLMFactory(Protocol):
 
 # Context variables for dependency injection
 _llm_factory: ContextVar[LLMFactory | None] = ContextVar("llm_factory", default=None)
-_agno_adapter: ContextVar["AgnoAdapter | None"] = ContextVar("agno_adapter", default=None)
+_agno_adapter: ContextVar[AgnoAdapter | None] = ContextVar("agno_adapter", default=None)
+_websocket_server: ContextVar[MahavishnuWebSocketServer | None] = ContextVar(
+    "websocket_server", default=None
+)
 
 
 # Re-export ContextNotInitializedError from errors for convenience
@@ -111,7 +119,7 @@ def get_llm_factory() -> LLMFactory:
     return factory
 
 
-def get_agno_adapter() -> "AgnoAdapter":
+def get_agno_adapter() -> AgnoAdapter:
     """Get the Agno adapter from context.
 
     Returns:
@@ -135,9 +143,27 @@ def get_agno_adapter() -> "AgnoAdapter":
     return adapter
 
 
+def get_websocket_server() -> MahavishnuWebSocketServer | None:
+    """Get the WebSocket server from context.
+
+    Unlike other getters, this returns None if not set instead of raising,
+    because WebSocket is an optional feature that may not be configured.
+
+    Returns:
+        The MahavishnuWebSocketServer instance, or None if not configured
+
+    Example:
+        >>> ws_server = get_websocket_server()
+        >>> if ws_server:
+        ...     await ws_server.broadcast_team_created(...)
+    """
+    return _websocket_server.get()
+
+
 def set_app_context(
     llm_factory: LLMFactory | None = None,
-    agno_adapter: "AgnoAdapter | None" = None,
+    agno_adapter: AgnoAdapter | None = None,
+    websocket_server: MahavishnuWebSocketServer | None = None,
 ) -> None:
     """Set application context variables for dependency injection.
 
@@ -147,12 +173,14 @@ def set_app_context(
     Args:
         llm_factory: Optional LLM factory for creating LLM instances
         agno_adapter: Optional Agno adapter for team execution
+        websocket_server: Optional WebSocket server for real-time broadcasting
 
     Example:
         >>> from mahavishnu.core.context import set_app_context
         >>> set_app_context(
         ...     llm_factory=my_llm_factory,
         ...     agno_adapter=app.adapters.get("agno"),
+        ...     websocket_server=ws_server,
         ... )
     """
     if llm_factory is not None:
@@ -160,6 +188,9 @@ def set_app_context(
 
     if agno_adapter is not None:
         _agno_adapter.set(agno_adapter)
+
+    if websocket_server is not None:
+        _websocket_server.set(websocket_server)
 
 
 def clear_app_context() -> None:
@@ -173,6 +204,7 @@ def clear_app_context() -> None:
     """
     _llm_factory.set(None)
     _agno_adapter.set(None)
+    _websocket_server.set(None)
 
 
 def is_context_initialized() -> bool:
@@ -180,6 +212,7 @@ def is_context_initialized() -> bool:
 
     Returns:
         True if both llm_factory and agno_adapter are set
+        (websocket_server is optional)
 
     Example:
         >>> if is_context_initialized():
@@ -212,7 +245,7 @@ def require_llm_factory() -> Callable[[], LLMFactory]:
     return get_llm_factory
 
 
-def require_agno_adapter() -> Callable[[], "AgnoAdapter"]:
+def require_agno_adapter() -> Callable[[], AgnoAdapter]:
     """Decorator/marker that requires Agno adapter to be available.
 
     Use this as a type hint or documentation marker for functions
@@ -249,28 +282,35 @@ class AppContext:
     def __init__(
         self,
         llm_factory: LLMFactory | None = None,
-        agno_adapter: "AgnoAdapter | None" = None,
+        agno_adapter: AgnoAdapter | None = None,
+        websocket_server: MahavishnuWebSocketServer | None = None,
     ) -> None:
         """Initialize context manager.
 
         Args:
             llm_factory: Optional LLM factory
             agno_adapter: Optional Agno adapter
+            websocket_server: Optional WebSocket server
         """
         self._llm_factory = llm_factory
         self._agno_adapter = agno_adapter
+        self._websocket_server = websocket_server
         self._old_llm_factory: LLMFactory | None = None
-        self._old_agno_adapter: "AgnoAdapter | None" = None
+        self._old_agno_adapter: AgnoAdapter | None = None
+        self._old_websocket_server: MahavishnuWebSocketServer | None = None
 
-    def __enter__(self) -> "AppContext":
+    def __enter__(self) -> AppContext:
         """Enter context and set variables."""
         self._old_llm_factory = _llm_factory.get()
         self._old_agno_adapter = _agno_adapter.get()
+        self._old_websocket_server = _websocket_server.get()
 
         if self._llm_factory is not None:
             _llm_factory.set(self._llm_factory)
         if self._agno_adapter is not None:
             _agno_adapter.set(self._agno_adapter)
+        if self._websocket_server is not None:
+            _websocket_server.set(self._websocket_server)
 
         return self
 
@@ -278,6 +318,7 @@ class AppContext:
         """Exit context and restore previous values."""
         _llm_factory.set(self._old_llm_factory)
         _agno_adapter.set(self._old_agno_adapter)
+        _websocket_server.set(self._old_websocket_server)
 
 
 # ============================================================================
@@ -290,6 +331,7 @@ __all__ = [
     # Context getters
     "get_llm_factory",
     "get_agno_adapter",
+    "get_websocket_server",
     # Context setters
     "set_app_context",
     "clear_app_context",

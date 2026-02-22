@@ -111,6 +111,7 @@ class ErrorCode(str, Enum):
     GOAL_PARSING_FAILED = "MHV-465"
     GOAL_TOO_SHORT = "MHV-466"
     GOAL_TOO_LONG = "MHV-467"
+    FEATURE_DISABLED = "MHV-468"
 
     # Learning System errors (480-489)
     LEARNING_FEEDBACK_FAILED = "MHV-480"
@@ -190,6 +191,12 @@ class MahavishnuError(Exception):
             "Application context is not initialized",
             "Ensure MahavishnuApp has been created before using context-dependent functions",
             "Check that set_app_context() was called during initialization",
+        ],
+        ErrorCode.FEATURE_DISABLED: [
+            "The requested feature is not enabled",
+            "Check settings/mahavishnu.yaml under goal_teams.feature_flags",
+            "Enable the feature flag in configuration",
+            "Restart the application after changing configuration",
         ],
         ErrorCode.TASK_NOT_FOUND: [
             "Verify the task ID is correct",
@@ -969,6 +976,27 @@ class ContextNotInitializedError(MahavishnuError):
             "Ensure MahavishnuApp has been created and set_app_context() was called.",
             ErrorCode.CONTEXT_NOT_INITIALIZED,
             details={"context_name": context_name, **(details or {})},
+        )
+
+
+class FeatureDisabledError(MahavishnuError):
+    """
+    Error raised when a feature flag is disabled.
+
+    This error indicates that a requested feature is not enabled
+    in the configuration.
+    """
+
+    def __init__(
+        self,
+        feature_name: str,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(
+            f"Feature '{feature_name}' is disabled. "
+            "Enable it in settings/mahavishnu.yaml under goal_teams.feature_flags.",
+            ErrorCode.FEATURE_DISABLED,
+            details={"feature_name": feature_name, **(details or {})},
         )
 
 
