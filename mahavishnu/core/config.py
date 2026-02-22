@@ -1,7 +1,7 @@
 """Core configuration module for Mahavishnu using Oneiric patterns.
 
 This module provides type-safe configuration management using Pydantic models,
-following Oneiric's configuration loading patterns with layered configuration
+following Oneiric's configuration loading patterns with layered Configuration
 support (defaults -> committed YAML -> local YAML -> environment variables).
 
 Architecture:
@@ -1097,6 +1097,72 @@ class GoalTeamsLimitsConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class GoalTeamsFeatureFlags(BaseModel):
+    """Feature flags for Goal-Driven Teams.
+
+    These flags control access to various Goal-Driven Teams features
+    and can be configured via settings/mahavishnu.yaml.
+
+    Configuration can be set via:
+    1. settings/mahavishnu.yaml under goal_teams.feature_flags
+    2. settings/local.yaml
+    3. Environment variables: MAHAVISHNU_GOAL_TEAMS__FEATURE_FLAGS__MCP_TOOLS_ENABLED, etc.
+
+    Example YAML:
+        goal_teams:
+          enabled: true  # Master switch
+          feature_flags:
+            mcp_tools_enabled: true
+            cli_commands_enabled: true
+            llm_fallback_enabled: true
+            websocket_broadcasts_enabled: true
+            prometheus_metrics_enabled: true
+            learning_system_enabled: false
+            auto_mode_selection_enabled: true
+            custom_skills_enabled: false
+    """
+
+    # Core feature flags
+    mcp_tools_enabled: bool = Field(
+        default=True,
+        description="Enable MCP tools for goal-driven teams",
+    )
+    cli_commands_enabled: bool = Field(
+        default=True,
+        description="Enable CLI commands for goal-driven teams",
+    )
+
+    # Advanced feature flags
+    llm_fallback_enabled: bool = Field(
+        default=True,
+        description="Enable LLM fallback for goal parsing when pattern matching fails",
+    )
+    websocket_broadcasts_enabled: bool = Field(
+        default=True,
+        description="Enable WebSocket broadcasts for team events",
+    )
+    prometheus_metrics_enabled: bool = Field(
+        default=True,
+        description="Enable Prometheus metrics for team monitoring",
+    )
+
+    # Experimental features
+    learning_system_enabled: bool = Field(
+        default=False,
+        description="Enable learning system (Phase 3 feature)",
+    )
+    auto_mode_selection_enabled: bool = Field(
+        default=True,
+        description="Enable automatic mode selection based on goal analysis",
+    )
+    custom_skills_enabled: bool = Field(
+        default=False,
+        description="Enable custom skills for team creation",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
 class GoalTeamsConfig(BaseModel):
     """Goal-Driven Teams configuration.
 
@@ -1119,11 +1185,16 @@ class GoalTeamsConfig(BaseModel):
             max_teams_per_user: 10
             team_ttl_hours: 24
             max_concurrent_executions: 5
+          feature_flags:
+            mcp_tools_enabled: true
+            cli_commands_enabled: true
+            llm_fallback_enabled: true
 
     Example Environment Variables:
         MAHAVISHNU_GOAL_TEAMS__ENABLED=true
         MAHAVISHNU_GOAL_TEAMS__GOAL_PARSING__MIN_LENGTH=20
         MAHAVISHNU_GOAL_TEAMS__LIMITS__MAX_TEAMS_PER_USER=20
+        MAHAVISHNU_GOAL_TEAMS__FEATURE_FLAGS__MCP_TOOLS_ENABLED=true
     """
 
     enabled: bool = Field(
@@ -1139,6 +1210,11 @@ class GoalTeamsConfig(BaseModel):
     limits: GoalTeamsLimitsConfig = Field(
         default_factory=GoalTeamsLimitsConfig,
         description="Limits and quotas configuration",
+    )
+
+    feature_flags: GoalTeamsFeatureFlags = Field(
+        default_factory=GoalTeamsFeatureFlags,
+        description="Feature flags for controlling access to Goal-Driven Teams features",
     )
 
     model_config = {"extra": "forbid"}
@@ -1416,6 +1492,7 @@ __all__ = [
     # Goal-Driven Teams configuration
     "GoalParsingConfig",
     "GoalTeamsLimitsConfig",
+    "GoalTeamsFeatureFlags",
     "GoalTeamsConfig",
     "MahavishnuSettings",
 ]

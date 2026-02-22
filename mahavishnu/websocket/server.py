@@ -49,6 +49,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
     - Worker pool status changes
     - Task assignments and completions
     - System orchestration metrics
+    - Goal-driven team events (created, parsed, execution, errors)
 
     Security Features:
     - Token bucket rate limiting per connection (configurable)
@@ -60,6 +61,8 @@ class MahavishnuWebSocketServer(WebSocketServer):
     - workflow:{workflow_id} - Workflow-specific updates
     - pool:{pool_id} - Pool status updates
     - worker:{worker_id} - Worker-specific events
+    - goal-teams - Global goal-driven team events
+    - goal-teams:{user_id} - User-specific team events
     - global - System-wide orchestration events
 
     Attributes:
@@ -418,6 +421,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
         if channel.startswith("worker:"):
             return "worker:read" in permissions
 
+        if channel.startswith("goal-teams"):
+            return "team:read" in permissions
+
         # Default: deny
         return False
 
@@ -590,6 +596,221 @@ class MahavishnuWebSocketServer(WebSocketServer):
             room=f"pool:{pool_id}",
         )
         await self.broadcast_to_room(f"pool:{pool_id}", event)
+
+    # Broadcast methods for Goal-Driven Teams events
+
+    async def broadcast_team_created(
+        self,
+        team_id: str,
+        team_name: str,
+        goal: str,
+        mode: str,
+        user_id: str | None = None,
+    ) -> None:
+        """Broadcast when a new goal-driven team is created.
+
+        Args:
+            team_id: Unique team identifier
+            team_name: Human-readable team name
+            goal: The natural language goal that created this team
+            mode: Collaboration mode (coordinate, route, broadcast, collaborate)
+            user_id: Optional user ID for user-specific channel
+        """
+        event_data = {
+            "team_id": team_id,
+            "team_name": team_name,
+            "goal": goal,
+            "mode": mode,
+            "timestamp": self._get_timestamp(),
+        }
+
+        # Broadcast to global goal-teams channel
+        event = WebSocketProtocol.create_event(
+            "team.created",
+            event_data,
+            room="goal-teams",
+        )
+        await self.broadcast_to_room("goal-teams", event)
+
+        # Also broadcast to user-specific channel if user_id provided
+        if user_id:
+            user_room = f"goal-teams:{user_id}"
+            user_event = WebSocketProtocol.create_event(
+                "team.created",
+                event_data,
+                room=user_room,
+            )
+            await self.broadcast_to_room(user_room, user_event)
+
+    async def broadcast_team_parsed(
+        self,
+        goal: str,
+        intent: str,
+        skills: list[str],
+        confidence: float,
+        user_id: str | None = None,
+    ) -> None:
+        """Broadcast when a goal is parsed.
+
+        This event fires when goal parsing completes, showing how the
+        natural language goal was interpreted.
+
+        Args:
+            goal: The original natural language goal
+            intent: Parsed intent (review, build, test, fix, etc.)
+            skills: List of detected skills required
+            confidence: Parsing confidence score (0.0-1.0)
+            user_id: Optional user ID for user-specific channel
+        """
+        event_data = {
+            "goal": goal,
+            "intent": intent,
+            "skills": skills,
+            "confidence": round(confidence, 3),
+            "timestamp": self._get_timestamp(),
+        }
+
+        # Broadcast to global goal-teams channel
+        event = WebSocketProtocol.create_event(
+            "team.parsed",
+            event_data,
+            room="goal-teams",
+        )
+        await self.broadcast_to_room("goal-teams", event)
+
+        # Also broadcast to user-specific channel if user_id provided
+        if user_id:
+            user_room = f"goal-teams:{user_id}"
+            user_event = WebSocketProtocol.create_event(
+                "team.parsed",
+                event_data,
+                room=user_room,
+            )
+            await self.broadcast_to_room(user_room, user_event)
+
+    async def broadcast_team_execution_started(
+        self,
+        team_id: str,
+        task: str,
+        user_id: str | None = None,
+    ) -> None:
+        """Broadcast when team execution starts.
+
+        This event fires when auto_run begins executing a team.
+
+        Args:
+            team_id: Unique team identifier
+            task: The task being executed
+            user_id: Optional user ID for user-specific channel
+        """
+        event_data = {
+            "team_id": team_id,
+            "task": task[:200] if len(task) > 200 else task,  # Truncate long tasks
+            "timestamp": self._get_timestamp(),
+        }
+
+        # Broadcast to global goal-teams channel
+        event = WebSocketProtocol.create_event(
+            "team.execution_started",
+            event_data,
+            room="goal-teams",
+        )
+        await self.broadcast_to_room("goal-teams", event)
+
+        # Also broadcast to user-specific channel if user_id provided
+        if user_id:
+            user_room = f"goal-teams:{user_id}"
+            user_event = WebSocketProtocol.create_event(
+                "team.execution_started",
+                event_data,
+                room=user_room,
+            )
+            await self.broadcast_to_room(user_room, user_event)
+
+    async def broadcast_team_execution_completed(
+        self,
+        team_id: str,
+        success: bool,
+        duration_ms: float,
+        user_id: str | None = None,
+    ) -> None:
+        """Broadcast when team execution completes.
+
+        This event fires when auto_run finishes executing a team,
+        whether successfully or with errors.
+
+        Args:
+            team_id: Unique team identifier
+            success: Whether execution succeeded
+            duration_ms: Execution duration in milliseconds
+            user_id: Optional user ID for user-specific channel
+        """
+        event_data = {
+            "team_id": team_id,
+            "success": success,
+            "duration_ms": round(duration_ms, 2),
+            "timestamp": self._get_timestamp(),
+        }
+
+        # Broadcast to global goal-teams channel
+        event = WebSocketProtocol.create_event(
+            "team.execution_completed",
+            event_data,
+            room="goal-teams",
+        )
+        await self.broadcast_to_room("goal-teams", event)
+
+        # Also broadcast to user-specific channel if user_id provided
+        if user_id:
+            user_room = f"goal-teams:{user_id}"
+            user_event = WebSocketProtocol.create_event(
+                "team.execution_completed",
+                event_data,
+                room=user_room,
+            )
+            await self.broadcast_to_room(user_room, user_event)
+
+    async def broadcast_team_error(
+        self,
+        team_id: str,
+        error_code: str,
+        message: str,
+        user_id: str | None = None,
+    ) -> None:
+        """Broadcast when a team operation fails.
+
+        This event fires when team creation, parsing, or execution fails.
+
+        Args:
+            team_id: Unique team identifier (may be empty if creation failed)
+            error_code: Error code from ErrorCode enum
+            message: Human-readable error message
+            user_id: Optional user ID for user-specific channel
+        """
+        event_data = {
+            "team_id": team_id,
+            "error_code": error_code,
+            "message": message,
+            "timestamp": self._get_timestamp(),
+        }
+
+        # Broadcast to global goal-teams channel
+        event = WebSocketProtocol.create_event(
+            "team.error",
+            event_data,
+            room="goal-teams",
+        )
+        await self.broadcast_to_room("goal-teams", event)
+
+        # Also broadcast to user-specific channel if user_id provided
+        if user_id:
+            user_room = f"goal-teams:{user_id}"
+            user_event = WebSocketProtocol.create_event(
+                "team.error",
+                event_data,
+                room=user_room,
+            )
+            await self.broadcast_to_room(user_room, user_event)
 
     def _get_timestamp(self) -> str:
         """Get current ISO timestamp.
