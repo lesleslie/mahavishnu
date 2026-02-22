@@ -10,3 +10,10 @@
 # - session_buddy_tools: Session Buddy integration tools
 # - repository_messaging_tools: Inter-project messaging tools
 # - git_analytics: Git analytics and cross-project aggregation
+# - goal_team_tools: Goal-driven team creation and management tools
+
+from .goal_team_tools import register_goal_team_tools
+
+__all__ = [
+    "register_goal_team_tools",
+]

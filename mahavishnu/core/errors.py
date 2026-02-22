@@ -7,7 +7,7 @@ This module provides a structured error handling system with:
 - Structured error responses for API/MCP tools
 
 Created: 2026-02-18
-Version: 3.3
+Version: 3.4
 Related: 4-Agent Opus Review P0 issue - error code system
 """
 
@@ -26,7 +26,9 @@ class ErrorCode(str, Enum):
     - MHV-200 to MHV-299: Repository errors
     - MHV-300 to MHV-399: External integration errors
     - MHV-400 to MHV-449: Prefect/Orchestration errors
-    - MHV-450 to MHV-499: Agno/Multi-agent errors
+    - MHV-450 to MHV-479: Agno/Multi-agent errors
+    - MHV-460 to MHV-469: Goal-Driven Team errors
+    - MHV-480 to MHV-499: Learning System errors
 
     Each error code has:
     - A descriptive name
@@ -45,6 +47,7 @@ class ErrorCode(str, Enum):
     TIMEOUT_ERROR = "MHV-008"
     RESOURCE_NOT_FOUND = "MHV-009"
     OPERATION_CANCELLED = "MHV-010"
+    CONTEXT_NOT_INITIALIZED = "MHV-011"
 
     # Task errors (100-199)
     TASK_NOT_FOUND = "MHV-100"
@@ -91,13 +94,28 @@ class ErrorCode(str, Enum):
     ADAPTER_INITIALIZATION_ERROR = "MHV-411"
     WORKFLOW_EXECUTION_ERROR = "MHV-412"
 
-    # Agno/Multi-agent errors (450-499)
+    # Agno/Multi-agent errors (450-459)
     AGNO_AGENT_NOT_FOUND = "MHV-450"
     AGNO_TEAM_NOT_FOUND = "MHV-451"
     AGNO_LLM_PROVIDER_ERROR = "MHV-452"
     AGNO_TOOL_EXECUTION_ERROR = "MHV-453"
     AGNO_MEMORY_ERROR = "MHV-454"
     AGNO_STREAMING_ERROR = "MHV-455"
+
+    # Goal-Driven Team errors (460-469)
+    GOAL_TEAM_CREATION_FAILED = "MHV-460"
+    GOAL_TEAM_NOT_FOUND = "MHV-461"
+    GOAL_TEAM_EXECUTION_ERROR = "MHV-462"
+    GOAL_TEAM_TIMEOUT = "MHV-463"
+    GOAL_TEAM_LIMIT_EXCEEDED = "MHV-464"
+    GOAL_PARSING_FAILED = "MHV-465"
+    GOAL_TOO_SHORT = "MHV-466"
+    GOAL_TOO_LONG = "MHV-467"
+
+    # Learning System errors (480-489)
+    LEARNING_FEEDBACK_FAILED = "MHV-480"
+    LEARNING_STATE_ERROR = "MHV-481"
+    LEARNING_ADAPTATION_ERROR = "MHV-482"
 
 
 class MahavishnuError(Exception):
@@ -167,6 +185,11 @@ class MahavishnuError(Exception):
             "The operation was cancelled",
             "Check if timeout was reached",
             "Retry the operation if needed",
+        ],
+        ErrorCode.CONTEXT_NOT_INITIALIZED: [
+            "Application context is not initialized",
+            "Ensure MahavishnuApp has been created before using context-dependent functions",
+            "Check that set_app_context() was called during initialization",
         ],
         ErrorCode.TASK_NOT_FOUND: [
             "Verify the task ID is correct",
@@ -413,6 +436,74 @@ class MahavishnuError(Exception):
             "Check WebSocket connection status",
             "Verify streaming is enabled for agent",
             "Try non-streaming mode as fallback",
+        ],
+        # Goal-Driven Team error recovery guidance
+        ErrorCode.GOAL_TEAM_CREATION_FAILED: [
+            "Check that the goal is well-formed and specific",
+            "Verify team configuration in settings/goal_teams.yaml",
+            "Ensure required agents are available",
+            "Check logs for detailed error information",
+        ],
+        ErrorCode.GOAL_TEAM_NOT_FOUND: [
+            "Verify the team ID is correct",
+            "Check if the team has expired (TTL)",
+            "Use 'mahavishnu goal-teams list' to see active teams",
+            "Create a new team with 'mahavishnu goal-teams create'",
+        ],
+        ErrorCode.GOAL_TEAM_EXECUTION_ERROR: [
+            "Team execution encountered an error",
+            "Check agent logs for failure details",
+            "Verify all required tools are available",
+            "Ensure LLM provider is accessible",
+        ],
+        ErrorCode.GOAL_TEAM_TIMEOUT: [
+            "Team execution exceeded time limit",
+            "Consider simplifying the goal",
+            "Increase timeout in configuration",
+            "Check for agent deadlocks",
+        ],
+        ErrorCode.GOAL_TEAM_LIMIT_EXCEEDED: [
+            "Maximum number of teams per user reached",
+            "Delete unused teams with 'mahavishnu goal-teams delete'",
+            "Wait for team TTL expiration",
+            "Contact administrator to increase limit",
+        ],
+        ErrorCode.GOAL_PARSING_FAILED: [
+            "Could not parse the goal statement",
+            "Ensure goal is a clear, actionable statement",
+            "Avoid ambiguous or overly complex goals",
+            "Try breaking into smaller sub-goals",
+        ],
+        ErrorCode.GOAL_TOO_SHORT: [
+            "Goal is too short to be meaningful",
+            "Provide more context and detail",
+            f"Minimum goal length is configured in settings",
+            "Aim for at least 10 characters",
+        ],
+        ErrorCode.GOAL_TOO_LONG: [
+            "Goal exceeds maximum length",
+            "Simplify and focus the goal statement",
+            "Break into multiple smaller goals",
+            "Remove unnecessary details",
+        ],
+        # Learning System error recovery guidance
+        ErrorCode.LEARNING_FEEDBACK_FAILED: [
+            "Failed to record learning feedback",
+            "Check database connectivity",
+            "Verify feedback format is valid",
+            "Try again or use batch feedback",
+        ],
+        ErrorCode.LEARNING_STATE_ERROR: [
+            "Learning state is corrupted or unavailable",
+            "Reset learning state for the team",
+            "Check storage backend health",
+            "Review logs for state corruption details",
+        ],
+        ErrorCode.LEARNING_ADAPTATION_ERROR: [
+            "Failed to adapt team based on learning",
+            "Check learning data quality",
+            "Verify adaptation parameters are valid",
+            "Review agent capability constraints",
         ],
     }
 
@@ -800,6 +891,87 @@ class AgnoError(MahavishnuError):
         super().__init__(message, error_code, details=details)
 
 
+class GoalTeamError(MahavishnuError):
+    """
+    Goal-Driven Team error.
+
+    Used for team creation, execution, and goal parsing failures.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        error_code: ErrorCode = ErrorCode.GOAL_TEAM_CREATION_FAILED,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(message, error_code, details=details)
+
+
+class GoalTeamNotFoundError(GoalTeamError):
+    """Goal-Driven Team not found error."""
+
+    def __init__(self, team_id: str, details: dict | None = None) -> None:
+        super().__init__(
+            f"Goal-Driven Team not found: {team_id}",
+            ErrorCode.GOAL_TEAM_NOT_FOUND,
+            details={"team_id": team_id, **(details or {})},
+        )
+
+
+class GoalParsingError(GoalTeamError):
+    """Goal parsing/validation error."""
+
+    def __init__(
+        self,
+        goal: str,
+        reason: str,
+        error_code: ErrorCode = ErrorCode.GOAL_PARSING_FAILED,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(
+            f"Goal parsing failed: {reason}",
+            error_code,
+            details={"goal": goal[:100], "reason": reason, **(details or {})},
+        )
+
+
+class LearningSystemError(MahavishnuError):
+    """
+    Learning System error.
+
+    Used for feedback collection, state management, and adaptation failures.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        error_code: ErrorCode = ErrorCode.LEARNING_FEEDBACK_FAILED,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(message, error_code, details=details)
+
+
+class ContextNotInitializedError(MahavishnuError):
+    """
+    Error raised when application context is accessed before initialization.
+
+    This error indicates that dependency injection context variables
+    (llm_factory, agno_adapter) have not been set up.
+    """
+
+    def __init__(
+        self,
+        context_name: str,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(
+            f"Application context not initialized: '{context_name}' is not available. "
+            "Ensure MahavishnuApp has been created and set_app_context() was called.",
+            ErrorCode.CONTEXT_NOT_INITIALIZED,
+            details={"context_name": context_name, **(details or {})},
+        )
+
+
 # ============================================================================
 # Error Helper Functions
 # ============================================================================
@@ -1161,4 +1333,84 @@ class ErrorTemplates:
             step_name=step_name,
             adapter_name=adapter_name,
             details=details,
+        )
+
+    @staticmethod
+    def goal_team_creation_failed(
+        goal: str,
+        reason: str,
+        details: dict | None = None,
+    ) -> GoalTeamError:
+        """Create a goal team creation error.
+
+        Args:
+            goal: The goal that failed to create a team
+            reason: Reason for failure
+            details: Additional context
+
+        Returns:
+            GoalTeamError with recovery steps
+        """
+        return GoalTeamError(
+            message=f"Failed to create goal-driven team: {reason}",
+            error_code=ErrorCode.GOAL_TEAM_CREATION_FAILED,
+            details={"goal": goal[:100], "reason": reason, **(details or {})},
+        )
+
+    @staticmethod
+    def goal_too_short(goal: str, min_length: int) -> GoalParsingError:
+        """Create a goal too short error.
+
+        Args:
+            goal: The goal that is too short
+            min_length: Minimum required length
+
+        Returns:
+            GoalParsingError with recovery steps
+        """
+        return GoalParsingError(
+            goal=goal,
+            reason=f"Goal must be at least {min_length} characters (got {len(goal)})",
+            error_code=ErrorCode.GOAL_TOO_SHORT,
+            details={"actual_length": len(goal), "min_length": min_length},
+        )
+
+    @staticmethod
+    def goal_too_long(goal: str, max_length: int) -> GoalParsingError:
+        """Create a goal too long error.
+
+        Args:
+            goal: The goal that is too long
+            max_length: Maximum allowed length
+
+        Returns:
+            GoalParsingError with recovery steps
+        """
+        return GoalParsingError(
+            goal=goal,
+            reason=f"Goal must be at most {max_length} characters (got {len(goal)})",
+            error_code=ErrorCode.GOAL_TOO_LONG,
+            details={"actual_length": len(goal), "max_length": max_length},
+        )
+
+    @staticmethod
+    def learning_feedback_failed(
+        team_id: str,
+        feedback_type: str,
+        reason: str,
+    ) -> LearningSystemError:
+        """Create a learning feedback error.
+
+        Args:
+            team_id: The team ID
+            feedback_type: Type of feedback that failed
+            reason: Reason for failure
+
+        Returns:
+            LearningSystemError with recovery steps
+        """
+        return LearningSystemError(
+            message=f"Failed to record {feedback_type} feedback for team {team_id}: {reason}",
+            error_code=ErrorCode.LEARNING_FEEDBACK_FAILED,
+            details={"team_id": team_id, "feedback_type": feedback_type, "reason": reason},
         )

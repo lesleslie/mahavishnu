@@ -12,8 +12,8 @@ def test_default_config_values():
     assert config.repos_path == "settings/ecosystem.yaml"
     assert config.max_concurrent_workflows == 10
     assert config.adapters.prefect_enabled is True
-    assert config.adapters.llamaindex_enabled is False  # Disabled in settings/mahavishnu.yaml
-    assert config.adapters.agno_enabled is True
+    assert config.adapters.llamaindex_enabled is True  # Enabled in settings/mahavishnu.yaml
+    assert config.adapters.agno_enabled is True  # Enabled in settings/mahavishnu.yaml
     assert config.qc.enabled is True
     assert config.qc.min_score == 80
     assert config.session.enabled is True

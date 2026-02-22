@@ -28,6 +28,7 @@
 - **Multi-Pool Orchestration** - Horizontal scaling across local, delegated, and cloud workers
 - **Cross-Repository Coordination** - Track issues, todos, and dependencies across your entire ecosystem
 - **Headless AI Workers** - Execute tasks in parallel using Claude Code and Qwen workers
+- **Goal-Driven Teams** - Create intelligent multi-agent teams from natural language goals
 - **OpenTelemetry Integration** - Native OTel trace ingestion with semantic search using DuckDB
 - **Repository Messaging** - Async message passing between repositories for event-driven coordination
 - **Role-Based Organization** - Intelligent repository taxonomy for workflow routing
@@ -35,21 +36,22 @@
 
 ## Quick Links
 
-### 📚 **Essential Reading**
+### Essential Reading
 
 - **[Getting Started Guide](docs/GETTING_STARTED.md)** - New to Mahavishnu? Start here!
 - **[MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md)** - Complete API documentation for all 49 MCP tools
 - **[Architecture Documentation](ARCHITECTURE.md)** - System architecture and design decisions
 
-### 🎨 **Visual Learning (Diagrams & Charts)**
+### Visual Learning (Diagrams & Charts)
 
-- **[Visual Guide](docs/VISUAL_GUIDE.md)** - 🎯 **START HERE** - 50+ diagrams covering architecture, workflows, security, testing, and more!
+- **[Visual Guide](docs/VISUAL_GUIDE.md)** - START HERE - 50+ diagrams covering architecture, workflows, security, testing, and more!
 - **[Workflow Diagrams](docs/WORKFLOW_DIAGRAMS.md)** - Common operational procedures with step-by-step visualizations
 - **[Architecture Diagram](ARCHITECTURE.md#architecture-diagram)** - Interactive Mermaid diagram of system components
 
-### 🏗️ **Detailed Guides**
+### Detailed Guides
 
 - **[Pool Architecture](docs/POOL_ARCHITECTURE.md)** - Multi-pool orchestration details
+- **[Goal-Driven Teams](docs/GOAL_DRIVEN_TEAMS.md)** - Create teams from natural language goals
 - **[Admin Shell Guide](docs/ADMIN_SHELL.md)** - Interactive debugging and monitoring
 
 ## Table of Contents
@@ -58,6 +60,7 @@
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Core Concepts](#core-concepts)
+- [Goal-Driven Teams](#goal-driven-teams)
 - [MCP Tools](#mcp-tools)
 - [Configuration](#configuration)
 - [Development](#development)
@@ -71,42 +74,42 @@
 Mahavishnu follows a modular, async-first architecture with these core components:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Mahavishnu                              │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌──────────────┐  ┌────────────────────┐   │
-│  │    CLI      │  │ MCP Server   │  │    Admin Shell     │   │
-│  │  (Typer)    │  │  (FastMCP)   │  │   (IPython)        │   │
-│  └──────┬──────┘  └──────┬───────┘  └─────────┬──────────┘   │
-│         │                │                     │              │
-│         └────────────────┴─────────────────────┘              │
-│                           │                                    │
-│         ┌─────────────────┴──────────────────┐                │
-│         │      MahavishnuApp (Core)          │                │
-│         │  - Config (Oneiric patterns)       │                │
-│         │  - Adapter Manager                 │                │
-│         │  - Pool Manager                    │                │
-│         │  - Worker Manager                  │                │
-│         └─────────────────┬──────────────────┘                │
-│                           │                                    │
-│  ┌────────────────────────┼─────────────────────────────┐    │
-│  │                        │                             │    │
-│  ▼                        ▼                             ▼    │
-│ ┌──────────┐         ┌──────────┐                ┌─────────┐│
-│ │  Pools   │         │ Workers  │                │Coord    ││
-│ │ - Local  │         │ - Qwen   │                │- Issues ││
-│ │ - Deleg  │         │ - Claude │                │- Todos  ││
-│ │ - K8s    │         │ - Cont   │                │- Deps   ││
-│ └──────────┘         └──────────┘                └─────────┘│
-│                                                           │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │              Adapters (Pluggable)                 │  │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────────┐   │  │
-│  │  │LlamaIndex│  │ Prefect  │  │     Agno     │   │  │
-│  │  │  (RAG)   │  │(Flows)   │  │  (Agents)    │   │  │
-│  │  └──────────┘  └──────────┘  └──────────────┘   │  │
-│  └───────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------+
+|                         Mahavishnu                              |
++-----------------------------------------------------------------+
+|  +-------------+  +--------------+  +--------------------+      |
+|  |    CLI      |  | MCP Server   |  |    Admin Shell     |      |
+|  |  (Typer)    |  |  (FastMCP)   |  |   (IPython)        |      |
+|  +------+------+  +------+-------+  +---------+----------+      |
+|         |                |                    |                 |
+|         +----------------+--------------------+                 |
+|                           |                                     |
+|         +-----------------+------------------+                  |
+|         |      MahavishnuApp (Core)          |                 |
+|         |  - Config (Oneiric patterns)       |                 |
+|         |  - Adapter Manager                 |                 |
+|         |  - Pool Manager                    |                 |
+|         |  - Worker Manager                  |                 |
+|         +-----------------+------------------+                  |
+|                           |                                     |
+|  +------------------------+-----------------------------+      |
+|  |                        |                             |      |
+|  v                        v                             v      |
+| +----------+         +----------+                +---------+   |
+| |  Pools   |         | Workers  |                |Coord    |   |
+| | - Local  |         | - Qwen   |                |- Issues |   |
+| | - Deleg  |         | - Claude |                |- Todos  |   |
+| | - K8s    |         | - Cont   |                |- Deps   |   |
+| +----------+         +----------+                +---------+   |
+|                                                                |
+|  +-------------------------------------------------------+     |
+|  |              Adapters (Pluggable)                     |     |
+|  |  +----------+  +----------+  +----------------+       |     |
+|  |  |LlamaIndex|  | Prefect  |  |     Agno       |       |     |
+|  |  |  (RAG)   |  |(Flows)   |  |  (Agents)     |       |     |
+|  |  +----------+  +----------+  +----------------+       |     |
+|  +-------------------------------------------------------+     |
++-----------------------------------------------------------------+
 ```
 
 ### Core Components
@@ -119,7 +122,7 @@ Mahavishnu follows a modular, async-first architecture with these core component
 
 **Configuration System**
 
-- Oneiric-based layered configuration (defaults → YAML → env vars)
+- Oneiric-based layered configuration (defaults -> YAML -> env vars)
 - Type-safe Pydantic models with validation
 - Environment variable overrides via `MAHAVISHNU_{GROUP}__{FIELD}`
 
@@ -287,6 +290,57 @@ Mahavishnu uses a role-based taxonomy to organize repositories:
 - **terminal-qwen** - Headless Qwen CLI execution
 - **terminal-claude** - Headless Claude Code CLI execution
 - **container-executor** - Containerized task execution (Phase 3)
+
+## Goal-Driven Teams
+
+Create intelligent multi-agent teams from natural language goals. The `GoalDrivenTeamFactory` converts your task description into a fully-configured team with appropriate agents, roles, and collaboration modes.
+
+```python
+from mahavishnu.engines.goal_team_factory import GoalDrivenTeamFactory
+
+# Create factory
+factory = GoalDrivenTeamFactory()
+
+# Parse a natural language goal
+parsed = await factory.parse_goal("Review this code for security vulnerabilities")
+# -> intent: "review", skills: ["security", "quality"], confidence: 0.85
+
+# Create team configuration
+team_config = await factory.create_team_from_goal(parsed.raw_goal)
+# -> Team with coordinator, security_specialist, quality_specialist
+```
+
+### Quick Example
+
+```python
+from mahavishnu.engines.agno_adapter import AgnoAdapter
+from mahavishnu.core.config import MahavishnuSettings
+
+# Initialize
+settings = MahavishnuSettings()
+adapter = AgnoAdapter(config=settings)
+await adapter.initialize()
+
+# Create team from goal
+team_id = await adapter.create_team_from_goal(
+    "Review this code for security vulnerabilities"
+)
+
+# Run the team
+result = await adapter.run_team(team_id, "Analyze the auth module")
+```
+
+### CLI Usage
+
+```bash
+# Parse a goal to see detected intent and skills
+mahavishnu goal parse "Build a REST API with authentication"
+
+# Create and run a team from a goal
+mahavishnu goal run "Review code for security issues" --repo ./myproject
+```
+
+See **[Goal-Driven Teams Documentation](docs/GOAL_DRIVEN_TEAMS.md)** for complete guide with examples, skill reference, and collaboration modes.
 
 ## MCP Tools
 
@@ -459,22 +513,29 @@ crackerjack run
 
 ```
 mahavishnu/
-├── mahavishnu/
-│   ├── core/           # Core application logic
-│   │   ├── app.py      # MahavishnuApp main class
-│   │   ├── config.py   # Configuration models
-│   │   └── adapters/   # Adapter implementations
-│   ├── mcp/            # MCP server and tools
-│   │   ├── server_core.py
-│   │   └── tools/      # MCP tool implementations
-│   ├── pools/          # Pool management
-│   ├── workers/        # Worker orchestration
-│   └── cli.py          # CLI commands
-├── tests/              # Test suite
-├── docs/               # Documentation
-└── settings/           # Configuration files
-    ├── mahavishnu.yaml
-    └── repos.yaml
++-- mahavishnu/
+|   +-- core/           # Core application logic
+|   |   +-- app.py      # MahavishnuApp main class
+|   |   +-- config.py   # Configuration models
+|   |   +-- adapters/   # Adapter implementations
+|   +-- engines/        # Engine implementations
+|   |   +-- agno_adapter.py       # Agno multi-agent adapter
+|   |   +-- goal_team_factory.py  # Goal-driven team creation
+|   |   +-- agno_teams/           # Team configuration and management
+|   |   +-- agno_tools/           # Native Agno tools
+|   +-- mcp/            # MCP server and tools
+|   |   +-- server_core.py
+|   |   +-- tools/      # MCP tool implementations
+|   +-- pools/          # Pool management
+|   +-- workers/        # Worker orchestration
+|   +-- cli.py          # CLI commands
++-- tests/              # Test suite
++-- docs/               # Documentation
++-- examples/           # Example scripts
+|   +-- goal_driven_team_tutorial.py  # Goal-driven teams tutorial
++-- settings/           # Configuration files
+    +-- mahavishnu.yaml
+    +-- repos.yaml
 ```
 
 ## Documentation
@@ -483,6 +544,7 @@ mahavishnu/
 - **[MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md)** - Complete API documentation
 - **[Architecture](ARCHITECTURE.md)** - System architecture and evolution
 - **[Pool Architecture](docs/POOL_ARCHITECTURE.md)** - Multi-pool orchestration details
+- **[Goal-Driven Teams](docs/GOAL_DRIVEN_TEAMS.md)** - Create teams from natural language goals
 - **[Admin Shell Guide](docs/ADMIN_SHELL.md)** - Interactive debugging
 - **[Production Deployment](docs/PRODUCTION_DEPLOYMENT_GUIDE.md)** - Production readiness
 - **[MCP Tools Specification](docs/MCP_TOOLS_SPECIFICATION.md)** - Detailed tool specs
@@ -556,7 +618,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **mcp-common** - Shared MCP types and contracts
 - **Crackerjack** - Quality control and testing
 
-______________________________________________________________________
+---
 
 **Made with** :heart: **by the Mahavishnu team**
 

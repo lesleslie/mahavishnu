@@ -25,6 +25,7 @@ from .opensearch_integration import OpenSearchIntegration
 from .permissions import Permission, RBACManager
 from .resilience import ErrorRecoveryManager, ResiliencePatterns
 from .workflow_state import WorkflowState
+from .context import set_app_context
 
 if TYPE_CHECKING:
     from ..terminal.manager import TerminalManager
@@ -136,6 +137,10 @@ class MahavishnuApp:
         self.adapters: dict[str, OrchestratorAdapter] = {}
         self._load_repos()
         self._initialize_adapters()
+
+        # Set application context for dependency injection
+        self._set_app_context()
+
 
         # Initialize concurrency control
         self.semaphore = Semaphore(self.config.max_concurrent_workflows)
@@ -628,6 +633,88 @@ class MahavishnuApp:
                             "error_type": type(e).__name__,
                         },
                     ) from e
+
+    def _set_app_context(self) -> None:
+        """Set application context for dependency injection.
+
+        This method populates ContextVar-based dependency injection for:
+        - llm_factory: Factory for creating LLM instances
+        - agno_adapter: Agno adapter for team execution
+
+        Called automatically during MahavishnuApp initialization.
+        Context is available via get_llm_factory() and get_agno_adapter().
+        """
+        # Set Agno adapter if available
+        agno_adapter = self.adapters.get("agno")
+
+        # Create LLM factory from Agno configuration
+        llm_factory = None
+        if agno_adapter is not None:
+            # Use Agno's LLM configuration as the default factory
+            from .context import LLMFactory
+
+            class DefaultLLMFactory:
+                """Default LLM factory using Agno configuration."""
+
+                def __init__(self, config):
+                    self._config = config
+
+                def create_llm(
+                    self,
+                    provider: str | None = None,
+                    model_id: str | None = None,
+                    **kwargs,
+                ):
+                    """Create an LLM instance using Agno's configuration."""
+                    from agno.llm import LLM
+
+                    # Use provided values or fall back to config defaults
+                    actual_provider = provider or self._config.agno.llm.provider.value
+                    actual_model = model_id or self._config.agno.llm.model_id
+
+                    # Build LLM with configuration
+                    llm_kwargs = {
+                        "provider": actual_provider,
+                        "model": actual_model,
+                    }
+
+                    # Add provider-specific configuration
+                    if actual_provider == "ollama":
+                        llm_kwargs["base_url"] = self._config.agno.llm.base_url
+                    elif actual_provider in ("anthropic", "openai"):
+                        # API key should be set via environment variable
+                        pass
+
+                    # Add any additional kwargs
+                    llm_kwargs.update(kwargs)
+
+                    return LLM(**llm_kwargs)
+
+                def get_default_provider(self) -> str:
+                    """Get default provider name."""
+                    return self._config.agno.llm.provider.value
+
+                def get_default_model(self) -> str:
+                    """Get default model ID."""
+                    return self._config.agno.llm.model_id
+
+            llm_factory = DefaultLLMFactory(self.config)
+
+        # Set application context
+        set_app_context(
+            llm_factory=llm_factory,
+            agno_adapter=agno_adapter,
+        )
+
+        # Log context initialization
+        logger = __import__("logging").getLogger(__name__)
+        if llm_factory or agno_adapter:
+            logger.info(
+                f"Application context initialized: "
+                f"llm_factory={'available' if llm_factory else 'not available'}, "
+                f"agno_adapter={'available' if agno_adapter else 'not available'}"
+            )
+
 
     def get_repos(
         self, tag: str | None = None, role: str | None = None, user_id: str | None = None
