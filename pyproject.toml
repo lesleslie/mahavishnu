@@ -22,7 +22,7 @@ dependencies = [
     "oneiric>=0.3.12",
     # Shared infrastructure (mcp-common)
     # Condition 1: Add mcp-common dependency for code graph and messaging types
-    "mcp-common>=0.4.0",
+    "mcp-common[treesitter]>=0.9.4",  # Tree-sitter integration for code analysis
     # MCP server
     "fastmcp>=3.0.0b1",  # Compatible with crackerjack (pre-release for httpx compatibility)
     "uvicorn[standard]>=0.38.0",  # Websocket support for MCP
@@ -76,6 +76,19 @@ dependencies = [
 
 [project.scripts]
 mahavishnu = "mahavishnu._main_cli:app"
+
+# =============================================================================
+# ADAPTER ENTRY POINTS - Plugin Discovery
+# =============================================================================
+# These entry points enable dynamic adapter discovery via the HybridAdapterRegistry.
+# Adapters are discovered at runtime using Python's entry point mechanism.
+# Security: Only adapters matching patterns in adapter_allowlist_patterns are loaded.
+# =============================================================================
+
+[project.entry-points."mahavishnu.adapters"]
+prefect = "mahavishnu.engines.prefect_adapter:prefect_adapter_entries"
+agno = "mahavishnu.engines.agno_adapter:agno_adapter_entries"
+worker = "mahavishnu.core.adapters.worker:worker_adapter_entries"
 
 # =============================================================================
 # ORCHESTRATION ADAPTERS - Core Components

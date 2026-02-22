@@ -1772,4 +1772,40 @@ __all__ = [
     # Re-export registry for convenience
     "FlowRegistry",
     "get_flow_registry",
+    # Entry point function
+    "prefect_adapter_entries",
 ]
+
+
+# =============================================================================
+# Entry Point for Hybrid Adapter Registry
+# =============================================================================
+
+
+def prefect_adapter_entries() -> list[dict[str, Any]]:
+    """Entry point for Prefect adapter registration.
+
+    This function is called by the HybridAdapterRegistry during
+    discovery to register the Prefect adapter.
+
+    Returns:
+        List of adapter metadata dictionaries
+    """
+    return [
+        {
+            "category": "orchestration",
+            "provider": "prefect",
+            "factory_path": "mahavishnu.engines.prefect_adapter:PrefectAdapter",
+            "description": "Prefect 3.x workflow orchestration engine",
+            "capabilities": [
+                "deploy_flows",
+                "monitor_execution",
+                "schedule_workflows",
+                "deployment_management",
+                "flow_run_management",
+                "work_pool_management",
+            ],
+            "priority": 90,
+            "domain": "orchestration",
+        }
+    ]

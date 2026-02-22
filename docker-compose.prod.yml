@@ -1,0 +1,157 @@
+# Docker Compose Production Override
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This file overrides development defaults with production settings:
+# - Secrets management via environment variables
+# - Redis AUTH enabled
+# - PostgreSQL backup service
+# - Prometheus exporters for monitoring
+# - Network segmentation
+# - Increased resource limits
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+
+services:
+  postgres:
+    environment:
+      # Use secret file instead of plain text password
+      POSTGRES_PASSWORD: ""
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    # Increased limits for production
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 16G
+        reservations:
+          cpus: '4'
+          memory: 8G
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=2GB
+      -c effective_cache_size=6GB
+      -c maintenance_work_mem=512MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=64MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=524kB
+      -c min_wal_size=2GB
+      -c max_wal_size=8GB
+      -c shared_preload_libraries='vector'
+      -c ssl=on
+    networks:
+      - database
+
+  redis:
+    secrets:
+      - redis_password
+    # Increased limits for production
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 6gb
+      --maxmemory-policy allkeys-lru
+      --requirepass_file /run/secrets/redis_password
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    networks:
+      - database
+
+  # PostgreSQL backup service (ENABLED in production)
+  backup:
+    image: prodrigestivill/postgres-backup-local
+    container_name: mahavishnu-backup
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: mahavishnu
+      POSTGRES_USER: mahavishnu
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 30
+      BACKUP_KEEP_WEEKS: 12
+      BACKUP_KEEP_MONTHS: 12
+    volumes:
+      - ./backups:/backups
+    secrets:
+      - postgres_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - database
+
+  # Prometheus PostgreSQL exporter
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: mahavishnu-postgres-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://mahavishnu:@postgres:5432/mahavishnu?sslmode=disable"
+      DATA_SOURCE_USER: mahavishnu
+      DATA_SOURCE_PASS_FILE: /run/secrets/postgres_password
+    ports:
+      - "9187:9187"
+    secrets:
+      - postgres_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - database
+      - monitoring
+
+  # Prometheus Redis exporter
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: mahavishnu-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+    ports:
+      - "9121:9121"
+    secrets:
+      - redis_password
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - database
+      - monitoring
+
+  # Adminer should NOT be deployed to production
+  # Remove by setting replicas to 0
+  adminer:
+    deploy:
+      replicas: 0
+
+networks:
+  database:
+    driver: bridge
+    internal: true
+  monitoring:
+    driver: bridge

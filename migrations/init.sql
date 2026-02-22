@@ -258,6 +258,162 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ============================================================================
+-- OpenTelemetry Trace Storage with pgvector
+-- ============================================================================
+
+-- OTel traces table for semantic search
+CREATE TABLE IF NOT EXISTS traces (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    trace_id VARCHAR(255) NOT NULL,
+    span_id VARCHAR(255) NOT NULL,
+    parent_span_id VARCHAR(255),
+    service_name VARCHAR(255) NOT NULL,
+    operation_name VARCHAR(500) NOT NULL,
+    kind VARCHAR(50) NOT NULL,
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_time TIMESTAMP WITH TIME ZONE,
+    duration_ns BIGINT,
+    status_code VARCHAR(50),
+    status_message TEXT,
+    attributes JSONB DEFAULT '{}',
+    resource_attributes JSONB DEFAULT '{}',
+    events JSONB DEFAULT '[]',
+    links JSONB DEFAULT '[]',
+
+    -- Embedding for semantic search
+    embedding VECTOR(384),
+    embedding_model VARCHAR(100) DEFAULT 'all-MiniLM-L6-v2',
+    embedding_text TEXT,  -- The text that was embedded
+
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+
+    -- Constraints
+    CONSTRAINT unique_span UNIQUE (trace_id, span_id)
+);
+
+-- Indexes for common queries
+CREATE INDEX IF NOT EXISTS idx_traces_trace_id ON traces(trace_id);
+CREATE INDEX IF NOT EXISTS idx_traces_service ON traces(service_name);
+CREATE INDEX IF NOT EXISTS idx_traces_operation ON traces(operation_name);
+CREATE INDEX IF NOT EXISTS idx_traces_start_time ON traces(start_time DESC);
+CREATE INDEX IF NOT EXISTS idx_traces_status ON traces(status_code);
+CREATE INDEX IF NOT EXISTS idx_traces_attributes ON traces USING GIN(attributes);
+CREATE INDEX IF NOT EXISTS idx_traces_resource ON traces USING GIN(resource_attributes);
+
+-- Full-text search on operation names and attributes
+CREATE INDEX IF NOT EXISTS idx_traces_search ON traces
+    USING GIN(to_tsvector('english', COALESCE(operation_name, '') || ' ' || COALESCE(embedding_text, '')));
+
+-- HNSW index for vector similarity search (10K+ QPS performance)
+-- This is the key index for fast approximate nearest neighbor search
+-- m: Number of bi-directional links (higher = better recall, more memory)
+-- ef_construction: Search depth during build (higher = better index, slower build)
+CREATE INDEX IF NOT EXISTS idx_traces_embedding_hnsw ON traces
+    USING hnsw(embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
+
+-- IVFFlat alternative (faster builds, slightly lower recall)
+-- Uncomment if HNSW memory usage is too high:
+-- CREATE INDEX IF NOT EXISTS idx_traces_embedding_ivf ON traces
+--     USING ivfflat(embedding vector_cosine_ops)
+--     WITH (lists = 100);
+
+-- Trigger for updated_at
+CREATE TRIGGER update_traces_updated_at
+    BEFORE UPDATE ON traces
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Function to find similar traces using vector similarity
+CREATE OR REPLACE FUNCTION find_similar_traces(
+    query_embedding VECTOR,
+    match_threshold FLOAT DEFAULT 0.7,
+    match_count INTEGER DEFAULT 10,
+    service_filter VARCHAR DEFAULT NULL,
+    ef_search INTEGER DEFAULT 40
+)
+RETURNS TABLE (
+    trace_id UUID,
+    service_name VARCHAR(255),
+    operation_name VARCHAR(500),
+    similarity FLOAT,
+    start_time TIMESTAMP WITH TIME ZONE
+) AS $$
+BEGIN
+    -- Set ef_search for this query (higher = better recall, slower)
+    EXECUTE format('SET LOCAL hnsw.ef_search = %s', ef_search);
+
+    RETURN QUERY
+    SELECT
+        t.id::UUID,
+        t.service_name,
+        t.operation_name,
+        1 - (t.embedding <=> query_embedding) AS similarity,
+        t.start_time
+    FROM traces t
+    WHERE
+        t.embedding IS NOT NULL
+        AND 1 - (t.embedding <=> query_embedding) > match_threshold
+        AND (service_filter IS NULL OR t.service_name = service_filter)
+    ORDER BY t.embedding <=> query_embedding
+    LIMIT match_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to search traces with combined full-text and vector search
+CREATE OR REPLACE FUNCTION search_traces_hybrid(
+    search_query TEXT,
+    query_embedding VECTOR DEFAULT NULL,
+    text_weight FLOAT DEFAULT 0.3,
+    vector_weight FLOAT DEFAULT 0.7,
+    match_count INTEGER DEFAULT 10
+)
+RETURNS TABLE (
+    id UUID,
+    service_name VARCHAR(255),
+    operation_name VARCHAR(500),
+    text_rank FLOAT,
+    vector_similarity FLOAT,
+    combined_score FLOAT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        t.id,
+        t.service_name,
+        t.operation_name,
+        COALESCE(ts_rank(
+            to_tsvector('english', COALESCE(t.operation_name, '') || ' ' || COALESCE(t.embedding_text, '')),
+            plainto_tsquery('english', search_query)
+        ), 0) AS text_rank,
+        CASE
+            WHEN query_embedding IS NOT NULL AND t.embedding IS NOT NULL
+            THEN 1 - (t.embedding <=> query_embedding)
+            ELSE 0
+        END AS vector_similarity,
+        (
+            text_weight * COALESCE(ts_rank(
+                to_tsvector('english', COALESCE(t.operation_name, '') || ' ' || COALESCE(t.embedding_text, '')),
+                plainto_tsquery('english', search_query)
+            ), 0)
+            +
+            vector_weight * CASE
+                WHEN query_embedding IS NOT NULL AND t.embedding IS NOT NULL
+                THEN 1 - (t.embedding <=> query_embedding)
+                ELSE 0
+            END
+        ) AS combined_score
+    FROM traces t
+    WHERE
+        to_tsvector('english', COALESCE(t.operation_name, '') || ' ' || COALESCE(t.embedding_text, ''))
+        @@ plainto_tsquery('english', search_query)
+        OR (query_embedding IS NOT NULL AND t.embedding IS NOT NULL)
+    ORDER BY combined_score DESC
+    LIMIT match_count;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Grant permissions (adjust as needed for your security model)
 -- GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO mahavishnu;
 -- GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO mahavishnu;

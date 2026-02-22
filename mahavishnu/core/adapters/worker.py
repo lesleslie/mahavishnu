@@ -179,3 +179,38 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             "debug_mode": health.get("debug_mode", False),
             "details": health,
         }
+
+
+# =============================================================================
+# Entry Point for Hybrid Adapter Registry
+# =============================================================================
+
+
+def worker_adapter_entries() -> list[dict[str, Any]]:
+    """Entry point for Worker adapter registration.
+
+    This function is called by the HybridAdapterRegistry during
+    discovery to register the Worker adapter.
+
+    Returns:
+        List of adapter metadata dictionaries
+    """
+    return [
+        {
+            "category": "orchestration",
+            "provider": "worker",
+            "factory_path": "mahavishnu.core.adapters.worker:WorkerOrchestratorAdapter",
+            "description": "Worker-based task execution for AI workers",
+            "capabilities": [
+                "task_execution",
+                "worker_pool",
+                "parallel_execution",
+                "terminal_workers",
+            ],
+            "priority": 75,
+            "domain": "orchestration",
+        }
+    ]
+
+
+__all__ = ["WorkerOrchestratorAdapter", "worker_adapter_entries"]

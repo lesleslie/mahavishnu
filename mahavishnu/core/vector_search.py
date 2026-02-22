@@ -30,6 +30,27 @@ class SearchType(Enum):
     VECTOR = "vector"
     FTS = "fts"  # Full-text search
     HYBRID = "hybrid"
+    HYDE = "hyde"  # Hypothetical Document Embeddings
+
+
+class HNSWConfig(BaseModel):
+    """HNSW index configuration with recommended defaults.
+
+    Based on pgvector best practices and review findings:
+    - m=24: More bi-directional links for better recall
+    - ef_construction=64: Build-time search depth
+    - ef_search=64: Query-time search depth (set via SET hnsw.ef_search)
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    m: int = Field(default=24, ge=4, le=100, description="Number of bi-directional links")
+    ef_construction: int = Field(
+        default=64, ge=8, le=512, description="Build-time dynamic candidate list size"
+    )
+    ef_search: int = Field(
+        default=64, ge=1, le=1000, description="Query-time search depth"
+    )
 
 
 @dataclass
@@ -69,34 +90,39 @@ class VectorSearchError(MahavishnuError):
 class VectorIndex:
     """Manages pgvector index operations."""
 
-    def __init__(self, db: Database) -> None:
+    def __init__(self, db: Database, config: HNSWConfig | None = None) -> None:
         self.db = db
+        self.config = config or HNSWConfig()
 
     async def create_hnsw_index(
         self,
         table: str = "task_embeddings",
         column: str = "embedding",
-        m: int = 16,
-        ef_construction: int = 64,
+        m: int | None = None,
+        ef_construction: int | None = None,
     ) -> None:
         """Create HNSW index for fast approximate nearest neighbor search.
 
         Args:
             table: Table name containing embeddings
             column: Column name for vector data
-            m: Number of bi-directional links (default 16)
-            ef_construction: Size of dynamic candidate list (default 64)
+            m: Number of bi-directional links (default from config: 24)
+            ef_construction: Size of dynamic candidate list (default from config: 64)
         """
         index_name = f"{table}_{column}_hnsw_idx"
+
+        # Use config defaults if not specified
+        m_val = m if m is not None else self.config.m
+        ef_val = ef_construction if ef_construction is not None else self.config.ef_construction
 
         await self.db.execute(f"""
             CREATE INDEX IF NOT EXISTS {index_name}
             ON {table}
             USING hnsw ({column} vector_cosine_ops)
-            WITH (m = {m}, ef_construction = {ef_construction});
+            WITH (m = {m_val}, ef_construction = {ef_val});
         """)
 
-        logger.info(f"Created HNSW index {index_name} on {table}.{column}")
+        logger.info(f"Created HNSW index {index_name} on {table}.{column} (m={m_val}, ef_construction={ef_val})")
 
     async def create_ivfflat_index(
         self,
@@ -280,6 +306,8 @@ class VectorSearch:
             return await self._vector_search(query)
         elif query.search_type == SearchType.FTS:
             return await self._fts_search(query)
+        elif query.search_type == SearchType.HYDE:
+            return await self._hyde_search(query)
         else:
             return await self._hybrid_search(query)
 
@@ -453,6 +481,116 @@ class VectorSearch:
             )
             for row in rows
         ]
+
+    async def _hyde_search(self, query: SearchQuery) -> list[SearchResult]:
+        """HyDE (Hypothetical Document Embeddings) search.
+
+        Generates a hypothetical document that would answer the query,
+        then searches for documents similar to that hypothetical document.
+        This helps bridge vocabulary mismatch between query and documents.
+
+        Reference: "Precise Zero-Shot Dense Retrieval without Relevance Labels" (Gao et al., 2022)
+        """
+        if not self.embedding_service:
+            raise VectorSearchError(
+                "Embedding service required for HyDE search",
+                query=query.query,
+            )
+
+        # Generate hypothetical document
+        hypothetical_doc = self._generate_hypothetical_document(query.query)
+
+        # Embed the hypothetical document instead of the query
+        embedding_result = await self.embedding_service.embed([hypothetical_doc])
+        hyde_embedding = embedding_result.embeddings[0]
+
+        # Search using the hypothetical document embedding
+        sql = """
+            SELECT
+                e.task_id,
+                t.title,
+                t.repository,
+                1 - (e.embedding <=> $1::vector) as similarity,
+                e.content,
+                e.metadata
+            FROM task_embeddings e
+            JOIN tasks t ON t.id = e.task_id
+            WHERE 1 - (e.embedding <=> $1::vector) >= $2
+        """
+        params: list[Any] = [hyde_embedding, query.threshold]
+        param_idx = 3
+
+        if query.repository:
+            sql += f" AND t.repository = ${param_idx}"
+            params.append(query.repository)
+            param_idx += 1
+
+        sql += f" ORDER BY similarity DESC LIMIT ${param_idx}"
+        params.append(query.limit)
+
+        rows = await self.db.fetch(sql, *params)
+
+        return [
+            SearchResult(
+                task_id=row["task_id"],
+                title=row["title"],
+                repository=row["repository"],
+                similarity=float(row["similarity"]),
+                content=row["content"] if query.include_content else None,
+                metadata=row["metadata"] or {},
+            )
+            for row in rows
+        ]
+
+    def _generate_hypothetical_document(self, query: str) -> str:
+        """Generate a hypothetical document that would answer the query.
+
+        This is a template-based approach. For production, consider using
+        an LLM to generate more relevant hypothetical documents.
+
+        Args:
+            query: The user's query
+
+        Returns:
+            A hypothetical document text
+        """
+        # Simple template-based approach
+        # In production, this would call an LLM to generate a relevant document
+        query_lower = query.lower()
+
+        # Detect query type and generate appropriate template
+        if query_lower.startswith(("how to", "how do", "how can")):
+            template = (
+                f"This document explains {query.lower()}. "
+                f"The process involves several steps. First, you need to understand the context. "
+                f"Then, follow the implementation guidelines. "
+                f"Here is a detailed explanation of {query.lower()} "
+                f"with code examples and best practices."
+            )
+        elif query_lower.startswith(("what is", "what are", "explain")):
+            template = (
+                f"Definition and explanation of {query.lower()}. "
+                f"This concept is important in software development. "
+                f"The key aspects include architecture, implementation, and testing. "
+                f"Here we describe {query.lower()} in detail with examples."
+            )
+        elif query_lower.startswith(("why", "compare", "difference")):
+            template = (
+                f"Analysis of {query.lower()}. "
+                f"There are several factors to consider. "
+                f"The comparison shows trade-offs between different approaches. "
+                f"This document provides a comprehensive comparison of the options."
+            )
+        else:
+            # Generic template
+            template = (
+                f"Documentation about {query.lower()}. "
+                f"This covers the main aspects and provides implementation details. "
+                f"Code examples and usage patterns are included. "
+                f"Best practices and common pitfalls are discussed."
+            )
+
+        return template
 
     async def find_similar(
         self,

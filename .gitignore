@@ -177,3 +177,7 @@ data/
 .cache/
 .cache/mahavishnu/
 
+
+# Production secrets (never commit)
+secrets/
+*.txt

@@ -1388,4 +1388,40 @@ __all__ = [
     "NativeToolsRegistry",
     "AgentRunResult",
     "TeamRunResult",
+    # Entry point function
+    "agno_adapter_entries",
 ]
+
+
+# =============================================================================
+# Entry Point for Hybrid Adapter Registry
+# =============================================================================
+
+
+def agno_adapter_entries() -> list[dict[str, Any]]:
+    """Entry point for Agno adapter registration.
+
+    This function is called by the HybridAdapterRegistry during
+    discovery to register the Agno adapter.
+
+    Returns:
+        List of adapter metadata dictionaries
+    """
+    return [
+        {
+            "category": "orchestration",
+            "provider": "agno",
+            "factory_path": "mahavishnu.engines.agno_adapter:AgnoAdapter",
+            "description": "Agno multi-agent AI orchestration engine",
+            "capabilities": [
+                "multi_agent",
+                "tool_use",
+                "team_coordination",
+                "mcp_tools",
+                "native_tools",
+                "memory_management",
+            ],
+            "priority": 85,
+            "domain": "orchestration",
+        }
+    ]
