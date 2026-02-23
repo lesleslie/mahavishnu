@@ -52,6 +52,22 @@ from mahavishnu.core.statistical_router import StatisticalRouter, get_statistica
 from mahavishnu.core.cost_optimizer import CostOptimizer, get_cost_optimizer
 from mahavishnu.core.routing_metrics import RoutingMetrics, get_routing_metrics
 
+# Import capability routing types (optional - for hybrid registry)
+try:
+    from mahavishnu.core.task_requirements import (
+        TaskRequirements,
+        RoutingDecision,
+        ResolutionCache,
+        TASK_CAPABILITY_REQUIREMENTS,
+    )
+    CAPABILITY_ROUTING_AVAILABLE = True
+except ImportError:
+    CAPABILITY_ROUTING_AVAILABLE = False
+    TaskRequirements = None  # type: ignore[misc,assignment]
+    RoutingDecision = None  # type: ignore[misc,assignment]
+    ResolutionCache = None  # type: ignore[misc,assignment]
+    TASK_CAPABILITY_REQUIREMENTS = {}  # type: ignore[misc]
+
 logger = logging.getLogger(__name__)
 
 
@@ -69,6 +85,178 @@ class RouterMode(str, Enum):
     STATISTICAL = "statistical"  # Use success rates and latency scores
     COST_OPTIMIZED = "cost_optimized"  # Use cost optimization and budgets
     ADAPTIVE = "adaptive"  # Switch strategies based on performance
+    CAPABILITY = "capability"  # Use capability-based routing (hybrid registry)
+
+
+class CapabilityRouter:
+    """Route tasks based on adapter capabilities, not hardcoded mappings.
+
+    This router uses the HybridAdapterRegistry to find adapters that match
+    task requirements based on capabilities. It replaces the hardcoded
+    TASK_TYPE_ROUTING dictionary with dynamic capability-based resolution.
+
+    Features:
+    - Task type → required capabilities mapping
+    - Dynamic adapter discovery based on capabilities
+    - Resolution caching for performance
+    - Fallback chains for graceful degradation
+    - Integration with HybridAdapterRegistry
+
+    Example:
+        >>> router = CapabilityRouter(registry)
+        >>> decision = await router.route(TaskType.AI_TASK)
+        >>> print(decision.adapter_name)  # "agno" or "worker"
+    """
+
+    # Task type → required capabilities mapping
+    TASK_CAPABILITY_REQUIREMENTS: dict[TaskType, list[str]] = {
+        TaskType.RAG_QUERY: ["rag", "vector_search"],
+        TaskType.AI_TASK: ["multi_agent", "tool_use"],
+        TaskType.WORKFLOW: ["deploy_flows", "monitor_execution"],
+    }
+
+    def __init__(
+        self,
+        registry: "HybridAdapterRegistry | None" = None,
+        cache_ttl_seconds: int = 300,
+    ):
+        """Initialize CapabilityRouter.
+
+        Args:
+            registry: HybridAdapterRegistry for adapter discovery
+            cache_ttl_seconds: TTL for resolution cache
+        """
+        self.registry = registry
+        self._cache: ResolutionCache | None = None
+
+        if CAPABILITY_ROUTING_AVAILABLE and ResolutionCache is not None:
+            self._cache = ResolutionCache(ttl_seconds=cache_ttl_seconds)
+
+        logger.info(
+            f"CapabilityRouter initialized: "
+            f"registry={'provided' if registry else 'none'}, "
+            f"cache_enabled={self._cache is not None}"
+        )
+
+    async def route(
+        self,
+        task_type: TaskType,
+        additional_capabilities: list[str] | None = None,
+        domain: str = "orchestration",
+    ) -> "RoutingDecision | dict[str, Any]":
+        """Find best adapter based on task requirements.
+
+        Args:
+            task_type: Type of task to route
+            additional_capabilities: Extra capabilities beyond task defaults
+            domain: Domain for adapter resolution
+
+        Returns:
+            RoutingDecision with selected adapter, or dict with error
+        """
+        # Check cache first
+        cache_key = f"{domain}:{task_type.value}:{additional_capabilities or []}"
+        if self._cache:
+            cached = self._cache.get(cache_key)
+            if cached:
+                logger.debug(f"Cache hit for {cache_key}")
+                return cached
+
+        # Get required capabilities for task type
+        required_caps = list(self.TASK_CAPABILITY_REQUIREMENTS.get(task_type, []))
+        if additional_capabilities:
+            required_caps.extend(additional_capabilities)
+
+        # If no registry available, return fallback
+        if not self.registry:
+            return {
+                "success": False,
+                "error": "No adapter registry configured",
+                "task_type": task_type.value,
+                "required_capabilities": required_caps,
+            }
+
+        # Find adapters matching capabilities
+        import time
+
+        start_time = time.time()
+
+        try:
+            matching_adapters = await self.registry.find_by_capabilities(required_caps)
+
+            if not matching_adapters:
+                return {
+                    "success": False,
+                    "error": f"No adapter found with capabilities: {required_caps}",
+                    "task_type": task_type.value,
+                    "required_capabilities": required_caps,
+                }
+
+            # Select best adapter (highest priority)
+            best_adapter = max(matching_adapters, key=lambda m: m.priority)
+            resolution_time_ms = (time.time() - start_time) * 1000
+
+            # Create routing decision
+            if CAPABILITY_ROUTING_AVAILABLE and RoutingDecision is not None:
+                decision = RoutingDecision(
+                    adapter_name=best_adapter.adapter_id,
+                    adapter=None,  # Lazy-loaded by registry
+                    matched_capabilities=[
+                        cap for cap in required_caps
+                        if cap in best_adapter.capabilities
+                    ],
+                    resolution_time_ms=resolution_time_ms,
+                    fallback_used=False,
+                    explanation=f"Selected {best_adapter.adapter_id} based on capabilities: {required_caps}",
+                )
+
+                # Cache the decision
+                if self._cache:
+                    self._cache.set(cache_key, decision)
+
+                return decision
+            else:
+                return {
+                    "success": True,
+                    "adapter": best_adapter.adapter_id,
+                    "task_type": task_type.value,
+                    "matched_capabilities": [
+                        cap for cap in required_caps
+                        if cap in best_adapter.capabilities
+                    ],
+                    "resolution_time_ms": resolution_time_ms,
+                }
+
+        except Exception as e:
+            logger.error(f"Capability routing failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "task_type": task_type.value,
+                "required_capabilities": required_caps,
+            }
+
+    def invalidate_cache(self) -> None:
+        """Clear the resolution cache."""
+        if self._cache:
+            self._cache.invalidate()
+            logger.info("CapabilityRouter cache invalidated")
+
+    def get_cache_stats(self) -> dict[str, Any]:
+        """Get cache statistics."""
+        if self._cache:
+            return self._cache.get_stats()
+        return {"enabled": False}
+
+    def set_registry(self, registry: "HybridAdapterRegistry") -> None:
+        """Set or update the adapter registry.
+
+        Args:
+            registry: HybridAdapterRegistry instance
+        """
+        self.registry = registry
+        self.invalidate_cache()
+        logger.info("CapabilityRouter registry updated")
 
 
 class TaskRouter:
