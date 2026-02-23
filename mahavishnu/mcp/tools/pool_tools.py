@@ -63,7 +63,7 @@ def register_pool_tools(
             print(f"Pool ID: {result['pool_id']}")
             ```
         """
-        from ..pools.base import PoolConfig
+        from mahavishnu.pools.base import PoolConfig
 
         config = PoolConfig(
             name=name,
@@ -159,7 +159,7 @@ def register_pool_tools(
             print(f"Executed on pool: {result['pool_id']}")
             ```
         """
-        from ..pools.manager import PoolSelector
+        from mahavishnu.pools.manager import PoolSelector
 
         task = {
             "prompt": prompt,
@@ -394,7 +394,7 @@ def register_pool_tools(
             ```
         """
         try:
-            from ..pools.memory_aggregator import MemoryAggregator
+            from mahavishnu.pools.memory_aggregator import MemoryAggregator
 
             aggregator = MemoryAggregator()
             results = await aggregator.cross_pool_search(

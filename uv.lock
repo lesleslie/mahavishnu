@@ -2127,18 +2127,6 @@ wheels = [
 ]
 
 [[package]]
-name = "jsonmerge"
-version = "1.9.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "jsonschema" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/37/9f/959b3191324d831494b81ec06cfaeb11017858fc59cd9de9c6bd757ef29e/jsonmerge-1.9.2.tar.gz", hash = "sha256:c43757e0180b0e19b7ae4c130ad42a07cc580c31912f61f4823e8eaf2fa394a3", size = 34717, upload-time = "2023-07-19T08:10:07.51Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/71/c2/1032d0dbc2152c45f3d1e582a72e68f41898de9665202392d9400dfa329d/jsonmerge-1.9.2-py3-none-any.whl", hash = "sha256:cab93ee7763fb51a4a09bbdab2eacf499ffb208ab94247ae86acea3e0e823b05", size = 19367, upload-time = "2023-07-19T08:10:06.144Z" },
-]
-
-[[package]]
 name = "jsonpatch"
 version = "1.33"
 source = { registry = "https://pypi.org/simple" }
@@ -2480,7 +2468,6 @@ dependencies = [
     { name = "gitpython" },
     { name = "ipython" },
     { name = "iterm2" },
-    { name = "jsonmerge" },
     { name = "mcp-common" },
     { name = "oneiric" },
     { name = "opentelemetry-api" },
@@ -2499,7 +2486,6 @@ dependencies = [
     { name = "tomli" },
     { name = "typer" },
     { name = "uvicorn", extra = ["standard"] },
-    { name = "watchdog" },
 ]
 
 [package.optional-dependencies]
@@ -2620,7 +2606,6 @@ requires-dist = [
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.148.13" },
     { name = "ipython", specifier = ">=8.0.0" },
     { name = "iterm2", specifier = ">=2.13" },
-    { name = "jsonmerge", specifier = ">=1.9.0" },
     { name = "mahavishnu", extras = ["prefect", "agno", "dev"], marker = "extra == 'all'" },
     { name = "mahavishnu", extras = ["prefect", "agno", "dev", "ingestion"], marker = "extra == 'core'" },
     { name = "mcp-common", extras = ["treesitter"], specifier = ">=0.9.4" },
@@ -2654,7 +2639,6 @@ requires-dist = [
     { name = "tomli", specifier = ">=2.2.1" },
     { name = "typer", specifier = ">=0.20.1" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.38.0" },
-    { name = "watchdog", specifier = ">=5.0.0" },
     { name = "zensical", marker = "extra == 'dev'", specifier = ">=0.0.19" },
 ]
 provides-extras = ["dev", "all", "core", "prefect", "agno", "ollama", "ingestion"]

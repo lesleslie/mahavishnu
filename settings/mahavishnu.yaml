@@ -17,7 +17,7 @@ max_concurrent_workflows: 10
 # Adapter configuration
 adapters:
   prefect_enabled: true  # High-level orchestration with dynamic flows
-  llamaindex_enabled: true  # RAG pipelines for ingesting repos/docs, embedding with Ollama
+  llamaindex_enabled: false  # Disabled due to httpx version conflict with fastmcp
   agno_enabled: true  # Fast, scalable single/multi-agents with memory and tools
 
 # LLM configuration for LlamaIndex and Agno
@@ -192,7 +192,7 @@ oneiric_mcp:
   grpc_host: "localhost"
   grpc_port: 8681
   use_tls: false  # Enable TLS in production
-  cache_ttl: 300  # Adapter metadata cache TTL
+  cache_ttl_sec: 300  # Adapter metadata cache TTL
 
 # Feature flags for hybrid registry
 feature_flags:
