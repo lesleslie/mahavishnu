@@ -25,9 +25,9 @@ Mahavishnu is part of the **Bodai Ecosystem** - a collection of interconnected c
 
 Mahavishnu is a multi-engine orchestration platform that provides a unified interface for managing workflows across multiple repositories. It currently provides:
 
-- LlamaIndex adapter for RAG pipelines (fully implemented with Ollama embeddings)
-- Prefect adapter stub (framework skeleton, no actual orchestration yet)
-- Agno adapter stub (framework skeleton, no actual agent execution yet)
+- **Prefect adapter** - High-level orchestration with dynamic flows, deployment CRUD, schedules
+- **LlamaIndex adapter** - RAG pipelines with Ollama embeddings (re-enabled 2026-02-23 with 0.14.x)
+- **Agno adapter** - Multi-agent teams with MCP tools, Ollama/Claude/OpenAI support
 - **Multi-pool orchestration** for horizontal scaling across local, delegated, and cloud workers
 - **WebSocket infrastructure** for real-time workflow monitoring and coordination
 - **Content ingestion** system for blogs, webpages, and books
@@ -646,7 +646,7 @@ The `examples/` directory contains runnable examples for key features:
 
 ## Important Implementation Notes
 
-1. **LlamaIndex is the only production-ready adapter** - Prefect and Agno are stubs
+1. **All adapters are production-ready** - Prefect, LlamaIndex (0.14.x), and Agno are fully implemented
 2. **WebSocket servers run on separate ports**:
    - Mahavishnu: 8690 (orchestration events)
    - Pool events: 8691 (pool status updates)
@@ -658,6 +658,7 @@ The `examples/` directory contains runnable examples for key features:
 4. **All CLI sub-commands are modular** - Each has its own file in `cli/` or matching module
 5. **Authentication is multi-provider** - Claude Code, Qwen, or custom JWT
 6. **Configuration is layered** - Oneiric loads from defaults → YAML → env vars
+7. **iTerm2 adapter limitation** - The iTerm2 Python API is designed for standalone scripts, not embedding in existing async apps. Use mcpretentious or mock adapters for pool management.
 
 ## Key File Locations
 

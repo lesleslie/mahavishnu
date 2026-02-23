@@ -33,9 +33,24 @@ from mahavishnu.engines.prefect_adapter import (
 
 @pytest.fixture
 def mock_config():
-    """Create mock configuration."""
+    """Create mock configuration (generic mock for simple tests)."""
     config = MagicMock()
     return config
+
+
+@pytest.fixture
+def prefect_config():
+    """Create a real PrefectConfig for adapter tests that need proper config."""
+    from mahavishnu.core.config import PrefectConfig
+
+    return PrefectConfig(
+        enabled=True,
+        api_url="http://localhost:4200",
+        api_key=None,  # No API key needed for local testing
+        work_pool="default",
+        timeout_seconds=300,
+        max_retries=3,
+    )
 
 
 @pytest.fixture
@@ -153,19 +168,22 @@ def mock_qc_checker():
 # ============================================================================
 
 
-def test_prefect_adapter_initialization(mock_config):
+def test_prefect_adapter_initialization(prefect_config):
     """Test Prefect adapter initialization."""
-    adapter = PrefectAdapter(config=mock_config)
+    adapter = PrefectAdapter(config=prefect_config)
 
     assert adapter.config is not None
-    assert adapter.config == mock_config
+    assert adapter.config == prefect_config
 
 
 def test_prefect_adapter_initialization_with_none_config():
-    """Test Prefect adapter initialization with None config."""
+    """Test Prefect adapter initialization with None config creates defaults."""
     adapter = PrefectAdapter(config=None)
 
-    assert adapter.config is None
+    # Adapter creates default config when None is passed (intentional design)
+    assert adapter.config is not None
+    assert adapter.config.api_url == "http://localhost:4200"
+    assert adapter.config.work_pool == "default"
 
 
 # ============================================================================
@@ -324,9 +342,9 @@ async def test_process_repositories_flow_concurrent(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_adapter_execute_code_sweep(mock_config, sample_repo_path):
+async def test_adapter_execute_code_sweep(prefect_config, sample_repo_path):
     """Test adapter execute method for code sweep."""
-    adapter = PrefectAdapter(config=mock_config)
+    adapter = PrefectAdapter(config=prefect_config)
 
     # Mock Prefect client
     mock_flow_run = MagicMock()
@@ -360,9 +378,9 @@ async def test_adapter_execute_code_sweep(mock_config, sample_repo_path):
 
 
 @pytest.mark.asyncio
-async def test_adapter_execute_multiple_repos(mock_config, tmp_path):
+async def test_adapter_execute_multiple_repos(prefect_config, tmp_path):
     """Test adapter execute with multiple repositories."""
-    adapter = PrefectAdapter(config=mock_config)
+    adapter = PrefectAdapter(config=prefect_config)
 
     repos = [str(tmp_path / f"repo{i}") for i in range(3)]
     for repo in repos:
@@ -398,9 +416,9 @@ async def test_adapter_execute_multiple_repos(mock_config, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_adapter_execute_with_failures(mock_config, tmp_path):
+async def test_adapter_execute_with_failures(prefect_config, tmp_path):
     """Test adapter execute handles partial failures."""
-    adapter = PrefectAdapter(config=mock_config)
+    adapter = PrefectAdapter(config=prefect_config)
 
     repos = [str(tmp_path / f"repo{i}") for i in range(3)]
     for repo in repos:
@@ -449,9 +467,9 @@ async def test_adapter_execute_with_failures(mock_config, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_adapter_execute_flow_failure(mock_config, sample_repo_path):
+async def test_adapter_execute_flow_failure(prefect_config, sample_repo_path):
     """Test adapter execute handles flow failure."""
-    adapter = PrefectAdapter(config=mock_config)
+    adapter = PrefectAdapter(config=prefect_config)
 
     # Mock Prefect client with failed flow
     mock_flow_run = MagicMock()
@@ -476,9 +494,9 @@ async def test_adapter_execute_flow_failure(mock_config, sample_repo_path):
 
 
 @pytest.mark.asyncio
-async def test_adapter_execute_exception_handling(mock_config, sample_repo_path):
+async def test_adapter_execute_exception_handling(prefect_config, sample_repo_path):
     """Test adapter execute handles exceptions gracefully."""
-    adapter = PrefectAdapter(config=mock_config)
+    adapter = PrefectAdapter(config=prefect_config)
 
     # Mock Prefect client that raises exception
     mock_client = AsyncMock()
@@ -501,9 +519,9 @@ async def test_adapter_execute_exception_handling(mock_config, sample_repo_path)
 
 
 @pytest.mark.asyncio
-async def test_execute_retry_on_transient_failure(mock_config, sample_repo_path):
+async def test_execute_retry_on_transient_failure(prefect_config, sample_repo_path):
     """Test that execute retries on transient failures."""
-    adapter = PrefectAdapter(config=mock_config)
+    adapter = PrefectAdapter(config=prefect_config)
 
     # Mock Prefect client that fails then succeeds
     mock_flow_run = MagicMock()
@@ -549,9 +567,9 @@ async def test_execute_retry_on_transient_failure(mock_config, sample_repo_path)
 
 
 @pytest.mark.asyncio
-async def test_get_health_healthy(mock_config):
+async def test_get_health_healthy(prefect_config):
     """Test health check returns healthy status."""
-    adapter = PrefectAdapter(config=mock_config)
+    adapter = PrefectAdapter(config=prefect_config)
 
     health = await adapter.get_health()
 
@@ -562,9 +580,9 @@ async def test_get_health_healthy(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_get_health_includes_prefect_details(mock_config):
+async def test_get_health_includes_prefect_details(prefect_config):
     """Test health check includes Prefect-specific details."""
-    adapter = PrefectAdapter(config=mock_config)
+    adapter = PrefectAdapter(config=prefect_config)
 
     health = await adapter.get_health()
 
@@ -590,9 +608,9 @@ async def test_get_health_handles_exception():
 
 
 @pytest.mark.asyncio
-async def test_flow_run_id_tracking(mock_config, sample_repo_path):
+async def test_flow_run_id_tracking(prefect_config, sample_repo_path):
     """Test that flow run ID is tracked and returned."""
-    adapter = PrefectAdapter(config=mock_config)
+    adapter = PrefectAdapter(config=prefect_config)
 
     mock_flow_run = MagicMock()
     mock_flow_run.id = "unique-flow-run-id-12345"
@@ -623,9 +641,9 @@ async def test_flow_run_id_tracking(mock_config, sample_repo_path):
 
 
 @pytest.mark.asyncio
-async def test_flow_run_url_generation(mock_config, sample_repo_path):
+async def test_flow_run_url_generation(prefect_config, sample_repo_path):
     """Test that flow run URL is generated correctly."""
-    adapter = PrefectAdapter(config=mock_config)
+    adapter = PrefectAdapter(config=prefect_config)
 
     mock_flow_run = MagicMock()
     mock_flow_run.id = "test-flow-id"
@@ -662,9 +680,9 @@ async def test_flow_run_url_generation(mock_config, sample_repo_path):
 
 
 @pytest.mark.asyncio
-async def test_execute_with_empty_repo_list(mock_config):
+async def test_execute_with_empty_repo_list(prefect_config):
     """Test executing with empty repository list."""
-    adapter = PrefectAdapter(config=mock_config)
+    adapter = PrefectAdapter(config=prefect_config)
 
     # Mock Prefect client
     mock_flow_run = MagicMock()
@@ -688,9 +706,9 @@ async def test_execute_with_empty_repo_list(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_execute_with_missing_task_id(mock_config, sample_repo_path):
+async def test_execute_with_missing_task_id(prefect_config, sample_repo_path):
     """Test executing task without ID."""
-    adapter = PrefectAdapter(config=mock_config)
+    adapter = PrefectAdapter(config=prefect_config)
 
     mock_flow_run = MagicMock()
     mock_flow_run.id = "test-no-task-id"
@@ -726,9 +744,9 @@ async def test_execute_with_missing_task_id(mock_config, sample_repo_path):
 
 
 @pytest.mark.asyncio
-async def test_full_prefect_workflow(mock_config, sample_repo_path, mock_code_graph_analyzer):
+async def test_full_prefect_workflow(prefect_config, sample_repo_path, mock_code_graph_analyzer):
     """Test complete Prefect workflow from execution to results."""
-    adapter = PrefectAdapter(config=mock_config)
+    adapter = PrefectAdapter(config=prefect_config)
 
     mock_flow_run = MagicMock()
     mock_flow_run.id = "integration-test-flow-id"

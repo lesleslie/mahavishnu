@@ -2,6 +2,18 @@
 
 This adapter uses the iTerm2 Python API to launch and manage terminal sessions.
 Requires iTerm2 to be running with the Python API server enabled.
+
+IMPORTANT - API Design Limitation:
+    The iTerm2 Python API is designed for standalone scripts that run under
+    iTerm2's event loop (via iterm2.Connection.run()). It is NOT designed
+    to be embedded in existing asyncio applications.
+
+    For pool management and terminal orchestration within Mahavishnu:
+    - Use mcpretentious adapter (PTY-based, works with any async app)
+    - Use mock adapter for testing
+
+    The iTerm2 adapter may work in specific contexts where iTerm2 controls
+    the event loop, but for general pool management, mcpretentious is recommended.
 """
 
 from datetime import datetime

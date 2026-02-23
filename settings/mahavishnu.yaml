@@ -17,7 +17,7 @@ max_concurrent_workflows: 10
 # Adapter configuration
 adapters:
   prefect_enabled: true  # High-level orchestration with dynamic flows
-  llamaindex_enabled: false  # Disabled due to httpx version conflict with fastmcp
+  llamaindex_enabled: true  # RAG pipelines for ingesting repos/docs (re-enabled 2026-02-23)
   agno_enabled: true  # Fast, scalable single/multi-agents with memory and tools
 
 # LLM configuration for LlamaIndex and Agno
