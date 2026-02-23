@@ -711,7 +711,6 @@ The `examples/` directory contains runnable examples for key features:
 - **Monitoring CLI**: `mahavishnu/monitoring_cli.py` - Health monitoring
 - **Production CLI**: `mahavishnu/cli/production_cli.py` - Production readiness
 - **Quality CLI**: `mahavishnu/quality_cli.py` - Quality evaluation
-- **Sync CLI**: `mahavishnu/sync_cli.py` - Claude-Qwen config sync
 
 <!-- CRACKERJACK_START -->
 

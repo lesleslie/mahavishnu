@@ -629,7 +629,6 @@ class TestCLIMocking:
 
                 mock_auth = MagicMock()
                 mock_auth.is_claude_subscribed.return_value = False
-                mock_auth.is_qwen_free.return_value = False
                 mock_auth_class.return_value = mock_auth
 
                 result = runner.invoke(app, ["list-repos"])

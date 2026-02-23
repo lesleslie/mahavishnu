@@ -59,21 +59,6 @@ def test_claude_subscription_auth():
     print("✅ Claude Code subscription token creation and authentication works correctly")
 
 
-def test_qwen_free_auth():
-    """Test that Qwen is recognized as a free service."""
-    print("\nTesting Qwen free service recognition...")
-
-    # Create a minimal config without any auth enabled
-    config = MahavishnuSettings()
-
-    # Initialize the auth handler
-    auth_handler = MultiAuthHandler(config)
-
-    # Test that Qwen is recognized as free
-    assert auth_handler.is_qwen_free() == True, "Qwen should be recognized as free service"
-    print("✅ Qwen is correctly recognized as a free service")
-
-
 def test_jwt_fallback():
     """Test that JWT authentication still works as before."""
     print("\nTesting JWT authentication fallback...")
@@ -201,12 +186,11 @@ def run_all_tests():
     try:
         test_claude_subscription_auth()
         test_codex_subscription_auth()
-        test_qwen_free_auth()
         test_jwt_fallback()
         test_multi_auth_priority()
 
         print(
-            "\n🎉 All tests passed! Claude Code, Codex, and Qwen authentication integration is working correctly."
+            "\n🎉 All tests passed! Claude Code and Codex authentication integration is working correctly."
         )
 
     except Exception as e:

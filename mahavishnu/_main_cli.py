@@ -25,8 +25,6 @@ from .monitoring_cli import add_monitoring_commands
 # Import production readiness CLI
 from .production_cli import add_production_commands
 
-# Import sync CLI
-from .sync_cli import add_sync_commands
 
 # Import content ingestion CLI
 from .ingestion_cli import add_ingestion_commands
@@ -86,8 +84,6 @@ async def _async_sweep(tag: str, adapter: str):
         typer.echo("Using Claude Code subscription authentication")
     elif maha_app.config.auth.enabled and maha_app.config.auth.secret:
         typer.echo("Using JWT authentication")
-    elif auth_handler.is_qwen_free():
-        typer.echo("Using Qwen (free service)")
     else:
         typer.echo("Authentication not configured, proceeding without auth")
 
@@ -140,8 +136,6 @@ def mcp_start(
             typer.echo("MCP Server: Claude Code subscription authentication enabled")
         elif maha_app.config.auth.enabled and maha_app.config.auth.secret:
             typer.echo("MCP Server: JWT authentication enabled")
-        elif auth_handler.is_qwen_free():
-            typer.echo("MCP Server: Qwen (free service) authentication")
         else:
             typer.echo("MCP Server: Authentication not configured")
 
@@ -264,8 +258,6 @@ def list_repos(
         typer.echo("Using Claude Code subscription authentication")
     elif maha_app.config.auth.enabled and maha_app.config.auth.secret:
         typer.echo("Using JWT authentication")
-    elif auth_handler.is_qwen_free():
-        typer.echo("Using Qwen (free service)")
     else:
         typer.echo("Authentication not configured, proceeding without auth")
 
@@ -605,8 +597,6 @@ add_ecosystem_commands(ecosystem_app)
 # Add monitoring commands
 add_monitoring_commands(app)
 
-# Add Claude-Qwen sync commands
-add_sync_commands(app)
 
 # Add cross-repository coordination commands
 add_coordination_commands(app)
