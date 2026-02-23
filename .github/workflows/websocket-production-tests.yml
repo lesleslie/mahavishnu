@@ -3,20 +3,9 @@
 
 name: WebSocket Production Tests
 
+# Disabled automatic triggers - run manually only via GitHub Actions UI
+# To re-enable, uncomment the push/pull_request triggers below
 on:
-  push:
-    branches: [main, develop]
-    paths:
-      - 'mahavishnu/websocket/**'
-      - 'mcp-common/mcp_common/websocket/**'
-      - 'tests/production/**'
-      - '.github/workflows/websocket-production-tests.yml'
-  pull_request:
-    branches: [main, develop]
-    paths:
-      - 'mahavishnu/websocket/**'
-      - 'mcp-common/mcp_common/websocket/**'
-      - 'tests/production/**'
   workflow_dispatch:
     inputs:
       run_slow_tests:
@@ -24,6 +13,19 @@ on:
         required: false
         default: false
         type: boolean
+  # push:
+  #   branches: [main, develop]
+  #   paths:
+  #     - 'mahavishnu/websocket/**'
+  #     - 'mcp-common/mcp_common/websocket/**'
+  #     - 'tests/production/**'
+  #     - '.github/workflows/websocket-production-tests.yml'
+  # pull_request:
+  #   branches: [main, develop]
+  #   paths:
+  #     - 'mahavishnu/websocket/**'
+  #     - 'mcp-common/mcp_common/websocket/**'
+  #     - 'tests/production/**'
 
 env:
   PYTHON_VERSION: '3.11'
