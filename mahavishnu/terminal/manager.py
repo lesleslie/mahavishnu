@@ -418,9 +418,14 @@ class TerminalManager:
         Factory method that selects the best available adapter based
         on configuration and runtime environment.
 
+        Priority order:
+        1. mock - Always works, no dependencies (default)
+        2. mcpretentious - Requires MCP client
+        3. iterm2 - Requires iTerm2 app with Python API
+
         Args:
             config: MahavishnuSettings with terminal config
-            mcp_client: MCP client for adapter communication
+            mcp_client: MCP client for adapter communication (optional)
 
         Returns:
             Configured TerminalManager instance
@@ -429,26 +434,52 @@ class TerminalManager:
             ConfigurationError: No suitable adapter available
         """
         from ..core.errors import ConfigurationError
+        from .adapters.iterm2 import ITERM2_AVAILABLE
+        from .adapters.mock import MockTerminalAdapter
 
         terminal_config = config.terminal
         preference = terminal_config.adapter_preference
 
-        # Try mcpretentious (default and most portable)
-        if preference in ("auto", "mcpretentious"):
+        # Mock adapter - always works, use by default
+        if preference in ("mock", "auto"):
+            logger.info("Using mock terminal adapter (no external dependencies)")
+            adapter = MockTerminalAdapter()
+            return cls(adapter, terminal_config)
+
+        # mcpretentious (requires MCP client)
+        if preference == "mcpretentious" and mcp_client is not None:
             try:
                 adapter = McpretentiousAdapter(mcp_client)
                 logger.info("Using mcpretentious adapter")
                 return cls(adapter, terminal_config)
             except Exception as e:
                 logger.error(f"mcpretentious adapter failed: {e}")
-                if preference == "mcpretentious":
-                    raise ConfigurationError(
-                        message="mcpretentious adapter failed but is required",
-                        details={"error": str(e)},
-                    ) from e
+                raise ConfigurationError(
+                    message="mcpretentious adapter failed",
+                    details={"error": str(e)},
+                ) from e
 
-        # Note: iTerm2 adapter will be added in Phase 3
+        # iTerm2 adapter (requires iTerm2 app)
+        if preference == "iterm2" and ITERM2_AVAILABLE:
+            try:
+                from .adapters.iterm2 import ITerm2Adapter
+
+                adapter = ITerm2Adapter()
+                logger.info("Using iTerm2 adapter")
+                return cls(adapter, terminal_config)
+            except Exception as e:
+                logger.warning(f"iTerm2 adapter failed: {e}")
+                raise ConfigurationError(
+                    message="iTerm2 adapter failed",
+                    details={"error": str(e)},
+                ) from e
+
+        # No suitable adapter found
         raise ConfigurationError(
-            message="No suitable terminal adapter found",
-            details={"adapter_preference": preference},
+            message=f"No suitable terminal adapter found for preference '{preference}'",
+            details={
+                "adapter_preference": preference,
+                "mcp_client_provided": mcp_client is not None,
+                "iterm2_available": ITERM2_AVAILABLE,
+            },
         )

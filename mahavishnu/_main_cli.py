@@ -644,7 +644,7 @@ def workers_spawn(
             raise typer.Exit(code=1)
 
         # Create terminal manager (reusing existing infrastructure)
-        terminal_mgr = TerminalManager.create(
+        terminal_mgr = await TerminalManager.create(
             maha_app.config,
             mcp_client=None,  # Will be set if needed
         )
@@ -716,7 +716,7 @@ def workers_execute(
             raise typer.Exit(code=1)
 
         # Create managers
-        terminal_mgr = TerminalManager.create(
+        terminal_mgr = await TerminalManager.create(
             maha_app.config,
             mcp_client=None,
         )
@@ -827,7 +827,7 @@ def pool_spawn(
             raise typer.Exit(code=1)
 
         # Create terminal manager
-        terminal_mgr = TerminalManager.create(
+        terminal_mgr = await TerminalManager.create(
             maha_app.config,
             mcp_client=None,
         )

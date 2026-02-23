@@ -3,7 +3,7 @@
 from typing import Any
 
 from ...workers.manager import WorkerManager
-from ..adapters.base import OrchestratorAdapter
+from ..adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
 
 
 class WorkerOrchestratorAdapter(OrchestratorAdapter):
@@ -36,6 +36,29 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             worker_manager: WorkerManager instance
         """
         self.worker_manager = worker_manager
+
+    @property
+    def adapter_type(self) -> AdapterType:
+        """Return adapter type enum."""
+        return AdapterType.WORKER
+
+    @property
+    def name(self) -> str:
+        """Return adapter name."""
+        return "worker"
+
+    @property
+    def capabilities(self) -> AdapterCapabilities:
+        """Return adapter capabilities."""
+        return AdapterCapabilities(
+            can_deploy_flows=False,
+            can_monitor_execution=True,
+            can_cancel_workflows=True,
+            can_sync_state=True,
+            supports_batch_execution=True,
+            has_cloud_ui=False,
+            supports_multi_agent=False,
+        )
 
     async def execute(
         self,

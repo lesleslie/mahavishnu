@@ -871,6 +871,23 @@ class ObservabilityConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class MonitoringConfig(BaseModel):
+    """Monitoring configuration for routing metrics and alerting."""
+
+    routing_metrics_port: int = Field(
+        default=9091,
+        ge=1024,
+        le=65535,
+        description="Port for Prometheus routing metrics server",
+    )
+    routing_metrics_enabled: bool = Field(
+        default=True,
+        description="Enable Prometheus routing metrics server",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
 class WorkerConfig(BaseModel):
     """Worker orchestration configuration for headless AI execution."""
 
@@ -1492,6 +1509,12 @@ class MahavishnuSettings(BaseSettings):
     observability: ObservabilityConfig = Field(
         default_factory=ObservabilityConfig,
         description="Observability configuration",
+    )
+
+    # Monitoring (routing metrics, alerting)
+    monitoring: MonitoringConfig = Field(
+        default_factory=MonitoringConfig,
+        description="Monitoring configuration for routing metrics and alerting",
     )
 
     # Worker orchestration
