@@ -163,12 +163,10 @@ core = [
     "mahavishnu[dev]",
 ]
 
-# RAG and knowledge base focus (optional - has httpx conflicts with fastmcp)
-# NOTE: Currently disabled due to httpx version conflict between fastmcp and llama-index-embeddings-ollama
-# Install separately with: uv sync --extra llamaindex (may require httpx pinning)
-# rag = [
-#     "mahavishnu[llamaindex,agno,prefect,dev]",
-# ]
+# RAG and knowledge base focus
+rag = [
+    "mahavishnu[llamaindex,agno,prefect,dev]",
+]
 
 # Prefect: Now in main dependencies - this extra is kept for compatibility
 prefect = [
@@ -176,15 +174,13 @@ prefect = [
     # This extra is kept for backward compatibility
 ]
 
-# NOTE: llamaindex extras disabled due to httpx version conflict with fastmcp
-# The llama-index-embeddings-ollama package requires httpx<0.28.0
-# while fastmcp requires httpx>=0.28.1
-# This needs to be resolved upstream before llamaindex can be re-enabled
-# llamaindex = [
-#     "llama-index-core>=0.12.0,<0.13.0",
-#     "llama-index-embeddings-ollama>=0.4.0,<0.5.0",
-#     "llama-index-llms-ollama>=0.4.0,<0.5.0",
-# ]
+# LlamaIndex: RAG pipelines for ingesting repos/docs
+# Updated 2026-02-23: llama-index 0.14.x is compatible with httpx 0.28.1+
+llamaindex = [
+    "llama-index-core>=0.14.0,<0.15.0",
+    "llama-index-embeddings-ollama>=0.8.0,<0.9.0",
+    "llama-index-llms-ollama>=0.8.0,<0.9.0",
+]
 
 # Agno: Now in main dependencies - this extra is kept for compatibility
 agno = [

@@ -12,7 +12,7 @@ def test_default_config_values():
     assert config.repos_path == "settings/ecosystem.yaml"
     assert config.max_concurrent_workflows == 10
     assert config.adapters.prefect_enabled is True
-    assert config.adapters.llamaindex_enabled is False  # Disabled due to httpx version conflict with fastmcp
+    assert config.adapters.llamaindex_enabled is True  # Re-enabled 2026-02-23 with llama-index 0.14.x
     assert config.adapters.agno_enabled is True  # Enabled in settings/mahavishnu.yaml
     assert config.qc.enabled is True
     assert config.qc.min_score == 80

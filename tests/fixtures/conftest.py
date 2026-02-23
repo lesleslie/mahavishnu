@@ -19,6 +19,44 @@ import uuid
 import pytest
 import yaml
 
+
+# =============================================================================
+# PROMETHEUS METRICS CLEANUP
+# =============================================================================
+# Prefect SDK registers Prometheus metrics on import. When tests run in
+# parallel (xdist) or modules are reloaded, this causes "Duplicated timeseries"
+# errors. This fixture cleans up the registry before each test.
+# =============================================================================
+
+@pytest.fixture(scope="function", autouse=True)
+def clean_prometheus_registry():
+    """Clean Prometheus registry before each test to prevent duplicate metrics.
+
+    This is needed because Prefect SDK registers metrics on import, and
+    parallel test execution or module reloading causes duplicates.
+    """
+    try:
+        from prometheus_client import REGISTRY
+
+        # Get list of collectors to remove (avoid modifying dict during iteration)
+        collectors_to_remove = []
+        for name, collector in list(REGISTRY._names_to_collectors.items()):
+            # Only remove Prefect-related metrics, not all metrics
+            if "prefect" in name.lower():
+                collectors_to_remove.append((name, collector))
+
+        # Remove Prefect collectors
+        for name, collector in collectors_to_remove:
+            try:
+                REGISTRY.unregister(collector)
+            except Exception:
+                pass  # Collector may already be unregistered
+
+    except ImportError:
+        pass  # prometheus_client not installed
+
+    yield
+
 # Try importing Mahavishnu modules for type hints
 try:
     from mahavishnu.core.app import MahavishnuApp
