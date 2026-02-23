@@ -3,20 +3,22 @@
 from datetime import datetime
 from typing import Any
 
-from ...core.errors import MahavishnuError
+from ...core.errors import ErrorCode, MahavishnuError
 from ..adapters.base import TerminalAdapter
 
 
 class TerminalError(MahavishnuError):
     """Base exception for terminal operations."""
 
-    pass
+    def __init__(self, message: str, details: dict | None = None) -> None:
+        super().__init__(message, ErrorCode.INTERNAL_ERROR, details=details)
 
 
 class SessionNotFoundError(TerminalError):
     """Exception raised when session ID is not found."""
 
-    pass
+    def __init__(self, message: str, details: dict | None = None) -> None:
+        super().__init__(message, details=details)
 
 
 class McpretentiousAdapter(TerminalAdapter):

@@ -46,8 +46,8 @@ class TerminalSettings(BaseModel):
         description="Maximum number of concurrent terminal sessions",
     )
     adapter_preference: str = Field(
-        default="auto",
-        description="Preferred adapter: auto, mcpretentious, or iterm2",
+        default="mock",  # Use mock by default until iTerm2/mcpretentious are properly configured
+        description="Preferred adapter: mock, mcpretentious, iterm2, or auto",
     )
     # Connection pooling settings (for iTerm2)
     iterm2_pooling_enabled: bool = Field(

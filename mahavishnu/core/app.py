@@ -233,8 +233,8 @@ class MahavishnuApp:
             repos_path = _validate_path(self.config.repos_path).expanduser()
             self.repository_manager = RepositoryManager(repos_path)
 
-            # Create coordination manager
-            self.coordination_manager = CoordinationManager(self.config)
+            # Create coordination manager (pass path string, not config object)
+            self.coordination_manager = CoordinationManager(str(repos_path))
 
             # Initialize worktree coordinator (will be loaded asynchronously)
             self.worktree_coordinator = None  # Will be initialized in async context
@@ -577,9 +577,9 @@ class MahavishnuApp:
                 pass
 
         # Worker - Headless AI execution (enabled by default)
-        if getattr(self.config, "workers_enabled", True):
+        if getattr(self.config.workers, "enabled", True):
             try:
-                from ..adapters.worker import WorkerOrchestratorAdapter
+                from .adapters.worker import WorkerOrchestratorAdapter
                 from ..workers import WorkerManager
 
                 # Create worker manager with Session-Buddy integration
@@ -589,9 +589,9 @@ class MahavishnuApp:
 
                 # Store for later initialization with WorkerManager
                 self._worker_manager_cls = WorkerManager
-            except ImportError:
+            except ImportError as e:
                 # Worker components not available
-                logger.warning("Worker adapter not available due to missing dependencies")
+                logger.warning(f"Worker adapter not available due to missing dependencies: {e}")
                 pass
 
         for adapter_name, is_enabled in enabled_adapters.items():

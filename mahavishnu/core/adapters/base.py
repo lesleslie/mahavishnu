@@ -11,6 +11,7 @@ class AdapterType(str, Enum):
     PREFECT = "prefect"
     AGNO = "agno"
     LLAMAINDEX = "llamaindex"
+    WORKER = "worker"
 
 
 class AdapterCapabilities:
