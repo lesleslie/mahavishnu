@@ -22,7 +22,6 @@ class AuthMethod(StrEnum):
     JWT = "jwt"
     CLAUDE_SUBSCRIPTION = "claude_subscription"
     CODEX_SUBSCRIPTION = "codex_subscription"
-    QWEN_FREE = "qwen_free"
 
 
 class SubscriptionTokenData(BaseModel):
@@ -300,14 +299,3 @@ class MultiAuthHandler:
         return self.subscription_auth.create_subscription_token(
             user_id=user_id, subscription_type="codex", scopes=scopes
         )
-
-    def is_qwen_free(self) -> bool:
-        """
-        Check if Qwen is configured as a free service (no auth required).
-
-        Returns:
-            True if Qwen is configured as free service
-        """
-        # Qwen is free as mentioned by the user, so we could implement
-        # special handling for it if needed
-        return True  # Qwen is free as per user's specification
