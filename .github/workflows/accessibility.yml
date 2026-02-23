@@ -1,17 +1,20 @@
 name: Accessibility Tests
 
+# Disabled automatic triggers - run manually only via GitHub Actions UI
+# To re-enable, uncomment the push/pull_request triggers below
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'mahavishnu/**/*.py'
-      - 'tests/accessibility/**'
-      - '.github/workflows/accessibility.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'mahavishnu/**/*.py'
-      - 'tests/accessibility/**'
+  workflow_dispatch:  # Manual trigger only
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - 'mahavishnu/**/*.py'
+  #     - 'tests/accessibility/**'
+  #     - '.github/workflows/accessibility.yml'
+  # pull_request:
+  #   branches: [main]
+  #   paths:
+  #     - 'mahavishnu/**/*.py'
+  #     - 'tests/accessibility/**'
 
 jobs:
   accessibility:
