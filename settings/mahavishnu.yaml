@@ -175,6 +175,31 @@ embeddings:
     daily_limit: 1000000  # Max embeddings per day
     alert_threshold: 0.8  # Alert at 80% of limit
 
+# Adapter Registry Configuration (Hybrid Plugin Architecture)
+adapter_registry:
+  enabled: true  # Enable hybrid adapter registry with dynamic discovery
+  allowlist_patterns:
+    - "mahavishnu.adapters.*"  # Core adapters
+    - "mahavishnu.engines.*"   # Engine adapters (prefect, agno)
+  verify_signatures: false  # Enable in production for security
+  reject_unsigned: false  # Dev mode: accept unsigned adapters
+  cache_ttl_seconds: 300  # Resolution cache TTL
+  discovery_timeout_seconds: 30  # Timeout for adapter discovery
+
+# Oneiric MCP integration for remote adapter discovery
+oneiric_mcp:
+  enabled: false  # Enable gRPC discovery from Oneiric MCP server
+  grpc_host: "localhost"
+  grpc_port: 8681
+  use_tls: false  # Enable TLS in production
+  cache_ttl: 300  # Adapter metadata cache TTL
+
+# Feature flags for hybrid registry
+feature_flags:
+  use_hybrid_registry: true  # Use HybridAdapterRegistry instead of hardcoded
+  use_capability_routing: true  # Use CapabilityRouter for task routing
+  fallback_to_legacy: true  # Fall back to legacy initialization on failure
+
 # Goal-Driven Teams configuration
 goal_teams:
   enabled: true  # Master switch for Goal-Driven Teams feature
