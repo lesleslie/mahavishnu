@@ -92,11 +92,12 @@ class WorkerManager:
 
         return worker_ids
 
-    def _create_worker(self, worker_type: str) -> BaseWorker:
+    def _create_worker(self, worker_type: str, **kwargs: Any) -> BaseWorker:
         """Factory method for worker creation.
 
         Args:
             worker_type: Type of worker to create
+            **kwargs: Additional parameters for worker (e.g., host for SSH)
 
         Returns:
             Configured worker instance
@@ -104,27 +105,59 @@ class WorkerManager:
         Raises:
             ValueError: If worker_type is unknown
         """
-        if worker_type == "terminal-qwen":
-            return TerminalAIWorker(
-                self.terminal_manager,
-                ai_type="qwen",
-                session_buddy_client=self.session_buddy_client,
-            )
-        elif worker_type == "terminal-claude":
-            return TerminalAIWorker(
-                self.terminal_manager,
-                ai_type="claude",
-                session_buddy_client=self.session_buddy_client,
-            )
-        elif worker_type == "container-executor" or worker_type == "container":
-            # Container workers (Phase 3 - now implemented!)
-            return ContainerWorker(
-                runtime="docker",  # Default to docker
-                image="python:3.13-slim",
-                session_buddy_client=self.session_buddy_client,
-            )
-        else:
+        # Import registry for worker type lookup
+        from .registry import WorkerCategory, get_worker_config
+
+        # Get worker config from registry
+        config = get_worker_config(worker_type)
+
+        if config is None:
             raise ValueError(f"Unknown worker type: {worker_type}")
+
+        # Create worker based on category
+        if config.category == WorkerCategory.CONTAINER:
+            # Container workers
+            return ContainerWorker(
+                runtime=kwargs.get("runtime", "docker"),
+                image=kwargs.get("image", "python:3.13-slim"),
+                session_buddy_client=self.session_buddy_client,
+            )
+
+        elif config.category in (
+            WorkerCategory.SHELL,
+            WorkerCategory.AI_ASSISTANT,
+            WorkerCategory.REMOTE,
+        ):
+            # Use GenericShellWorker for shell/REPL/AI/SSH types
+            from .generic_shell import GenericShellWorker
+
+            return GenericShellWorker(
+                terminal_manager=self.terminal_manager,
+                worker_type=worker_type,
+                config=config,
+                session_buddy_client=self.session_buddy_client,
+                **kwargs,
+            )
+
+        elif config.category == WorkerCategory.APPLICATION:
+            # Application workers via MCP - return a placeholder for now
+            # These would be handled differently, through MCP server calls
+            raise ValueError(
+                f"Application worker '{worker_type}' requires MCP server integration. "
+                f"Use MCP tools directly for {config.mcp_server}"
+            )
+
+        else:
+            # Fallback - try GenericShellWorker
+            from .generic_shell import GenericShellWorker
+
+            return GenericShellWorker(
+                terminal_manager=self.terminal_manager,
+                worker_type=worker_type,
+                config=config,
+                session_buddy_client=self.session_buddy_client,
+                **kwargs,
+            )
 
     async def execute_task(
         self,
