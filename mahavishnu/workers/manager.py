@@ -22,12 +22,14 @@ class WorkerManager:
     - Collect results with aggregation
     - Handle failures with retries
     - Debug monitor auto-launch
+    - Support for terminal, container, and application workers
 
     Args:
         terminal_manager: TerminalManager for terminal session control
         max_concurrent: Maximum number of concurrent workers
         debug_mode: Enable debug monitor auto-launch
         session_buddy_client: Optional Session-Buddy MCP client
+        mcp_client: Optional MCP client for application workers
     """
 
     def __init__(
@@ -36,6 +38,7 @@ class WorkerManager:
         max_concurrent: int = 10,
         debug_mode: bool = False,
         session_buddy_client: Any = None,
+        mcp_client: Any = None,
     ) -> None:
         """Initialize worker manager.
 
@@ -44,11 +47,13 @@ class WorkerManager:
             max_concurrent: Maximum concurrent workers (1-100)
             debug_mode: Enable debug monitor
             session_buddy_client: Session-Buddy MCP client
+            mcp_client: MCP client for application workers
         """
         self.terminal_manager = terminal_manager
         self.max_concurrent = max(1, min(max_concurrent, 100))
         self.debug_mode = debug_mode
         self.session_buddy_client = session_buddy_client
+        self.mcp_client = mcp_client
         self._workers: dict[str, BaseWorker] = {}
         self._semaphore = asyncio.Semaphore(self.max_concurrent)
         self._debug_monitor_worker: BaseWorker | None = None
@@ -140,11 +145,21 @@ class WorkerManager:
             )
 
         elif config.category == WorkerCategory.APPLICATION:
-            # Application workers via MCP - return a placeholder for now
-            # These would be handled differently, through MCP server calls
-            raise ValueError(
-                f"Application worker '{worker_type}' requires MCP server integration. "
-                f"Use MCP tools directly for {config.mcp_server}"
+            # Application workers via MCP
+            from .application import ApplicationWorker
+
+            if self.mcp_client is None:
+                raise ValueError(
+                    f"Application worker '{worker_type}' requires MCP client. "
+                    f"Provide mcp_client parameter to WorkerManager."
+                )
+
+            return ApplicationWorker(
+                worker_type=worker_type,
+                mcp_client=self.mcp_client,
+                config=config,
+                session_buddy_client=self.session_buddy_client,
+                **kwargs,
             )
 
         else:

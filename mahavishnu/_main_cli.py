@@ -811,6 +811,7 @@ def workers_list_types(
     """
     from .workers.registry import (
         WorkerCategory,
+        get_worker_config,
         get_workers_by_category,
         validate_worker_dependencies,
     )
