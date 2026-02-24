@@ -785,6 +785,106 @@ def workers_execute(
     asyncio.run(_execute())
 
 
+@workers_app.command("list-types")
+def workers_list_types(
+    category: str | None = typer.Option(
+        None,
+        "--category",
+        "-c",
+        help="Filter by category (ai_assistant, shell, remote, container, application)",
+    ),
+    check_available: bool = typer.Option(
+        True,
+        "--check/--no-check",
+        help="Check if required tools are installed",
+    ),
+) -> None:
+    """List available worker types.
+
+    Shows all worker types organized by category with descriptions
+    and availability status.
+
+    Example:
+        $ mahavishnu workers list-types
+        $ mahavishnu workers list-types --category ai_assistant
+        $ mahavishnu workers list-types --no-check
+    """
+    from .workers.registry import (
+        WorkerCategory,
+        get_workers_by_category,
+        validate_worker_dependencies,
+    )
+
+    # Validate category filter
+    category_enum = None
+    if category:
+        try:
+            category_enum = WorkerCategory(category.lower())
+        except ValueError:
+            typer.echo(f"Invalid category: {category}")
+            typer.echo(f"Valid categories: {', '.join(c.value for c in WorkerCategory)}")
+            raise typer.Exit(code=1)
+
+    # Get workers grouped by category
+    workers_by_category = get_workers_by_category()
+
+    # Check dependencies if requested
+    availability = {}
+    if check_available:
+        availability = validate_worker_dependencies()
+
+    # Display workers
+    typer.echo("\n📋 Available Worker Types\n")
+
+    for cat, workers in workers_by_category.items():
+        # Skip if filtering by category
+        if category_enum and cat != category_enum:
+            continue
+
+        # Category header
+        category_icons = {
+            WorkerCategory.AI_ASSISTANT: "🤖",
+            WorkerCategory.SHELL: "💻",
+            WorkerCategory.CONTAINER: "🐳",
+            WorkerCategory.REMOTE: "🌐",
+            WorkerCategory.APPLICATION: "🖥️",
+        }
+        icon = category_icons.get(cat, "📦")
+        typer.echo(f"{icon} {cat.value.upper().replace('_', ' ')}")
+        typer.echo("─" * 40)
+
+        for config in workers:
+            # Availability indicator
+            if check_available:
+                is_available = availability.get(config.worker_type, True)
+                status = "✅" if is_available else "❌"
+            else:
+                status = "○"
+
+            # Worker type and name
+            typer.echo(f"  {status} {config.worker_type}")
+            typer.echo(f"      {config.name}")
+            if config.description:
+                typer.echo(f"      {config.description}")
+            if config.requires_tool and check_available and not is_available:
+                typer.echo(f"      ⚠️  Requires: {config.requires_tool}")
+            typer.echo("")
+
+    # Summary
+    if check_available:
+        available_count = sum(1 for v in availability.values() if v)
+        total_count = len(availability)
+        typer.echo(f"📊 {available_count}/{total_count} worker types available")
+
+        unavailable = [k for k, v in availability.items() if not v]
+        if unavailable:
+            typer.echo("\n⚠️  Unavailable workers (missing dependencies):")
+            for worker_type in unavailable:
+                config = get_worker_config(worker_type)
+                if config:
+                    typer.echo(f"   - {worker_type}: install {config.requires_tool}")
+
+
 # Pool management
 pool_app = typer.Typer(help="Multi-pool orchestration and management")
 app.add_typer(pool_app, name="pool")
