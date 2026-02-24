@@ -6,11 +6,14 @@ and containers with real-time progress tracking and Session-Buddy integration.
 Available Worker Types:
     AI Assistants: terminal-qwen, terminal-claude, terminal-aider, terminal-opencode
     Shell/REPL: terminal-shell, terminal-zsh, terminal-python, terminal-ipython, terminal-node
+    Database: terminal-mysql, terminal-psql, terminal-redis
+    WebAssembly: terminal-wasmtime, terminal-wasmer
     Remote: terminal-ssh
     Container: container, container-executor
-    Application: application-gimp (via MCP)
+    Application: application-gimp, application-inkscape, application-blender, application-mdinject
 """
 
+from mahavishnu.workers.application import ApplicationWorker
 from mahavishnu.workers.base import BaseWorker, WorkerResult, WorkerStatus
 from mahavishnu.workers.container import ContainerWorker
 from mahavishnu.workers.debug_monitor import DebugMonitorWorker
@@ -39,6 +42,7 @@ __all__ = [
     "ContainerWorker",
     "DebugMonitorWorker",
     "GenericShellWorker",
+    "ApplicationWorker",
     # Registry
     "WorkerCategory",
     "WorkerConfig",
