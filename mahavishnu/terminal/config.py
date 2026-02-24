@@ -71,3 +71,8 @@ class TerminalSettings(BaseModel):
         default=None,
         description="Default iTerm2 profile name for new sessions",
     )
+    # Window vs Tab settings
+    iterm2_new_window: bool = Field(
+        default=False,
+        description="Create new iTerm2 windows instead of tabs for each session",
+    )
