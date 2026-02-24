@@ -183,6 +183,17 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         requires_tool="psql",
         default_timeout=300,
     ),
+    "terminal-turso": WorkerConfig(
+        name="Turso CLI",
+        worker_type="terminal-turso",
+        command="turso db shell {database}",
+        category=WorkerCategory.SHELL,
+        description="Turso/libSQL database CLI for edge database operations",
+        completion_markers=["turso> ", "...>"],
+        stream_format="text",
+        requires_tool="turso",
+        default_timeout=300,
+    ),
     "terminal-redis": WorkerConfig(
         name="Redis CLI",
         worker_type="terminal-redis",
@@ -286,6 +297,15 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         category=WorkerCategory.APPLICATION,
         description="Penpot design and prototyping via MCP server",
         mcp_server="penpot",
+        supports_interactive=False,
+    ),
+    "application-grafana": WorkerConfig(
+        name="Grafana",
+        worker_type="application-grafana",
+        command="",  # Handled via MCP
+        category=WorkerCategory.APPLICATION,
+        description="Grafana dashboards and monitoring via MCP server",
+        mcp_server="grafana",
         supports_interactive=False,
     ),
     # DevOps/Infrastructure Workers
