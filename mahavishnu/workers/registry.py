@@ -97,6 +97,17 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         stream_format="text",
         requires_tool="opencode",
     ),
+    "terminal-ollama": WorkerConfig(
+        name="Ollama AI",
+        worker_type="terminal-ollama",
+        command="",  # HTTP API, no CLI command
+        category=WorkerCategory.AI_ASSISTANT,
+        description="Local AI via Ollama HTTP API (zero cost, complete privacy)",
+        completion_markers=["done"],  # API returns done: true
+        stream_format="json",
+        requires_tool="ollama",  # Checks for 'ollama' binary
+        default_timeout=300,
+    ),
     # Shell/REPL Environments
     "terminal-shell": WorkerConfig(
         name="Bash Shell",
@@ -306,6 +317,70 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         category=WorkerCategory.APPLICATION,
         description="Grafana dashboards and monitoring via MCP server",
         mcp_server="grafana",
+        supports_interactive=False,
+    ),
+    # New MCP Server Workers
+    "application-porkbun-dns": WorkerConfig(
+        name="Porkbun DNS",
+        worker_type="application-porkbun-dns",
+        command="",  # Handled via MCP
+        category=WorkerCategory.APPLICATION,
+        description="Porkbun DNS record management via MCP server",
+        mcp_server="porkbun-dns-mcp",
+        supports_interactive=False,
+    ),
+    "application-porkbun-domain": WorkerConfig(
+        name="Porkbun Domain",
+        worker_type="application-porkbun-domain",
+        command="",  # Handled via MCP
+        category=WorkerCategory.APPLICATION,
+        description="Porkbun domain management via MCP server",
+        mcp_server="porkbun-domain-mcp",
+        supports_interactive=False,
+    ),
+    "application-synxis-crs": WorkerConfig(
+        name="SynXis CRS",
+        worker_type="application-synxis-crs",
+        command="",  # Handled via MCP
+        category=WorkerCategory.APPLICATION,
+        description="SynXis Central Reservation System via MCP server",
+        mcp_server="synxis-crs-mcp",
+        supports_interactive=False,
+    ),
+    "application-synxis-pms": WorkerConfig(
+        name="SynXis PMS",
+        worker_type="application-synxis-pms",
+        command="",  # Handled via MCP
+        category=WorkerCategory.APPLICATION,
+        description="SynXis Property Management System via MCP server",
+        mcp_server="synxis-pms-mcp",
+        supports_interactive=False,
+    ),
+    "application-graphics": WorkerConfig(
+        name="Graphics",
+        worker_type="application-graphics",
+        command="",  # Handled via MCP
+        category=WorkerCategory.APPLICATION,
+        description="Image manipulation via Pillow/pilkit MCP server",
+        mcp_server="graphics-mcp",
+        supports_interactive=False,
+    ),
+    "application-n8n": WorkerConfig(
+        name="n8n Workflows",
+        worker_type="application-n8n",
+        command="",  # Handled via MCP
+        category=WorkerCategory.APPLICATION,
+        description="n8n workflow automation via MCP server",
+        mcp_server="n8n-mcp",
+        supports_interactive=False,
+    ),
+    "application-neo4j": WorkerConfig(
+        name="Neo4j Graph",
+        worker_type="application-neo4j",
+        command="",  # Handled via MCP
+        category=WorkerCategory.APPLICATION,
+        description="Neo4j graph database via MCP server",
+        mcp_server="neo4j-mcp",
         supports_interactive=False,
     ),
     # DevOps/Infrastructure Workers
