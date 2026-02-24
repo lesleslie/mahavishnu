@@ -126,6 +126,17 @@ class FastMCPServer:
         if self.app.config.terminal.enabled:
             self.terminal_manager = self._init_terminal_manager()
 
+            # Update pool_manager's terminal_manager reference if both exist
+            # This is needed because pool_manager is initialized before terminal_manager
+            # in MahavishnuApp, so it gets None initially
+            if (
+                self.terminal_manager is not None
+                and hasattr(self.app, "pool_manager")
+                and self.app.pool_manager is not None
+            ):
+                self.app.pool_manager.terminal_manager = self.terminal_manager
+                logger.info("Updated pool_manager terminal_manager reference")
+
         # Register all tools
         self._register_tools()
 

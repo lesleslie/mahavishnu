@@ -81,8 +81,20 @@ class MahavishnuPool(BasePool):
 
         Returns:
             pool_id: Unique pool identifier
+
+        Raises:
+            RuntimeError: If terminal_manager is not available
         """
         self._status = PoolStatus.INITIALIZING
+
+        # Verify terminal_manager is available before spawning workers
+        if self.terminal_manager is None:
+            self._status = PoolStatus.FAILED
+            raise RuntimeError(
+                "Cannot spawn pool: terminal_manager is not available. "
+                "Ensure terminal management is enabled and the adapter is properly initialized. "
+                "Check logs for terminal manager initialization errors."
+            )
 
         # Spawn minimum workers
         worker_ids = await self.worker_manager.spawn_workers(

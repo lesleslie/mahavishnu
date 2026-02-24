@@ -134,7 +134,7 @@ session_buddy_polling:
 
 # Terminal management
 terminal:
-  enabled: false  # Set to true to enable
+  enabled: true  # Enable terminal management for pool workers
   default_columns: 120
   default_rows: 40
   capture_lines: 100

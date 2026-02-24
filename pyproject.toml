@@ -180,6 +180,7 @@ llamaindex = [
     "llama-index-core>=0.14.0,<0.15.0",
     "llama-index-embeddings-ollama>=0.8.0,<0.9.0",
     "llama-index-llms-ollama>=0.8.0,<0.9.0",
+    "llama-index-vector-stores-opensearch>=0.6.0,<0.7.0",
 ]
 
 # Agno: Now in main dependencies - this extra is kept for compatibility
