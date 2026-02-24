@@ -4,7 +4,7 @@ Provides worker orchestration for headless AI execution across terminals
 and containers with real-time progress tracking and Session-Buddy integration.
 
 Available Worker Types:
-    AI Assistants: terminal-qwen, terminal-claude, terminal-aider, terminal-opencode
+    AI Assistants: terminal-qwen, terminal-claude, terminal-aider, terminal-opencode, terminal-ollama
     Shell/REPL: terminal-shell, terminal-zsh, terminal-python, terminal-ipython, terminal-node
     Database: terminal-mysql, terminal-psql, terminal-redis
     WebAssembly: terminal-wasmtime, terminal-wasmer
@@ -19,6 +19,7 @@ from mahavishnu.workers.container import ContainerWorker
 from mahavishnu.workers.debug_monitor import DebugMonitorWorker
 from mahavishnu.workers.generic_shell import GenericShellWorker
 from mahavishnu.workers.manager import WorkerManager
+from mahavishnu.workers.ollama import OllamaConfig, OllamaWorker
 from mahavishnu.workers.registry import (
     WorkerCategory,
     WorkerConfig,
@@ -43,6 +44,8 @@ __all__ = [
     "DebugMonitorWorker",
     "GenericShellWorker",
     "ApplicationWorker",
+    "OllamaWorker",
+    "OllamaConfig",
     # Registry
     "WorkerCategory",
     "WorkerConfig",
