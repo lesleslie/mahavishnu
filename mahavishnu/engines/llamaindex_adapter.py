@@ -311,21 +311,28 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         self.node_parser = SentenceSplitter(chunk_size=1024, chunk_overlap=20, separator=" ")
 
         # Initialize OpenSearch vector store with security settings
+        # Note: llama-index-vector-stores-opensearch 0.6.x requires OpensearchVectorClient
+        # Note: Requires opensearch-knn plugin for vector similarity search
         try:
-            self.vector_store = OpensearchVectorStore(
-                endpoint=getattr(config, "opensearch_endpoint", "https://localhost:9200"),
-                index_name=getattr(config, "opensearch_index_name", "mahavishnu_code"),
-                dim=1536,  # Standard for text-embedding-ada-002
-                verify_certs=getattr(config, "opensearch_verify_certs", True),
-                ca_certs=getattr(config, "opensearch_ca_certs", None),
-                use_ssl=getattr(config, "opensearch_use_ssl", True),
-                ssl_assert_hostname=getattr(config, "opensearch_ssl_assert_hostname", True),
-                ssl_show_warn=getattr(config, "opensearch_ssl_show_warn", True),
+            from llama_index.vector_stores.opensearch import OpensearchVectorClient
+
+            endpoint = getattr(config, "opensearch_endpoint", "http://localhost:9200")
+            index_name = getattr(config, "opensearch_index_name", "mahavishnu_code")
+            dim = 768  # nomic-embed-text dimension
+
+            # Create the client first (new API requirement)
+            os_client = OpensearchVectorClient(
+                endpoint=endpoint,
+                index=index_name,
+                dim=dim,
             )
+            self.vector_store = OpensearchVectorStore(client=os_client)
             self._vector_backend = "opensearch"
         except Exception as e:
-            print(f"Warning: Could not initialize OpenSearch vector store: {e}")
-            print("Falling back to in-memory vector store")
+            # Fall back gracefully - in-memory store works for development
+            logger = __import__("logging").getLogger(__name__)
+            logger.debug(f"OpenSearch vector store unavailable: {e}")
+            logger.info("Using in-memory vector store (install opensearch-knn plugin for persistence)")
             self.vector_store = None
             self._vector_backend = "memory"
 

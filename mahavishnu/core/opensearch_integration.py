@@ -64,13 +64,23 @@ class OpenSearchLogAnalytics:
                     ca_certs=config.opensearch.ca_certs,
                 )
 
-                # Initialize indices
-                asyncio.create_task(self._init_indices())
+                # Defer index initialization to first async call
+                # Cannot use asyncio.create_task() in sync __init__ context
+                self._indices_initialized = False
             except Exception as e:
                 logging.warning(f"Failed to initialize OpenSearch client: {e}")
                 self.client = MockAsyncOpenSearch()
         else:
             self.client = MockAsyncOpenSearch()
+
+        # Track whether indices have been initialized
+        self._indices_initialized = False
+
+    async def _ensure_indices(self):
+        """Lazily initialize indices on first async access."""
+        if not self._indices_initialized:
+            await self._init_indices()
+            self._indices_initialized = True
 
     async def _init_indices(self):
         """Initialize required indices."""
@@ -147,6 +157,8 @@ class OpenSearchLogAnalytics:
         if not self.client:
             return
 
+        await self._ensure_indices()
+
         try:
             doc = {
                 "timestamp": datetime.now(tz=UTC).isoformat(),
@@ -169,6 +181,8 @@ class OpenSearchLogAnalytics:
         """Log a workflow event to OpenSearch."""
         if not self.client:
             return
+
+        await self._ensure_indices()
 
         try:
             doc = {
