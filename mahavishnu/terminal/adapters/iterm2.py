@@ -138,7 +138,10 @@ class ITerm2Adapter(TerminalAdapter):
             command: Command to run in the terminal session
             columns: Terminal width in characters
             rows: Terminal height in lines
-            **kwargs: Additional parameters (profile_name, etc.)
+            **kwargs: Additional parameters:
+                - profile_name: iTerm2 profile to use
+                - new_window: If True, create a new window instead of tab
+                - window_title: Optional title for new window
 
         Returns:
             Session ID (unique identifier for the session)
@@ -149,30 +152,65 @@ class ITerm2Adapter(TerminalAdapter):
         await self._ensure_connected()
 
         try:
-            # Get the current terminal window or create a new one
-            window = self._app.current_terminal_window
-
-            # Create a new tab with specified profile
-            # Priority: kwarg > default_profile > default profile
+            # Check if we should create a new window or tab
+            new_window = kwargs.get("new_window", False)
             profile_name = kwargs.get("profile_name", self._default_profile)
+            window_title = kwargs.get("window_title")
 
-            if profile_name:
-                try:
-                    profile = await iterm2.Profile.async_get(self._connection, profile_name)
-                    tab = await window.async_create_tab(profile=profile)
-                    logger.debug(f"Created tab with profile: {profile_name}")
-                except Exception as e:
-                    logger.warning(f"Failed to create tab with profile '{profile_name}': {e}")
-                    logger.info("Falling back to default profile")
-                    tab = await window.async_create_tab()
+            if new_window:
+                # Create a new window
+                if profile_name:
+                    try:
+                        window = await iterm2.Window.async_create(
+                            self._connection,
+                            profile=profile_name,
+                            command=command,
+                        )
+                        logger.debug(f"Created new window with profile: {profile_name}")
+                    except Exception as e:
+                        logger.warning(f"Failed to create window with profile '{profile_name}': {e}")
+                        logger.info("Falling back to default profile")
+                        window = await iterm2.Window.async_create(
+                            self._connection,
+                            command=command,
+                        )
+                else:
+                    window = await iterm2.Window.async_create(
+                        self._connection,
+                        command=command,
+                    )
+
+                # Set window title if provided
+                if window and window_title:
+                    await window.async_set_title(window_title)
+
+                # Get the tab and session from the new window
+                tab = window.tabs[0] if window else None
+                session = tab.sessions[0] if tab else None
             else:
-                tab = await window.async_create_tab()
+                # Create a new tab in the current window
+                window = self._app.current_terminal_window
 
-            # Get the session from the tab
-            session = tab.sessions[0]
+                if profile_name:
+                    try:
+                        profile = await iterm2.Profile.async_get(self._connection, profile_name)
+                        tab = await window.async_create_tab(profile=profile)
+                        logger.debug(f"Created tab with profile: {profile_name}")
+                    except Exception as e:
+                        logger.warning(f"Failed to create tab with profile '{profile_name}': {e}")
+                        logger.info("Falling back to default profile")
+                        tab = await window.async_create_tab()
+                else:
+                    tab = await window.async_create_tab()
 
-            # Set terminal dimensions
-            await session.async_set_frame_size(columns, rows)
+                # Get the session from the tab
+                session = tab.sessions[0]
+
+                # Set terminal dimensions
+                await session.async_set_frame_size(columns, rows)
+
+                # Send the command
+                await session.async_send_text(command + "\n")
 
             # Get session ID (unique identifier)
             session_id = str(session.session_id)
@@ -181,15 +219,17 @@ class ITerm2Adapter(TerminalAdapter):
             self._sessions[session_id] = {
                 "session": session,
                 "tab": tab,
+                "window": window,
                 "command": command,
                 "created_at": datetime.now(),
                 "profile": profile_name,
+                "new_window": new_window,
             }
 
-            # Send the command
-            await session.async_send_text(command + "\n")
-
-            logger.info(f"Launched iTerm2 session {session_id} with command: {command}")
+            logger.info(
+                f"Launched iTerm2 session {session_id} "
+                f"({'new window' if new_window else 'tab'}) with command: {command}"
+            )
             return session_id
 
         except Exception as e:
@@ -278,12 +318,17 @@ class ITerm2Adapter(TerminalAdapter):
 
         try:
             session_data = self._sessions[session_id]
-            tab = session_data["tab"]
+            was_new_window = session_data.get("new_window", False)
 
-            # Close the tab (which closes the session)
-            # Note: iTerm2 doesn't have a direct "close session" method
-            # We close the entire tab instead
-            await tab.async_close()
+            if was_new_window:
+                # Close the entire window if it was created as a new window
+                window = session_data.get("window")
+                if window:
+                    await window.async_close()
+            else:
+                # Close just the tab
+                tab = session_data["tab"]
+                await tab.async_close()
 
             # Remove from tracking
             del self._sessions[session_id]
