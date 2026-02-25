@@ -1,271 +1,276 @@
-"""Unit tests for iTerm2 adapter."""
+"""Unit tests for iTerm2 adapter.
 
+These tests are for the AppleScript-based iTerm2 adapter implementation.
+"""
+
+import asyncio
 from datetime import datetime
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from mahavishnu.terminal.adapters.iterm2 import ITERM2_AVAILABLE, ITerm2Adapter
+from mahavishnu.terminal.adapters.iterm2 import (
+    ITERM2_AVAILABLE,
+    ITerm2Adapter,
+    OSASCRIPT_AVAILABLE,
+)
 
 
-@pytest.mark.skipif(not ITERM2_AVAILABLE, reason="iterm2 package not available")
+@pytest.mark.skipif(not OSASCRIPT_AVAILABLE, reason="osascript not available (macOS only)")
 class TestITerm2Adapter:
-    """Test suite for iTerm2 adapter."""
+    """Test suite for iTerm2 adapter using AppleScript."""
 
     @pytest.fixture
-    async def mock_connection(self):
-        """Create a mock iTerm2 connection."""
-        conn = Mock()
-        conn.close = AsyncMock()
-        return conn
+    async def adapter(self):
+        """Create an iTerm2 adapter."""
+        return ITerm2Adapter()
 
-    @pytest.fixture
-    async def mock_app(self):
-        """Create a mock iTerm2 app."""
-        app = Mock()
-        return app
-
-    @pytest.fixture
-    async def mock_window(self):
-        """Create a mock iTerm2 window."""
-        window = Mock()
-        return window
-
-    @pytest.fixture
-    async def mock_tab(self):
-        """Create a mock iTerm2 tab."""
-        tab = Mock()
-        tab.async_close = AsyncMock()
-        return tab
-
-    @pytest.fixture
-    async def mock_session(self):
-        """Create a mock iTerm2 session."""
-        session = Mock()
-        session.session_id = "test_session_123"
-        session.async_send_text = AsyncMock()
-        session.async_set_frame_size = AsyncMock()
-        session.async_get_screen_contents = AsyncMock()
-        return session
-
-    @pytest.fixture
-    def mock_screen_contents(self):
-        """Create mock screen contents."""
-        screen = Mock()
-        screen.contents = "line1\nline2\nline3"  # No trailing newline
-        return screen
+    def test_adapter_name(self):
+        """Test adapter name."""
+        adapter = ITerm2Adapter()
+        assert adapter.adapter_name == "iterm2"
 
     @pytest.mark.asyncio
-    async def test_iterm2_adapter_init(self):
-        """Test iTerm2 adapter initialization."""
-        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
-            adapter = ITerm2Adapter()
-            assert adapter.adapter_name == "iterm2"
-            assert adapter._connected is False
-            assert len(adapter._sessions) == 0
-
-    @pytest.mark.asyncio
-    async def test_iterm2_adapter_not_available(self):
-        """Test error when iTerm2 is not available."""
-        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", False):
-            with pytest.raises(ImportError, match="iterm2 package is not available"):
-                ITerm2Adapter()
-
-    @pytest.mark.asyncio
-    async def test_ensure_connected(self, mock_connection, mock_app):
-        """Test connection establishment to iTerm2."""
-        with (
-            patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True),
-            patch("mahavishnu.terminal.adapters.iterm2.iterm2") as mock_iterm2,
-            patch("mahavishnu.terminal.pool.iterm2") as mock_pool_iterm2,
-        ):
-            # Setup mocks for both adapter and pool
-            for mock_mod in [mock_iterm2, mock_pool_iterm2]:
-                mock_mod.Connection.async_connect = AsyncMock(return_value=mock_connection)
-                mock_mod.AsyncApp.async_get = AsyncMock(return_value=mock_app)
-
-            adapter = ITerm2Adapter()
-            await adapter._ensure_connected()
-
-            assert adapter._connected is True
-            assert adapter._connection == mock_connection
-            assert adapter._app == mock_app
-
-    @pytest.mark.asyncio
-    async def test_launch_session(
-        self, mock_connection, mock_app, mock_window, mock_tab, mock_session
-    ):
+    async def test_launch_session(self, adapter):
         """Test launching a new iTerm2 session."""
-        with (
-            patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True),
-            patch("mahavishnu.terminal.adapters.iterm2.iterm2") as mock_iterm2,
-            patch("mahavishnu.terminal.pool.iterm2") as mock_pool_iterm2,
-        ):
-            # Setup mocks for both adapter and pool
-            for mock_mod in [mock_iterm2, mock_pool_iterm2]:
-                mock_mod.Connection.async_connect = AsyncMock(return_value=mock_connection)
-                mock_mod.AsyncApp.async_get = AsyncMock(return_value=mock_app)
-            mock_app.current_terminal_window = mock_window
-            mock_window.async_create_tab = AsyncMock(return_value=mock_tab)
-            mock_tab.sessions = [mock_session]
+        mock_result = "session_123"
 
-            adapter = ITerm2Adapter()
-            session_id = await adapter.launch_session("echo test", columns=80, rows=24)
+        with patch.object(adapter, "_run_applescript", return_value=mock_result):
+            with patch.object(adapter, "_ensure_iterm2_running"):
+                session_id = await adapter.launch_session("echo test", columns=80, rows=24)
 
-            assert session_id == "test_session_123"
-            assert session_id in adapter._sessions
-            assert adapter._sessions[session_id]["command"] == "echo test"
-            mock_session.async_send_text.assert_called_once_with("echo test\n")
-            mock_session.async_set_frame_size.assert_called_once_with(80, 24)
+        assert session_id is not None
+        assert len(session_id) == 8  # UUID[:8]
+        assert session_id in adapter._sessions
+        assert adapter._sessions[session_id]["command"] == "echo test"
 
     @pytest.mark.asyncio
-    async def test_send_command(self, mock_connection, mock_session):
+    async def test_launch_session_with_profile(self, adapter):
+        """Test launching session with custom profile."""
+        mock_result = "session_456"
+
+        with patch.object(adapter, "_run_applescript", return_value=mock_result) as mock_run:
+            with patch.object(adapter, "_ensure_iterm2_running"):
+                await adapter.launch_session(
+                    "python -m qwen",
+                    profile_name="Work",
+                    new_window=True,
+                )
+
+        # Verify AppleScript was called
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args[0][0]
+        assert "profile" in call_args.lower()
+        assert "create window" in call_args.lower()
+
+    @pytest.mark.asyncio
+    async def test_send_command(self, adapter):
         """Test sending a command to a session."""
-        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
-            adapter = ITerm2Adapter()
-            adapter._connected = True
-            adapter._sessions["test_session_123"] = {
-                "session": mock_session,
-                "tab": Mock(),
-                "command": "echo test",
-                "created_at": datetime.now(),
-            }
+        adapter._sessions["test_session"] = {
+            "command": "initial",
+            "created_at": datetime.now(),
+        }
 
-            await adapter.send_command("test_session_123", "ls -la")
+        with patch.object(adapter, "_run_applescript", return_value="") as mock_run:
+            await adapter.send_command("test_session", "ls -la")
 
-            mock_session.async_send_text.assert_called_once_with("ls -la\n")
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args[0][0]
+        assert "write text" in call_args.lower()
+        assert "ls -la" in call_args
 
     @pytest.mark.asyncio
-    async def test_send_command_session_not_found(self):
+    async def test_send_command_session_not_found(self, adapter):
         """Test error when sending to non-existent session."""
-        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
-            adapter = ITerm2Adapter()
-
-            with pytest.raises(KeyError, match="Session nonexistent not found"):
-                await adapter.send_command("nonexistent", "test")
+        with pytest.raises(KeyError, match="Session nonexistent not found"):
+            await adapter.send_command("nonexistent", "test")
 
     @pytest.mark.asyncio
-    async def test_capture_output(self, mock_connection, mock_session, mock_screen_contents):
-        """Test capturing output from a session."""
-        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
-            adapter = ITerm2Adapter()
-            adapter._connected = True
-            adapter._sessions["test_session_123"] = {
-                "session": mock_session,
-                "tab": Mock(),
-                "command": "echo test",
-                "created_at": datetime.now(),
-            }
+    async def test_capture_output(self, adapter):
+        """Test capturing output from a session.
 
-            # Setup mock return value
-            mock_session.async_get_screen_contents = AsyncMock(return_value=mock_screen_contents)
+        Note: AppleScript implementation returns placeholder message.
+        """
+        adapter._sessions["test_session"] = {
+            "command": "echo hello",
+            "created_at": datetime.now(),
+        }
 
-            output = await adapter.capture_output("test_session_123")
+        output = await adapter.capture_output("test_session")
 
-            assert output == "line1\nline2\nline3"
-            mock_session.async_get_screen_contents.assert_called_once()
+        # AppleScript doesn't support buffer access
+        assert "Output capture not available" in output
+        assert "test_session" in output
 
     @pytest.mark.asyncio
-    async def test_capture_output_with_lines(
-        self, mock_connection, mock_session, mock_screen_contents
-    ):
-        """Test capturing limited lines from a session."""
-        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
-            adapter = ITerm2Adapter()
-            adapter._connected = True
-            adapter._sessions["test_session_123"] = {
-                "session": mock_session,
-                "tab": Mock(),
-                "command": "echo test",
-                "created_at": datetime.now(),
-            }
-
-            # Setup mock return value
-            mock_session.async_get_screen_contents = AsyncMock(return_value=mock_screen_contents)
-
-            output = await adapter.capture_output("test_session_123", lines=2)
-
-            assert output == "line2\nline3"  # Last 2 lines
+    async def test_capture_output_session_not_found(self, adapter):
+        """Test error when capturing from non-existent session."""
+        with pytest.raises(KeyError, match="Session nonexistent not found"):
+            await adapter.capture_output("nonexistent")
 
     @pytest.mark.asyncio
-    async def test_close_session(self, mock_connection, mock_tab):
+    async def test_close_session(self, adapter):
         """Test closing a session."""
-        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
-            adapter = ITerm2Adapter()
-            adapter._connected = True
-            adapter._sessions["test_session_123"] = {
-                "session": Mock(),
-                "tab": mock_tab,
-                "command": "echo test",
-                "created_at": datetime.now(),
-            }
+        adapter._sessions["test_session"] = {
+            "command": "test",
+            "created_at": datetime.now(),
+            "new_window": False,
+        }
 
-            await adapter.close_session("test_session_123")
+        with patch.object(adapter, "_run_applescript", return_value="") as mock_run:
+            await adapter.close_session("test_session")
 
-            assert "test_session_123" not in adapter._sessions
-            mock_tab.async_close.assert_called_once()
+        assert "test_session" not in adapter._sessions
+        mock_run.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_list_sessions(self, mock_connection):
+    async def test_close_session_not_found(self, adapter):
+        """Test closing non-existent session raises error."""
+        with pytest.raises(KeyError, match="Session nonexistent not found"):
+            await adapter.close_session("nonexistent")
+
+    @pytest.mark.asyncio
+    async def test_list_sessions(self, adapter):
         """Test listing all active sessions."""
-        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
-            adapter = ITerm2Adapter()
-            adapter._connected = True
-            adapter._sessions = {
-                "session_1": {
-                    "session": Mock(),
-                    "tab": Mock(),
-                    "command": "echo test1",
-                    "created_at": datetime(2025, 1, 1, 12, 0, 0),
-                },
-                "session_2": {
-                    "session": Mock(),
-                    "tab": Mock(),
-                    "command": "echo test2",
-                    "created_at": datetime(2025, 1, 1, 12, 1, 0),
-                },
-            }
+        adapter._sessions = {
+            "session_1": {
+                "command": "echo test1",
+                "created_at": datetime(2025, 1, 1, 12, 0, 0),
+                "profile": None,
+                "new_window": False,
+            },
+            "session_2": {
+                "command": "echo test2",
+                "created_at": datetime(2025, 1, 1, 12, 1, 0),
+                "profile": "Work",
+                "new_window": True,
+            },
+        }
 
-            sessions = await adapter.list_sessions()
+        sessions = await adapter.list_sessions()
 
-            assert len(sessions) == 2
-            assert sessions[0]["id"] == "session_1"
-            assert sessions[0]["command"] == "echo test1"
-            assert sessions[0]["adapter"] == "iterm2"
+        assert len(sessions) == 2
+        assert sessions[0]["id"] == "session_1"
+        assert sessions[0]["command"] == "echo test1"
+        assert sessions[0]["adapter"] == "iterm2"
+        assert sessions[1]["profile"] == "Work"
+        assert sessions[1]["new_window"] is True
 
     @pytest.mark.asyncio
-    async def test_cleanup(self, mock_connection, mock_tab):
-        """Test cleanup method."""
-        with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", True):
-            adapter = ITerm2Adapter()
-            adapter._connected = True
-            adapter._connection = mock_connection
-            adapter._owns_connection = True  # Indicate we own this connection
-            adapter._sessions = {
-                "test_session_123": {
-                    "session": Mock(),
-                    "tab": mock_tab,
-                    "command": "echo test",
-                    "created_at": datetime.now(),
-                }
-            }
+    async def test_cleanup(self, adapter):
+        """Test cleanup method closes all sessions."""
+        adapter._sessions = {
+            "session_1": {
+                "command": "test",
+                "created_at": datetime.now(),
+                "new_window": False,
+            },
+            "session_2": {
+                "command": "test2",
+                "created_at": datetime.now(),
+                "new_window": True,
+            },
+        }
 
+        with patch.object(adapter, "_run_applescript", return_value=""):
             await adapter.cleanup()
 
-            assert len(adapter._sessions) == 0
-            mock_tab.async_close.assert_called()
-            mock_connection.close.assert_called_once()
+        assert len(adapter._sessions) == 0
+
+    @pytest.mark.asyncio
+    async def test_run_applescript_success(self, adapter):
+        """Test successful AppleScript execution."""
+        expected_output = "test output"
+
+        async def mock_exec(*args, **kwargs):
+            proc = MagicMock()
+            proc.communicate = AsyncMock(return_value=(expected_output.encode(), b""))
+            proc.returncode = 0
+            return proc
+
+        with patch("asyncio.create_subprocess_exec", mock_exec):
+            result = await adapter._run_applescript('return "test"')
+
+        assert result == expected_output
+
+    @pytest.mark.asyncio
+    async def test_run_applescript_failure(self, adapter):
+        """Test AppleScript execution failure."""
+        async def mock_exec(*args, **kwargs):
+            proc = MagicMock()
+            proc.communicate = AsyncMock(return_value=(b"", b"AppleScript error"))
+            proc.returncode = 1
+            return proc
+
+        with patch("asyncio.create_subprocess_exec", mock_exec):
+            with pytest.raises(RuntimeError, match="AppleScript failed"):
+                await adapter._run_applescript('invalid script')
+
+    @pytest.mark.asyncio
+    async def test_ensure_iterm2_running(self, adapter):
+        """Test ensuring iTerm2 is running."""
+        with patch.object(adapter, "_run_applescript", return_value="") as mock_run:
+            await adapter._ensure_iterm2_running()
+
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args[0][0]
+        assert "iTerm2" in call_args
 
 
-# Tests for when iTerm2 is not available
 class TestITerm2AdapterNotAvailable:
-    """Test suite for when iTerm2 is not available."""
+    """Test suite for when osascript is not available."""
 
-    def test_iterm2_available_flag(self):
-        """Test ITERM2_AVAILABLE flag when package is missing."""
-        # This test always runs, checking the flag
-        if ITERM2_AVAILABLE:
-            print("Note: iTerm2 package is installed, skipping unavailable tests")
-        else:
-            assert ITERM2_AVAILABLE is False
-            print("Note: iTerm2 package not installed (expected for CI environments)")
+    def test_osascript_available_flag(self):
+        """Test OSASCRIPT_AVAILABLE flag."""
+        # This just checks the flag exists
+        assert isinstance(OSASCRIPT_AVAILABLE, bool)
+
+    def test_init_fails_without_osascript(self):
+        """Test that adapter initialization fails without osascript."""
+        with patch(
+            "mahavishnu.terminal.adapters.iterm2.OSASCRIPT_AVAILABLE", False
+        ):
+            with pytest.raises(ImportError, match="osascript not available"):
+                ITerm2Adapter()
+
+
+class TestITerm2AdapterEdgeCases:
+    """Test edge cases and error handling."""
+
+    @pytest.fixture
+    def adapter(self):
+        """Create adapter for testing."""
+        return ITerm2Adapter()
+
+    @pytest.mark.asyncio
+    async def test_send_command_escapes_quotes(self, adapter):
+        """Test that commands with quotes are properly escaped."""
+        adapter._sessions["test"] = {
+            "command": "initial",
+            "created_at": datetime.now(),
+        }
+
+        with patch.object(adapter, "_run_applescript", return_value="") as mock_run:
+            await adapter.send_command("test", 'echo "hello world"')
+
+        call_args = mock_run.call_args[0][0]
+        # Should have escaped the quotes
+        assert '\\"' in call_args
+
+    @pytest.mark.asyncio
+    async def test_close_session_removes_from_tracking_on_error(self, adapter):
+        """Test that session is removed from tracking even if close fails."""
+        adapter._sessions["test"] = {
+            "command": "test",
+            "created_at": datetime.now(),
+            "new_window": False,
+        }
+
+        with patch.object(
+            adapter, "_run_applescript", side_effect=RuntimeError("Failed")
+        ):
+            with pytest.raises(RuntimeError):
+                await adapter.close_session("test")
+
+        # Should still be removed from tracking
+        assert "test" not in adapter._sessions

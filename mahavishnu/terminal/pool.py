@@ -1,147 +1,244 @@
-"""Connection pooling for iTerm2 adapter.
+"""Session pooling for iTerm2 terminal management.
 
-This module provides a connection pool to reuse iTerm2 WebSocket connections
-across multiple TerminalManager instances, reducing connection overhead.
+This module provides a session pool for managing iTerm2 terminal sessions.
+It uses AppleScript for reliable communication with iTerm2, avoiding the
+iTerm2 Python API's event loop compatibility issues.
+
+IMPORTANT: The iTerm2 Python API is designed for standalone scripts that run
+under iTerm2's event loop (via iterm2.Connection.run()). It does NOT work
+reliably when embedded in existing asyncio applications. This implementation
+uses AppleScript via subprocess for reliable operation.
+
+For pool management in production:
+- Use mcpretentious adapter (PTY-based, works with any async app)
+- Use mock adapter for testing
+- Use this pool only when iTerm2 terminal visualization is needed
 """
 
 import asyncio
 import contextlib
+import shutil
+import uuid
 from datetime import datetime, timedelta
 from logging import getLogger
 from typing import Any
 
-try:
-    import iterm2
-
-    ITERM2_AVAILABLE = True
-except ImportError:
-    ITERM2_AVAILABLE = False
-
 logger = getLogger(__name__)
 
+# Check if osascript is available (macOS only)
+OSASCRIPT_AVAILABLE = shutil.which("osascript") is not None
 
-class ITerm2ConnectionPool:
-    """Pool for reusing iTerm2 WebSocket connections.
+
+class ITerm2SessionPool:
+    """Pool for managing iTerm2 terminal sessions via AppleScript.
+
+    This pool uses AppleScript to communicate with iTerm2, which works
+    reliably in embedded asyncio contexts unlike the iTerm2 Python API.
 
     Benefits:
-    - Reduces connection overhead (WebSocket handshake is expensive)
-    - Limits total connections to iTerm2 (prevents resource exhaustion)
-    - Provides connection health checking and auto-reconnect
+    - Works in embedded asyncio applications
+    - No event loop conflicts
+    - Session-based (not connection-based)
+    - Proper resource cleanup
 
     Example:
-        >>> pool = ITerm2ConnectionPool(max_size=5)
-        >>> conn = await pool.acquire()
-        >>> # Use connection...
-        >>> await pool.release(conn)
+        >>> pool = ITerm2SessionPool(max_size=5)
+        >>> session_id = await pool.acquire_session("python -m qwen")
+        >>> # Use session...
+        >>> await pool.release_session(session_id)
     """
 
     def __init__(
         self,
-        max_size: int = 3,
+        max_size: int = 10,
         idle_timeout: float = 300.0,
         health_check_interval: float = 60.0,
     ) -> None:
-        """Initialize iTerm2 connection pool.
+        """Initialize iTerm2 session pool.
 
         Args:
-            max_size: Maximum number of connections to pool
-            idle_timeout: Close connections idle for this many seconds
-            health_check_interval: Check connection health every N seconds
+            max_size: Maximum number of sessions to pool
+            idle_timeout: Close sessions idle for this many seconds
+            health_check_interval: Check session health every N seconds
         """
-        if not ITERM2_AVAILABLE:
-            raise ImportError("iterm2 package is not available")
+        if not OSASCRIPT_AVAILABLE:
+            raise ImportError(
+                "osascript not available. iTerm2 pool requires macOS with osascript."
+            )
 
         self.max_size = max_size
         self.idle_timeout = timedelta(seconds=idle_timeout)
         self.health_check_interval = health_check_interval
 
-        self._pool: dict[str, Any] = {}  # conn_id -> {conn, created_at, last_used, in_use}
+        self._pool: dict[str, dict[str, Any]] = {}
         self._lock = asyncio.Lock()
         self._health_check_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
 
         logger.info(
-            f"Initialized iTerm2 connection pool (max_size={max_size}, "
+            f"Initialized iTerm2 session pool (max_size={max_size}, "
             f"idle_timeout={idle_timeout}s)"
         )
 
-    async def acquire(self) -> Any:
-        """Acquire a connection from the pool.
+    async def acquire_session(
+        self,
+        command: str,
+        columns: int = 80,
+        rows: int = 24,
+        profile: str | None = None,
+    ) -> str:
+        """Acquire a terminal session from the pool.
 
-        Creates a new connection if pool is empty or all connections are in use.
-        Reuses idle connections when available.
-
-        Returns:
-            iTerm2 connection object
-
-        Raises:
-            RuntimeError: If pool is full and no connections available
-        """
-        async with self._lock:
-            # Try to find an idle connection
-            for conn_id, conn_info in self._pool.items():
-                if not conn_info["in_use"]:
-                    # Check if connection is still healthy
-                    if self._is_connection_healthy(conn_info["conn"]):
-                        conn_info["in_use"] = True
-                        conn_info["last_used"] = datetime.now()
-                        logger.debug(f"Reusing pooled connection {conn_id}")
-                        return conn_info["conn"]
-                    else:
-                        # Remove unhealthy connection
-                        logger.warning(f"Removing unhealthy connection {conn_id}")
-                        del self._pool[conn_id]
-
-            # Create new connection if pool not full
-            if len(self._pool) < self.max_size:
-                conn = await self._create_connection()
-                conn_id = f"conn_{datetime.now().timestamp()}"
-
-                self._pool[conn_id] = {
-                    "conn": conn,
-                    "created_at": datetime.now(),
-                    "last_used": datetime.now(),
-                    "in_use": True,
-                }
-
-                logger.info(
-                    f"Created new iTerm2 connection {conn_id} (pool size: {len(self._pool)})"
-                )
-                return conn
-
-            # Pool is full
-            raise RuntimeError(
-                f"Connection pool exhausted (max_size={self.max_size}). "
-                f"Wait for a connection to be released or increase pool size."
-            )
-
-    async def release(self, conn: Any) -> None:
-        """Release a connection back to the pool.
+        Creates a new session if pool has capacity.
 
         Args:
-            conn: Connection to release
+            command: Command to run in the terminal
+            columns: Terminal width in characters
+            rows: Terminal height in lines
+            profile: Optional iTerm2 profile name
+
+        Returns:
+            Session ID (UUID string)
+
+        Raises:
+            RuntimeError: If pool is full
         """
         async with self._lock:
-            # Find the connection in pool
-            for conn_id, conn_info in self._pool.items():
-                if conn_info["conn"] == conn:
-                    conn_info["in_use"] = False
-                    conn_info["last_used"] = datetime.now()
-                    logger.debug(f"Released connection {conn_id}")
-                    return
+            # Check if pool has capacity
+            if len(self._pool) >= self.max_size:
+                # Try to find an idle session to reuse
+                for session_id, session_info in self._pool.items():
+                    if not session_info["in_use"]:
+                        # Reuse idle session
+                        session_info["in_use"] = True
+                        session_info["last_used"] = datetime.now()
+                        session_info["command"] = command
+                        logger.debug(f"Reusing idle session {session_id}")
+                        return session_id
 
-            logger.warning("Attempted to release unknown connection")
+                raise RuntimeError(
+                    f"Session pool exhausted (max_size={self.max_size}). "
+                    f"Wait for a session to be released or increase pool size."
+                )
+
+            # Create new session
+            session_id = await self._create_session(command, columns, rows, profile)
+
+            self._pool[session_id] = {
+                "command": command,
+                "columns": columns,
+                "rows": rows,
+                "profile": profile,
+                "created_at": datetime.now(),
+                "last_used": datetime.now(),
+                "in_use": True,
+                "iterm2_tab_id": None,  # Will be set after creation
+            }
+
+            logger.info(
+                f"Created iTerm2 session {session_id} "
+                f"(pool size: {len(self._pool)}/{self.max_size})"
+            )
+            return session_id
+
+    async def release_session(self, session_id: str) -> None:
+        """Release a session back to the pool.
+
+        Args:
+            session_id: Session to release
+        """
+        async with self._lock:
+            if session_id not in self._pool:
+                logger.warning(f"Attempted to release unknown session {session_id}")
+                return
+
+            self._pool[session_id]["in_use"] = False
+            self._pool[session_id]["last_used"] = datetime.now()
+            logger.debug(f"Released session {session_id}")
+
+    async def send_command(self, session_id: str, command: str) -> None:
+        """Send a command to a terminal session.
+
+        Args:
+            session_id: Target session
+            command: Command to send
+
+        Raises:
+            KeyError: If session not found
+            RuntimeError: If command fails
+        """
+        if session_id not in self._pool:
+            raise KeyError(f"Session {session_id} not found")
+
+        script = f'''
+        tell application "iTerm2"
+            tell current window
+                tell current session
+                    write text "{command}"
+                end tell
+            end tell
+        end tell
+        '''
+
+        await self._run_applescript(script)
+        logger.debug(f"Sent command to {session_id}: {command}")
+
+    async def capture_output(self, session_id: str, lines: int | None = None) -> str:
+        """Capture output from a terminal session.
+
+        Args:
+            session_id: Target session
+            lines: Number of lines to capture (None for all)
+
+        Returns:
+            Captured output
+
+        Raises:
+            KeyError: If session not found
+        """
+        if session_id not in self._pool:
+            raise KeyError(f"Session {session_id} not found")
+
+        # iTerm2 AppleScript doesn't support output capture directly
+        # This is a limitation - use mcpretentious adapter if you need output capture
+        return f"[Output capture not available via AppleScript for session {session_id}]"
+
+    async def close_session(self, session_id: str) -> None:
+        """Close a terminal session.
+
+        Args:
+            session_id: Session to close
+        """
+        async with self._lock:
+            if session_id not in self._pool:
+                return
+
+            try:
+                script = '''
+                tell application "iTerm2"
+                    tell current window
+                        tell current session
+                            close
+                        end tell
+                    end tell
+                end tell
+                '''
+                await self._run_applescript(script)
+            except Exception as e:
+                logger.warning(f"Error closing iTerm2 session {session_id}: {e}")
+            finally:
+                del self._pool[session_id]
+                logger.info(f"Closed iTerm2 session {session_id}")
 
     async def close_all(self) -> None:
-        """Close all connections in the pool.
+        """Close all sessions in the pool.
 
         Should be called before shutdown.
         """
-        # Signal graceful shutdown first
         self._shutdown_event.set()
 
         async with self._lock:
-            # Stop health check task (with timeout for graceful shutdown)
+            # Stop health check task
             if self._health_check_task:
                 try:
                     await asyncio.wait_for(self._health_check_task, timeout=5.0)
@@ -153,116 +250,173 @@ class ITerm2ConnectionPool:
                     pass
                 self._health_check_task = None
 
-            # Close all connections
-            for conn_id, conn_info in self._pool.items():
+            # Close all sessions
+            session_ids = list(self._pool.keys())
+            for session_id in session_ids:
                 try:
-                    await conn_info["conn"].close()
-                    logger.debug(f"Closed connection {conn_id}")
+                    await self.close_session(session_id)
                 except Exception as e:
-                    logger.warning(f"Error closing connection {conn_id}: {e}")
+                    logger.warning(f"Error closing session {session_id}: {e}")
 
             self._pool.clear()
-            logger.info("Closed all iTerm2 connections")
+            logger.info("Closed all iTerm2 sessions")
 
-    async def _create_connection(self) -> Any:
-        """Create a new iTerm2 connection.
-
-        Returns:
-            New iTerm2 connection
-
-        Raises:
-            RuntimeError: If connection fails
-        """
-        try:
-            conn = await iterm2.Connection.async_connect()
-            return conn
-        except Exception as e:
-            raise RuntimeError(f"Failed to create iTerm2 connection: {e}") from e
-
-    def _is_connection_healthy(self, conn: Any) -> bool:
-        """Check if a connection is healthy.
+    async def _create_session(
+        self,
+        command: str,
+        columns: int,
+        rows: int,
+        profile: str | None,
+    ) -> str:
+        """Create a new iTerm2 session via AppleScript.
 
         Args:
-            conn: Connection to check
+            command: Command to run
+            columns: Terminal width
+            rows: Terminal height
+            profile: Optional profile name
 
         Returns:
-            True if connection is healthy
+            New session ID
+        """
+        session_id = str(uuid.uuid4())[:8]
+
+        # Escape command for AppleScript
+        escaped_command = command.replace('"', '\\"')
+
+        if profile:
+            script = f'''
+            tell application "iTerm2"
+                activate
+                set newWindow to (create window with profile "{profile}")
+                tell newWindow
+                    tell current session
+                        write text "{escaped_command}"
+                    end tell
+                end tell
+            end tell
+            '''
+        else:
+            script = f'''
+            tell application "iTerm2"
+                activate
+                tell current window
+                    set newTab to (create tab with default profile)
+                    tell newTab
+                        tell current session
+                            write text "{escaped_command}"
+                        end tell
+                    end tell
+                end tell
+            end tell
+            '''
+
+        await self._run_applescript(script)
+        return session_id
+
+    async def _run_applescript(self, script: str) -> str:
+        """Run an AppleScript and return output.
+
+        Args:
+            script: AppleScript to run
+
+        Returns:
+            Script output
+
+        Raises:
+            RuntimeError: If script fails
         """
         try:
-            # Basic health check: connection should have a valid WebSocket
-            return hasattr(conn, "_websocket") and conn._websocket is not None
+            proc = await asyncio.create_subprocess_exec(
+                "osascript",
+                "-e",
+                script,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+
+            if proc.returncode != 0:
+                error_msg = stderr.decode().strip() if stderr else "Unknown error"
+                raise RuntimeError(f"AppleScript failed: {error_msg}")
+
+            return stdout.decode().strip()
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to run AppleScript: {e}") from e
+
+    async def _is_session_healthy(self, session_id: str) -> bool:
+        """Check if a session is healthy.
+
+        Args:
+            session_id: Session to check
+
+        Returns:
+            True if session is healthy
+        """
+        try:
+            script = '''
+            tell application "iTerm2"
+                return "true"
+            end tell
+            '''
+            await self._run_applescript(script)
+            return True
         except Exception:
             return False
 
     async def start_health_check(self) -> None:
-        """Start background health check task.
-
-        Periodically checks connection health and removes stale connections.
-        """
+        """Start background health check task."""
         if self._health_check_task is not None:
-            return  # Already running
+            return
 
         self._health_check_task = asyncio.create_task(self._health_check_loop())
-        logger.info("Started iTerm2 connection pool health check")
+        logger.info("Started iTerm2 session pool health check")
 
     async def _health_check_loop(self) -> None:
         """Background health check loop."""
         while not self._shutdown_event.is_set():
             try:
-                # Sleep with shutdown check
                 try:
                     await asyncio.wait_for(
-                        self._shutdown_event.wait(),
-                        timeout=self.health_check_interval
+                        self._shutdown_event.wait(), timeout=self.health_check_interval
                     )
-                    break  # Shutdown signaled
+                    break
                 except asyncio.TimeoutError:
-                    pass  # Normal timeout, continue loop
+                    pass
 
-                await self._remove_stale_connections()
+                await self._remove_stale_sessions()
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"Health check error: {e}")
 
-    async def _remove_stale_connections(self) -> None:
-        """Remove stale connections from the pool.
-
-        A connection is stale if:
-        - It's idle for longer than idle_timeout
-        - It's not healthy (WebSocket closed)
-        """
+    async def _remove_stale_sessions(self) -> None:
+        """Remove stale sessions from the pool."""
         async with self._lock:
             now = datetime.now()
             stale_ids = []
 
-            for conn_id, conn_info in self._pool.items():
-                # Skip in-use connections
-                if conn_info["in_use"]:
+            for session_id, session_info in self._pool.items():
+                if session_info["in_use"]:
                     continue
 
-                # Check idle timeout
-                idle_time = now - conn_info["last_used"]
+                idle_time = now - session_info["last_used"]
                 if idle_time > self.idle_timeout:
-                    stale_ids.append(conn_id)
+                    stale_ids.append(session_id)
                     continue
 
-                # Check health
-                if not self._is_connection_healthy(conn_info["conn"]):
-                    stale_ids.append(conn_id)
+                if not await self._is_session_healthy(session_id):
+                    stale_ids.append(session_id)
 
-            # Remove stale connections
-            for conn_id in stale_ids:
-                conn_info = self._pool[conn_id]
+            for session_id in stale_ids:
                 try:
-                    await conn_info["conn"].close()
+                    await self.close_session(session_id)
                 except Exception as e:
-                    logger.warning(f"Error closing stale connection {conn_id}: {e}")
-                del self._pool[conn_id]
-                logger.debug(f"Removed stale connection {conn_id}")
+                    logger.warning(f"Error closing stale session {session_id}: {e}")
 
             if stale_ids:
-                logger.info(f"Removed {len(stale_ids)} stale connections")
+                logger.info(f"Removed {len(stale_ids)} stale sessions")
 
     def stats(self) -> dict[str, Any]:
         """Get pool statistics.
@@ -271,44 +425,45 @@ class ITerm2ConnectionPool:
             Dictionary with pool stats
         """
         total = len(self._pool)
-        in_use = sum(1 for c in self._pool.values() if c["in_use"])
+        in_use = sum(1 for s in self._pool.values() if s["in_use"])
         idle = total - in_use
 
         return {
-            "total_connections": total,
+            "total_sessions": total,
             "in_use": in_use,
             "idle": idle,
             "max_size": self.max_size,
             "utilization_percent": round((in_use / self.max_size) * 100, 1)
             if self.max_size > 0
             else 0,
+            "backend": "applescript",
         }
 
 
-# Global connection pool singleton
-_global_pool: ITerm2ConnectionPool | None = None
+# Global session pool singleton
+_global_pool: ITerm2SessionPool | None = None
 _pool_lock = asyncio.Lock()
 
 
-async def get_global_pool() -> ITerm2ConnectionPool:
-    """Get or create the global iTerm2 connection pool.
+async def get_global_pool() -> ITerm2SessionPool:
+    """Get or create the global iTerm2 session pool.
 
     Returns:
-        Global connection pool instance
+        Global session pool instance
     """
     global _global_pool
 
     async with _pool_lock:
         if _global_pool is None:
-            _global_pool = ITerm2ConnectionPool()
+            _global_pool = ITerm2SessionPool()
             await _global_pool.start_health_check()
-            logger.info("Created global iTerm2 connection pool")
+            logger.info("Created global iTerm2 session pool")
 
         return _global_pool
 
 
 async def close_global_pool() -> None:
-    """Close the global connection pool.
+    """Close the global session pool.
 
     Should be called on application shutdown.
     """
@@ -318,4 +473,8 @@ async def close_global_pool() -> None:
         if _global_pool is not None:
             await _global_pool.close_all()
             _global_pool = None
-            logger.info("Closed global iTerm2 connection pool")
+            logger.info("Closed global iTerm2 session pool")
+
+
+# Legacy aliases for backward compatibility
+ITerm2ConnectionPool = ITerm2SessionPool

@@ -1,225 +1,207 @@
 """iTerm2 adapter for terminal management.
 
-This adapter uses the iTerm2 Python API to launch and manage terminal sessions.
-Requires iTerm2 to be running with the Python API server enabled.
+This adapter uses AppleScript to launch and manage terminal sessions.
+Works reliably in embedded asyncio applications.
 
-IMPORTANT - API Design Limitation:
-    The iTerm2 Python API is designed for standalone scripts that run under
-    iTerm2's event loop (via iterm2.Connection.run()). It is NOT designed
-    to be embedded in existing asyncio applications.
+IMPORTANT - Implementation Note:
+    This adapter uses AppleScript via subprocess instead of the iTerm2 Python API
+    because the iTerm2 Python API is designed for standalone scripts that run under
+    iTerm2's event loop (via iterm2.Connection.run()). It does NOT work reliably
+    when embedded in existing asyncio applications.
 
     For pool management and terminal orchestration within Mahavishnu:
-    - Use mcpretentious adapter (PTY-based, works with any async app)
+    - This adapter works via AppleScript (reliable, but limited output capture)
+    - Use mcpretentious adapter (PTY-based, full output capture)
     - Use mock adapter for testing
-
-    The iTerm2 adapter may work in specific contexts where iTerm2 controls
-    the event loop, but for general pool management, mcpretentious is recommended.
 """
 
+import asyncio
+import shutil
+import uuid
 from datetime import datetime
-import logging
+from logging import getLogger
 from typing import Any
 
 from .base import TerminalAdapter
 
-logger = logging.getLogger(__name__)
+logger = getLogger(__name__)
 
-# iTerm2 Python API is available as 'iterm2' package
-# It connects via WebSocket to the iTerm2 application
-try:
-    import iterm2
+# Check if osascript is available (macOS only)
+OSASCRIPT_AVAILABLE = shutil.which("osascript") is not None
 
-    ITERM2_AVAILABLE = True
-except ImportError:
-    ITERM2_AVAILABLE = False
-    logger.warning("iterm2 package not available. Install with: pip install iterm2")
+# Legacy export for backward compatibility
+ITERM2_AVAILABLE = OSASCRIPT_AVAILABLE
 
 
 class ITerm2Adapter(TerminalAdapter):
-    """Terminal adapter for iTerm2 using the Python API.
+    """Terminal adapter for iTerm2 using AppleScript.
 
-    This adapter requires iTerm2 to be running with the Python API server enabled:
-    - iTerm2 > Preferences > General > Magic > Enable Python API
+    This adapter requires iTerm2 to be running on macOS.
 
-    The adapter communicates with iTerm2 via WebSocket protocol automatically.
+    The adapter communicates with iTerm2 via AppleScript, which works
+    reliably in embedded asyncio contexts unlike the iTerm2 Python API.
 
     Features:
-    - Connection pooling for reduced overhead
-    - Automatic health checking
-    - Profile-based session creation
+    - Session-based terminal management
+    - Profile support for custom terminal configurations
+    - Window/tab creation options
+    - Graceful error handling
+
+    Limitations:
+    - Output capture is limited (AppleScript doesn't support terminal buffer access)
+    - For full output capture, use mcpretentious adapter
     """
 
     adapter_name: str = "iterm2"
 
     def __init__(
         self,
-        connection: Any | None = None,
-        use_pooling: bool = True,
         default_profile: str | None = None,
     ):
         """Initialize iTerm2 adapter.
 
         Args:
-            connection: Optional iterm2 connection (for testing or reusing connections)
-            use_pooling: Enable connection pooling (default: True)
             default_profile: Default iTerm2 profile name for new sessions
 
         Raises:
-            ImportError: If iterm2 package is not available
-            RuntimeError: If cannot connect to iTerm2
+            ImportError: If osascript is not available (not macOS)
         """
-        if not ITERM2_AVAILABLE:
-            raise ImportError("iterm2 package is not available. Install with: pip install iterm2")
+        if not OSASCRIPT_AVAILABLE:
+            raise ImportError(
+                "osascript not available. iTerm2 adapter requires macOS."
+            )
 
-        self._connection = connection
-        self._use_pooling = use_pooling
         self._default_profile = default_profile
-        self._app: Any | None = None
         self._sessions: dict[str, dict[str, Any]] = {}
-        self._connected = False
-        self._pool: Any | None = None
-        self._owns_connection: bool = False  # Track if we created the connection
 
-    async def _ensure_connected(self) -> None:
-        """Ensure connection to iTerm2 is established.
+    async def _run_applescript(self, script: str) -> str:
+        """Run an AppleScript and return output.
 
-        This uses the iterm2.Connection which automatically handles WebSocket.
-        With pooling enabled, reuses existing connections from the pool.
+        Args:
+            script: AppleScript to run
+
+        Returns:
+            Script output
+
+        Raises:
+            RuntimeError: If script fails
         """
-        if self._connected:
-            return
-
         try:
-            if self._connection is None:
-                if self._use_pooling:
-                    # Use global connection pool
-                    from ..pool import get_global_pool
+            proc = await asyncio.create_subprocess_exec(
+                "osascript",
+                "-e",
+                script,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
 
-                    self._pool = await get_global_pool()
-                    self._connection = await self._pool.acquire()
-                    self._owns_connection = True
-                    logger.debug("Acquired iTerm2 connection from pool")
-                else:
-                    # Create direct connection
-                    self._connection = await iterm2.Connection.async_connect()
-                    self._owns_connection = True
-                    logger.info("Created new iTerm2 connection (no pooling)")
+            if proc.returncode != 0:
+                error_msg = stderr.decode().strip() if stderr else "Unknown error"
+                raise RuntimeError(f"AppleScript failed: {error_msg}")
 
-            self._app = await iterm2.AsyncApp.async_get(self._connection)
-            self._connected = True
-            logger.info("Connected to iTerm2 via Python API")
+            return stdout.decode().strip()
+
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to connect to iTerm2. Ensure iTerm2 is running "
-                f"and Python API is enabled in Preferences > General > Magic: {e}"
-            ) from e
-
-    async def _release_connection(self) -> None:
-        """Release connection back to pool or close it.
-
-        Should be called when adapter is done with the connection.
-        """
-        if self._owns_connection and self._connection is not None:
-            if self._pool is not None:
-                await self._pool.release(self._connection)
-                logger.debug("Released iTerm2 connection to pool")
-            else:
-                await self._connection.close()
-                logger.info("Closed iTerm2 connection")
-
-            self._owns_connection = False
+            raise RuntimeError(f"Failed to run AppleScript: {e}") from e
 
     async def launch_session(
-        self, command: str, columns: int = 80, rows: int = 24, **kwargs
+        self, command: str, columns: int = 80, rows: int = 24, **kwargs: Any
     ) -> str:
         """Launch a new iTerm2 terminal session and run a command.
 
         Args:
             command: Command to run in the terminal session
-            columns: Terminal width in characters
-            rows: Terminal height in lines
+            columns: Terminal width in characters (not used with AppleScript)
+            rows: Terminal height in lines (not used with AppleScript)
             **kwargs: Additional parameters:
                 - profile_name: iTerm2 profile to use
                 - new_window: If True, create a new window instead of tab
-                - window_title: Optional title for new window
 
         Returns:
             Session ID (unique identifier for the session)
 
         Raises:
-            RuntimeError: If connection fails or session cannot be created
+            RuntimeError: If session creation fails
         """
-        await self._ensure_connected()
-
         try:
-            # Check if we should create a new window or tab
-            new_window = kwargs.get("new_window", False)
+            # Check if iTerm2 is running
+            await self._ensure_iterm2_running()
+
+            # Get options
             profile_name = kwargs.get("profile_name", self._default_profile)
-            window_title = kwargs.get("window_title")
+            new_window = kwargs.get("new_window", False)
 
+            # Generate session ID
+            session_id = str(uuid.uuid4())[:8]
+
+            # Escape command for AppleScript
+            escaped_command = command.replace("\\", "\\\\").replace('"', '\\"')
+
+            # Create AppleScript to launch terminal
             if new_window:
-                # Create a new window
                 if profile_name:
-                    try:
-                        window = await iterm2.Window.async_create(
-                            self._connection,
-                            profile=profile_name,
-                            command=command,
-                        )
-                        logger.debug(f"Created new window with profile: {profile_name}")
-                    except Exception as e:
-                        logger.warning(f"Failed to create window with profile '{profile_name}': {e}")
-                        logger.info("Falling back to default profile")
-                        window = await iterm2.Window.async_create(
-                            self._connection,
-                            command=command,
-                        )
+                    script = f'''
+                    tell application "iTerm2"
+                        activate
+                        set newWindow to (create window with profile "{profile_name}")
+                        tell newWindow
+                            tell current session
+                                write text "{escaped_command}"
+                            end tell
+                        end tell
+                    end tell
+                    '''
                 else:
-                    window = await iterm2.Window.async_create(
-                        self._connection,
-                        command=command,
-                    )
-
-                # Set window title if provided
-                if window and window_title:
-                    await window.async_set_title(window_title)
-
-                # Get the tab and session from the new window
-                tab = window.tabs[0] if window else None
-                session = tab.sessions[0] if tab else None
+                    script = f'''
+                    tell application "iTerm2"
+                        activate
+                        set newWindow to (create window with default profile)
+                        tell newWindow
+                            tell current session
+                                write text "{escaped_command}"
+                            end tell
+                        end tell
+                    end tell
+                    '''
             else:
-                # Create a new tab in the current window
-                window = self._app.current_terminal_window
-
+                # Create tab in current window
                 if profile_name:
-                    try:
-                        profile = await iterm2.Profile.async_get(self._connection, profile_name)
-                        tab = await window.async_create_tab(profile=profile)
-                        logger.debug(f"Created tab with profile: {profile_name}")
-                    except Exception as e:
-                        logger.warning(f"Failed to create tab with profile '{profile_name}': {e}")
-                        logger.info("Falling back to default profile")
-                        tab = await window.async_create_tab()
+                    script = f'''
+                    tell application "iTerm2"
+                        activate
+                        tell current window
+                            set newTab to (create tab with profile "{profile_name}")
+                            tell newTab
+                                tell current session
+                                    write text "{escaped_command}"
+                                end tell
+                            end tell
+                        end tell
+                    end tell
+                    '''
                 else:
-                    tab = await window.async_create_tab()
+                    script = f'''
+                    tell application "iTerm2"
+                        activate
+                        tell current window
+                            set newTab to (create tab with default profile)
+                            tell newTab
+                                tell current session
+                                    write text "{escaped_command}"
+                                end tell
+                            end tell
+                        end tell
+                    end tell
+                    '''
 
-                # Get the session from the tab
-                session = tab.sessions[0]
-
-                # Set terminal dimensions
-                await session.async_set_frame_size(columns, rows)
-
-                # Send the command
-                await session.async_send_text(command + "\n")
-
-            # Get session ID (unique identifier)
-            session_id = str(session.session_id)
+            await self._run_applescript(script)
 
             # Store session metadata
             self._sessions[session_id] = {
-                "session": session,
-                "tab": tab,
-                "window": window,
+                "session": None,  # Not used with AppleScript approach
+                "tab": None,
+                "window": None,
                 "command": command,
                 "created_at": datetime.now(),
                 "profile": profile_name,
@@ -251,12 +233,20 @@ class ITerm2Adapter(TerminalAdapter):
             raise KeyError(f"Session {session_id} not found")
 
         try:
-            session_data = self._sessions[session_id]
-            session = session_data["session"]
+            # Escape command for AppleScript
+            escaped_command = command.replace("\\", "\\\\").replace('"', '\\"')
 
-            # Send the command text (including newline for execution)
-            await session.async_send_text(command + "\n")
+            script = f'''
+            tell application "iTerm2"
+                tell current window
+                    tell current session
+                        write text "{escaped_command}"
+                    end tell
+                end tell
+            end tell
+            '''
 
+            await self._run_applescript(script)
             logger.debug(f"Sent command to {session_id}: {command}")
 
         except Exception as e:
@@ -266,42 +256,31 @@ class ITerm2Adapter(TerminalAdapter):
     async def capture_output(self, session_id: str, lines: int | None = None) -> str:
         """Capture output from an iTerm2 terminal session.
 
+        Note: Output capture via AppleScript is limited. For full output
+        capture, use the mcpretentious adapter instead.
+
         Args:
             session_id: Session identifier
-            lines: Optional number of lines to capture (default: all buffer)
+            lines: Optional number of lines to capture (not supported)
 
         Returns:
-            Captured output as string
+            Placeholder message (AppleScript doesn't support buffer access)
 
         Raises:
             KeyError: If session_id not found
-            RuntimeError: If capture fails
         """
         if session_id not in self._sessions:
             raise KeyError(f"Session {session_id} not found")
 
-        try:
-            session_data = self._sessions[session_id]
-            session = session_data["session"]
-
-            # Get the screen contents
-            # iTerm2 provides both screen contents and full buffer
-            if lines:
-                # Get last N lines from buffer
-                screen = await session.async_get_screen_contents()
-                all_lines = screen.contents.split("\n")
-                output = "\n".join(all_lines[-lines:])
-            else:
-                # Get full buffer
-                screen = await session.async_get_screen_contents()
-                output = screen.contents
-
-            logger.debug(f"Captured {len(output.splitlines())} lines from {session_id}")
-            return output
-
-        except Exception as e:
-            logger.error(f"Failed to capture output from {session_id}: {e}")
-            raise RuntimeError(f"Failed to capture output: {e}") from e
+        # AppleScript doesn't support terminal buffer access
+        # Return placeholder - use mcpretentious adapter for real output capture
+        session_info = self._sessions[session_id]
+        return (
+            f"[Output capture not available via AppleScript]\n"
+            f"Session: {session_id}\n"
+            f"Command: {session_info['command']}\n"
+            f"For output capture, use mcpretentious adapter"
+        )
 
     async def close_session(self, session_id: str) -> None:
         """Close an iTerm2 terminal session.
@@ -321,14 +300,27 @@ class ITerm2Adapter(TerminalAdapter):
             was_new_window = session_data.get("new_window", False)
 
             if was_new_window:
-                # Close the entire window if it was created as a new window
-                window = session_data.get("window")
-                if window:
-                    await window.async_close()
+                # Close the window
+                script = '''
+                tell application "iTerm2"
+                    tell current window
+                        close
+                    end tell
+                end tell
+                '''
             else:
-                # Close just the tab
-                tab = session_data["tab"]
-                await tab.async_close()
+                # Close the current tab
+                script = '''
+                tell application "iTerm2"
+                    tell current window
+                        tell current tab
+                            close
+                        end tell
+                    end tell
+                end tell
+                '''
+
+            await self._run_applescript(script)
 
             # Remove from tracking
             del self._sessions[session_id]
@@ -337,6 +329,9 @@ class ITerm2Adapter(TerminalAdapter):
 
         except Exception as e:
             logger.error(f"Failed to close session {session_id}: {e}")
+            # Still remove from tracking even if close failed
+            if session_id in self._sessions:
+                del self._sessions[session_id]
             raise RuntimeError(f"Failed to close session: {e}") from e
 
     async def list_sessions(self) -> list[dict[str, Any]]:
@@ -348,8 +343,6 @@ class ITerm2Adapter(TerminalAdapter):
         Raises:
             RuntimeError: If listing fails
         """
-        await self._ensure_connected()
-
         try:
             sessions_list = []
 
@@ -360,6 +353,8 @@ class ITerm2Adapter(TerminalAdapter):
                         "command": session_data["command"],
                         "created_at": session_data["created_at"].isoformat(),
                         "adapter": self.adapter_name,
+                        "profile": session_data.get("profile"),
+                        "new_window": session_data.get("new_window", False),
                     }
                 )
 
@@ -371,10 +366,9 @@ class ITerm2Adapter(TerminalAdapter):
             raise RuntimeError(f"Failed to list sessions: {e}") from e
 
     async def cleanup(self) -> None:
-        """Clean up resources and release connection.
+        """Clean up resources and close all sessions.
 
         This method should be called before shutting down the adapter.
-        With pooling enabled, releases connection back to pool instead of closing.
         """
         try:
             # Close all tracked sessions
@@ -385,11 +379,18 @@ class ITerm2Adapter(TerminalAdapter):
                 except Exception as e:
                     logger.warning(f"Failed to close session {session_id} during cleanup: {e}")
 
-            # Release connection back to pool or close it
-            await self._release_connection()
-            self._connected = False
-
             logger.info("iTerm2 adapter cleaned up successfully")
 
         except Exception as e:
             logger.error(f"Error during iTerm2 adapter cleanup: {e}")
+
+    async def _ensure_iterm2_running(self) -> None:
+        """Ensure iTerm2 is running, launch if needed."""
+        script = '''
+        tell application "iTerm2"
+            if it is not running then
+                launch
+            end if
+        end tell
+        '''
+        await self._run_applescript(script)
