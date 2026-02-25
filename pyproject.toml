@@ -201,6 +201,30 @@ ingestion = [
     # This extra is kept for backward compatibility
 ]
 
+# Desktop automation: macOS and cross-platform desktop automation
+automation = [
+    # macOS-only dependencies (platform marker required)
+    "pyxa>=0.3.0; sys_platform == 'darwin'",           # macOS application automation (primary)
+    "pyatomac>=2.0.7; sys_platform == 'darwin'",       # macOS accessibility API (deprioritized)
+    # Cross-platform
+    "pyautogui>=0.9.54",                               # Cross-platform automation fallback
+    "Pillow>=10.0.0",                                  # Screenshot processing
+    "mss>=9.0.0",                                      # Fast cross-platform screenshots
+]
+
+# Desktop automation with vision (OCR, image recognition)
+automation-vision = [
+    "mahavishnu[automation]",
+    "pytesseract>=0.3.10",      # OCR via Tesseract
+    "easyocr>=1.7.0",           # Alternative OCR (GPU optional)
+    "opencv-python>=4.8.0",     # Computer vision
+]
+
+# Full automation suite (all optional features)
+automation-full = [
+    "mahavishnu[automation,automation-vision]",
+]
+
 [tool.hatch.metadata]
 allow-direct-references = true
 
