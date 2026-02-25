@@ -1,4 +1,10 @@
 # Mahavishnu Configuration with Terminal Management and OpenSearch Integration
+#
+# Related config files:
+#   - settings/models.yaml     - LLM model registry (Ollama, embeddings, cloud)
+#   - settings/embeddings.yaml - Detailed embedding configuration
+#   - settings/ecosystem.yaml  - Repository manifest
+#   - settings/repos.yaml      - Repository metadata
 
 # Server settings
 server_name: "Mahavishnu Orchestrator"
@@ -10,6 +16,9 @@ log_level: INFO
 
 # Repository manifest path
 repos_path: settings/ecosystem.yaml
+
+# LLM model registry path
+models_path: settings/models.yaml
 
 # Concurrency settings
 max_concurrent_workflows: 10
