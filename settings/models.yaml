@@ -1,0 +1,53 @@
+# Mahavishnu - LLM Model Configuration
+# Generated: 2026-02-25
+#
+# GLOBAL REGISTRY: ~/Projects/bodai/config/models.yaml
+# This file contains Mahavishnu-specific overrides and references.
+# For the complete model registry, see the global config.
+#
+# Related files:
+#   - bodai/config/models.yaml      - Global ecosystem model registry
+#   - mahavishnu/workers/ollama.py  - OllamaWorker implementation
+
+# =============================================================================
+# MAHAVISHNU-SPECIFIC OVERRIDES
+# =============================================================================
+
+# Ollama configuration for Mahavishnu workers
+ollama:
+  base_url: "http://localhost:11434"
+
+  # Task routing used by OllamaWorker (mahavishnu/workers/ollama.py)
+  # This maps task categories to specific models
+  task_routing:
+    CODE_GENERATION: "qwen2.5-coder:7b"
+    CODE_REVIEW: "qwen2.5-coder:7b"
+    DEBUGGING: "qwen2.5-coder:7b"
+    REFACTORING: "qwen2.5-coder:7b"
+    DOCUMENTATION: "qwen2.5-coder:7b"
+    TESTING: "qwen2.5-coder:7b"
+    REASONING: "llama3:8b"
+    CREATIVE: "llava:7b"
+    ANALYSIS: "qwen2.5-coder:7b"
+    VISION: "llava:7b"
+    EMBEDDING: "nomic-embed-text"
+    GENERAL: "qwen2.5-coder:7b"
+
+# =============================================================================
+# PENDING UPDATES
+# =============================================================================
+# When Qwen 3.5 becomes available on Ollama, update task_routing to:
+#
+# task_routing:
+#   CODE_GENERATION: "qwen3.5-35b-a3b"
+#   CODE_REVIEW: "qwen3.5-35b-a3b"
+#   DEBUGGING: "qwen3.5-35b-a3b"
+#   REFACTORING: "qwen3.5-35b-a3b"
+#   DOCUMENTATION: "qwen3.5-35b-a3b"
+#   TESTING: "qwen3.5-35b-a3b"
+#   REASONING: "qwen3.5-35b-a3b"
+#   CREATIVE: "qwen3.5-35b-a3b"
+#   ANALYSIS: "qwen3.5-35b-a3b"
+#   VISION: "qwen3.5-35b-a3b"  # Native multimodal - replaces llava
+#   EMBEDDING: "nomic-embed-text"  # Keep separate embedding model
+#   GENERAL: "qwen3.5-35b-a3b"
