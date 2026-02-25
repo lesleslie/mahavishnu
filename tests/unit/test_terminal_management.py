@@ -171,7 +171,7 @@ class TestTerminalSettings:
         assert settings.capture_lines == 100
         assert settings.poll_interval == 0.5
         assert settings.max_concurrent_sessions == 20
-        assert settings.adapter_preference == "auto"
+        assert settings.adapter_preference == "mock"  # Default to mock until iTerm2/mcpretentious configured
         assert settings.iterm2_pooling_enabled is True
         assert settings.iterm2_pool_max_size == 3
         assert settings.iterm2_pool_idle_timeout == 300.0
