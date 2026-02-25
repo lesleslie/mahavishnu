@@ -182,3 +182,5 @@ data/
 # Production secrets (never commit)
 secrets/
 *.txt
+.archives/
+.backup/
