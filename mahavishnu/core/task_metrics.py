@@ -32,6 +32,7 @@ def _ensure_prometheus_available() -> bool:
     """Check if prometheus_client is available."""
     try:
         import prometheus_client  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -171,9 +172,7 @@ class TaskMetrics:
 
     # Task lifecycle metrics
 
-    def record_task_created(
-        self, repository: str, priority: str = "medium"
-    ) -> None:
+    def record_task_created(self, repository: str, priority: str = "medium") -> None:
         """Record a task creation event.
 
         Args:
@@ -195,13 +194,9 @@ class TaskMetrics:
             operation="started", repository=repository, priority="unknown"
         ).inc()
         self.active_tasks_gauge.labels(status="pending", repository=repository).dec()
-        self.active_tasks_gauge.labels(
-            status="in_progress", repository=repository
-        ).inc()
+        self.active_tasks_gauge.labels(status="in_progress", repository=repository).inc()
 
-    def record_task_completed(
-        self, repository: str, duration_seconds: float
-    ) -> None:
+    def record_task_completed(self, repository: str, duration_seconds: float) -> None:
         """Record a task completion event.
 
         Args:
@@ -211,12 +206,8 @@ class TaskMetrics:
         self.task_operations_total.labels(
             operation="completed", repository=repository, priority="unknown"
         ).inc()
-        self.task_duration_seconds.labels(repository=repository).observe(
-            duration_seconds
-        )
-        self.active_tasks_gauge.labels(
-            status="in_progress", repository=repository
-        ).dec()
+        self.task_duration_seconds.labels(repository=repository).observe(duration_seconds)
+        self.active_tasks_gauge.labels(status="in_progress", repository=repository).dec()
 
     def record_task_cancelled(self, repository: str) -> None:
         """Record a task cancellation event.
@@ -227,9 +218,7 @@ class TaskMetrics:
         self.task_operations_total.labels(
             operation="cancelled", repository=repository, priority="unknown"
         ).inc()
-        self.active_tasks_gauge.labels(
-            status="in_progress", repository=repository
-        ).dec()
+        self.active_tasks_gauge.labels(status="in_progress", repository=repository).dec()
 
     def record_task_blocked(self, repository: str) -> None:
         """Record a task blocked event.
@@ -240,9 +229,7 @@ class TaskMetrics:
         self.task_operations_total.labels(
             operation="blocked", repository=repository, priority="unknown"
         ).inc()
-        self.active_tasks_gauge.labels(
-            status="in_progress", repository=repository
-        ).dec()
+        self.active_tasks_gauge.labels(status="in_progress", repository=repository).dec()
         self.active_tasks_gauge.labels(status="blocked", repository=repository).inc()
 
     def record_task_unblocked(self, repository: str) -> None:
@@ -255,9 +242,7 @@ class TaskMetrics:
             operation="unblocked", repository=repository, priority="unknown"
         ).inc()
         self.active_tasks_gauge.labels(status="blocked", repository=repository).dec()
-        self.active_tasks_gauge.labels(
-            status="in_progress", repository=repository
-        ).inc()
+        self.active_tasks_gauge.labels(status="in_progress", repository=repository).inc()
 
     # Quality gate metrics
 
@@ -301,9 +286,7 @@ class TaskMetrics:
 
     def record_webhook_verified(self) -> None:
         """Record a successful webhook verification."""
-        self.webhook_operations_total.labels(
-            operation="verify", result="success"
-        ).inc()
+        self.webhook_operations_total.labels(operation="verify", result="success").inc()
 
     def record_webhook_rejected(self, reason: str) -> None:
         """Record a rejected webhook.

@@ -233,8 +233,12 @@ class WorktreeManager:
         try:
             # Create worktree with new branch
             await self._git.run(
-                "worktree", "add", "-b", branch_name,
-                worktree_path, base_branch,
+                "worktree",
+                "add",
+                "-b",
+                branch_name,
+                worktree_path,
+                base_branch,
                 cwd=repo_path,
             )
 
@@ -285,10 +289,7 @@ class WorktreeManager:
         Returns:
             List of active WorktreeInfo
         """
-        return [
-            w for w in self._worktrees.values()
-            if w.state == WorktreeState.ACTIVE
-        ]
+        return [w for w in self._worktrees.values() if w.state == WorktreeState.ACTIVE]
 
     def worktree_exists(self, worktree_id: str) -> bool:
         """Check if a worktree exists.
@@ -328,11 +329,15 @@ class WorktreeManager:
             if merge and repo_path:
                 # Merge branch into base
                 await self._git.run(
-                    "checkout", worktree.base_branch,
+                    "checkout",
+                    worktree.base_branch,
                     cwd=repo_path,
                 )
                 await self._git.run(
-                    "merge", worktree.branch, "--no-ff", "-m",
+                    "merge",
+                    worktree.branch,
+                    "--no-ff",
+                    "-m",
                     f"Merge {worktree.branch} into {worktree.base_branch}",
                     cwd=repo_path,
                 )
@@ -385,7 +390,10 @@ class WorktreeManager:
                 # Use git worktree remove
                 parent_repo = os.path.dirname(os.path.dirname(worktree.path))
                 await self._git.run(
-                    "worktree", "remove", worktree.path, "--force",
+                    "worktree",
+                    "remove",
+                    worktree.path,
+                    "--force",
                     cwd=parent_repo,
                 )
 
@@ -409,7 +417,8 @@ class WorktreeManager:
         """
         cleaned = 0
         to_cleanup = [
-            wt_id for wt_id, wt in self._worktrees.items()
+            wt_id
+            for wt_id, wt in self._worktrees.items()
             if wt.state in (WorktreeState.COMPLETED, WorktreeState.MERGED, WorktreeState.ABANDONED)
         ]
 
@@ -437,7 +446,8 @@ class WorktreeManager:
             # Fetch and merge base branch
             await self._git.run("fetch", "origin", cwd=worktree.path)
             await self._git.run(
-                "merge", f"origin/{worktree.base_branch}",
+                "merge",
+                f"origin/{worktree.base_branch}",
                 cwd=worktree.path,
             )
             logger.info(f"Synced worktree {worktree_id} with {worktree.base_branch}")
@@ -463,19 +473,23 @@ class WorktreeManager:
         try:
             # Get branch info
             branch_output = await self._git.run(
-                "branch", "--show-current",
+                "branch",
+                "--show-current",
                 cwd=worktree.path,
             )
 
             # Get status
             status_output = await self._git.run(
-                "status", "--short",
+                "status",
+                "--short",
                 cwd=worktree.path,
             )
 
             # Get ahead/behind count
             ahead_behind = await self._git.run(
-                "rev-list", "--left-right", "--count",
+                "rev-list",
+                "--left-right",
+                "--count",
                 f"{worktree.branch}...{worktree.base_branch}",
                 cwd=worktree.path,
             )
@@ -487,7 +501,9 @@ class WorktreeManager:
                 "branch": branch_output.strip(),
                 "base_branch": worktree.base_branch,
                 "state": worktree.state.value,
-                "modified_files": len(status_output.strip().split("\n")) if status_output.strip() else 0,
+                "modified_files": len(status_output.strip().split("\n"))
+                if status_output.strip()
+                else 0,
                 "ahead": int(ahead),
                 "behind": int(behind),
                 "path": worktree.path,

@@ -146,7 +146,9 @@ class TaskEvent:
             id=str(row["id"]),
             task_id=str(row["task_id"]),
             event_type=TaskEventType(row["event_type"]),
-            data=row["event_data"] if isinstance(row["event_data"], dict) else json.loads(row["event_data"]),
+            data=row["event_data"]
+            if isinstance(row["event_data"], dict)
+            else json.loads(row["event_data"]),
             actor=row["actor"],
             occurred_at=row["occurred_at"],
             correlation_id=str(row["correlation_id"]) if row["correlation_id"] else None,
@@ -354,9 +356,7 @@ class EventStore:
                 event.idempotency_key,
             )
 
-            logger.debug(
-                f"Appended event {event.event_type.value} for task {task_id} by {actor}"
-            )
+            logger.debug(f"Appended event {event.event_type.value} for task {task_id} by {actor}")
             return event
 
         except Exception as e:

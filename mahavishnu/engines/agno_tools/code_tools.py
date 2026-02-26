@@ -96,7 +96,9 @@ def _analyze_python_file(file_path: Path) -> dict[str, Any]:
                     "name": node.name,
                     "line": node.lineno,
                     "args": [arg.arg for arg in node.args.args],
-                    "decorators": [d.id if isinstance(d, ast.Name) else str(d) for d in node.decorator_list],
+                    "decorators": [
+                        d.id if isinstance(d, ast.Name) else str(d) for d in node.decorator_list
+                    ],
                     "is_async": isinstance(node, ast.AsyncFunctionDef),
                     "docstring": ast.get_docstring(node) or "",
                 }
@@ -117,12 +119,14 @@ def _analyze_python_file(file_path: Path) -> dict[str, Any]:
 
                 # Flag high complexity
                 if complexity > 10:
-                    result["issues"].append({
-                        "type": "high_complexity",
-                        "location": f"{node.name}:{node.lineno}",
-                        "message": f"Function '{node.name}' has high cyclomatic complexity ({complexity})",
-                        "severity": "warning",
-                    })
+                    result["issues"].append(
+                        {
+                            "type": "high_complexity",
+                            "location": f"{node.name}:{node.lineno}",
+                            "message": f"Function '{node.name}' has high cyclomatic complexity ({complexity})",
+                            "severity": "warning",
+                        }
+                    )
 
                 result["functions"].append(func_info)
                 result["complexity"]["functions"] += 1
@@ -132,7 +136,9 @@ def _analyze_python_file(file_path: Path) -> dict[str, Any]:
                 class_info = {
                     "name": node.name,
                     "line": node.lineno,
-                    "bases": [base.id if isinstance(base, ast.Name) else str(base) for base in node.bases],
+                    "bases": [
+                        base.id if isinstance(base, ast.Name) else str(base) for base in node.bases
+                    ],
                     "methods": [],
                     "docstring": ast.get_docstring(node) or "",
                 }
@@ -147,27 +153,33 @@ def _analyze_python_file(file_path: Path) -> dict[str, Any]:
 
         # Check for common issues
         if result["complexity"]["loc"] > 500:
-            result["issues"].append({
-                "type": "large_file",
-                "location": str(file_path),
-                "message": f"File is large ({result['complexity']['loc']} LOC)",
-                "severity": "info",
-            })
+            result["issues"].append(
+                {
+                    "type": "large_file",
+                    "location": str(file_path),
+                    "message": f"File is large ({result['complexity']['loc']} LOC)",
+                    "severity": "info",
+                }
+            )
 
     except SyntaxError as e:
-        result["issues"].append({
-            "type": "syntax_error",
-            "location": f"{file_path}:{e.lineno}",
-            "message": str(e.msg),
-            "severity": "error",
-        })
+        result["issues"].append(
+            {
+                "type": "syntax_error",
+                "location": f"{file_path}:{e.lineno}",
+                "message": str(e.msg),
+                "severity": "error",
+            }
+        )
     except Exception as e:
-        result["issues"].append({
-            "type": "parse_error",
-            "location": str(file_path),
-            "message": str(e),
-            "severity": "error",
-        })
+        result["issues"].append(
+            {
+                "type": "parse_error",
+                "location": str(file_path),
+                "message": str(e),
+                "severity": "error",
+            }
+        )
 
     return result
 
@@ -268,12 +280,14 @@ def _search_code_impl(query: str, repo_path: str) -> list[dict[str, Any]]:
                     context_end = min(len(lines), line_num + 2)
                     context = lines[context_start:context_end]
 
-                    results.append({
-                        "file": str(py_file.relative_to(path)),
-                        "line": line_num,
-                        "match": line.strip(),
-                        "context": context,
-                    })
+                    results.append(
+                        {
+                            "file": str(py_file.relative_to(path)),
+                            "line": line_num,
+                            "match": line.strip(),
+                            "context": context,
+                        }
+                    )
 
         except Exception as e:
             logger.debug(f"Error reading {py_file}: {e}")

@@ -11,6 +11,7 @@ class AdapterType(str, Enum):
     PREFECT = "prefect"
     AGNO = "agno"
     LLAMAINDEX = "llamaindex"
+    PYDANTIC_AI = "pydantic_ai"
     WORKER = "worker"
 
 

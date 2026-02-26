@@ -87,7 +87,7 @@ class WorktreeCoordinator:
         if providers is None:
             providers = [
                 SessionBuddyWorktreeProvider(),  # Primary
-                DirectGitWorktreeProvider(),      # Fallback
+                DirectGitWorktreeProvider(),  # Fallback
             ]
 
         self.provider_registry = WorktreeProviderRegistry(providers)
@@ -145,9 +145,7 @@ class WorktreeCoordinator:
             raise ConfigurationError(f"Repository not found: {repo_nickname}")
 
         # Check dependencies
-        blocking_deps = self.coordination_manager.get_blocking_dependencies(
-            repo_nickname
-        )
+        blocking_deps = self.coordination_manager.get_blocking_dependencies(repo_nickname)
         if blocking_deps:
             logger.warning(
                 f"Repo {repo_nickname} has {len(blocking_deps)} blocking dependencies",
@@ -157,19 +155,13 @@ class WorktreeCoordinator:
         # Generate safe worktree path
         if worktree_name:
             # Use custom worktree name
-            worktree_path = self.path_validator.get_safe_worktree_path(
-                repo_nickname, worktree_name
-            )
+            worktree_path = self.path_validator.get_safe_worktree_path(repo_nickname, worktree_name)
         else:
             # Generate from branch name
-            worktree_path = self.path_validator.get_safe_worktree_path(
-                repo_nickname, branch
-            )
+            worktree_path = self.path_validator.get_safe_worktree_path(repo_nickname, branch)
 
         # Validate worktree path (SECURITY-002: defense in depth)
-        is_valid, error = self.path_validator.validate_worktree_path(
-            str(worktree_path), user_id
-        )
+        is_valid, error = self.path_validator.validate_worktree_path(str(worktree_path), user_id)
         if not is_valid:
             self.audit_logger.log_security_rejection(
                 user_id=user_id,
@@ -257,9 +249,7 @@ class WorktreeCoordinator:
             raise ConfigurationError(f"Repository not found: {repo_nickname}")
 
         # Validate worktree path BEFORE any operations (SECURITY-002)
-        is_valid, error = self.path_validator.validate_worktree_path(
-            worktree_path, user_id
-        )
+        is_valid, error = self.path_validator.validate_worktree_path(worktree_path, user_id)
         if not is_valid:
             self.audit_logger.log_security_rejection(
                 user_id=user_id,
@@ -419,14 +409,10 @@ class WorktreeCoordinator:
                 for repo in repos:
                     try:
                         provider = await self.provider_registry.get_available_provider()
-                        result = await provider.list_worktrees(
-                            repository_path=Path(repo.path)
-                        )
+                        result = await provider.list_worktrees(repository_path=Path(repo.path))
                         all_worktrees.extend(result.get("worktrees", []))
                     except Exception as e:
-                        logger.warning(
-                            f"Failed to list worktrees for {repo.nickname}: {e}"
-                        )
+                        logger.warning(f"Failed to list worktrees for {repo.nickname}: {e}")
                         continue
 
                 return {
@@ -551,17 +537,13 @@ class WorktreeCoordinator:
     async def _check_uncommitted_changes(self, worktree_path: str) -> bool:
         """Check if worktree has uncommitted changes."""
         try:
-            result = await self._execute_git_command(
-                worktree_path, ["status", "--porcelain"]
-            )
+            result = await self._execute_git_command(worktree_path, ["status", "--porcelain"])
             return bool(result.strip())
         except Exception as e:
             logger.warning(f"Failed to check uncommitted changes: {e}")
             return False
 
-    def _get_worktree_dependents(
-        self, repo_nickname: str, worktree_path: str
-    ) -> list[str]:
+    def _get_worktree_dependents(self, repo_nickname: str, worktree_path: str) -> list[str]:
         """
         Get repositories that depend on this worktree (ARCH-002 fix).
 
@@ -598,9 +580,7 @@ class WorktreeCoordinator:
     async def _branch_exists(self, repo_path: str, branch: str) -> bool:
         """Check if branch exists in repository."""
         try:
-            result = await self._execute_git_command(
-                repo_path, ["branch", "--list", branch]
-            )
+            result = await self._execute_git_command(repo_path, ["branch", "--list", branch])
             return bool(result.strip())
         except Exception as e:
             logger.warning(f"Failed to check branch existence: {e}")
@@ -609,17 +589,13 @@ class WorktreeCoordinator:
     async def _get_worktree_branch(self, worktree_path: str) -> str:
         """Get current branch for worktree."""
         try:
-            result = await self._execute_git_command(
-                worktree_path, ["branch", "--show-current"]
-            )
+            result = await self._execute_git_command(worktree_path, ["branch", "--show-current"])
             return result.strip()
         except Exception as e:
             logger.warning(f"Failed to get worktree branch: {e}")
             return "unknown"
 
-    async def _execute_git_command(
-        self, cwd: str, args: list[str]
-    ) -> str:
+    async def _execute_git_command(self, cwd: str, args: list[str]) -> str:
         """
         Execute git command and return output.
 

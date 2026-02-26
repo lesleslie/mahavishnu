@@ -249,7 +249,13 @@ INTENT_PATTERNS = {
 # Domain patterns for skill extraction
 DOMAIN_PATTERNS = {
     "security": [r"\bsecurity\b", r"\bauth\b", r"\bxss\b", r"\binjection\b", r"\bvulnerab"],
-    "performance": [r"\bperformance\b", r"\bspeed\b", r"\boptimiz\b", r"\bmemory\b", r"\blatency\b"],
+    "performance": [
+        r"\bperformance\b",
+        r"\bspeed\b",
+        r"\boptimiz\b",
+        r"\bmemory\b",
+        r"\blatency\b",
+    ],
     "quality": [r"\bquality\b", r"\bstyle\b", r"\blint\b", r"\bcomplexity\b", r"\bmaintain"],
     "testing": [r"\btest\b", r"\bcoverage\b", r"\bunit\b", r"\bintegration\b"],
     "documentation": [r"\bdoc\b", r"\breadme\b", r"\bcomment\b", r"\bapi\b"],
@@ -308,9 +314,7 @@ class GoalDrivenTeamFactory:
         """
         self.llm_factory = llm_factory
         self.skill_mapping = skill_mapping or SKILL_MAPPING
-        logger.info(
-            f"GoalDrivenTeamFactory initialized with {len(self.skill_mapping)} skills"
-        )
+        logger.info(f"GoalDrivenTeamFactory initialized with {len(self.skill_mapping)} skills")
 
     async def parse_goal(self, goal: str) -> ParsedGoal:
         """Parse a natural language goal into structured components.
@@ -473,9 +477,7 @@ class GoalDrivenTeamFactory:
                     return domain
         return "general"
 
-    def _calculate_confidence(
-        self, intent: str, skills: list[str], domain: str
-    ) -> float:
+    def _calculate_confidence(self, intent: str, skills: list[str], domain: str) -> float:
         """Calculate confidence score for pattern matching results.
 
         Args:
@@ -553,7 +555,7 @@ Your responsibilities:
 3. Synthesize results into coherent outputs
 4. Ensure comprehensive coverage of the goal
 
-Skills available: {', '.join(parsed.skills)}
+Skills available: {", ".join(parsed.skills)}
 Domain: {parsed.domain}""",
             tools=[],
             temperature=0.5,

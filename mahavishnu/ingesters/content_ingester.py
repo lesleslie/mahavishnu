@@ -42,29 +42,29 @@ from ..core.observability import observe, span
 
 # SSRF protection: blocked IP ranges
 BLOCKED_IP_RANGES = [
-    ipaddress.ip_network('10.0.0.0/8'),        # Private Class A
-    ipaddress.ip_network('172.16.0.0/12'),     # Private Class B
-    ipaddress.ip_network('192.168.0.0/16'),    # Private Class C
-    ipaddress.ip_network('127.0.0.0/8'),       # Loopback
-    ipaddress.ip_network('169.254.0.0/16'),    # Link-local (cloud metadata)
-    ipaddress.ip_network('0.0.0.0/8'),         # Current network
-    ipaddress.ip_network('224.0.0.0/4'),       # Multicast
-    ipaddress.ip_network('240.0.0.0/4'),       # Reserved
-    ipaddress.ip_network('::1/128'),           # IPv6 loopback
-    ipaddress.ip_network('fe80::/10'),         # IPv6 link-local
-    ipaddress.ip_network('fc00::/7'),          # IPv6 private
+    ipaddress.ip_network("10.0.0.0/8"),  # Private Class A
+    ipaddress.ip_network("172.16.0.0/12"),  # Private Class B
+    ipaddress.ip_network("192.168.0.0/16"),  # Private Class C
+    ipaddress.ip_network("127.0.0.0/8"),  # Loopback
+    ipaddress.ip_network("169.254.0.0/16"),  # Link-local (cloud metadata)
+    ipaddress.ip_network("0.0.0.0/8"),  # Current network
+    ipaddress.ip_network("224.0.0.0/4"),  # Multicast
+    ipaddress.ip_network("240.0.0.0/4"),  # Reserved
+    ipaddress.ip_network("::1/128"),  # IPv6 loopback
+    ipaddress.ip_network("fe80::/10"),  # IPv6 link-local
+    ipaddress.ip_network("fc00::/7"),  # IPv6 private
 ]
 
 # Blocked hostnames for SSRF protection
 BLOCKED_HOSTNAMES = [
-    'localhost',
-    'localhost.localdomain',
-    'ip6-localhost',
-    'ip6-loopback',
-    'metadata.google.internal',    # GCP metadata
-    'metadata',                     # Azure metadata
-    'kubernetes.default',           # K8s internal
-    'kubernetes.default.svc',       # K8s internal
+    "localhost",
+    "localhost.localdomain",
+    "ip6-localhost",
+    "ip6-loopback",
+    "metadata.google.internal",  # GCP metadata
+    "metadata",  # Azure metadata
+    "kubernetes.default",  # K8s internal
+    "kubernetes.default.svc",  # K8s internal
 ]
 
 
@@ -220,9 +220,7 @@ class ContentIngester:
 
             # Create HTTP clients for MCP servers
             timeout = httpx.Timeout(30.0, connect=10.0)
-            self._akosha_client = httpx.AsyncClient(
-                base_url=self._akosha_url, timeout=timeout
-            )
+            self._akosha_client = httpx.AsyncClient(base_url=self._akosha_url, timeout=timeout)
             self._crackerjack_client = httpx.AsyncClient(
                 base_url=self._crackerjack_url, timeout=timeout
             )
@@ -349,11 +347,11 @@ class ContentIngester:
         parsed = urllib.parse.urlparse(url)
 
         # Only allow http and https schemes
-        if parsed.scheme not in ('http', 'https'):
+        if parsed.scheme not in ("http", "https"):
             raise ValueError(f"Blocked scheme: {parsed.scheme}. Only http and https are allowed.")
 
         # Block file:// protocol explicitly
-        if parsed.scheme == 'file':
+        if parsed.scheme == "file":
             raise ValueError("file:// protocol is not allowed.")
 
         hostname = parsed.hostname
@@ -363,13 +361,15 @@ class ContentIngester:
         # Check blocked hostnames
         hostname_lower = hostname.lower()
         for blocked in BLOCKED_HOSTNAMES:
-            if hostname_lower == blocked or hostname_lower.endswith(f'.{blocked}'):
+            if hostname_lower == blocked or hostname_lower.endswith(f".{blocked}"):
                 raise ValueError(f"Blocked hostname: {hostname}")
 
         # Resolve hostname and check IP ranges
         try:
             # Get all IP addresses for the hostname
-            addr_info = socket.getaddrinfo(hostname, parsed.port or (443 if parsed.scheme == 'https' else 80))
+            addr_info = socket.getaddrinfo(
+                hostname, parsed.port or (443 if parsed.scheme == "https" else 80)
+            )
             for family, _, _, _, sockaddr in addr_info:
                 ip_str = sockaddr[0]
                 try:
@@ -446,7 +446,9 @@ class ContentIngester:
             metadata = first_result.get("metadata", {})
 
             # Extract title
-            title = metadata.get("title") or metadata.get("og:title") or metadata.get("twitter:title")
+            title = (
+                metadata.get("title") or metadata.get("og:title") or metadata.get("twitter:title")
+            )
 
             return {
                 "text": text,
@@ -651,7 +653,9 @@ class ContentIngester:
             embeddings = await self._generate_embeddings(chunks)
 
             # Save to file
-            safe_title = "".join(c if c.isalnum() or c in (" ", "-", "_") else "_" for c in (title or "untitled"))
+            safe_title = "".join(
+                c if c.isalnum() or c in (" ", "-", "_") else "_" for c in (title or "untitled")
+            )
             output_path = self._output_dir / f"{safe_title[:100]}.md"
             output_path.write_text(text, encoding="utf-8")
 
@@ -833,9 +837,7 @@ class ContentIngester:
             return text
 
         except ImportError:
-            raise RuntimeError(
-                "pypdf not installed. Install with: uv pip install pypdf"
-            ) from None
+            raise RuntimeError("pypdf not installed. Install with: uv pip install pypdf") from None
 
     async def _read_epub(self, file_path: Path) -> str:
         """Extract text from EPUB file.

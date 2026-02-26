@@ -134,10 +134,7 @@ class WorktreeAuditLogger:
         }
 
         # Log to application logger (for immediate visibility)
-        log_message = (
-            f"[AUDIT] {event_type}: user={user_id}, tool={tool_name}, "
-            f"result={result}"
-        )
+        log_message = f"[AUDIT] {event_type}: user={user_id}, tool={tool_name}, result={result}"
 
         if error:
             log_message += f", error={error}"

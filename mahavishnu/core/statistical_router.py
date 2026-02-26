@@ -213,8 +213,7 @@ class StatisticalRouter:
         # Get recent executions for this adapter + task type
         recent = await metrics_tracker.get_recent_executions(limit=100)
         adapter_executions = [
-            e for e in recent
-            if e.adapter == adapter and e.task_type == task_type
+            e for e in recent if e.adapter == adapter and e.task_type == task_type
         ]
 
         if not adapter_executions:
@@ -236,10 +235,7 @@ class StatisticalRouter:
         weights = self._get_weights_for_task(task_type)
 
         # Calculate combined score
-        combined_score = (
-            weights["success"] * success_rate +
-            weights["speed"] * latency_score
-        )
+        combined_score = weights["success"] * success_rate + weights["speed"] * latency_score
 
         # Determine confidence level
         sample_count = stats["total_executions"]
@@ -325,7 +321,9 @@ class StatisticalRouter:
         for adapter in adapters:
             score = await self.calculate_adapter_score(adapter, task_type, metrics_tracker)
             if score is not None:
-                logger.debug(f"No score for {adapter.value} on {task_type.value} (insufficient data)")
+                logger.debug(
+                    f"No score for {adapter.value} on {task_type.value} (insufficient data)"
+                )
                 continue
             scores.append(score)
 
@@ -408,10 +406,14 @@ class StatisticalRouter:
         denominator = 1 + z_squared / sample_size
         center = (success_rate + z_squared / (2 * sample_size)) / denominator
 
-        margin = z * np.sqrt(
-            (success_rate * (1 - success_rate) / sample_size) +
-            (z_squared / (4 * sample_size * sample_size))
-        ) / denominator
+        margin = (
+            z
+            * np.sqrt(
+                (success_rate * (1 - success_rate) / sample_size)
+                + (z_squared / (4 * sample_size * sample_size))
+            )
+            / denominator
+        )
 
         lower = max(0.0, center - margin)
         upper = min(1.0, center + margin)
@@ -461,7 +463,7 @@ class StatisticalRouter:
 
         logger.info(
             f"Started A/B test {experiment_id}: {name} "
-            f"({traffic_split*100:.0f}% traffic to variant B)"
+            f"({traffic_split * 100:.0f}% traffic to variant B)"
         )
 
         # Record A/B test start in metrics
@@ -583,7 +585,7 @@ class StatisticalRouter:
                 seconds_until_recalc = (next_sunday_3am - now).total_seconds()
 
                 if seconds_until_recalc > 0:
-                    logger.debug(f"Next recalculation in {seconds_until_recalc//3600} hours")
+                    logger.debug(f"Next recalculation in {seconds_until_recalc // 3600} hours")
                     await asyncio.sleep(seconds_until_recalc)
 
                 # Time to recalculate
@@ -603,9 +605,7 @@ class StatisticalRouter:
                 # Wait before retry
                 await asyncio.sleep(300)  # 5 minutes
 
-    async def get_preference_order(
-        self, task_type: TaskType
-    ) -> PreferenceOrder | None:
+    async def get_preference_order(self, task_type: TaskType) -> PreferenceOrder | None:
         """Get current preference order for task type.
 
         Args:

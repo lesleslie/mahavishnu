@@ -313,13 +313,15 @@ class TaskOrderer:
                 value=deadline_score,
             )
             factor_objs.append(factor)
-            factors.append({
-                "name": "deadline",
-                "weight": factor.weight,
-                "value": factor.value,
-                "score": factor.score,
-                "reason": self._get_deadline_reason(task),
-            })
+            factors.append(
+                {
+                    "name": "deadline",
+                    "weight": factor.weight,
+                    "value": factor.value,
+                    "score": factor.score,
+                    "reason": self._get_deadline_reason(task),
+                }
+            )
 
         # Priority factor
         priority_score = self._score_priority(task)
@@ -329,13 +331,15 @@ class TaskOrderer:
             value=priority_score,
         )
         factor_objs.append(factor)
-        factors.append({
-            "name": "priority",
-            "weight": factor.weight,
-            "value": factor.value,
-            "score": factor.score,
-            "reason": f"Priority: {task.get('priority', 'medium')}",
-        })
+        factors.append(
+            {
+                "name": "priority",
+                "weight": factor.weight,
+                "value": factor.value,
+                "score": factor.score,
+                "reason": f"Priority: {task.get('priority', 'medium')}",
+            }
+        )
 
         # Dependency factor (lower is better = fewer blockers)
         dep_score = self._score_dependencies(task_id, dep_graph)
@@ -345,13 +349,15 @@ class TaskOrderer:
             value=dep_score,
         )
         factor_objs.append(factor)
-        factors.append({
-            "name": "dependencies",
-            "weight": factor.weight,
-            "value": factor.value,
-            "score": factor.score,
-            "reason": f"Blocked by {len(dep_graph.get('blocked_by', {}).get(task_id, []))} tasks",
-        })
+        factors.append(
+            {
+                "name": "dependencies",
+                "weight": factor.weight,
+                "value": factor.value,
+                "score": factor.score,
+                "reason": f"Blocked by {len(dep_graph.get('blocked_by', {}).get(task_id, []))} tasks",
+            }
+        )
 
         # Blocker probability factor (lower is better)
         blocker_score = self._score_blocker_prediction(prediction)
@@ -361,13 +367,15 @@ class TaskOrderer:
             value=blocker_score,
         )
         factor_objs.append(factor)
-        factors.append({
-            "name": "blocker_risk",
-            "weight": factor.weight,
-            "value": factor.value,
-            "score": factor.score,
-            "reason": f"Blocker probability: {prediction.get('blocker_probability', 0):.0%}",
-        })
+        factors.append(
+            {
+                "name": "blocker_risk",
+                "weight": factor.weight,
+                "value": factor.value,
+                "score": factor.score,
+                "reason": f"Blocker probability: {prediction.get('blocker_probability', 0):.0%}",
+            }
+        )
 
         # Duration factor (shorter tasks first for quick wins)
         duration_score = self._score_duration(task, prediction)
@@ -377,13 +385,15 @@ class TaskOrderer:
             value=duration_score,
         )
         factor_objs.append(factor)
-        factors.append({
-            "name": "duration",
-            "weight": factor.weight,
-            "value": factor.value,
-            "score": factor.score,
-            "reason": f"Estimated: {prediction.get('estimated_hours', task.get('estimated_hours', 8)):.1f}h",
-        })
+        factors.append(
+            {
+                "name": "duration",
+                "weight": factor.weight,
+                "value": factor.value,
+                "score": factor.score,
+                "reason": f"Estimated: {prediction.get('estimated_hours', task.get('estimated_hours', 8)):.1f}h",
+            }
+        )
 
         # Calculate total score based on strategy
         total_score = self._apply_strategy_weights(factor_objs, strategy)
@@ -482,9 +492,7 @@ class TaskOrderer:
         # Invert: lower probability = higher score
         return 1.0 - blocker_prob
 
-    def _score_duration(
-        self, task: dict[str, Any], prediction: dict[str, Any]
-    ) -> float:
+    def _score_duration(self, task: dict[str, Any], prediction: dict[str, Any]) -> float:
         """Score based on duration (shorter = higher score for quick wins)."""
         hours = prediction.get("estimated_hours") or task.get("estimated_hours", 8.0)
 
@@ -586,9 +594,7 @@ class TaskOrderer:
             in_degree[task_id] = len(blocked_by.get(task_id, []))
 
         # Start with tasks that have no dependencies
-        queue = [
-            task_id for task_id, degree in in_degree.items() if degree == 0
-        ]
+        queue = [task_id for task_id, degree in in_degree.items() if degree == 0]
         # Sort queue by score
         queue.sort(key=lambda tid: task_map[tid][1]["total_score"], reverse=True)
 
@@ -618,16 +624,12 @@ class TaskOrderer:
 
         return result
 
-    def _generate_reasoning(
-        self, factors: list[dict[str, Any]], strategy: OrderingStrategy
-    ) -> str:
+    def _generate_reasoning(self, factors: list[dict[str, Any]], strategy: OrderingStrategy) -> str:
         """Generate human-readable reasoning for task ordering."""
         reasons = []
 
         # Sort factors by score contribution
-        sorted_factors = sorted(
-            factors, key=lambda f: f["score"], reverse=True
-        )
+        sorted_factors = sorted(factors, key=lambda f: f["score"], reverse=True)
 
         for factor in sorted_factors[:3]:  # Top 3 factors
             if factor["score"] > 0.1:  # Only significant factors
@@ -646,9 +648,7 @@ class TaskOrderer:
 
         return f"[{strategy_names[strategy]}] " + "; ".join(reasons)
 
-    def _calculate_urgency(
-        self, task: dict[str, Any], score_data: dict[str, Any]
-    ) -> str:
+    def _calculate_urgency(self, task: dict[str, Any], score_data: dict[str, Any]) -> str:
         """Calculate task urgency level."""
         score = score_data["total_score"]
         priority = str(task.get("priority", "medium")).lower()
@@ -700,9 +700,7 @@ class TaskOrderer:
             all_blocked.update(blocked_list)
 
         end_tasks = [
-            t.get("id", "unknown")
-            for t in tasks
-            if t.get("id", "unknown") not in all_blocked
+            t.get("id", "unknown") for t in tasks if t.get("id", "unknown") not in all_blocked
         ]
 
         if not end_tasks:

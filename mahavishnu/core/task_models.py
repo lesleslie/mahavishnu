@@ -138,8 +138,7 @@ class TaskCreateRequest(BaseModel):
         # Remove control characters (except newline and tab)
         # Control characters: ASCII 0-31 and 127 (DEL)
         v = "".join(
-            char for char in v
-            if char in ("\n", "\t") or not (ord(char) < 32 or ord(char) == 127)
+            char for char in v if char in ("\n", "\t") or not (ord(char) < 32 or ord(char) == 127)
         )
 
         # Strip leading/trailing whitespace
@@ -226,9 +225,7 @@ class TaskCreateRequest(BaseModel):
 
         # Additional checks for edge cases
         if v.startswith("-") or v.startswith("_"):
-            raise ValueError(
-                f"Repository name cannot start with hyphen or underscore: '{v}'"
-            )
+            raise ValueError(f"Repository name cannot start with hyphen or underscore: '{v}'")
 
         if len(v) > 100:
             raise ValueError(f"Repository name too long: {len(v)} characters (max 100)")
@@ -279,8 +276,7 @@ class TaskCreateRequest(BaseModel):
             if "Deadline must be in the future" in str(e):
                 raise
             raise ValueError(
-                f"Invalid deadline format. Use ISO 8601 (e.g., 2026-02-18T10:00:00Z). "
-                f"Error: {e}"
+                f"Invalid deadline format. Use ISO 8601 (e.g., 2026-02-18T10:00:00Z). Error: {e}"
             ) from e
 
     @field_validator("tags")
@@ -558,8 +554,7 @@ class TaskFilter(BaseModel):
             return v
         except ValueError as e:
             raise ValueError(
-                f"Invalid date format. Use ISO 8601 (e.g., 2026-02-18T00:00:00Z). "
-                f"Error: {e}"
+                f"Invalid date format. Use ISO 8601 (e.g., 2026-02-18T00:00:00Z). Error: {e}"
             ) from e
 
     @model_validator(mode="after")

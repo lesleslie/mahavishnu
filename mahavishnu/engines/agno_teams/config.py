@@ -205,9 +205,7 @@ class TeamConfig(BaseModel):
 
     @field_validator("leader")
     @classmethod
-    def validate_leader_for_coordinate(
-        cls, v: MemberConfig | None, info
-    ) -> MemberConfig | None:
+    def validate_leader_for_coordinate(cls, v: MemberConfig | None, info) -> MemberConfig | None:
         """Validate that coordinate mode has a leader."""
         mode = info.data.get("mode")
         if mode == TeamMode.COORDINATE and v is None:
@@ -224,9 +222,7 @@ class TeamConfig(BaseModel):
         names = [m.name for m in v]
         if len(names) != len(set(names)):
             duplicates = [n for n in names if names.count(n) > 1]
-            raise ValueError(
-                f"Member names must be unique. Duplicates found: {duplicates}"
-            )
+            raise ValueError(f"Member names must be unique. Duplicates found: {duplicates}")
         return v
 
     def get_all_members(self) -> list[MemberConfig]:

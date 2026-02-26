@@ -458,8 +458,7 @@ class QualityGateManager:
 
         if not result.passed:
             logger.warning(
-                f"Quality gate validation failed for {repo_path}: "
-                f"{result.failed_required_checks}"
+                f"Quality gate validation failed for {repo_path}: {result.failed_required_checks}"
             )
 
         return result

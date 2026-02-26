@@ -547,11 +547,12 @@ class MahavishnuError(Exception):
         }
 
     def __str__(self) -> str:
-        recovery_text = "\n  ".join(f"{i+1}. {step}" for i, step in enumerate(self.recovery))
+        recovery_text = "\n  ".join(f"{i + 1}. {step}" for i, step in enumerate(self.recovery))
         return f"[{self.error_code.value}] {self.message}\n\nRecovery steps:\n  {recovery_text}\n\nDocumentation: https://docs.mahavishnu.org/errors/{self.error_code.value.lower()}\n"
 
 
 # Convenience exception classes for common errors
+
 
 class ConfigurationError(MahavishnuError):
     """Configuration-related error."""
@@ -1015,12 +1016,14 @@ def get_contextual_help(error_code: ErrorCode, context: dict | None = None) -> s
     Returns:
         Formatted help string with recovery steps
     """
-    guidance = MahavishnuError.RECOVERY_GUIDANCE.get(error_code.value, ["Contact support for assistance"])
+    guidance = MahavishnuError.RECOVERY_GUIDANCE.get(
+        error_code.value, ["Contact support for assistance"]
+    )
 
-    help_text = f"\n{'='*60}\n"
+    help_text = f"\n{'=' * 60}\n"
     help_text += f"Error: {error_code.name.replace('_', ' ')}\n"
     help_text += f"Code: {error_code.value}\n"
-    help_text += f"{'='*60}\n\n"
+    help_text += f"{'=' * 60}\n\n"
     help_text += "How to resolve:\n"
     for i, step in enumerate(guidance, 1):
         help_text += f"  {i}. {step}\n"
@@ -1095,6 +1098,7 @@ def create_error_from_exception(
 # Error Templates for Common Scenarios
 # ============================================================================
 
+
 class ErrorTemplates:
     """Templates for common error scenarios."""
 
@@ -1117,10 +1121,12 @@ class ErrorTemplates:
             recovery.append("Repository must be configured in repos.yaml")
             recovery.append("Use 'mhv lr' to list available repositories")
 
-        recovery.extend([
-            "Example: mhv tc \"Valid task title\" -r mahavishnu",
-            "Run 'mhv tc --help' for all options",
-        ])
+        recovery.extend(
+            [
+                'Example: mhv tc "Valid task title" -r mahavishnu',
+                "Run 'mhv tc --help' for all options",
+            ]
+        )
 
         return ValidationError(
             message=f"Task creation failed: {'; '.join(issues)}",
@@ -1192,7 +1198,9 @@ class ErrorTemplates:
         )
 
     @staticmethod
-    def webhook_failed(event_type: str, reason: str, payload_id: str | None = None) -> WebhookAuthError:
+    def webhook_failed(
+        event_type: str, reason: str, payload_id: str | None = None
+    ) -> WebhookAuthError:
         """Create a webhook error with context.
 
         Args:

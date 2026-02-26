@@ -260,6 +260,7 @@ class ProgressTracker:
         if self._console is None and not quiet:
             try:
                 from rich.console import Console
+
                 self._console = Console()
             except ImportError:
                 pass
@@ -374,10 +375,7 @@ class ProgressTracker:
             return
 
         # Get all children
-        children = [
-            t for t in self.tasks.values()
-            if t.parent_id == parent_id
-        ]
+        children = [t for t in self.tasks.values() if t.parent_id == parent_id]
 
         if not children:
             return
@@ -543,8 +541,10 @@ class ProgressTracker:
             Number of tasks cleared
         """
         to_remove = [
-            task_id for task_id, task in self.tasks.items()
-            if task.state in (ProgressState.COMPLETED, ProgressState.FAILED, ProgressState.CANCELLED)
+            task_id
+            for task_id, task in self.tasks.items()
+            if task.state
+            in (ProgressState.COMPLETED, ProgressState.FAILED, ProgressState.CANCELLED)
         ]
 
         for task_id in to_remove:
@@ -619,7 +619,9 @@ class ProgressTracker:
         """
         task_id = self.add_task(description, total)
 
-        def update(completed: int | float | None = None, advance: int | float | None = None) -> None:
+        def update(
+            completed: int | float | None = None, advance: int | float | None = None
+        ) -> None:
             self.update_task(task_id, completed=completed, advance=advance)
 
         try:

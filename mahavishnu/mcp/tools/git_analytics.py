@@ -12,9 +12,7 @@ from ...core.permissions import Permission, RBACManager
 from ...mcp.auth import require_mcp_auth
 
 
-def register_git_analytics_tools(
-    server, mcp_client, rbac_manager: RBACManager | None = None
-):
+def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager | None = None):
     """Register Git analytics tools with MCP server.
 
     Args:
@@ -111,10 +109,7 @@ def register_git_analytics_tools(
             }
 
         except Exception as e:
-            return {
-                "status": "error",
-                "error": f"Failed to get git velocity dashboard: {str(e)}"
-            }
+            return {"status": "error", "error": f"Failed to get git velocity dashboard: {str(e)}"}
 
     @server.tool()
     @require_mcp_auth(
@@ -164,9 +159,7 @@ def register_git_analytics_tools(
             workflow_health = await _query_session_buddy_metrics(app, repo_path)
 
             # Calculate overall health score (0-100)
-            health_score = _calculate_health_score(
-                stale_prs, stale_branches, workflow_health
-            )
+            health_score = _calculate_health_score(stale_prs, stale_branches, workflow_health)
 
             return {
                 "status": "success",
@@ -190,10 +183,7 @@ def register_git_analytics_tools(
             }
 
         except Exception as e:
-            return {
-                "status": "error",
-                "error": f"Failed to get repository health: {str(e)}"
-            }
+            return {"status": "error", "error": f"Failed to get repository health: {str(e)}"}
 
     @server.tool()
     @require_mcp_auth(
@@ -247,9 +237,7 @@ def register_git_analytics_tools(
             quality_patterns = await _query_quality_patterns(app, days_back)
 
             # Analyze correlations
-            correlations = _analyze_correlations(
-                git_patterns, workflow_patterns, quality_patterns
-            )
+            correlations = _analyze_correlations(git_patterns, workflow_patterns, quality_patterns)
 
             return {
                 "status": "success",
@@ -259,18 +247,13 @@ def register_git_analytics_tools(
                     "workflow_patterns": workflow_patterns,
                     "quality_patterns": quality_patterns,
                     "correlations": correlations,
-                    "insights": _generate_insights(
-                        git_patterns, workflow_patterns, correlations
-                    ),
+                    "insights": _generate_insights(git_patterns, workflow_patterns, correlations),
                     "generated_at": datetime.now().isoformat(),
                 },
             }
 
         except Exception as e:
-            return {
-                "status": "error",
-                "error": f"Failed to get cross-project patterns: {str(e)}"
-            }
+            return {"status": "error", "error": f"Failed to get cross-project patterns: {str(e)}"}
 
     async def _query_session_buddy_metrics(app, repo_path: str) -> Dict[str, Any]:
         """Query Session-Buddy for workflow performance metrics.
@@ -327,9 +310,7 @@ def register_git_analytics_tools(
         except Exception:
             return []
 
-    def _calculate_health_score(
-        stale_prs: int, stale_branches: int, workflow_health: Dict
-    ) -> int:
+    def _calculate_health_score(stale_prs: int, stale_branches: int, workflow_health: Dict) -> int:
         """Calculate overall repository health score.
 
         Score components:
@@ -399,36 +380,37 @@ def register_git_analytics_tools(
 
         # Analyze velocity vs quality
         high_velocity_repos = {
-            p.get("repository", "") for p in git_patterns
-            if p.get("type") == "high_velocity"
+            p.get("repository", "") for p in git_patterns if p.get("type") == "high_velocity"
         }
 
         quality_issues = [
-            q for q in quality_patterns
+            q
+            for q in quality_patterns
             if q.get("severity") == "high" and q.get("repository") in high_velocity_repos
         ]
 
         if quality_issues:
-            correlations.append({
-                "type": "velocity_quality_correlation",
-                "description": "High velocity correlates with quality issues",
-                "severity": "warning" if len(quality_issues) < 5 else "high",
-                "affected_repositories": list(high_velocity_repos),
-            })
+            correlations.append(
+                {
+                    "type": "velocity_quality_correlation",
+                    "description": "High velocity correlates with quality issues",
+                    "severity": "warning" if len(quality_issues) < 5 else "high",
+                    "affected_repositories": list(high_velocity_repos),
+                }
+            )
 
         # Analyze workflow failures
-        failing_workflows = [
-            w for w in workflow_patterns
-            if w.get("success_rate", 100) < 80
-        ]
+        failing_workflows = [w for w in workflow_patterns if w.get("success_rate", 100) < 80]
 
         if failing_workflows:
-            correlations.append({
-                "type": "workflow_failure_pattern",
-                "description": "Recurring workflow failures detected",
-                "severity": "high" if len(failing_workflows) > 5 else "warning",
-                "workflows": [w.get("name") for w in failing_workflows],
-            })
+            correlations.append(
+                {
+                    "type": "workflow_failure_pattern",
+                    "description": "Recurring workflow failures detected",
+                    "severity": "high" if len(failing_workflows) > 5 else "warning",
+                    "workflows": [w.get("name") for w in failing_workflows],
+                }
+            )
 
         return correlations
 

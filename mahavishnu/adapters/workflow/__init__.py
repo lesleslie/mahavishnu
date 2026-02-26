@@ -9,6 +9,7 @@ The import from this module is deprecated but maintained for backward compatibil
 # Handle optional dependency gracefully (prefect may not be installed)
 try:
     from mahavishnu.adapters.workflow.prefect_adapter import PrefectAdapter
+
     _prefect_available = True
 except ImportError:
     PrefectAdapter = None  # type: ignore[misc,assignment]

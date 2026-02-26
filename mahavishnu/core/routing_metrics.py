@@ -21,39 +21,76 @@ from mahavishnu.core.metrics_schema import AdapterType, TaskType
 # Lazy import - only import if actually used
 try:
     from prometheus_client import Counter, Gauge, Histogram, Summary, start_http_server, REGISTRY
+
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
+
     # Create dummy classes for graceful degradation
     class Counter:
-        def __init__(self, *args, **kwargs): pass
-        def labels(self, **kwargs): return self
-        def inc(self, amount=1): pass
-        def count(self): return 0
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def labels(self, **kwargs):
+            return self
+
+        def inc(self, amount=1):
+            pass
+
+        def count(self):
+            return 0
 
     class Gauge:
-        def __init__(self, *args, **kwargs): pass
-        def labels(self, **kwargs): return self
-        def set(self, value): pass
-        def set_to_current_value(self): pass
-        def inc(self, amount=1): pass
-        def dec(self, amount=1): pass
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def labels(self, **kwargs):
+            return self
+
+        def set(self, value):
+            pass
+
+        def set_to_current_value(self):
+            pass
+
+        def inc(self, amount=1):
+            pass
+
+        def dec(self, amount=1):
+            pass
 
     class Histogram:
-        def __init__(self, *args, **kwargs): pass
-        def labels(self, **kwargs): return self
-        def observe(self, amount): pass
-        def time(self): return self
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def labels(self, **kwargs):
+            return self
+
+        def observe(self, amount):
+            pass
+
+        def time(self):
+            return self
 
     class Summary:
-        def __init__(self, *args, **kwargs): pass
-        def labels(self, **kwargs): return self
-        def observe(self, amount): pass
-        def time(self): return self
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def labels(self, **kwargs):
+            return self
+
+        def observe(self, amount):
+            pass
+
+        def time(self):
+            return self
 
     def start_http_server(port: int):
-        logging.warning(f"prometheus_client not available, metrics server not started on port {port}")
+        logging.warning(
+            f"prometheus_client not available, metrics server not started on port {port}"
+        )
         return None
+
 
 logger = logging.getLogger(__name__)
 
@@ -123,9 +160,9 @@ class RoutingMetrics:
         # Create routing decision counter
         try:
             self._routing_decision_counter = Counter(
-                'mahavishnu_routing_decisions_total',
-                'Total routing decisions made by StatisticalRouter',
-                ['server', 'adapter', 'task_type']
+                "mahavishnu_routing_decisions_total",
+                "Total routing decisions made by StatisticalRouter",
+                ["server", "adapter", "task_type"],
             )
         except ValueError:
             logger.debug(f"Reusing existing routing decision counter: {self.server_name}")
@@ -133,9 +170,9 @@ class RoutingMetrics:
         # Create adapter execution counter
         try:
             self._adapter_execution_counter = Counter(
-                'mahavishnu_adapter_executions_total',
-                'Total adapter executions',
-                ['server', 'adapter', 'status']
+                "mahavishnu_adapter_executions_total",
+                "Total adapter executions",
+                ["server", "adapter", "status"],
             )
         except ValueError:
             logger.debug(f"Reusing existing adapter execution counter: {self.server_name}")
@@ -143,9 +180,9 @@ class RoutingMetrics:
         # Create fallback counter
         try:
             self._fallback_counter = Counter(
-                'mahavishnu_routing_fallbacks_total',
-                'Total adapter fallbacks triggered',
-                ['server', 'original_adapter', 'fallback_adapter']
+                "mahavishnu_routing_fallbacks_total",
+                "Total adapter fallbacks triggered",
+                ["server", "original_adapter", "fallback_adapter"],
             )
         except ValueError:
             logger.debug(f"Reusing existing fallback counter: {self.server_name}")
@@ -153,9 +190,9 @@ class RoutingMetrics:
         # Create cost counter
         try:
             self._cost_counter = Counter(
-                'mahavishnu_routing_cost_usd_total',
-                'Total routing cost in USD',
-                ['server', 'adapter', 'task_type']
+                "mahavishnu_routing_cost_usd_total",
+                "Total routing cost in USD",
+                ["server", "adapter", "task_type"],
             )
         except ValueError:
             logger.debug(f"Reusing existing cost counter: {self.server_name}")
@@ -163,9 +200,9 @@ class RoutingMetrics:
         # Create budget alert counter
         try:
             self._budget_alert_counter = Counter(
-                'mahavishnu_budget_alerts_total',
-                'Total budget alerts triggered',
-                ['server', 'budget_type', 'severity']
+                "mahavishnu_budget_alerts_total",
+                "Total budget alerts triggered",
+                ["server", "budget_type", "severity"],
             )
         except ValueError:
             logger.debug(f"Reusing existing budget alert counter: {self.server_name}")
@@ -173,9 +210,9 @@ class RoutingMetrics:
         # Create A/B test counter
         try:
             self._ab_test_counter = Counter(
-                'mahavishnu_ab_tests_total',
-                'Total A/B test events',
-                ['server', 'experiment_id', 'event_type']
+                "mahavishnu_ab_tests_total",
+                "Total A/B test events",
+                ["server", "experiment_id", "event_type"],
             )
         except ValueError:
             logger.debug(f"Reusing existing A/B test counter: {self.server_name}")
@@ -183,9 +220,9 @@ class RoutingMetrics:
         # Create current cost gauge
         try:
             self._current_cost_gauge = Gauge(
-                'mahavishnu_routing_cost_usd_current',
-                'Current routing cost in USD',
-                ['server', 'budget_type']
+                "mahavishnu_routing_cost_usd_current",
+                "Current routing cost in USD",
+                ["server", "budget_type"],
             )
         except ValueError:
             logger.debug(f"Reusing existing current cost gauge: {self.server_name}")
@@ -193,9 +230,7 @@ class RoutingMetrics:
         # Create active experiments gauge
         try:
             self._active_experiments_gauge = Gauge(
-                'mahavishnu_ab_tests_active',
-                'Number of active A/B tests',
-                ['server']
+                "mahavishnu_ab_tests_active", "Number of active A/B tests", ["server"]
             )
         except ValueError:
             logger.debug(f"Reusing existing active experiments gauge: {self.server_name}")
@@ -203,10 +238,10 @@ class RoutingMetrics:
         # Create routing latency histogram
         try:
             self._routing_latency_histogram = Histogram(
-                'mahavishnu_routing_latency_seconds',
-                'Time taken to make routing decisions',
-                ['server'],
-                buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
+                "mahavishnu_routing_latency_seconds",
+                "Time taken to make routing decisions",
+                ["server"],
+                buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
             )
         except ValueError:
             logger.debug(f"Reusing existing routing latency histogram: {self.server_name}")
@@ -214,10 +249,10 @@ class RoutingMetrics:
         # Create fallback chain histogram
         try:
             self._fallback_chain_histogram = Histogram(
-                'mahavishnu_routing_fallback_chain_length',
-                'Length of fallback chains',
-                ['server'],
-                buckets=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+                "mahavishnu_routing_fallback_chain_length",
+                "Length of fallback chains",
+                ["server"],
+                buckets=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
             )
         except ValueError:
             logger.debug(f"Reusing existing fallback chain histogram: {self.server_name}")
@@ -225,10 +260,10 @@ class RoutingMetrics:
         # Create cost distribution histogram
         try:
             self._cost_distribution_histogram = Histogram(
-                'mahavishnu_routing_cost_usd_distribution',
-                'Distribution of routing costs in USD',
-                ['server', 'adapter'],
-                buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
+                "mahavishnu_routing_cost_usd_distribution",
+                "Distribution of routing costs in USD",
+                ["server", "adapter"],
+                buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
             )
         except ValueError:
             logger.debug(f"Reusing existing cost distribution histogram: {self.server_name}")
@@ -236,10 +271,10 @@ class RoutingMetrics:
         # Create adapter latency histogram (SINGLE histogram for all adapters with 'adapter' label)
         try:
             self._adapter_latency_histogram = Histogram(
-                'mahavishnu_adapter_latency_seconds',
-                'Adapter execution latency',
-                ['server', 'adapter'],
-                buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0)
+                "mahavishnu_adapter_latency_seconds",
+                "Adapter execution latency",
+                ["server", "adapter"],
+                buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0),
             )
         except ValueError:
             logger.debug(f"Reusing existing adapter latency histogram: {self.server_name}")
@@ -250,7 +285,9 @@ class RoutingMetrics:
     def _ensure_enabled(self) -> None:
         """Check if metrics are enabled and initialize if needed."""
         if not self._enabled:
-            logger.debug(f"Routing metrics disabled, skipping operation for server: {self.server_name}")
+            logger.debug(
+                f"Routing metrics disabled, skipping operation for server: {self.server_name}"
+            )
             return
 
         # Initialize metrics on first use
@@ -289,9 +326,7 @@ class RoutingMetrics:
         """
         self._ensure_enabled()
         self._routing_decision_counter.labels(
-            server=self.server_name,
-            adapter=adapter.value,
-            task_type=task_type.value
+            server=self.server_name, adapter=adapter.value, task_type=task_type.value
         ).inc()
         logger.debug(
             f"Recorded routing decision: {adapter} for {task_type.value} "
@@ -314,18 +349,16 @@ class RoutingMetrics:
         self._ensure_enabled()
         status = "success" if success else "failure"
         self._adapter_execution_counter.labels(
-            server=self.server_name,
-            adapter=adapter.value,
-            status=status
+            server=self.server_name, adapter=adapter.value, status=status
         ).inc()
 
         # Record latency
         histogram = self._get_adapter_latency_histogram()
-        histogram.labels(server=self.server_name, adapter=adapter.value).observe(latency_ms / 1000.0)
-
-        logger.debug(
-            f"Recorded adapter execution: {adapter.value} - {status} ({latency_ms}ms)"
+        histogram.labels(server=self.server_name, adapter=adapter.value).observe(
+            latency_ms / 1000.0
         )
+
+        logger.debug(f"Recorded adapter execution: {adapter.value} - {status} ({latency_ms}ms)")
 
     def record_fallback(
         self,
@@ -342,11 +375,9 @@ class RoutingMetrics:
         self._fallback_counter.labels(
             server=self.server_name,
             original_adapter=original_adapter,
-            fallback_adapter=fallback_adapter.value
+            fallback_adapter=fallback_adapter.value,
         ).inc()
-        logger.info(
-            f"Recorded fallback: {original_adapter.value} -> {fallback_adapter.value}"
-        )
+        logger.info(f"Recorded fallback: {original_adapter.value} -> {fallback_adapter.value}")
 
     def record_fallback_chain_length(self, chain_length: int) -> None:
         """Record fallback chain length.
@@ -374,15 +405,12 @@ class RoutingMetrics:
         """
         self._ensure_enabled()
         self._cost_counter.labels(
-            server=self.server_name,
-            adapter=adapter.value,
-            task_type=task_type.value
+            server=self.server_name, adapter=adapter.value, task_type=task_type.value
         ).inc(cost_usd)
 
         if self._cost_distribution_histogram:
             self._cost_distribution_histogram.labels(
-                server=self.server_name,
-                adapter=adapter.value
+                server=self.server_name, adapter=adapter.value
             ).observe(cost_usd)
 
         logger.debug(f"Recorded cost: ${cost_usd:.4f} for {adapter.value}")
@@ -400,10 +428,9 @@ class RoutingMetrics:
         """
         self._ensure_enabled()
         if self._current_cost_gauge:
-            self._current_cost_gauge.labels(
-                server=self.server_name,
-                budget_type=budget_type
-            ).set(cost_usd)
+            self._current_cost_gauge.labels(server=self.server_name, budget_type=budget_type).set(
+                cost_usd
+            )
             logger.debug(f"Set current cost for {budget_type}: ${cost_usd:.2f}")
 
     def trigger_budget_alert(
@@ -420,13 +447,9 @@ class RoutingMetrics:
         self._ensure_enabled()
         if self._budget_alert_counter:
             self._budget_alert_counter.labels(
-                server=self.server_name,
-                budget_type=budget_type,
-                severity=severity
+                server=self.server_name, budget_type=budget_type, severity=severity
             ).inc()
-            logger.warning(
-                f"Budget alert triggered: {budget_type} - {severity}"
-            )
+            logger.warning(f"Budget alert triggered: {budget_type} - {severity}")
 
     def record_ab_test_event(
         self,
@@ -442,9 +465,7 @@ class RoutingMetrics:
         self._ensure_enabled()
         if self._ab_test_counter:
             self._ab_test_counter.labels(
-                server=self.server_name,
-                experiment_id=experiment_id,
-                event_type=event_type
+                server=self.server_name, experiment_id=experiment_id, event_type=event_type
             ).inc()
             logger.debug(f"Recorded A/B test event: {event_type} for {experiment_id}")
 
@@ -493,7 +514,9 @@ def start_routing_metrics_server(port: int = 9091) -> Any:
         >>> print("Routing metrics available on http://localhost:9091")
     """
     if not PROMETHEUS_AVAILABLE:
-        logger.warning("Cannot start Prometheus routing metrics server: prometheus_client not installed")
+        logger.warning(
+            "Cannot start Prometheus routing metrics server: prometheus_client not installed"
+        )
         logger.warning("Install with: pip install prometheus-client")
         return None
 

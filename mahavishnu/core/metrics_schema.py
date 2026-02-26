@@ -24,13 +24,16 @@ from mahavishnu.core.status import ExecutionStatus
 try:
     from oneiric.core.ulid import generate_config_id
 except ImportError:
+
     def generate_config_id() -> str:
         import uuid
+
         return uuid.uuid4().hex
 
 
 class AdapterType(str, Enum):
     """Adapter types for metrics tracking."""
+
     PREFECT = "prefect"
     AGNO = "agno"
     LLAMAINDEX = "llamaindex"
@@ -38,6 +41,7 @@ class AdapterType(str, Enum):
 
 class TaskType(str, Enum):
     """Task type classifications for routing analytics."""
+
     WORKFLOW = "workflow"
     AI_TASK = "ai_task"
     RAG_QUERY = "rag_query"
@@ -54,8 +58,7 @@ class ExecutionRecord(BaseModel):
     """
 
     execution_id: str = Field(
-        default_factory=generate_config_id,
-        description="ULID execution identifier"
+        default_factory=generate_config_id, description="ULID execution identifier"
     )
 
     adapter: AdapterType = Field(...)
@@ -63,43 +66,32 @@ class ExecutionRecord(BaseModel):
     task_type: TaskType = Field(...)
 
     start_timestamp: float = Field(
-        ...,
-        description="Unix timestamp (seconds) when execution started"
+        ..., description="Unix timestamp (seconds) when execution started"
     )
 
     end_timestamp: float | None = Field(
-        None,
-        description="Unix timestamp (seconds) when execution completed"
+        None, description="Unix timestamp (seconds) when execution completed"
     )
 
     status: ExecutionStatus = Field(...)
 
-    latency_ms: int | None = Field(
-        None,
-        description="Execution duration in milliseconds"
-    )
+    latency_ms: int | None = Field(None, description="Execution duration in milliseconds")
 
     error_type: str | None = Field(
-        None,
-        description="Error type/category (e.g., timeout, connection_error)"
+        None, description="Error type/category (e.g., timeout, connection_error)"
     )
 
-    error_message: str | None = Field(
-        None,
-        description="Detailed error message"
-    )
+    error_message: str | None = Field(None, description="Detailed error message")
 
     cost_usd: float | None = Field(
-        None,
-        description="Execution cost in USD (null for free adapters)"
+        None, description="Execution cost in USD (null for free adapters)"
     )
 
     metadata: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional execution context"
+        default_factory=dict, description="Additional execution context"
     )
 
-    model_config = ConfigDict(mode='json')
+    model_config = ConfigDict(mode="json")
 
 
 class AdapterStats(BaseModel):
@@ -113,72 +105,39 @@ class AdapterStats(BaseModel):
 
     date: str = Field(...)
 
-    success_rate: float = Field(
-        ...,
-        ge=0.0,
-        le=1.0,
-        description="Success rate (0.0 to 1.0)"
-    )
+    success_rate: float = Field(..., ge=0.0, le=1.0, description="Success rate (0.0 to 1.0)")
 
-    total_executions: int = Field(
-        ...,
-        ge=0,
-        description="Total executions in this period"
-    )
+    total_executions: int = Field(..., ge=0, description="Total executions in this period")
 
     avg_latency_ms: float | None = Field(
-        None,
-        ge=0,
-        description="Average execution latency in milliseconds"
+        None, ge=0, description="Average execution latency in milliseconds"
     )
 
     error_counts: dict[str, int] = Field(
-        default_factory=dict,
-        description="Count of errors by type"
+        default_factory=dict, description="Count of errors by type"
     )
 
     cost_total_usd: float | None = Field(
-        None,
-        ge=0,
-        description="Total cost in USD for this period"
+        None, ge=0, description="Total cost in USD for this period"
     )
 
-    p50_latency_ms: float | None = Field(
-        None,
-        description="50th percentile latency"
-    )
+    p50_latency_ms: float | None = Field(None, description="50th percentile latency")
 
-    p95_latency_ms: float | None = Field(
-        None,
-        description="95th percentile latency"
-    )
+    p95_latency_ms: float | None = Field(None, description="95th percentile latency")
 
-    p99_latency_ms: float | None = Field(
-        None,
-        description="99th percentile latency"
-    )
+    p99_latency_ms: float | None = Field(None, description="99th percentile latency")
 
     uptime_percentage: float | None = Field(
-        None,
-        ge=0,
-        le=100,
-        description="Adapter availability percentage"
+        None, ge=0, le=100, description="Adapter availability percentage"
     )
 
-    sample_size: int = Field(
-        ...,
-        ge=1,
-        description="Number of executions in this sample"
-    )
+    sample_size: int = Field(..., ge=1, description="Number of executions in this sample")
 
     confidence_interval: float | None = Field(
-        None,
-        ge=0,
-        le=1.0,
-        description="Statistical confidence (0-1)"
+        None, ge=0, le=1.0, description="Statistical confidence (0-1)"
     )
 
-    model_config = ConfigDict(mode='json')
+    model_config = ConfigDict(mode="json")
 
 
 class TaskTypeStats(BaseModel):
@@ -195,21 +154,13 @@ class TaskTypeStats(BaseModel):
     preferred_adapter: AdapterType = Field(...)
 
     alternative_adapters: list[AdapterType] = Field(
-        default_factory=list,
-        description="Adapters ranked by performance"
+        default_factory=list, description="Adapters ranked by performance"
     )
 
-    sample_count: int = Field(
-        ...,
-        ge=1,
-        description="Executions used for ranking"
-    )
+    sample_count: int = Field(..., ge=1, description="Executions used for ranking")
 
     routing_confidence: float = Field(
-        ...,
-        ge=0,
-        le=1.0,
-        description="Confidence in adapter preference"
+        ..., ge=0, le=1.0, description="Confidence in adapter preference"
     )
 
 
@@ -226,21 +177,14 @@ class CostTracking(BaseModel):
 
     task_type: TaskType = Field(...)
 
-    cost_usd: float = Field(
-        ...,
-        ge=0,
-        description="Execution cost in USD"
-    )
+    cost_usd: float = Field(..., ge=0, description="Execution cost in USD")
 
     budget_type: str | None = Field(
-        None,
-        description="Budget category (e.g., daily, weekly, task_type)"
+        None, description="Budget category (e.g., daily, weekly, task_type)"
     )
 
     budget_limit_usd: float | None = Field(
-        None,
-        ge=0,
-        description="Budget limit for this execution"
+        None, ge=0, description="Budget limit for this execution"
     )
 
 
@@ -252,8 +196,7 @@ class RoutingDecision(BaseModel):
     """
 
     decision_id: str = Field(
-        default_factory=generate_config_id,
-        description="ULID for this routing decision"
+        default_factory=generate_config_id, description="ULID for this routing decision"
     )
 
     task_type: TaskType = Field(...)
@@ -261,28 +204,22 @@ class RoutingDecision(BaseModel):
     selected_adapter: AdapterType = Field(...)
 
     alternative_adapters: list[AdapterType] = Field(
-        default_factory=list,
-        description="Other adapters considered"
+        default_factory=list, description="Other adapters considered"
     )
 
-    reasoning: str = Field(
-        ...,
-        description="Why this adapter was chosen"
-    )
+    reasoning: str = Field(..., description="Why this adapter was chosen")
 
     adapter_scores: dict[AdapterType, float] = Field(
-        ...,
-        description="Calculated scores for all adapters"
+        ..., description="Calculated scores for all adapters"
     )
 
     constraints: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Routing constraints (budget, SLA, etc.)"
+        default_factory=dict, description="Routing constraints (budget, SLA, etc.)"
     )
 
     timestamp: float = Field(
         default_factory=lambda: datetime.now(UTC).timestamp(),
-        description="Unix timestamp when decision was made"
+        description="Unix timestamp when decision was made",
     )
 
 
@@ -294,63 +231,42 @@ class ABTest(BaseModel):
     """
 
     experiment_id: str = Field(
-        default_factory=generate_config_id,
-        description="ULID for this experiment"
+        default_factory=generate_config_id, description="ULID for this experiment"
     )
 
     name: str = Field(...)
 
-    start_date: str = Field(
-        ...,
-        description="Start date in YYYY-MM-DD"
-    )
+    start_date: str = Field(..., description="Start date in YYYY-MM-DD")
 
-    end_date: str | None = Field(
-        None,
-        description="End date in YYYY-MM-DD"
-    )
+    end_date: str | None = Field(None, description="End date in YYYY-MM-DD")
 
-    status: str = Field(
-        default="active",
-        description="active, completed, rolled_back, cancelled"
-    )
+    status: str = Field(default="active", description="active, completed, rolled_back, cancelled")
 
     traffic_split: dict[AdapterType, float] = Field(
-        default_factory=dict,
-        description="Percentage traffic to each adapter"
+        default_factory=dict, description="Percentage traffic to each adapter"
     )
 
     sample_size: dict[AdapterType, int] = Field(
-        default_factory=dict,
-        description="Sample size per adapter"
+        default_factory=dict, description="Sample size per adapter"
     )
 
     success_metric: str = Field(
-        ...,
-        description="Metric being optimized (e.g., success_rate, cost)"
+        ..., description="Metric being optimized (e.g., success_rate, cost)"
     )
 
     significance_threshold: float = Field(
-        ...,
-        ge=0,
-        le=1.0,
-        description="Statistical significance threshold (p-value)"
+        ..., ge=0, le=1.0, description="Statistical significance threshold (p-value)"
     )
 
-    results: dict[str, Any] | None = Field(
-        None,
-        description="Test results when complete"
-    )
+    results: dict[str, Any] | None = Field(None, description="Test results when complete")
 
-    winner: AdapterType | None = Field(
-        None,
-        description="Winning adapter if experiment completed"
-    )
+    winner: AdapterType | None = Field(None, description="Winning adapter if experiment completed")
 
-    model_config = ConfigDict(mode='json')
+    model_config = ConfigDict(mode="json")
 
 
 # Utility Functions
+
 
 def generate_execution_key(execution_id: str) -> str:
     """Generate Dhruva key for execution record."""
@@ -426,8 +342,8 @@ def calculate_confidence_interval(
 
     z = 1.96  # 95% confidence z-score
 
-    numerator = success_rate + (z ** 2) / (2 * sample_size)
-    denominator = 1 + (z ** 2) / sample_size
+    numerator = success_rate + (z**2) / (2 * sample_size)
+    denominator = 1 + (z**2) / sample_size
 
     center = numerator / denominator
     margin = z * math.sqrt((success_rate * (1 - success_rate)) / sample_size)

@@ -19,9 +19,12 @@ import httpx
 try:
     from oneiric.core.ulid import generate_config_id
 except ImportError:
+
     def generate_config_id() -> str:
         import uuid
+
         return uuid.uuid4().hex
+
 
 from mahavishnu.core.adapters.base import (
     OrchestratorAdapter,
@@ -142,9 +145,7 @@ class AgnoAdapter(OrchestratorAdapter):
                 f"Cannot connect to Agno server at {self.api_url}: {e}"
             )
         except Exception as e:
-            raise AdapterInitializationError(
-                f"Failed to initialize AgnoAdapter: {e}"
-            )
+            raise AdapterInitializationError(f"Failed to initialize AgnoAdapter: {e}")
 
     async def create_crew(
         self,
@@ -265,9 +266,7 @@ class AgnoAdapter(OrchestratorAdapter):
             )
 
             if response.status_code != 201:
-                raise WorkflowExecutionError(
-                    f"Failed to execute task: HTTP {response.status_code}"
-                )
+                raise WorkflowExecutionError(f"Failed to execute task: HTTP {response.status_code}")
 
             result = response.json()
             logger.info(f"Task execution started: {execution_id}")
@@ -397,9 +396,7 @@ class AgnoAdapter(OrchestratorAdapter):
             )
 
             if response.status_code != 200:
-                raise WorkflowExecutionError(
-                    f"Failed to list crews: HTTP {response.status_code}"
-                )
+                raise WorkflowExecutionError(f"Failed to list crews: HTTP {response.status_code}")
 
             return response.json()
 

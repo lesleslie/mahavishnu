@@ -116,12 +116,8 @@ class RepoTaskStats:
         return {
             "repo_name": self.repo_name,
             "total_tasks": self.total_tasks,
-            "status_counts": {
-                s.value: c for s, c in self.status_counts.items()
-            },
-            "priority_counts": {
-                p.value: c for p, c in self.priority_counts.items()
-            },
+            "status_counts": {s.value: c for s, c in self.status_counts.items()},
+            "priority_counts": {p.value: c for p, c in self.priority_counts.items()},
             "tag_counts": self.tag_counts,
             "blocked_tasks": self.blocked_tasks,
             "completion_rate": self.completion_rate,
@@ -157,12 +153,8 @@ class AggregatedTasks:
             "tasks": [t.to_dict() for t in self.tasks],
             "total_count": self.total_count,
             "repo_counts": self.repo_counts,
-            "status_counts": {
-                s.value: c for s, c in self.status_counts.items()
-            },
-            "priority_counts": {
-                p.value: c for p, c in self.priority_counts.items()
-            },
+            "status_counts": {s.value: c for s, c in self.status_counts.items()},
+            "priority_counts": {p.value: c for p, c in self.priority_counts.items()},
             "tag_counts": self.tag_counts,
         }
 
@@ -207,9 +199,7 @@ class CrossRepoSummary:
             "cancelled_count": self.cancelled_count,
             "failed_count": self.failed_count,
             "critical_count": self.critical_count,
-            "repo_stats": {
-                name: stats.to_dict() for name, stats in self.repo_stats.items()
-            },
+            "repo_stats": {name: stats.to_dict() for name, stats in self.repo_stats.items()},
         }
 
 
@@ -289,12 +279,9 @@ class CrossRepoAggregator:
 
             # Apply exclude_completed if needed
             if filter.exclude_completed:
-                all_tasks = [
-                    t for t in all_tasks
-                    if t.status != TaskStatus.COMPLETED
-                ]
+                all_tasks = [t for t in all_tasks if t.status != TaskStatus.COMPLETED]
 
-            return self._build_aggregated_tasks(all_tasks[:filter.limit])
+            return self._build_aggregated_tasks(all_tasks[: filter.limit])
 
         tasks = await self.task_store.list(task_filter)
 
@@ -389,9 +376,7 @@ class CrossRepoAggregator:
         Returns:
             RepoTaskStats with detailed statistics
         """
-        tasks = await self.task_store.list(
-            TaskListFilter(repository=repo_name, limit=10000)
-        )
+        tasks = await self.task_store.list(TaskListFilter(repository=repo_name, limit=10000))
         return self._build_repo_stats(repo_name, tasks)
 
     async def get_summary(self) -> CrossRepoSummary:
@@ -492,10 +477,7 @@ class CrossRepoAggregator:
         for task in tasks:
             repo_tasks[task.repository].append(task)
 
-        return {
-            repo: self._build_repo_stats(repo, tasks)
-            for repo, tasks in repo_tasks.items()
-        }
+        return {repo: self._build_repo_stats(repo, tasks) for repo, tasks in repo_tasks.items()}
 
     def _build_repo_stats(self, repo_name: str, tasks: list[Task]) -> RepoTaskStats:
         """Build RepoTaskStats from a list of tasks for a repository."""

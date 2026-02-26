@@ -78,8 +78,8 @@ class TaskAuditLogger:
     # Fields that may contain sensitive information
     SENSITIVE_FIELDS: ClassVar[set[str]] = {
         "description",  # May contain internal details, credentials, etc.
-        "metadata",     # May contain API keys, tokens, etc.
-        "tags",         # May contain sensitive categorization
+        "metadata",  # May contain API keys, tokens, etc.
+        "tags",  # May contain sensitive categorization
     }
 
     # Keys within nested structures that should be redacted
@@ -101,10 +101,10 @@ class TaskAuditLogger:
 
     # Fields to always include (even if sensitive)
     ALWAYS_INCLUDE: ClassVar[set[str]] = {
-        "title",        # Always show task title
-        "repository",   # Always show repository
-        "priority",     # Always show priority
-        "status",       # Always show status
+        "title",  # Always show task title
+        "repository",  # Always show repository
+        "priority",  # Always show priority
+        "status",  # Always show status
     }
 
     def __init__(self, db: Any = None) -> None:
@@ -347,9 +347,7 @@ class TaskAuditLogger:
     ) -> int:
         """Log quality gate pass/fail event."""
         event_type = (
-            TaskEventType.QUALITY_GATE_PASSED
-            if passed
-            else TaskEventType.QUALITY_GATE_FAILED
+            TaskEventType.QUALITY_GATE_PASSED if passed else TaskEventType.QUALITY_GATE_FAILED
         )
         return await self.log_event(
             event_type=event_type,
@@ -359,9 +357,7 @@ class TaskAuditLogger:
                 "passed": passed,
                 "checks_count": len(checks),
                 "score": score,
-                "failed_checks": [
-                    c.get("name") for c in checks if not c.get("passed", True)
-                ],
+                "failed_checks": [c.get("name") for c in checks if not c.get("passed", True)],
             },
         )
 
@@ -429,9 +425,7 @@ class TaskAuditLogger:
             details["failure_reasons"] = failure_reasons
 
         # Log as error for quality gate failures
-        logger.error(
-            f"quality_gate_failed task={task_id} user={user_id} checks={len(checks)}"
-        )
+        logger.error(f"quality_gate_failed task={task_id} user={user_id} checks={len(checks)}")
 
         return await self.log_event(
             event_type=TaskEventType.QUALITY_GATE_FAILED,
@@ -507,9 +501,7 @@ class TaskAuditLogger:
         for key, value in data.items():
             # Check if this key is a sensitive key within nested structures
             key_lower = key.lower()
-            is_sensitive_key = any(
-                sensitive in key_lower for sensitive in self.SENSITIVE_KEYS
-            )
+            is_sensitive_key = any(sensitive in key_lower for sensitive in self.SENSITIVE_KEYS)
 
             # Check if this is a top-level sensitive field
             is_sensitive_field = key in self.SENSITIVE_FIELDS

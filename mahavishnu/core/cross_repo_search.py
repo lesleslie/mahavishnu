@@ -155,7 +155,7 @@ class CrossRepoSearch:
     # Field weights for scoring
     FIELD_WEIGHTS = {
         "title": 3.0,  # Title matches are most important
-        "tags": 2.0,   # Tag matches are significant
+        "tags": 2.0,  # Tag matches are significant
         "description": 1.0,  # Description matches are baseline
     }
 
@@ -204,7 +204,7 @@ class CrossRepoSearch:
             results = [r for r in results if r.overall_score >= criteria.min_score]
 
         # Apply limit
-        return results[:criteria.limit]
+        return results[: criteria.limit]
 
     async def _fetch_candidate_tasks(self, criteria: SearchCriteria) -> list[Task]:
         """Fetch candidate tasks for searching."""
@@ -260,12 +260,14 @@ class CrossRepoSearch:
             if matches:
                 # Calculate overall score
                 score = self._calculate_score(matches)
-                results.append(SearchResult(
-                    task=task,
-                    matches=matches,
-                    overall_score=score,
-                    search_type=SearchType.TEXT,
-                ))
+                results.append(
+                    SearchResult(
+                        task=task,
+                        matches=matches,
+                        overall_score=score,
+                        search_type=SearchType.TEXT,
+                    )
+                )
 
         return results
 
@@ -318,7 +320,7 @@ class CrossRepoSearch:
     def _parse_query(self, query: str) -> list[str]:
         """Parse query into search terms."""
         # Simple tokenization - split on whitespace and remove punctuation
-        terms = re.findall(r'\b\w+\b', query.lower())
+        terms = re.findall(r"\b\w+\b", query.lower())
         return [t for t in terms if len(t) >= 2]  # Ignore very short terms
 
     def _get_field_value(self, task: Task, field: str) -> str:
@@ -437,31 +439,19 @@ class CrossRepoSearch:
 
         # Filter by repository
         if criteria.repo_names:
-            filtered = [
-                r for r in filtered
-                if r.task.repository in criteria.repo_names
-            ]
+            filtered = [r for r in filtered if r.task.repository in criteria.repo_names]
 
         # Filter by status (if multiple)
         if criteria.statuses:
-            filtered = [
-                r for r in filtered
-                if r.task.status in criteria.statuses
-            ]
+            filtered = [r for r in filtered if r.task.status in criteria.statuses]
 
         # Filter by priority (if multiple)
         if criteria.priorities:
-            filtered = [
-                r for r in filtered
-                if r.task.priority in criteria.priorities
-            ]
+            filtered = [r for r in filtered if r.task.priority in criteria.priorities]
 
         # Filter by tags (ANY match)
         if criteria.tags:
-            filtered = [
-                r for r in filtered
-                if any(tag in r.task.tags for tag in criteria.tags)
-            ]
+            filtered = [r for r in filtered if any(tag in r.task.tags for tag in criteria.tags)]
 
         return filtered
 

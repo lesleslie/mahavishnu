@@ -142,7 +142,9 @@ class AdapterHealthState:
             "consecutive_failures": self.consecutive_failures,
             "consecutive_successes": self.consecutive_successes,
             "last_check_time": self.last_check_time.isoformat() if self.last_check_time else None,
-            "last_state_change": self.last_state_change.isoformat() if self.last_state_change else None,
+            "last_state_change": self.last_state_change.isoformat()
+            if self.last_state_change
+            else None,
             "failure_count": len(self.failure_history),
             "details": self.current_health,
         }
@@ -218,23 +220,23 @@ class AdapterHealthMonitor:
 
             # Adapter health status gauge (1=healthy, 0=unhealthy, 0.5=degraded)
             self._health_gauge = Gauge(
-                'mahavishnu_adapter_health_status',
-                'Adapter health status (1=healthy, 0=unhealthy, 0.5=degraded)',
-                ['server', 'adapter']
+                "mahavishnu_adapter_health_status",
+                "Adapter health status (1=healthy, 0=unhealthy, 0.5=degraded)",
+                ["server", "adapter"],
             )
 
             # Health check counter
             self._health_check_counter = Counter(
-                'mahavishnu_health_checks_total',
-                'Total health checks performed',
-                ['server', 'adapter', 'status']
+                "mahavishnu_health_checks_total",
+                "Total health checks performed",
+                ["server", "adapter", "status"],
             )
 
             # Health state change counter
             self._health_state_counter = Counter(
-                'mahavishnu_health_state_changes_total',
-                'Total health state changes',
-                ['server', 'adapter', 'from_state', 'to_state']
+                "mahavishnu_health_state_changes_total",
+                "Total health state changes",
+                ["server", "adapter", "from_state", "to_state"],
             )
 
             logger.debug("Initialized Prometheus health metrics")
@@ -250,7 +252,7 @@ class AdapterHealthMonitor:
         Returns:
             Dictionary mapping adapter names to adapter instances
         """
-        if hasattr(self.registry, 'adapters'):
+        if hasattr(self.registry, "adapters"):
             # HybridAdapterRegistry or similar
             return self.registry.adapters  # type: ignore[no-any-return]
         elif isinstance(self.registry, dict):
@@ -304,7 +306,7 @@ class AdapterHealthMonitor:
 
         try:
             # Call adapter's get_health method
-            if hasattr(adapter, 'get_health'):
+            if hasattr(adapter, "get_health"):
                 health = await adapter.get_health()
             else:
                 # Fallback: assume healthy if no health check method
@@ -387,9 +389,7 @@ class AdapterHealthMonitor:
         from_state = "healthy" if old_is_healthy else "unhealthy"
         to_state = "healthy" if new_state.is_healthy else "unhealthy"
 
-        logger.info(
-            f"Adapter {adapter_name} health state changed: {from_state} -> {to_state}"
-        )
+        logger.info(f"Adapter {adapter_name} health state changed: {from_state} -> {to_state}")
 
         # Record state change in Prometheus
         if self._health_state_counter:
@@ -466,7 +466,7 @@ class AdapterHealthMonitor:
 
         try:
             # Check if websocket server has broadcast method
-            if hasattr(self.websocket_server, 'broadcast_to_room'):
+            if hasattr(self.websocket_server, "broadcast_to_room"):
                 from mcp_common.websocket import WebSocketProtocol
 
                 event = WebSocketProtocol.create_event(
@@ -506,7 +506,9 @@ class AdapterHealthMonitor:
             # Create alert for unhealthy adapter
             alert = Alert(
                 alert_type=AlertType.ADAPTER_DEGRADATION,
-                severity=AlertSeverity.CRITICAL if state.consecutive_failures >= 5 else AlertSeverity.WARNING,
+                severity=AlertSeverity.CRITICAL
+                if state.consecutive_failures >= 5
+                else AlertSeverity.WARNING,
                 message=(
                     f"Adapter {adapter_name} is unhealthy: "
                     f"{state.consecutive_failures} consecutive failures. "
@@ -552,9 +554,7 @@ class AdapterHealthMonitor:
                 # Clear cached preferences to force recalculation
                 # This will deprioritize unhealthy adapters
                 router._preferences.clear()  # noqa: SLF001
-                logger.info(
-                    f"Cleared StatisticalRouter cache due to {adapter_name} health change"
-                )
+                logger.info(f"Cleared StatisticalRouter cache due to {adapter_name} health change")
         except Exception as e:
             logger.debug(f"Failed to update router preferences: {e}")
 
@@ -598,7 +598,7 @@ class AdapterHealthMonitor:
                     INSERT OR REPLACE INTO adapter_health (adapter_name, health_data, updated_at)
                     VALUES (?, ?, ?)
                     """,
-                    (adapter_name, json.dumps(state.to_dict()), datetime.now(UTC).isoformat())
+                    (adapter_name, json.dumps(state.to_dict()), datetime.now(UTC).isoformat()),
                 )
 
                 conn.commit()
@@ -670,10 +670,7 @@ class AdapterHealthMonitor:
             "healthy": healthy,
             "unhealthy": unhealthy,
             "health_percentage": (healthy / total * 100) if total > 0 else 100.0,
-            "adapters": {
-                name: state.to_dict()
-                for name, state in self.health_states.items()
-            },
+            "adapters": {name: state.to_dict() for name, state in self.health_states.items()},
             "monitor_running": self._monitor_task is not None and not self._monitor_task.done(),
             "config": {
                 "check_interval_seconds": self.config.check_interval_seconds,

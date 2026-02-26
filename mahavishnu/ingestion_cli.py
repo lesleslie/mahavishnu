@@ -30,17 +30,20 @@ def _format_result(result: dict) -> None:
         result: Result dictionary from ingestion
     """
     if result["success"]:
-        typer.echo(f"✅ Successfully ingested: {result['title'] or result['source']}", fg=typer.colors.GREEN)
+        typer.echo(
+            f"✅ Successfully ingested: {result['title'] or result['source']}",
+            fg=typer.colors.GREEN,
+        )
         typer.echo(f"   Type: {result['content_type']}", fg=typer.colors.BLUE)
         typer.echo(f"   Chunks: {result['chunk_count']}", fg=typer.colors.BLUE)
         typer.echo(f"   Embedding dim: {result['embedding_dimension']}", fg=typer.colors.BLUE)
         typer.echo(
             f"   Akosha: {'✓' if result['stored_in_akosha'] else '✗'}",
-            fg=typer.colors.GREEN if result['stored_in_akosha'] else typer.colors.RED,
+            fg=typer.colors.GREEN if result["stored_in_akosha"] else typer.colors.RED,
         )
         typer.echo(
             f"   Crackerjack: {'✓' if result['indexed_in_crackerjack'] else '✗'}",
-            fg=typer.colors.GREEN if result['indexed_in_crackerjack'] else typer.colors.RED,
+            fg=typer.colors.GREEN if result["indexed_in_crackerjack"] else typer.colors.RED,
         )
     else:
         typer.echo(f"❌ Failed to ingest: {result['source']}", fg=typer.colors.RED)
@@ -50,9 +53,13 @@ def _format_result(result: dict) -> None:
 @ingestion_app.command("url")
 def ingest_url(
     url: str = typer.Argument(..., help="URL to ingest"),
-    provider: str = typer.Option(None, "--provider", "-p", help="Embedding provider (fastembed, ollama, openai)"),
+    provider: str = typer.Option(
+        None, "--provider", "-p", help="Embedding provider (fastembed, ollama, openai)"
+    ),
     chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Maximum characters per chunk"),
-    chunk_overlap: int = typer.Option(200, "--chunk-overlap", "-o", help="Character overlap between chunks"),
+    chunk_overlap: int = typer.Option(
+        200, "--chunk-overlap", "-o", help="Character overlap between chunks"
+    ),
     output_dir: str = typer.Option("ingested", "--output", "-d", help="Output directory"),
 ):
     """Ingest content from a URL.
@@ -66,6 +73,7 @@ def ingest_url(
         $ mahavishnu ingest url https://blog.example.com/post
         $ mahavishnu ingest url https://example.com --provider ollama --chunk-size 500
     """
+
     async def _ingest():
         # Map provider string to enum
         embedding_provider = None
@@ -98,9 +106,13 @@ def ingest_url(
 @ingestion_app.command("file")
 def ingest_file(
     file_path: str = typer.Argument(..., help="Path to file to ingest"),
-    provider: str = typer.Option(None, "--provider", "-p", help="Embedding provider (fastembed, ollama, openai)"),
+    provider: str = typer.Option(
+        None, "--provider", "-p", help="Embedding provider (fastembed, ollama, openai)"
+    ),
     chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Maximum characters per chunk"),
-    chunk_overlap: int = typer.Option(200, "--chunk-overlap", "-o", help="Character overlap between chunks"),
+    chunk_overlap: int = typer.Option(
+        200, "--chunk-overlap", "-o", help="Character overlap between chunks"
+    ),
 ):
     """Ingest content from a local file.
 
@@ -147,7 +159,9 @@ def ingest_file(
 @ingestion_app.command("batch")
 def ingest_batch(
     input_file: str = typer.Argument(..., help="File containing URLs (one per line)"),
-    provider: str = typer.Option(None, "--provider", "-p", help="Embedding provider (fastembed, ollama, openai)"),
+    provider: str = typer.Option(
+        None, "--provider", "-p", help="Embedding provider (fastembed, ollama, openai)"
+    ),
     parallel: int = typer.Option(5, "--parallel", "-n", help="Number of parallel ingestions"),
 ):
     """Ingest multiple URLs from a file.
@@ -193,8 +207,11 @@ def ingest_batch(
             # Process in batches
             results = []
             for i in range(0, len(urls), parallel):
-                batch = urls[i:i + parallel]
-                typer.echo(f"Processing batch {i // parallel + 1} ({len(batch)} URLs)...", fg=typer.colors.BLUE)
+                batch = urls[i : i + parallel]
+                typer.echo(
+                    f"Processing batch {i // parallel + 1} ({len(batch)} URLs)...",
+                    fg=typer.colors.BLUE,
+                )
                 batch_results = await ingester.batch_ingest_urls(batch)
                 results.extend(batch_results)
 
@@ -209,7 +226,9 @@ def ingest_batch(
     typer.echo(f"\n📊 Batch ingestion complete:", fg=typer.colors.BLUE)
     typer.echo(f"   Total: {len(results)}", fg=typer.colors.BLUE)
     typer.echo(f"   Success: {success_count}", fg=typer.colors.GREEN)
-    typer.echo(f"   Failed: {fail_count}", fg=typer.colors.RED if fail_count > 0 else typer.colors.GREEN)
+    typer.echo(
+        f"   Failed: {fail_count}", fg=typer.colors.RED if fail_count > 0 else typer.colors.GREEN
+    )
 
     # Show failed items
     if fail_count > 0:
@@ -237,6 +256,7 @@ def ingestion_stats(
         $ mahavishnu ingest stats
         $ mahavishnu ingest stats --provider fastembed
     """
+
     async def _stats():
         # Map provider string to enum
         embedding_provider = None

@@ -708,10 +708,7 @@ class ResiliencePatterns:
                     await self.recovery_manager.monitor_and_heal_workflows()
                     # Check every 5 minutes (with shutdown check)
                     try:
-                        await asyncio.wait_for(
-                            self._shutdown_event.wait(),
-                            timeout=300
-                        )
+                        await asyncio.wait_for(self._shutdown_event.wait(), timeout=300)
                         break  # Shutdown signaled
                     except asyncio.TimeoutError:
                         pass  # Normal timeout, continue loop
@@ -719,10 +716,7 @@ class ResiliencePatterns:
                     self.app.logger.error(f"Error in monitoring loop: {e}")
                     # Wait a bit before retrying (with shutdown check)
                     try:
-                        await asyncio.wait_for(
-                            self._shutdown_event.wait(),
-                            timeout=60
-                        )
+                        await asyncio.wait_for(self._shutdown_event.wait(), timeout=60)
                         break  # Shutdown signaled
                     except asyncio.TimeoutError:
                         pass  # Normal timeout, continue loop

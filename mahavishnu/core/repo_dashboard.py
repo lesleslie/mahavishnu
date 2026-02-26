@@ -216,9 +216,7 @@ class RepositoryDashboard:
             DashboardView with complete metrics
         """
         # Fetch all tasks for the repository
-        tasks = await self.task_store.list(
-            TaskListFilter(repository=repo_name, limit=10000)
-        )
+        tasks = await self.task_store.list(TaskListFilter(repository=repo_name, limit=10000))
 
         # Calculate distribution
         distribution = self._calculate_distribution(tasks)
@@ -276,17 +274,19 @@ class RepositoryDashboard:
             health = self._determine_health(tasks, blocked_rate, risk)
             at_risk_ids = self._identify_at_risk_tasks(tasks)
 
-            dashboards.append(DashboardView(
-                repo_name=repo_name,
-                total_tasks=len(tasks),
-                health=health,
-                distribution=distribution,
-                activity=activity,
-                risk=risk,
-                completion_rate=completion_rate,
-                blocked_rate=blocked_rate,
-                at_risk_task_ids=at_risk_ids,
-            ))
+            dashboards.append(
+                DashboardView(
+                    repo_name=repo_name,
+                    total_tasks=len(tasks),
+                    health=health,
+                    distribution=distribution,
+                    activity=activity,
+                    risk=risk,
+                    completion_rate=completion_rate,
+                    blocked_rate=blocked_rate,
+                    at_risk_task_ids=at_risk_ids,
+                )
+            )
 
         return dashboards
 
@@ -339,8 +339,7 @@ class RepositoryDashboard:
                     completion_times.append(delta.total_seconds() / 3600)
 
         avg_completion_time = (
-            sum(completion_times) / len(completion_times)
-            if completion_times else 0.0
+            sum(completion_times) / len(completion_times) if completion_times else 0.0
         )
 
         # Determine velocity trend (simplified)
@@ -460,7 +459,8 @@ class RepositoryDashboard:
 
         # Check for high-priority blocked tasks
         high_priority_blocked = sum(
-            1 for t in tasks
+            1
+            for t in tasks
             if t.status == TaskStatus.BLOCKED
             and t.priority in (TaskPriority.HIGH, TaskPriority.CRITICAL)
         )

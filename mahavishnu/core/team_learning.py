@@ -74,11 +74,17 @@ class TeamExecutionOutcome(BaseModel):
     success: bool = Field(description="Whether the execution succeeded")
     latency_ms: float = Field(description="Execution latency in milliseconds")
     tokens_used: int = Field(default=0, ge=0, description="Total tokens consumed")
-    quality_score: float | None = Field(default=None, ge=0.0, le=100.0, description="Optional quality score")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Execution timestamp")
+    quality_score: float | None = Field(
+        default=None, ge=0.0, le=100.0, description="Optional quality score"
+    )
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Execution timestamp"
+    )
     error_code: str | None = Field(default=None, description="Error code if execution failed")
     error_message: str | None = Field(default=None, description="Error message if execution failed")
-    user_feedback: str | None = Field(default=None, description="User feedback (positive/negative/None)")
+    user_feedback: str | None = Field(
+        default=None, description="User feedback (positive/negative/None)"
+    )
 
     def to_storage_dict(self) -> dict[str, Any]:
         """Convert to dictionary for storage.
@@ -409,7 +415,7 @@ class TeamLearningEngine:
             success_rate=mode_data["success_rate"],
             sample_count=mode_data["samples"],
             reason=f"Based on {mode_data['samples']} executions with "
-                   f"{mode_data['success_rate']:.0%} success rate",
+            f"{mode_data['success_rate']:.0%} success rate",
         )
 
     def get_skill_success_rate(self, skills: list[str]) -> float:
@@ -483,13 +489,15 @@ class TeamLearningEngine:
         skill_scores = []
         for skills_key, stats in self._skill_stats.items():
             if stats.total_executions >= 3:
-                skill_scores.append({
-                    "skills": skills_key,
-                    "success_rate": stats.success_rate,
-                    "avg_latency_ms": stats.avg_latency_ms,
-                    "executions": stats.total_executions,
-                    "avg_quality": stats.avg_quality_score,
-                })
+                skill_scores.append(
+                    {
+                        "skills": skills_key,
+                        "success_rate": stats.success_rate,
+                        "avg_latency_ms": stats.avg_latency_ms,
+                        "executions": stats.total_executions,
+                        "avg_quality": stats.avg_quality_score,
+                    }
+                )
 
         skill_scores.sort(key=lambda x: x["success_rate"], reverse=True)
         return skill_scores[:limit]
@@ -535,7 +543,11 @@ class TeamLearningEngine:
         Returns:
             Success rate for recent outcomes
         """
-        recent = self._recent_outcomes[-window:] if len(self._recent_outcomes) > window else self._recent_outcomes
+        recent = (
+            self._recent_outcomes[-window:]
+            if len(self._recent_outcomes) > window
+            else self._recent_outcomes
+        )
         if not recent:
             return 0.0
         successes = sum(1 for o in recent if o.success)
@@ -554,7 +566,11 @@ class TeamLearningEngine:
         Returns:
             List of outcome dictionaries
         """
-        recent = self._recent_outcomes[-limit:] if len(self._recent_outcomes) > limit else self._recent_outcomes
+        recent = (
+            self._recent_outcomes[-limit:]
+            if len(self._recent_outcomes) > limit
+            else self._recent_outcomes
+        )
         return [o.to_storage_dict() for o in recent]
 
     def clear_stats(self) -> None:

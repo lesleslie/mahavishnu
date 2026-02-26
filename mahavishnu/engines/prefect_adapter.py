@@ -162,15 +162,9 @@ async def process_repository(repo_path: str, task_spec: dict[str, Any]) -> dict[
 
             # Calculate quality score (0-100)
             quality_score = 100
-            quality_score -= min(
-                quality_factors["complex_functions_count"] * 2, 20
-            )
-            quality_score -= min(
-                quality_factors["avg_function_length"] / 2, 15
-            )
-            quality_score -= min(
-                quality_factors["max_complexity"], 10
-            )
+            quality_score -= min(quality_factors["complex_functions_count"] * 2, 20)
+            quality_score -= min(quality_factors["avg_function_length"] / 2, 15)
+            quality_score -= min(quality_factors["max_complexity"], 10)
             quality_score = max(quality_score, 0)
 
             result = {
@@ -241,7 +235,9 @@ async def process_repositories_flow(
 # =============================================================================
 
 
-def _map_prefect_exception(exc: Exception, operation: str, api_url: str = "unknown") -> PrefectError:
+def _map_prefect_exception(
+    exc: Exception, operation: str, api_url: str = "unknown"
+) -> PrefectError:
     """Map Prefect exceptions to Mahavishnu PrefectError.
 
     Args:
@@ -348,7 +344,9 @@ def _flow_run_to_response(flow_run: Any) -> FlowRunResponse:
         id=str(flow_run.id),
         name=flow_run.name,
         flow_id=str(getattr(flow_run, "flow_id", "")),
-        deployment_id=str(getattr(flow_run, "deployment_id", "")) if hasattr(flow_run, "deployment_id") and flow_run.deployment_id else None,
+        deployment_id=str(getattr(flow_run, "deployment_id", ""))
+        if hasattr(flow_run, "deployment_id") and flow_run.deployment_id
+        else None,
         state_type=getattr(state, "type", "UNKNOWN") if state else "UNKNOWN",
         state_name=getattr(state, "name", "Unknown") if state else "Unknown",
         parameters=getattr(flow_run, "parameters", {}) or {},
@@ -575,6 +573,7 @@ class PrefectAdapter(OrchestratorAdapter):
         # Configure client for Prefect Cloud if workspace is specified
         if self.config.api_key:
             import os
+
             old_api_key = os.environ.get("PREFECT_API_KEY")
             old_api_url = os.environ.get("PREFECT_API_URL")
             try:
@@ -866,10 +865,16 @@ class PrefectAdapter(OrchestratorAdapter):
         except PrefectError:
             raise
         except Exception as exc:
-            error = _map_prefect_exception(exc, f"create_deployment({flow_name}/{deployment_name})", self.config.api_url)
+            error = _map_prefect_exception(
+                exc, f"create_deployment({flow_name}/{deployment_name})", self.config.api_url
+            )
             logger.error(
                 "Failed to create deployment",
-                extra={"error": str(error), "flow_name": flow_name, "deployment_name": deployment_name},
+                extra={
+                    "error": str(error),
+                    "flow_name": flow_name,
+                    "deployment_name": deployment_name,
+                },
             )
             raise error from exc
 
@@ -956,7 +961,9 @@ class PrefectAdapter(OrchestratorAdapter):
         except PrefectError:
             raise
         except Exception as exc:
-            error = _map_prefect_exception(exc, f"update_deployment({deployment_id})", self.config.api_url)
+            error = _map_prefect_exception(
+                exc, f"update_deployment({deployment_id})", self.config.api_url
+            )
             logger.error(
                 "Failed to update deployment",
                 extra={"error": str(error), "deployment_id": deployment_id},
@@ -1002,7 +1009,9 @@ class PrefectAdapter(OrchestratorAdapter):
         except PrefectError:
             raise
         except Exception as exc:
-            error = _map_prefect_exception(exc, f"delete_deployment({deployment_id})", self.config.api_url)
+            error = _map_prefect_exception(
+                exc, f"delete_deployment({deployment_id})", self.config.api_url
+            )
             logger.error(
                 "Failed to delete deployment",
                 extra={"error": str(error), "deployment_id": deployment_id},
@@ -1042,7 +1051,9 @@ class PrefectAdapter(OrchestratorAdapter):
         except PrefectError:
             raise
         except Exception as exc:
-            error = _map_prefect_exception(exc, f"get_deployment({deployment_id})", self.config.api_url)
+            error = _map_prefect_exception(
+                exc, f"get_deployment({deployment_id})", self.config.api_url
+            )
             logger.error(
                 "Failed to get deployment",
                 extra={"error": str(error), "deployment_id": deployment_id},
@@ -1098,7 +1109,11 @@ class PrefectAdapter(OrchestratorAdapter):
             )
             logger.error(
                 "Failed to get deployment by name",
-                extra={"error": str(error), "flow_name": flow_name, "deployment_name": deployment_name},
+                extra={
+                    "error": str(error),
+                    "flow_name": flow_name,
+                    "deployment_name": deployment_name,
+                },
             )
             raise error from exc
 
@@ -1231,7 +1246,9 @@ class PrefectAdapter(OrchestratorAdapter):
         except PrefectError:
             raise
         except Exception as exc:
-            error = _map_prefect_exception(exc, f"trigger_flow_run({deployment_id})", self.config.api_url)
+            error = _map_prefect_exception(
+                exc, f"trigger_flow_run({deployment_id})", self.config.api_url
+            )
             logger.error(
                 "Failed to trigger flow run",
                 extra={"error": str(error), "deployment_id": deployment_id},
@@ -1391,7 +1408,9 @@ class PrefectAdapter(OrchestratorAdapter):
         except PrefectError:
             raise
         except Exception as exc:
-            error = _map_prefect_exception(exc, f"cancel_flow_run({flow_run_id})", self.config.api_url)
+            error = _map_prefect_exception(
+                exc, f"cancel_flow_run({flow_run_id})", self.config.api_url
+            )
             logger.error(
                 "Failed to cancel flow run",
                 extra={"error": str(error), "flow_run_id": flow_run_id},
@@ -1470,7 +1489,9 @@ class PrefectAdapter(OrchestratorAdapter):
         except PrefectError:
             raise
         except Exception as exc:
-            error = _map_prefect_exception(exc, f"get_work_pool({work_pool_name})", self.config.api_url)
+            error = _map_prefect_exception(
+                exc, f"get_work_pool({work_pool_name})", self.config.api_url
+            )
             logger.error(
                 "Failed to get work pool",
                 extra={"error": str(error), "work_pool_name": work_pool_name},
@@ -1745,11 +1766,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
     def __repr__(self) -> str:
         """Return string representation of the adapter."""
-        return (
-            f"PrefectAdapter("
-            f"api_url={self.config.api_url!r}, "
-            f"initialized={self._initialized})"
-        )
+        return f"PrefectAdapter(api_url={self.config.api_url!r}, initialized={self._initialized})"
 
     def __str__(self) -> str:
         """Human-readable string of the adapter."""

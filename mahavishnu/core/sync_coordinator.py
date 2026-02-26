@@ -433,8 +433,7 @@ class SyncCoordinator:
         if item and item.status == SyncStatus.CONFLICT:
             # Check if all conflicts for this item are resolved
             item_conflicts = [
-                c for k, c in self._conflicts.items()
-                if k.startswith(f"{external_id}:")
+                c for k, c in self._conflicts.items() if k.startswith(f"{external_id}:")
             ]
             if all(c.resolution != ConflictResolution.MANUAL for c in item_conflicts):
                 item.status = SyncStatus.APPROVED
@@ -448,10 +447,7 @@ class SyncCoordinator:
         Returns:
             List of pending SyncItems
         """
-        return [
-            item for item in self._items.values()
-            if item.status == SyncStatus.PENDING
-        ]
+        return [item for item in self._items.values() if item.status == SyncStatus.PENDING]
 
     def get_approved_items(self) -> list[SyncItem]:
         """Get all approved items.
@@ -459,10 +455,7 @@ class SyncCoordinator:
         Returns:
             List of approved SyncItems
         """
-        return [
-            item for item in self._items.values()
-            if item.status == SyncStatus.APPROVED
-        ]
+        return [item for item in self._items.values() if item.status == SyncStatus.APPROVED]
 
     def get_sync_summary(self) -> dict[str, int]:
         """Get sync summary statistics.

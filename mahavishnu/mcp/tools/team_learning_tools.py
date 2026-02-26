@@ -618,4 +618,6 @@ def register_team_learning_tools(mcp: FastMCP) -> None:
                 },
             }
 
-    logger.info("Registered 5 team learning tools: record_team_outcome, get_learning_summary, get_recommended_mode, get_learning_stats, record_user_feedback")
+    logger.info(
+        "Registered 5 team learning tools: record_team_outcome, get_learning_summary, get_recommended_mode, get_learning_stats, record_user_feedback"
+    )

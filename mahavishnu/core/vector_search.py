@@ -48,9 +48,7 @@ class HNSWConfig(BaseModel):
     ef_construction: int = Field(
         default=64, ge=8, le=512, description="Build-time dynamic candidate list size"
     )
-    ef_search: int = Field(
-        default=64, ge=1, le=1000, description="Query-time search depth"
-    )
+    ef_search: int = Field(default=64, ge=1, le=1000, description="Query-time search depth")
 
 
 @dataclass
@@ -122,7 +120,9 @@ class VectorIndex:
             WITH (m = {m_val}, ef_construction = {ef_val});
         """)
 
-        logger.info(f"Created HNSW index {index_name} on {table}.{column} (m={m_val}, ef_construction={ef_val})")
+        logger.info(
+            f"Created HNSW index {index_name} on {table}.{column} (m={m_val}, ef_construction={ef_val})"
+        )
 
     async def create_ivfflat_index(
         self,

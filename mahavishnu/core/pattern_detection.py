@@ -109,9 +109,7 @@ class PatternDetector:
 
         return result
 
-    def _detect_duration_patterns(
-        self, tasks: list[dict[str, Any]]
-    ) -> list[TaskDurationPattern]:
+    def _detect_duration_patterns(self, tasks: list[dict[str, Any]]) -> list[TaskDurationPattern]:
         """Detect duration patterns in tasks.
 
         Args:
@@ -153,19 +151,13 @@ class PatternDetector:
                 pattern = self._create_duration_pattern(
                     durations=durations,
                     task_type=task_type,
-                    sample_task_ids=[
-                        t["id"]
-                        for t in tasks
-                        if task_type in t.get("tags", [])
-                    ][:10],
+                    sample_task_ids=[t["id"] for t in tasks if task_type in t.get("tags", [])][:10],
                 )
                 patterns.append(pattern)
 
         return patterns
 
-    def _detect_blocker_patterns(
-        self, tasks: list[dict[str, Any]]
-    ) -> list[BlockerPattern]:
+    def _detect_blocker_patterns(self, tasks: list[dict[str, Any]]) -> list[BlockerPattern]:
         """Detect recurring blocker patterns.
 
         Args:
@@ -201,9 +193,7 @@ class PatternDetector:
                             resolution_times.append(delta.total_seconds() / 3600)
 
                 avg_resolution = (
-                    sum(resolution_times) / len(resolution_times)
-                    if resolution_times
-                    else None
+                    sum(resolution_times) / len(resolution_times) if resolution_times else None
                 )
 
                 pattern = BlockerPattern(
@@ -253,9 +243,7 @@ class PatternDetector:
         total_tasks = len(tasks)
         for sequence, count in transitions.most_common(10):
             if count >= self.config.min_samples:
-                completion_prob = self._calculate_sequence_completion_prob(
-                    sequence, tasks
-                )
+                completion_prob = self._calculate_sequence_completion_prob(sequence, tasks)
 
                 pattern = CompletionSequencePattern(
                     sequence=list(sequence),
@@ -273,9 +261,7 @@ class PatternDetector:
             repo_transitions = Counter(repo_sequences)
             for sequence, count in repo_transitions.most_common(5):
                 if count >= self.config.min_samples:
-                    completion_prob = self._calculate_sequence_completion_prob(
-                        sequence, tasks
-                    )
+                    completion_prob = self._calculate_sequence_completion_prob(sequence, tasks)
 
                     pattern = CompletionSequencePattern(
                         sequence=list(sequence),
@@ -322,9 +308,7 @@ class PatternDetector:
 
         return sorted(matches, key=lambda m: m["match_score"], reverse=True)
 
-    def _calculate_match_score(
-        self, task: dict[str, Any], pattern: DetectedPattern
-    ) -> float:
+    def _calculate_match_score(self, task: dict[str, Any], pattern: DetectedPattern) -> float:
         """Calculate how well a task matches a pattern.
 
         Args:
@@ -409,8 +393,12 @@ class PatternDetector:
         """Get task duration in hours."""
         if created := task.get("created_at"):
             if completed := task.get("completed_at"):
-                created_dt = datetime.fromisoformat(created) if isinstance(created, str) else created
-                completed_dt = datetime.fromisoformat(completed) if isinstance(completed, str) else completed
+                created_dt = (
+                    datetime.fromisoformat(created) if isinstance(created, str) else created
+                )
+                completed_dt = (
+                    datetime.fromisoformat(completed) if isinstance(completed, str) else completed
+                )
                 return (completed_dt - created_dt).total_seconds() / 3600
         return None
 
@@ -502,9 +490,7 @@ class PatternDetector:
         else:
             return PatternFrequency.VERY_FREQUENT
 
-    def _determine_severity(
-        self, keyword: str, occurrence_count: int
-    ) -> PatternSeverity:
+    def _determine_severity(self, keyword: str, occurrence_count: int) -> PatternSeverity:
         """Determine pattern severity."""
         # High severity for frequently occurring blockers
         if occurrence_count >= 10:

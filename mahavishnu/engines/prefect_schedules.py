@@ -424,7 +424,9 @@ def create_weekly_schedule(
         ```
     """
     if not 0 <= day_of_week <= 6:
-        raise ValueError(f"day_of_week must be between 0 (Sunday) and 6 (Saturday), got {day_of_week}")
+        raise ValueError(
+            f"day_of_week must be between 0 (Sunday) and 6 (Saturday), got {day_of_week}"
+        )
     if not 0 <= hour <= 23:
         raise ValueError(f"hour must be between 0 and 23, got {hour}")
     if not 0 <= minute <= 59:

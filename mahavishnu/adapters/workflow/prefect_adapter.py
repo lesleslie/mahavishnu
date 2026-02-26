@@ -51,6 +51,7 @@ try:
         process_repository,
         process_repositories_flow,
     )
+
     _prefect_available = True
 except ImportError:
     PrefectAdapter = None  # type: ignore[misc,assignment]

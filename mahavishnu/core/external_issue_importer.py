@@ -228,15 +228,11 @@ class ExternalIssueImporter:
 
         created_at = None
         if data.get("created_at"):
-            created_at = datetime.fromisoformat(
-                data["created_at"].replace("Z", "+00:00")
-            )
+            created_at = datetime.fromisoformat(data["created_at"].replace("Z", "+00:00"))
 
         updated_at = None
         if data.get("updated_at"):
-            updated_at = datetime.fromisoformat(
-                data["updated_at"].replace("Z", "+00:00")
-            )
+            updated_at = datetime.fromisoformat(data["updated_at"].replace("Z", "+00:00"))
 
         repository = data.get("repository", {}).get("full_name", "")
 
@@ -271,15 +267,11 @@ class ExternalIssueImporter:
 
         created_at = None
         if data.get("created_at"):
-            created_at = datetime.fromisoformat(
-                data["created_at"].replace("Z", "+00:00")
-            )
+            created_at = datetime.fromisoformat(data["created_at"].replace("Z", "+00:00"))
 
         updated_at = None
         if data.get("updated_at"):
-            updated_at = datetime.fromisoformat(
-                data["updated_at"].replace("Z", "+00:00")
-            )
+            updated_at = datetime.fromisoformat(data["updated_at"].replace("Z", "+00:00"))
 
         # Extract repository from references
         refs = data.get("references", {})
@@ -323,17 +315,13 @@ class ExternalIssueImporter:
         # Check repository filter
         if self._config.repository_filter:
             if issue.repository not in self._config.repository_filter:
-                logger.debug(
-                    f"Skipping issue from filtered repo: {issue.repository}"
-                )
+                logger.debug(f"Skipping issue from filtered repo: {issue.repository}")
                 return False
 
         # Check label filter
         if self._config.label_filter:
             if not any(label in issue.labels for label in self._config.label_filter):
-                logger.debug(
-                    f"Skipping issue without required labels: {issue.external_id}"
-                )
+                logger.debug(f"Skipping issue without required labels: {issue.external_id}")
                 return False
 
         return True

@@ -41,52 +41,66 @@ except ImportError:
 
     # Create dummy classes for graceful degradation
     class Counter:
-        def __init__(self, *args, **kwargs): pass
+        def __init__(self, *args, **kwargs):
+            pass
 
         def labels(self, **kwargs):
             return self
 
-        def inc(self, amount=1): pass
+        def inc(self, amount=1):
+            pass
 
         def count(self):
             return 0
 
     class Gauge:
-        def __init__(self, *args, **kwargs): pass
+        def __init__(self, *args, **kwargs):
+            pass
 
         def labels(self, **kwargs):
             return self
 
-        def set(self, value): pass
+        def set(self, value):
+            pass
 
-        def set_to_current_value(self): pass
+        def set_to_current_value(self):
+            pass
 
-        def inc(self, amount=1): pass
+        def inc(self, amount=1):
+            pass
 
-        def dec(self, amount=1): pass
+        def dec(self, amount=1):
+            pass
 
     class Histogram:
-        def __init__(self, *args, **kwargs): pass
+        def __init__(self, *args, **kwargs):
+            pass
 
         def labels(self, **kwargs):
             return self
 
-        def observe(self, amount): pass
+        def observe(self, amount):
+            pass
 
         def time(self):
             return self
 
     class Info:
-        def __init__(self, *args, **kwargs): pass
+        def __init__(self, *args, **kwargs):
+            pass
 
         def labels(self, **kwargs):
             return self
 
-        def info(self, val): pass
+        def info(self, val):
+            pass
 
     def start_http_server(port: int):
-        logging.warning(f"prometheus_client not available, metrics server not started on port {port}")
+        logging.warning(
+            f"prometheus_client not available, metrics server not started on port {port}"
+        )
         return None
+
 
 logger = logging.getLogger(__name__)
 
@@ -326,7 +340,9 @@ class GoalTeamMetrics:
     def _ensure_enabled(self) -> None:
         """Check if metrics are enabled and initialize if needed."""
         if not self._enabled:
-            logger.debug(f"Goal team metrics disabled, skipping operation for server: {self.server_name}")
+            logger.debug(
+                f"Goal team metrics disabled, skipping operation for server: {self.server_name}"
+            )
             return
 
         # Initialize metrics on first use
@@ -757,7 +773,9 @@ def start_metrics_server(port: int = 9092) -> Any:
         >>> print("Goal team metrics available on http://localhost:9092")
     """
     if not PROMETHEUS_AVAILABLE:
-        logger.warning("Cannot start Prometheus goal team metrics server: prometheus_client not installed")
+        logger.warning(
+            "Cannot start Prometheus goal team metrics server: prometheus_client not installed"
+        )
         logger.warning("Install with: pip install prometheus-client")
         return None
 

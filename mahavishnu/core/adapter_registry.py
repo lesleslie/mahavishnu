@@ -157,13 +157,10 @@ class HybridAdapterRegistry:
         # Composite components
         self.discovery = AdapterDiscoveryEngine(
             config={
-                "allowlist_patterns": getattr(
-                    config, "adapter_allowlist_patterns", None
-                ) or ["mahavishnu.adapters.*", "mahavishnu.engines.*"],
+                "allowlist_patterns": getattr(config, "adapter_allowlist_patterns", None)
+                or ["mahavishnu.adapters.*", "mahavishnu.engines.*"],
                 "cache_ttl_seconds": 300,
-                "enable_oneiric_mcp": getattr(
-                    config, "oneiric_mcp_enabled", False
-                ),
+                "enable_oneiric_mcp": getattr(config, "oneiric_mcp_enabled", False),
             }
         )
         self.persistence = AdapterPersistenceLayer()
@@ -222,9 +219,7 @@ class HybridAdapterRegistry:
             except Exception as e:
                 error_msg = str(e)
                 report.failed.append((metadata.adapter_id, error_msg))
-                logger.error(
-                    f"Failed to register adapter {metadata.adapter_id}: {error_msg}"
-                )
+                logger.error(f"Failed to register adapter {metadata.adapter_id}: {error_msg}")
 
         logger.info(
             f"Registration complete: {report.registered}/{report.discovered} adapters "
@@ -233,9 +228,7 @@ class HybridAdapterRegistry:
 
         return report
 
-    async def _register_adapter_from_metadata(
-        self, metadata: AdapterMetadata
-    ) -> bool:
+    async def _register_adapter_from_metadata(self, metadata: AdapterMetadata) -> bool:
         """Register an adapter from its metadata.
 
         Args:
@@ -247,9 +240,7 @@ class HybridAdapterRegistry:
         # Load factory path
         factory_path = metadata.factory_path
         if not factory_path:
-            logger.warning(
-                f"Adapter {metadata.adapter_id} has no factory_path, skipping"
-            )
+            logger.warning(f"Adapter {metadata.adapter_id} has no factory_path, skipping")
             return False
 
         try:
@@ -312,8 +303,7 @@ class HybridAdapterRegistry:
 
         except Exception as e:
             logger.error(
-                f"Failed to instantiate adapter {metadata.adapter_id} "
-                f"from {factory_path}: {e}"
+                f"Failed to instantiate adapter {metadata.adapter_id} from {factory_path}: {e}"
             )
             return False
 
@@ -368,8 +358,7 @@ class HybridAdapterRegistry:
 
         if not matching:
             logger.warning(
-                f"No adapter found for domain={domain}, key={key}, "
-                f"capabilities={capabilities}"
+                f"No adapter found for domain={domain}, key={key}, capabilities={capabilities}"
             )
             return None
 
@@ -384,10 +373,7 @@ class HybridAdapterRegistry:
         # Build matched capabilities list
         matched_caps = []
         if capabilities:
-            matched_caps = [
-                cap for cap in capabilities
-                if cap in selected_meta.capabilities
-            ]
+            matched_caps = [cap for cap in capabilities if cap in selected_meta.capabilities]
 
         decision = RoutingDecision(
             adapter_name=selected_name,
@@ -498,20 +484,20 @@ class HybridAdapterRegistry:
                         continue
 
                 adapter = self._adapters.get(name)
-                results.append({
-                    "name": name,
-                    "adapter_id": metadata.adapter_id,
-                    "domain": metadata.domain,
-                    "category": metadata.category,
-                    "provider": metadata.provider,
-                    "capabilities": metadata.capabilities,
-                    "priority": metadata.priority,
-                    "source": metadata.source,
-                    "healthy": self._health_state.get(name, {}).get(
-                        "status", "unknown"
-                    ),
-                    "has_instance": adapter is not None,
-                })
+                results.append(
+                    {
+                        "name": name,
+                        "adapter_id": metadata.adapter_id,
+                        "domain": metadata.domain,
+                        "category": metadata.category,
+                        "provider": metadata.provider,
+                        "capabilities": metadata.capabilities,
+                        "priority": metadata.priority,
+                        "source": metadata.source,
+                        "healthy": self._health_state.get(name, {}).get("status", "unknown"),
+                        "has_instance": adapter is not None,
+                    }
+                )
 
             return results
 
@@ -676,8 +662,7 @@ def get_registry() -> HybridAdapterRegistry:
     global _registry
     if _registry is None:
         raise RuntimeError(
-            "HybridAdapterRegistry not initialized. "
-            "Call initialize_registry() first."
+            "HybridAdapterRegistry not initialized. Call initialize_registry() first."
         )
     return _registry
 
