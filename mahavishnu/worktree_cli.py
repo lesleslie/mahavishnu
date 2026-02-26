@@ -25,9 +25,12 @@ def create_worktree(
     repo_nickname: str = typer.Argument(..., help="Repository nickname"),
     branch: str = typer.Argument(..., help="Branch name"),
     name: str = typer.Option(None, "--name", "-n", help="Custom worktree name"),
-    create_branch: bool = typer.Option(False, "--create-branch", "-b", help="Create branch if doesn't exist"),
+    create_branch: bool = typer.Option(
+        False, "--create-branch", "-b", help="Create branch if doesn't exist"
+    ),
 ):
     """Create a new worktree with safety checks."""
+
     async def _create():
         app = MahavishnuApp.load()
 
@@ -60,9 +63,15 @@ def remove_worktree(
     repo_nickname: str = typer.Argument(..., help="Repository nickname"),
     worktree_path: str = typer.Argument(..., help="Path to worktree"),
     force: bool = typer.Option(False, "--force", "-f", help="Skip safety checks"),
-    force_reason: str = typer.Option(None, "--force-reason", "-r", help="Required reason when using --force with uncommitted changes"),
+    force_reason: str = typer.Option(
+        None,
+        "--force-reason",
+        "-r",
+        help="Required reason when using --force with uncommitted changes",
+    ),
 ):
     """Remove a worktree with safety validation."""
+
     async def _remove():
         app = MahavishnuApp.load()
 
@@ -120,6 +129,7 @@ def list_worktrees(
     repo: str = typer.Option(None, "--repo", "-r", help="Filter by repository"),
 ):
     """List worktrees across ecosystem."""
+
     async def _list():
         app = MahavishnuApp.load()
 
@@ -151,6 +161,7 @@ def prune_worktrees(
     repo_nickname: str = typer.Argument(..., help="Repository nickname"),
 ):
     """Prune stale worktree references."""
+
     async def _prune():
         app = MahavishnuApp.load()
 
@@ -179,6 +190,7 @@ def safety_status(
     worktree_path: str = typer.Argument(..., help="Path to worktree"),
 ):
     """Get safety status for a worktree before removal."""
+
     async def _status():
         app = MahavishnuApp.load()
 
@@ -195,8 +207,12 @@ def safety_status(
         )
 
         typer.echo(f"🔍 Safety Status for {worktree_path}:")
-        typer.echo(f"   Uncommitted changes: {'⚠️ Yes' if status.get('uncommitted_changes') else '✅ No'}")
-        typer.echo(f"   Is valid worktree: {'✅ Yes' if status.get('is_valid_worktree') else '❌ No'}")
+        typer.echo(
+            f"   Uncommitted changes: {'⚠️ Yes' if status.get('uncommitted_changes') else '✅ No'}"
+        )
+        typer.echo(
+            f"   Is valid worktree: {'✅ Yes' if status.get('is_valid_worktree') else '❌ No'}"
+        )
         typer.echo(f"   Path is safe: {'✅ Yes' if status.get('path_safe') else '❌ No'}")
 
         dependencies = status.get("dependencies", [])
@@ -213,6 +229,7 @@ def safety_status(
 @worktree_app.command("provider-health")
 def provider_health():
     """Check health of all worktree providers."""
+
     async def _health():
         app = MahavishnuApp.load()
 

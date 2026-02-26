@@ -122,9 +122,7 @@ class MockWorktreeProvider(WorktreeProvider):
         # Record the removal (but don't actually delete anything)
         self.removed_worktrees.append(str(worktree_path))
 
-        logger.debug(
-            f"[MOCK] Removed worktree: {worktree_path} (force={force})"
-        )
+        logger.debug(f"[MOCK] Removed worktree: {worktree_path} (force={force})")
 
         return {
             "success": True,
@@ -146,16 +144,13 @@ class MockWorktreeProvider(WorktreeProvider):
         """
         # Filter worktrees by repository
         repo_worktrees = [
-            wt
-            for wt in self.created_worktrees
-            if wt["repository_path"] == str(repository_path)
+            wt for wt in self.created_worktrees if wt["repository_path"] == str(repository_path)
         ]
 
         return {
             "success": True,
             "worktrees": [
-                {"path": wt["worktree_path"], "branch": wt["branch"]}
-                for wt in repo_worktrees
+                {"path": wt["worktree_path"], "branch": wt["branch"]} for wt in repo_worktrees
             ],
             "repository_path": str(repository_path),
         }

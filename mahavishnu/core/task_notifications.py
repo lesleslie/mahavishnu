@@ -79,6 +79,7 @@ class TaskEvent:
 
     def to_json(self) -> str:
         """Convert to JSON string."""
+
         def json_serial(obj: Any) -> Any:
             """Handle non-serializable objects."""
             if isinstance(obj, datetime):
@@ -251,9 +252,7 @@ class TaskEventEmitter:
                 try:
                     subscription.callback(event)
                 except Exception as e:
-                    logger.error(
-                        f"Error in event callback for {subscription.subscription_id}: {e}"
-                    )
+                    logger.error(f"Error in event callback for {subscription.subscription_id}: {e}")
 
     def emit_task_created(
         self,

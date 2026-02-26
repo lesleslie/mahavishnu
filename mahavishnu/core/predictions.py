@@ -140,15 +140,13 @@ class BlockerPredictor:
         blocker_probability = min(1.0, base_probability + risk_score * 0.3)
 
         # Calculate confidence interval
-        sample_size = len([t for t in historical_tasks if t.get("repository") == task.get("repository")])
-        confidence_interval = self._calculate_confidence_interval(
-            blocker_probability, sample_size
+        sample_size = len(
+            [t for t in historical_tasks if t.get("repository") == task.get("repository")]
         )
+        confidence_interval = self._calculate_confidence_interval(blocker_probability, sample_size)
 
         # Identify potential blockers
-        potential_blockers = self._identify_potential_blockers(
-            task, blocker_patterns
-        )
+        potential_blockers = self._identify_potential_blockers(task, blocker_patterns)
 
         # Generate mitigation suggestions
         mitigation_suggestions = self._generate_mitigation_suggestions(
@@ -197,9 +195,7 @@ class BlockerPredictor:
 
         return min(1.0, total_prob)
 
-    def _assess_risk_factors(
-        self, task: dict[str, Any]
-    ) -> tuple[float, list[str]]:
+    def _assess_risk_factors(self, task: dict[str, Any]) -> tuple[float, list[str]]:
         """Assess risk factors in a task.
 
         Returns:
@@ -282,23 +278,29 @@ class BlockerPredictor:
 
         for blocker in potential_blockers:
             if "dependency" in blocker:
-                suggestions.extend([
-                    "Identify and document all dependencies upfront",
-                    "Create dependency tracking in task comments",
-                    "Schedule dependency resolution meetings early",
-                ])
+                suggestions.extend(
+                    [
+                        "Identify and document all dependencies upfront",
+                        "Create dependency tracking in task comments",
+                        "Schedule dependency resolution meetings early",
+                    ]
+                )
             elif "external" in blocker or "api" in blocker:
-                suggestions.extend([
-                    "Implement fallback/error handling for external calls",
-                    "Add circuit breakers for API dependencies",
-                    "Document external service SLAs",
-                ])
+                suggestions.extend(
+                    [
+                        "Implement fallback/error handling for external calls",
+                        "Add circuit breakers for API dependencies",
+                        "Document external service SLAs",
+                    ]
+                )
             elif "integration" in blocker:
-                suggestions.extend([
-                    "Plan integration testing early",
-                    "Set up integration environment",
-                    "Coordinate with integration teams in advance",
-                ])
+                suggestions.extend(
+                    [
+                        "Plan integration testing early",
+                        "Set up integration environment",
+                        "Coordinate with integration teams in advance",
+                    ]
+                )
 
         # Add general suggestions for risk factors
         if any("high priority" in rf.lower() for rf in risk_factors):
@@ -346,9 +348,7 @@ class DurationEstimator:
                 matching_durations.append((pattern.avg_duration, weight))
 
         # Also check direct historical matches
-        historical_durations = self._get_historical_durations(
-            task, historical_tasks
-        )
+        historical_durations = self._get_historical_durations(task, historical_tasks)
 
         # Combine estimates
         if matching_durations or historical_durations:
@@ -362,9 +362,7 @@ class DurationEstimator:
 
         # Calculate confidence interval
         all_durations = [d for d, _ in matching_durations] + historical_durations
-        confidence_interval = self._calculate_duration_interval(
-            estimated_hours, all_durations
-        )
+        confidence_interval = self._calculate_duration_interval(estimated_hours, all_durations)
 
         # Identify factors affecting estimate
         factors = self._identify_factors(task, duration_patterns)
@@ -381,9 +379,7 @@ class DurationEstimator:
             factors=factors,
         )
 
-    def _calculate_pattern_match(
-        self, task: dict[str, Any], pattern: TaskDurationPattern
-    ) -> float:
+    def _calculate_pattern_match(self, task: dict[str, Any], pattern: TaskDurationPattern) -> float:
         """Calculate how well a task matches a duration pattern."""
         weight = 0.0
 
@@ -439,8 +435,12 @@ class DurationEstimator:
 
         if created and completed:
             try:
-                created_dt = datetime.fromisoformat(created) if isinstance(created, str) else created
-                completed_dt = datetime.fromisoformat(completed) if isinstance(completed, str) else completed
+                created_dt = (
+                    datetime.fromisoformat(created) if isinstance(created, str) else created
+                )
+                completed_dt = (
+                    datetime.fromisoformat(completed) if isinstance(completed, str) else completed
+                )
                 return (completed_dt - created_dt).total_seconds() / 3600
             except (ValueError, TypeError):
                 pass
@@ -487,7 +487,7 @@ class DurationEstimator:
             consistency_score = max(0.0, 1.0 - coefficient_of_variation)
             sample_score = min(1.0, sample_size / 10)
 
-            confidence = (consistency_score * 0.6 + sample_score * 0.4)
+            confidence = consistency_score * 0.6 + sample_score * 0.4
         else:
             confidence = 0.4
 
@@ -525,11 +525,13 @@ class DurationEstimator:
         matched_patterns = []
         for pattern in patterns:
             if self._calculate_pattern_match(task, pattern) > 0:
-                matched_patterns.append({
-                    "repository": pattern.repository,
-                    "avg_duration": pattern.avg_duration,
-                    "sample_count": pattern.sample_count,
-                })
+                matched_patterns.append(
+                    {
+                        "repository": pattern.repository,
+                        "avg_duration": pattern.avg_duration,
+                        "sample_count": pattern.sample_count,
+                    }
+                )
 
         if matched_patterns:
             factors["matched_patterns"] = matched_patterns[:3]

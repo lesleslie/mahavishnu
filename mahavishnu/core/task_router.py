@@ -60,6 +60,7 @@ try:
         ResolutionCache,
         TASK_CAPABILITY_REQUIREMENTS,
     )
+
     CAPABILITY_ROUTING_AVAILABLE = True
 except ImportError:
     CAPABILITY_ROUTING_AVAILABLE = False
@@ -202,8 +203,7 @@ class CapabilityRouter:
                     adapter_name=best_adapter.adapter_id,
                     adapter=None,  # Lazy-loaded by registry
                     matched_capabilities=[
-                        cap for cap in required_caps
-                        if cap in best_adapter.capabilities
+                        cap for cap in required_caps if cap in best_adapter.capabilities
                     ],
                     resolution_time_ms=resolution_time_ms,
                     fallback_used=False,
@@ -221,8 +221,7 @@ class CapabilityRouter:
                     "adapter": best_adapter.adapter_id,
                     "task_type": task_type.value,
                     "matched_capabilities": [
-                        cap for cap in required_caps
-                        if cap in best_adapter.capabilities
+                        cap for cap in required_caps if cap in best_adapter.capabilities
                     ],
                     "resolution_time_ms": resolution_time_ms,
                 }
@@ -390,8 +389,7 @@ class TaskRouter:
         )
 
         logger.info(
-            f"Routed {task_type_str} to {selected_adapter.value} "
-            f"(mode: {self.router_mode.value})"
+            f"Routed {task_type_str} to {selected_adapter.value} (mode: {self.router_mode.value})"
         )
 
         return {
@@ -454,7 +452,7 @@ class TaskRouter:
                 if hasattr(adapter, "execute"):
                     result = await adapter.execute(
                         task=execution_context,
-                    repos=repos,
+                        repos=repos,
                     )
 
                     # Check if execution succeeded
@@ -478,15 +476,25 @@ class TaskRouter:
                 # Fallback to next adapter
                 if attempt < max_retries:
                     # Find next adapter to try
-                    next_adapter_idx = preference_order.index(selected_adapter) + 1 if preference_order else None
+                    next_adapter_idx = (
+                        preference_order.index(selected_adapter) + 1 if preference_order else None
+                    )
 
-                    if next_adapter_idx < len(preference_order or [AdapterType.PREFECT, AdapterType.AGNO, AdapterType.LLAMAINDEX]):
-                        next_adapter = (preference_order or [AdapterType.PREFECT, AdapterType.AGNO, AdapterType.LLAMAINDEX])[next_adapter_idx]
+                    if next_adapter_idx < len(
+                        preference_order
+                        or [AdapterType.PREFECT, AdapterType.AGNO, AdapterType.LLAMAINDEX]
+                    ):
+                        next_adapter = (
+                            preference_order
+                            or [AdapterType.PREFECT, AdapterType.AGNO, AdapterType.LLAMAINDEX]
+                        )[next_adapter_idx]
                         next_adapter_type = AdapterType(next_adapter)
                         next_adapter = self.adapter_registry.adapters.get(next_adapter_type)
 
                         if next_adapter:
-                            logger.info(f"Falling back from {selected_adapter.value} to {next_adapter_type.value}")
+                            logger.info(
+                                f"Falling back from {selected_adapter.value} to {next_adapter_type.value}"
+                            )
                             fallback_chain.append(selected_adapter)
                             selected_adapter = next_adapter_type
 
@@ -538,7 +546,7 @@ class TaskRouter:
                     # Adapter doesn't support statistics
                     stats[adapter_type.value] = {
                         "status": "available_but_no_stats",
-                    "message": "Statistics not available",
+                        "message": "Statistics not available",
                     }
 
             except Exception as e:
@@ -564,39 +572,38 @@ class TaskRouter:
             "metrics_enabled": self.metrics is not None,
             "adapters_configured": len(self.adapter_registry.adapters),
             "adapters_healthy": sum(
-                1 for h in adapter_health.values()
-                if h.get("status") == "healthy"
+                1 for h in adapter_health.values() if h.get("status") == "healthy"
             ),
         }
 
 
 async def _get_adapter_health(self, adapter_type: str) -> dict[str, Any]:
-        """Get health status for specific adapter."""
-        adapter = self.adapter_registry.adapters.get(AdapterType(adapter_type))
+    """Get health status for specific adapter."""
+    adapter = self.adapter_registry.adapters.get(AdapterType(adapter_type))
 
-        if not adapter:
-            return {
-                "status": "not_configured",
-                "error": f"Adapter {adapter_type} not registered",
-            }
+    if not adapter:
+        return {
+            "status": "not_configured",
+            "error": f"Adapter {adapter_type} not registered",
+        }
 
-        try:
-            # Get adapter health if available
-            if hasattr(adapter, "get_health"):
-                health = await adapter.get_health()
-                return {
-                    "adapter_type": adapter_type,
-                    **health,
-                }
-            else:
-                return {
-                    "adapter_type": adapter_type,
-                    "status": "available_but_no_health_check",
-                }
-
-        except Exception as e:
+    try:
+        # Get adapter health if available
+        if hasattr(adapter, "get_health"):
+            health = await adapter.get_health()
             return {
                 "adapter_type": adapter_type,
-                "status": "error",
-                "error": str(e),
+                **health,
             }
+        else:
+            return {
+                "adapter_type": adapter_type,
+                "status": "available_but_no_health_check",
+            }
+
+    except Exception as e:
+        return {
+            "adapter_type": adapter_type,
+            "status": "error",
+            "error": str(e),
+        }

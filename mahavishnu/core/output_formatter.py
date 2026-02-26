@@ -184,6 +184,7 @@ class OutputFormatter:
         if self._console is None:
             try:
                 from rich.console import Console
+
                 self._console = Console()
             except ImportError:
                 self._console = None
@@ -267,7 +268,7 @@ class OutputFormatter:
         """
         if len(text) <= max_length:
             return text
-        return text[:max_length - 3] + "..."
+        return text[: max_length - 3] + "..."
 
     def wrap_text(self, text: str, width: int | None = None) -> str:
         """Wrap text to specified width.
@@ -323,6 +324,7 @@ class OutputFormatter:
 
     def _format_json(self, data: Any) -> str:
         """Format as JSON."""
+
         def json_serial(obj: Any) -> Any:
             if isinstance(obj, datetime):
                 return obj.isoformat()
@@ -334,6 +336,7 @@ class OutputFormatter:
         """Format as YAML (simple implementation)."""
         try:
             import yaml
+
             return yaml.dump(data, default_flow_style=False)
         except ImportError:
             # Fallback to simple YAML-like format
@@ -519,7 +522,9 @@ class OutputFormatter:
             title="Tasks",
             columns=[
                 TableColumn("ID", "id", width=12),
-                TableColumn("Title", "title", width=40, format_fn=lambda x: self.truncate_text(str(x), 40)),
+                TableColumn(
+                    "Title", "title", width=40, format_fn=lambda x: self.truncate_text(str(x), 40)
+                ),
                 TableColumn("Status", "status", width=12),
                 TableColumn("Priority", "priority", width=8),
             ],
@@ -602,6 +607,7 @@ class OutputFormatter:
         if self._console:
             try:
                 from rich.panel import Panel
+
                 self._console.print(Panel(content, title=title))
                 return
             except ImportError:
@@ -624,6 +630,7 @@ class OutputFormatter:
         if self._console:
             try:
                 from rich.rule import Rule
+
                 self._console.print(Rule(title))
                 return
             except ImportError:

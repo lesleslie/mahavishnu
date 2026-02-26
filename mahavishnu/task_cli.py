@@ -95,9 +95,19 @@ def complete_task_id(ctx: click.Context, args: list[str], incomplete: str) -> li
 def complete_tag(ctx: click.Context, args: list[str], incomplete: str) -> list[str]:
     """Provide tag completions from common tags."""
     common_tags = [
-        "bug", "feature", "enhancement", "documentation", "security",
-        "backend", "frontend", "api", "database", "testing",
-        "urgent", "blocked", "review-needed",
+        "bug",
+        "feature",
+        "enhancement",
+        "documentation",
+        "security",
+        "backend",
+        "frontend",
+        "api",
+        "database",
+        "testing",
+        "urgent",
+        "blocked",
+        "review-needed",
     ]
     return [t for t in common_tags if t.startswith(incomplete)]
 
@@ -113,35 +123,42 @@ def task_group() -> None:
 @task_group.command(name="create", help="Create a new task")
 @click.argument("title", required=True)
 @click.option(
-    "-r", "--repository", "--repo",
+    "-r",
+    "--repository",
+    "--repo",
     required=True,
     help="Repository name",
     shell_complete=complete_repository,
 )
 @click.option(
-    "-d", "--description",
+    "-d",
+    "--description",
     help="Task description",
 )
 @click.option(
-    "-p", "--priority",
+    "-p",
+    "--priority",
     type=click.Choice(["low", "medium", "high", "critical"]),
     default="medium",
     help="Task priority",
     shell_complete=complete_priority,
 )
 @click.option(
-    "-s", "--status",
+    "-s",
+    "--status",
     type=click.Choice(["pending", "in_progress", "blocked"]),
     default="pending",
     help="Initial status",
     shell_complete=complete_status,
 )
 @click.option(
-    "-a", "--assignee",
+    "-a",
+    "--assignee",
     help="Assignee email or username",
 )
 @click.option(
-    "-t", "--tag",
+    "-t",
+    "--tag",
     multiple=True,
     help="Tags (can specify multiple)",
     shell_complete=complete_tag,
@@ -201,15 +218,17 @@ def task_create(
         if output_json:
             console.print_json(data=task.to_dict())
         else:
-            console.print(Panel(
-                f"[green]Created task:[/] {task.id}\n"
-                f"[bold]{task.title}[/]\n"
-                f"Repository: {task.repository}\n"
-                f"Priority: {task.priority.value}\n"
-                f"Status: {task.status.value}",
-                title="Task Created",
-                border_style="green",
-            ))
+            console.print(
+                Panel(
+                    f"[green]Created task:[/] {task.id}\n"
+                    f"[bold]{task.title}[/]\n"
+                    f"Repository: {task.repository}\n"
+                    f"Priority: {task.priority.value}\n"
+                    f"Status: {task.status.value}",
+                    title="Task Created",
+                    border_style="green",
+                )
+            )
 
     asyncio.run(_create())
 
@@ -217,24 +236,29 @@ def task_create(
 # Task List Command
 @task_group.command(name="list", help="List tasks")
 @click.option(
-    "-r", "--repository", "--repo",
+    "-r",
+    "--repository",
+    "--repo",
     help="Filter by repository",
     shell_complete=complete_repository,
 )
 @click.option(
-    "-s", "--status",
+    "-s",
+    "--status",
     type=click.Choice(["pending", "in_progress", "completed", "failed", "cancelled", "blocked"]),
     help="Filter by status",
     shell_complete=complete_status,
 )
 @click.option(
-    "-p", "--priority",
+    "-p",
+    "--priority",
     type=click.Choice(["low", "medium", "high", "critical"]),
     help="Filter by priority",
     shell_complete=complete_priority,
 )
 @click.option(
-    "-a", "--assignee",
+    "-a",
+    "--assignee",
     help="Filter by assignee",
 )
 @click.option(
@@ -242,7 +266,8 @@ def task_create(
     help="Search in title and description",
 )
 @click.option(
-    "-l", "--limit",
+    "-l",
+    "--limit",
     type=int,
     default=20,
     help="Maximum number of tasks to show",
@@ -254,7 +279,8 @@ def task_create(
     help="Output as JSON",
 )
 @click.option(
-    "-t", "--tag",
+    "-t",
+    "--tag",
     help="Filter by tag",
     shell_complete=complete_tag,
 )
@@ -346,23 +372,27 @@ def task_list(
     help="New title",
 )
 @click.option(
-    "-d", "--description",
+    "-d",
+    "--description",
     help="New description",
 )
 @click.option(
-    "-s", "--status",
+    "-s",
+    "--status",
     type=click.Choice(["pending", "in_progress", "completed", "failed", "cancelled", "blocked"]),
     help="New status",
     shell_complete=complete_status,
 )
 @click.option(
-    "-p", "--priority",
+    "-p",
+    "--priority",
     type=click.Choice(["low", "medium", "high", "critical"]),
     help="New priority",
     shell_complete=complete_priority,
 )
 @click.option(
-    "-a", "--assignee",
+    "-a",
+    "--assignee",
     help="New assignee",
 )
 @click.option(
@@ -406,14 +436,16 @@ def task_update(
         if output_json:
             console.print_json(data=task.to_dict())
         else:
-            console.print(Panel(
-                f"[green]Updated task:[/] {task.id}\n"
-                f"[bold]{task.title}[/]\n"
-                f"Status: {task.status.value}\n"
-                f"Priority: {task.priority.value}",
-                title="Task Updated",
-                border_style="blue",
-            ))
+            console.print(
+                Panel(
+                    f"[green]Updated task:[/] {task.id}\n"
+                    f"[bold]{task.title}[/]\n"
+                    f"Status: {task.status.value}\n"
+                    f"Priority: {task.priority.value}",
+                    title="Task Updated",
+                    border_style="blue",
+                )
+            )
 
     asyncio.run(_update())
 
@@ -422,7 +454,8 @@ def task_update(
 @task_group.command(name="delete", help="Delete a task")
 @click.argument("task_id", required=True, shell_complete=complete_task_id)
 @click.option(
-    "-f", "--force",
+    "-f",
+    "--force",
     is_flag=True,
     help="Skip confirmation",
 )

@@ -265,6 +265,7 @@ class JSONRPCServer:
         Returns:
             Decorator function
         """
+
         def decorator(func: Callable[[Any], Coroutine[Any, Any, Any]]) -> Callable:
             method_name = name or func.__name__
             handler = MethodHandler(

@@ -205,7 +205,9 @@ class Database:
 
                 self._status = DatabaseStatus.CONNECTED
                 self._update_metrics()
-                logger.info(f"Database connected with pool size {self.config.min_pool_size}-{self.config.max_pool_size}")
+                logger.info(
+                    f"Database connected with pool size {self.config.min_pool_size}-{self.config.max_pool_size}"
+                )
 
             except asyncio.TimeoutError as e:
                 self._status = DatabaseStatus.ERROR

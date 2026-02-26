@@ -24,9 +24,12 @@ from mahavishnu.core.adapters.base import AdapterType
 try:
     from oneiric.core.ulid import generate_config_id
 except ImportError:
+
     def generate_config_id() -> str:
         import uuid
+
         return uuid.uuid4().hex
+
 
 from mahavishnu.core.errors import (
     MahavishnuError,
@@ -57,6 +60,7 @@ class UnifiedOrchestrator:
         # Use TaskRouter or create default with optional components
         if task_router is None:
             from mahavishnu.core.task_router import TaskRouter
+
             self.task_router = TaskRouter()
         else:
             self.task_router = task_router
@@ -136,12 +140,14 @@ class UnifiedOrchestrator:
                         },
                     )
 
-                    results.append({
-                        "task": task,
-                        "adapter": adapter_type.value,
-                        "execution_id": execution_id,
-                        "fallback_used": len(execution_result["fallback_chain"]) > 1,
-                    })
+                    results.append(
+                        {
+                            "task": task,
+                            "adapter": adapter_type.value,
+                            "execution_id": execution_id,
+                            "fallback_used": len(execution_result["fallback_chain"]) > 1,
+                        }
+                    )
 
                 else:
                     # All adapters failed for this task

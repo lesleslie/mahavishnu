@@ -1342,7 +1342,6 @@ class GoalTeamsConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-
 class MahavishnuSettings(BaseSettings):
     """Mahavishnu configuration extending MCPServerSettings.
 
@@ -1558,7 +1557,6 @@ class MahavishnuSettings(BaseSettings):
         default_factory=GoalTeamsConfig,
         description="Goal-Driven Teams configuration",
     )
-
 
     @field_validator("repos_path")
     @classmethod

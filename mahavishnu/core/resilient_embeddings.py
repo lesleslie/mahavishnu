@@ -136,9 +136,7 @@ class CircuitBreaker:
 
         if self.failure_count >= self.failure_threshold:
             self._is_open = True
-            logger.warning(
-                f"circuit_breaker_opened: {self.failure_count} failures"
-            )
+            logger.warning(f"circuit_breaker_opened: {self.failure_count} failures")
 
     @property
     def is_open(self) -> bool:
@@ -192,9 +190,7 @@ class ResilientEmbeddingClient:
         )
 
         # Statistics
-        self._source_counts: dict[EmbeddingSource, int] = {
-            source: 0 for source in EmbeddingSource
-        }
+        self._source_counts: dict[EmbeddingSource, int] = {source: 0 for source in EmbeddingSource}
         self._dimension_mismatches = 0
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -575,10 +571,7 @@ class ResilientEmbeddingClient:
                     embeddings = data.get("embeddings", [])
 
                     # Validate dimensions
-                    valid = all(
-                        self._validate_dimension(emb, "akosha_batch")
-                        for emb in embeddings
-                    )
+                    valid = all(self._validate_dimension(emb, "akosha_batch") for emb in embeddings)
                     if valid and len(embeddings) == len(texts):
                         self._circuit_breaker.record_success()
                         return embeddings

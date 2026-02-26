@@ -91,8 +91,7 @@ def get_config() -> Any:
     config = _config.get()
     if config is None:
         raise RuntimeError(
-            "Configuration not set in context. "
-            "Call set_config() during application initialization."
+            "Configuration not set in context. Call set_config() during application initialization."
         )
     return config
 
@@ -196,6 +195,7 @@ def require_feature(feature_name: str) -> Callable[[F], F]:
         ... async def create_team(goal: str) -> dict:
         ...     return {"team_id": "..."}
     """
+
     def decorator(func: F) -> F:
         @wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -223,6 +223,7 @@ def require_feature(feature_name: str) -> Callable[[F], F]:
 
         # Return appropriate wrapper based on function type
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper  # type: ignore
         return sync_wrapper  # type: ignore

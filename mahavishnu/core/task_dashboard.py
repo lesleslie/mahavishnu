@@ -143,10 +143,7 @@ class TaskListPanel:
             self.filtered_tasks = self.tasks.copy()
             return
 
-        self.filtered_tasks = [
-            task for task in self.tasks
-            if self._matches_filter(task)
-        ]
+        self.filtered_tasks = [task for task in self.tasks if self._matches_filter(task)]
 
         # Reset selection if current selection is out of bounds
         if self.selected_index >= len(self.filtered_tasks):

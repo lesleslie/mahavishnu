@@ -254,6 +254,7 @@ class CommandRegistry:
         Returns:
             Decorator function
         """
+
         def decorator(func: Callable[[Any], Coroutine[Any, Any, Any]]) -> Callable:
             command_name = name or func.__name__
             handler = CommandHandler(
@@ -357,10 +358,12 @@ class CommandRegistry:
             """Help command - lists all commands."""
             commands = []
             for name, handler in self.commands.items():
-                commands.append({
-                    "name": name,
-                    "description": handler.description,
-                })
+                commands.append(
+                    {
+                        "name": name,
+                        "description": handler.description,
+                    }
+                )
             return {
                 "commands": commands,
                 "registry": self.get_registry_info(),

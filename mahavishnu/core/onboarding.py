@@ -75,12 +75,12 @@ TUTORIAL_STEPS: list[TutorialStep] = [
         title="Create Your First Task",
         description="Let's create a simple task to get started.",
         instructions=[
-            "Run: mahavishnu task create \"My First Task\" -r mahavishnu",
+            'Run: mahavishnu task create "My First Task" -r mahavishnu',
             "The -r flag specifies the repository",
             "You can also add priority with -p high",
         ],
         tips=[
-            "Shorthand: mhv tc \"Task title\" -r repo",
+            'Shorthand: mhv tc "Task title" -r repo',
             "Tasks need at least a title and repository",
         ],
         action_required=True,
@@ -123,7 +123,7 @@ TUTORIAL_STEPS: list[TutorialStep] = [
         title="Search Tasks Semantically",
         description="Find related tasks using semantic search.",
         instructions=[
-            "Run: mahavishnu search tasks \"bug fix\"",
+            'Run: mahavishnu search tasks "bug fix"',
             "Results are ranked by semantic similarity",
             "Combine with filters for precision",
         ],

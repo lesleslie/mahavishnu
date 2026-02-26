@@ -141,7 +141,6 @@ class MahavishnuApp:
         # Set application context for dependency injection
         self._set_app_context()
 
-
         # Initialize concurrency control
         self.semaphore = Semaphore(self.config.max_concurrent_workflows)
 
@@ -199,6 +198,7 @@ class MahavishnuApp:
         self.routing_metrics_server = None
         try:
             from .routing_metrics import start_routing_metrics_server
+
             # Start metrics server on configured port
             # Note: start_routing_metrics_server() is synchronous and returns a Thread object
             # The server runs in a background thread, so we just store the thread reference
@@ -331,7 +331,7 @@ class MahavishnuApp:
             >>> app = MahavishnuApp()
             >>> await app.initialize_worktree_coordinator()
         """
-        if self.worktree_coordinator is None and hasattr(self, 'repository_manager'):
+        if self.worktree_coordinator is None and hasattr(self, "repository_manager"):
             try:
                 # Load repository manifest asynchronously
                 await self.repository_manager.load()
@@ -715,7 +715,6 @@ class MahavishnuApp:
                 f"agno_adapter={'available' if agno_adapter else 'not available'}"
             )
 
-
     def get_repos(
         self, tag: str | None = None, role: str | None = None, user_id: str | None = None
     ) -> list[str]:
@@ -807,10 +806,13 @@ class MahavishnuApp:
                 # We're in an async context - schedule the coroutine
                 # Create a Future and run the coroutine in the current loop
                 import concurrent.futures
+
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     future = executor.submit(
                         asyncio.run,
-                        self.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO)
+                        self.rbac_manager.check_permission(
+                            user_id, repo_path, Permission.READ_REPO
+                        ),
                     )
                     return future.result(timeout=5.0)
             except RuntimeError:

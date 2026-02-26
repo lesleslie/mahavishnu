@@ -82,10 +82,12 @@ def generate_token(user_id: str, permissions: list[str] | None = None) -> str:
             token_expiry=TOKEN_EXPIRY,
         )
 
-    return authenticator.create_token({
-        "user_id": user_id,
-        "permissions": permissions or ["read"],
-    })
+    return authenticator.create_token(
+        {
+            "user_id": user_id,
+            "permissions": permissions or ["read"],
+        }
+    )
 
 
 def verify_token(token: str) -> dict[str, object] | None:

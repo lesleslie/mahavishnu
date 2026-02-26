@@ -35,8 +35,10 @@ from mahavishnu.core.metrics_schema import (
 try:
     from oneiric.core.ulid import generate_config_id
 except ImportError:
+
     def generate_config_id() -> str:
         import uuid
+
         return uuid.uuid4().hex
 
 
@@ -74,17 +76,13 @@ class ExecutionMetrics:
     )
     """{adapter: {success: count, failure: count}}"""
 
-    task_type_counts: dict[str, int] = field(
-        default_factory=lambda: defaultdict(int)
-    )
+    task_type_counts: dict[str, int] = field(default_factory=lambda: defaultdict(int))
     """{task_type: execution_count} for adaptive sampling"""
 
     last_aggregate_ts: float = field(default_factory=lambda: time.time())
     """Timestamp of last aggregation to Dhruva."""
 
-    def get_success_rate(
-        self, adapter: AdapterType, min_samples: int = 10
-    ) -> float | None:
+    def get_success_rate(self, adapter: AdapterType, min_samples: int = 10) -> float | None:
         """Calculate success rate for adapter.
 
         Args:
@@ -174,6 +172,7 @@ class ExecutionTracker:
         if self.sampling_strategy == SamplingStrategy.HIGH_FREQUENCY:
             # Sample 10% of tasks
             import random
+
             return random.random() < self.sampling_rate
 
         # LOW_FREQUENCY or default: track everything
@@ -199,7 +198,9 @@ class ExecutionTracker:
 
         # Check sampling strategy
         if not self._should_sample(task_type):
-            logger.debug(f"Execution {execution_id} not sampled (strategy={self.sampling_strategy.value})")
+            logger.debug(
+                f"Execution {execution_id} not sampled (strategy={self.sampling_strategy.value})"
+            )
             return execution_id
 
         # Record active execution
@@ -213,7 +214,9 @@ class ExecutionTracker:
         # Track task type frequency
         self._metrics.task_type_counts[task_type.value] += 1
 
-        logger.debug(f"Recorded execution start: {execution_id} ({adapter.value} - {task_type.value})")
+        logger.debug(
+            f"Recorded execution start: {execution_id} ({adapter.value} - {task_type.value})"
+        )
 
         return execution_id
 
@@ -395,9 +398,7 @@ class ExecutionTracker:
 
         return aggregates
 
-    async def get_adapter_stats(
-        self, adapter: AdapterType
-    ) -> dict[str, Any] | None:
+    async def get_adapter_stats(self, adapter: AdapterType) -> dict[str, Any] | None:
         """Get current statistics for an adapter.
 
         Args:
@@ -437,9 +438,7 @@ class ExecutionTracker:
             "execution_count": count,
         }
 
-    async def get_recent_executions(
-        self, limit: int = 100
-    ) -> list[ExecutionRecord]:
+    async def get_recent_executions(self, limit: int = 100) -> list[ExecutionRecord]:
         """Get recent execution records.
 
         Args:
@@ -508,7 +507,8 @@ class ExecutionTracker:
             "last_aggregation": datetime.fromtimestamp(
                 self._metrics.last_aggregate_ts, UTC
             ).isoformat()
-            if self._metrics.last_aggregate_ts > 0 else None,
+            if self._metrics.last_aggregate_ts > 0
+            else None,
         }
 
 

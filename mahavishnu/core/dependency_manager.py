@@ -77,7 +77,9 @@ class DependencyEventEmitter:
 
     def __init__(self) -> None:
         """Initialize event emitter."""
-        self._handlers: dict[DependencyEvent, list[Callable[[DependencyEventData], None]]] = defaultdict(list)
+        self._handlers: dict[DependencyEvent, list[Callable[[DependencyEventData], None]]] = (
+            defaultdict(list)
+        )
 
     def on(self, event: DependencyEvent, handler: Callable[[DependencyEventData], None]) -> None:
         """Register an event handler.
@@ -252,21 +254,25 @@ class DependencyManager:
             edge.status = DependencyStatus.FAILED
 
         # Emit event
-        self._emitter.emit(DependencyEventData(
-            event_type=DependencyEvent.DEPENDENCY_ADDED,
-            task_id=dependent_id,
-            related_task_id=dependency_id,
-            details={"dependency_type": dependency_type.value},
-        ))
+        self._emitter.emit(
+            DependencyEventData(
+                event_type=DependencyEvent.DEPENDENCY_ADDED,
+                task_id=dependent_id,
+                related_task_id=dependency_id,
+                details={"dependency_type": dependency_type.value},
+            )
+        )
 
         # Check if dependent is now blocked
         if self._graph.is_blocked(dependent_id):
-            self._emitter.emit(DependencyEventData(
-                event_type=DependencyEvent.TASK_BLOCKED,
-                task_id=dependent_id,
-                related_task_id=dependency_id,
-                details={"blocking_tasks": self._graph.get_blocking_tasks(dependent_id)},
-            ))
+            self._emitter.emit(
+                DependencyEventData(
+                    event_type=DependencyEvent.TASK_BLOCKED,
+                    task_id=dependent_id,
+                    related_task_id=dependency_id,
+                    details={"blocking_tasks": self._graph.get_blocking_tasks(dependent_id)},
+                )
+            )
 
         return edge
 
@@ -284,11 +290,13 @@ class DependencyManager:
 
         if result:
             # Emit event
-            self._emitter.emit(DependencyEventData(
-                event_type=DependencyEvent.DEPENDENCY_REMOVED,
-                task_id=dependent_id,
-                related_task_id=dependency_id,
-            ))
+            self._emitter.emit(
+                DependencyEventData(
+                    event_type=DependencyEvent.DEPENDENCY_REMOVED,
+                    task_id=dependent_id,
+                    related_task_id=dependency_id,
+                )
+            )
 
             # Check if dependent is now unblocked
             if not self._graph.is_blocked(dependent_id):
@@ -321,11 +329,7 @@ class DependencyManager:
         Returns:
             List of ready task IDs
         """
-        return [
-            task_id
-            for task_id in self._graph
-            if self.is_ready(task_id)
-        ]
+        return [task_id for task_id in self._graph if self.is_ready(task_id)]
 
     def get_blocked_tasks(self) -> list[str]:
         """Get all blocked tasks.
@@ -368,7 +372,9 @@ class DependencyManager:
         """
         return self._task_statuses.get(task_id)
 
-    def get_dependency_status(self, dependency_id: str, dependent_id: str) -> DependencyStatus | None:
+    def get_dependency_status(
+        self, dependency_id: str, dependent_id: str
+    ) -> DependencyStatus | None:
         """Get the status of a dependency edge.
 
         Args:
@@ -457,11 +463,13 @@ class DependencyManager:
                 edge.status = DependencyStatus.SATISFIED
 
                 # Emit event
-                self._emitter.emit(DependencyEventData(
-                    event_type=DependencyEvent.DEPENDENCY_SATISFIED,
-                    task_id=dep_id,
-                    related_task_id=task_id,
-                ))
+                self._emitter.emit(
+                    DependencyEventData(
+                        event_type=DependencyEvent.DEPENDENCY_SATISFIED,
+                        task_id=dep_id,
+                        related_task_id=task_id,
+                    )
+                )
 
                 # Check if dependent is now unblocked
                 if not self._graph.is_blocked(dep_id):
@@ -489,11 +497,13 @@ class DependencyManager:
                 edge.status = DependencyStatus.FAILED
 
                 # Emit event
-                self._emitter.emit(DependencyEventData(
-                    event_type=DependencyEvent.DEPENDENCY_FAILED,
-                    task_id=dep_id,
-                    related_task_id=task_id,
-                ))
+                self._emitter.emit(
+                    DependencyEventData(
+                        event_type=DependencyEvent.DEPENDENCY_FAILED,
+                        task_id=dep_id,
+                        related_task_id=task_id,
+                    )
+                )
 
                 affected.append(dep_id)
 
@@ -532,26 +542,28 @@ class DependencyManager:
             task_id: Task that was unblocked
             by_task_id: Task that caused unblocking
         """
-        self._emitter.emit(DependencyEventData(
-            event_type=DependencyEvent.TASK_UNBLOCKED,
-            task_id=task_id,
-            related_task_id=by_task_id,
-        ))
+        self._emitter.emit(
+            DependencyEventData(
+                event_type=DependencyEvent.TASK_UNBLOCKED,
+                task_id=task_id,
+                related_task_id=by_task_id,
+            )
+        )
 
         # Also emit all dependencies satisfied if applicable
         if not self._graph.is_blocked(task_id):
-            self._emitter.emit(DependencyEventData(
-                event_type=DependencyEvent.ALL_DEPENDENCIES_SATISFIED,
-                task_id=task_id,
-            ))
+            self._emitter.emit(
+                DependencyEventData(
+                    event_type=DependencyEvent.ALL_DEPENDENCIES_SATISFIED,
+                    task_id=task_id,
+                )
+            )
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize manager state to dictionary."""
         return {
             "graph": self._graph.to_dict(),
-            "task_statuses": {
-                tid: status.value for tid, status in self._task_statuses.items()
-            },
+            "task_statuses": {tid: status.value for tid, status in self._task_statuses.items()},
         }
 
     @classmethod
@@ -559,8 +571,7 @@ class DependencyManager:
         """Deserialize manager state from dictionary."""
         graph = DependencyGraph.from_dict(data.get("graph", {}))
         statuses = {
-            tid: TaskStatus(status)
-            for tid, status in data.get("task_statuses", {}).items()
+            tid: TaskStatus(status) for tid, status in data.get("task_statuses", {}).items()
         }
         return cls(graph=graph, task_statuses=statuses)
 

@@ -201,8 +201,7 @@ class CostOptimizer:
         )
 
         logger.debug(
-            f"Tracked cost: {adapter.value}/{task_type.value} = "
-            f"${cost_usd:.6f} ({latency_ms}ms)"
+            f"Tracked cost: {adapter.value}/{task_type.value} = ${cost_usd:.6f} ({latency_ms}ms)"
         )
 
         return cost_usd
@@ -226,18 +225,24 @@ class CostOptimizer:
         if budget.task_type:
             # Per-task-type budget
             for adapter in AdapterType:
-                total_spent += self._cost_tracking.get(budget.task_type.value, {}).get(adapter.value, Decimal("0"))
+                total_spent += self._cost_tracking.get(budget.task_type.value, {}).get(
+                    adapter.value, Decimal("0")
+                )
         else:
             # Global budget (all task types)
             for adapter in AdapterType:
                 for task_type in TaskType:
-                    total_spent += self._cost_tracking.get(task_type.value, {}).get(adapter.value, Decimal("0"))
+                    total_spent += self._cost_tracking.get(task_type.value, {}).get(
+                        adapter.value, Decimal("0")
+                    )
 
         # Check if budget period is active
         active = budget.is_active(now)
 
         remaining = budget.limit_usd - total_spent if active else Decimal("0")
-        percentage = (total_spent / budget.limit_usd * 100) if active and budget.limit_usd > 0 else 0
+        percentage = (
+            (total_spent / budget.limit_usd * 100) if active and budget.limit_usd > 0 else 0
+        )
 
         return {
             "budget_type": budget.budget_type.value,
@@ -282,12 +287,14 @@ class CostOptimizer:
             # Check if over budget
             if status["is_over_budget"]:
                 constraints_ok = False
-                violated_budgets.append({
-                    "budget_type": budget.budget_type.value,
-                    "limit_usd": status["limit_usd"],
-                    "spent_usd": status["spent_usd"],
-                    "over_by": float(status["remaining_usd"]),
-                })
+                violated_budgets.append(
+                    {
+                        "budget_type": budget.budget_type.value,
+                        "limit_usd": status["limit_usd"],
+                        "spent_usd": status["spent_usd"],
+                        "over_by": float(status["remaining_usd"]),
+                    }
+                )
 
         return {
             "constraints_satisfied": constraints_ok,
@@ -334,8 +341,11 @@ class CostOptimizer:
                 other_better_success = other.success_rate > choice.success_rate
 
                 # Strict dominance: better in at least one metric without being worse
-                if (other_better_cost and other_better_latency and other_better_success) or \
-                   (other_better_cost and other.success_rate >= choice.success_rate and other_better_latency):
+                if (other_better_cost and other_better_latency and other_better_success) or (
+                    other_better_cost
+                    and other.success_rate >= choice.success_rate
+                    and other_better_latency
+                ):
                     is_dominated = True
                     break
 
@@ -372,9 +382,9 @@ class CostOptimizer:
             latency_score = max(0.0, 1.0 - (choice.latency_ms / self.max_latency_ms))
 
             return (
-                0.5 * choice.success_rate +  # Success
-                0.25 * cost_score +  # Cost matters for interactive
-                0.25 * latency_score  # Latency matters
+                0.5 * choice.success_rate  # Success
+                + 0.25 * cost_score  # Cost matters for interactive
+                + 0.25 * latency_score  # Latency matters
             )
 
         elif strategy == TaskStrategy.BATCH:
@@ -383,9 +393,9 @@ class CostOptimizer:
             latency_score = max(0.0, 1.0 - (choice.latency_ms / 10000))  # 10s max
 
             return (
-                0.9 * choice.success_rate +  # Success dominates
-                0.1 * cost_score +  # Minor cost consideration
-                0.0 * latency_score  # Latency doesn't matter for batch
+                0.9 * choice.success_rate  # Success dominates
+                + 0.1 * cost_score  # Minor cost consideration
+                + 0.0 * latency_score  # Latency doesn't matter for batch
             )
 
         elif strategy == TaskStrategy.CRITICAL:
@@ -394,9 +404,9 @@ class CostOptimizer:
             latency_score = max(0.0, 1.0 - (choice.latency_ms / self.max_latency_ms))
 
             return (
-                0.8 * choice.success_rate +  # Success is primary
-                0.0 * cost_score +  # Cost doesn't matter for critical
-                0.2 * latency_score  # Latency secondary
+                0.8 * choice.success_rate  # Success is primary
+                + 0.0 * cost_score  # Cost doesn't matter for critical
+                + 0.2 * latency_score  # Latency secondary
             )
 
         else:
@@ -434,11 +444,13 @@ class CostOptimizer:
             if stats is None:
                 continue
 
-            adapters_data.append({
-                "adapter": adapter,
-                "success_rate": stats["success_rate"],
-                "total_executions": stats["total_executions"],
-            })
+            adapters_data.append(
+                {
+                    "adapter": adapter,
+                    "success_rate": stats["success_rate"],
+                    "total_executions": stats["total_executions"],
+                }
+            )
 
         if not adapters_data:
             return None
@@ -449,7 +461,8 @@ class CostOptimizer:
             # Get recent executions for latency/cost
             recent = await metrics_tracker.get_recent_executions(limit=100)
             adapter_executions = [
-                e for e in recent
+                e
+                for e in recent
                 if e.adapter == adapter_data["adapter"] and e.task_type == task_type
             ]
 
@@ -486,18 +499,20 @@ class CostOptimizer:
                 strategy=strategy,
             )
 
-            choices.append(CostAwareChoice(
-                adapter=adapter_data["adapter"],
-                task_type=task_type,
-                strategy=strategy,
-                cost_usd=cost_usd,
-                success_rate=adapter_data["success_rate"],
-                latency_ms=avg_latency,
-                score=base_score,
-                reasoning="",
-                pareto_dominated=False,
-                constraints_satisfied=True,
-            ))
+            choices.append(
+                CostAwareChoice(
+                    adapter=adapter_data["adapter"],
+                    task_type=task_type,
+                    strategy=strategy,
+                    cost_usd=cost_usd,
+                    success_rate=adapter_data["success_rate"],
+                    latency_ms=avg_latency,
+                    score=base_score,
+                    reasoning="",
+                    pareto_dominated=False,
+                    constraints_satisfied=True,
+                )
+            )
 
         # Check budget constraints if provided
         constraint_check = {}

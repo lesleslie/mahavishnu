@@ -226,10 +226,12 @@ def register_websocket_tools(server, websocket_server):
 
             # Build event data
             event_data = data or {}
-            event_data.update({
-                "timestamp": websocket_server._get_timestamp(),
-                "test": True,
-            })
+            event_data.update(
+                {
+                    "timestamp": websocket_server._get_timestamp(),
+                    "test": True,
+                }
+            )
 
             # Create and broadcast event
             event = WebSocketProtocol.create_event(
@@ -240,10 +242,7 @@ def register_websocket_tools(server, websocket_server):
 
             await websocket_server.broadcast_to_room(room, event)
 
-            logger.info(
-                f"Test event broadcast: {event_type} -> {room} "
-                f"({subscribers} subscribers)"
-            )
+            logger.info(f"Test event broadcast: {event_type} -> {room} ({subscribers} subscribers)")
 
             return {
                 "status": "broadcasted",

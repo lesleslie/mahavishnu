@@ -371,8 +371,7 @@ class WebhookHandler:
             self._cleanup_processed_events()
 
             logger.info(
-                f"Processed {event.source.value} {event.event_type.value} event: "
-                f"{event.event_id}"
+                f"Processed {event.source.value} {event.event_type.value} event: {event.event_id}"
             )
 
             return WebhookResult(
@@ -497,7 +496,9 @@ class WebhookHandler:
         issue_data = event.payload.get("issue", event.payload.get("object_attributes", {}))
 
         if issue_data:
-            actions.append(f"Issue #{issue_data.get('number', issue_data.get('iid', '?'))} opened: {issue_data.get('title', '')}")
+            actions.append(
+                f"Issue #{issue_data.get('number', issue_data.get('iid', '?'))} opened: {issue_data.get('title', '')}"
+            )
 
         return actions
 
@@ -519,7 +520,9 @@ class WebhookHandler:
         pr_data = event.payload.get("pull_request", event.payload.get("object_attributes", {}))
 
         if pr_data:
-            actions.append(f"PR #{pr_data.get('number', pr_data.get('iid', '?'))}: {pr_data.get('title', '')}")
+            actions.append(
+                f"PR #{pr_data.get('number', pr_data.get('iid', '?'))}: {pr_data.get('title', '')}"
+            )
 
         return actions
 

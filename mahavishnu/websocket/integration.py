@@ -255,9 +255,7 @@ class WebSocketBroadcaster:
 
     async def workflow_started(self, workflow_id: str, metadata: dict) -> bool:
         """Broadcast workflow started event."""
-        return await broadcast_workflow_event(
-            self.server, "started", workflow_id, metadata
-        )
+        return await broadcast_workflow_event(self.server, "started", workflow_id, metadata)
 
     async def workflow_stage_completed(
         self, workflow_id: str, stage_name: str, result: dict
@@ -272,25 +270,17 @@ class WebSocketBroadcaster:
 
     async def workflow_completed(self, workflow_id: str, result: dict) -> bool:
         """Broadcast workflow completed event."""
-        return await broadcast_workflow_event(
-            self.server, "completed", workflow_id, result
-        )
+        return await broadcast_workflow_event(self.server, "completed", workflow_id, result)
 
     async def workflow_failed(self, workflow_id: str, error: str) -> bool:
         """Broadcast workflow failed event."""
-        return await broadcast_workflow_event(
-            self.server, "failed", workflow_id, {"error": error}
-        )
+        return await broadcast_workflow_event(self.server, "failed", workflow_id, {"error": error})
 
     async def pool_status_changed(self, pool_id: str, status: dict) -> bool:
         """Broadcast pool status changed event."""
-        return await broadcast_pool_event(
-            self.server, "status_changed", pool_id, status
-        )
+        return await broadcast_pool_event(self.server, "status_changed", pool_id, status)
 
-    async def worker_status_changed(
-        self, worker_id: str, status: str, pool_id: str
-    ) -> bool:
+    async def worker_status_changed(self, worker_id: str, status: str, pool_id: str) -> bool:
         """Broadcast worker status changed event."""
         return await broadcast_pool_event(
             self.server,

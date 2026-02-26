@@ -39,9 +39,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
         self._mcp_client = None
         self._is_healthy: bool = True
 
-        logger.debug(
-            f"SessionBuddyWorktreeProvider initialized (url={session_buddy_url})"
-        )
+        logger.debug(f"SessionBuddyWorktreeProvider initialized (url={session_buddy_url})")
 
     async def _get_mcp_client(self):
         """Get or create MCP client connection to Session-Buddy.
@@ -257,9 +255,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
             is_healthy = result == 0
 
             if not is_healthy:
-                logger.warning(
-                    f"Session-Buddy MCP server unreachable: {host}:{port}"
-                )
+                logger.warning(f"Session-Buddy MCP server unreachable: {host}:{port}")
 
             return is_healthy
 

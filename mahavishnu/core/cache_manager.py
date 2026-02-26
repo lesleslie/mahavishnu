@@ -469,10 +469,7 @@ class CacheManager:
             Number of keys cleared
         """
         prefix = f"{namespace}:"
-        keys_to_delete = [
-            key for key in self._cache.keys()
-            if key.startswith(prefix)
-        ]
+        keys_to_delete = [key for key in self._cache.keys() if key.startswith(prefix)]
 
         for key in keys_to_delete:
             self._cache.delete(key)
@@ -495,7 +492,7 @@ class CacheManager:
         for key in self._cache.keys():
             if key.startswith(prefix):
                 # Extract identifier part
-                identifier = key[len(prefix):]
+                identifier = key[len(prefix) :]
                 if fnmatch.fnmatch(identifier, pattern):
                     keys_to_delete.append(key)
 

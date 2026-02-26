@@ -207,10 +207,7 @@ class AlertManager:
 
                 # Sleep before next check (with shutdown check)
                 try:
-                    await asyncio.wait_for(
-                        self._shutdown_event.wait(),
-                        timeout=30
-                    )
+                    await asyncio.wait_for(self._shutdown_event.wait(), timeout=30)
                     break  # Shutdown signaled
                 except asyncio.TimeoutError:
                     pass  # Normal timeout, continue loop
@@ -218,10 +215,7 @@ class AlertManager:
                 self.logger.error(f"Error in monitoring loop: {e}")
                 # Wait longer if there's an error (with shutdown check)
                 try:
-                    await asyncio.wait_for(
-                        self._shutdown_event.wait(),
-                        timeout=60
-                    )
+                    await asyncio.wait_for(self._shutdown_event.wait(), timeout=60)
                     break  # Shutdown signaled
                 except asyncio.TimeoutError:
                     pass  # Normal timeout, continue loop

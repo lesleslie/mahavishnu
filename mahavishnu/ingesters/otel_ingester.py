@@ -619,7 +619,9 @@ class OtelIngester:
             dimension=self._embedding_dimension,
             distance_metric="cosine",
         )
-        logger.info(f"PostgreSQL + pgvector storage initialized (collection={self._pgvector_collection})")
+        logger.info(
+            f"PostgreSQL + pgvector storage initialized (collection={self._pgvector_collection})"
+        )
 
     def _try_fallback_backends(self) -> EmbeddingModel | None:
         """Try fallback embedding backends.
@@ -866,13 +868,9 @@ class OtelIngester:
 
             # Route to appropriate storage backend
             if self._storage_type == StorageType.POSTGRESQL:
-                results = await self._search_pgvector(
-                    query_embedding, limit, system_id, threshold
-                )
+                results = await self._search_pgvector(query_embedding, limit, system_id, threshold)
             else:
-                results = await self._search_duckdb(
-                    query_embedding, limit, system_id, threshold
-                )
+                results = await self._search_duckdb(query_embedding, limit, system_id, threshold)
 
             logger.info(f"Search for '{query}' returned {len(results)} results")
             return results
@@ -930,13 +928,15 @@ class OtelIngester:
             # Convert distance to similarity (cosine distance = 1 - similarity)
             similarity = 1 - result["score"]
             if similarity >= threshold:
-                formatted.append({
-                    "conversation_id": result["id"],
-                    "content": result["metadata"].get("content", ""),
-                    "timestamp": result["metadata"].get("timestamp", ""),
-                    "metadata": result["metadata"],
-                    "similarity": similarity,
-                })
+                formatted.append(
+                    {
+                        "conversation_id": result["id"],
+                        "content": result["metadata"].get("content", ""),
+                        "timestamp": result["metadata"].get("timestamp", ""),
+                        "metadata": result["metadata"],
+                        "similarity": similarity,
+                    }
+                )
 
         return formatted
 

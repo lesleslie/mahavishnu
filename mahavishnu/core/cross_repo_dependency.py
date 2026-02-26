@@ -149,8 +149,12 @@ class CrossRepoDependencyLinker:
         """
         self.task_store = task_store
         self._dependencies: dict[str, CrossRepoDependency] = {}
-        self._task_dependencies: dict[str, list[str]] = defaultdict(list)  # task_id -> dep_ids where task is source
-        self._task_dependents: dict[str, list[str]] = defaultdict(list)  # task_id -> dep_ids where task is target
+        self._task_dependencies: dict[str, list[str]] = defaultdict(
+            list
+        )  # task_id -> dep_ids where task is source
+        self._task_dependents: dict[str, list[str]] = defaultdict(
+            list
+        )  # task_id -> dep_ids where task is target
 
     async def create_dependency(
         self,
@@ -330,7 +334,8 @@ class CrossRepoDependencyLinker:
             List of dependencies involving the repo
         """
         return [
-            dep for dep in self._dependencies.values()
+            dep
+            for dep in self._dependencies.values()
             if dep.source_repo == repo_name or dep.target_repo == repo_name
         ]
 

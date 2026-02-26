@@ -332,7 +332,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             # Fall back gracefully - in-memory store works for development
             logger = __import__("logging").getLogger(__name__)
             logger.debug(f"OpenSearch vector store unavailable: {e}")
-            logger.info("Using in-memory vector store (install opensearch-knn plugin for persistence)")
+            logger.info(
+                "Using in-memory vector store (install opensearch-knn plugin for persistence)"
+            )
             self.vector_store = None
             self._vector_backend = "memory"
 

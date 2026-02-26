@@ -171,10 +171,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
             else:
                 # Check all adapters
                 all_health = await registry.check_all_health()
-                healthy_count = sum(
-                    1 for h in all_health.values()
-                    if h.get("status") == "healthy"
-                )
+                healthy_count = sum(1 for h in all_health.values() if h.get("status") == "healthy")
                 return {
                     "success": True,
                     "health": all_health,

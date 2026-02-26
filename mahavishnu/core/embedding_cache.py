@@ -550,9 +550,7 @@ class EmbeddingCache:
             latency_ms = (time.perf_counter() - start_time) * 1000
 
             # Fill in results and cache
-            for idx, text, embedding in zip(
-                uncached_indices, uncached_texts, computed
-            ):
+            for idx, text, embedding in zip(uncached_indices, uncached_texts, computed):
                 results[idx] = embedding
                 await self.set(text, embedding)
 

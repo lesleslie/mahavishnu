@@ -135,16 +135,18 @@ class TaskUpdate:
 
     def has_updates(self) -> bool:
         """Check if any updates are present."""
-        return any([
-            self.title is not None,
-            self.description is not None,
-            self.status is not None,
-            self.priority is not None,
-            self.assignee is not None,
-            self.tags is not None,
-            self.metadata is not None,
-            self.due_date is not None,
-        ])
+        return any(
+            [
+                self.title is not None,
+                self.description is not None,
+                self.status is not None,
+                self.priority is not None,
+                self.assignee is not None,
+                self.tags is not None,
+                self.metadata is not None,
+                self.due_date is not None,
+            ]
+        )
 
 
 @dataclass
@@ -505,7 +507,7 @@ class TaskStore:
         try:
             query = f"""
                 UPDATE tasks
-                SET {', '.join(updates)}
+                SET {", ".join(updates)}
                 WHERE id = $1
             """
             await self.db.execute(query, *params)

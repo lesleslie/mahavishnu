@@ -264,7 +264,13 @@ def get_model_for_task(
 
     # Fallback: find a model that matches the category's purpose
     model_families = {
-        "coder": [TaskCategory.CODE_GENERATION, TaskCategory.CODE_REVIEW, TaskCategory.DEBUGGING, TaskCategory.REFACTORING, TaskCategory.TESTING],
+        "coder": [
+            TaskCategory.CODE_GENERATION,
+            TaskCategory.CODE_REVIEW,
+            TaskCategory.DEBUGGING,
+            TaskCategory.REFACTORING,
+            TaskCategory.TESTING,
+        ],
         "llama": [TaskCategory.REASONING, TaskCategory.CREATIVE],
         "llava": [TaskCategory.VISION, TaskCategory.CREATIVE],
         "embed": [TaskCategory.EMBEDDING],
@@ -278,7 +284,11 @@ def get_model_for_task(
                 return model, category
 
     # Final fallback: use config default or first available
-    fallback = config.model if config.model in available_models else (available_models[0] if available_models else config.model)
+    fallback = (
+        config.model
+        if config.model in available_models
+        else (available_models[0] if available_models else config.model)
+    )
     logger.debug(f"Task classified as {category.value}, using final fallback {fallback}")
     return fallback, category
 
@@ -334,8 +344,7 @@ class OllamaWorker(BaseWorker):
             await self._cleanup_client()
             self._status = WorkerStatus.FAILED
             raise RuntimeError(
-                f"Ollama server not available at {self.config.base_url}. "
-                "Start with: ollama serve"
+                f"Ollama server not available at {self.config.base_url}. Start with: ollama serve"
             )
 
         # Verify model exists
@@ -344,8 +353,7 @@ class OllamaWorker(BaseWorker):
 
         if self.config.model not in model_names:
             logger.warning(
-                f"Model {self.config.model} not found. "
-                f"Available: {', '.join(model_names[:5])}..."
+                f"Model {self.config.model} not found. Available: {', '.join(model_names[:5])}..."
             )
             # Attempt to pull model
             try:
@@ -547,9 +555,7 @@ class OllamaWorker(BaseWorker):
                 ollama_available = await self._is_available()
                 if ollama_available:
                     models = await self._list_models()
-                    model_available = any(
-                        m.get("name") == self.config.model for m in models
-                    )
+                    model_available = any(m.get("name") == self.config.model for m in models)
 
             return {
                 "healthy": current_status == WorkerStatus.RUNNING and ollama_available,

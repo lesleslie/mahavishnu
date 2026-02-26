@@ -311,12 +311,14 @@ class NPlusOneDetector:
                     detected["count"] = len(recent)
                     return
 
-            self.detected.append({
-                "fingerprint": fingerprint,
-                "table": table,
-                "count": len(recent),
-                "detected_at": datetime.now(UTC),
-            })
+            self.detected.append(
+                {
+                    "fingerprint": fingerprint,
+                    "table": table,
+                    "count": len(recent),
+                    "detected_at": datetime.now(UTC),
+                }
+            )
 
     def get_detected_patterns(self) -> list[dict[str, Any]]:
         """Get detected N+1 patterns.
@@ -325,10 +327,7 @@ class NPlusOneDetector:
             List of detected patterns
         """
         cutoff = datetime.now(UTC) - self.time_window
-        return [
-            p for p in self.detected
-            if p["detected_at"] > cutoff
-        ]
+        return [p for p in self.detected if p["detected_at"] > cutoff]
 
     def get_recommendation(self) -> str | None:
         """Get recommendation for detected patterns.
@@ -419,45 +418,27 @@ class QueryAnalyzer:
         tables = []
 
         # FROM clause
-        from_match = re.search(
-            r"\bFROM\s+([a-zA-Z_][a-zA-Z0-9_]*)",
-            query,
-            re.IGNORECASE
-        )
+        from_match = re.search(r"\bFROM\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE)
         if from_match:
             tables.append(from_match.group(1))
 
         # JOIN clauses
-        join_matches = re.findall(
-            r"\bJOIN\s+([a-zA-Z_][a-zA-Z0-9_]*)",
-            query,
-            re.IGNORECASE
-        )
+        join_matches = re.findall(r"\bJOIN\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE)
         tables.extend(join_matches)
 
         # INSERT INTO
-        insert_match = re.search(
-            r"\bINTO\s+([a-zA-Z_][a-zA-Z0-9_]*)",
-            query,
-            re.IGNORECASE
-        )
+        insert_match = re.search(r"\bINTO\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE)
         if insert_match:
             tables.append(insert_match.group(1))
 
         # UPDATE
-        update_match = re.search(
-            r"\bUPDATE\s+([a-zA-Z_][a-zA-Z0-9_]*)",
-            query,
-            re.IGNORECASE
-        )
+        update_match = re.search(r"\bUPDATE\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE)
         if update_match:
             tables.append(update_match.group(1))
 
         # DELETE FROM
         delete_match = re.search(
-            r"\bDELETE\s+FROM\s+([a-zA-Z_][a-zA-Z0-9_]*)",
-            query,
-            re.IGNORECASE
+            r"\bDELETE\s+FROM\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE
         )
         if delete_match:
             tables.append(delete_match.group(1))
@@ -470,9 +451,7 @@ class QueryAnalyzer:
 
         # Find WHERE clause
         where_match = re.search(
-            r"\bWHERE\s+(.+?)(?:ORDER|GROUP|LIMIT|$)",
-            query,
-            re.IGNORECASE | re.DOTALL
+            r"\bWHERE\s+(.+?)(?:ORDER|GROUP|LIMIT|$)", query, re.IGNORECASE | re.DOTALL
         )
 
         if where_match:
@@ -482,7 +461,7 @@ class QueryAnalyzer:
             col_matches = re.findall(
                 r"([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:=|>|<|>=|<=|<>|!=|LIKE|IN|IS)",
                 where_clause,
-                re.IGNORECASE
+                re.IGNORECASE,
             )
             columns.extend(col_matches)
 
@@ -492,11 +471,7 @@ class QueryAnalyzer:
         """Extract tables from JOIN clauses."""
         tables = []
 
-        join_matches = re.findall(
-            r"\bJOIN\s+([a-zA-Z_][a-zA-Z0-9_]*)",
-            query,
-            re.IGNORECASE
-        )
+        join_matches = re.findall(r"\bJOIN\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE)
         tables.extend(join_matches)
 
         return list(set(tables))
@@ -541,12 +516,14 @@ class QueryAnalyzer:
             # Estimate improvement based on cost
             estimated_improvement = min(90, 50 + query_plan.total_cost / 10)
 
-            recommendations.append(IndexRecommendation(
-                table=query_plan.relation_name,
-                columns=analysis.where_columns,
-                reason="Query uses sequential scan with filter on these columns",
-                estimated_improvement=estimated_improvement,
-            ))
+            recommendations.append(
+                IndexRecommendation(
+                    table=query_plan.relation_name,
+                    columns=analysis.where_columns,
+                    reason="Query uses sequential scan with filter on these columns",
+                    estimated_improvement=estimated_improvement,
+                )
+            )
 
         return recommendations
 
@@ -627,10 +604,7 @@ class QueryAnalyzer:
         Returns:
             List of slow query metrics
         """
-        return [
-            metrics for metrics in self._metrics.values()
-            if metrics.is_slow(threshold_ms)
-        ]
+        return [metrics for metrics in self._metrics.values() if metrics.is_slow(threshold_ms)]
 
 
 __all__ = [

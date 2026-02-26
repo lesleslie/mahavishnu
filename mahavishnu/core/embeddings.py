@@ -128,10 +128,7 @@ class EmbeddingResult:
         Returns:
             True if both results use same model version and dimension
         """
-        return (
-            self.model_version == other.model_version
-            and self.dimension == other.dimension
-        )
+        return self.model_version == other.model_version and self.dimension == other.dimension
 
     def to_metadata(self) -> dict[str, Any]:
         """Convert to metadata dictionary for storage.
@@ -634,21 +631,15 @@ class EmbeddingService:
                     "circuit-breaker-blocked",
                     extra={"provider": provider_type.value},
                 )
-                return await self._embed_with_fallback(
-                    texts, exclude_providers={provider_type}
-                )
-            raise EmbeddingProviderError(
-                f"Circuit breaker open for provider {provider_type.value}"
-            )
+                return await self._embed_with_fallback(texts, exclude_providers={provider_type})
+            raise EmbeddingProviderError(f"Circuit breaker open for provider {provider_type.value}")
 
         provider = self._get_provider(provider_type)
 
         if not provider.is_available():
             cb.record_failure()
             if allow_fallback:
-                return await self._embed_with_fallback(
-                    texts, exclude_providers={provider_type}
-                )
+                return await self._embed_with_fallback(texts, exclude_providers={provider_type})
             raise EmbeddingProviderError(
                 f"Requested provider {provider_type.value} is not available"
             )
@@ -664,9 +655,7 @@ class EmbeddingService:
                 extra={"provider": provider_type.value, "error": str(e)},
             )
             if allow_fallback:
-                return await self._embed_with_fallback(
-                    texts, exclude_providers={provider_type}
-                )
+                return await self._embed_with_fallback(texts, exclude_providers={provider_type})
             raise
 
     async def _embed_with_fallback(
@@ -713,9 +702,7 @@ class EmbeddingService:
                 cb.record_failure()
                 errors.append(f"{provider_type.value}: {e}")
 
-        raise EmbeddingServiceError(
-            f"No embedding provider available. Errors: {'; '.join(errors)}"
-        )
+        raise EmbeddingServiceError(f"No embedding provider available. Errors: {'; '.join(errors)}")
 
     async def embed_batch(
         self,
@@ -1172,9 +1159,7 @@ class SecureEmbeddingService:
         """
         # Check rate limit
         if not self._check_rate_limit(request.user_id):
-            raise ServiceOverloadedError(
-                f"Rate limit exceeded for user {request.user_id}"
-            )
+            raise ServiceOverloadedError(f"Rate limit exceeded for user {request.user_id}")
 
         # Use semaphore for concurrency control
         async with self._semaphore:
@@ -1199,15 +1184,12 @@ class SecureEmbeddingService:
         """
         # Check rate limit
         if not self._check_rate_limit(request.user_id):
-            raise ServiceOverloadedError(
-                f"Rate limit exceeded for user {request.user_id}"
-            )
+            raise ServiceOverloadedError(f"Rate limit exceeded for user {request.user_id}")
 
         # Check batch size (already validated by Pydantic, but double-check)
         if len(request.texts) > self._rate_limit.max_batch_size:
             raise ServiceOverloadedError(
-                f"Batch size {len(request.texts)} exceeds limit "
-                f"{self._rate_limit.max_batch_size}"
+                f"Batch size {len(request.texts)} exceeds limit {self._rate_limit.max_batch_size}"
             )
 
         async def _embed_chunk(chunk: list[str]) -> EmbeddingResult:

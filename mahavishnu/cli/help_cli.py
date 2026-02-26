@@ -170,9 +170,7 @@ COMMAND_CATEGORIES: dict[str, dict[str, Any]] = {
             "ingest blog": {
                 "usage": "mahavishnu ingest blog --url <url>",
                 "description": "Ingest blog post content",
-                "examples": [
-                    "mahavishnu ingest blog --url 'https://blog.example.com/post'"
-                ],
+                "examples": ["mahavishnu ingest blog --url 'https://blog.example.com/post'"],
             },
             "ingest book": {
                 "usage": "mahavishnu ingest book --path <path>",

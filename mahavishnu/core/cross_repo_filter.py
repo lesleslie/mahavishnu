@@ -265,8 +265,12 @@ class CrossRepoFilter:
         if criteria.date_range:
             applied_filters["date_range"] = {
                 "last_n_days": criteria.date_range.last_n_days,
-                "start": criteria.date_range.start_date.isoformat() if criteria.date_range.start_date else None,
-                "end": criteria.date_range.end_date.isoformat() if criteria.date_range.end_date else None,
+                "start": criteria.date_range.start_date.isoformat()
+                if criteria.date_range.start_date
+                else None,
+                "end": criteria.date_range.end_date.isoformat()
+                if criteria.date_range.end_date
+                else None,
             }
         if criteria.text_search:
             applied_filters["text_search"] = criteria.text_search
@@ -346,18 +350,12 @@ class CrossRepoFilter:
 
         # Filter by tags (ANY match)
         if criteria.tags:
-            result = [
-                t for t in result
-                if any(tag in t.tags for tag in criteria.tags)
-            ]
+            result = [t for t in result if any(tag in t.tags for tag in criteria.tags)]
 
         # Filter by date range
         if criteria.date_range:
             start, end = criteria.date_range.get_date_range()
-            result = [
-                t for t in result
-                if t.created_at and start <= t.created_at <= end
-            ]
+            result = [t for t in result if t.created_at and start <= t.created_at <= end]
 
         # Text search
         if criteria.text_search:
@@ -464,7 +462,14 @@ class CrossRepoFilter:
             "repositories": sorted(repos),
             "repo_roles": sorted(repo_roles),
             "repo_tags": sorted(repo_tags),
-            "sort_options": ["priority", "status", "created_at", "updated_at", "title", "repository"],
+            "sort_options": [
+                "priority",
+                "status",
+                "created_at",
+                "updated_at",
+                "title",
+                "repository",
+            ],
             "sort_orders": ["asc", "desc"],
         }
 

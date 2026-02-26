@@ -214,7 +214,9 @@ class CrossRepoBlockerTracker:
 
         # Get directly blocked tasks
         direct_deps = self.dependency_linker.get_blocked_tasks(blocker_task_id)
-        directly_blocked = [d.target_task_id for d in direct_deps if d.dependency_type == DependencyType.BLOCKS]
+        directly_blocked = [
+            d.target_task_id for d in direct_deps if d.dependency_type == DependencyType.BLOCKS
+        ]
 
         # Track affected repositories
         affected_repos: set[str] = set()
@@ -320,9 +322,11 @@ class CrossRepoBlockerTracker:
             True if resolved successfully
         """
         # Update dependency statuses through the linker
-        updated = self.dependency_linker.update_all_statuses({
-            blocker_task_id: DependencyStatus.SATISFIED,
-        })
+        updated = self.dependency_linker.update_all_statuses(
+            {
+                blocker_task_id: DependencyStatus.SATISFIED,
+            }
+        )
 
         # Clear caches
         if blocker_task_id in self._blocker_cache:
@@ -333,8 +337,7 @@ class CrossRepoBlockerTracker:
         for repo in impact.affected_repositories:
             # Clear any cached chains that might involve this blocker
             keys_to_remove = [
-                k for k in self._chain_cache
-                if blocker_task_id in self._chain_cache[k].chain_path
+                k for k in self._chain_cache if blocker_task_id in self._chain_cache[k].chain_path
             ]
             for key in keys_to_remove:
                 del self._chain_cache[key]
@@ -380,7 +383,8 @@ class CrossRepoBlockerTracker:
         all_deps = self.dependency_linker.get_all_dependencies()
 
         cross_repo = [
-            dep for dep in all_deps
+            dep
+            for dep in all_deps
             if dep.dependency_type == DependencyType.BLOCKS
             and dep.source_repo != dep.target_repo
             and dep.status != DependencyStatus.SATISFIED

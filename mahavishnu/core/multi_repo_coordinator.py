@@ -253,13 +253,15 @@ class MultiRepoCoordinator:
             task = await self.task_store.get(task_id)
             if task:
                 repositories.add(task.repository)
-                steps.append(CoordinationStep(
-                    step_id=f"step-{idx + 1}",
-                    task_id=task_id,
-                    repository=task.repository,
-                    action="complete",
-                    dependencies=dep_map.get(task_id, []),
-                ))
+                steps.append(
+                    CoordinationStep(
+                        step_id=f"step-{idx + 1}",
+                        task_id=task_id,
+                        repository=task.repository,
+                        action="complete",
+                        dependencies=dep_map.get(task_id, []),
+                    )
+                )
 
         plan = CoordinationPlan(
             plan_id=str(uuid.uuid4()),
@@ -357,9 +359,11 @@ class MultiRepoCoordinator:
             await self.task_store.update(task)
 
             # Update dependency status
-            self.dependency_linker.update_all_statuses({
-                step.task_id: TaskStatus.COMPLETED,
-            })
+            self.dependency_linker.update_all_statuses(
+                {
+                    step.task_id: TaskStatus.COMPLETED,
+                }
+            )
 
             step.status = CoordinationStatus.COMPLETED
             step.completed_at = datetime.now(UTC)
@@ -447,29 +451,33 @@ class MultiRepoCoordinator:
 
         for repo in repositories:
             try:
-                tasks = await self.task_store.list(
-                    TaskListFilter(repository=repo, limit=10000)
-                )
+                tasks = await self.task_store.list(TaskListFilter(repository=repo, limit=10000))
 
-                pending = sum(1 for t in tasks if t.status in (
-                    TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED
-                ))
+                pending = sum(
+                    1
+                    for t in tasks
+                    if t.status in (TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED)
+                )
                 completed = sum(1 for t in tasks if t.status == TaskStatus.COMPLETED)
 
-                states.append(RepoSyncState(
-                    repository=repo,
-                    last_sync=datetime.now(UTC),
-                    pending_tasks=pending,
-                    completed_tasks=completed,
-                    sync_status="in_sync",
-                ))
+                states.append(
+                    RepoSyncState(
+                        repository=repo,
+                        last_sync=datetime.now(UTC),
+                        pending_tasks=pending,
+                        completed_tasks=completed,
+                        sync_status="in_sync",
+                    )
+                )
             except Exception as e:
-                states.append(RepoSyncState(
-                    repository=repo,
-                    last_sync=datetime.now(UTC),
-                    sync_status="error",
-                    error=str(e),
-                ))
+                states.append(
+                    RepoSyncState(
+                        repository=repo,
+                        last_sync=datetime.now(UTC),
+                        sync_status="error",
+                        error=str(e),
+                    )
+                )
 
         return states
 

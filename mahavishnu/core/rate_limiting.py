@@ -20,30 +20,25 @@ logger = logging.getLogger(__name__)
 # Rate limit configuration for different operations
 RATE_LIMITS = {
     # Task operations
-    "task_create": "10/minute",       # 10 task creations per minute
-    "task_update": "30/minute",       # 30 task updates per minute
-    "task_delete": "10/minute",       # 10 task deletions per minute
-    "task_search": "30/minute",       # 30 searches per minute
-
+    "task_create": "10/minute",  # 10 task creations per minute
+    "task_update": "30/minute",  # 30 task updates per minute
+    "task_delete": "10/minute",  # 10 task deletions per minute
+    "task_search": "30/minute",  # 30 searches per minute
     # Repository operations
-    "repo_list": "60/minute",         # 60 repo list requests per minute
-    "repo_sync": "5/minute",          # 5 repo syncs per minute
-
+    "repo_list": "60/minute",  # 60 repo list requests per minute
+    "repo_sync": "5/minute",  # 5 repo syncs per minute
     # Webhook processing
-    "webhook_github": "100/minute",   # 100 GitHub webhooks per minute
-    "webhook_gitlab": "100/minute",   # 100 GitLab webhooks per minute
-
+    "webhook_github": "100/minute",  # 100 GitHub webhooks per minute
+    "webhook_gitlab": "100/minute",  # 100 GitLab webhooks per minute
     # API general
-    "api_general": "60/minute",       # 60 general API calls per minute
-    "api_read": "120/minute",         # 120 read operations per minute
-    "api_write": "30/minute",         # 30 write operations per minute
-
+    "api_general": "60/minute",  # 60 general API calls per minute
+    "api_read": "120/minute",  # 120 read operations per minute
+    "api_write": "30/minute",  # 30 write operations per minute
     # Embedding/NLP operations (more expensive)
-    "embedding": "20/minute",         # 20 embedding requests per minute
-    "nlp_parse": "30/minute",         # 30 NLP parsing requests per minute
-
+    "embedding": "20/minute",  # 20 embedding requests per minute
+    "nlp_parse": "30/minute",  # 30 NLP parsing requests per minute
     # WebSocket
-    "websocket": "10/minute",         # 10 WebSocket connections per minute
+    "websocket": "10/minute",  # 10 WebSocket connections per minute
 }
 
 # Try to import slowapi, but provide fallback if not available
@@ -163,10 +158,12 @@ def rate_limit(limit: str) -> Callable:
     Returns:
         Decorator function
     """
+
     def decorator(func: Callable) -> Callable:
         if HAS_SLOWAPI and limiter is not None:
             return limiter.limit(limit)(func)
         return func
+
     return decorator
 
 

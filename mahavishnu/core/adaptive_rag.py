@@ -198,15 +198,9 @@ class QueryComplexityAnalyzer:
 
         # Compile patterns for efficiency
         self._domain_regex = [re.compile(p, re.IGNORECASE) for p in self.domain_patterns]
-        self._reasoning_regex = [
-            re.compile(p, re.IGNORECASE) for p in self.reasoning_patterns
-        ]
-        self._temporal_regex = [
-            re.compile(p, re.IGNORECASE) for p in self.TEMPORAL_PATTERNS
-        ]
-        self._structure_regex = [
-            re.compile(p, re.IGNORECASE) for p in self.STRUCTURE_PATTERNS
-        ]
+        self._reasoning_regex = [re.compile(p, re.IGNORECASE) for p in self.reasoning_patterns]
+        self._temporal_regex = [re.compile(p, re.IGNORECASE) for p in self.TEMPORAL_PATTERNS]
+        self._structure_regex = [re.compile(p, re.IGNORECASE) for p in self.STRUCTURE_PATTERNS]
 
     def analyze(self, query: str) -> ComplexityScore:
         """Analyze query complexity.
@@ -384,15 +378,11 @@ class AdaptiveRAGRouter:
             )
         elif score < self.HYBRID_THRESHOLD:
             strategy = RAGStrategyType.HYBRID
-            reason = (
-                f"Medium complexity ({score:.2f}): "
-                "Hybrid vector + cache + full-text search"
-            )
+            reason = f"Medium complexity ({score:.2f}): Hybrid vector + cache + full-text search"
         elif score < self.GRAPH_THRESHOLD:
             strategy = RAGStrategyType.GRAPH
             reason = (
-                f"High complexity ({score:.2f}): "
-                "Knowledge graph traversal for multi-hop reasoning"
+                f"High complexity ({score:.2f}): Knowledge graph traversal for multi-hop reasoning"
             )
         else:
             strategy = RAGStrategyType.AGENTIC
@@ -466,15 +456,12 @@ class AdaptiveRAGRouter:
         total = sum(self._strategy_counts.values())
         stats = {
             "total_queries": total,
-            "strategy_counts": {
-                s.value: c for s, c in self._strategy_counts.items()
-            },
+            "strategy_counts": {s.value: c for s, c in self._strategy_counts.items()},
         }
 
         if total > 0:
             stats["strategy_percentages"] = {
-                s.value: round(c / total * 100, 1)
-                for s, c in self._strategy_counts.items()
+                s.value: round(c / total * 100, 1) for s, c in self._strategy_counts.items()
             }
 
         return stats

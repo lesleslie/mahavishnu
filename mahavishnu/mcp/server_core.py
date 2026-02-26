@@ -1449,7 +1449,9 @@ class FastMCPServer:
             register_treesitter_tools(self.server)
             logger.info("Registered 7 tree-sitter code analysis tools with MCP server")
         except ImportError as e:
-            logger.info(f"Tree-sitter tools not available (mcp-common[treesitter] not installed): {e}")
+            logger.info(
+                f"Tree-sitter tools not available (mcp-common[treesitter] not installed): {e}"
+            )
 
         logger.info("Registered 4 self-improvement tools with MCP server")
 

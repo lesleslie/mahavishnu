@@ -23,30 +23,54 @@ from typing import Any
 # Lazy import - only import if actually used
 try:
     from prometheus_client import Counter, Gauge, Histogram, start_http_server, REGISTRY
+
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
+
     # Create dummy classes for graceful degradation
     class Counter:
-        def __init__(self, *args, **kwargs): pass
-        def labels(self, **kwargs): return self
-        def inc(self, amount=1): pass
-        def count(self): return 0
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def labels(self, **kwargs):
+            return self
+
+        def inc(self, amount=1):
+            pass
+
+        def count(self):
+            return 0
 
     class Gauge:
-        def __init__(self, *args, **kwargs): pass
-        def labels(self, **kwargs): return self
-        def set(self, value): pass
-        def set_to_current_value(self): pass
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def labels(self, **kwargs):
+            return self
+
+        def set(self, value):
+            pass
+
+        def set_to_current_value(self):
+            pass
 
     class Histogram:
-        def __init__(self, *args, **kwargs): pass
-        def labels(self, **kwargs): return self
-        def observe(self, amount): pass
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def labels(self, **kwargs):
+            return self
+
+        def observe(self, amount):
+            pass
 
     def start_http_server(port: int):
-        logging.warning(f"prometheus_client not available, metrics server not started on port {port}")
+        logging.warning(
+            f"prometheus_client not available, metrics server not started on port {port}"
+        )
         return None
+
 
 logger = logging.getLogger(__name__)
 
@@ -104,15 +128,16 @@ class WebSocketMetrics:
         # Create message counter (handle duplicate gracefully)
         try:
             self._message_counter = Counter(
-                'websocket_messages_total',
-                'Total messages processed by WebSocket server',
-                ['server', 'message_type']
+                "websocket_messages_total",
+                "Total messages processed by WebSocket server",
+                ["server", "message_type"],
             )
         except ValueError as e:
             # Metric already registered, get existing one
             from prometheus_client import REGISTRY
+
             for collector in REGISTRY._collector_to_names.values():
-                if 'websocket_messages_total' in collector:
+                if "websocket_messages_total" in collector:
                     self._message_counter = collector
                     break
             logger.debug(f"Reusing existing message counter: {self.server_name}")
@@ -120,14 +145,15 @@ class WebSocketMetrics:
         # Create connection gauge
         try:
             self._connection_gauge = Gauge(
-                'websocket_connections',
-                'Current number of active WebSocket connections',
-                ['server']
+                "websocket_connections",
+                "Current number of active WebSocket connections",
+                ["server"],
             )
         except ValueError:
             from prometheus_client import REGISTRY
+
             for collector in REGISTRY._collector_to_names.values():
-                if 'websocket_connections' in collector:
+                if "websocket_connections" in collector:
                     self._connection_gauge = collector
                     break
             logger.debug(f"Reusing existing connection gauge: {self.server_name}")
@@ -135,14 +161,13 @@ class WebSocketMetrics:
         # Create subscription gauge
         try:
             self._subscription_gauge = Gauge(
-                'websocket_subscriptions',
-                'Current number of active room subscriptions',
-                ['server']
+                "websocket_subscriptions", "Current number of active room subscriptions", ["server"]
             )
         except ValueError:
             from prometheus_client import REGISTRY
+
             for collector in REGISTRY._collector_to_names.values():
-                if 'websocket_subscriptions' in collector:
+                if "websocket_subscriptions" in collector:
                     self._subscription_gauge = collector
                     break
             logger.debug(f"Reusing existing subscription gauge: {self.server_name}")
@@ -174,10 +199,10 @@ class WebSocketMetrics:
         self._ensure_enabled()
         if channel not in self._broadcast_histograms:
             self._broadcast_histograms[channel] = Histogram(
-                'websocket_broadcast_duration_seconds',
-                'Time taken to broadcast messages to subscribers',
-                ['server', 'channel'],
-                buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
+                "websocket_broadcast_duration_seconds",
+                "Time taken to broadcast messages to subscribers",
+                ["server", "channel"],
+                buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
             )
             logger.info(f"Created broadcast histogram for channel: {channel} in {self.server_name}")
 
@@ -193,9 +218,9 @@ class WebSocketMetrics:
         self._ensure_enabled()
         if error_type not in self._error_counters:
             self._error_counters[error_type] = Counter(
-                'websocket_errors_total',
-                'Total errors encountered by WebSocket server',
-                ['server', 'error_type']
+                "websocket_errors_total",
+                "Total errors encountered by WebSocket server",
+                ["server", "error_type"],
             )
             logger.info(f"Created error counter '{error_type}' for server: {self.server_name}")
 

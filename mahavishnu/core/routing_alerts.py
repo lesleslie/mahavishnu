@@ -67,6 +67,7 @@ class Alert:
         timestamp: When alert was triggered
         metadata: Additional context
     """
+
     alert_type: AlertType
     severity: AlertSeverity
     message: str
@@ -172,9 +173,7 @@ class WebhookAlertHandler(AlertHandler):
                     if response.status >= 200 and response.status < 300:
                         self.logger.info(f"Alert sent successfully: {alert.alert_type.value}")
                     else:
-                        self.logger.error(
-                            f"Failed to send alert: HTTP {response.status}"
-                        )
+                        self.logger.error(f"Failed to send alert: HTTP {response.status}")
         except Exception as e:
             self.logger.error(f"Webhook alert failed: {e}")
 
@@ -257,11 +256,7 @@ class RoutingAlertManager:
 
             # Check success rate threshold
             if success_rate < self.success_rate_threshold:
-                severity = (
-                    AlertSeverity.CRITICAL
-                    if success_rate < 0.8
-                    else AlertSeverity.WARNING
-                )
+                severity = AlertSeverity.CRITICAL if success_rate < 0.8 else AlertSeverity.WARNING
                 alerts.append(
                     Alert(
                         alert_type=AlertType.ADAPTER_DEGRADATION,
@@ -282,9 +277,7 @@ class RoutingAlertManager:
 
         return alerts
 
-    async def evaluate_cost_anomalies(
-        self, current_cost_usd: float
-    ) -> list[Alert]:
+    async def evaluate_cost_anomalies(self, current_cost_usd: float) -> list[Alert]:
         """Evaluate cost for spikes.
 
         Args:
@@ -363,11 +356,7 @@ class RoutingAlertManager:
         fallback_rate = fallback_count / total_executions
 
         if fallback_rate > self.fallback_rate_threshold:
-            severity = (
-                AlertSeverity.CRITICAL
-                if fallback_rate > 0.3
-                else AlertSeverity.WARNING
-            )
+            severity = AlertSeverity.CRITICAL if fallback_rate > 0.3 else AlertSeverity.WARNING
             alerts.append(
                 Alert(
                     alert_type=AlertType.EXCESSIVE_FALLBACKS,
@@ -425,14 +414,10 @@ class RoutingAlertManager:
                         try:
                             await handler.send_alert(alert)
                         except Exception as e:
-                            self.logger.error(
-                                f"Handler {handler.__class__.__name__} failed: {e}"
-                            )
+                            self.logger.error(f"Handler {handler.__class__.__name__} failed: {e}")
 
                 if all_alerts:
-                    self.logger.warning(
-                        f"Generated {len(all_alerts)} alerts in evaluation cycle"
-                    )
+                    self.logger.warning(f"Generated {len(all_alerts)} alerts in evaluation cycle")
                 else:
                     self.logger.debug("No alerts generated in this cycle")
 

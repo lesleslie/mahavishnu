@@ -19,8 +19,10 @@ from typing import Any
 try:
     from oneiric.core.ulid import generate_config_id
 except ImportError:
+
     def generate_config_id() -> str:
         import uuid
+
         return uuid.uuid4().hex
 
 
@@ -101,13 +103,13 @@ class LlamaIndexAdapter(OrchestratorAdapter):
     def capabilities(self) -> AdapterCapabilities:
         """Return supported capabilities."""
         return AdapterCapabilities(
-            can_deploy_flows=True,          # RAG pipelines
-            can_monitor_execution=True,        # Query tracking
-            can_cancel_workflows=True,         # Can cancel queries
-            can_sync_state=False,             # TODO: State sync not implemented
-            supports_batch_execution=True,   # Multiple queries
-            supports_multi_agent=False,        # Single query engine
-            has_cloud_ui=False,             # Local engine
+            can_deploy_flows=True,  # RAG pipelines
+            can_monitor_execution=True,  # Query tracking
+            can_cancel_workflows=True,  # Can cancel queries
+            can_sync_state=False,  # TODO: State sync not implemented
+            supports_batch_execution=True,  # Multiple queries
+            supports_multi_agent=False,  # Single query engine
+            has_cloud_ui=False,  # Local engine
         )
 
     async def initialize(self) -> None:
@@ -154,8 +156,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         execution_id = generate_config_id()
 
         logger.warning(
-            f"LlamaIndexAdapter.execute() called (stub mode) - "
-            f"returning mock ULID: {execution_id}"
+            f"LlamaIndexAdapter.execute() called (stub mode) - returning mock ULID: {execution_id}"
         )
 
         # Stub implementation - return mock response

@@ -234,9 +234,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
             # Create factory and parse goal with metrics
             # Check if LLM fallback is enabled for goal parsing
             use_llm_fallback = is_feature_enabled("llm_fallback_enabled")
-            factory = GoalDrivenTeamFactory(
-                llm_factory=llm_factory if use_llm_fallback else None
-            )
+            factory = GoalDrivenTeamFactory(llm_factory=llm_factory if use_llm_fallback else None)
             parsed = await factory.parse_goal(goal)
 
             # Record goal parsing metrics
@@ -264,7 +262,9 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
             final_mode = team_mode if team_mode else parsed.intent
 
             # Create team configuration with timing
-            with metrics.team_creation_duration(mode=final_mode.value if hasattr(final_mode, 'value') else str(final_mode)):
+            with metrics.team_creation_duration(
+                mode=final_mode.value if hasattr(final_mode, "value") else str(final_mode)
+            ):
                 team_config = await factory.create_team_from_goal(
                     goal=goal,
                     name=name,
@@ -323,7 +323,9 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
                     "leader": {
                         "name": team_config.leader.name,
                         "role": team_config.leader.role,
-                    } if team_config.leader else None,
+                    }
+                    if team_config.leader
+                    else None,
                 },
                 "parsed_goal": {
                     "intent": parsed.intent,
@@ -568,9 +570,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
             # Create factory and parse
             # Check if LLM fallback is enabled for goal parsing
             use_llm_fallback = is_feature_enabled("llm_fallback_enabled")
-            factory = GoalDrivenTeamFactory(
-                llm_factory=llm_factory if use_llm_fallback else None
-            )
+            factory = GoalDrivenTeamFactory(llm_factory=llm_factory if use_llm_fallback else None)
             parsed = await factory.parse_goal(goal)
 
             # Record goal parsing metrics (if Prometheus metrics enabled)
@@ -778,4 +778,6 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
                 "count": 0,
             }
 
-    logger.info("Registered 3 goal-driven team tools with feature flags, Prometheus metrics, WebSocket broadcasting, and learning integration")
+    logger.info(
+        "Registered 3 goal-driven team tools with feature flags, Prometheus metrics, WebSocket broadcasting, and learning integration"
+    )

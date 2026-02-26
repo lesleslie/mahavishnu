@@ -103,9 +103,7 @@ class WorktreePathValidator:
             # Check 2: Shell metacharacter detection (CWE-114)
             if self._has_shell_metacharacters(worktree_path):
                 error = "Path contains shell metacharacters (CWE-114)"
-                self._log_security_rejection(
-                    "shell_metachar", worktree_path, user_id, error
-                )
+                self._log_security_rejection("shell_metachar", worktree_path, user_id, error)
                 return False, error
 
             # Check 3: Path traversal prevention (CWE-22)
@@ -115,9 +113,7 @@ class WorktreePathValidator:
             for component in path.parts:
                 if component in self.DANGER_PATH_COMPONENTS:
                     error = f"Path contains dangerous component: {component} (CWE-22)"
-                    self._log_security_rejection(
-                        "path_traversal", worktree_path, user_id, error
-                    )
+                    self._log_security_rejection("path_traversal", worktree_path, user_id, error)
                     return False, error
 
             # Resolve to absolute path
@@ -136,22 +132,15 @@ class WorktreePathValidator:
                 )
 
                 if not is_allowed:
-                    error = (
-                        f"Path outside allowed directories: {self.allowed_roots} "
-                        f"(CWE-22)"
-                    )
-                    self._log_security_rejection(
-                        "allowed_root", worktree_path, user_id, error
-                    )
+                    error = f"Path outside allowed directories: {self.allowed_roots} (CWE-22)"
+                    self._log_security_rejection("allowed_root", worktree_path, user_id, error)
                     return False, error
 
             # Check 5: Path normalization (detect escape attempts)
             normalized = str(resolved_path)
             if "../" in normalized or "~/" in normalized:
                 error = f"Path contains escape sequences after resolution (CWE-22)"
-                self._log_security_rejection(
-                    "escape_sequence", worktree_path, user_id, error
-                )
+                self._log_security_rejection("escape_sequence", worktree_path, user_id, error)
                 return False, error
 
             # All checks passed
@@ -241,17 +230,13 @@ class WorktreePathValidator:
             # Check for null bytes
             if "\x00" in repository_path:
                 error = "Repository path contains null bytes (CWE-170)"
-                self._log_security_rejection(
-                    "null_byte", repository_path, user_id, error
-                )
+                self._log_security_rejection("null_byte", repository_path, user_id, error)
                 return False, error
 
             # Check for shell metacharacters
             if self._has_shell_metacharacters(repository_path):
                 error = "Repository path contains shell metacharacters (CWE-114)"
-                self._log_security_rejection(
-                    "shell_metachar", repository_path, user_id, error
-                )
+                self._log_security_rejection("shell_metachar", repository_path, user_id, error)
                 return False, error
 
             # Resolve to absolute path

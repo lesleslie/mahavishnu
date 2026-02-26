@@ -166,10 +166,16 @@ class NlpParser:
 
     # Due date patterns
     DUE_DATE_PATTERNS = [
-        (r"\bby\s+(tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", "relative_day"),
+        (
+            r"\bby\s+(tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
+            "relative_day",
+        ),
         (r"\bby\s+(next\s+week|this\s+week|eow|end\s+of\s+week)\b", "relative_week"),
         (r"\bby\s+(\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)\b", "date"),
-        (r"\bdue\s+(tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", "relative_day"),
+        (
+            r"\bdue\s+(tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
+            "relative_day",
+        ),
         (r"\bin\s+(\d+)\s+(days?|hours?|weeks?)\b", "duration"),
     ]
 
@@ -245,9 +251,7 @@ class NlpParser:
         best_intent = max(scores, key=scores.get)
         return best_intent, scores[best_intent]
 
-    async def _extract_entities(
-        self, text: str, intent: Intent
-    ) -> dict[str, ParsedEntity]:
+    async def _extract_entities(self, text: str, intent: Intent) -> dict[str, ParsedEntity]:
         """Extract entities from text based on intent."""
         entities: dict[str, ParsedEntity] = {}
 
@@ -571,7 +575,9 @@ class NlpParser:
 
         if confidence < self.confidence_threshold:
             if intent == Intent.UNKNOWN:
-                needs.append("Could you clarify what you'd like to do? (create, list, update, delete, search)")
+                needs.append(
+                    "Could you clarify what you'd like to do? (create, list, update, delete, search)"
+                )
             elif intent == Intent.CREATE and "title" not in entities:
                 needs.append("What should the task title be?")
             elif intent == Intent.UPDATE and "task_id" not in entities:

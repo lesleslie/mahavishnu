@@ -151,7 +151,9 @@ class DependencyVisualizer:
 
             # Render dependencies
             if deps and depth < max_depth:
-                new_prefix = prefix + (self.SYMBOLS["empty"] if is_last else self.SYMBOLS["vertical"])
+                new_prefix = prefix + (
+                    self.SYMBOLS["empty"] if is_last else self.SYMBOLS["vertical"]
+                )
 
                 for i, dep_id in enumerate(sorted(deps)):
                     is_last_dep = i == len(deps) - 1
@@ -436,9 +438,7 @@ def visualize_dependencies(
             if not roots:
                 roots = list(graph)[:1]  # Default to first task
             if roots:
-                return "\n\n".join(
-                    viz.render_tree(graph, r, max_depth) for r in roots[:3]
-                )
+                return "\n\n".join(viz.render_tree(graph, r, max_depth) for r in roots[:3])
             return "Empty graph"
         return viz.render_tree(graph, task_id, max_depth)
 

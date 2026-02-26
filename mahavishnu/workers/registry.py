@@ -45,7 +45,9 @@ class WorkerConfig:
     category: WorkerCategory
     description: str = ""
     completion_markers: list[str] = field(default_factory=list)
-    error_markers: list[str] = field(default_factory=lambda: ["error:", "Error:", "ERROR:", "Exception:"])
+    error_markers: list[str] = field(
+        default_factory=lambda: ["error:", "Error:", "ERROR:", "Exception:"]
+    )
     stream_format: str = "text"
     supports_interactive: bool = True
     default_timeout: int = 300

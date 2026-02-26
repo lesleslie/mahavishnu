@@ -101,9 +101,7 @@ class LoadTestMetrics:
 
         # Success rate
         self.success_rate = (
-            self.successful_requests / self.total_requests * 100
-            if self.total_requests > 0
-            else 0
+            self.successful_requests / self.total_requests * 100 if self.total_requests > 0 else 0
         )
 
         # Throughput
@@ -305,9 +303,7 @@ class LoadTestRunner:
 
                 elif operation == "update" and task_ids:
                     task_id = random.choice(task_ids)
-                    result = await self.client.update_task(
-                        task_id, status="in_progress"
-                    )
+                    result = await self.client.update_task(task_id, status="in_progress")
                 else:
                     # Fallback to create if no tasks exist
                     result = await self.client.create_task(
@@ -318,9 +314,7 @@ class LoadTestRunner:
                 # Record result
                 self.results.append(result)
                 if result.operation not in self.metrics:
-                    self.metrics[result.operation] = LoadTestMetrics(
-                        operation=result.operation
-                    )
+                    self.metrics[result.operation] = LoadTestMetrics(operation=result.operation)
                 self.metrics[result.operation].add_result(result)
 
                 # Rate limiting
@@ -387,9 +381,7 @@ class LoadTestRunner:
                 "failed_requests": sum(1 for r in self.results if not r.success),
                 "requests_per_second": round(len(self.results) / duration, 2),
             },
-            "operations": {
-                name: metrics.to_dict() for name, metrics in self.metrics.items()
-            },
+            "operations": {name: metrics.to_dict() for name, metrics in self.metrics.items()},
             "slo_validation": self._validate_slos(),
             "timestamp": datetime.now(UTC).isoformat(),
         }
@@ -485,7 +477,9 @@ def print_report(report: dict[str, Any]) -> None:
     for check in slo["checks"]:
         icon = "✓" if check["passed"] else "✗"
         if "target_ms" in check:
-            print(f"   {icon} {check['name']}: {check['actual_ms']:.2f}ms (target: {check['target_ms']}ms)")
+            print(
+                f"   {icon} {check['name']}: {check['actual_ms']:.2f}ms (target: {check['target_ms']}ms)"
+            )
         else:
             print(
                 f"   {icon} {check['name']}: {check['actual_percent']:.2f}% (target: {check['target_percent']}%)"

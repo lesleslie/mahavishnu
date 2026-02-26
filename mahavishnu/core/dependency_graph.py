@@ -272,9 +272,7 @@ class DependencyGraph:
         """
         return list(self._dependents.get(task_id, set()))
 
-    def get_edge(
-        self, dependency_id: str, dependent_id: str
-    ) -> DependencyEdge | None:
+    def get_edge(self, dependency_id: str, dependent_id: str) -> DependencyEdge | None:
         """Get the edge between two tasks.
 
         Args:
@@ -305,9 +303,7 @@ class DependencyGraph:
         edge = self._edges.get((dependency_id, dependent_id))
         if edge:
             edge.status = status
-            logger.debug(
-                f"Updated edge status: {dependency_id} -> {dependent_id} = {status.value}"
-            )
+            logger.debug(f"Updated edge status: {dependency_id} -> {dependent_id} = {status.value}")
             return True
         return False
 
@@ -393,9 +389,7 @@ class DependencyGraph:
             in_degree[task_id] = len(self._dependencies.get(task_id, set()))
 
         # Queue of tasks with no dependencies
-        queue = deque(
-            [task_id for task_id, degree in in_degree.items() if degree == 0]
-        )
+        queue = deque([task_id for task_id, degree in in_degree.items() if degree == 0])
         result: list[str] = []
 
         while queue:
@@ -549,9 +543,7 @@ class DependencyGraph:
                 "id": tid,
                 "metadata": self._task_metadata.get(tid, {}),
                 "status": edge.status.value if edge else None,
-                "dependencies": [
-                    build_tree(dep_id) for dep_id in deps
-                ],
+                "dependencies": [build_tree(dep_id) for dep_id in deps],
             }
 
         visited.clear()
@@ -631,10 +623,7 @@ class DependencyGraph:
     def to_dict(self) -> dict[str, Any]:
         """Serialize graph to dictionary."""
         return {
-            "tasks": [
-                {"id": tid, **metadata}
-                for tid, metadata in self._task_metadata.items()
-            ],
+            "tasks": [{"id": tid, **metadata} for tid, metadata in self._task_metadata.items()],
             "edges": [edge.to_dict() for edge in self._edges.values()],
         }
 

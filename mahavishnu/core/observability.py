@@ -358,14 +358,19 @@ def get_observability_manager() -> ObservabilityManager | None:
     # For now, returning None as we don't have a global registry
     return None
 
+
 # Observability decorators (temporary fix - need proper implementation)
 def observe(span_name: str = None):
     """Decorator for observing function execution with tracing."""
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
+
 
 # Alias for compatibility
 span = observe

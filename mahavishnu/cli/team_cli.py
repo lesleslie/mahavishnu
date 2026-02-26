@@ -90,11 +90,13 @@ def _display_parsed_goal(parsed: ParsedGoal) -> None:
     ]
 
     console.print()
-    console.print(Panel(
-        "\n".join(info_lines),
-        title="[bold cyan]Parsed Goal[/bold cyan]",
-        border_style="cyan",
-    ))
+    console.print(
+        Panel(
+            "\n".join(info_lines),
+            title="[bold cyan]Parsed Goal[/bold cyan]",
+            border_style="cyan",
+        )
+    )
 
 
 def _display_team_config(config: TeamConfig, verbose: bool = False) -> None:
@@ -105,10 +107,12 @@ def _display_team_config(config: TeamConfig, verbose: bool = False) -> None:
         verbose: Whether to show full details
     """
     console.print()
-    console.print(Panel(
-        "[bold green]Team Configuration[/bold green]",
-        border_style="green",
-    ))
+    console.print(
+        Panel(
+            "[bold green]Team Configuration[/bold green]",
+            border_style="green",
+        )
+    )
 
     # Team info table
     table = Table(show_header=False, box=None)
@@ -117,7 +121,10 @@ def _display_team_config(config: TeamConfig, verbose: bool = False) -> None:
 
     table.add_row("Name", config.name)
     table.add_row("Mode", config.mode.value)
-    table.add_row("Description", config.description[:100] + "..." if len(config.description) > 100 else config.description)
+    table.add_row(
+        "Description",
+        config.description[:100] + "..." if len(config.description) > 100 else config.description,
+    )
     table.add_row("Members", str(len(config.members)))
     if config.leader:
         table.add_row("Leader", config.leader.name)
@@ -166,12 +173,14 @@ def _display_team_config_yaml(config: TeamConfig) -> None:
         }
 
     for member in config.members:
-        config_dict["team"]["members"].append({
-            "name": member.name,
-            "role": member.role,
-            "model": member.model,
-            "tools": member.tools,
-        })
+        config_dict["team"]["members"].append(
+            {
+                "name": member.name,
+                "role": member.role,
+                "model": member.model,
+                "tools": member.tools,
+            }
+        )
 
     # Display as YAML-like syntax
     yaml_str = "# Team configuration (dry-run)\n"
@@ -191,7 +200,7 @@ def _display_team_config_yaml(config: TeamConfig) -> None:
         yaml_str += f"    - name: {member['name']}\n"
         yaml_str += f"      role: {member['role']}\n"
         yaml_str += f"      model: {member['model']}\n"
-        if member['tools']:
+        if member["tools"]:
             yaml_str += f"      tools: [{', '.join(member['tools'])}]\n"
 
     syntax = Syntax(yaml_str, "yaml", theme="monokai", line_numbers=False)
@@ -207,7 +216,9 @@ _active_teams: dict[str, TeamConfig] = {}
 def create_team(
     goal: str = typer.Option(..., "--goal", "-g", help="Natural language goal"),
     name: str | None = typer.Option(None, "--name", "-n", help="Team name"),
-    mode: str | None = typer.Option(None, "--mode", "-m", help="Team mode (coordinate, route, broadcast, collaborate)"),
+    mode: str | None = typer.Option(
+        None, "--mode", "-m", help="Team mode (coordinate, route, broadcast, collaborate)"
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show configuration without creating"),
     run: bool = typer.Option(False, "--run", help="Run team immediately after creation"),
     task: str | None = typer.Option(None, "--task", "-t", help="Task to run (requires --run)"),
@@ -242,7 +253,9 @@ def create_team(
                     team_mode = TeamMode(mode.lower())
                 except ValueError:
                     valid_modes = [m.value for m in TeamMode]
-                    console.print(f"[red]Error: Invalid mode '{mode}'. Valid modes: {', '.join(valid_modes)}[/red]")
+                    console.print(
+                        f"[red]Error: Invalid mode '{mode}'. Valid modes: {', '.join(valid_modes)}[/red]"
+                    )
                     raise typer.Exit(code=1) from None
 
             # Create team configuration
@@ -254,7 +267,9 @@ def create_team(
 
             # Display configuration
             if dry_run:
-                console.print("\n[yellow]Dry run - showing configuration without creating:[/yellow]")
+                console.print(
+                    "\n[yellow]Dry run - showing configuration without creating:[/yellow]"
+                )
                 _display_team_config_yaml(config)
                 _display_team_config(config, verbose=True)
                 console.print("\n[green]To create this team, run without --dry-run[/green]")
@@ -272,12 +287,16 @@ def create_team(
             # Run if requested
             if run:
                 if not task:
-                    console.print("[yellow]Warning: --run requires --task. Skipping execution.[/yellow]")
+                    console.print(
+                        "[yellow]Warning: --run requires --task. Skipping execution.[/yellow]"
+                    )
                 else:
                     console.print(f"\n[cyan]Executing task on team {team_id}...[/cyan]")
                     console.print(f"[dim]Task: {task}[/dim]")
                     # Actual execution would integrate with AgentTeamManager
-                    console.print("[green]Task execution initiated (check logs for progress)[/green]")
+                    console.print(
+                        "[green]Task execution initiated (check logs for progress)[/green]"
+                    )
 
         except GoalParsingError as e:
             console.print(f"\n[red]Goal parsing error:[/red] {e.message}")
@@ -384,7 +403,9 @@ def list_skills(
             console.print(f"  Role: {skill_config.role}")
             console.print(f"  Model: {skill_config.model}")
             console.print(f"  Temperature: {skill_config.temperature}")
-            console.print(f"  Tools: {', '.join(skill_config.tools) if skill_config.tools else 'none'}")
+            console.print(
+                f"  Tools: {', '.join(skill_config.tools) if skill_config.tools else 'none'}"
+            )
             console.print("  Instructions:")
             # Show first few lines of instructions
             instructions_lines = skill_config.instructions.strip().split("\n")[:5]
@@ -414,7 +435,7 @@ def list_teams(
 
     if not _active_teams:
         console.print("\n[yellow]No active teams found.[/yellow]")
-        console.print("[dim]Create a team with: mahavishnu team create --goal \"your goal\"[/dim]")
+        console.print('[dim]Create a team with: mahavishnu team create --goal "your goal"[/dim]')
         return
 
     console.print(f"\n[bold cyan]Active Goal-Driven Teams ({len(_active_teams)})[/bold cyan]\n")
@@ -428,7 +449,9 @@ def list_teams(
     table.add_column("Description", style="dim")
 
     for team_id, config in _active_teams.items():
-        desc = config.description[:50] + "..." if len(config.description) > 50 else config.description
+        desc = (
+            config.description[:50] + "..." if len(config.description) > 50 else config.description
+        )
         table.add_row(
             team_id,
             config.name,
@@ -487,6 +510,7 @@ def learning_stats(
     # Handle export flag
     if export:
         import json
+
         data = engine.export_stats()
         console.print("\n[bold cyan]Learning Data Export[/bold cyan]\n")
         console.print(Syntax(json.dumps(data, indent=2), "json", theme="monokai"))
@@ -560,7 +584,9 @@ def learning_stats(
 
         for skill_data in summary["top_skills"]:
             skills_table.add_row(
-                skill_data["skills"][:40] + "..." if len(skill_data["skills"]) > 40 else skill_data["skills"],
+                skill_data["skills"][:40] + "..."
+                if len(skill_data["skills"]) > 40
+                else skill_data["skills"],
                 f"{skill_data['success_rate']:.0%}",
                 f"{skill_data['avg_latency_ms']:.0f}ms",
                 str(skill_data["executions"]),
@@ -576,10 +602,16 @@ def learning_stats(
             console.print("\n[bold]Recent Outcomes:[/bold]")
             for i, outcome in enumerate(recent, 1):
                 status = "[green]success[/green]" if outcome["success"] else "[red]failed[/red]"
-                console.print(f"  {i}. {outcome['team_id']} - {status} ({outcome['latency_ms']:.0f}ms)")
-                console.print(f"     Mode: {outcome['team_mode']}, Intent: {outcome['parsed_intent']}")
+                console.print(
+                    f"  {i}. {outcome['team_id']} - {status} ({outcome['latency_ms']:.0f}ms)"
+                )
+                console.print(
+                    f"     Mode: {outcome['team_mode']}, Intent: {outcome['parsed_intent']}"
+                )
 
-    console.print("\n[dim]Use --verbose for more details, --export for JSON, or --clear to reset[/dim]")
+    console.print(
+        "\n[dim]Use --verbose for more details, --export for JSON, or --clear to reset[/dim]"
+    )
 
 
 @app.command("recommend")
@@ -624,7 +656,9 @@ def recommend_mode(
         fallback = fallback_map.get(intent, "coordinate")
         console.print(f"[yellow]Insufficient learning data for intent '{intent}'.[/yellow]")
         console.print(f"[dim]Fallback mode: {fallback}[/dim]")
-        console.print("[dim]Record more team executions to enable learning-based recommendations.[/dim]")
+        console.print(
+            "[dim]Record more team executions to enable learning-based recommendations.[/dim]"
+        )
         return
 
     # Display recommendation
@@ -680,7 +714,9 @@ def show_feature_flags() -> None:
         table.add_row(flag_name, status, description)
 
     console.print(table)
-    console.print("\n[dim]Configure feature flags in settings/mahavishnu.yaml under goal_teams.feature_flags[/dim]")
+    console.print(
+        "\n[dim]Configure feature flags in settings/mahavishnu.yaml under goal_teams.feature_flags[/dim]"
+    )
 
 
 def add_team_commands(main_app: typer.Typer) -> None:

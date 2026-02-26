@@ -317,9 +317,7 @@ class LLMProviderFactory:
                     details={"provider": provider},
                 )
 
-            logger.info(
-                f"Created LLM model: provider={provider}, model_id={model_id}"
-            )
+            logger.info(f"Created LLM model: provider={provider}, model_id={model_id}")
             return self._model_instance
 
         except ImportError as e:
@@ -1156,7 +1154,6 @@ for code quality, potential improvements, and best practices. Focus on:
 - Documentation completeness
 
 Use available tools like read_file, analyze_code, and search_code to explore the codebase.""",
-
             "quality_check": """You are a quality assurance agent. Evaluate the
 repository against quality standards. Check for:
 - Code style compliance
@@ -1165,7 +1162,6 @@ repository against quality standards. Check for:
 - Maintainability concerns
 
 Use available tools to examine code files and provide a detailed assessment.""",
-
             "default": """You are a helpful AI assistant. Process the given task
 using available tools and provide clear, actionable responses.
 
@@ -1200,14 +1196,14 @@ Available tools include:
 
         if task_type == "code_sweep":
             return f"""Analyze the repository at {repo} for code quality and
-improvement opportunities. Focus on: {params.get('focus', 'general analysis')}.
+improvement opportunities. Focus on: {params.get("focus", "general analysis")}.
 
 Use available tools (read_file, list_directory, search_files, analyze_code) to explore the codebase and provide specific,
 actionable recommendations."""
 
         if task_type == "quality_check":
             return f"""Perform a quality check on the repository at {repo}.
-Evaluate against: {params.get('standards', 'Python best practices')}.
+Evaluate against: {params.get("standards", "Python best practices")}.
 
 Use available tools to examine the code and provide a compliance score and list any issues found."""
 
@@ -1242,9 +1238,7 @@ Use available tools to complete the task and provide a summary."""
         if not self._initialized:
             await self.initialize()
 
-        logger.info(
-            f"Executing Agno task: type={task.get('type')}, repos={len(repos)}"
-        )
+        logger.info(f"Executing Agno task: type={task.get('type')}, repos={len(repos)}")
 
         try:
             # Process repositories concurrently with semaphore
@@ -1257,19 +1251,19 @@ Use available tools to complete the task and provide a summary."""
             processed_results = []
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
-                    processed_results.append({
-                        "repo": repos[i],
-                        "status": "failed",
-                        "error": str(result),
-                        "task_id": task.get("id", "unknown"),
-                    })
+                    processed_results.append(
+                        {
+                            "repo": repos[i],
+                            "status": "failed",
+                            "error": str(result),
+                            "task_id": task.get("id", "unknown"),
+                        }
+                    )
                 else:
                     processed_results.append(result)
 
             # Calculate success/failure counts
-            success_count = sum(
-                1 for r in processed_results if r.get("status") == "completed"
-            )
+            success_count = sum(1 for r in processed_results if r.get("status") == "completed")
             failure_count = len(processed_results) - success_count
 
             return {
@@ -1304,9 +1298,7 @@ Use available tools to complete the task and provide a summary."""
             "adapter": "agno",
             "version": self.ADAPTER_VERSION,
             "initialized": self._initialized,
-            "llm_provider": self.agno_config.llm.provider.value
-            if self.agno_config
-            else None,
+            "llm_provider": self.agno_config.llm.provider.value if self.agno_config else None,
             "model_id": self.agno_config.llm.model_id if self.agno_config else None,
             "agents_cached": len(self._agents),
             "teams_count": len(self._teams),

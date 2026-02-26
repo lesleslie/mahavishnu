@@ -371,9 +371,9 @@ class IncidentSimulator:
         start_time = datetime.now(UTC)
         results: list[SimulationResult] = []
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"INCIDENT SIMULATION: {scenario.name}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"\n📋 Severity: {scenario.severity.value.upper()}")
         print(f"📝 Description: {scenario.description}")
         print(f"\n⚠️  Symptoms:")
@@ -381,7 +381,7 @@ class IncidentSimulator:
             print(f"   • {symptom}")
         print(f"\n🔗 Runbook: {scenario.runbook_reference}")
         print(f"\n⏱️  Expected Mitigation: {scenario.expected_mitigation_time_minutes} minutes")
-        print(f"\n{'='*60}\n")
+        print(f"\n{'=' * 60}\n")
 
         for i, step in enumerate(scenario.steps, 1):
             print(f"\n📌 Step {i}/{len(scenario.steps)} - {step['phase'].upper()}")
@@ -497,9 +497,9 @@ class IncidentSimulator:
 
 def print_report(report: SimulationReport) -> None:
     """Print simulation report."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("SIMULATION COMPLETE")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     status = "✅ PASSED" if report.passed else "❌ FAILED"
     print(f"\n{status}")
@@ -514,7 +514,7 @@ def print_report(report: SimulationReport) -> None:
         for rec in report.recommendations:
             print(f"   • {rec}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
 
 
 async def main():

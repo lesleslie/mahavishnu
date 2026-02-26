@@ -171,9 +171,7 @@ class GenericShellWorker(BaseWorker):
         while True:
             # Capture latest output
             try:
-                output = await self.terminal_manager.capture_output(
-                    self.session_id, lines=100
-                )
+                output = await self.terminal_manager.capture_output(self.session_id, lines=100)
             except Exception as e:
                 logger.error(f"Failed to capture output: {e}")
                 output = ""

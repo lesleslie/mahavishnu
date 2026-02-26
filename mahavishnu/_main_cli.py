@@ -116,6 +116,7 @@ add_ingestion_commands()
 # Quality evaluation
 # Quality evaluation (commented out - needs app argument)# add_quality_commands()
 
+
 @mcp_app.command("start")
 def mcp_start(
     host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host address to bind to"),

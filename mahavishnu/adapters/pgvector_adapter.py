@@ -431,7 +431,11 @@ class PgvectorAdapter:
 
         self._logger.info(
             "pgvector-collection-created",
-            extra={"name": name, "dimension": dimension, "index_type": self._settings.index_type.value},
+            extra={
+                "name": name,
+                "dimension": dimension,
+                "index_type": self._settings.index_type.value,
+            },
         )
         return True
 

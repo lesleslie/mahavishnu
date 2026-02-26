@@ -125,6 +125,7 @@ class MemoryAggregator:
         Returns:
             Number of successfully stored items
         """
+
         async def store_single_item(memory_item: dict[str, Any]) -> bool:
             """Store a single memory item, returning success status."""
             try:
@@ -180,10 +181,7 @@ class MemoryAggregator:
 
                 # Sleep with shutdown check
                 try:
-                    await asyncio.wait_for(
-                        self._shutdown_event.wait(),
-                        timeout=self.sync_interval
-                    )
+                    await asyncio.wait_for(self._shutdown_event.wait(), timeout=self.sync_interval)
                     break  # Shutdown signaled
                 except asyncio.TimeoutError:
                     pass  # Normal timeout, continue loop
