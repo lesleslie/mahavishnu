@@ -1279,6 +1279,9 @@ class FastMCPServer:
         # Register adapter registry tools
         self._register_adapter_registry_tools()
 
+        # Register health check tools
+        self._register_health_tools()
+
         await self.server.run_http_async(host=host, port=port)
 
     async def stop(self) -> None:
@@ -1470,6 +1473,13 @@ class FastMCPServer:
             logger.info("Registered 7 adapter registry management tools with MCP server")
         except ImportError as e:
             logger.warning(f"Adapter registry tools not available: {e}")
+
+    def _register_health_tools(self) -> None:
+        """Register health check tools with MCP server."""
+        from ..mcp.tools.health_tools import register_health_tools
+
+        register_health_tools(self.server, self.app)
+        logger.info("Registered 6 health check tools with MCP server")
 
 
 async def run_server(config=None):

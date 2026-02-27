@@ -156,6 +156,20 @@ class MahavishnuApp:
         # Initialize observability
         self.observability = init_observability(self.config)
 
+        # Initialize health endpoint
+        self._health_endpoint = None
+        if self.config.health.enabled:
+            from .health import HealthEndpoint, ServiceInfo
+
+            service_info = ServiceInfo(
+                name="mahavishnu",
+                version=getattr(self.config, "version", "0.3.2"),
+            )
+            self._health_endpoint = HealthEndpoint(
+                service_info=service_info,
+                config=self.config.health,
+            )
+
         # Initialize quality control
         self.qc = QualityControl(self.config)
 
@@ -296,6 +310,75 @@ class MahavishnuApp:
             await self.session_buddy_poller.start()
             logger = __import__("logging").getLogger(__name__)
             logger.info("Session-Buddy poller started")
+
+    async def wait_for_dependencies(self) -> bool:
+        """Wait for all configured dependencies to become healthy.
+
+        Uses exponential backoff for retries. Required dependencies will
+        block startup if unavailable. Optional dependencies will be skipped
+        after a few failed attempts.
+
+        This method should be called after app initialization but before
+        starting to accept work.
+
+        Returns:
+            True if all required dependencies are healthy, False otherwise
+
+        Example:
+            >>> app = MahavishnuApp()
+            >>> if not await app.wait_for_dependencies():
+            ...     raise RuntimeError("Required dependencies unavailable")
+        """
+        from .health import DependencyWaiter, ServiceInfo
+
+        config = self.config.health
+        if not config.enabled or not config.dependencies:
+            logger = __import__("logging").getLogger(__name__)
+            logger.debug("Health check disabled or no dependencies configured")
+            return True
+
+        logger = __import__("logging").getLogger(__name__)
+        logger.info(
+            "Waiting for dependencies",
+            extra={"dependencies": list(config.dependencies.keys())},
+        )
+
+        waiter = DependencyWaiter(config=config)
+        result = await waiter.wait_for_all(config.dependencies)
+
+        if result.success:
+            logger.info(
+                "All dependencies healthy",
+                extra={
+                    "total_wait_seconds": result.total_wait_seconds,
+                    "dependencies": {
+                        name: dep.status.value
+                        for name, dep in result.dependencies.items()
+                    },
+                },
+            )
+        else:
+            logger.error(
+                "Required dependencies unhealthy",
+                extra={
+                    "failed_required": result.failed_required,
+                    "skipped_optional": result.skipped_optional,
+                },
+            )
+
+        return result.success
+
+    @property
+    def health_endpoint(self):
+        """Get the health endpoint for this service.
+
+        Returns the HealthEndpoint instance for exposing /health and /ready
+        endpoints. Returns None if health check is disabled.
+
+        Returns:
+            HealthEndpoint instance or None
+        """
+        return self._health_endpoint
 
     async def stop_poller(self) -> None:
         """Stop Session-Buddy poller and routing metrics server.

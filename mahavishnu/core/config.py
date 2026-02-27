@@ -1342,6 +1342,123 @@ class GoalTeamsConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+# ============================================================================
+# Health Check Configuration
+# ============================================================================
+
+
+class DependencyConfig(BaseModel):
+    """Configuration for a service dependency.
+
+    Dependencies are checked on startup using health endpoints.
+    The system uses exponential backoff for retries.
+
+    Example YAML:
+        dependencies:
+          session_buddy:
+            host: "localhost"
+            port: 8678
+            required: true
+            timeout_seconds: 30
+          dhruva:
+            host: "localhost"
+            port: 8683
+            required: false
+            timeout_seconds: 10
+
+    Example Environment Variables:
+        MAHAVISHNU_HEALTH__DEPENDENCIES__SESSION_BUDDY__HOST=localhost
+        MAHAVISHNU_HEALTH__DEPENDENCIES__SESSION_BUDDY__PORT=8678
+    """
+
+    host: str = Field(
+        default="localhost",
+        description="Hostname or IP address of the dependency",
+    )
+    port: int = Field(
+        default=8080,
+        ge=1,
+        le=65535,
+        description="Port number for the health endpoint",
+    )
+    required: bool = Field(
+        default=True,
+        description="Whether startup should fail if this dependency is unavailable",
+    )
+    timeout_seconds: int = Field(
+        default=30,
+        ge=1,
+        le=300,
+        description="Maximum time to wait for this dependency (1-300 seconds)",
+    )
+    use_tls: bool = Field(
+        default=False,
+        description="Use HTTPS for health checks",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
+class HealthConfig(BaseModel):
+    """Health check system configuration.
+
+    Provides configuration for health endpoints and dependency waiting.
+
+    Example YAML:
+        health:
+          enabled: true
+          check_timeout_seconds: 5
+          retry_base_delay_seconds: 1.0
+          retry_max_delay_seconds: 16.0
+          dependencies:
+            session_buddy:
+              host: "localhost"
+              port: 8678
+              required: true
+            akosha:
+              host: "localhost"
+              port: 8682
+              required: true
+            dhruva:
+              host: "localhost"
+              port: 8683
+              required: false
+
+    Example Environment Variables:
+        MAHAVISHNU_HEALTH__ENABLED=true
+        MAHAVISHNU_HEALTH__CHECK_TIMEOUT_SECONDS=5
+    """
+
+    enabled: bool = Field(
+        default=True,
+        description="Enable health check system",
+    )
+    check_timeout_seconds: int = Field(
+        default=5,
+        ge=1,
+        le=60,
+        description="Timeout for individual health check requests (1-60 seconds)",
+    )
+    retry_base_delay_seconds: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=10.0,
+        description="Base delay for exponential backoff retries",
+    )
+    retry_max_delay_seconds: float = Field(
+        default=16.0,
+        ge=1.0,
+        le=60.0,
+        description="Maximum delay between retries",
+    )
+    dependencies: dict[str, DependencyConfig] = Field(
+        default_factory=dict,
+        description="Service dependencies to check on startup",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
 class MahavishnuSettings(BaseSettings):
     """Mahavishnu configuration extending MCPServerSettings.
 
@@ -1558,6 +1675,12 @@ class MahavishnuSettings(BaseSettings):
         description="Goal-Driven Teams configuration",
     )
 
+    # Health check configuration
+    health: HealthConfig = Field(
+        default_factory=HealthConfig,
+        description="Health check and dependency waiting configuration",
+    )
+
     @field_validator("repos_path")
     @classmethod
     def validate_repos_path(cls, v: str) -> str:
@@ -1628,5 +1751,8 @@ __all__ = [
     "GoalTeamsLimitsConfig",
     "GoalTeamsFeatureFlags",
     "GoalTeamsConfig",
+    # Health check configuration
+    "DependencyConfig",
+    "HealthConfig",
     "MahavishnuSettings",
 ]
