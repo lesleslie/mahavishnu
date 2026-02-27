@@ -259,8 +259,8 @@ health:
       required: true  # Block startup if unavailable
       timeout_seconds: 30
       use_tls: false
-    dhruva:
-      host: "localhost"  # Override via MAHAVISHNU_HEALTH__DEPENDENCIES__DHRUVA__HOST
+    druva:
+      host: "localhost"  # Override via MAHAVISHNU_HEALTH__DEPENDENCIES__DRUVA__HOST
       port: 8683
       required: false  # Optional dependency - log warning if unavailable
       timeout_seconds: 10
