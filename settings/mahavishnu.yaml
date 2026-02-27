@@ -232,3 +232,43 @@ goal_teams:
     learning_system_enabled: false  # Enable learning system (Phase 3)
     auto_mode_selection_enabled: true  # Enable automatic mode selection
     custom_skills_enabled: false  # Enable custom skills for team creation
+
+# Health check configuration for dependency management
+# Design: docs/plans/2026-02-27-health-check-system-design.md
+#
+# Environment variable overrides:
+#   MAHAVISHNU_HEALTH__DEPENDENCIES__SESSION_BUDDY__HOST=remote-host
+#   MAHAVISHNU_HEALTH__DEPENDENCIES__SESSION_BUDDY__PORT=443
+#   MAHAVISHNU_HEALTH__DEPENDENCIES__SESSION_BUDDY__USE_TLS=true
+health:
+  enabled: true  # Enable health check system
+  check_timeout_seconds: 5  # Timeout for individual health check requests
+  retry_base_delay_seconds: 1.0  # Base delay for exponential backoff
+  retry_max_delay_seconds: 16.0  # Maximum delay between retries
+  # Service dependencies to check on startup
+  dependencies:
+    session_buddy:
+      host: "localhost"  # Override via MAHAVISHNU_HEALTH__DEPENDENCIES__SESSION_BUDDY__HOST
+      port: 8678
+      required: true  # Block startup if unavailable
+      timeout_seconds: 30
+      use_tls: false
+    akosha:
+      host: "localhost"  # Override via MAHAVISHNU_HEALTH__DEPENDENCIES__AKOSHA__HOST
+      port: 8682
+      required: true  # Block startup if unavailable
+      timeout_seconds: 30
+      use_tls: false
+    dhruva:
+      host: "localhost"  # Override via MAHAVISHNU_HEALTH__DEPENDENCIES__DHRUVA__HOST
+      port: 8683
+      required: false  # Optional dependency - log warning if unavailable
+      timeout_seconds: 10
+      use_tls: false
+    crackerjack:
+      host: "localhost"  # Override via MAHAVISHNU_HEALTH__DEPENDENCIES__CRACKERJACK__HOST
+      port: 8676
+      required: false  # Optional - quality checks can run without it
+      timeout_seconds: 10
+      use_tls: false
+
