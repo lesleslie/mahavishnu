@@ -18,7 +18,7 @@
 |-----------|------|------|-------------|
 | [Mahavishnu](https://github.com/lesleslie/mahavishnu) | Orchestrator | 8680 | Multi-engine workflow orchestration |
 | [Akosha](https://github.com/lesleslie/akosha) | Seer | 8682 | Cross-system intelligence & embeddings |
-| [Dhruva](https://github.com/lesleslie/dhruva) | Curator | 8683 | Persistent object storage with ACID |
+| [Druva](https://github.com/lesleslie/druva) | Curator | 8683 | Persistent object storage with ACID |
 | [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder | 8678 | Session lifecycle & knowledge graphs |
 | [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector | 8676 | Quality gates & CI/CD validation |
 | [Oneiric](https://github.com/lesleslie/oneiric) | Resolver | N/A | Conflict resolution library |

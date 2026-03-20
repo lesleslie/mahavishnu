@@ -10,14 +10,14 @@ Mahavishnu is part of the **Bodai Ecosystem** - a collection of interconnected c
 |-----------|------|------|-------------|
 | **Mahavishnu** | Orchestrator | 8680 | Multi-engine workflow orchestration (this repo) |
 | [Akosha](https://github.com/lesleslie/akosha) | Seer | 8682 | Cross-system intelligence & embeddings |
-| [Dhruva](https://github.com/lesleslie/dhruva) | Curator | 8683 | Persistent object storage with ACID |
+| [Druva](https://github.com/lesleslie/druva) | Curator | 8683 | Persistent object storage with ACID |
 | [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder | 8678 | Session lifecycle & knowledge graphs |
 | [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector | 8676 | Quality gates & CI/CD validation |
 | [Oneiric](https://github.com/lesleslie/oneiric) | Resolver | N/A | Conflict resolution library |
 
 **Key Interactions:**
 - Routes tasks to **Akosha** for intelligence operations
-- Persists state to **Dhruva** for recovery
+- Persists state to **Druva** for recovery
 - Tracks context in **Session-Buddy**
 - Validates with **Crackerjack** before execution
 
