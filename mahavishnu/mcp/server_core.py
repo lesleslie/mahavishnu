@@ -1,6 +1,7 @@
 """FastMCP server implementation for Mahavishnu."""
 
 import asyncio
+import time
 from contextlib import suppress
 from datetime import datetime
 from importlib.metadata import version
@@ -8,6 +9,8 @@ from logging import getLogger
 from typing import Any
 
 from fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from ..core.app import MahavishnuApp
 from ..core.auth import get_auth_from_config
@@ -137,6 +140,9 @@ class FastMCPServer:
                 self.app.pool_manager.terminal_manager = self.terminal_manager
                 logger.info("Updated pool_manager terminal_manager reference")
 
+        # Register HTTP health endpoint for Claude Code health checks
+        self._register_health_endpoint()
+
         # Register all tools
         self._register_tools()
 
@@ -194,6 +200,27 @@ class FastMCPServer:
         except Exception as e:
             logger.error(f"Failed to initialize terminal manager: {e}")
             return None
+
+    def _register_health_endpoint(self) -> None:
+        """Register HTTP health endpoint for Claude Code health checks.
+
+        Claude Code's `mcp list` command checks /health endpoint to verify
+        server status. This endpoint returns basic health information.
+        """
+
+        @self.server.custom_route("/health", methods=["GET"])
+        async def health_check(request: Request) -> JSONResponse:
+            """HTTP health check endpoint for Claude Code compatibility."""
+            return JSONResponse({
+                "status": "ok",
+                "service": "mahavishnu",
+                "version": __version__,
+            })
+
+        @self.server.custom_route("/healthz", methods=["GET"])
+        async def healthz_check(request: Request) -> JSONResponse:
+            """Kubernetes-style health check endpoint."""
+            return JSONResponse({"status": "ok"})
 
     def _register_tools(self):
         """Register all MCP tools using the FastMCP decorator pattern."""
