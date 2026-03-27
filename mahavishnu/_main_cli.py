@@ -46,6 +46,8 @@ from .cli.team_cli import add_team_commands
 # from .cli.help_cli import help_group
 
 app = typer.Typer()
+DEFAULT_MCP_HOST = "127.0.0.1"
+DEFAULT_MCP_PORT = 8680
 
 # Add worktree sub-app
 app.add_typer(worktree_app, name="worktree")
@@ -119,8 +121,8 @@ add_ingestion_commands()
 
 @mcp_app.command("start")
 def mcp_start(
-    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host address to bind to"),
-    port: int = typer.Option(3000, "--port", "-p", help="Port to listen on"),
+    host: str = typer.Option(DEFAULT_MCP_HOST, "--host", "-h", help="Host address to bind to"),
+    port: int = typer.Option(DEFAULT_MCP_PORT, "--port", "-p", help="Port to listen on"),
 ):
     """Start the MCP server to expose tools via mcp-common."""
 
@@ -172,8 +174,8 @@ def mcp_stop() -> NoReturn:
 
 @mcp_app.command("restart")
 def mcp_restart(
-    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host address to bind to"),
-    port: int = typer.Option(3000, "--port", "-p", help="Port to listen on"),
+    host: str = typer.Option(DEFAULT_MCP_HOST, "--host", "-h", help="Host address to bind to"),
+    port: int = typer.Option(DEFAULT_MCP_PORT, "--port", "-p", help="Port to listen on"),
 ) -> NoReturn:
     """Restart the MCP server."""
     typer.echo("ERROR: MCP server restart not yet implemented")
@@ -207,7 +209,7 @@ def mcp_status() -> None:
 
         # Note: We can't check if the server is actually running without
         # connecting to it, but we can show the configuration status
-        typer.echo("Server will bind to: 127.0.0.1:3000 (configurable)")
+        typer.echo(f"Server will bind to: {DEFAULT_MCP_HOST}:{DEFAULT_MCP_PORT} (configurable)")
         typer.echo("\nTo start the server, run: mahavishnu mcp start")
 
     asyncio.run(_status())
@@ -218,8 +220,8 @@ def mcp_health() -> None:
     """Check MCP server health."""
 
     async def _health():
-        host = "127.0.0.1"
-        port = 3000
+        host = DEFAULT_MCP_HOST
+        port = DEFAULT_MCP_PORT
 
         try:
             # Try to connect to the MCP server
@@ -227,7 +229,7 @@ def mcp_health() -> None:
                 asyncio.open_connection(host, port), timeout=2.0
             )
             writer.close()
-            reader.close()
+            await writer.wait_closed()
             typer.echo("MCP Server: ✓ Running")
             typer.echo(f"Connected to {host}:{port}")
         except (TimeoutError, ConnectionRefusedError, OSError):

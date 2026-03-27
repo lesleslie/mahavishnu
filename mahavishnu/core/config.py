@@ -1360,7 +1360,7 @@ class DependencyConfig(BaseModel):
             port: 8678
             required: true
             timeout_seconds: 30
-          dhruva:
+          druva:
             host: "localhost"
             port: 8683
             required: false
@@ -1419,7 +1419,7 @@ class HealthConfig(BaseModel):
               host: "localhost"
               port: 8682
               required: true
-            dhruva:
+            druva:
               host: "localhost"
               port: 8683
               required: false

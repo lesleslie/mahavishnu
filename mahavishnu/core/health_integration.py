@@ -5,7 +5,7 @@ Wires adapter health to StatisticalRouter, alerts, and Grafana (Phase 3).
 Components:
 - AdapterHealthMonitor: Collects health from all adapters periodically
 - Updates Prometheus metrics for observability
-- Persists health state to Dhruva/SQLite
+- Persists health state to Druva/SQLite
 - Broadcasts health changes via WebSocket
 - Triggers alerts on adapter degradation
 
@@ -45,7 +45,7 @@ class HealthIntegrationConfig:
         unhealthy_threshold: Consecutive failures before marking unhealthy (default: 3)
         recovery_threshold: Consecutive successes before marking healthy (default: 1)
         broadcast_changes: Whether to broadcast health changes via WebSocket (default: True)
-        persist_to_storage: Whether to persist health to Dhruva/SQLite (default: True)
+        persist_to_storage: Whether to persist health to Druva/SQLite (default: True)
         update_router_preferences: Whether to update StatisticalRouter on health changes (default: True)
     """
 
@@ -155,7 +155,7 @@ class AdapterHealthMonitor:
 
     Collects health from all adapters periodically and:
     - Updates Prometheus metrics for observability
-    - Persists health to Dhruva/SQLite for historical analysis
+    - Persists health to Druva/SQLite for historical analysis
     - Broadcasts health changes via WebSocket for real-time updates
     - Triggers alerts on adapter degradation
     - Updates StatisticalRouter preference order
@@ -563,21 +563,21 @@ class AdapterHealthMonitor:
         adapter_name: str,
         state: AdapterHealthState,
     ) -> None:
-        """Persist health state to storage (Dhruva/SQLite).
+        """Persist health state to storage (Druva/SQLite).
 
         Args:
             adapter_name: Name of the adapter
             state: Current health state
         """
         try:
-            # Try to use Dhruva client if available
-            from mahavishnu.core.oneiric_client import get_dhruva_client
+            # Try to use Druva client if available
+            from mahavishnu.core.oneiric_client import get_druva_client
 
-            client = get_dhruva_client()
+            client = get_druva_client()
             if client:
                 key = f"health:adapter:{adapter_name}"
                 await client.put(key, state.to_dict(), ttl=86400 * 7)  # 7 days TTL
-                logger.debug(f"Persisted health state for {adapter_name} to Dhruva")
+                logger.debug(f"Persisted health state for {adapter_name} to Druva")
         except ImportError:
             # Fallback to local SQLite if available
             try:

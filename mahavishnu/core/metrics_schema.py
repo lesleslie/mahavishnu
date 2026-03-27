@@ -269,22 +269,22 @@ class ABTest(BaseModel):
 
 
 def generate_execution_key(execution_id: str) -> str:
-    """Generate Dhruva key for execution record."""
+    """Generate Druva key for execution record."""
     return f"exec:{execution_id}"
 
 
 def generate_stats_key(adapter: AdapterType, date: str) -> str:
-    """Generate Dhruva key for adapter stats."""
+    """Generate Druva key for adapter stats."""
     return f"stats:adapter:{adapter.value}:{date}"
 
 
 def generate_task_stats_key(task_type: TaskType, date: str) -> str:
-    """Generate Dhruva key for task type stats."""
+    """Generate Druva key for task type stats."""
     return f"stats:task:{task_type.value}:{date}"
 
 
 def generate_cost_key(execution_id: str) -> str:
-    """Generate Dhruva key for cost tracking."""
+    """Generate Druva key for cost tracking."""
     return f"cost:{execution_id}"
 
 

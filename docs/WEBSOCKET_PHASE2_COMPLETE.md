@@ -387,7 +387,7 @@ if __name__ == "__main__":
 - [ ] Create troubleshooting guides
 
 ### Phase 3: Enhanced Collaboration (Week 10-12)
-- [ ] dhruva WebSocket - Adapter distribution events
+- [ ] druva WebSocket - Adapter distribution events
 - [ ] excalidraw WebSocket - Real-time diagram collaboration
 - [ ] fastblocks WebSocket - UI update streams
 

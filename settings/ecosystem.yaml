@@ -1,51 +1,64 @@
 # Ecosystem configuration for Mahavishnu
 # This file defines the repositories that Mahavishnu manages
 
+version: "1.0"
+last_updated: "2026-03-25"
+maintainer: "les"
+description: "Bodai ecosystem repository and MCP configuration for Mahavishnu orchestration."
+
 repos:
   - name: "mahavishnu"
     path: "/Users/les/Projects/mahavishnu"
+    role: "orchestrator"
     tags: ["orchestrator", "main"]
     description: "Multi-agent orchestration system"
     status: "active"
 
   - name: "crackerjack"
     path: "/Users/les/Projects/crackerjack"
+    role: "inspector"
     tags: ["quality", "testing"]
     description: "Quality assurance and testing framework"
     status: "active"
 
   - name: "session-buddy"
     path: "/Users/les/Projects/session-buddy"
+    role: "manager"
     tags: ["session-management", "memory"]
     description: "Session management and conversation tracking"
     status: "active"
 
   - name: "oneiric"
     path: "/Users/les/Projects/oneiric"
+    role: "resolver"
     tags: ["configuration", "lifecycle"]
     description: "Configuration and lifecycle management"
     status: "active"
 
   - name: "mcp-common"
     path: "/Users/les/Projects/mcp-common"
+    role: "foundation"
     tags: ["library", "shared", "foundation"]
     description: "Foundation library for MCP servers"
     status: "active"
 
   - name: "mdinject"
     path: "/Users/les/Projects/mdinject"
+    role: "app"
     tags: ["app", "macos", "swiftui", "gui"]
     description: "macOS SwiftUI desktop app for markdown prompt management (IPC via Unix socket)"
     status: "active"
 
   - name: "akosha"
     path: "/Users/les/Projects/akosha"
+    role: "seer"
     tags: ["semantic", "search", "vector", "knowledge"]
     description: "Semantic search and knowledge aggregation"
     status: "active"
 
-  - name: "dhruva"
-    path: "/Users/les/Projects/dhruva"
+  - name: "druva"
+    path: "/Users/les/Projects/druva"
+    role: "curator"
     tags: ["workflow", "config", "distribution"]
     description: "Workflow configuration and Oneiric adapter distribution"
     status: "active"

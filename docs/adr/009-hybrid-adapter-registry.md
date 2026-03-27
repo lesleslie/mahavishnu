@@ -33,7 +33,7 @@ Mahavishnu's adapter architecture was hardcoded with direct imports and manual i
   - Optional Oneiric MCP for remote discovery
   - Composite pattern avoids God Object
   - Capability-based routing with fallback support
-  - Dhruva persistence optional (SQLite fallback)
+  - Druva persistence optional (SQLite fallback)
 - **Cons:**
   - More complex architecture
   - Multiple components to maintain
@@ -52,7 +52,7 @@ Implement `HybridAdapterRegistry` using the Composite pattern with separate comp
 │  │  Engine         │  │  Layer          │  │  Tracker        │ │
 │  │                 │  │                 │  │                 │ │
 │  │  • Entry Points │  │  • SQLite       │  │  • Prometheus   │ │
-│  │  • Oneiric MCP  │  │  • Dhruva MCP   │  │  • Alerts       │ │
+│  │  • Oneiric MCP  │  │  • Druva MCP   │  │  • Alerts       │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
                               │
@@ -102,19 +102,19 @@ Persists adapter state with SQLite fallback:
 
 ```python
 class AdapterPersistenceLayer:
-    """Persist adapter state to SQLite with Dhruva MCP sync."""
+    """Persist adapter state to SQLite with Druva MCP sync."""
 
     async def save_state(self, state: AdapterState) -> None:
-        """Save state to SQLite, optionally sync to Dhruva."""
+        """Save state to SQLite, optionally sync to Druva."""
         await self._sqlite_save(state)
-        if self.dhruva_enabled:
-            await self._dhruva_sync(state)
+        if self.druva_enabled:
+            await self._druva_sync(state)
 
     async def load_state(self, adapter_id: str) -> AdapterState | None:
-        """Load state from SQLite (Dhruva as backup)."""
+        """Load state from SQLite (Druva as backup)."""
         state = await self._sqlite_load(adapter_id)
-        if not state and self.dhruva_enabled:
-            state = await self._dhruva_load(adapter_id)
+        if not state and self.druva_enabled:
+            state = await self._druva_load(adapter_id)
         return state
 ```
 
@@ -258,7 +258,7 @@ adapter_registry:
 - **Capability-Based Routing**: Dynamic routing instead of hardcoded mappings
 - **State Persistence**: Adapter state survives restarts
 - **Health Integration**: Prometheus metrics and Grafana dashboards
-- **Fallback Support**: SQLite fallback when Dhruva unavailable
+- **Fallback Support**: SQLite fallback when Druva unavailable
 - **Thread Safety**: RLock protects concurrent access
 - **Resolution Caching**: TTL cache for performance
 
@@ -266,7 +266,7 @@ adapter_registry:
 
 - **Complexity**: Multiple components to understand and maintain
 - **Discovery Overhead**: Entry point discovery adds startup time
-- **Optional Dependencies**: Oneiric MCP and Dhruva are optional but add complexity
+- **Optional Dependencies**: Oneiric MCP and Druva are optional but add complexity
 
 ### Risks
 
@@ -276,7 +276,7 @@ adapter_registry:
 - **Risk:** Entry point discovery fails
   **Mitigation:** Cached metadata, fallback to hardcoded initialization
 
-- **Risk:** Dhruva unavailable
+- **Risk:** Druva unavailable
   **Mitigation:** SQLite fallback with async sync when available
 
 ## Implementation
@@ -285,7 +285,7 @@ adapter_registry:
 
 - [x] `adapter_registry.py` - HybridAdapterRegistry with composite pattern
 - [x] `adapter_discovery.py` - Entry point + Oneiric MCP discovery
-- [x] `adapter_persistence.py` - SQLite + Dhruva persistence
+- [x] `adapter_persistence.py` - SQLite + Druva persistence
 
 ### Phase 2: Capability Routing (Complete)
 
@@ -312,5 +312,5 @@ adapter_registry:
 
 - [Python Entry Points](https://packaging.python.org/en/latest/specifications/entry-points/)
 - [Oneiric Resolution System](https://github.com/lesleslie/oneiric)
-- [Dhruva Persistence Layer](https://github.com/lesleslie/dhruva)
+- [Druva Persistence Layer](https://github.com/lesleslie/druva)
 - ADR 004: Adapter Architecture and Engine Integration

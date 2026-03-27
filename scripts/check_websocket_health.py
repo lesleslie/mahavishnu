@@ -10,7 +10,7 @@ Supported Servers:
     - mahavishnu (8690) - Workflow orchestration and pool management
     - akosha (8692) - Knowledge graph and insights
     - crackerjack (8686) - Quality control and CI/CD
-    - dhruva (8693) - Dependency management
+    - druva (8693) - Dependency management
     - excalidraw-mcp (3042) - Diagram collaboration
     - fastblocks (8684) - Application building and UI rendering
 
@@ -82,7 +82,7 @@ DEFAULT_SERVERS: dict[ServerName, ServerConfig] = {
         "port": 8686,
         "description": "Quality control and CI/CD",
     },
-    "dhruva": {
+    "druva": {
         "host": "127.0.0.1",
         "port": 8693,
         "description": "Dependency management",
@@ -105,7 +105,7 @@ SERVICE_DEPENDENCIES: dict[ServerName, list[ServerName]] = {
     "mahavishnu": ["session-buddy"],  # Depends on session management
     "akosha": ["mahavishnu"],  # Depends on orchestration for memory aggregation
     "crackerjack": [],  # Independent quality checks
-    "dhruva": [],  # Independent dependency management
+    "druva": [],  # Independent dependency management
     "excalidraw-mcp": [],  # Independent diagram service
     "fastblocks": [],  # Independent app building
 }

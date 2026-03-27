@@ -35,7 +35,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
         """Get git velocity dashboard across multiple repositories.
 
         Aggregates commit velocity, branch switch frequency, and merge
-        conflict rates from Dhruva time-series storage where Crackerjack
+        conflict rates from Druva time-series storage where Crackerjack
         stores git metrics.
 
         Args:
@@ -47,14 +47,14 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             Dictionary with per-project and aggregated velocity metrics
         """
         try:
-            # Query Dhruva for git metrics (time-series data)
-            from ...core.dhruva_adapter import DhruvaAdapter
+            # Query Druva for git metrics (time-series data)
+            from ...core.druva_adapter import DruvaAdapter
 
             app = getattr(server, "app", None)
             if not app:
                 return {"status": "error", "error": "App instance not available in server context"}
 
-            dhruva = DhruvaAdapter(app.dhruva_url)
+            druva = DruvaAdapter(app.druva_url)
 
             # Calculate date threshold
             threshold_date = datetime.now() - timedelta(days=days_back)
@@ -66,7 +66,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
 
             for repo_path in repo_paths:
                 # Query time-series metrics for this repository
-                metrics = await dhruva.query_time_series(
+                metrics = await druva.query_time_series(
                     metric_type="git_velocity",
                     entity_id=repo_path,
                     start_date=threshold_date.isoformat(),
@@ -134,17 +134,17 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             Repository health metrics including stale PRs, branches, and quality scores
         """
         try:
-            from ...core.dhruva_adapter import DhruvaAdapter
+            from ...core.druva_adapter import DruvaAdapter
 
             app = getattr(server, "app", None)
             if not app:
                 return {"status": "error", "error": "App instance not available in server context"}
 
-            dhruva = DhruvaAdapter(app.dhruva_url)
+            druva = DruvaAdapter(app.druva_url)
             repo_name = repo_path.split("/")[-1]
 
-            # Query git metrics from Dhruva
-            git_metrics = await dhruva.query_time_series(
+            # Query git metrics from Druva
+            git_metrics = await druva.query_time_series(
                 metric_type="repository_health",
                 entity_id=repo_path,
                 limit=100,
@@ -213,19 +213,19 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             Cross-project patterns with insights and correlations
         """
         try:
-            from ...core.dhruva_adapter import DhruvaAdapter
+            from ...core.druva_adapter import DruvaAdapter
 
             app = getattr(server, "app", None)
             if not app:
                 return {"status": "error", "error": "App instance not available in server context"}
 
-            dhruva = DhruvaAdapter(app.dhruva_url)
+            druva = DruvaAdapter(app.druva_url)
 
             # Query all metrics for the analysis period
             threshold_date = (datetime.now() - timedelta(days=days_back)).isoformat()
 
             # Get git metrics patterns
-            git_patterns = await dhruva.aggregate_patterns(
+            git_patterns = await druva.aggregate_patterns(
                 start_date=threshold_date,
                 min_occurrences=min_occurrences,
             )

@@ -56,7 +56,7 @@ Services in the Bodai ecosystem need to:
 │  │  wait_for_dependencies()                                │   │
 │  │    → GET http://localhost:8678/health (Session-Buddy)   │   │
 │  │    → GET http://localhost:8682/health (Akosha)          │   │
-│  │    → GET http://localhost:8683/health (Dhruva)          │   │
+│  │    → GET http://localhost:8683/health (Druva)          │   │
 │  │    → Retry with exponential backoff until ready         │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                  │
@@ -107,7 +107,7 @@ Services in the Bodai ecosystem need to:
     "dependencies": {
         "session_buddy": {"status": "ok", "latency_ms": 5},
         "akosha": {"status": "ok", "latency_ms": 3},
-        "dhruva": {"status": "ok", "latency_ms": 2}
+        "druva": {"status": "ok", "latency_ms": 2}
     },
     "checks": {
         "database": "ok",
@@ -142,7 +142,7 @@ dependencies:
     port: 8682
     required: true
     timeout_seconds: 30
-  dhruva:
+  druva:
     host: "${DHRUVA_HOST:-localhost}"
     port: 8683
     required: false  # Optional dependency
@@ -327,7 +327,7 @@ dependencies:
     host: "localhost"
     port: 8682
     required: true
-  dhruva:
+  druva:
     host: "localhost"
     port: 8683
     required: false
@@ -346,7 +346,7 @@ dependencies:
   akosha:
     host: "${AKOSHA_HOST}"
     port: 8682
-  dhruva:
+  druva:
     host: "${DHRUVA_HOST}"
     port: 8683
 ```

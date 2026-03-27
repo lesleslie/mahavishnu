@@ -3,7 +3,7 @@
 #
 # This script deploys WebSocket servers for:
 # - Mahavishnu (port 8690)
-# - Dhruva (port 8693)
+# - Druva (port 8693)
 # - Akosha (port 8692)
 # - Crackerjack (port 8686)
 # - Excalidraw (port 3042)
@@ -108,7 +108,7 @@ start_servers() {
     echo $! > "$PID_DIR/mahavishnu_websocket.pid"
 
     # Start other WebSocket servers (if they exist as separate services)
-    # Note: Dhruva, Akosha, Crackerjack would be started via their own MCP servers
+    # Note: Druva, Akosha, Crackerjack would be started via their own MCP servers
 
     # Wait for servers to start
     sleep 3
@@ -138,7 +138,7 @@ check_servers_health() {
     fi
 
     # Check other services
-    for service in "Dhruva:8693" "Akosha:8692" "Crackerjack:8686" "Excalidraw:3042" "Fastblocks:8684"; do
+    for service in "Druva:8693" "Akosha:8692" "Crackerjack:8686" "Excalidraw:3042" "Fastblocks:8684"; do
         IFS=':' read -r name port <<< "$service"
         if lsof -i:$port -sTCP:LISTENING > /dev/null 2>&1; then
             log_info "✓ $name WebSocket server running on port $port"
@@ -223,7 +223,7 @@ Examples:
   $0 start development
   $0 start production
   $0 status
-  $0 logs dhruva
+  $0 logs druva
   $0 health
 
 EOF

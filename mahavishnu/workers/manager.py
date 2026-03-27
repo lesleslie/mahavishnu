@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -161,6 +162,46 @@ class WorkerManager:
                 session_buddy_client=self.session_buddy_client,
                 **kwargs,
             )
+
+        elif config.category == WorkerCategory.GATEWAY:
+            # Gateway workers (HTTP/RPC integration)
+            if worker_type == "gateway-openclaw":
+                from .openclaw_gateway import (
+                    HTTPOpenClawGatewayClient,
+                    OpenClawGatewayConfig,
+                    OpenClawGatewayWorker,
+                )
+
+                gateway_url = kwargs.get(
+                    "gateway_url",
+                    os.getenv("OPENCLAW_GATEWAY_URL", "http://localhost:8787"),
+                )
+                token = kwargs.get("token", os.getenv("OPENCLAW_GATEWAY_TOKEN"))
+                rpc_path = kwargs.get(
+                    "rpc_path",
+                    os.getenv("OPENCLAW_GATEWAY_RPC_PATH", "/rpc"),
+                )
+                timeout = float(kwargs.get("timeout", config.default_timeout))
+                default_method = kwargs.get("default_method", "agent.run")
+
+                gateway_client = HTTPOpenClawGatewayClient(
+                    base_url=gateway_url,
+                    token=token,
+                    rpc_path=rpc_path,
+                    timeout=timeout,
+                )
+                gateway_config = OpenClawGatewayConfig(
+                    gateway_url=gateway_url,
+                    token=token,
+                    default_method=default_method,
+                    default_timeout=int(timeout),
+                )
+                return OpenClawGatewayWorker(
+                    gateway_client=gateway_client,
+                    config=gateway_config,
+                )
+
+            raise ValueError(f"Unknown gateway worker type: {worker_type}")
 
         else:
             # Fallback - try GenericShellWorker

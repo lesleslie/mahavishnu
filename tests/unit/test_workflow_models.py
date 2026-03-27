@@ -10,7 +10,7 @@ from mahavishnu.core.workflow_models import (
 
 def test_workflow_execution_ulid_validation():
     """Should validate ULID format for workflow executions."""
-    # Valid Crockford Base32 ULID (from Dhruva)
+    # Valid Crockford Base32 ULID (from Druva)
     valid_ulid = "01kh85b0x6000a9vb7cgn42ed8"
 
     execution = WorkflowExecution(
@@ -106,8 +106,8 @@ def test_workflow_checkpoint_invalid_ulid_raises():
 
 def test_workflow_execution_is_complete():
     """Should correctly identify completed workflows."""
-    # Generate valid ULID from Dhruva to ensure format compliance
-    from dhruva import ULID
+    # Generate valid ULID from Druva to ensure format compliance
+    from oneiric.core.ulid import ULID
     valid_ulid = str(ULID())
 
     execution = WorkflowExecution(
@@ -122,8 +122,8 @@ def test_workflow_execution_is_complete():
 
 def test_workflow_execution_is_not_complete():
     """Should correctly identify incomplete workflows."""
-    # Generate valid ULID from Dhruva to ensure format compliance
-    from dhruva import ULID
+    # Generate valid ULID from Druva to ensure format compliance
+    from oneiric.core.ulid import ULID
     valid_ulid = str(ULID())
 
     execution = WorkflowExecution(
@@ -138,7 +138,7 @@ def test_workflow_execution_is_not_complete():
 def test_workflow_execution_duration():
     """Should calculate execution duration correctly."""
     from datetime import datetime
-    from dhruva import ULID
+    from oneiric.core.ulid import ULID
 
     start = datetime(2026, 2, 11, 12, 0, 0)
     end = datetime(2026, 2, 11, 12, 5, 30, 0)
@@ -158,7 +158,7 @@ def test_workflow_execution_duration():
 
 def test_workflow_execution_no_end_time():
     """Should return None when end_time is missing."""
-    from dhruva import ULID
+    from oneiric.core.ulid import ULID
     valid_ulid = str(ULID())
 
     execution = WorkflowExecution(
@@ -173,7 +173,7 @@ def test_workflow_execution_no_end_time():
 def test_pool_execution_duration():
     """Should calculate pool execution duration correctly."""
     from datetime import datetime
-    from dhruva import ULID
+    from oneiric.core.ulid import ULID
 
     start = datetime(2026, 2, 11, 12, 0, 0)
     end = datetime(2026, 2, 11, 12, 0, 30)
@@ -194,7 +194,7 @@ def test_pool_execution_duration():
 
 def test_pool_execution_no_duration():
     """Should return None when end_time is missing."""
-    from dhruva import ULID
+    from oneiric.core.ulid import ULID
     valid_ulid = str(ULID())
 
     execution = PoolExecution(

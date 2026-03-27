@@ -376,7 +376,7 @@ async def websocket_health_check() -> dict:
 | mahavishnu | 8680 | 8690 | +10 |
 | akosha | 8682 | 8692 | +10 |
 | crackerjack | 8676 | 8686 | +10 |
-| dhruva | 8683 | 8693 | +10 |
+| druva | 8683 | 8693 | +10 |
 | excalidraw | 3032 | 3042 | +10 |
 
 ## Progress Tracking

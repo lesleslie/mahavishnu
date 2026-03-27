@@ -386,7 +386,7 @@ class HealthConfig(BaseModel):
               host: "localhost"
               port: 8682
               required: true
-            dhruva:
+            druva:
               host: "localhost"
               port: 8683
               required: false
@@ -1456,7 +1456,7 @@ health:
       port: 8682
       required: true
       timeout_seconds: 30
-    dhruva:
+    druva:
       host: "${DHRUVA_HOST:-localhost}"
       port: 8683
       required: false
@@ -1478,7 +1478,7 @@ chore(config): add health check dependencies
 Configure health check for Bodai ecosystem services:
 - session_buddy (required): port 8678
 - akosha (required): port 8682
-- dhruva (optional): port 8683
+- druva (optional): port 8683
 - crackerjack (optional): port 8676
 
 Uses environment variable substitution for cloud deployment.

@@ -50,7 +50,7 @@ WebSocket production hardening is **COMPLETE**. Comprehensive deployment guide a
      - Session-Buddy (session management)
      - Crackerjack (quality control)
      - Akosha (analytics)
-     - Dhruva (adapter distribution)
+     - Druva (adapter distribution)
      - Excalidraw-MCP (diagrams)
      - Fastblocks (UI updates)
 
@@ -305,7 +305,7 @@ cd /opt/bodhisattva
 source config/env
 
 # Start all services
-for service in mahavishnu session-buddy crackerjack akosha dhruva excalidraw fastblocks; do
+for service in mahavishnu session-buddy crackerjack akosha druva excalidraw fastblocks; do
     systemctl start ${service}-websocket
 done
 

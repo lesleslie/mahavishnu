@@ -258,7 +258,7 @@ main() {
 
         echo ""
         print_info "Akosha validation:"
-        print_info "  Check that GraphEntity class uses: from dhruva import generate"
+        print_info "  Check that GraphEntity class uses: from druva import generate"
         print_info "  Verify entity_id field generates valid ULIDs"
 
         echo ""

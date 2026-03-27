@@ -133,10 +133,10 @@ except ImportError:
 try:
     from oneiric.core.ulid import generate_config_id, is_config_ulid
 except ImportError:
-    # Try Dhruva directly (the actual ULID implementation)
+    # Try Druva directly (the actual ULID implementation)
     try:
-        from dhruva import generate as generate_ulid
-        from dhruva import is_ulid
+        from druva import generate as generate_ulid
+        from druva import is_ulid
 
         def generate_config_id() -> str:
             return generate_ulid()
@@ -159,7 +159,7 @@ except ImportError:
             # Combine: 6 bytes timestamp + 10 bytes randomness = 16 bytes
             ulid_bytes = timestamp_bytes + randomness
 
-            # Encode to Crockford Base32 (Dhruva's alphabet)
+            # Encode to Crockford Base32 (Druva's alphabet)
             alphabet = "0123456789abcdefghjkmnpqrstvwxyz"
             b32_encode = lambda data: ''.join([
                 alphabet[(b >> 35) & 31] for b in data
@@ -175,8 +175,8 @@ except ImportError:
 ```
 
 **Why This Fix Matters:**
-1. **Direct Dhruva integration:** Uses the actual ULID library that powers the ecosystem
-2. **Proper fallback:** If Oneiric unavailable, goes directly to Dhruva (source of truth)
+1. **Direct Druva integration:** Uses the actual ULID library that powers the ecosystem
+2. **Proper fallback:** If Oneiric unavailable, goes directly to Druva (source of truth)
 3. **Correct validation:** Checks ULID format, not just length
 4. **Time-ordered generation:** ULIDs are sortable by generation time
 5. **Cross-system correlation:** Works with Akosha, Crackerjack, Session-Buddy migrations
@@ -305,7 +305,7 @@ reflection = await store_reflection(
 ## Next Steps
 
 1. **CRITICAL:** Fix `generate_config_id()` fallback in `workflow_models.py`
-2. **Add unit tests** for ULID generation with Dhruva fallback
+2. **Add unit tests** for ULID generation with Druva fallback
 3. **Update documentation** to show proper ULID usage patterns
 4. **Create integration tests** for cross-system workflow correlation
 5. **Update WebSocket examples** to demonstrate ULID-based tracing

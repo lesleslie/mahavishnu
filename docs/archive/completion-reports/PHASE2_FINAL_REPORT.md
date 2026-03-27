@@ -51,7 +51,7 @@ Created comprehensive test coverage:
 | Test File | Tests | Purpose |
 |-----------|-------|---------|
 | `test_lite_mode.py` | 10 | Lite mode initialization, start/stop, features |
-| `test_standard_mode.py` | 9 | Standard mode with Session-Buddy + Dhruva |
+| `test_standard_mode.py` | 9 | Standard mode with Session-Buddy + Druva |
 | `test_full_mode.py` | 10 | Full mode with all ecosystem services |
 | `test_mode_factory.py` | 5 | Factory function and error handling |
 
@@ -140,7 +140,7 @@ await mode_impl.start()
 
 Mode-specific configuration files:
 - `settings/lite.yaml` - Zero external dependencies
-- `settings/standard.yaml` - Session-Buddy + Dhruva
+- `settings/standard.yaml` - Session-Buddy + Druva
 - `settings/full.yaml` - All ecosystem services
 
 ### Test Architecture

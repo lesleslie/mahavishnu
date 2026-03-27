@@ -224,7 +224,7 @@ class TestDependencyWaiter:
     async def test_wait_for_optional_skipped(self, waiter):
         """Test that optional dependencies can be skipped."""
         dependencies = {
-            "dhruva": DependencyConfig(
+            "druva": DependencyConfig(
                 host="localhost",
                 port=8683,
                 required=False,
@@ -234,7 +234,7 @@ class TestDependencyWaiter:
 
         # Mock the checker to return unhealthy
         mock_result = HealthCheckResult(
-            service_name="dhruva",
+            service_name="druva",
             status=HealthStatus.UNHEALTHY,
             error="Connection refused",
         )
@@ -247,9 +247,9 @@ class TestDependencyWaiter:
         ):
             result = await waiter.wait_for_all(dependencies)
 
-            # Should succeed because dhruva is optional
+            # Should succeed because druva is optional
             assert result.success
-            assert "dhruva" in result.skipped_optional
+            assert "druva" in result.skipped_optional
 
 
 class TestHealthEndpoint:

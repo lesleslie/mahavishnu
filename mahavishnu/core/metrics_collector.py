@@ -4,7 +4,7 @@ Tracks adapter executions, success rates, latency, and costs.
 Provides ExecutionTracker class with async batch writes and sampling strategies.
 
 Design:
-- Storage-agnostic (works with or without Dhruva)
+- Storage-agnostic (works with or without Druva)
 - ULID-based execution identifiers
 - TTL-based automatic cleanup
 - Configurable sampling strategies
@@ -80,7 +80,7 @@ class ExecutionMetrics:
     """{task_type: execution_count} for adaptive sampling"""
 
     last_aggregate_ts: float = field(default_factory=lambda: time.time())
-    """Timestamp of last aggregation to Dhruva."""
+    """Timestamp of last aggregation to Druva."""
 
     def get_success_rate(self, adapter: AdapterType, min_samples: int = 10) -> float | None:
         """Calculate success rate for adapter.
@@ -132,7 +132,7 @@ class ExecutionTracker:
             batch_size: Max records before forcing batch write (default: 100)
             batch_timeout_ms: Max time before forcing batch write (default: 5s)
             aggregate_interval_ms: Interval for recalculating aggregates (default: 60s)
-            storage_client: Optional Dhruva/storage client
+            storage_client: Optional Druva/storage client
         """
         self.sampling_strategy = sampling_strategy
         self.sampling_rate = sampling_rate
@@ -315,15 +315,15 @@ class ExecutionTracker:
         records = self._metrics.completed_executions.copy()
         self._metrics.completed_executions.clear()
 
-        # Try to write to Dhruva if available
+        # Try to write to Druva if available
         if self.storage_client is not None:
             try:
-                # TODO: Implement Dhruva batch write
+                # TODO: Implement Druva batch write
                 # For now, simulate successful write
                 await asyncio.sleep(0.001)  # Simulate IO
                 written = len(records)
             except Exception as e:
-                logger.error(f"Dhruva write failed: {e}")
+                logger.error(f"Druva write failed: {e}")
                 return {"status": "error", "error": str(e), "written": 0}
         else:
             # No storage client - simulate write
@@ -352,7 +352,7 @@ class ExecutionTracker:
 
                 # Write aggregates to storage
                 if self.storage_client is not None:
-                    # TODO: Write aggregates to Dhruva
+                    # TODO: Write aggregates to Druva
                     logger.debug(f"Aggregates calculated: {aggregates}")
                 else:
                     logger.debug(f"Aggregates (no storage): {aggregates}")
@@ -537,7 +537,7 @@ async def initialize_execution_tracker(
 
     Args:
         sampling_strategy: Sampling strategy to use
-        storage_client: Optional storage backend (Dhruva)
+        storage_client: Optional storage backend (Druva)
         force_recreate: If True, create new tracker even if one exists
 
     Returns:

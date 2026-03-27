@@ -71,7 +71,7 @@ async def test_akosha_entity_ulid_resolution():
         resolve_ulid,
         find_references_by_system,
     )
-    from dhruva import generate
+    from oneiric.core.ulid import generate
 
     # Generate ULID for Akosha entity
     entity_ulid = generate()
@@ -106,7 +106,7 @@ async def test_crackerjack_test_ulid_tracking():
         resolve_ulid,
         get_cross_system_trace,
     )
-    from dhruva import generate
+    from oneiric.core.ulid import generate
 
     # Generate ULID for Crackerjack test
     test_ulid = generate()
@@ -143,7 +143,7 @@ async def test_session_buddy_ulid_integration():
         resolve_ulid,
         find_references_by_system,
     )
-    from dhruva import generate
+    from oneiric.core.ulid import generate
 
     # Generate ULID for Session-Buddy session
     session_ulid = generate()
@@ -176,7 +176,7 @@ async def test_cross_system_time_correlation():
         find_related_ulids,
         get_cross_system_trace,
     )
-    from dhruva import generate
+    from oneiric.core.ulid import generate
 
     # Generate ULIDs at approximately same time
     ulid1 = generate()
@@ -204,7 +204,7 @@ async def test_cross_system_complete_trace(clear_ulid_registry):
         export_registry,
         get_registry_stats,
     )
-    from dhruva import generate
+    from oneiric.core.ulid import generate
 
     # Register references from all systems
     mahavishnu_ulid = generate()
@@ -244,7 +244,7 @@ async def test_cross_system_complete_trace(clear_ulid_registry):
 @pytest.mark.integration
 async def test_ulid_time_based_sorting():
     """ULIDs should be time-ordered for chronological queries."""
-    from dhruva import generate
+    from oneiric.core.ulid import generate
     from oneiric.core.ulid import extract_timestamp
 
     # Generate 3 ULIDs in sequence
@@ -269,7 +269,7 @@ async def test_ulid_uniqueness_across_systems():
         register_reference,
         export_registry,
     )
-    from dhruva import generate
+    from oneiric.core.ulid import generate
 
     # Generate 1000 ULIDs and register
     ulids = [generate() for _ in range(1000)]

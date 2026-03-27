@@ -5,7 +5,7 @@ These tests verify graceful degradation when various components fail:
 1. Feature flag disabled -> falls back to legacy initialization
 2. Registry init failure -> gracefully degrades with error handling
 3. Oneiric MCP unavailable -> uses local-only discovery
-4. Dhruva persistence unavailable -> uses in-memory fallback
+4. Druva persistence unavailable -> uses in-memory fallback
 5. Partial discovery failure -> continues with successful adapters
 
 Run tests:
@@ -473,8 +473,8 @@ class TestOneiricMCPFailureLocalOnly:
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-class TestDhruvaUnavailableUsesMemory:
-    """Tests for in-memory fallback when Dhruva persistence fails."""
+class TestDruvaUnavailableUsesMemory:
+    """Tests for in-memory fallback when Druva persistence fails."""
 
     async def test_persistence_save_failure_uses_in_memory(
         self,

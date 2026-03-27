@@ -872,7 +872,7 @@ scrape_configs:
           - localhost:9091  # Crackerjack
           - localhost:9096  # Fastblocks
           - localhost:9097  # Excalidraw
-          - localhost:9098  # Dhruva
+          - localhost:9098  # Druva
         labels:
           env: 'production'
 

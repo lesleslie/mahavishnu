@@ -135,6 +135,7 @@ class MahavishnuApp:
         """
         self.config = config or self._load_config()
         self.adapters: dict[str, OrchestratorAdapter] = {}
+        self.druva_url = self._resolve_druva_url()
         self._load_repos()
         self._initialize_adapters()
 
@@ -663,15 +664,9 @@ class MahavishnuApp:
         if getattr(self.config.workers, "enabled", True):
             try:
                 from .adapters.worker import WorkerOrchestratorAdapter
-                from ..workers import WorkerManager
 
-                # Create worker manager with Session-Buddy integration
-                # Note: TerminalManager is created lazily when needed
                 adapter_classes["worker"] = WorkerOrchestratorAdapter
                 enabled_adapters["worker"] = True
-
-                # Store for later initialization with WorkerManager
-                self._worker_manager_cls = WorkerManager
             except ImportError as e:
                 # Worker components not available
                 logger.warning(f"Worker adapter not available due to missing dependencies: {e}")
@@ -682,31 +677,13 @@ class MahavishnuApp:
                 try:
                     adapter_class = adapter_classes.get(adapter_name)
                     if adapter_class:
-                        # Special handling for WorkerOrchestratorAdapter
-                        # which requires a WorkerManager instance
-                        if adapter_name == "worker":
-                            from ..terminal.manager import TerminalManager
-
-                            # Create terminal manager
-                            terminal_mgr = TerminalManager.create(
-                                self.config,
-                                mcp_client=None,  # Will use Session-Buddy if available
-                            )
-
-                            # Create worker manager
-                            worker_mgr = self._worker_manager_cls(
-                                terminal_manager=terminal_mgr,
-                                max_concurrent=getattr(self.config, "max_concurrent_workers", 10),
-                                debug_mode=False,  # Debug mode set via CLI flag
-                                session_buddy_client=None,  # Will integrate in Phase 2.5
-                            )
-
-                            # Initialize adapter with worker manager
-                            self.adapters[adapter_name] = adapter_class(worker_mgr)
-                            self._worker_manager = worker_mgr  # Store for later access
-                        else:
-                            # Standard adapter initialization with config only
-                            self.adapters[adapter_name] = adapter_class(self.config)
+                        # Standard adapter initialization with config only
+                        self.adapters[adapter_name] = adapter_class(self.config)
+                except ImportError as e:
+                    logger.warning(
+                        f"{adapter_name} adapter initialization skipped due to missing "
+                        f"optional dependencies: {e}"
+                    )
                 except Exception as e:
                     raise ConfigurationError(
                         message=f"Failed to initialize {adapter_name} adapter: {e}",
@@ -716,6 +693,12 @@ class MahavishnuApp:
                             "error_type": type(e).__name__,
                         },
                     ) from e
+
+        # Backward-compatible access for MCP worker tool registration.
+        worker_adapter = self.adapters.get("worker")
+        self._worker_manager = (
+            getattr(worker_adapter, "worker_manager", None) if worker_adapter is not None else None
+        )
 
     def _set_app_context(self) -> None:
         """Set application context for dependency injection.
@@ -727,6 +710,10 @@ class MahavishnuApp:
         Called automatically during MahavishnuApp initialization.
         Context is available via get_llm_factory() and get_agno_adapter().
         """
+        from .oneiric_client import set_druva_client_base_url
+
+        set_druva_client_base_url(self.druva_url)
+
         # Set Agno adapter if available
         agno_adapter = self.adapters.get("agno")
 
@@ -797,6 +784,15 @@ class MahavishnuApp:
                 f"llm_factory={'available' if llm_factory else 'not available'}, "
                 f"agno_adapter={'available' if agno_adapter else 'not available'}"
             )
+
+    def _resolve_druva_url(self) -> str:
+        """Build the Druva MCP URL from health dependency config."""
+        dependency = self.config.health.dependencies.get("druva")
+        if dependency is None:
+            return "http://localhost:8683/mcp"
+
+        scheme = "https" if dependency.use_tls else "http"
+        return f"{scheme}://{dependency.host}:{dependency.port}/mcp"
 
     def get_repos(
         self, tag: str | None = None, role: str | None = None, user_id: str | None = None

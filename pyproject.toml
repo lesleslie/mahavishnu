@@ -45,8 +45,10 @@ dependencies = [
     "asyncpg>=0.29.0",  # Async PostgreSQL driver for OTel trace storage
     "pgvector>=0.2.5",  # Vector similarity search for semantic trace search
     # Embeddings (cross-platform alternatives to sentence-transformers)
-    # Note: fastembed uses ONNX Runtime, works on all platforms including Intel Macs
-    "fastembed>=0.2.0",  # Fast embeddings, cross-platform (no PyTorch dependency)
+    # Note: fastembed uses ONNX Runtime. On macOS Intel + Python 3.13+, onnxruntime
+    # has no compatible wheels (dropped x86_64 support in 1.20+, no cp313 wheels before).
+    # On those platforms, embedding service falls back to Ollama or OpenAI.
+    "fastembed>=0.2.0; sys_platform != 'darwin' or platform_machine != 'x86_64' or python_version < '3.13'",
     # Resilience
     "tenacity>=9.1.2",
     # Rate limiting & DDoS protection
@@ -57,7 +59,9 @@ dependencies = [
     # Session-Buddy MCP: Development session tracking & quality metrics
     # Local-first privacy (ONNX embeddings, no external APIs)
     # See: docs/LIBRARY_EVALUATION_2025.md for memory system comparison
-    "session-buddy>=0.11.1",
+    # NOTE: session-buddy depends on onnxruntime, which has no compatible wheels
+    # for macOS Intel + Python 3.13. Skip on that platform combination.
+    "session-buddy>=0.11.1; sys_platform != 'darwin' or platform_machine != 'x86_64' or python_version < '3.13'",
     # Git operations
     "gitpython>=3.1.46",
     # Async SQLite (for EventBus persistence)
@@ -200,6 +204,14 @@ ollama = [
 ingestion = [
     # pypdf, beautifulsoup4, httpx[http2], ebooklib are now in main dependencies
     # This extra is kept for backward compatibility
+]
+
+# Worker CLI profiles (meta-extras; install corresponding CLIs on host PATH)
+worker-openclaw = []
+worker-deepagents = []
+worker-clai = []
+worker-alt-cli = [
+    "mahavishnu[worker-openclaw,worker-deepagents,worker-clai]",
 ]
 
 # Desktop automation: macOS and cross-platform desktop automation
@@ -446,7 +458,7 @@ nav = [
 dev = [
     "akosha>=0.2.0",
     "crackerjack>=0.50.1",
-    "dhruva>=0.6.0",
+    "druva>=0.7.0",
     "iterm2>=2.13",
-    "session-buddy>=0.11.1",
+    "session-buddy>=0.11.1; sys_platform != 'darwin' or platform_machine != 'x86_64' or python_version < '3.13'",
 ]

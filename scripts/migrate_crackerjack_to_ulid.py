@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Crackerjack ULID Migration Script
 
-Updates Crackerjack test tracking to use Dhruva ULIDs instead of UUID v4.
+Updates Crackerjack test tracking to use Druva ULIDs instead of UUID v4.
 
 Migration Strategy:
 - EXPAND: job_id already exists as TEXT UNIQUE (schema compatible)
@@ -50,7 +50,7 @@ def generate_migration_map(db_path: str, limit: int = 1000) -> dict[str, str]:
 
         for job_id, _ in rows:
             # For each existing job, we'd generate a new ULID
-            # In production, this would use Dhruva's generate()
+            # In production, this would use Druva's generate()
             # For this script, we'll just note it needs migration
             migration_map[job_id] = f"[NEEDS_ULID_GENERATION]"
 
@@ -165,10 +165,10 @@ def main():
         print("To complete Crackerjack ULID migration:")
         print()
         print("1. Update crackerjack/services/metrics.py:")
-        print("   - Replace uuid.uuid4() with: from dhruva import generate")
+        print("   - Replace uuid.uuid4() with: from druva import generate")
         print("   - job_id = generate()")
         print()
-        print("2. Update crackerjack/tests/ to use Dhruva ULID in test fixtures")
+        print("2. Update crackerjack/tests/ to use Druva ULID in test fixtures")
         print()
         print("3. Add migration backfill script for existing jobs:")
         print("   UPDATE jobs SET job_ulid = <generated_ulid>")

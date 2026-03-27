@@ -12,7 +12,7 @@ Services Tested:
 - mahavishnu (8690) - Workflow orchestration and pool management
 - akosha (8692) - Knowledge graph and insights
 - crackerjack (8686) - Quality control and testing
-- dhruva (8693) - Dependency management
+- druva (8693) - Dependency management
 - excalidraw-mcp (3042) - Diagram collaboration
 - fastblocks (8684) - Application building and UI rendering
 """
@@ -61,10 +61,10 @@ WEBSOCKET_SERVERS = {
         "class_name": "CrackerjackWebSocketServer",
         "description": "Quality control and CI/CD",
     },
-    "dhruva": {
+    "druva": {
         "port": 8693,
-        "module_path": "/Users/les/Projects/dhruva",
-        "class_name": "DhruvaWebSocketServer",
+        "module_path": "/Users/les/Projects/druva",
+        "class_name": "DruvaWebSocketServer",
         "description": "Dependency management",
     },
     "excalidraw-mcp": {
@@ -192,7 +192,7 @@ class TestServiceDiscovery:
             "mahavishnu",
             "akosha",
             "crackerjack",
-            "dhruva",
+            "druva",
             "excalidraw-mcp",
             "fastblocks",
         ]
@@ -268,22 +268,22 @@ class TestCrossServiceCommunication:
     """Test message routing between different WebSocket servers."""
 
     @pytest.mark.asyncio
-    async def test_mahavishnu_broadcasts_to_dhruva_channel(
+    async def test_mahavishnu_broadcasts_to_druva_channel(
         self,
         mahavishnu_server: MahavishnuWebSocketServer,
         event_recorder: dict[str, list[dict[str, Any]]],
     ):
-        """Test Mahavishnu can broadcast to Dhruva-specific channels."""
+        """Test Mahavishnu can broadcast to Druva-specific channels."""
         # Arrange
         mock_client = create_mock_websocket(
             event_recorder,
             "conn1",
-            ["dhruva:adapter123"],
+            ["druva:adapter123"],
         )
         conn_id = "conn1"
 
         mahavishnu_server.connections[conn_id] = mock_client
-        mahavishnu_server.connection_rooms["dhruva:adapter123"] = {conn_id}
+        mahavishnu_server.connection_rooms["druva:adapter123"] = {conn_id}
 
         # Act
         from mcp_common.websocket import WebSocketProtocol
@@ -296,12 +296,12 @@ class TestCrossServiceCommunication:
                 "timestamp": "2025-02-10T12:00:00Z",
             },
         )
-        await mahavishnu_server.broadcast_to_room("dhruva:adapter123", event)
+        await mahavishnu_server.broadcast_to_room("druva:adapter123", event)
 
         # Assert
-        assert "dhruva:adapter123" in event_recorder
-        assert len(event_recorder["dhruva:adapter123"]) == 1
-        assert event_recorder["dhruva:adapter123"][0]["event"] == "adapter.stored"
+        assert "druva:adapter123" in event_recorder
+        assert len(event_recorder["druva:adapter123"]) == 1
+        assert event_recorder["druva:adapter123"][0]["event"] == "adapter.stored"
 
     @pytest.mark.asyncio
     async def test_akosha_broadcasts_to_excalidraw_channel(self):
@@ -482,27 +482,27 @@ class TestMessageRouting:
     ):
         """Test broadcasting to service-specific rooms."""
         # Arrange
-        dhruva_client = create_mock_websocket(event_recorder, "conn1", ["dhruva:events"])
+        druva_client = create_mock_websocket(event_recorder, "conn1", ["druva:events"])
         excalidraw_client = create_mock_websocket(event_recorder, "conn2", ["excalidraw:events"])
 
-        mahavishnu_server.connections["conn1"] = dhruva_client
+        mahavishnu_server.connections["conn1"] = druva_client
         mahavishnu_server.connections["conn2"] = excalidraw_client
-        mahavishnu_server.connection_rooms["dhruva:events"] = {"conn1"}
+        mahavishnu_server.connection_rooms["druva:events"] = {"conn1"}
         mahavishnu_server.connection_rooms["excalidraw:events"] = {"conn2"}
 
-        # Act - Broadcast to Dhruva only
+        # Act - Broadcast to Druva only
         from mcp_common.websocket import WebSocketProtocol
 
         event = WebSocketProtocol.create_event(
             "adapter.event",
             {"adapter_id": "test_adapter"},
         )
-        await mahavishnu_server.broadcast_to_room("dhruva:events", event)
+        await mahavishnu_server.broadcast_to_room("druva:events", event)
 
-        # Assert - only Dhruva client should receive
-        assert "dhruva:events" in event_recorder
+        # Assert - only Druva client should receive
+        assert "druva:events" in event_recorder
         assert "excalidraw:events" not in event_recorder
-        assert len(event_recorder["dhruva:events"]) == 1
+        assert len(event_recorder["druva:events"]) == 1
 
     @pytest.mark.asyncio
     async def test_global_broadcast_to_all_services(
@@ -628,31 +628,31 @@ class TestEventCorrelation:
         assert completion_event["data"]["workflow_id"] == "workflow_abc123"
 
     @pytest.mark.asyncio
-    async def test_adapter_stored_in_dhruva_visible_in_excalidraw(self):
-        """Test adapter stored in Dhruva is visible in Excalidraw."""
-        # Arrange - Dhruva server
+    async def test_adapter_stored_in_druva_visible_in_excalidraw(self):
+        """Test adapter stored in Druva is visible in Excalidraw."""
+        # Arrange - Druva server
         mock_pool_mgr = MagicMock()
         mock_pool_mgr.pools = {}
 
-        dhruva_server = MahavishnuWebSocketServer(
+        druva_server = MahavishnuWebSocketServer(
             pool_manager=mock_pool_mgr,
             host="127.0.0.1",
             port=8693,
         )
-        dhruva_server.is_running = True
+        druva_server.is_running = True
 
         event_recorder: dict[str, list[dict[str, Any]]] = {}
         mock_client = create_mock_websocket(
             event_recorder,
-            "dhruva_to_excalidraw",
+            "druva_to_excalidraw",
             ["excalidraw:diagrams"],
         )
 
-        conn_id = "dhruva_to_excalidraw"
-        dhruva_server.connections[conn_id] = mock_client
-        dhruva_server.connection_rooms["excalidraw:diagrams"] = {conn_id}
+        conn_id = "druva_to_excalidraw"
+        druva_server.connections[conn_id] = mock_client
+        druva_server.connection_rooms["excalidraw:diagrams"] = {conn_id}
 
-        # Act - Dhruva broadcasts adapter storage event
+        # Act - Druva broadcasts adapter storage event
         from mcp_common.websocket import WebSocketProtocol
 
         event = WebSocketProtocol.create_event(
@@ -663,7 +663,7 @@ class TestEventCorrelation:
                 "version": "1.0.0",
             },
         )
-        await dhruva_server.broadcast_to_room("excalidraw:diagrams", event)
+        await druva_server.broadcast_to_room("excalidraw:diagrams", event)
 
         # Assert
         assert "excalidraw:diagrams" in event_recorder

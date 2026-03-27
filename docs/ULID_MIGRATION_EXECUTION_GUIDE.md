@@ -58,7 +58,7 @@ All scripts support `--dry-run` flag for safe preview:
 **Migration Steps**:
 1. Update `crackerjack/services/metrics.py`:
    - Replace: `job_id = str(uuid.uuid4())`
-   - With: `from dhruva import generate; job_id = generate()`
+   - With: `from druva import generate; job_id = generate()`
 
 2. Backfill existing jobs (SQL):
    ```sql
@@ -88,7 +88,7 @@ All scripts support `--dry-run` flag for safe preview:
 
 2. Update `session_buddy/session_manager.py`:
    - Replace: `session_id = f"{project_name}-{timestamp}"`
-   - With: `from dhruva import generate; session_ulid = generate()`
+   - With: `from druva import generate; session_ulid = generate()`
 
 3. Backfill existing sessions:
    ```sql
@@ -116,12 +116,12 @@ All scripts support `--dry-run` flag for safe preview:
 **Migration Steps**:
 1. Update `akosha/processing/knowledge_graph.py`:
    - Replace: `entity_id = f"system:{system_id}"`
-   - With: `from dhruva import generate; entity_id = generate()`
+   - With: `from druva import generate; entity_id = generate()`
 
 2. Update `akosha/mcp/tools/akosha_tools.py`:
    - Replace any custom ID generation with `generate()`
 
-3. Add imports: `from dhruva import generate, ULID`
+3. Add imports: `from druva import generate, ULID`
 
 4. Regenerate entity IDs for in-memory entities (on restart)
 
@@ -213,7 +213,7 @@ sqlite3 session_buddy.db "SELECT COUNT(*) FROM sessions WHERE session_ulid IS NU
 # Should return: 0 (all sessions have ULID)
 
 # Check Akosha
-# Verify GraphEntity uses: from dhruva import generate
+# Verify GraphEntity uses: from druva import generate
 # Review code in akosha/processing/knowledge_graph.py
 ```
 
@@ -323,8 +323,8 @@ Monitor at: `docs/grafana/WebSocket_Monitoring.json`
 
 **Issue**: Import errors after migration
 ```bash
-# Solution: Verify Oneiric and Dhruva are in Python path
-python3 -c "import oneiric.core.ulid; import dhruva; print('Imports OK')"
+# Solution: Verify Oneiric and Druva are in Python path
+python3 -c "import oneiric.core.ulid; import druva; print('Imports OK')"
 ```
 
 **Issue**: Tests failing after migration

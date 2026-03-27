@@ -7,9 +7,9 @@
 
 ## Pre-Deployment Verification
 
-### Dhruva Foundation ✅
+### Druva Foundation ✅
 
-- [x] Dhruva ULID generation operational (19,901 ops/sec)
+- [x] Druva ULID generation operational (19,901 ops/sec)
 - [x] Thread-safe monotonic randomness implemented
 - [x] Collision detection service operational (Oneiric)
 - [x] Cross-system resolution service operational (<100ms trace latency)
@@ -18,21 +18,21 @@
 ### Crackerjack Setup
 
 - [x] Database schema created (6 tables with foreign keys)
-- [x] **CODE UPDATED**: Correlation IDs use Dhruva ULID (`generate_ulid()[:16]`)
+- [x] **CODE UPDATED**: Correlation IDs use Druva ULID (`generate_ulid()[:16]`)
 - [x] FastMCP deprecation warning fixed
 - [x] Server running (process confirmed)
 - [ ] **TEST**: Verify job creation generates ULIDs
 
 ### Session-Buddy Setup
 
-- [x] **CODE UPDATED**: Session IDs use Dhruva ULID with fallback
+- [x] **CODE UPDATED**: Session IDs use Druva ULID with fallback
 - [x] Server running (process confirmed)
 - [x] Database exists (verified empty - ready for ULID adoption)
 - [ ] **TEST**: Verify session creation generates ULIDs
 
 ### Akosha Setup
 
-- [x] **CODE UPDATED**: Entity IDs use Dhruva ULID (`generate_ulid()`)
+- [x] **CODE UPDATED**: Entity IDs use Druva ULID (`generate_ulid()`)
 - [x] In-memory knowledge graph (no database migration needed)
 - [ ] **TEST**: Verify entity creation generates ULIDs
 
@@ -42,7 +42,7 @@
 
 ### System Status
 
-| System | Dhruva Import | ULID Generation | Fallback Logic | Database Ready | Test Required | Status |
+| System | Druva Import | ULID Generation | Fallback Logic | Database Ready | Test Required | Status |
 |---------|---------------|-----------------|----------------|--------------|--------|
 | Crackerjack | ✅ | ✅ | ✅ | ✅ | Yes | **READY** |
 | Session-Buddy | ✅ | ✅ | ✅ | ✅ | Yes | **READY** |
@@ -54,11 +54,11 @@
 
 ## Pre-Deployment Testing Checklist
 
-### Step 1: Test Dhruva ULID Generation
+### Step 1: Test Druva ULID Generation
 
 ```bash
 # Test 1: Direct ULID generation
-cd /Users/les/Projects/dhruva && python3 -c "from dhruva import generate; ulid = generate(); print('Direct ULID:', ulid, 'Length:', len(ulid))"
+cd /Users/les/Projects/druva && python3 -c "from druva import generate; ulid = generate(); print('Direct ULID:', ulid, 'Length:', len(ulid))"
 
 # Expected: Direct ULID: 26 chars, alphanumeric (Crockford Base32)
 # Success criteria: ULID length 26, valid format
@@ -77,7 +77,7 @@ print('Crackerjack Correlation ULID:', corr_id)
 print('Length:', len(corr_id))
 "
 
-# Expected: First 16 chars of Dhruva ULID
+# Expected: First 16 chars of Druva ULID
 # Success criteria: Length 16, valid ULID format
 ```
 
@@ -92,7 +92,7 @@ import sys
 sys.path.insert(0, '/Users/les/Projects/session-buddy')
 
 from session_buddy.core.session_manager import get_session_logger
-from dhruva import generate as generate_ulid
+from druva import generate as generate_ulid
 
 # Simulate session ID generation (requires running context)
 try:
@@ -100,11 +100,11 @@ try:
     print('Session-Buddy ULID:', session_id)
     print('Length:', len(session_id))
 except ImportError as e:
-    print('Dhruva not available:', e)
+    print('Druva not available:', e)
     sys.exit(1)
 "
 
-# Expected: Full 26-char Dhruva ULID
+# Expected: Full 26-char Druva ULID
 # Success criteria: ULID length 26, valid format
 ```
 
@@ -115,7 +115,7 @@ except ImportError as e:
 ```bash
 # Test 4: Akosha entity ID generation
 cd /Users/les/Projects/akosha && python3 -c "
-from dhruva import generate as generate_ulid
+from druva import generate as generate_ulid
 
 # Simulate entity ID generation
 try:
@@ -123,11 +123,11 @@ try:
     print('Akosha Entity ULID:', entity_id)
     print('Length:', len(entity_id))
 except ImportError as e:
-    print('Dhruva not available:', e)
+    print('Druva not available:', e)
     sys.exit(1)
 "
 
-# Expected: Full 26-char Dhruva ULID
+# Expected: Full 26-char Druva ULID
 # Success criteria: ULID length 26, valid format
 ```
 
@@ -210,7 +210,7 @@ done
 
 ## Next Actions
 
-1. ⬜ Execute Step 1: Test Dhruva ULID Generation
+1. ⬜ Execute Step 1: Test Druva ULID Generation
 2. ✅ Execute Step 2: Test Crackerjack Correlation IDs
 3. ✅ Execute Step 3: Test Session-Buddy Session IDs
 4. ✅ Execute Step 4: Test Akosha Entity IDs
@@ -221,7 +221,7 @@ done
 
 ---
 
-**Recommendation**: Begin with Step 1 (Dhruva direct test) to verify ULID generation is working correctly across all systems.
+**Recommendation**: Begin with Step 1 (Druva direct test) to verify ULID generation is working correctly across all systems.
 
 **Status**: ⏸️ **READY FOR TESTING**
 

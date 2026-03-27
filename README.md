@@ -289,7 +289,27 @@ Mahavishnu uses a role-based taxonomy to organize repositories:
 
 - **terminal-qwen** - Headless Qwen CLI execution
 - **terminal-claude** - Headless Claude Code CLI execution
+- **terminal-opencode** - Headless OpenCode CLI execution
+- **terminal-openclaw** - Headless OpenClaw CLI execution
+- **terminal-deepagents** - Headless DeepAgents CLI execution
+- **terminal-clai** - Headless CLAI CLI execution
+- **gateway-openclaw** - OpenClaw gateway worker over HTTP JSON-RPC
 - **container-executor** - Containerized task execution (Phase 3)
+
+### Optional Worker CLI Profiles
+
+These worker CLIs are optional and can be enabled via extras:
+
+```bash
+# Enable metadata profiles for alternate CLI workers
+uv sync --extra worker-alt-cli
+
+# Or enable specific profiles
+uv sync --extra worker-openclaw --extra worker-deepagents --extra worker-clai
+```
+
+Important: these extras are profile flags only. You must install the actual CLI binaries
+(`openclaw`, `deepagents-cli`, `clai`) so they are available on your `PATH`.
 
 ## Goal-Driven Teams
 
@@ -508,6 +528,8 @@ bandit -r mahavishnu/
 # Run all checks via Crackerjack
 crackerjack run
 ```
+
+Note: Crackerjack is the **ecosystem-wide CI/quality gate runner** for Bodai/Mahavishnu repos. Use it as the authoritative source of CI results across components.
 
 ### Project Structure
 

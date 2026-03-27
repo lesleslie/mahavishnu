@@ -5,7 +5,7 @@ Tests all 7 operational WebSocket servers:
 - mahavishnu (8690) - Workflow orchestration
 - akosha (8692) - Knowledge graph and insights
 - crackerjack (8686) - Quality control and testing
-- dhruva (8693) - Dependency management
+- druva (8693) - Dependency management
 - excalidraw-mcp (3042) - Diagram collaboration
 - fastblocks (8684) - Application building
 
@@ -53,10 +53,10 @@ WEBSOCKET_SERVERS = {
         "class_name": "CrackerjackWebSocketServer",
         "description": "Quality control and CI/CD",
     },
-    "dhruva": {
+    "druva": {
         "port": 8693,
-        "module_path": "/Users/les/Projects/dhruva",
-        "class_name": "DhruvaWebSocketServer",
+        "module_path": "/Users/les/Projects/druva",
+        "class_name": "DruvaWebSocketServer",
         "description": "Dependency management",
     },
     "excalidraw-mcp": {
@@ -798,7 +798,7 @@ class TestMultiServerConfiguration:
             "mahavishnu",
             "akosha",
             "crackerjack",
-            "dhruva",
+            "druva",
             "excalidraw-mcp",
             "fastblocks",
         ]

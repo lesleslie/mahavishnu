@@ -637,7 +637,7 @@ async def test_all_websocket_servers_start():
         ("mahavishnu", "8690"),
         ("crackerjack", "8686"),
         ("akosha", "8692"),
-        ("dhruva", "8693"),
+        ("druva", "8693"),
         ("excalidraw-mcp", "3042"),
         ("fastblocks", "8684"),
     ]
@@ -662,7 +662,7 @@ async def test_subscribe_to_multiple_services():
 
     services = [
         ("mahavishnu", "ws://127.0.0.1:8690"),
-        ("dhruva", "ws://127.0.0.1:8693"),
+        ("druva", "ws://127.0.0.1:8693"),
         ("excalidraw", "ws://127.0.0.1:3042"),
     ]
 
@@ -714,7 +714,7 @@ declare -A servers=(
     ["mahavishnu"]="localhost:8690"
     ["crackerjack"]="localhost:8686"
     ["akosha"]="localhost:8692"
-    ["dhruva"]="localhost:8693"
+    ["druva"]="localhost:8693"
     ["excalidraw-mcp"]="localhost:3042"
     ["fastblocks"]="localhost:8684"
 )
@@ -1324,7 +1324,7 @@ Create: `/Users/les/Projects/mahavishnu/deploy/grafana/websocket-dashboard.json`
             "expr": "websocket_connections{server=\"mahavishnu\"}"
           },
           {
-            "expr": "websocket_connections{server=\"dhruva\"}"
+            "expr": "websocket_connections{server=\"druva\"}"
           }
         ]
       },
@@ -1419,7 +1419,7 @@ export GRAFANA_ADMIN_PASSWORD="your-admin-password"
         ┌──────────────────┼──────────────────┐
         │                  │                  │
     ┌───▼────┐       ┌────▼────┐       ┌────▼─────┐
-    │Mahavishnu│       │  Dhruva  │       │Excalidraw│
+    │Mahavishnu│       │  Druva  │       │Excalidraw│
     │  :8690  │       │  :8693  │       │  :3042   │
     └─────────┘       └─────────┘       └──────────┘
         │                  │                  │
@@ -1445,7 +1445,7 @@ upstream mahavishnu_websocket {
     server 127.0.0.1:8690;
 }
 
-upstream dhruva_websocket {
+upstream druva_websocket {
     server 127.0.0.1:8693;
 }
 
@@ -1464,8 +1464,8 @@ server {
         proxy_set_header Host $host;
     }
 
-    location /ws/dhruva {
-        proxy_pass http://dhruva_websocket;
+    location /ws/druva {
+        proxy_pass http://druva_websocket;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;

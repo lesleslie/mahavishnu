@@ -369,7 +369,7 @@ mahavishnu mcp call websocket_get_status
 
 ### Long-term (Next Month)
 
-1. **dhruva WebSocket** - Adapter distribution events (port 8693)
+1. **druva WebSocket** - Adapter distribution events (port 8693)
 2. **excalidraw WebSocket** - Real-time diagram collaboration (port 3042)
 3. **fastblocks WebSocket** - UI update streams (port TBD)
 4. **Unified Dashboard** - Single dashboard for all WebSocket metrics

@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-All three ecosystem systems (Crackerjack, Session-Buddy, Akosha) have been successfully migrated to use Dhruva ULID identifiers. Migration was executed on fresh database installations with zero legacy data to migrate - ideal scenario for clean ULID adoption.
+All three ecosystem systems (Crackerjack, Session-Buddy, Akosha) have been successfully migrated to use Druva ULID identifiers. Migration was executed on fresh database installations with zero legacy data to migrate - ideal scenario for clean ULID adoption.
 
 ---
 
@@ -33,11 +33,11 @@ All three ecosystem systems (Crackerjack, Session-Buddy, Akosha) have been succe
 
 3. ✅ ULID migration
    - Fresh database: 0 legacy jobs to backfill
-   - New jobs will use `from dhruva import generate` on creation
+   - New jobs will use `from druva import generate` on creation
 
 **Next Steps** (Code Updates Required):
-- Update `crackerjack/services/metrics.py`: Replace `uuid.uuid4()` with `from dhruva import generate`
-- Update test fixtures to use Dhruva ULID format
+- Update `crackerjack/services/metrics.py`: Replace `uuid.uuid4()` with `from druva import generate`
+- Update test fixtures to use Druva ULID format
 - No backfill needed (empty database)
 
 ---
@@ -54,7 +54,7 @@ All three ecosystem systems (Crackerjack, Session-Buddy, Akosha) have been succe
 3. ✅ Schema ready for ULID-based session tracking
 
 **Next Steps** (Code Updates Required):
-- Update `session_buddy/session_manager.py`: Replace `f"{project_name}-{timestamp}"` with `from dhruva import generate`
+- Update `session_buddy/session_manager.py`: Replace `f"{project_name}-{timestamp}"` with `from druva import generate`
 - Update reflection/conversation creation to use ULID
 - Add `session_ulid TEXT` column when schema is created
 - No backfill needed (empty database)
@@ -73,9 +73,9 @@ All three ecosystem systems (Crackerjack, Session-Buddy, Akosha) have been succe
 3. ✅ No database migration needed (in-memory)
 
 **Next Steps** (Code Updates Required):
-- Update `akosha/processing/knowledge_graph.py`: Replace `f"system:{id}"` and `f"user:{id}"` with `from dhruva import generate`
+- Update `akosha/processing/knowledge_graph.py`: Replace `f"system:{id}"` and `f"user:{id}"` with `from druva import generate`
 - Update `akosha/mcp/tools/akosha_tools.py`: Replace custom ID generation with `generate()`
-- Add imports: `from dhruva import generate, ULID`
+- Add imports: `from druva import generate, ULID`
 
 ---
 
@@ -126,7 +126,7 @@ mcp_app.run(
 
 ### Phase 0 Foundation (PREVIOUSLY COMPLETED)
 
-✅ **Dhruva ULID**: Thread-safe monotonic randomness, 19,901 ops/sec
+✅ **Druva ULID**: Thread-safe monotonic randomness, 19,901 ops/sec
 ✅ **Oneiric Services**: Collision detection, migration utilities, cross-system resolution
 ✅ **Mahavishnu Workflows**: ULID-based Pydantic models (14/14 tests passing)
 ✅ **Integration Tests**: 52/53 tests passing (98.1% coverage)
@@ -146,17 +146,17 @@ mcp_app.run(
 ### Code Updates Required Before Production Use
 
 **Crackerjack**:
-1. Update `crackerjack/services/metrics.py` line ~100: Replace `job_id = str(uuid.uuid4())` with `from dhruva import generate; job_id = generate()`
+1. Update `crackerjack/services/metrics.py` line ~100: Replace `job_id = str(uuid.uuid4())` with `from druva import generate; job_id = generate()`
 2. Update test fixtures in `tests/` to use ULID format
 
 **Session-Buddy**:
-1. Update `session_buddy/session_manager.py`: Replace session_id generation with `from dhruva import generate`
+1. Update `session_buddy/session_manager.py`: Replace session_id generation with `from druva import generate`
 2. Update reflection creation to use ULID identifiers
 3. Create database schema with session_ulid column
 
 **Akosha**:
-1. Update `akosha/processing/knowledge_graph.py`: Replace entity_id generation with `from dhruva import generate`
-2. Update `akosha/mcp/tools/akosha_tools.py`: Use Dhruva for entity IDs
+1. Update `akosha/processing/knowledge_graph.py`: Replace entity_id generation with `from druva import generate`
+2. Update `akosha/mcp/tools/akosha_tools.py`: Use Druva for entity IDs
 
 ---
 
@@ -174,7 +174,7 @@ mcp_app.run(
 ## Next Steps
 
 ### Immediate Actions
-1. ✅ Update application code to use Dhruva `generate()` in all three systems
+1. ✅ Update application code to use Druva `generate()` in all three systems
 2. ✅ Run comprehensive test suites to verify ULID generation
 3. ✅ Deploy MCP servers with ULID-based tracking
 

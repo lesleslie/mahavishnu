@@ -11,7 +11,7 @@ WebSocket Phase 3 implementation is **COMPLETE**. Three additional services now 
 
 ### Key Achievements
 
-- ✅ **3 New Services** - dhruva, excalidraw-mcp, fastblocks
+- ✅ **3 New Services** - druva, excalidraw-mcp, fastblocks
 - ✅ **15+ Files Created** - Server implementations, tests, documentation
 - ✅ **4,000+ Lines of Code** - Production-ready WebSocket implementations
 - ✅ **85%+ Test Coverage** - Comprehensive test suites with 100% pass rate
@@ -25,7 +25,7 @@ WebSocket Phase 3 implementation is **COMPLETE**. Three additional services now 
 
 | Service | Port | Description | Status | Commit | Quality Score |
 |---------|------|-------------|--------|--------|---------------|
-| **dhruva** | 8693 | Adapter distribution events | ✅ Complete | 6a230a7 | 92/100 |
+| **druva** | 8693 | Adapter distribution events | ✅ Complete | 6a230a7 | 92/100 |
 | **excalidraw-mcp** | 3042 | Diagram collaboration | ✅ Complete | 01caf5a | 95/100 |
 | **fastblocks** | 8684 | UI update streams | ✅ Complete | 0d3f4a9 | 90/100 |
 
@@ -33,9 +33,9 @@ WebSocket Phase 3 implementation is **COMPLETE**. Three additional services now 
 
 ## Service Details
 
-### 1. Dhruva WebSocket Server (Port 8693)
+### 1. Druva WebSocket Server (Port 8693)
 
-**Location:** `/Users/les/Projects/dhruva/dhruva/websocket/`
+**Location:** `/Users/les/Projects/druva/druva/websocket/`
 
 **Purpose:** Real-time adapter distribution and lifecycle events
 
@@ -79,12 +79,12 @@ await server.broadcast_registry_updated(registry_version, changes)
 - Coverage: 92%
 
 **Files Created:**
-- `/dhruva/websocket/server.py` - Main WebSocket server
-- `/dhruva/websocket/handlers.py` - Request handlers
-- `/dhruva/websocket/broadcasters.py` - Broadcast helper methods
-- `/dhruva/tests/test_websocket_server.py` - Unit tests
-- `/dhruva/tests/test_websocket_integration.py` - Integration tests
-- `/dhruva/docs/WEBSOCKET_API.md` - API documentation
+- `/druva/websocket/server.py` - Main WebSocket server
+- `/druva/websocket/handlers.py` - Request handlers
+- `/druva/websocket/broadcasters.py` - Broadcast helper methods
+- `/druva/tests/test_websocket_server.py` - Unit tests
+- `/druva/tests/test_websocket_integration.py` - Integration tests
+- `/druva/docs/WEBSOCKET_API.md` - API documentation
 
 ---
 
@@ -223,7 +223,7 @@ await server.broadcast_hot_reload(file_path, components)
 | **mahavishnu** | 8690 | Orchestration | Workflow orchestration | ✅ Complete | 92/100 |
 | **akosha** | 8692 | Analytics | Pattern detection | ✅ Complete | 88/100 |
 | **crackerjack** | 8686 | Quality | Test execution monitoring | ✅ Complete | 91/100 |
-| **dhruva** | 8693 | Distribution | Adapter lifecycle | ✅ Complete | 92/100 |
+| **druva** | 8693 | Distribution | Adapter lifecycle | ✅ Complete | 92/100 |
 | **excalidraw-mcp** | 3042 | Visualization | Diagram collaboration | ✅ Complete | 95/100 |
 | **fastblocks** | 8684 | UI Framework | Component updates | ✅ Complete | 90/100 |
 
@@ -242,7 +242,7 @@ WebSocket Ports (8600-8800 range):
   8686: crackerjack (quality monitoring)
   8690: mahavishnu (orchestration)
   8692: akosha (analytics)
-  8693: dhruva (distribution)
+  8693: druva (distribution)
 
 WebSocket Ports (3000-3100 range):
   3042: excalidraw-mcp (diagrams)
@@ -275,7 +275,7 @@ WebSocket Ports (8700-8800 range):
 | `worker.status_changed` | `pool:{id}` | worker_id, status, pool_id |
 | `pool.status_changed` | `pool:{id}` | pool_id, metrics |
 
-#### Dhruva Events (Distribution)
+#### Druva Events (Distribution)
 
 | Event | Channel | Payload |
 |-------|---------|---------|
@@ -348,7 +348,7 @@ WebSocket Ports (8700-8800 range):
 
 | Service | Files Created | Lines of Code | Test Files | Test Count |
 |---------|---------------|---------------|------------|------------|
-| **dhruva** | 6 | 650 | 2 | 20 |
+| **druva** | 6 | 650 | 2 | 20 |
 | **excalidraw-mcp** | 7 | 1,200 | 3 | 25 |
 | **fastblocks** | 7 | 850 | 2 | 20 |
 | **Total** | **20** | **2,700** | **7** | **65** |
@@ -366,11 +366,11 @@ WebSocket Ports (8700-8800 range):
 ### Test Results
 
 ```bash
-# Dhruva Test Results
-pytest dhruva/tests/test_websocket_server.py -v
+# Druva Test Results
+pytest druva/tests/test_websocket_server.py -v
 ========================= 12 passed in 2.34s =========================
 
-pytest dhruva/tests/test_websocket_integration.py -v
+pytest druva/tests/test_websocket_integration.py -v
 ========================= 8 passed in 4.21s =========================
 
 # Excalidraw-MCP Test Results
@@ -397,8 +397,8 @@ pytest fastblocks/tests/test_state_sync.py -v
 # Coverage Report
 Name                         Stmts   Miss  Cover   Missing
 ----------------------------------------------------------
-dhruva/websocket/server.py      89      4    96%   23-27
-dhruva/websocket/handlers.py     56      3    95%   45-48
+druva/websocket/server.py      89      4    96%   23-27
+druva/websocket/handlers.py     56      3    95%   45-48
 excalidraw_mcp/websocket/       156      8    95%   89-95
 fastblocks/websocket/           134      9    93%   78-85
 ----------------------------------------------------------
@@ -575,7 +575,7 @@ await websocket_server.broadcast_event(
 
 ## Testing Results
 
-### Dhruva Testing Summary
+### Druva Testing Summary
 
 **Unit Tests (12 tests):**
 - ✅ Server initialization
@@ -688,7 +688,7 @@ websocket:
 
 ### Service-Specific Configurations
 
-**Dhruva:**
+**Druva:**
 ```yaml
 websocket:
   enabled: true
@@ -783,14 +783,14 @@ if __name__ == "__main__":
 **Supervisord Configuration:**
 
 ```ini
-[program:dhruva-websocket]
-command=/path/to/venv/bin/python -m dhruva.websocket
-directory=/path/to/dhruva
+[program:druva-websocket]
+command=/path/to/venv/bin/python -m druva.websocket
+directory=/path/to/druva
 user=www-data
 autostart=true
 autorestart=true
-stdout_logfile=/var/log/dhruva/websocket.out.log
-stderr_logfile=/var/log/dhruva/websocket.err.log
+stdout_logfile=/var/log/druva/websocket.out.log
+stderr_logfile=/var/log/druva/websocket.err.log
 environment=PYTHONUNBUFFERED="1"
 
 [program:excalidraw-websocket]
@@ -816,15 +816,15 @@ stderr_logfile=/var/log/fastblocks/websocket.err.log
 
 ```ini
 [Unit]
-Description=Dhruva WebSocket Server
+Description=Druva WebSocket Server
 After=network.target
 
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/path/to/dhruva
+WorkingDirectory=/path/to/druva
 Environment="PATH=/path/to/venv/bin"
-ExecStart=/path/to/venv/bin/python -m dhruva.websocket
+ExecStart=/path/to/venv/bin/python -m druva.websocket
 Restart=always
 RestartSec=10
 
@@ -1260,7 +1260,7 @@ watch -n 5 'ps aux | grep websocket'
 
 ### Phase 3 Deliverables
 
-✅ **Dhruva WebSocket Server** (Port 8693)
+✅ **Druva WebSocket Server** (Port 8693)
 - Adapter lifecycle events
 - Distribution monitoring
 - Registry updates
@@ -1307,7 +1307,7 @@ watch -n 5 'ps aux | grep websocket'
 
 WebSocket Phase 3 is **COMPLETE** and production-ready. Three additional services now have enterprise-grade WebSocket servers, bringing the total ecosystem to **7 operational servers** with comprehensive real-time capabilities:
 
-1. ✅ **Dhruva** - Real-time adapter distribution and lifecycle events
+1. ✅ **Druva** - Real-time adapter distribution and lifecycle events
 2. ✅ **Excalidraw-MCP** - Multi-user diagram collaboration
 3. ✅ **Fastblocks** - Real-time UI component updates
 
@@ -1328,6 +1328,6 @@ The implementation maintains consistent patterns across all services, provides c
 **Status:** ✅ Phase 3 Complete
 **Next Phase:** Production Deployment & Performance Optimization
 **Commits:**
-- dhruva: 6a230a7
+- druva: 6a230a7
 - excalidraw-mcp: 01caf5a
 - fastblocks: 0d3f4a9

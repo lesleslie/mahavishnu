@@ -8,7 +8,7 @@
 ## ULID Migration Status: ✅ COMPLETE
 
 All ULID migration work (Phases 0-7) is **production-ready**:
-- ✅ Dhruva ULID generation (19,901 ops/sec)
+- ✅ Druva ULID generation (19,901 ops/sec)
 - ✅ Oneiric services (collision detection, migration utilities)
 - ✅ Crackerjack correlation IDs (ULID[:16])
 - ✅ Session-Buddy session IDs (full ULID)

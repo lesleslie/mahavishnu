@@ -1,5 +1,7 @@
 """Worker orchestrator adapter for task execution."""
 
+from __future__ import annotations
+
 from typing import Any
 
 from ...workers.manager import WorkerManager
@@ -29,13 +31,36 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         >>> result = await adapter.execute(task, ["/path/to/repo"])
     """
 
-    def __init__(self, worker_manager: WorkerManager) -> None:
+    def __init__(self, config: Any = None, worker_manager: WorkerManager | None = None) -> None:
         """Initialize worker orchestrator adapter.
 
         Args:
-            worker_manager: WorkerManager instance
+            config: Mahavishnu settings (used when worker_manager is not provided)
+            worker_manager: Optional pre-built WorkerManager instance
         """
-        self.worker_manager = worker_manager
+        if worker_manager is None and isinstance(config, WorkerManager):
+            worker_manager = config
+
+        if worker_manager is not None:
+            self.worker_manager = worker_manager
+            return
+
+        if config is None:
+            raise ValueError("Either config or worker_manager must be provided")
+
+        from ...terminal.manager import TerminalManager
+
+        terminal_mgr = TerminalManager.create(
+            config,
+            mcp_client=None,  # Session-Buddy integration remains optional
+        )
+        max_concurrent = getattr(getattr(config, "workers", None), "max_concurrent", 10)
+        self.worker_manager = WorkerManager(
+            terminal_manager=terminal_mgr,
+            max_concurrent=max_concurrent,
+            debug_mode=False,
+            session_buddy_client=None,
+        )
 
     @property
     def adapter_type(self) -> AdapterType:

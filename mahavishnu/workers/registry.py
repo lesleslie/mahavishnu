@@ -17,6 +17,7 @@ class WorkerCategory(Enum):
     CONTAINER = "container"  # Container-based execution
     REMOTE = "remote"  # Remote execution (SSH)
     APPLICATION = "application"  # Desktop applications via MCP
+    GATEWAY = "gateway"  # Remote gateway workers (HTTP/RPC)
 
 
 @dataclass
@@ -98,6 +99,45 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=["completed", "finished", "done"],
         stream_format="text",
         requires_tool="opencode",
+    ),
+    "terminal-openclaw": WorkerConfig(
+        name="OpenClaw",
+        worker_type="terminal-openclaw",
+        command="openclaw",
+        category=WorkerCategory.AI_ASSISTANT,
+        description="OpenClaw CLI assistant for coding and task execution",
+        completion_markers=["completed", "finished", "done"],
+        stream_format="text",
+        requires_tool="openclaw",
+    ),
+    "terminal-deepagents": WorkerConfig(
+        name="DeepAgents CLI",
+        worker_type="terminal-deepagents",
+        command="deepagents-cli",
+        category=WorkerCategory.AI_ASSISTANT,
+        description="DeepAgents CLI for autonomous multi-step coding tasks",
+        completion_markers=["completed", "finished", "done"],
+        stream_format="text",
+        requires_tool="deepagents-cli",
+    ),
+    "terminal-clai": WorkerConfig(
+        name="CLAI",
+        worker_type="terminal-clai",
+        command="clai",
+        category=WorkerCategory.AI_ASSISTANT,
+        description="CLAI terminal assistant for command and code workflows",
+        completion_markers=["completed", "finished", "done"],
+        stream_format="text",
+        requires_tool="clai",
+    ),
+    "gateway-openclaw": WorkerConfig(
+        name="OpenClaw Gateway",
+        worker_type="gateway-openclaw",
+        command="",  # Handled by OpenClawGatewayWorker
+        category=WorkerCategory.GATEWAY,
+        description="OpenClaw gateway worker via HTTP JSON-RPC",
+        supports_interactive=False,
+        default_timeout=300,
     ),
     "terminal-ollama": WorkerConfig(
         name="Ollama AI",

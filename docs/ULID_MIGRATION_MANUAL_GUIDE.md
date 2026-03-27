@@ -9,7 +9,7 @@
 
 ### ✅ Phase 0: ULID Foundation (COMPLETE)
 
-**Dhruva ULID** (`/Users/les/Projects/dhruva/dhruva/ulid.py`):
+**Druva ULID** (`/Users/les/Projects/druva/druva/ulid.py`):
 - ✅ Thread-safe monotonic randomness
 - ✅ Zero collisions (0% in 10,000 ULIDs)
 - ✅ 19,901 ops/sec generation throughput
@@ -77,7 +77,7 @@ Since Crackerjack and Session-Buddy don't have their tables yet, the cleanest ap
 5. **Run Akosha Code Update**:
    ```bash
    cd /Users/les/Projects/akosha
-   # Update GraphEntity class to use: from dhruva import generate; entity_id = generate()
+   # Update GraphEntity class to use: from druva import generate; entity_id = generate()
    # No database migration needed (in-memory storage)
    ```
 
@@ -117,7 +117,7 @@ All migration scripts are ready in `/Users/les/Projects/mahavishnu/scripts/`:
 1. **`migrate_crackerjack_to_ulid.py`** - Crackerjack job ULID migration
    - Supports `--dry-run` for safe preview
    - Creates backups before changes
-   - Updates code to use `from dhruva import generate`
+   - Updates code to use `from druva import generate`
    - Validates job_id format
 
 2. **`migrate_session_buddy_to_ulid.py`** - Session-Buddy session ULID migration
@@ -167,12 +167,12 @@ pytest tests/unit/ -k "ulid or workflow" -v
 pytest tests/integration/test_ulid_cross_system_integration.py -v
 
 # Performance benchmarks
-python3 /Users/les/Projects/dhruva/benches/test_ulid_performance.py
+python3 /Users/les/Projects/druva/benches/test_ulid_performance.py
 python3 /Users/les/Projects/oneiric/benches/test_ulid_resolution_performance.py
 ```
 
 **Success Criteria**:
-- ✅ All ULID generation uses Dhruva
+- ✅ All ULID generation uses Druva
 - ✅ All system code references ULID columns
 - ✅ Zero data loss (record counts match)
 - ✅ All tests passing (98.1%)

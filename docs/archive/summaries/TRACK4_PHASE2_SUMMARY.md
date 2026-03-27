@@ -41,7 +41,7 @@ Created comprehensive test suite:
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
 | `test_lite_mode.py` | 10 | Lite mode initialization, start/stop, features |
-| `test_standard_mode.py` | 9 | Standard mode with Session-Buddy + Dhruva |
+| `test_standard_mode.py` | 9 | Standard mode with Session-Buddy + Druva |
 | `test_full_mode.py` | 10 | Full mode with all ecosystem services |
 | `test_mode_factory.py` | 5 | Factory function and error handling |
 | **Total** | **34** | **100% passing** |

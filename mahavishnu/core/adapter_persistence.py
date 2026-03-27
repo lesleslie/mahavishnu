@@ -1,7 +1,7 @@
 """Adapter persistence layer for HybridAdapterRegistry.
 
 This module implements the persistence layer for adapter state and health history,
-using SQLite for local storage with a stub for future Dhruva MCP integration.
+using SQLite for local storage with a stub for future Druva MCP integration.
 
 Key responsibilities:
 - Persist adapter state (enabled/disabled, preferences)
@@ -10,7 +10,7 @@ Key responsibilities:
 
 Storage Architecture:
 - Local SQLite (current): aiosqlite for async operations
-- Dhruva MCP (future): Distributed state via MCP protocol at localhost:8683
+- Druva MCP (future): Distributed state via MCP protocol at localhost:8683
 
 Created: 2026-02-22
 Version: 1.0
@@ -249,7 +249,7 @@ class AdapterPersistenceLayer:
     """Persistence layer for adapter state and health history.
 
     This class provides async SQLite storage for adapter state with a
-    placeholder for future Dhruva MCP integration.
+    placeholder for future Druva MCP integration.
 
     Features:
     - ACID transactions via SQLite
@@ -286,9 +286,9 @@ class AdapterPersistenceLayer:
         self._db: aiosqlite.Connection | None = None
         self._initialized = False
 
-        # Future: Dhruva MCP client stub
-        # self._dhruva_client: DhruvaClient | None = None
-        # self._dhruva_url = "http://localhost:8683/mcp"
+        # Future: Druva MCP client stub
+        # self._druva_client: DruvaClient | None = None
+        # self._druva_url = "http://localhost:8683/mcp"
 
         logger.debug(f"AdapterPersistenceLayer initialized with path: {self.storage_path}")
 
@@ -418,8 +418,8 @@ class AdapterPersistenceLayer:
 
             logger.debug(f"Saved state for adapter '{state.adapter_id}': enabled={state.enabled}")
 
-            # Future: Sync to Dhruva MCP
-            # await self._sync_to_dhruva("adapter_state", data)
+            # Future: Sync to Druva MCP
+            # await self._sync_to_druva("adapter_state", data)
 
         except Exception as e:
             logger.error(f"Failed to save state for adapter '{state.adapter_id}': {e}")
@@ -562,8 +562,8 @@ class AdapterPersistenceLayer:
                 f"healthy={record.healthy}, latency={record.latency_ms}ms"
             )
 
-            # Future: Sync to Dhruva MCP
-            # await self._sync_to_dhruva("health_history", data)
+            # Future: Sync to Druva MCP
+            # await self._sync_to_druva("health_history", data)
 
         except Exception as e:
             logger.error(f"Failed to record health for adapter '{record.adapter_id}': {e}")
@@ -745,23 +745,23 @@ class AdapterPersistenceLayer:
         await self.close()
 
     # =========================================================================
-    # Future: Dhruva MCP Integration
+    # Future: Druva MCP Integration
     # =========================================================================
 
-    # async def _sync_to_dhruva(self, table: str, data: dict[str, Any]) -> None:
-    #     """Sync data to Dhruva MCP server.
+    # async def _sync_to_druva(self, table: str, data: dict[str, Any]) -> None:
+    #     """Sync data to Druva MCP server.
     #
-    #     Placeholder for future integration with Dhruva MCP at localhost:8683.
+    #     Placeholder for future integration with Druva MCP at localhost:8683.
     #
     #     Args:
     #         table: Table name (adapter_state or health_history)
     #         data: Record data to sync
     #     """
-    #     if self._dhruva_client is None:
+    #     if self._druva_client is None:
     #         return
     #
     #     try:
-    #         await self._dhruva_client.call_tool(
+    #         await self._druva_client.call_tool(
     #             "put_persistent_object",
     #             {
     #                 "key": f"mahavishnu/{table}/{data.get('adapter_id', 'unknown')}",
@@ -769,9 +769,9 @@ class AdapterPersistenceLayer:
     #                 "ttl": 86400 * 30,  # 30 days TTL
     #             }
     #         )
-    #         logger.debug(f"Synced {table} to Dhruva for adapter '{data.get('adapter_id')}'")
+    #         logger.debug(f"Synced {table} to Druva for adapter '{data.get('adapter_id')}'")
     #     except Exception as e:
-    #         logger.warning(f"Failed to sync to Dhruva: {e}")
+    #         logger.warning(f"Failed to sync to Druva: {e}")
     #         # Don't raise - local persistence is the source of truth
 
 
