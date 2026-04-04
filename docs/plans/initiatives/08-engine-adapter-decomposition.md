@@ -1,0 +1,30 @@
+# Initiative 8: Engine Adapter Decomposition
+
+## Metadata
+- Status: `not_started`
+- Owner Role: `Adapters Eng`
+- Target Window: `2026-05-11` to `2026-06-05`
+
+## Outcome
+Refactor large engine adapters into focused modules without behavior regressions.
+
+## Work Package Checklist
+- [ ] `I8-1` Prefect split + parity tests
+- [ ] `I8-2` Agno split + parity tests
+- [ ] `I8-3` LlamaIndex split + parity tests
+- [ ] `I8-4` Remove dead compatibility shims
+
+## Dependencies
+- `I3-4`, `I5-2`
+
+## Exit Criteria
+- Parity tests pass for all three adapter families
+- Cyclomatic complexity reduced by at least `20%` in target files
+- No target adapter module exceeds `700` lines after decomposition
+
+## Risks
+- Hidden coupling across split modules
+- Regression in fallback paths
+
+## Progress Log
+- 2026-04-04: Plan file created.

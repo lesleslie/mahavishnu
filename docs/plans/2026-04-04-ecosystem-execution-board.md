@@ -26,14 +26,41 @@
 | 14 | Dashboard Phase 3 (Grafana alignment) | 67% | 2026-06-15 | 2026-06-26 | SRE + Platform UI | 13 | 1.5 | -50 to +300 |
 | 15 | Content quality ML enhancements | 68% | 2026-06-15 | 2026-07-03 | ML Eng + Ingestion | 5,9 | 3.0 | +800 to +2,000 |
 
+## 1.1) Master Checklist (Link to Individual Initiative Plans)
+
+- [ ] [Initiative 0: Phase 0 Cleanup](./initiatives/00-phase0-cleanup.md)
+- [ ] [Initiative 1: Health/Readiness/Metrics Contract + `mahavishnu health`](./initiatives/01-health-contract-and-command.md)
+- [ ] [Initiative 2: Config Unification + Validation CLI](./initiatives/02-config-unification-validation-cli.md)
+- [ ] [Initiative 3: MCP Lifecycle Formalization](./initiatives/03-mcp-lifecycle-formalization.md)
+- [ ] [Initiative 4: MCP Utility Tools](./initiatives/04-mcp-utility-tools.md)
+- [ ] [Initiative 5: Ecosystem Contract Tests](./initiatives/05-ecosystem-contract-tests.md)
+- [ ] [Initiative 6: Retry/Circuit-Breaker Centralization](./initiatives/06-retry-circuit-centralization.md)
+- [ ] [Initiative 7: Chaos Tests v1](./initiatives/07-chaos-tests-v1.md)
+- [ ] [Initiative 8: Engine Adapter Decomposition](./initiatives/08-engine-adapter-decomposition.md)
+- [ ] [Initiative 9: Typed Event Envelope + Governance](./initiatives/09-typed-event-envelope-governance.md)
+- [ ] [Initiative 10: Low-Value Tool Retirement](./initiatives/10-low-value-tool-retirement.md)
+- [ ] [Initiative 11: Cache + Tiered Retrieval Defaults](./initiatives/11-cache-tiered-retrieval-defaults.md)
+- [ ] [Initiative 12: Golden Paths for Top Workflows](./initiatives/12-golden-paths-workflows.md)
+- [ ] [Initiative 13: Dashboard Phase 2 (Textual, Conditional)](./initiatives/13-dashboard-phase2-textual.md)
+- [ ] [Initiative 14: Dashboard Phase 3 (Grafana Alignment)](./initiatives/14-dashboard-phase3-grafana-alignment.md)
+- [ ] [Initiative 15: Content Quality ML Enhancements](./initiatives/15-content-quality-ml-enhancements.md)
+
 ## 2) Global Gates and Safety Controls
 
-### Required CI gates for all rollout phases
+### Baseline gates (active immediately)
+- `G0_plan_dependency_check`: all active work packages must satisfy dependency IDs.
+- `G0_config_validation_matrix`: required env/schema checks for affected paths.
+- `G0_canary_health_gate`: rollback on SLO breach where rollout exists.
+- `G0_flaky_budget_gate`: quarantine threshold with owner SLA.
+
+### Post-contract gates (mandatory after Initiative 5 completes)
 - `contract_tests_required`: pass/fail release blocker.
-- `config_validation_matrix`: required env/schema checks.
 - `metrics_contract_guard`: required metric families + label cardinality checks.
-- `canary_health_gate`: rollback on SLO breach.
-- `flaky_budget_gate`: quarantine threshold with owner SLA.
+
+### Dependency semantics
+- Initiative start dates indicate planning/discovery kickoff.
+- Implementation work packages may begin only after listed dependency IDs are complete.
+- Tracker should enforce dependencies at work package level (`Ix-y`, `Gx`).
 
 ### Standard rollout sequence
 1. Shadow (`0%`) for 24h.
@@ -281,7 +308,8 @@
 ## 4) Capacity Model and Sequencing Rules
 
 - Planning assumption: `2 backend engineers + 0.5 SRE + 0.5 QA` (~2.5 FTE effective).
-- Do not run more than **2 major initiatives concurrently**.
+- Do not run more than **2 heavy implementation streams concurrently**.
+- Additional concurrent initiatives may run only in planning/discovery/docs mode until dependencies are met.
 - Prioritize contract and reliability work before UI and ML work.
 - Use explicit deferral criteria for non-critical ecosystem services.
 
