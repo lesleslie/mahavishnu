@@ -31,7 +31,7 @@
 Completion rule for this master checklist:
 - An initiative can be checked complete only when all of its work package checkboxes are complete in the linked initiative doc and that initiative's exit criteria are met.
 
-- [ ] [Initiative 0: Phase 0 Cleanup](./initiatives/00-phase0-cleanup.md)
+- [x] [Initiative 0: Phase 0 Cleanup](./initiatives/00-phase0-cleanup.md)
 - [ ] [Initiative 1: Health/Readiness/Metrics Contract + `mahavishnu health`](./initiatives/01-health-contract-and-command.md)
 - [ ] [Initiative 2: Config Unification + Validation CLI](./initiatives/02-config-unification-validation-cli.md)
 - [ ] [Initiative 3: MCP Lifecycle Formalization](./initiatives/03-mcp-lifecycle-formalization.md)
@@ -52,12 +52,13 @@ Completion rule for this master checklist:
 
 This is the recommended order for the remaining `gpt-5.4 mini` budget:
 
-1. `I0` Phase 0 cleanup.
+1. `I0` Phase 0 cleanup: complete.
 2. `I1` Health/readiness/metrics contract + `mahavishnu health`.
 3. `I4` MCP utility tools.
-4. `I2` Config unification + validation CLI, only if budget remains after `I0`, `I1`, and `I4`.
+4. `I2` Config unification + validation CLI, only if budget remains after `I1` and `I4`.
 
 Execution rules for this slice:
+- `I0` is complete.
 - Do not start `I1` work packages until `I0-4` is complete.
 - Do not start `I4` work packages until `I1-2` is complete.
 - Treat `I2` as spillover only.

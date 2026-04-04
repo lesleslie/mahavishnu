@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -21,10 +21,13 @@ from ..core.workflow_state import WorkflowStatus
 class AlertSeverity(Enum):
     """Alert severity levels."""
 
+    INFO = "info"
     LOW = "low"
+    WARNING = "warning"
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
+    EMERGENCY = "emergency"
 
 
 class AlertType(Enum):
@@ -39,30 +42,109 @@ class AlertType(Enum):
 
 
 @dataclass
-class Alert:
-    """Data structure for an alert."""
+class AlertRule:
+    """Rule used by the lightweight alert evaluator."""
 
-    id: str
-    timestamp: datetime
-    severity: AlertSeverity
-    type: AlertType
-    title: str
-    description: str
-    details: dict[str, Any]
+    name: str
+    expression: str
+    severity: AlertSeverity = AlertSeverity.WARNING
+    duration_seconds: int = 60
+    enabled: bool = True
+    labels: dict[str, str] = field(default_factory=dict)
+    annotations: dict[str, str] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "expression": self.expression,
+            "severity": self.severity.value,
+            "duration_seconds": self.duration_seconds,
+            "enabled": self.enabled,
+            "labels": self.labels,
+            "annotations": self.annotations,
+        }
+
+
+@dataclass
+class Alert:
+    """Data structure for an alert.
+
+    This model supports both notification-style alerts and the simpler
+    rule-engine alerts used by monitoring_infra so the alert implementation
+    can live in one place.
+    """
+
+    id: str | None = None
+    timestamp: datetime = field(default_factory=datetime.now)
+    severity: AlertSeverity = AlertSeverity.MEDIUM
+    type: AlertType | None = None
+    title: str = ""
+    description: str = ""
+    details: dict[str, Any] = field(default_factory=dict)
+    rule_name: str | None = None
+    message: str | None = None
+    labels: dict[str, str] = field(default_factory=dict)
+    firing: bool = True
     acknowledged: bool = False
     acknowledged_by: str | None = None
     acknowledged_at: datetime | None = None
+    fired_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        if self.fired_at is None:
+            self.fired_at = self.timestamp
+        if self.message is None and self.description:
+            self.message = self.description
+        if self.id is None:
+            base = self.rule_name or self.title or "alert"
+            self.id = f"alert_{base}_{int(self.timestamp.timestamp())}"
+
+    @property
+    def is_firing(self) -> bool:
+        return self.firing
+
+    def acknowledge(self, by: str) -> None:
+        self.acknowledged = True
+        self.acknowledged_by = by
+        self.acknowledged_at = datetime.now()
+
+    def to_dict(self) -> dict[str, Any]:
+        payload = {
+            "id": self.id,
+            "timestamp": self.timestamp.isoformat(),
+            "severity": self.severity.value,
+            "title": self.title,
+            "description": self.description,
+            "details": self.details,
+            "acknowledged": self.acknowledged,
+            "acknowledged_by": self.acknowledged_by,
+            "acknowledged_at": self.acknowledged_at.isoformat() if self.acknowledged_at else None,
+            "fired_at": self.fired_at.isoformat() if self.fired_at else None,
+            "firing": self.firing,
+        }
+        if self.type is not None:
+            payload["type"] = self.type.value
+        if self.rule_name is not None:
+            payload["rule_name"] = self.rule_name
+        if self.message is not None:
+            payload["message"] = self.message
+        if self.labels:
+            payload["labels"] = self.labels
+        return payload
 
 
 class AlertManager:
     """Manages alerts and notifications."""
 
-    def __init__(self, app):
+    def __init__(self, app=None):
         self.app = app
         self.logger = logging.getLogger(__name__)
         self.alerts: list[Alert] = []
         self.alert_handlers: dict[AlertType, list[Callable]] = {}
         self.notification_channels = []
+        self.rules: dict[str, AlertRule] = {}
+        self.active_alerts: dict[str, Alert] = {}
+        self._shutdown_event = asyncio.Event()
 
         # Initialize default alert handlers
         self._init_default_handlers()
@@ -91,6 +173,78 @@ class AlertManager:
         """Register a notification channel."""
         self.notification_channels.append(channel)
 
+    def add_rule(self, rule: AlertRule) -> None:
+        self.rules[rule.name] = rule
+
+    def remove_rule(self, name: str) -> None:
+        self.rules.pop(name, None)
+
+    def enable_rule(self, name: str) -> None:
+        if name in self.rules:
+            self.rules[name].enabled = True
+
+    def disable_rule(self, name: str) -> None:
+        if name in self.rules:
+            self.rules[name].enabled = False
+
+    def fire_alert(self, rule_name: str, message: str) -> None:
+        rule = self.rules.get(rule_name)
+        if not rule:
+            return
+        alert = Alert(
+            rule_name=rule_name,
+            severity=rule.severity,
+            message=message,
+            labels=rule.labels.copy(),
+            firing=True,
+        )
+        self.alerts.append(alert)
+        self.active_alerts[rule_name] = alert
+        self.logger.warning("Alert fired: %s - %s", rule_name, message)
+
+    def resolve_alert(self, rule_name: str) -> None:
+        if rule_name in self.active_alerts:
+            self.active_alerts[rule_name].firing = False
+
+    def get_alert(self, rule_name: str) -> Alert | None:
+        return self.active_alerts.get(rule_name)
+
+    def get_rule_alerts(self) -> list[Alert]:
+        return [a for a in self.active_alerts.values() if a.firing]
+
+    def evaluate_rules(self, metrics: dict[str, float]) -> list[str]:
+        triggered: list[str] = []
+        for name, rule in self.rules.items():
+            if not rule.enabled:
+                continue
+            if self._evaluate_expression(rule.expression, metrics):
+                self.fire_alert(name, f"Rule matched for {name}")
+                triggered.append(name)
+        return triggered
+
+    def _evaluate_expression(self, expression: str, metrics: dict[str, float]) -> bool:
+        parts = expression.split()
+        if len(parts) != 3:
+            return False
+        metric_name, operator, threshold_str = parts
+        value = metrics.get(metric_name, 0.0)
+        try:
+            threshold = float(threshold_str)
+        except ValueError:
+            return False
+
+        ops = {
+            ">": lambda a, b: a > b,
+            ">=": lambda a, b: a >= b,
+            "<": lambda a, b: a < b,
+            "<=": lambda a, b: a <= b,
+            "==": lambda a, b: a == b,
+            "!=": lambda a, b: a != b,
+        }
+        if operator in ops:
+            return ops[operator](value, threshold)
+        return False
+
     async def trigger_alert(
         self,
         severity: AlertSeverity,
@@ -113,6 +267,7 @@ class AlertManager:
         )
 
         self.alerts.append(alert)
+        self.active_alerts[alert_id] = alert
 
         # Execute registered handlers
         if alert_type in self.alert_handlers:
@@ -131,16 +286,14 @@ class AlertManager:
     async def acknowledge_alert(self, alert_id: str, user: str):
         """Acknowledge an alert."""
         for alert in self.alerts:
-            if alert.id == alert_id:
-                alert.acknowledged = True
-                alert.acknowledged_by = user
-                alert.acknowledged_at = datetime.now()
+            if alert.id == alert_id or alert.rule_name == alert_id:
+                alert.acknowledge(user)
                 self.logger.info(f"Alert {alert_id} acknowledged by {user}")
                 break
 
     async def get_active_alerts(self) -> list[Alert]:
         """Get all non-acknowledged alerts."""
-        return [alert for alert in self.alerts if not alert.acknowledged]
+        return [alert for alert in self.alerts if not alert.acknowledged and alert.firing]
 
     async def _send_notifications(self, alert: Alert):
         """Send notifications through all registered channels."""
@@ -430,14 +583,19 @@ class SlackNotificationChannel(NotificationChannel):
                 "attachments": [
                     {
                         "color": "danger"
-                        if alert.severity in (AlertSeverity.HIGH, AlertSeverity.CRITICAL)
+                        if alert.severity
+                        in (AlertSeverity.HIGH, AlertSeverity.CRITICAL, AlertSeverity.EMERGENCY)
                         else "warning"
-                        if alert.severity == AlertSeverity.MEDIUM
+                        if alert.severity in (AlertSeverity.MEDIUM, AlertSeverity.WARNING)
                         else "good",
                         "fields": [
                             {"title": "Description", "value": alert.description, "short": False},
                             {"title": "Time", "value": alert.timestamp.isoformat(), "short": True},
-                            {"title": "Type", "value": alert.type.value, "short": True},
+                            {
+                                "title": "Type",
+                                "value": alert.type.value if alert.type else "rule",
+                                "short": True,
+                            },
                         ],
                     }
                 ],
@@ -463,10 +621,13 @@ class PagerDutyNotificationChannel(NotificationChannel):
         """Send a PagerDuty notification."""
         try:
             severity_map = {
+                AlertSeverity.INFO: "info",
                 AlertSeverity.LOW: "info",
+                AlertSeverity.WARNING: "warning",
                 AlertSeverity.MEDIUM: "warning",
                 AlertSeverity.HIGH: "error",
                 AlertSeverity.CRITICAL: "critical",
+                AlertSeverity.EMERGENCY: "critical",
             }
 
             payload = {
@@ -479,7 +640,7 @@ class PagerDutyNotificationChannel(NotificationChannel):
                     "custom_details": {
                         "description": alert.description,
                         "timestamp": alert.timestamp.isoformat(),
-                        "type": alert.type.value,
+                        "type": alert.type.value if alert.type else "rule",
                         "details": alert.details,
                     },
                 },
@@ -573,12 +734,13 @@ class MonitoringDashboard:
     async def _get_alert_counts(self) -> dict[str, int]:
         """Get alert counts by severity."""
         if not self.alert_manager:
-            return {"critical": 0, "high": 0, "medium": 0, "low": 0}
+            return {"critical": 0, "high": 0, "medium": 0, "low": 0, "warning": 0, "info": 0}
 
         alerts = await self.alert_manager.get_active_alerts()
-        counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+        counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "warning": 0, "info": 0}
 
         for alert in alerts:
+            counts.setdefault(alert.severity.value, 0)
             counts[alert.severity.value] += 1
 
         return counts
@@ -597,7 +759,7 @@ class MonitoringDashboard:
                 "id": alert.id,
                 "timestamp": alert.timestamp.isoformat(),
                 "severity": alert.severity.value,
-                "type": alert.type.value,
+                "type": alert.type.value if alert.type else "rule",
                 "title": alert.title,
                 "description": alert.description,
                 "acknowledged": alert.acknowledged,
