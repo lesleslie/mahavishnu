@@ -7,7 +7,7 @@ import typer
 
 def add_monitoring_commands(app: typer.Typer) -> None:
     """Add monitoring commands to the main CLI app."""
-    from .core.monitoring import AlertManager, MonitoringDashboard, MonitoringService
+    from .core.monitoring import MonitoringDashboard, MonitoringService
 
     monitor_app = typer.Typer(help="System monitoring and alerting")
     app.add_typer(monitor_app, name="monitor")
@@ -20,7 +20,8 @@ def add_monitoring_commands(app: typer.Typer) -> None:
             from .core.app import MahavishnuApp
 
             maha_app = MahavishnuApp()
-            dashboard = MonitoringDashboard(maha_app)
+            service = MonitoringService(maha_app)
+            dashboard = service.dashboard
 
             metrics = await dashboard.get_system_metrics()
 
@@ -43,11 +44,8 @@ def add_monitoring_commands(app: typer.Typer) -> None:
             from .core.app import MahavishnuApp
 
             maha_app = MahavishnuApp()
-            dashboard = MonitoringDashboard(maha_app)
-
-            # Set up a minimal alert manager for the dashboard
-            alert_manager = AlertManager(maha_app)
-            dashboard.set_alert_manager(alert_manager)
+            service = MonitoringService(maha_app)
+            dashboard = service.dashboard
 
             alerts = await dashboard.get_recent_alerts(limit=limit)
 

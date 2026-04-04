@@ -184,3 +184,8 @@ secrets/
 *.txt
 .archives/
 .backup/
+*.bak
+*.bak2
+*.bak3
+*.orig
+*.tmp
