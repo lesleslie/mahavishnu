@@ -48,6 +48,21 @@ Completion rule for this master checklist:
 - [ ] [Initiative 14: Dashboard Phase 3 (Grafana Alignment)](./initiatives/14-dashboard-phase3-grafana-alignment.md)
 - [ ] [Initiative 15: Content Quality ML Enhancements](./initiatives/15-content-quality-ml-enhancements.md)
 
+## 1.2) Current Execution Slice
+
+This is the recommended order for the remaining `gpt-5.4 mini` budget:
+
+1. `I0` Phase 0 cleanup.
+2. `I1` Health/readiness/metrics contract + `mahavishnu health`.
+3. `I4` MCP utility tools.
+4. `I2` Config unification + validation CLI, only if budget remains after `I0`, `I1`, and `I4`.
+
+Execution rules for this slice:
+- Do not start `I1` work packages until `I0-4` is complete.
+- Do not start `I4` work packages until `I1-2` is complete.
+- Treat `I2` as spillover only.
+- Stop after any initiative if the linked initiative doc has all work package checkboxes complete and exit criteria are met.
+
 ## 2) Global Gates and Safety Controls
 
 ### Baseline gates (active immediately)
