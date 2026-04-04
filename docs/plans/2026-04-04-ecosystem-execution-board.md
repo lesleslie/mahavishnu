@@ -304,3 +304,130 @@ Note: Net repository LOC can still grow if Dashboard and ML initiatives add more
 - Architecture review: recommended front-loading contracts/lifecycle and making contract tests release-blocking.
 - SRE review: added explicit traffic gates, rollback triggers, and operational runbooks/checklists.
 - Delivery/testing review: added CI gate hardening, flaky test controls, and realistic 90-day capacity constraints.
+
+## 7) Issue-Sized Work Package Backlog (1-3 day chunks)
+
+### Initiative 0 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I0-1 | Inventory and classify all `.bak` files | 0.5d | Platform Eng | None | inventory artifact committed |
+| I0-2 | Remove `.bak` files and update ignore rules | 0.5d | Platform Eng | I0-1 | `find . -name '*.bak'` returns 0 |
+| I0-3 | Consolidate `AlertManager` implementation | 1.0d | Platform Eng | I0-1 | single canonical class remains |
+| I0-4 | Resolve dashboard config split and imports | 1.0d | Platform Eng | I0-3 | tests pass and no duplicate config types |
+
+### Initiative 1 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I1-1 | Author health schema spec (`v1`) | 1.0d | Platform Eng | I0-4 | schema doc + model in code |
+| I1-2 | Implement schema in Mahavishnu endpoint | 1.0d | Platform Eng | I1-1 | endpoint response validates |
+| I1-3 | Implement `mahavishnu health` + `--json` | 1.0d | Platform Eng | I1-2 | CLI works for all 6 components |
+| I1-4 | Timeout/failure behavior tests + telemetry | 1.0d | SRE | I1-3 | unreachable service reported, no crash |
+
+### Initiative 2 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I2-1 | Scaffold `config_validator.py` command | 0.5d | Core Eng | I1-1 | command wired in CLI |
+| I2-2 | Add repo/adapters/pool checks | 1.0d | Core Eng | I2-1 | invalid configs fail with clear errors |
+| I2-3 | Add MCP connectivity and full mode checks | 1.0d | Core Eng | I2-2 | `validate --full` covers connectivity |
+| I2-4 | Add CI config matrix job | 1.0d | QA/Infra | I2-3 | job required in PR checks |
+
+### Initiative 3 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I3-1 | Add abstract lifecycle contract | 0.5d | Core Eng | I1-1 | base adapter exposes required methods |
+| I3-2 | Add `AdapterMetadata` model | 0.5d | Core Eng | I3-1 | metadata available on all adapters |
+| I3-3 | Update Prefect/Agno/LlamaIndex implementations | 1.5d | Core Eng | I3-2 | adapters implement contract |
+| I3-4 | Lifecycle conformance tests | 1.0d | QA/Infra | I3-3 | CI blocks non-conforming adapters |
+
+### Initiative 4 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I4-1 | Add `mcp_list_tools` implementation + tests | 1.0d | MCP Eng | I1-2 | tool enumerates registered tools |
+| I4-2 | Add `mcp_test_connection` + tests | 1.0d | MCP Eng | I4-1 | connectivity checks return typed result |
+| I4-3 | Add `mcp_get_metrics` + tests | 1.0d | MCP Eng | I4-1 | health metrics tool returns schema output |
+
+### Initiative 5 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I5-1 | Define contract matrix and fixtures | 1.0d | QA/Infra | I1-4,I2-4,I3-4 | matrix doc + fixtures merged |
+| I5-2 | Implement deterministic contract suite | 2.0d | QA/Infra | I5-1 | suite stable and non-flaky |
+| I5-3 | CI gating + compatibility report artifact | 1.0d | QA/Infra | I5-2 | required check enabled |
+
+### Initiative 6 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I6-1 | Dependency taxonomy and policy matrix | 1.0d | SRE | I5-1 | policy doc approved |
+| I6-2 | Shared retry/circuit module | 2.0d | Core Eng | I6-1 | module available and tested |
+| I6-3 | Migrate top 3 critical flows | 2.0d | Core Eng | I6-2 | old retry code removed for those paths |
+| I6-4 | Add retry amplification and circuit metrics | 1.0d | SRE | I6-3 | dashboards show policy behavior |
+
+### Initiative 7 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I7-1 | Chaos harness scaffolding | 1.0d | SRE + QA | I6-2 | harness can inject controlled faults |
+| I7-2 | Worker kill + network partition scenarios | 2.0d | SRE + QA | I7-1 | scenarios reproducible in CI env |
+| I7-3 | Resource exhaustion + cascading failure scenarios | 2.0d | SRE + QA | I7-1 | game-day checklist passes |
+
+### Initiative 8 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I8-1 | Prefect split + parity tests | 2.0d | Adapters Eng | I3-4,I5-2 | split merged with parity green |
+| I8-2 | Agno split + parity tests | 2.0d | Adapters Eng | I8-1 | split merged with parity green |
+| I8-3 | LlamaIndex split + parity tests | 2.0d | Adapters Eng | I8-2 | split merged with parity green |
+| I8-4 | Remove dead compatibility shims | 1.0d | Adapters Eng | I8-3 | no unused split-era shim modules |
+
+### Initiative 9 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I9-1 | Event envelope spec + versioning policy | 1.0d | Core Eng | I5-1 | policy approved and documented |
+| I9-2 | Schema validation library and CI checks | 1.0d | Core Eng | I9-1 | CI fails unversioned events |
+| I9-3 | Migrate high-volume event producers | 2.0d | Core Eng | I9-2 | top producers emit envelope |
+
+### Initiative 10 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I10-1 | Telemetry-based tool ranking report | 1.0d | Product + Platform | I4-3,I5-3 | ranked list published |
+| I10-2 | Deprecation warnings and migration notes | 1.0d | Platform Eng | I10-1 | warnings visible in CLI/MCP |
+| I10-3 | Remove bottom 10-20% tools safely | 2.0d | Platform Eng | I10-2 | removals complete, tests green |
+
+### Initiative 11 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I11-1 | Cache policy doc (TTL/invalidation) | 1.0d | Search/Infra | I5-1 | policy approved |
+| I11-2 | Implement default tiering in query paths | 2.0d | Search/Infra | I11-1 | tiering active in target paths |
+| I11-3 | Cache observability and regression tests | 1.0d | Search/Infra | I11-2 | hit-rate and stale-data tests in CI |
+
+### Initiative 12 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I12-1 | Select top 10 workflows + baseline metrics | 1.0d | Platform + DX | I5-3 | list and baselines published |
+| I12-2 | Implement canonical CLI/MCP pathways | 2.0d | Platform + DX | I12-1 | golden commands usable |
+| I12-3 | Add non-canonical warnings and docs | 1.0d | Platform + DX | I12-2 | variance warnings active |
+
+### Initiative 13 work packages (conditional)
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I13-1 | Add `[tui]` dependency and bootstrap app shell | 1.0d | Platform UI | I1 adoption gate | app boots in local env |
+| I13-2 | Implement overview + sweep screens | 2.0d | Platform UI | I13-1 | screens render live data |
+| I13-3 | Implement routing/alerts screens + read-only constraints | 2.0d | Platform UI | I13-2 | no mutating ops available |
+
+### Initiative 14 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I14-1 | Map TUI metrics to canonical Prometheus inventory | 1.0d | SRE + Platform UI | I13-3 | inventory mapping doc merged |
+| I14-2 | Add sweep history dashboard and panel tests | 1.0d | SRE + Platform UI | I14-1 | panel smoke tests pass |
+| I14-3 | Remove corrupted legacy dashboard assets | 0.5d | SRE | I14-2 | only valid dashboard JSON remains |
+
+### Initiative 15 work packages
+| ID | Work package | Est | Owner | Depends on | Done when |
+|---|---|---:|---|---|---|
+| I15-1 | Define labeled dataset and eval rubric | 1.0d | ML Eng + Ingestion | I9-2 | rubric + dataset snapshot committed |
+| I15-2 | Implement readability/depth/completeness scoring | 2.0d | ML Eng + Ingestion | I15-1 | evaluator no longer returns stub |
+| I15-3 | Offline evaluation and threshold tuning | 1.0d | ML Eng + Ingestion | I15-2 | >=10% improvement achieved |
+| I15-4 | Staged rollout + drift monitoring dashboard | 1.0d | ML Eng + SRE | I15-3 | staged rollout complete, alerts live |
+
+## 8) Suggested Tracking Conventions
+
+- Track each work package as an issue labeled with `initiative:<id>` and `phase:foundation|reliability|optimization`.
+- Use one parent epic per initiative (`I0`..`I15`) and link all child work packages.
+- Mark any package over 3 days as split-required before sprint planning.
