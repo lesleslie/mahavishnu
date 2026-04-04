@@ -4,7 +4,7 @@ These files are the executable plan set for `docs/plans/2026-04-04-ecosystem-exe
 
 ## Checklist Usage
 - Update each checkbox as work completes.
-- Keep status values in sync with issue tracker states.
+- Keep status values in sync with the master plan status/checklist.
 - Add dated progress notes in each file's `Progress Log` section.
 
 ## Initiative Documents

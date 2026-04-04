@@ -10,23 +10,26 @@
 | Pri | Initiative | Probability | Start | End | Owner | Dependencies | Effort (eng-weeks) | LOC Delta (est) |
 |---|---|---:|---|---|---|---|---:|---:|
 | 0 | Phase 0 cleanup (bak + monitoring dedupe) | 95% | 2026-04-06 | 2026-04-10 | Platform Eng | None | 1.0 | -9,200 to -9,000 |
-| 1 | Health/readiness/metrics contract + `mahavishnu health` | 90% | 2026-04-06 | 2026-04-17 | Platform Eng + SRE | 0 | 2.0 | -100 to +500 |
-| 2 | Config unification + `mahavishnu validate --full` | 85% | 2026-04-13 | 2026-04-24 | Core Eng | 1 | 2.0 | -200 to +700 |
-| 3 | MCP lifecycle formalization | 82% | 2026-04-13 | 2026-04-24 | Core Eng | 1 | 2.0 | -100 to +600 |
-| 4 | MCP utility tools (`list/test/metrics`) | 82% | 2026-04-20 | 2026-04-24 | MCP Eng | 1 | 1.0 | +200 to +500 |
-| 5 | Ecosystem contract tests (release-blocking) | 84% | 2026-04-20 | 2026-05-08 | QA/Infra | 1,2,3 | 3.0 | +800 to +1,600 |
-| 6 | Retry/circuit-breaker centralization | 74% | 2026-04-27 | 2026-05-15 | SRE + Core Eng | 1,3,5 | 3.0 | -100 to +900 |
-| 7 | Chaos tests v1 | 74% | 2026-05-04 | 2026-05-22 | SRE + QA | 6 | 2.5 | +500 to +1,000 |
-| 8 | Engine adapter decomposition | 80% | 2026-05-11 | 2026-06-05 | Adapters Eng | 3,5 | 4.0 | -300 to -1,200 |
-| 9 | Typed event envelope + governance | 76% | 2026-05-18 | 2026-06-12 | Core Eng | 5 | 3.0 | -100 to +700 |
-| 10 | Low-value tool retirement | 88% | 2026-05-25 | 2026-06-19 | Product + Platform | 4,5 | 2.0 | -800 to -2,500 |
-| 11 | Cache + tiered retrieval defaults | 79% | 2026-06-01 | 2026-06-19 | Search/Infra | 5 | 2.0 | -100 to +600 |
-| 12 | Golden paths for top workflows | 78% | 2026-06-01 | 2026-06-26 | Platform + DX | 5,9 | 2.5 | -200 to +500 |
-| 13 | Dashboard Phase 2 (Textual, conditional) | 81% | 2026-06-08 | 2026-06-26 | Platform UI | 1 gate pass | 2.5 | +1,000 to +2,500 |
-| 14 | Dashboard Phase 3 (Grafana alignment) | 67% | 2026-06-15 | 2026-06-26 | SRE + Platform UI | 13 | 1.5 | -50 to +300 |
-| 15 | Content quality ML enhancements | 68% | 2026-06-15 | 2026-07-03 | ML Eng + Ingestion | 5,9 | 3.0 | +800 to +2,000 |
+| 1 | Health/readiness/metrics contract + `mahavishnu health` | 90% | 2026-04-06 | 2026-04-17 | Platform Eng + SRE | `I0-4` | 2.0 | -100 to +500 |
+| 2 | Config unification + `mahavishnu validate --full` | 85% | 2026-04-13 | 2026-04-24 | Core Eng | `I1-1` | 2.0 | -200 to +700 |
+| 3 | MCP lifecycle formalization | 82% | 2026-04-13 | 2026-04-24 | Core Eng | `I1-1` | 2.0 | -100 to +600 |
+| 4 | MCP utility tools (`list/test/metrics`) | 82% | 2026-04-20 | 2026-04-24 | MCP Eng | `I1-2` | 1.0 | +200 to +500 |
+| 5 | Ecosystem contract tests (release-blocking) | 84% | 2026-04-20 | 2026-05-08 | QA/Infra | `I1-4`, `I2-4`, `I3-4` | 3.0 | +800 to +1,600 |
+| 6 | Retry/circuit-breaker centralization | 74% | 2026-04-27 | 2026-05-15 | SRE + Core Eng | `I5-1` | 3.0 | -100 to +900 |
+| 7 | Chaos tests v1 | 74% | 2026-05-04 | 2026-05-22 | SRE + QA | `I6-2` | 2.5 | +500 to +1,000 |
+| 8 | Engine adapter decomposition | 80% | 2026-05-11 | 2026-06-05 | Adapters Eng | `I3-4`, `I5-2` | 4.0 | -300 to -1,200 |
+| 9 | Typed event envelope + governance | 76% | 2026-05-18 | 2026-06-12 | Core Eng | `I5-1` | 3.0 | -100 to +700 |
+| 10 | Low-value tool retirement | 88% | 2026-05-25 | 2026-06-19 | Product + Platform | `I4-3`, `I5-3` | 2.0 | -800 to -2,500 |
+| 11 | Cache + tiered retrieval defaults | 79% | 2026-06-01 | 2026-06-19 | Search/Infra | `I5-1` | 2.0 | -100 to +600 |
+| 12 | Golden paths for top workflows | 78% | 2026-06-01 | 2026-06-26 | Platform + DX | `I5-3`, `I9-3` | 2.5 | -200 to +500 |
+| 13 | Dashboard Phase 2 (Textual, conditional) | 81% | 2026-06-08 | 2026-06-26 | Platform UI | `G1` | 2.5 | +1,000 to +2,500 |
+| 14 | Dashboard Phase 3 (Grafana alignment) | 67% | 2026-06-15 | 2026-06-26 | SRE + Platform UI | `I13-3` | 1.5 | -50 to +300 |
+| 15 | Content quality ML enhancements | 68% | 2026-06-15 | 2026-07-03 | ML Eng + Ingestion | `I9-2` | 3.0 | +800 to +2,000 |
 
 ## 1.1) Master Checklist (Link to Individual Initiative Plans)
+
+Completion rule for this master checklist:
+- An initiative can be checked complete only when all of its work package checkboxes are complete in the linked initiative doc and that initiative's exit criteria are met.
 
 - [ ] [Initiative 0: Phase 0 Cleanup](./initiatives/00-phase0-cleanup.md)
 - [ ] [Initiative 1: Health/Readiness/Metrics Contract + `mahavishnu health`](./initiatives/01-health-contract-and-command.md)
@@ -52,6 +55,7 @@
 - `G0_config_validation_matrix`: required env/schema checks for affected paths.
 - `G0_canary_health_gate`: rollback on SLO breach where rollout exists.
 - `G0_flaky_budget_gate`: quarantine threshold with owner SLA.
+- `G1`: Initiative 1 adoption gate. `mahavishnu health` must have at least `3` active weekly developers before Initiative 13 implementation starts.
 
 ### Post-contract gates (mandatory after Initiative 5 completes)
 - `contract_tests_required`: pass/fail release blocker.
@@ -76,6 +80,9 @@
 - Search quality score falls below baseline by `>2%`.
 
 ## 3) Detailed Implementation Plan By Initiative
+
+Detailed execution rule:
+- This section is a high-level summary. The linked initiative docs in `docs/plans/initiatives/` are authoritative for per-initiative work package status, detailed dependencies, risks, and exit criteria.
 
 ## Initiative 0: Phase 0 cleanup
 **Scope**
@@ -207,7 +214,8 @@
 
 **Acceptance**
 - Behavior parity tests green.
-- Reduced module complexity and improved maintainability.
+- Cyclomatic complexity reduced by at least `20%` in target files.
+- No target adapter module exceeds `700` lines after decomposition.
 
 ## Initiative 9: Typed event envelope + governance
 **Scope**
@@ -234,8 +242,9 @@
 - Measure incident/support-load change.
 
 **Acceptance**
-- Measurable reduction in failure surface.
-- Support burden and incident volume down.
+- Tool surface reduced per target.
+- Tool-related incidents decrease by at least `20%` over the next 30-day window.
+- Mean monthly maintenance tickets for removed tools drops by at least `30%`.
 
 ## Initiative 11: Cache + tiered retrieval defaults
 **Scope**
@@ -275,8 +284,9 @@
 - Add read-only safety boundary.
 
 **Acceptance**
-- Gate only opens if Initiative 1 adoption threshold met.
-- No material increase in incident response time due to tool instability.
+- Read-only dashboard renders all planned screens with live data for 5 consecutive days.
+- Dashboard crash-free sessions `>=99%` during pilot window.
+- Incident response median time does not degrade by more than `5%` in pilot window.
 
 ## Initiative 14: Dashboard Phase 3 (Grafana alignment)
 **Scope**
