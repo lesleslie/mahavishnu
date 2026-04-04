@@ -1,6 +1,7 @@
 """CLI module for Mahavishnu orchestrator."""
 
 import asyncio
+import json
 from typing import NoReturn
 
 import typer
@@ -10,6 +11,7 @@ from .backup_cli import add_backup_commands
 
 # Import coordination CLI
 from .coordination_cli import add_coordination_commands
+from .core.health_schemas import HealthStatus
 from .core.app import MahavishnuApp
 from .core.subscription_auth import MultiAuthHandler
 
@@ -28,9 +30,6 @@ from .production_cli import add_production_commands
 
 # Import content ingestion CLI
 from .ingestion_cli import add_ingestion_commands
-
-# Import quality evaluation CLI
-from .quality_cli import add_quality_commands
 
 # Import adaptive routing CLI
 from .routing_cli import add_routing_commands
@@ -114,9 +113,6 @@ app.add_typer(ecosystem_app, name="ecosystem")
 
 # Content ingestion
 add_ingestion_commands()
-
-# Quality evaluation
-# Quality evaluation (commented out - needs app argument)# add_quality_commands()
 
 
 @mcp_app.command("start")
@@ -241,6 +237,86 @@ def mcp_health() -> None:
     asyncio.run(_health())
 
 
+@app.command("health")
+def health_command(
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit structured JSON output instead of human-readable text",
+    ),
+) -> None:
+    """Check the current Mahavishnu service health."""
+
+    async def _health():
+        maha_app = MahavishnuApp()
+        endpoint = maha_app.health_endpoint
+
+        if endpoint is None:
+            payload = {
+                "service": "mahavishnu",
+                "status": HealthStatus.UNHEALTHY.value,
+                "reason": "Health checks are disabled in configuration",
+            }
+            if json_output:
+                typer.echo(json.dumps(payload, indent=2))
+            else:
+                typer.echo("Service: ✗ unhealthy")
+                typer.echo("Reason: Health checks are disabled in configuration")
+            return
+
+        liveness = await endpoint.liveness()
+        readiness = await endpoint.readiness()
+
+        dependency_details = {
+            name: {
+                "status": dep.status.value,
+                "latency_ms": dep.latency_ms,
+                "error": dep.error,
+                "last_check": dep.last_check.isoformat() if dep.last_check else None,
+            }
+            for name, dep in readiness.dependencies.items()
+        }
+
+        dependency_statuses = [dep.status for dep in readiness.dependencies.values()]
+        if any(status == HealthStatus.UNHEALTHY for status in dependency_statuses):
+            overall_status = HealthStatus.UNHEALTHY
+        elif any(status == HealthStatus.DEGRADED for status in dependency_statuses):
+            overall_status = HealthStatus.DEGRADED
+        else:
+            overall_status = liveness.status
+
+        payload = {
+            "service": readiness.service,
+            "version": liveness.version,
+            "status": overall_status.value,
+            "liveness": liveness.model_dump(),
+            "readiness": readiness.model_dump(),
+            "dependencies": dependency_details,
+        }
+
+        if json_output:
+            typer.echo(json.dumps(payload, indent=2, default=str))
+            return
+
+        status_symbol = {"ok": "✓", "degraded": "!", "unhealthy": "✗"}[overall_status.value]
+        typer.echo(f"Service: {status_symbol} {payload['status']}")
+        typer.echo(f"Name: {payload['service']}")
+        typer.echo(f"Version: {payload['version']}")
+        typer.echo(f"Uptime: {liveness.uptime_seconds:.1f}s")
+        typer.echo(f"Readiness: {'ready' if readiness.ready else 'not ready'}")
+        if dependency_details:
+            typer.echo("Dependencies:")
+            for name, dep in dependency_details.items():
+                line = f"  - {name}: {dep['status']}"
+                if dep["latency_ms"] is not None:
+                    line += f" ({dep['latency_ms']:.1f}ms)"
+                if dep["error"]:
+                    line += f" - {dep['error']}"
+                typer.echo(line)
+
+    asyncio.run(_health())
+
+
 @app.command()
 def list_repos(
     tag: str | None = typer.Option(None, "--tag", "-t", help="Filter repositories by tag"),
@@ -347,11 +423,12 @@ def show_role(role_name: str = typer.Argument(..., help="Name of the role to dis
     typer.echo(f"\nRepositories with this role ({len(repos)}):")
     for repo in repos:
         name = repo.get("name", repo.get("path"))
-        nickname = repo.get("nickname", "")
+        nicknames = MahavishnuApp.get_repo_nicknames(repo)
         path = repo.get("path")
         typer.echo(f"  - {name}", nl=False)
-        if nickname:
-            typer.echo(f" (nickname: {nickname})", nl=False)
+        if nicknames:
+            label = "nickname" if len(nicknames) == 1 else "nicknames"
+            typer.echo(f" ({label}: {', '.join(nicknames)})", nl=False)
         typer.echo(f"\n    Path: {path}")
 
 
@@ -624,7 +701,11 @@ def workers_spawn(
         "terminal-qwen",
         "--type",
         "-t",
-        help="Type of worker (terminal-qwen, terminal-claude, container-executor)",
+        help=(
+            "Type of worker "
+            "(terminal-qwen, terminal-claude, terminal-codex, terminal-openclaw, "
+            "gateway-openclaw, container-executor)"
+        ),
     ),
     count: int = typer.Option(1, "--count", "-n", min=1, max=50, help="Number of workers to spawn"),
 ) -> None:
@@ -633,6 +714,8 @@ def workers_spawn(
     Example:
         $ mahavishnu workers spawn --type terminal-qwen --count 3
         $ mahavishnu workers spawn -t terminal-claude -n 5
+        $ mahavishnu workers spawn -t terminal-codex -n 2
+        $ mahavishnu workers spawn -t terminal-openclaw -n 2
     """
 
     async def _spawn():
@@ -689,7 +772,10 @@ def workers_execute(
         "terminal-qwen",
         "--type",
         "-t",
-        help="Type of worker (terminal-qwen, terminal-claude)",
+        help=(
+            "Type of worker "
+            "(terminal-qwen, terminal-claude, terminal-codex, terminal-openclaw, gateway-openclaw)"
+        ),
     ),
     timeout: int = typer.Option(
         300,
@@ -705,11 +791,19 @@ def workers_execute(
     Example:
         $ mahavishnu workers execute --prompt "Implement a REST API" --count 3
         $ mahavishnu workers execute -p "Create a Python class" -n 5 -t terminal-claude
+        $ mahavishnu workers execute -p "Draft migration steps for this API" -t terminal-codex
+        $ mahavishnu workers execute -p "Review this patch for regressions" -t terminal-qwen
+        $ mahavishnu workers execute -p "Notify Slack with a deployment summary" -t terminal-openclaw
+
+    Notes:
+        Communication-style prompts may be rerouted to gateway-openclaw or
+        terminal-openclaw when appropriate.
     """
 
     async def _execute():
         from .terminal.manager import TerminalManager
         from .workers import WorkerManager
+        from .workers.registry import resolve_worker_type
 
         maha_app = MahavishnuApp()
 
@@ -731,13 +825,21 @@ def workers_execute(
             session_buddy_client=None,
         )
 
+        resolved_worker_type = resolve_worker_type(
+            worker_type,
+            task_type="general",
+            prompt=prompt,
+        )
+
         # Spawn workers
-        typer.echo(f"🚀 Spawning {count} {worker_type} workers...")
+        typer.echo(f"🚀 Spawning {count} {resolved_worker_type} workers...")
         worker_ids = await worker_mgr.spawn_workers(
-            worker_type=worker_type,
+            worker_type=resolved_worker_type,
             count=count,
         )
         typer.echo(f"✅ Workers spawned: {', '.join(worker_ids)}")
+        if resolved_worker_type != worker_type:
+            typer.echo(f"   Routed from {worker_type} to {resolved_worker_type}")
 
         # Prepare tasks
         tasks = [
@@ -909,7 +1011,11 @@ def pool_spawn(
         "terminal-qwen",
         "--worker-type",
         "-w",
-        help="Worker type (terminal-qwen, terminal-claude, container)",
+        help=(
+            "Worker type "
+            "(terminal-qwen, terminal-claude, terminal-codex, terminal-openclaw, "
+            "gateway-openclaw, container-executor)"
+        ),
     ),
 ) -> None:
     """Spawn a new worker pool.
@@ -917,6 +1023,7 @@ def pool_spawn(
     Example:
         $ mahavishnu pool spawn --type mahavishnu --name local --min 2 --max 5
         $ mahavishnu pool spawn -t session-buddy -n delegated
+        $ mahavishnu pool spawn -t mahavishnu -n comms --worker-type gateway-openclaw
     """
 
     async def _spawn():

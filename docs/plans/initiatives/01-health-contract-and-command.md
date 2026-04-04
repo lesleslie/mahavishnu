@@ -1,7 +1,7 @@
 # Initiative 1: Health/Readiness/Metrics Contract + `mahavishnu health`
 
 ## Metadata
-- Status: `not_started`
+- Status: `completed`
 - Owner Role: `Platform Eng + SRE`
 - Target Window: `2026-04-06` to `2026-04-17`
 
@@ -9,10 +9,10 @@
 Create a consistent health contract across ecosystem services and a single command for operators.
 
 ## Work Package Checklist
-- [ ] `I1-1` Author health schema spec (`v1`)
-- [ ] `I1-2` Implement schema in Mahavishnu endpoint
-- [ ] `I1-3` Implement `mahavishnu health` + `--json`
-- [ ] `I1-4` Timeout/failure behavior tests + telemetry
+- [x] `I1-1` Author health schema spec (`v1`)
+- [x] `I1-2` Implement schema in Mahavishnu endpoint
+- [x] `I1-3` Implement `mahavishnu health` + `--json`
+- [x] `I1-4` Timeout/failure behavior tests + telemetry
 
 ## Dependencies
 - `I0-4`
@@ -28,3 +28,4 @@ Create a consistent health contract across ecosystem services and a single comma
 
 ## Progress Log
 - 2026-04-04: Plan file created.
+- 2026-04-04: Added `v1` health schema spec, aligned `/health` and `/ready` with shared schemas, implemented `mahavishnu health` with `--json`, and validated the targeted health/CLI test slice.

@@ -5,12 +5,9 @@ from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
-from mahavishnu.health import (
-    HealthResponse,
-    ReadinessResponse,
-    MetricsResponse,
-    create_health_app,
-)
+from mahavishnu.core.metrics_schema import AdapterType, TaskType
+from mahavishnu.core.routing_metrics import get_routing_metrics, reset_routing_metrics
+from mahavishnu.health import create_health_app
 
 
 # =============================================================================
@@ -39,6 +36,14 @@ def client(health_app):
     return TestClient(health_app)
 
 
+@pytest.fixture
+def reset_prometheus_metrics():
+    """Reset routing metrics state for tests that mutate the registry."""
+    reset_routing_metrics()
+    yield
+    reset_routing_metrics()
+
+
 # =============================================================================
 # HEALTH CHECK TESTS
 # =============================================================================
@@ -60,9 +65,11 @@ class TestHealthEndpoint:
         data = response.json()
 
         assert "status" in data
-        assert "timestamp" in data
+        assert "service" in data
+        assert "version" in data
         assert "uptime_seconds" in data
-        assert data["status"] == "healthy"
+        assert data["status"] == "ok"
+        assert data["service"] == "test_mahavishnu"
 
     def test_health_uptime_increases(self, client):
         """Test that uptime increases over time."""
@@ -95,7 +102,8 @@ class TestReadinessEndpoint:
         data = response.json()
 
         assert "ready" in data
-        assert "timestamp" in data
+        assert "service" in data
+        assert "dependencies" in data
         assert "checks" in data
         assert isinstance(data["checks"], dict)
 
@@ -111,7 +119,7 @@ class TestReadinessEndpoint:
 
         for check_name in expected_checks:
             assert check_name in checks
-            assert isinstance(checks[check_name], bool)
+            assert checks[check_name] in {"ok", "unhealthy"}
 
 
 class TestMetricsEndpoint:
@@ -121,18 +129,34 @@ class TestMetricsEndpoint:
         """Test metrics endpoint returns 200 OK."""
         response = client.get("/metrics")
 
-        # Should return 200 even if metrics are unavailable
-        assert response.status_code in [200, 503]
+        assert response.status_code == 200
 
-    def test_metrics_response_structure(self, client):
-        """Test metrics response has correct structure."""
+    def test_metrics_response_format(self, client):
+        """Test metrics endpoint returns Prometheus text exposition."""
         response = client.get("/metrics")
 
-        data = response.json()
+        assert "text/plain" in response.headers["content-type"]
+        assert "# HELP" in response.text
+        assert "mcp_http_requests_total" in response.text
 
-        assert "status" in data
-        assert "timestamp" in data
-        assert "metrics" in data
+    def test_metrics_includes_routing_metrics_on_main_surface(
+        self,
+        client,
+        reset_prometheus_metrics,
+    ):
+        """Routing metrics should be exposed on the main /metrics endpoint."""
+        metrics = get_routing_metrics("mahavishnu")
+        metrics.record_routing_decision(
+            adapter=AdapterType.PREFECT,
+            task_type=TaskType.WORKFLOW,
+            preference_order=1,
+        )
+
+        response = client.get("/metrics")
+
+        assert response.status_code == 200
+        assert "mahavishnu_routing_decisions_total" in response.text
+        assert 'server="mahavishnu"' in response.text
 
 
 class TestRootEndpoint:
@@ -195,3 +219,13 @@ class TestHealthAppCreation:
 
         # Uptime should be positive (time since 2025-01-01)
         assert data["uptime_seconds"] > 0
+
+    def test_create_health_app_exposes_service_and_version(self):
+        """Test health response includes service metadata."""
+        app = create_health_app(server_name="custom_service", version="9.9.9")
+
+        client = TestClient(app)
+        data = client.get("/health").json()
+
+        assert data["service"] == "custom_service"
+        assert data["version"] == "9.9.9"

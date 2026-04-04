@@ -10,41 +10,13 @@ Endpoints:
 """
 
 from datetime import UTC, datetime
-from typing import Any
 
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, Response
+
+from .core.config import HealthConfig
+from .core.health_schemas import HealthResponse, HealthStatus, ReadyResponse as ReadinessResponse
 
 logger = __import__("logging").getLogger(__name__)
-
-
-# =============================================================================
-# HEALTH CHECK MODELS
-# =============================================================================
-
-
-class HealthResponse(BaseModel):
-    """Health check response."""
-
-    status: str  # "healthy" or "unhealthy"
-    timestamp: str
-    uptime_seconds: float
-
-
-class ReadinessResponse(BaseModel):
-    """Readiness check response."""
-
-    ready: bool
-    timestamp: str
-    checks: dict[str, Any]
-
-
-class MetricsResponse(BaseModel):
-    """Metrics response."""
-
-    status: str
-    timestamp: str
-    metrics: dict[str, Any]
 
 
 # =============================================================================
@@ -55,6 +27,8 @@ class MetricsResponse(BaseModel):
 def create_health_app(
     server_name: str = "mahavishnu",
     startup_time: datetime | None = None,
+    version: str = "0.3.2",
+    health_config: HealthConfig | None = None,
 ) -> FastAPI:
     """Create FastAPI application for health checks.
 
@@ -84,8 +58,9 @@ def create_health_app(
         uptime = (datetime.now(UTC) - startup_time).total_seconds()
 
         return HealthResponse(
-            status="healthy",
-            timestamp=datetime.now(UTC).isoformat(),
+            status=HealthStatus.OK,
+            service=server_name,
+            version=version,
             uptime_seconds=uptime,
         )
 
@@ -101,44 +76,27 @@ def create_health_app(
         """
         # Perform readiness checks
         checks = {
-            "server": True,  # Server is running
-            "database": _check_database(),
-            "message_bus": _check_message_bus(),
-            "adapters": _check_adapters(),
+            "server": "ok",  # Server is running
+            "database": "ok" if _check_database() else "unhealthy",
+            "message_bus": "ok" if _check_message_bus() else "unhealthy",
+            "adapters": "ok" if _check_adapters() else "unhealthy",
         }
 
-        all_ready = all(checks.values())
+        all_ready = all(status == "ok" for status in checks.values())
 
         return ReadinessResponse(
             ready=all_ready,
-            timestamp=datetime.now(UTC).isoformat(),
+            service=server_name,
+            dependencies={},
             checks=checks,
         )
 
-    @app.get("/metrics", response_model=MetricsResponse, tags=["health"])
-    async def metrics() -> MetricsResponse:
-        """Prometheus metrics endpoint.
+    @app.get("/metrics", tags=["health"])
+    async def metrics() -> Response:
+        """Prometheus metrics endpoint in text exposition format."""
+        from monitoring.metrics import metrics_endpoint
 
-        Returns application metrics in Prometheus text format.
-        """
-        # Get metrics from SLO module if available
-        try:
-            from ..core.slo import get_prometheus_metrics
-
-            prometheus_metrics = get_prometheus_metrics()
-
-            return MetricsResponse(
-                status="ok",
-                timestamp=datetime.now(UTC).isoformat(),
-                metrics={"prometheus": prometheus_metrics},
-            )
-        except Exception as e:
-            logger.warning(f"Failed to get Prometheus metrics: {e}")
-            return MetricsResponse(
-                status="unavailable",
-                timestamp=datetime.now(UTC).isoformat(),
-                metrics={"error": str(e)},
-            )
+        return await metrics_endpoint()
 
     @app.get("/", tags=["root"])
     async def root() -> dict[str, str]:
