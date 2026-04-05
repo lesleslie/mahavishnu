@@ -45,6 +45,7 @@ coverage.*
 nosetests.xml
 coverage.xml
 coverage.json
+.oneiric_cache/
 *.cover
 *.py,cover
 .hypothesis/
