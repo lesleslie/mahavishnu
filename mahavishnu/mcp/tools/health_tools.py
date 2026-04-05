@@ -7,11 +7,8 @@ following the design in docs/plans/2026-02-27-health-check-system-design.md.
 from __future__ import annotations
 
 import asyncio
-import json
 import time
 from typing import TYPE_CHECKING, Any
-
-from fastmcp import FastMCP
 
 from mahavishnu.core.health import (
     DependencyWaiter,
@@ -20,9 +17,10 @@ from mahavishnu.core.health import (
     ServiceInfo,
 )
 from mahavishnu.core.health_schemas import HealthStatus
+from monitoring.metrics import expose_metrics, get_metrics_registry
 
 if TYPE_CHECKING:
-    from mahavishnu.core.config import DependencyConfig, HealthConfig, MahavishnuSettings
+    from fastmcp import FastMCP
 
 
 def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
@@ -32,6 +30,38 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
         mcp: FastMCP server instance
         app: Optional MahavishnuApp instance for dependency injection
     """
+
+    def _server_name() -> str:
+        if app is not None and getattr(app, "config", None) is not None:
+            server_name = getattr(app.config, "server_name", None)
+            if isinstance(server_name, str) and server_name.strip():
+                return server_name
+        return "mahavishnu"
+
+    def _tool_timeout_seconds(tool: Any) -> float | None:
+        timeout = getattr(tool, "timeout", None)
+        if timeout is None:
+            return None
+        if hasattr(timeout, "total_seconds"):
+            return float(timeout.total_seconds())
+        try:
+            return float(timeout)
+        except (TypeError, ValueError):
+            return None
+
+    def _summarize_tool(tool: Any) -> dict[str, Any]:
+        parameters = getattr(tool, "parameters", None)
+        summary: dict[str, Any] = {
+            "name": getattr(tool, "name", "unknown"),
+            "version": getattr(tool, "version", None),
+            "title": getattr(tool, "title", None),
+            "description": getattr(tool, "description", None),
+            "tags": sorted(getattr(tool, "tags", set()) or []),
+            "timeout_seconds": _tool_timeout_seconds(tool),
+        }
+        if parameters is not None:
+            summary["parameters"] = parameters
+        return summary
 
     @mcp.tool()
     async def health_check_service(
@@ -87,6 +117,136 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
         return response
 
     @mcp.tool()
+    async def mcp_list_tools() -> dict[str, Any]:
+        """List all registered MCP tools with their metadata.
+
+        Enumerates the live FastMCP registry so operators can inspect the
+        current server surface without reaching into internal state.
+
+        Returns:
+            Dictionary with tool inventory, version coverage, and summaries.
+
+        Example:
+            >>> result = await mcp_list_tools()
+            >>> print(result["total_tools"])
+            42
+        """
+        from mahavishnu.mcp.tool_versions import get_all_tool_versions
+
+        tools = await mcp.list_tools()
+        tool_summaries = sorted(
+            (_summarize_tool(tool) for tool in tools),
+            key=lambda item: item["name"],
+        )
+        versions = get_all_tool_versions()
+
+        return {
+            "status": "success",
+            "server_name": _server_name(),
+            "total_tools": len(tool_summaries),
+            "versioned_tools": sum(1 for tool in tool_summaries if tool["version"]),
+            "version_registry_size": len(versions),
+            "tools": tool_summaries,
+        }
+
+    @mcp.tool()
+    async def mcp_test_connection(
+        service_name: str,
+        host: str = "localhost",
+        port: int = 8080,
+        timeout: int = 5,
+        use_tls: bool = False,
+        health_path: str = "/health",
+    ) -> dict[str, Any]:
+        """Ping a specific server to verify MCP connectivity.
+
+        Checks the target service's health endpoint and returns a compact
+        connectivity result suitable for operators and CI smoke checks.
+
+        Args:
+            service_name: Name of the target service to test
+            host: Hostname or IP address (default: localhost)
+            port: Port number (default: 8080)
+            timeout: Request timeout in seconds (default: 5)
+            use_tls: Use HTTPS instead of HTTP (default: false)
+            health_path: Health endpoint path (default: /health)
+
+        Returns:
+            Dictionary with connection status, latency, and any response data.
+
+        Example:
+            >>> result = await mcp_test_connection("session-buddy", port=8678)
+            >>> print(result["connected"])
+            True
+        """
+        from mahavishnu.core.config import HealthConfig
+
+        config = HealthConfig(check_timeout_seconds=timeout)
+        checker = HealthChecker(config=config)
+
+        scheme = "https" if use_tls else "http"
+        url = f"{scheme}://{host}:{port}{health_path}"
+
+        result = await checker.check(url, timeout=timeout)
+
+        response = {
+            "status": result.status.value,
+            "connected": result.status != HealthStatus.UNHEALTHY,
+            "service_name": service_name,
+            "url": url,
+            "latency_ms": result.latency_ms,
+        }
+
+        if result.error:
+            response["error"] = result.error
+
+        if result.response_data:
+            response["response"] = result.response_data
+
+        return response
+
+    @mcp.tool()
+    async def mcp_get_metrics() -> dict[str, Any]:
+        """Return a metrics snapshot for the running MCP server.
+
+        Exposes the live Prometheus registry and a compact inventory of
+        currently registered tools so operators can inspect server health.
+
+        Returns:
+            Dictionary with metrics metadata and a text exposition snapshot.
+
+        Example:
+            >>> result = await mcp_get_metrics()
+            >>> print(result["registered_tools"])
+            42
+        """
+        tools = await mcp.list_tools()
+        registry = get_metrics_registry()
+        metric_families = []
+
+        for family in registry.collect():
+            metric_families.append(
+                {
+                    "name": family.name,
+                    "type": family.type,
+                    "documentation": family.documentation,
+                    "sample_count": len(family.samples),
+                }
+            )
+
+        metrics_text = expose_metrics().decode("utf-8")
+
+        return {
+            "status": "success",
+            "server_name": _server_name(),
+            "registered_tools": len(tools),
+            "metric_family_count": len(metric_families),
+            "metric_families": metric_families,
+            "metrics_text": metrics_text,
+            "metrics_preview": metrics_text.splitlines()[:25],
+        }
+
+    @mcp.tool()
     async def health_check_all() -> dict[str, Any]:
         """Check health of all configured services.
 
@@ -125,7 +285,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
 
         if tasks:
             gathered = await asyncio.gather(*tasks.values(), return_exceptions=True)
-            for (name, _), result in zip(tasks.items(), gathered):
+            for (name, _), result in zip(tasks.items(), gathered, strict=True):
                 if isinstance(result, Exception):
                     results[name] = {
                         "status": HealthStatus.UNHEALTHY.value,

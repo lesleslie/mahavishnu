@@ -35,7 +35,7 @@ Completion rule for this master checklist:
 - [x] [Initiative 1: Health/Readiness/Metrics Contract + `mahavishnu health`](./initiatives/01-health-contract-and-command.md)
 - [ ] [Initiative 2: Config Unification + Validation CLI](./initiatives/02-config-unification-validation-cli.md)
 - [ ] [Initiative 3: MCP Lifecycle Formalization](./initiatives/03-mcp-lifecycle-formalization.md)
-- [ ] [Initiative 4: MCP Utility Tools](./initiatives/04-mcp-utility-tools.md)
+- [x] [Initiative 4: MCP Utility Tools](./initiatives/04-mcp-utility-tools.md)
 - [ ] [Initiative 5: Ecosystem Contract Tests](./initiatives/05-ecosystem-contract-tests.md)
 - [ ] [Initiative 6: Retry/Circuit-Breaker Centralization](./initiatives/06-retry-circuit-centralization.md)
 - [ ] [Initiative 7: Chaos Tests v1](./initiatives/07-chaos-tests-v1.md)
@@ -54,7 +54,7 @@ This is the recommended order for the remaining `gpt-5.4 mini` budget:
 
 1. `I0` Phase 0 cleanup: complete.
 2. `I1` Health/readiness/metrics contract + `mahavishnu health`: complete.
-3. `I4` MCP utility tools.
+3. `I4` MCP utility tools: complete.
 4. `I2` Config unification + validation CLI, only if budget remains after `I4`.
 
 Execution rules for this slice:
