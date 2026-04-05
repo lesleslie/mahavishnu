@@ -416,58 +416,12 @@ performance_tests:
 
 **Timeline:** Week 3-5 (Phase 1)
 
-**Action:** Create `/Users/les/Projects/mahavishnu/.github/workflows/ci-cd.yml`:
+**Action:** Use Crackerjack as the quality gate runner and keep deployment automation outside GitHub Actions. A local/ops-driven pipeline should:
 
-```yaml
-# GitHub Actions CI/CD pipeline
-name: Mahavishnu CI/CD
-
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run Crackerjack QC
-        run: |
-          pip install crackerjack
-          crackerjack run all
-      - name: Run integration tests
-        run: pytest tests/integration/
-      - name: Run OpenSearch integration tests
-        run: pytest tests/integration/test_opensearch.py
-
-  build:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Build Docker image
-        run: docker build -t mahavishnu:${{ github.sha }} .
-      - name: Push to registry
-        run: docker push mahavishnu:${{ github.sha }}
-
-  deploy_staging:
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to staging
-        run: |
-          kubectl set image deployment/mahavishnu \
-            mahavishnu=mahavishnu:${{ github.sha }} \
-            -n mahavishnu-staging
-      - name: Run smoke tests
-        run: pytest tests/smoke/ --base-url=https://staging.mahavishnu.example.com
-
-  deploy_production:
-    needs: deploy_staging
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: Deploy to production (blue/green)
-        run: |
+- run `crackerjack run all`
+- run integration and smoke tests locally or in the deployment environment
+- build and publish artifacts from the deployment tooling in use
+- promote to staging and production from the deploy system, not from `.github/workflows`
           kubectl apply -f k8s/production/
           # Wait for health checks
           kubectl rollout status deployment/mahavishnu -n mahavishnu-prod

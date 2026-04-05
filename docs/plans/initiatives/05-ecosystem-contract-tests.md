@@ -27,4 +27,4 @@ Create release-blocking compatibility tests across Mahavishnu and ecosystem serv
 ## Progress Log
 - 2026-04-04: Plan file created.
 - 2026-04-04: Contract matrix, deterministic integration suite, report generator, and CI workflow implemented; contract suite passes.
-- 2026-04-04: Removed GitHub Actions workflow; contract enforcement will run via Crackerjack instead.
+- 2026-04-04: Removed the legacy workflow file; contract enforcement will run via Crackerjack instead.

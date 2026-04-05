@@ -31,9 +31,9 @@
 - [x] Create accessibility test suite (CLI-focused)
 - [x] Document keyboard navigation requirements
 - [x] Set up screen reader testing checklist
-- [x] Create GitHub Actions workflow for accessibility tests
+- [x] Add accessibility validation gate via Crackerjack/local commands
 
-**Files**: `tests/accessibility/`, `.github/workflows/accessibility.yml`, `docs/ACCESSIBILITY_CHECKLIST.md`
+**Files**: `tests/accessibility/`, `docs/ACCESSIBILITY_CHECKLIST.md`
 
 ---
 

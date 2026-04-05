@@ -535,38 +535,9 @@ class TestSQLInjection:
                 FTSSearchQuery(query=query)
 ```
 
-**CI Integration**:
+**Gate**:
 
-```yaml
-# .github/workflows/security-tests.yml
-name: Security Tests
-
-on: [push, pull_request]
-
-jobs:
-  security-tests:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install -e ".[dev]"
-
-      - name: Run security tests
-        run: pytest tests/security/ -v
-
-      - name: Run Bandit security linter
-        run: bandit -r mahavishnu/ -ll
-
-      - name: Run Safety check
-        run: safety check
-```
+Run the security suite via Crackerjack and the documented local validation commands instead of GitHub Actions.
 
 ---
 

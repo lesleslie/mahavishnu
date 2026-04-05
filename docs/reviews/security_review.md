@@ -441,7 +441,7 @@ ______________________________________________________________________
 **Recommendations:**
 
 1. Add pre-commit hooks (run bandit/safety before push)
-1. Integrate security scanning in GitHub Actions/GitLab CI
+1. Integrate security scanning into Crackerjack and the repo-local validation flow
 1. Generate SBOM with `cyclonedx-bom` for each release
 1. Define 7-day SLA for critical vulnerabilities
 1. Subscribe to security advisories for all dependencies

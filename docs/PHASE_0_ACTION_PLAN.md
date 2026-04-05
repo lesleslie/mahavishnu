@@ -620,7 +620,7 @@ CREATE INDEX idx_task_audit_log_event_type ON task_audit_log(event_type);
 - [ ] Create path traversal test suite
 - [ ] Create XSS prevention test suite
 - [ ] Create authorization bypass test suite
-- [ ] Add security test CI job
+- [ ] Add security test gate via Crackerjack/local validation
 - [ ] **Add asyncio.timeout() wrappers to all async operations** (v3.1)
 - [ ] **Implement async context managers for DB connections** (v3.1)
 - [ ] **Add cancellation handling for long-running operations** (v3.1)
@@ -630,7 +630,6 @@ CREATE INDEX idx_task_audit_log_event_type ON task_audit_log(event_type);
 - `tests/security/test_sql_injection.py` (new file)
 - `tests/security/test_path_traversal.py` (new file)
 - `tests/security/test_auth_bypass.py` (new file)
-- `.github/workflows/security-tests.yml` (new file)
 - `mahavishnu/core/async_patterns.py` (new file, v3.1)
 - `mahavishnu/core/rate_limiting.py` (new file, v3.1)
 
@@ -673,42 +672,9 @@ class TestSQLInjection:
                 FTSSearchQuery(query=query)
 ```
 
-**CI Job**:
+**Gate**:
 
-```yaml
-# .github/workflows/security-tests.yml
-name: Security Tests
-
-on: [push, pull_request]
-
-jobs:
-  security-tests:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          pip install -e ".[dev]"
-
-      - name: Run security tests
-        run: |
-          pytest tests/security/ -v
-
-      - name: Run Bandit security linter
-        run: |
-          bandit -r mahavishnu/ -ll
-
-      - name: Run Safety check
-        run: |
-          safety check
-```
+Run the security suite through Crackerjack and reproduce failures with the local pytest/ruff commands already documented in this plan.
 
 **Async Patterns Implementation (v3.1)**:
 

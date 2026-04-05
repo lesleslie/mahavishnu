@@ -29,7 +29,7 @@ Phase 0 has been successfully completed with all critical security and SRE funda
 |------|--------|----------|
 | SQL injection test suite | ✅ | `tests/security/test_sql_injection.py` |
 | Webhook security tests | ✅ | `tests/security/test_webhooks.py` |
-| Security test CI workflow | ✅ | `.github/workflows/security-tests.yml` |
+| Security test gate | ✅ | `tests/security/` + Crackerjack validation |
 
 ### Week 5-6: SRE Fundamentals (Part 1)
 
@@ -125,6 +125,8 @@ Steps Completed: 5/5
 | `docs/runbooks/deployment.md` (updated) | 350 | Rollback triggers |
 | `docs/runbooks/disaster_recovery.md` (updated) | 350 | DR testing schedule |
 | `config/prometheus/error_budget_rules.yml` | 200 | Alerting rules |
+
+> Note: the legacy GitHub Actions security workflow referenced above was later removed. Current enforcement uses Crackerjack and repository-local validation commands.
 
 ---
 
