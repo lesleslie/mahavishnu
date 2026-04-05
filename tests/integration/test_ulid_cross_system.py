@@ -17,7 +17,7 @@ from oneiric.core.ulid_resolution import (
     get_cross_system_trace,
 )
 
-# Import ULID generation from Druva (fallback to timestamp-based)
+# Import ULID generation from Dhara-era ULID utilities (fallback to timestamp-based)
 try:
     from oneiric.core.ulid import generate as generate_ulid_impl
     from oneiric.core.ulid import is_ulid

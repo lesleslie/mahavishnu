@@ -31,6 +31,7 @@ class RepositoryManager:
         self._mcp_index: dict[str, list[str]] = {"native": [], "3rd-party": []}
         self._package_index: dict[str, Repository] = {}
         self._name_index: dict[str, Repository] = {}
+        self._nickname_index: dict[str, Repository] = {}
         self._all_paths: list[str] = []
 
     async def load(self) -> None:
@@ -60,6 +61,10 @@ class RepositoryManager:
 
             # Name index
             self._name_index[repo.name] = repo
+
+            # Nickname alias index
+            for nickname in repo.nicknames:
+                self._nickname_index[nickname] = repo
 
             # Path list
             self._all_paths.append(str(repo.path))
@@ -91,8 +96,20 @@ class RepositoryManager:
         return self._package_index.get(package)
 
     def get_by_name(self, name: str) -> Repository | None:
-        """Get repository by name (O(1))."""
-        return self._name_index.get(name)
+        """Get repository by name or nickname alias (O(1))."""
+        return self._name_index.get(name) or self._nickname_index.get(name)
+
+    def get_by_nickname(self, nickname: str) -> Repository | None:
+        """Get repository by nickname alias (O(1))."""
+        return self._nickname_index.get(nickname)
+
+    def get_repo(self, identifier: str) -> Repository | None:
+        """Get repository by name, nickname, or package name."""
+        return (
+            self.get_by_name(identifier)
+            or self.get_by_nickname(identifier)
+            or self.get_by_package(identifier)
+        )
 
     def get_all_paths(self) -> list[str]:
         """Get all repository paths."""

@@ -76,7 +76,7 @@ This document identifies which components of the Bodhisattva ecosystem would ben
 
 ### Medium Priority (Enhanced Collaboration)
 
-#### 5. **druva** (Port 8683)
+#### 5. **dhara** (Port 8683)
 - **Role:** Curator - Persistent object storage and adapter distribution
 - **Current Protocol:** HTTP
 - **WebSocket Use Case:**
@@ -155,7 +155,7 @@ This document identifies which components of the Bodhisattva ecosystem would ben
 
 ### Phase 3: Enhanced Collaboration (Week 7-10)
 
-1. **druva WebSocket** - Adapter distribution events
+1. **dhara WebSocket** - Adapter distribution events
 2. **excalidraw WebSocket** - Real-time diagram collaboration
 3. **fastblocks WebSocket** - UI update streams
 
@@ -238,7 +238,7 @@ class SessionBuddyClient(WebSocketClient):
 | mahavishnu | 8680 | 8690 | +10 offset |
 | akosha | 8682 | 8692 | +10 offset |
 | crackerjack | 8676 | 8686 | +10 offset |
-| druva | 8683 | 8693 | +10 offset |
+| dhara | 8683 | 8693 | +10 offset |
 | excalidraw | 3032 | 3042 | +10 offset |
 
 **Note:** Using +10 offset from HTTP ports for consistency.

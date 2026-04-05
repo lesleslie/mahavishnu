@@ -95,13 +95,13 @@
 
 ## Executive Summary
 
-The Mahavishnu Task Orchestration System (MTOS) is a natural language-powered task management platform designed specifically for multi-repository software development ecosystems. It leverages the existing Mahavishnu ecosystem components (Akosha, Druva, Session-Buddy, Crackerjack) to provide intelligent task creation, semantic search, predictive insights, and seamless workflow orchestration.
+The Mahavishnu Task Orchestration System (MTOS) is a natural language-powered task management platform designed specifically for multi-repository software development ecosystems. It leverages the existing Mahavishnu ecosystem components (Akosha, Dhara, Session-Buddy, Crackerjack) to provide intelligent task creation, semantic search, predictive insights, and seamless workflow orchestration.
 
 ### Key Differentiators
 
 Unlike existing task management tools, MTOS is:
 
-1. **Ecosystem-Native**: Built on top of existing Mahavishnu components (Akosha for semantic search, Druva for workflow config, Session-Buddy for context, Crackerjack for quality gates)
+1. **Ecosystem-Native**: Built on top of existing Mahavishnu components (Akosha for semantic search, Dhara for workflow config, Session-Buddy for context, Crackerjack for quality gates)
 
 2. **Developer-Centric**: Worktree-aware, quality gate integrated, git-native workflow
 
@@ -168,7 +168,7 @@ Based on market research, here's how MTOS compares to existing solutions:
    - Uses existing components (no reinventing the wheel)
    - Leverages Session-Buddy for context
    - Integrates with Crackerjack for quality
-   - Coordinates via Druva workflows
+   - Coordinates via Dhara workflows
    - Semantic search via Akosha
 
 3. **Developer Workflow Integration**:
@@ -223,7 +223,7 @@ Create a unified task orchestration system that understands developer intent, co
 | Component | Role | Integration |
 |-----------|------|-------------|
 | **Akosha** | Semantic search, pattern detection, dependency inference, knowledge graph | Vector DB (pgvector) + graph relationships |
-| **Druva** | Task workflow configuration (ONEIRIC), component lifecycle management | ONEIRIC config + lifecycle orchestration |
+| **Dhara** | Task workflow configuration (ONEIRIC), component lifecycle management | ONEIRIC config + lifecycle orchestration |
 | **Mahavishnu** | Task execution orchestration, cross-repo coordination, worktree integration | Core orchestration engine |
 | **Session-Buddy** | Task context, conversation history, session tracking | Memory + context storage |
 | **Crackerjack** | Quality gate validation, test execution, code quality checks | Quality enforcement before task completion |
@@ -322,7 +322,7 @@ User Input: "Create task to fix auth bug in session-buddy by Friday"
         ┌────────────▼─────────────────────────────────┐
         │       External Services                       │
         │  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
-        │  │ Akosha   │  │ Druva   │  │ Session  │  │
+        │  │ Akosha   │  │ Dhara   │  │ Session  │  │
         │  │ MCP      │  │ MCP      │  │ Buddy    │  │
         │  └──────────┘  └──────────┘  │ MCP      │  │
         │  ┌──────────┐  ┌──────────┐  └──────────┘  │

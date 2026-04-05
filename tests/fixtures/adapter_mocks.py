@@ -5,7 +5,7 @@ HybridAdapterRegistry, enabling isolated and deterministic testing.
 
 Mocks Provided:
 - MockOneiricResolver: Mock for Oneiric resolver with configurable candidates
-- MockDruvaRegistry: Mock for Druva persistence layer
+- MockDharaRegistry: Mock for Dhara persistence layer
 - MockAdapterDiscovery: Mock for adapter discovery engine
 - MockAdapter: Simple mock adapter implementing OrchestratorAdapter protocol
 - MockCandidate: Mock candidate for resolution testing
@@ -14,13 +14,13 @@ Usage:
     >>> from tests.fixtures.adapter_mocks import (
     ...     MockAdapter,
     ...     MockAdapterDiscovery,
-    ...     MockDruvaRegistry,
+    ...     MockDharaRegistry,
     ... )
     >>> from mahavishnu.core.adapter_registry import HybridAdapterRegistry
     >>>
     >>> # Create mock dependencies
     >>> discovery = MockAdapterDiscovery()
-    >>> persistence = MockDruvaRegistry()
+    >>> persistence = MockDharaRegistry()
     >>>
     >>> # Configure return values
     >>> discovery.set_adapters([...])
@@ -488,15 +488,15 @@ class MockOneiricResolver:
 
 
 # =============================================================================
-# Mock Druva Registry
+# Mock Dhara Registry
 # =============================================================================
 
 
-class MockDruvaRegistry:
-    """Mock for Druva persistence layer.
+class MockDharaRegistry:
+    """Mock for Dhara persistence layer.
 
-    Simulates the Druva MCP persistence layer for testing adapter
-    state storage without requiring an actual Druva connection.
+    Simulates the Dhara MCP persistence layer for testing adapter
+    state storage without requiring an actual Dhara connection.
 
     Attributes:
         states: Dictionary of adapter states by adapter_id
@@ -504,7 +504,7 @@ class MockDruvaRegistry:
         call_history: List of all method calls
 
     Usage:
-        >>> registry = MockDruvaRegistry()
+        >>> registry = MockDharaRegistry()
         >>> await registry.save_state("prefect", {"enabled": True, "score": 0.8})
         >>> state = await registry.load_state("prefect")
         >>> assert state["enabled"] is True
@@ -852,7 +852,7 @@ def create_mock_registry_fixtures() -> dict[str, Any]:
     Returns:
         Dictionary with pre-configured mock instances:
         - discovery: MockAdapterDiscovery
-        - persistence: MockDruvaRegistry
+        - persistence: MockDharaRegistry
         - resolver: MockOneiricResolver
         - adapters: List of sample MockAdapter instances
     """
@@ -884,7 +884,7 @@ def create_mock_registry_fixtures() -> dict[str, Any]:
 
     return {
         "discovery": MockAdapterDiscovery(),
-        "persistence": MockDruvaRegistry(),
+        "persistence": MockDharaRegistry(),
         "resolver": MockOneiricResolver(candidates=[prefect_candidate, llamaindex_candidate]),
         "adapters": [prefect_adapter, llamaindex_adapter, agno_adapter],
         "candidates": [prefect_candidate, llamaindex_candidate],
@@ -901,7 +901,7 @@ __all__ = [
     "MockAdapter",
     "MockCandidate",
     "MockOneiricResolver",
-    "MockDruvaRegistry",
+    "MockDharaRegistry",
     "MockAdapterDiscovery",
     # Factory functions
     "create_mock_adapter",

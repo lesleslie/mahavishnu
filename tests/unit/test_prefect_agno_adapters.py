@@ -17,7 +17,8 @@ from mahavishnu.engines.prefect_adapter import PrefectAdapter
 from mahavishnu.core.config import PrefectConfig
 
 # Agno adapter is always available
-from mahavishnu.adapters.ai.agno_adapter import AgnoAdapter
+# Import AgnoAdapter from engines module (canonical implementation using Agno SDK)
+from mahavishnu.engines.agno_adapter import AgnoAdapter
 from mahavishnu.core.adapters.base import (
     OrchestratorAdapter,
     AdapterType,

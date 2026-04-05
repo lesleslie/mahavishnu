@@ -11,7 +11,7 @@ Tests cover:
 from __future__ import annotations
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from mahavishnu.core.task_ordering import (
     OrderingFactor,
@@ -288,7 +288,7 @@ class TestTaskOrderer:
 
     def test_score_deadline(self, orderer: TaskOrderer) -> None:
         """Test deadline scoring."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Overdue task
         task = {"deadline": (now - timedelta(days=1)).isoformat()}
@@ -379,7 +379,7 @@ class TestTaskOrderer:
 
     def test_calculate_urgency(self, orderer: TaskOrderer) -> None:
         """Test urgency calculation."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Overdue = critical
         task = {"deadline": (now - timedelta(days=1)).isoformat()}

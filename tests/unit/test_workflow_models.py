@@ -10,7 +10,7 @@ from mahavishnu.core.workflow_models import (
 
 def test_workflow_execution_ulid_validation():
     """Should validate ULID format for workflow executions."""
-    # Valid Crockford Base32 ULID (from Druva)
+    # Valid Crockford Base32 ULID (Dhara-compatible)
     valid_ulid = "01kh85b0x6000a9vb7cgn42ed8"
 
     execution = WorkflowExecution(
@@ -106,7 +106,7 @@ def test_workflow_checkpoint_invalid_ulid_raises():
 
 def test_workflow_execution_is_complete():
     """Should correctly identify completed workflows."""
-    # Generate valid ULID from Druva to ensure format compliance
+    # Generate valid ULID from Dhara-era utilities to ensure format compliance
     from oneiric.core.ulid import ULID
     valid_ulid = str(ULID())
 
@@ -122,7 +122,7 @@ def test_workflow_execution_is_complete():
 
 def test_workflow_execution_is_not_complete():
     """Should correctly identify incomplete workflows."""
-    # Generate valid ULID from Druva to ensure format compliance
+    # Generate valid ULID from Dhara-era utilities to ensure format compliance
     from oneiric.core.ulid import ULID
     valid_ulid = str(ULID())
 

@@ -592,7 +592,7 @@ groups:
 1. **Verify breach**
    ```bash
    # Check current SLO status
-   curl http://localhost:9091/metrics | grep task_availability
+   curl http://localhost:8680/metrics | grep task_availability
    ```
 
 2. **Declare incident**

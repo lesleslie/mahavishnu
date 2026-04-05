@@ -1,7 +1,18 @@
-"""Aggregate memory from pools and sync to Session-Buddy/Akosha."""
+"""Aggregate memory from pools and sync to Session-Buddy/Akosha.
+
+P1-9: Circuit breakers protect external service calls with local fallback
+when Session-Buddy or Akosha are unavailable. This prevents cascading
+failures during sync and search operations.
+
+Circuit breaker states:
+- CLOSED: Normal operation, requests pass through
+- OPEN: Service failures exceeded threshold, requests blocked
+- Recovery: After timeout, one probe request is allowed
+"""
 
 import asyncio
 import contextlib
+from collections import deque
 from datetime import datetime, timedelta
 import logging
 import time
@@ -12,14 +23,68 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
+class _CircuitBreaker:
+    """Lightweight circuit breaker for external service protection.
+
+    Uses the same can_execute/record_success/record_failure API
+    as ResilientEmbeddingClient for consistency across the codebase.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        failure_threshold: int = 5,
+        recovery_timeout: float = 60.0,
+    ) -> None:
+        self._name = name
+        self._failure_threshold = failure_threshold
+        self._recovery_timeout = recovery_timeout
+        self._failure_count = 0
+        self._last_failure_time = 0.0
+        self._is_open = False
+
+    def can_execute(self) -> bool:
+        if not self._is_open:
+            return True
+        if time.monotonic() - self._last_failure_time >= self._recovery_timeout:
+            logger.info(f"circuit_breaker_recovery_attempt: service={self._name}")
+            return True
+        return False
+
+    def record_success(self) -> None:
+        if self._is_open:
+            logger.info(f"circuit_breaker_closed: service={self._name}")
+        self._failure_count = 0
+        self._is_open = False
+
+    def record_failure(self) -> None:
+        self._failure_count += 1
+        self._last_failure_time = time.monotonic()
+        if self._failure_count >= self._failure_threshold and not self._is_open:
+            self._is_open = True
+            logger.warning(
+                f"circuit_breaker_opened: service={self._name}, "
+                f"failures={self._failure_count}"
+            )
+
+    @property
+    def is_open(self) -> bool:
+        return self._is_open
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+
 class MemoryAggregator:
     """Aggregate and sync memory across pools.
 
     Features:
     - Collect memory from all pools
-    - Sync to Session-Buddy via MCP
-    - Sync to Akosha for cross-pool analytics
+    - Sync to Session-Buddy via MCP (with circuit breaker)
+    - Sync to Akosha for cross-pool analytics (with circuit breaker)
     - Unified search across all pools
+    - Local fallback buffer when external services unavailable
 
     Example:
         ```python
@@ -38,6 +103,9 @@ class MemoryAggregator:
         )
         ```
     """
+
+    # Maximum items to buffer locally when external services are down
+    LOCAL_BUFFER_MAX = 500
 
     def __init__(
         self,
@@ -59,6 +127,14 @@ class MemoryAggregator:
         self._mcp_client = httpx.AsyncClient(timeout=300.0)
         self._sync_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
+
+        # Circuit breakers for external services
+        self._sb_breaker = _CircuitBreaker("session-buddy", failure_threshold=5, recovery_timeout=60.0)
+        self._akosha_breaker = _CircuitBreaker("akosha", failure_threshold=5, recovery_timeout=60.0)
+
+        # Local fallback buffer: stores items when external services are down
+        self._local_buffer: deque[dict[str, Any]] = deque(maxlen=self.LOCAL_BUFFER_MAX)
+        self._buffer_drops = 0
 
         logger.info(f"MemoryAggregator initialized (sync_interval={sync_interval}s)")
 
@@ -86,6 +162,67 @@ class MemoryAggregator:
         except Exception as e:
             logger.warning(f"Failed to collect from pool {pool_id}: {e}")
             return []
+
+    def _buffer_items(self, items: list[dict[str, Any]]) -> None:
+        """Buffer items locally when external services are unavailable.
+
+        Items are stored in a bounded deque. When the buffer is full,
+        oldest items are dropped (FIFO eviction).
+
+        Args:
+            items: Memory items to buffer
+        """
+        for item in items:
+            if len(self._local_buffer) >= self.LOCAL_BUFFER_MAX:
+                self._buffer_drops += 1
+            self._local_buffer.append(item)
+
+        if items:
+            logger.debug(f"Buffered {len(items)} items locally (buffer: {len(self._local_buffer)}/{self.LOCAL_BUFFER_MAX})")
+
+    async def flush_local_buffer(self) -> dict[str, int]:
+        """Flush locally buffered items to external services.
+
+        Called periodically or on-demand to retry items that were
+        buffered when external services were down.
+
+        Returns:
+            Dict with flushed count and remaining buffer size
+        """
+        if not self._local_buffer:
+            return {"flushed": 0, "remaining": 0}
+
+        items_to_flush = list(self._local_buffer)
+        self._local_buffer.clear()
+
+        synced = await self._batch_insert_to_session_buddy(items_to_flush)
+
+        remaining = len(self._local_buffer)
+        logger.info(f"Buffer flush: synced={synced}, remaining={remaining}")
+
+        return {"flushed": synced, "remaining": remaining}
+
+    def get_circuit_breaker_stats(self) -> dict[str, Any]:
+        """Get circuit breaker and buffer statistics.
+
+        Returns:
+            Dictionary with circuit breaker states and buffer metrics
+        """
+        return {
+            "session_buddy": {
+                "circuit_open": self._sb_breaker.is_open,
+                "service": self._sb_breaker.name,
+            },
+            "akosha": {
+                "circuit_open": self._akosha_breaker.is_open,
+                "service": self._akosha_breaker.name,
+            },
+            "local_buffer": {
+                "size": len(self._local_buffer),
+                "max": self.LOCAL_BUFFER_MAX,
+                "drops": self._buffer_drops,
+            },
+        }
 
     async def _batch_insert_to_session_buddy(self, memory_items: list[dict[str, Any]]) -> int:
         """Insert memory items to Session-Buddy in batches (25x faster).
@@ -119,12 +256,20 @@ class MemoryAggregator:
     async def _insert_batch_to_session_buddy(self, batch: list[dict[str, Any]]) -> int:
         """Insert a single batch to Session-Buddy using parallel requests.
 
+        Uses circuit breaker to protect against Session-Buddy outages.
+        Falls back to local buffer when circuit is open.
+
         Args:
             batch: List of memory items (max _BATCH_SIZE)
 
         Returns:
             Number of successfully stored items
         """
+
+        # Circuit breaker check - fall back to local buffer if open
+        if not self._sb_breaker.can_execute():
+            self._buffer_items(batch)
+            return 0  # Not synced to external service, but buffered locally
 
         async def store_single_item(memory_item: dict[str, Any]) -> bool:
             """Store a single memory item, returning success status."""
@@ -153,8 +298,23 @@ class MemoryAggregator:
             return_exceptions=True,
         )
 
-        # Count successful inserts
+        # Count successful inserts and update circuit breaker
         batch_synced = sum(1 for r in results if r is True)
+        failures = len(batch) - batch_synced
+
+        if failures == 0:
+            self._sb_breaker.record_success()
+        else:
+            for _ in range(failures):
+                self._sb_breaker.record_failure()
+
+        # Buffer failed items for later retry
+        if failures > 0:
+            failed_items = [
+                item for item, result in zip(batch, results) if result is not True
+            ]
+            self._buffer_items(failed_items)
+
         return batch_synced
 
     async def start_periodic_sync(
@@ -267,6 +427,12 @@ class MemoryAggregator:
             synced_count = await self._batch_insert_to_session_buddy(all_memory)
             logger.info(f"Synced {synced_count}/{len(all_memory)} items to Session-Buddy")
 
+        # PHASE 2.5: Try flushing locally buffered items from previous failures
+        if self._local_buffer:
+            buffer_result = await self.flush_local_buffer()
+            if buffer_result["flushed"] > 0:
+                logger.info(f"Flushed {buffer_result['flushed']} buffered items")
+
         # Sync summary to Akosha
         await self._sync_to_akosha(
             {
@@ -286,7 +452,7 @@ class MemoryAggregator:
         self,
         summary: dict[str, Any],
     ) -> None:
-        """Sync summary to Akosha.
+        """Sync summary to Akosha with circuit breaker protection.
 
         Args:
             summary: Summary dictionary with:
@@ -294,6 +460,10 @@ class MemoryAggregator:
                 - memory_items_count: Number of memory items
                 - timestamp: Sync timestamp
         """
+        if not self._akosha_breaker.can_execute():
+            logger.debug("Skipping Akosha sync: circuit breaker open")
+            return
+
         try:
             response = await self._mcp_client.post(
                 f"{self.akosha_url}/tools/call",
@@ -304,11 +474,14 @@ class MemoryAggregator:
             )
 
             if response.status_code == 200:
+                self._akosha_breaker.record_success()
                 logger.info("Synced summary to Akosha")
             else:
+                self._akosha_breaker.record_failure()
                 logger.warning(f"Failed to sync to Akosha: {response.text[:200]}")
 
         except httpx.HTTPError as e:
+            self._akosha_breaker.record_failure()
             logger.warning(f"Failed to sync to Akosha: {e}")
 
     async def cross_pool_search(
@@ -356,6 +529,12 @@ class MemoryAggregator:
 
         # Cache miss - fetch from Session-Buddy
         logger.debug(f"Cache MISS for query: {query}")
+
+        # Circuit breaker check - return empty if Session-Buddy is down
+        if not self._sb_breaker.can_execute():
+            logger.debug("Skipping Session-Buddy search: circuit breaker open")
+            return []
+
         try:
             # Use Session-Buddy search
             response = await self._mcp_client.post(
@@ -370,6 +549,7 @@ class MemoryAggregator:
             )
 
             if response.status_code == 200:
+                self._sb_breaker.record_success()
                 result = response.json()
                 conversations = result.get("result", {}).get("conversations", [])
                 logger.info(f"Found {len(conversations)} results for query: {query}")
@@ -382,10 +562,12 @@ class MemoryAggregator:
 
                 return conversations
             else:
+                self._sb_breaker.record_failure()
                 logger.warning(f"Search failed: {response.text[:200]}")
                 return []
 
         except httpx.HTTPError as e:
+            self._sb_breaker.record_failure()
             logger.error(f"Search error: {e}")
             return []
 

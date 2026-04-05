@@ -4,6 +4,10 @@
 **Agent:** Python Pro (Sonnet 4.5)
 **Status:** COMPLETE
 
+> Historical note: Mahavishnu now exposes Prometheus metrics on its main HTTP
+> `/metrics` endpoint rather than a dedicated metrics-only port. The per-service
+> metrics-port notes below reflect the original WebSocket rollout state.
+
 ---
 
 ## Tasks Completed
@@ -18,7 +22,7 @@ Successfully integrated TLS/WSS support into 4 WebSocket servers:
    - TLS parameters added to `__init__`
    - TLS mode logging in `on_connect()`
 
-2. **Druva** (`/Users/les/Projects/druva/druva/websocket/server.py`)
+2. **Dhara** (`/Users/les/Projects/dhara/dhara/websocket/server.py`)
    - Commit: `abeaa19`
    - Metrics port: 9098
    - TLS parameters added to `__init__`
@@ -115,7 +119,7 @@ Created comprehensive monitoring dashboard:
 
 #### Dashboard Variables
 
-- **Server:** Filter by WebSocket server name (All, crackerjack, druva, excalidraw, fastblocks, mahavishnu, session-buddy)
+- **Server:** Filter by WebSocket server name (All, crackerjack, dhara, excalidraw, fastblocks, mahavishnu, session-buddy)
 - **Interval:** Time range (5m, 10m, 30m, 1h, 6h, 12h, 1d)
 
 #### Import Instructions
@@ -163,9 +167,9 @@ await server.start()
 ### Starting WebSocket Server with Metrics Only
 
 ```python
-from druva.websocket import DruvaWebSocketServer
+from dhara.websocket import DharaWebSocketServer
 
-server = DruvaWebSocketServer(
+server = DharaWebSocketServer(
     storage_manager=storage_mgr,
     enable_metrics=True,
     metrics_port=9098
@@ -183,10 +187,10 @@ await server.start()
 
 2. **Unique Metrics Ports** - Each server uses its own metrics port to avoid conflicts:
    - Crackerjack: 9091
-   - Druva: 9098
+   - Dhara: 9098
    - Excalidraw: 9097
    - Fastblocks: 9096
-   - Mahavishnu: 9090 (default)
+   - Mahavishnu: main HTTP `/metrics` endpoint
    - Session-Buddy: 9092
    - Akosha: 9093
 
@@ -279,7 +283,7 @@ websocket_connections_active{server="crackerjack",tls_mode="wss"} 5
 
 ### Service Integrations
 - `crackerjack/crackerjack/websocket/server.py`
-- `druva/druva/websocket/server.py`
+- `dhara/dhara/websocket/server.py`
 - `excalidraw_mcp/excalidraw_mcp/websocket/server.py`
 - `fastblocks/fastblocks/websocket/server.py`
 
@@ -295,7 +299,7 @@ websocket_connections_active{server="crackerjack",tls_mode="wss"} 5
 
 1. `9d8b2fb` - mcp-common: Add Prometheus metrics and TLS integration
 2. `cf8d0ad8` - crackerjack: Integrate TLS/WSS support
-3. `abeaa19` - druva: Integrate TLS/WSS support
+3. `abeaa19` - dhara: Integrate TLS/WSS support
 4. `4574325` - excalidraw-mcp: Integrate TLS/WSS support
 5. `d006c52` - fastblocks: Integrate TLS/WSS support
 6. `d924b55` - mahavishnu: Add Grafana dashboard for WebSocket monitoring

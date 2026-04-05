@@ -590,7 +590,7 @@ buddy> ask_claude("refactor this code")
 1. **Redundant with existing tools**:
    - **Claude Code**: Already has AI integration
    - **MCP tools**: Session-Buddy already has LLM tools
-   - **AI CLI tools**: `aider`, `cursor`, `copilot`
+   - **AI CLI tools**: `removed-tool`, `cursor`, `copilot`
 
 2. **Limited output capabilities**:
    - Shell can't display code diffs well
@@ -599,7 +599,7 @@ buddy> ask_claude("refactor this code")
 
 3. **Better alternatives exist**:
    - **Claude Code**: Full IDE integration
-   - **Aider CLI**: Purpose-built for AI code editing
+   - **RemovedTool CLI**: Purpose-built for AI code editing
    - **Cursor Editor**: AI-native development environment
 
 ### Real-World Workflow Comparison
@@ -610,8 +610,8 @@ buddy> ask_claude("refactor this code")
 $ claude "explain this error"
 # Returns: Full explanation with context
 
-# Use aider for code editing
-$ aider "refactor this function"
+# Use removed-tool for code editing
+$ removed-tool "refactor this function"
 # Returns: Applies changes with diff
 
 # Use Cursor Editor
@@ -671,9 +671,9 @@ buddy> ask_claude("explain this error")
 
 **Dedicated AI tools** (better than shell):
 
-1. **Aider CLI**: Purpose-built for AI code editing
+1. **RemovedTool CLI**: Purpose-built for AI code editing
    ```bash
-   $ aider "write tests for app.py"
+   $ removed-tool "write tests for app.py"
    # Applies changes with git commit
    ```
 
@@ -731,8 +731,8 @@ $ claude "what does this error mean?"
 # In shell (limited)
 buddy> ask_claude("write a function to parse YAML")
 
-# Better: Use aider
-$ aider "write a function to parse YAML"
+# Better: Use removed-tool
+$ removed-tool "write a function to parse YAML"
 # Applies changes directly to files
 ```
 
@@ -783,7 +783,7 @@ def ask_claude(prompt: str):
 **DEFER** (P3 priority - low value, high effort)
 
 **Rationale**:
-- ❌ Better alternatives exist (Claude Code, Aider, Cursor)
+- ❌ Better alternatives exist (Claude Code, RemovedTool, Cursor)
 - ❌ Limited capabilities in shell environment
 - ❌ Redundant with existing MCP integration
 - ✅ Could reconsider if shell becomes primary interface
@@ -1083,7 +1083,7 @@ $ session-buddy workflow "incident-response"
 
 3. **Feature 4 (AI Integration) should be deferred**
    - Low value compared to alternatives
-   - Better tools exist (Claude Code, Aider)
+   - Better tools exist (Claude Code, RemovedTool)
    - High effort for limited capability
 
 4. **Feature 2 (Quality Check in Shell) should be rejected**
@@ -1168,7 +1168,7 @@ $ session-buddy workflow "incident-response"
 
 3. **Competitive Analysis**
    - Similar tools (IPython, Jupyter, tmux)
-   - AI integration patterns (Claude Code, Aider)
+   - AI integration patterns (Claude Code, RemovedTool)
    - Shell alternatives (interactive CLI modes)
 
 ### Assessment Criteria

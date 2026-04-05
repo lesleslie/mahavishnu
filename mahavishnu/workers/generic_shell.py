@@ -9,6 +9,7 @@ import contextlib
 import json
 import logging
 import re
+import shlex
 from typing import Any
 
 from ..terminal.manager import TerminalManager
@@ -24,7 +25,7 @@ class GenericShellWorker(BaseWorker):
     Supports multiple worker types through configuration:
     - Shell: bash, zsh
     - REPL: python, ipython, node
-    - AI: qwen, claude, aider, opencode
+    - AI: qwen, claude, openclaw
     - Remote: ssh
 
     Features:
@@ -78,7 +79,24 @@ class GenericShellWorker(BaseWorker):
         if worker_type == "terminal-ssh" and "host" not in kwargs:
             raise ValueError("SSH worker requires 'host' parameter")
 
-    async def start(self) -> str:
+    def _format_command(self, prompt: str | None = None) -> str:
+        """Format command template with worker kwargs and optional task prompt."""
+        command = self.config.command
+        format_kwargs = dict(self._kwargs)
+        if "{prompt}" in command:
+            if prompt is None:
+                raise ValueError("Worker command requires prompt but no prompt was provided")
+            format_kwargs["prompt"] = shlex.quote(prompt)
+
+        if format_kwargs:
+            try:
+                command = command.format(**format_kwargs)
+            except KeyError as e:
+                raise ValueError(f"Missing parameter for command: {e}")
+
+        return command
+
+    async def start(self, launch_command: str | None = None) -> str:
         """Launch terminal session with configured command.
 
         Returns:
@@ -94,13 +112,7 @@ class GenericShellWorker(BaseWorker):
                 "Ensure terminal management is enabled."
             )
 
-        # Format command with any parameters
-        command = self.config.command
-        if self._kwargs:
-            try:
-                command = command.format(**self._kwargs)
-            except KeyError as e:
-                raise ValueError(f"Missing parameter for command: {e}")
+        command = launch_command or self._format_command()
 
         # Launch terminal session
         session_ids = await self.terminal_manager.launch_sessions(
@@ -127,14 +139,18 @@ class GenericShellWorker(BaseWorker):
             WorkerResult with execution results
         """
         if not self.session_id:
-            await self.start()
+            if "{prompt}" in self.config.command:
+                await self.start(launch_command=self._format_command(prompt))
+            else:
+                await self.start()
 
         prompt = task.get("prompt", "")
         timeout = task.get("timeout", self.config.default_timeout)
         wait_for_completion = task.get("wait_for_completion", True)
 
-        # Send the prompt/command
-        await self.terminal_manager.send_command(self.session_id, prompt)
+        if "{prompt}" not in self.config.command:
+            # Interactive workers start a long-lived process and receive prompts over stdin.
+            await self.terminal_manager.send_command(self.session_id, prompt)
 
         if wait_for_completion:
             # Monitor for completion
@@ -217,18 +233,30 @@ class GenericShellWorker(BaseWorker):
         Returns:
             Tuple of (is_complete, extracted_content)
         """
+        stripped_output = output.strip()
+        if not stripped_output:
+            return False, None
+
+        if self.config.complete_on_valid_json:
+            try:
+                data = json.loads(stripped_output)
+                return True, self._extract_json_content(data)
+            except json.JSONDecodeError:
+                pass
+
         for line in output.split("\n"):
             if not line.strip():
                 continue
             try:
                 data = json.loads(line)
+                serialized = json.dumps(data)
                 # Check completion markers
                 for marker in self.config.completion_markers:
-                    if marker in data:
+                    if marker in data or marker in serialized:
                         return True, self._extract_json_content(data)
                 # Check error markers
                 for marker in self.config.error_markers:
-                    if marker.lower() in str(data).lower():
+                    if marker.lower() in serialized.lower():
                         return True, self._extract_json_content(data)
             except json.JSONDecodeError:
                 continue

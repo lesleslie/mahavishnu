@@ -9,12 +9,12 @@
 
 ## Executive Summary
 
-The Mahavishnu Task Orchestration System (MTOS) is a natural language-powered task management platform designed specifically for multi-repository software development ecosystems. It leverages the existing Mahavishnu ecosystem components (Akosha, Druva, Session-Buddy, Crackerjack) to provide intelligent task creation, semantic search, predictive insights, and seamless workflow orchestration.
+The Mahavishnu Task Orchestration System (MTOS) is a natural language-powered task management platform designed specifically for multi-repository software development ecosystems. It leverages the existing Mahavishnu ecosystem components (Akosha, Dhara, Session-Buddy, Crackerjack) to provide intelligent task creation, semantic search, predictive insights, and seamless workflow orchestration.
 
 **Key Differentiators:**
 - Natural language task creation with semantic understanding
 - Multi-repository task coordination and dependency management
-- Ecosystem-aware (uses existing Akosha/Druva/Session-Buddy/Crackerjack)
+- Ecosystem-aware (uses existing Akosha/Dhara/Session-Buddy/Crackerjack)
 - One-way sync from GitHub/GitLab (with approval workflow)
 - Quality gate integration (Crackerjack)
 - Worktree-aware development workflow
@@ -73,7 +73,7 @@ Create a unified task orchestration system that understands developer intent, co
 | Component | Role | Rationale |
 |-----------|------|-----------|
 | **Akosha** | Semantic search, pattern detection, dependency inference, knowledge graph | Already has vector DB + graph relationships |
-| **Druva** | Task workflow configuration (ONEIRIC), component lifecycle management | Already handles ONEIRIC config + lifecycle |
+| **Dhara** | Task workflow configuration (ONEIRIC), component lifecycle management | Already handles ONEIRIC config + lifecycle |
 | **Mahavishnu** | Task execution orchestration, cross-repo coordination, worktree integration | Already has worktree + quality gate orchestration |
 | **Session-Buddy** | Task context, conversation history, session tracking | Already tracks sessions + memory |
 | **Crackerjack** | Quality gate validation, test execution, code quality checks | Already has quality gate infrastructure |
@@ -98,7 +98,7 @@ User Input: "Create task to fix auth bug in session-buddy by Friday"
    ├─ "Likely to block task #45"
    └─ "Tasks in auth scope take 2x longer than average"
 
-4. Workflow Config (Druva)
+4. Workflow Config (Dhara)
    ├─ Load: tasks/bug-fix-workflow.yaml
    └─ Stages: setup → development → validation → completion
 
@@ -146,7 +146,7 @@ User Input: "Create task to fix auth bug in session-buddy by Friday"
 │  Storage     │  │  Ecosystem Components                │
 │  Layer       │  │                                      │
 │              │  │  ┌──────────┐  ┌──────────────┐      │
-│  ┌────────┐  │  │  │ Akosha   │  │   Druva     │      │
+│  ┌────────┐  │  │  │ Akosha   │  │   Dhara     │      │
 │  │SQLite  │  │  │  │          │  │              │      │
 │  │(Tasks) │  │  │  │ • Semantic│  │ • ONEIRIC   │      │
 │  └────────┘  │  │  │   Search  │  │   Config    │      │
@@ -196,7 +196,7 @@ User Input: "Create task to fix auth bug in session-buddy by Friday"
 **Responsibilities**:
 - NLP task parsing (extract repo, priority, deadline from natural language)
 - Task CRUD operations
-- Workflow execution (call Druva for config, execute stages)
+- Workflow execution (call Dhara for config, execute stages)
 - Cross-repo coordination (manage dependencies across repos)
 - Worktree integration (create worktrees for tasks)
 - Quality gate coordination (call Crackerjack for validation)
@@ -208,7 +208,7 @@ class TaskOrchestrator:
         """Parse natural language, create task across all stores."""
 
     async def execute_task_workflow(self, task_id: str):
-        """Load workflow from Druva, execute stages."""
+        """Load workflow from Dhara, execute stages."""
 
     async def coordinate_multi_repo_task(self, tasks: list[RepoTask]):
         """Coordinate tasks across multiple repositories."""
@@ -263,7 +263,7 @@ inferred_deps = await akosha.infer_relationships(
 )
 ```
 
-#### 3. Configuration Layer (Druva)
+#### 3. Configuration Layer (Dhara)
 
 **Integration Point**: Use ONEIRIC configuration for task workflows
 
@@ -309,21 +309,21 @@ workflow:
 **Lifecycle Management**:
 ```python
 # Activate task with workflow
-await druva.activate_component(
+await dhara.activate_component(
     component_type="task",
     component_id="task-42",
     config_path="tasks/task-42.yaml",
 )
 
 # Execute specific stage
-await druva.resolve_and_execute(
+await dhara.resolve_and_execute(
     component="task-42",
     stage="validation",
     context={"repo": "session-buddy"},
 )
 
 # Swap workflow approach mid-execution
-await druva.swap_component(
+await dhara.swap_component(
     component_id="task-42",
     new_config="tasks/task-42-alternative.yaml",
     reason="Trying different approach",
@@ -1052,7 +1052,7 @@ $ mhv task complete 42
 │  └────────────────────┘  │ ⚠️  Security: 1 issue found        ││
 │                          │                                    ││
 │  ┌────────────────────────┴──────────────────────────────────┐│
-│  │ Druva Insights ⚡                                           ││
+│  │ Dhara Insights ⚡                                           ││
 │  │ 🔮 Predicted: 4h remaining (87% confidence)                  ││
 │  │ ⚠️  Warning: Blocks task #45 (Update frontend)             ││
 │  │ 💡 Suggestion: Consider splitting into 2 subtasks          ││
@@ -1202,7 +1202,7 @@ Click menu bar icon:
 │  │    [Start Worktree] [Complete] [Details]                │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
-│  Druva Insights ⚡                                             │
+│  Dhara Insights ⚡                                             │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │ 🔮 Predicted: "Fix auth bug" will take 4h (2h remaining) │    │
 │  │ ⚠️  Warning: "Update API" blocked by missing dependency │    │
@@ -1252,7 +1252,7 @@ POST   /api/tasks/semantic         # Semantic search (Akosha)
 
 # Analytics
 GET    /api/analytics/stats        # Overall statistics
-GET    /api/analytics/predictions  # Druva insights
+GET    /api/analytics/predictions  # Dhara insights
 
 # External sync
 GET    /api/sync/approvals        # Pending approvals
@@ -1575,12 +1575,12 @@ Triggers:
 - Dependency inference suggests relationships
 - Similar tasks recommended on creation
 
-### Phase 3: Workflow Orchestration & Druva Integration (Week 5-6)
+### Phase 3: Workflow Orchestration & Dhara Integration (Week 5-6)
 
 **Goal**: ONEIRIC task workflows and lifecycle management
 
 **Deliverables**:
-1. Druva integration (ONEIRIC task config)
+1. Dhara integration (ONEIRIC task config)
 2. Task workflow execution
 3. Worktree integration (start command)
 4. Quality gate integration (complete command)
@@ -1588,7 +1588,7 @@ Triggers:
 
 **Tasks**:
 - [ ] Create task workflow schemas (ONEIRIC YAML)
-- [ ] Create `mahavishnu/core/task_druva.py` (Druva integration)
+- [ ] Create `mahavishnu/core/task_dhara.py` (Dhara integration)
 - [ ] Implement `mhv task start` (worktree creation)
 - [ ] Implement `mhv task complete` (quality gates)
 - [ ] Create `tasks/` directory with workflow templates
@@ -1768,7 +1768,7 @@ Triggers:
 ### Ecosystem Integration
 
 - **Akosha**: 100% of tasks indexed with embeddings
-- **Druva**: >80% of tasks use ONEIRIC workflows
+- **Dhara**: >80% of tasks use ONEIRIC workflows
 - **Session-Buddy**: 100% of tasks have conversation history
 - **Crackerjack**: >90% of completed tasks pass quality gates
 

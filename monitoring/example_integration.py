@@ -249,7 +249,7 @@ async def startup_event():
     asyncio.create_task(update_system_metrics())
 
     print("✅ Monitoring initialized")
-    print("✅ Metrics: http://localhost:8000/metrics")
+    print("✅ Metrics: http://localhost:8682/metrics")
     print("✅ Tracing: OTLP endpoint (http://localhost:4317)")
     print("✅ Dashboard: http://localhost:3000")
 
@@ -271,8 +271,8 @@ if __name__ == "__main__":
     print("  • Grafana dashboard visualization")
     print()
     print("📈 Endpoints:")
-    print("  • http://localhost:8000/metrics - Prometheus metrics")
-    print("  • http://localhost:8000/health - Health check")
+    print("  • http://localhost:8682/metrics - Prometheus metrics")
+    print("  • http://localhost:8682/health - Health check")
     print()
     print("🔧 Configuration:")
     print("  • OTLP endpoint: http://localhost:4317")

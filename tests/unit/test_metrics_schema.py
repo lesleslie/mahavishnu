@@ -189,7 +189,7 @@ def test_confidence_interval():
 
 
 def test_key_generation():
-    """Should generate correct Druva keys."""
+    """Should generate correct Dhara keys."""
     exec_id = "01ARZ3NDEKTSVQRRF"
 
     assert generate_execution_key(exec_id) == f"exec:{exec_id}"

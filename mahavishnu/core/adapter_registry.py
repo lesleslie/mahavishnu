@@ -1,10 +1,10 @@
-"""Hybrid adapter registry combining Oneiric resolution + Druva persistence.
+"""Hybrid adapter registry combining Oneiric resolution + Dhara persistence.
 
 This module implements the HybridAdapterRegistry using the composite pattern,
 combining three specialized components:
 
 1. **AdapterDiscoveryEngine** - Entry points + Oneiric MCP discovery
-2. **AdapterPersistenceLayer** - Druva/SQLite state and health storage
+2. **AdapterPersistenceLayer** - Dhara/SQLite state and health storage
 3. **HealthIntegration** - Health monitoring, metrics, and alerts
 
 Architecture:
@@ -13,7 +13,7 @@ Architecture:
     │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐   │
     │  │  Discovery      │  │  Persistence    │  │  Health         │   │
     │  │  Engine         │  │  Layer          │  │  Integration    │   │
-    │  │  (entry points, │  │  (Druva/SQLite)│  │  (metrics,      │   │
+    │  │  (entry points, │  │  (Dhara/SQLite)│  │  (metrics,      │   │
     │  │   Oneiric MCP)  │  │                 │  │   alerts)       │   │
     │  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘   │
     │           │                    │                    │            │
@@ -102,7 +102,7 @@ class RegistrationReport:
 
 
 class HybridAdapterRegistry:
-    """Hybrid adapter registry with Oneiric discovery + Druva persistence.
+    """Hybrid adapter registry with Oneiric discovery + Dhara persistence.
 
     This registry implements the composite pattern, delegating to specialized
     components for discovery, persistence, and health monitoring.
@@ -110,7 +110,7 @@ class HybridAdapterRegistry:
     Features:
     - Entry point plugin discovery
     - Oneiric MCP remote discovery
-    - Druva/SQLite state persistence
+    - Dhara/SQLite state persistence
     - Capability-based routing with caching
     - Health monitoring integration
     - Thread-safe operations

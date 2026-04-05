@@ -1,5 +1,8 @@
 # Status Enum Consolidation Plan for Mahavishnu (MHV-008)
 
+> **Update (2026-04-02):** This plan is not superseded. It is now a prerequisite refactor for the storage consolidation workflow in `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`.
+> Complete enum migration before broad PostgreSQL persistence cutover to reduce state-model drift across subsystems.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Consolidate 24+ duplicate status enums into 4 base enums with domain-specific extensions

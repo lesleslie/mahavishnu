@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Implement WebSocket servers for enhanced collaboration services (druva, excalidraw, fastblocks) with real-time event broadcasting and MCP integration.
+**Goal:** Implement WebSocket servers for enhanced collaboration services (dhara, excalidraw, fastblocks) with real-time event broadcasting and MCP integration.
 
 **Architecture:** Room-based WebSocket broadcasting using mcp-common abstraction layer. Each service extends WebSocketServer base class with domain-specific broadcast methods and MCP monitoring tools.
 
@@ -10,36 +10,36 @@
 
 ---
 
-## Task 1: Druva WebSocket Server (Port 8693)
+## Task 1: Dhara WebSocket Server (Port 8693)
 
-**Purpose:** Real-time adapter distribution events for Druva storage service
+**Purpose:** Real-time adapter distribution events for Dhara storage service
 
 **Files:**
-- Create: `/Users/les/Projects/druva/druva/websocket/__init__.py`
-- Create: `/Users/les/Projects/druva/druva/websocket/server.py`
-- Create: `/Users/les/Projects/druva/druva/mcp/websocket_tools.py`
-- Create: `/Users/les/Projects/druva/druva/websocket/integration.py`
-- Create: `/Users/les/Projects/druva/examples/websocket_client_examples.py`
-- Create: `/Users/les/Projects/druva/tests/test_websocket_server.py`
-- Modify: `/Users/les/Projects/druva/druva/__init__.py`
+- Create: `/Users/les/Projects/dhara/dhara/websocket/__init__.py`
+- Create: `/Users/les/Projects/dhara/dhara/websocket/server.py`
+- Create: `/Users/les/Projects/dhara/dhara/mcp/websocket_tools.py`
+- Create: `/Users/les/Projects/dhara/dhara/websocket/integration.py`
+- Create: `/Users/les/Projects/dhara/examples/websocket_client_examples.py`
+- Create: `/Users/les/Projects/dhara/tests/test_websocket_server.py`
+- Modify: `/Users/les/Projects/dhara/dhara/__init__.py`
 
 **Step 1: Create package initialization**
 
-Create: `/Users/les/Projects/druva/druva/websocket/__init__.py`
+Create: `/Users/les/Projects/dhara/dhara/websocket/__init__.py`
 
 ```python
-"""WebSocket server for Druva adapter distribution events."""
-from .server import DruvaWebSocketServer
+"""WebSocket server for Dhara adapter distribution events."""
+from .server import DharaWebSocketServer
 
-__all__ = ["DruvaWebSocketServer"]
+__all__ = ["DharaWebSocketServer"]
 ```
 
 **Step 2: Implement WebSocket server**
 
-Create: `/Users/les/Projects/druva/druva/websocket/server.py`
+Create: `/Users/les/Projects/dhara/dhara/websocket/server.py`
 
 ```python
-"""WebSocket server for Druva adapter distribution.
+"""WebSocket server for Dhara adapter distribution.
 
 Broadcasts real-time events for:
 - Adapter storage and retrieval
@@ -66,8 +66,8 @@ from mcp_common.websocket.protocol import EventTypes
 logger = logging.getLogger(__name__)
 
 
-class DruvaWebSocketServer(WebSocketServer):
-    """WebSocket server for Druva adapter distribution.
+class DharaWebSocketServer(WebSocketServer):
+    """WebSocket server for Dhara adapter distribution.
 
     Broadcasts real-time events for:
     - Adapter storage events
@@ -82,7 +82,7 @@ class DruvaWebSocketServer(WebSocketServer):
     - global - System-wide events
 
     Attributes:
-        storage_manager: Druva storage manager instance
+        storage_manager: Dhara storage manager instance
         host: Server host address
         port: Server port number (default: 8693)
     """
@@ -95,7 +95,7 @@ class DruvaWebSocketServer(WebSocketServer):
         max_connections: int = 1000,
         message_rate_limit: int = 100,
     ):
-        """Initialize Druva WebSocket server.
+        """Initialize Dhara WebSocket server.
 
         Args:
             storage_manager: StorageManager instance for adapter state
@@ -112,7 +112,7 @@ class DruvaWebSocketServer(WebSocketServer):
         )
 
         self.storage_manager = storage_manager
-        logger.info(f"DruvaWebSocketServer initialized: {host}:{port}")
+        logger.info(f"DharaWebSocketServer initialized: {host}:{port}")
 
     async def on_connect(self, websocket: Any, connection_id: str) -> None:
         """Handle new WebSocket connection.
@@ -128,8 +128,8 @@ class DruvaWebSocketServer(WebSocketServer):
             EventTypes.SESSION_CREATED,
             {
                 "connection_id": connection_id,
-                "server": "druva",
-                "message": "Connected to Druva adapter distribution",
+                "server": "dhara",
+                "message": "Connected to Dhara adapter distribution",
             },
         )
         await websocket.send(WebSocketProtocol.encode(welcome))
@@ -300,10 +300,10 @@ class DruvaWebSocketServer(WebSocketServer):
 
 **Step 3: Create MCP integration tools**
 
-Create: `/Users/les/Projects/druva/druva/mcp/websocket_tools.py`
+Create: `/Users/les/Projects/dhara/dhara/mcp/websocket_tools.py`
 
 ```python
-"""MCP tools for Druva WebSocket monitoring and management."""
+"""MCP tools for Dhara WebSocket monitoring and management."""
 
 from typing import Any
 from fastmcp import FastMCP
@@ -317,7 +317,7 @@ def register_websocket_tools(
 
     Args:
         server: FastMCP server instance
-        websocket_server: DruvaWebSocketServer instance
+        websocket_server: DharaWebSocketServer instance
     """
 
     @server.tool()
@@ -332,14 +332,14 @@ def register_websocket_tools(
                 "status": "stopped",
                 "host": "127.0.0.1",
                 "port": 8693,
-                "server": "druva"
+                "server": "dhara"
             }
 
         return {
             "status": "healthy",
             "host": "127.0.0.1",
             "port": 8693,
-            "server": "druva",
+            "server": "dhara",
             "connections": len(websocket_server.connections),
             "rooms": len(websocket_server.connection_rooms),
         }
@@ -355,7 +355,7 @@ def register_websocket_tools(
             return {"error": "WebSocket server not initialized"}
 
         return {
-            "server": "druva",
+            "server": "dhara",
             "is_running": websocket_server.is_running,
             "connections": list(websocket_server.connections.keys()),
             "rooms": {
@@ -398,7 +398,7 @@ def register_websocket_tools(
 
         test_event = WebSocketProtocol.create_event(
             "test.event",
-            {"message": "Test event from Druva WebSocket"},
+            {"message": "Test event from Dhara WebSocket"},
             room=channel
         )
 
@@ -421,7 +421,7 @@ def register_websocket_tools(
             return {"error": "WebSocket server not initialized"}
 
         return {
-            "server": "druva",
+            "server": "dhara",
             "is_running": websocket_server.is_running,
             "active_connections": len(websocket_server.connections),
             "active_rooms": len(websocket_server.connection_rooms),
@@ -432,10 +432,10 @@ def register_websocket_tools(
 
 **Step 4: Create integration helpers**
 
-Create: `/Users/les/Projects/druva/druva/websocket/integration.py`
+Create: `/Users/les/Projects/dhara/dhara/websocket/integration.py`
 
 ```python
-"""Integration helpers for Druva WebSocket server."""
+"""Integration helpers for Dhara WebSocket server."""
 
 from typing import Any
 import logging
@@ -448,7 +448,7 @@ async def start_websocket_server(
     host: str = "127.0.0.1",
     port: int = 8693,
 ) -> Any:
-    """Initialize and start Druva WebSocket server.
+    """Initialize and start Dhara WebSocket server.
 
     Args:
         storage_manager: StorageManager instance
@@ -458,16 +458,16 @@ async def start_websocket_server(
     Returns:
         Started WebSocket server instance
     """
-    from druva.websocket import DruvaWebSocketServer
+    from dhara.websocket import DharaWebSocketServer
 
-    server = DruvaWebSocketServer(
+    server = DharaWebSocketServer(
         storage_manager=storage_manager,
         host=host,
         port=port,
     )
 
     await server.start()
-    logger.info(f"Druva WebSocket server started on {host}:{port}")
+    logger.info(f"Dhara WebSocket server started on {host}:{port}")
     return server
 
 
@@ -479,7 +479,7 @@ async def stop_websocket_server(server: Any) -> None:
     """
     if server and server.is_running:
         await server.stop()
-        logger.info("Druva WebSocket server stopped")
+        logger.info("Dhara WebSocket server stopped")
 
 
 async def get_websocket_status(server: Any) -> dict:
@@ -539,7 +539,7 @@ class WebSocketBroadcaster:
         """Initialize broadcaster.
 
         Args:
-            server: DruvaWebSocketServer instance
+            server: DharaWebSocketServer instance
         """
         self.server = server
 
@@ -558,18 +558,18 @@ class WebSocketBroadcaster:
 
 **Step 5: Create client examples**
 
-Create: `/Users/les/Projects/druva/examples/websocket_client_examples.py`
+Create: `/Users/les/Projects/dhara/examples/websocket_client_examples.py`
 
 ```python
-"""WebSocket client examples for Druva adapter distribution."""
+"""WebSocket client examples for Dhara adapter distribution."""
 
 import asyncio
 import json
 from typing import Callable, Optional
 
 
-class DruvaWebSocketClient:
-    """WebSocket client for Druva adapter events."""
+class DharaWebSocketClient:
+    """WebSocket client for Dhara adapter events."""
 
     def __init__(self, uri: str = "ws://127.0.0.1:8693"):
         """Initialize client.
@@ -587,14 +587,14 @@ class DruvaWebSocketClient:
         import websockets
         self.websocket = await websockets.connect(self.uri)
         self.connected = True
-        print(f"Connected to Druva WebSocket: {self.uri}")
+        print(f"Connected to Dhara WebSocket: {self.uri}")
 
     async def disconnect(self) -> None:
         """Disconnect from server."""
         if self.websocket:
             await self.websocket.close()
             self.connected = False
-            print("Disconnected from Druva WebSocket")
+            print("Disconnected from Dhara WebSocket")
 
     async def subscribe_to_channel(self, channel: str) -> None:
         """Subscribe to events channel.
@@ -664,7 +664,7 @@ class DruvaWebSocketClient:
 
 async def example_adapter_monitoring():
     """Example: Monitor adapter storage events."""
-    client = DruvaWebSocketClient()
+    client = DharaWebSocketClient()
 
     @client.on_event("adapter.stored")
     async def on_adapter_stored(data: dict):
@@ -681,7 +681,7 @@ async def example_adapter_monitoring():
 
 async def example_multi_channel():
     """Example: Subscribe to multiple channels."""
-    client = DruvaWebSocketClient()
+    client = DharaWebSocketClient()
 
     await client.connect()
     await client.subscribe_to_channel("adapter:adapter1")
@@ -691,22 +691,22 @@ async def example_multi_channel():
 
 **Step 6: Create test suite**
 
-Create: `/Users/les/Projects/druva/tests/test_websocket_server.py`
+Create: `/Users/les/Projects/dhara/tests/test_websocket_server.py`
 
 ```python
-"""Tests for Druva WebSocket server."""
+"""Tests for Dhara WebSocket server."""
 
 import pytest
 import asyncio
 from unittest.mock import MagicMock, AsyncMock
 
-from druva.websocket import DruvaWebSocketServer
+from dhara.websocket import DharaWebSocketServer
 
 
 def test_server_initialization():
     """Test server initialization."""
     storage_manager = MagicMock()
-    server = DruvaWebSocketServer(
+    server = DharaWebSocketServer(
         storage_manager=storage_manager,
         host="127.0.0.1",
         port=8693,
@@ -722,7 +722,7 @@ def test_server_initialization():
 async def test_broadcast_adapter_stored():
     """Test adapter stored broadcast."""
     storage_manager = MagicMock()
-    server = DruvaWebSocketServer(
+    server = DharaWebSocketServer(
         storage_manager=storage_manager,
         host="127.0.0.1",
         port=8693,
@@ -742,7 +742,7 @@ async def test_broadcast_adapter_stored():
 async def test_broadcast_adapter_updated():
     """Test adapter updated broadcast."""
     storage_manager = MagicMock()
-    server = DruvaWebSocketServer(
+    server = DharaWebSocketServer(
         storage_manager=storage_manager,
         host="127.0.0.1",
         port=8693,
@@ -759,15 +759,15 @@ async def test_broadcast_adapter_updated():
 
 **Step 7: Run tests**
 
-Run: `cd /Users/les/Projects/druva && pytest tests/test_websocket_server.py -v`
+Run: `cd /Users/les/Projects/dhara && pytest tests/test_websocket_server.py -v`
 
 Expected: All tests pass
 
 **Step 8: Commit changes**
 
 ```bash
-cd /Users/les/Projects/druva
-git add druva/websocket/ druva/mcp/websocket_tools.py examples/websocket_client_examples.py tests/test_websocket_server.py
+cd /Users/les/Projects/dhara
+git add dhara/websocket/ dhara/mcp/websocket_tools.py examples/websocket_client_examples.py tests/test_websocket_server.py
 git commit -m "feat: add WebSocket server for adapter distribution events"
 ```
 
@@ -963,7 +963,7 @@ class ExcalidrawWebSocketServer(WebSocketServer):
 
 **Step 3: Create MCP tools and tests**
 
-Similar structure to Druva, create:
+Similar structure to Dhara, create:
 - `/Users/les/Projects/excalidraw-mcp/excalidraw_mcp/mcp/websocket_tools.py`
 - `/Users/les/Projects/excalidraw-mcp/examples/websocket_client_examples.py`
 - `/Users/les/Projects/excalidraw-mcp/tests/test_websocket_server.py`
@@ -993,7 +993,7 @@ git commit -m "feat: add WebSocket server for diagram collaboration"
 - Create: `/Users/les/Projects/fastblocks/examples/websocket_client_examples.py`
 - Create: `/Users/les/Projects/fastblocks/tests/test_websocket_server.py`
 
-**Step 1-5:** Similar pattern to Druva and Excalidraw, with Fastblocks-specific broadcast methods:
+**Step 1-5:** Similar pattern to Dhara and Excalidraw, with Fastblocks-specific broadcast methods:
 - `broadcast_ui_updated()` - UI component updates
 - `broadcast_component_rendered()` - Component render events
 - `broadcast_state_changed()` - State management events
@@ -1018,7 +1018,7 @@ Add to IMPLEMENTATION_SUMMARY.md:
 
 | Service | Port | Files Created | Status |
 |---------|------|---------------|--------|
-| **druva** | 8693 | `/druva/websocket/server.py` | ✅ Complete |
+| **dhara** | 8693 | `/dhara/websocket/server.py` | ✅ Complete |
 | **excalidraw-mcp** | 3042 | `/excalidraw_mcp/websocket/server.py` | ✅ Complete |
 | **fastblocks** | 8684 | `/fastblocks/websocket/server.py` | ✅ Complete |
 
@@ -1075,8 +1075,8 @@ Each service should have:
 
 ### Test Commands
 ```bash
-# Druva
-cd /Users/les/Projects/druva && pytest tests/test_websocket_server.py -v
+# Dhara
+cd /Users/les/Projects/dhara && pytest tests/test_websocket_server.py -v
 
 # Excalidraw
 cd /Users/les/Projects/excalidraw-mcp && pytest tests/test_websocket_server.py -v

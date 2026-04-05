@@ -1,0 +1,56 @@
+# Docker Compose for PostgreSQL + pgvector testing
+# Usage: docker-compose -f docker-compose.postgres.yaml up -d
+#
+# This provides a local PostgreSQL instance with pgvector extension
+# for testing the Storage Consolidation migrations.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: mahavishnu-postgres
+    environment:
+      POSTGRES_USER: mahavishnu
+      POSTGRES_PASSWORD: mahavishnu_dev
+      POSTGRES_DB: mahavishnu
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations/versions:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mahavishnu -d mahavishnu"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    command: >
+      postgres
+      -c shared_preload_libraries='vector'
+      -c max_connections=100
+      -c work_mem=256MB
+
+  # Optional: pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: mahavishnu-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@mahavishnu.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - admin
+
+volumes:
+  postgres_data:
+
+# Connection string for applications:
+# postgresql://mahavishnu:mahavishnu_dev@localhost:5432/mahavishnu
+#
+# To run migrations:
+# 1. Start PostgreSQL: docker-compose -f docker-compose.postgres.yaml up -d
+# 2. Run Alembic: alembic upgrade head
+# 3. Verify: psql -h localhost -U mahavishnu -d mahavishnu -c "\dt orchestration.*"

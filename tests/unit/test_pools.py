@@ -8,6 +8,7 @@ import pytest
 from mahavishnu.mcp.protocols.message_bus import Message, MessageBus, MessageType
 from mahavishnu.pools.base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 from mahavishnu.pools.manager import PoolManager, PoolSelector
+from monitoring.metrics import pool_workers_active
 
 
 class TestPoolConfig:
@@ -372,6 +373,24 @@ class TestPoolManager:
         assert result["pool_id"] == "test_pool"
         assert result["status"] == "completed"
         assert "Hello" in result["output"]
+
+    @pytest.mark.asyncio
+    async def test_pool_worker_metrics_reflect_live_counts(self, pool_manager):
+        """Shared pool worker gauge should reflect current live workers by pool type."""
+        config = PoolConfig(name="test", pool_type="mahavishnu")
+        mock_pool = MockPool(config, "test_pool")
+        await mock_pool.start()
+        mock_pool._workers = {"w1": "w1", "w2": "w2"}
+
+        pool_manager._pools["test_pool"] = mock_pool
+        pool_manager._pool_worker_counts["test_pool"] = len(mock_pool._workers)
+        pool_manager._refresh_pool_worker_metrics()
+
+        assert pool_workers_active.labels(pool_type="mahavishnu")._value.get() == 2
+
+        await pool_manager.close_pool("test_pool")
+
+        assert pool_workers_active.labels(pool_type="mahavishnu")._value.get() == 0
 
     @pytest.mark.asyncio
     async def test_route_task_least_loaded(self, pool_manager):

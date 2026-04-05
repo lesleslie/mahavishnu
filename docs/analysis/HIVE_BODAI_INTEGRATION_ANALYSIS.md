@@ -1118,7 +1118,7 @@ class HiveTypeSystem:
 |  | Memory       | Gates        | Search                   | |
 |  +--------------+--------------+--------------------------+ |
 |  +--------------+--------------+--------------------------+ |
-|  | Oneiric      | Agno         | Druva                   | |
+|  | Oneiric      | Agno         | Dhara                   | |
 |  | Config       | Agent        | Persistent               | |
 |  | Logging      | Runtime      | Storage                  | |
 |  +--------------+--------------+--------------------------+ |
@@ -1207,7 +1207,7 @@ class HiveTypeSystem:
    - **Mitigation**: UV lockfile, dependency groups
 
 2. **Memory Bloat** - Session-Buddy knowledge graphs grow unbounded
-   - **Mitigation**: TTL cleanup, archival to Druva
+   - **Mitigation**: TTL cleanup, archival to Dhara
 
 ### Low Risk
 

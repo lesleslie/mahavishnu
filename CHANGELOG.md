@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-04-04
+
+### Added
+
+- adapters: Formalize lifecycle contract
+- Add shared health command and schema spec
+- config: Add validation cli and checks
+- Implement health check system for dependency management
+- mcp: Add utility tools and tests
+
+### Changed
+
+- Mahavishnu (quality: 76/100) - 2026-03-26 22:51:58
+- Mahavishnu (quality: 77/100) - 2026-02-27 12:12:27
+- Mahavishnu (quality: 77/100) - 2026-02-27 16:47:28
+- Mahavishnu (quality: 77/100) - 2026-03-24 23:42:08
+- monitoring: Consolidate alerting and dashboard config
+
+### Documentation
+
+- Add health check system design
+- cleanup: Remove backup artifacts and simplify monitoring cli
+- plan: Add 90-day bodai ecosystem execution board
+- plan: Add current execution slice
+- plan: Add issue-sized work package backlog
+- plan: Add per-initiative execution checklists
+- plan: Normalize master checklist semantics
+
+### Internal
+
+- Disable llamaindex adapter (missing dependencies)
+- Re-enable llamaindex adapter with dependencies
+- Rename Dhruva to Druva and re-enable LlamaIndex
+
 ## [0.3.2] - 2026-02-26
 
 ### Added

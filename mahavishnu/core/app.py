@@ -13,6 +13,14 @@ from typing import TYPE_CHECKING, Any
 import uuid
 
 import yaml
+from monitoring.metrics import (
+    mahavishnu_active_workflows,
+    mahavishnu_repos_processed_total,
+    mahavishnu_workflow_concurrency_utilization,
+    mahavishnu_workflow_duration_seconds,
+    mahavishnu_workflow_queue_depth,
+    mahavishnu_workflows_total,
+)
 
 from ..qc.checker import QualityControl
 from ..session.checkpoint import SessionBuddy
@@ -26,6 +34,9 @@ from .permissions import Permission, RBACManager
 from .resilience import ErrorRecoveryManager, ResiliencePatterns
 from .workflow_state import WorkflowState
 from .context import set_app_context
+from .repo_nicknames import get_repo_nicknames
+from .routing import TaskRouter, RoutingStrategy
+from .metrics_schema import AdapterType, TaskType
 
 if TYPE_CHECKING:
     from ..terminal.manager import TerminalManager
@@ -135,7 +146,7 @@ class MahavishnuApp:
         """
         self.config = config or self._load_config()
         self.adapters: dict[str, OrchestratorAdapter] = {}
-        self.druva_url = self._resolve_druva_url()
+        self.dhara_url = self._resolve_dhara_url()
         self._load_repos()
         self._initialize_adapters()
 
@@ -209,27 +220,22 @@ class MahavishnuApp:
         # Initialize monitoring and alerting service
         self.monitoring_service = MonitoringService(self)
 
-        # Initialize routing metrics server (Prometheus)
+        # Initialize routing metrics on the shared Prometheus registry.
+        # Routing metrics are exposed via the main /metrics endpoint.
         self.routing_metrics_server = None
+        logger = __import__("logging").getLogger(__name__)
         try:
-            from .routing_metrics import start_routing_metrics_server
+            from .routing_metrics import get_routing_metrics
 
-            # Start metrics server on configured port
-            # Note: start_routing_metrics_server() is synchronous and returns a Thread object
-            # The server runs in a background thread, so we just store the thread reference
-            metrics_port = getattr(self.config.monitoring, "routing_metrics_port", 9091)
-            self.routing_metrics_server = start_routing_metrics_server(port=metrics_port)
-            logger = __import__("logging").getLogger(__name__)
-            if self.routing_metrics_server:
-                logger.info(f"Routing metrics server started on port {metrics_port}")
+            if getattr(self.config.monitoring, "routing_metrics_enabled", True):
+                get_routing_metrics("mahavishnu")
+                logger.info("Routing metrics registered on shared /metrics surface")
             else:
-                logger.warning(f"Routing metrics server failed to start on port {metrics_port}")
+                logger.info("Routing metrics disabled by configuration")
         except ImportError:
-            logger = __import__("logging").getLogger(__name__)
-            logger.warning("Routing metrics module not available, skipping metrics server startup")
+            logger.warning("Routing metrics module not available, skipping metrics initialization")
         except Exception as e:
-            logger = __import__("logging").getLogger(__name__)
-            logger.error(f"Failed to start routing metrics server: {e}")
+            logger.error(f"Failed to initialize routing metrics: {e}")
 
         # Initialize backup and recovery managers
         from .backup_recovery import BackupManager, DisasterRecoveryManager
@@ -382,7 +388,7 @@ class MahavishnuApp:
         return self._health_endpoint
 
     async def stop_poller(self) -> None:
-        """Stop Session-Buddy poller and routing metrics server.
+        """Stop Session-Buddy poller and clear transitional metrics state.
 
         This method should be called before shutting down the application.
         It's safe to call multiple times (idempotent).
@@ -390,10 +396,7 @@ class MahavishnuApp:
         Example:
             >>> await app.stop_poller()  # Stop polling
         """
-        # Stop routing metrics server
-        # Note: The Prometheus HTTP server runs as a daemon thread and will
-        # be automatically terminated when the main process exits. We don't need
-        # to explicitly stop it - just clear our reference.
+        # Clear transitional routing metrics server state if present.
         if self.routing_metrics_server:
             logger = __import__("logging").getLogger(__name__)
             logger.info("Routing metrics server reference cleared")
@@ -583,11 +586,11 @@ class MahavishnuApp:
                 )
 
             # Extract repos section from ecosystem.yaml
-            self.repos_config = {"repos": ecosystem_config["repos"]}
-
-            # Load roles if present in ecosystem.yaml
-            if "roles" in ecosystem_config:
-                self.roles_config = ecosystem_config["roles"]
+            self.roles_config = ecosystem_config.get("roles", [])
+            self.repos_config = {
+                "repos": ecosystem_config["repos"],
+                "roles": self.roles_config,
+            }
 
             logger = __import__("logging").getLogger(__name__)
             logger.info(
@@ -710,9 +713,9 @@ class MahavishnuApp:
         Called automatically during MahavishnuApp initialization.
         Context is available via get_llm_factory() and get_agno_adapter().
         """
-        from .oneiric_client import set_druva_client_base_url
+        from .oneiric_client import set_dhara_client_base_url
 
-        set_druva_client_base_url(self.druva_url)
+        set_dhara_client_base_url(self.dhara_url)
 
         # Set Agno adapter if available
         agno_adapter = self.adapters.get("agno")
@@ -785,9 +788,9 @@ class MahavishnuApp:
                 f"agno_adapter={'available' if agno_adapter else 'not available'}"
             )
 
-    def _resolve_druva_url(self) -> str:
-        """Build the Druva MCP URL from health dependency config."""
-        dependency = self.config.health.dependencies.get("druva")
+    def _resolve_dhara_url(self) -> str:
+        """Build the Dhara MCP URL from health dependency config."""
+        dependency = self.config.health.dependencies.get("dhara")
         if dependency is None:
             return "http://localhost:8683/mcp"
 
@@ -926,7 +929,7 @@ class MahavishnuApp:
         Returns:
             List of role definitions with name, description, tags, duties, capabilities
         """
-        return self.repos_config.get("roles", [])
+        return getattr(self, "roles_config", self.repos_config.get("roles", []))
 
     def get_role_by_name(self, role_name: str) -> dict[str, Any] | None:
         """Get a specific role by name.
@@ -971,6 +974,11 @@ class MahavishnuApp:
         repos = self.repos_config.get("repos", [])
         return [repo for repo in repos if repo.get("role") == role_name]
 
+    @staticmethod
+    def get_repo_nicknames(repo: dict[str, Any]) -> list[str]:
+        """Return normalized nickname aliases for a repository config."""
+        return get_repo_nicknames(repo)
+
     def get_all_nicknames(self) -> dict[str, str]:
         """Get all repository nicknames.
 
@@ -980,7 +988,7 @@ class MahavishnuApp:
         repos = self.repos_config.get("repos", [])
         nicknames = {}
         for repo in repos:
-            if nickname := repo.get("nickname"):
+            for nickname in self.get_repo_nicknames(repo):
                 nicknames[nickname] = repo.get("name", repo.get("path", ""))
         return nicknames
 
@@ -1022,6 +1030,19 @@ class MahavishnuApp:
 
         # Return workflow IDs
         return [w.get("id", "") for w in workflows if w.get("id")]
+
+    def _update_workflow_runtime_gauges(self) -> None:
+        """Update shared Prometheus gauges for workflow runtime state."""
+        active_count = len(self.active_workflows)
+        max_concurrency = max(self.config.max_concurrent_workflows, 1)
+
+        mahavishnu_active_workflows.labels(service="mahavishnu").set(active_count)
+        mahavishnu_workflow_queue_depth.labels(service="mahavishnu").set(
+            self.workflow_queue.qsize()
+        )
+        mahavishnu_workflow_concurrency_utilization.labels(service="mahavishnu").set(
+            active_count / max_concurrency
+        )
 
     async def execute_workflow(
         self,
@@ -1166,6 +1187,13 @@ class MahavishnuApp:
         await self.workflow_state_manager.create(
             workflow_id=workflow_id, task=task, repos=validated_repos
         )
+        self.active_workflows.add(workflow_id)
+        self._update_workflow_runtime_gauges()
+        mahavishnu_workflows_total.labels(
+            adapter=adapter_name,
+            task_type=task.get("type", "unknown"),
+            status="started",
+        ).inc()
 
         # Update workflow state to running
         await self.workflow_state_manager.update(workflow_id=workflow_id, status="running")
@@ -1479,6 +1507,7 @@ class MahavishnuApp:
         final_status = (
             "completed" if not errors else ("partial" if successful_results else "failed")
         )
+        task_type = task.get("type", "unknown")
 
         # Update workflow state with final status
         await self.workflow_state_manager.update(
@@ -1517,6 +1546,24 @@ class MahavishnuApp:
             if not qc_result:
                 # Log warning but don't fail the workflow
                 logger.warning(f"Post-execution QC check failed for repos: {validated_repos}")
+
+        mahavishnu_workflows_total.labels(
+            adapter=adapter_name,
+            task_type=task_type,
+            status=final_status,
+        ).inc()
+        mahavishnu_workflow_duration_seconds.labels(
+            adapter=adapter_name,
+            task_type=task_type,
+            status=final_status,
+        ).observe(execution_time)
+        mahavishnu_repos_processed_total.labels(
+            adapter=adapter_name,
+            task_type=task_type,
+            status=final_status,
+        ).inc(len(validated_repos))
+        self.active_workflows.discard(workflow_id)
+        self._update_workflow_runtime_gauges()
 
         return {
             "workflow_id": workflow_id,
@@ -1574,6 +1621,14 @@ class MahavishnuApp:
             await self.session_buddy.update_checkpoint(
                 checkpoint_id, "failed", result={"error": str(error)}
             )
+
+        mahavishnu_workflows_total.labels(
+            adapter=adapter_name,
+            task_type=task.get("type", "unknown"),
+            status="failed",
+        ).inc()
+        self.active_workflows.discard(workflow_id)
+        self._update_workflow_runtime_gauges()
 
         # Raise AdapterError with details
         raise AdapterError(
@@ -1663,3 +1718,139 @@ class MahavishnuApp:
                 error=e,
                 checkpoint_id=checkpoint_id,
             )
+
+    async def execute_workflow_with_fallback(
+        self,
+        task: dict[str, Any],
+        repos: list[str],
+        adapter_preference: list[str] | None = None,
+        routing_strategy: RoutingStrategy = RoutingStrategy.BALANCED,
+        enable_cost_tracking: bool = False,
+    ) -> dict[str, Any]:
+        """Execute workflow with fallback chain.
+
+        Uses the TaskRouter to generate a fallback chain of adapters and tries
+        each one in order until one succeeds or all fail.
+
+        Args:
+            task: Task definition with 'type' and 'params' keys
+            repos: Repository paths to execute on
+            adapter_preference: Preferred adapters in order (optional)
+            routing_strategy: Routing strategy for adapter selection
+            enable_cost_tracking: Track execution costs (optional)
+
+        Returns:
+            Result dictionary with:
+                - success: Whether execution succeeded
+                - adapter_used: The adapter that succeeded (or None)
+                - fallback_chain: List of tried adapters
+                - repo_results: Results from successful execution
+                - errors: List of (adapter, error) tuples if all failed
+
+        Example:
+            >>> result = await app.execute_workflow_with_fallback(
+            ...     task={"type": "code_sweep", "params": {}},
+            ...     repos=["org/repo1", "org/repo2"],
+            ...     adapter_preference=["agno", "prefect"],
+            ... )
+            >>> if result["success"]:
+            ...     print(f"Used adapter: {result['adapter_used']}")
+        """
+        router = TaskRouter()
+        task_type = TaskType(task.get("type", "ai_task"))
+
+        # Generate fallback chain
+        preferred = AdapterType(adapter_preference[0]) if adapter_preference else None
+        fallback_chain = router.generate_fallback_chain(task_type, preferred)
+
+        # Try each adapter in chain
+        errors: list[tuple[str, str]] = []
+        for adapter_name in fallback_chain:
+            try:
+                result = await self.execute_workflow_parallel(
+                    task=task,
+                    adapter_name=adapter_name.value,
+                    repos=repos,
+                )
+
+                return {
+                    "success": True,
+                    "adapter_used": adapter_name.value,
+                    "fallback_chain": [a.value for a in fallback_chain],
+                    "repo_results": result,
+                    "errors": [],
+                }
+
+            except Exception as e:
+                errors.append((adapter_name.value, str(e)))
+                self.logger.warning(f"Adapter {adapter_name.value} failed: {e}")
+                continue
+
+        # All adapters failed
+        return {
+            "success": False,
+            "adapter_used": None,
+            "fallback_chain": [a.value for a in fallback_chain],
+            "repo_results": {},
+            "errors": errors,
+        }
+
+    async def execute_workflow_with_routing(
+        self,
+        task: dict[str, Any],
+        repos: list[str],
+        routing_strategy: str = "balanced",
+        enable_fallback: bool = True,
+    ) -> dict[str, Any]:
+        """Execute workflow with adaptive routing.
+
+        Uses the TaskRouter to select the optimal adapter based on the
+        routing strategy. Optionally enables fallback chain execution.
+
+        Args:
+            task: Task definition with 'type' and 'params' keys
+            repos: Repository paths to execute on
+            routing_strategy: Strategy name ("cost", "latency", "success_rate", "balanced")
+            enable_fallback: Enable fallback chain if primary adapter fails
+
+        Returns:
+            Execution result dictionary with:
+                - success: Whether execution succeeded
+                - adapter_used: The adapter that was used
+                - repo_results: Results from execution
+                - fallback_chain: List of adapters tried (if fallback enabled)
+
+        Example:
+            >>> result = await app.execute_workflow_with_routing(
+            ...     task={"type": "rag_query", "params": {"query": "API docs"}},
+            ...     repos=["org/docs"],
+            ...     routing_strategy="latency",
+            ...     enable_fallback=True,
+            ... )
+        """
+        strategy = RoutingStrategy(routing_strategy)
+
+        if enable_fallback:
+            return await self.execute_workflow_with_fallback(
+                task=task,
+                repos=repos,
+                routing_strategy=strategy,
+            )
+
+        # Direct routing without fallback
+        router = TaskRouter()
+        task_type = TaskType(task.get("type", "ai_task"))
+        adapter = await router.select_adapter(task_type, strategy)
+
+        result = await self.execute_workflow_parallel(
+            task=task,
+            adapter_name=adapter.value,
+            repos=repos,
+        )
+
+        return {
+            "success": result.get("success", False),
+            "adapter_used": adapter.value,
+            "repo_results": result,
+            "fallback_chain": [adapter.value],
+        }

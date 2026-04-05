@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.3.2"
+version = "0.4.0"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Your Name", email = "your.email@example.com"},
@@ -41,6 +41,8 @@ dependencies = [
     # Prometheus metrics
     "prometheus-client>=0.21.0",
     "structlog>=25.5.0",
+    # Rate limiting for webhooks and API endpoints
+    "slowapi>=0.1.9",
     # OpenTelemetry trace storage with semantic search
     "asyncpg>=0.29.0",  # Async PostgreSQL driver for OTel trace storage
     "pgvector>=0.2.5",  # Vector similarity search for semantic trace search
@@ -55,13 +57,11 @@ dependencies = [
     "starlette-context>=0.4.0",  # Request context for rate limiting
     # Quality control (optional)
     "crackerjack>=0.50.1",
-    # Session management (optional)
+    # Session management
     # Session-Buddy MCP: Development session tracking & quality metrics
     # Local-first privacy (ONNX embeddings, no external APIs)
     # See: docs/LIBRARY_EVALUATION_2025.md for memory system comparison
-    # NOTE: session-buddy depends on onnxruntime, which has no compatible wheels
-    # for macOS Intel + Python 3.13. Skip on that platform combination.
-    "session-buddy>=0.11.1; sys_platform != 'darwin' or platform_machine != 'x86_64' or python_version < '3.13'",
+    "session-buddy>=0.13.0",
     # Git operations
     "gitpython>=3.1.46",
     # Async SQLite (for EventBus persistence)
@@ -86,7 +86,9 @@ dependencies = [
     "beautifulsoup4>=4.12.0",  # HTML parsing for web scraping
     "httpx[http2]>=0.28.0",  # HTTP client with HTTP/2 support (compatible with fastmcp)
     "ebooklib>=0.18",  # EPUB processing
-    "pydantic-ai",
+    # Use the slim package with only the providers Mahavishnu integrates.
+    # This avoids the umbrella package's transitive huggingface extra path.
+    "pydantic-ai-slim[mcp,openai,anthropic,google,groq]>=1.77.0",
 ]
 
 [project.scripts]
@@ -458,7 +460,10 @@ nav = [
 dev = [
     "akosha>=0.2.0",
     "crackerjack>=0.50.1",
-    "druva>=0.7.0",
+    "dhara>=0.7.0",
     "iterm2>=2.13",
-    "session-buddy>=0.11.1; sys_platform != 'darwin' or platform_machine != 'x86_64' or python_version < '3.13'",
+    "session-buddy>=0.13.0",
 ]
+
+[tool.uv.sources]
+session-buddy = { path = "../session-buddy", editable = true }

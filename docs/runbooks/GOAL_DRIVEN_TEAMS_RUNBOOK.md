@@ -121,7 +121,7 @@ Goal-Driven Teams is a Mahavishnu feature that converts natural language goals i
 
 ### 2.1 Prometheus Metrics (Port 9092)
 
-The Goal Team Metrics server runs on port **9092** (distinct from routing metrics on 9091).
+The Goal Team Metrics server runs on port **9092**. Core Mahavishnu routing metrics are exposed on the main Mahavishnu `/metrics` endpoint rather than a separate 9091 port.
 
 #### Counter Metrics
 

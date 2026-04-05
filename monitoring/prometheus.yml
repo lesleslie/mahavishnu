@@ -18,97 +18,32 @@ alerting:
 rule_files:
   # - "alert_rules.yml"
 
-# Scrape configurations for MCP servers
+# Scrape configurations for verified targets
 scrape_configs:
   # ========================================
-  # Mahavishnu - Orchestration Server
+  # Verified Bodai services
+  # Backed by monitoring/file_sd/verified_metrics_targets.yml
+  # Refresh with:
+  # uv run python scripts/verify_ecosystem_metrics.py \
+  #   --write-verified-file monitoring/file_sd/verified_metrics_targets.yml
   # ========================================
-  - job_name: 'mahavishnu'
-    static_configs:
-      - targets: ['host.docker.internal:8680']
-    metrics_path: '/metrics'
+  - job_name: 'ecosystem-services'
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/file_sd/verified_metrics_targets.yml
     scrape_interval: 10s
     scrape_timeout: 5s
 
   # ========================================
-  # Akosha - Memory Aggregation
+  # Planned ecosystem targets
+  # Candidate inventory lives in monitoring/ecosystem_metrics_inventory.yml.
+  # Services move onto the scrape surface only after local verification.
   # ========================================
-  - job_name: 'akosha'
-    static_configs:
-      - targets: ['host.docker.internal:8682']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
-    scrape_timeout: 5s
-
-  # ========================================
-  # Session-Buddy - Session Management
-  # ========================================
-  - job_name: 'session-buddy'
-    static_configs:
-      - targets: ['host.docker.internal:8678']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
-    scrape_timeout: 5s
-
-  # ========================================
-  # Crackerjack - Quality Control
-  # ========================================
-  - job_name: 'crackerjack'
-    static_configs:
-      - targets: ['host.docker.internal:8676']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
-    scrape_timeout: 5s
-
-  # ========================================
-  # Excalidraw - Diagram Collaboration
-  # ========================================
-  - job_name: 'excalidraw'
-    static_configs:
-      - targets: ['host.docker.internal:3032']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
-    scrape_timeout: 5s
-
-  # ========================================
-  # Mermaid - Diagram Generation
-  # ========================================
-  - job_name: 'mermaid'
-    static_configs:
-      - targets: ['host.docker.internal:3033']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
-    scrape_timeout: 5s
-
-  # ========================================
-  # UniFi - Network Management
-  # ========================================
-  - job_name: 'unifi'
-    static_configs:
-      - targets: ['host.docker.internal:3038']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
-    scrape_timeout: 5s
-
-  # ========================================
-  # Mailgun - Email Service
-  # ========================================
-  - job_name: 'mailgun'
-    static_configs:
-      - targets: ['host.docker.internal:3039']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
-    scrape_timeout: 5s
-
-  # ========================================
-  # RaindropIO - Bookmark Management
-  # ========================================
-  - job_name: 'raindropio'
-    static_configs:
-      - targets: ['host.docker.internal:3034']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
-    scrape_timeout: 5s
+  # Candidate services:
+  # - session-buddy
+  # - akosha
+  # - dhara
+  # - crackerjack
 
   # ========================================
   # OpenTelemetry Collector - Prometheus Exporter

@@ -4,7 +4,7 @@
 
 ## Overview
 
-Migrating all ecosystem systems to use unified ULID-based identifiers from Oneiric/Druva, enabling cross-system correlation, time-ordered traceability, and zero-downtime migration.
+Migrating all ecosystem systems to use unified ULID-based identifiers from Oneiric/Dhara, enabling cross-system correlation, time-ordered traceability, and zero-downtime migration.
 
 ## Migration Status by System
 
@@ -14,7 +14,7 @@ Migrating all ecosystem systems to use unified ULID-based identifiers from Oneir
 
 **Changes Made**:
 - ✅ Fixed `workflow_models.py` ULID fallback bug (was generating UUID4 instead of ULID)
-- ✅ Updated `generate_config_id()` fallback to use Druva ULID with timestamp-based Crockford Base32
+- ✅ Updated `generate_config_id()` fallback to use Dhara ULID with timestamp-based Crockford Base32
 - ✅ WorkflowExecution, PoolExecution, WorkflowCheckpoint now use proper 26-character ULIDs
 - ✅ No database schema changes needed (Pydantic models)
 
@@ -95,7 +95,7 @@ python scripts/run_ulid_migration.py
 **Current State**:
 - Uses `entity_id` format: `f"system:{system_id}"`, `f"user:{user_id}"`
 - Edge storage uses string source_id/target_id
-- Druva adapter for entity storage
+- Dhara adapter for entity storage
 
 **Tasks**:
 - ⚠️ Analyze knowledge graph schema
@@ -200,7 +200,7 @@ Tasks:
 
 ## References
 
-- [Druva ULID Implementation](/Users/les/Projects/druva/druva/ulid.py)
+- [Dhara ULID Implementation](/Users/les/Projects/dhara/dhara/ulid.py)
 - [Oneiric ULID Integration](/Users/les/Projects/oneiric/oneiric/core/ulid.py)
 - [Mahavishnu Workflow Models](/Users/les/Projects/mahavishnu/mahavishnu/core/workflow_models.py)
 - [Crackerjack MetricsCollector](/Users/les/Projects/crackerjack/crackerjack/services/metrics_old.py)

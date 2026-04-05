@@ -90,7 +90,7 @@ Created comprehensive test suite with 34 tests (all passing):
    - `test_standard_mode_initialization` - Verify mode initialization
    - `test_standard_mode_start` - Test start method
    - `test_standard_mode_stop` - Test stop method
-   - `test_standard_mode_service_dependencies` - Verify Session-Buddy + Druva
+   - `test_standard_mode_service_dependencies` - Verify Session-Buddy + Dhara
    - `test_standard_mode_available_features` - Check available features
    - `test_standard_mode_unavailable_features` - Check unavailable features
    - `test_standard_mode_get_mode_info` - Test mode info method
@@ -267,7 +267,7 @@ Phase 3 will focus on:
 # Lite mode (default) - Zero external dependencies
 mahavishnu start
 
-# Standard mode - Session-Buddy + Druva required
+# Standard mode - Session-Buddy + Dhara required
 mahavishnu start --mode=standard
 
 # Full mode - All ecosystem services required

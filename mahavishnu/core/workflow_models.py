@@ -11,10 +11,10 @@ from pydantic import BaseModel, Field, field_validator
 try:
     from oneiric.core.ulid import generate_config_id, is_config_ulid
 except ImportError:
-    # Try Druva directly (the actual ULID implementation)
+    # Try Dhara directly (the actual ULID implementation)
     try:
-        from druva import generate as generate_ulid
-        from druva import is_ulid
+        from dhara import generate as generate_ulid
+        from dhara import is_ulid
 
         def generate_config_id() -> str:
             return generate_ulid()
@@ -37,7 +37,7 @@ except ImportError:
             # Combine: 6 bytes timestamp + 10 bytes randomness = 16 bytes
             ulid_bytes = timestamp_bytes + randomness
 
-            # Encode to Crockford Base32 (Druva's alphabet)
+            # Encode to Crockford Base32 (Dhara's alphabet)
             alphabet = "0123456789abcdefghjkmnpqrstvwxyz"
             b32_encode = lambda data: "".join([alphabet[(b >> 35) & 31] for b in data])
 

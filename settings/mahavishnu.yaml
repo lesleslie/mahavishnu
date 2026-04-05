@@ -85,6 +85,20 @@ workers:
   timeout_seconds: 300  # Default worker timeout in seconds (30-3600)
   session_buddy_integration: true  # Enable Session-Buddy result storage for workers
 
+# Storage Consolidation feature flags
+# See: docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md
+persistence:
+  # Write mode: dual (write both), legacy (old storage), postgres (new storage)
+  write_mode: "dual"
+  # Read source: legacy or postgres
+  read_source: "legacy"
+  # PostgreSQL connection (set via environment for production)
+  postgres_url: ""  # Set via MAHAVISHNU_PERSISTENCE__POSTGRES_URL
+  # Per-component overrides (optional)
+  task_store_write: null  # Override for task storage
+  search_write: null  # Override for search/documents
+  event_write: null  # Override for audit events
+
 # Quality control
 qc:
   enabled: true
@@ -256,11 +270,11 @@ health:
     akosha:
       host: "localhost"  # Override via MAHAVISHNU_HEALTH__DEPENDENCIES__AKOSHA__HOST
       port: 8682
-      required: true  # Block startup if unavailable
+      required: false  # Optional intelligence layer in consolidated storage architecture
       timeout_seconds: 30
       use_tls: false
-    druva:
-      host: "localhost"  # Override via MAHAVISHNU_HEALTH__DEPENDENCIES__DRUVA__HOST
+    dhara:
+      host: "localhost"  # Override via MAHAVISHNU_HEALTH__DEPENDENCIES__DHARA__HOST
       port: 8683
       required: false  # Optional dependency - log warning if unavailable
       timeout_seconds: 10
@@ -271,4 +285,3 @@ health:
       required: false  # Optional - quality checks can run without it
       timeout_seconds: 10
       use_tls: false
-

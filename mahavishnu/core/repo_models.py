@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from .repo_nicknames import normalize_nicknames
+
 
 class RepositoryMetadata(BaseModel):
     """Metadata for a repository."""
@@ -30,6 +32,9 @@ class Repository(BaseModel):
     )
     package: str = Field(..., pattern=r"^[a-z][a-z0-9_]*$")
     path: Path = Field(..., description="Absolute path to repository")
+    nickname: str | None = Field(default=None, description="Primary nickname alias")
+    nicknames: list[str] = Field(default_factory=list, description="Nickname aliases")
+    role: str | None = Field(default=None, description="Repository role in the ecosystem")
     tags: list[str] = Field(..., min_length=1, max_length=10)
     description: str = Field(..., min_length=1, max_length=500)
     mcp: Literal["native", "3rd-party"] | None = Field(None, description="MCP server type")
@@ -69,6 +74,10 @@ class Repository(BaseModel):
     @model_validator(mode="after")
     def validate_mcp_consistency(self) -> "Repository":
         """Ensure MCP type matches description."""
+        self.nicknames = normalize_nicknames(self.nickname, self.nicknames)
+        if self.nickname is None and self.nicknames:
+            self.nickname = self.nicknames[0]
+
         if self.mcp and "mcp" not in self.tags:
             # Auto-add mcp tag if not present
             self.tags.append("mcp")

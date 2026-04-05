@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+For a shorter, tool-neutral bootstrap document, start with `AGENTS.md`.
+
 ## Ecosystem Context
 
 Mahavishnu is part of the **Bodai Ecosystem** - a collection of interconnected components:
@@ -10,14 +12,14 @@ Mahavishnu is part of the **Bodai Ecosystem** - a collection of interconnected c
 |-----------|------|------|-------------|
 | **Mahavishnu** | Orchestrator | 8680 | Multi-engine workflow orchestration (this repo) |
 | [Akosha](https://github.com/lesleslie/akosha) | Seer | 8682 | Cross-system intelligence & embeddings |
-| [Druva](https://github.com/lesleslie/druva) | Curator | 8683 | Persistent object storage with ACID |
+| [Dhara](https://github.com/lesleslie/dhara) | Curator | 8683 | Persistent object storage with ACID |
 | [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder | 8678 | Session lifecycle & knowledge graphs |
 | [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector | 8676 | Quality gates & CI/CD validation |
 | [Oneiric](https://github.com/lesleslie/oneiric) | Resolver | N/A | Conflict resolution library |
 
 **Key Interactions:**
 - Routes tasks to **Akosha** for intelligence operations
-- Persists state to **Druva** for recovery
+- Persists state to **Dhara** for recovery
 - Tracks context in **Session-Buddy**
 - Validates with **Crackerjack** before execution
 
@@ -717,150 +719,43 @@ The `examples/` directory contains runnable examples for key features:
 
 ## Crackerjack Integration
 
-This project uses [Crackerjack](https://github.com/yourusername/crackerjack) for quality control and AI-assisted development.
+Mahavishnu uses Crackerjack for repo-wide quality gates and can consume Crackerjack MCP capabilities when the server is connected.
 
-### Quick Start
-
-```bash
-# Run all quality checks
-crackerjack run all
-
-# Run with AI auto-fix enabled
-crackerjack run test --ai-fix
-
-# Check quality metrics
-crackerjack status
-
-# View execution history
-crackerjack history
-```
-
-### Quality Commands
+### Recommended Workflow
 
 ```bash
-# Testing (with parallel execution)
-pytest -n auto                           # Run tests in parallel
-pytest -m "unit"                         # Run only unit tests
-pytest -m "not slow"                     # Skip slow tests
-pytest --cov=mahavishnu --cov-report=html  # Coverage report
-
-# Code quality (Ruff)
-ruff check mahavishnu/                   # Lint
-ruff format mahavishnu/                  # Format
-ruff check --fix mahavishnu/             # Auto-fix issues
-
-# Type checking
-pyright mahavishnu/                      # Type checking (fallback)
-mypy mahavishnu/                         # Alternative type checker
-
-# Security
-bandit -r mahavishnu/                    # Security linting
-safety check                             # Dependency vulnerabilities
-creosote                                 # Detect unused dependencies
-
-# Modernization & complexity
-refurb mahavishnu/                       # Modern Python suggestions
-codespell mahavishnu/                    # Typo detection
-complexipy --max_complexity 15 mahavishnu/  # Complexity checking
-```
-
-### Test Markers
-
-Use pytest markers to categorize tests:
-
-```python
-@pytest.mark.unit
-def test_adapter_initialization():
-    """Fast, isolated unit test."""
-    pass
-
-
-@pytest.mark.integration
-@pytest.mark.airflow
-def test_airflow_workflow_execution():
-    """Integration test for Airflow adapter."""
-    pass
-
-
-@pytest.mark.slow
-@pytest.mark.e2e
-def test_full_orchestration_workflow():
-    """End-to-end test (marked as slow)."""
-    pass
-
-
-@pytest.mark.property
-@given(st.text())  # Hypothesis strategy
-def test_property_based(input_data):
-    """Property-based test."""
-    assert len(input_data) >= 0
-```
-
-Run tests by marker:
-
-```bash
-pytest -m unit                    # Only unit tests
-pytest -m "integration and airflow"  # Airflow integration tests
-pytest -m "not slow"              # Skip slow tests
-```
-
-### Quality Control with Crackerjack
-
-Crackerjack provides automated quality checks and settings management:
-
-```bash
-# Run all quality checks
 crackerjack run
-
-# Run specific checks
-crackerjack run --check ruff
-crackerjack run --check pytest
-crackerjack run --check bandit
-
-# Configure settings
-crackerjack settings init
-crackerjack settings validate
+pytest -m "not slow"
+pytest --cov=mahavishnu --cov-report=html
 ```
 
-### Quality Gates
+Use the dedicated command sections above for Ruff, type checking, security, and MCP server smoke tests. Avoid duplicating those checks in ad hoc shell scripts.
 
-The project enforces these quality standards:
+### Quality Expectations
 
-- **Coverage**: Minimum 80% test coverage (`--cov-fail-under=80`)
-- **Complexity**: Maximum cyclomatic complexity of 15 per function
-- **Timeout**: Tests timeout after 5 minutes (configurable per test)
-- **Type Safety**: Strict type checking with mypy
+- Coverage target: enforce the configured floor and review `htmlcov/` after larger changes
+- Complexity target: keep functions below the configured complexity threshold
+- Type safety: prefer strict typing on adapters, tool inputs, and orchestration state
+- Security: keep secrets in environment variables and validate tool inputs rigorously
 
-### AI Agent Skills
+### MCP-Aware Usage
 
-Crackerjack provides AI agent skills via MCP:
+When Crackerjack MCP is available, prefer using it for quality status, job tracking, and skill discovery instead of re-implementing local wrappers. See the Crackerjack repo docs for current MCP tool names and workflow details.
 
-```python
-# Available when MCP server is connected
-await mcp.call_tool("list_skills", {"skill_type": "all"})
+### Mahavishnu Orchestration Mode
 
-# Find skills for specific issues
-await mcp.call_tool("get_skills_for_issue", {"issue_type": "complexity"})
+When a request spans multiple repositories or needs concurrent execution:
 
-# Execute a skill
-await mcp.call_tool(
-    "execute_skill",
-    {
-        "skill_id": "skill_abc123",
-        "issue_type": "refactoring",
-        "issue_data": {"message": "...", "file_path": "..."},
-    },
-)
-```
+1. Resolve target repos from the configured repository catalog.
+1. Route via Mahavishnu pool/workflow tools instead of manual per-repo shell loops.
+1. Use `least_loaded` as the default selector unless the user requests another strategy.
+1. Emit workflow and repository status updates for downstream repos when coordination is involved.
+1. Report engine choice and execution outcome in the final response.
 
-Available agent types:
+Default command sequence:
 
-- **RefactoringAgent**: Code restructuring and modernization
-- **SecurityAgent**: Security vulnerability analysis
-- **PerformanceAgent**: Performance optimization
-- **TestAgent**: Test generation and improvement
-- **DocumentationAgent**: Documentation enhancement
-
-For more details, see [Crackerjack Documentation](https://github.com/yourusername/crackerjack#readme).
+1. `mahavishnu metrics engines --source auto --output table`
+1. `mahavishnu pool route --prompt "<task>" --selector least_loaded`
+1. If workflow semantics are needed, use workflow-triggering tools instead of ad hoc loops.
 
 <!-- CRACKERJACK_END -->

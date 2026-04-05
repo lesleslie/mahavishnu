@@ -47,7 +47,8 @@ def register_pool_tools(
             name: Pool name
             min_workers: Minimum worker count
             max_workers: Maximum worker count
-            worker_type: Worker type ("terminal-qwen", "terminal-claude", "container")
+            worker_type: Worker type ("terminal-qwen", "terminal-claude", "terminal-codex", "terminal-openclaw",
+                "gateway-openclaw", "container-executor")
 
         Returns:
             Pool creation result with pool_id
@@ -58,7 +59,8 @@ def register_pool_tools(
                 pool_type="mahavishnu",
                 name="local-pool",
                 min_workers=2,
-                max_workers=5
+                max_workers=5,
+                worker_type="terminal-openclaw",
             )
             print(f"Pool ID: {result['pool_id']}")
             ```

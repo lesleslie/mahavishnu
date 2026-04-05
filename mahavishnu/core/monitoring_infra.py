@@ -27,8 +27,8 @@ import logging
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
-from .monitoring import Alert, AlertManager as _BaseAlertManager, AlertRule, AlertSeverity, AlertType
 from .dashboard_config import DashboardConfig, DashboardPanel
+from .monitoring import Alert, AlertManager as _BaseAlertManager, AlertRule, AlertSeverity
 from mahavishnu.core.status import HealthStatus
 
 if TYPE_CHECKING:

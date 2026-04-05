@@ -20,7 +20,7 @@ The Mahavishnu ecosystem is a comprehensive platform for orchestrating AI agents
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                   │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐        │
-│  │ Mahavishnu   │  │  Oneiric     │  │   Druva     │        │
+│  │ Mahavishnu   │  │  Oneiric     │  │   Dhara     │        │
 │  │(Orchestrator)│◄─┤ (Resolver)   │◄─┤  (Curator)    │        │
 │  │              │  │              │  │              │        │
 │  │ • Multi-     │  │ • Component  │  │ • Persistent │        │
@@ -73,7 +73,7 @@ The Mahavishnu ecosystem is a comprehensive platform for orchestrating AI agents
 
 | Project | Role | Status | Description |
 |---------|------|--------|-------------|
-| **[Druva](#druva)** | Curator | ✅ Production | Persistent object storage with ACID transactions |
+| **[Dhara](#dhara)** | Curator | ✅ Production | Persistent object storage with ACID transactions |
 | **[Session-Buddy](#session-buddy)** | Manager | ✅ Production | Session and memory management with cross-project intelligence |
 | **[Akosha](#akosha)** | Diviner | ✅ Production | Pattern recognition, analytics, and knowledge aggregation |
 | **[Crackerjack](#crackerjack)** | Inspector | ✅ Production | Quality control, CI/CD, and AI-powered code enforcement |
@@ -132,7 +132,7 @@ uv run mahavishnu execute --agents 3 "Build authentication system"
 cd /Users/les/Projects
 
 # Setup each project
-for project in mahavishnu session-buddy akosha crackerjack druva oneiric mcp-common; do
+for project in mahavishnu session-buddy akosha crackerjack dhara oneiric mcp-common; do
     cd $project
     uv sync --group dev
     cd ..
@@ -298,7 +298,7 @@ uv run python -m crackerjack start
 
 ---
 
-### Druva
+### Dhara
 
 **Persistent object storage**
 
@@ -308,15 +308,15 @@ uv run python -m crackerjack start
 - **Multiple Backends**: FileStorage, FileStorage2, SqliteStorage
 
 ```bash
-# Start Druva server
-cd /Users/les/Projects/druva
-uv run druva -s --file test.druva
+# Start Dhara server
+cd /Users/les/Projects/dhara
+uv run dhara -s --file test.dhara
 
 # Connect client
-uv run druva -c
+uv run dhara -c
 ```
 
-**Documentation**: [README.md](/Users/les/Projects/druva/README.md)
+**Documentation**: [README.md](/Users/les/Projects/dhara/README.md)
 
 ---
 
@@ -391,7 +391,7 @@ graph TB
     subgraph "Core Layer"
         MHV[Mahavishnu<br/>Orchestrator]
         ONE[Oneiric<br/>Resolver]
-        DH[Druva<br/>Curator]
+        DH[Dhara<br/>Curator]
     end
 
     subgraph "Supporting Layer"
@@ -473,7 +473,7 @@ sequenceDiagram
 - **[Session-Buddy Docs](/Users/les/Projects/session-buddy/README.md)** - Session management
 - **[Akosha Docs](/Users/les/Projects/akosha/README.md)** - Memory aggregation
 - **[Crackerjack Docs](/Users/les/Projects/crackerjack/README.md)** - Quality control
-- **[Druva Docs](/Users/les/Projects/druva/README.md)** - Persistent storage
+- **[Dhara Docs](/Users/les/Projects/dhara/README.md)** - Persistent storage
 - **[mcp-common Docs](/Users/les/Projects/mcp-common/README.md)** - Foundation library
 
 ---
@@ -493,7 +493,7 @@ sequenceDiagram
 cd /Users/les/Projects
 
 # Install dependencies for each project
-for dir in mahavishnu session-buddy akosha crackerjack druva oneiric mcp-common; do
+for dir in mahavishnu session-buddy akosha crackerjack dhara oneiric mcp-common; do
     cd $dir
     uv sync --group dev
     cd ..
@@ -504,7 +504,7 @@ done
 
 ```bash
 # Run tests for all projects
-for dir in mahavishnu session-buddy akosha crackerjack druva oneiric mcp-common; do
+for dir in mahavishnu session-buddy akosha crackerjack dhara oneiric mcp-common; do
     cd $dir
     uv run pytest --cov=$dir --cov-report=html
     cd ..
@@ -515,7 +515,7 @@ done
 
 ```bash
 # Run quality checks across ecosystem
-for dir in mahavishnu session-buddy akosha crackerjack druva oneiric mcp-common; do
+for dir in mahavishnu session-buddy akosha crackerjack dhara oneiric mcp-common; do
     cd $dir
     uv run ruff check $dir/
     uv run ruff format $dir/
@@ -543,7 +543,7 @@ All projects use:
 | Session-Buddy | 45%+ | 90/100 | ✅ Production |
 | Akosha | 85%+ | 92/100 | ✅ Production |
 | Crackerjack | 21%+ | 92/100 | ✅ Production |
-| Druva | N/A | 85/100 | ✅ Production |
+| Dhara | N/A | 85/100 | ✅ Production |
 | mcp-common | 99%+ | 92/100 | ✅ Production |
 
 ---
@@ -632,9 +632,9 @@ crackerjack run
 crackerjack run --ai-fix
 crackerjack run --run-tests
 
-# Druva
-druva -s --file data.druva
-druva -c
+# Dhara
+dhara -s --file data.dhara
+dhara -c
 
 # mcp-common
 python -m mcp_common.cli start

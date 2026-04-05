@@ -1,5 +1,8 @@
 # Adaptive Router with Feedback Loops Implementation Plan
 
+> **Update (2026-04-02):** This plan remains active for routing and learning logic, but storage assumptions are partially superseded by `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`.
+> Metrics persistence and aggregates should target Mahavishnu-owned PostgreSQL schemas (with `pgvector` where applicable), not Dhara-specific metrics persistence as the default path.
+
 **Goal**: Build adaptive routing system with metrics collection, statistical learning, and cost-aware optimization for Mahavishnu's multi-adapter orchestration.
 
 **Strategy**: Foundation-first approach - complete foundational adapters and metrics infrastructure (Phase D), then build intelligent routing layers (Phases A + C in parallel).
@@ -156,7 +159,7 @@
 - ✅ Complete metrics storage schema (461 lines)
 - ✅ 7 Pydantic models: ExecutionRecord, AdapterStats, TaskTypeStats, CostTracking, RoutingDecision, ABTest
 - ✅ ULID-based identifiers for all records (via Oneiric)
-- ✅ Druva key-value store integration
+- ✅ Dhara key-value store integration
 - ✅ TTL-based automatic cleanup (90 days raw, 365 days aggregates)
 - ✅ Utility functions: calculate_percentiles(), calculate_confidence_interval() (Wilson score)
 - ✅ Comprehensive test suite: test_metrics_schema.py (9 test cases, all passing)
@@ -173,8 +176,8 @@
 - [x] Key structure documented (Pydantic models with Field descriptions)
 - [x] Sample data stored and retrieved successfully (tests verify serialization)
 - [x] Aggregation query returns correct statistics (percentile calculations tested)
-- [x] TTL eviction works automatically (Druva integration documented)
-- [x] Compaction runs without data loss (design documented, implementation in Druva)
+- [x] TTL eviction works automatically (Dhara integration documented)
+- [x] Compaction runs without data loss (design documented, implementation in Dhara)
 - [x] Schema exported to Oneiric config pattern (__all__ exports)
 
 ---
@@ -194,14 +197,14 @@
 - [ ] Create ExecutionTracker class
   - Records start/end timestamps per execution
   - Captures adapter used, task type, success/failure
-  - Stores to Druva after completion
+  - Stores to Dhara after completion
 - [ ] Define metric collection interface
   - `record_execution_start(execution_id, adapter, task_type)`
   - `record_execution_end(execution_id, success, latency_ms, error)`
   - `record_adapter_attempt(adapter, attempt_number, outcome)`
 - [ ] Implement async batch writes
   - Buffer multiple executions, write in bulk
-  - Reduces Druva write overhead
+  - Reduces Dhara write overhead
 - [ ] Add sampling strategy
   - 100% sampling for high-frequency tasks
   - Full collection for low-frequency tasks
@@ -212,7 +215,7 @@
 
 **Acceptance Criteria**:
 - [ ] All adapter executions tracked automatically
-- [ ] Metrics persisted to Druva
+- [ ] Metrics persisted to Dhara
 - [ ] Sampling reduces overhead by 90%+
 - [ ] No performance impact on task execution (<5ms overhead)
 - [ ] Unit tests pass (15+ test cases)
@@ -226,7 +229,7 @@
 
 **Tasks**:
 - [ ] Implement score calculation
-  - Retrieve metrics from Druva
+  - Retrieve metrics from Dhara
   - Calculate success rate per adapter × task type
   - Calculate weighted latency score
   - Combine: `score = success_rate * 0.7 + speed_score * 0.3`
@@ -404,7 +407,7 @@
 - **Phase A Tests**:
   - [ ] `tests/unit/test_metrics_collector.py` (15+ cases)
   - [ ] `tests/unit/test_statistical_router.py` (20+ cases)
-  - [ ] Mock Druva for metrics tests
+  - [ ] Mock Dhara for metrics tests
 
 - **Phase C Tests**:
   - [ ] `tests/unit/test_cost_optimizer.py` (15+ cases)
@@ -434,7 +437,7 @@
 - [x] D.1: Prefect adapter fully functional (passes 20+ tests)
 - [x] D.2: Agno adapter fully functional (passes 20+ tests)
 - [x] D.3: LlamaIndex adapter stub created (passes 5+ tests)
-- [x] D.4: Metrics schema stored in Druva (passes 15+ tests)
+- [x] D.4: Metrics schema stored in Dhara (passes 15+ tests)
 
 **Phase A Complete When**:
 - [x] A.1: Metrics collection tracking all executions

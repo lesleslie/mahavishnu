@@ -11,10 +11,11 @@ This module provides utilities to:
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 import yaml
 
 from .errors import ConfigurationError
+from .repo_nicknames import normalize_nicknames
 
 
 class RepositoryConfig(BaseModel):
@@ -24,6 +25,7 @@ class RepositoryConfig(BaseModel):
     package: str | None = None
     path: str
     nickname: str | None = None
+    nicknames: list[str] = Field(default_factory=list)
     role: str
     tags: list[str] = Field(default_factory=list)
     description: str
@@ -42,6 +44,14 @@ class RepositoryConfig(BaseModel):
         default_factory=dict,
         description="Additional categorized URLs (e.g., issues, wiki, releases)",
     )
+
+    @model_validator(mode="after")
+    def normalize_nickname_aliases(self) -> "RepositoryConfig":
+        """Merge legacy nickname with multi-alias nicknames list."""
+        self.nicknames = normalize_nicknames(self.nickname, self.nicknames)
+        if self.nickname is None and self.nicknames:
+            self.nickname = self.nicknames[0]
+        return self
 
 
 class MCPServerConfig(BaseModel):

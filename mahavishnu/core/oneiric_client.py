@@ -21,8 +21,8 @@ from typing import Any
 import grpc.aio
 
 logger = logging.getLogger(__name__)
-_druva_clients: dict[str, "DruvaClient"] = {}
-_default_druva_base_url = "http://localhost:8683/mcp"
+_dhara_clients: dict[str, "DharaClient"] = {}
+_default_dhara_base_url = "http://localhost:8683/mcp"
 
 # Try to import Oneiric MCP gRPC modules
 try:
@@ -34,22 +34,22 @@ except ImportError:
     logger.warning("Oneiric MCP gRPC modules not available. Install with: pip install oneiric-mcp")
 
 
-def get_druva_client(base_url: str | None = None) -> "DruvaClient":
-    """Return a cached Druva MCP client."""
-    from .druva_adapter import DruvaClient
+def get_dhara_client(base_url: str | None = None) -> "DharaClient":
+    """Return a cached Dhara MCP client."""
+    from .dhara_adapter import DharaClient
 
-    resolved_base_url = (base_url or _default_druva_base_url).rstrip("/")
-    client = _druva_clients.get(resolved_base_url)
+    resolved_base_url = (base_url or _default_dhara_base_url).rstrip("/")
+    client = _dhara_clients.get(resolved_base_url)
     if client is None:
-        client = DruvaClient(base_url=resolved_base_url)
-        _druva_clients[resolved_base_url] = client
+        client = DharaClient(base_url=resolved_base_url)
+        _dhara_clients[resolved_base_url] = client
     return client
 
 
-def set_druva_client_base_url(base_url: str) -> None:
-    """Set the default Druva MCP URL used by get_druva_client()."""
-    global _default_druva_base_url
-    _default_druva_base_url = base_url.rstrip("/")
+def set_dhara_client_base_url(base_url: str) -> None:
+    """Set the default Dhara MCP URL used by get_dhara_client()."""
+    global _default_dhara_base_url
+    _default_dhara_base_url = base_url.rstrip("/")
 
 
 @dataclass

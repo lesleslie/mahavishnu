@@ -4,10 +4,13 @@ Tracks adapter executions, success rates, latency, and costs.
 Provides ExecutionTracker class with async batch writes and sampling strategies.
 
 Design:
-- Storage-agnostic (works with or without Druva)
+- Storage-agnostic (works with RoutingMetricsPersistence for PostgreSQL)
 - ULID-based execution identifiers
 - TTL-based automatic cleanup
 - Configurable sampling strategies
+
+Storage: docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md
+Schema: migrations/versions/V202604021300__routing_metrics_schema.sql
 """
 
 from __future__ import annotations
@@ -80,7 +83,7 @@ class ExecutionMetrics:
     """{task_type: execution_count} for adaptive sampling"""
 
     last_aggregate_ts: float = field(default_factory=lambda: time.time())
-    """Timestamp of last aggregation to Druva."""
+    """Timestamp of last aggregation to PostgreSQL."""
 
     def get_success_rate(self, adapter: AdapterType, min_samples: int = 10) -> float | None:
         """Calculate success rate for adapter.
@@ -132,7 +135,7 @@ class ExecutionTracker:
             batch_size: Max records before forcing batch write (default: 100)
             batch_timeout_ms: Max time before forcing batch write (default: 5s)
             aggregate_interval_ms: Interval for recalculating aggregates (default: 60s)
-            storage_client: Optional Druva/storage client
+            storage_client: Optional PostgreSQL storage client (RoutingMetricsPersistence)
         """
         self.sampling_strategy = sampling_strategy
         self.sampling_rate = sampling_rate
@@ -304,7 +307,7 @@ class ExecutionTracker:
         logger.debug(f"Adapter attempt: {adapter.value} #{attempt_number} -> {outcome}")
 
     async def _flush_batch(self) -> dict[str, Any]:
-        """Write batched execution records to storage.
+        """Write batched execution records to PostgreSQL storage.
 
         Returns:
             Dictionary with write statistics
@@ -315,22 +318,26 @@ class ExecutionTracker:
         records = self._metrics.completed_executions.copy()
         self._metrics.completed_executions.clear()
 
-        # Try to write to Druva if available
+        # Write to PostgreSQL via storage client
         if self.storage_client is not None:
             try:
-                # TODO: Implement Druva batch write
-                # For now, simulate successful write
-                await asyncio.sleep(0.001)  # Simulate IO
-                written = len(records)
+                # Use batch_write interface from RoutingMetricsPersistence
+                if hasattr(self.storage_client, 'batch_write'):
+                    result = await self.storage_client.batch_write(records)
+                    written = result.get("written", len(records))
+                else:
+                    # Fallback for legacy interface
+                    await asyncio.sleep(0.001)
+                    written = len(records)
             except Exception as e:
-                logger.error(f"Druva write failed: {e}")
+                logger.error(f"PostgreSQL write failed: {e}")
                 return {"status": "error", "error": str(e), "written": 0}
         else:
-            # No storage client - simulate write
+            # No storage client - simulate write (for testing)
             await asyncio.sleep(0.001)
             written = len(records)
 
-        logger.info(f"Flushed {written} execution records to storage")
+        logger.info(f"Flushed {written} execution records to PostgreSQL")
         return {"status": "success", "written": written}
 
     async def _aggregation_loop(self) -> None:
@@ -340,7 +347,7 @@ class ExecutionTracker:
         - Adapter success rates
         - Per-task-type statistics
         - Cost aggregations
-        - Writes aggregated stats to storage
+        - Writes aggregated stats to PostgreSQL
         """
         while not self._shutdown_event.is_set():
             try:
@@ -350,10 +357,22 @@ class ExecutionTracker:
                 # Calculate aggregates
                 aggregates = await self._calculate_aggregates()
 
-                # Write aggregates to storage
+                # Write aggregates to PostgreSQL storage
                 if self.storage_client is not None:
-                    # TODO: Write aggregates to Druva
-                    logger.debug(f"Aggregates calculated: {aggregates}")
+                    # Write adapter stats to PostgreSQL
+                    if hasattr(self.storage_client, 'write_adapter_stats'):
+                        for adapter_name, stats in aggregates["adapter_stats"].items():
+                            from mahavishnu.core.metrics_schema import AdapterStats
+                            adapter_stats = AdapterStats(
+                                adapter=AdapterType(adapter_name),
+                                date=stats.get("date", datetime.now(UTC).strftime("%Y-%m-%d")),
+                                success_rate=stats["success_rate"],
+                                total_executions=stats["total_executions"],
+                                avg_latency_ms=stats.get("avg_latency_ms"),
+                                sample_size=stats["total_executions"],
+                            )
+                            await self.storage_client.write_adapter_stats(adapter_stats)
+                    logger.debug(f"Aggregates written to PostgreSQL: {aggregates}")
                 else:
                     logger.debug(f"Aggregates (no storage): {aggregates}")
 
@@ -537,7 +556,7 @@ async def initialize_execution_tracker(
 
     Args:
         sampling_strategy: Sampling strategy to use
-        storage_client: Optional storage backend (Druva)
+        storage_client: Optional PostgreSQL storage backend (RoutingMetricsPersistence)
         force_recreate: If True, create new tracker even if one exists
 
     Returns:
@@ -556,10 +575,47 @@ async def initialize_execution_tracker(
     return _tracker
 
 
+async def initialize_execution_tracker_with_postgres(
+    dsn: str,
+    sampling_strategy: SamplingStrategy = SamplingStrategy.FULL,
+    batch_size: int = 100,
+    force_recreate: bool = False,
+) -> ExecutionTracker:
+    """Initialize execution tracker with PostgreSQL persistence.
+
+    This is the recommended way to initialize the tracker with
+    Mahavishnu's consolidated PostgreSQL storage.
+
+    Args:
+        dsn: PostgreSQL connection string
+        sampling_strategy: Sampling strategy to use
+        batch_size: Batch size for writes
+        force_recreate: If True, create new tracker even if one exists
+
+    Returns:
+        Started ExecutionTracker instance with PostgreSQL persistence
+    """
+    from mahavishnu.core.routing_metrics_persistence import (
+        RoutingMetricsPersistence,
+    )
+
+    # Initialize PostgreSQL persistence
+    persistence = RoutingMetricsPersistence(dsn=dsn, batch_size=batch_size)
+    await persistence.initialize()
+
+    # Initialize tracker with PostgreSQL storage
+    return await initialize_execution_tracker(
+        sampling_strategy=sampling_strategy,
+        storage_client=persistence,
+        force_recreate=force_recreate,
+    )
+
+
 __all__ = [
     "SamplingStrategy",
     "ExecutionMetrics",
     "ExecutionTracker",
     "get_execution_tracker",
     "initialize_execution_tracker",
+    "initialize_execution_tracker_with_postgres",
 ]

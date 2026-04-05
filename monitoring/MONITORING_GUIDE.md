@@ -86,10 +86,10 @@ async with start_span("process_workflow", {"workflow_id": "123"}):
 
 **Metrics Collected**:
 
-**Request Metrics**:
+**HTTP Surface Metrics**:
 
 - `mcp_http_requests_total` - Total HTTP requests
-- `mcp_http_request_duration_seconds` - Request latency
+- `mcp_http_request_duration_seconds` - HTTP request latency
 - `mcp_http_requests_in_progress` - Requests currently in progress
 
 **MCP Tool Metrics**:
@@ -104,6 +104,11 @@ async with start_span("process_workflow", {"workflow_id": "123"}):
 - `agent_task_duration_seconds` - Task duration
 - `agent_tasks_in_progress` - Tasks in progress
 - `pool_workers_active` - Active pool workers
+- `mahavishnu_workflows_total` - Workflow lifecycle events
+- `mahavishnu_workflow_duration_seconds` - Workflow duration
+- `mahavishnu_workflow_queue_depth` - In-process queue depth
+- `mahavishnu_dependency_health_status` - Dependency health gauge
+- `bodai_bridge_freshness_seconds` - Bridge data freshness
 
 **Memory Metrics**:
 
@@ -493,16 +498,19 @@ async def metrics():
 rate(mcp_tool_calls_total{status="error"}[5m])
 
 # P95 latency
-histogram_quantile(0.95, rate(mcp_http_request_duration_seconds_bucket[5m]))
+histogram_quantile(0.95, sum by (le) (rate(mcp_tool_duration_seconds_bucket[5m])))
 
-# Memory usage
-system_memory_usage_bytes{type="rss"}
+# Workflow rate
+sum by (status) (rate(mahavishnu_workflows_total[5m]))
 
 # Active workers
-pool_workers_active
+sum by (pool_type) (pool_workers_active)
+
+# Bridge freshness
+max(bodai_bridge_freshness_seconds{source_service="session-buddy"})
 
 # Tool success rate
-rate(mcp_tool_calls_total{status="success"}[5m]) / rate(mcp_tool_calls_total[5m]) * 100
+sum(rate(mcp_tool_calls_total{status="success"}[5m])) / sum(rate(mcp_tool_calls_total[5m])) * 100
 ```
 
 ## Alerting Rules
@@ -527,12 +535,12 @@ groups:
       # High latency
       - alert: HighLatency
         expr: |
-          histogram_quantile(0.95, rate(mcp_http_request_duration_seconds_bucket[5m])) > 1.0
+          histogram_quantile(0.95, sum by (le) (rate(mcp_tool_duration_seconds_bucket[5m]))) > 10
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "P95 latency above 1 second"
+          summary: "Tool P95 latency above 10 seconds"
 
       # Low worker availability
       - alert: LowWorkerAvailability

@@ -16,6 +16,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from prometheus_client import (
+    CONTENT_TYPE_LATEST,
     REGISTRY,
     CollectorRegistry,
     Counter,
@@ -81,6 +82,43 @@ mcp_tools_registered = Gauge(
 # Agent/Workflow Metrics (Mahavishnu-specific)
 # ============================================================================
 
+mahavishnu_workflows_total = Counter(
+    "mahavishnu_workflows_total",
+    "Total workflow lifecycle events",
+    ["adapter", "task_type", "status"],
+)
+
+mahavishnu_workflow_duration_seconds = Histogram(
+    "mahavishnu_workflow_duration_seconds",
+    "Workflow execution duration",
+    ["adapter", "task_type", "status"],
+    buckets=(0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0),
+)
+
+mahavishnu_repos_processed_total = Counter(
+    "mahavishnu_repos_processed_total",
+    "Total repositories processed by workflows",
+    ["adapter", "task_type", "status"],
+)
+
+mahavishnu_active_workflows = Gauge(
+    "mahavishnu_active_workflows",
+    "Number of workflows currently running",
+    ["service"],
+)
+
+mahavishnu_workflow_queue_depth = Gauge(
+    "mahavishnu_workflow_queue_depth",
+    "Number of workflows currently waiting in the in-process queue",
+    ["service"],
+)
+
+mahavishnu_workflow_concurrency_utilization = Gauge(
+    "mahavishnu_workflow_concurrency_utilization",
+    "Current workflow concurrency utilization ratio",
+    ["service"],
+)
+
 agent_tasks_total = Counter(
     "agent_tasks_total",
     "Total agent tasks executed",
@@ -145,6 +183,37 @@ embeddings_generated = Counter(
 # Session Management Metrics (Session-Buddy-specific)
 # ============================================================================
 
+bodai_bridge_polls_total = Counter(
+    "bodai_bridge_polls_total",
+    "Total Bodai bridge polling cycles",
+    ["source_service", "status"],
+)
+
+bodai_bridge_poll_duration_seconds = Histogram(
+    "bodai_bridge_poll_duration_seconds",
+    "Duration of Bodai bridge polling cycles",
+    ["source_service"],
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0),
+)
+
+bodai_bridge_poll_errors_total = Counter(
+    "bodai_bridge_poll_errors_total",
+    "Total Bodai bridge polling errors",
+    ["source_service", "error_type"],
+)
+
+bodai_bridge_freshness_seconds = Gauge(
+    "bodai_bridge_freshness_seconds",
+    "Age in seconds of the last successful bridge poll result",
+    ["source_service"],
+)
+
+bodai_bridge_metric_ingest_total = Counter(
+    "bodai_bridge_metric_ingest_total",
+    "Total metrics ingested from bridge polling",
+    ["source_service", "source_tool"],
+)
+
 session_operations_total = Counter(
     "session_operations_total",
     "Total session operations",
@@ -197,6 +266,25 @@ system_file_descriptors_open = Gauge(
 # ============================================================================
 # Cache Metrics
 # ============================================================================
+
+mahavishnu_dependency_requests_total = Counter(
+    "mahavishnu_dependency_requests_total",
+    "Total dependency health check requests",
+    ["dependency", "status"],
+)
+
+mahavishnu_dependency_request_duration_seconds = Histogram(
+    "mahavishnu_dependency_request_duration_seconds",
+    "Dependency health check duration",
+    ["dependency", "status"],
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
+)
+
+mahavishnu_dependency_health_status = Gauge(
+    "mahavishnu_dependency_health_status",
+    "Dependency health status gauge (1=ok, 0.5=degraded, 0=unhealthy)",
+    ["dependency"],
+)
 
 cache_operations_total = Counter(
     "cache_operations_total",
@@ -474,7 +562,7 @@ def expose_metrics(registry: CollectorRegistry | None = None) -> bytes:
     Example:
         >>> from fastapi import Response
         >>> metrics = expose_metrics()
-        >>> return Response(content=metrics, media_type="text/plain")
+        >>> return Response(content=metrics, media_type=CONTENT_TYPE_LATEST)
     """
     return generate_latest(registry or REGISTRY)
 
@@ -493,8 +581,8 @@ async def metrics_endpoint():
         >>>
         >>> @app.get("/metrics")
         >>> async def metrics():
-        ...     return Response(content=expose_metrics(), media_type="text/plain")
+        ...     return Response(content=expose_metrics(), media_type=CONTENT_TYPE_LATEST)
     """
     from fastapi import Response
 
-    return Response(content=expose_metrics(), media_type="text/plain")
+    return Response(content=expose_metrics(), media_type=CONTENT_TYPE_LATEST)

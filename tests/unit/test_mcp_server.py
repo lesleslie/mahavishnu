@@ -17,8 +17,10 @@ from mahavishnu.core.config import MahavishnuSettings
 from mahavishnu.mcp.server_core import (
     FastMCPServer,
     McpretentiousMCPClient,
+    __version__ as mcp_server_version,
     run_server,
 )
+from monitoring.metrics import mcp_tool_calls_total, mcp_tools_registered
 
 # =============================================================================
 # Fixtures
@@ -316,7 +318,14 @@ class TestFastMCPServerInitialization:
     def test_server_name_and_version(self, server):
         """Test server has correct name and version."""
         assert server.server.name == "Mahavishnu Orchestrator"
-        assert server.server.version == "1.0.0"
+        assert server.server.version == mcp_server_version
+
+    def test_http_surface_exposes_metrics_route(self, server):
+        """The main FastMCP HTTP surface should expose /metrics for scrapers."""
+        http_app = server.server.http_app()
+        route_paths = [route.path for route in http_app.routes if hasattr(route, "path")]
+
+        assert "/metrics" in route_paths
 
 
 # =============================================================================
@@ -434,6 +443,18 @@ class TestToolExecutionSuccess:
         assert len(result.content) > 0
 
     @pytest.mark.asyncio
+    async def test_tool_metrics_record_successful_calls(self, server):
+        """Successful FastMCP calls should increment the shared tool counters."""
+        server.app.get_repos = MagicMock(return_value=["/repo1"])
+
+        before = mcp_tool_calls_total.labels(tool_name="list_repos", status="success")._value.get()
+
+        await server.server.call_tool("list_repos", {})
+
+        after = mcp_tool_calls_total.labels(tool_name="list_repos", status="success")._value.get()
+        assert after == before + 1
+
+    @pytest.mark.asyncio
     async def test_list_repos_with_tag_filter(self, server):
         """Test list_repos tool with tag filtering."""
         server.app.get_repos = MagicMock(
@@ -538,6 +559,21 @@ class TestToolExecutionSuccess:
 
         assert result is not None
         assert hasattr(result, "content")
+
+    @pytest.mark.asyncio
+    async def test_tool_metrics_record_error_payloads(self, server):
+        """Error-shaped tool payloads should be classified as tool errors."""
+        before = mcp_tool_calls_total.labels(
+            tool_name="check_permission", status="error"
+        )._value.get()
+
+        await server.server.call_tool(
+            "check_permission",
+            {"user_id": "test_user", "repo": "test_repo", "permission": "NOT_A_PERMISSION"},
+        )
+
+        after = mcp_tool_calls_total.labels(tool_name="check_permission", status="error")._value.get()
+        assert after == before + 1
 
     @pytest.mark.asyncio
     async def test_list_workflows_empty(self, server):
@@ -831,7 +867,7 @@ class TestTerminalManagerInitialization:
 
     def test_terminal_manager_disabled(self, mock_settings):
         """Test terminal manager not initialized when disabled."""
-        mock_settings.terminal_enabled = False
+        mock_settings.terminal.enabled = False
 
         server = FastMCPServer(app=None, config=mock_settings)
 
@@ -994,4 +1030,4 @@ class TestMCPIntegration:
     def test_server_has_correct_metadata(self, server):
         """Test that server has correct metadata."""
         assert server.server.name == "Mahavishnu Orchestrator"
-        assert server.server.version == "1.0.0"
+        assert server.server.version == mcp_server_version

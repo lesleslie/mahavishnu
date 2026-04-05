@@ -107,13 +107,13 @@
             "uid": "prometheus"
           },
           "editable": true,
-          "expr": "rate(mcp_http_requests_total[5m])",
-          "legendFormat": "{{method}} {{endpoint}}",
+          "expr": "sum by (status) (rate(mahavishnu_workflows_total[5m]))",
+          "legendFormat": "{{status}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Request Rate (5m avg)",
+      "title": "Workflow Event Rate (5m avg)",
       "type": "timeseries"
     },
     {
@@ -205,7 +205,7 @@
             "uid": "prometheus"
           },
           "editable": true,
-          "expr": "histogram_quantile(0.50, rate(mcp_http_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(mcp_tool_duration_seconds_bucket[5m])))",
           "legendFormat": "p50",
           "range": true,
           "refId": "A"
@@ -216,7 +216,7 @@
             "uid": "prometheus"
           },
           "editable": true,
-          "expr": "histogram_quantile(0.95, rate(mcp_http_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(mcp_tool_duration_seconds_bucket[5m])))",
           "legendFormat": "p95",
           "range": true,
           "refId": "B"
@@ -227,13 +227,13 @@
             "uid": "prometheus"
           },
           "editable": true,
-          "expr": "histogram_quantile(0.99, rate(mcp_http_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(mcp_tool_duration_seconds_bucket[5m])))",
           "legendFormat": "p99",
           "range": true,
           "refId": "C"
         }
       ],
-      "title": "Request Latency (p50, p95, p99)",
+      "title": "Tool Latency (p50, p95, p99)",
       "type": "timeseries"
     },
     {
@@ -295,8 +295,8 @@
             "uid": "prometheus"
           },
           "editable": true,
-          "expr": "rate(mcp_tool_calls_total{status=\"success\"}[5m]) / rate(mcp_tool_calls_total[5m]) * 100",
-          "legendFormat": "{{tool_name}}",
+          "expr": "sum(rate(mcp_tool_calls_total{status=\"success\"}[5m])) / sum(rate(mcp_tool_calls_total[5m])) * 100",
+          "legendFormat": "overall",
           "range": true,
           "refId": "A"
         }
@@ -385,7 +385,7 @@
             "uid": "prometheus"
           },
           "editable": true,
-          "expr": "pool_workers_active",
+          "expr": "sum by (pool_type) (pool_workers_active)",
           "legendFormat": "{{pool_type}}",
           "range": true,
           "refId": "A"
@@ -475,13 +475,13 @@
             "uid": "prometheus"
           },
           "editable": true,
-          "expr": "rate(agent_tasks_total[5m])",
-          "legendFormat": "{{agent_type}} ({{adapter}})",
+          "expr": "sum by (agent_type, adapter, status) (rate(agent_tasks_total[5m]))",
+          "legendFormat": "{{agent_type}} ({{adapter}}) {{status}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Agent Task Rate (by type/adapter)",
+      "title": "Agent Task Rate (by type/adapter/status)",
       "type": "timeseries"
     },
     {
@@ -534,7 +534,7 @@
               }
             ]
           },
-          "unit": "bytes"
+          "unit": "s"
         },
         "overrides": []
       },
@@ -565,13 +565,13 @@
             "uid": "prometheus"
           },
           "editable": true,
-          "expr": "system_memory_usage_bytes",
-          "legendFormat": "{{type}}",
+          "expr": "max by (source_service) (bodai_bridge_freshness_seconds)",
+          "legendFormat": "{{source_service}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Memory Usage (by type)",
+      "title": "Bridge Freshness (seconds)",
       "type": "timeseries"
     },
     {
@@ -628,7 +628,7 @@
             }
           },
           "mappings": [],
-          "unit": "percent"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -659,13 +659,13 @@
             "uid": "prometheus"
           },
           "editable": true,
-          "expr": "system_cpu_usage_percent",
-          "legendFormat": "CPU {{core}}",
+          "expr": "mahavishnu_dependency_health_status",
+          "legendFormat": "{{dependency}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "CPU Usage % (by core)",
+      "title": "Dependency Health Status",
       "type": "timeseries"
     },
     {
@@ -727,13 +727,13 @@
             "uid": "prometheus"
           },
           "editable": true,
-          "expr": "system_disk_usage_percent",
-          "legendFormat": "{{mount_point}}",
+          "expr": "max(mahavishnu_workflow_queue_depth{service=\"mahavishnu\"})",
+          "legendFormat": "queue depth",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Disk Usage % (by mount)",
+      "title": "Workflow Queue Depth",
       "type": "gauge"
     }
   ],

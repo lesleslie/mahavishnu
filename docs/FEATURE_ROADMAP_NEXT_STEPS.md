@@ -1,111 +1,114 @@
 # Mahavishnu Feature Roadmap
 
-**Date**: 2026-02-12
-**Purpose**: Next development priorities after ULID migration completion
+**Updated**: 2026-04-04
+**Previous Version**: 2026-02-12 (archived)
 
 ---
 
-## ULID Migration Status: ✅ COMPLETE
+## Completed Work (since last roadmap)
 
-All ULID migration work (Phases 0-7) is **production-ready**:
-- ✅ Druva ULID generation (19,901 ops/sec)
-- ✅ Oneiric services (collision detection, migration utilities)
-- ✅ Crackerjack correlation IDs (ULID[:16])
-- ✅ Session-Buddy session IDs (full ULID)
-- ✅ Akosha entity IDs (full ULID)
-- ✅ Mahavishnu workflow models (ULID tracking)
-- ✅ Cross-system integration tests (100% pass rate)
+### Phase 2: Pattern Detection & Prediction (COMPLETE)
 
-**Ready for**: Production deployment with zero data loss
+All Phase 2 implementation files are located in `mahavishnu/core/`:
 
----
+| File | Lines | Description |
+|------|-------|-------------|
+| `pattern_detection.py` | 554 | PatternDetector with duration/blocker/sequence detection |
+| `blocker_detection.py` | 449 | BlockerDetector with alerts and metrics |
+| `predictions.py` | 577 | BlockerPredictor + DurationEstimator |
+| `task_ordering.py` | 797 | 5 ordering strategies, critical path analysis |
+| `dependency_graph.py` | 671 | Graph with cycle detection |
+| `dependency_manager.py` | 593 | Auto block/unblock with events |
+| `dependency_visualization.py` | 459 | ASCII tree/chain/matrix rendering |
+| `models/pattern.py` | 187 | Pattern data models |
 
-## Next Development Priorities
+**Total**: 4,287 lines, code, 8 files, 196 tests passing
 
-### Priority 1: Complete Adapter Implementations
+SQL migration: `migrations/add_patterns.sql`
 
-**Current State**: LlamaIndex is fully implemented, Prefect/Agno are stubs
+### Adapter Reorganization (COMPLETE)
 
-#### 1.1 Prefect Adapter (Est. 2-3 days)
+Adapters were reorganized into a clear facade + implementation pattern:
 
-**File**: `/Users/les/Projects/mahavishnu/mahavishnu/adapters/prefect_adapter.py`
+- `adapters/` — Public import facade (thin re-exports) + standalone adapters
+- `engines/` — Full implementations with SDK integration (6,290 lines)
+- `core/adapters/` — Base classes and interfaces
 
-**Tasks**:
-- [ ] Implement `OrchestratorAdapter` interface fully
-- [ ] Add workflow deployment methods (`deploy_flow()`, `deploy_flow_from_file()`)
-- [ ] Add execution monitoring (`get_flow_status()`, `get_flow_run_state()`)
-- [ ] Implement state synchronization (Mahavishnu → Prefect DB)
-- [ ] Add flow cancellation and cleanup
-- [ ] Write comprehensive tests
+| Adapter | Location | Lines | Status |
+|---------|----------|-------|--------|
+| PrefectAdapter | `engines/prefect_adapter.py` | 1,828 | Complete |
+| AgnoAdapter | `engines/agno_adapter.py` | 1,419 | Complete |
+| LlamaIndexAdapter | `engines/llamaindex_adapter.py` | 1,140 | Complete |
+| PydanticAIAdapter | `adapters/ai/pydantic_ai_adapter.py` | 1,029 | Complete |
+| PgvectorAdapter | `adapters/pgvector_adapter.py` | 636 | Complete |
 
-**Business Value**:
-- Production-ready workflow orchestration
-- Integration with Prefect Cloud/Server
-- UI visibility via Prefect dashboard
+Support modules in `engines/`:
+- `prefect_models.py` (314 lines), `prefect_schedules.py` (510 lines), `prefect_registry.py` (363 lines)
+- `goal_team_factory.py` (716 lines)
 
-#### 1.2 Agno Adapter (Est. 2-3 days)
+### Pool Management (COMPLETE)
 
-**File**: `/Users/les/Projects/mahavishnu/mahavishnu/adapters/agno_adapter.py`
+- MahavishnuPool — Direct worker management
+- SessionBuddyPool — Delegated to Session-Buddy instances
+- KubernetesPool — `pools/kubernetes_pool.py` (507 lines, not Note: untested without cluster)
+- Pool Monitoring Dashboard — `docs/grafana/Pool_Monitoring.json`
 
-**Tasks**:
-- [ ] Implement `OrchestratorAdapter` interface fully
-- [ ] Add crew creation (`create_crew()`, `create_crew_from_config()`)
-- [ ] Add task execution (`execute_task()`, `execute_task_batch()`)
-- [ ] Implement crew management (`list_crews()`, `get_crew_status()`)
-- [ ] Add result aggregation (`get_crew_results()`)
-- [ ] Write comprehensive tests
+### Additional Dashboards (COMPLETE)
 
-**Business Value**:
-- Multi-agent AI task execution
-- Crew-based parallel processing
-- Agent collaboration patterns
+4 Grafana dashboards in `docs/grafana/`:
+- `Pool_Monitoring.json` — Pool health and worker distribution
+- `Routing_Monitoring.json` — Routing metrics and decisions
+- `WebSocket_Monitoring.json` — WebSocket performance
+- `Symbiotic-Ecosystem.json` — Ecosystem overview
 
----
+### Testing Infrastructure (SUBSTANTIALLY COMPLETE)
 
-### Priority 2: Enhanced Pool Management
-
-**Current State**: MahavishnuPool fully implemented, SessionBuddyPool implemented, KubernetesPool planned
-
-#### 2.1 Kubernetes Pool Implementation (Est. 3-4 days)
-
-**File**: `/Users/les/Projects/mahavishnu/mahavishnu/pools/kubernetes_pool.py`
-
-**Tasks**:
-- [ ] Implement `KubernetesPool` class
-- [ ] Add pod lifecycle management (create, wait, cleanup)
-- [ ] Add HorizontalPodAutoscaler integration
-- [ ] Implement ConfigMap/Secret management
-- [ ] Add resource request/limit handling
-- [ ] Write E2E tests with kind/mock K8s API
-
-**Business Value**:
-- Cloud-native worker pool orchestration
-- Auto-scaling based on queue depth
-- Production-ready container execution
-
-#### 2.2 Pool Monitoring Dashboard (Est. 1-2 days)
-
-**File**: `/Users/les/Projects/mahavishnu/docs/grafana/Pool_Monitoring.json`
-
-**Tasks**:
-- [ ] Create Grafana dashboard JSON
-- [ ] Add pool health panels (worker distribution, queue depth)
-- [ ] Add throughput metrics (tasks/sec, avg execution time)
-- [ ] Add error rate tracking (failed executions, timeouts)
-- [ ] Add pool comparison panel (Mahavishnu vs SessionBuddy)
-
-**Business Value**:
-- Real-time visibility into pool performance
-- Capacity planning insights
-- Bottleneck identification
+- **194 test files**, ~81K lines of test code
+- **7 Hypothesis property-based test files** in `tests/property/`
+- **Load testing infrastructure** in `mahavishnu/core/load_testing.py` and `mahavishnu/testing/`
+- **10 ADR documents** in `docs/adr/`
+- **Getting Started guide** (`docs/GETTING_STARTED.md`, 15K)
+- **Troubleshooting guide** (`docs/src/troubleshooting.md`)
 
 ---
 
-### Priority 3: Content Quality Enhancements
+## Current Architecture
 
-**Current State**: Basic quality evaluation implemented
+### Adapter Organization (Facade + Implementation)
 
-**File**: `/Users/les/Projects/mahavishnu/mahavishnu/ingesters/quality_evaluator.py`
+```
+mahavishnu/
+  adapters/                  # PUBLIC FACADE - re-exports only
+    __init__.py              # Re-exports from engines/ for public API
+    ai/
+      pydantic_ai_adapter.py   # Standalone (1,029 lines)
+    pgvector_adapter.py      # Standalone (636 lines)
+    rag/
+      llamaindex_adapter.py   # Re-export shim
+    workflow/
+      prefect_adapter.py     # Deprecated re-export
+  engines/                  # FULL IMPLEMENTATIONS
+    prefect_adapter.py       # 1,828 lines
+    prefect_models.py         # 314 lines
+    prefect_schedules.py      # 510 lines
+    prefect_registry.py       # 363 lines
+    agno_adapter.py           # 1,419 lines
+    llamaindex_adapter.py     # 1,140 lines
+    goal_team_factory.py     # 716 lines
+  core/
+    adapters/
+      base.py                  # OrchestratorAdapter interface
+      worker.py               # Worker adapter
+```
+
+---
+
+## Remaining Work
+
+### Priority 1: Content Quality ML Enhancements
+
+**File**: `mahavishnu/ingesters/quality_evaluator.py`
+**Current State**: Basic stub (84 lines, returns hardcoded `1.0` scores)
 
 **Tasks**:
 - [ ] Add ML-based quality scoring (train model on labeled data)
@@ -114,116 +117,142 @@ All ULID migration work (Phases 0-7) is **production-ready**:
 - [ ] Add completeness scoring (coverage of key topics)
 - [ ] Create quality trend dashboard (Grafana integration)
 
-**Business Value**:
-- Automated content filtering
-- Higher quality knowledge base
-- Improved RAG relevance
+**Business Value**: Automated content filtering, higher quality knowledge base, improved RAG relevance
 
----
+### Priority 2: Unified Ecosystem Dashboard TUI
 
-### Priority 4: CLI & Developer Experience
+**Rationale**: All 6 ecosystem components already have IPython AdminShells (via Oneiric), Typer CLIs, and MCP health endpoints. Building per-component interactive CLIs would create N UI layers for N components with inconsistent UX. A single unified dashboard — hosted in Mahavishnu as the orchestration hub — provides cross-component visibility that per-component dashboards cannot achieve.
 
-#### 4.1 Interactive CLI Mode (Est. 2-3 days)
+**Existing Infrastructure** (already 60% built):
+- `tui/command_palette.py` — Fuzzy search command palette
+- `core/task_dashboard.py` — Themes, key bindings, panel abstractions (525 lines)
+- `core/repo_dashboard.py` — Repository health dashboard (509 lines)
+- `core/monitoring.py` + `core/monitoring_infra.py` — AlertManager, MonitoringDashboard, MetricsExporter
+- `core/routing_metrics.py` — Full Prometheus integration
+- `websocket/server.py` — Real-time event streaming on port 8690
+- `shell/formatters.py` — Rich formatters for workflows, logs, repos
+- 5 Grafana dashboards in `docs/grafana/`
 
-**File**: `/Users/les/Projects/mahavishnu/mahavishnu/cli/interactive.py`
+**Pre-requisite Cleanup** (Phase 0):
+- [ ] Delete 78 `.bak` files in source tree
+- [ ] Consolidate duplicate `AlertManager` classes (`monitoring.py` vs `monitoring_infra.py`)
+- [ ] Resolve `MonitoringDashboard` / `DashboardConfig` split
 
-**Tasks**:
-- [ ] Add Rich-based terminal UI
-- [ ] Implement workflow selection menus (fzf-like fuzzy search)
-- [ ] Add real-time progress bars for long operations
-- [ ] Implement confirmation prompts for destructive operations
-- [ ] Add command history and replay
+**Phase 1: Unified Health Command** (2-3 days):
+- [ ] Define standardized `health()` response schema in `mcp-common`
+- [ ] Ensure all 6 components expose consistent health endpoint via MCP
+- [ ] Build `mahavishnu health` Typer command — Rich table showing all 6 component statuses
+- [ ] Handle timeouts gracefully (unreachable = down, not crash)
+- [ ] Add `--json` flag for CI/CD pipeline integration
+- **Go/No-Go Gate**: If < 3 developers use `mahavishnu health` regularly after 2 weeks, stop and reassess.
 
-**Business Value**:
-- Better developer experience
-- Reduced cognitive load
-- Fewer accidental mistakes
+**Phase 2: Interactive Textual Dashboard** (3-5 days, conditional on Phase 1 adoption):
+- [ ] Add `textual>=0.50.0` as optional `[tui]` dependency
+- [ ] Build `mahavishnu dashboard` command with Textual app
+- [ ] Ecosystem Overview screen — component cards with health/uptime/metrics
+- [ ] Sweep Progress screen — live per-repo progress bars via WebSocket
+- [ ] Routing & Adapters screen — adapter health, success rates, fallback chains
+- [ ] Alerts screen — active alerts with acknowledge/dismiss
+- [ ] Auto-discover admin shell helpers from each component
 
-#### 4.2 Configuration Validation (Est. 1-2 days)
+**Phase 3: Grafana Alignment** (1-2 days):
+- [ ] Wire Grafana and TUI to same Prometheus metrics
+- [ ] Add Sweep History Grafana dashboard (TUI = live, Grafana = historical)
+- [ ] Delete empty/corrupted `Symbiotic-Ecosystem.json` (0 panels)
 
-**File**: `/Users/les/Projects/mahavishnu/mahavishnu/cli/config_validator.py`
+**Not in scope**:
+- Replacing Grafana (complementary: TUI = live diagnostics, Grafana = time-series + alerting)
+- Mobile/web dashboard
+- Admin actions beyond alert acknowledgment (keep TUI read-only for safety)
+
+**Business Value**: Single command to check ecosystem health (replaces running 6 separate commands), real-time cross-component visibility, unified diagnostic workflow
+
+### Priority 3: Configuration Validation CLI
+
+**File**: `mahavishnu/cli/config_validator.py` (new)
 
 **Tasks**:
 - [ ] Pre-flight checks before Mahavishnu starts
 - [ ] Validate repository paths exist
 - [ ] Validate adapter configs (Prefect URL, Agno settings)
 - [ ] Test MCP server connectivity
-- [ ] Validate pool configuration (min/max workers, routing strategy)
+- [ ] Validate pool configuration (min/max workers. routing strategy)
 - [ ] Add `mahavishnu validate --full` command
 
-**Business Value**:
-- Fail fast on configuration errors
-- Clear error messages
-- Reduced debugging time
+### Priority 4: Chaos Engineering Tests
 
----
+**Current State**: Property-based and load tests exist, No chaos tests.
 
-## Quick Wins (1-2 days each)
+**Tasks**:
+- [ ] Add failure injection tests (kill workers mid-execution)
+- [ ] Add network partition tests
+- [ ] Add resource exhaustion tests
+- [ ] Add cascading failure tests
 
-### Win 1: MCP Tool Enhancements
+### Priority 5: MCP Utility Tools (Quick Wins)
 
-**File**: `/Users/les/Projects/mahavishnu/mahavishnu/mcp/tools/`
+**Tasks**:
+- [ ] Add `mcp_list_tools()` tool (enumerate all available tools)
+- [ ] Add `mcp_test_connection()` tool(ping specific server)
+- [ ] Add `mcp_get_metrics()` tool (query server health)
 
-**Ideas**:
-- Add `mcp_list_tools()` tool (show all available tools)
-- Add `mcp_test_connection()` tool (ping specific server)
-- Add `mcp_get_metrics()` tool (query server health)
-- Improve error messages with remediation suggestions
+### Priority 6: Engine Adapter Decomposition (Refactoring)
 
-### Win 2: Documentation Improvements
+**Current State**: Engine files are large (1,000-1,800 lines each).
 
-**File**: `/Users/les/Projects/mahavishnu/docs/`
+**Tasks**:
+- [ ] Split `engines/prefect_adapter.py` into `prefect_client.py`, + `prefect_deployments.py` + `prefect_executor.py`
+- [ ] Split `engines/agno_adapter.py` into `agno_config.py` + `agno_adapter.py` + `agno_agent_factory.py`
+- [ ] Split `engines/llamaindex_adapter.py` into `llamaindex_config.py` + `llamaindex_ingestion.py` + `llamaindex_query.py`
 
-**Ideas**:
-- Add "Getting Started" tutorial (5-minute read)
-- Create architecture decision records (ADRs) for major choices
-- Add troubleshooting guide with common issues
-- Create video demos for key workflows
-- Add API reference with examples
+### Priority 7: Lifecycle Formalization
 
-### Win 3: Testing Infrastructure
+**Current State**: Adapters informally follow `initialize()`/`get_health()`/`shutdown()` but but codified in base class.
 
-**File**: `/Users/les/Projects/mahavishnu/tests/`
-
-**Ideas**:
-- Add property-based tests (Hypothesis) for ID validation
-- Add load tests for pool performance
-- Add chaos engineering tests (kill workers mid-execution)
-- Add integration test suite (end-to-end workflows)
-- Improve test coverage to >80%
+**Tasks**:
+- [ ] Add `initialize()`, `get_health()`, `cleanup()` as abstract methods on `OrchestratorAdapter`
+- [ ] Add `AdapterMetadata` class property (Oneiric pattern)
+- [ ] Update all engine adapters to implement the new abstract methods
 
 ---
 
 ## Recommended Execution Order
 
-**Week 1** (Quick Wins):
-1. MCP Tool Enhancements (1 day)
-2. Config Validation CLI (1-2 days)
-3. Testing Infrastructure (2 days)
+**Week 1** (Quick Wins + Prerequisite Cleanup):
+1. Phase 0: Delete `.bak` files, consolidate `AlertManager` (1-2 days)
+2. MCP Utility Tools (1 day)
+3. Configuration Validation CLI (1 day)
 
 **Week 2-3** (Core Features):
-4. Prefect Adapter (2-3 days)
-5. Agno Adapter (2-3 days)
-6. Kubernetes Pool (3-4 days)
+4. Unified Dashboard Phase 1: `mahavishnu health` command (2-3 days)
+5. Content Quality ML (2-3 days)
+6. Chaos Engineering Tests (2 days)
 
-**Week 4+** (Advanced Features):
-7. Pool Monitoring Dashboard (1-2 days)
-8. Content Quality ML (2-3 days)
-9. Interactive CLI (2-3 days)
+**Week 4-5** (Conditional on Adoption):
+7. Unified Dashboard Phase 2: Textual TUI (3-5 days, only if Phase 1 gets adoption)
+8. Engine Adapter Decomposition (2-3 days)
+
+**Week 6+** (Polish):
+9. Unified Dashboard Phase 3: Grafana alignment (1-2 days)
+10. Lifecycle Formalization (1 day)
+
+**Go/No-Go Gates**:
+- Phase 2 dashboard proceeds only if `mahavishnu health` gets regular use (3+ developers)
+- Each phase gated on previous phase delivering measurable value
 
 ---
 
-## Ready to Start?
+## Infrastructure Status
 
-All infrastructure is in place. Choose a priority and begin:
+| Component | Status | Port | Notes |
+|-----------|--------|------|-------|
+| MCP Server | Running | 8680 | Main orchestration API |
+| WebSocket Server | Running | 8690 | Real-time updates |
+| Routing Metrics | Running | 9091 | Prometheus metrics |
+| Pool Manager | Implemented | N/A | Multi-pool orchestration |
+| Kubernetes Pool | Implemented (untested) | N/A | Needs cluster for testing |
+| Grafana Dashboards | Complete | 3000 | 4 dashboards ready to import |
+| Test Suite | 194 files, 81K lines | Property + load tests, No chaos |
 
-```bash
-# Example: Start Prefect adapter implementation
-cd /Users/les/Projects/mahavishnu
-# Edit mahavishnu/adapters/prefect_adapter.py
-# Run tests
-pytest tests/unit/test_prefect_adapter.py -v
-```
-
-**Generated**: 2026-02-12
-**Status**: Ready for development
+**Generated**: 2026-04-04
+**status**: Current

@@ -1,6 +1,7 @@
 """FastMCP server implementation for Mahavishnu."""
 
 import asyncio
+from functools import wraps
 import time
 from contextlib import suppress
 from datetime import datetime
@@ -15,6 +16,11 @@ from starlette.responses import JSONResponse
 from ..core.app import MahavishnuApp
 from ..core.auth import get_auth_from_config
 from ..core.permissions import Permission
+from monitoring.metrics import (
+    mcp_tool_calls_total,
+    mcp_tool_duration_seconds,
+    mcp_tools_registered,
+)
 from ..terminal.adapters.iterm2 import ITERM2_AVAILABLE, ITerm2Adapter
 from ..terminal.adapters.mcpretentious import McpretentiousAdapter
 from ..terminal.manager import TerminalManager
@@ -120,6 +126,8 @@ class FastMCPServer:
             self.app = app
         self.auth_handler = get_auth_from_config(self.app.config)
         self.server = FastMCP(name="Mahavishnu Orchestrator", version=__version__)
+        self._registered_tool_count = 0
+        self._instrument_server_tool_registration()
 
         # Initialize MCP client wrapper
         self.mcp_client = McpretentiousMCPClient()
@@ -145,6 +153,97 @@ class FastMCPServer:
 
         # Register all tools
         self._register_tools()
+        self._update_registered_tool_metrics()
+
+    def _instrument_server_tool_registration(self) -> None:
+        """Wrap FastMCP tool registration so all tool handlers emit shared metrics."""
+        original_tool = self.server.tool
+
+        def instrumented_tool(*tool_args: Any, **tool_kwargs: Any):
+            base_decorator = original_tool(*tool_args, **tool_kwargs)
+
+            def decorator(func: Any) -> Any:
+                wrapped = self._wrap_tool_handler(func)
+                registered = base_decorator(wrapped)
+                self._registered_tool_count += 1
+                self._update_registered_tool_metrics()
+                return registered
+
+            return decorator
+
+        self.server.tool = instrumented_tool  # type: ignore[method-assign]
+
+    def _wrap_tool_handler(self, func: Any) -> Any:
+        """Wrap a tool handler with Prometheus instrumentation."""
+
+        @wraps(func)
+        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+            tool_name = func.__name__
+            start_time = time.perf_counter()
+            status = "success"
+
+            try:
+                result = await func(*args, **kwargs)
+                status = self._classify_tool_result(result)
+                return result
+            except asyncio.CancelledError:
+                status = "cancelled"
+                raise
+            except TimeoutError:
+                status = "timeout"
+                raise
+            except Exception:
+                status = "error"
+                raise
+            finally:
+                duration = time.perf_counter() - start_time
+                mcp_tool_calls_total.labels(tool_name=tool_name, status=status).inc()
+                mcp_tool_duration_seconds.labels(tool_name=tool_name).observe(duration)
+
+        @wraps(func)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+            tool_name = func.__name__
+            start_time = time.perf_counter()
+            status = "success"
+
+            try:
+                result = func(*args, **kwargs)
+                status = self._classify_tool_result(result)
+                return result
+            except TimeoutError:
+                status = "timeout"
+                raise
+            except Exception:
+                status = "error"
+                raise
+            finally:
+                duration = time.perf_counter() - start_time
+                mcp_tool_calls_total.labels(tool_name=tool_name, status=status).inc()
+                mcp_tool_duration_seconds.labels(tool_name=tool_name).observe(duration)
+
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper
+        return sync_wrapper
+
+    def _classify_tool_result(self, result: Any) -> str:
+        """Map a tool result payload to a Prometheus status label."""
+        if not isinstance(result, dict):
+            return "success"
+
+        status = result.get("status")
+        error = result.get("error")
+        if error:
+            return "error"
+        if isinstance(status, str) and status.lower() in {"error", "failed", "unhealthy"}:
+            return "error"
+        return "success"
+
+    def _update_registered_tool_metrics(self) -> None:
+        """Publish the current number of registered MCP tools."""
+        server_name = getattr(self.app.config, "server_name", "mahavishnu")
+        if not isinstance(server_name, str) or not server_name:
+            server_name = "mahavishnu"
+        mcp_tools_registered.labels(server=server_name).set(self._registered_tool_count)
 
     def _init_terminal_manager(self) -> TerminalManager | None:
         """Initialize terminal manager with appropriate adapter.
@@ -222,6 +321,13 @@ class FastMCPServer:
             """Kubernetes-style health check endpoint."""
             return JSONResponse({"status": "ok"})
 
+        @self.server.custom_route("/metrics", methods=["GET"])
+        async def metrics_endpoint(request: Request):
+            """Prometheus metrics endpoint for the main FastMCP HTTP surface."""
+            from monitoring.metrics import metrics_endpoint as prometheus_metrics_endpoint
+
+            return await prometheus_metrics_endpoint()
+
     def _register_tools(self):
         """Register all MCP tools using the FastMCP decorator pattern."""
         # Register core tools using the server's tool decorator
@@ -262,6 +368,7 @@ class FastMCPServer:
                 }
             except Exception as e:
                 return {
+                    "status": "error",
                     "error": f"Failed to list repositories: {e}",
                     "repos": [],
                     "total_count": 0,
@@ -490,6 +597,7 @@ class FastMCPServer:
                     )
                     if not has_permission:
                         return {
+                            "status": "error",
                             "error": f"User {user_id} does not have permission to list workflows",
                             "workflows": [],
                             "total_count": 0,
@@ -502,6 +610,7 @@ class FastMCPServer:
                         status_enum = WorkflowStatus(status)
                     except ValueError:
                         return {
+                            "status": "error",
                             "error": f"Invalid status: {status}. Valid statuses: {[s.value for s in WorkflowStatus]}",
                             "workflows": [],
                             "total_count": 0,
@@ -516,6 +625,7 @@ class FastMCPServer:
                 workflows = workflows[offset:]
 
                 return {
+                    "status": "success",
                     "workflows": workflows,
                     "total_count": len(workflows),
                     "returned_count": len(workflows),
@@ -525,6 +635,7 @@ class FastMCPServer:
                 }
             except Exception as e:
                 return {
+                    "status": "error",
                     "error": f"Failed to list workflows: {e}",
                     "workflows": [],
                     "total_count": 0,
@@ -636,6 +747,7 @@ class FastMCPServer:
                     perm_enum = Permission(permission)
                 except ValueError:
                     return {
+                        "status": "error",
                         "error": f"Invalid permission: {permission}",
                         "valid_permissions": [p.value for p in Permission],
                         "has_permission": False,
@@ -652,7 +764,7 @@ class FastMCPServer:
                     "has_permission": has_permission,
                 }
             except Exception as e:
-                return {"error": f"Failed to check permission: {e}", "has_permission": False}
+                return {"status": "error", "error": f"Failed to check permission: {e}", "has_permission": False}
 
         @server.tool()
         async def get_observability_metrics() -> dict[str, Any]:
@@ -1259,6 +1371,46 @@ class FastMCPServer:
                     "timestamp": asyncio.get_event_loop().time(),
                 }
 
+        @server.tool()
+        async def get_tool_versions(
+            tool_name: str | None = None,
+        ) -> dict[str, Any]:
+            """Get version metadata for MCP tools.
+
+            Returns tool version registry for backward compatibility
+            tracking. External consumers can use this to detect
+            schema changes between sessions.
+
+            Args:
+                tool_name: Optional specific tool name. If omitted,
+                    returns versions for all registered tools.
+
+            Returns:
+                Dictionary with tool version information.
+            """
+            from mahavishnu.mcp.tool_versions import TOOL_VERSIONS, get_tool_version
+
+            if tool_name:
+                version = get_tool_version(tool_name)
+                if version is None:
+                    return {
+                        "status": "not_found",
+                        "tool_name": tool_name,
+                        "error": f"Tool '{tool_name}' not in version registry",
+                    }
+                return {
+                    "status": "success",
+                    "tool_name": tool_name,
+                    "version": version,
+                }
+
+            return {
+                "status": "success",
+                "versions": dict(TOOL_VERSIONS),
+                "total_tools": len(TOOL_VERSIONS),
+                "server_version": __version__,
+            }
+
     async def start(self, host: str = "127.0.0.1", port: int = 3000):
         """Start the MCP server.
 
@@ -1308,6 +1460,8 @@ class FastMCPServer:
 
         # Register health check tools
         self._register_health_tools()
+
+        self._update_registered_tool_metrics()
 
         await self.server.run_http_async(host=host, port=port)
 
@@ -1506,7 +1660,7 @@ class FastMCPServer:
         from ..mcp.tools.health_tools import register_health_tools
 
         register_health_tools(self.server, self.app)
-        logger.info("Registered 6 health check tools with MCP server")
+        logger.info("Registered health check tools with MCP server")
 
 
 async def run_server(config=None):

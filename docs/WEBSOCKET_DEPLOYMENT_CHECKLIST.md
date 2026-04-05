@@ -196,7 +196,7 @@
 
 - [ ] **Metrics endpoint accessible**
   ```bash
-  curl http://localhost:9090/metrics
+  curl http://localhost:8680/metrics
   ```
 
 - [ ] **Prometheus scraping metrics**

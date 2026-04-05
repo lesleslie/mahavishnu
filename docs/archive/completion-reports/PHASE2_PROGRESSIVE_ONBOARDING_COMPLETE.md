@@ -77,7 +77,7 @@ Phase 2 of the Mahavishnu ecosystem improvement has been completed successfully.
 - Required vs optional service breakdown
 - Detailed service documentation for:
   - Mahavishnu (Orchestrator) - REQUIRED
-  - Druva (Curator) - OPTIONAL
+  - Dhara (Curator) - OPTIONAL
   - Session-Buddy (Manager) - OPTIONAL
   - Akosha (Diviner) - OPTIONAL
   - Crackerjack (Inspector) - OPTIONAL

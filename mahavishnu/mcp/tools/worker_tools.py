@@ -27,6 +27,9 @@ def register_worker_tools(
             worker_type: Type of worker to spawn
                 - "terminal-qwen": Headless Qwen CLI execution
                 - "terminal-claude": Headless Claude Code CLI execution
+                - "terminal-codex": Headless Codex CLI execution
+                - "terminal-openclaw": Local OpenClaw agent for communication/delivery tasks
+                - "gateway-openclaw": OpenClaw gateway worker for channel-aware messaging
                 - "container-executor": Containerized task execution (Phase 3)
             count: Number of workers to spawn (1-50)
 
@@ -36,6 +39,7 @@ def register_worker_tools(
         Example:
             >>> worker_ids = await worker_spawn("terminal-qwen", 3)
             >>> print(f"Spawned {len(worker_ids)} workers")
+            >>> worker_ids = await worker_spawn("terminal-openclaw", 2)
 
         Raises:
             ValueError: If worker_type is unknown or count is invalid
@@ -60,7 +64,8 @@ def register_worker_tools(
 
         Args:
             worker_id: Worker ID (from worker_spawn)
-            prompt: Task prompt to send to AI worker
+            prompt: Task prompt to send to AI worker. Communication-style prompts are
+                best suited for terminal-openclaw or gateway-openclaw.
             timeout: Timeout in seconds (30-3600)
 
         Returns:

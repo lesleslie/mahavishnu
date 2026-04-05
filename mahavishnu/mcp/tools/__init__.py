@@ -14,15 +14,18 @@
 # - team_learning_tools: Team learning and optimization tools (Phase 3)
 # - treesitter_tools: Tree-sitter code parsing and analysis tools
 # - adapter_registry_tools: Hybrid adapter registry management tools
+# - search_tools: Hybrid search (semantic + lexical) tools
 
 from .adapter_registry_tools import register_adapter_registry_tools
 from .goal_team_tools import register_goal_team_tools
 from .team_learning_tools import register_team_learning_tools
 from .treesitter_tools import register_treesitter_tools
+from .search_tools import register_search_tools
 
 __all__ = [
     "register_adapter_registry_tools",
     "register_goal_team_tools",
     "register_team_learning_tools",
     "register_treesitter_tools",
+    "register_search_tools",
 ]

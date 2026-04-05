@@ -878,11 +878,11 @@ class MonitoringConfig(BaseModel):
         default=9091,
         ge=1024,
         le=65535,
-        description="Port for Prometheus routing metrics server",
+        description="Deprecated dedicated routing metrics port kept for compatibility during migration",
     )
     routing_metrics_enabled: bool = Field(
         default=True,
-        description="Enable Prometheus routing metrics server",
+        description="Enable routing metrics registration on the shared /metrics endpoint",
     )
 
     model_config = {"extra": "forbid"}
@@ -1360,7 +1360,7 @@ class DependencyConfig(BaseModel):
             port: 8678
             required: true
             timeout_seconds: 30
-          druva:
+          dhara:
             host: "localhost"
             port: 8683
             required: false
@@ -1418,8 +1418,8 @@ class HealthConfig(BaseModel):
             akosha:
               host: "localhost"
               port: 8682
-              required: true
-            druva:
+              required: false
+            dhara:
               host: "localhost"
               port: 8683
               required: false
@@ -1454,6 +1454,47 @@ class HealthConfig(BaseModel):
     dependencies: dict[str, DependencyConfig] = Field(
         default_factory=dict,
         description="Service dependencies to check on startup",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
+class IntegrationConfig(BaseModel):
+    """Feature flags for external platform integrations.
+
+    These flags control whether specific integration features are enabled,
+    allowing for safe rollout and easy rollback without code changes.
+
+    Example YAML:
+        integrations:
+          pydantic_ai_enabled: true
+          openclaw_webhooks_enabled: true
+          omo_enabled: false
+          cross_platform_memory_enabled: true
+
+    Example Environment Variables:
+        MAHAVISHNU_INTEGRATIONS__PYDANTIC_AI_ENABLED=true
+        MAHAVISHNU_INTEGRATIONS__OPENCLAW_WEBHOOKS_ENABLED=false
+
+    Created: 2026-04-02
+    Related: docs/plans/PRE_IMPLEMENTATION_CHECKLIST.md (P1-8)
+    """
+
+    pydantic_ai_enabled: bool = Field(
+        default=False,
+        description="Enable Pydantic AI integration for structured agent outputs",
+    )
+    openclaw_webhooks_enabled: bool = Field(
+        default=True,
+        description="Enable OpenClaw webhook endpoints for external triggers",
+    )
+    omo_enabled: bool = Field(
+        default=False,
+        description="Enable OMO (Orchestration Multi-Objective) integration",
+    )
+    cross_platform_memory_enabled: bool = Field(
+        default=True,
+        description="Enable cross-platform memory sharing via Session-Buddy/Akosha",
     )
 
     model_config = {"extra": "forbid"}
@@ -1679,6 +1720,12 @@ class MahavishnuSettings(BaseSettings):
     health: HealthConfig = Field(
         default_factory=HealthConfig,
         description="Health check and dependency waiting configuration",
+    )
+
+    # Integration feature flags
+    integrations: IntegrationConfig = Field(
+        default_factory=IntegrationConfig,
+        description="Feature flags for external platform integrations",
     )
 
     @field_validator("repos_path")

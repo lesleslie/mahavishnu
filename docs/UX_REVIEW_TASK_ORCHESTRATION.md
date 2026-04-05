@@ -391,7 +391,7 @@ The proposed TUI layout is functional but lacks **modern UX patterns** identifie
 │  │                    │ ⏳ Tests: 15/18 passing              │ │
 │  │                    │ ❌ Coverage: 62%                     │ │
 │  ├────────────────────┤                                       │ │
-│  │ 📊 Druva Insights │                                       │ │
+│  │ 📊 Dhara Insights │                                       │ │
 │  │ 🔮 4h remaining    │ [Start] [Complete] [Delete]          │ │
 │  │ ⚠️  Blocks #45     │                                       │ │
 │  └────────────────────┴──────────────────────────────────────┘ │

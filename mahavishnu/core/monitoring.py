@@ -362,7 +362,7 @@ class AlertManager:
                 try:
                     await asyncio.wait_for(self._shutdown_event.wait(), timeout=30)
                     break  # Shutdown signaled
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     pass  # Normal timeout, continue loop
             except Exception as e:
                 self.logger.error(f"Error in monitoring loop: {e}")
@@ -370,7 +370,7 @@ class AlertManager:
                 try:
                     await asyncio.wait_for(self._shutdown_event.wait(), timeout=60)
                     break  # Shutdown signaled
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     pass  # Normal timeout, continue loop
 
     async def stop(self):

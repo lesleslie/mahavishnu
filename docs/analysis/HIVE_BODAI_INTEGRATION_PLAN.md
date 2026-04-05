@@ -207,7 +207,7 @@ mahavishnu/
 
 - **Layer 1 (Hot)**: Akosha HotStore - Recent execution outcomes (24h TTL)
 - **Layer 2 (Warm)**: Session-Buddy - Session memory (30d TTL)
-- **Layer 3 (Cold)**: Druva - Persistent knowledge (infinite TTL)
+- **Layer 3 (Cold)**: Dhara - Persistent knowledge (infinite TTL)
 
 ---
 

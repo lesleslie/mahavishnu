@@ -1,5 +1,8 @@
 # TLS/WSS Implementation Summary
 
+> **Update (2026-04-02):** This is a historical implementation summary with remaining ecosystem hardening tasks.
+> Remaining TLS/WebSocket tasks are not on the critical path for storage consolidation in `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`.
+
 ## Overview
 
 This document summarizes the implementation of TLS/WSS (WebSocket Secure) support across the MCP ecosystem, completing Task #36 from the Pool WebSocket Integration & Production Hardening plan.
@@ -87,10 +90,10 @@ TLS/WSS support has been added to:
 - `CRACKERJACK_WS_CERT_FILE` - Path to certificate file
 - `CRACKERJACK_WS_KEY_FILE` - Path to private key file
 
-### Druva
+### Dhara
 
 **Files Modified:**
-- `/Users/les/Projects/druva/druva/websocket/tls_config.py` (NEW)
+- `/Users/les/Projects/dhara/dhara/websocket/tls_config.py` (NEW)
 
 **Environment Variables:**
 - `DHRUVA_WS_TLS_ENABLED` - Enable TLS
@@ -281,7 +284,7 @@ async def test_wss_connection():
 For complete TLS/WSS support across all services, the following WebSocket servers still need to be updated:
 
 1. **Crackerjack** - TLS config module created, server needs updating
-2. **Druva** - TLS config module created, server needs updating
+2. **Dhara** - TLS config module created, server needs updating
 3. **Excalidraw-MCP** - TLS config module created, server needs updating
 4. **Fastblocks** - TLS config module created, server needs updating
 
@@ -329,7 +332,7 @@ class MyServiceWebSocketServer(WebSocketServer):
 2. **mahavishnu**: `90f71a2` - "feat: add TLS/WSS support to Mahavishnu WebSocket server"
 3. **akosha**: `004eeaa` - "feat: add TLS/WSS support to Akosha WebSocket server"
 4. **crackerjack**: `fc8d8743` - "feat: add TLS configuration module for WebSocket"
-5. **druva**: `4f8778e` - "feat: add TLS configuration module for WebSocket"
+5. **dhara**: `4f8778e` - "feat: add TLS configuration module for WebSocket"
 6. **excalidraw-mcp**: `d170007` - "feat: add TLS configuration module for WebSocket"
 7. **fastblocks**: `b5351d5` - "feat: add TLS configuration module for WebSocket"
 
@@ -347,7 +350,7 @@ class MyServiceWebSocketServer(WebSocketServer):
 
 ## Next Steps
 
-1. Update remaining 4 service WebSocket servers (Crackerjack, Druva, Excalidraw, Fastblocks)
+1. Update remaining 4 service WebSocket servers (Crackerjack, Dhara, Excalidraw, Fastblocks)
 2. Write comprehensive integration tests for WSS connections
 3. Add TLS certificate generation CLI command for development
 4. Add certificate monitoring (expiry warnings)

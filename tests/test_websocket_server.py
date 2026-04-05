@@ -26,6 +26,13 @@ def websocket_server(mock_pool_manager):
         host="127.0.0.1",
         port=8690,
     )
+    # Mock metrics entirely to avoid Prometheus registry conflicts
+    server.metrics = MagicMock()
+    server.metrics.on_broadcast = MagicMock()
+    server.metrics.adjust_connections = MagicMock()
+    server.metrics.on_connect = MagicMock()
+    server.metrics.on_disconnect = MagicMock()
+    server.metrics.record_message = MagicMock()
     return server
 
 
@@ -44,38 +51,48 @@ class TestMahavishnuWebSocketServer:
     async def test_on_connect(self, websocket_server):
         """Test connection handling."""
         mock_websocket = MagicMock()
+        mock_websocket.send = AsyncMock()
         connection_id = "test_conn_123"
-
         await websocket_server.on_connect(mock_websocket, connection_id)
 
-        # Verify connection registered
-        assert connection_id in websocket_server.connections
+        # Verify connection ID mapping registered
+        assert mock_websocket in websocket_server._connection_ids
+        assert websocket_server._connection_ids[mock_websocket] == connection_id
 
     @pytest.mark.asyncio
     async def test_on_disconnect(self, websocket_server):
         """Test disconnection handling."""
         mock_websocket = MagicMock()
+        mock_websocket.send = AsyncMock()
         connection_id = "test_conn_123"
 
         # Add connection first
-        websocket_server.connections[connection_id] = mock_websocket
+        websocket_server._connection_ids[mock_websocket] = connection_id
         websocket_server.connection_rooms["test_room"] = {connection_id}
 
         # Disconnect
         await websocket_server.on_disconnect(mock_websocket, connection_id)
 
         # Verify cleanup
-        assert connection_id not in websocket_server.connections
+        assert mock_websocket not in websocket_server._connection_ids
 
     @pytest.mark.asyncio
     async def test_subscribe_request(self, websocket_server):
         """Test subscribe request handling."""
         mock_websocket = MagicMock()
         mock_websocket.id = "test_conn_123"
+        mock_websocket.user = None  # Prevent MagicMock from returning truthy user
         mock_websocket.send = AsyncMock()
 
         connection_id = "test_conn_123"
         websocket_server.connections[connection_id] = mock_websocket
+        websocket_server._connection_ids[mock_websocket] = connection_id
+
+        # Mock rate limiter to allow the message
+        rate_result = MagicMock()
+        rate_result.limited = False
+        websocket_server.rate_limiter = MagicMock()
+        websocket_server.rate_limiter.check = MagicMock(return_value=rate_result)
 
         # Create subscribe message
         from mcp_common.websocket import WebSocketMessage, MessageType
@@ -164,7 +181,7 @@ class TestMahavishnuWebSocketServer:
         await websocket_server.broadcast_worker_status_changed(
             "worker_001",
             "busy",
-            "pool:local",
+            "local",
         )
 
         assert mock_client.send.called
@@ -181,14 +198,14 @@ class TestMahavishnuWebSocketServer:
         websocket_server.connection_rooms["pool:local"] = {"conn1"}
 
         await websocket_server.broadcast_pool_status_changed(
-            "pool:local",
+            "local",
             {"active_workers": 5, "queue_size": 10},
         )
 
         assert mock_client.send.called
         sent_message = json.loads(mock_client.send.call_args[0][0])
         assert sent_message["event"] == "pool.status_changed"
-        assert sent_message["data"]["pool_id"] == "pool:local"
+        assert sent_message["data"]["pool_id"] == "local"
 
     @pytest.mark.asyncio
     async def test_multiple_channels(self, websocket_server):
@@ -208,7 +225,7 @@ class TestMahavishnuWebSocketServer:
         await websocket_server.broadcast_workflow_started("wf123", {})
 
         # Broadcast to pool channel
-        await websocket_server.broadcast_pool_status_changed("pool:local", {})
+        await websocket_server.broadcast_pool_status_changed("local", {})
 
         # Verify each client only received their channel's messages
         assert mock_client1.send.call_count == 1

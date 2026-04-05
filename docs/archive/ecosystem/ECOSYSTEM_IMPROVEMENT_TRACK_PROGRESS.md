@@ -28,7 +28,7 @@ Consolidating documentation across the Mahavishnu ecosystem to reduce clutter, i
 - `/Users/les/Projects/mahavishnu/ARCHITECTURE.md`
 - `/Users/les/Projects/mahavishnu/docs/reference/service-dependencies.md`
 
-### ✅ Track 2: Druva (Curator) - COMPLETE
+### ✅ Track 2: Dhara (Curator) - COMPLETE
 
 **Status**: ✅ Complete
 **Date**: 2025-02-09
@@ -42,10 +42,10 @@ Consolidating documentation across the Mahavishnu ecosystem to reduce clutter, i
 - Clean, focused root directory
 
 **Key Files**:
-- `/Users/les/Projects/druva/README.md`
-- `/Users/les/Projects/druva/QUICKSTART.md`
-- `/Users/les/Projects/druva/ARCHITECTURE.md`
-- `/Users/les/Projects/druva/docs/reference/service-dependencies.md`
+- `/Users/les/Projects/dhara/README.md`
+- `/Users/les/Projects/dhara/QUICKSTART.md`
+- `/Users/les/Projects/dhara/ARCHITECTURE.md`
+- `/Users/les/Projects/dhara/docs/reference/service-dependencies.md`
 
 ### 🔄 Track 3: Oneiric (Resolver) - PENDING
 
@@ -97,7 +97,7 @@ Consolidating documentation across the Mahavishnu ecosystem to reduce clutter, i
 | Track | Service | Role | Files Before | Files After | Reduction | Status |
 |-------|---------|------|--------------|-------------|-----------|--------|
 | 1 | Mahavishnu | Orchestrator | 50+ | 8 | 84% | ✅ Complete |
-| 2 | Druva | Curator | 14 | 4 | 71% | ✅ Complete |
+| 2 | Dhara | Curator | 14 | 4 | 71% | ✅ Complete |
 | 3 | Oneiric | Resolver | ? | ? | ? | ⏳ Pending |
 | 4 | Session-Buddy | Manager | ? | ? | ? | ⏳ Pending |
 | 5 | Crackerjack | Inspector | ? | ? | ? | ⏳ Pending |
@@ -164,24 +164,24 @@ Each track must achieve:
 
 **Consolidation Reports**:
 - Mahavishnu: `/Users/les/Projects/mahavishnu/DOCS_CONSOLIDATION_COMPLETE.md`
-- Druva: `/Users/les/Projects/druva/DOCS_CONSOLIDATION_COMPLETE.md`
+- Dhara: `/Users/les/Projects/dhara/DOCS_CONSOLIDATION_COMPLETE.md`
 
 **Quickstart Guides**:
 - Mahavishnu: `/Users/les/Projects/mahavishnu/QUICKSTART.md`
-- Druva: `/Users/les/Projects/druva/QUICKSTART.md`
+- Dhara: `/Users/les/Projects/dhara/QUICKSTART.md`
 
 **Architecture Docs**:
 - Mahavishnu: `/Users/les/Projects/mahavishnu/ARCHITECTURE.md`
-- Druva: `/Users/les/Projects/druva/ARCHITECTURE.md`
+- Dhara: `/Users/les/Projects/dhara/ARCHITECTURE.md`
 
 **Service Dependencies**:
 - Mahavishnu: `/Users/les/Projects/mahavishnu/docs/reference/service-dependencies.md`
-- Druva: `/Users/les/Projects/druva/docs/reference/service-dependencies.md`
+- Dhara: `/Users/les/Projects/dhara/docs/reference/service-dependencies.md`
 
 ## Next Steps
 
 1. ✅ **Complete Track 1**: Mahavishnu - DONE
-2. ✅ **Complete Track 2**: Druva - DONE
+2. ✅ **Complete Track 2**: Dhara - DONE
 3. ⏳ **Start Track 3**: Oneiric (Resolver)
 4. ⏳ **Continue Track 4**: Session-Buddy (Manager)
 5. ⏳ **Finish Track 5**: Crackerjack (Inspector)
@@ -191,7 +191,7 @@ Each track must achieve:
 | Track | Duration | Status |
 |-------|----------|--------|
 | Track 1: Mahavishnu | 4 days | ✅ Complete |
-| Track 2: Druva | 4 hours | ✅ Complete |
+| Track 2: Dhara | 4 hours | ✅ Complete |
 | Track 3: Oneiric | 1 day | ⏳ Pending |
 | Track 4: Session-Buddy | 1 day | ⏳ Pending |
 | Track 5: Crackerjack | 1 day | ⏳ Pending |
@@ -209,7 +209,7 @@ Each track must achieve:
 
 ### Lessons Learned
 
-1. **Druva was Cleaner**: Less initial sprawl than Mahavishnu
+1. **Dhara was Cleaner**: Less initial sprawl than Mahavishnu
 2. **Implementation Docs Temporal**: Accumulate quickly during development
 3. **Archive Early**: Prevents accumulation of temporary docs
 4. **Quickstart First**: Highest impact for users
@@ -227,12 +227,12 @@ Each track must achieve:
 
 **Before Consolidation**:
 - Mahavishnu: 50+ root markdown files (cluttered)
-- Druva: 14 root markdown files (moderate clutter)
+- Dhara: 14 root markdown files (moderate clutter)
 - User experience: Confusing, hard to find relevant docs
 
 **After Consolidation (2/5 tracks)**:
 - Mahavishnu: 8 root markdown files (clean)
-- Druva: 4 root markdown files (very clean)
+- Dhara: 4 root markdown files (very clean)
 - User experience: Clear, organized, easy to navigate
 
 **Projected Final State (5/5 tracks)**:
@@ -242,7 +242,7 @@ Each track must achieve:
 
 ## Conclusion
 
-Documentation consolidation is progressing well. Mahavishnu and Druva are complete with significant improvements in user experience and maintainability. The standardized template is working effectively, and we're on track to complete all 5 tracks.
+Documentation consolidation is progressing well. Mahavishnu and Dhara are complete with significant improvements in user experience and maintainability. The standardized template is working effectively, and we're on track to complete all 5 tracks.
 
 **Current Velocity**: 2 tracks in 1 day
 **Projected Completion**: All 5 tracks within 2-3 days

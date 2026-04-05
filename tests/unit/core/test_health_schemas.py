@@ -222,7 +222,7 @@ class TestWaitResult:
                 )
             },
             total_wait_seconds=0.1,
-            skipped_optional=["druva"],
+            skipped_optional=["dhara"],
         )
         assert result.success is True
-        assert result.skipped_optional == ["druva"]
+        assert result.skipped_optional == ["dhara"]

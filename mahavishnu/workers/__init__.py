@@ -4,7 +4,8 @@ Provides worker orchestration for headless AI execution across terminals
 and containers with real-time progress tracking and Session-Buddy integration.
 
 Available Worker Types:
-    AI Assistants: terminal-qwen, terminal-claude, terminal-aider, terminal-opencode, terminal-openclaw, terminal-deepagents, terminal-clai, terminal-ollama
+    AI Assistants: terminal-qwen, terminal-claude, terminal-openclaw,
+        terminal-deepagents, terminal-clai, terminal-ollama
     Gateways: gateway-openclaw
     Shell/REPL: terminal-shell, terminal-zsh, terminal-python, terminal-ipython, terminal-node
     Database: terminal-mysql, terminal-psql, terminal-redis
@@ -12,6 +13,10 @@ Available Worker Types:
     Remote: terminal-ssh
     Container: container, container-executor
     Application: application-gimp, application-inkscape, application-blender, application-mdinject
+
+Routing notes:
+    - communication-style tasks prefer gateway-openclaw when OPENCLAW_GATEWAY_URL
+      is configured, and otherwise fall back to terminal-openclaw.
 """
 
 from mahavishnu.workers.application import ApplicationWorker
@@ -35,6 +40,7 @@ from mahavishnu.workers.registry import (
     get_worker_config,
     get_workers_by_category,
     list_worker_types,
+    resolve_worker_type,
     validate_worker_dependencies,
 )
 from mahavishnu.workers.terminal import TerminalAIWorker
@@ -66,5 +72,6 @@ __all__ = [
     "get_worker_config",
     "get_workers_by_category",
     "list_worker_types",
+    "resolve_worker_type",
     "validate_worker_dependencies",
 ]

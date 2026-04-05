@@ -1,5 +1,8 @@
 # Prefect Adapter Completion Plan
 
+> **Update (2026-04-02):** This plan remains valid but is reprioritized behind `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`.
+> Continue Prefect work after core storage ownership, PostgreSQL cutover, and search persistence consolidation are underway.
+
 **Created:** 2026-02-20
 **Status:** Draft
 **Priority:** High

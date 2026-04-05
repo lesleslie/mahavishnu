@@ -7,6 +7,8 @@ import logging
 import random
 from typing import Any
 
+from monitoring.metrics import pool_workers_active
+
 from ..mcp.protocols.message_bus import MessageBus
 from .base import BasePool, PoolConfig
 from .kubernetes_pool import KubernetesPool
@@ -95,6 +97,23 @@ class PoolManager:
 
         logger.info("PoolManager initialized with O(log n) heap routing and concurrent collection")
 
+    def _refresh_pool_worker_metrics(self) -> None:
+        """Recompute live worker counts per pool type for shared Prometheus metrics."""
+        worker_counts: dict[str, int] = {}
+        for pool in self._pools.values():
+            pool_type = pool.config.pool_type
+            worker_counts[pool_type] = worker_counts.get(pool_type, 0) + len(pool._workers)
+
+        active_pool_types = set(self._pool_worker_counts.keys())
+        for pool_id in active_pool_types:
+            pool = self._pools.get(pool_id)
+            if pool is not None:
+                worker_counts.setdefault(pool.config.pool_type, 0)
+
+        known_types = {"mahavishnu", "session-buddy", "kubernetes"} | set(worker_counts.keys())
+        for pool_type in known_types:
+            pool_workers_active.labels(pool_type=pool_type).set(worker_counts.get(pool_type, 0))
+
     async def spawn_pool(
         self,
         pool_type: str,
@@ -178,6 +197,7 @@ class PoolManager:
                 f"Pool {pool_id} spawned successfully (type: {pool_type}, "
                 f"initial workers: {initial_count})"
             )
+            self._refresh_pool_worker_metrics()
 
             return pool_id
 
@@ -278,6 +298,7 @@ class PoolManager:
             old_count = self._pool_worker_counts[pool_id]
             if new_count != old_count:
                 await self._update_pool_worker_count(pool_id, new_count)
+        self._refresh_pool_worker_metrics()
 
         # Announce task completion
         await self.message_bus.publish(
@@ -445,6 +466,7 @@ class PoolManager:
             )
 
             logger.info(f"Pool {pool_id} closed")
+            self._refresh_pool_worker_metrics()
 
     async def close_all(self) -> None:
         """Close all pools.
@@ -463,6 +485,7 @@ class PoolManager:
         # Clear heap
         self._worker_count_heap.clear()
         self._pool_worker_counts.clear()
+        self._refresh_pool_worker_metrics()
 
         logger.info("All pools closed")
 

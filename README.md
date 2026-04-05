@@ -1,16 +1,20 @@
-# Mahavishnu - Multi-Engine Orchestration Platform
+# Mahavishnu Orchestrate
 
-[![Quality Score](https://img.shields.io/badge/Quality-92%2F100-brightgreen)](https://github.com/lesleslie/mahavishnu)
-[![Security](https://img.shields.io/badge/Security-95%2F100-brightgreen)](SECURITY_CHECKLIST.md)
-[![Performance](https://img.shields.io/badge/Performance-90%2F100-brightgreen)](docs/PRODUCTION_DEPLOYMENT_GUIDE.md)
-[![Python](https://img.shields.io/badge/Python-3.13%2B-blue)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Code style: crackerjack](https://img.shields.io/badge/code%20style-crackerjack-000042)](https://github.com/lesleslie/crackerjack)
+[![Runtime: oneiric](https://img.shields.io/badge/runtime-oneiric-6e5494)](https://github.com/lesleslie/oneiric)
+[![Framework: FastMCP](https://img.shields.io/badge/framework-FastMCP-0ea5e9)](https://github.com/jlowin/fastmcp)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Python: 3.13+](https://img.shields.io/badge/python-3.13%2B-green)](https://www.python.org/downloads/)
 
 > **Etymology**: From Sanskrit *maha* (great) + *Vishnu* (the preserver in Hindu trinity)
 >
 > Part of the [Bodai Ecosystem](https://github.com/lesleslie/bodai) - The Orchestrator component
 
-**Mahavishnu** is a world-class multi-engine orchestration platform that provides unified interfaces for managing workflows across multiple repositories. It enables intelligent workflow routing, cross-repository coordination, and headless AI worker orchestration.
+**Mahavishnu** is a multi-repo, multi-engine, async-first orchestration platform that provides unified interfaces for managing workflows across multiple repositories. It enables intelligent workflow routing, cross-repository coordination, and headless AI worker orchestration.
+
+## Quality & CI
+
+Crackerjack is the standard quality-control and CI/CD gate across Mahavishnu and the broader Bodai ecosystem. Prefer Crackerjack-aligned local validation before relying on narrower repo-only checks.
 
 ## Ecosystem Components
 
@@ -18,7 +22,7 @@
 |-----------|------|------|-------------|
 | [Mahavishnu](https://github.com/lesleslie/mahavishnu) | Orchestrator | 8680 | Multi-engine workflow orchestration |
 | [Akosha](https://github.com/lesleslie/akosha) | Seer | 8682 | Cross-system intelligence & embeddings |
-| [Druva](https://github.com/lesleslie/druva) | Curator | 8683 | Persistent object storage with ACID |
+| [Dhara](https://github.com/lesleslie/dhara) | Curator | 8683 | Persistent object storage with ACID |
 | [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder | 8678 | Session lifecycle & knowledge graphs |
 | [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector | 8676 | Quality gates & CI/CD validation |
 | [Oneiric](https://github.com/lesleslie/oneiric) | Resolver | N/A | Conflict resolution library |
@@ -32,27 +36,18 @@
 - **OpenTelemetry Integration** - Native OTel trace ingestion with semantic search using DuckDB
 - **Repository Messaging** - Async message passing between repositories for event-driven coordination
 - **Role-Based Organization** - Intelligent repository taxonomy for workflow routing
-- **MCP Server** - FastMCP-based server exposing 49+ production-ready tools
+- **MCP Server** - FastMCP-based server exposing 49+ orchestration and coordination tools
 
 ## Quick Links
 
-### Essential Reading
-
-- **[Getting Started Guide](docs/GETTING_STARTED.md)** - New to Mahavishnu? Start here!
-- **[MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md)** - Complete API documentation for all 49 MCP tools
-- **[Architecture Documentation](ARCHITECTURE.md)** - System architecture and design decisions
-
-### Visual Learning (Diagrams & Charts)
-
-- **[Visual Guide](docs/VISUAL_GUIDE.md)** - START HERE - 50+ diagrams covering architecture, workflows, security, testing, and more!
-- **[Workflow Diagrams](docs/WORKFLOW_DIAGRAMS.md)** - Common operational procedures with step-by-step visualizations
-- **[Architecture Diagram](ARCHITECTURE.md#architecture-diagram)** - Interactive Mermaid diagram of system components
-
-### Detailed Guides
-
-- **[Pool Architecture](docs/POOL_ARCHITECTURE.md)** - Multi-pool orchestration details
-- **[Goal-Driven Teams](docs/GOAL_DRIVEN_TEAMS.md)** - Create teams from natural language goals
-- **[Admin Shell Guide](docs/ADMIN_SHELL.md)** - Interactive debugging and monitoring
+- [Getting Started Guide](docs/GETTING_STARTED.md)
+- [MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md)
+- [Architecture Documentation](ARCHITECTURE.md)
+- [Visual Guide](docs/VISUAL_GUIDE.md)
+- [Workflow Diagrams](docs/WORKFLOW_DIAGRAMS.md)
+- [Pool Architecture](docs/POOL_ARCHITECTURE.md)
+- [Goal-Driven Teams](docs/GOAL_DRIVEN_TEAMS.md)
+- [Admin Shell Guide](docs/ADMIN_SHELL.md)
 
 ## Table of Contents
 
@@ -119,6 +114,19 @@ Mahavishnu follows a modular, async-first architecture with these core component
 - Async base adapter interface for orchestration engines
 - Pluggable adapters for LlamaIndex (RAG), Prefect (flows), Agno (agents)
 - Easy to add new orchestration backends
+
+### Capability Maturity Snapshot
+
+This table clarifies current maturity so multi-engine expectations match implementation status.
+
+| Capability | Status | Notes |
+|-----------|--------|-------|
+| Multi-repo orchestration | Production-ready | Repository manifest (`settings/repos.yaml`), cross-repo coordination, dependency/status tooling |
+| Async orchestration runtime | Production-ready | Async-first core, async messaging, concurrent worker and pool execution |
+| Multi-pool execution (local/delegated/K8s) | Production-ready | Routing strategies and pool health/monitoring are implemented |
+| LlamaIndex engine adapter | Production-ready | RAG pipeline integration is implemented |
+| Prefect engine adapter | Framework complete, partial implementation | Core adapter contract and models exist; advanced production behavior is still in progress |
+| Agno engine adapter | Framework complete, partial implementation | Goal/team scaffolding and adapter surface exist; advanced production behavior is still in progress |
 
 **Configuration System**
 
@@ -233,7 +241,7 @@ mahavishnu show-role orchestrator
 mahavishnu mcp start
 ```
 
-The MCP server starts on `http://127.0.0.1:3000` and exposes 49+ production-ready tools.
+The MCP server starts on `http://127.0.0.1:3000` and exposes 49+ orchestration and coordination tools.
 
 ### 5. Use Admin Shell
 
@@ -251,6 +259,32 @@ Interactive shell commands:
 For more workflows, see the [Getting Started Guide](docs/GETTING_STARTED.md).
 
 ## Core Concepts
+
+### Async Orchestration Flow
+
+A typical async orchestration path looks like this:
+
+1. Load repositories from `settings/repos.yaml`.
+1. Classify task intent and select an engine and worker strategy.
+1. Route execution to the best pool (`least_loaded`, `round_robin`, `random`, or `affinity`).
+1. Execute concurrently on workers (or delegated pools) with async task handling.
+1. Emit coordination and repository-messaging events for downstream repos and services.
+1. Observe health and status, then apply retries/backoff where configured.
+
+Minimal example (Python):
+
+```python
+from mahavishnu.core.app import MahavishnuApp
+
+app = MahavishnuApp()
+await app.initialize()
+
+result = await app.pool_manager.route_task(
+    prompt="Run quality checks on tagged backend repos",
+    strategy="least_loaded",
+)
+print(result)
+```
 
 ### Repository Roles
 
@@ -289,12 +323,17 @@ Mahavishnu uses a role-based taxonomy to organize repositories:
 
 - **terminal-qwen** - Headless Qwen CLI execution
 - **terminal-claude** - Headless Claude Code CLI execution
-- **terminal-opencode** - Headless OpenCode CLI execution
-- **terminal-openclaw** - Headless OpenClaw CLI execution
-- **terminal-deepagents** - Headless DeepAgents CLI execution
-- **terminal-clai** - Headless CLAI CLI execution
-- **gateway-openclaw** - OpenClaw gateway worker over HTTP JSON-RPC
+- **terminal-codex** - Headless Codex CLI execution in one-shot mode with marker-based completion
+- **terminal-openclaw** - Headless OpenClaw agent execution for local communication and delivery tasks
+- **terminal-deepagents** - Headless DeepAgents CLI execution in one-shot mode with marker-based completion
+- **terminal-clai** - Headless CLAI CLI execution in one-shot mode with marker-based completion
+- **gateway-openclaw** - Preferred OpenClaw gateway worker over HTTP JSON-RPC for channel-aware communication tasks
 - **container-executor** - Containerized task execution (Phase 3)
+
+### Routing Notes
+
+- Communication-style tasks such as notifications, handoffs, replies, inbox triage, and channel delivery prefer **gateway-openclaw** when `OPENCLAW_GATEWAY_URL` is configured, and fall back to **terminal-openclaw** otherwise.
+- Coding tasks remain on coding workers such as Qwen and Claude unless you explicitly request OpenClaw.
 
 ### Optional Worker CLI Profiles
 
@@ -310,6 +349,12 @@ uv sync --extra worker-openclaw --extra worker-deepagents --extra worker-clai
 
 Important: these extras are profile flags only. You must install the actual CLI binaries
 (`openclaw`, `deepagents-cli`, `clai`) so they are available on your `PATH`.
+
+Structured output note:
+- `terminal-openclaw` is JSON-native and completes on valid JSON output.
+- `terminal-codex` uses `codex exec --json` and completes on an explicit sentinel marker.
+- `terminal-deepagents` uses `deepagents-cli --non-interactive --quiet --no-stream` and completes on an explicit sentinel marker because the verified task-run path is plain text.
+- `terminal-clai` uses `clai --no-stream` and completes on an explicit sentinel marker because the verified one-shot path is plain text.
 
 ## Goal-Driven Teams
 
@@ -364,7 +409,7 @@ See **[Goal-Driven Teams Documentation](docs/GOAL_DRIVEN_TEAMS.md)** for complet
 
 ## MCP Tools
 
-Mahavishnu's MCP server exposes **49 production-ready tools** across 6 categories:
+Mahavishnu's MCP server exposes **49 tools** across 6 categories:
 
 ### Pool Management (10 tools)
 
@@ -570,6 +615,7 @@ mahavishnu/
 - **[Admin Shell Guide](docs/ADMIN_SHELL.md)** - Interactive debugging
 - **[Production Deployment](docs/PRODUCTION_DEPLOYMENT_GUIDE.md)** - Production readiness
 - **[MCP Tools Specification](docs/MCP_TOOLS_SPECIFICATION.md)** - Detailed tool specs
+- **[Codex + Claude Routing Playbook](docs/integrations/CODEX_CLAUDE_ENGINE_ROUTING_PLAYBOOK.md)** - Configure agents to use Mahavishnu engines and multi-repo orchestration consistently
 - **[Security Checklist](SECURITY_CHECKLIST.md)** - Security guidelines
 
 ## Project Status
@@ -578,13 +624,15 @@ mahavishnu/
 
 **Quality Score: 92/100 (Excellent - Production Ready)**
 
+Important scope note: Mahavishnu is production-ready for multi-repo orchestration, async coordination, and pool/worker routing. Engine adapter maturity varies by adapter (see Capability Maturity Snapshot).
+
 **Completed:**
 
 - Security hardening (JWT auth, Claude Code + Qwen support)
 - Async base adapter architecture
 - FastMCP-based MCP server (49 tools)
 - Multi-pool orchestration (local, delegated, K8s)
-- Worker orchestration (terminal-qwen, terminal-claude)
+- Worker orchestration (Qwen, Claude, OpenClaw terminal/gateway)
 - Cross-repository coordination (issues, todos, dependencies)
 - Repository messaging (async event-driven)
 - OpenTelemetry integration (DuckDB + semantic search)
@@ -593,11 +641,11 @@ mahavishnu/
 - Admin shell (IPython-based)
 - Test infrastructure (12 test files)
 
-**Partially Complete:**
+**Engine Adapter Maturity:**
 
 - LlamaIndex adapter (RAG pipelines, fully implemented)
-- Prefect adapter (stub, framework skeleton)
-- Agno adapter (stub, framework skeleton)
+- Prefect adapter (framework complete, partial implementation)
+- Agno adapter (framework complete, partial implementation)
 
 **Roadmap:**
 

@@ -1,11 +1,7 @@
-"""AlertManager configuration for MCP ecosystem monitoring.
+"""AlertManager configuration for current Mahavishnu monitoring.
 
-This module provides alert rules for detecting and notifying on:
-- High error rates
-- High latency
-- Low worker availability
-- Resource exhaustion (memory, disk)
-- System health issues
+This module defines alert rules that align with metrics that are actually
+emitted and scraped by the repository's current Prometheus topology.
 """
 
 from __future__ import annotations
@@ -16,467 +12,318 @@ from __future__ import annotations
 
 alert_rules = """
 groups:
-  - name: mcp_alerts
+  - name: mahavishnu_core
     interval: 30s
     rules:
-      # ========================================
-      # Error Rate Alerts
-      # ========================================
-
-      # Critical: High tool error rate
       - alert: HighToolErrorRate
         expr: |
           (
-            rate(mcp_tool_calls_total{status="error"}[5m])
+            sum(rate(mcp_tool_calls_total{status="error"}[5m]))
             /
-            rate(mcp_tool_calls_total[5m])
+            sum(rate(mcp_tool_calls_total[5m]))
           ) > 0.05
         for: 5m
         labels:
           severity: critical
-          service: "{{ $labels.job }}"
+          service: mahavishnu
         annotations:
-          summary: "Tool error rate above 5% (service: {{ $labels.job }})"
-          description: "Error rate is {{ $value | humanizePercentage }} ({{ $labels.job }})"
+          summary: "MCP tool error rate above 5%"
+          description: "Mahavishnu MCP tool error rate is {{ $value | humanizePercentage }}"
           runbook_url: "https://github.com/your-org/mahavishnu/wiki/incident-response"
 
-      # Warning: Elevated error rate
-      - alert: ElevatedErrorRate
+      - alert: ElevatedToolErrorRate
         expr: |
           (
-            rate(mcp_tool_calls_total{status="error"}[5m])
+            sum(rate(mcp_tool_calls_total{status="error"}[5m]))
             /
-            rate(mcp_tool_calls_total[5m])
+            sum(rate(mcp_tool_calls_total[5m]))
           ) > 0.02
         for: 5m
         labels:
           severity: warning
-          service: "{{ $labels.job }}"
+          service: mahavishnu
         annotations:
-          summary: "Error rate elevated above 2% (service: {{ $labels.job }})"
-          description: "Error rate is {{ $value | humanizePercentage }} ({{ $labels.job }})"
+          summary: "MCP tool error rate above 2%"
+          description: "Mahavishnu MCP tool error rate is {{ $value | humanizePercentage }}"
 
-      # ========================================
-      # Latency Alerts
-      # ========================================
-
-      # Critical: P99 latency too high
-      - alert: HighP99Latency
+      - alert: HighToolP95Latency
         expr: |
-          histogram_quantile(0.99, rate(mcp_http_request_duration_seconds_bucket[5m])) > 5.0
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(mcp_tool_duration_seconds_bucket[5m]))
+          ) > 10
         for: 5m
         labels:
-          severity: critical
-          service: "{{ $labels.job }}"
+          severity: warning
+          service: mahavishnu
         annotations:
-          summary: "P99 latency above 5 seconds (service: {{ $labels.job }})"
-          description: "P99 latency is {{ $value }}s ({{ $labels.job }})"
+          summary: "MCP tool P95 latency above 10 seconds"
+          description: "Mahavishnu MCP tool P95 latency is {{ $value }}s"
           runbook_url: "https://github.com/your-org/mahavishnu/wiki/performance-tuning"
 
-      # Warning: P95 latency elevated
-      - alert: HighP95Latency
+      - alert: HighWorkflowFailureRate
         expr: |
-          histogram_quantile(0.95, rate(mcp_http_request_duration_seconds_bucket[5m])) > 1.0
-        for: 5m
-        labels:
-          severity: warning
-          service: "{{ $labels.job }}"
-        annotations:
-          summary: "P95 latency above 1 second (service: {{ $labels.job }})"
-          description: "P95 latency is {{ $value }}s ({{ $labels.job }})"
-
-      # Warning: Average latency elevated
-      - alert: HighAvgLatency
-        expr: |
-          rate(mcp_http_request_duration_seconds_sum[5m])
-          /
-          rate(mcp_http_requests_total[5m])
-           > 0.5
+          (
+            sum(rate(mahavishnu_workflows_total{status="failed"}[10m]))
+            /
+            sum(rate(mahavishnu_workflows_total{status=~"started|completed|failed|cancelled|timeout"}[10m]))
+          ) > 0.10
         for: 10m
         labels:
           severity: warning
-          service: "{{ $labels.job }}"
+          service: mahavishnu
         annotations:
-          summary: "Average latency above 500ms (service: {{ $labels.job }})"
-          description: "Average latency is {{ $value }}s ({{ $labels.job }})"
+          summary: "Workflow failure rate above 10%"
+          description: "Mahavishnu workflow failure rate is {{ $value | humanizePercentage }}"
 
-      # ========================================
-      # Worker Availability Alerts
-      # ========================================
-
-      # Critical: Insufficient workers
       - alert: InsufficientWorkers
         expr: |
-          pool_workers_active{pool_type="mahavishnu"} < 2
+          sum(pool_workers_active{pool_type="mahavishnu"}) < 1
         for: 5m
         labels:
           severity: critical
-        service: "mahavishnu"
+          service: mahavishnu
         annotations:
-          summary: "Less than 2 workers available (pool: mahavishnu)"
-          description: "Only {{ $value }} workers active (minimum: 2)"
+          summary: "No Mahavishnu pool workers available"
+          description: "Mahavishnu pool worker count is {{ $value }}"
           runbook_url: "https://github.com/your-org/mahavishnu/wiki/worker-scaling"
 
-      # Warning: Worker shortage
       - alert: LowWorkerCount
         expr: |
-          pool_workers_active{pool_type="mahavishnu"} < 3
+          sum(pool_workers_active{pool_type="mahavishnu"}) < 2
         for: 5m
         labels:
           severity: warning
-          service: "mahavishnu"
+          service: mahavishnu
         annotations:
-          summary: "Worker count below 3 (pool: mahavishnu)"
-          description: "Only {{ $value }} workers active (recommended: 3-5)"
+          summary: "Mahavishnu worker count below 2"
+          description: "Mahavishnu pool worker count is {{ $value }}"
 
-      # ========================================
-      # Task Queue Alerts
-      # ========================================
-
-      # Critical: Excessive queue backlog
       - alert: HighQueueBacklog
         expr: |
-          pool_tasks_queued{pool_type="mahavishnu"} > 100
+          max(mahavishnu_workflow_queue_depth{service="mahavishnu"}) > 25
         for: 5m
         labels:
           severity: critical
-          service: "mahavishnu"
+          service: mahavishnu
         annotations:
-          summary: "Task queue backlog > 100 (pool: mahavishnu)"
-          description: "{{ $value }} tasks waiting in queue"
+          summary: "Workflow queue depth above 25"
+          description: "{{ $value }} workflows are waiting in the in-process queue"
           runbook_url: "https://github.com/your-org/mahavishnu/wiki/scale-horizontally"
 
-      # Warning: Building queue
       - alert: BuildingQueue
         expr: |
-          pool_tasks_queued{pool_type="mahavishu"} > 50
+          max(mahavishnu_workflow_queue_depth{service="mahavishnu"}) > 10
         for: 10m
         labels:
           severity: warning
-          service: "mahavishnu"
+          service: mahavishnu
         annotations:
-          summary: "Task queue building up (pool: mahavishnu)"
-          description: "{{ $value }} tasks waiting in queue"
+          summary: "Workflow queue is building"
+          description: "{{ $value }} workflows are waiting in the in-process queue"
 
-      # ========================================
-      # Memory Alerts
-      # ========================================
+      - alert: DependencyHealthDegraded
+        expr: |
+          min(mahavishnu_dependency_health_status) < 1
+        for: 10m
+        labels:
+          severity: warning
+          service: mahavishnu
+        annotations:
+          summary: "A Mahavishnu dependency is degraded"
+          description: "Dependency {{ $labels.dependency }} health gauge is {{ $value }}"
 
-      # Critical: High memory usage
+      - alert: SessionBuddyBridgeFailing
+        expr: |
+          sum(rate(bodai_bridge_poll_errors_total{source_service="session-buddy"}[10m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+          service: mahavishnu
+        annotations:
+          summary: "Session-Buddy bridge polling is failing"
+          description: "Bridge poll errors are occurring for Session-Buddy"
+
+      - alert: SessionBuddyBridgeStale
+        expr: |
+          max(bodai_bridge_freshness_seconds{source_service="session-buddy"}) > 300
+        for: 15m
+        labels:
+          severity: warning
+          service: mahavishnu
+        annotations:
+          summary: "Session-Buddy bridge data is stale"
+          description: "Last successful Session-Buddy bridge data is {{ $value }} seconds old"
+
       - alert: HighMemoryUsage
         expr: |
-          (
-            system_memory_usage_bytes{type="rss"}
-            /
-            system_memory_usage_bytes{type="rss"}
-          ) > 1024 * 1024 * 1024  # 1GB
+          system_memory_usage_bytes{type="rss"} > 1024 * 1024 * 1024
         for: 5m
         labels:
           severity: critical
-          annotations:
+          service: mahavishnu
+        annotations:
           summary: "Memory usage above 1GB"
-          description: "RSS memory is {{ $value | humanize }} (type: {{ $labels.type }})"
+          description: "RSS memory is {{ $value | humanize }}"
 
-      # Warning: Memory usage elevated
       - alert: ElevatedMemoryUsage
         expr: |
-          (
-            system_memory_usage_bytes{type="rss"}
-            /
-            system_memory_usage_bytes{type="rss"}
-          ) > 512 * 1024 * 1024  # 512MB
+          system_memory_usage_bytes{type="rss"} > 512 * 1024 * 1024
         for: 10m
         labels:
           severity: warning
-          annotations:
+          service: mahavishnu
+        annotations:
           summary: "Memory usage above 512MB"
-          description: "RSS memory is {{ $value | humanize }} (type: {{ $labels.type }})"
+          description: "RSS memory is {{ $value | humanize }}"
 
-      # ========================================
-      # CPU Alerts
-      # ========================================
-
-      # Critical: High CPU usage
       - alert: HighCPUUsage
         expr: |
           avg_over_time(system_cpu_usage_percent[5m]) > 80
         for: 10m
         labels:
           severity: critical
-          annotations:
+          service: mahavishnu
+        annotations:
           summary: "Average CPU usage above 80%"
           description: "CPU usage is {{ $value }}% over 5 minutes"
 
-      # Warning: CPU usage elevated
       - alert: ElevatedCPUUsage
         expr: |
           avg_over_time(system_cpu_usage_percent[10m]) > 60
         for: 15m
         labels:
           severity: warning
-          annotations:
+          service: mahavishnu
+        annotations:
           summary: "Average CPU usage above 60%"
           description: "CPU usage is {{ $value }}% over 10 minutes"
 
-      # ========================================
-      # Disk Alerts
-      # ========================================
-
-      # Critical: Disk space low
       - alert: DiskSpaceCritical
         expr: |
           system_disk_usage_percent > 90
         for: 5m
         labels:
           severity: critical
-          annotations:
+          service: mahavishnu
+        annotations:
           summary: "Disk space critically low (>90% used)"
           description: "Disk usage is {{ $value }}% on mount {{ $labels.mount_point }}"
           runbook_url: "https://github.com/your-org/mahavishnu/wiki/disk-cleanup"
 
-      # Warning: Disk space low
       - alert: DiskSpaceLow
         expr: |
           system_disk_usage_percent > 80
         for: 10m
         labels:
           severity: warning
-          annotations:
+          service: mahavishnu
+        annotations:
           summary: "Disk space low (>80% used)"
           description: "Disk usage is {{ $value }}% on mount {{ $labels.mount_point }}"
 
-      # ========================================
-      # Cache Alerts
-      # ========================================
-
-      # Warning: High cache eviction rate
       - alert: HighCacheEvictionRate
         expr: |
-          rate(cache_evictions_total[5m]) > 10
+          sum(rate(cache_evictions_total[5m])) > 10
         for: 5m
         labels:
           severity: warning
+          service: mahavishnu
         annotations:
           summary: "Cache eviction rate high (>10/sec)"
           description: "Evicting {{ $value | humanize }} items/sec"
 
-      # Warning: Cache hit rate low
       - alert: LowCacheHitRate
         expr: |
           (
-            rate(cache_operations_total{result="hit"}[5m])
+            sum(rate(cache_operations_total{result="hit"}[5m]))
             /
-            rate(cache_operations_total[5m])
+            sum(rate(cache_operations_total[5m]))
           ) < 0.5
         for: 10m
         labels:
           severity: warning
+          service: mahavishnu
         annotations:
           summary: "Cache hit rate below 50%"
           description: "Hit rate is {{ $value | humanizePercentage }}"
 
-      # ========================================
-      # Service Health Alerts
-      # ========================================
-
-      # Critical: Service down
       - alert: ServiceDown
         expr: |
-          up{job=~"mahavishnu|akosha|session-buddy|crackerjack"} == 0
+          up{job=~"mahavishnu|otel-collector|prometheus"} == 0
         for: 2m
         labels:
           severity: critical
         annotations:
-          summary: "MCP service down (job: {{ $labels.job }})"
-          description: "{{ $labels.job }} has been down for > 2 minutes"
+          summary: "Monitoring target down (job: {{ $labels.job }})"
+          description: "{{ $labels.job }} has been down for more than 2 minutes"
           runbook_url: "https://github.com/your-org/mahavishnu/wiki/service-recovery"
 
-      # Warning: Service restarting
-      alert: ServiceRestarting
-        expr: |
-          changes(kubernetes_pod_name{namespace=~"mcp-.+"}, [5m])
-        for: 10m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Service restarting frequently"
-          description: "{{ $value }} restarts in 10 minutes"
-
-      # ========================================
-      # Session Management Alerts
-      # ========================================
-
-      # Warning: Too many active sessions
-      - alert: ExcessiveActiveSessions
-        expr: |
-          sessions_active > 1000
-        for: 5m
-        labels:
-          severity: warning
-          service: "session-buddy"
-        annotations:
-          summary: "Over 1000 active sessions"
-          description: "{{ $value }} sessions currently active"
-
-      # Warning: Session operation errors
-      - alert: SessionOperationErrors
-        expr: |
-          (
-            rate(session_operations_total{status="error"}[5m])
-            /
-            rate(session_operations_total[5m])
-          ) > 0.01
-        for: 10m
-        labels:
-          severity: warning
-          service: "session-buddy"
-        annotations:
-          summary: "Session operation error rate above 1%"
-          description: "Error rate is {{ $value | humanizePercentage }}"
-
-      # ========================================
-      # Memory Aggregation Alerts
-      # ========================================
-
-      # Warning: Memory sync failures
-      - alert: MemorySyncFailures
-        expr: |
-          (
-            rate(memory_syncs_total{status="error"}[10m])
-            /
-            rate(memory_syncs_total[10m])
-          ) > 0.1
-        for: 10m
-        labels:
-          severity: warning
-          service: "akosha"
-        annotations:
-          summary: "Memory sync error rate above 10%"
-          description: "Error rate is {{ $value | humanizePercentage }}"
-
-      # Info: Memory sync stalled
-      - alert: MemorySyncStalled
-        expr: |
-          rate(memory_syncs_total[15m]) == 0
-        for: 15m
-        labels:
-          severity: info
-          service: "akosha"
-        annotations:
-          summary: "No memory syncs in 15 minutes"
-          description: "Memory aggregation may be stalled"
-
-      # ========================================
-      # File Descriptor Alerts
-      # ========================================
-
-      # Warning: High file descriptor usage
       - alert: HighFDUsage
         expr: |
           system_file_descriptors_open > 8000
         for: 5m
         labels:
           severity: warning
+          service: mahavishnu
         annotations:
           summary: "File descriptor count high (>8000)"
           description: "{{ $value }} file descriptors open"
 
-      # Critical: Approaching FD limit
       - alert: ApproachingFDLimit
         expr: |
           system_file_descriptors_open > 9000
         for: 2m
         labels:
           severity: critical
+          service: mahavishnu
         annotations:
           summary: "File descriptor count critically high (>9000)"
           description: "{{ $value }} file descriptors open (risk of hitting limit)"
           runbook_url: "https://github.com/your-org/mahavishnu/wiki/investigate-fd-leak"
 
-  - name: agent_alerts
+  - name: worker_and_agent_alerts
     interval: 1m
     rules:
-      # ========================================
-      # Agent Task Alerts
-      # ========================================
-
-      # Warning: High agent task failure rate
       - alert: HighAgentTaskFailureRate
         expr: |
           (
-            rate(agent_tasks_total{status="error"}[10m])
+            sum(rate(agent_tasks_total{status=~"failed|timeout|cancelled|error"}[10m]))
             /
-            rate(agent_tasks_total[10m])
+            sum(rate(agent_tasks_total[10m]))
           ) > 0.1
         for: 10m
         labels:
           severity: warning
+          service: mahavishnu
         annotations:
           summary: "Agent task failure rate above 10%"
-          description: "{{ $labels.agent_type }}/{{ $labels.adapter }} failure rate: {{ $value | humanizePercentage }}"
+          description: "Agent task failure rate is {{ $value | humanizePercentage }}"
 
-      # Warning: Long-running agent tasks
       - alert: LongRunningAgentTask
         expr: |
-          agent_task_duration_seconds{quantile="0.99"} > 1800  # 30 minutes
+          histogram_quantile(
+            0.99,
+            sum by (le, agent_type, adapter) (rate(agent_task_duration_seconds_bucket[10m]))
+          ) > 1800
         for: 5m
         labels:
           severity: warning
+          service: mahavishnu
         annotations:
-          summary: "P99 agent task duration > 30 minutes"
-          description: "{{ $labels.agent_type }}/{{ $labels.adapter }} P99 duration: {{ $value }}s"
+          summary: "P99 agent task duration above 30 minutes"
+          description: "{{ $labels.agent_type }}/{{ $labels.adapter }} P99 duration is {{ $value }}s"
 
-      # Info: No agent tasks running
       - alert: NoAgentTasks
         expr: |
-          rate(agent_tasks_total[15m]) == 0
+          sum(rate(agent_tasks_total[15m])) == 0
         for: 15m
         labels:
           severity: info
+          service: mahavishnu
         annotations:
           summary: "No agent tasks in 15 minutes"
-          description: "Agent system may be idle or misconfigured"
-
-  - name: database_alerts
-    interval: 1m
-    rules:
-      # ========================================
-      # Database Connection Alerts
-      # ========================================
-
-      # Critical: Database connection failures
-      - alert: DatabaseConnectionFailures
-        expr: |
-          up{job="postgres",instance=".*:5432"} == 0
-        for: 1m
-        labels:
-          severity: critical
-          annotations:
-          summary: "PostgreSQL database unreachable"
-          description: "Cannot connect to PostgreSQL at {{ $labels.instance }}"
-          runbook_url: "https://github.com/your-org/mahavishnu/wiki/database-recovery"
-
-      # Warning: Many database connections
-      - alert: TooManyDatabaseConnections
-        expr: |
-          pg_stat_database_numbackends{datname="session_buddy"} > 80
-        for: 5m
-        labels:
-          severity: warning
-          annotations:
-          summary: "PostgreSQL connection count high"
-          description: "{{ $value }} connections (max: 100)"
-
-      # Critical: Database replication lag
-      - alert: DatabaseReplicationLag
-        expr: |
-          pg_stat_replication_lag_seconds > 30
-        for: 5m
-        labels:
-          severity: critical
-          annotations:
-          summary: "Database replication lag high"
-          description: "Replication lag is {{ $value }}s"
+          description: "Agent and worker execution may be idle or misconfigured"
 """
 
 # ============================================================================
@@ -518,26 +365,12 @@ route:
       receiver: 'slack-notifications'
       continue: true
 
-    # Database alerts to email only
-    - match:
-        - alertname: "DatabaseConnectionFailures"
-      receiver: 'email-notifications'
-
 inhibit_rules:
-  # Don't alert on high latency if there's also high error rate
+  # Inhibit warning alerts when critical alert for same service is firing
   - source_match:
-      - alertname: "HighP95Latency"
+      - severity: critical
     target_match:
-      - alertname: "HighToolErrorRate"
-    equal: ['severity', 'service']
-  # Inhibit high latency alert if error rate is also high
+      - severity: warning
+    equal: ['alertname', 'service']
 """
 
-# ============================================================================
-# Alert Templates
-# ============================================================================
-
-alert_templates = """
-templates:
-  - '/etc/alertmanager/templates/*.tmpl'
-"""

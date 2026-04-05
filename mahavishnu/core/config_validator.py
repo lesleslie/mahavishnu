@@ -83,6 +83,7 @@ class ConfigValidator:
     OPTIONAL_REPO_FIELDS = {
         "package": str,
         "nickname": str,
+        "nicknames": list,
         "role": str,
         "tags": list,
         "description": str,
@@ -279,6 +280,21 @@ class ConfigValidator:
                     suggestions=[f"Valid types: {', '.join(self.VALID_MCP_TYPES)}"],
                 )
             )
+
+        # Validate nickname aliases
+        nicknames = repo.get("nicknames")
+        if nicknames is not None:
+            if not isinstance(nicknames, list) or not all(
+                isinstance(nickname, str) and nickname.strip() for nickname in nicknames
+            ):
+                self.report.add_result(
+                    ValidationResult(
+                        valid=False,
+                        message="'nicknames' must be a list of non-empty strings",
+                        path=f"{path}:nicknames",
+                        suggestions=["Use YAML list syntax, e.g. nicknames: [primary, alias]"],
+                    )
+                )
 
         # Validate tags
         tags = repo.get("tags", [])

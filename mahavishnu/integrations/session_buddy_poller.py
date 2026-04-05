@@ -20,6 +20,13 @@ import logging
 from typing import Any
 
 import httpx
+from monitoring.metrics import (
+    bodai_bridge_freshness_seconds,
+    bodai_bridge_metric_ingest_total,
+    bodai_bridge_poll_duration_seconds,
+    bodai_bridge_poll_errors_total,
+    bodai_bridge_polls_total,
+)
 
 from ..core.config import MahavishnuSettings
 
@@ -81,22 +88,17 @@ class SessionBuddyPoller:
         self.config = config
         self.observability = observability_manager
         self.logger = logging.getLogger(__name__)
+        poll_config = config.session_buddy_polling
 
         # Polling configuration
-        self.enabled = getattr(config, "session_buddy_polling_enabled", False)
-        self.endpoint = getattr(
-            config, "session_buddy_polling_endpoint", "http://localhost:8678/mcp"
-        )
-        self.interval = getattr(config, "session_buddy_polling_interval_seconds", 30)
-        self.timeout = getattr(config, "session_buddy_polling_timeout_seconds", 10)
-        self.max_retries = getattr(config, "session_buddy_polling_max_retries", 3)
-        self.retry_delay = getattr(config, "session_buddy_polling_retry_delay_seconds", 5)
-        self.circuit_breaker_threshold = getattr(
-            config, "session_buddy_polling_circuit_breaker_threshold", 5
-        )
-        self.metrics_to_collect = getattr(
-            config, "session_buddy_polling_metrics_to_collect", self.MCP_TOOLS
-        )
+        self.enabled = poll_config.enabled
+        self.endpoint = poll_config.endpoint.rstrip("/")
+        self.interval = poll_config.interval_seconds
+        self.timeout = poll_config.timeout_seconds
+        self.max_retries = poll_config.max_retries
+        self.retry_delay = poll_config.retry_delay_seconds
+        self.circuit_breaker_threshold = poll_config.circuit_breaker_threshold
+        self.metrics_to_collect = poll_config.metrics_to_collect or self.MCP_TOOLS
 
         # Polling state
         self._running = False
@@ -228,8 +230,9 @@ class SessionBuddyPoller:
         if not self._http_client:
             raise RuntimeError("Poller is not started (HTTP client not initialized)")
 
+        poll_start = datetime.now(UTC)
         self._poll_cycles += 1
-        self._last_poll_time = datetime.now(UTC)
+        self._last_poll_time = poll_start
 
         self.logger.debug(f"Starting poll cycle #{self._poll_cycles}")
 
@@ -255,6 +258,10 @@ class SessionBuddyPoller:
 
                 # Record metrics
                 await self._record_metrics(tool_name, otel_metrics)
+                bodai_bridge_metric_ingest_total.labels(
+                    source_service="session_buddy",
+                    source_tool=tool_name,
+                ).inc(len(otel_metrics))
 
                 results["metrics_collected"].append(tool_name)
 
@@ -270,6 +277,19 @@ class SessionBuddyPoller:
         # Check circuit breaker threshold
         if self._consecutive_failures >= self.circuit_breaker_threshold:
             await self._open_circuit_breaker()
+
+        duration_seconds = (datetime.now(UTC) - poll_start).total_seconds()
+        poll_status = "error" if results["errors"] else "success"
+        bodai_bridge_polls_total.labels(
+            source_service="session_buddy",
+            status=poll_status,
+        ).inc()
+        bodai_bridge_poll_duration_seconds.labels(
+            source_service="session_buddy",
+        ).observe(duration_seconds)
+        bodai_bridge_freshness_seconds.labels(
+            source_service="session_buddy",
+        ).set(0.0 if results["metrics_collected"] else duration_seconds)
 
         self.logger.debug(
             f"Poll cycle #{self._poll_cycles} completed: "
@@ -568,6 +588,10 @@ class SessionBuddyPoller:
         self._errors += 1
         self._consecutive_failures += 1
         self._last_error = error_message
+        bodai_bridge_poll_errors_total.labels(
+            source_service="session_buddy",
+            error_type="poll_error",
+        ).inc()
 
         # Record error metric
         if self.observability:

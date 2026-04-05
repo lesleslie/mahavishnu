@@ -1,0 +1,40 @@
+- targets:
+  - host.docker.internal:8680
+  labels:
+    service: mahavishnu
+    repo: mahavishnu
+    role: orchestrator
+    verification_status: verified
+    metrics_contract: prometheus_text
+- targets:
+  - host.docker.internal:8678
+  labels:
+    service: session-buddy
+    repo: session-buddy
+    role: manager
+    verification_status: verified
+    metrics_contract: prometheus_text
+- targets:
+  - host.docker.internal:8682
+  labels:
+    service: akosha
+    repo: akosha
+    role: seer
+    verification_status: verified
+    metrics_contract: prometheus_text
+- targets:
+  - host.docker.internal:8683
+  labels:
+    service: dhara
+    repo: dhara
+    role: curator
+    verification_status: verified
+    metrics_contract: prometheus_text
+- targets:
+  - host.docker.internal:8676
+  labels:
+    service: crackerjack
+    repo: crackerjack
+    role: inspector
+    verification_status: verified
+    metrics_contract: prometheus_text

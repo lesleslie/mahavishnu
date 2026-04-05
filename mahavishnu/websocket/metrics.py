@@ -116,6 +116,24 @@ class WebSocketMetrics:
         self._subscription_gauge: Gauge | None = None
         self._error_counters: dict[str, Counter] = {}
 
+    def _get_existing_collector(self, name: str):
+        """Get an existing registered collector by metric name.
+
+        Args:
+            name: The metric name to search for.
+
+        Returns:
+            The collector object, or None if not found.
+        """
+        from prometheus_client import REGISTRY
+
+        for collector in REGISTRY._names_to_collectors.values():
+            if hasattr(collector, "_name") and collector._name == name:
+                return collector
+            if hasattr(collector, "_names") and name in collector._names:
+                return collector
+        return None
+
     def _initialize_metrics(self) -> None:
         """Initialize all Prometheus metrics (called once).
 
@@ -132,14 +150,8 @@ class WebSocketMetrics:
                 "Total messages processed by WebSocket server",
                 ["server", "message_type"],
             )
-        except ValueError as e:
-            # Metric already registered, get existing one
-            from prometheus_client import REGISTRY
-
-            for collector in REGISTRY._collector_to_names.values():
-                if "websocket_messages_total" in collector:
-                    self._message_counter = collector
-                    break
+        except ValueError:
+            self._message_counter = self._get_existing_collector("websocket_messages_total")
             logger.debug(f"Reusing existing message counter: {self.server_name}")
 
         # Create connection gauge
@@ -150,12 +162,7 @@ class WebSocketMetrics:
                 ["server"],
             )
         except ValueError:
-            from prometheus_client import REGISTRY
-
-            for collector in REGISTRY._collector_to_names.values():
-                if "websocket_connections" in collector:
-                    self._connection_gauge = collector
-                    break
+            self._connection_gauge = self._get_existing_collector("websocket_connections")
             logger.debug(f"Reusing existing connection gauge: {self.server_name}")
 
         # Create subscription gauge
@@ -164,12 +171,7 @@ class WebSocketMetrics:
                 "websocket_subscriptions", "Current number of active room subscriptions", ["server"]
             )
         except ValueError:
-            from prometheus_client import REGISTRY
-
-            for collector in REGISTRY._collector_to_names.values():
-                if "websocket_subscriptions" in collector:
-                    self._subscription_gauge = collector
-                    break
+            self._subscription_gauge = self._get_existing_collector("websocket_subscriptions")
             logger.debug(f"Reusing existing subscription gauge: {self.server_name}")
 
         self._metrics_initialized = True

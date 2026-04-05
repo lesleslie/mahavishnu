@@ -1,0 +1,55 @@
+# Inventory of Bodai ecosystem metrics endpoints.
+# This file is the source of truth for local verification and Prometheus target promotion.
+# Separate exporter ports are deprecated for HTTP services and are listed here only
+# as temporary migration probes until each service exposes /metrics on its primary port.
+services:
+  - name: mahavishnu
+    repo: mahavishnu
+    role: orchestrator
+    scrape_target: host.docker.internal:8680
+    probe_urls:
+      - http://localhost:8680/metrics
+    metrics_path: /metrics
+    verification_status: verified
+    required: true
+    notes: Main Mahavishnu HTTP surface exposes Prometheus metrics.
+
+  - name: session-buddy
+    repo: session-buddy
+    role: manager
+    probe_urls:
+      - http://localhost:8678/metrics
+    metrics_path: /metrics
+    verification_status: verified
+    required: false
+    notes: Canonical metrics are exposed on the primary Session-Buddy HTTP/MCP port.
+
+  - name: akosha
+    repo: akosha
+    role: seer
+    probe_urls:
+      - http://localhost:8682/metrics
+    metrics_path: /metrics
+    verification_status: verified
+    required: false
+    notes: Canonical metrics are exposed on the primary Akosha HTTP/MCP port 8682.
+
+  - name: dhara
+    repo: dhara
+    role: curator
+    probe_urls:
+      - http://localhost:8683/metrics
+    metrics_path: /metrics
+    verification_status: verified
+    required: false
+    notes: Canonical metrics are exposed on the primary Dhara HTTP/MCP port.
+
+  - name: crackerjack
+    repo: crackerjack
+    role: inspector
+    probe_urls:
+      - http://localhost:8676/metrics
+    metrics_path: /metrics
+    verification_status: verified
+    required: false
+    notes: Canonical metrics are exposed on the primary Crackerjack HTTP/MCP port.

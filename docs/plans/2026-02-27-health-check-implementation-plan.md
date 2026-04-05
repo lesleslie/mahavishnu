@@ -1,5 +1,8 @@
 # Health Check System Implementation Plan
 
+> **Update (2026-04-02):** Keep this implementation plan, but apply dependency criticality from `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`.
+> Akosha should be configured as optional for core startup in the consolidated storage architecture.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Implement lightweight health check system with `/health` and `/ready` endpoints plus dependency waiting logic.
@@ -386,7 +389,7 @@ class HealthConfig(BaseModel):
               host: "localhost"
               port: 8682
               required: true
-            druva:
+            dhara:
               host: "localhost"
               port: 8683
               required: false
@@ -1456,7 +1459,7 @@ health:
       port: 8682
       required: true
       timeout_seconds: 30
-    druva:
+    dhara:
       host: "${DHRUVA_HOST:-localhost}"
       port: 8683
       required: false
@@ -1478,7 +1481,7 @@ chore(config): add health check dependencies
 Configure health check for Bodai ecosystem services:
 - session_buddy (required): port 8678
 - akosha (required): port 8682
-- druva (optional): port 8683
+- dhara (optional): port 8683
 - crackerjack (optional): port 8676
 
 Uses environment variable substitution for cloud deployment.

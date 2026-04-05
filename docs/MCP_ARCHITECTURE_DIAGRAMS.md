@@ -66,7 +66,7 @@
 │  │           MahavishnuApp Instance                     │     │
 │  │  - Configuration (settings/mahavishnu.yaml)          │     │
 │  │  - Adapters (agno, worker, prefect)                │     │
-│  │  - Storage (druva, oneiric, akosha)               │     │
+│  │  - Storage (dhara, oneiric, akosha)               │     │
 │  └─────────────────────────────────────────────────────┘     │
 │                                                                │
 └──────────────────────────────────────────────────────────────┘

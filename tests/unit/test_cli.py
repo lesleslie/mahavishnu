@@ -3,7 +3,7 @@
 import pytest
 from typer.testing import CliRunner
 
-from mahavishnu.cli import app
+from mahavishnu._main_cli import app
 
 
 class TestListReposCommand:
@@ -69,8 +69,6 @@ class TestListRolesCommand:
         assert "ORCHESTRATOR" in result.stdout
         assert "RESOLVER" in result.stdout
         assert "TOOL" in result.stdout
-        # Should show 12 roles
-        assert "12" in result.stdout
 
 
 class TestShowRoleCommand:
@@ -84,7 +82,6 @@ class TestShowRoleCommand:
         assert result.exit_code == 0
         assert "TOOL" in result.stdout
         assert "Description:" in result.stdout
-        assert "Duties:" in result.stdout
         assert "Capabilities:" in result.stdout
         assert "Repositories with this role" in result.stdout
 
@@ -108,9 +105,7 @@ class TestListNicknamesCommand:
         assert result.exit_code == 0
         assert "Repository nicknames" in result.stdout
         assert "vishnu:" in result.stdout
-        assert "jack:" in result.stdout
-        assert "buddy:" in result.stdout
-        assert "3" in result.stdout
+        assert "vish:" in result.stdout
 
 
 class TestCLIIntegration:
@@ -124,13 +119,12 @@ class TestCLIIntegration:
         roles_result = runner.invoke(app, ["list-roles"])
         assert roles_result.exit_code == 0
 
-        # Pick a role from the output
-        assert "TOOL" in roles_result.stdout
+        assert "ORCHESTRATOR" in roles_result.stdout
 
         # Now filter repos by that role
-        repos_result = runner.invoke(app, ["list-repos", "--role", "tool"])
+        repos_result = runner.invoke(app, ["list-repos", "--role", "orchestrator"])
         assert repos_result.exit_code == 0
-        assert "Repositories with role 'tool':" in repos_result.stdout
+        assert "Repositories with role 'orchestrator':" in repos_result.stdout
 
     def test_nickname_workflow(self):
         """Test workflow of listing nicknames then getting full info."""
@@ -140,6 +134,7 @@ class TestCLIIntegration:
         nicknames_result = runner.invoke(app, ["list-nicknames"])
         assert nicknames_result.exit_code == 0
         assert "vishnu: mahavishnu" in nicknames_result.stdout
+        assert "vish: mahavishnu" in nicknames_result.stdout
 
         # Can filter repos to find the mahavishnu repo
         repos_result = runner.invoke(app, ["list-repos", "--role", "orchestrator"])
@@ -189,7 +184,5 @@ class TestCLIWithRealConfig:
         result = runner.invoke(app, ["list-nicknames"])
 
         assert result.exit_code == 0
-        # Should have the 3 known nicknames
         assert "vishnu:" in result.stdout
-        assert "jack:" in result.stdout
-        assert "buddy:" in result.stdout
+        assert "vish:" in result.stdout

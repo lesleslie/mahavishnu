@@ -128,7 +128,7 @@ curl -s https://staging.mahavishnu.example.com/health | jq
 curl -s https://mahavishnu.example.com/health | jq
 
 # Check Prometheus metrics
-curl -s https://mahavishnu.example.com:9091/metrics | head -20
+curl -s https://mahavishnu.example.com/metrics | head -20
 
 # Verify task operations work
 curl -X POST https://mahavishnu.example.com/api/tasks \

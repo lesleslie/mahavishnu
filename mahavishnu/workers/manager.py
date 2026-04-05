@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from monitoring.metrics import agent_task_duration_seconds, agent_tasks_in_progress, agent_tasks_total
+
 from ..terminal.manager import TerminalManager
 from .base import BaseWorker, WorkerResult, WorkerStatus
 from .container import ContainerWorker
@@ -72,7 +74,7 @@ class WorkerManager:
         """Spawn multiple workers of specified type.
 
         Args:
-            worker_type: Type of worker ("terminal-qwen", "terminal-claude", "container")
+            worker_type: Type of worker ("terminal-qwen", "terminal-claude", "terminal-codex", "container")
             count: Number of workers to spawn
             task_spec: Optional task specification for immediate execution
 
@@ -236,10 +238,23 @@ class WorkerManager:
         if not worker:
             raise ValueError(f"Worker not found: {worker_id}")
 
+        worker_type = getattr(worker, "worker_type", "unknown")
+        adapter = "worker_manager"
+
         async with self._semaphore:
+            agent_tasks_in_progress.labels(agent_type=worker_type, adapter=adapter).inc()
             try:
                 logger.info(f"Executing task on worker {worker_id}")
                 result = await worker.execute(task)
+                agent_tasks_total.labels(
+                    agent_type=worker_type,
+                    adapter=adapter,
+                    status=result.status.value,
+                ).inc()
+                agent_task_duration_seconds.labels(
+                    agent_type=worker_type,
+                    adapter=adapter,
+                ).observe(result.duration_seconds)
                 logger.info(
                     f"Worker {worker_id} completed: {result.status.value} "
                     f"({result.duration_seconds:.2f}s)"
@@ -247,7 +262,7 @@ class WorkerManager:
                 return result
             except Exception as e:
                 logger.error(f"Worker {worker_id} failed: {e}")
-                return WorkerResult(
+                failure_result = WorkerResult(
                     worker_id=worker_id,
                     status=WorkerStatus.FAILED,
                     output=None,
@@ -256,6 +271,18 @@ class WorkerManager:
                     duration_seconds=0,
                     metadata={"exception": type(e).__name__},
                 )
+                agent_tasks_total.labels(
+                    agent_type=worker_type,
+                    adapter=adapter,
+                    status=failure_result.status.value,
+                ).inc()
+                agent_task_duration_seconds.labels(
+                    agent_type=worker_type,
+                    adapter=adapter,
+                ).observe(failure_result.duration_seconds)
+                return failure_result
+            finally:
+                agent_tasks_in_progress.labels(agent_type=worker_type, adapter=adapter).dec()
 
     async def execute_batch(
         self,

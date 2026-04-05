@@ -21,6 +21,9 @@ from .team_cli import (
 )
 
 __all__ = [
+    "app",
+    "MahavishnuApp",
+    "MultiAuthHandler",
     "help_group",
     "show_general_help",
     "show_command_help",
@@ -33,3 +36,20 @@ __all__ = [
     "list_skills",
     "list_teams",
 ]
+
+
+def __getattr__(name: str):
+    """Lazily expose the main CLI app and related public objects."""
+    if name == "app":
+        from .._main_cli import app
+
+        return app
+    if name == "MahavishnuApp":
+        from ..core.app import MahavishnuApp
+
+        return MahavishnuApp
+    if name == "MultiAuthHandler":
+        from ..core.subscription_auth import MultiAuthHandler
+
+        return MultiAuthHandler
+    raise AttributeError(name)

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ...workers.manager import WorkerManager
+from ...workers.registry import resolve_worker_type
 from ..adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
 
 
@@ -85,6 +86,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             supports_multi_agent=False,
         )
 
+
     async def initialize(self) -> None:
         """Initialize the worker adapter."""
         return None
@@ -128,11 +130,12 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         start_time = time.time()
 
         # Extract task parameters
-        worker_type = task.get("worker_type", "terminal-qwen")
+        requested_worker_type = task.get("worker_type", "terminal-qwen")
         count = task.get("count", len(repos))
         prompt = task.get("prompt", "")
         timeout = task.get("timeout", 300)
         task_type = task.get("task_type", "general")
+        worker_type = resolve_worker_type(requested_worker_type, task_type=task_type, prompt=prompt)
 
         # Validate parameters
         if not prompt:
@@ -193,6 +196,8 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         return {
             "status": "completed" if failed == 0 else "partial",
             "worker_count": len(worker_ids),
+            "requested_worker_type": requested_worker_type,
+            "resolved_worker_type": worker_type,
             "successful": successful,
             "failed": failed,
             "total_duration": total_duration,

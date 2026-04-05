@@ -9,7 +9,7 @@ services:
     container_name: otel-collector
     command: --config=/etc/otel-collector-config.yaml
     volumes:
-      - ./monitoring/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     ports:
       - "4317:4317"   # OTLP gRPC receiver
       - "4318:4318"   # OTLP HTTP receiver
@@ -37,7 +37,8 @@ services:
       - '--web.enable-lifecycle'
       - '--web.enable-admin-api'
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./file_sd:/etc/prometheus/file_sd:ro
       - prometheus-data:/prometheus
     ports:
       - "9090:9090"
@@ -59,8 +60,8 @@ services:
       - GF_INSTALL_PLUGINS=https://grafana.com/grafana/opentelemetry-traces
     volumes:
       - grafana-storage:/var/lib/grafana
-      - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
     ports:
       - "3000:3000"
     networks:
@@ -77,7 +78,7 @@ services:
     container_name: loki
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
-      - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
       - loki-data:/loki
     ports:
       - "3100:3100"   # HTTP API
@@ -93,7 +94,7 @@ services:
     container_name: promtail
     command: -config.file=/etc/promtail/promtail-config.yml
     volumes:
-      - ./monitoring/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - ./promtail-config.yml:/etc/promtail/promtail-config.yml:ro
       - /var/log:/var/log:ro
       - ./logs:/var/log/mcp:ro
     networks:

@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import asyncio
 
+from monitoring.metrics import expose_metrics
 from mahavishnu.core.health_schemas import (
     HealthStatus,
     HealthCheckResult,
@@ -141,6 +142,27 @@ class TestHealthChecker:
             assert result.status == HealthStatus.UNHEALTHY
             assert "Timeout" in result.error
 
+    @pytest.mark.asyncio
+    async def test_check_records_dependency_metrics(self, checker):
+        """Health checks should update shared dependency metrics."""
+        with patch.object(
+            checker._http_action,
+            "execute",
+            new_callable=AsyncMock,
+        ) as mock_execute:
+            mock_execute.return_value = {
+                "ok": True,
+                "status_code": 200,
+                "json": {"status": "ok"},
+            }
+
+            await checker.check("http://localhost:8678/health")
+
+        metrics_text = expose_metrics().decode()
+        assert "mahavishnu_dependency_requests_total" in metrics_text
+        assert 'dependency="localhost:8678"' in metrics_text
+        assert 'status="ok"' in metrics_text
+
 
 class TestDependencyWaiter:
     """Tests for DependencyWaiter class."""
@@ -224,7 +246,7 @@ class TestDependencyWaiter:
     async def test_wait_for_optional_skipped(self, waiter):
         """Test that optional dependencies can be skipped."""
         dependencies = {
-            "druva": DependencyConfig(
+            "dhara": DependencyConfig(
                 host="localhost",
                 port=8683,
                 required=False,
@@ -234,7 +256,7 @@ class TestDependencyWaiter:
 
         # Mock the checker to return unhealthy
         mock_result = HealthCheckResult(
-            service_name="druva",
+            service_name="dhara",
             status=HealthStatus.UNHEALTHY,
             error="Connection refused",
         )
@@ -247,9 +269,9 @@ class TestDependencyWaiter:
         ):
             result = await waiter.wait_for_all(dependencies)
 
-            # Should succeed because druva is optional
+            # Should succeed because dhara is optional
             assert result.success
-            assert "druva" in result.skipped_optional
+            assert "dhara" in result.skipped_optional
 
 
 class TestHealthEndpoint:

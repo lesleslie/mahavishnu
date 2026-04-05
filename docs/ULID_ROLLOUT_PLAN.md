@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-This plan orchestrates the production rollout of ULID-based identifiers across the entire ecosystem (Druva, Oneiric, Akosha, Crackerjack, Session-Buddy, Mahavishnu). The rollout uses zero-downtime expand-contract pattern with comprehensive rollback procedures.
+This plan orchestrates the production rollout of ULID-based identifiers across the entire ecosystem (Dhara, Oneiric, Akosha, Crackerjack, Session-Buddy, Mahavishnu). The rollout uses zero-downtime expand-contract pattern with comprehensive rollback procedures.
 
 **Rollout Scope:**
 - 5 ecosystem systems
@@ -51,8 +51,8 @@ This plan orchestrates the production rollout of ULID-based identifiers across t
 **Tasks:**
 1. Run full test suite on all systems
    ```bash
-   # Druva
-   cd /Users/les/Projects/druva && pytest tests/ -v
+   # Dhara
+   cd /Users/les/Projects/dhara && pytest tests/ -v
 
    # Oneiric
    cd /Users/les/Projects/oneiric && pytest tests/ -v
@@ -250,7 +250,7 @@ mahavishnu mcp restart
 3. **Application Code Update:**
    ```python
    # Update job creation in Crackerjack
-   from druva import generate
+   from dhara import generate
 
    def create_job(test_file: str) -> str:
        job_id = generate()  # Generate ULID
@@ -312,7 +312,7 @@ git revert v1.0.0-ulid-migration
 3. **Application Code Update:**
    ```python
    # Update session creation in Session-Buddy
-   from druva import generate
+   from dhara import generate
 
    def create_session(project_name: str) -> str:
        session_ulid = generate()
@@ -361,7 +361,7 @@ git revert v1.0.0-ulid-migration
 1. **EXPAND Phase:** Update entity models
    ```python
    # Update GraphEntity to use ULID
-   from druva import generate
+   from dhara import generate
 
    class GraphEntity:
        def __init__(self, entity_type: str, properties: dict):
@@ -448,7 +448,7 @@ from oneiric.core.ulid_resolution import (
     get_cross_system_trace,
     export_registry,
 )
-from druva import generate
+from dhara import generate
 
 # Register test references
 ulid1 = generate()
@@ -507,8 +507,8 @@ pytest tests/integration/test_ulid_cross_system_integration.py -v -m integration
 
 **Commands:**
 ```bash
-# Druva benchmarks
-cd /Users/les/Projects/druva
+# Dhara benchmarks
+cd /Users/les/Projects/dhara
 python benches/test_ulid_performance.py
 
 # Oneiric benchmarks

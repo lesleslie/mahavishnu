@@ -320,7 +320,7 @@ Mahavishnu WebSocket
 │   ├── Pub/Sub messaging
 │   └── Session storage
 ├── Prometheus (metrics)
-│   └── Scrapes :9090/metrics
+│   └── Scrapes :8680/metrics
 └── Grafana (visualization)
     └── Queries Prometheus
 ```
@@ -611,7 +611,7 @@ server {
         deny all;
 
         # Prometheus scraping
-        proxy_pass http://127.0.0.1:9090/metrics;
+        proxy_pass http://127.0.0.1:8680/metrics;
         access_log off;
     }
 
@@ -860,7 +860,7 @@ scrape_configs:
   - job_name: 'mahavishnu_websocket'
     static_configs:
       - targets:
-          - localhost:9090
+          - localhost:8680
         labels:
           service: 'mahavishnu-websocket'
           env: 'production'
@@ -872,7 +872,7 @@ scrape_configs:
           - localhost:9091  # Crackerjack
           - localhost:9096  # Fastblocks
           - localhost:9097  # Excalidraw
-          - localhost:9098  # Druva
+          - localhost:9098  # Dhara
         labels:
           env: 'production'
 
@@ -904,7 +904,7 @@ The following metrics are exposed on port 9090:
 
 ```bash
 # Scrape metrics
-curl http://localhost:9090/metrics
+curl http://localhost:8680/metrics
 
 # Expected output
 # HELP websocket_connections_total Total number of WebSocket connections established
@@ -1223,10 +1223,10 @@ wscat -c "wss://mahavishnu.example.com" \
 
 ```bash
 # Monitor connections
-curl http://localhost:9090/metrics | grep websocket_connections_active
+curl http://localhost:8680/metrics | grep websocket_connections_active
 
 # Check for connection leaks
-watch -n 5 'curl -s http://localhost:9090/metrics | grep connections_active'
+watch -n 5 'curl -s http://localhost:8680/metrics | grep connections_active'
 
 # Restart server (graceful)
 systemctl reload mahavishnu-websocket
@@ -1237,11 +1237,11 @@ systemctl reload mahavishnu-websocket
 **Problem: Prometheus cannot scrape metrics**
 
 ```bash
-# Check metrics port is listening
-sudo netstat -tlnp | grep 9090
+# Check metrics endpoint is exposed on the main HTTP port
+sudo netstat -tlnp | grep 8680
 
 # Test metrics endpoint
-curl http://localhost:9090/metrics
+curl http://localhost:8680/metrics
 
 # Check Prometheus logs
 sudo journalctl -u prometheus -f
@@ -1354,7 +1354,7 @@ docker run -d \
 curl -f http://localhost:8686/health || exit 1
 
 # Metrics endpoint
-curl -f http://localhost:9090/metrics || exit 1
+curl -f http://localhost:8680/metrics || exit 1
 
 # WebSocket connection test
 wscat -c "ws://localhost:8686" --connect-timeout 5
@@ -1463,7 +1463,7 @@ Create `/etc/logrotate.d/mahavishnu`:
 | `sudo systemctl status mahavishnu-websocket` | Check status |
 | `journalctl -u mahavishnu-websocket -f` | View logs |
 | `curl http://localhost:8686/health` | Health check |
-| `curl http://localhost:9090/metrics` | View metrics |
+| `curl http://localhost:8680/metrics` | View metrics |
 | `wscat -c "ws://localhost:8686"` | Test WebSocket |
 
 ---

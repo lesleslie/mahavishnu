@@ -26,6 +26,9 @@ def test_default_config_values():
     assert config.observability.tracing_enabled is True
     assert config.observability.otlp_endpoint == "http://localhost:4317"
     assert config.auth.enabled is False
+    # Startup-critical dependency defaults
+    assert config.health.dependencies["session_buddy"].required is True
+    assert config.health.dependencies["akosha"].required is False
     # SECURITY: Empty connection string by default, not default credentials
     assert config.otel_storage.connection_string == ""
 

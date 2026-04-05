@@ -22,7 +22,14 @@ except ImportError:
     PrefectAdapter = None  # type: ignore[misc,assignment]
     _prefect_available = False
 
-from mahavishnu.adapters.ai.agno_adapter import AgnoAdapter
+# Import AgnoAdapter from engines module (canonical implementation using Agno SDK)
+try:
+    from mahavishnu.engines.agno_adapter import AgnoAdapter
+
+    _agno_available = True
+except ImportError:
+    AgnoAdapter = None  # type: ignore[misc,assignment]
+    _agno_available = False
 from mahavishnu.adapters.ai.pydantic_ai_adapter import (
     AgentResult,
     AgentStatus,

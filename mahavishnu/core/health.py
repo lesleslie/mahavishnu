@@ -14,6 +14,11 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import httpx
+from monitoring.metrics import (
+    mahavishnu_dependency_health_status,
+    mahavishnu_dependency_request_duration_seconds,
+    mahavishnu_dependency_requests_total,
+)
 from oneiric.actions.http import HttpFetchAction, HttpActionSettings
 from oneiric.adapters.httpx_base import HTTPXClientMixin
 from oneiric.core.logging import get_logger
@@ -137,13 +142,15 @@ class HealthChecker(HTTPXClientMixin):
             latency_ms = (time.time() - start_time) * 1000
 
             if not result.get("ok", False):
-                return HealthCheckResult(
+                health_result = HealthCheckResult(
                     service_name=service_name,
                     status=HealthStatus.UNHEALTHY,
                     latency_ms=latency_ms,
                     error=f"HTTP {result.get('status_code', 'unknown')}",
                     response_data=result,
                 )
+                self._record_metrics(health_result)
+                return health_result
 
             # Parse response body
             json_data = result.get("json") or {}
@@ -157,12 +164,14 @@ class HealthChecker(HTTPXClientMixin):
             else:
                 status = HealthStatus.UNHEALTHY
 
-            return HealthCheckResult(
+            health_result = HealthCheckResult(
                 service_name=service_name,
                 status=status,
                 latency_ms=latency_ms,
                 response_data=json_data,
             )
+            self._record_metrics(health_result)
+            return health_result
 
         except asyncio.TimeoutError:
             latency_ms = (time.time() - start_time) * 1000
@@ -171,12 +180,14 @@ class HealthChecker(HTTPXClientMixin):
                 url=url,
                 timeout=timeout,
             )
-            return HealthCheckResult(
+            health_result = HealthCheckResult(
                 service_name=service_name,
                 status=HealthStatus.UNHEALTHY,
                 latency_ms=latency_ms,
                 error=f"Timeout after {timeout}s",
             )
+            self._record_metrics(health_result)
+            return health_result
 
         except httpx.ConnectError as e:
             latency_ms = (time.time() - start_time) * 1000
@@ -185,12 +196,14 @@ class HealthChecker(HTTPXClientMixin):
                 url=url,
                 error=str(e),
             )
-            return HealthCheckResult(
+            health_result = HealthCheckResult(
                 service_name=service_name,
                 status=HealthStatus.UNHEALTHY,
                 latency_ms=latency_ms,
                 error="Connection refused",
             )
+            self._record_metrics(health_result)
+            return health_result
 
         except Exception as e:
             latency_ms = (time.time() - start_time) * 1000
@@ -200,12 +213,37 @@ class HealthChecker(HTTPXClientMixin):
                 error=str(e),
                 exc_info=True,
             )
-            return HealthCheckResult(
+            health_result = HealthCheckResult(
                 service_name=service_name,
                 status=HealthStatus.UNHEALTHY,
                 latency_ms=latency_ms,
                 error=str(e),
             )
+            self._record_metrics(health_result)
+            return health_result
+
+    def _record_metrics(self, result: HealthCheckResult) -> None:
+        """Record Prometheus metrics for dependency health checks."""
+        status = result.status.value
+        latency_seconds = (result.latency_ms or 0.0) / 1000.0
+        if result.status == HealthStatus.OK:
+            health_value = 1.0
+        elif result.status == HealthStatus.DEGRADED:
+            health_value = 0.5
+        else:
+            health_value = 0.0
+
+        mahavishnu_dependency_requests_total.labels(
+            dependency=result.service_name,
+            status=status,
+        ).inc()
+        mahavishnu_dependency_request_duration_seconds.labels(
+            dependency=result.service_name,
+            status=status,
+        ).observe(latency_seconds)
+        mahavishnu_dependency_health_status.labels(
+            dependency=result.service_name,
+        ).set(health_value)
 
     def _extract_service_name(self, url: str) -> str:
         """Extract service name from URL for logging."""

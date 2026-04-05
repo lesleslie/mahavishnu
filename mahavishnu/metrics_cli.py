@@ -5,8 +5,16 @@ Provides commands for collecting and reporting on test coverage
 and other quality metrics across the Mahavishnu ecosystem.
 """
 
+import asyncio
+from collections import defaultdict
+from datetime import UTC, datetime, timedelta
+import json
+import os
 from pathlib import Path
+import re
 import sys
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 
 from rich.console import Console
 from rich.table import Table
@@ -15,6 +23,181 @@ import typer
 # Create metrics app
 metrics_app = typer.Typer(help="Metrics collection and reporting for the Mahavishnu ecosystem")
 console = Console()
+
+
+def _resolve_postgres_dsn(explicit_dsn: str | None) -> str | None:
+    """Resolve PostgreSQL DSN for routing metrics queries.
+
+    Precedence:
+    1. --dsn option
+    2. MAHAVISHNU_PERSISTENCE__POSTGRES_URL
+    3. MAHAVISHNU_POSTGRES_DSN
+    4. settings/mahavishnu.yaml -> persistence.postgres_url
+    """
+    if explicit_dsn:
+        return explicit_dsn
+
+    env_dsn = os.getenv("MAHAVISHNU_PERSISTENCE__POSTGRES_URL") or os.getenv(
+        "MAHAVISHNU_POSTGRES_DSN"
+    )
+    if env_dsn:
+        return env_dsn
+
+    settings_path = Path("settings/mahavishnu.yaml")
+    if not settings_path.exists():
+        return None
+
+    try:
+        import yaml
+
+        with settings_path.open() as f:
+            data = yaml.safe_load(f) or {}
+        persistence = data.get("persistence", {}) if isinstance(data, dict) else {}
+        dsn = persistence.get("postgres_url")
+        if isinstance(dsn, str) and dsn.strip():
+            return dsn.strip()
+    except Exception:
+        return None
+
+    return None
+
+
+async def _load_engine_metrics_from_postgres(
+    dsn: str,
+    days: int | None,
+) -> dict[str, dict[str, int]]:
+    """Load engine metrics from PostgreSQL metrics schema."""
+    try:
+        import asyncpg
+    except ImportError as exc:
+        raise RuntimeError("asyncpg is not installed; cannot query PostgreSQL source") from exc
+
+    cutoff: datetime | None = None
+    if days is not None:
+        cutoff = datetime.now(UTC) - timedelta(days=days)
+
+    conn = await asyncpg.connect(dsn)
+    try:
+        selected_rows = await conn.fetch(
+            """
+            SELECT selected_adapter AS adapter, COUNT(*)::BIGINT AS selected_count
+            FROM metrics.routing_decisions
+            WHERE ($1::timestamptz IS NULL OR timestamp >= $1)
+            GROUP BY selected_adapter
+            """,
+            cutoff,
+        )
+
+        execution_rows = await conn.fetch(
+            """
+            SELECT
+              adapter,
+              COUNT(*)::BIGINT AS execution_count,
+              COUNT(*) FILTER (
+                WHERE status IN ('success', 'completed')
+              )::BIGINT AS success_count,
+              COUNT(*) FILTER (
+                WHERE status IN ('failure', 'failed', 'timeout', 'cancelled')
+              )::BIGINT AS failure_count
+            FROM metrics.execution_records
+            WHERE ($1::timestamptz IS NULL OR created_at >= $1)
+            GROUP BY adapter
+            """,
+            cutoff,
+        )
+    finally:
+        await conn.close()
+
+    metrics: dict[str, dict[str, int]] = {
+        "prefect": {"selected": 0, "executions": 0, "success": 0, "failure": 0},
+        "agno": {"selected": 0, "executions": 0, "success": 0, "failure": 0},
+        "llamaindex": {"selected": 0, "executions": 0, "success": 0, "failure": 0},
+    }
+
+    for row in selected_rows:
+        adapter = row["adapter"]
+        if adapter not in metrics:
+            metrics[adapter] = {"selected": 0, "executions": 0, "success": 0, "failure": 0}
+        metrics[adapter]["selected"] = int(row["selected_count"])
+
+    for row in execution_rows:
+        adapter = row["adapter"]
+        if adapter not in metrics:
+            metrics[adapter] = {"selected": 0, "executions": 0, "success": 0, "failure": 0}
+        metrics[adapter]["executions"] = int(row["execution_count"])
+        metrics[adapter]["success"] = int(row["success_count"])
+        metrics[adapter]["failure"] = int(row["failure_count"])
+
+    return metrics
+
+
+def _load_engine_metrics_from_prometheus(
+    metrics_url: str,
+) -> dict[str, dict[str, int]]:
+    """Load engine metrics by parsing Prometheus exposition text."""
+    try:
+        with urllib_request.urlopen(metrics_url, timeout=2.0) as response:
+            body = response.read().decode("utf-8", errors="replace")
+    except urllib_error.URLError as exc:
+        raise RuntimeError(f"failed to fetch Prometheus metrics from {metrics_url}: {exc}") from exc
+
+    metrics: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"selected": 0, "executions": 0, "success": 0, "failure": 0}
+    )
+
+    line_re = re.compile(r"^([a-zA-Z_:][a-zA-Z0-9_:]*)\{([^}]*)\}\s+([0-9eE+.\-]+)$")
+
+    def parse_labels(raw: str) -> dict[str, str]:
+        labels: dict[str, str] = {}
+        for chunk in raw.split(","):
+            if "=" not in chunk:
+                continue
+            key, value = chunk.split("=", 1)
+            labels[key.strip()] = value.strip().strip('"')
+        return labels
+
+    for line in body.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        match = line_re.match(line)
+        if not match:
+            continue
+
+        metric_name, raw_labels, raw_value = match.groups()
+        labels = parse_labels(raw_labels)
+        adapter = labels.get("adapter")
+        if not adapter:
+            continue
+
+        try:
+            value = int(float(raw_value))
+        except ValueError:
+            continue
+
+        if metric_name == "mahavishnu_routing_decisions_total":
+            metrics[adapter]["selected"] += value
+        elif metric_name == "mahavishnu_adapter_executions_total":
+            status = labels.get("status", "")
+            metrics[adapter]["executions"] += value
+            if status in {"success", "completed"}:
+                metrics[adapter]["success"] += value
+            elif status in {"failure", "failed", "timeout", "cancelled"}:
+                metrics[adapter]["failure"] += value
+        elif metric_name == "mahavishnu_workflows_total":
+            # Fallback if adapter execution counter is not populated.
+            status = labels.get("status", "")
+            metrics[adapter]["executions"] += value
+            if status in {"success", "completed"}:
+                metrics[adapter]["success"] += value
+            elif status in {"failure", "failed", "timeout", "cancelled"}:
+                metrics[adapter]["failure"] += value
+
+    # Ensure expected adapters are present
+    for adapter in ("prefect", "agno", "llamaindex"):
+        metrics.setdefault(adapter, {"selected": 0, "executions": 0, "success": 0, "failure": 0})
+
+    return dict(metrics)
 
 
 @metrics_app.command("collect")
@@ -342,6 +525,201 @@ def generate_dashboard(
     except Exception as e:
         console.print(f"[red]Error generating dashboard:[/red] {e}")
         sys.exit(1)
+
+
+@metrics_app.command("verify-endpoints")
+def verify_endpoints(
+    inventory: Path = typer.Option(
+        Path("monitoring/ecosystem_metrics_inventory.yml"),
+        "--inventory",
+        help="Path to the ecosystem metrics inventory YAML.",
+    ),
+    write_verified_file: Path | None = typer.Option(
+        Path("monitoring/file_sd/verified_metrics_targets.yml"),
+        "--write-verified-file",
+        help="Write successful probes to a Prometheus file_sd YAML file.",
+    ),
+    output_format: str = typer.Option(
+        "text",
+        "--output",
+        help="Output format: text or json",
+    ),
+    timeout: float = typer.Option(
+        2.0,
+        "--timeout",
+        help="Per-endpoint timeout in seconds.",
+    ),
+    service: list[str] = typer.Option(
+        [],
+        "--service",
+        help="Probe only the named service. Repeat for multiple services.",
+    ),
+):
+    """Probe ecosystem metrics endpoints and refresh verified Prometheus targets."""
+    from scripts.verify_ecosystem_metrics import main as verify_main
+
+    sys.argv = ["verify_ecosystem_metrics", f"--inventory={inventory}", f"--output={output_format}"]
+
+    if write_verified_file is not None:
+        sys.argv.append(f"--write-verified-file={write_verified_file}")
+
+    sys.argv.append(f"--timeout={timeout}")
+
+    for service_name in service:
+        sys.argv.extend(["--service", service_name])
+
+    try:
+        raise SystemExit(verify_main())
+    except SystemExit as exc:
+        raise typer.Exit(exc.code if isinstance(exc.code, int) else 1) from None
+    except Exception as e:
+        console.print(f"[red]Error verifying metrics endpoints:[/red] {e}")
+        raise typer.Exit(1) from e
+
+
+@metrics_app.command("engines")
+def engine_metrics(
+    source: str = typer.Option(
+        "auto",
+        "--source",
+        help="Data source: auto, postgres, or prometheus",
+    ),
+    dsn: str | None = typer.Option(
+        None,
+        "--dsn",
+        help="PostgreSQL DSN for metrics schema (overrides env/settings)",
+    ),
+    metrics_url: str = typer.Option(
+        "http://127.0.0.1:8680/metrics",
+        "--metrics-url",
+        help="Prometheus metrics endpoint URL (used for prometheus/auto fallback)",
+    ),
+    days: int | None = typer.Option(
+        None,
+        "--days",
+        help="Optional time window (days) for PostgreSQL queries",
+    ),
+    output_format: str = typer.Option(
+        "table",
+        "--output",
+        help="Output format: table or json",
+    ),
+) -> None:
+    """Show per-engine selection and execution outcomes.
+
+    Displays per-engine selected, executions, success, and failure counts for:
+    - prefect
+    - agno
+    - llamaindex
+    """
+
+    async def _run_postgres_query(resolved_dsn: str) -> dict[str, dict[str, int]]:
+        return await _load_engine_metrics_from_postgres(resolved_dsn, days)
+
+    source_normalized = source.strip().lower()
+    if source_normalized not in {"auto", "postgres", "prometheus"}:
+        console.print("[red]Invalid --source. Use: auto, postgres, or prometheus[/red]")
+        raise typer.Exit(2)
+
+    resolved_dsn = _resolve_postgres_dsn(dsn)
+    selected_source = ""
+    metrics: dict[str, dict[str, int]] | None = None
+    errors: list[str] = []
+
+    if source_normalized in {"auto", "postgres"}:
+        if not resolved_dsn:
+            if source_normalized == "postgres":
+                console.print(
+                    "[red]No PostgreSQL DSN found. Use --dsn or set "
+                    "MAHAVISHNU_PERSISTENCE__POSTGRES_URL.[/red]"
+                )
+                raise typer.Exit(1)
+            errors.append("postgres: no DSN configured")
+        else:
+            try:
+                metrics = asyncio.run(_run_postgres_query(resolved_dsn))
+                selected_source = "postgres"
+            except Exception as exc:
+                errors.append(f"postgres: {exc}")
+                if source_normalized == "postgres":
+                    console.print(f"[red]PostgreSQL query failed:[/red] {exc}")
+                    raise typer.Exit(1) from exc
+
+    if metrics is None and source_normalized in {"auto", "prometheus"}:
+        try:
+            metrics = _load_engine_metrics_from_prometheus(metrics_url)
+            selected_source = "prometheus"
+        except Exception as exc:
+            errors.append(f"prometheus: {exc}")
+            if source_normalized == "prometheus":
+                console.print(f"[red]Prometheus query failed:[/red] {exc}")
+                raise typer.Exit(1) from exc
+
+    if metrics is None:
+        console.print("[yellow]No engine metrics source available.[/yellow]")
+        for err in errors:
+            console.print(f"[dim]- {err}[/dim]")
+        raise typer.Exit(1)
+
+    ordered_engines = sorted(metrics.keys())
+    rows: list[dict[str, object]] = []
+    for engine in ordered_engines:
+        row = metrics[engine]
+        executions = int(row.get("executions", 0))
+        success = int(row.get("success", 0))
+        success_rate = (success / executions * 100.0) if executions > 0 else 0.0
+        rows.append(
+            {
+                "engine": engine,
+                "selected": int(row.get("selected", 0)),
+                "executions": executions,
+                "success": success,
+                "failure": int(row.get("failure", 0)),
+                "success_rate_pct": round(success_rate, 2),
+            }
+        )
+
+    if output_format == "json":
+        console.print_json(
+            json.dumps(
+                {
+                    "source": selected_source,
+                    "days": days,
+                    "metrics_url": metrics_url if selected_source == "prometheus" else None,
+                    "engines": rows,
+                    "warnings": errors if errors else [],
+                }
+            )
+        )
+        return
+
+    if output_format != "table":
+        console.print("[red]Invalid --output. Use: table or json[/red]")
+        raise typer.Exit(2)
+
+    table = Table(title=f"Engine Usage Metrics ({selected_source})")
+    table.add_column("Engine", style="cyan")
+    table.add_column("Selected", justify="right")
+    table.add_column("Executions", justify="right")
+    table.add_column("Success", justify="right")
+    table.add_column("Failure", justify="right")
+    table.add_column("Success Rate", justify="right")
+
+    for row in rows:
+        table.add_row(
+            str(row["engine"]),
+            str(row["selected"]),
+            str(row["executions"]),
+            str(row["success"]),
+            str(row["failure"]),
+            f"{row['success_rate_pct']:.2f}%",
+        )
+
+    console.print(table)
+    if errors:
+        console.print("[dim]Warnings:[/dim]")
+        for err in errors:
+            console.print(f"[dim]- {err}[/dim]")
 
 
 def add_metrics_commands(app: typer.Typer) -> None:

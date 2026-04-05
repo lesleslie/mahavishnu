@@ -39,7 +39,7 @@
         },
         "targets": [
           {
-            "expr": "sum(websocket_health{server=~\"$mahavishnu|druva|akosha|crackerjack|excalidraw|fastblocks\"}) or vector(0)",
+            "expr": "sum(websocket_health{server=~\"$mahavishnu|dhara|akosha|crackerjack|excalidraw|fastblocks\"}) or vector(0)",
             "legendFormat": "{{server}}",
             "refId": "A"
           }
@@ -62,7 +62,7 @@
         },
         "targets": [
           {
-            "expr": "websocket_connections{server=~\"$mahavishnu|druva|akosha|crackerjack|excalidraw|fastblocks\"}",
+            "expr": "websocket_connections{server=~\"$mahavishnu|dhara|akosha|crackerjack|excalidraw|fastblocks\"}",
             "legendFormat": "{{server}}",
             "refId": "B"
           }
@@ -85,7 +85,7 @@
         },
         "targets": [
           {
-            "expr": "rate(websocket_messages_total{server=~\"$mahavishnu|druva|akosha|crackerjack|excalidraw|fastblocks\"}[5m])",
+            "expr": "rate(websocket_messages_total{server=~\"$mahavishnu|dhara|akosha|crackerjack|excalidraw|fastblocks\"}[5m])",
             "legendFormat": "{{server}} - {{message_type}}",
             "refId": "C"
           }
@@ -109,7 +109,7 @@
         },
         "targets": [
           {
-            "expr": "histogram_quantile(0.99, websocket_broadcast_duration_seconds{server=~\"$mahavishnu|druva|akosha|crackerjack|excalidraw|fastblocks\"})",
+            "expr": "histogram_quantile(0.99, websocket_broadcast_duration_seconds{server=~\"$mahavishnu|dhara|akosha|crackerjack|excalidraw|fastblocks\"})",
             "legendFormat": "{{server}}",
             "refId": "D"
           }
@@ -132,7 +132,7 @@
         },
         "targets": [
           {
-            "expr": "rate(websocket_errors_total{server=~\"$mahavishnu|druva|akosha|crackerjack|excalidraw|fastblocks\"}[5m])",
+            "expr": "rate(websocket_errors_total{server=~\"$mahavishnu|dhara|akosha|crackerjack|excalidraw|fastblocks\"}[5m])",
             "legendFormat": "{{server}} - {{error_type}}",
             "refId": "E"
           }
@@ -190,7 +190,7 @@
         ],
         "targets": [
           {
-            "expr": "websocket_health{server=~\"$mahavishnu|druva|akosha|crackerjack|excalidraw|fastblocks\"}",
+            "expr": "websocket_health{server=~\"$mahavishnu|dhara|akosha|crackerjack|excalidraw|fastblocks\"}",
             "legendFormat": "{{server}}",
             "formatAs": "table",
             "refId": "health-matrix"

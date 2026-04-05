@@ -91,7 +91,7 @@ class ReadyResponse(BaseModel):
                     "dependencies": {
                         "session_buddy": {"status": "ok", "latency_ms": 5},
                         "akosha": {"status": "ok", "latency_ms": 3},
-                        "druva": {"status": "ok", "latency_ms": 2},
+                        "dhara": {"status": "ok", "latency_ms": 2},
                     },
                     "checks": {"database": "ok", "cache": "ok"},
                 }

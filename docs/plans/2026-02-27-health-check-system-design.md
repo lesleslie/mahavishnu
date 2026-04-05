@@ -1,5 +1,9 @@
 # Health Check System Design
 
+> **Update (2026-04-02):** Health-check architecture remains valid.
+> Dependency criticality should follow `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`.
+> In the consolidated storage architecture, Akosha is optional for core Mahavishnu startup.
+
 **Date:** 2026-02-27
 **Status:** Approved
 **Authors:** Claude + User collaboration
@@ -56,7 +60,7 @@ Services in the Bodai ecosystem need to:
 │  │  wait_for_dependencies()                                │   │
 │  │    → GET http://localhost:8678/health (Session-Buddy)   │   │
 │  │    → GET http://localhost:8682/health (Akosha)          │   │
-│  │    → GET http://localhost:8683/health (Druva)          │   │
+│  │    → GET http://localhost:8683/health (Dhara)          │   │
 │  │    → Retry with exponential backoff until ready         │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                  │
@@ -107,7 +111,7 @@ Services in the Bodai ecosystem need to:
     "dependencies": {
         "session_buddy": {"status": "ok", "latency_ms": 5},
         "akosha": {"status": "ok", "latency_ms": 3},
-        "druva": {"status": "ok", "latency_ms": 2}
+        "dhara": {"status": "ok", "latency_ms": 2}
     },
     "checks": {
         "database": "ok",
@@ -142,7 +146,7 @@ dependencies:
     port: 8682
     required: true
     timeout_seconds: 30
-  druva:
+  dhara:
     host: "${DHRUVA_HOST:-localhost}"
     port: 8683
     required: false  # Optional dependency
@@ -327,7 +331,7 @@ dependencies:
     host: "localhost"
     port: 8682
     required: true
-  druva:
+  dhara:
     host: "localhost"
     port: 8683
     required: false
@@ -346,7 +350,7 @@ dependencies:
   akosha:
     host: "${AKOSHA_HOST}"
     port: 8682
-  druva:
+  dhara:
     host: "${DHRUVA_HOST}"
     port: 8683
 ```

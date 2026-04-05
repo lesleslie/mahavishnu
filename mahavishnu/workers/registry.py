@@ -4,6 +4,7 @@ This module defines all available worker types and their configurations,
 making it easy to add new worker types without modifying core code.
 """
 
+import os
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -55,6 +56,7 @@ class WorkerConfig:
     env_vars: dict[str, str] = field(default_factory=dict)
     requires_tool: str | None = None
     mcp_server: str | None = None
+    complete_on_valid_json: bool = False
 
 
 # Worker type registry - all available workers
@@ -80,53 +82,53 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         stream_format="json",
         requires_tool="claude",
     ),
-    "terminal-aider": WorkerConfig(
-        name="Aider",
-        worker_type="terminal-aider",
-        command="aider --no-auto-commits --no-check-update",
+    "terminal-codex": WorkerConfig(
+        name="Codex CLI",
+        worker_type="terminal-codex",
+        command=(
+            "sh -lc 'codex exec --json \"$1\"; "
+            "printf \"\\n__MAHAVISHNU_DONE__\\n\"' _ {prompt}"
+        ),
         category=WorkerCategory.AI_ASSISTANT,
-        description="AI pair programming assistant with git integration",
-        completion_markers=["Tokens:", "Cost:", "RESTACK"],
+        description="Codex CLI one-shot execution with marker-based completion",
+        completion_markers=["__MAHAVISHNU_DONE__"],
         stream_format="text",
-        requires_tool="aider",
-    ),
-    "terminal-opencode": WorkerConfig(
-        name="OpenCode",
-        worker_type="terminal-opencode",
-        command="opencode run",
-        category=WorkerCategory.AI_ASSISTANT,
-        description="OpenCode AI assistant for code generation",
-        completion_markers=["completed", "finished", "done"],
-        stream_format="text",
-        requires_tool="opencode",
+        requires_tool="codex",
     ),
     "terminal-openclaw": WorkerConfig(
         name="OpenClaw",
         worker_type="terminal-openclaw",
-        command="openclaw",
+        command="openclaw agent --local --json --message {prompt}",
         category=WorkerCategory.AI_ASSISTANT,
-        description="OpenClaw CLI assistant for coding and task execution",
-        completion_markers=["completed", "finished", "done"],
-        stream_format="text",
+        description="OpenClaw CLI assistant using structured JSON agent output",
+        completion_markers=[],
+        stream_format="json",
         requires_tool="openclaw",
+        complete_on_valid_json=True,
     ),
     "terminal-deepagents": WorkerConfig(
         name="DeepAgents CLI",
         worker_type="terminal-deepagents",
-        command="deepagents-cli",
+        command=(
+            "sh -lc 'deepagents-cli --non-interactive \"$1\" --quiet --no-stream; "
+            "printf \"\\n__MAHAVISHNU_DONE__\\n\"' _ {prompt}"
+        ),
         category=WorkerCategory.AI_ASSISTANT,
-        description="DeepAgents CLI for autonomous multi-step coding tasks",
-        completion_markers=["completed", "finished", "done"],
+        description="DeepAgents CLI one-shot execution with marker-based completion",
+        completion_markers=["__MAHAVISHNU_DONE__"],
         stream_format="text",
         requires_tool="deepagents-cli",
     ),
     "terminal-clai": WorkerConfig(
         name="CLAI",
         worker_type="terminal-clai",
-        command="clai",
+        command=(
+            "sh -lc 'clai --no-stream \"$1\"; "
+            "printf \"\\n__MAHAVISHNU_DONE__\\n\"' _ {prompt}"
+        ),
         category=WorkerCategory.AI_ASSISTANT,
-        description="CLAI terminal assistant for command and code workflows",
-        completion_markers=["completed", "finished", "done"],
+        description="CLAI one-shot execution with marker-based completion",
+        completion_markers=["__MAHAVISHNU_DONE__"],
         stream_format="text",
         requires_tool="clai",
     ),
@@ -483,6 +485,66 @@ def get_worker_config(worker_type: str) -> WorkerConfig | None:
         WorkerConfig or None if not found
     """
     return WORKER_REGISTRY.get(worker_type)
+
+
+def resolve_worker_type(
+    worker_type: str,
+    task_type: str | None = None,
+    prompt: str = "",
+) -> str:
+    """Resolve a logical worker type to a concrete profile.
+
+    This keeps communication-style work on OpenClaw when the prompt intent
+    is messaging or channel delivery.
+    """
+    normalized_task = (task_type or "").strip().lower()
+    normalized_prompt = prompt.lower()
+    combined = f"{normalized_task} {normalized_prompt}"
+
+    communication_markers = (
+        "notify",
+        "notification",
+        "reply",
+        "respond",
+        "deliver",
+        "send",
+        "message",
+        "dm ",
+        "slack",
+        "telegram",
+        "whatsapp",
+        "discord",
+        "google chat",
+        "signal",
+        "imessage",
+        "inbox",
+        "handoff",
+        "follow up",
+        "follow-up",
+        "status update",
+        "summarize for",
+    )
+    communication_task_types = {
+        "communication",
+        "notification",
+        "messaging",
+        "handoff",
+        "delivery",
+        "outreach",
+        "chatops",
+    }
+
+    if (
+        worker_type
+        in {"terminal-qwen", "terminal-claude", "terminal-codex", "terminal-openclaw"}
+        and (
+            normalized_task in communication_task_types
+            or any(marker in combined for marker in communication_markers)
+        )
+    ):
+        return "gateway-openclaw" if os.getenv("OPENCLAW_GATEWAY_URL") else "terminal-openclaw"
+
+    return worker_type
 
 
 def list_worker_types(category: WorkerCategory | None = None) -> list[str]:

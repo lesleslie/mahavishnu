@@ -17,7 +17,7 @@ This research report provides a comprehensive analysis of state-of-the-art CLI f
 3. **REPL-first architecture** is emerging as a powerful pattern, with IPython being production-ready
 4. **Client-server architecture** (Docker/kubectl pattern) is ideal for Mahavishnu's orchestration use case
 5. **Structured data pipelines** (Nushell pattern) offer innovation potential for workflow orchestration
-6. **AI-powered CLI patterns** are rapidly evolving, with Aider leading the terminal-native approach
+6. **AI-powered CLI patterns** are rapidly evolving, with RemovedTool leading the terminal-native approach
 
 **Primary Recommendation**: Hybrid architecture combining Typer for traditional CLI commands with an IPython-native REPL shell for interactive operations, while adopting client-server patterns for long-running orchestration tasks.
 
@@ -789,7 +789,7 @@ def sweep(tag: str = typer.Option(..., "--tag", "-t")):
 
 ## 5. AI-Powered CLI Experimentation
 
-### 5.1 Aider - AI Pair Programming
+### 5.1 RemovedTool - AI Pair Programming
 
 **Status**: Active development, open-source
 
@@ -814,7 +814,7 @@ def sweep(tag: str = typer.Option(..., "--tag", "-t")):
 
 **Relevance to Mahavishnu**:
 - Mahavishnu already has AI worker orchestration
-- Can adopt Aider's chat interface pattern
+- Can adopt RemovedTool's chat interface pattern
 - Token efficiency important for cost control
 
 ---
@@ -1899,7 +1899,7 @@ All commands support `--output json` or `--output yaml` for machine-readable out
 - [Choosing a Library for CLI Development in Rust](https://www.reddit.com/r/rust/comments/1bs7f83/choosing_a_library_for_cli_development_in_rust/)
 
 **AI-Powered CLI**:
-- [Claude Code vs Cursor vs Aider: The Terminal AI Coding Battle of 2026](https://brlikhon.engineer/blog/claude-code-vs-cursor-vs-aider-the-terminal-ai-coding-battle-of-2026-complete-performance-cost-breakdown-)
+- [Claude Code vs Cursor vs RemovedTool: The Terminal AI Coding Battle of 2026](https://brlikhon.engineer/blog/claude-code-vs-cursor-vs-removed-tool-the-terminal-ai-coding-battle-of-2026-complete-performance-cost-breakdown-)
 - [AI Terminal Coding Tools That Actually Work in 2025](https://www.augmentcode.com/guides/ai-terminal-coding-tools-that-actually-work-in-2025)
 
 **MCP Protocol**:

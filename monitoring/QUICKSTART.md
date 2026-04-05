@@ -72,7 +72,7 @@ async def metrics():
 Check your MCP server metrics:
 
 ```bash
-curl http://localhost:8000/metrics
+curl http://localhost:8682/metrics
 ```
 
 You should see Prometheus metrics output!
@@ -118,13 +118,16 @@ You should see Prometheus metrics output!
 rate(mcp_tool_calls_total{status="error"}[5m])
 
 # P95 latency
-histogram_quantile(0.95, rate(mcp_http_request_duration_seconds_bucket[5m]))
+histogram_quantile(0.95, sum by (le) (rate(mcp_tool_duration_seconds_bucket[5m])))
 
 # Active workers
-pool_workers_active
+sum by (pool_type) (pool_workers_active)
+
+# Workflow queue depth
+max(mahavishnu_workflow_queue_depth{service="mahavishnu"})
 
 # Tool success rate
-rate(mcp_tool_calls_total{status="success"}[5m]) / rate(mcp_tool_calls_total[5m]) * 100
+sum(rate(mcp_tool_calls_total{status="success"}[5m])) / sum(rate(mcp_tool_calls_total[5m])) * 100
 ```
 
 ## Environment Variables
@@ -160,19 +163,29 @@ docker-compose up -d --scale grafana=2
 
 ## Monitoring All MCP Servers
 
-Once your MCP servers have monitoring integrated, Prometheus will automatically scrape metrics from all of them:
+The default `monitoring/prometheus.yml` now scrapes only verified targets from
+`monitoring/file_sd/verified_metrics_targets.yml`. Probe local services and refresh
+that file before promoting new ecosystem services onto the scrape surface:
+
+```bash
+cd /Users/les/Projects/mahavishnu
+uv run python scripts/verify_ecosystem_metrics.py \
+  --write-verified-file monitoring/file_sd/verified_metrics_targets.yml
+```
+
+Canonical standard:
+
+- each service should expose `/metrics` on its main service port
+- separate Prometheus exporter ports are deprecated for HTTP services
+- legacy exporter probes remain in the inventory only during migration
 
 | Service | Port | Metrics Path |
 |---------|------|---------------|
 | Mahavishnu | 8680 | /metrics |
-| Akosha | 8682 | /metrics |
-| Session-Buddy | 8678 | /metrics |
-| Crackerjack | 8676 | /metrics |
-| Excalidraw | 3032 | /metrics |
-| Mermaid | 3033 | /metrics |
-| UniFi | 3038 | /metrics |
-| Mailgun | 3039 | /metrics |
-| RaindropIO | 3034 | /metrics |
+| Akosha | canonical port pending cleanup | /metrics (verify before enabling) |
+| Session-Buddy | 8678 | /metrics (legacy exporter deprecated) |
+| Crackerjack | 8676 | /metrics (verify before enabling) |
+| Dhara | 8683 | /metrics (legacy exporter deprecated) |
 
 ## Troubleshooting
 

@@ -2,23 +2,28 @@
 
 Tests cover:
 - Adapter initialization
-- Agent creation with real and mock implementations
-- LLM configuration (Anthropic, OpenAI, Ollama)
-- Code sweep execution
-- Quality check execution
-- Repository processing with code graph context
-- Error handling and retry logic
+- LLM provider factory configuration
+- Agent creation (via mocking agno SDK imports)
+- Task execution across repositories
 - Health checks
-- Task timeout scenarios
+- Error handling and retry logic
+- Team management delegation
+- Timeout scenarios
 """
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mahavishnu.core.errors import ConfigurationError
-from mahavishnu.engines.agno_adapter import AgnoAdapter
+from mahavishnu.core.errors import AgnoError, ConfigurationError
+from mahavishnu.engines.agno_adapter import (
+    AgnoAdapter,
+    AgnoAdapterConfig,
+    AgnoLLMConfig,
+    LLMProvider,
+    LLMProviderFactory,
+)
 
 # ============================================================================
 # Fixtures
@@ -27,11 +32,16 @@ from mahavishnu.engines.agno_adapter import AgnoAdapter
 
 @pytest.fixture
 def mock_config():
-    """Create mock configuration."""
+    """Create mock configuration that provides AgnoAdapterConfig via .agno attribute."""
     config = MagicMock()
-    config.llm_provider = "ollama"
-    config.llm.model = "qwen2.5:7b"
-    config.llm.ollama_base_url = "http://localhost:11434"
+    agno_config = AgnoAdapterConfig(
+        llm=AgnoLLMConfig(
+            provider=LLMProvider.OLLAMA,
+            model_id="qwen2.5:7b",
+            base_url="http://localhost:11434",
+        ),
+    )
+    config.agno = agno_config
     return config
 
 
@@ -39,8 +49,13 @@ def mock_config():
 def mock_config_anthropic():
     """Create mock configuration for Anthropic."""
     config = MagicMock()
-    config.llm_provider = "anthropic"
-    config.llm.model = "claude-sonnet-4-20250514"
+    agno_config = AgnoAdapterConfig(
+        llm=AgnoLLMConfig(
+            provider=LLMProvider.ANTHROPIC,
+            model_id="claude-sonnet-4-20250514",
+        ),
+    )
+    config.agno = agno_config
     return config
 
 
@@ -48,8 +63,13 @@ def mock_config_anthropic():
 def mock_config_openai():
     """Create mock configuration for OpenAI."""
     config = MagicMock()
-    config.llm_provider = "openai"
-    config.llm.model = "gpt-4"
+    agno_config = AgnoAdapterConfig(
+        llm=AgnoLLMConfig(
+            provider=LLMProvider.OPENAI,
+            model_id="gpt-4",
+        ),
+    )
+    config.agno = agno_config
     return config
 
 
@@ -72,50 +92,6 @@ class TestClass:
     return str(repo_dir)
 
 
-@pytest.fixture
-def mock_code_graph_analyzer():
-    """Create mock code graph analyzer."""
-    analyzer = MagicMock()
-    analyzer.analyze_repository = AsyncMock(
-        return_value={
-            "functions_indexed": 2,
-            "total_nodes": 5,
-            "total_functions": 2,
-            "total_classes": 1,
-            "nodes": {
-                "node1": {
-                    "type": "function",
-                    "name": "hello_world",
-                    "file_id": "/test/test.py",
-                    "start_line": 2,
-                    "end_line": 3,
-                    "is_export": True,
-                    "calls": [],
-                },
-                "node2": {
-                    "type": "class",
-                    "name": "TestClass",
-                    "methods": ["method"],
-                    "inherits_from": [],
-                },
-            },
-        }
-    )
-    analyzer.nodes = {
-        "node1": MagicMock(
-            name="hello_world",
-            file_id="/test/test.py",
-            start_line=2,
-            end_line=3,
-            is_export=True,
-            calls=[],
-        ),
-        "node2": MagicMock(name="TestClass", methods=["method"], inherits_from=[]),
-    }
-    analyzer.find_related_files = AsyncMock(return_value=[])
-    return analyzer
-
-
 # ============================================================================
 # Initialization Tests
 # ============================================================================
@@ -127,23 +103,25 @@ async def test_agno_adapter_initialization(mock_config):
     adapter = AgnoAdapter(config=mock_config)
 
     assert adapter.config is not None
-    assert adapter.config.llm_provider == "ollama"
-    assert adapter.config.llm.model == "qwen2.5:7b"
+    assert adapter.agno_config is not None
+    assert adapter.agno_config.llm.provider == LLMProvider.OLLAMA
+    assert adapter.agno_config.llm.model_id == "qwen2.5:7b"
 
 
 @pytest.mark.asyncio
 async def test_agno_adapter_initialization_with_defaults():
     """Test Agno adapter initialization with minimal config."""
-    config = MagicMock()
-    # No attributes set, should use defaults
+    config = MagicMock(spec=[])
+    # No .agno attribute -- should fall back to default AgnoAdapterConfig
 
     adapter = AgnoAdapter(config=config)
 
     assert adapter.config is not None
+    assert isinstance(adapter.agno_config, AgnoAdapterConfig)
 
 
 # ============================================================================
-# LLM Configuration Tests
+# LLM Provider Factory Tests
 # ============================================================================
 
 
@@ -153,10 +131,10 @@ async def test_get_llm_ollama(mock_config):
     """Test Ollama LLM configuration."""
     adapter = AgnoAdapter(config=mock_config)
 
-    llm = adapter._get_llm()
+    factory = LLMProviderFactory(adapter.agno_config.llm)
+    llm = factory.create_model()
 
     assert llm is not None
-    # Mock agent will be created, so LLM may be None in test environment
 
 
 @pytest.mark.skip(reason="agno package not installed")
@@ -165,11 +143,12 @@ async def test_get_llm_anthropic_no_key(mock_config_anthropic, monkeypatch):
     """Test Anthropic LLM configuration fails without API key."""
     adapter = AgnoAdapter(config=mock_config_anthropic)
 
-    # Ensure no API key is set
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
+    factory = LLMProviderFactory(adapter.agno_config.llm)
+
     with pytest.raises(ConfigurationError) as exc_info:
-        adapter._get_llm()
+        factory.create_model()
 
     assert "ANTHROPIC_API_KEY" in str(exc_info.value)
 
@@ -180,11 +159,12 @@ async def test_get_llm_openai_no_key(mock_config_openai, monkeypatch):
     """Test OpenAI LLM configuration fails without API key."""
     adapter = AgnoAdapter(config=mock_config_openai)
 
-    # Ensure no API key is set
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
+    factory = LLMProviderFactory(adapter.agno_config.llm)
+
     with pytest.raises(ConfigurationError) as exc_info:
-        adapter._get_llm()
+        factory.create_model()
 
     assert "OPENAI_API_KEY" in str(exc_info.value)
 
@@ -192,16 +172,17 @@ async def test_get_llm_openai_no_key(mock_config_openai, monkeypatch):
 @pytest.mark.asyncio
 async def test_get_llm_unsupported_provider():
     """Test LLM configuration with unsupported provider."""
-    config = MagicMock()
-    config.llm_provider = "unsupported"
+    # Create a config with an unsupported provider via direct manipulation
+    config = AgnoLLMConfig(provider=LLMProvider.OLLAMA)
+    # Manually set provider to an invalid value after construction
+    config.provider = "unsupported"  # type: ignore[assignment]
 
-    adapter = AgnoAdapter(config=config)
+    factory = LLMProviderFactory(config)
 
-    with pytest.raises(ConfigurationError) as exc_info:
-        adapter._get_llm()
+    with pytest.raises(AgnoError) as exc_info:
+        factory.create_model()
 
     assert "Unsupported LLM provider" in str(exc_info.value)
-    assert "unsupported" in str(exc_info.value)
 
 
 # ============================================================================
@@ -211,68 +192,41 @@ async def test_get_llm_unsupported_provider():
 
 @pytest.mark.asyncio
 async def test_create_agent_code_sweep(mock_config):
-    """Test creating agent for code sweep task."""
+    """Test creating agent for code sweep task via _create_agent."""
     adapter = AgnoAdapter(config=mock_config)
+    adapter._initialized = True
+    adapter._semaphore = asyncio.Semaphore(5)
 
-    agent = await adapter._create_agent("code_sweep")
+    # Mock the agno SDK Agent class (imported locally in _create_agent)
+    mock_agent = MagicMock()
+    mock_agent.name = "code_sweep_agent"
+    mock_agent.role = "Agent for code_sweep operations"
+    mock_agent.instructions = "instructions"
 
-    assert agent is not None
-    assert hasattr(agent, "name")
-    assert hasattr(agent, "role")
-    assert hasattr(agent, "instructions")
+    with (
+        patch("agno.agent.Agent", return_value=mock_agent),
+        patch.object(adapter, "_get_all_tools", return_value=[]),
+        patch.object(adapter, "_llm_factory") as mock_factory,
+    ):
+        mock_factory.create_model.return_value = MagicMock()
+
+        agent = await adapter._create_agent(
+            name="code_sweep_agent",
+            role="Agent for code_sweep operations",
+            instructions="Analyze code quality",
+        )
+
+        assert agent is not None
+        assert agent.name == "code_sweep_agent"
 
 
 @pytest.mark.asyncio
-async def test_create_agent_returns_mock_agent(mock_config):
-    """Test that mock agent is returned when Agno is not available."""
+async def test_create_agent_requires_all_args(mock_config):
+    """Test that _create_agent requires name, role, and instructions."""
     adapter = AgnoAdapter(config=mock_config)
 
-    agent = await adapter._create_agent("code_sweep")
-
-    # Mock agent should have run method
-    assert hasattr(agent, "run")
-    assert asyncio.iscoroutinefunction(agent.run)
-
-
-# ============================================================================
-# Code Graph Integration Tests
-# ============================================================================
-
-
-@pytest.mark.asyncio
-async def test_read_file_tool(mock_config, tmp_path):
-    """Test _read_file tool functionality."""
-    adapter = AgnoAdapter(config=mock_config)
-
-    # Create a test file
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("Hello, World!")
-
-    content = await adapter._read_file(str(test_file))
-
-    assert content == "Hello, World!"
-
-
-@pytest.mark.asyncio
-async def test_read_file_tool_error_handling(mock_config):
-    """Test _read_file tool handles errors gracefully."""
-    adapter = AgnoAdapter(config=mock_config)
-
-    content = await adapter._read_file("/nonexistent/file.txt")
-
-    assert "Error reading file" in content
-    assert "No such file" in content or "cannot find the file" in content.lower()
-
-
-@pytest.mark.asyncio
-async def test_search_code_tool(mock_config):
-    """Test _search_code tool functionality."""
-    adapter = AgnoAdapter(config=mock_config)
-
-    results = await adapter._search_code("function", "/path/to/repo")
-
-    assert isinstance(results, list)
-    assert len(results) > 0
+    with pytest.raises(TypeError):
+        await adapter._create_agent("code_sweep")  # type: ignore[call-arg]
 
 
 # ============================================================================
@@ -281,20 +235,36 @@ async def test_search_code_tool(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_execute_code_sweep_single_repo(
-    mock_config, sample_repo_path, mock_code_graph_analyzer
-):
+async def test_execute_code_sweep_single_repo(mock_config, sample_repo_path):
     """Test executing code sweep on a single repository."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with patch(
-        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    # Mock _process_single_repo to avoid agno SDK dependency
+    mock_result = {
+        "repo": sample_repo_path,
+        "status": "completed",
+        "result": {
+            "operation": "code_sweep",
+            "content": "Analysis complete",
+            "run_id": "test_run",
+            "latency_ms": 100.0,
+        },
+        "task_id": "test_123",
+    }
+
+    with patch.object(
+        adapter, "_process_single_repo", return_value=mock_result
     ):
+        # Ensure adapter is initialized to avoid init code path
+        adapter._initialized = True
+        adapter._semaphore = asyncio.Semaphore(5)
+
         result = await adapter.execute(
-            task={"type": "code_sweep", "id": "test_123"}, repos=[sample_repo_path]
+            task={"type": "code_sweep", "id": "test_123"},
+            repos=[sample_repo_path],
         )
 
-        assert result["status"] in ["completed", "failed"]
+        assert result["status"] in ("completed", "partial")
         assert result["engine"] == "agno"
         assert result["repos_processed"] == 1
         assert "results" in result
@@ -302,41 +272,66 @@ async def test_execute_code_sweep_single_repo(
 
 
 @pytest.mark.asyncio
-async def test_execute_code_sweep_multiple_repos(mock_config, mock_code_graph_analyzer):
+async def test_execute_code_sweep_multiple_repos(mock_config):
     """Test executing code sweep on multiple repositories."""
     adapter = AgnoAdapter(config=mock_config)
 
     repos = ["/path/to/repo1", "/path/to/repo2", "/path/to/repo3"]
 
-    with patch(
-        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
-    ):
-        result = await adapter.execute(task={"type": "code_sweep", "id": "test_123"}, repos=repos)
+    mock_result = {
+        "repo": "/path/to/repo",
+        "status": "completed",
+        "result": {"operation": "code_sweep", "content": "done"},
+        "task_id": "test_123",
+    }
 
-        assert result["status"] in ["completed", "failed"]
+    with patch.object(
+        adapter, "_process_single_repo", return_value=mock_result
+    ):
+        adapter._initialized = True
+        adapter._semaphore = asyncio.Semaphore(5)
+
+        result = await adapter.execute(
+            task={"type": "code_sweep", "id": "test_123"}, repos=repos
+        )
+
+        assert result["status"] in ("completed", "partial")
         assert result["repos_processed"] == 3
         assert len(result["results"]) == 3
 
 
 @pytest.mark.asyncio
-async def test_execute_code_sweep_with_analysis_details(
-    mock_config, sample_repo_path, mock_code_graph_analyzer
-):
-    """Test that code sweep includes analysis details from code graph."""
+async def test_execute_code_sweep_with_analysis_details(mock_config, sample_repo_path):
+    """Test that code sweep results contain operation details."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with patch(
-        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    mock_result = {
+        "repo": sample_repo_path,
+        "status": "completed",
+        "result": {
+            "operation": "code_sweep",
+            "content": "Analysis complete with details",
+            "run_id": "test_run",
+            "latency_ms": 100.0,
+        },
+        "task_id": "test_123",
+    }
+
+    with patch.object(
+        adapter, "_process_single_repo", return_value=mock_result
     ):
+        adapter._initialized = True
+        adapter._semaphore = asyncio.Semaphore(5)
+
         result = await adapter.execute(
-            task={"type": "code_sweep", "id": "test_123"}, repos=[sample_repo_path]
+            task={"type": "code_sweep", "id": "test_123"},
+            repos=[sample_repo_path],
         )
 
-        # Check that results contain analysis details
         repo_result = result["results"][0]
         if repo_result.get("status") == "completed":
             assert "result" in repo_result
-            assert "analysis_details" in repo_result["result"]
+            assert "operation" in repo_result["result"]
 
 
 # ============================================================================
@@ -345,18 +340,34 @@ async def test_execute_code_sweep_with_analysis_details(
 
 
 @pytest.mark.asyncio
-async def test_execute_quality_check(mock_config, sample_repo_path, mock_code_graph_analyzer):
+async def test_execute_quality_check(mock_config, sample_repo_path):
     """Test executing quality check on repository."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with patch(
-        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    mock_result = {
+        "repo": sample_repo_path,
+        "status": "completed",
+        "result": {
+            "operation": "quality_check",
+            "content": "Quality check passed",
+            "run_id": "test_run",
+            "latency_ms": 50.0,
+        },
+        "task_id": "test_456",
+    }
+
+    with patch.object(
+        adapter, "_process_single_repo", return_value=mock_result
     ):
+        adapter._initialized = True
+        adapter._semaphore = asyncio.Semaphore(5)
+
         result = await adapter.execute(
-            task={"type": "quality_check", "id": "test_456"}, repos=[sample_repo_path]
+            task={"type": "quality_check", "id": "test_456"},
+            repos=[sample_repo_path],
         )
 
-        assert result["status"] in ["completed", "failed"]
+        assert result["status"] in ("completed", "partial")
         assert result["engine"] == "agno"
 
         repo_result = result["results"][0]
@@ -371,18 +382,34 @@ async def test_execute_quality_check(mock_config, sample_repo_path, mock_code_gr
 
 
 @pytest.mark.asyncio
-async def test_execute_default_operation(mock_config, sample_repo_path, mock_code_graph_analyzer):
+async def test_execute_default_operation(mock_config, sample_repo_path):
     """Test executing a default (unknown) operation."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with patch(
-        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    mock_result = {
+        "repo": sample_repo_path,
+        "status": "completed",
+        "result": {
+            "operation": "custom_operation",
+            "content": "Custom operation done",
+            "run_id": "test_run",
+            "latency_ms": 75.0,
+        },
+        "task_id": "test_789",
+    }
+
+    with patch.object(
+        adapter, "_process_single_repo", return_value=mock_result
     ):
+        adapter._initialized = True
+        adapter._semaphore = asyncio.Semaphore(5)
+
         result = await adapter.execute(
-            task={"type": "custom_operation", "id": "test_789"}, repos=[sample_repo_path]
+            task={"type": "custom_operation", "id": "test_789"},
+            repos=[sample_repo_path],
         )
 
-        assert result["status"] in ["completed", "failed"]
+        assert result["status"] in ("completed", "partial")
         assert result["engine"] == "agno"
 
         repo_result = result["results"][0]
@@ -396,37 +423,52 @@ async def test_execute_default_operation(mock_config, sample_repo_path, mock_cod
 
 
 @pytest.mark.asyncio
-async def test_execute_handles_repo_processing_errors(mock_config, mock_code_graph_analyzer):
+async def test_execute_handles_repo_processing_errors(mock_config):
     """Test that execution handles individual repo failures gracefully."""
     adapter = AgnoAdapter(config=mock_config)
 
-    # Make analyzer raise an error
-    mock_code_graph_analyzer.analyze_repository.side_effect = Exception("Analysis failed")
+    # Mock _process_single_repo to return a failed result
+    failed_result = {
+        "repo": "/path/to/repo1",
+        "status": "failed",
+        "error": "Analysis failed",
+        "task_id": "test_error",
+    }
 
-    with patch(
-        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    with patch.object(
+        adapter, "_process_single_repo", return_value=failed_result
     ):
+        adapter._initialized = True
+        adapter._semaphore = asyncio.Semaphore(5)
+
         result = await adapter.execute(
-            task={"type": "code_sweep", "id": "test_error"}, repos=["/path/to/repo1"]
+            task={"type": "code_sweep", "id": "test_error"},
+            repos=["/path/to/repo1"],
         )
 
-        assert result["status"] == "completed"  # Overall execution completes
-        assert result["failure_count"] >= 0
+        assert result["status"] in ("completed", "partial")
+        assert result["failure_count"] >= 1
 
 
 @pytest.mark.asyncio
 async def test_process_single_repo_exception_handling(mock_config):
     """Test _process_single_repo handles exceptions."""
     adapter = AgnoAdapter(config=mock_config)
+    adapter._initialized = True
+    adapter._semaphore = asyncio.Semaphore(5)
 
-    # Invalid repo path should not crash
-    result = await adapter._process_single_repo(
-        repo="/nonexistent/path", task={"type": "code_sweep", "id": "test_exception"}
-    )
+    # Mock _create_agent to raise an exception
+    with patch.object(
+        adapter, "_create_agent", side_effect=Exception("Agent creation failed")
+    ):
+        result = await adapter._process_single_repo(
+            repo="/nonexistent/path",
+            task={"type": "code_sweep", "id": "test_exception"},
+        )
 
-    assert result is not None
-    assert result["status"] in ["completed", "failed"]
-    assert "repo" in result
+        assert result is not None
+        assert result["status"] in ("completed", "failed")
+        assert "repo" in result
 
 
 # ============================================================================
@@ -435,36 +477,44 @@ async def test_process_single_repo_exception_handling(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_retry_on_transient_failure(mock_config, mock_code_graph_analyzer):
+async def test_retry_on_transient_failure(mock_config):
     """Test that adapter retries on transient failures using tenacity."""
     adapter = AgnoAdapter(config=mock_config)
+    adapter._initialized = True
+    adapter._semaphore = asyncio.Semaphore(5)
 
-    # Make analyzer fail twice then succeed
+    # First call fails, second succeeds
     call_count = 0
+    mock_agent_result = MagicMock()
+    mock_agent_result.name = "code_sweep_agent"
 
-    async def failing_analyze(*args, **kwargs):
+    original_create = adapter._create_agent
+
+    async def failing_create(*args, **kwargs):
         nonlocal call_count
         call_count += 1
-        if call_count < 2:
+        if call_count == 1:
             raise Exception("Transient error")
-        return {
-            "functions_indexed": 1,
-            "total_nodes": 1,
-            "total_functions": 1,
-            "total_classes": 0,
-            "nodes": {},
-        }
+        return await original_create(*args, **kwargs) if False else mock_agent_result
 
-    mock_code_graph_analyzer.analyze_repository = failing_analyze
-
-    with patch(
-        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    with (
+        patch.object(adapter, "_create_agent", side_effect=failing_create),
+        patch.object(adapter, "_run_agent") as mock_run,
     ):
-        result = await adapter._process_single_repo(
-            repo="/path/to/repo", task={"type": "code_sweep", "id": "test_retry"}
+        mock_run.return_value = MagicMock(
+            agent_name="code_sweep_agent",
+            content="Success after retry",
+            run_id="retry_run",
+            success=True,
+            latency_ms=200.0,
         )
 
-        # Should eventually succeed or fail after retries
+        result = await adapter._process_single_repo(
+            repo="/path/to/repo",
+            task={"type": "code_sweep", "id": "test_retry"},
+        )
+
+        # Should succeed after retry or fail gracefully
         assert result is not None
 
 
@@ -478,27 +528,25 @@ async def test_execute_with_timeout(mock_config, sample_repo_path):
     """Test that execution respects timeout."""
     adapter = AgnoAdapter(config=mock_config)
 
-    # Create a slow operation
-    async def slow_analyze(*args, **kwargs):
+    # Create a slow _process_single_repo
+    async def slow_process(*args, **kwargs):
         await asyncio.sleep(5)
         return {
-            "functions_indexed": 1,
-            "total_nodes": 1,
-            "total_functions": 1,
-            "total_classes": 0,
-            "nodes": {},
+            "repo": sample_repo_path,
+            "status": "completed",
+            "result": {},
+            "task_id": "test_timeout",
         }
 
-    mock_analyzer = MagicMock()
-    mock_analyzer.analyze_repository = slow_analyze
-    mock_analyzer.nodes = {}
-    mock_analyzer.find_related_files = AsyncMock(return_value=[])
+    with patch.object(adapter, "_process_single_repo", side_effect=slow_process):
+        adapter._initialized = True
+        adapter._semaphore = asyncio.Semaphore(5)
 
-    with patch("mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_analyzer):
         with pytest.raises((asyncio.TimeoutError, TimeoutError)):
             async with asyncio.timeout(0.5):
                 await adapter.execute(
-                    task={"type": "code_sweep", "id": "test_timeout"}, repos=[sample_repo_path]
+                    task={"type": "code_sweep", "id": "test_timeout"},
+                    repos=[sample_repo_path],
                 )
 
 
@@ -509,14 +557,16 @@ async def test_execute_with_timeout(mock_config, sample_repo_path):
 
 @pytest.mark.asyncio
 async def test_get_health_healthy(mock_config):
-    """Test health check returns healthy status."""
+    """Test health check returns healthy status when initialized."""
     adapter = AgnoAdapter(config=mock_config)
+    adapter._initialized = True
+    adapter._llm_factory = MagicMock()
 
     health = await adapter.get_health()
 
     assert health is not None
     assert "status" in health
-    assert health["status"] in ["healthy", "unhealthy"]
+    assert health["status"] in ("healthy", "unhealthy", "degraded")
     assert "details" in health
 
 
@@ -524,11 +574,17 @@ async def test_get_health_healthy(mock_config):
 async def test_get_health_includes_details(mock_config):
     """Test health check includes adapter details."""
     adapter = AgnoAdapter(config=mock_config)
+    adapter._initialized = True
+    adapter._llm_factory = MagicMock()
 
     health = await adapter.get_health()
 
     assert "details" in health
-    assert "configured" in health["details"]
+    details = health["details"]
+    assert "adapter" in details
+    assert details["adapter"] == "agno"
+    assert "version" in details
+    assert "initialized" in details
 
 
 @pytest.mark.asyncio
@@ -540,59 +596,9 @@ async def test_get_health_handles_errors():
 
     assert health is not None
     assert "status" in health
-
-
-# ============================================================================
-# Agent Response Tests
-# ============================================================================
-
-
-@pytest.mark.asyncio
-async def test_mock_agent_code_quality_response(mock_config):
-    """Test mock agent generates code quality analysis."""
-    adapter = AgnoAdapter(config=mock_config)
-
-    agent = await adapter._create_agent("code_sweep")
-
-    response = await agent.run(
-        "Analyze repository for code quality",
-        context={"repo_path": "/test/repo", "code_graph": {"functions_indexed": 10}},
-    )
-
-    assert hasattr(response, "content")
-    assert isinstance(response.content, str)
-    assert len(response.content) > 0
-
-
-@pytest.mark.asyncio
-async def test_mock_agent_quality_check_response(mock_config):
-    """Test mock agent generates quality check response."""
-    adapter = AgnoAdapter(config=mock_config)
-
-    agent = await adapter._create_agent("code_sweep")
-
-    response = await agent.run(
-        "Perform quality check", context={"repo_path": "/test/repo", "code_graph": {}}
-    )
-
-    assert hasattr(response, "content")
-    assert "Quality Check Results" in response.content or "Compliance Score" in response.content
-
-
-@pytest.mark.asyncio
-async def test_mock_agent_default_response(mock_config):
-    """Test mock agent generates default response."""
-    adapter = AgnoAdapter(config=mock_config)
-
-    agent = await adapter._create_agent("code_sweep")
-
-    response = await agent.run(
-        "Unknown operation", context={"repo_path": "/test/repo", "code_graph": {}}
-    )
-
-    assert hasattr(response, "content")
-    assert isinstance(response.content, str)
-    assert len(response.content) > 0
+    # With config=None, the adapter should still return a health dict
+    # (using default AgnoAdapterConfig)
+    assert health["status"] in ("healthy", "unhealthy", "degraded")
 
 
 # ============================================================================
@@ -601,13 +607,28 @@ async def test_mock_agent_default_response(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_full_execution_workflow(mock_config, sample_repo_path, mock_code_graph_analyzer):
+async def test_full_execution_workflow(mock_config, sample_repo_path):
     """Test complete workflow from task execution to result."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with patch(
-        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    mock_result = {
+        "repo": sample_repo_path,
+        "status": "completed",
+        "result": {
+            "operation": "code_sweep",
+            "content": "Full workflow analysis",
+            "run_id": "integration_run",
+            "latency_ms": 150.0,
+        },
+        "task_id": "integration_test",
+    }
+
+    with patch.object(
+        adapter, "_process_single_repo", return_value=mock_result
     ):
+        adapter._initialized = True
+        adapter._semaphore = asyncio.Semaphore(5)
+
         # Execute task
         result = await adapter.execute(
             task={
@@ -634,22 +655,31 @@ async def test_full_execution_workflow(mock_config, sample_repo_path, mock_code_
 
 
 @pytest.mark.asyncio
-async def test_concurrent_execution_multiple_repos(mock_config, mock_code_graph_analyzer):
+async def test_concurrent_execution_multiple_repos(mock_config):
     """Test executing tasks concurrently across multiple repos."""
     adapter = AgnoAdapter(config=mock_config)
 
     repos = [f"/path/to/repo{i}" for i in range(10)]
 
-    with patch(
-        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    mock_result = {
+        "repo": "/path/to/repo",
+        "status": "completed",
+        "result": {"operation": "code_sweep", "content": "done"},
+        "task_id": "concurrent_test",
+    }
+
+    with patch.object(
+        adapter, "_process_single_repo", return_value=mock_result
     ):
+        adapter._initialized = True
+        adapter._semaphore = asyncio.Semaphore(5)
+
         result = await adapter.execute(
             task={"type": "code_sweep", "id": "concurrent_test"}, repos=repos
         )
 
         assert result["repos_processed"] == 10
         assert len(result["results"]) == 10
-        # All repos should be processed in parallel
         assert result["success_count"] + result["failure_count"] == 10
 
 
@@ -662,8 +692,12 @@ async def test_concurrent_execution_multiple_repos(mock_config, mock_code_graph_
 async def test_execute_with_empty_repo_list(mock_config):
     """Test executing with empty repository list."""
     adapter = AgnoAdapter(config=mock_config)
+    adapter._initialized = True
+    adapter._semaphore = asyncio.Semaphore(5)
 
-    result = await adapter.execute(task={"type": "code_sweep", "id": "empty_test"}, repos=[])
+    result = await adapter.execute(
+        task={"type": "code_sweep", "id": "empty_test"}, repos=[]
+    )
 
     assert result["repos_processed"] == 0
     assert result["success_count"] == 0
@@ -672,15 +706,23 @@ async def test_execute_with_empty_repo_list(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_execute_with_missing_task_id(
-    mock_config, sample_repo_path, mock_code_graph_analyzer
-):
+async def test_execute_with_missing_task_id(mock_config, sample_repo_path):
     """Test executing task without ID."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with patch(
-        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    mock_result = {
+        "repo": sample_repo_path,
+        "status": "completed",
+        "result": {"operation": "code_sweep", "content": "done"},
+        "task_id": "unknown",
+    }
+
+    with patch.object(
+        adapter, "_process_single_repo", return_value=mock_result
     ):
+        adapter._initialized = True
+        adapter._semaphore = asyncio.Semaphore(5)
+
         result = await adapter.execute(
             task={"type": "code_sweep"},  # No id
             repos=[sample_repo_path],
@@ -692,18 +734,26 @@ async def test_execute_with_missing_task_id(
 
 
 @pytest.mark.asyncio
-async def test_execute_with_missing_task_type(
-    mock_config, sample_repo_path, mock_code_graph_analyzer
-):
+async def test_execute_with_missing_task_type(mock_config, sample_repo_path):
     """Test executing task without type (uses default)."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with patch(
-        "mahavishnu.engines.agno_adapter.CodeGraphAnalyzer", return_value=mock_code_graph_analyzer
+    mock_result = {
+        "repo": sample_repo_path,
+        "status": "completed",
+        "result": {"operation": "default", "content": "done"},
+        "task_id": "no_type_test",
+    }
+
+    with patch.object(
+        adapter, "_process_single_repo", return_value=mock_result
     ):
+        adapter._initialized = True
+        adapter._semaphore = asyncio.Semaphore(5)
+
         result = await adapter.execute(
             task={"id": "no_type_test"},  # No type
             repos=[sample_repo_path],
         )
 
-        assert result["status"] in ["completed", "failed"]
+        assert result["status"] in ("completed", "partial")

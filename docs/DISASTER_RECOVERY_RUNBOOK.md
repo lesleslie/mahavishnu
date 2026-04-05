@@ -179,10 +179,10 @@ docker exec mahavishnu-redis redis-cli -a $(cat secrets/redis_password.txt) INFO
 
 ```bash
 # Check circuit breaker status
-curl http://localhost:9091/metrics | grep circuit_breaker
+curl http://localhost:8680/metrics | grep circuit_breaker
 
 # Check embedding latency
-curl http://localhost:9091/metrics | grep embedding_latency
+curl http://localhost:8680/metrics | grep embedding_latency
 
 # Check Akosha MCP health
 curl http://localhost:8682/mcp/health
@@ -224,7 +224,7 @@ If all embedding sources fail:
 
 ```bash
 # Check embedding source distribution
-curl http://localhost:9091/metrics | grep embedding_source
+curl http://localhost:8680/metrics | grep embedding_source
 
 # Test embedding generation
 curl -X POST http://localhost:8680/api/embed -d '{"text": "test query"}'
@@ -278,7 +278,7 @@ curl http://localhost:8680/mcp/health
 curl http://localhost:8682/mcp/health
 
 # Prometheus metrics
-curl http://localhost:9091/metrics
+curl http://localhost:8680/metrics
 ```
 
 #### 3. Data Integrity Check

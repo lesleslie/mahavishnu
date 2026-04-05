@@ -10,6 +10,7 @@ from mahavishnu.workers.base import BaseWorker, WorkerResult, WorkerStatus
 from mahavishnu.workers.container import ContainerWorker
 from mahavishnu.workers.debug_monitor import DebugMonitorWorker
 from mahavishnu.workers.manager import WorkerManager
+from monitoring.metrics import agent_tasks_in_progress, agent_tasks_total
 from mahavishnu.workers.terminal import TerminalAIWorker
 
 # ============================================================================
@@ -337,6 +338,9 @@ class TestContainerWorker:
 
             mock_subprocess.return_value = mock_proc
 
+            # Skip command validation to test execution error handling
+            worker._validate_command = MagicMock()
+
             result = await worker.execute({"command": "invalid_command"})
 
             assert result.status == WorkerStatus.FAILED
@@ -544,6 +548,7 @@ class TestWorkerManager:
     async def test_execute_task_success(self, worker_manager):
         """Test executing task on worker."""
         mock_worker = AsyncMock()
+        mock_worker.worker_type = "terminal-qwen"
         mock_worker.execute = AsyncMock(
             return_value=WorkerResult(
                 worker_id="worker_123",
@@ -564,6 +569,48 @@ class TestWorkerManager:
 
         assert result.status == WorkerStatus.COMPLETED
         mock_worker.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_execute_task_records_metrics(self, worker_manager):
+        """Successful worker execution should update shared agent task metrics."""
+        mock_worker = AsyncMock()
+        mock_worker.worker_type = "terminal-qwen"
+        mock_worker.execute = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="worker_123",
+                status=WorkerStatus.COMPLETED,
+                output="Done",
+                error=None,
+                exit_code=0,
+                duration_seconds=1.5,
+                metadata={},
+            )
+        )
+        worker_manager._workers["worker_123"] = mock_worker
+
+        before = agent_tasks_total.labels(
+            agent_type="terminal-qwen",
+            adapter="worker_manager",
+            status=WorkerStatus.COMPLETED.value,
+        )._value.get()
+
+        await worker_manager.execute_task(
+            worker_id="worker_123",
+            task={"prompt": "Test"},
+        )
+
+        after = agent_tasks_total.labels(
+            agent_type="terminal-qwen",
+            adapter="worker_manager",
+            status=WorkerStatus.COMPLETED.value,
+        )._value.get()
+        in_progress = agent_tasks_in_progress.labels(
+            agent_type="terminal-qwen",
+            adapter="worker_manager",
+        )._value.get()
+
+        assert after == before + 1
+        assert in_progress == 0
 
     @pytest.mark.asyncio
     async def test_execute_task_worker_not_found(self, worker_manager):
