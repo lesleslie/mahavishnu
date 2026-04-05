@@ -18,6 +18,9 @@ from .core.subscription_auth import MultiAuthHandler
 # Import ecosystem management CLI
 from .ecosystem_cli import add_ecosystem_commands
 
+# Import configuration validation CLI
+from .cli.config_validator import add_config_validation_commands
+
 # Import metrics CLI
 from .metrics_cli import add_metrics_commands
 
@@ -50,6 +53,9 @@ DEFAULT_MCP_PORT = 8680
 
 # Add worktree sub-app
 app.add_typer(worktree_app, name="worktree")
+
+# Add configuration validation command
+add_config_validation_commands(app)
 
 # Add comprehensive help system - DISABLED due to Click/Typer incompatibility
 # app.add_typer(help_group, name="help")

@@ -1,7 +1,7 @@
 # Initiative 2: Config Unification + Validation CLI
 
 ## Metadata
-- Status: `not_started`
+- Status: `complete`
 - Owner Role: `Core Eng`
 - Target Window: `2026-04-13` to `2026-04-24`
 
@@ -9,10 +9,10 @@
 Introduce deterministic preflight validation to prevent configuration-related runtime failures.
 
 ## Work Package Checklist
-- [ ] `I2-1` Scaffold `config_validator.py` command
-- [ ] `I2-2` Add repo/adapters/pool checks
-- [ ] `I2-3` Add MCP connectivity and full mode checks
-- [ ] `I2-4` Add CI config matrix job
+- [x] `I2-1` Scaffold `config_validator.py` command
+- [x] `I2-2` Add repo/adapters/pool checks
+- [x] `I2-3` Add MCP connectivity and full mode checks
+- [x] `I2-4` Add CI config matrix job
 
 ## Dependencies
 - `I1-1`
@@ -27,3 +27,4 @@ Introduce deterministic preflight validation to prevent configuration-related ru
 
 ## Progress Log
 - 2026-04-04: Plan file created.
+- 2026-04-04: Implemented config validator CLI, runtime checks, and tests; marked complete after validation.
