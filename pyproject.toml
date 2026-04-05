@@ -346,6 +346,7 @@ markers = [
     "llamaindex: Tests for LlamaIndex adapter",
     "agno: Tests for Agno adapter",
     "mcp: Tests for MCP server functionality",
+    "chaos: Chaos and failure-injection tests",
     "requires_network: Tests requiring network access",
     "requires_auth: Tests requiring authentication credentials",
 ]
