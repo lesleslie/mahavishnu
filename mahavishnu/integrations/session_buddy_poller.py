@@ -29,6 +29,7 @@ from monitoring.metrics import (
 )
 
 from ..core.config import MahavishnuSettings
+from ..core.resilience import RetryPolicy, retry_async
 
 
 @dataclass
@@ -325,37 +326,34 @@ class SessionBuddyPoller:
 
         self.logger.debug(f"Calling MCP tool: {tool_name}")
 
-        # Retry logic
-        last_error = None
-        for attempt in range(self.max_retries):
-            try:
-                response = await self._http_client.post(url, json=payload)
-                response.raise_for_status()
+        policy = RetryPolicy(
+            max_attempts=self.max_retries,
+            initial_delay_seconds=self.retry_delay,
+            backoff_factor=2.0,
+            max_delay_seconds=max(self.retry_delay * (2 ** max(self.max_retries - 1, 0)), self.retry_delay),
+            retryable_exceptions=(httpx.HTTPError,),
+        )
 
-                result = response.json()
+        async def _post_tool() -> dict[str, Any]:
+            response = await self._http_client.post(url, json=payload)
+            response.raise_for_status()
 
-                # Validate response structure
-                if not isinstance(result, dict):
-                    raise ValueError(f"Invalid response type: {type(result)}")
+            result = response.json()
+            if not isinstance(result, dict):
+                raise ValueError(f"Invalid response type: {type(result)}")
+            return result
 
-                return result
-
-            except httpx.HTTPError as e:
-                last_error = e
-                self.logger.warning(
-                    f"HTTP error calling {tool_name} (attempt {attempt + 1}/{self.max_retries}): {e}"
-                )
-                if attempt < self.max_retries - 1:
-                    await asyncio.sleep(self.retry_delay * (2**attempt))  # Exponential backoff
-                else:
-                    raise
-
-            except ValueError as e:
-                last_error = e
-                self.logger.error(f"Invalid response from {tool_name}: {e}")
-                raise
-
-        raise last_error or RuntimeError("Failed to call MCP tool")
+        try:
+            result, _attempts = await retry_async(
+                _post_tool,
+                policy=policy,
+                operation=f"session_buddy_poller.{tool_name}",
+                dependency="session_buddy",
+            )
+            return result
+        except ValueError as e:
+            self.logger.error(f"Invalid response from {tool_name}: {e}")
+            raise
 
     def _convert_to_otel(self, tool_name: str, metric_data: dict[str, Any]) -> list[dict[str, Any]]:
         """Convert Session-Buddy metric data to OTel format.

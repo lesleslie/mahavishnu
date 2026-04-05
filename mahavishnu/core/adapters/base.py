@@ -1,13 +1,13 @@
 """Base adapter interface for orchestrator engines."""
 
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from ..adapter_discovery import AdapterMetadata
 
 
-class AdapterType(str, Enum):
+class AdapterType(StrEnum):
     """Enumeration of adapter types."""
 
     PREFECT = "prefect"
@@ -47,10 +47,13 @@ class OrchestratorAdapter(ABC):
         """Initialize adapter resources before execution."""
         pass
 
-    @abstractmethod
     async def cleanup(self) -> None:
-        """Release adapter resources after execution."""
-        pass
+        """Release adapter resources after execution.
+
+        Concrete adapters may override this. The default implementation is a no-op
+        so lightweight test doubles and legacy adapters remain compatible.
+        """
+        return None
 
     async def shutdown(self) -> None:
         """Backward-compatible shutdown alias for cleanup."""

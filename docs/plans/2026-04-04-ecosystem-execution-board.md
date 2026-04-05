@@ -37,7 +37,7 @@ Completion rule for this master checklist:
 - [x] [Initiative 3: MCP Lifecycle Formalization](./initiatives/03-mcp-lifecycle-formalization.md)
 - [x] [Initiative 4: MCP Utility Tools](./initiatives/04-mcp-utility-tools.md)
 - [x] [Initiative 5: Ecosystem Contract Tests](./initiatives/05-ecosystem-contract-tests.md)
-- [ ] [Initiative 6: Retry/Circuit-Breaker Centralization](./initiatives/06-retry-circuit-centralization.md)
+- [x] [Initiative 6: Retry/Circuit-Breaker Centralization](./initiatives/06-retry-circuit-centralization.md)
 - [ ] [Initiative 7: Chaos Tests v1](./initiatives/07-chaos-tests-v1.md)
 - [ ] [Initiative 8: Engine Adapter Decomposition](./initiatives/08-engine-adapter-decomposition.md)
 - [ ] [Initiative 9: Typed Event Envelope + Governance](./initiatives/09-typed-event-envelope-governance.md)
@@ -58,6 +58,7 @@ This is the recommended order for the remaining `gpt-5.4 mini` budget:
 4. `I2` Config unification + validation CLI: complete.
 5. `I3` MCP lifecycle formalization: complete.
 6. `I5` Ecosystem contract tests: complete.
+7. `I6` Retry/circuit-breaker centralization: complete.
 
 Execution rules for this slice:
 - `I0` is complete.

@@ -18,6 +18,7 @@ from contextlib import asynccontextmanager
 from typing import TypeVar, Callable, Any, AsyncGenerator, ParamSpec
 
 from mahavishnu.core.errors import MahavishnuError, ErrorCode, TimeoutError
+from mahavishnu.core.resilience import RetryExhaustedError, RetryPolicy, retry_async
 
 logger = logging.getLogger(__name__)
 
@@ -239,26 +240,23 @@ async def with_retry(
     Raises:
         Exception: The last exception if all retries fail
     """
-    last_exception = None
-    delay = base_delay
-
-    for attempt in range(max_retries + 1):
-        try:
-            return await func(*args, **kwargs)
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:
-            last_exception = e
-            if attempt < max_retries:
-                logger.warning(
-                    f"Attempt {attempt + 1}/{max_retries + 1} failed: {e}. "
-                    f"Retrying in {delay:.1f}s..."
-                )
-                await asyncio.sleep(delay)
-                delay = min(delay * exponential_base, max_delay)
-
-    logger.error(f"All {max_retries + 1} attempts failed")
-    raise last_exception
+    policy = RetryPolicy(
+        max_attempts=max_retries + 1,
+        initial_delay_seconds=base_delay,
+        max_delay_seconds=max_delay,
+        backoff_factor=exponential_base,
+    )
+    try:
+        result, _attempts = await retry_async(
+            func,
+            *args,
+            policy=policy,
+            operation="async_patterns.with_retry",
+            **kwargs,
+        )
+        return result
+    except RetryExhaustedError as exc:
+        raise exc.last_exception if exc.last_exception is not None else exc
 
 
 async def run_with_timeout(

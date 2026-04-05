@@ -1,7 +1,10 @@
 """Resilience and error recovery patterns for Mahavishnu."""
 
+from __future__ import annotations
+
 import asyncio
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 import logging
@@ -11,6 +14,320 @@ from typing import Any
 
 from ..core.workflow_state import WorkflowStatus
 
+try:
+    from prometheus_client import Counter, Gauge
+
+    PROMETHEUS_AVAILABLE = True
+except ImportError:  # pragma: no cover - optional dependency
+    PROMETHEUS_AVAILABLE = False
+
+    class _NoopMetric:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def labels(self, **kwargs):
+            return self
+
+        def inc(self, amount: float = 1) -> None:
+            return None
+
+        def set(self, value: float) -> None:
+            return None
+
+    Counter = Gauge = _NoopMetric
+
+
+logger = logging.getLogger(__name__)
+
+
+class CircuitState(Enum):
+    """Possible states of the circuit breaker."""
+
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
+
+
+@dataclass(slots=True)
+class RetryPolicy:
+    """Shared retry policy for transient failures."""
+
+    max_attempts: int = 4
+    initial_delay_seconds: float = 1.0
+    max_delay_seconds: float = 30.0
+    backoff_factor: float = 2.0
+    jitter_ratio: float = 0.0
+    retryable_exceptions: tuple[type[BaseException], ...] = (Exception,)
+
+    def delay_for_attempt(self, attempt_number: int) -> float:
+        """Compute retry delay for a failed attempt number."""
+        delay = min(
+            self.initial_delay_seconds * (self.backoff_factor ** max(attempt_number - 1, 0)),
+            self.max_delay_seconds,
+        )
+        if self.jitter_ratio > 0:
+            jitter = delay * self.jitter_ratio * random.uniform(-1.0, 1.0)
+            delay = max(0.0, delay + jitter)
+        return delay
+
+
+@dataclass(slots=True)
+class CircuitBreakerPolicy:
+    """Shared circuit-breaker policy for dependency classes."""
+
+    failure_threshold: int = 5
+    recovery_timeout_seconds: float = 60.0
+    reset_timeout_seconds: float = 60.0
+
+
+@dataclass(slots=True)
+class DependencyProfile:
+    """Classify a dependency by retry and circuit-breaking behavior."""
+
+    name: str
+    required: bool = True
+    retry_policy: RetryPolicy = field(default_factory=RetryPolicy)
+    circuit_breaker_policy: CircuitBreakerPolicy = field(default_factory=CircuitBreakerPolicy)
+
+
+class RetryExhaustedError(Exception):
+    """Raised when a retry policy exhausts all attempts."""
+
+    def __init__(self, last_exception: Exception | None, attempts: int) -> None:
+        self.last_exception = last_exception
+        self.attempts = attempts
+        super().__init__(str(last_exception) if last_exception is not None else "Retry exhausted")
+
+
+class ResilienceMetrics:
+    """Prometheus metrics for retry and circuit-breaker operations."""
+
+    def __init__(self, namespace: str = "mahavishnu") -> None:
+        self.namespace = namespace
+        self._enabled = PROMETHEUS_AVAILABLE
+        self._metrics_initialized = False
+        self._retry_attempts_total: Counter | None = None
+        self._retry_amplification_gauge: Gauge | None = None
+        self._circuit_transitions_total: Counter | None = None
+
+    def _initialize(self) -> None:
+        if self._metrics_initialized:
+            return
+
+        self._retry_attempts_total = Counter(
+            "mahavishnu_resilience_retry_attempts_total",
+            "Retry attempts performed by shared resilience helpers",
+            ["dependency", "operation", "outcome"],
+        )
+        self._retry_amplification_gauge = Gauge(
+            "mahavishnu_resilience_retry_amplification_ratio",
+            "Observed retry amplification ratio by dependency",
+            ["dependency"],
+        )
+        self._circuit_transitions_total = Counter(
+            "mahavishnu_resilience_circuit_transitions_total",
+            "Circuit breaker state transitions by dependency",
+            ["dependency", "from_state", "to_state"],
+        )
+        self._metrics_initialized = True
+
+    def record_retry_attempt(
+        self,
+        dependency: str,
+        operation: str,
+        outcome: str,
+        attempts: int = 1,
+    ) -> None:
+        if not self._enabled:
+            return
+        self._initialize()
+        assert self._retry_attempts_total is not None
+        self._retry_attempts_total.labels(
+            dependency=dependency,
+            operation=operation,
+            outcome=outcome,
+        ).inc(attempts)
+
+    def record_retry_amplification(self, dependency: str, attempts: int, successes: int = 1) -> None:
+        if not self._enabled:
+            return
+        self._initialize()
+        assert self._retry_amplification_gauge is not None
+        ratio = attempts / max(successes, 1)
+        self._retry_amplification_gauge.labels(dependency=dependency).set(ratio)
+
+    def record_circuit_transition(self, dependency: str, from_state: str, to_state: str) -> None:
+        if not self._enabled:
+            return
+        self._initialize()
+        assert self._circuit_transitions_total is not None
+        self._circuit_transitions_total.labels(
+            dependency=dependency,
+            from_state=from_state,
+            to_state=to_state,
+        ).inc()
+
+
+RESILIENCE_METRICS = ResilienceMetrics()
+
+
+def get_resilience_metrics() -> ResilienceMetrics:
+    """Return the shared resilience metrics collector."""
+    return RESILIENCE_METRICS
+
+
+class CircuitBreaker:
+    """Circuit breaker with explicit CLOSED/OPEN/HALF_OPEN transitions."""
+
+    def __init__(
+        self,
+        threshold: int = 5,
+        timeout: int = 60,
+        reset_timeout: int = 60,
+        dependency_name: str = "generic",
+        metrics: ResilienceMetrics | None = None,
+    ) -> None:
+        self.threshold = threshold
+        self.timeout = timeout
+        self.reset_timeout = reset_timeout
+        self.dependency_name = dependency_name
+        self.metrics = metrics or RESILIENCE_METRICS
+
+        self.failure_count = 0
+        self.state = CircuitState.CLOSED
+        self.last_failure_time: datetime | None = None
+        self.logger = logging.getLogger(__name__)
+
+    def _transition(self, new_state: CircuitState) -> None:
+        if self.state != new_state:
+            self.metrics.record_circuit_transition(
+                self.dependency_name,
+                self.state.value,
+                new_state.value,
+            )
+            self.state = new_state
+
+    def record_failure(self) -> None:
+        """Record a failure and potentially open the circuit."""
+        self.failure_count += 1
+        self.last_failure_time = datetime.now(UTC)
+
+        if self.failure_count >= self.threshold and self.state != CircuitState.OPEN:
+            self._transition(CircuitState.OPEN)
+            self.logger.warning(f"Circuit breaker opened after {self.failure_count} failures")
+
+    def record_success(self) -> None:
+        """Record a success and reset failure count."""
+        self.failure_count = 0
+        if self.state == CircuitState.HALF_OPEN:
+            self._transition(CircuitState.CLOSED)
+            self.logger.info("Circuit breaker closed after successful request")
+
+    def allow_request(self) -> bool:
+        """Check if request is allowed."""
+        if self.state == CircuitState.CLOSED:
+            return True
+
+        if self.state == CircuitState.OPEN:
+            if self.last_failure_time is None:
+                return False
+
+            elapsed = (datetime.now(UTC) - self.last_failure_time).total_seconds()
+            if elapsed >= max(self.timeout, 0):
+                self._transition(CircuitState.HALF_OPEN)
+                self.failure_count = 0
+                self.logger.info("Circuit breaker transitioning to half-open for test")
+                return True
+            return False
+
+        return True
+
+    async def call(self, func: Callable, *args, **kwargs) -> Any:
+        """Call a function with circuit breaker protection."""
+        if not self.allow_request():
+            raise Exception(f"Circuit breaker is {self.state.value}, request denied")
+
+        try:
+            result = (
+                await func(*args, **kwargs)
+                if asyncio.iscoroutinefunction(func)
+                else func(*args, **kwargs)
+            )
+            self.record_success()
+            return result
+        except Exception:
+            self.record_failure()
+            raise
+
+    def call_sync(self, func: Callable, *args, **kwargs) -> Any:
+        """Call a synchronous function with circuit breaker protection."""
+        if not self.allow_request():
+            raise Exception(f"Circuit breaker is {self.state.value}, request denied")
+
+        try:
+            result = func(*args, **kwargs)
+            self.record_success()
+            return result
+        except Exception:
+            self.record_failure()
+            raise
+
+
+def circuit_breaker(threshold: int = 5, timeout: int = 60, reset_timeout: int = 60):
+    """Decorator to apply circuit breaker pattern to a function."""
+    cb = CircuitBreaker(threshold, timeout, reset_timeout)
+
+    def decorator(func):
+        async def async_wrapper(*args, **kwargs):
+            return await cb.call(func, *args, **kwargs)
+
+        def sync_wrapper(*args, **kwargs):
+            return cb.call_sync(func, *args, **kwargs)
+
+        return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+
+    return decorator
+
+
+async def retry_async(
+    func: Callable[..., Awaitable[Any]],
+    *args,
+    policy: RetryPolicy | None = None,
+    operation: str = "operation",
+    dependency: str = "generic",
+    metrics: ResilienceMetrics | None = None,
+    **kwargs,
+) -> tuple[Any, int]:
+    """Execute an async function with shared retry policy."""
+    retry_policy = policy or RetryPolicy()
+    attempts = 0
+    last_exception: Exception | None = None
+    metrics_collector = metrics or RESILIENCE_METRICS
+
+    for attempt in range(1, retry_policy.max_attempts + 1):
+        attempts = attempt
+        try:
+            result = await func(*args, **kwargs)
+            metrics_collector.record_retry_attempt(dependency, operation, "success")
+            metrics_collector.record_retry_amplification(dependency, attempts, successes=1)
+            return result, attempts
+        except asyncio.CancelledError:
+            raise
+        except retry_policy.retryable_exceptions as exc:  # type: ignore[misc]
+            last_exception = exc
+            metrics_collector.record_retry_attempt(dependency, operation, "failure")
+            if attempt >= retry_policy.max_attempts:
+                break
+
+            delay = retry_policy.delay_for_attempt(attempt)
+            logger.warning(
+                f"{operation} failed on attempt {attempt}/{retry_policy.max_attempts} "
+                f"for {dependency}: {exc}. Retrying in {delay:.1f}s"
+            )
+            await asyncio.sleep(delay)
+
+    metrics_collector.record_retry_attempt(dependency, operation, "exhausted")
+    raise RetryExhaustedError(last_exception, attempts)
 
 class RecoveryStrategy(Enum):
     """Different strategies for error recovery."""
