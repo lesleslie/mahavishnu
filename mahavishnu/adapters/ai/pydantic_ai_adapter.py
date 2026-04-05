@@ -812,6 +812,10 @@ class PydanticAIAdapter(OrchestratorAdapter, Generic[OutputT]):
             for agent_id, info in self._agents.items()
         ]
 
+    async def cleanup(self) -> None:
+        """Cleanup adapter resources."""
+        await self.shutdown()
+
     async def shutdown(self) -> None:
         """Shutdown adapter and cleanup resources.
 

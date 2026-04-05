@@ -270,6 +270,15 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             has_cloud_ui=False,  # Local engine
         )
 
+    async def initialize(self) -> None:
+        """Initialize the LlamaIndex adapter."""
+        return None
+
+    async def cleanup(self) -> None:
+        """Cleanup LlamaIndex adapter resources."""
+        self.indices.clear()
+        self.documents.clear()
+
     def __init__(self, config) -> None:
         """Initialize the LlamaIndex adapter with configuration.
 

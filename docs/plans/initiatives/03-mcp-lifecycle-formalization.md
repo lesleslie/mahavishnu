@@ -1,7 +1,7 @@
 # Initiative 3: MCP Lifecycle Formalization
 
 ## Metadata
-- Status: `not_started`
+- Status: `complete`
 - Owner Role: `Core Eng`
 - Target Window: `2026-04-13` to `2026-04-24`
 
@@ -9,10 +9,10 @@
 Make adapter lifecycle behavior explicit, testable, and uniform.
 
 ## Work Package Checklist
-- [ ] `I3-1` Add abstract lifecycle contract
-- [ ] `I3-2` Add `AdapterMetadata` model
-- [ ] `I3-3` Update Prefect/Agno/LlamaIndex implementations
-- [ ] `I3-4` Lifecycle conformance tests
+- [x] `I3-1` Add abstract lifecycle contract
+- [x] `I3-2` Add `AdapterMetadata` model
+- [x] `I3-3` Update Prefect/Agno/LlamaIndex implementations
+- [x] `I3-4` Lifecycle conformance tests
 
 ## Dependencies
 - `I1-1`
@@ -27,3 +27,4 @@ Make adapter lifecycle behavior explicit, testable, and uniform.
 
 ## Progress Log
 - 2026-04-04: Plan file created.
+- 2026-04-04: Added abstract lifecycle contract, concrete cleanup/init methods, metadata re-export, and conformance tests; marked complete after validation.

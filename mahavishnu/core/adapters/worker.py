@@ -85,6 +85,14 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             supports_multi_agent=False,
         )
 
+    async def initialize(self) -> None:
+        """Initialize the worker adapter."""
+        return None
+
+    async def cleanup(self) -> None:
+        """Cleanup worker resources."""
+        return None
+
     async def execute(
         self,
         task: dict[str, Any],

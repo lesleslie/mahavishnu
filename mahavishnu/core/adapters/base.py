@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
 
+from ..adapter_discovery import AdapterMetadata
+
 
 class AdapterType(str, Enum):
     """Enumeration of adapter types."""
@@ -39,6 +41,20 @@ class AdapterCapabilities:
 
 class OrchestratorAdapter(ABC):
     """Base class for orchestrator adapters."""
+
+    @abstractmethod
+    async def initialize(self) -> None:
+        """Initialize adapter resources before execution."""
+        pass
+
+    @abstractmethod
+    async def cleanup(self) -> None:
+        """Release adapter resources after execution."""
+        pass
+
+    async def shutdown(self) -> None:
+        """Backward-compatible shutdown alias for cleanup."""
+        await self.cleanup()
 
     @property
     @abstractmethod
@@ -88,4 +104,5 @@ __all__ = [
     "OrchestratorAdapter",
     "AdapterType",
     "AdapterCapabilities",
+    "AdapterMetadata",
 ]

@@ -543,6 +543,10 @@ class PrefectAdapter(OrchestratorAdapter):
             )
             raise error from exc
 
+    async def cleanup(self) -> None:
+        """Cleanup adapter resources."""
+        await self.shutdown()
+
     async def shutdown(self) -> None:
         """Shutdown the Prefect client and cleanup resources.
 

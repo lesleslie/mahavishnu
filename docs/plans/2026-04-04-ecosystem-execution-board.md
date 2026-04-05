@@ -34,7 +34,7 @@ Completion rule for this master checklist:
 - [x] [Initiative 0: Phase 0 Cleanup](./initiatives/00-phase0-cleanup.md)
 - [x] [Initiative 1: Health/Readiness/Metrics Contract + `mahavishnu health`](./initiatives/01-health-contract-and-command.md)
 - [x] [Initiative 2: Config Unification + Validation CLI](./initiatives/02-config-unification-validation-cli.md)
-- [ ] [Initiative 3: MCP Lifecycle Formalization](./initiatives/03-mcp-lifecycle-formalization.md)
+- [x] [Initiative 3: MCP Lifecycle Formalization](./initiatives/03-mcp-lifecycle-formalization.md)
 - [x] [Initiative 4: MCP Utility Tools](./initiatives/04-mcp-utility-tools.md)
 - [ ] [Initiative 5: Ecosystem Contract Tests](./initiatives/05-ecosystem-contract-tests.md)
 - [ ] [Initiative 6: Retry/Circuit-Breaker Centralization](./initiatives/06-retry-circuit-centralization.md)
@@ -56,12 +56,14 @@ This is the recommended order for the remaining `gpt-5.4 mini` budget:
 2. `I1` Health/readiness/metrics contract + `mahavishnu health`: complete.
 3. `I4` MCP utility tools: complete.
 4. `I2` Config unification + validation CLI: complete.
+5. `I3` MCP lifecycle formalization: complete.
 
 Execution rules for this slice:
 - `I0` is complete.
 - `I1` is complete.
 - Do not start `I4` work packages until `I1-2` is complete.
 - `I2` is complete.
+- `I3` is complete.
 - Stop after any initiative if the linked initiative doc has all work package checkboxes complete and exit criteria are met.
 
 ## 2) Global Gates and Safety Controls

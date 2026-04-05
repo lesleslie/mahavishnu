@@ -1329,6 +1329,10 @@ Use available tools to complete the task and provide a summary."""
 
         return {"status": "healthy", "details": health_details}
 
+    async def cleanup(self) -> None:
+        """Cleanup adapter resources."""
+        await self.shutdown()
+
     async def shutdown(self) -> None:
         """Gracefully shutdown adapter and cleanup resources.
 
