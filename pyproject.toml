@@ -89,6 +89,8 @@ dependencies = [
     # Use the slim package with only the providers Mahavishnu integrates.
     # This avoids the umbrella package's transitive huggingface extra path.
     "pydantic-ai-slim[mcp,openai,anthropic,google,groq]>=1.77.0",
+    # In-process AI workers (nanobot Python API for AgentRunner/AgentLoop)
+    "nanobot>=0.1.4",
 ]
 
 [project.scripts]

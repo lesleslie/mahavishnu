@@ -858,7 +858,7 @@ wheels = [
 
 [[package]]
 name = "crackerjack"
-version = "0.54.4"
+version = "0.54.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -921,9 +921,9 @@ dependencies = [
     { name = "websockets" },
     { name = "zuban" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d5/97/ac71275e9c9f9e228937a56ae98c3055cdb962964db56cb084548ec6206e/crackerjack-0.54.4.tar.gz", hash = "sha256:8f587996b44740a81c23834974f6472435c15b496e79284aa75fbda483bf1996", size = 3836409, upload-time = "2026-04-03T12:11:14.942Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/51/9e/ab9720846c58e3479f5c0b9ce6ef002e887acfe391b1b4cff502ce10a78a/crackerjack-0.54.5.tar.gz", hash = "sha256:17aa225e4e0bce811b050821d0b66e8da613b4852955d477de3c45c77886cce7", size = 3836756, upload-time = "2026-04-05T09:26:41.131Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/43/8a/9e5609e3947904f898cd5907dd6622c0cd0f6f775c6f2dd293e7d092f662/crackerjack-0.54.4-py3-none-any.whl", hash = "sha256:671be5cfdb3e7aded68f48b32baf43a0cdbb8c879015fa9b5eab01d436611bea", size = 1329709, upload-time = "2026-04-03T12:11:18.414Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/39/6d60eedfdb5d20474f01ceb56df80c0a907ce30286b984861f945e8bfb36/crackerjack-0.54.5-py3-none-any.whl", hash = "sha256:d2598a6045877e5bd86475fa00e4fb7db61743c07d5bac10c0b1ae8f1ae29849", size = 1332877, upload-time = "2026-04-05T09:26:43.583Z" },
 ]
 
 [[package]]
@@ -3060,7 +3060,7 @@ wheels = [
 
 [[package]]
 name = "mahavishnu"
-version = "0.3.2"
+version = "0.4.2"
 source = { editable = "." }
 dependencies = [
     { name = "agno" },
@@ -3079,6 +3079,7 @@ dependencies = [
     { name = "ipython" },
     { name = "iterm2" },
     { name = "mcp-common", extra = ["treesitter"] },
+    { name = "nanobot" },
     { name = "oneiric" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-grpc" },
@@ -3270,6 +3271,7 @@ requires-dist = [
     { name = "mahavishnu", extras = ["worker-openclaw", "worker-deepagents", "worker-clai"], marker = "extra == 'worker-alt-cli'" },
     { name = "mcp-common", extras = ["treesitter"], specifier = ">=0.9.4" },
     { name = "mss", marker = "extra == 'automation'", specifier = ">=9.0.0" },
+    { name = "nanobot", specifier = ">=0.1.4" },
     { name = "oneiric", specifier = ">=0.3.12" },
     { name = "opencv-python", marker = "extra == 'automation-vision'", specifier = ">=4.8.0" },
     { name = "opentelemetry-api", specifier = ">=1.38.0" },
@@ -3846,6 +3848,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a2/6e/371856a3fb9d31ca8dac321cda606860fa4548858c0cc45d9d1d4ca2628b/mypy_extensions-1.1.0.tar.gz", hash = "sha256:52e68efc3284861e772bbcd66823fde5ae21fd2fdb51c62a211403730b916558", size = 6343, upload-time = "2025-04-22T14:54:24.164Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/79/7b/2c79738432f5c924bef5071f933bcc9efd0473bac3b4aa584a6f7c1c8df8/mypy_extensions-1.1.0-py3-none-any.whl", hash = "sha256:1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505", size = 4963, upload-time = "2025-04-22T14:54:22.983Z" },
+]
+
+[[package]]
+name = "nanobot"
+version = "0.4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f5/06/6cd43ddc4c22a84abc310e1bc61440347a62163ae260211a30c23ae5d2a8/nanobot-0.4.1.tar.gz", hash = "sha256:2b3376cef7a7e4a75f01d1503ea65c0074fd8a4e3a31bc5e153f1afc8db75eb2", size = 41745, upload-time = "2025-12-28T02:07:23.937Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6c/01/2905b21cff9b48553ec2829e9fdfdd274ddf2eeac7a43eb14824bf6f30ed/nanobot-0.4.1-py3-none-any.whl", hash = "sha256:40cf0d2befdf64991aafb894d9a7f09d2d0c9506774fcc8638d453ced4bbf0ad", size = 53932, upload-time = "2025-12-28T02:07:23Z" },
 ]
 
 [[package]]
@@ -9124,7 +9135,7 @@ wheels = [
 
 [[package]]
 name = "session-buddy"
-version = "0.14.7"
+version = "0.14.8"
 source = { editable = "../session-buddy" }
 dependencies = [
     { name = "aiofiles" },
@@ -9514,7 +9525,7 @@ wheels = [
 
 [[package]]
 name = "textual"
-version = "8.2.2"
+version = "8.2.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markdown-it-py", extra = ["linkify"] },
@@ -9524,9 +9535,9 @@ dependencies = [
     { name = "rich" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/69/b0/a9aedf13af1bfb1bf01cbc645ea5d5a4151b5d77ac1748b85c4f0d777d7d/textual-8.2.2.tar.gz", hash = "sha256:94e85267650cf679ac16ade5ac929055e836dc00798a0e6e3925926a5beee303", size = 1848623, upload-time = "2026-04-03T13:19:06.057Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cf/2f/d44f0f12b3ddb1f0b88f7775652e99c6b5a43fd733badf4ce064bdbfef4a/textual-8.2.3.tar.gz", hash = "sha256:beea7b86b03b03558a2224f0cc35252e60ef8b0c4353b117b2f40972902d976a", size = 1848738, upload-time = "2026-04-05T09:12:45.338Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a7/18/4d59eb3f2241db6d346a90f2452fc47a19d61090a38b9cf331afe23e8431/textual-8.2.2-py3-none-any.whl", hash = "sha256:35a8f439875dc6e5b4dc7ee72dc9698a40bd13091c2de5bd5b2d4318522af8df", size = 724078, upload-time = "2026-04-03T13:19:08.115Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/28/a81d6ce9f4804818bd1231a9a6e4d56ea84ebbe8385c49591444f0234fa2/textual-8.2.3-py3-none-any.whl", hash = "sha256:5008ac581bebf1f6fa0520404261844a231e5715fdbddd10ca73916a3af48ca2", size = 724231, upload-time = "2026-04-05T09:12:48.747Z" },
 ]
 
 [[package]]

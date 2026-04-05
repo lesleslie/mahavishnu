@@ -1461,6 +1461,9 @@ class FastMCPServer:
         # Register health check tools
         self._register_health_tools()
 
+        # Register PyCharm IDE tools
+        self._register_pycharm_tools()
+
         self._update_registered_tool_metrics()
 
         await self.server.run_http_async(host=host, port=port)
@@ -1661,6 +1664,16 @@ class FastMCPServer:
 
         register_health_tools(self.server, self.app)
         logger.info("Registered health check tools with MCP server")
+
+    def _register_pycharm_tools(self) -> None:
+        """Register PyCharm IDE tools with MCP server."""
+        try:
+            from ..mcp.tools.pycharm_tools import register_pycharm_tools
+
+            register_pycharm_tools(self.server, self.app)
+            logger.info("Registered 8 PyCharm IDE tools with MCP server")
+        except ImportError as e:
+            logger.warning(f"PyCharm tools not available: {e}")
 
 
 async def run_server(config=None):

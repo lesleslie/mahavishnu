@@ -56,11 +56,28 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             mcp_client=None,  # Session-Buddy integration remains optional
         )
         max_concurrent = getattr(getattr(config, "workers", None), "max_concurrent", 10)
+
+        # Initialize nanobot provider from app context (if available)
+        nanobot_provider = None
+        try:
+            from ..context import get_app_context
+
+            app_ctx = get_app_context()
+            if app_ctx and hasattr(app_ctx, "get"):
+                nanobot_provider = app_ctx.get("nanobot_provider")
+        except Exception:
+            pass  # App context not available yet
+
+        # Fall back to direct init from env vars
+        if nanobot_provider is None:
+            nanobot_provider = self._init_nanobot_provider_fallback()
+
         self.worker_manager = WorkerManager(
             terminal_manager=terminal_mgr,
             max_concurrent=max_concurrent,
             debug_mode=False,
             session_buddy_client=None,
+            nanobot_provider=nanobot_provider,
         )
 
     @property
@@ -238,8 +255,55 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             "workers_active": workers_active,
             "max_concurrent": max_concurrent,
             "debug_mode": health.get("debug_mode", False),
+            "nanobot_available": self.worker_manager.nanobot_provider is not None,
             "details": health,
         }
+
+    @staticmethod
+    def _init_nanobot_provider_fallback() -> Any | None:
+        """Fallback nanobot provider initialization from env vars.
+
+        Creates an OpenAICompatProvider from ANTHROPIC_AUTH_TOKEN and
+        ANTHROPIC_BASE_URL environment variables (already set for z.ai).
+        Logs a warning (not crash) if provider can't be configured.
+
+        Returns:
+            nanobot provider instance or None
+        """
+        import logging
+        import os
+
+        logger = logging.getLogger(__name__)
+        try:
+            auth_token = os.environ.get("ANTHROPIC_AUTH_TOKEN")
+            base_url = os.environ.get(
+                "ANTHROPIC_BASE_URL", "https://api.anthropic.com"
+            )
+
+            if not auth_token:
+                logger.debug(
+                    "ANTHROPIC_AUTH_TOKEN not set; nanobot in-process workers unavailable"
+                )
+                return None
+
+            from nanobot.providers import OpenAICompatProvider
+
+            provider = OpenAICompatProvider(
+                api_key=auth_token,
+                base_url=base_url,
+            )
+            logger.info(
+                "Nanobot provider initialized (fallback): OpenAICompatProvider "
+                f"(base_url={base_url})"
+            )
+            return provider
+
+        except ImportError:
+            logger.debug("nanobot package not installed; in-process workers unavailable")
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to initialize nanobot provider: {e}")
+            return None
 
 
 # =============================================================================

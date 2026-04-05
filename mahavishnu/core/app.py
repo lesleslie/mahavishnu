@@ -193,6 +193,9 @@ class MahavishnuApp:
         if self.config.terminal.enabled:
             self.terminal_manager = self._init_terminal_manager()
 
+        # Initialize nanobot provider (optional, for in-process workers)
+        self._nanobot_provider = self._init_nanobot_provider()
+
         # Initialize workflow state manager
         self.workflow_state_manager = WorkflowState()
 
@@ -460,6 +463,47 @@ class MahavishnuApp:
         except Exception as e:
             logger = __import__("logging").getLogger(__name__)
             logger.warning(f"Failed to initialize terminal manager: {e}")
+            return None
+
+    def _init_nanobot_provider(self) -> Any | None:
+        """Initialize nanobot LLM provider for in-process workers.
+
+        Uses ANTHROPIC_AUTH_TOKEN + ANTHROPIC_BASE_URL env vars
+        (already set in your environment for z.ai).
+
+        Returns:
+            nanobot provider instance or None if unavailable
+        """
+        logger = __import__("logging").getLogger(__name__)
+        try:
+            auth_token = __import__("os").environ.get("ANTHROPIC_AUTH_TOKEN")
+            base_url = __import__("os").environ.get(
+                "ANTHROPIC_BASE_URL", "https://api.anthropic.com"
+            )
+
+            if not auth_token:
+                logger.debug(
+                    "ANTHROPIC_AUTH_TOKEN not set; nanobot provider not configured"
+                )
+                return None
+
+            from nanobot.providers import OpenAICompatProvider
+
+            provider = OpenAICompatProvider(
+                api_key=auth_token,
+                base_url=base_url,
+            )
+            logger.info(
+                f"Nanobot provider initialized: OpenAICompatProvider "
+                f"(base_url={base_url})"
+            )
+            return provider
+
+        except ImportError:
+            logger.debug("nanobot package not installed; in-process workers unavailable")
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to initialize nanobot provider: {e}")
             return None
 
     def _init_pool_manager(self):

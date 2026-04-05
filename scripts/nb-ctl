@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# nanobot.sh — Manage the nanobot gateway LaunchAgent
+# Usage: nanobot.sh {start|stop|restart|status|log|tail}
+
+set -euo pipefail
+
+LABEL="ai.nanobot.gateway"
+UID_NUM=$(id -u)
+SERVICE="gui/${UID_NUM}/${LABEL}"
+PLIST="$HOME/Library/LaunchAgents/${LABEL}.plist"
+LOG="$HOME/.local/state/mcp/logs/nanobot.log"
+ERR="$HOME/.local/state/mcp/logs/nanobot.err"
+
+cmd_status() {
+    if launchctl print "$SERVICE" &>/dev/null; then
+        local pid
+        pid=$(ps -eo pid,command | grep "[b]in/nanobot gateway" | awk '{print $1}' | head -1)
+        if [[ -z "$pid" ]]; then pid="none"; fi
+        echo "✅ nanobot is running (pid ${pid})"
+    else
+        echo "❌ nanobot is not loaded"
+    fi
+}
+
+cmd_start() {
+    if launchctl print "$SERVICE" &>/dev/null; then
+        echo "Already loaded. Use 'restart' instead."
+        return 1
+    fi
+    launchctl load "$PLIST"
+    echo "✅ nanobot started"
+}
+
+cmd_stop() {
+    launchctl bootout "$SERVICE" 2>/dev/null || true
+    # Wait briefly for process to exit
+    for i in $(seq 1 10); do
+        pgrep -f "nanobot gateway" &>/dev/null || break
+        sleep 0.5
+    done
+    echo "✅ nanobot stopped"
+}
+
+cmd_restart() {
+    launchctl kickstart -k "$SERVICE" 2>/dev/null \
+        || launchctl load "$PLIST"
+    sleep 1
+    cmd_status
+}
+
+cmd_log() {
+    less "$LOG"
+}
+
+cmd_tail() {
+    tail -f "$LOG" "$ERR"
+}
+
+case "${1:-}" in
+    start)   cmd_start ;;
+    stop)    cmd_stop ;;
+    restart) cmd_restart ;;
+    status)  cmd_status ;;
+    log)     cmd_log ;;
+    tail)    cmd_tail ;;
+    *)
+        echo "Usage: $(basename "$0") {start|stop|restart|status|log|tail}"
+        exit 1
+        ;;
+esac

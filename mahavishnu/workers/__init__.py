@@ -6,13 +6,15 @@ and containers with real-time progress tracking and Session-Buddy integration.
 Available Worker Types:
     AI Assistants: terminal-qwen, terminal-claude, terminal-openclaw,
         terminal-deepagents, terminal-clai, terminal-ollama
+    In-Process: in-process-nanobot, in-process-nanobot-loop
     Gateways: gateway-openclaw
     Shell/REPL: terminal-shell, terminal-zsh, terminal-python, terminal-ipython, terminal-node
     Database: terminal-mysql, terminal-psql, terminal-redis
     WebAssembly: terminal-wasmtime, terminal-wasmer
     Remote: terminal-ssh
     Container: container, container-executor
-    Application: application-gimp, application-inkscape, application-blender, application-mdinject
+    Application: application-gimp, application-inkscape, application-blender, application-mdinject,
+        application-pycharm
 
 Routing notes:
     - communication-style tasks prefer gateway-openclaw when OPENCLAW_GATEWAY_URL
@@ -25,6 +27,7 @@ from mahavishnu.workers.container import ContainerWorker
 from mahavishnu.workers.debug_monitor import DebugMonitorWorker
 from mahavishnu.workers.generic_shell import GenericShellWorker
 from mahavishnu.workers.manager import WorkerManager
+from mahavishnu.workers.nanobot_worker import NanobotWorker
 from mahavishnu.workers.ollama import OllamaConfig, OllamaWorker
 from mahavishnu.workers.openclaw_gateway import (
     HTTPOpenClawGatewayClient,
@@ -60,6 +63,7 @@ __all__ = [
     "ApplicationWorker",
     "OllamaWorker",
     "OllamaConfig",
+    "NanobotWorker",
     "HTTPOpenClawGatewayClient",
     "OpenClawGatewayClient",
     "OpenClawGatewayConfig",
