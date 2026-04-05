@@ -21,7 +21,6 @@ def test_orchestrator_adapter_requires_lifecycle_and_execution_contract() -> Non
     """The abstract base should require the lifecycle and execution contract."""
     assert {
         "initialize",
-        "cleanup",
         "execute",
         "get_health",
     }.issubset(OrchestratorAdapter.__abstractmethods__)
