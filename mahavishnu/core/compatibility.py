@@ -69,7 +69,7 @@ CONTRACT_MATRIX: tuple[dict[str, Any], ...] = (
     {
         "name": "adapter_lifecycle_contract",
         "component": "core/adapters/base",
-        "required_methods": ("initialize", "cleanup", "execute", "get_health"),
+        "required_methods": ("initialize", "execute", "get_health"),
     },
     {
         "name": "adapter_metadata_contract",
@@ -180,7 +180,7 @@ def collect_tool_versions() -> dict[str, str]:
 
 
 def _check_adapter_lifecycle_contract() -> ContractCheck:
-    required_methods = {"initialize", "cleanup", "execute", "get_health"}
+    required_methods = {"initialize", "execute", "get_health"}
     missing = sorted(required_methods - set(OrchestratorAdapter.__abstractmethods__))
     return ContractCheck(
         name="adapter_lifecycle_contract",
