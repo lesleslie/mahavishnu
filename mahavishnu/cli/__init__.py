@@ -6,6 +6,7 @@ This package contains modular CLI components:
 - monitoring_cli: Monitoring and health check commands
 - production_cli: Production readiness commands
 - team_cli: Goal-driven team management commands
+- events: Event schema validation and export commands
 
 Note: The main CLI app is defined in mahavishnu/_main_cli.py (separate module).
 """
@@ -19,6 +20,7 @@ from .team_cli import (
     list_skills,
     list_teams,
 )
+from .events import add_events_commands
 
 __all__ = [
     "app",
@@ -35,6 +37,8 @@ __all__ = [
     "parse_goal_cmd",
     "list_skills",
     "list_teams",
+    # Events CLI
+    "add_events_commands",
 ]
 
 

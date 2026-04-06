@@ -94,6 +94,10 @@ class FixOrchestrator:
     ) -> FixResult:
         """Execute a single fix task with quality gates.
 
+        .. note:: **Golden Path**: Prefer ``mahavishnu workflow fix`` (CLI) or
+           ``FixOrchestrator`` via MCP pool tools over calling this method directly.
+           See ``docs/reports/golden-paths-guide.md`` for canonical pathways.
+
         Args:
             pool_id: ID of the pool to execute on.
             task: The fix task to execute.

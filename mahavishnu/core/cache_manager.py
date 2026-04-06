@@ -652,10 +652,61 @@ class CacheManager:
         return result > 0
 
 
+def aggregate_cache_health(
+    caches: dict[str, Any],
+) -> dict[str, Any]:
+    """Collect stats from multiple cache instances into one summary.
+
+    Each cache must expose a ``get_stats() -> dict`` method whose return
+    value contains at least ``hits``, ``misses``, and ``hit_rate`` keys.
+
+    Args:
+        caches: Mapping of human-readable name -> cache instance.
+
+    Returns:
+        Dictionary with per-cache stats and an overall ``summary`` section
+        containing total hits, misses, and aggregate hit_rate.
+
+    Example::
+
+        from mahavishnu.core.cache_manager import aggregate_cache_health
+        from mahavishnu.core.task_requirements import ResolutionCache
+
+        rc = ResolutionCache()
+        health = aggregate_cache_health({"resolution": rc})
+        print(health["summary"]["hit_rate"])
+    """
+    per_cache: dict[str, dict[str, Any]] = {}
+    total_hits = 0
+    total_misses = 0
+
+    for name, cache in caches.items():
+        stats = cache.get_stats()
+        # Normalise: some caches return CacheStats dataclass, others dict
+        if hasattr(stats, "to_dict"):
+            stats = stats.to_dict()
+        hits = stats.get("hits", 0)
+        misses = stats.get("misses", 0)
+        total_hits += hits
+        total_misses += misses
+        per_cache[name] = stats
+
+    total = total_hits + total_misses
+    return {
+        "caches": per_cache,
+        "summary": {
+            "total_hits": total_hits,
+            "total_misses": total_misses,
+            "hit_rate": total_hits / total if total > 0 else 0.0,
+        },
+    }
+
+
 __all__ = [
     "CacheManager",
     "CacheBackend",
     "LRUCache",
     "CacheStats",
     "CacheKey",
+    "aggregate_cache_health",
 ]

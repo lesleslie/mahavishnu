@@ -45,6 +45,10 @@ class SelfImprovementTools:
     ) -> dict[str, Any]:
         """Run comprehensive review and optionally fix issues.
 
+        .. note:: **Golden Path**: Prefer ``mahavishnu workflow review`` (CLI) or
+           ``review_and_fix`` MCP tool over calling this class directly.
+           See ``docs/reports/golden-paths-guide.md`` for canonical pathways.
+
         Runs review agents based on scope, creates issues for findings,
         and optionally auto-fixes critical issues.
 

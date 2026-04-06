@@ -274,14 +274,7 @@ def ingestion_stats(
 
         await ingester.initialize()
 
-        # Get stats via MCP tool
-        from .mcp.tools.content_ingestion_tools import register_content_tools
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("stats")
-        register_content_tools(mcp)
-
-        # Since we can't call tools directly, return ingester config
+        # Get stats directly from ingester config
         return {
             "output_dir": str(ingester._output_dir),
             "chunk_size": ingester._chunk_size,

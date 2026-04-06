@@ -43,6 +43,9 @@ from .worktree_cli import worktree_app
 # Import team CLI
 from .cli.team_cli import add_team_commands
 
+# Import events CLI
+from .cli.events import add_events_commands
+
 # Import comprehensive help system
 # NOTE: help_cli uses Click which is incompatible with Typer's add_typer()
 # from .cli.help_cli import help_group
@@ -61,6 +64,268 @@ add_config_validation_commands(app)
 # app.add_typer(help_group, name="help")
 
 
+# ── Workflow sub-app (canonical CLI pathways for top workflows) ──────────
+
+workflows_app = typer.Typer(help="Canonical orchestration workflow commands")
+app.add_typer(workflows_app, name="workflow")
+
+
+@workflows_app.command("sweep")
+def workflow_sweep(
+    tag: str = typer.Option(..., "--tag", "-t", help="Tag to filter repositories"),
+    adapter: str = typer.Option("langgraph", "--adapter", "-a", help="Orchestrator adapter"),
+):
+    """Run an AI code sweep across repositories matching a tag."""
+    result = asyncio.run(_async_sweep(tag, adapter))
+    typer.echo(f"Sweep completed with result: {result}")
+
+
+@workflows_app.command("quality-check")
+def workflow_quality_check(
+    tag: str = typer.Option(..., "--tag", "-t", help="Tag to filter repositories"),
+    adapter: str = typer.Option("langgraph", "--adapter", "-a", help="Orchestrator adapter"),
+    repos: list[str] | None = typer.Option(None, "--repo", "-r", help="Explicit repo list (overrides tag)"),
+):
+    """Run quality assurance evaluation across repositories."""
+    result = asyncio.run(
+        _async_trigger_workflow(
+            task_type="quality_check",
+            adapter=adapter,
+            tag=tag,
+            repos=repos,
+        )
+    )
+    typer.echo(f"Quality check completed: {result}")
+
+
+@workflows_app.command("heal")
+def workflow_heal():
+    """Auto-recover failed workflows from the dead letter queue."""
+    result = asyncio.run(_async_heal_workflows())
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+@workflows_app.command("fix")
+def workflow_fix(
+    pool_id: str = typer.Option(..., "--pool", "-p", help="Worker pool ID to use"),
+    issue_id: str = typer.Option(..., "--issue", "-i", help="Coordination issue ID to fix"),
+    description: str = typer.Option("", "--desc", "-d", help="Issue description for the AI worker"),
+    files: list[str] | None = typer.Option(None, "--file", "-f", help="Files to include in context"),
+):
+    """Execute a fix via worker pool with quality gate validation."""
+    result = asyncio.run(
+        _async_fix_orchestrate(
+            pool_id=pool_id,
+            issue_id=issue_id,
+            description=description,
+            files=files or [],
+        )
+    )
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+@workflows_app.command("review")
+def workflow_review(
+    scope: str = typer.Option("critical", "--scope", "-s", help="Review scope: critical, security, performance, quality, all"),
+    auto_fix: bool = typer.Option(False, "--fix", help="Auto-fix safe, deterministic issues"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview findings without applying fixes"),
+):
+    """Run automated code review with optional auto-fix."""
+    result = asyncio.run(_async_review_and_fix(scope, auto_fix, dry_run))
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ── Adapter sub-app (canonical adapter routing commands) ─────────────────
+
+adapter_app = typer.Typer(help="Adapter discovery and routing")
+app.add_typer(adapter_app, name="adapter")
+
+
+@adapter_app.command("list")
+def adapter_list_cmd(
+    domain: str | None = typer.Option(None, "--domain", "-d", help="Filter by domain"),
+    healthy_only: bool = typer.Option(False, "--healthy", help="Show only healthy adapters"),
+):
+    """List registered adapters with optional filtering."""
+    result = asyncio.run(_async_adapter_list(domain, healthy_only))
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+@adapter_app.command("resolve")
+def adapter_resolve_cmd(
+    task_type: str = typer.Argument(..., help="Type of task to route"),
+    capabilities: list[str] = typer.Option(..., "--cap", "-c", help="Required capabilities"),
+    domain: str = typer.Option("orchestration", "--domain", "-d", help="Domain category"),
+):
+    """Resolve the best adapter for a task by capabilities."""
+    result = asyncio.run(_async_adapter_resolve(task_type, capabilities, domain))
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+@adapter_app.command("health")
+def adapter_health_cmd(
+    name: str | None = typer.Argument(None, help="Specific adapter (omit for all)"),
+):
+    """Check health of one or all adapters."""
+    result = asyncio.run(_async_adapter_health(name))
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ── Internal async helpers for workflow commands ─────────────────────────
+
+
+async def _async_trigger_workflow(
+    task_type: str,
+    adapter: str,
+    tag: str,
+    repos: list[str] | None,
+) -> dict:
+    """Trigger a workflow via the canonical execution path."""
+    maha_app = MahavishnuApp()
+
+    all_repos = repos or maha_app.get_repos(tag=tag)
+
+    if not all_repos:
+        typer.echo("No repositories found", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Running {task_type} across {len(all_repos)} repos via {adapter}...")
+
+    task = {"task": task_type, "id": f"{task_type}-{tag}"}
+    result = await maha_app.execute_workflow_parallel(task, adapter, all_repos)
+    return result
+
+
+async def _async_heal_workflows() -> dict:
+    """Trigger workflow healing from the dead letter queue."""
+    from .core.dead_letter_queue import DeadLetterQueue
+
+    dlq = DeadLetterQueue()
+
+    failed_tasks = await dlq.list_tasks(status="pending")
+    if not failed_tasks:
+        return {"status": "no_failed_workflows", "message": "DLQ is empty"}
+
+    typer.echo(f"Found {len(failed_tasks)} failed workflows in DLQ")
+
+    healed = 0
+    errors = []
+    for task in failed_tasks:
+        try:
+            result = await dlq.retry_task(task.task_id)
+            if result.get("status") == "retried":
+                healed += 1
+        except Exception as e:
+            errors.append({"workflow_id": task.task_id, "error": str(e)})
+
+    return {
+        "status": "completed",
+        "total_failed": len(failed_tasks),
+        "healed": healed,
+        "errors": errors,
+    }
+
+
+async def _async_fix_orchestrate(
+    pool_id: str,
+    issue_id: str,
+    description: str,
+    files: list[str],
+) -> dict:
+    """Execute a fix via the FixOrchestrator canonical path."""
+    from .core.fix_orchestrator import FixOrchestrator, FixTask
+
+    prompt_parts = [f"Fix issue {issue_id}"]
+    if description:
+        prompt_parts.append(f"Description: {description}")
+    if files:
+        prompt_parts.append(f"Files: {', '.join(files)}")
+
+    task = FixTask(
+        issue_id=issue_id,
+        description=description,
+        files=files,
+        prompt="\n".join(prompt_parts),
+    )
+
+    orchestrator = FixOrchestrator()
+    typer.echo(f"Executing fix for {issue_id} on pool {pool_id}...")
+    result = await orchestrator.execute_fix(pool_id=pool_id, task=task)
+    return result
+
+
+async def _async_review_and_fix(scope: str, auto_fix: bool, dry_run: bool) -> dict:
+    """Run code review with optional auto-fix via the canonical path."""
+    from .mcp.tools.self_improvement_tools import ReviewScope, SelfImprovementTools
+
+    maha_app = MahavishnuApp()
+    tools = SelfImprovementTools(maha_app)
+    typer.echo(f"Running {'dry-run ' if dry_run else ''}review (scope={scope}, auto_fix={auto_fix})...")
+    result = await tools.review_and_fix(
+        scope=ReviewScope(scope),
+        auto_fix=auto_fix,
+        dry_run=dry_run,
+    )
+    return result
+
+
+async def _async_adapter_list(domain: str | None, healthy_only: bool) -> dict:
+    """List adapters via the canonical adapter registry path."""
+    from .core.adapter_registry import HybridAdapterRegistry
+
+    registry = HybridAdapterRegistry()
+    adapters = registry.list_adapters(domain=domain, healthy_only=healthy_only)
+    return {
+        "count": len(adapters),
+        "adapters": [
+            {
+                "name": a.name,
+                "domain": a.domain,
+                "status": a.status,
+                "capabilities": a.capabilities,
+            }
+            for a in adapters
+        ],
+    }
+
+
+async def _async_adapter_resolve(
+    task_type: str, capabilities: list[str], domain: str
+) -> dict:
+    """Resolve adapter via the canonical routing path."""
+    from .core.task_router import TaskRouter, TaskType
+
+    router = TaskRouter()
+    try:
+        task = TaskType(task_type)
+    except ValueError:
+        typer.echo(f"Unknown task type: {task_type}. Valid: {', '.join(t.value for t in TaskType)}", err=True)
+        raise typer.Exit(code=1)
+
+    result = await router.route(task_type=task, additional_capabilities=capabilities, domain=domain)
+    return {
+        "task_type": task_type,
+        "selected_adapter": result.get("adapter") if isinstance(result, dict) else str(result),
+        "confidence": result.get("confidence") if isinstance(result, dict) else None,
+    }
+
+
+async def _async_adapter_health(name: str | None) -> dict:
+    """Check adapter health via the canonical path."""
+    from .core.adapter_registry import HybridAdapterRegistry
+
+    registry = HybridAdapterRegistry()
+    results = await registry.check_all_health()
+    if name:
+        if name in results:
+            return {"adapter": name, **results[name]}
+        return {"adapter": name, "status": "not_found", "error": f"Adapter '{name}' not registered"}
+    return {"count": len(results), "adapters": results}
+
+
+# ── Legacy sweep command (delegates to workflow sweep) ───────────────────
+
+
 @app.command()
 def sweep(
     tag: str = typer.Option(..., "--tag", "-t", help="Tag to filter repositories"),
@@ -68,6 +333,8 @@ def sweep(
 ):
     """
     Perform an AI sweep across repositories with a specific tag.
+
+    Prefer: mahavishnu workflow sweep --tag TAG
     """
     # Run the async function synchronously
     result = asyncio.run(_async_sweep(tag, adapter))
@@ -695,6 +962,9 @@ add_routing_commands(app)
 
 # Add team commands
 add_team_commands(app)
+
+# Add events commands
+add_events_commands(app)
 
 # Worker management
 workers_app = typer.Typer(help="Worker orchestration and management")
@@ -1378,6 +1648,25 @@ def shell_cmd() -> None:
         shell.start()
 
     asyncio.run(_shell())
+
+
+@app.command("dashboard")
+def dashboard_cmd() -> None:
+    """Launch the read-only ecosystem dashboard (Textual TUI).
+
+    Provides four screens: Overview, Sweep, Routing, Alerts.
+
+    Example:
+        $ mahavishnu dashboard
+    """
+    try:
+        from mahavishnu.tui.app import DashboardApp
+    except ImportError:
+        typer.echo("ERROR: textual not installed. Install with: pip install mahavishnu[tui]")
+        raise typer.Exit(code=1) from None
+
+    app = DashboardApp()
+    app.run()
 
 
 if __name__ == "__main__":

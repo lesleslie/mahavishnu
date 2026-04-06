@@ -26,5 +26,4 @@ Usage:
     from mahavishnu.core.events.migration import migrate_event
 """
 
-from mahavishnu.core.errors import MahavishnuError
-
+from mahavishnu.core.errors import MahavishnuError as MahavishnuError

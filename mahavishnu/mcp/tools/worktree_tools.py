@@ -1,11 +1,25 @@
 """
 MCP tools for cross-repository worktree coordination.
 
+.. deprecated::
+    This module is deprecated as of v0.5.0 and will be consolidated in v0.6.0.
+    Individual tools will be replaced by a single `worktree_manage` tool with
+    subcommand actions. See docs/reports/deprecation-migration.md for details.
+
 Provides standardized worktree management across the entire ecosystem,
 with safety mechanisms to prevent data loss.
 """
 
+import warnings
 from typing import Any
+
+warnings.warn(
+    "worktree_tools is deprecated since v0.5.0. Individual tools will be replaced "
+    "by a consolidated worktree_manage tool in v0.6.0. See "
+    "docs/reports/deprecation-migration.md for migration paths.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from fastmcp import FastMCP
 

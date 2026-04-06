@@ -256,6 +256,8 @@ class AdapterDiscoveryEngine:
 
         # Cache
         self._cache: dict[str, tuple[list[AdapterMetadata], datetime]] = {}
+        self._cache_hits: int = 0
+        self._cache_misses: int = 0
 
         # Oneiric MCP client (lazy initialization)
         self._oneiric_client: OneiricMCPClient | None = None
@@ -346,6 +348,7 @@ class AdapterDiscoveryEngine:
         with self._lock:
             if self._is_cache_valid(cache_key):
                 adapters, _ = self._cache[cache_key]
+                self._cache_hits += 1
                 logger.debug(f"Returning {len(adapters)} cached adapters")
                 return adapters
 
@@ -377,6 +380,7 @@ class AdapterDiscoveryEngine:
         # Update cache
         with self._lock:
             self._cache[cache_key] = (result, datetime.now(UTC))
+            self._cache_misses += 1
 
         logger.info(f"Discovered {len(result)} adapters from all sources")
         return result
@@ -399,6 +403,7 @@ class AdapterDiscoveryEngine:
         with self._lock:
             if self._is_cache_valid(cache_key):
                 adapters, _ = self._cache[cache_key]
+                self._cache_hits += 1
                 return adapters
 
         adapters: list[AdapterMetadata] = []
@@ -443,6 +448,7 @@ class AdapterDiscoveryEngine:
         # Update cache
         with self._lock:
             self._cache[cache_key] = (adapters, datetime.now(UTC))
+            self._cache_misses += 1
 
         logger.info(f"Discovered {len(adapters)} adapters from entry points")
         return adapters
@@ -465,6 +471,7 @@ class AdapterDiscoveryEngine:
         with self._lock:
             if self._is_cache_valid(cache_key):
                 adapters, _ = self._cache[cache_key]
+                self._cache_hits += 1
                 return adapters
 
         adapters: list[AdapterMetadata] = []
@@ -499,6 +506,7 @@ class AdapterDiscoveryEngine:
         # Update cache
         with self._lock:
             self._cache[cache_key] = (adapters, datetime.now(UTC))
+            self._cache_misses += 1
 
         logger.info(f"Discovered {len(adapters)} adapters from Oneiric MCP")
         return adapters
@@ -544,12 +552,17 @@ class AdapterDiscoveryEngine:
         """Get cache statistics.
 
         Returns:
-            Dictionary with cache statistics
+            Dictionary with cache statistics including hit/miss metrics
         """
         with self._lock:
+            total = self._cache_hits + self._cache_misses
+            hit_rate = self._cache_hits / total if total > 0 else 0.0
             stats: dict[str, Any] = {
                 "entries": len(self._cache),
                 "ttl_seconds": self._cache_ttl_seconds,
+                "hits": self._cache_hits,
+                "misses": self._cache_misses,
+                "hit_rate": hit_rate,
                 "keys": list(self._cache.keys()),
             }
 

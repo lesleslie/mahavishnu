@@ -15,13 +15,12 @@ All events flowing through Mahavishnu must use EventEnvelope
 
 from __future__ import annotations
 
-
+from datetime import UTC, datetime
 import json
-import re
-from datetime import datetime, UTC
 from typing import Any
 import uuid
 from uuid import UUID
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -41,7 +40,7 @@ class EventVersion:
         >>> v.minor
         0
         >>> v.patch
-        6
+        0
         >>> v.is_compatible_with(EventVersion("1.0.7"))
         True  # backward compatible
         >>> EventVersion("2.0.0").is_compatible_with(EventVersion("1.0.0"))
@@ -51,10 +50,7 @@ class EventVersion:
     def __init__(self, version_str: str) -> None:
         parts = version_str.split(".")
         if len(parts) != 3:
-            raise ValueError(
-                f"Invalid version format: {version_str!r} "
-                "Expected MAJOR.MINOR.PATCH"
-            )
+            raise ValueError(f"Invalid version format: {version_str!r} Expected MAJOR.MINOR.PATCH")
         self.major = int(parts[0])
         self.minor = int(parts[1])
         self.patch = int(parts[2])
@@ -68,16 +64,12 @@ class EventVersion:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, EventVersion):
             return NotImplemented
-        return (
-            self.major == other.major
-            and self.minor == other.minor
-            and self.patch == other.patch
-        )
+        return self.major == other.major and self.minor == other.minor and self.patch == other.patch
 
     def __hash__(self) -> int:
         return hash((self.major, self.minor, self.patch))
 
-    def __lt__(self, other: "EventVersion") -> bool:
+    def __lt__(self, other: EventVersion) -> bool:
         if not isinstance(other, EventVersion):
             return NotImplemented
         return (self.major, self.minor, self.patch) < (
@@ -86,7 +78,7 @@ class EventVersion:
             other.patch,
         )
 
-    def is_compatible_with(self, other: "EventVersion") -> bool:
+    def is_compatible_with(self, other: EventVersion) -> bool:
         """Check backward compatibility.
 
         Two versions are compatible if they share the same MAJOR version.
@@ -101,20 +93,20 @@ class EventVersion:
         """
         return self.major == other.major and self.minor >= other.minor
 
-    def bump_patch(self) -> "EventVersion":
+    def bump_patch(self) -> EventVersion:
         """Create a new version with PATCH incremented."""
         return EventVersion(f"{self.major}.{self.minor}.{self.patch + 1}")
 
-    def bump_minor(self) -> "EventVersion":
+    def bump_minor(self) -> EventVersion:
         """Create a new version with MINOR incremented, PATCH reset."""
         return EventVersion(f"{self.major}.{self.minor + 1}.0")
 
-    def bump_major(self) -> "EventVersion":
+    def bump_major(self) -> EventVersion:
         """Create a new version with MAJOR incremented, MINOR and PATCH reset."""
         return EventVersion(f"{self.major + 1}.0.0")
 
     @classmethod
-    def parse(cls, version_str: str) -> "EventVersion":
+    def parse(cls, version_str: str) -> EventVersion:
         """Parse a version string into EventVersion."""
         return cls(version_str)
 
@@ -211,7 +203,7 @@ class EventEnvelope(BaseModel):
         return json.dumps(self.to_dict(), sort_keys=True)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "EventEnvelope":
+    def from_dict(cls, data: dict[str, Any]) -> EventEnvelope:
         """Deserialize from dictionary.
 
         Handles both new envelope format and legacy format migration.
@@ -235,9 +227,8 @@ class EventEnvelope(BaseModel):
 
         return cls(**data)
 
-
     @classmethod
-    def from_json(cls, json_str: str) -> "EventEnvelope":
+    def from_json(cls, json_str: str) -> EventEnvelope:
         """Deserialize from JSON string."""
         data = json.loads(json_str)
         return cls.from_dict(data)

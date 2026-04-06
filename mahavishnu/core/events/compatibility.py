@@ -5,19 +5,24 @@ Defines rules for how event versions evolve and compatibility guarantees.
 
 from __future__ import annotations
 
+from enum import StrEnum
 import logging
-from enum import Enum
 from typing import Any
+
 from mahavishnu.core.events.envelope import EventVersion
 
 logger = logging.getLogger(__name__)
-class CompatibilityLevel(str, Enum):
+
+
+class CompatibilityLevel(StrEnum):
     """Level of compatibility between two event versions."""
 
     NONE = "none"
-    PATCH = "patch"       # Same major, same minor, different patch
-    MINOR = "minor"     # Same major, different minor
-    MAJOR = "major"     # Different major (breaking)
+    PATCH = "patch"  # Same major, same minor, different patch
+    MINOR = "minor"  # Same major, different minor
+    MAJOR = "major"  # Different major (breaking)
+
+
 class CompatibilityPolicy:
     """Versioning policy for event schemas.
     Defines rules for:
@@ -68,6 +73,7 @@ class CompatibilityPolicy:
         - MINOR version decreases (not possible in practice)
         """
         return new_version.major != old_version.major or new_version.minor < old_version.minor
+
     @classmethod
     def validate_version_transition(
         cls,
@@ -79,9 +85,7 @@ class CompatibilityPolicy:
         """
         errors: list[str] = []
         if new_version < old_version:
-            errors.append(
-                f"Cannot downgrade from {old_version} to {new_version}"
-            )
+            errors.append(f"Cannot downgrade from {old_version} to {new_version}")
         if cls.is_breaking_change(old_version, new_version):
             errors.append(
                 f"Breaking change from {old_version} to {new_version}. "
@@ -89,11 +93,11 @@ class CompatibilityPolicy:
             )
         if new_version.major > cls.CURRENT_VERSION.major + 1:
             errors.append(
-                f"Version {new_version} exceeds current ecosystem version "
-                f"{cls.CURRENT_VERSION}"
+                f"Version {new_version} exceeds current ecosystem version {cls.CURRENT_VERSION}"
             )
 
         return errors
+
     @classmethod
     def get_policy_summary(cls) -> dict[str, Any]:
         """Get a summary of the current compatibility policy."""

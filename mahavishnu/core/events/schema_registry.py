@@ -6,8 +6,8 @@ and compatibility checking between event versions.
 
 from __future__ import annotations
 
+import contextlib
 import logging
-from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -75,9 +75,7 @@ class EventSchemaRegistry:
         """
         key = self._schema_key(schema.event_type, schema.version)
         if key in self._schemas:
-            raise ValueError(
-                f"Schema already registered: {schema.event_type} v{schema.version}"
-            )
+            raise ValueError(f"Schema already registered: {schema.event_type} v{schema.version}")
         self._schemas[key] = schema
         logger.debug(f"Registered schema: {key}")
 
@@ -104,9 +102,7 @@ class EventSchemaRegistry:
             # Try finding any schema for this event type
             type_keys = [k for k in self._schemas if k.startswith(f"{envelope.event_type}:")]
             if not type_keys:
-                errors.append(
-                    f"No schema registered for event_type '{envelope.event_type}'"
-                )
+                errors.append(f"No schema registered for event_type '{envelope.event_type}'")
                 return errors
 
             # Find the latest registered version for this type
@@ -118,8 +114,7 @@ class EventSchemaRegistry:
             event_ver = EventVersion(envelope.version)
             if not registered_ver.is_compatible_with(event_ver):
                 errors.append(
-                    f"Version mismatch: event v{envelope.version}, "
-                    f"registered v{schema.version}"
+                    f"Version mismatch: event v{envelope.version}, registered v{schema.version}"
                 )
         else:
             schema = self._schemas[key]
@@ -135,9 +130,7 @@ class EventSchemaRegistry:
             if field_name in payload:
                 actual = type(payload[field_name]).__name__
                 if actual != expected_type:
-                    errors.append(
-                        f"Field '{field_name}': expected {expected_type}, got {actual}"
-                    )
+                    errors.append(f"Field '{field_name}': expected {expected_type}, got {actual}")
 
         return errors
 
@@ -292,7 +285,5 @@ class EventSchemaRegistry:
             ),
         ]
         for schema in builtin_schemas:
-            try:
+            with contextlib.suppress(ValueError):
                 self.register(schema)
-            except ValueError:
-                pass  # Already registered, skip

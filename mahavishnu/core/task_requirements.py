@@ -168,6 +168,8 @@ class ResolutionCache:
         self._ttl_seconds = ttl_seconds
         self._cache: dict[str, tuple[RoutingDecision, float]] = {}
         self._lock = threading.RLock()
+        self._hits: int = 0
+        self._misses: int = 0
 
     def get(self, key: str) -> RoutingDecision | None:
         """Get a cached routing decision if not expired.
@@ -183,6 +185,7 @@ class ResolutionCache:
 
             entry = self._cache.get(key)
             if entry is None:
+                self._misses += 1
                 return None
 
             decision, timestamp = entry
@@ -191,8 +194,10 @@ class ResolutionCache:
             if current_time - timestamp > self._ttl_seconds:
                 # Entry expired, remove it
                 del self._cache[key]
+                self._misses += 1
                 return None
 
+            self._hits += 1
             return decision
 
     def set(self, key: str, decision: RoutingDecision) -> None:
@@ -216,6 +221,15 @@ class ResolutionCache:
                 self._cache.clear()
             elif key in self._cache:
                 del self._cache[key]
+
+    def reset_stats(self) -> None:
+        """Reset hit/miss counters to zero.
+
+        Useful for testing and periodic metric collection.
+        """
+        with self._lock:
+            self._hits = 0
+            self._misses = 0
 
     def _cleanup_expired(self) -> None:
         """Remove expired entries from the cache.
@@ -247,19 +261,24 @@ class ResolutionCache:
         """Get cache statistics.
 
         Returns:
-            Dictionary with cache size, TTL, and entry ages
+            Dictionary with cache size, TTL, entry ages, and hit/miss metrics
         """
         with self._lock:
             self._cleanup_expired()
             current_time = time.time()
 
             ages = [current_time - timestamp for _, timestamp in self._cache.values()]
+            total = self._hits + self._misses
+            hit_rate = self._hits / total if total > 0 else 0.0
 
             return {
                 "size": len(self._cache),
                 "ttl_seconds": self._ttl_seconds,
                 "oldest_entry_age_seconds": max(ages) if ages else 0,
                 "newest_entry_age_seconds": min(ages) if ages else 0,
+                "hits": self._hits,
+                "misses": self._misses,
+                "hit_rate": hit_rate,
             }
 
 

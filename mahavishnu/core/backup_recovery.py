@@ -47,7 +47,12 @@ class BackupManager:
         )
 
     async def create_backup(self, backup_type: str = "full") -> BackupInfo:
-        """Create a backup of the system."""
+        """Create a backup of the system.
+
+        .. note:: **Golden Path**: Prefer ``mahavishnu backup create`` (CLI) or
+           ``create_backup`` MCP tool over calling this method directly.
+           See ``docs/reports/golden-paths-guide.md`` for canonical pathways.
+        """
         backup_id = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         backup_path = self.backup_dir / f"{backup_id}.tar.gz"
 
@@ -224,7 +229,12 @@ class BackupManager:
             self.logger.warning(f"Failed to cleanup old backups: {e}")
 
     async def restore_backup(self, backup_id: str) -> bool:
-        """Restore from a backup."""
+        """Restore from a backup.
+
+        .. note:: **Golden Path**: Prefer ``mahavishnu backup restore`` (CLI) or
+           ``restore_backup`` MCP tool over calling this method directly.
+           See ``docs/reports/golden-paths-guide.md`` for canonical pathways.
+        """
         backup_path = self.backup_dir / f"{backup_id}.tar.gz"
 
         if not backup_path.exists():

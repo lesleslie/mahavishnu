@@ -315,6 +315,10 @@ class HybridAdapterRegistry:
     ) -> RoutingDecision | None:
         """Resolve the best adapter for the given requirements.
 
+        .. note:: **Golden Path**: Prefer ``mahavishnu adapter resolve`` (CLI) or
+           ``adapter_resolve`` MCP tool over calling this method directly.
+           See ``docs/reports/golden-paths-guide.md`` for canonical pathways.
+
         Uses capability matching and cached resolutions for performance.
 
         Args:
@@ -454,6 +458,10 @@ class HybridAdapterRegistry:
     ) -> list[dict[str, Any]]:
         """List all registered adapters with optional filters.
 
+        .. note:: **Golden Path**: Prefer ``mahavishnu adapter list`` (CLI) or
+           ``adapter_list`` MCP tool over calling this method directly.
+           See ``docs/reports/golden-paths-guide.md`` for canonical pathways.
+
         Args:
             domain: Filter by domain category
             capabilities: Filter by required capabilities
@@ -503,6 +511,10 @@ class HybridAdapterRegistry:
 
     async def check_all_health(self) -> dict[str, dict[str, Any]]:
         """Check health of all registered adapters.
+
+        .. note:: **Golden Path**: Prefer ``mahavishnu adapter health`` (CLI) or
+           ``adapter_health`` MCP tool over calling this method directly.
+           See ``docs/reports/golden-paths-guide.md`` for canonical pathways.
 
         Updates internal health state and persists records.
 

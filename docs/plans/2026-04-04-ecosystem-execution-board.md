@@ -442,21 +442,21 @@ Note: Net repository LOC can still grow if Dashboard and ML initiatives add more
 ### Initiative 9 work packages
 | ID | Work package | Est | Owner | Depends on | Done when |
 |---|---|---:|---|---|---|
-| I9-1 | Event envelope spec + versioning policy | 1.0d | Core Eng | I5-1 | policy approved and documented |
-| I9-2 | Schema validation library and CI checks | 1.0d | Core Eng | I9-1 | CI fails unversioned events |
-| I9-3 | Migrate high-volume event producers | 2.0d | Core Eng | I9-2 | top producers emit envelope |
+| I9-1 | Event envelope spec + versioning policy | 1.0d | Core Eng | I5-1 | ✅ policy approved and documented |
+| I9-2 | Schema validation library and CI checks | 1.0d | Core Eng | I9-1 | ✅ CI fails unversioned events |
+| I9-3 | Migrate high-volume event producers | 2.0d | Core Eng | I9-2 | ✅ top producers emit envelope |
 
 ### Initiative 10 work packages
 | ID | Work package | Est | Owner | Depends on | Done when |
 |---|---|---:|---|---|---|
-| I10-1 | Telemetry-based tool ranking report | 1.0d | Product + Platform | I4-3,I5-3 | ranked list published |
+| I10-1 | Telemetry-based tool ranking report | 1.0d | Product + Platform | I4-3,I5-3 | ✅ ranked list published |
 | I10-2 | Deprecation warnings and migration notes | 1.0d | Platform Eng | I10-1 | warnings visible in CLI/MCP |
 | I10-3 | Remove bottom 10-20% tools safely | 2.0d | Platform Eng | I10-2 | removals complete, tests green |
 
 ### Initiative 11 work packages
 | ID | Work package | Est | Owner | Depends on | Done when |
 |---|---|---:|---|---|---|
-| I11-1 | Cache policy doc (TTL/invalidation) | 1.0d | Search/Infra | I5-1 | policy approved |
+| I11-1 | Cache policy doc (TTL/invalidation) | 1.0d | Search/Infra | I5-1 | ✅ policy approved |
 | I11-2 | Implement default tiering in query paths | 2.0d | Search/Infra | I11-1 | tiering active in target paths |
 | I11-3 | Cache observability and regression tests | 1.0d | Search/Infra | I11-2 | hit-rate and stale-data tests in CI |
 
@@ -484,7 +484,7 @@ Note: Net repository LOC can still grow if Dashboard and ML initiatives add more
 ### Initiative 15 work packages
 | ID | Work package | Est | Owner | Depends on | Done when |
 |---|---|---:|---|---|---|
-| I15-1 | Define labeled dataset and eval rubric | 1.0d | ML Eng + Ingestion | I9-2 | rubric + dataset snapshot committed |
+| I15-1 | Define labeled dataset and eval rubric | 1.0d | ML Eng + Ingestion | I9-2 | ✅ rubric + dataset snapshot committed |
 | I15-2 | Implement readability/depth/completeness scoring | 2.0d | ML Eng + Ingestion | I15-1 | evaluator no longer returns stub |
 | I15-3 | Offline evaluation and threshold tuning | 1.0d | ML Eng + Ingestion | I15-2 | >=10% improvement achieved |
 | I15-4 | Staged rollout + drift monitoring dashboard | 1.0d | ML Eng + SRE | I15-3 | staged rollout complete, alerts live |

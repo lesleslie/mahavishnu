@@ -24,7 +24,8 @@ import uuid
 
 import aiosqlite
 
-from .paths import get_data_path, ensure_directories, migrate_legacy_data
+from .events.envelope import EventEnvelope
+from .paths import ensure_directories, get_data_path, migrate_legacy_data
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,7 @@ class Event:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert event to dictionary for storage."""
-        return {
+        result: dict[str, Any] = {
             "id": self.id,
             "type": self.type.value,
             "data": json.dumps(self.data),
@@ -108,14 +109,22 @@ class Event:
             "source": self.source,
             "version": self.version,
         }
+        # Include envelope JSON if present
+        if "_envelope" in self.data:
+            result["_envelope"] = self.data["_envelope"]
+        return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Event":
         """Create event from dictionary (loaded from storage)."""
+        payload = json.loads(data["data"])
+        # Restore envelope into payload if present
+        if "_envelope" in data:
+            payload["_envelope"] = data["_envelope"]
         return cls(
             id=data["id"],
             type=EventType(data["type"]),
-            data=json.loads(data["data"]),
+            data=payload,
             timestamp=datetime.fromisoformat(data["timestamp"]),
             source=data["source"],
             version=data.get("version", 1),
@@ -173,10 +182,18 @@ class SQLiteEventStorage:
                 data TEXT NOT NULL,
                 timestamp TEXT NOT NULL,
                 source TEXT NOT NULL,
-                version INTEGER DEFAULT 1
+                version INTEGER DEFAULT 1,
+                envelope TEXT
             )
             """
         )
+
+        # Migrate: add envelope column if missing (for existing databases)
+        try:
+            await self._conn.execute("SELECT envelope FROM events LIMIT 0")
+        except aiosqlite.OperationalError:
+            await self._conn.execute("ALTER TABLE events ADD COLUMN envelope TEXT")
+            logger.info("Migrated events table: added envelope column")
 
         # Delivery tracking table
         await self._conn.execute(
@@ -218,10 +235,14 @@ class SQLiteEventStorage:
         """
         conn = await self.connect()
 
+        envelope_json: str | None = None
+        if "_envelope" in event.data:
+            envelope_json = event.data["_envelope"]
+
         await conn.execute(
             """
-            INSERT INTO events (id, type, data, timestamp, source, version)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO events (id, type, data, timestamp, source, version, envelope)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 event.id,
@@ -230,6 +251,7 @@ class SQLiteEventStorage:
                 event.timestamp.isoformat(),
                 event.source,
                 event.version,
+                envelope_json,
             ),
         )
         await conn.commit()
@@ -254,7 +276,7 @@ class SQLiteEventStorage:
         """
         conn = await self.connect()
 
-        query = "SELECT * FROM events WHERE 1=1"
+        query = "SELECT id, type, data, timestamp, source, version, envelope FROM events WHERE 1=1"
         params: list[Any] = []
 
         if event_type:
@@ -284,6 +306,9 @@ class SQLiteEventStorage:
                     version=row[5],
                 )
             )
+            # Restore envelope into event data if present
+            if row[6] is not None:
+                events[-1].data["_envelope"] = row[6]
 
         return events
 
@@ -324,7 +349,8 @@ class SQLiteEventStorage:
         conn = await self.connect()
 
         query = """
-            SELECT e.* FROM events e
+            SELECT e.id, e.type, e.data, e.timestamp, e.source, e.version, e.envelope
+            FROM events e
             LEFT JOIN event_deliveries d ON e.id = d.event_id AND d.subscriber = ?
             WHERE d.id IS NULL
         """
@@ -352,6 +378,9 @@ class SQLiteEventStorage:
                     version=row[5],
                 )
             )
+            # Restore envelope into event data if present
+            if row[6] is not None:
+                events[-1].data["_envelope"] = row[6]
 
         return events
 
@@ -480,6 +509,11 @@ class EventBus:
     ) -> Event:
         """Publish event to bus.
 
+        .. deprecated::
+            Use :meth:`publish_envelope` for new code. This method is kept for
+            backward compatibility and will create an EventEnvelope alongside
+            the legacy Event automatically.
+
         Args:
             event_type: Event type
             data: Event payload
@@ -500,6 +534,17 @@ class EventBus:
             source=source,
         )
 
+        # Also create an EventEnvelope for the modern path
+        envelope = EventEnvelope(
+            event_id=uuid.UUID(event.id),
+            event_type=event_type.value,
+            version="1.0.0",
+            timestamp=event.timestamp,
+            source=source,
+            payload=data,
+        )
+        event.data["_envelope"] = envelope.to_json()
+
         # Persist to storage
         await self._storage.save(event)
 
@@ -507,6 +552,43 @@ class EventBus:
         asyncio.create_task(self._deliver_event(event))
 
         logger.debug(f"Event published: {event_type.value} (id={event.id}, source={source})")
+
+        return event
+
+    async def publish_envelope(self, envelope: EventEnvelope) -> Event:
+        """Publish an EventEnvelope to the bus.
+
+        This is the modern publishing path. It creates a legacy Event from the
+        envelope data for backward-compatible storage and delivery, while
+        preserving the full envelope in a dedicated column.
+
+        Args:
+            envelope: The EventEnvelope to publish.
+
+        Returns:
+            Created legacy Event (with ``_envelope`` key in data).
+        """
+        if not self._storage:
+            raise RuntimeError("EventBus not started (call start() first)")
+
+        event = Event(
+            id=str(envelope.event_id),
+            type=EventType(envelope.event_type),
+            data={**envelope.payload, "_envelope": envelope.to_json()},
+            timestamp=envelope.timestamp,
+            source=envelope.source,
+            version=int(envelope.version.split(".")[0]),
+        )
+
+        # Persist to storage
+        await self._storage.save(event)
+
+        # Deliver to subscribers (async fire-and-forget)
+        asyncio.create_task(self._deliver_event(event))
+
+        logger.debug(
+            f"Envelope published: {envelope.event_type} (id={envelope.event_id}, source={envelope.source})"
+        )
 
         return event
 

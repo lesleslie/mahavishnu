@@ -914,7 +914,7 @@ class ContentIngester:
         return final_results
 
 
-@lru_cache
+@lru_cache(maxsize=512)
 def create_content_ingester(
     embedding_provider: EmbeddingProvider | None = None,
     chunk_size: int = 1000,

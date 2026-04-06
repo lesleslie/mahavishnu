@@ -29,11 +29,6 @@ Example:
     ```
 """
 
-from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
-from .manager import PoolManager, PoolSelector
-from .memory_aggregator import MemoryAggregator
-from .websocket import WebSocketBroadcaster, create_broadcaster
-
 __all__ = [
     "BasePool",
     "PoolConfig",
@@ -45,3 +40,26 @@ __all__ = [
     "WebSocketBroadcaster",
     "create_broadcaster",
 ]
+
+# Mapping of export name -> (relative_module, attribute_name)
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "BasePool": (".base", "BasePool"),
+    "PoolConfig": (".base", "PoolConfig"),
+    "PoolMetrics": (".base", "PoolMetrics"),
+    "PoolStatus": (".base", "PoolStatus"),
+    "PoolManager": (".manager", "PoolManager"),
+    "PoolSelector": (".manager", "PoolSelector"),
+    "MemoryAggregator": (".memory_aggregator", "MemoryAggregator"),
+    "WebSocketBroadcaster": (".websocket", "WebSocketBroadcaster"),
+    "create_broadcaster": (".websocket", "create_broadcaster"),
+}
+
+
+def __getattr__(name: str):
+    """Lazy import to avoid heavy initialization on package import."""
+    if entry := _LAZY_IMPORTS.get(name):
+        from importlib import import_module
+
+        module = import_module(entry[0], __name__)
+        return getattr(module, entry[1])
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

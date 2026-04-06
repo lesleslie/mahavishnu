@@ -26,7 +26,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
+from datetime import datetime, timedelta, UTC
 from enum import Enum
 from typing import Any
 
@@ -154,8 +154,13 @@ class CrossRepoBlockerTracker:
             dependency_linker: CrossRepoDependencyLinker for dependency queries
         """
         self.dependency_linker = dependency_linker
-        self._blocker_cache: dict[str, BlockerImpact] = {}
-        self._chain_cache: dict[str, BlockingChain] = {}
+        self._chain_cache: dict[str, tuple[BlockingChain, datetime]] = {}
+        self._blocker_cache: dict[str, tuple[BlockerImpact, datetime]] = {}
+        self._cache_ttl = timedelta(hours=1)
+        self._chain_hits: int = 0
+        self._chain_misses: int = 0
+        self._blocker_hits: int = 0
+        self._blocker_misses: int = 0
 
     def get_blocking_chain(self, task_id: str) -> BlockingChain | None:
         """Get the blocking chain for a task.
@@ -168,7 +173,14 @@ class CrossRepoBlockerTracker:
         """
         # Check cache
         if task_id in self._chain_cache:
-            return self._chain_cache[task_id]
+            chain, cached_at = self._chain_cache[task_id]
+            if datetime.now(UTC) - cached_at < self._cache_ttl:
+                self._chain_hits += 1
+                return chain
+            else:
+                del self._chain_cache[task_id]
+
+        self._chain_misses += 1
 
         # Get dependencies from linker
         deps = self.dependency_linker.get_blocking_chain(task_id)
@@ -195,7 +207,7 @@ class CrossRepoBlockerTracker:
         )
 
         # Cache result
-        self._chain_cache[task_id] = chain
+        self._chain_cache[task_id] = (chain, datetime.now(UTC))
 
         return chain
 
@@ -210,7 +222,14 @@ class CrossRepoBlockerTracker:
         """
         # Check cache
         if blocker_task_id in self._blocker_cache:
-            return self._blocker_cache[blocker_task_id]
+            impact, cached_at = self._blocker_cache[blocker_task_id]
+            if datetime.now(UTC) - cached_at < self._cache_ttl:
+                self._blocker_hits += 1
+                return impact
+            else:
+                del self._blocker_cache[blocker_task_id]
+
+        self._blocker_misses += 1
 
         # Get directly blocked tasks
         direct_deps = self.dependency_linker.get_blocked_tasks(blocker_task_id)
@@ -244,7 +263,7 @@ class CrossRepoBlockerTracker:
         )
 
         # Cache result
-        self._blocker_cache[blocker_task_id] = impact
+        self._blocker_cache[blocker_task_id] = (impact, datetime.now(UTC))
 
         return impact
 
@@ -391,6 +410,38 @@ class CrossRepoBlockerTracker:
         ]
 
         return cross_repo
+
+    def get_stats(self) -> dict[str, Any]:
+        """Get cache statistics for chain and blocker caches.
+
+        Returns:
+            Dictionary with per-cache hits, misses, hit_rate, size, and TTL.
+        """
+        chain_total = self._chain_hits + self._chain_misses
+        blocker_total = self._blocker_hits + self._blocker_misses
+        return {
+            "chain_cache": {
+                "size": len(self._chain_cache),
+                "ttl_seconds": int(self._cache_ttl.total_seconds()),
+                "hits": self._chain_hits,
+                "misses": self._chain_misses,
+                "hit_rate": self._chain_hits / chain_total if chain_total > 0 else 0.0,
+            },
+            "blocker_cache": {
+                "size": len(self._blocker_cache),
+                "ttl_seconds": int(self._cache_ttl.total_seconds()),
+                "hits": self._blocker_hits,
+                "misses": self._blocker_misses,
+                "hit_rate": self._blocker_hits / blocker_total if blocker_total > 0 else 0.0,
+            },
+        }
+
+    def reset_stats(self) -> None:
+        """Reset all hit/miss counters to zero."""
+        self._chain_hits = 0
+        self._chain_misses = 0
+        self._blocker_hits = 0
+        self._blocker_misses = 0
 
     def clear_cache(self) -> None:
         """Clear all cached data."""

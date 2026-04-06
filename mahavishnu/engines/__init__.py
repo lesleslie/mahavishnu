@@ -1,40 +1,34 @@
 """Engines module for Mahavishnu orchestrator.
 
-Adapters are imported with lazy loading to avoid dependency issues.
-Individual adapters can be imported when needed.
+All adapters are lazily imported via __getattr__ to avoid pulling in
+optional heavy dependencies (LlamaIndex, Prefect, etc.) at package import time.
 """
-
-from .agno_adapter import AgnoAdapter
-from .goal_team_factory import GoalDrivenTeamFactory, ParsedGoal, SkillConfig
-
-# Try to import LlamaIndex adapter (may fail if dependencies not installed)
-try:
-    from .llamaindex_adapter import LlamaIndexAdapter
-
-    _llamaindex_available = True
-except ImportError:
-    LlamaIndexAdapter = None
-    _llamaindex_available = False
-
-# Try to import Prefect adapter (may fail if prefect not installed)
-try:
-    from .prefect_adapter import PrefectAdapter
-
-    _prefect_available = True
-except ImportError:
-    PrefectAdapter = None
-    _prefect_available = False
 
 __all__ = [
     "AgnoAdapter",
     "GoalDrivenTeamFactory",
     "ParsedGoal",
     "SkillConfig",
+    "LlamaIndexAdapter",
+    "PrefectAdapter",
 ]
 
-# Only add adapters that are available
-if _llamaindex_available:
-    __all__.append("LlamaIndexAdapter")
+# Mapping of export name -> (relative_module, attribute_name)
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "AgnoAdapter": (".agno_adapter", "AgnoAdapter"),
+    "GoalDrivenTeamFactory": (".goal_team_factory", "GoalDrivenTeamFactory"),
+    "ParsedGoal": (".goal_team_factory", "ParsedGoal"),
+    "SkillConfig": (".goal_team_factory", "SkillConfig"),
+    "LlamaIndexAdapter": (".llamaindex_adapter", "LlamaIndexAdapter"),
+    "PrefectAdapter": (".prefect_adapter", "PrefectAdapter"),
+}
 
-if _prefect_available:
-    __all__.append("PrefectAdapter")
+
+def __getattr__(name: str):
+    """Lazy import to avoid heavy initialization on package import."""
+    if entry := _LAZY_IMPORTS.get(name):
+        from importlib import import_module
+
+        module = import_module(entry[0], __name__)
+        return getattr(module, entry[1])
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

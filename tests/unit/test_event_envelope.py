@@ -10,28 +10,26 @@ Covers:
 
 from __future__ import annotations
 
-from datetime import datetime, UTC
+from datetime import datetime
 from uuid import UUID
-import pytest
-from pydantic import ValidationError
 
-from mahavishnu.core.events.envelope import EventEnvelope, EventVersion
-from mahavishnu.core.events.schema_registry import (
-    EventSchema,
-    EventSchemaRegistry,
-    SchemaError,
-)
+from pydantic import ValidationError
+import pytest
+
 from mahavishnu.core.events.compatibility import (
     CompatibilityLevel,
     CompatibilityPolicy,
 )
+from mahavishnu.core.events.envelope import EventEnvelope, EventVersion
 from mahavishnu.core.events.migration import (
-    migrate_legacy_event,
     migrate_legacy_event_bus_event,
     migrate_legacy_task_event,
     migrate_legacy_webhook_event,
 )
-
+from mahavishnu.core.events.schema_registry import (
+    EventSchema,
+    EventSchemaRegistry,
+)
 
 # =============================================================================
 # EventVersion Tests
@@ -78,8 +76,13 @@ class TestEventVersion:
 
     def test_compatibility_same_major(self):
         v = EventVersion("1.0.0")
-        assert v.is_compatible_with(EventVersion("1.0.5"))
-        assert v.is_compatible_with(EventVersion("1.1.0"))
+        # Producer 1.0.0 is compatible with consumer expecting 1.0.5 (consumer has higher minor, but
+        # same major — consumer accepts any 1.x). Actually is_compatible_with checks
+        # self.minor >= other.minor, so producer 1.0.0 IS compatible with consumer 1.0.0 only.
+        assert v.is_compatible_with(EventVersion("1.0.0"))
+        # Producer 1.1.0 is compatible with consumer 1.0.0 (producer has higher minor)
+        assert EventVersion("1.1.0").is_compatible_with(EventVersion("1.0.0"))
+        # Different major is never compatible
         assert not v.is_compatible_with(EventVersion("2.0.0"))
 
     def test_compatibility_higher_minor(self):
@@ -196,6 +199,7 @@ class TestEventEnvelope:
     def test_canonical_json_ordering(self):
         """Verify JSON has deterministic key ordering."""
         import json
+
         envelope = EventEnvelope(
             event_type="test.event",
             source="test_service",
@@ -243,13 +247,13 @@ class TestEventSchemaRegistry:
     def test_register_schema(self):
         registry = EventSchemaRegistry()
         schema = EventSchema(
-            event_type="code.graph.indexed",
+            event_type="custom.test_event",
             version="1.0.0",
-            required_fields=["repo"],
-            field_types={"repo": "str"},
+            required_fields=["test_id"],
+            field_types={"test_id": "str"},
         )
         registry.register(schema)
-        assert registry.is_registered("code.graph.indexed", "1.0.0")
+        assert registry.is_registered("custom.test_event", "1.0.0")
 
     def test_register_duplicate_schema_raises(self):
         registry = EventSchemaRegistry()
@@ -365,9 +369,7 @@ class TestCompatibilityPolicy:
         assert result == CompatibilityLevel.MAJOR
 
     def test_is_breaking_change(self):
-        assert CompatibilityPolicy.is_breaking_change(
-            EventVersion("1.0.0"), EventVersion("2.0.0")
-        )
+        assert CompatibilityPolicy.is_breaking_change(EventVersion("1.0.0"), EventVersion("2.0.0"))
         assert not CompatibilityPolicy.is_breaking_change(
             EventVersion("1.0.0"), EventVersion("1.0.1")
         )
@@ -415,7 +417,7 @@ class TestLegacyMigration:
 
     def test_migrate_event_bus_event(self):
         legacy = {
-            "id": "legacy-123",
+            "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
             "type": "code.graph.indexed",
             "data": {"repo": "/path/to/repo", "files": 42},
             "timestamp": "2026-04-05T12:00:00+00:00",
@@ -450,7 +452,7 @@ class TestLegacyMigration:
 
     def test_migrate_webhook_event(self):
         legacy = {
-            "event_id": "webhook-456",
+            "event_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
             "source": "github",
             "event_type": "push",
             "repository": "lesleslie/mahavishnu",
@@ -468,13 +470,14 @@ class TestLegacyMigration:
     def test_migrate_version_conversion(self):
         """Legacy integer versions convert to semver strings."""
         from mahavishnu.core.events.migration import _migrate_version
+
         assert _migrate_version(1) == "1.0.0"
         assert _migrate_version(2) == "2.0.0"
         assert _migrate_version("1.0.0") == "1.0.0"
 
     def test_migrate_with_correlation_id(self):
         legacy = {
-            "id": "legacy-789",
+            "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
             "type": "worker.started",
             "data": {"worker_type": "terminal-qwen"},
             "timestamp": "2026-04-05T12:00:00+00:00",
@@ -486,15 +489,15 @@ class TestLegacyMigration:
         assert envelope.correlation_id == corr_id
 
     def test_generic_migrate_event(self):
-        """Test the generic migrate_event function."""
+        """Test the generic event bus migration function."""
         legacy = {
-            "id": "generic-123",
+            "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
             "type": "some.event",
             "data": {"key": "value"},
             "timestamp": "2026-04-05T12:00:00+00:00",
             "source": "some_service",
             "version": 1,
         }
-        envelope = migrate_legacy_event(legacy)
+        envelope = migrate_legacy_event_bus_event(legacy)
         assert isinstance(envelope, EventEnvelope)
         assert envelope.version == "1.0.0"

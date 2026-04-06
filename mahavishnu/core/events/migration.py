@@ -5,14 +5,13 @@ to the new typed EventEnvelope format.
 
 from __future__ import annotations
 
-import json
+from datetime import UTC, datetime
 import logging
-from datetime import UTC
 from typing import Any
-import uuid
 from uuid import UUID
 
 from mahavishnu.core.events.envelope import EventEnvelope
+
 logger = logging.getLogger(__name__)
 
 
@@ -56,6 +55,8 @@ def migrate_legacy_event_bus_event(
         payload=legacy.get("data", {}),
         metadata={"migrated_from": "event_bus_v1"},
     )
+
+
 def migrate_legacy_task_event(
     legacy: dict[str, Any],
     correlation_id: UUID | None = None,
@@ -90,6 +91,8 @@ def migrate_legacy_task_event(
             **legacy.get("metadata", {}),
         },
     )
+
+
 def migrate_legacy_webhook_event(
     legacy: dict[str, Any],
     correlation_id: UUID | None = None,
@@ -112,8 +115,6 @@ def migrate_legacy_webhook_event(
     Returns:
         EventEnvelope with migrated data.
     """
-    from datetime import datetime
-
     received_at = legacy.get("received_at")
     if isinstance(received_at, str):
         received_at = datetime.fromisoformat(received_at)
@@ -132,6 +133,8 @@ def migrate_legacy_webhook_event(
         payload={"repository": legacy.get("repository"), "sender": legacy.get("sender")},
         metadata={"migrated_from": "webhook_event_v1"},
     )
+
+
 def _migrate_version(legacy_version: int | str) -> str:
     """Convert legacy integer version to semver string.
 
@@ -144,7 +147,9 @@ def _migrate_version(legacy_version: int | str) -> str:
     if isinstance(legacy_version, int):
         return f"{legacy_version}.0.0"
     return str(legacy_version)
-def _parse_timestamp(ts: str | None) -> "datetime":
+
+
+def _parse_timestamp(ts: str | None) -> datetime:
     """Parse a timestamp string into datetime.
 
     Args:
@@ -153,8 +158,6 @@ def _parse_timestamp(ts: str | None) -> "datetime":
     Returns:
         datetime instance (UTC now if ts is None).
     """
-    from datetime import datetime
-
     if ts is None:
         return datetime.now(UTC)
     return datetime.fromisoformat(ts)

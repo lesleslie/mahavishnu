@@ -173,13 +173,9 @@ TOOL_VERSIONS: dict[str, str] = {
     "automation_scroll": "1.0.0",
     "automation_status": "1.0.0",
     "automation_type_text": "1.0.0",
-    # Content ingestion tools (content_ingestion_tools.py)
-    "batch_ingest_urls": "1.0.0",
+    # Search tools (search_tools.py)
     "delete_document": "1.0.0",
-    "detect_content_type": "1.0.0",
-    "get_ingestion_stats": "1.0.0",
-    "ingest_file": "1.0.0",
-    "ingest_url": "1.0.0",
+    # OTel tools (otel_tools.py)
     "ingest_otel_traces": "1.0.0",
     "index_document": "1.0.0",
     "get_otel_trace": "1.0.0",

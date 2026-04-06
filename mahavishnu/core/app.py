@@ -1700,6 +1700,10 @@ class MahavishnuApp:
     ) -> dict[str, Any]:
         """Execute a workflow in parallel across repositories with progress reporting.
 
+        .. note:: **Golden Path**: Prefer ``mahavishnu workflow sweep`` (CLI) or
+           ``trigger_workflow`` MCP tool over calling this method directly.
+           See ``docs/reports/golden-paths-guide.md`` for canonical pathways.
+
         This refactored method orchestrates workflow execution through focused helper methods,
         following the Single Responsibility Principle for improved maintainability.
 
