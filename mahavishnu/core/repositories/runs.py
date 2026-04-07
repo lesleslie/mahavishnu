@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-class RunStatus:
+class RunStatus(StrEnum):
     """Task run status values.
 
     Matches the CHECK constraint in orchestration.task_runs table.
@@ -160,7 +161,7 @@ class TaskRunFilter(BaseModel):
 # =============================================================================
 
 
-class TaskRunRepository(BaseRepository[TaskRunRead]):
+class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate]):
     """Repository for orchestration.task_runs table operations.
 
     Provides CRUD operations for task runs with:
@@ -290,10 +291,10 @@ class TaskRunRepository(BaseRepository[TaskRunRead]):
             "result_summary": "result_summary",
         }
 
-        for field, field_mapping.items():
+        for field, column in field_mapping.items():
             value = getattr(data, field, None)
             if value is not None:
-                updates.append(f"{field} = ${param_idx}")
+                updates.append(f"{column} = ${param_idx}")
                 params.append(value)
                 param_idx += 1
 

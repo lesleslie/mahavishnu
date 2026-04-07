@@ -118,7 +118,7 @@ class EmbeddingSearchResult(BaseModel):
     )
 
 
-class EmbeddingRepository(BaseRepository[EmbeddingRead]):
+class EmbeddingRepository(BaseRepository[EmbeddingCreate, EmbeddingRead, EmbeddingSearchResult]):
     """Repository for search.document_embeddings table operations.
 
     Provides CRUD operations for embeddings with:

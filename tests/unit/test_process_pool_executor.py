@@ -221,7 +221,7 @@ class TestSubmit:
         loop = asyncio.new_event_loop()
         try:
             loop.run_until_complete(executor.shutdown(wait=False))
-            with pytest.raises(RuntimeError, match="shut down"):
+            with pytest.raises(RuntimeError, match="not started"):
                 loop.run_until_complete(executor.submit(lambda: 42))
         finally:
             loop.close()

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-class TaskPriority:
+class TaskPriority(StrEnum):
     """Task priority levels."""
 
     LOW = "low"
@@ -40,7 +41,7 @@ class TaskPriority:
     CRITICAL = "critical"
 
 
-class DependencyType:
+class DependencyType(StrEnum):
     """Task dependency types."""
 
     BLOCKS = "blocks"
@@ -203,7 +204,7 @@ class TaskFilter(BaseModel):
 # =============================================================================
 
 
-class TaskRepository(BaseRepository[TaskRead]):
+class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
     """Repository for orchestration.tasks table operations.
 
     Provides CRUD operations for tasks with:
@@ -703,12 +704,12 @@ class TaskRepository(BaseRepository[TaskRead]):
 
 __all__ = [
     "TaskPriority",
-    "DependencyType"
-    "TaskCreate"
-    "TaskRead"
-    "TaskUpdate"
-    "TaskDependencyCreate"
-    "TaskDependencyRead"
-    "TaskFilter"
-    "TaskRepository"
+    "DependencyType",
+    "TaskCreate",
+    "TaskRead",
+    "TaskUpdate",
+    "TaskDependencyCreate",
+    "TaskDependencyRead",
+    "TaskFilter",
+    "TaskRepository",
 ]
