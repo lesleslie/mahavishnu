@@ -59,7 +59,8 @@ This file stores important information that should persist across sessions.
 
 ### TensorZero Gateway Plan
 - **Plan file**: `/Users/les/Projects/mahavishnu/docs/plans/tensorzero-gateway-plan.md`
-- **Status**: v3.0 with Postgres auth + Tempo (Phase 1.6) — 1001 lines — all remaining TODOs addressed
+- **Status**: v3.0 with Postgres auth + Tempo (Phase 1.6) — 1047 lines — all remaining TODOs addressed
+- **Resume prompt**: `docs/llm-gateway-resume-prompt.md` (saved for restarting work)
 - **Port**: 8471
 - **Deployment**: Native binary (NOT Docker) — Python embedded gateway
 - **Install location**: `~/.local/share/tensorzero/.venv/bin/tensorzero-gateway`
@@ -67,6 +68,10 @@ This file stores important information that should persist across sessions.
 - **Python client**: v2026.4.0 installed in `~/.local/share/tensorzero/.venv` (Python 3.13) — client library only, not the gateway
 - **z.ai API key**: `Z_AI_API_KEY` env var (not `ZAI_API_KEY`) — not stored in any persistent location (shell profiles, .env files, macOS keychain); must obtain from user before LaunchAgent can work
 - **Gateway status**: Not currently running (neither TensorZero gateway nor CCR server is active)
+- **Implementation stuck**: Binary wouldn't build, Docker had issues
+- **Sequencing**: Get TensorZero running first, then reconfigure CCR
+- **LiteLLM**: REJECTED — security issues (compromised versions 1.82.7/1.82.8) + sloppy codebase
+- **TensorZero UI**: Yes (Phase 4), Autopilot: skip
 - **Gateway restart**: `launchctl kickstart -k gui/501/ai.nanobot.gateway` restarts the nanobot gateway LaunchAgent
 - **LaunchAgent**: `~/Library/LaunchAgents/com.tensorzero.gateway.plist`
 - **Postgres**: Dedicated `tensorzero` database on localhost:5432 for auth + observability
@@ -233,6 +238,8 @@ This file stores important information that should persist across sessions.
 
 ### Nanobot Config Schema — Key Fields
 - **`AgentDefaults`**: model, provider ("auto"), max_tokens (8192), context_window_tokens (65536), temperature (0.1), max_tool_iterations (200), reasoning_effort, timezone, dream config
+- **Pending context change**: User wants defaults changed to context_window_tokens=200K, max_tokens=128K (current: 65,536 / 8,192). Undecided: global defaults vs per-model overrides.
+- **Model context limits researched**: GLM-5-Turbo (202,752 ctx / 131,072 out), GPT-5.4-mini (400,000 ctx / 128,000 out)
 - **`DreamConfig`**: interval_h (2), cron (legacy), model_override, max_batch_size (20), max_iterations (10)
 - **`HeartbeatConfig`**: enabled (true), interval_s (30min), keep_recent_messages (8)
 - **`ProvidersConfig`**: custom, azure_openai, anthropic, openai, openrouter, deepseek, groq, zhipu, dashscope, vllm, ollama, ovms, gemini, moonshot, minimax, mistral, stepfun, xiaomi_mimo, aihubmix, siliconflow, volcengine, volcengine_coding_plan, byteplus, byteplus_coding_plan, openai_codex (OAuth), github_copilot (OAuth), qianfan
@@ -274,7 +281,8 @@ This file stores important information that should persist across sessions.
 
 ## Projects & Decisions
 
-- **CCR (Claude Code Router)**: Routes Claude Code to z.ai via Anthropic format; will route through TensorZero
+- **CCR (Claude Code Router)**: Routes Claude Code to z.ai via Anthropic format; will route through TensorZero. **Option B chosen** — preserve Anthropic format through TensorZero (minimal risk over Option A)
+- **Architecture**: 4 OpenAI-format clients → TensorZero → z.ai (in addition to CCR → TensorZero → z.ai Anthropic path)
 - **Alternative gateways**: After failed TensorZero install attempts, user investigating `any-llm-gateway` and `llms.py` as alternative LLM gateway options
 - **Oneiric**: Has `OTelStorageAdapter` (Postgres/pgvector) and `PostgresDatabaseAdapter` (asyncpg); OTelStorageAdapter to be replaced with Tempo
 - **Vish**: NanobotWorker instances that will route through TensorZero
