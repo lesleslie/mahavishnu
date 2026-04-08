@@ -235,6 +235,13 @@ This file stores important information that should persist across sessions.
 - To execute Vish commands from Slack, user asks nanobot (in Slack) which calls Mahavishnu MCP tools
 - A dedicated Slack bot for direct Vish commands would need to be built
 
+### Slack Progress Indication Gap
+- **User prefers progress updates in Slack** for long-running operations
+- **Known gap**: Slack adapter goes silent between tool calls until final response — no streaming progress
+- **Typing indicator** only covers LLM thinking time, NOT tool execution duration
+- **Emoji reactions** (👀 eyes / ✅ check_mark) are supported by nanobot's `slack.py` but not wired up by default in current config
+- **`send_progress: true`** exists in `ChannelsConfig` but doesn't solve the tool-execution silence problem
+
 ### Mahavishnu Config Structure
 - Main config: `settings/mahavishnu.yaml`
 - Additional configs: `settings/models.yaml`, `settings/embeddings.yaml`, `settings/repos.yaml`, `settings/ecosystem.yaml`
