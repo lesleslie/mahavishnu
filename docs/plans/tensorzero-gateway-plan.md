@@ -80,6 +80,7 @@ CCR currently sends Anthropic Messages format to `https://api.z.ai/api/anthropic
 
 - **Postgres 18 running** via Homebrew on `localhost:5432` (Intel Mac — `/usr/local/opt/postgresql@18/`)
 - User: `les`, no password (local trust auth)
+  - ⚠️ **Security note**: Trust auth means any local process can connect to the `tensorzero` database (and read API keys). Postgres typically only accepts local Unix socket connections by default, which limits this. Verify `pg_hba.conf` doesn't allow TCP connections without auth — run `SELECT * FROM pg_hba_file_rules;` to audit.
 - Existing databases: `mahavishnu`, `mahavishnu_test`, `postgres`
 - Available extensions: `pg_trgm` (1.6), `vector` (0.8.2) — **installed but not yet created in any database**
 - **Missing**: `pg_cron` — not available (Homebrew Postgres doesn't ship it by default)
@@ -132,6 +133,8 @@ TENSORZERO_POSTGRES_URL="postgres://les@localhost:5432/tensorzero"
 ```
 
 No password needed — Postgres trusts local connections.
+
+> **Security**: Any local process can connect to this database. Verify with `SELECT * FROM pg_hba_file_rules;` that only `local` (Unix socket) connections use `trust` auth, not `host 127.0.0.1`. If TCP trust auth is enabled, any local user can connect — acceptable for single-user dev but worth confirming.
 
 ### API Key Management
 
@@ -195,6 +198,9 @@ The `tensorzero` pip package (v2026.4.0) includes the Rust gateway binary, acces
     <key>EnvironmentVariables</key>
     <dict>
         <key>ZAI_API_KEY</key>
+        <!-- ⚠️ Replace PLACEHOLDER with real key before deployment.
+             Do NOT commit the plist with a real key to version control.
+             Consider loading from a separate file: `~/Library/Application Support/tensorzero/env` -->
         <string>ZAI_API_KEY_PLACEHOLDER</string>
         <key>TENSORZERO_POSTGRES_URL</key>
         <string>postgres://les@localhost:5432/tensorzero</string>
@@ -236,6 +242,24 @@ The `tensorzero` pip package (v2026.4.0) includes the Rust gateway binary, acces
 └── com.tensorzero.gateway.plist
 ```
 
+### Log Rotation
+
+Both Tempo and the TensorZero gateway use LaunchAgent stdout → file, which grows unbounded. Add `newsyslog` rules:
+
+```bash
+# Gateway logs
+sudo tee /etc/newsyslog.d/com.tensorzero.gateway.conf << 'EOF'
+/Users/les/.local/state/tensorzero/logs/gateway.log   les:staff  644  7  *  $M2000000 JCN
+EOF
+
+# Tempo logs (see Phase 1.6 Step 3)
+sudo tee /etc/newsyslog.d/com.grafana.tempo.conf << 'EOF'
+/Users/les/.local/state/tempo/logs/tempo.log   les:staff  644  7  *  $M2000000 JCN
+EOF
+```
+
+This rotates at 2MB, keeps 7 compressed copies, and signals the process to reopen (J flag). Logs may contain partial prompts or error messages with API key fragments — rotation limits exposure.
+
 ---
 
 ## Configuration — tensorzero.toml
@@ -258,7 +282,7 @@ observability.enabled = true
 # Async writes improve gateway latency by offloading DB writes
 observability.async_writes = true
 
-# Cache TTL for Valkey/Redis (if enabled for rate limiting)
+# Cache TTL for Redis (if enabled for rate limiting)
 cache.valkey.ttl_s = 300  # 5 minutes — short for dev
 
 # === Models ===
@@ -344,7 +368,7 @@ model_inferences_per_second = 8
 tokens_per_second = 4000
 
 # NOTE: Rate limiting state stored in Postgres (when TENSORZERO_POSTGRES_URL is set)
-# or Valkey/Redis (when TENSORZERO_VALKEY_URL is set). With Postgres, rate limits
+# or Redis (when TENSORZERO_VALKEY_URL is set). With Postgres, rate limits
 # persist across restarts. For >100 QPS, add Redis for sub-ms latency.
 ```
 
@@ -419,7 +443,16 @@ Update nanobot provider env vars or config to use `http://127.0.0.1:8471/openai/
 
 ### Phase 0: Postgres Setup
 
-0. **Create TensorZero database and extensions**
+0. **Audit Postgres auth config**
+   ```bash
+   PG=/usr/local/opt/postgresql@18/bin/psql
+   $PG -h localhost -U les -d postgres -c "SELECT * FROM pg_hba_file_rules;"
+   # Verify: only 'local' (Unix socket) connections use 'trust'.
+   # If 'host 127.0.0.1' with 'trust' exists, any local user can connect.
+   # Acceptable for single-user dev — document the risk.
+   ```
+
+1. **Create TensorZero database and extensions**
    ```bash
    PG=/usr/local/opt/postgresql@18/bin/psql
    $PG -h localhost -U les -d postgres -c "CREATE DATABASE tensorzero;"
@@ -498,16 +531,18 @@ Update nanobot provider env vars or config to use `http://127.0.0.1:8471/openai/
 
 These are config-only changes — no extra services to install.
 
-1. **Prometheus metrics** — exposed at `/metrics` on the gateway port (8471)
+1. **Prometheus metrics** — TensorZero exposes metrics at `/metrics` on the gateway port (8471)
    ```toml
    [gateway.export.prometheus]
    enabled = true
    ```
 
-2. **OTEL traces** — exported to local OTel collector (Grafana Tempo/OTel)
+   Available metrics include: `tensorzero_inferences_total`, `tensorzero_requests_total`, `tensorzero_inference_latency_overhead_seconds`.
+
+2. **OTEL traces** — exported to Tempo via OTLP HTTP
    ```toml
    [gateway.export.otlp.traces]
-   endpoint = "http://localhost:4318"
+   endpoint = "http://127.0.0.1:4318"
    ```
 
 3. **Grafana scraping** — add TensorZero to Grafana's prometheus.yml scrape targets:
@@ -518,32 +553,37 @@ These are config-only changes — no extra services to install.
      metrics_path: '/metrics'
    ```
 
-4. **Verify** — after gateway starts:
+4. **Claude Code OTEL** — Claude Code has native OTEL support (metrics + logs + traces beta). Configure via environment variables — see Phase 1.6 Step 7 for details.
+
+5. **Verify** — after gateway starts:
    ```bash
    curl -s http://127.0.0.1:8471/metrics | head -20
    ```
 
-### Phase 1.6: Tempo + Alloy — Distributed Tracing (with MCP)
+### Phase 1.6: Tempo — Distributed Tracing (with MCP)
 
 Replace Postgres-based trace storage (`OTelStorageAdapter` → pgvector) with Grafana Tempo, the purpose-built distributed tracing backend. Tempo provides TraceQL for structured queries, an embedded MCP server for AI tool access, and integrates natively with the existing Grafana instance.
+
+> **No macOS binary available** — Tempo only ships Linux/Windows binaries. Must build from source with Go (already installed at `/usr/local/bin/go`, v1.26.1).
 
 #### Components
 
 | Component | Port | Role |
 |---|---|---|
-| **Tempo** | 3200 (HTTP), 3201 (gRPC), 4317/4318 (OTLP) | Trace storage + query engine + embedded MCP server |
-| **Grafana Alloy** | 12345 (health/metrics) | Optional OTLP collector — receives traces, routes to Tempo |
+| **Tempo** | 3200 (HTTP query/MCP), 3201 (gRPC query), 4317 (OTLP gRPC receive), 4318 (OTLP HTTP receive) | Trace storage + query engine + embedded MCP server |
 
-> **Simplified approach**: For a single-user dev setup, **skip Alloy** and have apps send traces directly to Tempo on ports 4317/4318. Alloy adds value in multi-service environments where you need trace enrichment, sampling, or routing to multiple backends. The configs below default to **direct Tempo** (no Alloy). Alloy config is provided separately if needed later.
+> **Grafana Alloy skipped** — For a single-user dev setup, apps send traces directly to Tempo on ports 4317/4318. Alloy adds value in multi-service environments where you need trace enrichment, sampling, or routing to multiple backends. If needed later, install via `brew install grafana-alloy` and configure as an OTLP → Tempo forwarder.
 
 #### Port Map
 
 | Port | Service | Protocol | Notes |
 |---|---|---|---|
 | 3200 | Tempo | HTTP (query/ready/MCP) | 127.0.0.1 only |
-| 3201 | Tempo | gRPC (query) | 127.0.0.1 only |
-| 4317 | Tempo | gRPC (OTLP receive) | 127.0.0.1 only — apps send traces here |
-| 4318 | Tempo | HTTP (OTLP receive) | 127.0.0.1 only — apps send traces here |
+| 3201 | Tempo | gRPC (query) | 127.0.0.1 only — Tempo's server gRPC for TraceQL and trace lookups |
+| 4317 | Tempo | gRPC (OTLP receive) | 127.0.0.1 only — apps send OTLP gRPC traces here |
+| 4318 | Tempo | HTTP (OTLP receive) | 127.0.0.1 only — apps send OTLP HTTP traces here |
+
+> **Note**: Tempo's OTLP receivers (4317/4318) accept traces from any local process. A compromised local process could inject misleading traces or exhaust disk. Low risk for single-user dev, but worth documenting if the setup is shared.
 
 #### Why Tempo over pgvector for traces
 
@@ -555,28 +595,30 @@ Replace Postgres-based trace storage (`OTelStorageAdapter` → pgvector) with Gr
 
 #### Security notes (from security review)
 
-- ⚠️ **No auth on Tempo** — Tempo's OTLP receiver and query API have no authentication. All endpoints bind to `127.0.0.1` only, so only local processes can reach them. This is acceptable for single-user dev.
+- ⚠️ **No auth on Tempo** — Tempo's OTLP receiver and query API have no authentication. All endpoints bind to `127.0.0.1` only, so only local processes can reach them. This is acceptable for single-user dev. A compromised local process could push fake traces or read all traces (which may contain prompt content). Document this risk if the setup is shared or replicated.
 - ⚠️ **Trace data sensitivity** — Traces may contain LLM prompt/response content. Tempo stores these on disk in `~/.local/state/tempo/data/traces`. The 7-day retention limits exposure. No trace data leaves the machine.
 - ✅ **All endpoints localhost-only** — `http_listen_address` and all OTLP receiver endpoints use `127.0.0.1`, not `0.0.0.0`.
 
-#### Step 1: Install Tempo
+#### Step 1: Build Tempo from source
+
+Tempo does not ship macOS binaries. Build from source using Go:
 
 ```bash
-# Download latest Tempo binary for darwin/amd64
-# Verify exact asset name at https://github.com/grafana/tempo/releases/latest
 TEMPO_VERSION="v2.10.3"
-mkdir -p ~/.local/share/tempo/bin
-curl -sL "https://github.com/grafana/tempo/releases/download/${TEMPO_VERSION}/tempo_${TEMPO_VERSION#v}_darwin_amd64.tar.gz" \
-  | tar xz -C /tmp
-cp /tmp/tempo-${TEMPO_VERSION#v}-darwin-amd64/tempo ~/.local/share/tempo/bin/tempo
-chmod +x ~/.local/share/tempo/bin/tempo
-rm -rf /tmp/tempo-${TEMPO_VERSION#v}-darwin-amd64
+mkdir -p ~/.local/share/tempo/{bin,src}
+cd ~/.local/share/tempo/src
+
+# Clone and checkout the release tag
+git clone --depth 1 --branch ${TEMPO_VERSION} https://github.com/grafana/tempo.git
+cd tempo
+
+# Build the binary (~2-5 minutes, requires Go 1.25+)
+go build -o ~/.local/share/tempo/bin/tempo ./cmd/tempo
 
 # Verify
 ~/.local/share/tempo/bin/tempo --version
+# Expected: tempo, version ...
 ```
-
-> **Note**: The tarball structure may vary between Tempo versions. Check the GitHub release assets page if the `cp` command fails. The binary is always named `tempo`.
 
 #### Step 2: Create Tempo config
 
@@ -594,7 +636,7 @@ server:
   http_listen_address: "127.0.0.1"
   http_listen_port: 3200
   grpc_listen_address: "127.0.0.1"
-  grpc_listen_port: 3201
+  grpc_listen_port: 3201  # Default is 9095; override to avoid conflicts
   log_level: info
 
 # Distributor — receives OTLP pushes from applications
@@ -603,9 +645,9 @@ distributor:
     otlp:
       protocols:
         grpc:
-          endpoint: "127.0.0.1:4317"
+          endpoint: "127.0.0.1:4317"   # Default; apps send traces here
         http:
-          endpoint: "127.0.0.1:4318"
+          endpoint: "127.0.0.1:4318"   # Default; apps send traces here
 
 # Storage — local filesystem (no S3/object storage needed for dev)
 storage:
@@ -615,23 +657,20 @@ storage:
       path: /Users/les/.local/state/tempo/data/traces
     wal:
       path: /Users/les/.local/state/tempo/data/wal
-    pool:
-      max_workers: 100
-      queue_depth: 10000
 
-# Query frontend — enables TraceQL queries
+# Query frontend — enables TraceQL queries + MCP server
 query_frontend:
   max_query_length: 0  # unlimited for dev
+  # Embedded MCP server — enables AI tool queries at /api/mcp
+  # Added in Tempo v2.9.0
+  mcp_server:
+    enabled: true
 
 # Compactor — keeps disk usage bounded
 compactor:
   compaction:
     block_retention: 168h  # 7 days
     compacted_block_retention: 1h
-
-# Embedded MCP server — enables AI tool queries at /api/mcp
-mcp_server:
-  enabled: true
 
 # Metrics generator — produces RED metrics for Grafana dashboards
 metrics_generator:
@@ -652,67 +691,7 @@ overrides:
           - service.version
 ```
 
-> **Config review notes**:
-> - `mcp_server.enabled = true` is the correct key for Tempo v2.10.x. The `endpoint` sub-key is not needed — Tempo always serves MCP at `/api/mcp` when enabled.
-> - `server.http_listen_address` / `grpc_listen_address` enforce localhost-only binding.
-> - Verify `pool` and `query_frontend` keys against your exact Tempo version — these may differ between v2.9 and v2.10.
-
-#### Step 3: (Optional) Grafana Alloy
-
-Skip this step unless you need Alloy for trace enrichment or multi-backend routing. For direct Tempo, apps send to ports 4317/4318 on Tempo directly.
-
-If Alloy is needed later:
-```bash
-brew install grafana-alloy
-alloy --version
-```
-
-`~/.config/alloy/config.alloy` (Alloy as OTLP → Tempo forwarder):
-```alloy
-// === Alloy config: OTLP receive → Tempo forward ===
-// NOTE: If using Alloy, Tempo's distributor ports must NOT conflict.
-// Either disable Tempo's OTLP receiver (remove distributor.receivers)
-// and have Alloy forward to Tempo's gRPC port (3201), or use different ports.
-
-// Receive OTLP from applications
-otlp "receive" {
-  http {
-    endpoint = "0.0.0.0:4318"
-  }
-  grpc {
-    endpoint = "0.0.0.0:4317"
-  }
-
-  output {
-    otel = otel.export.otlp.tempo.input
-  }
-}
-
-// Forward to Tempo's gRPC query port (NOT the distributor port)
-otel "export" "otlp" "tempo" {
-  endpoint = "127.0.0.1:4317"
-  protocol = "grpc"
-
-  sending_queue {
-    enabled = true
-    num_consumers = 10
-    queue_size = 5000
-  }
-
-  retry_on_failure {
-    enabled = true
-    initial_interval = "5s"
-    max_interval = "30s"
-    max_elapsed_time = "300s"
-  }
-}
-```
-
-> **Port conflict resolution**: If Alloy AND Tempo both try to bind 4317/4318, one will fail to start. Solutions:
-> 1. **Don't use Alloy** (recommended for dev) — apps → Tempo directly on 4317/4318.
-> 2. **Use Alloy, disable Tempo's OTLP receiver** — Remove the `distributor.receivers` block from `tempo.yaml`. Alloy forwards to Tempo's server gRPC port (3201) instead. Change Alloy's export endpoint to `127.0.0.1:3201`.
-
-#### Step 4: LaunchAgent (Tempo)
+#### Step 3: LaunchAgent (Tempo)
 
 **`~/Library/LaunchAgents/com.grafana.tempo.plist`**:
 ```xml
@@ -749,11 +728,14 @@ otel "export" "otlp" "tempo" {
 </plist>
 ```
 
-> **Startup ordering**: If Alloy is used, load Tempo's LaunchAgent first (launchctl doesn't guarantee ordering). Alloy has `retry_on_failure` so it will buffer traces until Tempo is ready. For the recommended no-Alloy approach, ordering is not an issue.
+> **Log rotation**: Tempo logs grow unbounded via LaunchAgent stdout. Add `newsyslog` config to rotate logs:
+> ```
+> # /etc/newsyslog.d/com.grafana.tempo.conf
+> /Users/les/.local/state/tempo/logs/tempo.log   les:staff  644  7  *  $M2000000 JCN
+> ```
+> This rotates at 2MB, keeps 7 compressed copies. Logs may contain partial prompts or error messages with API key fragments — rotation limits exposure.
 
-> **Log rotation**: Tempo/Alloy logs grow unbounded via LaunchAgent stdout. TODO — add `newsyslog` config or periodic log rotation. See Security Checklist for tracking.
-
-#### Step 5: Install and verify
+#### Step 4: Install and verify
 
 ```bash
 # Load LaunchAgent
@@ -773,7 +755,7 @@ curl -s http://127.0.0.1:4318
 # May return empty or error — that's OK, it's a POST endpoint
 ```
 
-#### Step 6: Configure TensorZero → Tempo (OTEL)
+#### Step 5: Configure TensorZero → Tempo (OTEL)
 
 Update `tensorzero.toml` from Phase 1.5:
 ```toml
@@ -781,7 +763,7 @@ Update `tensorzero.toml` from Phase 1.5:
 endpoint = "http://127.0.0.1:4318"  # Tempo's OTLP HTTP receiver
 ```
 
-#### Step 7: Configure Mahavishnu → Tempo
+#### Step 6: Configure Mahavishnu → Tempo
 
 Update `OTelStorageAdapter` (or create a new `TempoStorageAdapter`) to:
 - Export traces via OTLP to `http://127.0.0.1:4318`
@@ -789,6 +771,51 @@ Update `OTelStorageAdapter` (or create a new `TempoStorageAdapter`) to:
 - Query traces via TraceQL: `GET http://127.0.0.1:3200/api/search?q={service.name="mahavishnu"}`
 
 > **TraceQL note**: Verify exact TraceQL syntax against Tempo v2.10 docs — the query language has changed between v2.x releases.
+
+#### Step 7: Configure Claude Code → Tempo (OTEL)
+
+Claude Code has **native OpenTelemetry support** — no wrapper or sidecar needed. It exports:
+- **Metrics**: token usage (input/output/cache), cost (USD), active session time, commits, LoC, tool decisions
+- **Logs/Events**: user prompts, tool results, API requests, errors
+- **Traces** (beta): distributed traces for Claude Code operations
+
+Configure via environment variables in your shell profile (`~/.zshrc` or managed settings):
+
+```bash
+# Claude Code OTEL — sends metrics, logs, and traces to Tempo
+# ⚠️ GLOBAL SCOPE: These vars affect ALL Claude Code invocations on this system.
+# Consider scoping to specific projects via direnv or a wrapper script
+# (e.g., only export in work project directories, not personal ones).
+export CLAUDE_CODE_ENABLE_TELEMETRY=1
+export OTEL_METRICS_EXPORTER=otlp
+export OTEL_LOGS_EXPORTER=otlp
+export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318  # Tempo OTLP HTTP
+export OTEL_METRIC_EXPORT_INTERVAL=60000  # 60s default
+export OTEL_LOGS_EXPORT_INTERVAL=5000     # 5s default
+
+# Optional: log user prompts (privacy tradeoff — prompts stored in Tempo traces)
+# export OTEL_LOG_USER_PROMPTS=1
+
+# Optional: reduce cardinality if metrics are too noisy
+# export OTEL_METRICS_INCLUDE_SESSION_ID=false
+# export OTEL_METRICS_INCLUDE_VERSION=false
+# export OTEL_METRICS_INCLUDE_ACCOUNT_UUID=false
+```
+
+> **CCR note**: CCR (Claude Code Router) is just a proxy — it doesn't generate its own telemetry. All OTEL data comes from Claude Code itself. CCR forwards requests transparently, so trace context (`traceparent`) passes through to TensorZero and z.ai automatically.
+>
+> **Privacy**: Claude Code traces may contain prompt content and code snippets. The 7-day Tempo retention limits exposure. Set `OTEL_LOG_USER_PROMPTS=0` (default) to exclude prompt content from traces.
+
+**Key Claude Code metrics available after enabling**:
+| Metric | Description |
+|---|---|
+| `claude_code_tokens_total` | Token usage by type (input, output, cache_creation, cache_read) |
+| `claude_code_cost_total` | USD cost per session |
+| `claude_code_active_time_seconds` | Active session duration |
+| `claude_code_commits_total` | Commits made per session |
+| `claude_code_lines_of_code_total` | Lines of code changed |
+| `claude_code_tool_decision_total` | Tool usage counts (edit, read, write, etc.) |
 
 #### Step 8: Add Tempo datasource to Grafana
 
@@ -806,14 +833,15 @@ datasources:
     editable: true
     uid: tempo
 EOF
-# Restart Grafana to pick up new datasource
+# Restart Grafana to pick up new datasource (port 3035)
 brew services restart grafana
 ```
 
 #### Step 9: MCP integration
 
 **Recommended: `mcp-grafana` proxied tools** (Option A)
-- Already have `mcp-grafana` installed at `/usr/local/bin/mcp-grafana`
+- `mcp-grafana` installed via Homebrew at `/usr/local/bin/mcp-grafana`
+- Grafana running on port **3035**
 - Auto-discovers Tempo's MCP tools through the Grafana datasource
 - Gives you Tempo + Prometheus + Loki tools in one MCP server
 - Lower maintenance than direct Tempo MCP
@@ -825,7 +853,7 @@ Configure in Mahavishnu's MCP settings:
     "grafana": {
       "command": "mcp-grafana",
       "env": {
-        "GRAFANA_URL": "http://localhost:3000"
+        "GRAFANA_URL": "http://localhost:3035"
       }
     }
   }
@@ -846,6 +874,8 @@ Configure in Mahavishnu's MCP settings:
 | Logs | `~/.local/state/tempo/logs/` | indefinite | ~10MB/month |
 
 Total: **~2GB max** with 7-day retention.
+
+> **Disk permissions**: Ensure `~/.local/state/tempo/data/` is owned by `les` with `700` permissions to prevent other local users from reading trace data: `chmod 700 ~/.local/state/tempo/data`.
 
 ### Phase 2: LaunchAgent
 
@@ -894,6 +924,8 @@ The TensorZero UI is a web dashboard for browsing inference history, managing AP
 
 21. **Create API key via UI** — browse to `http://127.0.0.1:4000`, create a gateway API key
 
+    > **Audit trail**: When the TensorZero UI creates API keys, there's no built-in audit logging. Consider adding a Postgres trigger on the auth tables to log key creation/rotation events, or manually record key metadata (created_at, purpose, client) in a separate table.
+
 22. **Optional: LaunchAgent for UI**
     ```xml
     <!-- ~/Library/LaunchAgents/com.tensorzero.ui.plist -->
@@ -924,7 +956,7 @@ The TensorZero UI is a web dashboard for browsing inference history, managing AP
 | Telemetry disabled | ✅ Configured | `disable_pseudonymous_usage_analytics = true` |
 | Keys from env vars | ✅ Configured | `api_key_location = "env::ZAI_API_KEY"` |
 | Cache TTL | ✅ Configured | 300s (5 min) — short for dev |
-| Log rotation | ⚠️ TODO | LaunchAgent stdout grows unbounded. Add newsyslog or log rotation. |
+| Log rotation | ✅ Configured | `newsyslog` configs provided for gateway and Tempo logs (2MB rotate, 7 copies) |
 
 ---
 
@@ -963,8 +995,8 @@ Each client should have its own timeout and retry:
 - ✅ Port 8471 approved
 - ✅ Redis namespace: Use DB index 15 (`redis://localhost:6379/15`)
 - ✅ LaunchAgent plist provided
+- ✅ Log rotation: `newsyslog` configs provided for gateway and Tempo logs
 - ⏭️ Startup ordering: Clients have own retry logic. PathState not needed for dev.
-- ⏭️ Log rotation: TODO — add newsyslog config later
 
 ### Config Review
 - ✅ C1 (model routing): Added `[models.*]` definitions for all model names
@@ -972,7 +1004,7 @@ Each client should have its own timeout and retry:
 - ✅ C3 (CCR compatibility): Option B preserves CCR's Anthropic format, routes to TensorZero Anthropic endpoint
 - ⚠️ W1 (OPENAI_BASE_URL conflict): Documented warning. Per-client config preferred.
 - ⚠️ W2 (streaming): Smoke test in deployment steps
-- ⚠️ W5 (caching config): Fixed — using `[gateway.cache.valkey]` per TensorZero docs
+- ⚠️ W5 (caching config): Fixed — using `[gateway.cache.valkey]` per TensorZero docs (Redis backend)
 
 ---
 
@@ -985,7 +1017,7 @@ Each client should have its own timeout and retry:
 | OTEL traces | **Phase 1.5 — yes** | Config-only, Grafana already running |
 | Prometheus metrics | **Phase 1.5 — yes** | Config-only, Grafana can scrape directly |
 | Tempo for traces | **Phase 1.6 — yes** | Replaces pgvector for trace storage. Embedded MCP + TraceQL. |
-| Alloy as collector | **Phase 1.6 — yes** | OTLP receive → Tempo forward. Can also handle metrics. |
+| Alloy as collector | **Skipped** | Direct OTLP to Tempo is sufficient for single-user dev. Add Alloy later if trace enrichment is needed. |
 
 ---
 
@@ -1010,8 +1042,6 @@ Each client should have its own timeout and retry:
 | LaunchAgent plist | `~/Library/LaunchAgents/com.tensorzero.gateway.plist` |
 | Gateway logs | `~/.local/state/tensorzero/logs/gateway.log` |
 | Tempo config | `~/.config/tempo/tempo.yaml` |
-| Alloy config | `~/.config/alloy/config.alloy` |
 | Tempo data | `~/.local/state/tempo/data/` |
 | Tempo logs | `~/.local/state/tempo/logs/` |
 | Tempo LaunchAgent | `~/Library/LaunchAgents/com.grafana.tempo.plist` |
-| Alloy LaunchAgent | `~/Library/LaunchAgents/com.grafana.alloy.plist` |

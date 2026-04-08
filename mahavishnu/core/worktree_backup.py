@@ -138,6 +138,8 @@ class WorktreeBackupManager:
             src: Source directory
             dst: Destination directory
         """
+        dst.mkdir(parents=True, exist_ok=True)
+
         # Recursively copy all files and directories
         for item in src.iterdir():
             src_item = item

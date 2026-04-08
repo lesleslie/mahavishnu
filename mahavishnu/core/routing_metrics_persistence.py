@@ -347,7 +347,7 @@ class RoutingMetricsPersistence:
                         updated_at = NOW()
                     """,
                     stats.adapter.value,
-                    stats.date,
+                    datetime.strptime(stats.date, "%Y-%m-%d").date() if isinstance(stats.date, str) else stats.date,
                     Decimal(str(stats.success_rate)),
                     stats.total_executions,
                     Decimal(str(stats.avg_latency_ms)) if stats.avg_latency_ms else None,

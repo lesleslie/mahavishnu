@@ -19,8 +19,10 @@ from mahavishnu.core.config import MahavishnuSettings, PrefectConfig
 from mahavishnu.core.errors import ErrorCode, PrefectError
 from mahavishnu.engines.prefect_adapter import (
     PrefectAdapter,
-    _map_prefect_exception,
     process_repository,
+)
+from mahavishnu.engines.prefect_adapter_impl import (
+    _map_prefect_exception,
 )
 
 # =============================================================================

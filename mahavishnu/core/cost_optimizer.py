@@ -36,6 +36,7 @@ from mahavishnu.core.metrics_schema import (
     ExecutionRecord,
     AdapterStats,
 )
+from mahavishnu.core.routing_metrics import get_routing_metrics
 
 
 logger = logging.getLogger(__name__)

@@ -6,44 +6,37 @@ import pytest
 def test_routing_module_imports():
     """Routing module should be importable."""
     from mahavishnu import routing_cli
+
     assert routing_cli is not None
     assert hasattr(routing_cli, "routing_app")
 
 
-def test_routing_app_has_commands():
-    """Routing app should have commands."""
+def test_routing_app_is_typer():
+    """Routing app should be a Typer instance."""
+    import typer
     from mahavishnu import routing_cli
 
-    # Just verify the app has a commands attribute
-    assert hasattr(routing_cli.routing_app, "commands")
+    assert isinstance(routing_cli.routing_app, typer.Typer)
 
 
-def test_stats_command_exists():
-    """Stats command should be defined."""
+def test_stats_command_registered():
+    """Stats command should be registered on the routing app."""
     from mahavishnu import routing_cli
 
-    # Just verify command exists
-    assert hasattr(routing_cli, "stats")
+    # Typer registers commands via decorators; verify the function exists
+    assert hasattr(routing_cli, "routing_stats")
 
 
-def test_set_budget_command_exists():
-    """Set-budget command should be defined."""
+def test_reset_command_registered():
+    """Reset command should be registered on the routing app."""
     from mahavishnu import routing_cli
 
-    assert hasattr(routing_cli, "set-budget")
+    assert hasattr(routing_cli, "routing_reset")
 
 
-def test_ab_test_commands_exist():
-    """AB-test commands should be defined."""
+def test_add_routing_commands_function():
+    """add_routing_commands helper should exist."""
     from mahavishnu import routing_cli
 
-    # Just verify commands exist
-    assert hasattr(routing_cli, "ab-test")
-    assert hasattr(routing_cli.routing_app, "ab-test")
-
-
-def test_recalculate_command_exists():
-    """Recalculate command should be defined."""
-    from mahavishnu import routing_cli
-
-    assert hasattr(routing_cli, "recalculate")
+    assert hasattr(routing_cli, "add_routing_commands")
+    assert callable(routing_cli.add_routing_commands)

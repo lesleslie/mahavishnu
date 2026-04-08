@@ -148,8 +148,10 @@ class WorktreeCoordinator:
         blocking_deps = self.coordination_manager.get_blocking_dependencies(repo_nickname)
         if blocking_deps:
             logger.warning(
-                f"Repo {repo_nickname} has {len(blocking_deps)} blocking dependencies",
-                dependencies=blocking_deps,
+                "Repo %s has %d blocking dependencies: %s",
+                repo_nickname,
+                len(blocking_deps),
+                blocking_deps,
             )
 
         # Generate safe worktree path
@@ -519,7 +521,8 @@ class WorktreeCoordinator:
         Returns:
             Dictionary mapping provider names to health status
         """
-        return await self.provider_registry.get_all_provider_health()
+        health = self.provider_registry.get_provider_health()
+        return {name: {"healthy": status} for name, status in health.items()}
 
     async def start_health_check_loop(self, interval: float = 60.0) -> None:
         """

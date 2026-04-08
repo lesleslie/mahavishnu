@@ -383,7 +383,7 @@ class TestWorktreePathValidator:
     # =========================================================================
 
     @pytest.mark.property
-    @given(st.text(alphabet=st.characters(whitelist_categories=(), max_size=100))
+    @given(st.text(alphabet=st.characters(whitelist_categories=()), max_size=100))
     def test_property_reject_paths_with_null_bytes(self, path):
         """Property-based test: All paths with null bytes are rejected."""
         validator = WorktreePathValidator(allowed_roots=["/worktrees"])

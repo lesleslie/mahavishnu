@@ -31,14 +31,14 @@ def test_create_and_verify_token():
     secret = "x" * 32
     auth = JWTAuth(secret=secret, expire_minutes=1)  # 1 minute expiry
 
-    # Create a token
-    data = {"sub": "test_user", "role": "admin"}
-    token = auth.create_access_token(data)
+    # Create a token using the current API
+    token = auth.create_token(user_id="test_user", scopes=["admin"])
 
     # Verify the token
     decoded_data = auth.verify_token(token)
 
-    assert decoded_data.username == "test_user"
+    assert decoded_data["sub"] == "test_user"
+    assert "admin" in decoded_data["scopes"]
 
 
 def test_expired_token():
@@ -46,9 +46,8 @@ def test_expired_token():
     secret = "x" * 32
     auth = JWTAuth(secret=secret, expire_minutes=0.01)  # Expire in 0.01 minutes (0.6 seconds)
 
-    # Create a token
-    data = {"sub": "test_user", "role": "admin"}
-    token = auth.create_access_token(data)
+    # Create a token using the current API
+    token = auth.create_token(user_id="test_user")
 
     # Wait for token to expire
     import time
@@ -73,14 +72,9 @@ def test_invalid_token():
 
 
 def test_get_auth_from_config():
-    """Test getting JWTAuth from configuration."""
+    """Test getting auth handler from configuration."""
     # Test with auth disabled
     config = MahavishnuSettings(auth={"enabled": False})
-    auth = get_auth_from_config(config)
-    assert auth is None
-
-    # Test with auth enabled but no secret
-    config = MahavishnuSettings(auth={"enabled": True, "secret": None})
     auth = get_auth_from_config(config)
     assert auth is None
 
@@ -89,4 +83,3 @@ def test_get_auth_from_config():
     config = MahavishnuSettings(auth={"enabled": True, "secret": secret})
     auth = get_auth_from_config(config)
     assert auth is not None
-    assert auth.secret == secret

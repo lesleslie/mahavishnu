@@ -16,8 +16,8 @@ import pytest
 
 from mahavishnu.core.config import PrefectConfig
 from mahavishnu.core.errors import ErrorCode, PrefectError
-from mahavishnu.engines.prefect_adapter import (
-    PrefectAdapter,
+from mahavishnu.engines.prefect_adapter import PrefectAdapter
+from mahavishnu.engines.prefect_adapter_impl import (
     _deployment_to_response,
     _flow_run_to_response,
     _work_pool_to_response,

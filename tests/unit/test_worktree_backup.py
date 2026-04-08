@@ -337,7 +337,7 @@ class TestWorktreeBackupManager:
 
         # Mock audit logger
         mock_audit = mocker.patch(
-            "mahavishnu.core.worktree_backup.get_audit_logger",
+            "mahavishnu.mcp.auth.get_audit_logger",
             return_value=MagicMock(),
         )
 
@@ -365,7 +365,7 @@ class TestWorktreeBackupManager:
 
         # Mock get_audit_logger to raise exception
         with patch(
-            "mahavishnu.core.worktree_backup.get_audit_logger",
+            "mahavishnu.mcp.auth.get_audit_logger",
             side_effect=Exception("Audit log unavailable"),
         ):
             # Should not raise exception

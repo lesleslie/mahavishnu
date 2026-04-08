@@ -58,7 +58,7 @@ class TestRoutingMetricsPersistence:
             task_type=TaskType.AI_TASK,
             start_timestamp=datetime.now(UTC).timestamp(),
             end_timestamp=datetime.now(UTC).timestamp(),
-            status=ExecutionStatus.COMPLETED,
+            status=ExecutionStatus.SUCCESS,
             latency_ms=150,
             metadata={"test": True},
         )
@@ -165,7 +165,7 @@ class TestRoutingMetricsPersistence:
                 adapter=AdapterType.AGNO,
                 task_type=TaskType.AI_TASK,
                 start_timestamp=datetime.now(UTC).timestamp(),
-                status=ExecutionStatus.COMPLETED,
+                status=ExecutionStatus.SUCCESS,
                 latency_ms=100 + i,
             )
             for i in range(10)
@@ -191,7 +191,7 @@ class TestRoutingMetricsPersistence:
                 adapter=AdapterType.PREFECT,
                 task_type=TaskType.WORKFLOW,
                 start_timestamp=datetime.now(UTC).timestamp(),
-                status=ExecutionStatus.COMPLETED,
+                status=ExecutionStatus.SUCCESS,
                 latency_ms=100,
             )
             await persistence.write_execution(record)

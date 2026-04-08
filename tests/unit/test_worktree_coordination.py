@@ -24,6 +24,16 @@ from mahavishnu.core.repo_models import Repository
 from mahavishnu.core.coordination.models import Dependency, DependencyStatus
 
 
+def _patch_safe_path(coordinator: WorktreeCoordinator, allowed_root: Path) -> None:
+    """Patch path_validator.get_safe_worktree_path to use allowed_root as base_dir."""
+    original = coordinator.path_validator.get_safe_worktree_path
+
+    def _patched(repo_nickname: str, branch: str, base_dir: Path | None = None) -> Path:
+        return original(repo_nickname, branch, base_dir=allowed_root)
+
+    coordinator.path_validator.get_safe_worktree_path = _patched
+
+
 class TestWorktreeCoordinator:
     """Test suite for WorktreeCoordinator orchestration layer."""
 
@@ -93,11 +103,13 @@ class TestWorktreeCoordinator:
         """Test successful worktree creation."""
         # Setup mock repository
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -124,6 +136,7 @@ class TestWorktreeCoordinator:
             providers=[mock_provider],
             allowed_worktree_roots=[tmp_path / "worktrees"],
         )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
 
         # Create worktree
         result = await coordinator.create_worktree(
@@ -143,11 +156,13 @@ class TestWorktreeCoordinator:
     async def test_create_worktree_with_create_branch(self, tmp_path):
         """Test worktree creation with branch creation."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -168,6 +183,7 @@ class TestWorktreeCoordinator:
             providers=[mock_provider],
             allowed_worktree_roots=[tmp_path / "worktrees"],
         )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
 
         # Create worktree with new branch
         result = await coordinator.create_worktree(
@@ -187,11 +203,13 @@ class TestWorktreeCoordinator:
     async def test_create_worktree_with_custom_name(self, tmp_path):
         """Test worktree creation with custom worktree name."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -212,6 +230,7 @@ class TestWorktreeCoordinator:
             providers=[mock_provider],
             allowed_worktree_roots=[tmp_path / "worktrees"],
         )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
 
         # Create worktree with custom name
         result = await coordinator.create_worktree(
@@ -257,11 +276,13 @@ class TestWorktreeCoordinator:
     async def test_create_worktree_with_blocking_dependencies(self, tmp_path):
         """Test worktree creation with blocking dependencies (warning only)."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -283,6 +304,7 @@ class TestWorktreeCoordinator:
             providers=[mock_provider],
             allowed_worktree_roots=[tmp_path / "worktrees"],
         )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
 
         # Should succeed but with warning logged
         result = await coordinator.create_worktree(
@@ -296,11 +318,13 @@ class TestWorktreeCoordinator:
     async def test_create_worktree_invalid_path_rejected(self, tmp_path):
         """Test that invalid paths are rejected during worktree creation."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -317,7 +341,8 @@ class TestWorktreeCoordinator:
             allowed_worktree_roots=[tmp_path / "worktrees"],
         )
 
-        # Try to create worktree outside allowed roots
+        # Try to create worktree — path defaults to ~/worktrees which is
+        # outside the allowed roots, so validation should reject it
         with pytest.raises(ValueError) as exc_info:
             await coordinator.create_worktree(
                 repo_nickname="test-repo",
@@ -331,11 +356,13 @@ class TestWorktreeCoordinator:
     async def test_create_worktree_audit_logging(self, tmp_path):
         """Test that worktree creation is properly audit logged."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -356,6 +383,7 @@ class TestWorktreeCoordinator:
             providers=[mock_provider],
             allowed_worktree_roots=[tmp_path / "worktrees"],
         )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
 
         # Create worktree
         await coordinator.create_worktree(
@@ -376,11 +404,13 @@ class TestWorktreeCoordinator:
     async def test_remove_worktree_success(self, tmp_path):
         """Test successful worktree removal."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -401,6 +431,7 @@ class TestWorktreeCoordinator:
             providers=[mock_provider],
             allowed_worktree_roots=[tmp_path / "worktrees"],
         )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
 
         # Mock safety checks
         coordinator._check_uncommitted_changes = AsyncMock(return_value=False)
@@ -419,11 +450,13 @@ class TestWorktreeCoordinator:
     async def test_remove_worktree_with_uncommitted_changes_blocked(self, tmp_path):
         """Test that removal is blocked when worktree has uncommitted changes."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -439,6 +472,7 @@ class TestWorktreeCoordinator:
             providers=[MockWorktreeProvider()],
             allowed_worktree_roots=[tmp_path / "worktrees"],
         )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
 
         # Mock uncommitted changes
         coordinator._check_uncommitted_changes = AsyncMock(return_value=True)
@@ -458,11 +492,13 @@ class TestWorktreeCoordinator:
     async def test_remove_worktree_force_without_reason_blocked(self, tmp_path):
         """Test that force removal without reason is blocked."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -478,6 +514,7 @@ class TestWorktreeCoordinator:
             providers=[MockWorktreeProvider()],
             allowed_worktree_roots=[tmp_path / "worktrees"],
         )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
 
         # Mock uncommitted changes
         coordinator._check_uncommitted_changes = AsyncMock(return_value=True)
@@ -498,11 +535,13 @@ class TestWorktreeCoordinator:
     async def test_remove_worktree_force_with_reason_success(self, tmp_path):
         """Test successful force removal with reason and backup creation."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -529,6 +568,10 @@ class TestWorktreeCoordinator:
         coordinator._check_uncommitted_changes = AsyncMock(return_value=True)
         coordinator._get_worktree_branch = AsyncMock(return_value="main")
         coordinator._verify_is_worktree = AsyncMock(return_value=True)
+        coordinator.backup_manager = MagicMock()
+        coordinator.backup_manager.create_backup_before_removal = AsyncMock(
+            return_value=tmp_path / "backups" / "test-repo_main_20260101_000000"
+        )
 
         result = await coordinator.remove_worktree(
             repo_nickname="test-repo",
@@ -547,11 +590,13 @@ class TestWorktreeCoordinator:
     async def test_remove_worktree_with_dependents_blocked(self, tmp_path):
         """Test that removal is blocked when worktree has dependents."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -574,6 +619,7 @@ class TestWorktreeCoordinator:
             providers=[MockWorktreeProvider()],
             allowed_worktree_roots=[tmp_path / "worktrees"],
         )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
 
         # Mock no uncommitted changes
         coordinator._check_uncommitted_changes = AsyncMock(return_value=False)
@@ -603,6 +649,7 @@ class TestWorktreeCoordinator:
             providers=[MockWorktreeProvider()],
             allowed_worktree_roots=[tmp_path / "worktrees"],
         )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
 
         # Invalid path (null bytes)
         with pytest.raises(ValueError) as exc_info:
@@ -624,18 +671,22 @@ class TestWorktreeCoordinator:
         # Create mock repositories
         repos = [
             Repository(
-                name="Repo 1",
+                name="repo-1",
                 package="repo1",
                 path=str(tmp_path / "repos" / "repo1"),
                 nickname="repo1",
                 role="app",
+                tags=["test"],
+                description="Repo 1",
             ),
             Repository(
-                name="Repo 2",
+                name="repo-2",
                 package="repo2",
                 path=str(tmp_path / "repos" / "repo2"),
                 nickname="repo2",
                 role="app",
+                tags=["test"],
+                description="Repo 2",
             ),
         ]
 
@@ -671,11 +722,13 @@ class TestWorktreeCoordinator:
     async def test_list_worktrees_specific_repo(self, tmp_path):
         """Test listing worktrees for specific repository."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_repo.return_value = mock_repo
@@ -710,11 +763,13 @@ class TestWorktreeCoordinator:
     async def test_prune_worktrees(self, tmp_path):
         """Test pruning stale worktree references."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -758,11 +813,13 @@ class TestWorktreeCoordinator:
     async def test_get_worktree_safety_status(self, tmp_path):
         """Test getting safety status for worktree."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -778,6 +835,7 @@ class TestWorktreeCoordinator:
             providers=[MockWorktreeProvider()],
             allowed_worktree_roots=[tmp_path / "worktrees"],
         )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
 
         # Mock safety checks
         coordinator._check_uncommitted_changes = AsyncMock(return_value=False)
@@ -810,10 +868,12 @@ class TestWorktreeCoordinator:
             providers=[mock_provider],
         )
 
+        # Populate health data (normally done by get_available_provider calls)
+        coordinator.provider_registry._provider_health["MockWorktreeProvider"] = True
+
         health = await coordinator.get_provider_health()
 
         assert isinstance(health, dict)
-        # Mock provider should always be healthy
         assert "MockWorktreeProvider" in health
 
     # =========================================================================
@@ -998,11 +1058,13 @@ class TestWorktreeCoordinator:
     async def test_create_worktree_provider_failure(self, tmp_path):
         """Test handling of provider failure during worktree creation."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -1023,6 +1085,7 @@ class TestWorktreeCoordinator:
             providers=[mock_provider],
             allowed_worktree_roots=[tmp_path / "worktrees"],
         )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
 
         # Should raise exception from provider
         with pytest.raises(RuntimeError) as exc_info:
@@ -1037,11 +1100,13 @@ class TestWorktreeCoordinator:
     async def test_remove_worktree_backup_failure(self, tmp_path):
         """Test handling of backup creation failure during force removal."""
         mock_repo = Repository(
-            name="Test Repo",
+            name="test-repo",
             package="test_repo",
             path=str(tmp_path / "repos" / "test_repo"),
             nickname="test-repo",
             role="app",
+            tags=["test"],
+            description="Test repository",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -1057,6 +1122,7 @@ class TestWorktreeCoordinator:
             providers=[MockWorktreeProvider()],
             allowed_worktree_roots=[tmp_path / "worktrees"],
         )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
 
         # Mock uncommitted changes and backup failure
         coordinator._check_uncommitted_changes = AsyncMock(return_value=True)
@@ -1088,18 +1154,22 @@ class TestWorktreeCoordinator:
         """Test listing worktrees when some repos fail."""
         repos = [
             Repository(
-                name="Repo 1",
+                name="repo-1",
                 package="repo1",
                 path=str(tmp_path / "repos" / "repo1"),
                 nickname="repo1",
                 role="app",
+                tags=["test"],
+                description="Repo 1",
             ),
             Repository(
-                name="Repo 2",
+                name="repo-2",
                 package="repo2",
                 path=str(tmp_path / "repos" / "repo2"),
                 nickname="repo2",
                 role="app",
+                tags=["test"],
+                description="Repo 2",
             ),
         ]
 
