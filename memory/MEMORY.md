@@ -16,7 +16,9 @@ This file stores important information that should persist across sessions.
 - **Preference**: Always prefer simplest solutions over more complicated ones
 - **Preference**: Use `uv` over `pip` for Python package management — uv is installed globally
 - **Preference**: Kick off independent tasks in parallel — don't serialize unnecessarily
+- **Preference**: Step through MCP servers one at a time, ask whether to disable/enable/remove each
 - **Phrase**: "do all" = run all pending tasks in parallel (confirmed preference)
+- **Nickname**: Calls the nanobot gateway "homie"
 - **Caution**: Always verify subagent diffs before committing — subagents can go on unwanted deletion sprees; revert and re-apply only intended changes
 - **Python**: Shell alias `python`/`python3` points to Python 3.12 — can interfere with venv operations; use full path for non-default venvs
 - **Style**: Casual check-ins, no urgency ("at your leisure")
@@ -27,6 +29,14 @@ This file stores important information that should persist across sessions.
 ### Currently Running Services (brew services)
 - **started**: grafana
 
+### MCP Server Management
+- **MCP config**: `~/.nanobot/config.json` under `tools.mcpServers`
+- **Gateway logs**: `/Users/les/.local/state/mcp/logs/nanobot.log` and `nanobot.err`
+- **Allow list**: User decided to set up an MCP server allow list
+- **codex MCP server**: Remove if it overlaps with others
+- **n8n MCP server**: Disabled
+- **homebrew MCP server**: Keep if it doesn't consume too much context
+
 ### Installed CLI Tools
 - `mcp-grafana` at `/usr/local/bin/mcp-grafana` (Homebrew install) — running on port 3035 (MCP proxy, NOT Grafana itself)
 - `cmake` at `/usr/local/bin/cmake` — version 4.3.1
@@ -35,6 +45,8 @@ This file stores important information that should persist across sessions.
 ### Infrastructure
 - **Postgres 18**: Running via Homebrew — `tensorzero` database exists with `pg_trgm` and `vector` extensions created
 - **Postgres auth**: No password for local deployment; password required when deployed remotely
+- **psql path**: `/usr/local/opt/postgresql@18/bin/psql` (NOT on default PATH)
+- **Timezone**: America/Los_Angeles
 - **Redis**: Environment uses Redis (not Valkey)
 - **Python compatibility**: `onnxruntime<1.24` pin required for macOS x86_64 (affects session-buddy, crackerjack, oneiric)
 
@@ -231,16 +243,21 @@ This file stores important information that should persist across sessions.
 - **`Dream`**: Two-stage background memory processing (Phase 1: extract, Phase 2: synthesize via agent run)
 
 ### Slack Integration
+- **Slack is the only enabled messaging channel**
 - **No dedicated Vish Slack bot or slash commands** — all Mahavishnu commands route through nanobot gateway's Slack adapter
 - To execute Vish commands from Slack, user asks nanobot (in Slack) which calls Mahavishnu MCP tools
 - A dedicated Slack bot for direct Vish commands would need to be built
 
-### Slack Progress Indication Gap
+### Slack Hang Bug (Recurring)
+- **Root cause**: Parallel tool calls blocked by slow/hanging MCP tool (likely `web_search`)
+- **Contributing factor**: Slack session context bloat at 65,536 token limit causes multi-tool calls that trigger the hang
+- **Status**: Known issue, no fix yet
+
+### Slack Progress Indication
 - **User prefers progress updates in Slack** for long-running operations
 - **Known gap**: Slack adapter goes silent between tool calls until final response — no streaming progress
 - **Typing indicator** only covers LLM thinking time, NOT tool execution duration
-- **Emoji reactions** (👀 eyes / ✅ check_mark) are supported by nanobot's `slack.py` but not wired up by default in current config
-- **`send_progress: true`** exists in `ChannelsConfig` but doesn't solve the tool-execution silence problem
+- **Emoji reactions** (👀 eyes / ✅ check_mark) are now **active** — wired up and working
 
 ### Mahavishnu Config Structure
 - Main config: `settings/mahavishnu.yaml`
