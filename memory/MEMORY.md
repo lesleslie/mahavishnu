@@ -10,6 +10,7 @@ This file stores important information that should persist across sessions.
 - Primary project: Mahavishnu (/Users/les/Projects/mahavishnu)
 - Uses iTerm2 on macOS
 - **Intel Mac** — Homebrew binaries at `/usr/local/opt/` (NOT `/opt/homebrew/`)
+- **Docker**: Uses OrbStack for Docker on macOS
 - **16 GB RAM**
 - User has ADHD and sometimes misses information — be proactive with reminders and clear summaries
 - Tool call iteration limit is a client-side nanobot runtime parameter — cannot be changed from within the session
@@ -23,6 +24,7 @@ This file stores important information that should persist across sessions.
 - **Python**: Shell alias `python`/`python3` points to Python 3.12 — can interfere with venv operations; use full path for non-default venvs
 - **Style**: Casual check-ins, no urgency ("at your leisure")
 - **Go**: v1.26.1 at `/usr/local/bin/go`
+- **Shell**: `.bash_profile` has two broken source lines — `/Users/les/.cargo/env` is a directory, `/Users/les/.config/broot/launcher/bash/br` doesn't exist
 
 ## Local Infrastructure
 
@@ -65,6 +67,7 @@ This file stores important information that should persist across sessions.
 - **Python client**: v2026.4.0 installed in `~/.local/share/tensorzero/.venv` (Python 3.13) — client library only, not the gateway
 - **z.ai API key**: `Z_AI_API_KEY` env var (not `ZAI_API_KEY`) — not stored in any persistent location (shell profiles, .env files, macOS keychain); must obtain from user before LaunchAgent can work
 - **Gateway status**: Not currently running (neither TensorZero gateway nor CCR server is active)
+- **Gateway restart**: `launchctl kickstart -k gui/501/ai.nanobot.gateway` restarts the nanobot gateway LaunchAgent
 - **LaunchAgent**: `~/Library/LaunchAgents/com.tensorzero.gateway.plist`
 - **Postgres**: Dedicated `tensorzero` database on localhost:5432 for auth + observability
 - **z.ai**: Two API formats (OpenAI + Anthropic), coding plan has dedicated endpoint
@@ -241,6 +244,7 @@ This file stores important information that should persist across sessions.
 - **Legacy migration**: HISTORY.md → history.jsonl (automatic, one-time)
 - **`Consolidator`**: Lightweight memory consolidation
 - **`Dream`**: Two-stage background memory processing (Phase 1: extract, Phase 2: synthesize via agent run)
+- **Token consolidation trigger**: budget = `context_window - max_completion_tokens - 1024` — e.g., at 48K/65K context, budget is ~56K so consolidation won't trigger
 
 ### Slack Integration
 - **Slack is the only enabled messaging channel**
@@ -252,6 +256,7 @@ This file stores important information that should persist across sessions.
 - **Root cause**: Parallel tool calls blocked by slow/hanging MCP tool (likely `web_search`)
 - **Contributing factor**: Slack session context bloat at 65,536 token limit causes multi-tool calls that trigger the hang
 - **Status**: Known issue, no fix yet
+- **Root cause detail**: Stuck parallel `web_search` tool calls that **never return** (not just slow)
 
 ### Slack Progress Indication
 - **User prefers progress updates in Slack** for long-running operations
@@ -270,6 +275,7 @@ This file stores important information that should persist across sessions.
 ## Projects & Decisions
 
 - **CCR (Claude Code Router)**: Routes Claude Code to z.ai via Anthropic format; will route through TensorZero
+- **Alternative gateways**: After failed TensorZero install attempts, user investigating `any-llm-gateway` and `llms.py` as alternative LLM gateway options
 - **Oneiric**: Has `OTelStorageAdapter` (Postgres/pgvector) and `PostgresDatabaseAdapter` (asyncpg); OTelStorageAdapter to be replaced with Tempo
 - **Vish**: NanobotWorker instances that will route through TensorZero
 - **Nanobot**: Will route through TensorZero gateway
