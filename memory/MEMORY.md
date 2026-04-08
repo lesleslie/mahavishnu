@@ -16,6 +16,9 @@ This file stores important information that should persist across sessions.
 - **Preference**: Always prefer simplest solutions over more complicated ones
 - **Preference**: Use `uv` over `pip` for Python package management — uv is installed globally
 - **Preference**: Kick off independent tasks in parallel — don't serialize unnecessarily
+- **Phrase**: "do all" = run all pending tasks in parallel (confirmed preference)
+- **Caution**: Always verify subagent diffs before committing — subagents can go on unwanted deletion sprees; revert and re-apply only intended changes
+- **Python**: Shell alias `python`/`python3` points to Python 3.12 — can interfere with venv operations; use full path for non-default venvs
 - **Style**: Casual check-ins, no urgency ("at your leisure")
 - **Go**: v1.26.1 at `/usr/local/bin/go`
 
@@ -27,6 +30,13 @@ This file stores important information that should persist across sessions.
 ### Installed CLI Tools
 - `mcp-grafana` at `/usr/local/bin/mcp-grafana` (Homebrew install) — running on port 3035 (MCP proxy, NOT Grafana itself)
 - `cmake` at `/usr/local/bin/cmake` — version 4.3.1
+- `ccr` (Claude Code Router) at `/usr/local/bin/ccr` — binary installed, **server not currently running**
+
+### Infrastructure
+- **Postgres 18**: Running via Homebrew — `tensorzero` database exists with `pg_trgm` and `vector` extensions created
+- **Postgres auth**: No password for local deployment; password required when deployed remotely
+- **Redis**: Environment uses Redis (not Valkey)
+- **Python compatibility**: `onnxruntime<1.24` pin required for macOS x86_64 (affects session-buddy, crackerjack, oneiric)
 
 ### ⚠️ IMPORTANT: Port Clarification
 - **Grafana server**: port **3030** (configured in `/usr/local/etc/grafana/grafana.ini`)
@@ -39,7 +49,10 @@ This file stores important information that should persist across sessions.
 - **Port**: 8471
 - **Deployment**: Native binary (NOT Docker) — Python embedded gateway
 - **Install location**: `~/.local/share/tensorzero/.venv/bin/tensorzero-gateway`
-- **Config**: `~/.config/tensorzero/tensorzero.toml`
+- **Config**: `~/.config/tensorzero/tensorzero.toml` — 5 occurrences of `type = "openai-compatible"` fixed to `type = "openai"`, invalid `[gateway.export.prometheus]` section removed
+- **Python client**: v2026.4.0 installed in `~/.local/share/tensorzero/.venv` (Python 3.13) — client library only, not the gateway
+- **z.ai API key**: `Z_AI_API_KEY` env var (not `ZAI_API_KEY`) — not stored in any persistent location (shell profiles, .env files, macOS keychain); must obtain from user before LaunchAgent can work
+- **Gateway status**: Not currently running (neither TensorZero gateway nor CCR server is active)
 - **LaunchAgent**: `~/Library/LaunchAgents/com.tensorzero.gateway.plist`
 - **Postgres**: Dedicated `tensorzero` database on localhost:5432 for auth + observability
 - **z.ai**: Two API formats (OpenAI + Anthropic), coding plan has dedicated endpoint
@@ -152,16 +165,16 @@ This file stores important information that should persist across sessions.
 - **`CompositeHook` error isolation**: async methods catch/log exceptions, but NOT for `finalize_content` (pipeline — exceptions propagate)
 - **contextvars recommended** for routing data (cleaner than modifying AgentRunSpec) — **confirmed as implementation approach**
 
-### Phase 2 Hook Discovery PR — In Progress
+### Phase 2 Hook Discovery PR — Pushed
 - **Branch**: `feat/hook-discovery` (local clone at `/Users/les/Projects/nanobot`)
+- **PR**: #2901 — entry_points discovery + 8 unit tests
 - **Scope**: `entry_points(group="nanobot.hooks")` discovery + routing data via contextvars
 - **Implementation**: 4 files, ~50 lines — mirrors existing `channels/registry.py` pattern
-- **Status**: Implemented but **not yet committed/pushed** — no PR created yet
-- **Pending**: Unit tests for hook discovery, SB path validation fix (see below), commit/push/PR creation
+- **Status**: ✅ Committed and pushed to fork
 
-### Session-Buddy Path Validation Bug
-- **SB `track_session_start` rejects paths outside `/Users/les/Projects/session-buddy`** — path validation too restrictive
-- **Fix needed on SB side** before hook PR can fully integrate
+### Session-Buddy Path Validation Bug — Fixed
+- **Was**: SB `track_session_start` rejected paths outside `/Users/les/Projects/session-buddy` — path validation too restrictive
+- **Fix**: Commit f39e8592 — `_setup_working_directory` uses simple resolve+exists+is_dir instead of restrictive base-dir validation
 
 ### Matrix Channel — Build Blocked
 - **`nanobot-ai[matrix]` install FAILS** — `python-olm` v3.2.16 won't compile on macOS with newer clang
@@ -175,7 +188,7 @@ This file stores important information that should persist across sessions.
 ### Session-Buddy Integration — Revised Plan (2026-04-07)
 - **Decision: Skill now, PR soon, plugin after PR merges**
 - **Phase 1 (Now)**: Skill-based approach — LLM reads SKILL.md, calls SB MCP tools. Works on v0.1.5 with no fork. One skill covers all channels (terminal, Slack, Signal). **Status: ✅ Working** — SKILL.md at 77 lines, channel-agnostic (fires on agent loop, not per-channel).
-- **Phase 2 (Soon)**: PR to nanobot for `entry_points(group="nanobot.hooks")` discovery + `AgentHookContext` routing fields. **Status: 🔄 In progress** — branch `feat/hook-discovery` with 4 files/~50 lines, not yet committed/pushed. Local clone at `/Users/les/Projects/nanobot`.
+- **Phase 2 (Soon)**: PR to nanobot for `entry_points(group="nanobot.hooks")` discovery + `AgentHookContext` routing fields. **Status: ✅ Pushed** — PR #2901, branch `feat/hook-discovery` with 4 files/~50 lines + 8 unit tests. Local clone at `/Users/les/Projects/nanobot`.
 - **Phase 3 (After PR)**: Convert skill logic to proper `AgentHook` plugin package — registers via entry_points, guaranteed execution, background asyncio tasks for heartbeats. **Status: ❌ Blocked on Phase 2**
 - **SB server-side work needed regardless**: New `ChannelSessionEvent` schema (v2.0), new MCP tools (`track_channel_session()`, `track_channel_heartbeat()`), storage fields
 - **One plugin replaces entire skill** — covers terminal + all channels, no reason to keep skill approach once hooks are injectable
@@ -240,8 +253,8 @@ This file stores important information that should persist across sessions.
 ## Power Trio Review — TensorZero Plan v3.0 (2026-04-07)
 
 ### 8 Must-Fix Errors Found
-1. **Config**: `type = "openai-compatible"` → must be `type = "openai"` (5 occurrences, L271/281/291/321/331)
-2. **Config**: `[gateway.export.prometheus]` section doesn't exist — remove it
+1. ~~**Config**: `type = "openai-compatible"` → must be `type = "openai"` (5 occurrences, L271/281/291/321/331)~~ ✅ Fixed
+2. ~~**Config**: `[gateway.export.prometheus]` section doesn't exist — remove it~~ ✅ Fixed
 3. **Config**: `[gateway.export.otlp.traces] endpoint=` field invalid — use `enabled = true` + env var `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`
 4. **Config**: Missing `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` in TensorZero LaunchAgent env vars
 5. **Ops**: Grafana port is 3030, not 3035 — fix all 3 references in plan (L794, 802, 808)
