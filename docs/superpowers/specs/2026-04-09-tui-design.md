@@ -1,7 +1,7 @@
 # Bodai TUI: Claude Code-Style Terminal Application
 
 **Created**: 2026-04-09
-**Status**: Draft — Under Review (post-review revision 1)
+**Status**: Draft — Under Review (revision 2)
 **Scope**: Internal tool for the Bodai ecosystem
 **Engine**: Agno (agent loop) + Textual (TUI) + Mahavishnu (orchestration)
 
@@ -165,7 +165,7 @@ Horizontal split for side-by-side diff comparison alongside File Viewer. Vertica
 | Streaming token output | Agno native + Textual `RichLog` | Wire Agno's streaming callback to asyncio.Queue → Textual reactive watcher. Throttle at ~60fps to avoid layout thrashing |
 | Diff preview | Textual `Diff` widget + PyCharm MCP | Textual renders visual diff. Add `pycharm_get_file_diff` for richer analysis |
 | Live diagnostics | PyCharm MCP tools (already exist) | Wire `pycharm_run_diagnostics` to file viewer panel |
-| Tool-level permissions | Extend `mahavishnu/core/permissions.py` | Risk-tiered model: read-only, write, destructive, network. See Section 7 |
+| Tool-level permissions | Extend `mahavishnu/core/permissions.py` | Risk-tiered model: read-only, write, destructive, network. See Section 9 |
 | Agent action approvals | Extend `mahavishnu/core/approval_manager.py` | Add shell/edit/execute approval types. Wire to TUI inline approval prompt |
 | Progress in TUI | Wire `mahavishnu/core/progress_tracker.py` | Update status bar on tool calls, workflow stages |
 | Tree-sitter navigation | Complete `mahavishnu/mcp/tools/treesitter_tools.py` | Add `find_references` and `go_to_definition` tools |
@@ -236,7 +236,153 @@ The TUI follows the same pattern: enrich with IDE when PyCharm is open, work ful
 
 ---
 
-## 7. Permissions & Approvals
+## 7. Skills System (from Nanobot)
+
+### What Skills Are
+
+Skills are markdown files (`SKILL.md`) in directories under `workspace/skills/` or a builtin directory. Each skill teaches the agent how to use specific tools or perform certain tasks — they are **knowledge injection**, not code.
+
+```
+workspace/skills/
+├── github/
+│   └── SKILL.md          # name, description in frontmatter; instructions in body
+├── memory/
+│   └── SKILL.md          # always: true → loaded into every system prompt
+├── tmux/
+│   └── SKILL.md
+└── skill-creator/
+    ├── SKILL.md
+    └── scripts/         # init_skill.py, package_skill.py, quick_validate.py
+```
+
+### Frontmatter
+
+```yaml
+---
+name: github
+description: "Interact with GitHub using the `gh` CLI. Use when the agent needs to work with issues, PRs, CI runs."
+always: false                # true = inject into every system prompt
+metadata: '{"requires":{"bins":["gh"]}}'  # dependency checking
+---
+```
+
+### Progressive Disclosure (Three Levels)
+
+1. **Metadata** (~100 words) — XML `<skills>` block in every system prompt. Lists all skills with name, description, and availability.
+2. **SKILL.md body** (<5k words) — Loaded when the agent decides the skill is relevant. Agent reads it via `read_file` tool.
+3. **Bundled resources** (unlimited) — `scripts/`, `references/`, `assets/` directories. Agent reads these on demand.
+
+### Loading Flow
+
+```
+System prompt build:
+  1. SkillsLoader scans workspace/skills/ and builtin_skills/
+  2. For each skill directory with a SKILL.md:
+     - Parse frontmatter (name, description, always, metadata)
+     - Check requirements (bins on PATH, env vars set)
+  3. Skills with always=true → load full body into system prompt
+  4. All others → include name + description in XML summary
+
+Agent runtime:
+  1. Agent sees skill descriptions in system prompt
+  2. Agent decides skill is relevant → calls read_file("skills/github/SKILL.md")
+  3. Full instructions loaded into conversation context
+```
+
+### Nanobot's `SkillsLoader` — Reuse Directly
+
+The `SkillsLoader` class (`nanobot/agent/skills.py`, ~230 lines) has zero Nanobot-specific coupling:
+
+- Input: `workspace: Path`, `builtin_skills_dir: Path | None`
+- Output: `list_skills()`, `load_skill(name)`, `build_skills_summary()`, `get_always_skills()`, `get_skill_metadata(name)`
+- Dependencies: `json`, `os`, `re`, `shutil`, `pathlib` — all stdlib
+
+Reuse strategy: copy `SkillsLoader` into `mahavishnu/tui/skills.py` (or import from nanobot if both are in the same venv).
+
+### TUI-Specific Additions
+
+1. **`/skill <name>` command** — User manually loads a skill into the current conversation (like Claude Code's `/commit`)
+2. **`/skills` command** — List all available skills with descriptions and availability status
+3. **Skill panel** (Phase 2) — Sidebar or tab showing loaded/available skills, toggle on/off
+4. **Agent auto-discovery** — Agent sees skill descriptions in system prompt, decides to read_file on demand. No registration needed.
+
+### What Skills Cover
+
+- Tool usage patterns (github, tmux, cron)
+- Domain knowledge (API schemas, company policies)
+- Workflows and procedures
+- Memory/persona management
+- How to create new skills (skill-creator skill is self-referential)
+
+### What Skills Do NOT Cover
+
+Skills are **knowledge** — they tell the agent *how* to do something. They cannot:
+
+1. **Run in parallel** — a skill is just text in the same agent's context
+2. **Isolate context** — loading a skill consumes tokens from the shared context window
+3. **Run in the background** — there is no execution boundary
+
+These gaps are addressed by **subagents** (Section 8).
+
+---
+
+## 8. Subagents (Background Task Execution)
+
+### What Subagents Are
+
+Subagents are separate LLM loops that run in their own `asyncio.Task` with independent tool calls, conversation history, and iteration caps. The parent agent spawns them for long-running or parallelizable work and gets notified when they complete.
+
+Nanobot's `SubagentManager` (`nanobot/agent/subagent.py`, ~260 lines) implements this pattern:
+
+```
+Parent Agent
+  │
+  ├── spawn(task="Research X while I fix Y", label="research")
+  │     │
+  │     └── asyncio.Task
+  │           ├── Own system prompt (inherits skills summary)
+  │           ├── Own tool set (file I/O, search, exec)
+  │           ├── Own message history (fresh context)
+  │           └── max_iterations=15 cap
+  │
+  ├── continues working on Y...
+  │
+  └── <── subagent announces result via message bus ──> parent renders in chat
+```
+
+### Why Skills Alone Are Not Enough
+
+| Need | Skills | Subagents |
+|------|--------|-----------|
+| Teach the agent a workflow | Yes | No |
+| Inject domain knowledge | Yes | No |
+| Run two tasks in parallel | No | Yes |
+| Isolate long task from main context | No | Yes |
+| Background completion with notification | No | Yes |
+| Cap runaway tool loops | No | Yes (max_iterations) |
+
+### Reuse from Nanobot
+
+`SubagentManager` + `SpawnTool` are self-contained:
+
+- **Dependencies**: LLMProvider, workspace path, MessageBus (for result announcement), tool registry
+- **Adaptation needed**: Replace Nanobot's `AgentRunner` with Agno's `agent.arun()` (or streaming equivalent)
+- **TUI integration**: Spawn result renders as an activity feed item + chat message
+
+### Implementation: Phase 2, Not Phase 1
+
+Skills are zero-risk to add (they're markdown files and a 230-line loader). Subagents require:
+
+- Async task management in the TUI agent bridge
+- Subagent tool registration in Agno's MCP tool set
+- Result announcement routing (message bus → chat panel → activity feed)
+- Cancellation support (`cancel_by_session`)
+
+This complexity justifies deferring subagents to Phase 2, after the core TUI shell is stable.
+
+---
+
+## 9. Permissions & Approvals
 
 ### Current RBAC (`mahavishnu/core/permissions.py`)
 
@@ -290,9 +436,25 @@ Shell commands are classified by pattern matching:
 
 All LLM-generated tool call arguments are validated against their JSON Schema before execution. The existing Pydantic infrastructure supports this — add explicit schema validation at the MCP tool server boundary.
 
+### Agno Adapter Streaming Gap
+
+The current `agno_adapter_impl.py` (`_run_agent`, line 1005) calls `agent.arun()` which returns a complete `RunOutput`. There is no streaming callback, no token-by-token rendering hook, and `session_id` is stored in metadata but never passed to `agent.arun()`. **The TUI must bypass this adapter's `_run_agent` and call Agno's streaming API directly** (`agent.arun_stream()`), or the adapter needs a new streaming execution path. This is a Phase 0 item.
+
+### Approval Manager Rework
+
+The `ApprovalRequest.approval_type` field is typed as `Literal["version_bump", "publish"]`. Widening this to support `str` (or a `StrEnum`) is required, along with new option-generation branches in `_generate_default_options` (line 119) for each new approval type. The core `ApprovalManager` class (pending requests dict, create/respond/cleanup) is reusable. This is a moderate refactor, not a simple extension — included in Phase 0.
+
+### PyCharm Fallback Gaps
+
+Two gaps identified for TUI use: (a) `_fallback_search` uses `grep -rn` with `cmd.append(".")` hardcoded as the search root — needs a working directory parameter scoped to the current project/repo. (b) `pycharm_open_file` returns `{"opened": False}` on failure without enough semantic information for the TUI to decide whether to fall back to an internal file viewer. These are Phase 0 fixes.
+
+### Consolidator Adaptation
+
+The Nanobot `Consolidator` (lines 346-511) depends on nanobot-specific abstractions: `Session.messages` (list of dicts with `role`, `content`, `tools_used` keys) and `Session.last_consolidated`. Agno uses its own `RunResponse`/`RunOutput` with message objects, not plain dicts. The core algorithm (estimate tokens, pick user-turn boundary, archive via LLM summarization) is transportable, but an adapter layer is needed to translate Agno's message objects into the dict format the `Consolidator` expects. `MemoryStore` persistence (JSONL append) is independent and reusable as-is.
+
 ---
 
-## 8. Implementation Phases
+## 10. Implementation Phases
 
 ### Phase 0: Foundation (prerequisite for Phase 1)
 
@@ -300,7 +462,7 @@ All LLM-generated tool call arguments are validated against their JSON Schema be
 - [ ] Add `TUIConfig(BaseModel)` to `mahavishnu/core/config.py` — theme, keybindings, layout, syntax highlighting, max_history_lines
 - [ ] Add file I/O agent tools — `read_file`, `write_file`, `edit_file`, `list_directory`, `search_files`
 - [ ] Build MCP tool server bridge that exposes Mahavishnu's MCP tools to Agno agents
-- [ ] Risk-tiered permission model (Section 7) — implement before any agent tool execution
+- [ ] Risk-tiered permission model (Section 9) — implement before any agent tool execution
 - [ ] Add `WorktreePathValidator` to all PyCharm tool `file_path` arguments
 
 ### Phase 1: Core TUI Shell
@@ -345,7 +507,7 @@ All LLM-generated tool call arguments are validated against their JSON Schema be
 
 ---
 
-## 9. Dependencies
+## 11. Dependencies
 
 ### Python Packages
 
@@ -375,10 +537,10 @@ The TUI must handle three Mahavishnu connection states:
 
 ---
 
-## 10. Open Questions
+## 12. Open Questions
 
 1. **Compaction trigger threshold** — What token count triggers Agno message compaction? configurable per-model?
-2. **Approval scope for multi-tool calls** — Approve once per logical action group with summary (Section 7)
+2. **Approval scope for multi-tool calls** — Approve once per logical action group with summary (Section 9)
 3. **File viewer auto-scroll** — Only jump on explicit user request, not auto-follow
 4. **PyCharm diff tool name** — Need to verify the exact JetBrains MCP tool name for file differences
 5. **Command palette scope** — Start with frequently used tools only, expand based on usage patterns
@@ -423,3 +585,5 @@ Six expert reviews were conducted on the initial draft. Below is a summary of th
 18. **MCP tool server bridge** — Explicitly called out as a new component needed for Phase 0.
 19. **PydanticAI exclusion** — Explicitly stated why it was excluded from the engine stack.
 20. **Cancel mid-stream** — `Ctrl+\` for graceful Agno generation abort.
+21. **Skills System (Section 7)** — Nanobot's `SkillsLoader` adopted wholesale. Markdown-based progressive disclosure (metadata → SKILL.md → bundled resources). Zero code coupling, stdlib-only deps. TUI gains `/skill` and `/skills` commands.
+22. **Subagents (Section 8)** — Background task execution via separate `asyncio.Task` loops. Nanobot's `SubagentManager` adapted for Agno. Deferred to Phase 2 due to async complexity (task management, result routing, cancellation).
