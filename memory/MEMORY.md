@@ -127,6 +127,7 @@ This file stores important information that should persist across sessions.
 - **Workers enabled**: `workers.enabled: true` in `settings/mahavishnu.yaml`, max_concurrent: 10
 - **Worker types** (40+):
   - **AI Assistants**: terminal-qwen, terminal-claude, terminal-codex, terminal-openclaw, terminal-deepagents, terminal-clai, gateway-openclaw
+  - **Potential new worker**: `claw-code` as `terminal-claw` — user interested in integrating claw-code as a worker rather than merging projects
   - **Shells**: terminal-shell, terminal-zsh, terminal-python, terminal-ipython, terminal-node, terminal-ollama, terminal-sqlite
   - **Databases**: terminal-mysql, terminal-psql, terminal-turso, terminal-redis, terminal-mongo
   - **Remote/Infra**: terminal-ssh (`ssh {host}`, category REMOTE), terminal-kubectl, terminal-terraform
@@ -238,7 +239,9 @@ This file stores important information that should persist across sessions.
 
 ### Nanobot Config Schema — Key Fields
 - **`AgentDefaults`**: model, provider ("auto"), max_tokens (8192), context_window_tokens (65536), temperature (0.1), max_tool_iterations (200), reasoning_effort, timezone, dream config
-- **Pending context change**: User wants defaults changed to context_window_tokens=200K, max_tokens=128K (current: 65,536 / 8,192). Undecided: global defaults vs per-model overrides.
+- **Config applied** (global only, no per-model overrides exist): max_tokens=128000, context_window_tokens=200000, max_tool_iterations=120, send_tool_hints=true
+- **Reasoning effort**: User prefers `medium` as default (likes `high` but acknowledges overkill for most interactions)
+- **Active model**: GLM-5-Turbo via Zhipu provider
 - **Model context limits researched**: GLM-5-Turbo (202,752 ctx / 131,072 out), GPT-5.4-mini (400,000 ctx / 128,000 out)
 - **`DreamConfig`**: interval_h (2), cron (legacy), model_override, max_batch_size (20), max_iterations (10)
 - **`HeartbeatConfig`**: enabled (true), interval_s (30min), keep_recent_messages (8)
