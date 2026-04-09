@@ -4,10 +4,9 @@ This module defines all available worker types and their configurations,
 making it easy to add new worker types without modifying core code.
 """
 
-import os
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+import os
 
 
 class WorkerCategory(Enum):
@@ -66,7 +65,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
     "terminal-qwen": WorkerConfig(
         name="Qwen AI",
         worker_type="terminal-qwen",
-        command="qwen -o stream-json --approval-mode yolo",
+        command="sh -lc 'qwen -o stream-json --approval-mode yolo'",
         category=WorkerCategory.AI_ASSISTANT,
         description="Fast local AI coding assistant with Qwen model",
         completion_markers=["finish_reason", '"done"', '"type": "done"'],
@@ -76,7 +75,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
     "terminal-claude": WorkerConfig(
         name="Claude Code",
         worker_type="terminal-claude",
-        command="claude --output-format stream-json --permission-mode acceptEdits",
+        command="sh -lc 'claude --output-format stream-json --permission-mode acceptEdits'",
         category=WorkerCategory.AI_ASSISTANT,
         description="Claude Code CLI for complex reasoning and coding",
         completion_markers=["finish_reason", '"done"', '"type": "done"'],

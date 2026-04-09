@@ -273,9 +273,14 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         import logging
         import os
 
+        from ...llm_gateway import ProtocolFamily, gateway_api_base
+
         logger = logging.getLogger(__name__)
         try:
             auth_token = os.environ.get("ANTHROPIC_AUTH_TOKEN")
+            gateway_base_url = os.environ.get("BIFROST_BASE_URL") or os.environ.get(
+                "MAHAVISHNU_LLM_GATEWAY_BASE_URL"
+            )
             base_url = os.environ.get(
                 "ANTHROPIC_BASE_URL", "https://api.anthropic.com"
             )
@@ -287,6 +292,12 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
                 return None
 
             from nanobot.providers import OpenAICompatProvider
+
+            if gateway_base_url:
+                base_url = gateway_api_base(
+                    ProtocolFamily.OPENAI,
+                    base_url=gateway_base_url,
+                )
 
             provider = OpenAICompatProvider(
                 api_key=auth_token,

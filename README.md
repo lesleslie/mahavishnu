@@ -618,6 +618,12 @@ mahavishnu/
 - **[Codex + Claude Routing Playbook](docs/integrations/CODEX_CLAUDE_ENGINE_ROUTING_PLAYBOOK.md)** - Configure agents to use Mahavishnu engines and multi-repo orchestration consistently
 - **[Security Checklist](SECURITY_CHECKLIST.md)** - Security guidelines
 
+### LLM Gateway Docs
+
+- **[LLM Inventory](docs/llm-inventory.md)** - Current client routing, direct-provider state, and cross-repo LLM callsite inventory
+- **[Bifrost Reactivation Runbook](docs/bifrost-reactivation-runbook.md)** - How to bring the dormant local gateway back later
+- **[Bifrost Gateway Plan](docs/plans/2026-04-08-bifrost-gateway-plan.md)** - Implementation history, milestones, and paused cutover status
+
 ## Project Status
 
 ### Current Implementation

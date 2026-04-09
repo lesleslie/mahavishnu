@@ -226,8 +226,12 @@ class MultiAuthHandler:
         if self.jwt_auth:
             try:
                 token_data = self.jwt_auth.verify_token(token)
+                if isinstance(token_data, dict):
+                    user = token_data.get("user_id") or token_data.get("sub")
+                else:
+                    user = getattr(token_data, "username", None)
                 return {
-                    "user": token_data.username,
+                    "user": user,
                     "method": AuthMethod.JWT,
                     "authenticated": True,
                     "scopes": ["read", "write", "execute"],  # Default scopes for JWT

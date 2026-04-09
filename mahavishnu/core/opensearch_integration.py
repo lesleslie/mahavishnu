@@ -422,13 +422,17 @@ class OpenSearchIntegration:
         self, workflow_id: str, status: str, progress: int = None, **kwargs
     ):
         """Log workflow update event."""
+        details = dict(kwargs)
+        adapter = details.pop("adapter", "unknown")
+        task_type = details.pop("task_type", "unknown")
+
         await self.analytics.log_workflow_event(
             workflow_id=workflow_id,
-            adapter=kwargs.get("adapter", "unknown"),
-            task_type=kwargs.get("task_type", "unknown"),
+            adapter=adapter,
+            task_type=task_type,
             status=status,
             progress=progress,
-            **kwargs,
+            **details,
         )
 
         await self.analytics.log_event(
@@ -448,16 +452,20 @@ class OpenSearchIntegration:
         **kwargs,
     ):
         """Log workflow completion event."""
+        details = dict(kwargs)
+        adapter = details.pop("adapter", "unknown")
+        task_type = details.pop("task_type", "unknown")
+
         await self.analytics.log_workflow_event(
             workflow_id=workflow_id,
-            adapter=kwargs.get("adapter", "unknown"),
-            task_type=kwargs.get("task_type", "unknown"),
+            adapter=adapter,
+            task_type=task_type,
             status=status,
             execution_time_seconds=execution_time,
             results_count=results_count,
             errors_count=errors_count,
             completed_at=datetime.now(tz=UTC).isoformat(),
-            **kwargs,
+            **details,
         )
 
         await self.analytics.log_event(

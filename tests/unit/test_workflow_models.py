@@ -1,5 +1,8 @@
 """Tests for ULID-based workflow execution tracking."""
 
+import builtins
+import importlib
+from types import ModuleType
 import pytest
 from mahavishnu.core.workflow_models import (
     WorkflowExecution,
@@ -205,3 +208,49 @@ def test_pool_execution_no_duration():
     )
 
     assert execution.duration_seconds() is None
+
+
+def test_import_fallback_uses_dhara_when_oneiric_missing(monkeypatch: pytest.MonkeyPatch):
+    """Covers oneiric ImportError -> dhara fallback branch."""
+    import mahavishnu.core.workflow_models as workflow_models_module
+
+    orig_import = builtins.__import__
+    fake_dhara = ModuleType("dhara")
+    fake_dhara.generate = lambda: "01kh85b0x6000a9vb7cgn42ed8"
+    fake_dhara.is_ulid = lambda value: value.startswith("01")
+
+    def custom_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "oneiric.core.ulid":
+            raise ImportError("simulate missing oneiric")
+        if name == "dhara":
+            return fake_dhara
+        return orig_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", custom_import)
+    reloaded = importlib.reload(workflow_models_module)
+    assert reloaded.generate_config_id() == "01kh85b0x6000a9vb7cgn42ed8"
+    assert reloaded.is_config_ulid("01abcdefabcdefabcdefabcdef") is True
+    assert reloaded.is_config_ulid("zz") is False
+    importlib.reload(workflow_models_module)
+
+
+def test_import_fallback_uses_timestamp_generator_when_all_missing(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Covers oneiric+dhara ImportError -> local fallback branch."""
+    import mahavishnu.core.workflow_models as workflow_models_module
+
+    orig_import = builtins.__import__
+
+    def custom_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name in {"oneiric.core.ulid", "dhara"}:
+            raise ImportError("simulate missing")
+        return orig_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", custom_import)
+    reloaded = importlib.reload(workflow_models_module)
+    token = reloaded.generate_config_id()
+    assert isinstance(token, str)
+    assert reloaded.is_config_ulid("01kh85b0x6000a9vb7cgn42ed8") is True
+    assert reloaded.is_config_ulid("UPPERCASEVALUE") is False
+    importlib.reload(workflow_models_module)

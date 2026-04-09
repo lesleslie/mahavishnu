@@ -147,9 +147,6 @@ class WorktreePathValidator:
             logger.debug(f"Path validation passed: {worktree_path}")
             return True, None
 
-        except ValidationError:
-            # Re-raise ValidationError (malicious path)
-            raise
         except Exception as e:
             # Other exceptions are just invalid paths (not malicious)
             logger.warning(f"Path validation error for '{worktree_path}': {e}")
@@ -255,8 +252,6 @@ class WorktreePathValidator:
             logger.debug(f"Repository path validation passed: {repository_path}")
             return True, None
 
-        except ValidationError:
-            raise
         except Exception as e:
             logger.warning(f"Repository path validation error: {e}")
             return False, str(e)

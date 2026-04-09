@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+import mahavishnu.core.repo_manager as repo_manager
 from mahavishnu.core.repo_manager import RepositoryManager
 from mahavishnu.core.repo_models import (
     Repository,
@@ -22,6 +23,8 @@ def sample_repos_path(tmp_path: Path) -> Path:
                 "name": "test-repo-1",
                 "package": "test_repo_1",
                 "path": "/tmp/test1",
+                "nickname": "repo1",
+                "nicknames": ["r1"],
                 "tags": ["python-testing", "unit-test"],
                 "description": "Test repository 1",
                 "mcp": "native",
@@ -73,8 +76,7 @@ async def test_get_by_tag(sample_repos_path: Path) -> None:
     assert "test_repo_2" in python_repos
 
     testing_repos = manager.get_by_tag("testing")
-    assert len(testing_repos) == 1
-    assert "test_repo_1" in testing_repos
+    assert len(testing_repos) == 0
 
 
 @pytest.mark.asyncio
@@ -87,7 +89,7 @@ async def test_get_by_mcp_type(sample_repos_path: Path) -> None:
     assert len(native_repos) == 1
     assert "test_repo_1" in native_repos
 
-    integration_repos = manager.get_by_mcp_type("integration")
+    integration_repos = manager.get_by_mcp_type("3rd-party")
     assert len(integration_repos) == 1
     assert "test_repo_2" in integration_repos
 
@@ -157,6 +159,10 @@ async def test_search_repos(sample_repos_path: Path) -> None:
     results = manager.search("Test repository")
     assert len(results) == 2
 
+    # Search limit branch
+    results = manager.search("Test repository", limit=1)
+    assert len(results) == 1
+
 
 @pytest.mark.asyncio
 async def test_cache_invalidation(sample_repos_path: Path) -> None:
@@ -178,6 +184,86 @@ async def test_cache_invalidation(sample_repos_path: Path) -> None:
     # Third call - cache miss again
     result3 = manager.get_by_tag("python-testing")
     assert len(result3) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_by_nickname_and_repo_and_paths_and_language_filter(sample_repos_path: Path) -> None:
+    manager = RepositoryManager(sample_repos_path)
+    await manager.load()
+
+    by_nickname = manager.get_by_nickname("r1")
+    assert by_nickname is not None
+    assert by_nickname.package == "test_repo_1"
+
+    by_repo = manager.get_repo("repo1")
+    assert by_repo is not None
+    assert by_repo.package == "test_repo_1"
+
+    all_paths = manager.get_all_paths()
+    assert any(path.endswith("test1") for path in all_paths)
+    assert any(path.endswith("test2") for path in all_paths)
+
+    language_filtered = manager.filter(language="python")
+    assert len(language_filtered) == 1
+    assert language_filtered[0].package == "test_repo_1"
+
+    no_match = manager.filter(tags=["python-testing", "missing-tag"])
+    assert no_match == []
+
+
+@pytest.mark.asyncio
+async def test_validate_repos_exist_and_empty_helpers(sample_repos_path: Path) -> None:
+    manager = RepositoryManager(sample_repos_path)
+    await manager.load()
+
+    missing = manager.validate_repos_exist()
+    assert len(missing) == 2
+
+    empty_manager = RepositoryManager(sample_repos_path)
+    assert empty_manager.search("anything") == []
+    assert empty_manager.validate_repos_exist() == []
+    assert empty_manager.get_all_paths() == []
+    empty_manager._build_indexes()
+    with pytest.raises(RuntimeError, match="Manifest not loaded"):
+        empty_manager.get_manifest()
+
+
+@pytest.mark.asyncio
+async def test_load_validation_and_parse_errors(tmp_path: Path) -> None:
+    bad_yaml = tmp_path / "bad.yaml"
+    bad_yaml.write_text(":[", encoding="utf-8")
+    manager = RepositoryManager(bad_yaml)
+    with pytest.raises(ValueError, match="Invalid repository manifest"):
+        await manager.load()
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(
+        repo_manager.yaml,
+        "safe_load",
+        lambda _content: (_ for _ in ()).throw(yaml.YAMLError("boom")),
+    )
+    try:
+        manager2 = RepositoryManager(bad_yaml)
+        with pytest.raises(ValueError, match="Failed to parse repository manifest"):
+            await manager2.load()
+    finally:
+        monkeypatch.undo()
+
+    invalid_manifest = tmp_path / "invalid.yaml"
+    invalid_manifest.write_text(
+        """
+repos:
+  - name: bad-repo
+    package: bad_repo
+    path: relative/path
+    tags: ["python-testing"]
+    description: Test repository
+""",
+        encoding="utf-8",
+    )
+    manager2 = RepositoryManager(invalid_manifest)
+    with pytest.raises(ValueError, match="Invalid repository manifest"):
+        await manager2.load()
 
 
 def test_repository_validation() -> None:
@@ -228,13 +314,13 @@ def test_repository_validation_errors() -> None:
             description="Test",
         )
 
-    # Native MCP with integration tag
+    # Native MCP with third-party tag
     with pytest.raises(ValueError):
         Repository(
             name="test-repo",
             package="test_repo",
             path="/tmp/test",
-            tags=["python-mcp", "integration"],
+            tags=["python-mcp", "3rd-party"],
             description="Test",
             mcp="native",
         )

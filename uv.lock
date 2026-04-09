@@ -3084,7 +3084,6 @@ dependencies = [
     { name = "ipython" },
     { name = "iterm2" },
     { name = "mcp-common", extra = ["treesitter"] },
-    { name = "nanobot" },
     { name = "oneiric" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-grpc" },
@@ -3279,7 +3278,6 @@ requires-dist = [
     { name = "mahavishnu", extras = ["worker-openclaw", "worker-deepagents", "worker-clai"], marker = "extra == 'worker-alt-cli'" },
     { name = "mcp-common", extras = ["treesitter"], specifier = ">=0.9.4" },
     { name = "mss", marker = "extra == 'automation'", specifier = ">=9.0.0" },
-    { name = "nanobot", specifier = ">=0.1.4" },
     { name = "oneiric", specifier = ">=0.3.12" },
     { name = "opencv-python", marker = "extra == 'automation-vision'", specifier = ">=4.8.0" },
     { name = "opentelemetry-api", specifier = ">=1.38.0" },
@@ -3857,15 +3855,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a2/6e/371856a3fb9d31ca8dac321cda606860fa4548858c0cc45d9d1d4ca2628b/mypy_extensions-1.1.0.tar.gz", hash = "sha256:52e68efc3284861e772bbcd66823fde5ae21fd2fdb51c62a211403730b916558", size = 6343, upload-time = "2025-04-22T14:54:24.164Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/79/7b/2c79738432f5c924bef5071f933bcc9efd0473bac3b4aa584a6f7c1c8df8/mypy_extensions-1.1.0-py3-none-any.whl", hash = "sha256:1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505", size = 4963, upload-time = "2025-04-22T14:54:22.983Z" },
-]
-
-[[package]]
-name = "nanobot"
-version = "0.4.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f5/06/6cd43ddc4c22a84abc310e1bc61440347a62163ae260211a30c23ae5d2a8/nanobot-0.4.1.tar.gz", hash = "sha256:2b3376cef7a7e4a75f01d1503ea65c0074fd8a4e3a31bc5e153f1afc8db75eb2", size = 41745, upload-time = "2025-12-28T02:07:23.937Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/6c/01/2905b21cff9b48553ec2829e9fdfdd274ddf2eeac7a43eb14824bf6f30ed/nanobot-0.4.1-py3-none-any.whl", hash = "sha256:40cf0d2befdf64991aafb894d9a7f09d2d0c9506774fcc8638d453ced4bbf0ad", size = 53932, upload-time = "2025-12-28T02:07:23Z" },
 ]
 
 [[package]]

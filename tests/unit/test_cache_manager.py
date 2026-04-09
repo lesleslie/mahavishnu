@@ -13,6 +13,7 @@ from mahavishnu.core.cache_manager import (
     LRUCache,
     CacheStats,
     CacheKey,
+    aggregate_cache_health,
 )
 
 
@@ -64,6 +65,14 @@ class TestCacheKey:
 
         assert key1 == key2
         assert key1 != key3
+
+    def test_key_from_string_with_suffix_and_non_key_equality(self) -> None:
+        """Test suffix parsing and non-key comparison."""
+        key = CacheKey.from_string("tasks:task-123:metadata")
+
+        assert key.suffix == "metadata"
+        assert key != "tasks:task-123"
+        assert hash(key)
 
 
 class TestCacheStats:
@@ -293,6 +302,27 @@ class TestLRUCache:
         assert "task-1" in keys
         assert "task-2" in keys
 
+    def test_expired_contains_and_keys_cleanup_and_update_order(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test expired membership cleanup, key eviction cleanup, and update order."""
+        current_time = {"now": 100.0}
+        monkeypatch.setattr("mahavishnu.core.cache_manager.time.time", lambda: current_time["now"])
+
+        cache = LRUCache(max_size=2)
+        cache.set("a", 1, ttl=5)
+        cache.set("b", 2)
+        cache.set("b", 3)
+        assert cache.get("b") == 3
+
+        current_time["now"] = 106.0
+        assert "a" not in cache
+
+        cache.set("c", 4, ttl=1)
+        current_time["now"] = 108.0
+        assert cache.keys() == ["b"]
+
 
 class TestCacheManager:
     """Tests for CacheManager class."""
@@ -504,6 +534,58 @@ class TestCacheManager:
         assert results["task-1"] == {"id": 1}
         assert results["task-2"] == {"id": 2}
         assert results["task-3"] is None
+
+    @pytest.mark.asyncio
+    async def test_async_memory_and_redis_branches(self) -> None:
+        """Test async memory fallback and Redis-specific branches."""
+        memory_manager = CacheManager()
+        await memory_manager.async_set("tasks", "task-123", {"id": 1})
+        assert await memory_manager.async_get("tasks", "task-123") == {"id": 1}
+        assert await memory_manager.async_delete("tasks", "task-123") is True
+
+        mock_redis = AsyncMock()
+        mock_redis.set = AsyncMock()
+        mock_redis.delete.return_value = 1
+
+        redis_manager = CacheManager(backend=CacheBackend.REDIS, redis_client=mock_redis)
+        await redis_manager.async_set("tasks", "task-123", {"id": 1}, ttl=60)
+        mock_redis.set.assert_called_once()
+
+        mock_redis.get.return_value = None
+        assert await redis_manager.async_get("tasks", "missing", default={"fallback": True}) == {
+            "fallback": True
+        }
+
+        mock_redis.get.return_value = '{"id": 2}'
+        assert await redis_manager.async_get("tasks", "task-123") == {"id": 2}
+
+        mock_redis.get.return_value = "not-json"
+        assert await redis_manager.async_get("tasks", "task-123") == "not-json"
+        assert await redis_manager.async_delete("tasks", "task-123") is True
+
+    def test_aggregate_cache_health_handles_dataclass_and_dict_stats(self) -> None:
+        """Test aggregate cache health normalization and summary math."""
+
+        class _DataclassCache:
+            def get_stats(self) -> CacheStats:
+                stats = CacheStats()
+                stats.record_hit()
+                stats.record_miss()
+                return stats
+
+        class _DictCache:
+            def get_stats(self) -> dict[str, Any]:
+                return {"hits": 2, "misses": 1, "hit_rate": 2 / 3}
+
+        result = aggregate_cache_health(
+            {"dataclass": _DataclassCache(), "mapping": _DictCache()}
+        )
+
+        assert result["caches"]["dataclass"]["hits"] == 1
+        assert result["caches"]["mapping"]["hits"] == 2
+        assert result["summary"]["total_hits"] == 3
+        assert result["summary"]["total_misses"] == 2
+        assert result["summary"]["hit_rate"] == pytest.approx(3 / 5)
 
 
 class TestCacheManagerWithRedis:

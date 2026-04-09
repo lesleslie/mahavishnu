@@ -31,10 +31,7 @@ except ImportError:
         return uuid.uuid4().hex
 
 
-from mahavishnu.core.errors import (
-    MahavishnuError,
-    ConfigurationError,
-)
+from mahavishnu.core.errors import ConfigurationError
 
 
 class UnifiedOrchestrator:
@@ -57,14 +54,6 @@ class UnifiedOrchestrator:
             task_router: Optional TaskRouter instance. If None, creates a default TaskRouter
             with sensible defaults for optional components.
         """
-        # Use TaskRouter or create default with optional components
-        if task_router is None:
-            from mahavishnu.core.task_router import TaskRouter
-
-            self.task_router = TaskRouter()
-        else:
-            self.task_router = task_router
-
         self.task_router = task_router or TaskRouter()
 
     async def execute_workflow(
@@ -113,7 +102,7 @@ class UnifiedOrchestrator:
                 AdapterType.LLAMAINDEX,
             ]
 
-            for task in tasks:
+            for task in (tasks or []):
                 # Execute with automatic fallback
                 execution_result = await self.task_router.execute_with_fallback(
                     task=task,
@@ -182,7 +171,7 @@ class UnifiedOrchestrator:
                 },
             )
 
-            raise MahavishnuError(f"Workflow execution failed: {e}")
+            raise ConfigurationError(f"Workflow execution failed: {e}")
 
     async def get_workflow_status(
         self,
@@ -199,7 +188,7 @@ class UnifiedOrchestrator:
         state = await self.task_router.state_manager.get_workflow_state(workflow_id)
 
         if not state:
-            raise MahavishnuError(f"Workflow {workflow_id} not found")
+            raise ConfigurationError(f"Workflow {workflow_id} not found")
 
         return state
 
@@ -218,7 +207,7 @@ class UnifiedOrchestrator:
         state = await self.task_router.state_manager.get_workflow_state(workflow_id)
 
         if not state:
-            raise MahavishnuError(f"Workflow {workflow_id} not found")
+            raise ConfigurationError(f"Workflow {workflow_id} not found")
 
         # Cancel with all adapters
         for adapter_name in state.get("adapter_states", {}):

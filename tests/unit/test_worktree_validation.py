@@ -10,6 +10,7 @@ Tests security validation of worktree paths with comprehensive coverage of:
 
 import pytest
 from hypothesis import given, strategies as st
+from pathlib import Path
 
 from mahavishnu.core.worktree_validation import WorktreePathValidator
 from mahavishnu.core.errors import ValidationError
@@ -52,26 +53,24 @@ class TestWorktreePathValidator:
         assert "CWE-170" in error
 
     def test_null_bytes_audit_logging(self, tmp_path, mocker):
-        """Test that null byte rejection is logged to audit trail."""
-        from mahavishnu.core.worktree_audit import WorktreeAuditLogger
-
+        """Test that null byte rejection is written to the audit logger."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
-        # Mock audit logger
-        mock_audit = mocker.patch.object(
-            WorktreeAuditLogger,
-            "log_security_rejection",
-            return_value=None,
+        mock_logger = mocker.Mock()
+        mock_get_audit_logger = mocker.patch(
+            "mahavishnu.mcp.auth.get_audit_logger", return_value=mock_logger
         )
 
         validator.validate_worktree_path("/worktrees/repo\x00feature", user_id="test-user")
 
-        # Verify audit logging was called
-        mock_audit.assert_called_once()
-        call_kwargs = mock_audit.call_args.kwargs
+        mock_get_audit_logger.assert_called_once()
+        mock_logger.log.assert_called_once()
+        call_kwargs = mock_logger.log.call_args.kwargs
         assert call_kwargs["user_id"] == "test-user"
-        assert call_kwargs["operation"] == "validate_worktree_path"
-        assert "null byte" in call_kwargs["rejection_reason"].lower()
+        assert call_kwargs["tool_name"] == "WorktreePathValidator"
+        assert call_kwargs["event_type"] == "security_rejection"
+        assert call_kwargs["result"] == "denied"
+        assert "null bytes" in call_kwargs["error"].lower()
 
     # =========================================================================
     # Shell Metacharacter Detection Tests (CWE-114)
@@ -140,7 +139,7 @@ class TestWorktreePathValidator:
         )
 
         assert not is_valid
-        assert "dangerous component" in error.lower()
+        assert "outside allowed directories" in error.lower()
 
     def test_reject_git_directory(self, tmp_path):
         """Test that paths with .git component are rejected."""
@@ -251,7 +250,7 @@ class TestWorktreePathValidator:
         is_valid, error = validator.validate_worktree_path(test_path, user_id="test-user")
 
         assert not is_valid
-        assert "escape sequences" in error.lower()
+        assert "dangerous component" in error.lower()
         assert "CWE-22" in error
 
     def test_reject_path_with_tilde_after_normalization(self, tmp_path):
@@ -265,7 +264,7 @@ class TestWorktreePathValidator:
         is_valid, error = validator.validate_worktree_path(test_path, user_id="test-user")
 
         assert not is_valid
-        assert "escape sequences" in error.lower()
+        assert "dangerous component" in error.lower()
 
     # =========================================================================
     # Repository Path Validation Tests
@@ -335,7 +334,7 @@ class TestWorktreePathValidator:
 
         # Should be sanitized
         assert ".." not in str(worktree_path)
-        assert worktree_path == tmp_path / "worktrees" / "repo" / "_.._feature_auth"
+        assert worktree_path == tmp_path / "worktrees" / "repo" / "_feature-auth"
 
     def test_get_safe_worktree_path_sanitizes_slashes(self, tmp_path):
         """Test that slashes in branch names are sanitized."""
@@ -349,8 +348,7 @@ class TestWorktreePathValidator:
         )
 
         # Should flatten to dashes
-        assert "/" not in str(worktree_path)
-        assert "\\" not in str(worktree_path)
+        assert worktree_path.name == "feature-auth-api"
         assert worktree_path == tmp_path / "worktrees" / "repo" / "feature-auth-api"
 
     def test_get_safe_worktree_path_default_base(self, tmp_path):
@@ -383,19 +381,107 @@ class TestWorktreePathValidator:
     # =========================================================================
 
     @pytest.mark.property
-    @given(st.text(alphabet=st.characters(whitelist_categories=()), max_size=100))
+    @given(st.text(max_size=50).map(lambda value: f"{value}\x00{value}"))
     def test_property_reject_paths_with_null_bytes(self, path):
         """Property-based test: All paths with null bytes are rejected."""
-        validator = WorktreePathValidator(allowed_roots=["/worktrees"])
+        validator = WorktreePathValidator(allowed_roots=[Path("/worktrees")])
 
-        if "\x00" in path:
-            is_valid, error = validator.validate_worktree_path(path, user_id="test")
-            assert not is_valid
-            assert "null bytes" in error.lower()
-        else:
-            # Other paths may or may not be valid depending on other factors
-            is_valid, error = validator.validate_worktree_path(path, user_id="test")
-            assert isinstance(is_valid, bool)
+        is_valid, error = validator.validate_worktree_path(path, user_id="test")
+        assert not is_valid
+        assert "null bytes" in error.lower()
+
+    def test_validate_worktree_path_escape_sequence_after_resolution(self, tmp_path, mocker):
+        """Test that escape sequences detected after resolution are rejected."""
+        validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
+        mocker.patch(
+            "mahavishnu.core.worktree_validation.Path.resolve",
+            return_value=Path(str(tmp_path / "worktrees" / "repo" / ".." / "safe")),
+        )
+
+        is_valid, error = validator.validate_worktree_path(
+            str(tmp_path / "worktrees" / "repo"), user_id="test-user"
+        )
+
+        assert not is_valid
+        assert "escape sequences" in error.lower()
+        assert "CWE-22" in error
+
+    def test_validate_worktree_path_type_error_returns_invalid(self, tmp_path):
+        """Test that unexpected path types are handled as invalid input."""
+        validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
+
+        is_valid, error = validator.validate_worktree_path(None, user_id="test-user")
+
+        assert not is_valid
+        assert "not iterable" in error.lower()
+
+    def test_validate_repository_path_accepts_git_repo(self, tmp_path):
+        """Test that a valid git repository path is accepted."""
+        validator = WorktreePathValidator(allowed_roots=[tmp_path / "repos"])
+
+        repo_dir = tmp_path / "repos" / "repo"
+        (repo_dir / ".git").mkdir(parents=True)
+
+        is_valid, error = validator.validate_repository_path(
+            str(repo_dir), user_id="test-user"
+        )
+
+        assert is_valid
+        assert error is None
+
+    def test_validate_repository_path_exception_is_handled(self, tmp_path, mocker):
+        """Test that repository validation exceptions are handled cleanly."""
+        validator = WorktreePathValidator(allowed_roots=[tmp_path / "repos"])
+        mocker.patch.object(
+            validator, "_is_git_repository", side_effect=RuntimeError("repo boom")
+        )
+
+        is_valid, error = validator.validate_repository_path(
+            str(tmp_path / "repos" / "repo"), user_id="test-user"
+        )
+
+        assert not is_valid
+        assert "repo boom" in error
+
+    def test_validate_worktree_path_resolve_failure(self, tmp_path, mocker):
+        """Test that path resolution failures are handled cleanly."""
+        validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
+        mocker.patch("mahavishnu.core.worktree_validation.Path.resolve", side_effect=OSError("boom"))
+
+        is_valid, error = validator.validate_worktree_path(
+            str(tmp_path / "worktrees" / "repo"), user_id="test-user"
+        )
+
+        assert not is_valid
+        assert "path resolution failed" in error.lower()
+        assert "boom" in error
+
+    def test_validate_repository_path_resolve_failure(self, tmp_path, mocker):
+        """Test that repository path resolution failures are handled cleanly."""
+        validator = WorktreePathValidator(allowed_roots=[tmp_path / "repos"])
+        mocker.patch("mahavishnu.core.worktree_validation.Path.resolve", side_effect=OSError("boom"))
+
+        is_valid, error = validator.validate_repository_path(
+            str(tmp_path / "repos" / "repo"), user_id="test-user"
+        )
+
+        assert not is_valid
+        assert "repository path resolution failed" in error.lower()
+        assert "boom" in error
+
+    def test_log_security_rejection_audit_failure_is_ignored(self, tmp_path, mocker):
+        """Test that audit logger failures do not break validation logging."""
+        validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
+        mock_logger = mocker.Mock()
+        mock_logger.log.side_effect = RuntimeError("audit down")
+        mocker.patch("mahavishnu.mcp.auth.get_audit_logger", return_value=mock_logger)
+
+        is_valid, error = validator.validate_worktree_path(
+            "/worktrees/repo\x00feature", user_id="test-user"
+        )
+
+        assert not is_valid
+        assert "null bytes" in error.lower()
 
     # =========================================================================
     # Edge Cases

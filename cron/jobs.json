@@ -20,14 +20,75 @@
         "to": null
       },
       "state": {
-        "nextRunAtMs": 1775615071705,
-        "lastRunAtMs": null,
-        "lastStatus": null,
+        "nextRunAtMs": 1775727246825,
+        "lastRunAtMs": 1775720046620,
+        "lastStatus": "ok",
         "lastError": null,
-        "runHistory": []
+        "runHistory": [
+          {
+            "runAtMs": 1775650778907,
+            "status": "ok",
+            "durationMs": 165297,
+            "error": null
+          },
+          {
+            "runAtMs": 1775659624660,
+            "status": "ok",
+            "durationMs": 66759,
+            "error": null
+          },
+          {
+            "runAtMs": 1775666891436,
+            "status": "ok",
+            "durationMs": 111,
+            "error": null
+          },
+          {
+            "runAtMs": 1775674091563,
+            "status": "ok",
+            "durationMs": 62,
+            "error": null
+          },
+          {
+            "runAtMs": 1775681291626,
+            "status": "ok",
+            "durationMs": 104,
+            "error": null
+          },
+          {
+            "runAtMs": 1775688492387,
+            "status": "ok",
+            "durationMs": 131001,
+            "error": null
+          },
+          {
+            "runAtMs": 1775695823538,
+            "status": "ok",
+            "durationMs": 66,
+            "error": null
+          },
+          {
+            "runAtMs": 1775703023607,
+            "status": "ok",
+            "durationMs": 100,
+            "error": null
+          },
+          {
+            "runAtMs": 1775712846393,
+            "status": "ok",
+            "durationMs": 224,
+            "error": null
+          },
+          {
+            "runAtMs": 1775720046620,
+            "status": "ok",
+            "durationMs": 205,
+            "error": null
+          }
+        ]
       },
-      "createdAtMs": 1775607871698,
-      "updatedAtMs": 1775607871698,
+      "createdAtMs": 1775643578841,
+      "updatedAtMs": 1775720046825,
       "deleteAfterRun": false
     }
   ]

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.bifrost.redis-stack</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/les/Projects/mahavishnu/scripts/redis-stack-bifrost.zsh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/les/Projects/mahavishnu</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>REDIS_STACK_HOST</key>
+        <string>127.0.0.1</string>
+        <key>REDIS_STACK_PORT</key>
+        <string>6380</string>
+        <key>REDIS_STACK_STATE_DIR</key>
+        <string>/Users/les/.local/state/redis-stack-bifrost</string>
+        <key>REDIS_STACK_CONFIG_DIR</key>
+        <string>/Users/les/.config/redis-stack-bifrost</string>
+        <key>REDIS_STACK_READY_FILE</key>
+        <string>/Users/les/.local/state/mcp/ready/redis-stack-bifrost.ready</string>
+        <key>REDIS_STACK_BINARY</key>
+        <string>/usr/local/bin/redis-stack-server</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>LimitLoadToSessionType</key>
+    <array>
+        <string>Aqua</string>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>/Users/les/.local/state/mcp/logs/redis-stack-bifrost.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/les/.local/state/mcp/logs/redis-stack-bifrost.stderr.log</string>
+</dict>
+</plist>

@@ -78,6 +78,22 @@ def test_terminal_codex_uses_one_shot_marker_mode() -> None:
     assert "codex exec --json \"$1\"" in config.command
 
 
+def test_terminal_qwen_uses_native_cli_configuration() -> None:
+    """Qwen worker should defer provider selection to the native Qwen CLI config."""
+    config = get_worker_config("terminal-qwen")
+
+    assert config is not None
+    assert config.command == "sh -lc 'qwen -o stream-json --approval-mode yolo'"
+
+
+def test_terminal_claude_uses_native_cli_configuration() -> None:
+    """Claude worker should defer provider selection to the native Claude config."""
+    config = get_worker_config("terminal-claude")
+
+    assert config is not None
+    assert config.command == "sh -lc 'claude --output-format stream-json --permission-mode acceptEdits'"
+
+
 def test_generic_shell_completes_on_valid_json_for_openclaw() -> None:
     """One-shot JSON workers should complete when the full payload is valid JSON."""
     worker = GenericShellWorker(

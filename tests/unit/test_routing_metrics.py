@@ -1,9 +1,12 @@
 """Tests for routing metrics and alerting system."""
 
+import builtins
 import pytest
 import asyncio
+import runpy
 from datetime import datetime, UTC
 
+import mahavishnu.core.routing_metrics as repo_module
 from mahavishnu.core.routing_metrics import (
     RoutingMetrics,
     get_routing_metrics,
@@ -133,6 +136,77 @@ class TestRoutingMetrics:
         metrics.set_active_experiments(3)
         summary = metrics.get_metrics_summary()
         assert summary["ab_test_tracking"]
+
+    def test_fallback_chain_and_runtime_error_path(self, reset_metrics, monkeypatch: pytest.MonkeyPatch):
+        metrics = get_routing_metrics()
+        metrics.record_fallback_chain_length(4)
+        summary = metrics.get_metrics_summary()
+        assert summary["fallback_tracking"]
+
+        metrics._adapter_latency_histogram = None
+        monkeypatch.setattr(metrics, "_initialize_metrics", lambda: None, raising=True)
+        with pytest.raises(RuntimeError, match="Adapter latency histogram not initialized"):
+            metrics._get_adapter_latency_histogram()
+
+    def test_initialize_metrics_value_error_branches(self, reset_metrics, monkeypatch: pytest.MonkeyPatch):
+        class _BoomMetric:
+            def __init__(self, *args, **kwargs):  # noqa: ANN002,ANN003
+                raise ValueError("dup")
+
+        monkeypatch.setattr(repo_module, "Counter", _BoomMetric, raising=True)
+        monkeypatch.setattr(repo_module, "Gauge", _BoomMetric, raising=True)
+        monkeypatch.setattr(repo_module, "Histogram", _BoomMetric, raising=True)
+
+        metrics = RoutingMetrics("dup-server")
+        metrics._initialize_metrics()
+
+        summary = metrics.get_metrics_summary()
+        assert summary["initialized"] is True
+        assert summary["routing_tracking"] is False
+        assert summary["adapter_execution_tracking"] is False
+
+    def test_start_server_oserror_branch(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(repo_module, "start_http_server", lambda port: (_ for _ in ()).throw(OSError("busy")), raising=True)
+        assert repo_module.start_routing_metrics_server(9191) is None
+
+    def test_prometheus_fallback_import_and_dummy_classes(self, monkeypatch: pytest.MonkeyPatch):
+        real_import = builtins.__import__
+
+        def fake_import(name, globals=None, locals=None, fromlist=(), level=0):  # noqa: ANN001,ANN002,ANN003
+            if name == "prometheus_client":
+                raise ImportError("missing")
+            return real_import(name, globals, locals, fromlist, level)
+
+        monkeypatch.setattr(builtins, "__import__", fake_import, raising=True)
+        namespace = runpy.run_module("mahavishnu.core.routing_metrics", run_name="__routing_metrics_fallback__")
+
+        assert namespace["PROMETHEUS_AVAILABLE"] is False
+        metrics = namespace["RoutingMetrics"]("fallback")
+        assert metrics.get_metrics_summary()["enabled"] is False
+
+        counter = namespace["Counter"]()
+        assert counter.count() == 0
+        assert counter.labels(server="x").inc() is None
+
+        gauge = namespace["Gauge"]()
+        assert gauge.labels(server="x").set(1.0) is None
+        assert gauge.labels(server="x").set_to_current_value() is None
+        assert gauge.labels(server="x").inc() is None
+        assert gauge.labels(server="x").dec() is None
+
+        histogram = namespace["Histogram"]()
+        assert histogram.labels(server="x").observe(1.0) is None
+        assert histogram.time() is histogram
+
+        summary = namespace["Summary"]()
+        assert summary.labels(server="x").observe(1.0) is None
+        assert summary.time() is summary
+
+        assert namespace["start_http_server"](9099) is None
+        assert namespace["start_routing_metrics_server"](9099) is None
+        with pytest.raises(RuntimeError, match="Adapter latency histogram not initialized"):
+            metrics._get_adapter_latency_histogram()
+        metrics.record_fallback_chain_length(2)
 
 
 class TestAlertDataclass:

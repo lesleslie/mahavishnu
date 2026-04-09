@@ -476,7 +476,12 @@ class MahavishnuApp:
         """
         logger = __import__("logging").getLogger(__name__)
         try:
+            from ..llm_gateway import ProtocolFamily, gateway_api_base
+
             auth_token = __import__("os").environ.get("ANTHROPIC_AUTH_TOKEN")
+            gateway_base_url = __import__("os").environ.get("BIFROST_BASE_URL") or __import__(
+                "os"
+            ).environ.get("MAHAVISHNU_LLM_GATEWAY_BASE_URL")
             base_url = __import__("os").environ.get(
                 "ANTHROPIC_BASE_URL", "https://api.anthropic.com"
             )
@@ -488,6 +493,12 @@ class MahavishnuApp:
                 return None
 
             from nanobot.providers import OpenAICompatProvider
+
+            if gateway_base_url:
+                base_url = gateway_api_base(
+                    ProtocolFamily.OPENAI,
+                    base_url=gateway_base_url,
+                )
 
             provider = OpenAICompatProvider(
                 api_key=auth_token,

@@ -749,7 +749,7 @@ class DeadLetterQueue:
                 "queue_size": len(self._queue),
                 "max_size": self._max_size,
                 "utilization_percent": round(len(self._queue) / self._max_size * 100, 2),
-                "status breakdown": {
+                "status_breakdown": {
                     "pending": pending_count,
                     "retrying": retrying_count,
                     "exhausted": exhausted_count,

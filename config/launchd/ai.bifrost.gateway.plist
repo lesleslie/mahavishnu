@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.bifrost.gateway</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/les/Projects/mahavishnu/scripts/bifrost-gateway.zsh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/les/.config/bifrost</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>BIFROST_HOST</key>
+        <string>127.0.0.1</string>
+        <key>BIFROST_PORT</key>
+        <string>8471</string>
+        <key>BIFROST_LOG_LEVEL</key>
+        <string>info</string>
+        <key>BIFROST_LOG_STYLE</key>
+        <string>json</string>
+        <key>BIFROST_APP_DIR</key>
+        <string>/Users/les/.config/bifrost</string>
+        <key>BIFROST_READY_FILE</key>
+        <string>/Users/les/.local/state/mcp/ready/bifrost.ready</string>
+        <key>BIFROST_SECRETS_FILE</key>
+        <string>/Users/les/.config/opencode/shell-secrets.zsh</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>LimitLoadToSessionType</key>
+    <array>
+        <string>Aqua</string>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>/Users/les/.local/state/mcp/logs/bifrost.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/les/.local/state/mcp/logs/bifrost.err</string>
+</dict>
+</plist>

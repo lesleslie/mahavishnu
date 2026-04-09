@@ -260,4 +260,4 @@ class RepositoryManager:
         """Invalidate all caches."""
         self.get_by_tag.cache_clear()
         self.get_by_mcp_type.cache_clear()
-        self.filter.cache_clear()
+        self._filter_cached.cache_clear()

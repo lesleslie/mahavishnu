@@ -9,11 +9,16 @@ Tests DLQ functionality including:
 """
 
 import asyncio
+import importlib
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock
+import sys
+import types
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
+import mahavishnu.core.dead_letter_queue as dlq_module
 from mahavishnu.core.dead_letter_queue import (
     DeadLetterQueue,
     DeadLetterStatus,
@@ -71,7 +76,7 @@ class TestFailedTask:
             "retry_count": 1,
             "max_retries": 3,
             "retry_policy": "exponential",
-            "next_retry_at": None,
+            "next_retry_at": datetime.now(UTC).isoformat(),
             "status": "pending",
             "metadata": {},
             "error_category": None,
@@ -84,6 +89,15 @@ class TestFailedTask:
         assert task.task_id == "wf_123"
         assert task.retry_count == 1
         assert task.retry_policy == RetryPolicy.EXPONENTIAL
+        assert task.next_retry_at is not None
+
+
+def test_opensearch_import_success_branch(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = types.ModuleType("opensearchpy")
+    fake.AsyncOpenSearch = object
+    monkeypatch.setitem(sys.modules, "opensearchpy", fake)
+    reloaded = importlib.reload(dlq_module)
+    assert reloaded.OPENSEARCH_AVAILABLE is True
 
 
 class TestRetryPolicyCalculations:
@@ -105,6 +119,11 @@ class TestRetryPolicyCalculations:
         assert next_retry is not None
         # Should be within 1 second of now
         assert abs((next_retry - now).total_seconds()) < 1
+
+    def test_unknown_policy_returns_none(self):
+        """Test fallback for unknown retry policy values."""
+        dlq = DeadLetterQueue(max_size=100)
+        assert dlq._calculate_next_retry("unknown", 0) is None
 
     def test_linear_policy(self):
         """Test LINEAR retry policy."""
@@ -288,9 +307,22 @@ class TestDeadLetterQueue:
         assert stats["max_size"] == 100
         assert stats["utilization_percent"] == 5.0
         assert stats["status_breakdown"]["pending"] == 5
+        assert stats["status_breakdown"]["retrying"] == 0
+        assert stats["status_breakdown"]["exhausted"] == 0
         assert stats["error_categories"]["transient"] == 3  # 0, 2, 4
         assert stats["error_categories"]["permanent"] == 2  # 1, 3
         assert stats["lifetime_stats"]["enqueued_total"] == 5
+        assert stats["retry_policies"]["exponential"] == 5
+
+    @pytest.mark.asyncio
+    async def test_get_statistics_running_processor_branch(self, dlq):
+        """Test stats when the processor is running."""
+        callback = AsyncMock(return_value={"status": "success"})
+        await dlq.start_retry_processor(callback, check_interval_seconds=100)
+        stats = await dlq.get_statistics()
+        assert stats["is_processor_running"] is True
+        assert stats["retry_interval_seconds"] == 100
+        await dlq.stop_retry_processor()
 
     @pytest.mark.asyncio
     async def test_clear_all(self, dlq):
@@ -326,6 +358,8 @@ class TestRetryProcessor:
         """Test retry processor with successful retry."""
         # Create a mock callback that succeeds
         callback = AsyncMock(return_value={"status": "success"})
+        observability = SimpleNamespace(log_info=Mock(), log_error=Mock())
+        dlq._observability = observability
 
         # Enqueue a task ready for immediate retry
         await dlq.enqueue(
@@ -352,6 +386,7 @@ class TestRetryProcessor:
 
         # Stats should show success
         assert dlq._stats["retry_success"] == 1
+        assert observability.log_info.call_count == 2
 
     @pytest.mark.asyncio
     async def test_retry_processor_failure(self, dlq):
@@ -370,10 +405,10 @@ class TestRetryProcessor:
         )
 
         # Start processor
-        await dlq.start_retry_processor(callback, check_interval_seconds=1)
+        await dlq.start_retry_processor(callback, check_interval_seconds=100)
 
         # Wait for processing
-        await asyncio.sleep(2)
+        await asyncio.sleep(0.2)
 
         # Stop processor
         await dlq.stop_retry_processor()
@@ -387,10 +422,23 @@ class TestRetryProcessor:
         assert dlq._stats["retry_failed"] == 1
 
     @pytest.mark.asyncio
+    async def test_retry_processor_already_running_and_stop_noop(self, dlq):
+        """Test already-running and stop-noop branches."""
+        callback = AsyncMock(return_value={"status": "success"})
+
+        await dlq.start_retry_processor(callback, check_interval_seconds=100)
+        await dlq.start_retry_processor(callback, check_interval_seconds=100)
+        await dlq.stop_retry_processor()
+        await dlq.stop_retry_processor()
+        await dlq.shutdown()
+
+    @pytest.mark.asyncio
     async def test_retry_processor_exhausted(self, dlq):
         """Test retry processor when retries are exhausted."""
         # Create a mock callback that always fails
         callback = AsyncMock(side_effect=Exception("Always fails"))
+        observability = SimpleNamespace(log_info=Mock(), log_error=Mock())
+        dlq._observability = observability
 
         # Enqueue a task with only 1 retry allowed
         await dlq.enqueue(
@@ -419,6 +467,21 @@ class TestRetryProcessor:
 
         # Stats should show exhausted
         assert dlq._stats["exhausted"] == 1
+        observability.log_error.assert_called_once()
+        assert observability.log_info.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_retry_processor_loop_exception_branch(self, dlq, monkeypatch):
+        """Test retry processor loop exception handling."""
+        callback = AsyncMock(return_value={"status": "success"})
+
+        async def _boom(_callback):  # noqa: ANN001
+            raise RuntimeError("loop failed")
+
+        monkeypatch.setattr(dlq, "_process_ready_tasks", _boom)
+        await dlq.start_retry_processor(callback, check_interval_seconds=100)
+        await asyncio.sleep(0.1)
+        await dlq.stop_retry_processor()
 
     @pytest.mark.asyncio
     async def test_manual_retry(self, dlq):
@@ -484,6 +547,26 @@ class TestRetryProcessor:
         with pytest.raises(RuntimeError, match="No retry callback configured"):
             await dlq.retry_task("wf_123")
 
+    @pytest.mark.asyncio
+    async def test_manual_retry_failure(self, dlq):
+        """Test manual retry failure branch."""
+        callback = AsyncMock(side_effect=Exception("manual retry failed"))
+
+        await dlq.enqueue(
+            task_id="wf_123",
+            task={"type": "test"},
+            repos=["/path/to/repo"],
+            error="Test error",
+        )
+        await dlq.start_retry_processor(callback, check_interval_seconds=100)
+
+        result = await dlq.retry_task("wf_123")
+
+        assert result["success"] is False
+        assert "manual retry failed" in result["error"]
+        assert dlq._stats["retry_failed"] >= 1
+        await dlq.stop_retry_processor()
+
 
 class TestPersistence:
     """Test OpenSearch persistence."""
@@ -493,19 +576,26 @@ class TestPersistence:
         """Test persisting task to OpenSearch."""
         # Mock OpenSearch client
         mock_client = AsyncMock()
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(dlq_module, "OPENSEARCH_AVAILABLE", True)
+        mock_obs = AsyncMock()
 
-        dlq = DeadLetterQueue(max_size=100, opensearch_client=mock_client)
+        dlq = DeadLetterQueue(max_size=100, opensearch_client=mock_client, observability_manager=mock_obs)
 
         # Enqueue a task
-        await dlq.enqueue(
-            task_id="wf_123",
-            task={"type": "test"},
-            repos=["/path/to/repo"],
-            error="Test error",
-        )
+        try:
+            await dlq.enqueue(
+                task_id="wf_123",
+                task={"type": "test"},
+                repos=["/path/to/repo"],
+                error="Test error",
+            )
+        finally:
+            monkeypatch.undo()
 
         # Should have called index
         mock_client.index.assert_called_once()
+        mock_obs.log_info.assert_called_once()
         call_args = mock_client.index.call_args
         assert call_args[1]["id"] == "wf_123"
         assert call_args[1]["index"] == "mahavishnu_dlq"
@@ -515,6 +605,8 @@ class TestPersistence:
         """Test updating persisted task."""
         # Mock OpenSearch client
         mock_client = AsyncMock()
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(dlq_module, "OPENSEARCH_AVAILABLE", True)
 
         dlq = DeadLetterQueue(max_size=100, opensearch_client=mock_client)
 
@@ -528,7 +620,10 @@ class TestPersistence:
         )
 
         # Update persistence
-        await dlq._update_task_persistence(task)
+        try:
+            await dlq._update_task_persistence(task)
+        finally:
+            monkeypatch.undo()
 
         # Should have called update
         mock_client.update.assert_called_once()
@@ -537,15 +632,48 @@ class TestPersistence:
         assert call_args[1]["index"] == "mahavishnu_dlq"
 
     @pytest.mark.asyncio
+    async def test_update_and_persist_error_branches(self):
+        """Test persistence error branches."""
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(dlq_module, "OPENSEARCH_AVAILABLE", True)
+        mock_client = AsyncMock()
+        mock_client.index.side_effect = Exception("index failed")
+        mock_client.update.side_effect = Exception("update failed")
+        mock_client.delete.side_effect = Exception("delete failed")
+        mock_client.delete_by_query.side_effect = Exception("delete by query failed")
+        dlq = DeadLetterQueue(max_size=100, opensearch_client=mock_client)
+        task = FailedTask(
+            task_id="wf_123",
+            task={"type": "test"},
+            repos=["/path/to/repo"],
+            error="Test error",
+            failed_at=datetime.now(UTC),
+        )
+
+        try:
+            await dlq.enqueue(task_id="wf_123a", task={"type": "test"}, repos=["/path"], error="x")
+            await dlq._update_task_persistence(task)
+            await dlq._remove_from_persistence("wf_123")
+            cleared = await dlq.clear_all()
+            assert cleared >= 0
+        finally:
+            monkeypatch.undo()
+
+    @pytest.mark.asyncio
     async def test_remove_from_persistence(self):
         """Test removing task from persistence."""
         # Mock OpenSearch client
         mock_client = AsyncMock()
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(dlq_module, "OPENSEARCH_AVAILABLE", True)
 
         dlq = DeadLetterQueue(max_size=100, opensearch_client=mock_client)
 
         # Remove from persistence
-        await dlq._remove_from_persistence("wf_123")
+        try:
+            await dlq._remove_from_persistence("wf_123")
+        finally:
+            monkeypatch.undo()
 
         # Should have called delete
         mock_client.delete.assert_called_once()
