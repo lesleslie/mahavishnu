@@ -1,84 +1,69 @@
-"""Quality evaluation for ingested content."""
+"""Compatibility wrapper for quality evaluation types.
 
-from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from typing import Any
-from enum import Enum
+.. deprecated:: 0.4.0
+    This module is a re-export wrapper. Import directly from
+    ``mahavishnu.ingesters.quality_scorer`` instead.
+
+    To migrate, change imports from::
+
+        from mahavishnu.ingesters.quality_evaluator import EvaluationReport, QualityMetric
+
+    To::
+
+        from mahavishnu.ingesters.quality_scorer import EvaluationReport, QualityMetric
+
+This module will be removed in a future release.
+"""
+
+from __future__ import annotations
+
+import warnings
+
+warnings.warn(
+    "mahavishnu.ingesters.quality_evaluator is a compatibility wrapper. "
+    "Import from mahavishnu.ingesters.quality_scorer instead. "
+    "This wrapper will be removed in a future release.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+from mahavishnu.ingesters.quality_scorer import (  # noqa: F401
+    EvaluationReport,
+    MetricScore,
+    QualityMetric,
+)
+
+__all__ = [
+    "QualityMetric",
+    "MetricScore",
+    "EvaluationReport",
+]
 
 
-class QualityMetric(str, Enum):
-    """Quality metric types."""
-
-    READABILITY = "readability"
-    COMPLETENESS = "completeness"
-    ACCURACY = "accuracy"
-    RELEVANCE = "relevance"
-
-
-@dataclass
-class MetricScore:
-    """Quality metric score."""
-
-    name: str
-    score: float
-    description: str | None = None
-
-
-@dataclass
-class EvaluationReport:
-    """Quality evaluation report."""
-
-    content_id: str
-    score: float
-    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
-    issues: list[str] = field(default_factory=list)
-    suggestions: list[str] = field(default_factory=list)
-    metrics: list[MetricScore] = field(default_factory=list)
-
-
-def create_quality_evaluator(config: dict[str, Any] | None = None):
+def create_quality_evaluator(config: dict | None = None):
     """Create a quality evaluator instance.
 
-    Args:
-        config: Optional configuration dictionary
-
-    Returns:
-        Quality evaluator instance
+    .. deprecated:: 0.4.0
+        Use ``ContentQualityScorer`` from ``quality_scorer`` instead.
     """
-    return QualityEvaluator(config)
+    from mahavishnu.ingesters.quality_scorer import ContentQualityScorer
+
+    return ContentQualityScorer()
 
 
 class QualityEvaluator:
-    """Quality evaluator for content."""
+    """Quality evaluator for content.
 
-    def __init__(self, config: dict[str, Any] | None = None):
+    .. deprecated:: 0.4.0
+        Use ``ContentQualityScorer`` from ``quality_scorer`` instead.
+    """
+
+    def __init__(self, config: dict | None = None):
+        from mahavishnu.ingesters.quality_scorer import ContentQualityScorer
+
+        self._scorer = ContentQualityScorer()
         self.config = config or {}
 
     def evaluate(self, content: str, content_id: str = "unknown") -> EvaluationReport:
-        """Evaluate content quality.
-
-        Args:
-            content: Content to evaluate
-            content_id: Content identifier
-
-        Returns:
-            Evaluation report with score and findings
-        """
-        return EvaluationReport(
-            content_id=content_id,
-            score=1.0,
-            issues=[],
-            suggestions=[],
-            metrics=[
-                MetricScore(
-                    name=QualityMetric.READABILITY.value,
-                    score=1.0,
-                    description="Content readability",
-                ),
-                MetricScore(
-                    name=QualityMetric.COMPLETENESS.value,
-                    score=1.0,
-                    description="Content completeness",
-                ),
-            ],
-        )
+        """Evaluate content quality."""
+        return self._scorer.score(content, content_id=content_id)

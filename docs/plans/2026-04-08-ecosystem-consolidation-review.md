@@ -486,12 +486,24 @@ All wrappers now emit `DeprecationWarning` at import time directing to the `*_im
 
 All wrappers pass through imports correctly with deprecation warnings. 148 tests pass across affected modules.
 
-### Phase 4: Search And Ingestion Cleanup (Medium Risk)
+### Phase 4: Search And Ingestion Cleanup (Medium Risk) -- COMPLETED
 
-- Merge `quality_evaluator.py` types into `quality_scorer.py`; convert evaluator to deprecation wrapper.
-- Assess `opensearch_integration.py` vs pgvector coverage.
-- Assess `routing_metrics_persistence.py` vs Dhara time-series storage.
-- Assess `embeddings_oneiric.py` for folding into `core/config.py`.
+- [x] Merge `quality_evaluator.py` types into `quality_scorer.py`; convert evaluator to deprecation wrapper.
+- [x] Assess `opensearch_integration.py` vs pgvector coverage.
+- [x] Assess `routing_metrics_persistence.py` vs Dhara time-series storage.
+- [x] Assess `embeddings_oneiric.py` for folding into `core/config.py`.
+
+**Merge summary:**
+
+- `quality_evaluator.py` (84 lines) → type definitions (`QualityMetric`, `MetricScore`, `EvaluationReport`) now in `quality_scorer.py`; wrapper emits `DeprecationWarning` and provides backward-compatible `QualityEvaluator` class delegating to `ContentQualityScorer`
+
+**Assessment findings:**
+
+- `opensearch_integration.py` (515 lines): Provides `OpenSearchLogAnalytics` for structured log ingestion, workflow tracking, and full-text/aggregation search. pgvector (in `hybrid_search.py` and `otel_ingester.py`) handles *vector similarity search* on embeddings. These are **complementary**: OpenSearch for structured log analytics, pgvector for semantic search. **Decision: Keep both.**
+
+- `routing_metrics_persistence.py` (628 lines): Purpose-built PostgreSQL persistence layer using `asyncpg` with batch writes, connection pooling, and pre-computed SQL aggregations for adapter stats, cost tracking, and routing decisions. Dhara provides generic `record_time_series`/`query_time_series` via MCP but lacks the specialized aggregation queries and batch optimization. **Decision: Keep separate — the PostgreSQL layer is purpose-built and more performant than a generic MCP bridge.**
+
+- `embeddings_oneiric.py` (366 lines): More than just configuration — it's a full `EmbeddingConfig` Pydantic model with Oneiric-compatible YAML/env loading plus an `EmbeddingService` adapter that wraps core embedding functionality. Only 1 test consumer. **Decision: Keep standalone — folding into `core/config.py` would bloat the config module with embedding-specific logic.**
 
 ### Phase 5: Retirement (Low Risk, After Phases 0-4 Are Stable)
 

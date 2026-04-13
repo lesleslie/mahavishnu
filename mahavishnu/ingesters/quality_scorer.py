@@ -16,16 +16,46 @@ Thresholds (from docs/specs/content-quality-dataset.md):
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from enum import Enum
 import re
 from typing import Any
 
-from mahavishnu.ingesters.quality_evaluator import (
-    EvaluationReport,
-    MetricScore,
-    QualityMetric,
-)
+
+# ---------------------------------------------------------------------------
+# Quality types (merged from quality_evaluator.py)
+# ---------------------------------------------------------------------------
+
+
+class QualityMetric(str, Enum):
+    """Quality metric types."""
+
+    READABILITY = "readability"
+    COMPLETENESS = "completeness"
+    ACCURACY = "accuracy"
+    RELEVANCE = "relevance"
+
+
+@dataclass
+class MetricScore:
+    """Quality metric score."""
+
+    name: str
+    score: float
+    description: str | None = None
+
+
+@dataclass
+class EvaluationReport:
+    """Quality evaluation report."""
+
+    content_id: str
+    score: float
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    issues: list[str] = field(default_factory=list)
+    suggestions: list[str] = field(default_factory=list)
+    metrics: list[MetricScore] = field(default_factory=list)
 
 
 @dataclass
@@ -462,6 +492,9 @@ class ContentQualityScorer:
 
 __all__ = [
     "ContentQualityScorer",
+    "EvaluationReport",
+    "MetricScore",
+    "QualityMetric",
     "QualityThresholds",
     "score_readability",
     "score_technical_depth",
