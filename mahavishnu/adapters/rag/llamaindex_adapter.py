@@ -1,21 +1,31 @@
 """LlamaIndex adapter for RAG orchestration.
 
-Re-exports from the full implementation in engines module.
-This module provides backward compatibility for imports from the
-adapters.rag location while delegating to the complete implementation.
+.. deprecated:: 0.4.0
+    This module is a re-export wrapper. Import directly from
+    ``mahavishnu.engines.llamaindex_adapter`` instead.
 
-Usage:
-    from mahavishnu.adapters.rag.llamaindex_adapter import (
-        LlamaIndexAdapter,
-        LlamaIndexIngestionError,
-        LlamaIndexQueryError,
-        LlamaIndexIndexNotFoundError,
-        LlamaIndexEmbeddingError,
-    )
+    To migrate, change imports from::
 
-Or directly from engines:
-    from mahavishnu.engines.llamaindex_adapter import LlamaIndexAdapter
+        from mahavishnu.adapters.rag.llamaindex_adapter import LlamaIndexAdapter
+
+    To::
+
+        from mahavishnu.engines.llamaindex_adapter import LlamaIndexAdapter
+
+This module will be removed in a future release.
 """
+
+from __future__ import annotations
+
+import warnings
+
+warnings.warn(
+    "mahavishnu.adapters.rag.llamaindex_adapter is deprecated. "
+    "Import from mahavishnu.engines.llamaindex_adapter instead. "
+    "This wrapper will be removed in a future release.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from mahavishnu.engines.llamaindex_adapter import (
     LlamaIndexAdapter,

@@ -39,7 +39,7 @@ mahavishnu ecosystem update-audit crackerjack last_validated "2026-01-29" --note
 mahavishnu/
 ├── settings/
 │   ├── mahavishnu.yaml       # Runtime configuration (Oneiric)
-│   ├── repos.yaml            # Repository manifest (legacy, being migrated)
+│   ├── repos.yaml            # Repository manifest (legacy, deprecated)
 │   └── ecosystem.yaml         # ⭐ ECOSYSTEM CATALOG (this file)
 ├── core/
 │   ├── ecosystem.py          # Config loader and manager
@@ -370,9 +370,9 @@ The `repos.yaml` file is being migrated into `ecosystem.yaml`. Key differences:
 **Migration plan**:
 
 1. ✅ All repos are now in ecosystem.yaml
-1. ⏳ Update tools to read from ecosystem.yaml instead of repos.yaml
-1. ⏳ Deprecate repos.yaml (add migration warning)
-1. ⏳ Eventually remove repos.yaml
+1. ✅ Update tools to read from ecosystem.yaml instead of repos.yaml (`repos_path` defaults to `settings/ecosystem.yaml`)
+1. ✅ Deprecate repos.yaml (deprecation warning added to `config_validator.py`)
+1. ⏳ Eventually remove repos.yaml (after compatibility window)
 
 ## Troubleshooting
 
