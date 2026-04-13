@@ -15,7 +15,7 @@ Mahavishnu is part of the **Bodai Ecosystem** - a collection of interconnected c
 | [Dhara](https://github.com/lesleslie/dhara) | Curator | 8683 | Persistent object storage with ACID |
 | [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder | 8678 | Session lifecycle & knowledge graphs |
 | [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector | 8676 | Quality gates & CI/CD validation |
-| [Oneiric](https://github.com/lesleslie/oneiric) | Resolver | N/A | Conflict resolution library |
+| [Oneiric](https://github.com/lesleslie/oneiric) | Foundation | N/A | Component resolution, lifecycle management, adapter system, action kits, domain bridges, runtime orchestration, remote delivery |
 
 **Key Interactions:**
 - Routes tasks to **Akosha** for intelligence operations
@@ -292,7 +292,7 @@ Mahavishnu uses a role-based taxonomy to organize repositories and enable intell
 | Role | Description | Capabilities | Example Repos |
 |------|-------------|---------------|---------------|
 | **orchestrator** | Coordinates workflows and manages cross-repository operations | sweep, schedule, monitor, route, coordinate | mahavishnu (vishnu) |
-| **resolver** | Resolves components, dependencies, and lifecycle management | resolve, activate, swap, explain, watch | oneiric |
+| **resolver** | Platform foundation: component resolution, lifecycle management, adapter system, action kits, domain bridges, runtime orchestration, remote delivery | resolve, activate, swap, explain, watch, resolve, configure, orchestrate | oneiric |
 | **manager** | Manages state, sessions, and knowledge across the ecosystem | capture, search, restore, track, analyze | session-buddy (buddy) |
 | **inspector** | Validates code quality and enforces development standards | test, lint, scan, report, validate | crackerjack (jack) |
 | **builder** | Builds applications and web interfaces | render, route, authenticate, build | fastblocks |
@@ -510,6 +510,30 @@ ingestion:
 
 ## Critical Architecture Decisions
 
+### LLM Provider Configuration (ZAI Primary)
+
+Mahavishnu uses ZAI GLM models as the primary cloud LLM provider:
+
+- **Primary provider**: `zai` (OpenAI-compatible API at `https://api.z.ai/api/coding/paas/v4`)
+- **Local fallback**: `ollama` at `http://localhost:11434`
+- **Default models**: `glm-4.7` (Sonnet), `glm-5.1` (Opus/reasoning), `glm-4.5-air` (Haiku/swarms)
+- **Task-based routing**: `TaskRouter` in `mahavishnu/workers/task_router.py` maps task categories to optimal models
+
+**Task-to-Model Mapping**:
+| Category | Cloud Model | Local Model |
+|-----------|-------------|-------------|
+| CODE_GENERATION, CODE_REVIEW, DEBUGGING | glm-4.7 | qwen2.5-coder:7b |
+| REASONING, ARCHITECTURE | glm-5.1 | llama3:8b |
+| SWARM, QUICK, DOCUMENTATION | glm-4.5-air | qwen2.5-coder:7b |
+| VISION | GLM-4.5V | N/A |
+
+**Key files**:
+- `mahavishnu/workers/cloud_worker.py` - OpenAI-compatible worker for ZAI
+- `mahavishnu/workers/task_router.py` - TaskCategory enum, model routing
+- `settings/models.yaml` - YAML-driven provider and model configuration
+
+See `docs/plans/llm-provider-reconfiguration-v2.md` for the full reconfiguration plan.
+
 See `docs/adr/` for full Architecture Decision Records:
 
 - **ADR 001**: Use Oneiric for configuration and logging
@@ -695,6 +719,8 @@ The `examples/` directory contains runnable examples for key features:
 - **Worker manager**: `mahavishnu/workers/manager.py` - Worker lifecycle
 - **Worker base**: `mahavishnu/workers/base.py` - Abstract worker interface
 - **Container worker**: `mahavishnu/workers/container.py` - Containerized execution
+- **Cloud worker**: `mahavishnu/workers/cloud_worker.py` - ZAI/OpenAI-compatible cloud worker
+- **Task router**: `mahavishnu/workers/task_router.py` - Task classification + model selection
 - **Terminal manager**: `mahavishnu/terminal/manager.py` - Terminal session management
 - **Terminal adapters**:
   - `iterm2.py` - iTerm2 integration

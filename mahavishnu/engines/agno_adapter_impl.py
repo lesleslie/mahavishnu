@@ -59,6 +59,7 @@ class LLMProvider(str, Enum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     OLLAMA = "ollama"
+    ZAI = "zai"
 
 
 class MemoryBackend(str, Enum):
@@ -310,6 +311,8 @@ class LLMProviderFactory:
                 self._model_instance = self._create_anthropic_model(model_id)
             elif provider == LLMProvider.OLLAMA:
                 self._model_instance = self._create_ollama_model(model_id)
+            elif provider == LLMProvider.ZAI:
+                self._model_instance = self._create_zai_model(model_id)
             else:
                 raise AgnoError(
                     f"Unsupported LLM provider: {provider}",
@@ -388,6 +391,31 @@ class LLMProviderFactory:
         return Ollama(
             id=model_id,
             host=self.config.base_url or "http://localhost:11434",
+            temperature=self.config.temperature,
+            max_tokens=self.config.max_tokens,
+        )
+
+    def _create_zai_model(self, model_id: str) -> Any:
+        """Create ZAI model instance using OpenAI-compatible coding plan endpoint.
+
+        Uses ZAI's GLM models through the coding plan subscription endpoint.
+        Base URL: https://api.z.ai/api/coding/paas/v4
+
+        Args:
+            model_id: ZAI model identifier (e.g., 'glm-4.7', 'glm-5.1', 'glm-4.5-air')
+
+        Returns:
+            OpenAIChat model instance configured for ZAI
+        """
+        from agno.models.openai import OpenAIChat
+
+        api_key = self._get_api_key("ZAI_API_KEY", self.config.api_key_env)
+
+        return OpenAIChat(
+            id=model_id,
+            api_key=api_key,
+            base_url=self.config.base_url
+            or "https://api.z.ai/api/coding/paas/v4",
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
         )

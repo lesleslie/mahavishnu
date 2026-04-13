@@ -25,7 +25,7 @@ Crackerjack is the standard quality-control and CI/CD gate across Mahavishnu and
 | [Dhara](https://github.com/lesleslie/dhara) | Curator | 8683 | Persistent object storage with ACID |
 | [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder | 8678 | Session lifecycle & knowledge graphs |
 | [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector | 8676 | Quality gates & CI/CD validation |
-| [Oneiric](https://github.com/lesleslie/oneiric) | Resolver | N/A | Conflict resolution library |
+| [Oneiric](https://github.com/lesleslie/oneiric) | Foundation | N/A | Component resolution, lifecycle management, adapter system, action kits, domain bridges, runtime orchestration, remote delivery |
 
 ## Features
 
@@ -689,7 +689,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- **Oneiric** - Configuration and logging framework
+- **Oneiric** - Platform foundation: component resolution, lifecycle management, adapter system, action kits, domain bridges, runtime orchestration, remote delivery
 - **FastMCP** - MCP server implementation
 - **mcp-common** - Shared MCP types and contracts
 - **Crackerjack** - Quality control and testing

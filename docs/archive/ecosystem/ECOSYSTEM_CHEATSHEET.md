@@ -49,7 +49,7 @@ ______________________________________________________________________
 | **inspector** | crackerjack | Quality control | 8676 | 🟢 |
 | **manager** | session-buddy | Session management | 8678 | 🟢 |
 | **orchestrator** | mahavishnu | Workflow orchestration | 8680 | 🟢 |
-| **resolver** | oneiric | Component resolution | 8681 | 🟢 |
+| **foundation** | oneiric | Platform foundation | 8681 | 🟢 |
 | **diviner** | akosha | Analytics engine | 8682 | 🟢 |
 | **tool** | mailgun-mcp | Email integration | - | 🟢 |
 | **tool** | raindropio-mcp | Bookmark manager | - | 🟢 |
@@ -183,7 +183,7 @@ ______________________________________________________________________
 
 1. **mahavishnu**: 97/100 (Orchestration)
 2. **mcp-common**: 95/100 (Foundation)
-3. **oneiric**: 93/100 (Resolver)
+3. **oneiric**: 93/100 (Foundation)
 4. **crackerjack**: 92/100 (Quality)
 5. **session-buddy**: 90/100 (Management)
 
@@ -259,7 +259,7 @@ ______________________________________________________________________
 ├── mahavishnu/README.md              # Orchestration
 ├── session-buddy/README.md           # Session management
 ├── crackerjack/README.md             # Quality control
-├── oneiric/README.md                 # Component resolution
+├── oneiric/README.md                 # Platform foundation
 ├── akosha/README.md                  # Analytics
 ├── fastblocks/README.md              # Web framework
 └── ...

@@ -1,24 +1,51 @@
 # Mahavishnu - LLM Model Configuration
-# Generated: 2026-02-25
+# Updated: 2026-04-13 (LLM Provider Reconfiguration v2)
 #
-# GLOBAL REGISTRY: ~/Projects/bodai/config/models.yaml
-# This file contains Mahavishnu-specific overrides and references.
-# For the complete model registry, see the global config.
+# ZAI GLM models are the primary cloud provider via coding plan subscription.
+# Ollama remains the local fallback. Bifrost is optional (activated via env vars).
 #
 # Related files:
-#   - bodai/config/models.yaml      - Global ecosystem model registry
-#   - mahavishnu/workers/ollama.py  - OllamaWorker implementation
+#   - mahavishnu/workers/ollama.py        - OllamaWorker implementation
+#   - mahavishnu/engines/agno_adapter_impl.py - Agno LLMProviderFactory
+#   - config/bifrost/config.template.json - Bifrost gateway config
 
 # =============================================================================
-# MAHAVISHNU-SPECIFIC OVERRIDES
+# CLOUD PROVIDERS (priority order)
 # =============================================================================
 
-# Ollama configuration for Mahavishnu workers
+# ZAI - Primary cloud provider (coding plan subscription)
+zai:
+  enabled: true
+  base_url: "https://api.z.ai/api/coding/paas/v4"
+  api_key: "${ZAI_API_KEY}"
+  priority: 1
+  timeout: 30
+  max_retries: 2
+  task_routing:
+    CODE_GENERATION: "glm-4.7"
+    CODE_REVIEW: "glm-4.7"
+    DEBUGGING: "glm-4.7"
+    REFACTORING: "glm-4.7"
+    TESTING: "glm-4.7"
+    REASONING: "glm-5.1"
+    GENERAL: "glm-4.5"
+    ANALYSIS: "glm-4.5"
+    DOCUMENTATION: "glm-4.5-air"
+    SWARM: "glm-4.5-air"
+    SWARM_FREE: "glm-4.7-flash"
+    VISION: "GLM-4.5V"
+    QUICK: "glm-4.5-air"
+  fallback:
+    subscription_exhausted: "glm-4.7-flash"
+
+# =============================================================================
+# LOCAL PROVIDER
+# =============================================================================
+
 ollama:
+  enabled: true
   base_url: "http://localhost:11434"
-
-  # Task routing used by OllamaWorker (mahavishnu/workers/ollama.py)
-  # This maps task categories to specific models
+  priority: 2
   task_routing:
     CODE_GENERATION: "qwen2.5-coder:7b"
     CODE_REVIEW: "qwen2.5-coder:7b"
@@ -34,20 +61,28 @@ ollama:
     GENERAL: "qwen2.5-coder:7b"
 
 # =============================================================================
-# PENDING UPDATES
+# OPTIONAL PROVIDERS
 # =============================================================================
-# When Qwen 3.5 becomes available on Ollama, update task_routing to:
-#
-# task_routing:
-#   CODE_GENERATION: "qwen3.5-35b-a3b"
-#   CODE_REVIEW: "qwen3.5-35b-a3b"
-#   DEBUGGING: "qwen3.5-35b-a3b"
-#   REFACTORING: "qwen3.5-35b-a3b"
-#   DOCUMENTATION: "qwen3.5-35b-a3b"
-#   TESTING: "qwen3.5-35b-a3b"
-#   REASONING: "qwen3.5-35b-a3b"
-#   CREATIVE: "qwen3.5-35b-a3b"
-#   ANALYSIS: "qwen3.5-35b-a3b"
-#   VISION: "qwen3.5-35b-a3b"  # Native multimodal - replaces llava
-#   EMBEDDING: "nomic-embed-text"  # Keep separate embedding model
-#   GENERAL: "qwen3.5-35b-a3b"
+
+# Bifrost gateway (activated via env vars only)
+bifrost:
+  enabled: false
+  base_url: "http://127.0.0.1:8471"
+  activate_env: "BIFROST_BASE_URL"
+
+# Qwen (Alibaba Cloud) - future provider
+qwen:
+  enabled: false
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  api_key: "${QWEN_API_KEY}"
+  task_routing:
+    CODE_GENERATION: "qwen-coder-plus"
+    GENERAL: "qwen-plus"
+
+# =============================================================================
+# DEFAULTS
+# =============================================================================
+
+default_provider: "zai"
+fallback_chain: ["zai", "ollama"]
+free_tier_provider: "zai-free"

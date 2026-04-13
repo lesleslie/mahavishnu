@@ -66,7 +66,7 @@ The Mahavishnu ecosystem is a comprehensive platform for orchestrating AI agents
 | Project | Role | Status | Description |
 |---------|------|--------|-------------|
 | **[Mahavishnu](#mahavishnu)** | Orchestrator | ✅ Production | Multi-engine workflow coordination with AI-powered optimizations |
-| **[Oneiric](#oneiric)** | Resolver | ✅ Production | Component resolution, lifecycle management, remote delivery |
+| **[Oneiric](#oneiric)** | Foundation | ✅ Production | Component resolution, lifecycle management, adapter system, action kits, domain bridges, runtime orchestration, remote delivery |
 | **[mcp-common](#mcp-common)** | Foundation | ✅ Production | Shared MCP utilities and base classes |
 
 ### Supporting Projects
@@ -190,12 +190,15 @@ uv run mahavishnu execute "Build authentication system"
 
 ### Oneiric
 
-**Component resolution and lifecycle management**
+**Platform foundation: component resolution, lifecycle management, adapter system, action kits, domain bridges, runtime orchestration, remote delivery**
 
 - **Deterministic Resolver**: 4-tier precedence with explainable decisions
 - **Lifecycle Orchestration**: Activation, health, binding, cleanup, rollback
+- **Adapter System**: 18+ adapter domains (storage, database, cache, queue, LLM, messaging, secrets, etc.)
+- **Action Kits**: 17+ built-in automation actions (compression, workflow, security, data, etc.)
+- **Domain Bridges**: Services, tasks, events, workflows with shared lifecycle controls
+- **Runtime Orchestration**: Watchers, telemetry, scheduler, notifications, checkpoints
 - **Remote Manifests**: ED25519-signed component delivery from CDN
-- **Domain Coverage**: Adapters, Services, Tasks, Events, Workflows, Actions
 - **Quality Score**: 95/100 (Production Ready)
 
 ```bash
@@ -390,7 +393,7 @@ graph TB
 
     subgraph "Core Layer"
         MHV[Mahavishnu<br/>Orchestrator]
-        ONE[Oneiric<br/>Resolver]
+        ONE[Oneiric<br/>Foundation]
         DH[Dhara<br/>Curator]
     end
 
@@ -469,7 +472,7 @@ sequenceDiagram
 ### Project-Specific
 
 - **[Mahavishnu Docs](README.md)** - Multi-engine orchestration
-- **[Oneiric Docs](/Users/les/Projects/oneiric/README.md)** - Component resolution
+- **[Oneiric Docs](/Users/les/Projects/oneiric/README.md)** - Platform foundation
 - **[Session-Buddy Docs](/Users/les/Projects/session-buddy/README.md)** - Session management
 - **[Akosha Docs](/Users/les/Projects/akosha/README.md)** - Memory aggregation
 - **[Crackerjack Docs](/Users/les/Projects/crackerjack/README.md)** - Quality control

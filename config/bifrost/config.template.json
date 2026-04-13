@@ -22,17 +22,17 @@
       {
         "id": "route-think",
         "name": "Think Tasks",
-        "description": "Route high-reasoning tasks to the stronger Anthropic-compatible model.",
+        "description": "Route high-reasoning tasks to ZAI's strongest coding plan model.",
         "enabled": true,
         "cel_expression": "headers[\"x-bf-task\"] == \"think\" || headers[\"x-bf-route\"] == \"think\"",
         "targets": [
           {
-            "provider": "anthropic",
-            "model": "GLM-4.7",
+            "provider": "zai-openai",
+            "model": "glm-5.1",
             "weight": 1
           }
         ],
-        "fallbacks": ["anthropic/GLM-4.5-Air"],
+        "fallbacks": ["zai-openai/glm-4.7"],
         "scope": "global",
         "priority": 10
       },
@@ -44,12 +44,12 @@
         "cel_expression": "headers[\"x-bf-task\"] == \"long_context\" || headers[\"x-bf-route\"] == \"long_context\" || headers[\"x-bf-task\"] == \"longContext\" || headers[\"x-bf-route\"] == \"longContext\"",
         "targets": [
           {
-            "provider": "anthropic",
-            "model": "GLM-4.7",
+            "provider": "zai-openai",
+            "model": "glm-5-turbo",
             "weight": 1
           }
         ],
-        "fallbacks": ["anthropic/GLM-4.5-Air"],
+        "fallbacks": ["zai-openai/glm-4.7"],
         "scope": "global",
         "priority": 20
       },
@@ -61,51 +61,51 @@
         "cel_expression": "headers[\"x-bf-task\"] == \"web_search\" || headers[\"x-bf-route\"] == \"web_search\" || headers[\"x-bf-task\"] == \"webSearch\" || headers[\"x-bf-route\"] == \"webSearch\"",
         "targets": [
           {
-            "provider": "anthropic",
-            "model": "GLM-4.7",
+            "provider": "zai-openai",
+            "model": "glm-5-turbo",
             "weight": 1
           }
         ],
-        "fallbacks": ["anthropic/GLM-4.5-Air"],
+        "fallbacks": ["zai-openai/glm-4.7"],
         "scope": "global",
         "priority": 30
       },
       {
         "id": "route-image",
         "name": "Vision Tasks",
-        "description": "Route explicitly labeled multimodal or vision chat requests to the vision-capable Anthropic-compatible models.",
+        "description": "Route explicitly labeled multimodal or vision chat requests to ZAI vision models.",
         "enabled": true,
         "cel_expression": "headers[\"x-bf-task\"] == \"image\" || headers[\"x-bf-route\"] == \"image\"",
         "targets": [
           {
-            "provider": "anthropic",
+            "provider": "zai-openai",
             "model": "GLM-4.5V",
             "weight": 0.6
           },
           {
-            "provider": "anthropic",
+            "provider": "zai-openai",
             "model": "GLM-4.6V",
             "weight": 0.4
           }
         ],
-        "fallbacks": ["anthropic/GLM-4.5-Air"],
+        "fallbacks": ["zai-openai/glm-4.5-air"],
         "scope": "global",
         "priority": 40
       },
       {
         "id": "route-background",
         "name": "Background Tasks",
-        "description": "Keep low-priority background work on the cheaper Anthropic-compatible model.",
+        "description": "Keep low-priority background work on the cheaper ZAI model.",
         "enabled": true,
         "cel_expression": "headers[\"x-bf-task\"] == \"background\" || headers[\"x-bf-route\"] == \"background\" || headers[\"x-bf-task\"] == \"cheap\" || headers[\"x-bf-route\"] == \"cheap\" || headers[\"x-bf-task\"] == \"high_throughput\" || headers[\"x-bf-route\"] == \"high_throughput\"",
         "targets": [
           {
-            "provider": "anthropic",
-            "model": "GLM-4.5-Air",
+            "provider": "zai-openai",
+            "model": "glm-4.7-flashx",
             "weight": 1
           }
         ],
-        "fallbacks": ["anthropic/GLM-4.7"],
+        "fallbacks": ["zai-openai/glm-4.5-air"],
         "scope": "global",
         "priority": 50
       }
@@ -135,11 +135,10 @@
           "name": "zai-openai-primary",
           "value": "env.ZAI_API_KEY",
           "models": [
-            "glm-5",
-            "glm-5-turbo",
-            "glm-4.7",
-            "glm-4.5",
-            "glm-4.5-air"
+            "GLM-5.1",
+            "GLM-5-Turbo",
+            "GLM-4.7",
+            "GLM-4.5-Air"
           ],
           "weight": 1.0
         }
@@ -154,8 +153,8 @@
           "chat_completion_stream": true
         },
         "request_path_overrides": {
-          "chat_completion": "/api/paas/v4/chat/completions",
-          "chat_completion_stream": "/api/paas/v4/chat/completions"
+          "chat_completion": "/api/coding/paas/v4/chat/completions",
+          "chat_completion_stream": "/api/coding/paas/v4/chat/completions"
         }
       }
     },

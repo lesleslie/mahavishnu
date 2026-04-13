@@ -29,7 +29,7 @@ This is an internal development tool, not a public product. It should feel like 
 │  │              TUI Agent Bridge (asyncio.Queue)         │  │
 │  └──────────────────────┬───────────────────────────────┘  │
 └─────────────────────────┼───────────────────────────────────┘
-                          │ MCP Client (SSE)
+                          │ MCP Client (streamable HTTP)
 ┌─────────────────────────┼───────────────────────────────────┐
 │                  Mahavishnu MCP Server                     │
 │  ┌──────────┐  ┌──────────┐  ┌───────────┐  ┌──────────┐    │
@@ -47,7 +47,7 @@ This is an internal development tool, not a public product. It should feel like 
 
 ### Topology: TUI is an MCP Client, Not an Embed
 
-The TUI connects to Mahavishnu's MCP server as a **client** (via SSE on `localhost:8677`). It does not embed the Mahavishnu server process. This means:
+The TUI connects to Mahavishnu's MCP server as a **client** (via streamable HTTP on `localhost:8680/mcp`). It does not embed the Mahavishnu server process. This means:
 
 - TUI and Mahavishnu can run independently
 - Mahavishnu crash does not kill the TUI (reconnect or degrade)
@@ -123,7 +123,7 @@ Agno must be configured with `memory_backend="none"` to prevent split-brain pers
 
 | Shortcut | Action | Notes |
 |----------|--------|-------|
-| `/` | Command palette | Switch panels, change model, trigger workflows. Tab-completion for commands |
+| `Ctrl+K` | Command palette | Fuzzy search across commands, models, skills, workflows, and settings |
 | `Ctrl+Shift+D` | Diff preview | Last edit vs current state. Avoids Ctrl+D which conflicts with EOF/exit |
 | `Ctrl+G` | Go to file:line | Standard IDE shortcut |
 | `Tab` | Cycle panels | Chat → File Viewer → Tools → Activity |
@@ -133,6 +133,19 @@ Agno must be configured with `memory_backend="none"` to prevent split-brain pers
 | `Escape` | Dismiss/cancel | Dismiss palette, cancel streaming, exit approval prompt. Consistent semantics across all modes |
 | `?` | Contextual help | Describe what agent is doing, available shortcuts — without leaving chat |
 | `Ctrl+\` | Cancel mid-stream | Interrupt Agno agent mid-generation (graceful abort) |
+
+### Built-in Slash Commands
+
+Slash commands are reserved for fast session controls inside the chat input:
+
+- `/status` - Show model, token usage, and connection state
+- `/compact` - Trigger message compaction immediately
+- `/usage` - Show recent token and tool usage
+- `/think` - Switch reasoning depth or verbosity mode
+- `/skill <name>` - Load a skill into the current conversation
+- `/skills` - List available skills and availability
+- `/restart` - Restart the current session or runtime
+- `/stop` - Stop the current session or agent loop
 
 ### Split-Pane Mode (Phase 2)
 
@@ -146,13 +159,13 @@ Horizontal split for side-by-side diff comparison alongside File Viewer. Vertica
 
 | Feature | Location | Notes |
 |---------|----------|-------|
-| RBAC permissions | `mahavishnu/core/permissions.py` | 10 repo-level operations. **Gap: needs tool-level permissions** (RUN_SHELL, WRITE_FILE, EDIT_FILE, EXECUTE_TOOL) |
+| RBAC permissions | `mahavishnu/core/permissions.py` | 10 repo-level operations. **Gap: needs tool-level permissions** (RUN_SHELL, RUN_NETWORK, WRITE_FILE, EDIT_FILE, EXECUTE_TOOL) |
 | Approval manager | `mahavishnu/core/approval_manager.py` | `ApprovalRequest`, `ApprovalOption`, `ApprovalResult`. **Gap: only for version_bump/publish, not agent actions** |
 | Progress tracker | `mahavishnu/core/progress_tracker.py` | `ProgressState`, `ProgressTask`. **Gap: internal only, not wired to TUI** |
 | Tree-sitter tools | `mahavishnu/mcp/tools/treesitter_tools.py` | parse, extract_symbols, batch_analyze. **Gap: needs find_references and go_to_definition** |
 | PyCharm MCP tools | `mahavishnu/mcp/tools/pycharm_tools.py` | 8 tools with subprocess fallback. diagnostics, search, open_file, reformat, refactor, replace, list_problems |
 | Pool / worker management | `mahavishnu/pools/` | Multi-pool orchestration, memory aggregation, WebSocket broadcasting |
-| Session-Buddy integration | `mahavishnu/session/checkpoint.py` | **Entirely stub — needs real SB calls. See Phase 0** |
+| Session-Buddy integration | `mahavishnu/session/checkpoint.py` | Single session wrapper and Session-Buddy bridge; use local fallback when SB is unavailable |
 | Worktree audit | `mahavishnu/core/worktree_audit.py` | Structured audit events for worktree operations |
 | OpenClaw gateway | `mahavishnu/workers/openclaw_gateway.py` | Transport-agnostic interface for running tasks through OpenClaw |
 | WebSocket infrastructure | `mahavishnu/websocket/server.py` | Real-time events on port 8690 |
@@ -163,7 +176,7 @@ Horizontal split for side-by-side diff comparison alongside File Viewer. Vertica
 |---------|--------|-----------|
 | Context compaction | Adapt from `nanobot/agent/memory.py` Consolidator | Rewrite for Agno message format. LLM-summarized archiving of old messages. **Phase 1 — not a footnote** |
 | Streaming token output | Agno native + Textual `RichLog` | Wire Agno's streaming callback to asyncio.Queue → Textual reactive watcher. Throttle at ~60fps to avoid layout thrashing |
-| Diff preview | Textual `Diff` widget + PyCharm MCP | Textual renders visual diff. Add `pycharm_get_file_diff` for richer analysis |
+| Diff preview | Custom Textual diff view + PyCharm MCP | Render unified/split diffs in a custom widget; add `pycharm_get_file_diff` for richer analysis |
 | Live diagnostics | PyCharm MCP tools (already exist) | Wire `pycharm_run_diagnostics` to file viewer panel |
 | Tool-level permissions | Extend `mahavishnu/core/permissions.py` | Risk-tiered model: read-only, write, destructive, network. See Section 9 |
 | Agent action approvals | Extend `mahavishnu/core/approval_manager.py` | Add shell/edit/execute approval types. Wire to TUI inline approval prompt |
@@ -171,7 +184,7 @@ Horizontal split for side-by-side diff comparison alongside File Viewer. Vertica
 | Tree-sitter navigation | Complete `mahavishnu/mcp/tools/treesitter_tools.py` | Add `find_references` and `go_to_definition` tools |
 | Symbol refactor | PyCharm `refactor_symbol` (already exists) | Expose as agent tool, show diff before/after |
 | Multi-provider LLM | Agno native support | Anthropic, OpenAI, Ollama. User switches via command palette |
-| Session persistence | Agno session store + Mahavishnu SB wrapper | Mahavishnu calls `track_session_start` before Agno, `track_session_end` after |
+| Session persistence | Mahavishnu session wrapper + Session-Buddy bridge | Mahavishnu calls `track_session_start` before Agno, `track_session_end` after; Agno itself does not persist session state |
 | File I/O agent tools | New — first-class tools for Agno | `read_file`, `write_file`, `edit_file`, `list_directory`, `search_files`. Agent needs these before tree-sitter or PyCharm tools |
 | MCP tool server for Agno | New — expose Mahavishnu MCP tools to Agno | Agno adapter is task-level, not tool-level. Need an MCP tool server bridge |
 
@@ -230,8 +243,8 @@ The TUI follows the same pattern: enrich with IDE when PyCharm is open, work ful
 
 ### Diff Preview Strategy
 
-1. **Textual's built-in `Diff` widget** — always available, no dependency. Renders unified or split diffs with syntax highlighting
-2. **PyCharm `get_file_differences`** — richer analysis when IDE is open (rename detection, move detection, semantic diffs)
+1. **Custom Textual diff view** — always available, no dependency. Renders unified or split diffs with syntax highlighting
+2. **PyCharm `pycharm_get_file_diff`** — richer analysis when IDE is open (rename detection, move detection, semantic diffs)
 3. **After agent edits**: run `pycharm_run_diagnostics` → show problems → show diff → user approves or requests fix
 
 ---
@@ -406,6 +419,7 @@ class Permission(StrEnum):
     RUN_SHELL_READ = "run_shell_read"       # ls, cat, find, git status
     RUN_SHELL_WRITE = "run_shell_write"     # install, build, format
     RUN_SHELL_DESTRUCTIVE = "run_shell_destructive"  # rm, drop, truncate
+    RUN_NETWORK = "run_network"             # curl, fetch, outbound requests
     WRITE_FILE = "write_file"
     EDIT_FILE = "edit_file"
     EXECUTE_TOOL = "execute_tool"
@@ -430,6 +444,7 @@ Shell commands are classified by pattern matching:
 - **Read-only** (auto-approve in permissive mode): `ls`, `cat`, `find`, `git status`, `echo`
 - **Write** (always ask): `pip install`, `uv run`, `ruff format`, file writes
 - **Destructive** (always ask with confirmation): `rm -rf`, `drop table`, `chmod 777`, `curl | bash`
+- **Network** (always ask or policy-gated): `curl`, `fetch`, outbound requests, webhooks
 - **Deny-list** (never execute): commands matching known dangerous patterns
 
 ### Tool Input Validation
@@ -471,9 +486,13 @@ The Nanobot `Consolidator` (lines 346-511) depends on nanobot-specific abstracti
 - [ ] TUI Agent Bridge: `asyncio.Queue` message-passing between Textual and Agno background task
 - [ ] Agno agent loop wired to chat panel with `memory_backend="none"`
 - [ ] Streaming token output via `RichLog` — throttle at ~60fps, trim old content
-- [ ] Basic tool execution (echo results to tools panel)
-- [ ] `/` command palette with tab completion for model switching and basic settings
-- [ ] Session-Buddy lifecycle wrapper (start, checkpoint, end) — optional, degrade gracefully
+- [ ] Basic tool execution with approval gating (echo results to tools panel)
+- [ ] `Ctrl+K` command palette with fuzzy search and command taxonomy
+- [ ] Built-in slash commands for session controls (`/status`, `/compact`, `/usage`, `/think`, `/restart`, `/stop`)
+- [ ] Inline approval prompts for shell and file-edit actions
+- [ ] Session-Buddy lifecycle wrapper (start, checkpoint, end) — optional runtime integration with graceful fallback
+- [ ] Startup `doctor` check and first-run onboarding flow
+- [ ] Activity feed panel with task/flow state, retries, and completion events
 - [ ] `?` contextual help key
 - [ ] `Ctrl+\` cancel mid-stream (graceful abort of Agno generation)
 - [ ] Context compaction (adapted from Nanobot Consolidator) — not deferred to later phases
@@ -482,15 +501,16 @@ The Nanobot `Consolidator` (lines 346-511) depends on nanobot-specific abstracti
 ### Phase 2: File Viewer & Diff
 
 - [ ] File viewer panel with syntax highlighting (via Pygments)
-- [ ] Textual `Diff` widget for before/after comparison (horizontal split mode)
+- [ ] Custom Textual diff view for before/after comparison (horizontal split mode)
 - [ ] PyCharm diagnostics integration (wire to file viewer)
 - [ ] Tree-sitter-based symbol extraction for navigation
-- [ File open/jump-to-line commands
+- [ ] File open/jump-to-line commands
+- [ ] Skill registry browser with search, browse, install, update, list, and versioning
+- [ ] Session history and parity/compatibility checks for reproducible workflows
 - [ ] Vertical split mode (chat left, file viewer right)
 
-### Phase 3: Permissions & Approvals
+### Phase 3: Permissions & Audit
 
-- [ ] Inline approval prompts in TUI (shell commands, file edits)
 - [ ] Approval context sanitization (strip secrets before logging)
 - [ ] Audit logging via worktree audit trail
 - [ ] Configurable permission profiles (strict, normal, permissive)
@@ -503,7 +523,6 @@ The Nanobot `Consolidator` (lines 346-511) depends on nanobot-specific abstracti
 - [ ] Pool/worker management panel
 - [ ] Prefect workflow trigger from TUI
 - [ ] LlamaIndex RAG query from chat
-- [ ] Activity feed panel (background events, pool status, workflow stages)
 
 ---
 
@@ -524,7 +543,7 @@ The Nanobot `Consolidator` (lines 346-511) depends on nanobot-specific abstracti
 | Ollama | No | Local LLM option, not required |
 | Anthropic API | No | Remote LLM option |
 | OpenAI API | No | Remote LLM option |
-| Session-Buddy | Phase 1+ | Session lifecycle tracking. Optional in Phase 0, required from Phase 1 with graceful degradation |
+| Session-Buddy | Phase 1+ | Session lifecycle tracking. Optional runtime integration; live checkpointing is enabled when available |
 | Mahavishnu | Yes | Orchestration layer (MCP server) |
 
 ### Startup Resilience
@@ -542,7 +561,7 @@ The TUI must handle three Mahavishnu connection states:
 1. **Compaction trigger threshold** — What token count triggers Agno message compaction? configurable per-model?
 2. **Approval scope for multi-tool calls** — Approve once per logical action group with summary (Section 9)
 3. **File viewer auto-scroll** — Only jump on explicit user request, not auto-follow
-4. **PyCharm diff tool name** — Need to verify the exact JetBrains MCP tool name for file differences
+4. **PyCharm diff payload shape** — Need to verify the exact JetBrains MCP response shape for file differences
 5. **Command palette scope** — Start with frequently used tools only, expand based on usage patterns
 6. **Activity feed persistence** — In-memory only, or persist to Session-Buddy?
 
@@ -587,3 +606,46 @@ Six expert reviews were conducted on the initial draft. Below is a summary of th
 20. **Cancel mid-stream** — `Ctrl+\` for graceful Agno generation abort.
 21. **Skills System (Section 7)** — Nanobot's `SkillsLoader` adopted wholesale. Markdown-based progressive disclosure (metadata → SKILL.md → bundled resources). Zero code coupling, stdlib-only deps. TUI gains `/skill` and `/skills` commands.
 22. **Subagents (Section 8)** — Background task execution via separate `asyncio.Task` loops. Nanobot's `SubagentManager` adapted for Agno. Deferred to Phase 2 due to async complexity (task management, result routing, cancellation).
+
+---
+
+## 13. Addendum: Possible Additions From OpenClaw, ClawHub, and Claw Code
+
+The items below are intentionally **non-blocking**. They are useful references from the broader repo scan and can be adopted later without changing the core architecture or phase gates.
+
+### Core Additions
+
+Highest-priority non-v1 candidates to revisit first:
+- Vector search for skills and lore, so the command palette can surface relevant skills quickly
+
+### Deferred V2 Candidates
+
+The following items are intentionally out of v1 scope but kept here for later review:
+
+- `/think` as a user-facing reasoning-depth control beyond the baseline session controls
+- `/restart` and `/stop` if they are treated as convenience commands rather than required controls
+- `/activation` or equivalent mode toggle for switching behaviors or agent modes
+- Prefect workflow trigger from the TUI
+- LlamaIndex RAG query from chat
+- Advanced subagents beyond the basic Phase 2 model
+- Container-first or isolated-run execution mode for dangerous or heavy operations
+- A more explicit task orchestration view if the implementation grows beyond simple chat plus tools
+- Skill registry install/update/versioning beyond browse/search/list
+- Session history and parity/compatibility checks
+- Tree-sitter `find_references` and `go_to_definition`
+- PyCharm symbol refactor integration
+- Rich task retry/recovery views
+- Expanded model switching UI beyond the core command palette
+
+### Nice-to-Have / Experimental
+
+- Optional voice or canvas-oriented surfaces if the TUI evolves into a broader control plane
+- Pin/favorite workflows for frequently used skills
+- Skill moderation workflow
+- Full task orchestration builder
+
+### Triage Guidance
+
+- Promote to core scope only if the feature is required for daily developer workflow.
+- Keep in the addendum if the feature is mostly operational, experimental, or best treated as a later-phase enhancement.
+- Prefer not to expand the initial shell until chat, tools, approvals, and file navigation are stable.

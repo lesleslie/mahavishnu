@@ -12,7 +12,7 @@ team:
   leader:
     name: "research_coordinator"
     role: "Coordinates research across sources"
-    model: "claude-sonnet-4-6"
+    model: "glm-4.7"
     instructions: |
       You are a research coordinator. Your job is to:
       1. Break down complex research questions into sub-topics
@@ -30,7 +30,7 @@ team:
   members:
     - name: "web_researcher"
       role: "Web search and content extraction"
-      model: "gpt-4o"
+      model: "glm-5-turbo"
       instructions: |
         Search the web for relevant information and extract key insights.
 
@@ -53,7 +53,7 @@ team:
 
     - name: "code_researcher"
       role: "Code analysis and documentation"
-      model: "claude-sonnet-4-6"
+      model: "glm-4.7"
       instructions: |
         Analyze codebases to understand implementation patterns and best practices.
 
@@ -76,7 +76,7 @@ team:
 
     - name: "doc_synthesizer"
       role: "Synthesizes findings into reports"
-      model: "claude-sonnet-4-6"
+      model: "glm-4.7"
       instructions: |
         Create clear, well-structured documentation from research findings.
 

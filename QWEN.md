@@ -7,7 +7,7 @@ Mahavishnu is a modular orchestration platform that provides unified interfaces 
 The project is built with Python and leverages several key technologies:
 
 - **Typer**: For the command-line interface
-- **Oneiric**: For configuration and logging
+- **Oneiric**: Platform foundation — component resolution, lifecycle management, adapter system, action kits, domain bridges, runtime orchestration, remote delivery
 - **PyYAML**: For YAML parsing
 - **FastMCP**: For the MCP server
 - **OpenTelemetry**: For observability
@@ -17,7 +17,7 @@ The project is built with Python and leverages several key technologies:
 
 Mahavishnu follows a modular architecture with the following components:
 
-- **Core**: Oneiric-powered configuration and logging
+- **Core**: Oneiric-powered configuration, logging, lifecycle management, and adapter resolution
 - **CLI**: Typer-based command-line interface
 - **Engines**: Adapters for different orchestration engines (Prefect, LlamaIndex, Agno)
 - **MCP**: Machine Learning Communication Protocol server

@@ -451,7 +451,7 @@ Mahavishnu uses a role-based taxonomy to organize repositories:
 | Role | Description | Example |
 |------|-------------|---------|
 | `orchestrator` | Coordinates workflows | mahavishnu |
-| `resolver` | Resolves components | oneiric |
+| `foundation` | Platform foundation | oneiric |
 | `manager` | Manages state | session-buddy |
 | `inspector` | Validates quality | crackerjack |
 | `builder` | Builds applications | fastblocks |
