@@ -1,10 +1,12 @@
 """Configuration Validator for Mahavishnu.
 
 Validates configuration files on startup:
-- repos.yaml structure
+- ecosystem.yaml structure (canonical source)
 - Required fields
 - Type validation
 - Helpful error messages
+
+Note: repos.yaml is legacy. Use ecosystem.yaml as the single source of truth.
 """
 
 from __future__ import annotations
@@ -115,12 +117,24 @@ class ConfigValidator:
     def validate_repos_yaml(self, repos_path: str | Path) -> ConfigValidationReport:
         """Validate repos.yaml file.
 
+        .. deprecated::
+            Use ecosystem.yaml instead. repos.yaml is legacy and will be
+            removed in a future release.
+
         Args:
             repos_path: Path to repos.yaml
 
         Returns:
             Validation report
         """
+        import warnings
+
+        warnings.warn(
+            "repos.yaml is deprecated. Use settings/ecosystem.yaml as the "
+            "single source of truth for repository configuration.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.report = ConfigValidationReport(valid=True)
         path = Path(repos_path)
 

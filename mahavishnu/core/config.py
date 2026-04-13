@@ -1512,7 +1512,7 @@ class MahavishnuSettings(BaseSettings):
     Example YAML (settings/mahavishnu.yaml):
         server_name: "Mahavishnu Orchestrator"
         log_level: INFO
-        repos_path: ~/repos.yaml
+        repos_path: settings/ecosystem.yaml
         pools:
             enabled: true
             default_type: mahavishnu
