@@ -442,12 +442,21 @@ Validation: Full test suite passes after deletion.
 - Normalize `_main_cli.py` command registrations.
 - Update remaining docs that reference `repos.yaml` as primary.
 
-### Phase 2: Adapter Layer Cleanup (Medium Risk)
+### Phase 2: Adapter Layer Cleanup (Medium Risk) -- COMPLETED
 
-- Add deprecation warnings to `engines/*_adapter.py` wildcard re-export wrappers.
-- Add deprecation warning to `adapters/rag/llamaindex_adapter.py`.
-- Map all consumers of `adapters/workflow/prefect_adapter.py` and confirm migration.
-- Update component matrix to reflect full implementation status of Prefect, LlamaIndex, Agno.
+- [x] Add deprecation warnings to `engines/*_adapter.py` wildcard re-export wrappers.
+- [x] Add deprecation warning to `adapters/rag/llamaindex_adapter.py`.
+- [x] Map all consumers of `adapters/workflow/prefect_adapter.py` and confirm migration (already deprecated in prior work).
+- [x] Update component matrix to reflect full implementation status of Prefect, LlamaIndex, Agno.
+
+**Import graph summary** (consumers of wrapper modules):
+- `engines/agno_adapter.py`: 15+ consumers (tests, adapters/__init__.py, examples, docs)
+- `engines/prefect_adapter.py`: 12+ consumers (tests, adapters/__init__.py, docs)
+- `engines/llamaindex_adapter.py`: 5 consumers (tests, adapters/rag/llamaindex_adapter.py)
+- `adapters/rag/llamaindex_adapter.py`: 3 consumers (adapters/rag/__init__.py, adapters/__init__.py, tests)
+- `adapters/workflow/prefect_adapter.py`: Already had deprecation warning from prior work
+
+All wrappers now emit `DeprecationWarning` at import time directing to the `*_impl` modules (engines) or `engines.*` (adapters).
 
 ### Phase 3: Monitoring And Health Consolidation (Medium Risk)
 
