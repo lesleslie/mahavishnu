@@ -458,13 +458,33 @@ Validation: Full test suite passes after deletion.
 
 All wrappers now emit `DeprecationWarning` at import time directing to the `*_impl` modules (engines) or `engines.*` (adapters).
 
-### Phase 3: Monitoring And Health Consolidation (Medium Risk)
+### Phase 3: Monitoring And Health Consolidation (Medium Risk) -- COMPLETED
 
-- Merge `dashboard_config.py` into `monitoring.py`.
-- Merge `health_schemas.py` into `health.py`.
-- Merge `monitoring_infra.py` into `monitoring.py`.
-- Assess `health_integration.py` for overlap with `health_tools.py` MCP surface.
-- Assess `routing_alerts.py` for overlap with consolidated alerting in `monitoring.py`.
+- [x] Merge `dashboard_config.py` into `monitoring.py`.
+- [x] Merge `health_schemas.py` into `health.py`.
+- [x] Merge `monitoring_infra.py` into `monitoring.py`.
+- [x] Assess `health_integration.py` for overlap with `health_tools.py` MCP surface.
+- [x] Assess `routing_alerts.py` for overlap with consolidated alerting in `monitoring.py`.
+
+**Merge summary:**
+
+- `dashboard_config.py` (77 lines) → canonical models now in `monitoring.py`; wrapper emits `DeprecationWarning`
+- `monitoring_infra.py` (233 lines) → `MetricsExporter`, `Metric`, `MetricType`, `ComponentHealthChecker`, `ComponentHealthResult` now in `monitoring.py`; wrapper provides backward-compatible `AlertManager` subclass with sync `get_active_alerts()`
+- `health_schemas.py` (129 lines) → all 6 Pydantic models (`HealthStatus`, `DependencyStatus`, `HealthResponse`, `ReadyResponse`, `HealthCheckResult`, `WaitResult`) now defined in `health.py`; wrapper emits `DeprecationWarning`
+
+**Note:** `monitoring_infra.HealthCheckResult` (a dataclass) was renamed to `ComponentHealthResult` in `monitoring.py` to avoid collision with the Pydantic `HealthCheckResult` from `health_schemas.py` (now in `health.py`). The wrapper re-exports it under the old name for backward compatibility.
+
+**Assessment findings:**
+
+- `health_integration.py` (759 lines) provides `AdapterHealthMonitor` — a background service for periodic adapter health polling with Prometheus metrics, WebSocket broadcasting, Dhara/SQLite persistence, and StatisticalRouter integration. `health_tools.py` (518 lines) provides the MCP tool surface for on-demand health checks. These are complementary layers, not overlapping.
+- `routing_alerts.py` (538 lines) has its own `Alert`, `AlertSeverity`, `AlertType` classes focused on routing-specific concerns (adapter degradation, cost spikes, fallback patterns). `monitoring.py` has general-purpose `AlertManager` for system health, backup failures, and resource exhaustion. Both define independent alert types with shared names but different domains. **Decision: Keep separate.** A future cleanup could rename routing variants to `RoutingAlert`/`RoutingAlertSeverity` to disambiguate.
+
+**Import graph summary** (consumers of merged modules):
+- `dashboard_config.py`: 1 consumer (monitoring_infra.py) + 1 test file
+- `monitoring_infra.py`: 2 test files + monitoring_cli.py docstring reference
+- `health_schemas.py`: 12+ consumers (_main_cli.py, health.py root, health_tools.py, config_validator.py, core/health.py, 5+ test files)
+
+All wrappers pass through imports correctly with deprecation warnings. 148 tests pass across affected modules.
 
 ### Phase 4: Search And Ingestion Cleanup (Medium Risk)
 

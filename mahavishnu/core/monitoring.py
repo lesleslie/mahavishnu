@@ -1,7 +1,8 @@
 """Advanced monitoring and alerting system for Mahavishnu."""
 
 import asyncio
-from collections.abc import Callable
+from collections import defaultdict
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
@@ -15,7 +16,83 @@ from typing import Any
 
 import requests
 
+from ..core.status import HealthStatus as ComponentHealthStatus
 from ..core.workflow_state import WorkflowStatus
+
+
+# ---------------------------------------------------------------------------
+# Dashboard configuration (merged from dashboard_config.py)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class DashboardPanel:
+    """A dashboard panel."""
+
+    title: str
+    query: str
+    panel_type: str = "graph"
+    width: int = 12
+    height: int = 6
+    datasource: str = "Prometheus"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "title": self.title,
+            "query": self.query,
+            "type": self.panel_type,
+            "width": self.width,
+            "height": self.height,
+            "datasource": self.datasource,
+        }
+
+
+@dataclass
+class DashboardConfig:
+    """Dashboard configuration."""
+
+    title: str
+    panels: list[DashboardPanel] = field(default_factory=list)
+    refresh_interval: int = 30
+    tags: list[str] = field(default_factory=list)
+
+    def add_panel(self, panel: DashboardPanel) -> None:
+        self.panels.append(panel)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "title": self.title,
+            "panels": [p.to_dict() for p in self.panels],
+            "refresh_interval": self.refresh_interval,
+            "tags": self.tags,
+        }
+
+    def to_grafana_json(self) -> str:
+        grafana = {
+            "dashboard": {
+                "title": self.title,
+                "uid": self.title.lower().replace(" ", "-"),
+                "panels": [
+                    {
+                        "id": i + 1,
+                        "title": p.title,
+                        "type": p.panel_type,
+                        "gridPos": {
+                            "x": 0,
+                            "y": i * p.height,
+                            "w": p.width,
+                            "h": p.height,
+                        },
+                        "targets": [{"expr": p.query, "datasource": p.datasource}],
+                    }
+                    for i, p in enumerate(self.panels)
+                ],
+                "refresh": f"{self.refresh_interval}s",
+                "tags": self.tags,
+            },
+            "overwrite": True,
+        }
+        return json.dumps(grafana, indent=2)
 
 
 class AlertSeverity(Enum):
@@ -293,6 +370,10 @@ class AlertManager:
 
     async def get_active_alerts(self) -> list[Alert]:
         """Get all non-acknowledged alerts."""
+        return self.get_active_alerts_sync()
+
+    def get_active_alerts_sync(self) -> list[Alert]:
+        """Synchronous version of get_active_alerts."""
         return [alert for alert in self.alerts if not alert.acknowledged and alert.firing]
 
     async def _send_notifications(self, alert: Alert):
@@ -658,6 +739,184 @@ class PagerDutyNotificationChannel(NotificationChannel):
                 self.logger.info(f"PagerDuty notification sent for alert {alert.id}")
         except Exception as e:
             self.logger.error(f"Failed to send PagerDuty notification: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Monitoring infrastructure (merged from monitoring_infra.py)
+# ---------------------------------------------------------------------------
+
+
+class MetricType(Enum):
+    """Prometheus metric types."""
+
+    COUNTER = "counter"
+    GAUGE = "gauge"
+    HISTOGRAM = "histogram"
+    SUMMARY = "summary"
+
+
+@dataclass
+class Metric:
+    """A Prometheus metric."""
+
+    name: str
+    value: float
+    metric_type: MetricType
+    labels: dict[str, str] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=datetime.now)
+
+    def to_prometheus(self) -> str:
+        """Convert to Prometheus format."""
+        if self.labels:
+            labels_str = ",".join(f'{k}="{v}"' for k, v in self.labels.items())
+            return f"{self.name}{{{labels_str}}} {self.value}"
+        return f"{self.name} {self.value}"
+
+
+@dataclass
+class ComponentHealthResult:
+    """Result of a component health check.
+
+    This is the internal monitoring health result, distinct from the
+    Pydantic HealthCheckResult in health_schemas which serves API endpoints.
+    """
+
+    component: str
+    status: ComponentHealthStatus
+    message: str
+    details: dict[str, Any] = field(default_factory=dict)
+    checked_at: datetime = field(default_factory=datetime.now)
+
+    @property
+    def healthy(self) -> bool:
+        return self.status == ComponentHealthStatus.HEALTHY
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "component": self.component,
+            "status": self.status.value,
+            "healthy": self.healthy,
+            "message": self.message,
+            "details": self.details,
+            "checked_at": self.checked_at.isoformat(),
+        }
+
+
+class MetricsExporter:
+    """Exports metrics in Prometheus format."""
+
+    def __init__(self) -> None:
+        self.metrics: dict[str, Metric] = {}
+        self._counters: dict[str, float] = defaultdict(float)
+        self._gauges: dict[str, float] = {}
+        self._histograms: dict[str, list[float]] = defaultdict(list)
+
+    def register(self, metric: Metric) -> None:
+        self.metrics[metric.name] = metric
+
+    def record_counter(
+        self,
+        name: str,
+        value: float = 1.0,
+        labels: dict[str, str] | None = None,
+    ) -> None:
+        self._counters[name] += value
+
+    def set_gauge(
+        self,
+        name: str,
+        value: float,
+        labels: dict[str, str] | None = None,
+    ) -> None:
+        self._gauges[name] = value
+
+    def observe_histogram(
+        self,
+        name: str,
+        value: float,
+        labels: dict[str, str] | None = None,
+    ) -> None:
+        self._histograms[name].append(value)
+
+    def get_value(self, name: str) -> float:
+        if name in self._counters:
+            return self._counters[name]
+        if name in self._gauges:
+            return self._gauges[name]
+        return 0.0
+
+    def get_metric_names(self) -> list[str]:
+        names = set(self._counters.keys())
+        names.update(self._gauges.keys())
+        names.update(self._histograms.keys())
+        return list(names)
+
+    def export_prometheus(self) -> str:
+        lines: list[str] = []
+        for name, value in self._counters.items():
+            lines.append(f"{name} {value}")
+        for name, value in self._gauges.items():
+            lines.append(f"{name} {value}")
+        for name, values in self._histograms.items():
+            if values:
+                lines.append(f"{name}_count {len(values)}")
+                lines.append(f"{name}_sum {sum(values)}")
+        return "\n".join(lines)
+
+
+class ComponentHealthChecker:
+    """Performs health checks on system components."""
+
+    def __init__(self) -> None:
+        self.checks: dict[
+            str, Callable[[], ComponentHealthResult | Coroutine[Any, Any, ComponentHealthResult]]
+        ] = {}
+
+    def register_check(
+        self,
+        name: str,
+        check_func: Callable[[], ComponentHealthResult | Coroutine[Any, Any, ComponentHealthResult]],
+    ) -> None:
+        self.checks[name] = check_func
+
+    async def run_check(self, name: str) -> ComponentHealthResult:
+        check_func = self.checks.get(name)
+        if not check_func:
+            return ComponentHealthResult(
+                component=name,
+                status=ComponentHealthStatus.UNHEALTHY,
+                message="Check not found",
+            )
+        try:
+            result = check_func()
+            if asyncio.iscoroutine(result):
+                result = await result
+            return result
+        except Exception as e:
+            return ComponentHealthResult(
+                component=name,
+                status=ComponentHealthStatus.UNHEALTHY,
+                message=str(e),
+            )
+
+    async def run_all_checks(self) -> list[ComponentHealthResult]:
+        results: list[ComponentHealthResult] = []
+        for name in self.checks:
+            result = await self.run_check(name)
+            results.append(result)
+        return results
+
+    async def get_overall_status(self) -> ComponentHealthStatus:
+        results = await self.run_all_checks()
+        if not results:
+            return ComponentHealthStatus.HEALTHY
+        for result in results:
+            if result.status == ComponentHealthStatus.UNHEALTHY:
+                return ComponentHealthStatus.UNHEALTHY
+        for result in results:
+            if result.status == ComponentHealthStatus.DEGRADED:
+                return ComponentHealthStatus.DEGRADED
+        return ComponentHealthStatus.HEALTHY
 
 
 class MonitoringDashboard:
