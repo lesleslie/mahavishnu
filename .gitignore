@@ -181,6 +181,10 @@ data/
 .cache/mahavishnu/
 
 
+# Session logs (may contain API tokens)
+sessions/
+mahavishnu/sessions/
+
 # Production secrets (never commit)
 secrets/
 *.txt
