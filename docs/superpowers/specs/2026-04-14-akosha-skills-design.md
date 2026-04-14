@@ -141,7 +141,7 @@ Complementary but independent:
 
 ### Auto-Detection
 
-Both skills auto-detect relevant questions. Detection is heuristic-based in the SKILL.md description field -- Claude reads the description and triggers when the user's question matches the intent patterns listed. No code changes needed; the skill system handles this natively.
+Both skills auto-detect relevant questions via the SKILL.md frontmatter `description` field. Claude's skill matching reads the description and triggers when the user's question matches the intent patterns. The description must include explicit trigger phrases so the matching is reliable. No code changes needed; Claude Code's native skill system handles this.
 
 ### Fallback Strategy
 
