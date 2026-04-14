@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-04-13
+
+### Changed
+
+- 2026-04-07 07:51, 6 change(s)
+- 2026-04-07 17:29, 8 change(s)
+- 2026-04-07 19:59, 1 change(s)
+- 2026-04-08 01:38, 6 change(s)
+- 2026-04-08 03:23, 7 change(s)
+- 2026-04-08 15:08, 5 change(s)
+- 2026-04-09 02:27, 2 change(s)
+- Add deprecation warnings to adapter re-export wrappers (phase 2)
+- Execute phases 0-1 of ecosystem consolidation plan
+- Mahavishnu (quality: 66/100) - 2026-04-09 02:27:04
+- Mahavishnu (quality: 66/100) - 2026-04-13 10:04:11
+- Mahavishnu (quality: 68/100) - 2026-04-05 07:07:36
+- Mahavishnu (quality: 68/100) - 2026-04-06 09:57:06
+- Mahavishnu (quality: 68/100) - 2026-04-07 03:45:24
+- Mahavishnu (quality: 68/100) - 2026-04-07 17:26:42
+- Merge monitoring/health modules (phase 3)
+- Merge quality evaluator into scorer, assess Phase 4 targets (phase 4)
+- tui-design: revise spec with 6-expert review findings
+- tui: Add skills system and subagents sections, fix numbering
+
 ## [0.4.2] - 2026-04-04
 
 ### Changed
