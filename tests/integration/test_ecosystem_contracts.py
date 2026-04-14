@@ -16,9 +16,9 @@ from mahavishnu.core.compatibility import (
     collect_tool_versions,
     is_concrete_adapter_contract,
 )
-from mahavishnu.engines.agno_adapter import AgnoAdapter
-from mahavishnu.engines.llamaindex_adapter import LlamaIndexAdapter
-from mahavishnu.engines.prefect_adapter import PrefectAdapter
+from mahavishnu.engines.agno_adapter_impl import AgnoAdapter
+from mahavishnu.engines.llamaindex_adapter_impl import LlamaIndexAdapter
+from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
 
 
 def test_contract_matrix_covers_expected_surfaces() -> None:

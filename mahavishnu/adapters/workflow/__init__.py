@@ -1,14 +1,11 @@
 """Workflow orchestration adapters package.
 
-Note: PrefectAdapter has moved to mahavishnu.engines.prefect_adapter.
-The import from this module is deprecated but maintained for backward compatibility.
+Note: PrefectAdapter is implemented in mahavishnu.engines.prefect_adapter_impl.
 """
 
-# Import from engines module with deprecation warning
-# The deprecation warning is emitted by the workflow/prefect_adapter module
 # Handle optional dependency gracefully (prefect may not be installed)
 try:
-    from mahavishnu.adapters.workflow.prefect_adapter import PrefectAdapter
+    from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
 
     _prefect_available = True
 except ImportError:

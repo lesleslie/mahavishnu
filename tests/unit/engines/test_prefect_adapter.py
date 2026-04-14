@@ -17,7 +17,7 @@ import pytest
 from mahavishnu.core.adapters.base import AdapterCapabilities, AdapterType
 from mahavishnu.core.config import MahavishnuSettings, PrefectConfig
 from mahavishnu.core.errors import ErrorCode, PrefectError
-from mahavishnu.engines.prefect_adapter import (
+from mahavishnu.engines.prefect_adapter_impl import (
     PrefectAdapter,
     process_repository,
 )
@@ -517,7 +517,7 @@ class TestPrefectTasks:
     async def test_process_repository_handles_exception(self):
         """Test process_repository handles exceptions gracefully."""
         with patch(
-            "mahavishnu.engines.prefect_adapter.CodeGraphAnalyzer",
+            "mahavishnu.engines.prefect_adapter_impl.CodeGraphAnalyzer",
             side_effect=Exception("Analysis failed")
         ):
             result = await process_repository(

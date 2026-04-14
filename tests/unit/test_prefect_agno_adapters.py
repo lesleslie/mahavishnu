@@ -1,8 +1,5 @@
 """Tests for Prefect and Agno adapters.
 
-Note: PrefectAdapter tests now use the engines module directly.
-The adapters.workflow.prefect_adapter module is deprecated.
-
 These tests are skipped if prefect is not installed (optional dependency).
 """
 
@@ -12,13 +9,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 # Skip all Prefect tests if prefect is not installed
 prefect = pytest.importorskip("prefect", reason="prefect not installed")
 
-# Import PrefectAdapter from engines module (preferred location)
-from mahavishnu.engines.prefect_adapter import PrefectAdapter
+# Import PrefectAdapter from engines module (canonical implementation)
+from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
 from mahavishnu.core.config import PrefectConfig
 
 # Agno adapter is always available
 # Import AgnoAdapter from engines module (canonical implementation using Agno SDK)
-from mahavishnu.engines.agno_adapter import AgnoAdapter
+from mahavishnu.engines.agno_adapter_impl import AgnoAdapter
 from mahavishnu.core.adapters.base import (
     OrchestratorAdapter,
     AdapterType,

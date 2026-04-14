@@ -360,6 +360,18 @@ Mahavishnu supports a **multi-pool orchestration architecture** that enables hor
 - Cloud resource management
 - Use for: production deployments, auto-scaling workloads
 
+### Pool and Terminal Architecture
+
+Mahavishnu has three independent pool/executor abstractions with distinct ownership:
+
+| Module | Location | Purpose | Scope |
+|--------|----------|---------|-------|
+| **Multi-pool orchestration** | `mahavishnu/pools/` | Production task distribution across MahavishnuPool, SessionBuddyPool, KubernetesPool | Cross-server, auto-scaling |
+| **iTerm2 session pool** | `mahavishnu/terminal/pool.py` | macOS iTerm2 terminal session management via AppleScript | Local development only |
+| **Process pool executor** | `mahavishnu/core/process_pool_executor.py` | Generic ProcessPoolExecutor for blocking CPU-bound operations | Single-process offload |
+
+These modules share no imports or state. `pools/` is the production orchestration layer. `terminal/pool.py` is an iTerm2-specific visualization tool. `process_pool_executor.py` is a low-level utility for event loop unblocking.
+
 ### Pool CLI Commands
 
 ```bash

@@ -255,10 +255,9 @@ The repo already contains roadmap items that point in this direction, especially
   - `mahavishnu/cli/backup_cli.py` and `mahavishnu/cli/production_cli.py` -- zero importers.
   - Remove immediately.
 
-- Deprecated adapter re-export wrappers (after compatibility window)
-  - `engines/agno_adapter.py`, `engines/prefect_adapter.py`, `engines/llamaindex_adapter.py` -- 7-line wildcard imports.
-  - `adapters/rag/llamaindex_adapter.py`, `adapters/workflow/prefect_adapter.py` -- backward-compat re-exports.
-  - Remove after deprecation warnings have been in place for at least one release cycle.
+- Deprecated adapter re-export wrappers (removed in Phase 5)
+  - `engines/agno_adapter.py`, `engines/prefect_adapter.py`, `engines/llamaindex_adapter.py` -- deleted, consumers migrated to `*_impl`.
+  - `adapters/rag/llamaindex_adapter.py`, `adapters/workflow/prefect_adapter.py` -- deleted.
 
 - Low-value MCP tools identified in the retirement initiative
   - Remove or hide behind explicit opt-in.
@@ -505,12 +504,39 @@ All wrappers pass through imports correctly with deprecation warnings. 148 tests
 
 - `embeddings_oneiric.py` (366 lines): More than just configuration — it's a full `EmbeddingConfig` Pydantic model with Oneiric-compatible YAML/env loading plus an `EmbeddingService` adapter that wraps core embedding functionality. Only 1 test consumer. **Decision: Keep standalone — folding into `core/config.py` would bloat the config module with embedding-specific logic.**
 
-### Phase 5: Retirement (Low Risk, After Phases 0-4 Are Stable)
+### Phase 5: Retirement -- COMPLETED
 
-- Remove deprecated adapter re-export wrappers (after compatibility window).
-- Remove legacy docs references to `repos.yaml` as primary.
-- Remove wrapper commands kept only for historical names.
-- Document pool/terminal ownership split clearly.
+- [x] Remove deprecated adapter re-export wrappers.
+- [x] Migrate all consumers (tests, `__init__.py` packages, patch targets) to `*_impl` modules.
+- [x] Delete wrapper test file (`test_prefect_adapter_deprecated.py`).
+- [x] Document pool/terminal ownership split in CLAUDE.md.
+- [x] Skip `repos.yaml` docs cleanup — repos.yaml is reinstated as fallback for standalone users.
+
+**Deletion summary:**
+
+- `engines/agno_adapter.py` (33 lines) — deleted, consumers migrated to `engines/agno_adapter_impl.py`
+- `engines/prefect_adapter.py` (33 lines) — deleted, consumers migrated to `engines/prefect_adapter_impl.py`
+- `engines/llamaindex_adapter.py` (33 lines) — deleted, consumers migrated to `engines/llamaindex_adapter_impl.py`
+- `adapters/rag/llamaindex_adapter.py` (45 lines) — deleted, consumers migrated to `engines/llamaindex_adapter_impl.py`
+- `adapters/workflow/prefect_adapter.py` (67 lines) — deleted, consumers migrated to `engines/prefect_adapter_impl.py`
+- `tests/unit/test_prefect_adapter_deprecated.py` — deleted (tested the deleted wrapper module)
+
+**Consumer migration summary:**
+
+- `engines/__init__.py`: Lazy imports now point to `*_impl` modules directly
+- `adapters/__init__.py`: PrefectAdapter, AgnoAdapter from `engines/*_impl`; LlamaIndexAdapter from `engines/llamaindex_adapter_impl`
+- `adapters/ai/__init__.py`: AgnoAdapter from `engines/agno_adapter_impl`
+- `adapters/rag/__init__.py`: LlamaIndexAdapter from `engines/llamaindex_adapter_impl`
+- `adapters/workflow/__init__.py`: PrefectAdapter from `engines/prefect_adapter_impl`
+- 14 test files: Import statements and `unittest.mock.patch()` target strings updated
+
+**Bonus fix:** `test_engines/test_prefect_adapter.py::test_process_repository_handles_exception` was failing on main because its `patch()` target pointed at the wrapper module instead of `*_impl`. The wrapper re-export didn't propagate the mock to the impl's internal import. Migration to `*_impl` fixed this latent bug.
+
+**Wrapper commands assessment:** No wrapper commands found for retirement. The `mahavishnu/backup_cli.py` and `mahavishnu/production_cli.py` are canonical command implementations (152 and 97 lines), not wrappers. Their duplicates in `mahavishnu/cli/` were already deleted in Phase 0.
+
+**Pool/terminal documentation:** Added "Pool and Terminal Architecture" section to CLAUDE.md documenting the ownership split between `pools/` (production orchestration), `terminal/pool.py` (iTerm2 visualization), and `core/process_pool_executor.py` (CPU-bound offload).
+
+**Test validation:** 429 passed, 99 failed (all pre-existing), 12 skipped across adapter-related tests. No new failures introduced. 1 pre-existing failure fixed by correct patch target migration.
 
 ## Prerequisites For Execution
 

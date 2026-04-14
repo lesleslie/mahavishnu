@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from mahavishnu.adapters.rag.llamaindex_adapter import LlamaIndexAdapter
+from mahavishnu.engines.llamaindex_adapter_impl import LlamaIndexAdapter
 from mahavishnu.core.adapters.base import (
     OrchestratorAdapter,
     AdapterType,

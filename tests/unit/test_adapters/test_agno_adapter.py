@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from mahavishnu.core.errors import AgnoError, ConfigurationError
-from mahavishnu.engines.agno_adapter import (
+from mahavishnu.engines.agno_adapter_impl import (
     AgnoAdapter,
     AgnoAdapterConfig,
     AgnoLLMConfig,

@@ -8,14 +8,11 @@ Provides adapters for different workflow orchestration engines:
 - Pgvector: Production vector storage with HNSW indexing
 
 Each adapter implements the OrchestratorAdapter interface.
-
-Note: PrefectAdapter is now imported from the engines module.
-The adapters.workflow.prefect_adapter module is deprecated.
 """
 
-# Import PrefectAdapter from engines module (preferred location)
+# Import PrefectAdapter from engines module (canonical implementation)
 try:
-    from mahavishnu.engines.prefect_adapter import PrefectAdapter
+    from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
 
     _prefect_available = True
 except ImportError:
@@ -24,7 +21,7 @@ except ImportError:
 
 # Import AgnoAdapter from engines module (canonical implementation using Agno SDK)
 try:
-    from mahavishnu.engines.agno_adapter import AgnoAdapter
+    from mahavishnu.engines.agno_adapter_impl import AgnoAdapter
 
     _agno_available = True
 except ImportError:
@@ -46,7 +43,7 @@ from mahavishnu.adapters.pgvector_adapter import (
     PgvectorAdapter,
     PgvectorSettings,
 )
-from mahavishnu.adapters.rag.llamaindex_adapter import LlamaIndexAdapter
+from mahavishnu.engines.llamaindex_adapter_impl import LlamaIndexAdapter
 
 __all__ = [
     "AgentResult",

@@ -7,9 +7,9 @@ import inspect
 from mahavishnu.core.adapter_discovery import AdapterMetadata as DiscoveryAdapterMetadata
 from mahavishnu.core.adapters.base import AdapterMetadata, OrchestratorAdapter
 from mahavishnu.core.adapters.worker import WorkerOrchestratorAdapter
-from mahavishnu.engines.agno_adapter import AgnoAdapter
-from mahavishnu.engines.llamaindex_adapter import LlamaIndexAdapter
-from mahavishnu.engines.prefect_adapter import PrefectAdapter
+from mahavishnu.engines.agno_adapter_impl import AgnoAdapter
+from mahavishnu.engines.llamaindex_adapter_impl import LlamaIndexAdapter
+from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
 
 
 def test_adapter_metadata_is_re_exported() -> None:

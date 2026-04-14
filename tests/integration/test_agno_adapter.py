@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from mahavishnu.core.errors import ConfigurationError
-from mahavishnu.engines.agno_adapter import AgnoAdapter
+from mahavishnu.engines.agno_adapter_impl import AgnoAdapter
 
 
 @pytest.mark.asyncio
@@ -21,7 +21,7 @@ async def test_agno_adapter_requires_llm_configuration():
     adapter = AgnoAdapter(config)
 
     # Mock Agno import to force fallback
-    with patch("mahavishnu.engines.agno_adapter.AgnoAdapter._create_agent") as mock_create:
+    with patch("mahavishnu.engines.agno_adapter_impl.AgnoAdapter._create_agent") as mock_create:
         # Make _create_agent fall back to MockAgent
         async def side_effect(task_type):
             # Return None to trigger ImportError in _create_agent
@@ -124,7 +124,7 @@ async def test_agno_adapter_parallel_execution():
     adapter = AgnoAdapter(config)
 
     # Force MockAgent usage by mocking _create_agent to trigger ImportError
-    with patch("mahavishnu.engines.agno_adapter.AgnoAdapter._create_agent") as mock_create:
+    with patch("mahavishnu.engines.agno_adapter_impl.AgnoAdapter._create_agent") as mock_create:
 
         async def side_effect(task_type):
             # Return None to trigger MockAgent fallback
@@ -165,7 +165,7 @@ async def test_agno_adapter_handles_errors_gracefully():
     adapter = AgnoAdapter(config)
 
     # Mock a repository that raises an error
-    with patch("mahavishnu.engines.agno_adapter.AgnoAdapter._process_single_repo") as mock_process:
+    with patch("mahavishnu.engines.agno_adapter_impl.AgnoAdapter._process_single_repo") as mock_process:
 
         async def side_effect(repo, task):
             return {"repo": repo, "status": "failed", "error": "Test error", "task_id": "test"}

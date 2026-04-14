@@ -43,8 +43,8 @@ sys_modules = {
 # Apply mocks before importing adapter
 with patch.dict("sys.modules", sys_modules):
     # Make LLAMAINDEX_AVAILABLE True in the imported module
-    import mahavishnu.engines.llamaindex_adapter as adapter_module
-    from mahavishnu.engines.llamaindex_adapter import (
+    import mahavishnu.engines.llamaindex_adapter_impl as adapter_module
+    from mahavishnu.engines.llamaindex_adapter_impl import (
         LlamaIndexAdapter,
         LlamaIndexEmbeddingError,
         LlamaIndexIndexNotFoundError,
@@ -304,15 +304,15 @@ async def test_ingest_repository_success(mock_config, sample_repo_path, mock_cod
 
     with (
         patch(
-            "mahavishnu.engines.llamaindex_adapter.SimpleDirectoryReader",
+            "mahavishnu.engines.llamaindex_adapter_impl.SimpleDirectoryReader",
             return_value=mock_reader,
         ),
         patch(
-            "mahavishnu.engines.llamaindex_adapter.VectorStoreIndex",
+            "mahavishnu.engines.llamaindex_adapter_impl.VectorStoreIndex",
             return_value=mock_index,
         ),
         patch(
-            "mahavishnu.engines.llamaindex_adapter.CodeGraphAnalyzer",
+            "mahavishnu.engines.llamaindex_adapter_impl.CodeGraphAnalyzer",
             return_value=mock_code_graph_analyzer,
         ),
     ):
@@ -353,11 +353,11 @@ async def test_ingest_repository_no_documents(mock_config, tmp_path, mock_code_g
 
     with (
         patch(
-            "mahavishnu.engines.llamaindex_adapter.SimpleDirectoryReader",
+            "mahavishnu.engines.llamaindex_adapter_impl.SimpleDirectoryReader",
             return_value=mock_reader,
         ),
         patch(
-            "mahavishnu.engines.llamaindex_adapter.CodeGraphAnalyzer",
+            "mahavishnu.engines.llamaindex_adapter_impl.CodeGraphAnalyzer",
             return_value=mock_code_graph_analyzer,
         ),
     ):
@@ -388,15 +388,15 @@ async def test_ingest_repository_with_code_graph_enrichment(
 
     with (
         patch(
-            "mahavishnu.engines.llamaindex_adapter.SimpleDirectoryReader",
+            "mahavishnu.engines.llamaindex_adapter_impl.SimpleDirectoryReader",
             return_value=mock_reader,
         ),
         patch(
-            "mahavishnu.engines.llamaindex_adapter.VectorStoreIndex",
+            "mahavishnu.engines.llamaindex_adapter_impl.VectorStoreIndex",
             return_value=mock_index,
         ),
         patch(
-            "mahavishnu.engines.llamaindex_adapter.CodeGraphAnalyzer",
+            "mahavishnu.engines.llamaindex_adapter_impl.CodeGraphAnalyzer",
             return_value=mock_code_graph_analyzer,
         ),
     ):
@@ -419,11 +419,11 @@ async def test_ingest_repository_with_custom_file_types(
 
     with (
         patch(
-            "mahavishnu.engines.llamaindex_adapter.SimpleDirectoryReader",
+            "mahavishnu.engines.llamaindex_adapter_impl.SimpleDirectoryReader",
             return_value=mock_reader,
         ),
         patch(
-            "mahavishnu.engines.llamaindex_adapter.CodeGraphAnalyzer",
+            "mahavishnu.engines.llamaindex_adapter_impl.CodeGraphAnalyzer",
             return_value=mock_code_graph_analyzer,
         ),
     ):
@@ -738,7 +738,7 @@ async def test_ingest_retry_on_transient_failure(mock_config, sample_repo_path):
     mock_reader.load_data = flaky_reader
 
     with patch(
-        "mahavishnu.engines.llamaindex_adapter.SimpleDirectoryReader",
+        "mahavishnu.engines.llamaindex_adapter_impl.SimpleDirectoryReader",
         return_value=mock_reader,
     ):
         result = await adapter._ingest_repository(
@@ -1064,11 +1064,11 @@ class TestStructuredErrorInResponses:
 
         with (
             patch(
-                "mahavishnu.engines.llamaindex_adapter.SimpleDirectoryReader",
+                "mahavishnu.engines.llamaindex_adapter_impl.SimpleDirectoryReader",
                 return_value=mock_reader,
             ),
             patch(
-                "mahavishnu.engines.llamaindex_adapter.CodeGraphAnalyzer",
+                "mahavishnu.engines.llamaindex_adapter_impl.CodeGraphAnalyzer",
                 return_value=mock_code_graph_analyzer,
             ),
         ):

@@ -15,12 +15,12 @@ __all__ = [
 
 # Mapping of export name -> (relative_module, attribute_name)
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "AgnoAdapter": (".agno_adapter", "AgnoAdapter"),
+    "AgnoAdapter": (".agno_adapter_impl", "AgnoAdapter"),
     "GoalDrivenTeamFactory": (".goal_team_factory", "GoalDrivenTeamFactory"),
     "ParsedGoal": (".goal_team_factory", "ParsedGoal"),
     "SkillConfig": (".goal_team_factory", "SkillConfig"),
-    "LlamaIndexAdapter": (".llamaindex_adapter", "LlamaIndexAdapter"),
-    "PrefectAdapter": (".prefect_adapter", "PrefectAdapter"),
+    "LlamaIndexAdapter": (".llamaindex_adapter_impl", "LlamaIndexAdapter"),
+    "PrefectAdapter": (".prefect_adapter_impl", "PrefectAdapter"),
 }
 
 

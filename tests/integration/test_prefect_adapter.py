@@ -7,7 +7,7 @@ import pytest
 # Skip if prefect is not installed (optional dependency)
 prefect = pytest.importorskip("prefect")
 
-from mahavishnu.engines.prefect_adapter import PrefectAdapter, process_repository
+from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter, process_repository
 
 
 @pytest.mark.asyncio
@@ -20,7 +20,7 @@ async def test_process_repository_dynamic_quality_score():
     repo_path = "/fake/repo"
 
     # Patch the code graph analyzer to return predictable results
-    with patch("mahavishnu.engines.prefect_adapter.CodeGraphAnalyzer") as mock_analyzer_class:
+    with patch("mahavishnu.engines.prefect_adapter_impl.CodeGraphAnalyzer") as mock_analyzer_class:
         # Setup mock analyzer
         mock_analyzer = MagicMock()
         mock_analyzer_class.return_value = mock_analyzer
@@ -81,7 +81,7 @@ async def test_process_repository_quality_check_integration():
     task_spec = {"type": "quality_check", "id": "qc_task"}
     repo_path = "/fake/repo"
 
-    with patch("mahavishnu.engines.prefect_adapter.QualityControl") as mock_qc_class:
+    with patch("mahavishnu.engines.prefect_adapter_impl.QualityControl") as mock_qc_class:
         # Setup mock QC
         mock_qc = MagicMock()
         mock_qc_class.return_value = mock_qc
@@ -108,7 +108,7 @@ async def test_prefect_adapter_real_flow_run_ids():
     adapter = PrefectAdapter(config)
 
     # Mock Prefect client
-    with patch("mahavishnu.engines.prefect_adapter.get_client") as mock_get_client:
+    with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
         mock_client = AsyncMock()
         mock_get_client.return_value.__aenter__.return_value = mock_client
         mock_client.api_url = "http://prefect.local"

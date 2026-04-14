@@ -28,7 +28,7 @@ from mahavishnu.core.config import (
     MemoryBackend,
 )
 from mahavishnu.core.errors import AgnoError, ConfigurationError, ErrorCode
-from mahavishnu.engines.agno_adapter import (
+from mahavishnu.engines.agno_adapter_impl import (
     AgentRunResult,
     AgnoAdapter,
     LLMProviderFactory,

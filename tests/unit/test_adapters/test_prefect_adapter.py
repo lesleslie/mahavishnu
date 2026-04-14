@@ -20,7 +20,7 @@ import pytest
 # Skip if prefect is not installed (optional dependency)
 prefect = pytest.importorskip("prefect", reason="prefect not installed")
 
-from mahavishnu.engines.prefect_adapter import (
+from mahavishnu.engines.prefect_adapter_impl import (
     PrefectAdapter,
     process_repositories_flow,
     process_repository,
@@ -195,7 +195,7 @@ def test_prefect_adapter_initialization_with_none_config():
 async def test_process_repository_code_sweep(sample_repo_path, mock_code_graph_analyzer):
     """Test processing a single repository for code sweep."""
     with patch(
-        "mahavishnu.engines.prefect_adapter.CodeGraphAnalyzer",
+        "mahavishnu.engines.prefect_adapter_impl.CodeGraphAnalyzer",
         return_value=mock_code_graph_analyzer,
     ):
         result = await process_repository(
@@ -213,7 +213,7 @@ async def test_process_repository_code_sweep_complexity_analysis(
 ):
     """Test code sweep identifies complex functions."""
     with patch(
-        "mahavishnu.engines.prefect_adapter.CodeGraphAnalyzer",
+        "mahavishnu.engines.prefect_adapter_impl.CodeGraphAnalyzer",
         return_value=mock_code_graph_analyzer,
     ):
         result = await process_repository(
@@ -241,7 +241,7 @@ async def test_process_repository_code_sweep_complexity_analysis(
 @pytest.mark.asyncio
 async def test_process_repository_quality_check(sample_repo_path, mock_qc_checker):
     """Test processing repository for quality check."""
-    with patch("mahavishnu.engines.prefect_adapter.QualityControl", return_value=mock_qc_checker):
+    with patch("mahavishnu.engines.prefect_adapter_impl.QualityControl", return_value=mock_qc_checker):
         result = await process_repository(
             repo_path=sample_repo_path, task_spec={"type": "quality_check", "id": "test_qc"}
         )
@@ -366,7 +366,7 @@ async def test_adapter_execute_code_sweep(prefect_config, sample_repo_path):
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
     mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter.get_client", return_value=mock_client):
+    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
         result = await adapter.execute(
             task={"type": "code_sweep", "id": "test_123"}, repos=[sample_repo_path]
         )
@@ -407,7 +407,7 @@ async def test_adapter_execute_multiple_repos(prefect_config, tmp_path):
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
     mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter.get_client", return_value=mock_client):
+    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
         result = await adapter.execute(task={"type": "code_sweep", "id": "test_multi"}, repos=repos)
 
         assert result["repos_processed"] == 3
@@ -456,7 +456,7 @@ async def test_adapter_execute_with_failures(prefect_config, tmp_path):
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
     mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter.get_client", return_value=mock_client):
+    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
         result = await adapter.execute(
             task={"type": "code_sweep", "id": "test_partial"}, repos=repos
         )
@@ -484,7 +484,7 @@ async def test_adapter_execute_flow_failure(prefect_config, sample_repo_path):
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
     mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter.get_client", return_value=mock_client):
+    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
         result = await adapter.execute(
             task={"type": "code_sweep", "id": "test_flow_fail"}, repos=[sample_repo_path]
         )
@@ -502,7 +502,7 @@ async def test_adapter_execute_exception_handling(prefect_config, sample_repo_pa
     mock_client = AsyncMock()
     mock_client.create_run.side_effect = Exception("Prefect connection failed")
 
-    with patch("mahavishnu.engines.prefect_adapter.get_client", return_value=mock_client):
+    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
         result = await adapter.execute(
             task={"type": "code_sweep", "id": "test_exception"}, repos=[sample_repo_path]
         )
@@ -552,7 +552,7 @@ async def test_execute_retry_on_transient_failure(prefect_config, sample_repo_pa
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
     mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter.get_client", return_value=mock_client):
+    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
         result = await adapter.execute(
             task={"type": "code_sweep", "id": "test_retry"}, repos=[sample_repo_path]
         )
@@ -631,7 +631,7 @@ async def test_flow_run_id_tracking(prefect_config, sample_repo_path):
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
     mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter.get_client", return_value=mock_client):
+    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
         result = await adapter.execute(
             task={"type": "code_sweep", "id": "test_tracking"}, repos=[sample_repo_path]
         )
@@ -664,7 +664,7 @@ async def test_flow_run_url_generation(prefect_config, sample_repo_path):
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
     mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter.get_client", return_value=mock_client):
+    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
         result = await adapter.execute(
             task={"type": "code_sweep", "id": "test_url"}, repos=[sample_repo_path]
         )
@@ -697,7 +697,7 @@ async def test_execute_with_empty_repo_list(prefect_config):
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
     mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter.get_client", return_value=mock_client):
+    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
         result = await adapter.execute(task={"type": "code_sweep", "id": "test_empty"}, repos=[])
 
         assert result["repos_processed"] == 0
@@ -729,7 +729,7 @@ async def test_execute_with_missing_task_id(prefect_config, sample_repo_path):
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
     mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter.get_client", return_value=mock_client):
+    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
         result = await adapter.execute(
             task={"type": "code_sweep"},  # No id
             repos=[sample_repo_path],
@@ -778,7 +778,7 @@ async def test_full_prefect_workflow(prefect_config, sample_repo_path, mock_code
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
     mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter.get_client", return_value=mock_client):
+    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
         result = await adapter.execute(
             task={
                 "type": "code_sweep",

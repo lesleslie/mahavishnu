@@ -15,7 +15,7 @@ import pytest
 
 from mahavishnu.core.config import PrefectConfig
 from mahavishnu.core.errors import PrefectError
-from mahavishnu.engines.prefect_adapter import PrefectAdapter
+from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
 from mahavishnu.engines.prefect_registry import (
     FlowRegistry,
     get_flow_registry,
