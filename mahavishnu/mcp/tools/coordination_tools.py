@@ -33,18 +33,7 @@ async def coord_list_issues(
     repo: str | None = None,
     assignee: str | None = None,
 ) -> list[dict[str, Any]]:
-    """
-    List cross-repository issues with optional filtering.
-
-    Args:
-        status: Filter by issue status (pending, in_progress, blocked, resolved, closed)
-        priority: Filter by priority level (critical, high, medium, low)
-        repo: Filter by repository nickname
-        assignee: Filter by assignee username
-
-    Returns:
-        List of issues matching the filters with all details
-    """
+    """List cross-repository issues with optional filtering."""
     mgr = _get_manager()
 
     # Convert status string to enum if provided
@@ -63,15 +52,7 @@ async def coord_list_issues(
 
 @mcp.tool()
 async def coord_get_issue(issue_id: str) -> dict[str, Any]:
-    """
-    Get detailed information about a specific issue.
-
-    Args:
-        issue_id: Issue identifier (e.g., ISSUE-001)
-
-    Returns:
-        Complete issue details including dependencies, blocking, and metadata
-    """
+    """Get detailed information about a specific issue."""
     mgr = _get_manager()
     issue = mgr.get_issue(issue_id)
 
@@ -92,22 +73,7 @@ async def coord_create_issue(
     target: str | None = None,
     labels: list[str] | None = None,
 ) -> dict[str, Any]:
-    """
-    Create a new cross-repository issue.
-
-    Args:
-        title: Issue title
-        description: Detailed issue description
-        repos: List of repository nicknames affected by this issue
-        priority: Priority level (critical, high, medium, low)
-        severity: Severity level (bug, feature, migration, etc.)
-        assignee: Assignee username
-        target: Target completion date (ISO 8601 format)
-        labels: Labels for categorization
-
-    Returns:
-        Created issue details including auto-generated ID
-    """
+    """Create a new cross-repository issue."""
     mgr = _get_manager()
 
     # Generate issue ID
@@ -155,17 +121,7 @@ async def coord_update_issue(
     status: str | None = None,
     priority: str | None = None,
 ) -> dict[str, Any]:
-    """
-    Update an existing issue.
-
-    Args:
-        issue_id: Issue identifier
-        status: New status (pending, in_progress, blocked, resolved, closed)
-        priority: New priority (critical, high, medium, low)
-
-    Returns:
-        Updated issue details
-    """
+    """Update an existing issue."""
     mgr = _get_manager()
 
     updates = {}
@@ -195,15 +151,7 @@ async def coord_update_issue(
 
 @mcp.tool()
 async def coord_close_issue(issue_id: str) -> dict[str, Any]:
-    """
-    Close an issue.
-
-    Args:
-        issue_id: Issue identifier
-
-    Returns:
-        Closed issue details
-    """
+    """Close an issue."""
     mgr = _get_manager()
     mgr.update_issue(issue_id, {"status": "closed"})
     mgr.save()
@@ -218,17 +166,7 @@ async def coord_list_todos(
     repo: str | None = None,
     assignee: str | None = None,
 ) -> list[dict[str, Any]]:
-    """
-    List todo items with optional filtering.
-
-    Args:
-        status: Filter by todo status (pending, in_progress, blocked, completed, cancelled)
-        repo: Filter by repository nickname
-        assignee: Filter by assignee username
-
-    Returns:
-        List of todos matching the filters
-    """
+    """List todo items with optional filtering."""
     mgr = _get_manager()
 
     # Convert status string to enum if provided
@@ -247,15 +185,7 @@ async def coord_list_todos(
 
 @mcp.tool()
 async def coord_get_todo(todo_id: str) -> dict[str, Any]:
-    """
-    Get detailed information about a specific todo.
-
-    Args:
-        todo_id: Todo identifier (e.g., TODO-001)
-
-    Returns:
-        Complete todo details including acceptance criteria
-    """
+    """Get detailed information about a specific todo."""
     mgr = _get_manager()
     todo = mgr.get_todo(todo_id)
 
@@ -277,23 +207,7 @@ async def coord_create_todo(
     labels: list[str] | None = None,
     acceptance_criteria: list[str] | None = None,
 ) -> dict[str, Any]:
-    """
-    Create a new todo item.
-
-    Args:
-        task: Task description
-        description: Detailed task description
-        repo: Repository nickname where this task should be executed
-        estimate_hours: Estimated time to complete (in hours)
-        priority: Priority level (critical, high, medium, low)
-        assignee: Assignee username
-        blocked_by: List of issue/todo IDs blocking this task
-        labels: Labels for categorization
-        acceptance_criteria: Criteria that must be met for completion
-
-    Returns:
-        Created todo details including auto-generated ID
-    """
+    """Create a new todo item."""
     mgr = _get_manager()
 
     # Generate todo ID
@@ -338,15 +252,7 @@ async def coord_create_todo(
 
 @mcp.tool()
 async def coord_complete_todo(todo_id: str) -> dict[str, Any]:
-    """
-    Mark a todo as completed.
-
-    Args:
-        todo_id: Todo identifier
-
-    Returns:
-        Completed todo details
-    """
+    """Mark a todo as completed."""
     mgr = _get_manager()
 
     todos_data = mgr._coordination.get("todos", [])
@@ -364,15 +270,7 @@ async def coord_complete_todo(todo_id: str) -> dict[str, Any]:
 
 @mcp.tool()
 async def coord_get_blocking_issues(repo: str) -> list[dict[str, Any]]:
-    """
-    Get all issues blocking a specific repository.
-
-    Args:
-        repo: Repository nickname
-
-    Returns:
-        List of issues that affect the repository and are not resolved
-    """
+    """Get all issues blocking a specific repository."""
     mgr = _get_manager()
     blocking_issues = mgr.get_blocking_issues(repo)
     return [issue.model_dump(mode="json") for issue in blocking_issues]
@@ -382,16 +280,7 @@ async def coord_get_blocking_issues(repo: str) -> list[dict[str, Any]]:
 async def coord_check_dependencies(
     consumer: str | None = None,
 ) -> dict[str, Any]:
-    """
-    Validate inter-repository dependencies.
-
-    Args:
-        consumer: Optional consumer repository to filter by
-
-    Returns:
-        Dictionary with validation results including total, satisfied,
-        unsatisfied counts, and detailed dependency information
-    """
+    """Validate inter-repository dependencies."""
     mgr = _get_manager()
     results = mgr.check_dependencies(consumer=consumer)
     return results
@@ -399,16 +288,7 @@ async def coord_check_dependencies(
 
 @mcp.tool()
 async def coord_get_repo_status(repo: str) -> dict[str, Any]:
-    """
-    Get comprehensive coordination status for a repository.
-
-    Args:
-        repo: Repository nickname
-
-    Returns:
-        Dictionary with issues, todos, dependencies, blocking info,
-        and comprehensive status details
-    """
+    """Get comprehensive coordination status for a repository."""
     mgr = _get_manager()
     status = mgr.get_repo_status(repo)
 
@@ -432,16 +312,7 @@ async def coord_list_plans(
     status: str | None = None,
     repo: str | None = None,
 ) -> list[dict[str, Any]]:
-    """
-    List cross-repository plans with optional filtering.
-
-    Args:
-        status: Filter by plan status (draft, active, on_hold, completed, cancelled)
-        repo: Filter by repository nickname
-
-    Returns:
-        List of plans matching the filters
-    """
+    """List cross-repository plans with optional filtering."""
     mgr = _get_manager()
     plans = mgr.list_plans(status=status, repo=repo)
     return [plan.model_dump(mode="json") for plan in plans]
@@ -453,17 +324,7 @@ async def coord_list_dependencies(
     provider: str | None = None,
     dependency_type: str | None = None,
 ) -> list[dict[str, Any]]:
-    """
-    List inter-repository dependencies with optional filtering.
-
-    Args:
-        consumer: Filter by consumer repository
-        provider: Filter by provider repository
-        dependency_type: Filter by dependency type (runtime, development, mcp, test, documentation)
-
-    Returns:
-        List of dependencies matching the filters
-    """
+    """List inter-repository dependencies with optional filtering."""
     mgr = _get_manager()
     deps = mgr.list_dependencies(
         consumer=consumer, provider=provider, dependency_type=dependency_type

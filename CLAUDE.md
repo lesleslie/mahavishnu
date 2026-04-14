@@ -479,9 +479,9 @@ repos:
 ```yaml
 server_name: "Mahavishnu Orchestrator"
 adapters:
-  prefect: true     # Stub implementation
+  prefect: true     # Fully implemented
   llamaindex: true  # Fully implemented
-  agno: true        # Stub implementation
+  agno: true        # Fully implemented
 qc:
   enabled: true
   min_score: 80
@@ -545,6 +545,16 @@ See `docs/adr/` for full Architecture Decision Records:
 ## MCP Server Tools
 
 All MCP tools are registered in `mahavishnu/mcp/tools/` using FastMCP decorators. See `docs/MCP_TOOLS_SPECIFICATION.md` for complete tool specifications including parameters, returns, and error handling.
+
+### Tool Profile System
+
+Tools are gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable:
+
+- `full` (default): All 14 tool groups (~174 tools)
+- `standard`: Core 7 groups (terminal, pool, worker, messaging, git, session-buddy)
+- `minimal`: Health probes only
+
+Profile configuration is in `mahavishnu/mcp/tools/profiles.py`. A `discover_tools(query)` meta-tool is always registered so Claude can find unloaded tools.
 
 ## Security
 

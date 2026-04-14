@@ -55,43 +55,7 @@ def register_search_tools(mcp: FastMCP) -> None:
         lexical_weight: float = 0.3,
         min_score: float = 0.5,
     ) -> list[dict[str, Any]]:
-        """Search across documents using hybrid semantic + lexical search.
-
-        This tool combines vector similarity search (semantic) with PostgreSQL
-        full-text search (lexical) for optimal retrieval quality.
-
-        Args:
-            query: Search query string
-            repository: Optional repository filter (e.g., "mahavishnu", "session-buddy")
-            limit: Maximum number of results (default: 20)
-            semantic_weight: Weight for semantic search (0.0-1.0, default: 0.7)
-            lexical_weight: Weight for lexical search (0.0-1.0, default: 0.3)
-            min_score: Minimum combined score threshold (0.0-1.0, default: 0.5)
-
-        Returns:
-            List of search results, each containing:
-            - id: Document UUID
-            - source_type: Type of source (task, run, document, etc.)
-            - title: Document title (if available)
-            - content: Document content
-            - semantic_score: Vector similarity score (0.0-1.0)
-            - lexical_score: Full-text search score (0.0-1.0)
-            - combined_score: Weighted combined score (0.0-1.0)
-            - repository: Repository name
-            - metadata: Additional metadata
-            - created_at: Creation timestamp
-            - updated_at: Last update timestamp
-
-        Example:
-            results = await hybrid_search(
-                query="API authentication implementation",
-                repository="mahavishnu",
-                limit=10
-            )
-
-            for result in results:
-                print(f"{result['title']}: {result['combined_score']:.3f}")
-        """
+        """Search across documents using hybrid semantic + lexical search."""
         try:
             # Create config with custom weights
             config = HybridSearchConfig(
@@ -136,33 +100,7 @@ def register_search_tools(mcp: FastMCP) -> None:
         source_type: str = "document",
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Index a document for hybrid search.
-
-        This tool indexes a document by:
-        1. Storing the document in search.documents
-        2. Generating and storing an embedding in search.document_embeddings
-
-        Args:
-            doc_id: Document UUID (string format)
-            title: Document title
-            content: Document content
-            repository: Repository name (optional)
-            source_type: Source type (default: "document")
-            metadata: Additional metadata (optional)
-
-        Returns:
-            Success response with document ID and indexing status
-
-        Example:
-            result = await index_document(
-                doc_id="550e8400-e29b-41d4-a716-446655440000",
-                title="API Documentation",
-                content="This document describes the REST API...",
-                repository="mahavishnu",
-                source_type="document",
-                metadata={"category": "api"}
-            )
-        """
+        """Index a document for hybrid search."""
         try:
             # Parse UUID
             doc_uuid = UUID(doc_id)
@@ -206,26 +144,7 @@ def register_search_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def delete_document(doc_id: str) -> dict[str, Any]:
-        """Delete a document from the search index.
-
-        This removes both the document and its embedding from the search index.
-
-        Args:
-            doc_id: Document UUID (string format)
-
-        Returns:
-            Success response with deletion status
-
-        Example:
-            result = await delete_document(
-                doc_id="550e8400-e29b-41d4-a716-446655440000"
-            )
-
-            if result["deleted"]:
-                print("Document deleted successfully")
-            else:
-                print("Document not found")
-        """
+        """Delete a document from the search index."""
         try:
             # Parse UUID
             doc_uuid = UUID(doc_id)
@@ -263,34 +182,7 @@ def register_search_tools(mcp: FastMCP) -> None:
         query: str = "",
         limit: int = 50,
     ) -> list[dict[str, Any]]:
-        """Search documents within a specific repository.
-
-        This is a convenience tool for repository-scoped searches. If query is empty,
-        it returns recent documents from the repository (lexical-only search).
-
-        Args:
-            repository: Repository name (required)
-            query: Search query (optional, returns recent docs if empty)
-            limit: Maximum number of results (default: 50)
-
-        Returns:
-            List of search results from the specified repository
-
-        Example:
-            # Search for API docs in mahavishnu repository
-            results = await search_by_repository(
-                repository="mahavishnu",
-                query="API authentication",
-                limit=10
-            )
-
-            # Get recent documents from session-buddy
-            recent = await search_by_repository(
-                repository="session-buddy",
-                query="",
-                limit=20
-            )
-        """
+        """Search documents within a specific repository."""
         try:
             engine = await get_search_engine()
 

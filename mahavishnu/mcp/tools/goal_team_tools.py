@@ -57,57 +57,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
         task: str | None = None,
         user_id: str | None = None,
     ) -> dict[str, Any]:
-        """Create an agent team from a natural language goal.
-
-        This tool parses a natural language goal and automatically creates
-        an appropriate team configuration with the right agents, skills,
-        and collaboration mode.
-
-        Args:
-            goal: Natural language description of what the team should do.
-                  Examples:
-                  - "Review this code for security issues"
-                  - "Write tests for the authentication module"
-                  - "Analyze performance bottlenecks in the API"
-            name: Optional team name (auto-generated if not provided).
-                  Example: "security_review_team"
-            mode: Optional collaboration mode. One of:
-                  - "coordinate": Leader distributes tasks to specialists
-                  - "route": Single agent selected based on expertise
-                  - "broadcast": All agents work simultaneously
-                  Default is selected based on goal intent.
-            auto_run: If True, immediately run the team with the provided task.
-                      Default is False (just create the team).
-            task: Task to run if auto_run is True. Required when auto_run=True.
-            user_id: Optional user ID for WebSocket event routing.
-
-        Returns:
-            Dictionary with:
-            - success: Whether team creation succeeded
-            - team_id: Unique team identifier (if created successfully)
-            - config: Team configuration details
-            - parsed_goal: How the goal was interpreted
-            - run_result: Execution results (only if auto_run=True)
-            - error: Error details (if failed)
-
-        Example:
-            ```python
-            # Create a team from a goal
-            result = await team_from_goal(
-                goal="Review this code for security issues",
-                name="security_review"
-            )
-            print(f"Team ID: {result['team_id']}")
-
-            # Create and immediately run a team
-            result = await team_from_goal(
-                goal="Write comprehensive tests for the API module",
-                auto_run=True,
-                task="Generate unit tests for all public endpoints"
-            )
-            print(f"Result: {result['run_result']}")
-            ```
-        """
+        """Create an agent team from a natural language goal."""
         # Get metrics instance for recording
         metrics = get_goal_team_metrics()
         # Get WebSocket server for broadcasting (optional)
@@ -484,37 +434,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def parse_goal(goal: str, user_id: str | None = None) -> dict[str, Any]:
-        """Parse a goal to see what team would be created.
-
-        This is a preview tool that shows how a goal would be interpreted
-        without actually creating a team. Useful for debugging and
-        understanding the goal parsing logic.
-
-        Args:
-            goal: Natural language goal to parse.
-                  Example: "Review this code for security vulnerabilities"
-            user_id: Optional user ID for WebSocket event routing.
-
-        Returns:
-            Dictionary with:
-            - success: Whether parsing succeeded
-            - parsed: Parsed goal details including:
-                - intent: Primary intent (review, build, test, fix, etc.)
-                - domain: Domain area (security, performance, quality, etc.)
-                - skills: Required skills extracted from the goal
-                - confidence: Parsing confidence score (0.0-1.0)
-                - method: How parsing was done ("pattern" or "llm")
-            - suggested_team: What team configuration would be created
-            - error: Error details (if failed)
-
-        Example:
-            ```python
-            result = await parse_goal("Review this code for security issues")
-            print(f"Intent: {result['parsed']['intent']}")
-            print(f"Skills: {result['parsed']['skills']}")
-            print(f"Confidence: {result['parsed']['confidence']}")
-            ```
-        """
+        """Parse a goal to see what team would be created."""
         # Get metrics instance for recording
         metrics = get_goal_team_metrics()
         # Get WebSocket server for broadcasting (optional)
@@ -691,29 +611,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def list_team_skills() -> dict[str, Any]:
-        """List all available skills for goal-driven team creation.
-
-        Skills are pre-configured agent templates that get matched to
-        goals based on keywords and domain patterns. Each skill defines
-        a specialist agent with specific expertise.
-
-        Returns:
-            Dictionary with:
-            - success: Whether the operation succeeded
-            - skills: Dictionary of skill names to configurations:
-                - role: The agent's role description
-                - tools: Tools the agent can use
-                - model: Default LLM model
-                - temperature: Sampling temperature
-            - count: Total number of available skills
-
-        Example:
-            ```python
-            result = await list_team_skills()
-            for skill_name, config in result['skills'].items():
-                print(f"{skill_name}: {config['role']}")
-            ```
-        """
+        """List all available skills for goal-driven team creation."""
         try:
             # Check feature flags first
             if not is_feature_enabled("enabled"):

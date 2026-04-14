@@ -71,26 +71,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
         timeout: int = 5,
         use_tls: bool = False,
     ) -> dict[str, Any]:
-        """Check health of a specific service.
-
-        Performs an HTTP GET request to the service's /health endpoint
-        and returns the health status.
-
-        Args:
-            service_name: Name of the service to check
-            host: Hostname or IP address (default: localhost)
-            port: Port number (default: 8080)
-            timeout: Request timeout in seconds (default: 5)
-            use_tls: Use HTTPS instead of HTTP (default: false)
-
-        Returns:
-            Health status dictionary with status, latency, and any errors
-
-        Example:
-            >>> result = await health_check_service("session_buddy", port=8678)
-            >>> print(result["status"])
-            "ok"
-        """
+        """Check health of a specific service."""
         from mahavishnu.core.config import HealthConfig
 
         config = HealthConfig(check_timeout_seconds=timeout)
@@ -118,19 +99,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
 
     @mcp.tool()
     async def mcp_list_tools() -> dict[str, Any]:
-        """List all registered MCP tools with their metadata.
-
-        Enumerates the live FastMCP registry so operators can inspect the
-        current server surface without reaching into internal state.
-
-        Returns:
-            Dictionary with tool inventory, version coverage, and summaries.
-
-        Example:
-            >>> result = await mcp_list_tools()
-            >>> print(result["total_tools"])
-            42
-        """
+        """List all registered MCP tools with their metadata."""
         from mahavishnu.mcp.tool_versions import get_all_tool_versions
 
         tools = await mcp.list_tools()
@@ -158,27 +127,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
         use_tls: bool = False,
         health_path: str = "/health",
     ) -> dict[str, Any]:
-        """Ping a specific server to verify MCP connectivity.
-
-        Checks the target service's health endpoint and returns a compact
-        connectivity result suitable for operators and CI smoke checks.
-
-        Args:
-            service_name: Name of the target service to test
-            host: Hostname or IP address (default: localhost)
-            port: Port number (default: 8080)
-            timeout: Request timeout in seconds (default: 5)
-            use_tls: Use HTTPS instead of HTTP (default: false)
-            health_path: Health endpoint path (default: /health)
-
-        Returns:
-            Dictionary with connection status, latency, and any response data.
-
-        Example:
-            >>> result = await mcp_test_connection("session-buddy", port=8678)
-            >>> print(result["connected"])
-            True
-        """
+        """Ping a specific server to verify MCP connectivity."""
         from mahavishnu.core.config import HealthConfig
 
         config = HealthConfig(check_timeout_seconds=timeout)
@@ -207,19 +156,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
 
     @mcp.tool()
     async def mcp_get_metrics() -> dict[str, Any]:
-        """Return a metrics snapshot for the running MCP server.
-
-        Exposes the live Prometheus registry and a compact inventory of
-        currently registered tools so operators can inspect server health.
-
-        Returns:
-            Dictionary with metrics metadata and a text exposition snapshot.
-
-        Example:
-            >>> result = await mcp_get_metrics()
-            >>> print(result["registered_tools"])
-            42
-        """
+        """Return a metrics snapshot for the running MCP server."""
         tools = await mcp.list_tools()
         registry = get_metrics_registry()
         metric_families = []
@@ -248,19 +185,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
 
     @mcp.tool()
     async def health_check_all() -> dict[str, Any]:
-        """Check health of all configured services.
-
-        Queries the /health endpoint of each service configured in the
-        health.dependencies section of settings.
-
-        Returns:
-            Dictionary with health status of all services
-
-        Example:
-            >>> result = await health_check_all()
-            >>> for name, status in result["services"].items():
-            ...     print(f"{name}: {status['status']}")
-        """
+        """Check health of all configured services."""
         from mahavishnu.core.config import MahavishnuSettings
 
         settings = MahavishnuSettings()
@@ -323,33 +248,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
         required: bool = True,
         use_tls: bool = False,
     ) -> dict[str, Any]:
-        """Wait for a specific dependency to become healthy.
-
-        Uses exponential backoff for retries:
-        - Base delay: 1s
-        - Max delay: 16s
-        - Sequence: 1s, 2s, 4s, 8s, 16s, 16s, ...
-
-        Args:
-            service_name: Name of the service to wait for
-            host: Hostname or IP address (default: localhost)
-            port: Port number (default: 8080)
-            timeout: Maximum wait time in seconds (default: 30)
-            required: Whether this is a required dependency (default: true)
-            use_tls: Use HTTPS instead of HTTP (default: false)
-
-        Returns:
-            Result indicating success or timeout
-
-        Example:
-            >>> result = await wait_for_dependency(
-            ...     "session_buddy",
-            ...     port=8678,
-            ...     timeout=60
-            ... )
-            >>> print(result["success"])
-            True
-        """
+        """Wait for a specific dependency to become healthy."""
         from mahavishnu.core.config import DependencyConfig, HealthConfig
 
         dep_config = DependencyConfig(
@@ -392,24 +291,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
 
     @mcp.tool()
     async def wait_for_all_dependencies() -> dict[str, Any]:
-        """Wait for all configured dependencies to become healthy.
-
-        Checks all dependencies configured in health.dependencies and waits
-        for them to become healthy using exponential backoff.
-
-        Required dependencies will block startup if unhealthy.
-        Optional dependencies will be skipped after a few failed attempts.
-
-        Returns:
-            Result indicating overall success and per-dependency status
-
-        Example:
-            >>> result = await wait_for_all_dependencies()
-            >>> if result["success"]:
-            ...     print("All dependencies healthy")
-            ... else:
-            ...     print(f"Failed: {result['failed_required']}")
-        """
+        """Wait for all configured dependencies to become healthy."""
         from mahavishnu.core.config import MahavishnuSettings
 
         settings = MahavishnuSettings()
@@ -455,19 +337,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
 
     @mcp.tool()
     async def get_liveness() -> dict[str, Any]:
-        """Get liveness status for this service.
-
-        Returns basic "is this process running" information.
-        Called by platform health checks (Cloud Run, Kubernetes, etc.).
-
-        Returns:
-            Health response with status, service name, version, and uptime
-
-        Example:
-            >>> result = await get_liveness()
-            >>> print(result["status"])
-            "ok"
-        """
+        """Get liveness status for this service."""
         from mahavishnu.core.config import MahavishnuSettings
 
         settings = MahavishnuSettings()
@@ -484,22 +354,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
 
     @mcp.tool()
     async def get_readiness() -> dict[str, Any]:
-        """Get readiness status for this service.
-
-        Checks if this service is ready to accept work by verifying
-        all dependencies are healthy.
-
-        Called by load balancers, orchestrators, and other services
-        before routing traffic.
-
-        Returns:
-            Readiness response with dependency status
-
-        Example:
-            >>> result = await get_readiness()
-            >>> if result["ready"]:
-            ...     print("Service is ready")
-        """
+        """Get readiness status for this service."""
         from mahavishnu.core.config import MahavishnuSettings
 
         settings = MahavishnuSettings()

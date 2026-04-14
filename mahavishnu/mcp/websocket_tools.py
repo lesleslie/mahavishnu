@@ -28,19 +28,7 @@ def register_websocket_tools(server, websocket_server):
 
     @server.tool()
     async def websocket_health_check() -> dict:
-        """Check WebSocket server health and status.
-
-        Returns:
-            Dictionary with server health information:
-            {
-                "status": "healthy" | "stopped" | "error",
-                "host": "127.0.0.1",
-                "port": 8690,
-                "connections": 0,
-                "rooms": 0,
-                "uptime_seconds": 0
-            }
-        """
+        """Check WebSocket server health and status."""
         try:
             if websocket_server is None:
                 return {
@@ -85,15 +73,7 @@ def register_websocket_tools(server, websocket_server):
 
     @server.tool()
     async def websocket_get_status() -> dict:
-        """Get detailed WebSocket server status.
-
-        Returns:
-            Dictionary with detailed status information including:
-            - Server state
-            - Active connections
-            - Room subscriptions
-            - Pool manager status
-        """
+        """Get detailed WebSocket server status."""
         try:
             if websocket_server is None or not websocket_server.is_running:
                 return {
@@ -136,18 +116,7 @@ def register_websocket_tools(server, websocket_server):
 
     @server.tool()
     async def websocket_list_rooms() -> dict:
-        """List all WebSocket rooms and their subscriber counts.
-
-        Returns:
-            Dictionary with room information:
-            {
-                "rooms": {
-                    "workflow:abc123": {"subscribers": 2},
-                    "pool:local": {"subscribers": 5}
-                },
-                "total_rooms": 2
-            }
-        """
+        """List all WebSocket rooms and their subscriber counts."""
         try:
             if websocket_server is None or not websocket_server.is_running:
                 return {
@@ -179,25 +148,7 @@ def register_websocket_tools(server, websocket_server):
         room: str,
         data: dict | None = None,
     ) -> dict:
-        """Broadcast a test event via WebSocket (development only).
-
-        ⚠️ WARNING: This tool is for development and testing purposes only.
-        Do not use in production environments.
-
-        Args:
-            event_type: Type of event to broadcast (e.g., "workflow.started")
-            room: Room to broadcast to (e.g., "global", "workflow:test123")
-            data: Optional event data payload
-
-        Returns:
-            Dictionary with broadcast result:
-            {
-                "status": "broadcasted" | "error",
-                "event_type": str,
-                "room": str,
-                "subscribers": 0
-            }
-        """
+        """Broadcast a test event via WebSocket (development only)."""
         try:
             if websocket_server is None or not websocket_server.is_running:
                 return {
@@ -263,17 +214,7 @@ def register_websocket_tools(server, websocket_server):
 
     @server.tool()
     async def websocket_get_metrics() -> dict:
-        """Get WebSocket server metrics.
-
-        Returns:
-            Dictionary with server metrics:
-            {
-                "uptime_seconds": 0,
-                "total_broadcasts": 0,
-                "average_message_rate": 0.0,
-                "peak_connections": 0
-            }
-        """
+        """Get WebSocket server metrics."""
         try:
             if websocket_server is None or not websocket_server.is_running:
                 return {

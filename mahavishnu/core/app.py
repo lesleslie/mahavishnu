@@ -103,7 +103,7 @@ class MahavishnuApp:
 
     This class provides:
     - Configuration loading from Oneiric-compatible sources
-    - Repository manifest loading from repos.yaml
+    - Repository manifest loading from ecosystem.yaml (falls back to repos.yaml)
     - Adapter initialization and management
     - Type-safe operations throughout
     - Concurrency control for workflow execution
@@ -613,53 +613,90 @@ class MahavishnuApp:
             ) from e
 
     def _load_repos(self) -> None:
-        """Load repository configurations from ecosystem.yaml.
+        """Load repository configurations with fallback chain.
+
+        Resolution order:
+        1. config.repos_path (default: settings/ecosystem.yaml)
+        2. settings/repos.yaml (standalone users without Bodai ecosystem)
+
+        Both files share the same ``repos:`` key schema. ecosystem.yaml
+        additionally provides ``roles:`` and ``coordination:`` sections.
 
         Raises:
-            ConfigurationError: If ecosystem.yaml is not found or invalid
+            ConfigurationError: If no repository config file is found or invalid
         """
-        repos_path = _validate_path(self.config.repos_path).expanduser()
+        import logging
 
-        if not repos_path.exists():
+        logger = logging.getLogger(__name__)
+
+        primary_path = _validate_path(self.config.repos_path).expanduser()
+        fallback_path = _validate_path("settings/repos.yaml").expanduser()
+
+        # Resolve which file to use
+        repos_path: Path | None = None
+        using_fallback = False
+
+        if primary_path.exists():
+            repos_path = primary_path
+        elif fallback_path.exists() and fallback_path != primary_path:
+            repos_path = fallback_path
+            using_fallback = True
+            logger.warning(
+                "Repository config fallback: %s not found, using %s. "
+                "Consider creating ecosystem.yaml for richer configuration "
+                "(roles taxonomy, coordination tracking).",
+                primary_path,
+                fallback_path,
+            )
+
+        if repos_path is None:
             raise ConfigurationError(
-                message=f"Ecosystem configuration not found: {repos_path}",
+                message=f"No repository configuration found. Tried: {primary_path}, {fallback_path}",
                 details={
                     "repos_path": str(repos_path),
-                    "suggestion": "Create settings/ecosystem.yaml with repository configurations",
+                    "fallback_path": str(fallback_path),
+                    "suggestion": (
+                        "Create settings/ecosystem.yaml (preferred) or "
+                        "settings/repos.yaml with repository configurations"
+                    ),
                 },
             )
 
         try:
             with repos_path.open() as f:
-                ecosystem_config = yaml.safe_load(f)
+                raw_config = yaml.safe_load(f)
 
-            # Validate structure - ecosystem.yaml has a 'repos' key
-            if "repos" not in ecosystem_config:
+            # Validate structure - both files have a 'repos' key
+            if not isinstance(raw_config, dict) or "repos" not in raw_config:
                 raise ConfigurationError(
-                    message="Invalid ecosystem.yaml: missing 'repos' key",
+                    message=f"Invalid repository config: missing 'repos' key in {repos_path.name}",
                     details={"repos_path": str(repos_path)},
                 )
 
-            # Extract repos section from ecosystem.yaml
-            self.roles_config = ecosystem_config.get("roles", [])
+            # Extract repos section
+            self.roles_config = raw_config.get("roles", [])
             self.repos_config = {
-                "repos": ecosystem_config["repos"],
+                "repos": raw_config["repos"],
                 "roles": self.roles_config,
             }
 
-            logger = __import__("logging").getLogger(__name__)
+            source = "repos.yaml (fallback)" if using_fallback else "ecosystem.yaml"
             logger.info(
-                f"Loaded {len(ecosystem_config.get('repos', []))} repositories from ecosystem.yaml"
+                "Loaded %d repositories from %s",
+                len(raw_config.get("repos", [])),
+                source,
             )
 
         except yaml.YAMLError as e:
             raise ConfigurationError(
-                message=f"Invalid YAML in ecosystem.yaml: {e}",
+                message=f"Invalid YAML in {repos_path.name}: {e}",
                 details={"repos_path": str(repos_path), "error": str(e)},
             ) from e
+        except ConfigurationError:
+            raise
         except Exception as e:
             raise ConfigurationError(
-                message=f"Failed to load ecosystem.yaml: {e}",
+                message=f"Failed to load {repos_path.name}: {e}",
                 details={"repos_path": str(repos_path), "error": str(e)},
             ) from e
 

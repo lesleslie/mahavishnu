@@ -136,7 +136,7 @@ class MahavishnuError(Exception):
     # Recovery guidance mapping - default guidance for each error code
     RECOVERY_GUIDANCE: ClassVar[dict[str, list[str]]] = {
         ErrorCode.CONFIGURATION_ERROR: [
-            "Check settings/repos.yaml for syntax errors",
+            "Check settings/ecosystem.yaml (or settings/repos.yaml) for syntax errors",
             "Run 'mhv validate-config' to verify configuration",
             "See documentation: https://docs.mahavishnu.org/config",
         ],
@@ -252,14 +252,14 @@ class MahavishnuError(Exception):
             "Use 'mhv tl' to view task relationships",
         ],
         ErrorCode.REPOSITORY_NOT_FOUND: [
-            "Add repository to settings/repos.yaml",
+            "Add repository to settings/ecosystem.yaml (or settings/repos.yaml)",
             "Run 'mhv validate-config' to verify",
             "Check repository path is correct",
             "Use 'mhv lr' to list configured repos",
         ],
         ErrorCode.REPOSITORY_NOT_CONFIGURED: [
             "Repository is not in configuration",
-            "Add entry to settings/repos.yaml",
+            "Add entry to settings/ecosystem.yaml (or settings/repos.yaml)",
             "Run 'mhv init' to create default config",
         ],
         ErrorCode.WORKTREE_CREATION_FAILED: [
@@ -1118,7 +1118,7 @@ class ErrorTemplates:
         if any("title" in i.lower() for i in issues):
             recovery.append("Title must be 3-500 characters")
         if any("repository" in i.lower() for i in issues):
-            recovery.append("Repository must be configured in repos.yaml")
+            recovery.append("Repository must be configured in ecosystem.yaml or repos.yaml")
             recovery.append("Use 'mhv lr' to list available repositories")
 
         recovery.extend(

@@ -59,18 +59,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
         file_path: str,
         language: str | None = None,
     ) -> dict[str, Any]:
-        """Parse a source code file with caching.
-
-        Uses content-hash caching to avoid redundant parsing.
-        Returns parse status, symbol counts, and cache information.
-
-        Args:
-            file_path: Absolute path to source file
-            language: Optional language override (auto-detected if not provided)
-
-        Returns:
-            Parse result with symbols, imports, and cache status
-        """
+        """Parse a source code file with caching."""
         from mcp_common.parsing.tree_sitter import SupportedLanguage
 
         try:
@@ -119,18 +108,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
         file_path: str,
         symbol_kinds: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Extract symbols from a parsed file.
-
-        Returns detailed symbol information including signatures,
-        docstrings, and locations.
-
-        Args:
-            file_path: Absolute path to source file
-            symbol_kinds: Optional filter (function, class, method, variable, import)
-
-        Returns:
-            List of extracted symbols with metadata
-        """
+        """Extract symbols from a parsed file."""
         from mcp_common.parsing.tree_sitter import SupportedLanguage, SymbolKind
 
         try:
@@ -195,18 +173,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
         symbol_name: str,
         search_directory: str | None = None,
     ) -> dict[str, Any]:
-        """Find usages of a symbol across files.
-
-        Searches for references to a symbol in the specified directory.
-
-        Args:
-            file_path: File containing symbol definition
-            symbol_name: Name of symbol to find
-            search_directory: Directory to search (defaults to file's parent)
-
-        Returns:
-            List of usage locations
-        """
+        """Find usages of a symbol across files."""
         try:
             parser = _get_parser()
             path = Path(file_path)
@@ -301,18 +268,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
         file_path: str,
         query: str,
     ) -> dict[str, Any]:
-        """Run a custom tree-sitter query (S-expression format).
-
-        Allows running custom tree-sitter queries for advanced
-        pattern matching.
-
-        Args:
-            file_path: Absolute path to source file
-            query: Tree-sitter query string (S-expression)
-
-        Returns:
-            List of matching nodes
-        """
+        """Run a custom tree-sitter query (S-expression format)."""
         try:
             parser = _get_parser()
             path = Path(file_path)
@@ -362,19 +318,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
         file_pattern: str = "**/*.py",
         max_files: int = 100,
     ) -> dict[str, Any]:
-        """Batch analyze multiple files in a directory.
-
-        Analyzes all matching files and returns aggregated results
-        with caching for efficiency.
-
-        Args:
-            directory: Directory to analyze
-            file_pattern: Glob pattern (default: Python files)
-            max_files: Maximum files (default 100)
-
-        Returns:
-            Aggregated analysis results
-        """
+        """Batch analyze multiple files in a directory."""
         try:
             parser = _get_parser()
             dir_path = Path(directory)
@@ -452,13 +396,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def treesitter_cache_stats() -> dict[str, Any]:
-        """Get cache statistics for the tree-sitter parser.
-
-        Returns hit rate, size, and eviction statistics.
-
-        Returns:
-            Cache statistics
-        """
+        """Get cache statistics for the tree-sitter parser."""
         try:
             parser = _get_parser()
             stats = parser.get_cache_stats()
@@ -474,11 +412,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def treesitter_clear_cache() -> dict[str, Any]:
-        """Clear the tree-sitter parse cache.
-
-        Returns:
-            Number of entries cleared
-        """
+        """Clear the tree-sitter parse cache."""
         try:
             parser = _get_parser()
             count = parser.clear_cache()

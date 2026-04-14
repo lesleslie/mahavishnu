@@ -42,22 +42,7 @@ async def create_ecosystem_worktree(
     worktree_name: str | None = None,
     create_branch: bool = False,
 ) -> dict[str, Any]:
-    """
-    Create a worktree with ecosystem-wide safety checks.
-
-    Validates repository existence, checks for blocking dependencies,
-    and coordinates with worktree providers for actual creation.
-
-    Args:
-        user_id: User ID for authentication
-        repo_nickname: Repository nickname (from repos.yaml)
-        branch: Branch name
-        worktree_name: Optional custom worktree name
-        create_branch: Create branch if doesn't exist
-
-    Returns:
-        Creation result with worktree info and safety checks performed
-    """
+    """Create a worktree with ecosystem-wide safety checks."""
     coordinator = _get_coordinator()
 
     if not coordinator:
@@ -83,25 +68,7 @@ async def remove_ecosystem_worktree(
     force: bool = False,
     force_reason: str | None = None,
 ) -> dict[str, Any]:
-    """
-    Remove a worktree with comprehensive safety validation.
-
-    Performs multiple safety checks:
-    - Uncommitted changes detection
-    - Dependency validation
-    - Path verification
-    - Audit logging
-
-    Args:
-        user_id: User ID for authentication
-        repo_nickname: Repository nickname
-        worktree_path: Path to worktree directory
-        force: Force removal (skip safety checks)
-        force_reason: Required reason when force=True with uncommitted changes
-
-    Returns:
-        Removal result with safety check details
-    """
+    """Remove a worktree with comprehensive safety validation."""
     coordinator = _get_coordinator()
 
     if not coordinator:
@@ -124,19 +91,7 @@ async def list_ecosystem_worktrees(
     user_id: str,
     repo_nickname: str | None = None,
 ) -> dict[str, Any]:
-    """
-    List worktrees across ecosystem.
-
-    Shows all worktrees across all repositories, or filter by specific repo.
-    Includes status, branch info, and dependency relationships.
-
-    Args:
-        user_id: User ID for authentication
-        repo_nickname: Optional repository filter
-
-    Returns:
-        List of worktrees with metadata
-    """
+    """List worktrees across ecosystem."""
     coordinator = _get_coordinator()
 
     if not coordinator:
@@ -153,19 +108,7 @@ async def prune_ecosystem_worktrees(
     user_id: str,
     repo_nickname: str,
 ) -> dict[str, Any]:
-    """
-    Prune stale worktree references.
-
-    Removes worktree references for branches that no longer exist,
-    with validation to prevent accidental data loss.
-
-    Args:
-        user_id: User ID for authentication
-        repo_nickname: Repository nickname
-
-    Returns:
-        Prune results with count of pruned worktrees
-    """
+    """Prune stale worktree references."""
     coordinator = _get_coordinator()
 
     if not coordinator:
@@ -183,23 +126,7 @@ async def get_worktree_safety_status(
     repo_nickname: str,
     worktree_path: str,
 ) -> dict[str, Any]:
-    """
-    Get safety status for a worktree before removal.
-
-    Reports on:
-    - Uncommitted changes
-    - Active dependencies from other repos
-    - Branch status (merged, deleted, etc.)
-    - Worktree validity
-
-    Args:
-        user_id: User ID for authentication
-        repo_nickname: Repository nickname
-        worktree_path: Path to worktree
-
-    Returns:
-        Safety status with recommendations
-    """
+    """Get safety status for a worktree before removal."""
     coordinator = _get_coordinator()
 
     if not coordinator:
@@ -218,17 +145,7 @@ async def get_worktree_safety_status(
 async def get_worktree_provider_health(
     user_id: str,
 ) -> dict[str, Any]:
-    """
-    Get health status of all worktree providers.
-
-    Shows which providers are healthy and available for use.
-
-    Args:
-        user_id: User ID for authentication
-
-    Returns:
-        Health status for all providers
-    """
+    """Get health status of all worktree providers."""
     coordinator = _get_coordinator()
 
     if not coordinator:

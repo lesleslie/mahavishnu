@@ -33,16 +33,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
         capabilities: list[str] | None = None,
         healthy_only: bool = False,
     ) -> dict[str, Any]:
-        """List all registered adapters with optional filters.
-
-        Args:
-            domain: Filter by domain (e.g., "orchestration", "ai", "storage")
-            capabilities: Filter by required capabilities (ALL must be present)
-            healthy_only: Only return healthy adapters
-
-        Returns:
-            Dictionary with list of adapters and metadata
-        """
+        """List all registered adapters with optional filters."""
         from mahavishnu.core.adapter_registry import get_registry
 
         try:
@@ -87,18 +78,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
         required_capabilities: list[str],
         domain: str = "orchestration",
     ) -> dict[str, Any]:
-        """Resolve the best adapter for task requirements.
-
-        Uses capability matching and priority to select the optimal adapter.
-
-        Args:
-            task_type: Type of task (e.g., "workflow", "ai_task", "rag_query")
-            required_capabilities: Required capabilities (ALL must be present)
-            domain: Domain category (default: "orchestration")
-
-        Returns:
-            Dictionary with routing decision and selected adapter
-        """
+        """Resolve the best adapter for task requirements."""
         from mahavishnu.core.adapter_registry import get_registry
 
         try:
@@ -142,14 +122,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
     async def adapter_health(
         adapter_name: str | None = None,
     ) -> dict[str, Any]:
-        """Check health of adapters.
-
-        Args:
-            adapter_name: Specific adapter to check, or None for all adapters
-
-        Returns:
-            Dictionary with health status for requested adapter(s)
-        """
+        """Check health of adapters."""
         from mahavishnu.core.adapter_registry import get_registry
 
         try:
@@ -200,16 +173,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
         enabled: bool,
         reason: str | None = None,
     ) -> dict[str, Any]:
-        """Enable or disable an adapter.
-
-        Args:
-            adapter_name: Name of the adapter to enable/disable
-            enabled: True to enable, False to disable
-            reason: Optional reason for the change
-
-        Returns:
-            Dictionary with operation result
-        """
+        """Enable or disable an adapter."""
         from mahavishnu.core.adapter_registry import get_registry
 
         try:
@@ -249,14 +213,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
     async def adapter_metadata(
         adapter_name: str,
     ) -> dict[str, Any]:
-        """Get metadata for a specific adapter.
-
-        Args:
-            adapter_name: Name of the adapter
-
-        Returns:
-            Dictionary with adapter metadata
-        """
+        """Get metadata for a specific adapter."""
         from mahavishnu.core.adapter_registry import get_registry
 
         try:
@@ -291,14 +248,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
     async def adapter_cache_invalidate(
         source: str | None = None,
     ) -> dict[str, Any]:
-        """Invalidate adapter registry caches.
-
-        Args:
-            source: Specific cache source to invalidate, or None for all caches
-
-        Returns:
-            Dictionary with operation result
-        """
+        """Invalidate adapter registry caches."""
         from mahavishnu.core.adapter_registry import get_registry
 
         try:
@@ -337,14 +287,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
     async def adapter_discover(
         force_refresh: bool = False,
     ) -> dict[str, Any]:
-        """Discover adapters from all sources.
-
-        Args:
-            force_refresh: Force refresh even if cache is valid
-
-        Returns:
-            Dictionary with discovery report
-        """
+        """Discover adapters from all sources."""
         from mahavishnu.core.adapter_registry import get_registry
 
         try:

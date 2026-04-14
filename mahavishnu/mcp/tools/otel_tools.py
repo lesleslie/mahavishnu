@@ -28,31 +28,7 @@ def register_otel_tools(server, app, mcp_client):
         trace_data: list[dict] | None = None,
         system_id: str = "unknown",
     ) -> dict[str, Any]:
-        """Ingest OpenTelemetry traces from log files or direct trace data.
-
-        Uses Akosha HotStore (DuckDB with HNSW vector index) for storage.
-        Traces are automatically embedded for semantic search.
-
-        Args:
-            log_files: Optional list of log file paths to ingest (JSON format)
-            trace_data: Optional list of trace dictionaries to ingest directly
-            system_id: System identifier (claude, qwen, or custom name)
-
-        Returns:
-            Dictionary with ingestion summary:
-                - status: success or error
-                - traces_ingested: Number of traces successfully ingested
-                - files_processed: Number of log files processed
-                - errors: List of per-file/per-trace errors
-                - system_id: System identifier for ingested traces
-                - storage_backend: Always "duckdb_hotstore"
-
-        Example:
-            result = await mcp.call_tool("ingest_otel_traces", {
-                "log_files": ["/path/to/claude_session.json"],
-                "system_id": "claude"
-            })
-        """
+        """Ingest OpenTelemetry traces from log files or direct trace data."""
         try:
             # Import native OTel ingester (uses Akosha HotStore)
             from mahavishnu.ingesters import OtelIngester
@@ -176,34 +152,7 @@ def register_otel_tools(server, app, mcp_client):
         limit: int = 10,
         threshold: float | None = None,
     ) -> list[dict[str, Any]]:
-        """Semantic search over OTel traces using vector embeddings.
-
-        Finds traces similar to the natural language query using DuckDB HNSW index.
-
-        Args:
-            query: Natural language search query (e.g., "RAG pipeline timeout")
-            system_id: Optional system filter (claude, qwen, or custom)
-            limit: Maximum number of results to return (default: 10)
-            threshold: Optional minimum similarity score (0.0-1.0). If not specified,
-                       uses app config default (0.7)
-
-        Returns:
-            List of matching traces with metadata:
-                - conversation_id: Trace ID
-                - system_id: System identifier
-                - content: Trace summary/content
-                - timestamp: Trace timestamp
-                - similarity: Semantic similarity score (0.0-1.0)
-                - metadata: Full trace metadata
-
-        Example:
-            results = await mcp.call_tool("search_otel_traces", {
-                "query": "RAG pipeline failed with timeout",
-                "system_id": "claude",
-                "limit": 5,
-                "threshold": 0.75
-            })
-        """
+        """Semantic search over OTel traces using vector embeddings."""
         try:
             from mahavishnu.ingesters import OtelIngester
 
@@ -238,25 +187,7 @@ def register_otel_tools(server, app, mcp_client):
     async def get_otel_trace(
         trace_id: str,
     ) -> dict[str, Any] | None:
-        """Retrieve a specific OTel trace by ID.
-
-        Args:
-            trace_id: Unique trace identifier (conversation_id in HotStore)
-
-        Returns:
-            Trace dictionary with full details if found:
-                - conversation_id: Trace ID
-                - system_id: System identifier
-                - content: Trace content
-                - timestamp: Trace timestamp
-                - metadata: Full trace metadata
-            Returns None if trace not found.
-
-        Example:
-            trace = await mcp.call_tool("get_otel_trace", {
-                "trace_id": "abc123-def456"
-            })
-        """
+        """Retrieve a specific OTel trace by ID."""
         try:
             from mahavishnu.ingesters import OtelIngester
 
@@ -287,21 +218,7 @@ def register_otel_tools(server, app, mcp_client):
 
     @server.tool()
     async def otel_ingester_stats() -> dict[str, Any]:
-        """Get statistics about the OTel trace ingester.
-
-        Returns:
-            Dictionary with ingester statistics:
-                - total_traces: Total number of traces stored
-                - traces_by_system: Breakdown by system_id (claude, qwen, etc.)
-                - storage_backend: Always "duckdb_hotstore"
-                - hot_store_path: Path to HotStore database file
-                - embedding_model: Model used for embeddings
-                - cache_size: Embedding cache size
-                - status: health status (healthy/error)
-
-        Example:
-            stats = await mcp.call_tool("otel_ingester_stats", {})
-        """
+        """Get statistics about the OTel trace ingester."""
         try:
             from akosha.storage import HotStore
 

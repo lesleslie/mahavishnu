@@ -340,17 +340,7 @@ class FastMCPServer:
             offset: int | None = None,
             user_id: str | None = None,
         ) -> dict[str, Any]:
-            """List repositories with optional filtering and pagination.
-
-            Args:
-                tag: Optional tag to filter repos
-                limit: Optional limit on number of results
-                offset: Optional offset for pagination
-                user_id: Optional user ID for permission checking
-
-            Returns:
-                Dictionary with list of repositories and metadata
-            """
+            """List repositories with optional filtering and pagination."""
             try:
                 repos = self.app.get_repos(tag=tag, user_id=user_id)
 
@@ -385,26 +375,7 @@ class FastMCPServer:
             timeout: int | None = None,
             user_id: str | None = None,
         ) -> dict[str, Any]:
-            """Trigger workflow execution.
-
-            Args:
-                adapter: Adapter name (langgraph, prefect, agno)
-                task_type: Type of workflow (code_sweep, quality_check)
-                params: Additional parameters for the task
-                tag: Optional tag to filter repos
-                repos: Optional explicit repo list (overrides tag)
-                timeout: Optional timeout in seconds
-                user_id: Optional user ID for permission checking
-
-            Returns:
-                {
-                    "workflow_id": "uuid",
-                    "status": "running|completed|failed",
-                    "result": {...},
-                    "repos_processed": 5,
-                    "errors": [...]
-                }
-            """
+            """Trigger workflow execution."""
             if params is None:
                 params = {}
             try:
@@ -481,7 +452,7 @@ class FastMCPServer:
 
                 error_workflow_id = f"wf_error_{uuid.uuid4().hex[:8]}_{task_type}"
 
-                # Update workflow state to reflect error
+                # Update the workflow state to reflect error
                 with suppress(Exception):
                     # If we can't update the workflow state, continue with the response
                     task_for_state = {"type": task_type, "params": params}
@@ -512,15 +483,7 @@ class FastMCPServer:
         async def get_workflow_status(
             workflow_id: str, user_id: str | None = None
         ) -> dict[str, Any]:
-            """Get status of a workflow execution.
-
-            Args:
-                workflow_id: ID of the workflow to check
-                user_id: Optional user ID for permission checking
-
-            Returns:
-                Status information for the workflow
-            """
+            """Get status of a workflow execution."""
             try:
                 workflow_state = await self.app.workflow_state_manager.get(workflow_id)
 
@@ -574,17 +537,7 @@ class FastMCPServer:
             offset: int = 0,
             user_id: str | None = None,
         ) -> dict[str, Any]:
-            """List workflows with optional filtering.
-
-            Args:
-                status: Optional status to filter workflows (pending, running, completed, failed)
-                limit: Maximum number of workflows to return
-                offset: Offset for pagination
-                user_id: Optional user ID for permission checking
-
-            Returns:
-                List of workflow information
-            """
+            """List workflows with optional filtering."""
             try:
                 from ..core.workflow_state import WorkflowStatus
 
@@ -643,15 +596,7 @@ class FastMCPServer:
 
         @server.tool()
         async def cancel_workflow(workflow_id: str, user_id: str | None = None) -> dict[str, Any]:
-            """Cancel a running workflow.
-
-            Args:
-                workflow_id: ID of the workflow to cancel
-                user_id: Optional user ID for permission checking
-
-            Returns:
-                Result of cancellation attempt
-            """
+            """Cancel a running workflow."""
             try:
                 # Check if user has permission to cancel workflows
                 if user_id:
@@ -691,17 +636,7 @@ class FastMCPServer:
             allowed_repos: list[str] | None = None,
             user_id_caller: str | None = None,  # ID of the user making the call
         ) -> dict[str, Any]:
-            """Create a new user with specified roles.
-
-            Args:
-                user_id: Unique identifier for the new user
-                roles: List of role names to assign to the user
-                allowed_repos: Optional list of repositories the user can access
-                user_id_caller: ID of the user making this request (for permission check)
-
-            Returns:
-                Result of the user creation operation
-            """
+            """Create a new user with specified roles."""
             try:
                 # Check if caller has permission to manage users
                 if user_id_caller:
@@ -731,16 +666,7 @@ class FastMCPServer:
 
         @server.tool()
         async def check_permission(user_id: str, repo: str, permission: str) -> dict[str, Any]:
-            """Check if a user has a specific permission for a repository.
-
-            Args:
-                user_id: ID of the user to check
-                repo: Repository path to check permission for
-                permission: Permission to check (READ_REPO, EXECUTE_WORKFLOW, etc.)
-
-            Returns:
-                Boolean result of the permission check
-            """
+            """Check if a user has a specific permission for a repository."""
             try:
                 # Convert string permission to enum
                 try:
@@ -768,11 +694,7 @@ class FastMCPServer:
 
         @server.tool()
         async def get_observability_metrics() -> dict[str, Any]:
-            """Get current observability metrics from the system.
-
-            Returns:
-                Dictionary with current metrics and performance data
-            """
+            """Get current observability metrics from the system."""
             try:
                 if not self.app.observability:
                     return {"error": "Observability system not initialized", "metrics": {}}
@@ -811,20 +733,7 @@ class FastMCPServer:
             end_time: str | None = None,
             size: int = 100,
         ) -> dict[str, Any]:
-            """Search logs with various filters.
-
-            Args:
-                query: Text query to search for
-                level: Log level filter (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-                workflow_id: Filter by workflow ID
-                repo_path: Filter by repository path
-                start_time: Filter logs after this time (ISO format)
-                end_time: Filter logs before this time (ISO format)
-                size: Maximum number of results to return
-
-            Returns:
-                List of matching log entries
-            """
+            """Search logs with various filters."""
             try:
                 logs = await self.app.opensearch_integration.search_logs(
                     query=query,
@@ -863,20 +772,7 @@ class FastMCPServer:
             end_time: str | None = None,
             size: int = 100,
         ) -> dict[str, Any]:
-            """Search workflows with various filters.
-
-            Args:
-                workflow_id: Specific workflow ID to search for
-                adapter: Filter by adapter (prefect, agno, llamaindex)
-                task_type: Filter by task type
-                status: Filter by workflow status (pending, running, completed, failed)
-                start_time: Filter workflows after this time (ISO format)
-                end_time: Filter workflows before this time (ISO format)
-                size: Maximum number of results to return
-
-            Returns:
-                List of matching workflow entries
-            """
+            """Search workflows with various filters."""
             try:
                 workflows = await self.app.opensearch_integration.search_workflows(
                     workflow_id=workflow_id,
@@ -911,11 +807,7 @@ class FastMCPServer:
 
         @server.tool()
         async def get_workflow_statistics() -> dict[str, Any]:
-            """Get workflow statistics and analytics.
-
-            Returns:
-                Statistics about workflow execution
-            """
+            """Get workflow statistics and analytics."""
             try:
                 stats = await self.app.opensearch_integration.get_workflow_stats()
 
@@ -929,11 +821,7 @@ class FastMCPServer:
 
         @server.tool()
         async def get_log_statistics() -> dict[str, Any]:
-            """Get log statistics and analytics.
-
-            Returns:
-                Statistics about logged events
-            """
+            """Get log statistics and analytics."""
             try:
                 stats = await self.app.opensearch_integration.get_log_stats()
 
@@ -947,11 +835,7 @@ class FastMCPServer:
 
         @server.tool()
         async def get_recovery_metrics() -> dict[str, Any]:
-            """Get metrics about error recovery and resilience operations.
-
-            Returns:
-                Statistics about recovery operations
-            """
+            """Get metrics about error recovery and resilience operations."""
             try:
                 metrics = await self.app.error_recovery_manager.get_recovery_metrics()
 
@@ -967,15 +851,7 @@ class FastMCPServer:
         async def create_backup(
             backup_type: str = "full", backup_id: str | None = None
         ) -> dict[str, Any]:
-            """Create a backup of the system.
-
-            Args:
-                backup_type: Type of backup (full, incremental, config)
-                backup_id: Optional custom backup ID
-
-            Returns:
-                Status of the backup operation
-            """
+            """Create a backup of the system."""
             try:
                 from ..core.backup_recovery import BackupManager
 
@@ -996,11 +872,7 @@ class FastMCPServer:
 
         @server.tool()
         async def list_backups() -> dict[str, Any]:
-            """List all available backups.
-
-            Returns:
-                List of available backups
-            """
+            """List all available backups."""
             try:
                 from ..core.backup_recovery import BackupManager
 
@@ -1031,14 +903,7 @@ class FastMCPServer:
 
         @server.tool()
         async def restore_backup(backup_id: str) -> dict[str, Any]:
-            """Restore from a backup.
-
-            Args:
-                backup_id: ID of the backup to restore
-
-            Returns:
-                Status of the restore operation
-            """
+            """Restore from a backup."""
             try:
                 from ..core.backup_recovery import BackupManager
 
@@ -1056,11 +921,7 @@ class FastMCPServer:
 
         @server.tool()
         async def run_disaster_recovery_check() -> dict[str, Any]:
-            """Run a disaster recovery check.
-
-            Returns:
-                Results of the disaster recovery check
-            """
+            """Run a disaster recovery check."""
             try:
                 from ..core.backup_recovery import DisasterRecoveryManager
 
@@ -1077,11 +938,7 @@ class FastMCPServer:
 
         @server.tool()
         async def heal_workflows() -> dict[str, Any]:
-            """Manually trigger healing of failed workflows.
-
-            Returns:
-                Status of the healing operation
-            """
+            """Manually trigger healing of failed workflows."""
             try:
                 await self.app.error_recovery_manager.monitor_and_heal_workflows()
 
@@ -1091,11 +948,7 @@ class FastMCPServer:
 
         @server.tool()
         async def get_monitoring_dashboard() -> dict[str, Any]:
-            """Get comprehensive monitoring dashboard data.
-
-            Returns:
-                System metrics, workflow stats, and alert information
-            """
+            """Get comprehensive monitoring dashboard data."""
             try:
                 if not self.app.monitoring_service:
                     return {"status": "error", "error": "Monitoring service not initialized"}
@@ -1108,11 +961,7 @@ class FastMCPServer:
 
         @server.tool()
         async def get_active_alerts() -> dict[str, Any]:
-            """Get all active (non-acknowledged) alerts.
-
-            Returns:
-                List of active alerts
-            """
+            """Get all active (non-acknowledged) alerts."""
             try:
                 if not self.app.monitoring_service or not self.app.monitoring_service.alert_manager:
                     return {"status": "error", "error": "Monitoring service not initialized"}
@@ -1140,15 +989,7 @@ class FastMCPServer:
 
         @server.tool()
         async def acknowledge_alert(alert_id: str, user: str) -> dict[str, Any]:
-            """Acknowledge an alert.
-
-            Args:
-                alert_id: ID of the alert to acknowledge
-                user: User acknowledging the alert
-
-            Returns:
-                Status of the acknowledgment
-            """
+            """Acknowledge an alert."""
             try:
                 if not self.app.monitoring_service:
                     return {"status": "error", "error": "Monitoring service not initialized"}
@@ -1168,16 +1009,7 @@ class FastMCPServer:
             title: str = "Test Alert",
             description: str = "This is a test alert",
         ) -> dict[str, Any]:
-            """Trigger a test alert for testing purposes.
-
-            Args:
-                severity: Severity level (low, medium, high, critical)
-                title: Title of the alert
-                description: Description of the alert
-
-            Returns:
-                Status of the alert triggering
-            """
+            """Trigger a test alert for testing purposes."""
             try:
                 if not self.app.monitoring_service or not self.app.monitoring_service.alert_manager:
                     return {"status": "error", "error": "Monitoring service not initialized"}
@@ -1211,11 +1043,7 @@ class FastMCPServer:
 
         @server.tool()
         async def flush_metrics() -> dict[str, Any]:
-            """Force flush all pending metrics to exporters.
-
-            Returns:
-                Status of the flush operation
-            """
+            """Force flush all pending metrics to exporters."""
             try:
                 if not self.app.observability:
                     return {
@@ -1231,11 +1059,7 @@ class FastMCPServer:
 
         @server.tool()
         async def list_adapters() -> dict[str, Any]:
-            """List available adapters.
-
-            Returns:
-                Dictionary with available adapters and their status
-            """
+            """List available adapters."""
             adapters_info = {}
             for name, adapter in self.app.adapters.items():
                 try:
@@ -1285,11 +1109,7 @@ class FastMCPServer:
 
         @server.tool()
         async def get_health() -> dict[str, Any]:
-            """Get overall health status of the system.
-
-            Returns:
-                Health status information
-            """
+            """Get overall health status of the system."""
             try:
                 app_healthy = self.app.is_healthy()
 
@@ -1375,19 +1195,7 @@ class FastMCPServer:
         async def get_tool_versions(
             tool_name: str | None = None,
         ) -> dict[str, Any]:
-            """Get version metadata for MCP tools.
-
-            Returns tool version registry for backward compatibility
-            tracking. External consumers can use this to detect
-            schema changes between sessions.
-
-            Args:
-                tool_name: Optional specific tool name. If omitted,
-                    returns versions for all registered tools.
-
-            Returns:
-                Dictionary with tool version information.
-            """
+            """Get version metadata for MCP tools."""
             from mahavishnu.mcp.tool_versions import TOOL_VERSIONS, get_tool_version
 
             if tool_name:
@@ -1411,58 +1219,140 @@ class FastMCPServer:
                 "server_version": __version__,
             }
 
+        @server.tool()
+        async def discover_tools(query: str | None = None) -> dict[str, Any]:
+            """Search for available MCP tools by name or capability."""
+            from mahavishnu.mcp.tool_versions import TOOL_VERSIONS
+            from mahavishnu.mcp.tools.profiles import (
+                FULL_REGISTRATIONS,
+                PROFILE_REGISTRATIONS,
+                get_active_profile,
+            )
+
+            profile = get_active_profile()
+
+            # Collect names of currently registered tools from the FastMCP
+            # server's internal tool registry.
+            try:
+                registered_names: set[str] = set()
+                # FastMCP >= 3.0 exposes ._tool_manager or similar
+                if hasattr(server, "_tool_manager"):
+                    tm = server._tool_manager
+                    registered_names = {t.name for t in tm.list_tools()}
+                elif hasattr(server, "_tools"):
+                    registered_names = set(server._tools.keys())
+            except Exception:
+                registered_names = set()
+
+            # All known tools from the version registry
+            all_known = set(TOOL_VERSIONS.keys())
+
+            # Apply query filter
+            if query:
+                q = query.lower()
+                all_known = {n for n in all_known if q in n.lower()}
+                registered_names = {n for n in registered_names if q in n.lower()}
+
+            not_loaded = sorted(all_known - registered_names)
+            loaded = sorted(registered_names & all_known)
+
+            # Profile information
+            profile_methods = PROFILE_REGISTRATIONS.get(profile, FULL_REGISTRATIONS)
+
+            return {
+                "status": "success",
+                "profile": profile.value,
+                "query": query,
+                "loaded_tools": loaded,
+                "loaded_count": len(loaded),
+                "not_loaded_tools": not_loaded,
+                "not_loaded_count": len(not_loaded),
+                "total_known": len(all_known),
+                "profile_methods_scheduled": profile_methods,
+                "hint": (
+                    f"Set MAHAVISHNU_TOOL_PROFILE=full to load all tools, "
+                    f"or switch to 'standard' for daily development."
+                ),
+            }
+
     async def start(self, host: str = "127.0.0.1", port: int = 3000):
         """Start the MCP server.
+
+        Feature-specific tool groups are gated by the active ToolProfile.
+        Core inline tools (registered in ``_register_tools()``) are always
+        present. The profile is read from the ``MAHAVISHNU_TOOL_PROFILE``
+        environment variable, falling back to ``ToolProfile.FULL`` for
+        full backward compatibility.
 
         Args:
             host: Host address to bind to
             port: Port to listen on
         """
-        # Register terminal management tools if enabled
-        if self.terminal_manager is not None:
+        from mahavishnu.mcp.tools.profiles import (
+            PROFILE_REGISTRATIONS,
+            get_active_profile,
+        )
+
+        # Resolve active profile from environment
+        self._active_profile = get_active_profile()
+        methods_to_call = PROFILE_REGISTRATIONS[self._active_profile]
+        methods_set = set(methods_to_call)
+
+        logger.info(
+            "Starting Mahavishnu MCP server with tool profile: %s "
+            "(%d registration groups scheduled)",
+            self._active_profile.value,
+            len(methods_to_call),
+        )
+
+        # Terminal tools have a runtime gate (terminal_manager) in addition
+        # to the profile gate. Only call if both conditions are met.
+        if self.terminal_manager is not None and "_register_terminal_tools" in methods_set:
             self._register_terminal_tools()
 
-        # Register Session Buddy integration tools
-        self._register_session_buddy_tools()
+        # Feature-specific registrations gated by profile
+        if "_register_session_buddy_tools" in methods_set:
+            self._register_session_buddy_tools()
 
-        # Register Git analytics tools for symbiotic ecosystem
-        self._register_git_analytics_tools()
+        if "_register_git_analytics_tools" in methods_set:
+            self._register_git_analytics_tools()
 
-        # Register worker orchestration tools if enabled
-        self._register_worker_tools()
+        if "_register_worker_tools" in methods_set:
+            self._register_worker_tools()
 
-        # Register pool management tools if enabled
-        self._register_pool_tools()
+        if "_register_pool_tools" in methods_set:
+            self._register_pool_tools()
 
-        # Register repository messaging tools
-        self._register_repository_messaging_tools()
+        if "_register_repository_messaging_tools" in methods_set:
+            self._register_repository_messaging_tools()
 
-        # Register OTel trace management tools
-        self._register_otel_tools()
+        if "_register_otel_tools" in methods_set:
+            self._register_otel_tools()
 
-        # Register worktree management tools
-        self.register_worktree_tools()
+        # Worktree tools are async and conditionally registered based on
+        # WorktreeCoordinator runtime state. They are not gated by profile.
+        await self.register_worktree_tools()
 
-        # Register self-improvement tools
-        self._register_self_improvement_tools()
+        if "_register_self_improvement_tools" in methods_set:
+            self._register_self_improvement_tools()
 
-        # Register goal-driven team tools
-        self._register_goal_team_tools()
+        if "_register_goal_team_tools" in methods_set:
+            self._register_goal_team_tools()
 
-        # Register team learning tools
-        self._register_team_learning_tools()
+        if "_register_team_learning_tools" in methods_set:
+            self._register_team_learning_tools()
 
-        # Register tree-sitter code analysis tools
-        self._register_treesitter_tools()
+        if "_register_treesitter_tools" in methods_set:
+            self._register_treesitter_tools()
 
-        # Register adapter registry tools
-        self._register_adapter_registry_tools()
+        if "_register_adapter_registry_tools" in methods_set:
+            self._register_adapter_registry_tools()
 
-        # Register health check tools
+        # Health tools are mandatory regardless of profile
         self._register_health_tools()
 
-        # Register PyCharm IDE tools
-        self._register_pycharm_tools()
+        if "_register_pycharm_tools" in methods_set:
+            self._register_pycharm_tools()
 
         self._update_registered_tool_metrics()
 

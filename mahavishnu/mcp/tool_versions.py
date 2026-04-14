@@ -141,6 +141,8 @@ TOOL_VERSIONS: dict[str, str] = {
     "request_approval": "1.0.0",
     # Version query (this module)
     "get_tool_versions": "1.0.0",
+    # Tool discovery (server_core.py inline)
+    "discover_tools": "1.0.0",
     # Adapter registry tools (adapter_registry_tools.py)
     "adapter_cache_invalidate": "1.0.0",
     "adapter_discover": "1.0.0",

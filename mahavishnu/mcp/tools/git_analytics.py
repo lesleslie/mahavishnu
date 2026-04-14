@@ -32,20 +32,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
         days_back: int = 30,
         user_id: str | None = None,
     ) -> dict[str, Any]:
-        """Get git velocity dashboard across multiple repositories.
-
-        Aggregates commit velocity, branch switch frequency, and merge
-        conflict rates from Dhara time-series storage where Crackerjack
-        stores git metrics.
-
-        Args:
-            repo_paths: List of repository paths to analyze
-            days_back: Number of days to look back for metrics (default: 30)
-            user_id: Authenticated user ID (injected by @require_mcp_auth)
-
-        Returns:
-            Dictionary with per-project and aggregated velocity metrics
-        """
+        """Get git velocity dashboard across multiple repositories."""
         try:
             # Query Dhara for git metrics (time-series data)
             from ...core.dhara_adapter import DharaAdapter
@@ -121,18 +108,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
         repo_path: str,
         user_id: str | None = None,
     ) -> dict[str, Any]:
-        """Get repository health metrics including PRs and branches.
-
-        Queries git metrics and combines with workflow performance data from
-        Session-Buddy to provide comprehensive repository health assessment.
-
-        Args:
-            repo_path: Path to repository to analyze
-            user_id: Authenticated user ID (injected by @require_mcp_auth)
-
-        Returns:
-            Repository health metrics including stale PRs, branches, and quality scores
-        """
+        """Get repository health metrics including PRs and branches."""
         try:
             from ...core.dhara_adapter import DharaAdapter
 
@@ -195,23 +171,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
         min_occurrences: int = 3,
         user_id: str | None = None,
     ) -> dict[str, Any]:
-        """Detect patterns across all repositories in the ecosystem.
-
-        Analyzes git metrics, workflow performance, and quality scores to
-        identify cross-project patterns such as:
-        - Most common issue types
-        - Repositories with high velocity
-        - Recurring quality issues
-        - Correlation between velocity and quality
-
-        Args:
-            days_back: Number of days to analyze for patterns (default: 90)
-            min_occurrences: Minimum pattern occurrences to report (default: 3)
-            user_id: Authenticated user ID (injected by @require_mcp_auth)
-
-        Returns:
-            Cross-project patterns with insights and correlations
-        """
+        """Detect patterns across all repositories in the ecosystem."""
         try:
             from ...core.dhara_adapter import DharaAdapter
 

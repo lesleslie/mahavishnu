@@ -125,8 +125,8 @@ This table clarifies current maturity so multi-engine expectations match impleme
 | Async orchestration runtime | Production-ready | Async-first core, async messaging, concurrent worker and pool execution |
 | Multi-pool execution (local/delegated/K8s) | Production-ready | Routing strategies and pool health/monitoring are implemented |
 | LlamaIndex engine adapter | Production-ready | RAG pipeline integration is implemented |
-| Prefect engine adapter | Framework complete, partial implementation | Core adapter contract and models exist; advanced production behavior is still in progress |
-| Agno engine adapter | Framework complete, partial implementation | Goal/team scaffolding and adapter surface exist; advanced production behavior is still in progress |
+| Prefect engine adapter | Production-ready | Full Prefect 3.x SDK integration with flows, deployments, schedules, and task orchestration (1,800+ LOC) |
+| Agno engine adapter | Production-ready | Multi-agent teams with MCP tools, Ollama/Claude/OpenAI support, and agent lifecycle management (1,400+ LOC) |
 
 **Configuration System**
 
@@ -650,17 +650,14 @@ Important scope note: Mahavishnu is production-ready for multi-repo orchestratio
 **Engine Adapter Maturity:**
 
 - LlamaIndex adapter (RAG pipelines, fully implemented)
-- Prefect adapter (framework complete, partial implementation)
-- Agno adapter (framework complete, partial implementation)
+- Prefect adapter (fully implemented — flows, deployments, schedules)
+- Agno adapter (fully implemented — multi-agent teams, MCP tools)
 
 **Roadmap:**
 
-- Phase 3: Adapter Implementation (6-9 weeks)
 - Phase 4: Production Features (error recovery, full observability)
 - Phase 5: Comprehensive Testing & Documentation
 - Phase 6: Production Readiness (security audit, benchmarking)
-
-**Estimated Time to Production:** 10 weeks from current state
 
 ## Contributing
 

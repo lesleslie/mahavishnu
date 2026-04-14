@@ -85,24 +85,7 @@ def register_terminal_tools(
         columns: int = Field(default=120, ge=40, le=300),
         rows: int = Field(default=40, ge=10, le=200),
     ) -> list[str]:
-        """Launch terminal sessions running a command.
-
-        Args:
-            command: Command to run in each terminal (max 10000 chars)
-            count: Number of sessions to launch (default: 1, max: 10)
-            columns: Terminal width in characters (default: 120, range: 40-300)
-            rows: Terminal height in lines (default: 40, range: 10-200)
-
-        Returns:
-            List of session IDs
-
-        Raises:
-            ValueError: If command contains dangerous patterns
-
-        Example:
-            >>> session_ids = await terminal_launch("qwen", count=3)
-            >>> print(f"Launched {len(session_ids)} sessions")
-        """
+        """Launch terminal sessions running a command."""
         # SECURITY: Validate command safety
         validate_command_safety(command)
 
@@ -118,22 +101,7 @@ def register_terminal_tools(
         session_id: SessionID,
         command: Command,
     ) -> dict[str, Any]:
-        """Send command to a terminal session.
-
-        Args:
-            session_id: Terminal session ID (alphanumeric, underscore, hyphen only, max 100 chars)
-            command: Command to send (max 10000 chars)
-
-        Returns:
-            Command execution result
-
-        Raises:
-            ValueError: If session_id format invalid or command contains dangerous patterns
-
-        Example:
-            >>> result = await terminal_send("term_123", "hello world")
-            >>> print(result["status"])
-        """
+        """Send command to a terminal session."""
         # SECURITY: Validate command safety
         validate_command_safety(command)
 
@@ -146,19 +114,7 @@ def register_terminal_tools(
         session_id: str,
         lines: int | None = None,
     ) -> str:
-        """Capture output from terminal session.
-
-        Args:
-            session_id: Terminal session ID
-            lines: Number of lines to capture (default: 100, None for all)
-
-        Returns:
-            Terminal output as string
-
-        Example:
-            >>> output = await terminal_capture("term_123", lines=50)
-            >>> print(output)
-        """
+        """Capture output from terminal session."""
         return await terminal_manager.capture_output(session_id, lines)
 
     @mcp.tool()
@@ -166,58 +122,22 @@ def register_terminal_tools(
         session_ids: list[str],
         lines: int | None = None,
     ) -> dict[str, str]:
-        """Capture output from multiple terminal sessions concurrently.
-
-        Args:
-            session_ids: List of session IDs
-            lines: Number of lines to capture per session
-
-        Returns:
-            Dictionary mapping session_id -> output
-
-        Example:
-            >>> outputs = await terminal_capture_all(["term_1", "term_2"])
-            >>> for sid, output in outputs.items():
-            ...     print(f"{sid}: {output[:50]}...")
-        """
+        """Capture output from multiple terminal sessions concurrently."""
         return await terminal_manager.capture_all_outputs(session_ids, lines)
 
     @mcp.tool()
     async def terminal_list() -> list[dict]:
-        """List all active terminal sessions.
-
-        Returns:
-            List of session information dictionaries
-
-        Example:
-            >>> sessions = await terminal_list()
-            >>> print(f"Active sessions: {len(sessions)}")
-        """
+        """List all active terminal sessions."""
         return await terminal_manager.list_sessions()
 
     @mcp.tool()
     async def terminal_close(session_id: str) -> None:
-        """Close a terminal session.
-
-        Args:
-            session_id: Terminal session ID to close
-
-        Example:
-            >>> await terminal_close("term_123")
-        """
+        """Close a terminal session."""
         await terminal_manager.close_session(session_id)
 
     @mcp.tool()
     async def terminal_close_all() -> dict:
-        """Close all terminal sessions.
-
-        Returns:
-            Dictionary with count of closed sessions
-
-        Example:
-            >>> result = await terminal_close_all()
-            >>> print(f"Closed {result['closed_count']} sessions")
-        """
+        """Close all terminal sessions."""
         sessions = await terminal_manager.list_sessions()
         session_ids = [s.get("id", s.get("terminal_id", "")) for s in sessions]
         if session_ids:
@@ -229,19 +149,7 @@ def register_terminal_tools(
         adapter_name: str,
         migrate_sessions: bool = False,
     ) -> dict:
-        """Hot-switch to a different terminal adapter without restart.
-
-        Args:
-            adapter_name: Name of adapter to switch to ("iterm2" or "mcpretentious")
-            migrate_sessions: If True, attempt to migrate existing sessions
-
-        Returns:
-            Dictionary with switch result
-
-        Example:
-            >>> result = await terminal_switch_adapter("iterm2", migrate_sessions=False)
-            >>> print(f"Switched to {result['new_adapter']}")
-        """
+        """Hot-switch to a different terminal adapter without restart."""
         current = terminal_manager.current_adapter()
 
         if adapter_name == current:
@@ -286,15 +194,7 @@ def register_terminal_tools(
 
     @mcp.tool()
     async def terminal_current_adapter() -> dict:
-        """Get information about the current terminal adapter.
-
-        Returns:
-            Dictionary with adapter information
-
-        Example:
-            >>> info = await terminal_current_adapter()
-            >>> print(f"Using: {info['adapter']}")
-        """
+        """Get information about the current terminal adapter."""
         return {
             "adapter": terminal_manager.current_adapter(),
             "history": terminal_manager.get_adapter_history(),
@@ -302,16 +202,7 @@ def register_terminal_tools(
 
     @mcp.tool()
     async def terminal_list_adapters() -> dict:
-        """List all available terminal adapters.
-
-        Returns:
-            Dictionary with available adapters and their status
-
-        Example:
-            >>> adapters = await terminal_list_adapters()
-            >>> for name, info in adapters['adapters'].items():
-            ...     print(f"{name}: {info['status']}")
-        """
+        """List all available terminal adapters."""
         adapters = {
             "mcpretentious": {
                 "status": "available",
@@ -337,15 +228,7 @@ def register_terminal_tools(
 
     @mcp.tool()
     async def terminal_list_profiles() -> dict:
-        """List available iTerm2 profiles (only works with iTerm2 adapter).
-
-        Returns:
-            Dictionary with list of profile names
-
-        Example:
-            >>> profiles = await terminal_list_profiles()
-            >>> print(f"Available profiles: {profiles['profiles']}")
-        """
+        """List available iTerm2 profiles (only works with iTerm2 adapter)."""
         if terminal_manager.current_adapter() != "iterm2":
             return {
                 "status": "error",
@@ -390,23 +273,7 @@ def register_terminal_tools(
         columns: int = 120,
         rows: int = 40,
     ) -> list[str]:
-        """Launch terminal sessions with a specific iTerm2 profile.
-
-        Args:
-            command: Command to run in each terminal
-            profile_name: iTerm2 profile name to use
-            count: Number of sessions to launch (default: 1)
-            columns: Terminal width in characters (default: 120)
-            rows: Terminal height in lines (default: 40)
-
-        Returns:
-            List of session IDs
-
-        Example:
-            >>> session_ids = await terminal_launch_with_profile(
-            ...     "qwen", "My Profile", count=2
-            ... )
-        """
+        """Launch terminal sessions with a specific iTerm2 profile."""
         if terminal_manager.current_adapter() != "iterm2":
             raise RuntimeError(
                 f"Profile selection requires iTerm2 adapter. Current: {terminal_manager.current_adapter()}"

@@ -24,18 +24,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
         content: dict[str, Any],
         priority: str = "NORMAL",
     ) -> dict[str, Any]:
-        """Send a message from one repository to another.
-
-        Args:
-            sender_repo: Repository sending the message
-            receiver_repo: Repository receiving the message
-            message_type: Type of message (CODE_CHANGE_NOTIFICATION, WORKFLOW_STATUS_UPDATE, etc.)
-            content: Message content as a dictionary
-            priority: Message priority (LOW, NORMAL, HIGH, CRITICAL)
-
-        Returns:
-            Status of the message sending operation
-        """
+        """Send a message from one repository to another."""
         try:
             # Validate message type
             try:
@@ -81,18 +70,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
         target_repos: list[str] | None = None,
         priority: str = "NORMAL",
     ) -> dict[str, Any]:
-        """Broadcast a message to multiple repositories.
-
-        Args:
-            sender_repo: Repository sending the message
-            message_type: Type of message (CODE_CHANGE_NOTIFICATION, WORKFLOW_STATUS_UPDATE, etc.)
-            content: Message content as a dictionary
-            target_repos: List of repositories to send to (None = all repositories)
-            priority: Message priority (LOW, NORMAL, HIGH, CRITICAL)
-
-        Returns:
-            Status of the broadcast operation
-        """
+        """Broadcast a message to multiple repositories."""
         try:
             # Validate message type
             try:
@@ -137,17 +115,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
         limit: int = 50,
         since: str | None = None,
     ) -> dict[str, Any]:
-        """Get messages for a specific repository.
-
-        Args:
-            receiver_repo: Repository to get messages for
-            message_type: Optional message type to filter by
-            limit: Maximum number of messages to return
-            since: Optional ISO format datetime string to filter messages from
-
-        Returns:
-            List of messages for the repository
-        """
+        """Get messages for a specific repository."""
         try:
             # Parse message type if provided
             msg_type = None
@@ -198,15 +166,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
 
     @server.tool()
     async def acknowledge_repository_message(message_id: str, receiver_repo: str) -> dict[str, Any]:
-        """Acknowledge receipt of a message.
-
-        Args:
-            message_id: ID of the message to acknowledge
-            receiver_repo: Repository acknowledging the message
-
-        Returns:
-            Status of the acknowledgment
-        """
+        """Acknowledge receipt of a message."""
         try:
             success = await messenger_manager.messenger.acknowledge_message(
                 message_id, receiver_repo
@@ -228,15 +188,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
     async def notify_repository_changes(
         repo_path: str, changes: list[dict[str, Any]]
     ) -> dict[str, Any]:
-        """Notify other repositories about changes in a repository.
-
-        Args:
-            repo_path: Path of the repository with changes
-            changes: List of changes to notify about
-
-        Returns:
-            Status of the notification operation
-        """
+        """Notify other repositories about changes in a repository."""
         try:
             result = await messenger_manager.process_repository_changes(repo_path, changes)
 
@@ -252,17 +204,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
     async def notify_workflow_status(
         workflow_id: str, status: str, repo_path: str, target_repos: list[str] | None = None
     ) -> dict[str, Any]:
-        """Notify other repositories about workflow status changes.
-
-        Args:
-            workflow_id: ID of the workflow
-            status: New status of the workflow
-            repo_path: Repository where workflow is running
-            target_repos: Optional list of target repositories (None = all)
-
-        Returns:
-            Status of the notification operation
-        """
+        """Notify other repositories about workflow status changes."""
         try:
             result = await messenger_manager.notify_workflow_status(
                 workflow_id, status, repo_path, target_repos
@@ -280,17 +222,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
     async def send_quality_alert(
         repo_path: str, alert_type: str, description: str, severity: str = "medium"
     ) -> dict[str, Any]:
-        """Send a quality alert to other repositories.
-
-        Args:
-            repo_path: Repository sending the alert
-            alert_type: Type of quality alert
-            description: Description of the quality issue
-            severity: Severity level (low, medium, high, critical)
-
-        Returns:
-            Status of the alert sending operation
-        """
+        """Send a quality alert to other repositories."""
         try:
             result = await messenger_manager.send_quality_alert(
                 repo_path, alert_type, description, severity

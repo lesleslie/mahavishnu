@@ -424,16 +424,7 @@ def register_self_improvement_tools(
         auto_fix: bool = False,
         dry_run: bool = False,
     ) -> dict[str, Any]:
-        """Run comprehensive review and optionally fix issues.
-
-        Args:
-            scope: Scope of review (critical, security, performance, quality, all).
-            auto_fix: Whether to auto-fix critical findings.
-            dry_run: If True, don't create issues or apply fixes.
-
-        Returns:
-            Dictionary with review results.
-        """
+        """Run comprehensive review and optionally fix issues."""
         review_scope = ReviewScope(scope)
         return await tools.review_and_fix(
             scope=review_scope,
@@ -446,15 +437,7 @@ def register_self_improvement_tools(
         approval_type: str,
         context: dict[str, Any],
     ) -> dict[str, Any]:
-        """Request manual approval for version bump or publish.
-
-        Args:
-            approval_type: Type of approval ("version_bump" or "publish").
-            context: Context data for the approval decision.
-
-        Returns:
-            Dictionary with approval request details.
-        """
+        """Request manual approval for version bump or publish."""
         return await tools.request_approval(
             approval_type=approval_type,
             context=context,
@@ -467,17 +450,7 @@ def register_self_improvement_tools(
         selected_option: int | None = None,
         rejection_reason: str | None = None,
     ) -> dict[str, Any]:
-        """Respond to a pending approval request.
-
-        Args:
-            approval_id: ID of the approval request.
-            approved: Whether to approve the request.
-            selected_option: Index of selected option if approved.
-            rejection_reason: Reason for rejection if not approved.
-
-        Returns:
-            Dictionary with response result.
-        """
+        """Respond to a pending approval request."""
         return await tools.respond_to_approval(
             approval_id=approval_id,
             approved=approved,
@@ -487,11 +460,7 @@ def register_self_improvement_tools(
 
     @mcp.tool()
     async def get_pending_approvals() -> dict[str, Any]:
-        """Get all pending approval requests.
-
-        Returns:
-            Dictionary with count and list of pending approvals.
-        """
+        """Get all pending approval requests."""
         return await tools.get_pending_approvals()
 
     logger.info("Registered 4 self-improvement MCP tools")

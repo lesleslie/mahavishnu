@@ -143,14 +143,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         file_path: str,
         errors_only: bool = False,
     ) -> dict[str, Any]:
-        """Run diagnostics on a file using PyCharm's code inspection.
-
-        Falls back to ruff when MCP is unavailable.
-
-        Args:
-            file_path: Path to the file to inspect
-            errors_only: Return only errors (omit warnings)
-        """
+        """Run diagnostics on a file using PyCharm's code inspection."""
         # Try MCP first
         try:
             if app and hasattr(app, "worker_manager") and app.worker_manager:
@@ -182,12 +175,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
 
     @mcp.tool()
     async def pycharm_open_file(file_path: str, line: int | None = None) -> dict[str, Any]:
-        """Open a file in PyCharm editor, optionally at a specific line.
-
-        Args:
-            file_path: Path to the file to open
-            line: Optional line number to navigate to
-        """
+        """Open a file in PyCharm editor, optionally at a specific line."""
         try:
             if app and hasattr(app, "worker_manager") and app.worker_manager:
                 mcp_client = getattr(app.worker_manager, "mcp_client", None)
@@ -214,14 +202,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         pattern: str,
         file_pattern: str | None = None,
     ) -> dict[str, Any]:
-        """Search files in project using PyCharm's search index.
-
-        Falls back to grep when MCP is unavailable.
-
-        Args:
-            pattern: Regex pattern to search for
-            file_pattern: Optional file glob filter (e.g., "*.py")
-        """
+        """Search files in project using PyCharm's search index."""
         try:
             if app and hasattr(app, "worker_manager") and app.worker_manager:
                 mcp_client = getattr(app.worker_manager, "mcp_client", None)
@@ -250,13 +231,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         search_text: str,
         replace_text: str,
     ) -> dict[str, Any]:
-        """Find and replace text in a file via PyCharm.
-
-        Args:
-            file_path: Path to the file
-            search_text: Text to find
-            replace_text: Text to replace with
-        """
+        """Find and replace text in a file via PyCharm."""
         try:
             if app and hasattr(app, "worker_manager") and app.worker_manager:
                 mcp_client = getattr(app.worker_manager, "mcp_client", None)
@@ -284,11 +259,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
 
     @mcp.tool()
     async def pycharm_reformat_file(file_path: str) -> dict[str, Any]:
-        """Reformat a file using PyCharm's code formatter.
-
-        Args:
-            file_path: Path to the file to reformat
-        """
+        """Reformat a file using PyCharm's code formatter."""
         try:
             if app and hasattr(app, "worker_manager") and app.worker_manager:
                 mcp_client = getattr(app.worker_manager, "mcp_client", None)
@@ -313,13 +284,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         new_name: str,
         scope: str = "project",
     ) -> dict[str, Any]:
-        """Rename/refactor a symbol across project files via PyCharm.
-
-        Args:
-            symbol_name: Current symbol name
-            new_name: New symbol name
-            scope: Refactoring scope ("file" or "project")
-        """
+        """Rename/refactor a symbol across project files via PyCharm."""
         try:
             if app and hasattr(app, "worker_manager") and app.worker_manager:
                 mcp_client = getattr(app.worker_manager, "mcp_client", None)
@@ -353,14 +318,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         file_path: str,
         severity: str | None = None,
     ) -> dict[str, Any]:
-        """List code inspections and problems for a file via PyCharm.
-
-        Falls back to ruff diagnostics when MCP is unavailable.
-
-        Args:
-            file_path: Path to the file to inspect
-            severity: Filter by severity ("error", "warning", "info")
-        """
+        """List code inspections and problems for a file via PyCharm."""
         try:
             if app and hasattr(app, "worker_manager") and app.worker_manager:
                 mcp_client = getattr(app.worker_manager, "mcp_client", None)

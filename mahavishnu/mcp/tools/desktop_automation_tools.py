@@ -44,11 +44,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
 
     @mcp.tool()
     async def automation_check_permissions() -> dict:
-        """Check automation permissions (accessibility, screen recording).
-
-        Returns:
-            Dictionary with permission status.
-        """
+        """Check automation permissions (accessibility, screen recording)."""
         manager = get_manager()
         await manager.initialize()
 
@@ -57,11 +53,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
 
     @mcp.tool()
     async def automation_status() -> dict:
-        """Get automation manager status and statistics.
-
-        Returns:
-            Dictionary with backend info and operation statistics.
-        """
+        """Get automation manager status and statistics."""
         manager = get_manager()
 
         if not manager._initialized:
@@ -82,15 +74,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         bundle_id: Annotated[str, Field(description="Application bundle identifier")],
         dry_run: Annotated[bool, Field(description="Simulate without executing")] = False,
     ) -> dict:
-        """Launch an application by bundle identifier.
-
-        Args:
-            bundle_id: Application bundle ID (e.g., com.apple.finder).
-            dry_run: If true, simulate without executing.
-
-        Returns:
-            Dictionary with application info.
-        """
+        """Launch an application by bundle identifier."""
         manager = get_manager()
         await manager.initialize()
 
@@ -102,15 +86,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         bundle_id: Annotated[str, Field(description="Application bundle identifier")],
         force: Annotated[bool, Field(description="Force quit")] = False,
     ) -> dict:
-        """Quit an application.
-
-        Args:
-            bundle_id: Application bundle ID.
-            force: Force quit if normal quit fails.
-
-        Returns:
-            Dictionary with operation result.
-        """
+        """Quit an application."""
         manager = get_manager()
         await manager.initialize()
 
@@ -121,14 +97,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
     async def automation_activate_app(
         bundle_id: Annotated[str, Field(description="Application bundle identifier")],
     ) -> dict:
-        """Activate (bring to front) an application.
-
-        Args:
-            bundle_id: Application bundle ID.
-
-        Returns:
-            Dictionary with operation result.
-        """
+        """Activate (bring to front) an application."""
         manager = get_manager()
         await manager.initialize()
 
@@ -137,11 +106,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
 
     @mcp.tool()
     async def automation_list_apps() -> dict:
-        """List all running applications.
-
-        Returns:
-            Dictionary with list of running applications.
-        """
+        """List all running applications."""
         manager = get_manager()
         await manager.initialize()
 
@@ -150,11 +115,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
 
     @mcp.tool()
     async def automation_get_active_app() -> dict:
-        """Get the currently active (frontmost) application.
-
-        Returns:
-            Dictionary with active application info.
-        """
+        """Get the currently active (frontmost) application."""
         manager = get_manager()
         await manager.initialize()
 
@@ -169,14 +130,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
     async def automation_list_windows(
         bundle_id: Annotated[str, Field(description="Application bundle identifier")],
     ) -> dict:
-        """List all windows for an application.
-
-        Args:
-            bundle_id: Application bundle ID.
-
-        Returns:
-            Dictionary with list of windows.
-        """
+        """List all windows for an application."""
         manager = get_manager()
         await manager.initialize()
 
@@ -189,16 +143,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         width: Annotated[int, Field(description="New width in pixels")],
         height: Annotated[int, Field(description="New height in pixels")],
     ) -> dict:
-        """Resize a window.
-
-        Args:
-            window_id: Window identifier.
-            width: New width.
-            height: New height.
-
-        Returns:
-            Dictionary with operation result.
-        """
+        """Resize a window."""
         manager = get_manager()
         await manager.initialize()
 
@@ -211,16 +156,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         x: Annotated[int, Field(description="New X position")],
         y: Annotated[int, Field(description="New Y position")],
     ) -> dict:
-        """Move a window to a new position.
-
-        Args:
-            window_id: Window identifier.
-            x: New X position.
-            y: New Y position.
-
-        Returns:
-            Dictionary with operation result.
-        """
+        """Move a window to a new position."""
         manager = get_manager()
         await manager.initialize()
 
@@ -231,14 +167,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
     async def automation_close_window(
         window_id: Annotated[str, Field(description="Window identifier")],
     ) -> dict:
-        """Close a window.
-
-        Args:
-            window_id: Window identifier.
-
-        Returns:
-            Dictionary with operation result.
-        """
+        """Close a window."""
         manager = get_manager()
         await manager.initialize()
 
@@ -254,15 +183,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         bundle_id: Annotated[str, Field(description="Application bundle identifier")],
         menu_path: Annotated[list[str], Field(description="Menu path (e.g., ['File', 'Save'])")],
     ) -> dict:
-        """Navigate menu and click an item.
-
-        Args:
-            bundle_id: Application bundle ID.
-            menu_path: Path to menu item.
-
-        Returns:
-            Dictionary with operation result.
-        """
+        """Navigate menu and click an item."""
         manager = get_manager()
         await manager.initialize()
 
@@ -273,14 +194,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
     async def automation_list_menus(
         bundle_id: Annotated[str, Field(description="Application bundle identifier")],
     ) -> dict:
-        """List all menus for an application.
-
-        Args:
-            bundle_id: Application bundle ID.
-
-        Returns:
-            Dictionary with list of menus.
-        """
+        """List all menus for an application."""
         manager = get_manager()
         await manager.initialize()
 
@@ -297,16 +211,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         interval: Annotated[float, Field(description="Delay between keystrokes")] = 0.05,
         dry_run: Annotated[bool, Field(description="Simulate")] = False,
     ) -> dict:
-        """Type text at current cursor position.
-
-        Args:
-            text: Text to type.
-            interval: Delay between keystrokes.
-            dry_run: Simulate without executing.
-
-        Returns:
-            Dictionary with operation result.
-        """
+        """Type text at current cursor position."""
         manager = get_manager()
         await manager.initialize()
 
@@ -320,15 +225,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
             list[str] | None, Field(description="Modifiers (e.g., ['cmd', 'shift'])")
         ] = None,
     ) -> dict:
-        """Press a key with optional modifiers.
-
-        Args:
-            key: Key to press (e.g., 'return', 'a', 'f1').
-            modifiers: List of modifiers.
-
-        Returns:
-            Dictionary with operation result.
-        """
+        """Press a key with optional modifiers."""
         manager = get_manager()
         await manager.initialize()
 
@@ -342,17 +239,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         button: Annotated[str, Field(description="Mouse button (left/right/middle)")] = "left",
         clicks: Annotated[int, Field(description="Number of clicks")] = 1,
     ) -> dict:
-        """Click at coordinates.
-
-        Args:
-            x: X coordinate.
-            y: Y coordinate.
-            button: Mouse button.
-            clicks: Number of clicks (1=single, 2=double).
-
-        Returns:
-            Dictionary with operation result.
-        """
+        """Click at coordinates."""
         manager = get_manager()
         await manager.initialize()
 
@@ -367,18 +254,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         end_y: Annotated[int, Field(description="Ending Y coordinate")],
         duration: Annotated[float, Field(description="Duration in seconds")] = 0.5,
     ) -> dict:
-        """Drag from one point to another.
-
-        Args:
-            start_x: Starting X.
-            start_y: Starting Y.
-            end_x: Ending X.
-            end_y: Ending Y.
-            duration: Drag duration.
-
-        Returns:
-            Dictionary with operation result.
-        """
+        """Drag from one point to another."""
         manager = get_manager()
         await manager.initialize()
 
@@ -392,17 +268,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         dx: Annotated[int, Field(description="Horizontal scroll amount")] = 0,
         dy: Annotated[int, Field(description="Vertical scroll amount")] = 0,
     ) -> dict:
-        """Scroll at coordinates.
-
-        Args:
-            x: X coordinate.
-            y: Y coordinate.
-            dx: Horizontal scroll.
-            dy: Vertical scroll (negative = down).
-
-        Returns:
-            Dictionary with operation result.
-        """
+        """Scroll at coordinates."""
         manager = get_manager()
         await manager.initialize()
 
@@ -420,14 +286,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
             Field(description="Region [x, y, width, height] or None for full screen"),
         ] = None,
     ) -> dict:
-        """Capture a screenshot.
-
-        Args:
-            region: Optional region [x, y, width, height].
-
-        Returns:
-            Dictionary with base64-encoded image.
-        """
+        """Capture a screenshot."""
         manager = get_manager()
         await manager.initialize()
 
@@ -454,11 +313,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
 
     @mcp.tool()
     async def automation_list_screens() -> dict:
-        """List all connected displays.
-
-        Returns:
-            Dictionary with list of displays.
-        """
+        """List all connected displays."""
         manager = get_manager()
         await manager.initialize()
 
@@ -476,15 +331,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
             str | None, Field(description="Window identifier or None for all")
         ] = None,
     ) -> dict:
-        """Get UI elements for an application.
-
-        Args:
-            bundle_id: Application bundle ID.
-            window_id: Optional window ID.
-
-        Returns:
-            Dictionary with list of UI elements.
-        """
+        """Get UI elements for an application."""
         manager = get_manager()
         await manager.initialize()
 
@@ -497,11 +344,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
 
     @mcp.tool()
     async def automation_get_security_config() -> dict:
-        """Get security configuration (blocklist, allowlist, etc.).
-
-        Returns:
-            Dictionary with security configuration.
-        """
+        """Get security configuration (blocklist, allowlist, etc.)."""
         manager = get_manager()
         if manager._security:
             return manager._security.to_dict()
@@ -509,11 +352,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
 
     @mcp.tool()
     async def automation_close() -> dict:
-        """Close the automation manager and release resources.
-
-        Returns:
-            Dictionary with status.
-        """
+        """Close the automation manager and release resources."""
         global _manager
         if _manager:
             await _manager.close()

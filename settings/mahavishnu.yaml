@@ -3,8 +3,8 @@
 # Related config files:
 #   - settings/models.yaml     - LLM model registry (Ollama, embeddings, cloud)
 #   - settings/embeddings.yaml - Detailed embedding configuration
-#   - settings/ecosystem.yaml  - Repository manifest
-#   - settings/repos.yaml      - Repository metadata
+#   - settings/ecosystem.yaml  - Repository manifest (preferred; has roles + coordination)
+#   - settings/repos.yaml      - Repository manifest (fallback for standalone users)
 
 # Server settings
 server_name: "Mahavishnu Orchestrator"
@@ -14,7 +14,7 @@ health_ttl_seconds: 60.0
 # Logging
 log_level: INFO
 
-# Repository manifest path
+# Repository manifest path (falls back to settings/repos.yaml if not found)
 repos_path: settings/ecosystem.yaml
 
 # LLM model registry path

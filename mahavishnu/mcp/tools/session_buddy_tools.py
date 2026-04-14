@@ -21,16 +21,7 @@ def register_session_buddy_tools(
     async def index_code_graph(
         project_path: str, include_docs: bool = True, user_id: str | None = None
     ) -> dict[str, Any]:
-        """Index codebase structure for better context in Session Buddy.
-
-        Args:
-            project_path: Path to the project to analyze
-            include_docs: Whether to include documentation indexing
-            user_id: Authenticated user ID (injected by @require_mcp_auth)
-
-        Returns:
-            Analysis results with indexed elements
-        """
+        """Index codebase structure for better context in Session Buddy."""
         try:
             from ..session_buddy.integration import SessionBuddyManager
 
@@ -56,16 +47,7 @@ def register_session_buddy_tools(
     async def get_function_context(
         project_path: str, function_name: str, user_id: str | None = None
     ) -> dict[str, Any]:
-        """Get caller/callee context for a function for Session Buddy.
-
-        Args:
-            project_path: Path to the project
-            function_name: Name of the function to analyze
-            user_id: Authenticated user ID (injected by @require_mcp_auth)
-
-        Returns:
-            Context information for the function
-        """
+        """Get caller/callee context for a function for Session Buddy."""
         try:
             from ..session_buddy.integration import SessionBuddyIntegration
 
@@ -89,16 +71,7 @@ def register_session_buddy_tools(
     async def find_related_code(
         project_path: str, file_path: str, user_id: str | None = None
     ) -> dict[str, Any]:
-        """Find code related by imports/calls for Session Buddy.
-
-        Args:
-            project_path: Path to the project
-            file_path: Path to the file to analyze
-            user_id: Authenticated user ID (injected by @require_mcp_auth)
-
-        Returns:
-            Related code elements
-        """
+        """Find code related by imports/calls for Session Buddy."""
         try:
             from ..session_buddy.integration import SessionBuddyIntegration
 
@@ -120,15 +93,7 @@ def register_session_buddy_tools(
         require_repo_param="project_path",
     )
     async def index_documentation(project_path: str, user_id: str | None = None) -> dict[str, Any]:
-        """Extract docstrings and index for semantic search in Session Buddy.
-
-        Args:
-            project_path: Path to the project to analyze
-            user_id: Authenticated user ID (injected by @require_mcp_auth)
-
-        Returns:
-            Indexing results
-        """
+        """Extract docstrings and index for semantic search in Session Buddy."""
         try:
             from ..session_buddy.integration import SessionBuddyIntegration
 
@@ -146,15 +111,7 @@ def register_session_buddy_tools(
     @server.tool()
     @require_mcp_auth(rbac_manager=rbac_manager)  # No repo permission needed for search
     async def search_documentation(query: str, user_id: str | None = None) -> dict[str, Any]:
-        """Search through indexed documentation in Session Buddy.
-
-        Args:
-            query: Search query
-            user_id: Authenticated user ID (injected by @require_mcp_auth)
-
-        Returns:
-            Search results
-        """
+        """Search through indexed documentation in Session Buddy."""
         try:
             from ..session_buddy.integration import SessionBuddyIntegration
 
@@ -179,19 +136,7 @@ def register_session_buddy_tools(
         priority: str = "NORMAL",
         user_id: str | None = None,
     ) -> dict[str, Any]:
-        """Send message between projects for Session Buddy.
-
-        Args:
-            from_project: Source project identifier
-            to_project: Destination project identifier
-            subject: Message subject
-            message: Message content
-            priority: Message priority (NORMAL, HIGH, CRITICAL)
-            user_id: Authenticated user ID (injected by @require_mcp_auth)
-
-        Returns:
-            Send status
-        """
+        """Send message between projects for Session Buddy."""
         try:
             from ..session_buddy.integration import SessionBuddyIntegration
 
@@ -220,15 +165,7 @@ def register_session_buddy_tools(
     @server.tool()
     @require_mcp_auth(rbac_manager=rbac_manager)
     async def list_project_messages(project: str, user_id: str | None = None) -> dict[str, Any]:
-        """List messages for a project in Session Buddy.
-
-        Args:
-            project: Project identifier to list messages for
-            user_id: Authenticated user ID (injected by @require_mcp_auth)
-
-        Returns:
-            List of messages
-        """
+        """List messages for a project in Session Buddy."""
         try:
             from ..session_buddy.integration import SessionBuddyIntegration
 

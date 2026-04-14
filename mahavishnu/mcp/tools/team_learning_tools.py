@@ -57,51 +57,7 @@ def register_team_learning_tools(mcp: FastMCP) -> None:
         error_message: str | None = None,
         user_feedback: str | None = None,
     ) -> dict[str, Any]:
-        """Record a team execution outcome for learning.
-
-        This tool records the result of a team execution so the learning
-        system can improve future team configurations.
-
-        Args:
-            team_id: Unique team identifier
-            goal: Original natural language goal
-            parsed_intent: Intent extracted from goal (review, build, test, etc.)
-            parsed_domain: Domain extracted from goal (security, performance, etc.)
-            parsed_skills: Skills extracted from goal
-            team_mode: Team collaboration mode used (coordinate, route, broadcast, collaborate)
-            task: The actual task that was executed
-            success: Whether the execution succeeded
-            latency_ms: Execution latency in milliseconds
-            tokens_used: Total tokens consumed (default: 0)
-            quality_score: Optional quality score 0-100 (default: None)
-            error_code: Error code if execution failed (default: None)
-            error_message: Error message if execution failed (default: None)
-            user_feedback: User feedback "positive" or "negative" (default: None)
-
-        Returns:
-            Dictionary with:
-            - success: Whether recording succeeded
-            - outcome_id: Unique identifier for the recorded outcome
-            - message: Human-readable confirmation
-            - error: Error details if failed
-
-        Example:
-            ```python
-            result = await record_team_outcome(
-                team_id="team_abc123",
-                goal="Review code for security vulnerabilities",
-                parsed_intent="review",
-                parsed_domain="security",
-                parsed_skills=["security", "quality"],
-                team_mode="coordinate",
-                task="Review the authentication module",
-                success=True,
-                latency_ms=1500.0,
-                quality_score=92.5,
-            )
-            print(result["message"])
-            ```
-        """
+        """Record a team execution outcome for learning."""
         try:
             # Check feature flags
             if not is_feature_enabled("enabled"):
@@ -192,32 +148,7 @@ def register_team_learning_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def get_learning_summary() -> dict[str, Any]:
-        """Get a summary of the team learning system.
-
-        Returns aggregate statistics about team executions, including
-        success rates, top performing skills, and mode performance.
-
-        Returns:
-            Dictionary with:
-            - success: Whether the operation succeeded
-            - summary: Learning summary including:
-                - total_outcomes: Total recorded outcomes
-                - skill_combinations: Number of unique skill combinations
-                - intents_tracked: Number of intents with data
-                - modes_tracked: Number of modes with data
-                - top_skills: Top 5 performing skill combinations
-                - mode_performance: Performance stats by mode
-                - intent_performance: Performance stats by intent
-                - recent_success_rate: Success rate for recent outcomes
-            - error: Error details if failed
-
-        Example:
-            ```python
-            result = await get_learning_summary()
-            print(f"Total outcomes: {result['summary']['total_outcomes']}")
-            print(f"Recent success rate: {result['summary']['recent_success_rate']:.0%}")
-            ```
-        """
+        """Get a summary of the team learning system."""
         try:
             # Check feature flags
             if not is_feature_enabled("enabled"):
@@ -252,38 +183,7 @@ def register_team_learning_tools(mcp: FastMCP) -> None:
         intent: str,
         min_samples: int = 3,
     ) -> dict[str, Any]:
-        """Get recommended team mode for an intent.
-
-        Analyzes historical execution data to recommend the best
-        collaboration mode for a given intent.
-
-        Args:
-            intent: The intent to get a recommendation for
-                   (review, build, test, fix, refactor, document, analyze)
-            min_samples: Minimum samples required for recommendation (default: 3)
-
-        Returns:
-            Dictionary with:
-            - success: Whether the operation succeeded
-            - recommendation: Mode recommendation (if available):
-                - mode: Recommended team mode
-                - confidence: Confidence in recommendation (0.0-1.0)
-                - success_rate: Historical success rate for this mode
-                - sample_count: Number of samples used
-                - reason: Human-readable explanation
-            - fallback_mode: Default mode if no recommendation available
-            - error: Error details if failed
-
-        Example:
-            ```python
-            result = await get_recommended_mode(intent="review")
-            if result.get("recommendation"):
-                print(f"Recommended: {result['recommendation']['mode']}")
-                print(f"Confidence: {result['recommendation']['confidence']:.0%}")
-            else:
-                print(f"Using fallback: {result['fallback_mode']}")
-            ```
-        """
+        """Get recommended team mode for an intent."""
         try:
             # Check feature flags
             if not is_feature_enabled("enabled"):
@@ -339,41 +239,7 @@ def register_team_learning_tools(mcp: FastMCP) -> None:
         stats_type: str,
         key: str | None = None,
     ) -> dict[str, Any]:
-        """Get detailed learning statistics.
-
-        Query specific statistics from the learning system.
-
-        Args:
-            stats_type: Type of stats to retrieve:
-                - "mode": Stats for a specific mode (requires key)
-                - "intent": Stats for a specific intent (requires key)
-                - "skill": Stats for a skill combination (requires key as comma-separated)
-                - "recent": Recent execution outcomes
-            key: The specific key to query (required for mode/intent/skill types)
-
-        Returns:
-            Dictionary with:
-            - success: Whether the operation succeeded
-            - stats_type: The type of stats retrieved
-            - stats: The requested statistics
-            - error: Error details if failed
-
-        Example:
-            ```python
-            # Get mode stats
-            result = await get_learning_stats(stats_type="mode", key="coordinate")
-            print(f"Success rate: {result['stats']['success_rate']:.0%}")
-
-            # Get skill stats
-            result = await get_learning_stats(stats_type="skill", key="security,quality")
-            print(f"Executions: {result['stats']['total_executions']}")
-
-            # Get recent outcomes
-            result = await get_learning_stats(stats_type="recent")
-            for outcome in result['stats']:
-                print(f"Team: {outcome['team_id']}, Success: {outcome['success']}")
-            ```
-        """
+        """Get detailed learning statistics."""
         try:
             # Check feature flags
             if not is_feature_enabled("enabled"):
@@ -493,32 +359,7 @@ def register_team_learning_tools(mcp: FastMCP) -> None:
         feedback: str,
         quality_score: float | None = None,
     ) -> dict[str, Any]:
-        """Record user feedback for a recent team execution.
-
-        Updates the most recent outcome for a team with user feedback.
-        This feedback is used to improve future recommendations.
-
-        Args:
-            team_id: The team ID to provide feedback for
-            feedback: User feedback, either "positive" or "negative"
-            quality_score: Optional quality score 0-100 (default: None)
-
-        Returns:
-            Dictionary with:
-            - success: Whether recording succeeded
-            - message: Confirmation message
-            - error: Error details if failed
-
-        Example:
-            ```python
-            result = await record_user_feedback(
-                team_id="team_abc123",
-                feedback="positive",
-                quality_score=95.0,
-            )
-            print(result["message"])
-            ```
-        """
+        """Record user feedback for a recent team execution."""
         try:
             # Check feature flags
             if not is_feature_enabled("enabled"):
