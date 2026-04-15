@@ -3,7 +3,7 @@
 import os
 import tempfile
 
-from click.testing import CliRunner
+from typer.testing import CliRunner
 
 from mahavishnu.cli import app
 
@@ -30,7 +30,7 @@ repos:
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
         assert "sweep" in result.output
-        assert "mcp-serve" in result.output
+        assert "mcp" in result.output
         assert "list-repos" in result.output
     finally:
         os.unlink(temp_repos_file)

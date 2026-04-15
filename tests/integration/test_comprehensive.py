@@ -160,7 +160,7 @@ async def test_resilience_pattern_integration():
         # Execute with resilience patterns
         result = await app.resilience_manager.resilient_workflow_execution(
             task=task,
-            adapter_name="llamaindex",  # Use available adapter
+            adapter_name="worker",
             repos=[str(repo_str)],
             user_id="test_user",
         )

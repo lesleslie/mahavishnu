@@ -27,7 +27,7 @@ from mahavishnu.core.coordination.models import (
 
 
 @pytest.fixture
-def temp_ecosystem_file():
+def temp_ecosystem_file(monkeypatch):
     """Create a temporary ecosystem.yaml with coordination data."""
     ecosystem_data = {
         "version": "1.0",
@@ -42,6 +42,8 @@ def temp_ecosystem_file():
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         yaml.dump(ecosystem_data, f)
         temp_path = f.name
+
+    monkeypatch.setenv("MAHAVISHNU_ECOSYSTEM_PATH", temp_path)
 
     yield temp_path
 

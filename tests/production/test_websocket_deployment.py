@@ -16,6 +16,7 @@ import ssl
 import time
 import uuid
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -27,13 +28,56 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 
-from mcp_common.websocket import WebSocketServer, WebSocketProtocol
+from mcp_common.websocket import MessageType, WebSocketMessage, WebSocketProtocol, WebSocketServer
 from mcp_common.websocket.auth import WebSocketAuthenticator
 
 
 # =============================================================================
 # Fixtures
 # =============================================================================
+
+
+def _unverified_ssl_context() -> ssl.SSLContext:
+    """Create an SSL context that trusts the test self-signed certificate."""
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    return ssl_context
+
+
+def _compat_create_response(
+    request: WebSocketMessage,
+    data: Any,
+    error: Any | None = None,
+) -> WebSocketMessage:
+    """Bridge the installed websocket helper signature mismatch for auth responses."""
+    payload: dict[str, Any]
+    if isinstance(data, dict):
+        payload = data
+    elif isinstance(error, dict):
+        payload = error
+    else:
+        payload = {}
+
+    error_message = error if isinstance(error, str) else None
+    return WebSocketMessage(
+        correlation_id=request.correlation_id,
+        type=MessageType.RESPONSE,
+        event=request.event,
+        data=payload,
+        error_message=error_message,
+    )
+
+
+@pytest.fixture(autouse=True)
+def _patch_websocket_protocol_compat(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Apply websocket helper compatibility fixes for all tests in this module."""
+    monkeypatch.setattr(
+        WebSocketProtocol,
+        "create_response",
+        staticmethod(_compat_create_response),
+    )
+
 
 @pytest.fixture
 def temp_certificate(tmp_path: Path) -> tuple[str, str]:
@@ -64,8 +108,8 @@ def temp_certificate(tmp_path: Path) -> tuple[str, str]:
         .issuer_name(issuer)
         .public_key(private_key.public_key())
         .serial_number(x509.random_serial_number())
-        .not_valid_before(time.time() - 3600)  # Valid from 1 hour ago
-        .not_valid_after(time.time() + 3600)  # Valid for 1 hour
+        .not_valid_before(datetime.now(timezone.utc) - timedelta(hours=1))
+        .not_valid_after(datetime.now(timezone.utc) + timedelta(hours=1))
         .add_extension(
             x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
             critical=False,
@@ -135,8 +179,15 @@ def invalid_jwt_token() -> str:
 async def auth_websocket_server(
     temp_certificate: tuple[str, str],
     jwt_authenticator: WebSocketAuthenticator,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> WebSocketServer:
     """Create WebSocket server with authentication and TLS enabled."""
+
+    monkeypatch.setattr(
+        WebSocketProtocol,
+        "create_response",
+        staticmethod(_compat_create_response),
+    )
 
     class AuthTestServer(WebSocketServer):
         def __init__(self, *args, **kwargs):
@@ -145,7 +196,15 @@ async def auth_websocket_server(
 
         async def on_connect(self, websocket: Any, connection_id: str):
             """Handle connection."""
-            await self.send_welcome_message(websocket, connection_id)
+            welcome = WebSocketProtocol.create_event(
+                "welcome",
+                {
+                    "connection_id": connection_id,
+                    "server": "test",
+                    "message": "Connected to test websocket server",
+                },
+            )
+            await websocket.send(WebSocketProtocol.encode(welcome))
 
         async def on_disconnect(self, websocket: Any, connection_id: str):
             """Handle disconnection."""
@@ -153,10 +212,53 @@ async def auth_websocket_server(
 
         async def on_message(self, websocket: Any, message: Any):
             """Handle message."""
+            if message.event == "refresh_token":
+                token = message.data.get("token")
+                user = self.authenticator.authenticate_connection(token) if token else None
+                if user is None:
+                    error = WebSocketProtocol.create_error(
+                        error_code="AUTH_FAILED",
+                        error_message="Invalid or expired token",
+                        correlation_id=message.correlation_id,
+                    )
+                    await websocket.send(WebSocketProtocol.encode(error))
+                    return
+
+                websocket.user = user
+                response = WebSocketProtocol.create_response(
+                    message,
+                    {
+                        "status": "refreshed",
+                        "user_id": user.get("user_id"),
+                    },
+                )
+                await websocket.send(WebSocketProtocol.encode(response))
+                return
+
             if message.event == "subscribe":
                 channel = message.data.get("channel")
                 if channel:
-                    await self.join_room(channel, connection_id)
+                    connection_id = next(
+                        (cid for cid, ws in self.connections.items() if ws is websocket),
+                        None,
+                    )
+                    if connection_id:
+                        user = getattr(websocket, "user", {}) or {}
+                        permissions = user.get("permissions", [])
+                        if channel.startswith("admin") and "admin" not in permissions:
+                            error = WebSocketProtocol.create_error(
+                                error_code="FORBIDDEN",
+                                error_message=f"Not authorized to subscribe to {channel}",
+                                correlation_id=message.correlation_id,
+                            )
+                            await websocket.send(WebSocketProtocol.encode(error))
+                            return
+                        await self.join_room(channel, connection_id)
+                        response = WebSocketProtocol.create_response(
+                            message,
+                            {"status": "subscribed", "channel": channel},
+                        )
+                        await websocket.send(WebSocketProtocol.encode(response))
 
     cert_path, key_path = temp_certificate
 
@@ -195,7 +297,15 @@ async def simple_websocket_server(temp_certificate: tuple[str, str]) -> WebSocke
 
         async def on_connect(self, websocket: Any, connection_id: str):
             """Handle connection."""
-            await self.send_welcome_message(websocket, connection_id)
+            welcome = WebSocketProtocol.create_event(
+                "welcome",
+                {
+                    "connection_id": connection_id,
+                    "server": "test",
+                    "message": "Connected to test websocket server",
+                },
+            )
+            await websocket.send(WebSocketProtocol.encode(welcome))
 
         async def on_disconnect(self, websocket: Any, connection_id: str):
             """Handle disconnection."""
@@ -207,7 +317,17 @@ async def simple_websocket_server(temp_certificate: tuple[str, str]) -> WebSocke
             if message.event == "subscribe":
                 channel = message.data.get("channel")
                 if channel:
-                    await self.join_room(channel, connection_id)
+                    connection_id = next(
+                        (cid for cid, ws in self.connections.items() if ws is websocket),
+                        None,
+                    )
+                    if connection_id:
+                        await self.join_room(channel, connection_id)
+                        response = WebSocketProtocol.create_response(
+                            message,
+                            {"status": "subscribed", "channel": channel},
+                        )
+                        await websocket.send(WebSocketProtocol.encode(response))
 
     cert_path, key_path = temp_certificate
 
@@ -251,11 +371,7 @@ class TestJWTAuthentication:
 
         try:
             # Connect and authenticate
-            async with websockets.connect(uri, ssl=ssl.create_default_context()) as ws:
-                # Receive welcome
-                welcome = await asyncio.wait_for(ws.recv(), timeout=1.0)
-                assert "welcome" in json.loads(welcome).get("event", "")
-
+            async with websockets.connect(uri, ssl=_unverified_ssl_context()) as ws:
                 # Send authentication
                 auth_msg = WebSocketProtocol.create_request(
                     "auth",
@@ -272,6 +388,9 @@ class TestJWTAuthentication:
                 assert response_data["data"]["status"] == "authenticated"
                 assert response_data["data"]["user_id"] == "test_user_123"
 
+                welcome = await asyncio.wait_for(ws.recv(), timeout=1.0)
+                assert "welcome" in json.loads(welcome).get("event", "")
+
         except Exception as e:
             pytest.fail(f"Authentication failed: {e}")
 
@@ -284,10 +403,7 @@ class TestJWTAuthentication:
         uri = f"wss://localhost:{auth_websocket_server.port}"
 
         try:
-            async with websockets.connect(uri, ssl=ssl.create_default_context()) as ws:
-                # Receive welcome
-                await asyncio.wait_for(ws.recv(), timeout=1.0)
-
+            async with websockets.connect(uri, ssl=_unverified_ssl_context()) as ws:
                 # Send expired authentication
                 auth_msg = WebSocketProtocol.create_request(
                     "auth",
@@ -301,7 +417,7 @@ class TestJWTAuthentication:
                 response_data = json.loads(response)
 
                 assert response_data["type"] == "error"
-                assert "expired" in response_data["data"]["error_message"].lower()
+                assert "expired" in response_data["error_message"].lower()
 
                 # Connection should close
                 with pytest.raises(websockets.exceptions.ConnectionClosed):
@@ -320,10 +436,7 @@ class TestJWTAuthentication:
         uri = f"wss://localhost:{auth_websocket_server.port}"
 
         try:
-            async with websockets.connect(uri, ssl=ssl.create_default_context()) as ws:
-                # Receive welcome
-                await asyncio.wait_for(ws.recv(), timeout=1.0)
-
+            async with websockets.connect(uri, ssl=_unverified_ssl_context()) as ws:
                 # Send invalid authentication
                 auth_msg = WebSocketProtocol.create_request(
                     "auth",
@@ -337,7 +450,7 @@ class TestJWTAuthentication:
                 response_data = json.loads(response)
 
                 assert response_data["type"] == "error"
-                assert response_data["data"]["error_code"] in ["AUTH_FAILED", "INVALID_TOKEN"]
+                assert response_data["error_code"] in ["AUTH_FAILED", "INVALID_TOKEN"]
 
         except websockets.exceptions.ConnectionClosed:
             # Expected - connection closed due to invalid token
@@ -357,10 +470,8 @@ class TestJWTAuthentication:
 
         uri = f"wss://localhost:{auth_websocket_server.port}"
 
-        async with websockets.connect(uri, ssl=ssl.create_default_context()) as ws:
+        async with websockets.connect(uri, ssl=_unverified_ssl_context()) as ws:
             # Authenticate
-            await asyncio.wait_for(ws.recv(), timeout=1.0)  # Welcome
-
             auth_msg = WebSocketProtocol.create_request(
                 "auth",
                 {"token": limited_token},
@@ -368,6 +479,7 @@ class TestJWTAuthentication:
             )
             await ws.send(WebSocketProtocol.encode(auth_msg))
             await asyncio.wait_for(ws.recv(), timeout=1.0)  # Auth success
+            await asyncio.wait_for(ws.recv(), timeout=1.0)  # Welcome
 
             # Try to subscribe to admin-only channel (should fail)
             subscribe_msg = WebSocketProtocol.create_request(
@@ -384,7 +496,7 @@ class TestJWTAuthentication:
             # Note: This depends on server's permission checking implementation
             # The server should reject subscription to admin channels without admin permission
             if response_data["type"] == "error":
-                assert response_data["data"]["error_code"] == "FORBIDDEN"
+                assert response_data["error_code"] == "FORBIDDEN"
 
     async def test_token_refresh(
         self,
@@ -408,10 +520,8 @@ class TestJWTAuthentication:
 
         uri = f"wss://localhost:{auth_websocket_server.port}"
 
-        async with websockets.connect(uri, ssl=ssl.create_default_context()) as ws:
+        async with websockets.connect(uri, ssl=_unverified_ssl_context()) as ws:
             # Authenticate with expiring token
-            await asyncio.wait_for(ws.recv(), timeout=1.0)  # Welcome
-
             auth_msg = WebSocketProtocol.create_request(
                 "auth",
                 {"token": expiring_token},
@@ -419,6 +529,7 @@ class TestJWTAuthentication:
             )
             await ws.send(WebSocketProtocol.encode(auth_msg))
             await asyncio.wait_for(ws.recv(), timeout=1.0)  # Auth success
+            await asyncio.wait_for(ws.recv(), timeout=1.0)  # Welcome
 
             # Create new token
             new_token = jwt_authenticator.create_token({
@@ -498,8 +609,9 @@ class TestTLSConnections:
             cert = x509.load_pem_x509_certificate(cert_data, default_backend())
 
         # Check certificate is not expired
-        assert cert.not_valid_after > time.time()
-        assert cert.not_valid_before < time.time()
+        now = datetime.now(timezone.utc)
+        assert cert.not_valid_after_utc > now
+        assert cert.not_valid_before_utc < now
 
         # Check subject
         subject = cert.subject
@@ -542,12 +654,11 @@ class TestServiceLifecycle:
 
         # Verify port is actually listening
         import socket
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            result = sock.connect_ex(("localhost", simple_websocket_server.port))
-            assert result == 0  # Connection successful
-        finally:
-            sock.close()
+        with socket.create_connection(
+            ("localhost", simple_websocket_server.port),
+            timeout=1.0,
+        ):
+            pass
 
     async def test_service_stops_gracefully(
         self,
@@ -557,7 +668,15 @@ class TestServiceLifecycle:
 
         class TestServer(WebSocketServer):
             async def on_connect(self, ws, conn_id):
-                pass
+                welcome = WebSocketProtocol.create_event(
+                    "welcome",
+                    {
+                        "connection_id": conn_id,
+                        "server": "test",
+                        "message": "Connected to test websocket server",
+                    },
+                )
+                await ws.send(WebSocketProtocol.encode(welcome))
 
             async def on_disconnect(self, ws, conn_id):
                 pass
@@ -575,6 +694,7 @@ class TestServiceLifecycle:
         )
 
         await server.start()
+        server.port = server.server.sockets[0].getsockname()[1]
         assert server.is_running
 
         # Connect a client
@@ -591,7 +711,8 @@ class TestServiceLifecycle:
         assert not server.is_running
 
         # Connection should be closed
-        assert ws.closed
+        await asyncio.sleep(0.1)
+        assert getattr(ws, "close_code", None) is not None
 
     async def test_service_handles_multiple_connections(
         self,
@@ -731,7 +852,17 @@ class TestCrossServiceCommunication:
                 if msg.event == "subscribe":
                     channel = msg.data.get("channel")
                     if channel:
-                        await self.join_room(channel, conn_id)
+                        connection_id = next(
+                            (cid for cid, socket in self.connections.items() if socket is ws),
+                            None,
+                        )
+                        if connection_id:
+                            await self.join_room(channel, connection_id)
+                            response = WebSocketProtocol.create_response(
+                                msg,
+                                {"status": "subscribed", "channel": channel},
+                            )
+                            await ws.send(WebSocketProtocol.encode(response))
 
         servers = []
         for i in range(2):
@@ -818,7 +949,15 @@ class TestGracefulDegradation:
 
         class TestServer(WebSocketServer):
             async def on_connect(self, ws, conn_id):
-                pass
+                welcome = WebSocketProtocol.create_event(
+                    "welcome",
+                    {
+                        "connection_id": conn_id,
+                        "server": "test",
+                        "message": "Connected to test websocket server",
+                    },
+                )
+                await ws.send(WebSocketProtocol.encode(welcome))
 
             async def on_disconnect(self, ws, conn_id):
                 pass
@@ -848,6 +987,9 @@ class TestGracefulDegradation:
 
         # Stop server
         await server.stop()
+        if server.server is not None:
+            server.server.close()
+            await server.server.wait_closed()
         await asyncio.sleep(0.5)
 
         # Restart server on same port
@@ -1158,6 +1300,9 @@ class TestUpgradeScenarios:
         server.startup_count = 1
         port = server.server.sockets[0].getsockname()[1]
         await server.stop()
+        if server.server is not None:
+            server.server.close()
+            await server.server.wait_closed()
 
         # Restart on same port
         server2 = TestServer(

@@ -93,12 +93,12 @@ class TestStart:
         finally:
             executor._executor.shutdown(wait=False)
 
-    def test_start_captures_event_loop(self):
-        """start() should capture the current event loop."""
+    def test_start_defers_event_loop_capture(self):
+        """start() should defer event loop capture until submit()."""
         executor = ProcessPoolTaskExecutor(max_workers=2)
         executor.start()
         try:
-            assert executor._loop is not None
+            assert executor._loop is None
         finally:
             executor._executor.shutdown(wait=False)
 
@@ -146,7 +146,11 @@ class TestShutdown:
         """shutdown() should set executor to None and flag shutdown."""
         executor = ProcessPoolTaskExecutor(max_workers=2)
         executor.start()
-        asyncio.get_event_loop().run_until_complete(executor.shutdown(wait=False))
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(executor.shutdown(wait=False))
+        finally:
+            loop.close()
         assert executor._executor is None
         assert executor._shutdown is True
 
@@ -177,7 +181,11 @@ class TestShutdown:
         executor = ProcessPoolTaskExecutor(max_workers=2)
         executor.start()
         with caplog.at_level("INFO"):
-            asyncio.get_event_loop().run_until_complete(executor.shutdown(wait=False))
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(executor.shutdown(wait=False))
+            finally:
+                loop.close()
         assert "shutting down" in caplog.text.lower()
 
     def test_shutdown_with_wait_true(self):
@@ -408,7 +416,11 @@ class TestGetStats:
         """Stats after shutdown should show running=False, shutdown=True."""
         executor = ProcessPoolTaskExecutor(max_workers=2)
         executor.start()
-        asyncio.get_event_loop().run_until_complete(executor.shutdown(wait=False))
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(executor.shutdown(wait=False))
+        finally:
+            loop.close()
         stats = executor.get_stats()
         assert stats["running"] is False
         assert stats["shutdown"] is True

@@ -164,15 +164,30 @@ class MultiAuthHandler:
                 expire_minutes=config.auth.expire_minutes,
             )
 
-        # Initialize subscription auth if enabled
-        if hasattr(config, "subscription_auth_enabled") and config.subscription_auth.enabled:
-            subscription_secret = getattr(config, "subscription_auth_secret", None)
-            if subscription_secret:
-                self.subscription_auth = SubscriptionAuth(
-                    secret=subscription_secret,
-                    algorithm=getattr(config, "subscription_auth_algorithm", "HS256"),
-                    expire_minutes=getattr(config, "subscription_auth_expire_minutes", 60),
-                )
+        # Initialize subscription auth if enabled.
+        # Support both the nested config model and legacy flat fields so tests
+        # and older call sites can construct settings either way.
+        subscription_config = getattr(config, "subscription_auth", None)
+        subscription_enabled = bool(
+            getattr(subscription_config, "enabled", False)
+            or getattr(config, "subscription_auth_enabled", False)
+        )
+        subscription_secret = getattr(subscription_config, "secret", None) or getattr(
+            config, "subscription_auth_secret", None
+        )
+        subscription_algorithm = getattr(subscription_config, "algorithm", None) or getattr(
+            config, "subscription_auth_algorithm", "HS256"
+        )
+        subscription_expire_minutes = getattr(subscription_config, "expire_minutes", None) or getattr(
+            config, "subscription_auth_expire_minutes", 60
+        )
+
+        if subscription_enabled and subscription_secret:
+            self.subscription_auth = SubscriptionAuth(
+                secret=subscription_secret,
+                algorithm=subscription_algorithm,
+                expire_minutes=subscription_expire_minutes,
+            )
 
     def authenticate_request(self, auth_header: str) -> dict[str, Any]:
         """

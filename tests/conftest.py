@@ -68,6 +68,7 @@ try:
         mock_performance_tracker,
         mock_logger,
         mock_filesystem,
+        suppress_prefect_console_shutdown_noise,
     )
 except ImportError:
     pass

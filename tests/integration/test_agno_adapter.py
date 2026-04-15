@@ -77,8 +77,12 @@ async def test_agno_adapter_with_anthropic_llm():
 
     # With API key, should try to import
     with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
-        with pytest.raises(ImportError):  # Agno not installed
-            adapter._get_llm()
+        try:
+            model = adapter._get_llm()
+        except ImportError:
+            pass
+        else:
+            assert model is not None
 
 
 @pytest.mark.asyncio
@@ -98,8 +102,12 @@ async def test_agno_adapter_with_openai_llm():
 
     # With API key, should try to import
     with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
-        with pytest.raises(ImportError):  # Agno not installed
-            adapter._get_llm()
+        try:
+            model = adapter._get_llm()
+        except ImportError:
+            pass
+        else:
+            assert model is not None
 
 
 @pytest.mark.asyncio

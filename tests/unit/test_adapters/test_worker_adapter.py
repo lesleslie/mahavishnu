@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -196,7 +197,10 @@ def test_init_with_config_branch_uses_terminal_and_context(monkeypatch: pytest.M
             self.nanobot_provider = kwargs.get("nanobot_provider")
 
     monkeypatch.setattr(wa, "WorkerManager", _WM)
-    monkeypatch.setattr("mahavishnu.terminal.manager.TerminalManager.create", lambda cfg, mcp_client=None: "tmgr")
+    monkeypatch.setattr(
+        "mahavishnu.terminal.manager.TerminalManager.create",
+        AsyncMock(return_value="tmgr"),
+    )
     import mahavishnu.core.context as ctx
 
     monkeypatch.setattr(ctx, "get_app_context", lambda: {"nanobot_provider": "ctx-provider"}, raising=False)

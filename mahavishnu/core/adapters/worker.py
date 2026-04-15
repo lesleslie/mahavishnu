@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from ...workers.manager import WorkerManager
@@ -39,11 +40,15 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             config: Mahavishnu settings (used when worker_manager is not provided)
             worker_manager: Optional pre-built WorkerManager instance
         """
+        self._config = config
+        self._needs_lazy_init = False
+
         if worker_manager is None and isinstance(config, WorkerManager):
             worker_manager = config
 
         if worker_manager is not None:
             self.worker_manager = worker_manager
+            self._config = None
             return
 
         if config is None:
@@ -51,7 +56,23 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
 
         from ...terminal.manager import TerminalManager
 
-        terminal_mgr = TerminalManager.create(
+        try:
+            running_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            running_loop = None
+
+        if running_loop and running_loop.is_running():
+            self.worker_manager = None
+            self._needs_lazy_init = True
+            return
+
+        self.worker_manager = asyncio.run(self._build_worker_manager(config))
+
+    async def _build_worker_manager(self, config: Any) -> WorkerManager:
+        """Build a worker manager from adapter config."""
+        from ...terminal.manager import TerminalManager
+
+        terminal_mgr = await TerminalManager.create(
             config,
             mcp_client=None,  # Session-Buddy integration remains optional
         )
@@ -72,13 +93,25 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         if nanobot_provider is None:
             nanobot_provider = self._init_nanobot_provider_fallback()
 
-        self.worker_manager = WorkerManager(
+        return WorkerManager(
             terminal_manager=terminal_mgr,
             max_concurrent=max_concurrent,
             debug_mode=False,
             session_buddy_client=None,
             nanobot_provider=nanobot_provider,
         )
+
+    async def _ensure_worker_manager(self) -> WorkerManager:
+        """Ensure a worker manager exists, building it lazily if needed."""
+        if self.worker_manager is not None:
+            return self.worker_manager
+
+        if self._config is None:
+            raise RuntimeError("Worker manager configuration is unavailable")
+
+        self.worker_manager = await self._build_worker_manager(self._config)
+        self._needs_lazy_init = False
+        return self.worker_manager
 
     @property
     def adapter_type(self) -> AdapterType:
@@ -106,6 +139,8 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
 
     async def initialize(self) -> None:
         """Initialize the worker adapter."""
+        if self.worker_manager is None and self._config is not None:
+            await self._ensure_worker_manager()
         return None
 
     async def cleanup(self) -> None:
@@ -145,6 +180,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
 
         logger = logging.getLogger(__name__)
         start_time = time.time()
+        worker_manager = await self._ensure_worker_manager()
 
         # Extract task parameters
         requested_worker_type = task.get("worker_type", "terminal-qwen")
@@ -168,7 +204,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
 
         # Spawn workers
         try:
-            worker_ids = await self.worker_manager.spawn_workers(
+            worker_ids = await worker_manager.spawn_workers(
                 worker_type=worker_type,
                 count=count,
             )
@@ -191,14 +227,14 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
 
         # Execute tasks across workers
         try:
-            results = await self.worker_manager.execute_batch(
+            results = await worker_manager.execute_batch(
                 worker_ids,
                 tasks,
             )
         except Exception as e:
             logger.error(f"Failed to execute tasks: {e}")
             # Partial results may exist
-            results = await self.worker_manager.collect_results(worker_ids)
+            results = await worker_manager.collect_results(worker_ids)
 
         # Aggregate results
         total_duration = time.time() - start_time
@@ -241,7 +277,8 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
                 - max_concurrent: Maximum concurrent workers
                 - details: Additional health details
         """
-        health = await self.worker_manager.health_check()
+        worker_manager = await self._ensure_worker_manager()
+        health = await worker_manager.health_check()
 
         # Map to orchestrator adapter format
         workers_active = health.get("workers_active", 0)
@@ -255,7 +292,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             "workers_active": workers_active,
             "max_concurrent": max_concurrent,
             "debug_mode": health.get("debug_mode", False),
-            "nanobot_available": self.worker_manager.nanobot_provider is not None,
+            "nanobot_available": worker_manager.nanobot_provider is not None,
             "details": health,
         }
 

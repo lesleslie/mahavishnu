@@ -222,11 +222,20 @@ async def test_create_agent_code_sweep(mock_config):
 
 @pytest.mark.asyncio
 async def test_create_agent_requires_all_args(mock_config):
-    """Test that _create_agent requires name, role, and instructions."""
+    """Test that _create_agent can derive task metadata from the task name."""
     adapter = AgnoAdapter(config=mock_config)
 
-    with pytest.raises(TypeError):
-        await adapter._create_agent("code_sweep")  # type: ignore[call-arg]
+    mock_agent = MagicMock()
+    mock_agent.name = "code_sweep_agent"
+
+    with (
+        patch("agno.agent.Agent", return_value=mock_agent),
+        patch.object(adapter, "_get_llm", return_value=MagicMock()),
+    ):
+        agent = await adapter._create_agent("code_sweep")
+
+    assert agent is mock_agent
+    assert agent.name == "code_sweep_agent"
 
 
 # ============================================================================

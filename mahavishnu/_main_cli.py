@@ -50,7 +50,7 @@ from .cli.events import add_events_commands
 # NOTE: help_cli uses Click which is incompatible with Typer's add_typer()
 # from .cli.help_cli import help_group
 
-app = typer.Typer()
+app = typer.Typer(name="mahavishnu")
 DEFAULT_MCP_HOST = "127.0.0.1"
 DEFAULT_MCP_PORT = 8680
 

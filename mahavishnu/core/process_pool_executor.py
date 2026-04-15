@@ -89,7 +89,8 @@ class ProcessPoolTaskExecutor:
             max_tasks_per_child=self._max_tasks_per_child,
         )
 
-        self._loop = asyncio.get_event_loop()
+        # Defer event-loop capture until submit() runs inside an active loop.
+        self._loop = None
         self._shutdown = False
 
         logger.info("ProcessPoolTaskExecutor started")
@@ -139,8 +140,14 @@ class ProcessPoolTaskExecutor:
         if self._shutdown:
             raise RuntimeError("ProcessPoolTaskExecutor is shut down")
 
-        # Run blocking function in thread pool executor (which wraps process pool)
-        loop = self._loop or asyncio.get_event_loop()
+        # Prefer the active loop; fall back to the stored loop for tests that
+        # inject one directly.
+        loop = self._loop
+        if loop is None:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = asyncio.get_event_loop()
 
         try:
             # Use partial to bind args/kwargs

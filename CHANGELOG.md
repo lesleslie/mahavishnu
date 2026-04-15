@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-04-15
+
+### Added
+
+- Add session-archaeologist skill for past decision and context recovery
+
+### Changed
+
+- Mahavishnu (quality: 66/100) - 2026-04-14 06:23:53
+- Mahavishnu (quality: 66/100) - 2026-04-14 13:28:07
+
+### Documentation
+
+- Add Bodai Radar design spec
+- Add Bodai Radar implementation plan
+- Add design spec for Akosha Code Archaeologist and Quality Pulse skills
+- Add implementation plan for Akosha Code Archaeologist and Quality Pulse skills
+- Add Session Archaeologist implementation plan
+- Add Session Archaeologist skill design spec
+
 ## [0.6.0] - 2026-04-14
 
 ### Changed

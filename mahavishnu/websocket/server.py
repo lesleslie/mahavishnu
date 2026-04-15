@@ -13,6 +13,7 @@ Security Features:
 from __future__ import annotations
 
 import logging
+import inspect
 from typing import Any
 import uuid
 
@@ -39,6 +40,13 @@ from mahavishnu.websocket.rate_limiter import RateLimitResult, TokenBucketRateLi
 from mahavishnu.websocket.tls_config import get_websocket_tls_config, load_ssl_context
 
 logger = logging.getLogger(__name__)
+
+
+def _get_explicit_attribute(obj: Any, name: str, default: Any = None) -> Any:
+    """Return an attribute only when it is explicitly present on the object."""
+    if hasattr(obj, "__dict__") and name in getattr(obj, "__dict__", {}):
+        return getattr(obj, name)
+    return default
 
 
 class MahavishnuWebSocketServer(WebSocketServer):
@@ -206,7 +214,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
             websocket: WebSocket connection object
             connection_id: Unique connection identifier
         """
-        user = getattr(websocket, "user", None)
+        user = _get_explicit_attribute(websocket, "user")
         user_id = user.get("user_id") if user else "anonymous"
 
         # Store connection ID mapping for rate limiting
@@ -229,7 +237,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
                 "rate_limit": self.message_rate_limit,
             },
         )
-        await websocket.send(WebSocketProtocol.encode(welcome))
+        send_result = websocket.send(WebSocketProtocol.encode(welcome))
+        if inspect.isawaitable(send_result):
+            await send_result
 
     async def on_disconnect(self, websocket: Any, connection_id: str) -> None:
         """Handle WebSocket disconnection.
@@ -250,6 +260,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
 
         # Clean up connection ID mapping
         self._connection_ids.pop(websocket, None)
+        self.connections.pop(connection_id, None)
 
         # Clean up room subscriptions
         await self.leave_all_rooms(connection_id)
@@ -267,7 +278,14 @@ class MahavishnuWebSocketServer(WebSocketServer):
         # Get connection ID for rate limiting
         connection_id = self._connection_ids.get(websocket)
         if not connection_id:
-            connection_id = getattr(websocket, "id", str(uuid.uuid4()))
+            connection_id = _get_explicit_attribute(websocket, "id")
+            if not connection_id:
+                for known_connection_id, known_websocket in self.connections.items():
+                    if known_websocket is websocket:
+                        connection_id = known_connection_id
+                        break
+            if not connection_id:
+                connection_id = str(uuid.uuid4())
             self._connection_ids[websocket] = connection_id
 
         # Apply rate limiting
@@ -324,7 +342,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
             message: Request message
         """
         # Get authenticated user from connection
-        user = getattr(websocket, "user", None)
+        user = _get_explicit_attribute(websocket, "user")
 
         if message.event == "subscribe":
             channel = message.data.get("channel")
@@ -394,6 +412,15 @@ class MahavishnuWebSocketServer(WebSocketServer):
         # Client-sent events (e.g., client-side updates)
         logger.debug(f"Received client event: {message.event}")
         # Can be used for client telemetry, etc.
+
+    async def leave_all_rooms(self, connection_id: str):
+        """Remove a connection from all rooms, including direct room mappings."""
+        await super().leave_all_rooms(connection_id)
+
+        for room_id, connections in list(self.connection_rooms.items()):
+            connections.discard(connection_id)
+            if not connections:
+                self.connection_rooms.pop(room_id, None)
 
     def _can_subscribe_to_channel(self, user: dict[str, Any], channel: str) -> bool:
         """Check if user can subscribe to channel.
@@ -567,17 +594,18 @@ class MahavishnuWebSocketServer(WebSocketServer):
             status: New status (idle, busy, error, etc.)
             pool_id: Pool identifier
         """
+        normalized_pool_id = pool_id.removeprefix("pool:")
         event = WebSocketProtocol.create_event(
             EventTypes.WORKER_STATUS_CHANGED,
             {
                 "worker_id": worker_id,
                 "status": status,
-                "pool_id": pool_id,
+                "pool_id": normalized_pool_id,
                 "timestamp": self._get_timestamp(),
             },
-            room=f"pool:{pool_id}",
+            room=f"pool:{normalized_pool_id}",
         )
-        await self.broadcast_to_room(f"pool:{pool_id}", event)
+        await self.broadcast_to_room(f"pool:{normalized_pool_id}", event)
 
     async def broadcast_pool_status_changed(self, pool_id: str, status: dict) -> None:
         """Broadcast pool status changed event.
@@ -586,16 +614,17 @@ class MahavishnuWebSocketServer(WebSocketServer):
             pool_id: Pool identifier
             status: Pool status (worker count, queue size, etc.)
         """
+        normalized_pool_id = pool_id.removeprefix("pool:")
         event = WebSocketProtocol.create_event(
             EventTypes.POOL_STATUS_CHANGED,
             {
-                "pool_id": pool_id,
+                "pool_id": normalized_pool_id,
                 "status": status,
                 "timestamp": self._get_timestamp(),
             },
-            room=f"pool:{pool_id}",
+            room=f"pool:{normalized_pool_id}",
         )
-        await self.broadcast_to_room(f"pool:{pool_id}", event)
+        await self.broadcast_to_room(f"pool:{normalized_pool_id}", event)
 
     # Broadcast methods for Goal-Driven Teams events
 

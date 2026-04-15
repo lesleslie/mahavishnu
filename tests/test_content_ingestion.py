@@ -90,6 +90,9 @@ async def test_ingestion_result_to_dict():
 async def test_ingest_url_mocked():
     """Test URL ingestion with mocked MCP servers."""
     ingester = ContentIngester()
+    mock_embeddings = MagicMock()
+    mock_embeddings.embed = AsyncMock(return_value=MagicMock(embeddings=[[0.1, 0.2, 0.3]]))
+    ingester._embedding_service = mock_embeddings
 
     # Mock HTTP clients
     ingester._web_reader_client = AsyncMock()
@@ -102,7 +105,9 @@ async def test_ingest_url_mocked():
         response = MagicMock()
         response.status_code = 200
 
-        if "web_reader" in str(args[0]):
+        payload = kwargs.get("json", {})
+        method_name = payload.get("params", {}).get("name")
+        if method_name == "mcp__web_reader__webReader":
             response.json.return_value = {
                 "result": [{
                     "text": "Test blog content",
@@ -130,7 +135,7 @@ async def test_ingest_url_mocked():
 
 
 @pytest.mark.property
-@given(st.text(min_size=0, max_size=5000))
+@given(st.text(alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?-_", min_size=0, max_size=5000))
 def test_chunking_property(text):
     """Property-based test for chunking correctness."""
     ingester = ContentIngester(

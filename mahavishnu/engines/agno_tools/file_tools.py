@@ -13,6 +13,7 @@ Paths are validated to ensure they remain within allowed base directories.
 from __future__ import annotations
 
 import logging
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -110,6 +111,7 @@ BLOCKED_PATHS = {
 # Default allowed base directories - can be overridden via configuration
 DEFAULT_ALLOWED_BASE_DIRS = [
     Path("/Users/les/Projects"),
+    Path(tempfile.gettempdir()),
     Path.cwd(),  # Current working directory
 ]
 
@@ -125,7 +127,14 @@ def _get_allowed_base_dirs() -> list[Path]:
 
         settings = MahavishnuSettings()
         if settings.allowed_repo_paths:
-            return [Path(p).expanduser().resolve() for p in settings.allowed_repo_paths]
+            allowed = [Path(p).expanduser().resolve() for p in settings.allowed_repo_paths]
+            allowed.extend(
+                [
+                    Path(tempfile.gettempdir()).resolve(),
+                    Path.cwd().resolve(),
+                ]
+            )
+            return list(dict.fromkeys(allowed))
     except Exception:
         logger.debug("Could not load allowed_repo_paths from configuration, using defaults")
 

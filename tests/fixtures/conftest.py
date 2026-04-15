@@ -11,6 +11,7 @@ Fixtures are organized into:
 """
 
 import os
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -55,6 +56,30 @@ def clean_prometheus_registry():
     except ImportError:
         pass  # prometheus_client not installed
 
+    yield
+
+
+@pytest.fixture(scope="session", autouse=True)
+def suppress_prefect_console_shutdown_noise():
+    """Suppress Prefect console handler tracebacks during pytest teardown.
+
+    Prefect's console handler can attempt to write after pytest has already
+    closed the capture stream, which otherwise shows up as noisy logging
+    errors at the end of the test run.
+    """
+    try:
+        from prefect.logging.handlers import PrefectConsoleHandler
+    except ImportError:
+        yield
+        return
+
+    def _handle_error(self, record):
+        _, exc, _ = sys.exc_info()
+        if isinstance(exc, ValueError) and "closed file" in str(exc).lower():
+            return
+        return PrefectConsoleHandler.__mro__[1].handleError(self, record)
+
+    PrefectConsoleHandler.handleError = _handle_error
     yield
 
 # Try importing Mahavishnu modules for type hints

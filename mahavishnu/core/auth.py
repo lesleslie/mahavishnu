@@ -13,6 +13,16 @@ from .errors import AuthenticationError
 from .subscription_auth import MultiAuthHandler
 
 
+class TokenPayload(dict[str, Any]):
+    """Dict payload that also supports attribute-style access."""
+
+    def __getattr__(self, item: str) -> Any:
+        try:
+            return self[item]
+        except KeyError as exc:
+            raise AttributeError(item) from exc
+
+
 class JWTAuth:
     """JWT-based authentication handler."""
 
@@ -68,6 +78,26 @@ class JWTAuth:
         encoded_jwt = jwt.encode(to_encode, self.secret, algorithm=self.algorithm)
         return encoded_jwt
 
+    def create_access_token(
+        self,
+        claims: dict[str, Any],
+        scopes: list[str] | None = None,
+        **extra_claims: Any,
+    ) -> str:
+        """Backward-compatible alias for callers that pass a claims payload."""
+        user_id = claims.get("sub") or claims.get("user_id")
+        if not user_id:
+            raise ValueError("JWT claims must include 'sub' or 'user_id'")
+
+        merged_claims = {
+            key: value
+            for key, value in claims.items()
+            if key not in {"sub", "user_id", "scopes"}
+        }
+        merged_claims.update(extra_claims)
+        token_scopes = scopes if scopes is not None else claims.get("scopes")
+        return self.create_token(user_id=user_id, scopes=token_scopes, **merged_claims)
+
     def verify_token(self, token: str) -> dict[str, Any]:
         """Verify and decode a JWT token.
 
@@ -82,7 +112,8 @@ class JWTAuth:
         """
         try:
             payload = jwt.decode(token, self.secret, algorithms=[self.algorithm])
-            return payload
+            payload.setdefault("username", payload.get("user_id") or payload.get("sub"))
+            return TokenPayload(payload)
         except jwt.exceptions.InvalidSignatureError as e:
             raise AuthenticationError(
                 message="Invalid token signature",

@@ -5,6 +5,7 @@ This module provides the CoordinationManager class that loads, queries,
 and updates coordination data from ecosystem.yaml.
 """
 
+import os
 from pathlib import Path
 import re
 from typing import Any
@@ -31,7 +32,7 @@ class CoordinationManager:
     and provides query methods for issues, plans, todos, and dependencies.
     """
 
-    def __init__(self, ecosystem_path: str = "settings/ecosystem.yaml") -> None:
+    def __init__(self, ecosystem_path: str | None = None) -> None:
         """
         Initialize the coordination manager.
 
@@ -41,6 +42,9 @@ class CoordinationManager:
         Raises:
             ConfigurationError: If ecosystem.yaml cannot be loaded or parsed
         """
+        if ecosystem_path is None:
+            ecosystem_path = os.getenv("MAHAVISHNU_ECOSYSTEM_PATH", "settings/ecosystem.yaml")
+
         self.ecosystem_path = Path(ecosystem_path)
         self._ecosystem: dict[str, Any] = {}
         self._coordination: dict[str, Any] = {}
@@ -70,6 +74,189 @@ class CoordinationManager:
             ) from e
 
         self._coordination = self._ecosystem.get("coordination", {})
+
+    def _normalize_issue_record(self, issue: dict[str, Any]) -> dict[str, Any]:
+        """Normalize legacy issue records to the current schema."""
+        normalized = dict(issue)
+
+        if "repos" not in normalized or not normalized.get("repos"):
+            inferred_repos = self._infer_issue_repos(normalized)
+            if inferred_repos:
+                normalized["repos"] = inferred_repos
+
+        if "created" not in normalized:
+            normalized["created"] = normalized.get("created_at") or normalized.get("created") or ""
+        if "updated" not in normalized:
+            normalized["updated"] = (
+                normalized.get("updated_at")
+                or normalized.get("fixed_at")
+                or normalized.get("updated")
+                or normalized.get("created")
+            )
+
+        normalized["created"] = self._stringify_datetime(normalized.get("created"))
+        normalized["updated"] = self._stringify_datetime(normalized.get("updated"))
+
+        normalized["status"] = self._normalize_issue_status(normalized.get("status"))
+        normalized["priority"] = self._normalize_issue_priority(normalized.get("priority"))
+
+        if "labels" not in normalized and "tags" in normalized:
+            tags = normalized.get("tags")
+            normalized["labels"] = tags if isinstance(tags, list) else []
+
+        return normalized
+
+    def _normalize_todo_record(self, todo: dict[str, Any]) -> dict[str, Any]:
+        """Normalize legacy todo records to the current schema."""
+        normalized = dict(todo)
+
+        if "task" not in normalized:
+            normalized["task"] = (
+                normalized.get("title")
+                or normalized.get("description")
+                or normalized.get("id")
+                or "todo"
+            )
+        if "description" not in normalized:
+            normalized["description"] = normalized.get("task") or ""
+
+        if "repo" not in normalized or not normalized.get("repo"):
+            normalized["repo"] = self._infer_todo_repo(normalized)
+
+        if "created" not in normalized:
+            normalized["created"] = normalized.get("created_at") or normalized.get("created") or ""
+        if "updated" not in normalized:
+            normalized["updated"] = (
+                normalized.get("updated_at")
+                or normalized.get("completed_at")
+                or normalized.get("updated")
+                or normalized.get("created")
+            )
+
+        normalized["created"] = self._stringify_datetime(normalized.get("created"))
+        normalized["updated"] = self._stringify_datetime(normalized.get("updated"))
+
+        estimated_hours = normalized.get("estimated_hours")
+        if estimated_hours is None:
+            estimated_hours = normalized.get("estimate_hours")
+        if estimated_hours is None:
+            estimated_hours = 1.0
+        normalized["estimated_hours"] = estimated_hours
+
+        normalized["status"] = self._normalize_todo_status(normalized.get("status"))
+        normalized["priority"] = self._normalize_issue_priority(normalized.get("priority"))
+
+        if "labels" not in normalized and "tags" in normalized:
+            tags = normalized.get("tags")
+            normalized["labels"] = tags if isinstance(tags, list) else []
+
+        return normalized
+
+    def _infer_todo_repo(self, todo: dict[str, Any]) -> str:
+        """Infer the repository for a todo from legacy fields."""
+        issue_id = todo.get("issue_id")
+        if isinstance(issue_id, str) and issue_id.strip():
+            issue = self.get_issue(issue_id.strip())
+            if issue and issue.repos:
+                return issue.repos[0]
+
+        pool = todo.get("pool")
+        if isinstance(pool, str) and pool.strip():
+            return pool.strip()
+
+        return "mahavishnu"
+
+    def _infer_issue_repos(self, issue: dict[str, Any]) -> list[str]:
+        """Infer affected repositories from legacy issue fields."""
+        affected_files = issue.get("affected_files")
+        if isinstance(affected_files, list):
+            repos = sorted(
+                {
+                    Path(path).parts[0]
+                    for path in affected_files
+                    if isinstance(path, str) and Path(path).parts
+                }
+            )
+            if repos:
+                return repos
+
+        pool = issue.get("pool")
+        if isinstance(pool, str) and pool.strip():
+            return [pool.strip()]
+
+        return ["mahavishnu"]
+
+    def _normalize_issue_status(self, value: Any) -> IssueStatus:
+        """Map legacy status values onto the current issue lifecycle."""
+        if isinstance(value, IssueStatus):
+            return value
+
+        normalized = str(value).strip().lower() if value is not None else ""
+        aliases = {
+            "fixed": IssueStatus.RESOLVED,
+            "resolved": IssueStatus.RESOLVED,
+            "closed": IssueStatus.CLOSED,
+            "open": IssueStatus.PENDING,
+            "todo": IssueStatus.PENDING,
+            "planned": IssueStatus.PENDING,
+            "in progress": IssueStatus.IN_PROGRESS,
+            "in_progress": IssueStatus.IN_PROGRESS,
+            "blocked": IssueStatus.BLOCKED,
+        }
+        if normalized in aliases:
+            return aliases[normalized]
+
+        try:
+            return IssueStatus(normalized)
+        except Exception:
+            return IssueStatus.PENDING
+
+    def _normalize_issue_priority(self, value: Any) -> str:
+        """Map legacy priority values onto the current priority enum."""
+        normalized = str(value).strip().lower() if value is not None else ""
+        aliases = {
+            "p0": "critical",
+            "p1": "high",
+            "p2": "medium",
+            "p3": "low",
+            "critical": "critical",
+            "high": "high",
+            "medium": "medium",
+            "low": "low",
+        }
+        return aliases.get(normalized, "medium")
+
+    def _normalize_todo_status(self, value: Any) -> TodoStatus:
+        """Map legacy todo status values onto the current todo lifecycle."""
+        if isinstance(value, TodoStatus):
+            return value
+
+        normalized = str(value).strip().lower() if value is not None else ""
+        aliases = {
+            "done": TodoStatus.COMPLETED,
+            "completed": TodoStatus.COMPLETED,
+            "complete": TodoStatus.COMPLETED,
+            "blocked": TodoStatus.BLOCKED,
+            "in progress": TodoStatus.IN_PROGRESS,
+            "in_progress": TodoStatus.IN_PROGRESS,
+            "in-progress": TodoStatus.IN_PROGRESS,
+            "pending": TodoStatus.PENDING,
+            "open": TodoStatus.PENDING,
+            "todo": TodoStatus.PENDING,
+        }
+        if normalized in aliases:
+            return aliases[normalized]
+
+        try:
+            return TodoStatus(normalized)
+        except Exception:
+            return TodoStatus.PENDING
+
+    def _stringify_datetime(self, value: Any) -> Any:
+        """Convert parsed YAML datetimes back to ISO strings."""
+        if hasattr(value, "isoformat") and not isinstance(value, str):
+            return value.isoformat()
+        return value
 
     def reload(self) -> None:
         """Reload coordination data from ecosystem.yaml."""
@@ -118,7 +305,7 @@ class CoordinationManager:
         issues_data = self._coordination.get("issues", [])
 
         try:
-            issues = [CrossRepoIssue(**issue) for issue in issues_data]
+            issues = [CrossRepoIssue(**self._normalize_issue_record(issue)) for issue in issues_data]
         except ValidationError as e:
             raise ConfigurationError(
                 f"Invalid issue data in ecosystem.yaml: {e}",
@@ -296,7 +483,7 @@ class CoordinationManager:
         todos_data = self._coordination.get("todos", [])
 
         try:
-            todos = [CrossRepoTodo(**todo) for todo in todos_data]
+            todos = [CrossRepoTodo(**self._normalize_todo_record(todo)) for todo in todos_data]
         except ValidationError as e:
             raise ConfigurationError(
                 f"Invalid todo data in ecosystem.yaml: {e}",

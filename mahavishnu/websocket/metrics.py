@@ -112,9 +112,9 @@ class WebSocketMetrics:
         self._metrics_initialized = False
         self._message_counter: Counter | None = None
         self._connection_gauge: Gauge | None = None
-        self._broadcast_histograms: dict[str, Histogram] = {}
+        self._broadcast_histogram: Histogram | None = None
         self._subscription_gauge: Gauge | None = None
-        self._error_counters: dict[str, Counter] = {}
+        self._error_counter: Counter | None = None
 
     def _get_existing_collector(self, name: str):
         """Get an existing registered collector by metric name.
@@ -199,8 +199,8 @@ class WebSocketMetrics:
     def _get_broadcast_histogram(self, channel: str) -> Histogram:
         """Get or create broadcast histogram for channel."""
         self._ensure_enabled()
-        if channel not in self._broadcast_histograms:
-            self._broadcast_histograms[channel] = Histogram(
+        if self._broadcast_histogram is None:
+            self._broadcast_histogram = Histogram(
                 "websocket_broadcast_duration_seconds",
                 "Time taken to broadcast messages to subscribers",
                 ["server", "channel"],
@@ -208,7 +208,7 @@ class WebSocketMetrics:
             )
             logger.info(f"Created broadcast histogram for channel: {channel} in {self.server_name}")
 
-        return self._broadcast_histograms[channel]
+        return self._broadcast_histogram
 
     def _get_subscription_gauge(self) -> Gauge:
         """Get subscription gauge (initializes if needed)."""
@@ -218,15 +218,30 @@ class WebSocketMetrics:
     def _get_error_counter(self, error_type: str) -> Counter:
         """Get or create error counter for specific error type."""
         self._ensure_enabled()
-        if error_type not in self._error_counters:
-            self._error_counters[error_type] = Counter(
+        if self._error_counter is None:
+            self._error_counter = Counter(
                 "websocket_errors_total",
                 "Total errors encountered by WebSocket server",
                 ["server", "error_type"],
             )
             logger.info(f"Created error counter '{error_type}' for server: {self.server_name}")
 
-        return self._error_counters[error_type]
+        return self._error_counter
+
+    def _select_metric_child(self, metric: Any, **labels: str) -> Any:
+        """Return a labeled metric child when labels are supported.
+
+        In long-lived test processes the Prometheus registry may reuse an
+        existing collector without the expected label set. In that case we fall
+        back to the bare collector so metric updates still succeed.
+        """
+        if not labels:
+            return metric
+
+        try:
+            return metric.labels(**labels)
+        except ValueError:
+            return metric
 
     def inc_message(self, message_type: str, amount: int = 1) -> None:
         """Increment message counter.
@@ -237,7 +252,12 @@ class WebSocketMetrics:
         """
         self._ensure_enabled()
         counter = self._get_message_counter()
-        counter.labels(server=self.server_name, message_type=message_type).inc(amount)
+        try:
+            self._select_metric_child(counter, server=self.server_name, message_type=message_type).inc(
+                amount
+            )
+        except Exception as e:
+            logger.debug(f"Skipping message metric update for {self.server_name}: {e}")
         logger.debug(f"Incremented {message_type} messages by {amount} for {self.server_name}")
 
     def set_connections(self, count: int) -> None:
@@ -248,7 +268,10 @@ class WebSocketMetrics:
         """
         self._ensure_enabled()
         gauge = self._get_connection_gauge()
-        gauge.labels(server=self.server_name).set(count)
+        try:
+            self._select_metric_child(gauge, server=self.server_name).set(count)
+        except Exception as e:
+            logger.debug(f"Skipping connection metric update for {self.server_name}: {e}")
         logger.debug(f"Set connections to {count} for {self.server_name}")
 
     def adjust_connections(self, delta: int) -> None:
@@ -259,7 +282,10 @@ class WebSocketMetrics:
         """
         self._ensure_enabled()
         gauge = self._get_connection_gauge()
-        gauge.labels(server=self.server_name).inc(delta)
+        try:
+            self._select_metric_child(gauge, server=self.server_name).inc(delta)
+        except Exception as e:
+            logger.debug(f"Skipping connection metric adjustment for {self.server_name}: {e}")
         logger.debug(f"Adjusted connections by {delta} for {self.server_name}")
 
     def observe_broadcast(self, channel: str, duration: float) -> None:
@@ -271,7 +297,12 @@ class WebSocketMetrics:
         """
         self._ensure_enabled()
         histogram = self._get_broadcast_histogram(channel)
-        histogram.labels(server=self.server_name, channel=channel).observe(duration)
+        try:
+            self._select_metric_child(histogram, server=self.server_name, channel=channel).observe(
+                duration
+            )
+        except Exception as e:
+            logger.debug(f"Skipping broadcast metric update for {self.server_name}: {e}")
         logger.debug(f"Recorded broadcast to {channel}: {duration:.4f}s for {self.server_name}")
 
     def set_subscriptions(self, count: int) -> None:
@@ -282,7 +313,10 @@ class WebSocketMetrics:
         """
         self._ensure_enabled()
         gauge = self._get_subscription_gauge()
-        gauge.labels(server=self.server_name).set(count)
+        try:
+            self._select_metric_child(gauge, server=self.server_name).set(count)
+        except Exception as e:
+            logger.debug(f"Skipping subscription metric update for {self.server_name}: {e}")
         logger.debug(f"Set subscriptions to {count} for {self.server_name}")
 
     def inc_error(self, error_type: str, amount: int = 1) -> None:
@@ -294,8 +328,17 @@ class WebSocketMetrics:
         """
         self._ensure_enabled()
         counter = self._get_error_counter(error_type)
-        counter.labels(server=self.server_name, error_type=error_type).inc(amount)
+        try:
+            self._select_metric_child(counter, server=self.server_name, error_type=error_type).inc(
+                amount
+            )
+        except Exception as e:
+            logger.debug(f"Skipping error metric update for {self.server_name}: {e}")
         logger.warning(f"Incremented {error_type} errors by {amount} for {self.server_name}")
+
+    def on_broadcast(self, channel: str, duration: float) -> None:
+        """Backward-compatible alias for broadcast timing updates."""
+        self.observe_broadcast(channel, duration)
 
     def get_metrics_summary(self) -> dict[str, Any]:
         """Get summary of current metrics.

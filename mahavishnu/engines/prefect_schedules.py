@@ -92,8 +92,12 @@ class CronSchedule(BaseModel):
 
             croniter.croniter(v)
         except ImportError:
-            # croniter not installed, skip validation
-            pass
+            # croniter not installed, apply a minimal structural validation so
+            # obviously malformed expressions still fail deterministically.
+            if len(v.split()) != 5:
+                raise ValueError(
+                    f"Invalid cron expression '{v}': expected 5 space-separated fields"
+                )
         except (ValueError, Exception) as e:
             raise ValueError(f"Invalid cron expression '{v}': {e}") from e
         return v

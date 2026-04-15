@@ -1,377 +1,554 @@
-# Ecosystem configuration for Mahavishnu
-# This file defines the repositories that Mahavishnu manages
-
-version: "1.0"
-last_updated: "2026-03-25"
-maintainer: "les"
-description: "Bodai ecosystem repository and MCP configuration for Mahavishnu orchestration."
-
+version: '1.0'
+last_updated: '2026-03-25'
+maintainer: les
+description: Bodai ecosystem repository and MCP configuration for Mahavishnu orchestration.
 repos:
-  - name: "mahavishnu"
-    path: "/Users/les/Projects/mahavishnu"
-    nickname: "vishnu"
-    nicknames: ["vishnu", "vish"]
-    role: "orchestrator"
-    tags: ["orchestrator", "main"]
-    description: "Multi-agent orchestration system"
-    status: "active"
-
-  - name: "crackerjack"
-    path: "/Users/les/Projects/crackerjack"
-    role: "inspector"
-    tags: ["quality", "testing"]
-    description: "Quality assurance and testing framework"
-    status: "active"
-
-  - name: "session-buddy"
-    path: "/Users/les/Projects/session-buddy"
-    role: "manager"
-    tags: ["session-management", "memory"]
-    description: "Session management and conversation tracking"
-    status: "active"
-
-  - name: "oneiric"
-    path: "/Users/les/Projects/oneiric"
-    role: "resolver"
-    tags: ["configuration", "lifecycle"]
-    description: "Configuration and lifecycle management"
-    status: "active"
-
-  - name: "mcp-common"
-    path: "/Users/les/Projects/mcp-common"
-    role: "foundation"
-    tags: ["library", "shared", "foundation"]
-    description: "Foundation library for MCP servers"
-    status: "active"
-
-  - name: "mdinject"
-    path: "/Users/les/Projects/mdinject"
-    role: "app"
-    tags: ["app", "macos", "swiftui", "gui"]
-    description: "macOS SwiftUI desktop app for markdown prompt management (IPC via Unix socket)"
-    status: "active"
-
-  - name: "akosha"
-    path: "/Users/les/Projects/akosha"
-    role: "seer"
-    tags: ["semantic", "search", "vector", "knowledge"]
-    description: "Semantic search and knowledge aggregation"
-    status: "active"
-
-  - name: "dhara"
-    path: "/Users/les/Projects/dhara"
-    role: "curator"
-    tags: ["workflow", "config", "distribution"]
-    description: "Workflow configuration and Oneiric adapter distribution"
-    status: "active"
-
+- name: mahavishnu
+  path: /Users/les/Projects/mahavishnu
+  nickname: vishnu
+  nicknames:
+  - vishnu
+  - vish
+  role: orchestrator
+  tags:
+  - orchestrator
+  - main
+  description: Multi-agent orchestration system
+  status: active
+- name: crackerjack
+  path: /Users/les/Projects/crackerjack
+  role: inspector
+  tags:
+  - quality
+  - testing
+  description: Quality assurance and testing framework
+  status: active
+- name: session-buddy
+  path: /Users/les/Projects/session-buddy
+  role: manager
+  tags:
+  - session-management
+  - memory
+  description: Session management and conversation tracking
+  status: active
+- name: oneiric
+  path: /Users/les/Projects/oneiric
+  role: resolver
+  tags:
+  - configuration
+  - lifecycle
+  description: Configuration and lifecycle management
+  status: active
+- name: mcp-common
+  path: /Users/les/Projects/mcp-common
+  role: foundation
+  tags:
+  - library
+  - shared
+  - foundation
+  description: Foundation library for MCP servers
+  status: active
+- name: mdinject
+  path: /Users/les/Projects/mdinject
+  role: app
+  tags:
+  - app
+  - macos
+  - swiftui
+  - gui
+  description: macOS SwiftUI desktop app for markdown prompt management (IPC via Unix
+    socket)
+  status: active
+- name: akosha
+  path: /Users/les/Projects/akosha
+  role: seer
+  tags:
+  - semantic
+  - search
+  - vector
+  - knowledge
+  description: Semantic search and knowledge aggregation
+  status: active
+- name: dhara
+  path: /Users/les/Projects/dhara
+  role: curator
+  tags:
+  - workflow
+  - config
+  - distribution
+  description: Workflow configuration and Oneiric adapter distribution
+  status: active
 roles:
-  - name: "orchestrator"
-    description: "Coordinates workflows and manages cross-repository operations"
-    tags: ["coordination", "workflow", "automation", "scheduling"]
-    capabilities: ["sweep", "schedule", "monitor", "route", "coordinate"]
-  - name: "resolver"
-    description: "Resolves components, dependencies, and lifecycle management"
-    tags: ["dependency-injection", "lifecycle", "configuration", "hot-swap"]
-    capabilities: ["resolve", "activate", "swap", "explain", "watch"]
-  - name: "manager"
-    description: "Manages state, sessions, and knowledge across the ecosystem"
-    tags: ["state", "knowledge", "tracking", "analytics"]
-    capabilities: ["capture", "search", "restore", "track", "analyze"]
-  - name: "inspector"
-    description: "Validates code quality and enforces development standards"
-    tags: ["quality", "testing", "validation", "ci-cd"]
-    capabilities: ["test", "lint", "scan", "report", "validate"]
-  - name: "builder"
-    description: "Builds applications and web interfaces"
-    tags: ["web-framework", "ssr", "htmx", "templates"]
-    capabilities: ["render", "route", "authenticate", "build"]
-  - name: "aggregator"
-    description: "Aggregates data and analytics across distributed systems"
-    tags: ["analytics", "aggregation", "search", "detection"]
-    capabilities: ["aggregate", "search", "detect", "correlate", "graph"]
-  - name: "app"
-    description: "End-user applications with graphical interfaces"
-    tags: ["ui", "application", "user-facing"]
-    capabilities: ["interface", "automate", "serve-users", "integrate"]
-  - name: "asset"
-    description: "UI libraries, component collections, and style guides"
-    tags: ["ui-library", "components", "styling"]
-    capabilities: ["style", "theme", "componentize", "design"]
-  - name: "foundation"
-    description: "Foundational utilities, libraries, and shared code"
-    tags: ["utilities", "library", "shared-code"]
-    capabilities: ["share", "standardize", "abstract", "build-upon"]
-  - name: "visualizer"
-    description: "Creates visual diagrams and documentation"
-    tags: ["diagram", "visualization", "documentation"]
-    capabilities: ["draw", "render", "visualize", "document"]
-  - name: "extension"
-    description: "Extends framework capabilities with pluggable modules"
-    tags: ["extension", "plugin", "filters", "enhancement"]
-    capabilities: ["extend", "filter", "enhance", "plug-in"]
-  - name: "tool"
-    description: "Specialized tools and integrations via MCP protocol"
-    tags: ["mcp", "integration", "api", "service"]
-    capabilities: ["connect", "expose", "integrate"]
-  - name: "worker"
-    description: "Executes tasks and workflows under orchestrator direction"
-    tags: ["execution", "compute", "processing", "headless"]
-    duties:
-      - "Execute headless AI commands (Qwen, Claude Code)"
-      - "Run containerized workloads"
-      - "Report progress and capture output"
-      - "Handle retries, timeouts, and error recovery"
-    capabilities: ["execute", "report", "retry", "timeout", "capture"]
-
-# Coordination: Issues, Plans, and Todos
-# Generated by Power Trios review on 2026-02-20
-
+- name: orchestrator
+  description: Coordinates workflows and manages cross-repository operations
+  tags:
+  - coordination
+  - workflow
+  - automation
+  - scheduling
+  capabilities:
+  - sweep
+  - schedule
+  - monitor
+  - route
+  - coordinate
+- name: resolver
+  description: Resolves components, dependencies, and lifecycle management
+  tags:
+  - dependency-injection
+  - lifecycle
+  - configuration
+  - hot-swap
+  capabilities:
+  - resolve
+  - activate
+  - swap
+  - explain
+  - watch
+- name: manager
+  description: Manages state, sessions, and knowledge across the ecosystem
+  tags:
+  - state
+  - knowledge
+  - tracking
+  - analytics
+  capabilities:
+  - capture
+  - search
+  - restore
+  - track
+  - analyze
+- name: inspector
+  description: Validates code quality and enforces development standards
+  tags:
+  - quality
+  - testing
+  - validation
+  - ci-cd
+  capabilities:
+  - test
+  - lint
+  - scan
+  - report
+  - validate
+- name: builder
+  description: Builds applications and web interfaces
+  tags:
+  - web-framework
+  - ssr
+  - htmx
+  - templates
+  capabilities:
+  - render
+  - route
+  - authenticate
+  - build
+- name: aggregator
+  description: Aggregates data and analytics across distributed systems
+  tags:
+  - analytics
+  - aggregation
+  - search
+  - detection
+  capabilities:
+  - aggregate
+  - search
+  - detect
+  - correlate
+  - graph
+- name: app
+  description: End-user applications with graphical interfaces
+  tags:
+  - ui
+  - application
+  - user-facing
+  capabilities:
+  - interface
+  - automate
+  - serve-users
+  - integrate
+- name: asset
+  description: UI libraries, component collections, and style guides
+  tags:
+  - ui-library
+  - components
+  - styling
+  capabilities:
+  - style
+  - theme
+  - componentize
+  - design
+- name: foundation
+  description: Foundational utilities, libraries, and shared code
+  tags:
+  - utilities
+  - library
+  - shared-code
+  capabilities:
+  - share
+  - standardize
+  - abstract
+  - build-upon
+- name: visualizer
+  description: Creates visual diagrams and documentation
+  tags:
+  - diagram
+  - visualization
+  - documentation
+  capabilities:
+  - draw
+  - render
+  - visualize
+  - document
+- name: extension
+  description: Extends framework capabilities with pluggable modules
+  tags:
+  - extension
+  - plugin
+  - filters
+  - enhancement
+  capabilities:
+  - extend
+  - filter
+  - enhance
+  - plug-in
+- name: tool
+  description: Specialized tools and integrations via MCP protocol
+  tags:
+  - mcp
+  - integration
+  - api
+  - service
+  capabilities:
+  - connect
+  - expose
+  - integrate
+- name: worker
+  description: Executes tasks and workflows under orchestrator direction
+  tags:
+  - execution
+  - compute
+  - processing
+  - headless
+  duties:
+  - Execute headless AI commands (Qwen, Claude Code)
+  - Run containerized workloads
+  - Report progress and capture output
+  - Handle retries, timeouts, and error recovery
+  capabilities:
+  - execute
+  - report
+  - retry
+  - timeout
+  - capture
 coordination:
   issues:
-    # P0 Issues - Critical (ALL FIXED)
-    - id: MHV-001
-      title: "asyncio.run() called in sync context"
-      description: |
-        app.py:707 calls asyncio.run() inside _check_user_repo_permission
-        which will fail at runtime when called from async code.
-        This creates a nested event loop scenario that Python does not support.
-      severity: critical
-      priority: P0
-      status: fixed
-      resolution: "Added ThreadPoolExecutor fallback for async context detection"
-      pool: python
-      affected_files:
-        - mahavishnu/core/app.py
-      created_at: 2026-02-20T12:00:00Z
-      fixed_at: 2026-02-20T16:30:00Z
-      labels:
-        - async
-        - bug
-        - runtime-error
+  - id: MHV-001
+    title: asyncio.run() called in sync context
+    description: 'app.py:707 calls asyncio.run() inside _check_user_repo_permission
 
-    - id: MHV-002
-      title: "Missing logger import in unified_orchestrator.py"
-      description: |
-        Lines 223-225 reference `logger` but it is never imported.
-        Will crash when cancel_workflow hits an exception.
-        Need to add: import logging; logger = logging.getLogger(__name__)
-      severity: critical
-      priority: P0
-      status: fixed
-      resolution: "Added structlog import and logger initialization"
-      pool: python
-      affected_files:
-        - mahavishnu/core/unified_orchestrator.py
-      created_at: 2026-02-20T12:00:00Z
-      fixed_at: 2026-02-20T16:30:00Z
-      labels:
-        - bug
-        - import-error
+      which will fail at runtime when called from async code.
 
-    - id: MHV-003
-      title: "No shutdown events in background loops"
-      description: |
-        Four background loops lack shutdown events, preventing graceful stops:
-        - resilience.py:705 - _circuit_breaker_loop
-        - monitoring.py:200 - _metrics_loop
-        - memory_aggregator.py:165 - _sync_loop
-        - terminal/pool.py:201 - _pool_loop
-        Each needs asyncio.Event for clean shutdown.
-      severity: critical
-      priority: P0
-      status: fixed
-      resolution: "Added asyncio.Event shutdown handling to all 4 background loops"
-      pool: python
-      affected_files:
-        - mahavishnu/core/resilience.py
-        - mahavishnu/core/monitoring.py
-        - mahavishnu/pools/memory_aggregator.py
-        - mahavishnu/terminal/pool.py
-      created_at: 2026-02-20T12:00:00Z
-      fixed_at: 2026-02-20T16:30:00Z
-      labels:
-        - async
-        - shutdown
-        - graceful-stop
+      This creates a nested event loop scenario that Python does not support.
 
-    # P1 Issues - Important (ALL FIXED)
-    - id: MHV-004
-      title: "N+1 HTTP pattern in batch insert"
-      description: |
-        memory_aggregator.py:118-147 makes sequential HTTP requests for each
-        memory item in batch_insert_memories. Should use asyncio.gather()
-        for parallel requests or implement a batch endpoint.
-      severity: high
-      priority: P1
-      status: fixed
-      resolution: "Implemented parallel batch inserts with asyncio.gather"
-      pool: perf
-      affected_files:
-        - mahavishnu/pools/memory_aggregator.py
-      created_at: 2026-02-20T12:00:00Z
-      fixed_at: 2026-02-20T16:45:00Z
-      labels:
-        - performance
-        - http
-        - batch
+      '
+    severity: critical
+    priority: P0
+    status: fixed
+    resolution: Added ThreadPoolExecutor fallback for async context detection
+    pool: python
+    affected_files:
+    - mahavishnu/core/app.py
+    created_at: 2026-02-20 12:00:00+00:00
+    fixed_at: 2026-02-20 16:30:00+00:00
+    labels:
+    - async
+    - bug
+    - runtime-error
+  - id: MHV-002
+    title: Missing logger import in unified_orchestrator.py
+    description: 'Lines 223-225 reference `logger` but it is never imported.
 
-    - id: MHV-005
-      title: "SSRF vulnerability in content ingestion"
-      description: |
-        content_ingester.py accepts arbitrary URLs without validation.
-        No blocklist for:
-        - Internal IP ranges (10.x, 172.16-31.x, 192.168.x)
-        - Cloud metadata endpoints (169.254.169.254)
-        - file:// protocol
-        Needs URL validation and allowlist/blocklist.
-      severity: high
-      priority: P1
-      status: fixed
-      resolution: "Added URL validation with IP blocklist and scheme checking"
-      pool: security
-      affected_files:
-        - mahavishnu/ingesters/content_ingester.py
-      created_at: 2026-02-20T12:00:00Z
-      fixed_at: 2026-02-20T16:45:00Z
-      labels:
-        - security
-        - ssrf
-        - input-validation
+      Will crash when cancel_workflow hits an exception.
 
-    - id: MHV-006
-      title: "Heap synchronization missing in pool manager"
-      description: |
-        pools/manager.py:185-232 modifies heap and dict without synchronization.
-        The _priority_heap and _pool_metrics are accessed concurrently without
-        locks, which could cause race conditions under high concurrency.
-        Needs threading.Lock or asyncio.Lock protection.
-      severity: high
-      priority: P1
-      status: fixed
-      resolution: "Added asyncio.Lock for thread-safe heap and dict access"
-      pool: python
-      affected_files:
-        - mahavishnu/pools/manager.py
-      created_at: 2026-02-20T12:00:00Z
-      fixed_at: 2026-02-20T16:45:00Z
-      labels:
-        - concurrency
-        - race-condition
+      Need to add: import logging; logger = logging.getLogger(__name__)
 
-    # P2 Issues - Enhancement
-    - id: MHV-007
-      title: "datetime.utcnow() deprecation"
-      description: |
-        Python 3.12+ deprecates datetime.utcnow() in favor of datetime.now(UTC).
-        Six files use the deprecated pattern.
-        Should migrate to: datetime.now(timezone.utc) or datetime.now(UTC)
-      severity: medium
-      priority: P2
-      status: fixed
-      resolution: "Updated all occurrences to datetime.now(UTC)"
-      pool: python
-      affected_files:
-        - mahavishnu/core/dependency_graph.py
-        - mahavishnu/core/task_ordering.py
-        - mahavishnu/core/pattern_detection.py
-        - mahavishnu/core/predictions.py
-        - mahavishnu/models/pattern.py
-        - mahavishnu/core/blocker_detection.py
-      created_at: 2026-02-20T12:00:00Z
-      fixed_at: 2026-02-20T17:00:00Z
-      labels:
-        - deprecation
-        - python-3.12
+      '
+    severity: critical
+    priority: P0
+    status: fixed
+    resolution: Added structlog import and logger initialization
+    pool: python
+    affected_files:
+    - mahavishnu/core/unified_orchestrator.py
+    created_at: 2026-02-20 12:00:00+00:00
+    fixed_at: 2026-02-20 16:30:00+00:00
+    labels:
+    - bug
+    - import-error
+  - id: MHV-003
+    title: No shutdown events in background loops
+    description: 'Four background loops lack shutdown events, preventing graceful
+      stops:
 
-    - id: MHV-008
-      title: "Status enum proliferation"
-      description: |
-        20+ status enums with overlapping values (PENDING, IN_PROGRESS, etc)
-        across multiple files. This creates maintenance burden and potential
-        for inconsistent state handling.
-        Should consolidate to ~4 base enums:
-        - TaskStatus
-        - WorkflowStatus
-        - PoolStatus
-        - WorkerStatus
-      severity: medium
-      priority: P2
-      status: fixed
-      resolution: "Consolidated 18 status enums into unified module at mahavishnu/core/status.py"
-      pool: python
-      affected_files:
-        - mahavishnu/core/task_store.py
-        - mahavishnu/core/dependency_graph.py
-        - mahavishnu/core/progress_tracker.py
-        - mahavishnu/core/coordination/models.py
-      created_at: 2026-02-20T12:00:00Z
-      fixed_at: 2026-02-20T19:30:00Z
-      labels:
-        - refactoring
-        - deduplication
+      - resilience.py:705 - _circuit_breaker_loop
 
+      - monitoring.py:200 - _metrics_loop
+
+      - memory_aggregator.py:165 - _sync_loop
+
+      - terminal/pool.py:201 - _pool_loop
+
+      Each needs asyncio.Event for clean shutdown.
+
+      '
+    severity: critical
+    priority: P0
+    status: fixed
+    resolution: Added asyncio.Event shutdown handling to all 4 background loops
+    pool: python
+    affected_files:
+    - mahavishnu/core/resilience.py
+    - mahavishnu/core/monitoring.py
+    - mahavishnu/pools/memory_aggregator.py
+    - mahavishnu/terminal/pool.py
+    created_at: 2026-02-20 12:00:00+00:00
+    fixed_at: 2026-02-20 16:30:00+00:00
+    labels:
+    - async
+    - shutdown
+    - graceful-stop
+  - id: MHV-004
+    title: N+1 HTTP pattern in batch insert
+    description: 'memory_aggregator.py:118-147 makes sequential HTTP requests for
+      each
+
+      memory item in batch_insert_memories. Should use asyncio.gather()
+
+      for parallel requests or implement a batch endpoint.
+
+      '
+    severity: high
+    priority: P1
+    status: fixed
+    resolution: Implemented parallel batch inserts with asyncio.gather
+    pool: perf
+    affected_files:
+    - mahavishnu/pools/memory_aggregator.py
+    created_at: 2026-02-20 12:00:00+00:00
+    fixed_at: 2026-02-20 16:45:00+00:00
+    labels:
+    - performance
+    - http
+    - batch
+  - id: MHV-005
+    title: SSRF vulnerability in content ingestion
+    description: 'content_ingester.py accepts arbitrary URLs without validation.
+
+      No blocklist for:
+
+      - Internal IP ranges (10.x, 172.16-31.x, 192.168.x)
+
+      - Cloud metadata endpoints (169.254.169.254)
+
+      - file:// protocol
+
+      Needs URL validation and allowlist/blocklist.
+
+      '
+    severity: high
+    priority: P1
+    status: fixed
+    resolution: Added URL validation with IP blocklist and scheme checking
+    pool: security
+    affected_files:
+    - mahavishnu/ingesters/content_ingester.py
+    created_at: 2026-02-20 12:00:00+00:00
+    fixed_at: 2026-02-20 16:45:00+00:00
+    labels:
+    - security
+    - ssrf
+    - input-validation
+  - id: MHV-006
+    title: Heap synchronization missing in pool manager
+    description: 'pools/manager.py:185-232 modifies heap and dict without synchronization.
+
+      The _priority_heap and _pool_metrics are accessed concurrently without
+
+      locks, which could cause race conditions under high concurrency.
+
+      Needs threading.Lock or asyncio.Lock protection.
+
+      '
+    severity: high
+    priority: P1
+    status: fixed
+    resolution: Added asyncio.Lock for thread-safe heap and dict access
+    pool: python
+    affected_files:
+    - mahavishnu/pools/manager.py
+    created_at: 2026-02-20 12:00:00+00:00
+    fixed_at: 2026-02-20 16:45:00+00:00
+    labels:
+    - concurrency
+    - race-condition
+  - id: MHV-007
+    title: datetime.utcnow() deprecation
+    description: 'Python 3.12+ deprecates datetime.utcnow() in favor of datetime.now(UTC).
+
+      Six files use the deprecated pattern.
+
+      Should migrate to: datetime.now(timezone.utc) or datetime.now(UTC)
+
+      '
+    severity: medium
+    priority: P2
+    status: fixed
+    resolution: Updated all occurrences to datetime.now(UTC)
+    pool: python
+    affected_files:
+    - mahavishnu/core/dependency_graph.py
+    - mahavishnu/core/task_ordering.py
+    - mahavishnu/core/pattern_detection.py
+    - mahavishnu/core/predictions.py
+    - mahavishnu/models/pattern.py
+    - mahavishnu/core/blocker_detection.py
+    created_at: 2026-02-20 12:00:00+00:00
+    fixed_at: 2026-02-20 17:00:00+00:00
+    labels:
+    - deprecation
+    - python-3.12
+  - id: MHV-008
+    title: Status enum proliferation
+    description: '20+ status enums with overlapping values (PENDING, IN_PROGRESS,
+      etc)
+
+      across multiple files. This creates maintenance burden and potential
+
+      for inconsistent state handling.
+
+      Should consolidate to ~4 base enums:
+
+      - TaskStatus
+
+      - WorkflowStatus
+
+      - PoolStatus
+
+      - WorkerStatus
+
+      '
+    severity: medium
+    priority: P2
+    status: fixed
+    resolution: Consolidated 18 status enums into unified module at mahavishnu/core/status.py
+    pool: python
+    affected_files:
+    - mahavishnu/core/task_store.py
+    - mahavishnu/core/dependency_graph.py
+    - mahavishnu/core/progress_tracker.py
+    - mahavishnu/core/coordination/models.py
+    created_at: 2026-02-20 12:00:00+00:00
+    fixed_at: 2026-02-20 19:30:00+00:00
+    labels:
+    - refactoring
+    - deduplication
+  - id: ISSUE-009
+    title: MCP Test Issue
+    description: Created via MCP
+    status: pending
+    priority: high
+    severity: normal
+    repos:
+    - mahavishnu
+    created: '2026-04-15T05:22:50.662728'
+    updated: '2026-04-15T05:22:50.662728'
+    target: null
+    dependencies: []
+    blocking: []
+    assignee: null
+    labels: []
+    metadata: {}
   plans:
-    - id: PLAN-001
-      title: "Phase 1 Critical Fixes"
-      description: |
-        Fix all P0 issues before any P1/P2 work.
-        These are runtime-breaking bugs that need immediate attention.
-      issue_ids:
-        - MHV-001
-        - MHV-002
-        - MHV-003
-      status: pending
-      created_at: 2026-02-20T12:00:00Z
+  - id: PLAN-001
+    title: Phase 1 Critical Fixes
+    description: 'Fix all P0 issues before any P1/P2 work.
 
-    - id: PLAN-002
-      title: "Phase 2 Performance & Security"
-      description: |
-        Address P1 performance and security issues.
-        Depends on Phase 1 completion.
-      issue_ids:
-        - MHV-004
-        - MHV-005
-        - MHV-006
-      depends_on:
-        - PLAN-001
-      status: pending
-      created_at: 2026-02-20T12:00:00Z
+      These are runtime-breaking bugs that need immediate attention.
 
-    - id: PLAN-003
-      title: "Phase 3 Code Quality"
-      description: |
-        Address P2 code quality improvements.
-        Depends on Phase 2 completion.
-      issue_ids:
-        - MHV-007
-        - MHV-008
-      depends_on:
-        - PLAN-002
-      status: pending
-      created_at: 2026-02-20T12:00:00Z
+      '
+    issue_ids:
+    - MHV-001
+    - MHV-002
+    - MHV-003
+    status: pending
+    created_at: 2026-02-20 12:00:00+00:00
+  - id: PLAN-002
+    title: Phase 2 Performance & Security
+    description: 'Address P1 performance and security issues.
 
+      Depends on Phase 1 completion.
+
+      '
+    issue_ids:
+    - MHV-004
+    - MHV-005
+    - MHV-006
+    depends_on:
+    - PLAN-001
+    status: pending
+    created_at: 2026-02-20 12:00:00+00:00
+  - id: PLAN-003
+    title: Phase 3 Code Quality
+    description: 'Address P2 code quality improvements.
+
+      Depends on Phase 2 completion.
+
+      '
+    issue_ids:
+    - MHV-007
+    - MHV-008
+    depends_on:
+    - PLAN-002
+    status: pending
+    created_at: 2026-02-20 12:00:00+00:00
   todos:
-    - id: TODO-001
-      issue_id: MHV-003
-      task: "Add shutdown event to resilience.py background loop (_circuit_breaker_loop at line 705)"
-      status: pending
-      created_at: 2026-02-20T12:00:00Z
-
-    - id: TODO-002
-      issue_id: MHV-003
-      task: "Add shutdown event to monitoring.py background loop (_metrics_loop at line 200)"
-      status: pending
-      created_at: 2026-02-20T12:00:00Z
-
-    - id: TODO-003
-      issue_id: MHV-003
-      task: "Add shutdown event to memory_aggregator.py background loop (_sync_loop at line 165)"
-      status: pending
-      created_at: 2026-02-20T12:00:00Z
-
-    - id: TODO-004
-      issue_id: MHV-003
-      task: "Add shutdown event to terminal/pool.py background loop (_pool_loop at line 201)"
-      status: pending
-      created_at: 2026-02-20T12:00:00Z
+  - id: TODO-001
+    issue_id: MHV-003
+    task: Add shutdown event to resilience.py background loop (_circuit_breaker_loop
+      at line 705)
+    status: pending
+    created_at: 2026-02-20 12:00:00+00:00
+  - id: TODO-002
+    issue_id: MHV-003
+    task: Add shutdown event to monitoring.py background loop (_metrics_loop at line
+      200)
+    status: pending
+    created_at: 2026-02-20 12:00:00+00:00
+  - id: TODO-003
+    issue_id: MHV-003
+    task: Add shutdown event to memory_aggregator.py background loop (_sync_loop at
+      line 165)
+    status: pending
+    created_at: 2026-02-20 12:00:00+00:00
+  - id: TODO-004
+    issue_id: MHV-003
+    task: Add shutdown event to terminal/pool.py background loop (_pool_loop at line
+      201)
+    status: pending
+    created_at: 2026-02-20 12:00:00+00:00
+  - id: TODO-005
+    task: MCP Test Task
+    description: Created via MCP
+    repo: crackerjack
+    status: pending
+    priority: medium
+    created: '2026-04-15T05:22:50.718551'
+    updated: '2026-04-15T05:22:50.718551'
+    estimated_hours: 4.0
+    actual_hours: null
+    blocked_by: []
+    blocking: []
+    assignee: null
+    labels: []
+    acceptance_criteria: []

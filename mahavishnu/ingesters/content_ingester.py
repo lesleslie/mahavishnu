@@ -216,20 +216,27 @@ class ContentIngester:
 
         try:
             # Initialize embedding service
-            self._embedding_service = get_embedding_service(self._embedding_provider)
+            if self._embedding_service is None:
+                self._embedding_service = get_embedding_service(self._embedding_provider)
 
             # Create HTTP clients for MCP servers
             timeout = httpx.Timeout(30.0, connect=10.0)
-            self._akosha_client = httpx.AsyncClient(base_url=self._akosha_url, timeout=timeout)
-            self._crackerjack_client = httpx.AsyncClient(
-                base_url=self._crackerjack_url, timeout=timeout
-            )
-            self._session_buddy_client = httpx.AsyncClient(
-                base_url=self._session_buddy_url, timeout=timeout
-            )
-            self._web_reader_client = httpx.AsyncClient(
-                base_url=self._web_reader_url, timeout=timeout
-            )
+            if self._akosha_client is None:
+                self._akosha_client = httpx.AsyncClient(
+                    base_url=self._akosha_url, timeout=timeout
+                )
+            if self._crackerjack_client is None:
+                self._crackerjack_client = httpx.AsyncClient(
+                    base_url=self._crackerjack_url, timeout=timeout
+                )
+            if self._session_buddy_client is None:
+                self._session_buddy_client = httpx.AsyncClient(
+                    base_url=self._session_buddy_url, timeout=timeout
+                )
+            if self._web_reader_client is None:
+                self._web_reader_client = httpx.AsyncClient(
+                    base_url=self._web_reader_url, timeout=timeout
+                )
 
             self._initialized = True
             self._log.info("content_ingester_initialized")
@@ -283,14 +290,15 @@ class ContentIngester:
             return ContentType.WEBPAGE
 
         # File detection
-        path = Path(source).lower()
-        if path.suffix == ".pdf":
+        path = Path(source)
+        suffix = path.suffix.lower()
+        if suffix == ".pdf":
             return ContentType.PDF
-        if path.suffix == ".epub":
+        if suffix == ".epub":
             return ContentType.EPUB
-        if path.suffix in [".md", ".markdown"]:
+        if suffix in [".md", ".markdown"]:
             return ContentType.MARKDOWN
-        if path.suffix in [".txt", ".text"]:
+        if suffix in [".txt", ".text"]:
             return ContentType.TEXT
 
         return ContentType.UNKNOWN

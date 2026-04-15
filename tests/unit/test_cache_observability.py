@@ -9,6 +9,7 @@ Covers:
 
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 import time
 from typing import Any
@@ -105,10 +106,9 @@ class TestAdapterDiscoveryCacheStats:
         engine = AdapterDiscoveryEngine(
             config={"enable_entry_points": False, "enable_oneiric_mcp": False}
         )
-        import asyncio
 
         # discover_all with no sources returns empty list; counts as miss
-        result = asyncio.get_event_loop().run_until_complete(engine.discover_all())
+        result = asyncio.run(engine.discover_all())
         assert result == []
         stats = engine.get_cache_stats()
         assert stats["misses"] == 1
@@ -119,11 +119,9 @@ class TestAdapterDiscoveryCacheStats:
         engine = AdapterDiscoveryEngine(
             config={"enable_entry_points": False, "enable_oneiric_mcp": False}
         )
-        import asyncio
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(engine.discover_all())  # miss
-        loop.run_until_complete(engine.discover_all())  # hit
+        asyncio.run(engine.discover_all())  # miss
+        asyncio.run(engine.discover_all())  # hit
         stats = engine.get_cache_stats()
         assert stats["hits"] == 1
         assert stats["misses"] == 1
@@ -134,10 +132,8 @@ class TestAdapterDiscoveryCacheStats:
         engine = AdapterDiscoveryEngine(
             config={"enable_entry_points": False, "enable_oneiric_mcp": False}
         )
-        import asyncio
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(engine.discover_all())
+        asyncio.run(engine.discover_all())
         engine.invalidate_cache()
         stats = engine.get_cache_stats()
         assert stats["entries"] == 0

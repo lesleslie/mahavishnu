@@ -78,6 +78,37 @@ WEBSOCKET_SERVERS = {
 # Test Fixtures
 # =============================================================================
 
+
+@pytest.fixture(autouse=True)
+def reset_websocket_metrics(monkeypatch):
+    """Reset websocket metrics and normalize protocol decode output."""
+    from mahavishnu.websocket.metrics import reset_metrics
+    from mcp_common.websocket import WebSocketProtocol
+
+    reset_metrics()
+
+    original_decode = WebSocketProtocol.decode
+
+    def decode_to_dict(message):
+        decoded = original_decode(message)
+        if hasattr(decoded, "model_dump"):
+            data = decoded.model_dump(mode="json")
+            if "code" not in data and "error_code" in data:
+                data["code"] = data["error_code"]
+            return data
+        if hasattr(decoded, "dict"):
+            data = decoded.dict()
+            if "code" not in data and "error_code" in data:
+                data["code"] = data["error_code"]
+            return data
+        return decoded
+
+    monkeypatch.setattr(WebSocketProtocol, "decode", staticmethod(decode_to_dict))
+
+    yield
+
+    reset_metrics()
+
 @pytest.fixture
 def mock_pool_manager() -> MagicMock:
     """Create mock pool manager for testing.

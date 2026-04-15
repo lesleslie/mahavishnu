@@ -73,11 +73,23 @@ class Budget:
 
     budget_type: BudgetType
     limit_usd: Decimal
+    period_days: int | None = None
     task_type: TaskType | None = None
     adapter: AdapterType | None = None
     period_start: datetime | None = None
     period_end: datetime | None = None
     alert_threshold: float = 0.9  # Alert at 90% of budget
+
+    def __post_init__(self) -> None:
+        if self.period_days is not None and self.period_days not in {1, 7, 30, 90, 365}:
+            raise ValueError(
+                f"Invalid period_days: {self.period_days}. Must be 1, 7, 30, 90, or 365"
+            )
+
+        if self.period_days is not None and self.period_start is None and self.period_end is None:
+            now = datetime.now(UTC)
+            self.period_start = now
+            self.period_end = now + timedelta(days=self.period_days)
 
     def is_active(self, now: datetime | None = None) -> bool:
         """Check if budget is currently active."""
@@ -101,9 +113,10 @@ class CostAwareChoice:
     success_rate: float
     latency_ms: int
     score: float
-    reasoning: str
-    pareto_dominated: bool  # True if no other adapter is better in all metrics
-    constraints_satisfied: bool  # True if within budget and SLA
+    reasoning: str = ""
+    pareto_dominated: bool = False  # True if no other adapter is better in all metrics
+    constraints_satisfied: bool = True  # True if within budget and SLA
+    violated_budgets: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -152,8 +165,8 @@ class CostOptimizer:
         # Store or initialize routing metrics
         self.metrics = metrics if metrics is not None else get_routing_metrics()
 
-        self._cost_tracking: dict[str, dict[str, Decimal]] = defaultdict(
-            lambda: defaultdict(Decimal)
+        self._cost_tracking: dict[str, dict[str, dict[str, Decimal]]] = defaultdict(
+            lambda: defaultdict(lambda: defaultdict(Decimal))
         )
         self._frontier_cache: dict[str, ParetoFrontier] = {}
         self._recalc_task: asyncio.Task | None = None
@@ -223,26 +236,22 @@ class CostOptimizer:
         total_spent = Decimal("0")
         now = datetime.now(UTC)
 
-        if budget.task_type:
-            # Per-task-type budget
-            for adapter in AdapterType:
-                total_spent += self._cost_tracking.get(budget.task_type.value, {}).get(
-                    adapter.value, Decimal("0")
-                )
-        else:
-            # Global budget (all task types)
-            for adapter in AdapterType:
-                for task_type in TaskType:
-                    total_spent += self._cost_tracking.get(task_type.value, {}).get(
-                        adapter.value, Decimal("0")
-                    )
+        for date_costs in self._cost_tracking.values():
+            for adapter_name, task_costs in date_costs.items():
+                if budget.adapter and adapter_name != budget.adapter.value:
+                    continue
+
+                if budget.task_type is not None:
+                    total_spent += task_costs.get(budget.task_type.value, Decimal("0"))
+                else:
+                    total_spent += sum(task_costs.values(), Decimal("0"))
 
         # Check if budget period is active
         active = budget.is_active(now)
 
         remaining = budget.limit_usd - total_spent if active else Decimal("0")
         percentage = (
-            (total_spent / budget.limit_usd * 100) if active and budget.limit_usd > 0 else 0
+            (total_spent / budget.limit_usd) if active and budget.limit_usd > 0 else Decimal("0")
         )
 
         return {
@@ -252,13 +261,15 @@ class CostOptimizer:
             "remaining_usd": float(remaining),
             "percentage_used": float(percentage),
             "is_active": active,
-            "is_over_budget": total_spent > budget.limit_usd,
+            "is_over_budget": active and percentage >= Decimal(str(budget.alert_threshold)),
         }
 
     async def check_budget_constraints(
         self,
         adapter: AdapterType,
         task_type: TaskType,
+        constraints: dict[str, Any] | None = None,
+        metrics_tracker: ExecutionTracker | None = None,
     ) -> dict[str, Any]:
         """Check if adapter selection would violate budget constraints.
 
@@ -271,6 +282,7 @@ class CostOptimizer:
         """
         constraints_ok = True
         violated_budgets = []
+        sla_result: dict[str, Any] | None = None
 
         for budget in self.budgets:
             # Check if budget applies to this adapter/task type
@@ -297,10 +309,57 @@ class CostOptimizer:
                     }
                 )
 
+        if constraints and constraints.get("sla"):
+            sla = constraints["sla"]
+            max_latency_ms = sla.get("max_latency_ms", self.max_latency_ms)
+            min_success_rate = sla.get("min_success_rate", self.min_success_rate)
+
+            tracker = metrics_tracker or get_execution_tracker()
+            stats = await tracker.get_adapter_stats(adapter)
+            recent = await tracker.get_recent_executions(limit=100)
+            adapter_executions = [
+                execution
+                for execution in recent
+                if execution.adapter == adapter and execution.task_type == task_type
+            ]
+
+            actual_latency_ms = 0
+            if adapter_executions:
+                latencies = [execution.latency_ms for execution in adapter_executions if execution.latency_ms]
+                if latencies:
+                    actual_latency_ms = int(np.mean(latencies))
+            else:
+                tracked_cost = self._get_tracked_cost(adapter, task_type)
+                cost_per_second = ADAPTER_COSTS.get(adapter)
+                if tracked_cost > 0 and cost_per_second:
+                    actual_latency_ms = int((tracked_cost / cost_per_second) * Decimal("1000"))
+
+            success_rate = stats["success_rate"] if stats is not None else 0.0
+
+            sla_result = {
+                "max_latency_ms": max_latency_ms,
+                "min_success_rate": min_success_rate,
+                "actual_latency_ms": actual_latency_ms,
+                "actual_success_rate": success_rate,
+                "satisfied": actual_latency_ms <= max_latency_ms and success_rate >= min_success_rate,
+            }
+
+            if not sla_result["satisfied"]:
+                constraints_ok = False
+
         return {
             "constraints_satisfied": constraints_ok,
             "violated_budgets": violated_budgets,
+            "sla": sla_result,
         }
+
+    def _get_tracked_cost(self, adapter: AdapterType, task_type: TaskType) -> Decimal:
+        """Return total tracked cost for an adapter/task pair."""
+        total = Decimal("0")
+        for date_costs in self._cost_tracking.values():
+            adapter_costs = date_costs.get(adapter.value, {})
+            total += adapter_costs.get(task_type.value, Decimal("0"))
+        return total
 
     def calculate_pareto_frontier(
         self,
@@ -337,15 +396,21 @@ class CostOptimizer:
                 # - A has higher success rate AND lower cost
                 # - OR A has same success, lower cost AND lower latency
                 # - OR A has same success+cost, lower latency
-                other_better_cost = other.cost_usd < choice.cost_usd
-                other_better_latency = other.latency_ms < choice.latency_ms
                 other_better_success = other.success_rate > choice.success_rate
+                other_not_worse_cost = other.cost_usd <= choice.cost_usd
+                other_not_worse_latency = other.latency_ms <= choice.latency_ms
+                other_strictly_better = (
+                    other.success_rate > choice.success_rate
+                    or other.cost_usd < choice.cost_usd
+                    or other.latency_ms < choice.latency_ms
+                )
 
-                # Strict dominance: better in at least one metric without being worse
-                if (other_better_cost and other_better_latency and other_better_success) or (
-                    other_better_cost
-                    and other.success_rate >= choice.success_rate
-                    and other_better_latency
+                # Strict dominance: no worse in any dimension and better in at least one.
+                if (
+                    other_better_success
+                    and other_not_worse_cost
+                    and other_not_worse_latency
+                    and other_strictly_better
                 ):
                     is_dominated = True
                     break
@@ -379,7 +444,7 @@ class CostOptimizer:
         if strategy == TaskStrategy.INTERACTIVE:
             # Minimize latency, maximize success (50/50)
             # Normalize: cost inverse (lower is better), latency inverse
-            cost_score = max(0.0, 1.0 - float(choice.cost_usd) / Decimal("0.01"))
+            cost_score = max(0.0, 1.0 - float(choice.cost_usd) / 0.01)
             latency_score = max(0.0, 1.0 - (choice.latency_ms / self.max_latency_ms))
 
             return (
@@ -390,7 +455,7 @@ class CostOptimizer:
 
         elif strategy == TaskStrategy.BATCH:
             # Minimize cost, maximize success (90/10)
-            cost_score = max(0.0, 1.0 - float(choice.cost_usd) / Decimal("0.01"))
+            cost_score = max(0.0, 1.0 - float(choice.cost_usd) / 0.01)
             latency_score = max(0.0, 1.0 - (choice.latency_ms / 10000))  # 10s max
 
             return (
@@ -401,7 +466,7 @@ class CostOptimizer:
 
         elif strategy == TaskStrategy.CRITICAL:
             # Maximize success, some latency consideration (80/20)
-            cost_score = max(0.0, 1.0 - float(choice.cost_usd) / Decimal("0.01"))
+            cost_score = max(0.0, 1.0 - float(choice.cost_usd) / 0.01)
             latency_score = max(0.0, 1.0 - (choice.latency_ms / self.max_latency_ms))
 
             return (
@@ -412,6 +477,7 @@ class CostOptimizer:
 
         else:
             # Default balanced approach (70/30)
+            latency_score = max(0.0, 1.0 - (choice.latency_ms / self.max_latency_ms))
             return 0.7 * choice.success_rate + 0.3 * latency_score
 
     async def get_optimal_adapter(
@@ -438,10 +504,12 @@ class CostOptimizer:
         else:
             strategy = strategy
 
+        tracker = metrics_tracker or get_execution_tracker()
+
         # Get adapter statistics
         adapters_data = []
         for adapter in AdapterType:
-            stats = await metrics_tracker.get_adapter_stats(adapter)
+            stats = await tracker.get_adapter_stats(adapter)
             if stats is None:
                 continue
 
@@ -460,23 +528,29 @@ class CostOptimizer:
         choices = []
         for adapter_data in adapters_data:
             # Get recent executions for latency/cost
-            recent = await metrics_tracker.get_recent_executions(limit=100)
+            recent = await tracker.get_recent_executions(limit=100)
             adapter_executions = [
                 e
                 for e in recent
                 if e.adapter == adapter_data["adapter"] and e.task_type == task_type
             ]
 
-            if not adapter_executions:
-                continue
-
             # Calculate average latency
             latencies = [e.latency_ms for e in adapter_executions if e.latency_ms]
-            avg_latency = int(np.mean(latencies)) if latencies else 0
+            if latencies:
+                avg_latency = int(np.mean(latencies))
+            else:
+                tracked_cost = self._get_tracked_cost(adapter_data["adapter"], task_type)
+                cost_per_second = ADAPTER_COSTS.get(adapter_data["adapter"])
+                avg_latency = (
+                    int((tracked_cost / cost_per_second) * Decimal("1000"))
+                    if tracked_cost > 0 and cost_per_second
+                    else 0
+                )
 
             # Estimate cost (will be tracked during execution)
             # For now, calculate from latency
-            cost_usd = self.track_execution_cost(
+            cost_usd = await self.track_execution_cost(
                 adapter=adapter_data["adapter"],
                 task_type=task_type,
                 execution_id="estimate",
@@ -589,11 +663,12 @@ class CostOptimizer:
 
     async def add_budget(
         self,
-        budget_type: BudgetType,
-        limit_usd: float | int,
+        budget: Budget | None = None,
+        budget_type: BudgetType | None = None,
+        limit_usd: float | int | Decimal | None = None,
         task_type: TaskType | None = None,
         adapter: AdapterType | None = None,
-        period_days: int = 30,
+        period_days: int | None = None,
     ) -> Budget:
         """Add budget configuration.
 
@@ -609,27 +684,50 @@ class CostOptimizer:
         """
         now = datetime.now(UTC)
 
-        if period_days not in [7, 30, 90, 365]:
-            raise ValueError(f"Invalid period_days: {period_days}. Must be 7, 30, 90, or 365")
+        if budget is not None:
+            budget_to_add = budget
+            if budget_to_add.period_start is None or budget_to_add.period_end is None:
+                effective_days = (
+                    budget_to_add.period_days
+                    if budget_to_add.period_days is not None
+                    else period_days
+                    if period_days is not None
+                    else {
+                        BudgetType.DAILY: 1,
+                        BudgetType.WEEKLY: 7,
+                        BudgetType.MONTHLY: 30,
+                        BudgetType.PER_TASK_TYPE: 30,
+                    }[budget_to_add.budget_type]
+                )
+                budget_to_add.period_days = effective_days
+                budget_to_add.period_start = now
+                budget_to_add.period_end = now + timedelta(days=effective_days)
+        else:
+            if budget_type is None or limit_usd is None:
+                raise TypeError("budget or budget_type/limit_usd must be provided")
 
-        # Calculate period
-        period_start = now
-        period_end = now + timedelta(days=period_days)
+            effective_days = period_days if period_days is not None else {
+                BudgetType.DAILY: 1,
+                BudgetType.WEEKLY: 7,
+                BudgetType.MONTHLY: 30,
+                BudgetType.PER_TASK_TYPE: 30,
+            }[budget_type]
 
-        budget = Budget(
-            budget_type=budget_type,
-            limit_usd=Decimal(str(limit_usd)),
-            task_type=task_type,
-            adapter=adapter,
-            period_start=period_start,
-            period_end=period_end,
-        )
+            budget_to_add = Budget(
+                budget_type=budget_type,
+                limit_usd=Decimal(str(limit_usd)),
+                period_days=effective_days,
+                task_type=task_type,
+                adapter=adapter,
+                period_start=now,
+                period_end=now + timedelta(days=effective_days),
+            )
 
-        self.budgets.append(budget)
+        self.budgets.append(budget_to_add)
 
-        logger.info(f"Added budget: {budget_type.value} ${limit_usd:.2f}")
+        logger.info(f"Added budget: {budget_to_add.budget_type.value} ${budget_to_add.limit_usd:.2f}")
 
-        return budget
+        return budget_to_add
 
     async def get_all_budgets(self) -> list[Budget]:
         """Get all configured budgets."""

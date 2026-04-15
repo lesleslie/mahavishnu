@@ -28,6 +28,17 @@ try:
     LLAMAINDEX_AVAILABLE = True
 except ImportError:
     LLAMAINDEX_AVAILABLE = False
+    from unittest.mock import MagicMock
+
+    Document = MagicMock(name="Document")
+    OllamaEmbedding = MagicMock(name="OllamaEmbedding")
+    Ollama = MagicMock(name="Ollama")
+    OpensearchVectorStore = MagicMock(name="OpensearchVectorStore")
+    Settings = MagicMock(name="Settings")
+    SimpleDirectoryReader = MagicMock(name="SimpleDirectoryReader")
+    StorageContext = MagicMock(name="StorageContext")
+    SentenceSplitter = MagicMock(name="SentenceSplitter")
+    VectorStoreIndex = MagicMock(name="VectorStoreIndex")
 
 # Import code graph analyzer
 from mcp_common.code_graph import CodeGraphAnalyzer

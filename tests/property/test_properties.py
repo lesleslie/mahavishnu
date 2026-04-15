@@ -55,8 +55,16 @@ simple_name_strategy = st.text(
     alphabet="abcdefghijklmnopqrstuvwxyz0123456789-_", min_size=1, max_size=20
 )
 
+simple_package_strategy = st.text(
+    alphabet="abcdefghijklmnopqrstuvwxyz0123456789", min_size=1, max_size=20
+).filter(lambda x: x[0].isalpha())
+
+simple_repo_component_strategy = st.text(
+    alphabet="abcdefghijklmnopqrstuvwxyz0123456789", min_size=1, max_size=20
+).filter(lambda x: x[0].isalpha())
+
 simple_tag_strategy = st.text(
-    alphabet="abcdefghijklmnopqrstuvwxyz0123456789-_", min_size=1, max_size=15
+    alphabet="abcdefghijklmnopqrstuvwxyz0123456789", min_size=1, max_size=15
 )
 
 # =============================================================================
@@ -69,9 +77,7 @@ class TestRepositoryProperties:
 
     @given(
         name=simple_name_strategy,
-        package=simple_name_strategy.filter(
-            lambda x: x[0].isalpha() and x.replace("_", "").isalnum()
-        ),
+        package=simple_package_strategy,
         description=st.text(
             min_size=1, max_size=200, alphabet=st.characters(whitelist_categories=("L", "N"))
         ),
@@ -113,11 +119,12 @@ class TestRepositoryProperties:
         repos=st.lists(
             st.builds(
                 Repository,
-                name=simple_name_strategy.map(lambda x: x.lower()[:20]),
-                package=simple_name_strategy.filter(lambda x: x and x[0].isalpha()).map(
-                    lambda x: x[:20]
+                name=st.from_regex(r"^[a-z][a-z0-9]*$", fullmatch=True),
+                package=st.from_regex(r"^[a-z][a-z0-9]*$", fullmatch=True),
+                path=st.builds(
+                    lambda n: Path(f"/tmp/repos/{n}"),
+                    st.from_regex(r"^[a-z][a-z0-9]*$", fullmatch=True),
                 ),
-                path=st.builds(lambda n: Path(f"/tmp/repos/{n}"), simple_name_strategy),
                 description=st.text(min_size=1, max_size=100),
                 tags=st.lists(simple_tag_strategy, min_size=1, max_size=3, unique=True),
             ),
@@ -321,7 +328,7 @@ class TestRateLimitingProperties:
     @settings(max_examples=20, deadline=None)
     def test_stats_track_request_counts(self, num_keys, requests_per_key):
         """Test that statistics accurately track request counts."""
-        limiter = RateLimiter(per_minute=100)
+        limiter = RateLimiter(per_minute=100, burst_size=max(requests_per_key, 100))
 
         # Make some requests for each key
         for i in range(num_keys):

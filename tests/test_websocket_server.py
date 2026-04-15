@@ -19,12 +19,12 @@ def mock_pool_manager():
 
 
 @pytest.fixture
-def websocket_server(mock_pool_manager):
+def websocket_server(mock_pool_manager, unused_tcp_port):
     """Create WebSocket server instance."""
     server = MahavishnuWebSocketServer(
         pool_manager=mock_pool_manager,
         host="127.0.0.1",
-        port=8690,
+        port=unused_tcp_port,
     )
     # Mock metrics entirely to avoid Prometheus registry conflicts
     server.metrics = MagicMock()
@@ -42,7 +42,7 @@ class TestMahavishnuWebSocketServer:
     def test_initialization(self, websocket_server):
         """Test server initializes correctly."""
         assert websocket_server.host == "127.0.0.1"
-        assert websocket_server.port == 8690
+        assert websocket_server.port > 0
         assert websocket_server.max_connections == 1000
         assert websocket_server.message_rate_limit == 100
         assert websocket_server.pool_manager is not None
@@ -276,7 +276,7 @@ class TestWebSocketIntegration:
             await websocket_server.start()
 
             # Connect client
-            async with websockets.connect("ws://127.0.0.1:8690") as ws:
+            async with websockets.connect(f"ws://127.0.0.1:{websocket_server.port}") as ws:
                 # Send subscribe message
                 subscribe_msg = {
                     "type": "request",
@@ -306,7 +306,7 @@ class TestWebSocketIntegration:
             received_events = []
 
             async def client_task():
-                async with websockets.connect("ws://127.0.0.1:8690") as ws:
+                async with websockets.connect(f"ws://127.0.0.1:{websocket_server.port}") as ws:
                     # Subscribe
                     subscribe_msg = {
                         "type": "request",

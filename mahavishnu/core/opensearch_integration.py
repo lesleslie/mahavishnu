@@ -482,13 +482,22 @@ class OpenSearchIntegration:
         )
 
     async def log_error(
-        self, workflow_id: str, error_msg: str, repo_path: str = None, adapter: str = None
+        self,
+        workflow_id: str,
+        error_msg: str,
+        repo_path: str = None,
+        adapter: str = None,
+        attributes: dict[str, Any] | None = None,
     ):
         """Log an error event."""
         await self.analytics.log_event(
             level="ERROR",
             message=error_msg,
-            attributes={"workflow_id": workflow_id, "repo_path": repo_path},
+            attributes={
+                "workflow_id": workflow_id,
+                "repo_path": repo_path,
+                **(attributes or {}),
+            },
             workflow_id=workflow_id,
             repo_path=repo_path,
             adapter=adapter,
