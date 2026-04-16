@@ -47,7 +47,7 @@ async def test_process_repository_dynamic_quality_score():
         )
 
         # Execute the task
-        result = await process_repository(repo_path, task_spec)
+        result = await process_repository.fn(repo_path, task_spec)
 
         # Verify result structure
         assert result["status"] == "completed"
@@ -88,7 +88,7 @@ async def test_process_repository_quality_check_integration():
         mock_qc.check_repository = AsyncMock(return_value={"status": "passed", "score": 85})
 
         # Execute
-        result = await process_repository(repo_path, task_spec)
+        result = await process_repository.fn(repo_path, task_spec)
 
         # Verify QC was called
         mock_qc.check_repository.assert_called_once_with(repo_path)
@@ -103,14 +103,14 @@ async def test_prefect_adapter_real_flow_run_ids():
     """Test that Prefect adapter returns real flow run IDs."""
     # Mock config
     config = MagicMock()
+    config.api_url = "http://prefect.local"
 
     # Create adapter
     adapter = PrefectAdapter(config)
 
     # Mock Prefect client
     with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
-        mock_client = AsyncMock()
-        mock_get_client.return_value.__aenter__.return_value = mock_client
+        mock_client = mock_get_client.return_value
         mock_client.api_url = "http://prefect.local"
 
         # Mock flow run

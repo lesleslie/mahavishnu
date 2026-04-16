@@ -8,8 +8,18 @@ Tests that RoutingMetrics properly integrates with:
 
 import pytest
 import asyncio
+from types import SimpleNamespace
+from datetime import UTC, datetime
+
+from mahavishnu.core.adapters.base import AdapterType
 from mahavishnu.core.routing_metrics import RoutingMetrics, get_routing_metrics, reset_routing_metrics
-from mahavishnu.core.statistical_router import StatisticalRouter, get_statistical_router
+from mahavishnu.core.statistical_router import (
+    ConfidenceLevel,
+    StatisticalRouter,
+    get_statistical_router,
+)
+from mahavishnu.core.task_router import TaskRouter
+from mahavishnu.core.metrics_schema import TaskType
 from mahavishnu.core.cost_optimizer import CostOptimizer, get_cost_optimizer
 
 
@@ -22,6 +32,10 @@ def reset_metrics():
 
 class TestStatisticalRouterMetrics:
     """Test StatisticalRouter metrics integration."""
+
+    @staticmethod
+    def _mock_adapter_status() -> SimpleNamespace:
+        return SimpleNamespace(adapter_type=None, task_type=None, latency_ms=100)
 
     @pytest.mark.asyncio
     async def test_calculate_adapter_score_records_decision(self, reset_metrics):
@@ -40,9 +54,7 @@ class TestStatisticalRouterMetrics:
                 }
             async def get_recent_executions(self, limit=100):
                 # Return mock executions with latency data
-                return [
-                    type("obj", object()) for _ in range(50)
-                ]
+                return [SimpleNamespace(adapter=adapter, task_type=task_type, latency_ms=100) for _ in range(50)]
 
         tracker = MockTracker()
 
@@ -92,15 +104,17 @@ class TestStatisticalRouterMetrics:
         pref_a = PreferenceOrder(
             task_type=TaskType.WORKFLOW,
             adapters=[AdapterType.PREFECT, AdapterType.AGNO],
+            scores=[],
             generated_at=datetime.now(UTC),
-            confidence=router.ConfidenceLevel.HIGH,
+            confidence=ConfidenceLevel.HIGH,
         )
 
         pref_b = PreferenceOrder(
             task_type=TaskType.WORKFLOW,
             adapters=[AdapterType.LLAMAINDEX, AdapterType.AGNO],
+            scores=[],
             generated_at=datetime.now(UTC),
-            confidence=router.ConfidenceLevel.HIGH,
+            confidence=ConfidenceLevel.HIGH,
         )
 
         # Start A/B test - should record start event and set active experiments
@@ -198,6 +212,22 @@ class TestCostOptimizerMetrics:
 class TestTaskRouterMetrics:
     """Test TaskRouter comprehensive metrics integration."""
 
+    async def _register_adapter(self, router, adapter_type):
+        class MockAdapter:
+            async def is_available(self):
+                return True
+
+            async def execute(self, task, repos):
+                return {
+                    "success": True,
+                    "adapter": adapter_type,
+                    "result": {"status": "completed"},
+                }
+
+            async def get_health(self):
+                return {"status": "healthy"}
+        await router.adapter_registry.register_adapter(adapter_type, MockAdapter())
+
     @pytest.mark.asyncio
     async def test_route_records_routing_decision(self, reset_metrics):
         """Test that route() records routing decisions."""
@@ -205,6 +235,9 @@ class TestTaskRouterMetrics:
         from mahavishnu.core.metrics_collector import ExecutionTracker
 
         router = TaskRouter(metrics=get_routing_metrics("test_router"))
+        await self._register_adapter(router, AdapterType.PREFECT)
+        await self._register_adapter(router, AdapterType.AGNO)
+        await self._register_adapter(router, AdapterType.LLAMAINDEX)
 
         # Create mock task
         task = {
@@ -229,6 +262,20 @@ class TestTaskRouterMetrics:
         from mahavishnu.core.task_router import TaskRouter, get_task_router
 
         router = TaskRouter(metrics=get_routing_metrics("test_router"))
+        await self._register_adapter(router, AdapterType.PREFECT)
+        await self._register_adapter(router, AdapterType.AGNO)
+
+        class FailingAdapter:
+            async def is_available(self):
+                return True
+
+            async def execute(self, task, repos):
+                return {"success": False, "error": "prefect failed"}
+
+            async def get_health(self):
+                return {"status": "healthy"}
+
+        await router.adapter_registry.register_adapter(AdapterType.PREFECT, FailingAdapter())
 
         # Create mock task that will fail first adapter then succeed
         task = {
@@ -254,6 +301,8 @@ class TestTaskRouterMetrics:
     async def test_get_health_includes_metrics_enabled(self, reset_metrics):
         """Test that get_health() includes metrics_enabled flag."""
         router = TaskRouter(metrics=get_routing_metrics("test_router"))
+        await self._register_adapter(router, AdapterType.LLAMAINDEX)
+        await self._register_adapter(router, AdapterType.PREFECT)
 
         health = await router.get_health()
 
@@ -267,6 +316,9 @@ class TestTaskRouterMetrics:
         from mahavishnu.core.task_router import TaskRouter, get_task_router
 
         router = TaskRouter(metrics=get_routing_metrics("test_router"))
+
+        await self._register_adapter(router, AdapterType.LLAMAINDEX)
+        await self._register_adapter(router, AdapterType.PREFECT)
 
         # Create task with preference order
         task = {
@@ -287,22 +339,7 @@ class TestTaskRouterMetrics:
 @pytest.mark.asyncio
 async def test_all_metrics_integration():
     """Run all integration tests."""
-    async with reset_metrics():
-        # Test StatisticalRouter
-        await test_calculate_adapter_score_records_decision()
-        await test_recalculate_all_preferences()
-        await test_start_ab_test_records_event()
-
-        # Test CostOptimizer
-        await test_track_execution_cost_records_cost()
-        await test_get_optimal_adapter_records_decision()
-        await test_health_includes_metrics_enabled()
-
-        # Test TaskRouter
-        await test_route_records_routing_decision()
-        await test_execute_with_fallback_records_execution_and_fallback()
-        await test_get_health_includes_metrics_enabled()
-        await test_route_with_preference_uses_metrics()
+    pytest.skip("Aggregator duplicates the individual metrics integration tests")
 
 
 if __name__ == "__main__":

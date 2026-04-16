@@ -8,6 +8,7 @@ import asyncio
 from asyncio import Semaphore
 from datetime import datetime
 from pathlib import Path
+import tempfile
 import time
 from typing import TYPE_CHECKING, Any
 import uuid
@@ -42,6 +43,11 @@ if TYPE_CHECKING:
     from ..terminal.manager import TerminalManager
     from .adapters.base import OrchestratorAdapter
 
+try:
+    from ..terminal.manager import TerminalManager
+except Exception:  # pragma: no cover - optional runtime dependency
+    TerminalManager = None  # type: ignore[assignment]
+
 
 def _validate_path(path_str: str, allowed_base_paths: list[str] | None = None) -> Path:
     """Validate a path to prevent directory traversal attacks.
@@ -57,29 +63,32 @@ def _validate_path(path_str: str, allowed_base_paths: list[str] | None = None) -
         ValidationError: If path contains directory traversal sequences or is outside allowed paths
     """
     path = Path(path_str)
-
-    # Resolve path to its absolute form
-    abs_path = path.resolve()
+    normalized_path = str(path_str).replace("\\", "/")
 
     # Check for directory traversal patterns
     if (
         ".." in path.parts
-        or str(path).startswith("../")
-        or "../" in str(path)
-        or str(path).endswith("/..")
+        or normalized_path.startswith("../")
+        or "/../" in normalized_path
+        or normalized_path.endswith("/..")
+        or "..\\" in path_str
+        or "\\.." in path_str
     ):
         raise ValidationError(
             message=f"Invalid path contains directory traversal: {path_str}",
             details={"path": path_str, "suggestion": "Remove any '..' sequences from path"},
         )
 
+    # Resolve path to its absolute form only after traversal checks pass.
+    abs_path = path.expanduser().resolve()
+
     # Check if path is within allowed boundaries
-    allowed_paths = allowed_base_paths or [str(Path.cwd())]
+    allowed_paths = allowed_base_paths or [str(Path.cwd()), tempfile.gettempdir()]
 
     is_allowed = False
     for allowed_base in allowed_paths:
         try:
-            abs_path.relative_to(allowed_base)
+            abs_path.relative_to(Path(allowed_base).expanduser().resolve())
             is_allowed = True
             break
         except ValueError:
@@ -95,7 +104,7 @@ def _validate_path(path_str: str, allowed_base_paths: list[str] | None = None) -
             },
         )
 
-    return path
+    return abs_path
 
 
 class MahavishnuApp:
@@ -187,6 +196,14 @@ class MahavishnuApp:
 
         # Initialize session management
         self.session_buddy = SessionBuddy(self.config)
+        self.session_buddy_integration = self.session_buddy
+
+        try:
+            from ..messaging.repository_messenger import RepositoryMessenger
+
+            self.repository_messenger = RepositoryMessenger(self)
+        except Exception:
+            self.repository_messenger = None
 
         # Initialize terminal manager (optional)
         self.terminal_manager = None

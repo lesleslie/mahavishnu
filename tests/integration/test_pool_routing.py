@@ -36,8 +36,8 @@ class TestHeapRoutingScalability:
                 )
                 mock_pool._workers = {f"w{j}": f"w{j}" for j in range(i % 10)}
 
-                async def mock_execute(task):
-                    return {"pool_id": mock_pool.pool_id, "status": "completed"}
+                async def mock_execute(task, pool_id=mock_pool.pool_id):
+                    return {"pool_id": pool_id, "status": "completed"}
 
                 mock_pool.execute_task = mock_execute
                 pool_mgr._pools[f"pool{i}"] = mock_pool
@@ -54,7 +54,7 @@ class TestHeapRoutingScalability:
             # Measure routing performance
             start = time.time()
             for _ in range(1000):
-                pool_id = pool_mgr._get_least_loaded_pool()
+                pool_id = await pool_mgr._get_least_loaded_pool()
                 assert pool_id is not None
             elapsed = time.time() - start
 
@@ -91,8 +91,8 @@ class TestHeapRoutingScalability:
                 )
                 mock_pool._workers = {f"w{j}": f"w{j}" for j in range(count)}
 
-                async def mock_execute(task):
-                    return {"pool_id": mock_pool.pool_id, "status": "completed"}
+                async def mock_execute(task, pool_id=mock_pool.pool_id):
+                    return {"pool_id": pool_id, "status": "completed"}
 
                 mock_pool.execute_task = mock_execute
                 pool_mgr._pools[f"pool{i}"] = mock_pool
@@ -105,7 +105,7 @@ class TestHeapRoutingScalability:
                 heapq.heappush(pool_mgr._worker_count_heap, (count, pool_id))
 
             # Get least loaded pool
-            least_loaded = pool_mgr._get_least_loaded_pool()
+            least_loaded = await pool_mgr._get_least_loaded_pool()
 
             # Should be pool3 (1 worker)
             assert least_loaded == "pool3", f"Expected pool3, got {least_loaded}"
@@ -135,8 +135,8 @@ class TestHeapRoutingScalability:
                 )
                 mock_pool._workers = {f"w{j}": f"w{j}" for j in range(5)}
 
-                async def mock_execute(task):
-                    return {"pool_id": mock_pool.pool_id, "status": "completed"}
+                async def mock_execute(task, pool_id=mock_pool.pool_id):
+                    return {"pool_id": pool_id, "status": "completed"}
 
                 mock_pool.execute_task = mock_execute
                 pool_mgr._pools[f"pool{i}"] = mock_pool
@@ -154,7 +154,7 @@ class TestHeapRoutingScalability:
 
             # Now heap has: (5, pool0)[stale], (5, pool1), (5, pool2), (10, pool0)[current]
             # _get_least_loaded_pool should skip stale entry and return pool1 or pool2
-            least_loaded = pool_mgr._get_least_loaded_pool()
+            least_loaded = await pool_mgr._get_least_loaded_pool()
 
             # Should skip stale (5, pool0) and return pool1 or pool2
             assert least_loaded in ["pool1", "pool2"], (
@@ -204,7 +204,7 @@ class TestHeapRoutingScalability:
 
             # Heap still has (5, pool0) entry, but pool0 is closed
             # _get_least_loaded_pool should skip it and return pool1 or pool2
-            least_loaded = pool_mgr._get_least_loaded_pool()
+            least_loaded = await pool_mgr._get_least_loaded_pool()
 
             assert least_loaded in ["pool1", "pool2"], (
                 f"Expected pool1 or pool2, got {least_loaded}"
@@ -237,8 +237,8 @@ class TestHeapRoutingScalability:
                 )
                 mock_pool._workers = {f"w{j}": f"w{j}" for j in range(i % 10)}
 
-                async def mock_execute(task):
-                    return {"pool_id": mock_pool.pool_id, "status": "completed"}
+                async def mock_execute(task, pool_id=mock_pool.pool_id):
+                    return {"pool_id": pool_id, "status": "completed"}
 
                 mock_pool.execute_task = mock_execute
                 pool_mgr._pools[f"pool{i}"] = mock_pool
@@ -253,7 +253,7 @@ class TestHeapRoutingScalability:
             # Measure heap routing (O(log n))
             start = time.time()
             for _ in range(1000):
-                pool_id = pool_mgr._get_least_loaded_pool()
+                pool_id = await pool_mgr._get_least_loaded_pool()
                 assert pool_id is not None
             heap_elapsed = time.time() - start
 
@@ -309,8 +309,8 @@ class TestLeastLoadedRouting:
                 )
                 mock_pool._workers = {f"w{j}": f"w{j}" for j in range(count)}
 
-                async def mock_execute(task):
-                    return {"pool_id": mock_pool.pool_id, "status": "completed"}
+                async def mock_execute(task, pool_id=mock_pool.pool_id):
+                    return {"pool_id": pool_id, "status": "completed"}
 
                 mock_pool.execute_task = mock_execute
                 pool_mgr._pools[f"pool{i}"] = mock_pool

@@ -18,6 +18,12 @@ from .session_buddy_pool import SessionBuddyPool
 logger = logging.getLogger(__name__)
 
 
+async def _await_if_needed(value: Any) -> Any:
+    if hasattr(value, "__await__"):
+        return await value
+    return value
+
+
 class PoolSelector(Enum):
     """Pool selection strategies.
 
@@ -257,6 +263,9 @@ class PoolManager:
                 # Valid entry found - return pool_id without popping
                 return pool_id
 
+        if self._pools:
+            return min(self._pools.items(), key=lambda item: len(item[1]._workers))[0]
+
         return None
 
     async def execute_on_pool(
@@ -410,8 +419,8 @@ class PoolManager:
             """Collect memory and status from a single pool."""
             pool = self._pools.get(pool_id)
             if pool:
-                memory = await pool.collect_memory()
-                status = await pool.status()
+                memory = await _await_if_needed(pool.collect_memory())
+                status = await _await_if_needed(pool.status())
                 return pool_id, {
                     "memory_count": len(memory),
                     "status": status.value,

@@ -19,8 +19,10 @@ Version: 1.0
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 import json
+import os
 import logging
 from pathlib import Path
+import tempfile
 from typing import Any, cast
 
 import aiosqlite
@@ -278,6 +280,7 @@ class AdapterPersistenceLayer:
         Args:
             storage_path: Path to SQLite database file. If None, uses XDG-compliant path.
         """
+        self._explicit_storage_path = storage_path is not None
         if storage_path is None:
             ensure_directories()
             storage_path = str(get_data_path("adapter_persistence.db"))
@@ -292,6 +295,12 @@ class AdapterPersistenceLayer:
 
         logger.debug(f"AdapterPersistenceLayer initialized with path: {self.storage_path}")
 
+    def _fallback_storage_path(self) -> Path:
+        """Return a process-local fallback database path."""
+        fallback_dir = Path(tempfile.gettempdir()) / "mahavishnu"
+        fallback_dir.mkdir(parents=True, exist_ok=True)
+        return fallback_dir / f"adapter_persistence_{os.getpid()}.db"
+
     async def initialize(self) -> None:
         """Create database tables if needed.
 
@@ -305,13 +314,46 @@ class AdapterPersistenceLayer:
             return
 
         try:
-            self._db = await aiosqlite.connect(self.storage_path)
+            await self._initialize_database(self.storage_path)
+            self._initialized = True
 
-            # Enable WAL mode for better concurrent access
-            await self._db.execute("PRAGMA journal_mode=WAL")
+            logger.info(f"AdapterPersistenceLayer initialized: {self.storage_path}")
 
-            # Create adapter_state table
-            await self._db.execute("""
+        except Exception as e:
+            if not self._explicit_storage_path:
+                fallback_path = self._fallback_storage_path()
+                logger.warning(
+                    "Primary adapter persistence path failed; retrying with fallback: %s",
+                    fallback_path,
+                )
+                try:
+                    self.storage_path = fallback_path
+                    await self._initialize_database(self.storage_path)
+                    self._initialized = True
+                    logger.info(f"AdapterPersistenceLayer initialized: {self.storage_path}")
+                    return
+                except Exception as fallback_exc:
+                    logger.error(f"Failed to initialize persistence layer: {fallback_exc}")
+                    raise PersistenceError(
+                        f"Failed to initialize database at {self.storage_path}",
+                        details={"original_error": str(fallback_exc)},
+                    ) from fallback_exc
+
+            logger.error(f"Failed to initialize persistence layer: {e}")
+            raise PersistenceError(
+                f"Failed to initialize database at {self.storage_path}",
+                details={"original_error": str(e)},
+            ) from e
+
+    async def _initialize_database(self, storage_path: Path) -> None:
+        """Open the database connection and create schema."""
+        self._db = await aiosqlite.connect(storage_path)
+
+        # Enable WAL mode for better concurrent access
+        await self._db.execute("PRAGMA journal_mode=WAL")
+
+        # Create adapter_state table
+        await self._db.execute("""
                 CREATE TABLE IF NOT EXISTS adapter_state (
                     adapter_id TEXT PRIMARY KEY,
                     enabled INTEGER NOT NULL DEFAULT 1,
@@ -325,8 +367,8 @@ class AdapterPersistenceLayer:
                 )
             """)
 
-            # Create health_history table
-            await self._db.execute("""
+        # Create health_history table
+        await self._db.execute("""
                 CREATE TABLE IF NOT EXISTS health_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     adapter_id TEXT NOT NULL,
@@ -339,41 +381,31 @@ class AdapterPersistenceLayer:
                 )
             """)
 
-            # Create indexes for efficient queries
-            await self._db.execute("""
+        # Create indexes for efficient queries
+        await self._db.execute("""
                 CREATE INDEX IF NOT EXISTS idx_health_adapter_id
                 ON health_history(adapter_id)
             """)
 
-            await self._db.execute("""
+        await self._db.execute("""
                 CREATE INDEX IF NOT EXISTS idx_health_timestamp
                 ON health_history(timestamp DESC)
             """)
 
-            # Create schema version table
-            await self._db.execute("""
+        # Create schema version table
+        await self._db.execute("""
                 CREATE TABLE IF NOT EXISTS schema_version (
                     version INTEGER PRIMARY KEY
                 )
             """)
 
-            # Record schema version
-            await self._db.execute(
-                "INSERT OR IGNORE INTO schema_version (version) VALUES (?)",
-                (self.SCHEMA_VERSION,),
-            )
+        # Record schema version
+        await self._db.execute(
+            "INSERT OR IGNORE INTO schema_version (version) VALUES (?)",
+            (self.SCHEMA_VERSION,),
+        )
 
-            await self._db.commit()
-            self._initialized = True
-
-            logger.info(f"AdapterPersistenceLayer initialized: {self.storage_path}")
-
-        except Exception as e:
-            logger.error(f"Failed to initialize persistence layer: {e}")
-            raise PersistenceError(
-                f"Failed to initialize database at {self.storage_path}",
-                details={"original_error": str(e)},
-            ) from e
+        await self._db.commit()
 
     async def _ensure_initialized(self) -> None:
         """Ensure the database is initialized before operations."""

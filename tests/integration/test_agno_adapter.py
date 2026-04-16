@@ -54,10 +54,8 @@ async def test_agno_adapter_with_ollama_llm():
 
     # Test _get_llm method (without actually calling Ollama)
     with patch.dict(os.environ, {}, clear=True):
-        # Should try to import OllamaLLM
-        with pytest.raises((ImportError, ConfigurationError)):
-            # Either ImportError (agno not installed) or ConfigurationError (OK)
-            adapter._get_llm()
+        model = adapter._get_llm()
+        assert model is not None
 
 
 @pytest.mark.asyncio

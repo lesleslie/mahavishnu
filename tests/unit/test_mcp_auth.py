@@ -302,7 +302,7 @@ def test_credential_manager_redact_from_dict():
     redacted = CredentialManager.redact_from_dict(data)
 
     assert redacted["username"] == "testuser"
-    assert redacted["password"] == "sec***"  # First 4 chars shown
+    assert redacted["password"] == "secr***"
     assert redacted["api_key"] == "key_***"
     assert redacted["normal_field"] == "normal_value"
     assert redacted["ssh_key"] == "ssh-***"
@@ -319,7 +319,7 @@ def test_credential_manager_custom_sensitive_keys():
         data, sensitive_keys=["custom_secret"]
     )
 
-    assert redacted["custom_secret"] == "value***"
+    assert redacted["custom_secret"] == "valu***"
     assert redacted["public_field"] == "public_value"
 
 

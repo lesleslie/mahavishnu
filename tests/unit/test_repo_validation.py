@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -16,7 +17,7 @@ def test_validate_path_normal():
         os.makedirs(test_path, exist_ok=True)
 
         validated_path = _validate_path(test_path)
-        assert str(validated_path) == test_path
+        assert str(validated_path) == str(Path(test_path).resolve())
 
 
 def test_validate_path_with_relative():
@@ -34,8 +35,8 @@ def test_validate_path_with_relative():
             # Test relative path
             rel_path = "subdir"
             validated_path = _validate_path(rel_path)
-            expected_path = os.path.join(tmp_dir, rel_path)
-            assert str(validated_path) == expected_path
+            expected_path = Path(tmp_dir, rel_path).resolve()
+            assert str(validated_path) == str(expected_path)
         finally:
             os.chdir(original_cwd)
 

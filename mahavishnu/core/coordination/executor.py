@@ -6,10 +6,14 @@ Executes todo items via worker pools with progress tracking.
 
 import asyncio
 from datetime import datetime
+import logging
 from typing import Any
 
 from mahavishnu.core.coordination.manager import CoordinationManager
 from mahavishnu.core.coordination.models import CrossRepoTodo
+
+
+logger = logging.getLogger(__name__)
 
 
 class CoordinationExecutor:
@@ -117,6 +121,24 @@ class CoordinationExecutor:
                 # Record actual hours if estimated was provided
                 actual_hours = duration / 3600
                 self._update_todo_actual_hours(todo_id, actual_hours)
+
+                memory = getattr(self.coordination, "memory", None)
+                if memory is not None and hasattr(memory, "store_todo_event"):
+                    completed_todo = self.coordination.get_todo(todo_id)
+                    if completed_todo is not None:
+                        try:
+                            await memory.store_todo_event(
+                                "completed",
+                                completed_todo,
+                                changes={
+                                    "duration_seconds": round(duration, 2),
+                                    "actual_hours": round(actual_hours, 2),
+                                },
+                            )
+                        except Exception:
+                            logger.debug(
+                                "Skipping todo completion memory event for %s", todo_id, exc_info=True
+                            )
 
             return {
                 "success": result.get("success", False),
@@ -347,23 +369,33 @@ class CoordinationExecutor:
 
         return prompt
 
+    def _get_coordination_state(self) -> dict[str, Any]:
+        """Return the mutable coordination state for the wrapped manager."""
+        manager = getattr(self.coordination, "_coordination_mgr", self.coordination)
+        return manager._coordination
+
+    def _save_coordination_state(self) -> None:
+        """Persist the wrapped coordination manager state."""
+        manager = getattr(self.coordination, "_coordination_mgr", self.coordination)
+        manager.save()
+
     def _update_todo_status(self, todo_id: str, status: str) -> None:
         """Update todo status."""
-        todos_data = self.coordination._coordination.get("todos", [])
+        todos_data = self._get_coordination_state().get("todos", [])
         for todo in todos_data:
             if todo.get("id") == todo_id:
                 todo["status"] = status
                 todo["updated"] = datetime.now().isoformat()
-                self.coordination._coordination["todos"] = todos_data
-                self.coordination.save()
+                self._get_coordination_state()["todos"] = todos_data
+                self._save_coordination_state()
                 return
 
     def _update_todo_actual_hours(self, todo_id: str, hours: float) -> None:
         """Update todo with actual hours spent."""
-        todos_data = self.coordination._coordination.get("todos", [])
+        todos_data = self._get_coordination_state().get("todos", [])
         for todo in todos_data:
             if todo.get("id") == todo_id:
                 todo["actual_hours"] = round(hours, 2)
-                self.coordination._coordination["todos"] = todos_data
-                self.coordination.save()
+                self._get_coordination_state()["todos"] = todos_data
+                self._save_coordination_state()
                 return

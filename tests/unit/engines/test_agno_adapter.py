@@ -58,8 +58,8 @@ def agno_llm_config() -> AgnoLLMConfig:
 def agno_memory_config() -> AgnoMemoryConfig:
     """Create default memory config for testing."""
     return AgnoMemoryConfig(
-        enabled=True,
-        backend=MemoryBackend.SQLITE,
+        enabled=False,
+        backend=MemoryBackend.NONE,
         db_path="data/test_agno.db",
         num_history_runs=10,
     )
@@ -161,7 +161,7 @@ class TestAgnoMemoryConfig:
         """Test default memory configuration values."""
         config = AgnoMemoryConfig()
         assert config.enabled is True
-        assert config.backend == MemoryBackend.SQLITE
+        assert config.backend == MemoryBackend.NONE
         assert config.db_path == "data/agno.db"
         assert config.num_history_runs == 10
 
@@ -451,6 +451,8 @@ class TestAgnoAdapter:
         adapter = AgnoAdapter(EmptyConfig())
         # Check that default config is created with expected values
         assert adapter.agno_config.enabled is True
+        assert adapter.agno_config.memory.enabled is False
+        assert adapter.agno_config.memory.backend == MemoryBackend.NONE
         assert adapter.agno_config.llm.provider == LLMProvider.OLLAMA
         assert adapter.agno_config.default_timeout_seconds == 300
 

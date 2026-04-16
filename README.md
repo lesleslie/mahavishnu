@@ -38,6 +38,88 @@ Crackerjack is the standard quality-control and CI/CD gate across Mahavishnu and
 - **Role-Based Organization** - Intelligent repository taxonomy for workflow routing
 - **MCP Server** - FastMCP-based server exposing 49+ orchestration and coordination tools
 
+## Orchestrator Landscape
+
+This is the short version of where each system fits. It is not a scorecard.
+
+Legend:
+
+- `shipped` = already implemented in Bodai or Mahavishnu today
+- `external` = comparison-only reference from another project
+
+| System | Primary role | Boundary in Bodai | Status | Use when |
+|--------|--------------|-------------------|--------|----------|
+| Hermes Agent | End-user agent runtime | External reference; borrow UX/runtime patterns selectively | external | You want a user-facing assistant/runtime first |
+| OpenClaw | Channel-aware gateway/runtime | Shipped delivery integration; not the canonical control plane | shipped | You need message delivery, handoffs, or channel operations |
+| Mahavishnu | Control plane / orchestrator | Canonical internal control plane | shipped | You want to orchestrate work across many repos and services |
+| Agno | Interactive agent engine | Canonical runtime adapter behind Mahavishnu | shipped | You want an embedded agent runtime inside your own system |
+| Prefect | Durable workflow engine | Canonical workflow engine | shipped | You need reliable batch or scheduled automation |
+| LlamaIndex | Retrieval / knowledge engine | Canonical retrieval engine | shipped | You need knowledge-grounded responses or RAG |
+
+Practical guidance:
+
+- Use **Hermes** if the product is the assistant itself.
+- Use **OpenClaw** if the product is channel-aware delivery or communications.
+- Use **Mahavishnu** if the product is cross-repo orchestration and control.
+- Use **Agno** if the product needs an agent loop inside a system you already own.
+- Use **Prefect** if the product needs dependable workflows, schedules, and retries.
+- Use **LlamaIndex** if the product needs a retrieval and knowledge plane.
+
+Core Bodai control-plane components today are:
+
+- Mahavishnu
+- Agno
+- Prefect
+- LlamaIndex
+
+Supporting delivery and ecosystem components include:
+
+- OpenClaw
+- Hermes-style entry points as a reference pattern
+- Session-Buddy
+- Akosha
+- Crackerjack
+- Oneiric
+
+### Symbiotic usage
+
+Hermes and OpenClaw can complement Mahavishnu instead of competing with it.
+
+- **Hermes in front of Mahavishnu**: use Hermes as the user-facing assistant runtime for chat, voice, and interactive task intake, then hand orchestration, policy, and long-lived state to Mahavishnu.
+- **OpenClaw in front of Mahavishnu**: use OpenClaw as a channel-aware delivery layer for handoffs, notifications, and message routing, then let Mahavishnu decide what should happen next.
+- **Mahavishnu in the middle**: keep it as the control plane that owns routing, approvals, workflow state, and ecosystem coordination.
+
+That gives the system a clean split:
+
+- Hermes and OpenClaw handle entry points and delivery
+- Mahavishnu handles orchestration and policy
+- Agno, Prefect, and LlamaIndex handle specialized execution backends
+
+### Learning and skills
+
+Hermes advertises a built-in learning loop: it persists useful context, searches prior conversations, and refines skills over time. In Bodai today, we have supporting pieces, not a finished autonomous loop.
+
+Supporting pieces today:
+
+- Session-Buddy for checkpoints and session lifecycle
+- `mahavishnu/memory/MEMORY.md` for durable memory
+- Akosha-backed semantic search and cross-system retrieval
+- skill-oriented specs and recovery workflows in `docs/superpowers/specs/`
+
+Planned piece:
+
+- a fully automatic skill synthesis loop that drafts, validates, and activates new skills on its own
+
+The recommended path is to add that as a bounded ecosystem feature:
+
+1. capture successful sessions and outcomes
+2. retrieve similar prior work
+3. draft or update a skill
+4. require review before activation
+5. surface the review queue in the TUI
+
+That gets the benefit of Hermes-style self-improvement without making the runtime self-modifying.
+
 ## Quick Links
 
 - [Getting Started Guide](docs/GETTING_STARTED.md)
@@ -329,6 +411,10 @@ Mahavishnu uses a role-based taxonomy to organize repositories:
 - **terminal-clai** - Headless CLAI CLI execution in one-shot mode with marker-based completion
 - **gateway-openclaw** - Preferred OpenClaw gateway worker over HTTP JSON-RPC for channel-aware communication tasks
 - **container-executor** - Containerized task execution (Phase 3)
+
+Worker selection policy:
+
+- See [Worker Classification Policy](docs/policies/worker-classification-policy.md) for the rule set that decides terminal vs gateway vs external reference.
 
 ### Routing Notes
 

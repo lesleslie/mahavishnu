@@ -56,6 +56,16 @@ __all__ = [
     "FixTask",
     "FixResult",
     "QualityGateResult",
+    # Skill governance
+    "LearningArtifactType",
+    "LearningEvidence",
+    "SkillActivation",
+    "SkillDraft",
+    "SkillPromotionPolicy",
+    "SkillPromotionState",
+    "SkillRollback",
+    "SkillReview",
+    "SkillReviewDecision",
 ]
 
 # Mapping of export name -> (relative_module, attribute_name)
@@ -87,6 +97,16 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "FixResult": (".fix_orchestrator", "FixResult"),
     "FixTask": (".fix_orchestrator", "FixTask"),
     "QualityGateResult": (".fix_orchestrator", "QualityGateResult"),
+    # Skill governance
+    "LearningArtifactType": (".skill_governance", "LearningArtifactType"),
+    "LearningEvidence": (".skill_governance", "LearningEvidence"),
+    "SkillActivation": (".skill_governance", "SkillActivation"),
+    "SkillDraft": (".skill_governance", "SkillDraft"),
+    "SkillPromotionPolicy": (".skill_governance", "SkillPromotionPolicy"),
+    "SkillPromotionState": (".skill_governance", "SkillPromotionState"),
+    "SkillRollback": (".skill_governance", "SkillRollback"),
+    "SkillReview": (".skill_governance", "SkillReview"),
+    "SkillReviewDecision": (".skill_governance", "SkillReviewDecision"),
     # Metrics collector
     "ExecutionTracker": (".metrics_collector", "ExecutionTracker"),
     "get_execution_tracker": (".metrics_collector", "get_execution_tracker"),

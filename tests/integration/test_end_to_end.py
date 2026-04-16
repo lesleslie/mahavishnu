@@ -85,7 +85,7 @@ async def test_adapter_registration():
     app = MahavishnuApp()
 
     # Check that default adapters are registered
-    expected_adapters = ["prefect", "agno", "llamaindex"]
+    expected_adapters = ["prefect", "agno", "llamaindex", "worker"]
     for adapter_name in expected_adapters:
         assert adapter_name in app.adapters
         assert app.adapters[adapter_name] is not None
@@ -101,18 +101,20 @@ async def test_workflow_execution_with_multiple_adapters():
         # Add the temp directory to repos
         test_repo = Path(temp_dir)
         test_repo_path = str(test_repo)
+        resolved_repo_path = str(test_repo.resolve())
+        app.config.allowed_repo_paths = [resolved_repo_path, *app.config.allowed_repo_paths]
 
         # Create a simple test file to make it a valid repo
         (test_repo / "test.py").write_text("# Test repository")
 
         # Test with LlamaIndex adapter (should be available)
-        if "llamaindex" in app.adapters:
-            task = {"type": "code_sweep", "params": {"test": True}}
-            result = await app.execute_workflow(task, "llamaindex", [test_repo_path])
+        assert "llamaindex" in app.adapters
+        task = {"type": "code_sweep", "params": {"test": True}}
+        result = await app.execute_workflow(task, "llamaindex", [test_repo_path])
 
-            # Verify result structure
-            assert "status" in result
-            assert "result" in result
+        # Verify result structure
+        assert "status" in result
+        assert "result" in result
 
         # Test with Prefect adapter (should be available)
         if "prefect" in app.adapters:
@@ -121,7 +123,7 @@ async def test_workflow_execution_with_multiple_adapters():
 
             # Verify result structure
             assert "status" in result
-            assert "result" in result
+            assert result["status"] in {"completed", "failed"}
 
 
 @pytest.mark.asyncio
@@ -139,16 +141,19 @@ async def test_workflow_execution_parallel():
             (repo_dir / "test.py").write_text(f"# Test repository {i}")
             repo_paths.append(str(repo_dir))
 
-        # Test parallel execution with LlamaIndex adapter
-        if "llamaindex" in app.adapters:
-            task = {"type": "code_sweep", "params": {"test": True}}
-            result = await app.execute_workflow_parallel(task, "llamaindex", repo_paths)
+        resolved_repo_paths = [str(Path(repo).resolve()) for repo in repo_paths]
+        app.config.allowed_repo_paths = [*resolved_repo_paths, *app.config.allowed_repo_paths]
 
-            # Verify result structure
-            assert "status" in result
-            assert "results" in result
-            assert "repos_processed" in result
-            assert result["repos_processed"] == 3  # Should process all 3 repos
+        # Test parallel execution with LlamaIndex adapter
+        assert "llamaindex" in app.adapters
+        task = {"type": "code_sweep", "params": {"test": True}}
+        result = await app.execute_workflow_parallel(task, "llamaindex", repo_paths)
+
+        # Verify result structure
+        assert "status" in result
+        assert "results" in result
+        assert "repos_processed" in result
+        assert result["repos_processed"] == 3  # Should process all 3 repos
 
 
 @pytest.mark.asyncio
@@ -160,7 +165,9 @@ async def test_rbac_integration():
     with tempfile.TemporaryDirectory() as temp_dir:
         test_repo = Path(temp_dir)
         test_repo_path = str(test_repo)
+        resolved_repo_path = str(test_repo.resolve())
         (test_repo / "test.py").write_text("# Test repository")
+        app.config.allowed_repo_paths = [resolved_repo_path, *app.config.allowed_repo_paths]
 
         # Test that RBAC manager is available and functional
         assert app.rbac_manager is not None
@@ -331,7 +338,9 @@ async def test_end_to_end_workflow():
     with tempfile.TemporaryDirectory() as temp_dir:
         test_repo = Path(temp_dir)
         test_repo_path = str(test_repo)
+        resolved_repo_path = str(test_repo.resolve())
         (test_repo / "test.py").write_text("# Test repository")
+        app.config.allowed_repo_paths = [resolved_repo_path, *app.config.allowed_repo_paths]
 
         # Use LlamaIndex adapter for a simple task
         if "llamaindex" in app.adapters:

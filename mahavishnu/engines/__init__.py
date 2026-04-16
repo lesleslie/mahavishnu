@@ -23,6 +23,13 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "PrefectAdapter": (".prefect_adapter_impl", "PrefectAdapter"),
 }
 
+_LAZY_MODULES = {
+    "agno_adapter_impl",
+    "goal_team_factory",
+    "llamaindex_adapter_impl",
+    "prefect_adapter_impl",
+}
+
 
 def __getattr__(name: str):
     """Lazy import to avoid heavy initialization on package import."""
@@ -31,4 +38,12 @@ def __getattr__(name: str):
 
         module = import_module(entry[0], __name__)
         return getattr(module, entry[1])
+    if name in _LAZY_MODULES:
+        import sys
+        from importlib import import_module
+
+        module_name = f"{__name__}.{name}"
+        if module_name in sys.modules:
+            return sys.modules[module_name]
+        return import_module(f".{name}", __name__)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

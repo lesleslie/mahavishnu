@@ -162,9 +162,7 @@ class TestJSONRPCRequest:
         # from_dict raises JSONRPCError (which is caught by server)
         # For direct parsing, we check the error in response
         server = JSONRPCServer()
-        response = asyncio.get_event_loop().run_until_complete(
-            server.handle_request(invalid)
-        )
+        response = asyncio.run(server.handle_request(invalid))
 
         assert response is not None
         assert response.error is not None
@@ -180,9 +178,7 @@ class TestJSONRPCRequest:
         # from_dict raises JSONRPCError (which is caught by server)
         # For direct parsing, we check the error in response
         server = JSONRPCServer()
-        response = asyncio.get_event_loop().run_until_complete(
-            server.handle_request(invalid)
-        )
+        response = asyncio.run(server.handle_request(invalid))
 
         assert response is not None
         assert response.error is not None

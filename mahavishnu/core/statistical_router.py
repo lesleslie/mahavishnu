@@ -118,6 +118,7 @@ class PreferenceOrder:
         return [a.value for a in self.adapters]
 
 
+@dataclass
 class ABTest:
     """A/B test configuration and tracking."""
 
@@ -128,8 +129,8 @@ class ABTest:
     variant_b: PreferenceOrder  # Treatment group
     traffic_split: float  # 0.0-1.0, e.g., 0.1 = 10% to B
     start_time: datetime
-    end_time: datetime | None = None
     status: str  # "running", "completed", "rolled_back", "abandoned"
+    end_time: datetime | None = None
     winner: str | None = None  # "A", "B", or "inconclusive"
     sample_size_a: int = 0
     sample_size_b: int = 0
@@ -320,7 +321,7 @@ class StatisticalRouter:
         scores = []
         for adapter in adapters:
             score = await self.calculate_adapter_score(adapter, task_type, metrics_tracker)
-            if score is not None:
+            if score is None:
                 logger.debug(
                     f"No score for {adapter.value} on {task_type.value} (insufficient data)"
                 )
@@ -330,25 +331,29 @@ class StatisticalRouter:
         if not scores:
             # No data yet, use default order
             logger.warning(f"No scores for {task_type.value}, using default order")
-            return PreferenceOrder(
+            preference = PreferenceOrder(
                 task_type=task_type,
                 adapters=adapters,
                 scores=[],
                 generated_at=datetime.now(UTC),
                 confidence=ConfidenceLevel.INSUFFICIENT,
             )
+            self._preferences[cache_key] = preference
+            return preference
 
         # Sort by combined score (descending)
         sorted_scores = sorted(scores, key=lambda s: s.combined_score, reverse=True)
 
         # Create preference order
-        return PreferenceOrder(
+        preference = PreferenceOrder(
             task_type=task_type,
             adapters=[s.adapter for s in sorted_scores],
             scores=sorted_scores,
             generated_at=datetime.now(UTC),
             confidence=sorted_scores[0].confidence_level,
         )
+        self._preferences[cache_key] = preference
+        return preference
 
     async def recalculate_all_preferences(
         self,
@@ -478,7 +483,7 @@ class StatisticalRouter:
     async def evaluate_ab_test(
         self,
         experiment_id: str,
-        metrics_tracker: ExecutionTracker,
+        metrics_tracker: ExecutionTracker | None = None,
     ) -> dict[str, Any]:
         """Evaluate A/B test and determine winner.
 
@@ -548,9 +553,12 @@ class StatisticalRouter:
             logger.warning(f"Inconclusive test {experiment_id}, applying default variant A")
             winning_pref = test.variant_a
 
+        winning_pref.ab_test_active = True
+        winning_pref.ab_test_variant = winner if winner in {"A", "B"} else "A"
+
         # Update cache with winner
         task_type = winning_pref.task_type
-        self._preferences[task_type.value] = winning_pref
+        self._preferences[f"pref:{task_type.value}"] = winning_pref
 
         logger.info(f"A/B test {experiment_id} completed, winner: {winner}")
 

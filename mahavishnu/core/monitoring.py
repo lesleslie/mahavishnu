@@ -68,25 +68,29 @@ class DashboardConfig:
         }
 
     def to_grafana_json(self) -> str:
+        y_offset = 0
+        panels = []
+        for i, p in enumerate(self.panels):
+            panels.append(
+                {
+                    "id": i + 1,
+                    "title": p.title,
+                    "type": p.panel_type,
+                    "gridPos": {
+                        "x": 0,
+                        "y": y_offset,
+                        "w": p.width,
+                        "h": p.height,
+                    },
+                    "targets": [{"expr": p.query, "datasource": p.datasource}],
+                }
+            )
+            y_offset += p.height
         grafana = {
             "dashboard": {
                 "title": self.title,
                 "uid": self.title.lower().replace(" ", "-"),
-                "panels": [
-                    {
-                        "id": i + 1,
-                        "title": p.title,
-                        "type": p.panel_type,
-                        "gridPos": {
-                            "x": 0,
-                            "y": i * p.height,
-                            "w": p.width,
-                            "h": p.height,
-                        },
-                        "targets": [{"expr": p.query, "datasource": p.datasource}],
-                    }
-                    for i, p in enumerate(self.panels)
-                ],
+                "panels": panels,
                 "refresh": f"{self.refresh_interval}s",
                 "tags": self.tags,
             },

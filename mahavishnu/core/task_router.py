@@ -391,6 +391,24 @@ class CapabilityRouter:
 class TaskRouter:
     """Intelligent task routing with graceful fallback."""
 
+    TASK_PREFERENCE_ORDERS = {
+        TaskType.WORKFLOW: [
+            AdapterType.PREFECT,
+            AdapterType.AGNO,
+            AdapterType.LLAMAINDEX,
+        ],
+        TaskType.AI_TASK: [
+            AdapterType.AGNO,
+            AdapterType.LLAMAINDEX,
+            AdapterType.PREFECT,
+        ],
+        TaskType.RAG_QUERY: [
+            AdapterType.LLAMAINDEX,
+            AdapterType.AGNO,
+            AdapterType.PREFECT,
+        ],
+    }
+
     DEFAULT_PREFERENCE_ORDER = [
         AdapterType.PREFECT,
         AdapterType.AGNO,
@@ -455,9 +473,10 @@ class TaskRouter:
         return normalized
 
     def _default_preference_order(self, task_type: TaskType) -> list[AdapterType]:
-        # Legacy fallback order keeps Prefect first for compatibility with existing
-        # orchestration behavior and unit expectations.
-        return list(self.DEFAULT_PREFERENCE_ORDER)
+        preference_order = self.TASK_PREFERENCE_ORDERS.get(task_type)
+        if preference_order is None:
+            return list(self.DEFAULT_PREFERENCE_ORDER)
+        return list(preference_order)
 
     async def analyze_task(self, task: dict[str, Any]) -> dict[str, Any]:
         """Analyze task requirements and determine optimal routing strategy."""
@@ -499,11 +518,11 @@ class TaskRouter:
     ) -> dict[str, Any]:
         """Route task to optimal adapter with metrics tracking."""
         task_type = self._normalize_task_type(task.get("task_type"))
-        candidates = self._normalize_preference_order(preference_order)
+        candidates = self._normalize_preference_order(preference_order or task.get("preference_order"))
         if not candidates:
             analysis = await self.analyze_task(task)
             candidates = [analysis["recommended_adapter"]]
-            for adapter_type in self.DEFAULT_PREFERENCE_ORDER:
+            for adapter_type in self._default_preference_order(task_type):
                 if adapter_type not in candidates:
                     candidates.append(adapter_type)
 
@@ -536,6 +555,7 @@ class TaskRouter:
             "adapter": selected_adapter,
             "task_type": task_type.value,
             "routing_mode": self.router_mode.value,
+            "preference_order": [adapter.value for adapter in candidates],
         }
 
     async def execute_with_fallback(
@@ -555,7 +575,7 @@ class TaskRouter:
             "repos": repos,
         }
 
-        candidates = self._normalize_preference_order(preference_order)
+        candidates = self._normalize_preference_order(preference_order or task.get("preference_order"))
         if not candidates:
             candidates = self._default_preference_order(task_type)
 
@@ -693,3 +713,17 @@ class TaskRouter:
         for adapter_type in self.adapter_registry.adapters:
             health[adapter_type.value] = await self._get_adapter_health(adapter_type)
         return health
+
+
+def get_task_router() -> Any:
+    """Compatibility alias for the legacy routing singleton.
+
+    The older code path expected ``mahavishnu.core.task_router.get_task_router``.
+    Preserve that surface by delegating to the routing module singleton.
+    """
+    return _legacy_get_task_router()
+
+
+def reset_task_router() -> None:
+    """Compatibility alias for the legacy routing singleton reset."""
+    _legacy_reset_task_router()

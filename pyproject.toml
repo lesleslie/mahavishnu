@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.6.1"
+version = "0.6.3"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Your Name", email = "your.email@example.com"},
@@ -83,6 +83,11 @@ dependencies = [
     "croniter>=3.0.4",
     # Agno: Fast, scalable single/multi-agents
     "agno>=0.1.7",
+    # LlamaIndex: RAG pipelines for ingesting repos/docs
+    "llama-index-core>=0.14.0,<0.15.0",
+    "llama-index-embeddings-ollama>=0.8.0,<0.9.0",
+    "llama-index-llms-ollama>=0.8.0,<0.9.0",
+    "llama-index-vector-stores-opensearch>=0.6.0,<0.7.0",
     # Content ingestion: PDF, EPUB, web content
     "pypdf>=5.0.0",  # Fast, pure Python PDF library
     "beautifulsoup4>=4.12.0",  # HTML parsing for web scraping
@@ -180,40 +185,7 @@ core = [
 
 # RAG and knowledge base focus
 rag = [
-    "mahavishnu[llamaindex,agno,prefect,dev]",
-]
-
-# Prefect: Now in main dependencies - this extra is kept for compatibility
-prefect = [
-    # Prefect is now installed as a regular dependency
-    # This extra is kept for backward compatibility
-]
-
-# LlamaIndex: RAG pipelines for ingesting repos/docs
-# Updated 2026-02-23: llama-index 0.14.x is compatible with httpx 0.28.1+
-llamaindex = [
-    "llama-index-core>=0.14.0,<0.15.0",
-    "llama-index-embeddings-ollama>=0.8.0,<0.9.0",
-    "llama-index-llms-ollama>=0.8.0,<0.9.0",
-    "llama-index-vector-stores-opensearch>=0.6.0,<0.7.0",
-]
-
-# Agno: Now in main dependencies - this extra is kept for compatibility
-agno = [
-    # Agno is now installed as a regular dependency
-    # This extra is kept for backward compatibility
-]
-
-# Ollama: HTTP client already included in main dependencies via ingestion
-ollama = [
-    # httpx[http2] is now installed as a regular dependency
-    # This extra is kept for backward compatibility
-]
-
-# Content ingestion: Now in main dependencies - this extra is kept for compatibility
-ingestion = [
-    # pypdf, beautifulsoup4, httpx[http2], ebooklib are now in main dependencies
-    # This extra is kept for backward compatibility
+    "mahavishnu[dev]",
 ]
 
 # Worker CLI profiles (meta-extras; install corresponding CLIs on host PATH)

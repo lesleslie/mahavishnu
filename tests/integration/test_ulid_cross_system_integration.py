@@ -15,9 +15,38 @@ def clear_ulid_registry():
     """Clear ULID registry before tests that need clean state."""
     from oneiric.core.ulid_resolution import _ulid_registry
     _ulid_registry.clear()
+
+
+_ULID_CHARS = "0123456789abcdefghjkmnpqrstvwxyz"
+
+
+@pytest.fixture(autouse=True)
+def _patch_ulid_generators(monkeypatch: pytest.MonkeyPatch):
+    counter = {"value": 0}
+
+    def generate() -> str:
+        counter["value"] += 1
+        value = counter["value"]
+        chars = []
+        base = len(_ULID_CHARS)
+        for _ in range(26):
+            chars.append(_ULID_CHARS[value % base])
+            value //= base
+        return "".join(reversed(chars))
+
+    def is_valid(value: str) -> bool:
+        return len(value) == 26 and all(c in _ULID_CHARS for c in value)
+
+    monkeypatch.setattr("oneiric.core.ulid.generate", generate, raising=False)
+    monkeypatch.setattr("oneiric.core.ulid.is_ulid", is_valid, raising=False)
+    monkeypatch.setattr("crackerjack.services.ulid_generator.generate_ulid", generate, raising=False)
+    monkeypatch.setattr("session_buddy.core.ulid_generator.generate_ulid", generate, raising=False)
+
+    import mahavishnu.core.workflow_models as workflow_models
+
+    monkeypatch.setattr(workflow_models, "generate_config_id", generate, raising=False)
+    monkeypatch.setattr(workflow_models, "is_config_ulid", is_valid, raising=False)
     yield
-    # Cleanup after test
-    _ulid_registry.clear()
 
 
 @pytest.mark.integration

@@ -132,6 +132,7 @@ class TestConfidenceIntervals:
     async def test_confidence_interval_small_sample(self, router):
         """Should have wider interval with small sample."""
         # Same success rate, smaller sample
+        lower, upper = router.get_confidence_interval_width(0.85, 100)
         lower_small, upper_small = router.get_confidence_interval_width(0.85, 20)
 
         # Interval should be wider than with 100 samples
@@ -163,7 +164,7 @@ class TestCalculateAdapterScore:
     async def test_calculate_score_with_sufficient_data(self, router, tracker):
         """Should calculate score with sufficient samples."""
         # Add mock statistics
-        tracker._metrics.adapter_attempts["prefect"]["success"] = 80
+        tracker._metrics.adapter_attempts["prefect"]["success"] = 70
         tracker._metrics.adapter_attempts["prefect"]["failure"] = 20
 
         # Add mock latency data
@@ -211,7 +212,7 @@ class TestCalculateAdapterScore:
     async def test_latency_score_normalization(self, router, tracker):
         """Should normalize latency to 0-1 scale."""
         # Mock executions with specific latencies
-        latencies = [100, 500, 1000, 5000, 10000]  # ms
+        latencies = [100, 500, 1000, 5000, 10000] * 2  # ms
 
         for i, latency in enumerate(latencies):
             execution_id = await tracker.record_execution_start(
@@ -270,14 +271,14 @@ class TestPreferenceOrderGeneration:
         # Setup: Prefect best (0.9), Agno medium (0.7), LlamaIndex poor (0.5)
         scores_data = []
 
-        for adapter, combined_score in [
-            (AdapterType.PREFECT, 0.9),
-            (AdapterType.AGNO, 0.7),
-            (AdapterType.LLAMAINDEX, 0.5),
+        for adapter, counts in [
+            (AdapterType.PREFECT, (90, 10)),
+            (AdapterType.AGNO, (70, 30)),
+            (AdapterType.LLAMAINDEX, (50, 50)),
         ]:
             # Add mock stats to meet min samples
-            tracker._metrics.adapter_attempts[adapter.value]["success"] = int(combined_score * 90)
-            tracker._metrics.adapter_attempts[adapter.value]["failure"] = int(combined_score * 10)
+            tracker._metrics.adapter_attempts[adapter.value]["success"] = counts[0]
+            tracker._metrics.adapter_attempts[adapter.value]["failure"] = counts[1]
 
             score = await router.calculate_adapter_score(adapter, TaskType.WORKFLOW, tracker)
             if score:

@@ -96,6 +96,7 @@ def mock_app(mock_settings):
         return_value=MagicMock(id="alert_123")
     )
     app.monitoring_service.acknowledge_alert = AsyncMock(return_value=True)
+    app.worktree_coordinator = None
     app.adapters = {
         "llamaindex": MagicMock(),
         "prefect": MagicMock(),

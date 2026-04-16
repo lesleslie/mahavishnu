@@ -207,11 +207,10 @@ def require_mcp_auth(
             pass
         ```
     """
-    audit_logger = get_audit_logger()
-
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs) -> Any:
+            audit_logger = get_audit_logger()
             # Extract authentication context from kwargs
             # FastMCP tools pass parameters as kwargs
             user_id = kwargs.get("user_id")

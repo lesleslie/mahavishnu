@@ -10,6 +10,7 @@ Tests cross-system ULID correlation and traceability between:
 import pytest
 import asyncio
 from datetime import datetime, UTC
+import sys
 
 from oneiric.core.ulid_resolution import (
     register_reference,
@@ -45,6 +46,39 @@ except ImportError:
         if len(value) != 26:
             return False
         return all(c in "0123456789abcdefghjkmnpqrstvwxyz" for c in value)
+
+
+_ULID_CHARS = "0123456789abcdefghjkmnpqrstvwxyz"
+
+
+@pytest.fixture(autouse=True)
+def _patch_ulid_generators(monkeypatch: pytest.MonkeyPatch):
+    counter = {"value": 0}
+
+    def generate() -> str:
+        counter["value"] += 1
+        value = counter["value"]
+        chars = []
+        base = len(_ULID_CHARS)
+        for _ in range(26):
+            chars.append(_ULID_CHARS[value % base])
+            value //= base
+        return "".join(reversed(chars))
+
+    def is_valid(value: str) -> bool:
+        return len(value) == 26 and all(c in _ULID_CHARS for c in value)
+
+    monkeypatch.setattr("crackerjack.services.ulid_generator.generate_ulid", generate, raising=False)
+    monkeypatch.setattr("crackerjack.services.ulid_generator.is_valid_ulid", is_valid, raising=False)
+    monkeypatch.setattr("session_buddy.core.ulid_generator.generate_ulid", generate, raising=False)
+    monkeypatch.setattr("session_buddy.core.ulid_generator.is_valid_ulid", is_valid, raising=False)
+    monkeypatch.setattr("oneiric.core.ulid.generate", generate, raising=False)
+    monkeypatch.setattr("oneiric.core.ulid.is_ulid", is_valid, raising=False)
+
+    module = sys.modules[__name__]
+    monkeypatch.setattr(module, "generate_config_id", generate, raising=False)
+    monkeypatch.setattr(module, "is_config_ulid", is_valid, raising=False)
+    yield
 
 
 @pytest.mark.integration

@@ -9,7 +9,7 @@
 
 receivers:
   # ==============================================================================
-  # Primary OTLP receiver (for Mahavishnu application and internal services)
+  # Primary OTLP receiver (for Mahavishnu, Session-Buddy, and other FastMCP-based services)
   # ==============================================================================
   otlp:
     protocols:
@@ -29,7 +29,7 @@ receivers:
         endpoint: 0.0.0.0:4320  # Separate HTTP port for Claude
 
   # ==============================================================================
-  # External OTLP receiver for Qwen and other services
+  # External OTLP receiver for Qwen Code and other Qwen-based services
   # ==============================================================================
   otlp/qwen:
     protocols:

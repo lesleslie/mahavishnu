@@ -348,7 +348,9 @@ def get_task_metrics() -> TaskMetrics:
     global _task_metrics
 
     if _task_metrics is None:
-        _task_metrics = TaskMetrics()
+        with _metrics_lock:
+            if _task_metrics is None:
+                _task_metrics = TaskMetrics()
 
     return _task_metrics
 

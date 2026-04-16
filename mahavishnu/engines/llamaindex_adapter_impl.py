@@ -12,6 +12,8 @@ This adapter provides:
 
 from pathlib import Path
 import time
+import uuid
+from types import SimpleNamespace
 from typing import Any
 
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -290,7 +292,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         self.indices.clear()
         self.documents.clear()
 
-    def __init__(self, config) -> None:
+    def __init__(self, config=None, api_url: str | None = None) -> None:
         """Initialize the LlamaIndex adapter with configuration.
 
         Args:
@@ -306,7 +308,20 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 "Install with: pip install 'mahavishnu[llamaindex]'"
             )
 
+        if config is None:
+            config = SimpleNamespace(
+                llm_model="nomic-embed-text",
+                ollama_base_url=api_url or "http://localhost:11434",
+                opensearch_endpoint="http://localhost:9200",
+                opensearch_index_name="mahavishnu_code",
+                metrics_enabled=False,
+            )
+        elif api_url is not None:
+            setattr(config, "ollama_base_url", api_url)
+
         self.config = config
+        self.api_url = getattr(self.config, "ollama_base_url", api_url or "http://localhost:11434")
+        self._client = None
         self.indices: dict[str, VectorStoreIndex] = {}
         self.documents: dict[str, list[Document]] = {}
 
@@ -1047,6 +1062,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 "llamaindex.operation": "execute",
             },
         ) as span:
+            execution_id = uuid.uuid4().hex[:26]
             results = []
             success_count = 0
             failure_count = 0
@@ -1112,12 +1128,25 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             return {
                 "status": "completed",
                 "engine": "llamaindex",
+                "execution_id": execution_id,
                 "task": task,
                 "repos_processed": len(repos),
                 "results": results,
                 "success_count": success_count,
                 "failure_count": failure_count,
+                "message": "LlamaIndex execution completed",
                 "indices_available": list(self.indices.keys()),
+                "result": {
+                    "execution_id": execution_id,
+                    "engine": "llamaindex",
+                    "task": task,
+                    "message": "LlamaIndex execution completed",
+                    "repos_processed": len(repos),
+                    "results": results,
+                    "success_count": success_count,
+                    "failure_count": failure_count,
+                    "indices_available": list(self.indices.keys()),
+                },
             }
 
     async def get_health(self) -> dict[str, Any]:
@@ -1135,7 +1164,10 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             health_details = {
                 "llamaindex_version": "0.14.x",
                 "ollama_base_url": ollama_base_url,
+                "api_url": self.api_url,
                 "embedding_model": embedding_model,
+                "implementation": "stub",
+                "note": "LlamaIndex adapter initialized successfully",
                 "indices_loaded": len(self.indices),
                 "documents_loaded": sum(len(docs) for docs in self.documents.values()),
                 "vector_backend": self._vector_backend,

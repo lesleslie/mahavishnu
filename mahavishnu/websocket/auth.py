@@ -22,12 +22,12 @@ JWT_SECRET = os.getenv("MAHAVISHNU_JWT_SECRET", _DEFAULT_DEV_SECRET)
 # Get token expiry from environment (default: 1 hour)
 TOKEN_EXPIRY = int(os.getenv("MAHAVISHNU_TOKEN_EXPIRY", "3600"))
 
-# Check if authentication is enabled
-# Default to True for security - explicitly set to "false" for development only
-AUTH_ENABLED = os.getenv("MAHAVISHNU_AUTH_ENABLED", "true").lower() == "true"
+def _auth_enabled() -> bool:
+    return os.getenv("MAHAVISHNU_AUTH_ENABLED", "true").lower() == "true"
+
 
 # Warn if using insecure defaults
-_INSECURE_CONFIG = JWT_SECRET == _DEFAULT_DEV_SECRET or not AUTH_ENABLED
+_INSECURE_CONFIG = JWT_SECRET == _DEFAULT_DEV_SECRET or not _auth_enabled()
 if _INSECURE_CONFIG:
     logger.warning(
         "⚠️  SECURITY WARNING: WebSocket using insecure configuration! "
@@ -42,7 +42,7 @@ def get_authenticator() -> WebSocketAuthenticator | None:
         WebSocketAuthenticator instance if JWT secret is configured,
         None for development mode
     """
-    if not AUTH_ENABLED:
+    if not _auth_enabled():
         logger.info("WebSocket authentication disabled (development mode)")
         return None
 

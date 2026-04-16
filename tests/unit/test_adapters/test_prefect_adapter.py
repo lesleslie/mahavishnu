@@ -198,7 +198,7 @@ async def test_process_repository_code_sweep(sample_repo_path, mock_code_graph_a
         "mahavishnu.engines.prefect_adapter_impl.CodeGraphAnalyzer",
         return_value=mock_code_graph_analyzer,
     ):
-        result = await process_repository(
+        result = await process_repository.fn(
             repo_path=sample_repo_path, task_spec={"type": "code_sweep", "id": "test_123"}
         )
 
@@ -216,7 +216,7 @@ async def test_process_repository_code_sweep_complexity_analysis(
         "mahavishnu.engines.prefect_adapter_impl.CodeGraphAnalyzer",
         return_value=mock_code_graph_analyzer,
     ):
-        result = await process_repository(
+        result = await process_repository.fn(
             repo_path=sample_repo_path, task_spec={"type": "code_sweep", "id": "test_complexity"}
         )
 
@@ -242,7 +242,7 @@ async def test_process_repository_code_sweep_complexity_analysis(
 async def test_process_repository_quality_check(sample_repo_path, mock_qc_checker):
     """Test processing repository for quality check."""
     with patch("mahavishnu.engines.prefect_adapter_impl.QualityControl", return_value=mock_qc_checker):
-        result = await process_repository(
+        result = await process_repository.fn(
             repo_path=sample_repo_path, task_spec={"type": "quality_check", "id": "test_qc"}
         )
 
@@ -254,7 +254,7 @@ async def test_process_repository_quality_check(sample_repo_path, mock_qc_checke
 @pytest.mark.asyncio
 async def test_process_repository_default_operation(sample_repo_path):
     """Test processing repository with default/unknown operation."""
-    result = await process_repository(
+    result = await process_repository.fn(
         repo_path=sample_repo_path, task_spec={"type": "custom_operation", "id": "test_default"}
     )
 
@@ -268,7 +268,7 @@ async def test_process_repository_default_operation(sample_repo_path):
 async def test_process_repository_error_handling():
     """Test error handling in repository processing."""
     # Invalid path should trigger error handling
-    result = await process_repository(
+    result = await process_repository.fn(
         repo_path="/nonexistent/path", task_spec={"type": "code_sweep", "id": "test_error"}
     )
 
@@ -285,7 +285,7 @@ async def test_process_repository_error_handling():
 @pytest.mark.asyncio
 async def test_process_repositories_flow_single(sample_repo_path):
     """Test flow processing a single repository."""
-    results = await process_repositories_flow(
+    results = await process_repositories_flow.fn(
         repos=[sample_repo_path], task_spec={"type": "default", "id": "flow_test_1"}
     )
 
@@ -304,7 +304,7 @@ async def test_process_repositories_flow_multiple(tmp_path):
     for repo in [repo1, repo2, repo3]:
         Path(repo).mkdir()
 
-    results = await process_repositories_flow(
+    results = await process_repositories_flow.fn(
         repos=[repo1, repo2, repo3], task_spec={"type": "default", "id": "flow_test_multi"}
     )
 
@@ -324,7 +324,7 @@ async def test_process_repositories_flow_concurrent(tmp_path):
 
     start_time = time.time()
 
-    results = await process_repositories_flow(
+    results = await process_repositories_flow.fn(
         repos=repos, task_spec={"type": "default", "id": "flow_concurrent"}
     )
 

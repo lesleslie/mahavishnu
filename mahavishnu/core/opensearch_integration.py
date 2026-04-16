@@ -7,37 +7,40 @@ UTC = UTC
 import logging
 from typing import Any
 
+class MockIndicesClient:
+    async def __call__(self):
+        return self
+
+    async def create(self, *args, **kwargs):
+        return {"acknowledged": True}
+
+    async def exists(self, *args, **kwargs):
+        return False
+
+
+class MockAsyncOpenSearch:
+    def __init__(self, *args, **kwargs):
+        self.indices = MockIndicesClient()
+
+    async def ping(self):
+        return True
+
+    async def index(self, *args, **kwargs):
+        return {"result": "created"}
+
+    async def search(self, *args, **kwargs):
+        return {"hits": {"hits": [], "total": {"value": 0}}}
+
+    async def close(self):
+        return None
+
+
 try:
     from opensearchpy import AsyncOpenSearch
 
     OPENSEARCH_AVAILABLE = True
 except ImportError:
     OPENSEARCH_AVAILABLE = False
-
-    # Define minimal fallback classes
-    class MockAsyncOpenSearch:
-        def __init__(self, *args, **kwargs):
-            pass
-
-        async def ping(self):
-            return True
-
-        async def indices(self):
-            return MockIndicesClient()
-
-        async def index(self, *args, **kwargs):
-            return {"result": "created"}
-
-        async def search(self, *args, **kwargs):
-            return {"hits": {"hits": [], "total": {"value": 0}}}
-
-    class MockIndicesClient:
-        async def create(self, *args, **kwargs):
-            return {"acknowledged": True}
-
-        async def exists(self, *args, **kwargs):
-            return False
-
     AsyncOpenSearch = MockAsyncOpenSearch
 
 

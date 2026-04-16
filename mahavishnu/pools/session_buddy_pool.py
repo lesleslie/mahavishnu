@@ -14,6 +14,12 @@ from .base import BasePool, PoolConfig, PoolStatus
 logger = logging.getLogger(__name__)
 
 
+async def _await_if_needed(value: Any) -> Any:
+    if hasattr(value, "__await__"):
+        return await value
+    return value
+
+
 class SessionBuddyPool(BasePool):
     """Delegates worker management to Session-Buddy instance.
 
@@ -86,13 +92,13 @@ class SessionBuddyPool(BasePool):
         Raises:
             httpx.HTTPError: If MCP call fails
         """
-        response = await self._mcp_client.post(
+        response = await _await_if_needed(self._mcp_client.post(
             f"{self.session_buddy_url}/tools/call",
             json={
                 "name": tool_name,
                 "arguments": arguments,
             },
-        )
+        ))
         response.raise_for_status()
         return response.json()
 

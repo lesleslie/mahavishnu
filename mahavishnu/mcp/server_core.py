@@ -1,30 +1,32 @@
 """FastMCP server implementation for Mahavishnu."""
 
 import asyncio
-from functools import wraps
-import time
 from contextlib import suppress
 from datetime import datetime
+from functools import wraps
 from importlib.metadata import version
 from logging import getLogger
+import time
 from typing import Any
 
 from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from ..core.app import MahavishnuApp
-from ..core.auth import get_auth_from_config
-from ..core.permissions import Permission
 from monitoring.metrics import (
     mcp_tool_calls_total,
     mcp_tool_duration_seconds,
     mcp_tools_registered,
 )
+
+from ..core.app import MahavishnuApp
+from ..core.auth import get_auth_from_config
+from ..core.permissions import Permission
 from ..terminal.adapters.iterm2 import ITERM2_AVAILABLE, ITerm2Adapter
 from ..terminal.adapters.mcpretentious import McpretentiousAdapter
 from ..terminal.manager import TerminalManager
 from ..terminal.mcp_client import McpretentiousClient
+from .otel_middleware import FastMCPOpenTelemetryMiddleware
 
 logger = getLogger(__name__)
 
@@ -128,6 +130,7 @@ class FastMCPServer:
         self.server = FastMCP(name="Mahavishnu Orchestrator", version=__version__)
         self._registered_tool_count = 0
         self._instrument_server_tool_registration()
+        self._register_telemetry_middleware()
 
         # Initialize MCP client wrapper
         self.mcp_client = McpretentiousMCPClient()
@@ -154,6 +157,28 @@ class FastMCPServer:
         # Register all tools
         self._register_tools()
         self._update_registered_tool_metrics()
+
+    def _register_telemetry_middleware(self) -> None:
+        """Attach OpenTelemetry middleware when tracing is enabled."""
+        observability = getattr(self.app.config, "observability", None)
+        if observability is None or not getattr(observability, "tracing_enabled", False):
+            return
+
+        service_name = getattr(self.app.config, "server_name", "mahavishnu")
+        environment = "production"
+        if hasattr(observability, "environment") and isinstance(observability.environment, str):
+            environment = observability.environment
+
+        self.server.add_middleware(
+            FastMCPOpenTelemetryMiddleware(
+                service_name=service_name,
+                environment=environment,
+            )
+        )
+        logger.info(
+            "Registered FastMCP OpenTelemetry middleware",
+            extra={"service_name": service_name, "environment": environment},
+        )
 
     def _instrument_server_tool_registration(self) -> None:
         """Wrap FastMCP tool registration so all tool handlers emit shared metrics."""
@@ -1270,8 +1295,8 @@ class FastMCPServer:
                 "total_known": len(all_known),
                 "profile_methods_scheduled": profile_methods,
                 "hint": (
-                    f"Set MAHAVISHNU_TOOL_PROFILE=full to load all tools, "
-                    f"or switch to 'standard' for daily development."
+                    "Set MAHAVISHNU_TOOL_PROFILE=full to load all tools, "
+                    "or switch to 'standard' for daily development."
                 ),
             }
 

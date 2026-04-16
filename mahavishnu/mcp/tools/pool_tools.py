@@ -6,6 +6,11 @@ from typing import Any
 from fastmcp import FastMCP
 from mahavishnu.core.workflow_models import PoolExecution
 
+try:
+    from mahavishnu.pools.memory_aggregator import MemoryAggregator
+except Exception:  # pragma: no cover - optional import for test patching
+    MemoryAggregator = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -234,9 +239,11 @@ def register_pool_tools(
     ) -> list[dict[str, Any]]:
         """Search memory across all pools."""
         try:
-            from mahavishnu.pools.memory_aggregator import MemoryAggregator
+            aggregator_cls = MemoryAggregator
+            if aggregator_cls is None:
+                raise RuntimeError("MemoryAggregator is not available")
 
-            aggregator = MemoryAggregator()
+            aggregator = aggregator_cls()
             results = await aggregator.cross_pool_search(
                 query=query,
                 pool_manager=pool_manager,

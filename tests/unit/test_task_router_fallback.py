@@ -78,15 +78,15 @@ async def test_execute_with_fallback_succeeds_on_primary():
 
 @pytest.mark.asyncio
 async def test_execute_with_fallback_fails_to_secondary():
-    """Task should fallback to secondary adapter if primary fails."""
+    """AI tasks should fall back from Agno to Prefect if Agno fails."""
     manager = AdapterManager()
     await manager.register_adapter(
-        AdapterType.PREFECT,
-        MockAdapter(AdapterType.PREFECT, should_fail=True),
+        AdapterType.AGNO,
+        MockAdapter(AdapterType.AGNO, should_fail=True),
     )
     await manager.register_adapter(
-        AdapterType.AGNO,
-        MockAdapter(AdapterType.AGNO, should_fail=False),
+        AdapterType.PREFECT,
+        MockAdapter(AdapterType.PREFECT, should_fail=False),
     )
 
     router = TaskRouter(adapter_registry=manager, state_manager=StateManager())
@@ -95,8 +95,8 @@ async def test_execute_with_fallback_fails_to_secondary():
     result = await router.execute_with_fallback(task)
 
     assert result["success"] is True
-    assert result["adapter"] == AdapterType.AGNO
-    assert result["fallback_chain"] == [AdapterType.PREFECT, AdapterType.AGNO]
+    assert result["adapter"] == AdapterType.PREFECT
+    assert result["fallback_chain"] == [AdapterType.AGNO, AdapterType.PREFECT]
     assert result["total_attempts"] == 4  # 3 retries on Prefect + 1 on Agno
 
 
@@ -149,6 +149,25 @@ async def test_execute_with_fallback_custom_preference_order():
 
     task = {"task_type": "rag_query", "workflow_name": "test_custom_order"}
     result = await router.execute_with_fallback(task, preference_order=custom_order)
+
+    assert result["success"] is True
+    assert result["adapter"] == AdapterType.LLAMAINDEX
+    assert result["fallback_chain"] == [AdapterType.LLAMAINDEX]
+
+
+@pytest.mark.asyncio
+async def test_execute_with_fallback_uses_rag_primary():
+    """RAG queries should prefer LlamaIndex by default."""
+    manager = AdapterManager()
+    await manager.register_adapter(
+        AdapterType.LLAMAINDEX,
+        MockAdapter(AdapterType.LLAMAINDEX, should_fail=False),
+    )
+
+    router = TaskRouter(adapter_registry=manager, state_manager=StateManager())
+
+    task = {"task_type": "rag_query", "workflow_name": "test_rag"}
+    result = await router.execute_with_fallback(task)
 
     assert result["success"] is True
     assert result["adapter"] == AdapterType.LLAMAINDEX

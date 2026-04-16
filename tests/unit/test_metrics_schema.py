@@ -1,9 +1,11 @@
 """Tests for metrics schema and data structures."""
 
+import json
 import pytest
 from datetime import UTC, datetime, timedelta
 
 from mahavishnu.core.metrics_schema import (
+    ABTest,
     ExecutionRecord,
     AdapterStats,
     TaskTypeStats,
@@ -16,6 +18,8 @@ from mahavishnu.core.metrics_schema import (
     calculate_confidence_interval,
     generate_execution_key,
     generate_stats_key,
+    generate_task_stats_key,
+    generate_cost_key,
 )
 
 
@@ -54,7 +58,9 @@ async def test_execution_record_serialization():
 
     # Test serialization
     json_str = record.model_dump_json()
-    assert "2025-02-11T00:00:00Z" in json_str or "2025-02-11T00:00:00" in json_str
+    parsed = json.loads(json_str)
+    assert parsed["start_timestamp"] == 1234567890.0
+    assert parsed["end_timestamp"] == 1234567920.0
     assert "timeout" in json_str
 
 
@@ -98,7 +104,7 @@ def test_task_type_stats():
     assert stats.task_type == TaskType.RAG_QUERY
     assert stats.preferred_adapter == AdapterType.LLAMAINDEX
     assert len(stats.alternative_adapters) == 3
-    assert stats.sample_size >= 100  # Minimum for statistical validity
+    assert stats.sample_count >= 100  # Minimum for statistical validity
 
 
 def test_cost_tracking():

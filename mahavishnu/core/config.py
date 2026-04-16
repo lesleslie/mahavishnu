@@ -105,7 +105,7 @@ class AgnoMemoryConfig(BaseModel):
 
     enabled: bool = Field(default=True, description="Enable agent memory")
     backend: MemoryBackend = Field(
-        default=MemoryBackend.SQLITE,
+        default=MemoryBackend.NONE,
         description="Memory backend storage type",
     )
     db_path: str = Field(

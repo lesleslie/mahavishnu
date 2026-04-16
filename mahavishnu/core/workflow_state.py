@@ -1,6 +1,12 @@
-"""Workflow state tracking for Mahavishnu."""
+"""Legacy workflow state tracking for Mahavishnu.
+
+The canonical live workflow coordination state now lives in
+TaskRouter.StateManager. This module is retained for compatibility and
+tests until the legacy OpenSearch/local-memory path is retired.
+"""
 
 from datetime import datetime
+import warnings
 from typing import Any
 
 from mahavishnu.core.status import WorkflowStatus
@@ -19,6 +25,12 @@ class WorkflowState:
     """Track workflow execution state"""
 
     def __init__(self, opensearch_client=None) -> None:
+        warnings.warn(
+            "mahavishnu.core.workflow_state.WorkflowState is legacy; "
+            "use TaskRouter.StateManager for live workflow coordination state.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.opensearch = opensearch_client
         self.local_states: dict = {}  # Fallback in-memory storage
 

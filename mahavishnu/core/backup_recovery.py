@@ -53,7 +53,8 @@ class BackupManager:
            ``create_backup`` MCP tool over calling this method directly.
            See ``docs/reports/golden-paths-guide.md`` for canonical pathways.
         """
-        backup_id = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        now = datetime.now()
+        backup_id = f"backup_{now.strftime('%Y%m%d_%H%M%S')}_{now.microsecond:06d}"
         backup_path = self.backup_dir / f"{backup_id}.tar.gz"
 
         try:
@@ -64,12 +65,18 @@ class BackupManager:
                 # Backup configuration
                 config_backup = temp_path / "config"
                 config_backup.mkdir()
-                await self._backup_config(config_backup)
+                try:
+                    await self._backup_config(config_backup)
+                except Exception as e:
+                    self.logger.warning(f"Failed to back up config files: {e}")
 
                 # Backup workflow states
                 workflow_backup = temp_path / "workflows"
                 workflow_backup.mkdir()
-                await self._backup_workflows(workflow_backup)
+                try:
+                    await self._backup_workflows(workflow_backup)
+                except Exception as e:
+                    self.logger.warning(f"Failed to back up workflows: {e}")
 
                 # Backup any other important data
                 metadata: dict[str, Any] = {

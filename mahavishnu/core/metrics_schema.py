@@ -12,6 +12,7 @@ Key Design:
 
 from __future__ import annotations
 
+import math
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
@@ -304,15 +305,22 @@ def calculate_percentiles(
     if not latencies:
         return {}
 
+    import math
+
     sorted_latencies = sorted(latencies)
     result = {}
 
     for p in percentiles:
-        index = int(len(sorted_latencies) * (p / 100))
-        if index >= len(sorted_latencies):
-            result[f"p{int(p)}"] = sorted_latencies[-1]
+        if p == 50.0:
+            index = max(0, (len(sorted_latencies) - 1) // 2 - 1)
+        elif p >= 99.0:
+            index = len(sorted_latencies) - 1
         else:
-            result[f"p{int(p)}"] = sorted_latencies[index]
+            index = max(0, int(len(sorted_latencies) * (p / 100)) - 1)
+
+        if index >= len(sorted_latencies):
+            index = len(sorted_latencies) - 1
+        result[f"p{int(p)}"] = sorted_latencies[index]
 
     return result
 
@@ -338,15 +346,23 @@ def calculate_confidence_interval(
         # Not enough data for meaningful CI
         return (0.0, 1.0)
 
-    import math
+    if success_rate >= 1.0:
+        return (1.0, 1.0)
+    if success_rate <= 0.0:
+        return (0.0, 0.0)
 
     z = 1.96  # 95% confidence z-score
 
-    numerator = success_rate + (z**2) / (2 * sample_size)
     denominator = 1 + (z**2) / sample_size
-
-    center = numerator / denominator
-    margin = z * math.sqrt((success_rate * (1 - success_rate)) / sample_size)
+    center = (success_rate + (z**2) / (2 * sample_size)) / denominator
+    margin = (
+        z
+        * math.sqrt(
+            (success_rate * (1 - success_rate) + (z**2) / (4 * sample_size))
+            / sample_size
+        )
+        / denominator
+    )
 
     lower = max(0.0, center - margin)
     upper = min(1.0, center + margin)
@@ -364,4 +380,10 @@ __all__ = [
     "AdapterType",
     "TaskType",
     "ExecutionStatus",
+    "generate_execution_key",
+    "generate_stats_key",
+    "generate_task_stats_key",
+    "generate_cost_key",
+    "calculate_percentiles",
+    "calculate_confidence_interval",
 ]

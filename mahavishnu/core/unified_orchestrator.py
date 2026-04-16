@@ -96,17 +96,11 @@ class UnifiedOrchestrator:
         try:
             # Execute tasks with graceful fallback across adapters
             results = []
-            preference_order = [
-                AdapterType.PREFECT,
-                AdapterType.AGNO,
-                AdapterType.LLAMAINDEX,
-            ]
 
             for task in (tasks or []):
                 # Execute with automatic fallback
                 execution_result = await self.task_router.execute_with_fallback(
                     task=task,
-                    preference_order=preference_order,
                     max_retries=3,
                     retry_delay_base=0.1,
                 )

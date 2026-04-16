@@ -89,7 +89,10 @@ async def test_adapter_manager_and_state_manager_basics() -> None:
 async def test_task_router_analyze_route_and_health_paths() -> None:
     manager = tr.AdapterManager()
     await manager.register_adapter(AdapterType.PREFECT, _AvailableAdapter(AdapterType.PREFECT, True))
-    await manager.register_adapter(AdapterType.AGNO, _AvailableAdapter(AdapterType.AGNO, False))
+    await manager.register_adapter(AdapterType.AGNO, _AvailableAdapter(AdapterType.AGNO, True))
+    await manager.register_adapter(
+        AdapterType.LLAMAINDEX, _AvailableAdapter(AdapterType.LLAMAINDEX, True)
+    )
     router = tr.TaskRouter(adapter_registry=manager, state_manager=tr.StateManager())
 
     analysis = await router.analyze_task({"task_type": "workflow", "needs_monitoring": True})
@@ -101,13 +104,22 @@ async def test_task_router_analyze_route_and_health_paths() -> None:
     assert routed["success"] is True
     assert routed["adapter"] == AdapterType.PREFECT
 
-    failed = await router.route({"task_type": "workflow"}, preference_order=["agno"])
+    ai_routed = await router.route({"task_type": "ai_task"})
+    assert ai_routed["success"] is True
+    assert ai_routed["adapter"] == AdapterType.AGNO
+
+    rag_routed = await router.route({"task_type": "rag_query"})
+    assert rag_routed["success"] is True
+    assert rag_routed["adapter"] == AdapterType.LLAMAINDEX
+
+    custom_router = tr.TaskRouter(adapter_registry=tr.AdapterManager(), state_manager=tr.StateManager())
+    failed = await custom_router.route({"task_type": "workflow"}, preference_order=["agno"])
     assert failed["success"] is False
     assert "No adapter available" in failed["error"]
 
     health = await router.get_health()
     assert health["status"] == "healthy"
-    assert health["adapters_configured"] == 2
+    assert health["adapters_configured"] == 3
 
 
 @pytest.mark.asyncio

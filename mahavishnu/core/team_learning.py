@@ -1,6 +1,8 @@
 """Learning system for Goal-Driven Teams.
 
 Extends StatisticalRouter concepts to learn from team execution outcomes.
+This module is transitional and experimental; it is not the canonical
+skill-promotion authority for Bodai.
 
 Storage:
 - Session-Buddy: Full execution context (via context manager)
@@ -26,6 +28,7 @@ Related: Goal-Driven Teams Phase 3 - Learning System
 from __future__ import annotations
 
 import logging
+import warnings
 from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
@@ -234,8 +237,9 @@ class TeamLearningEngine:
     - Quality score correlation
     - User feedback integration
 
-    The engine uses in-memory storage for fast access, with optional
-    persistence to Session-Buddy and embedding in Akosha.
+    The engine uses in-memory storage for fast access. Treat this as a
+    cache/learning scratchpad until the governed ecosystem learning pipeline
+    replaces it.
 
     Example:
         ```python
@@ -646,6 +650,12 @@ def get_learning_engine() -> TeamLearningEngine:
     Returns:
         TeamLearningEngine singleton instance
     """
+    warnings.warn(
+        "mahavishnu.core.team_learning.get_learning_engine is transitional; "
+        "the canonical learning authority will move to the review-gated ecosystem pipeline.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     global _learning_engine
     if _learning_engine is None:
         _learning_engine = TeamLearningEngine()
@@ -678,6 +688,12 @@ def reset_learning_engine() -> None:
 
     Useful for testing or clearing all learning data.
     """
+    warnings.warn(
+        "mahavishnu.core.team_learning.reset_learning_engine is transitional; "
+        "the canonical learning authority will move to the review-gated ecosystem pipeline.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     global _learning_engine
     if _learning_engine is not None:
         _learning_engine.clear_stats()

@@ -534,7 +534,7 @@ class CoordinationManagerWithMemory:
         """
         todos_data = self._coordination_mgr._coordination.get("todos", [])
         todos_data.append(todo.model_dump(mode="json"))
-        self._coordination["todos"] = todos_data
+        self._coordination_mgr._coordination["todos"] = todos_data
         self.save()
 
         await self.memory.store_todo_event("created", todo)
@@ -553,7 +553,7 @@ class CoordinationManagerWithMemory:
             if todo.get("id") == todo_id:
                 todo["status"] = "completed"
                 todo["updated"] = datetime.now().isoformat()
-                self._coordination["todos"] = todos_data
+                self._coordination_mgr._coordination["todos"] = todos_data
                 self.save()
 
                 # Store event

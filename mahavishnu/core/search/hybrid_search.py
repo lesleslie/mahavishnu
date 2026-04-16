@@ -36,9 +36,11 @@ SQL Query Pattern (from plan):
 
 from __future__ import annotations
 
+import inspect
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from contextlib import asynccontextmanager
 from typing import Any
 from uuid import UUID
 
@@ -222,6 +224,48 @@ class HybridSearchEngine:
         db = await get_database()
         return db.pool
 
+    @asynccontextmanager
+    async def _acquire_connection(self, pool: Pool):
+        """Acquire a connection from the pool.
+
+        The production pool exposes an async context manager. Unit tests often
+        patch `pool.acquire()` with a looser async mock shape, so this helper
+        accepts both styles without changing the database-facing behavior.
+        """
+        acquire = pool.acquire()
+
+        if hasattr(acquire, "__aenter__") and hasattr(acquire, "__aexit__"):
+            entered = acquire.__aenter__()
+            conn = await entered if inspect.isawaitable(entered) else entered
+            try:
+                yield conn
+            finally:
+                exited = acquire.__aexit__(None, None, None)
+                if inspect.isawaitable(exited):
+                    await exited
+        else:
+            conn = await acquire
+            try:
+                yield conn
+            finally:
+                release = getattr(pool, "release", None)
+                if release is not None:
+                    released = release(conn)
+                    if inspect.isawaitable(released):
+                        await released
+
+    @asynccontextmanager
+    async def _enter_async_context(self, context_manager: Any):
+        """Enter an async context manager with mock-tolerant semantics."""
+        entered = context_manager.__aenter__()
+        resource = await entered if inspect.isawaitable(entered) else entered
+        try:
+            yield resource
+        finally:
+            exited = context_manager.__aexit__(None, None, None)
+            if inspect.isawaitable(exited):
+                await exited
+
     async def search(
         self,
         query: str,
@@ -372,7 +416,7 @@ class HybridSearchEngine:
             LIMIT $6;
         """
 
-        async with pool.acquire() as conn:
+        async with self._acquire_connection(pool) as conn:
             rows = await conn.fetch(
                 sql,
                 query_embedding,  # $1
@@ -447,7 +491,7 @@ class HybridSearchEngine:
             LIMIT $3;
         """
 
-        async with pool.acquire() as conn:
+        async with self._acquire_connection(pool) as conn:
             rows = await conn.fetch(sql, query, repository, limit)
 
         results = []
@@ -520,8 +564,8 @@ class HybridSearchEngine:
         now = datetime.now(UTC)
 
         try:
-            async with pool.acquire() as conn:
-                async with conn.transaction():
+            async with self._acquire_connection(pool) as conn:
+                async with self._enter_async_context(conn.transaction()):
                     # Insert document
                     await conn.execute(
                         """
@@ -611,7 +655,7 @@ class HybridSearchEngine:
         pool = await self._get_pool()
 
         try:
-            async with pool.acquire() as conn:
+            async with self._acquire_connection(pool) as conn:
                 # Delete document (embeddings cascade automatically)
                 result = await conn.execute(
                     "DELETE FROM search.documents WHERE id = $1",

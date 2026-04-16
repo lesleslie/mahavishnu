@@ -49,7 +49,13 @@ def mock_pool_manager():
 def mock_mcp():
     """Create mock FastMCP instance."""
     mcp = MagicMock()
-    mcp.tool = lambda fn: fn  # Decorator that returns function unchanged
+
+    def tool(fn=None):
+        if fn is None:
+            return lambda wrapped: wrapped
+        return fn
+
+    mcp.tool = tool
     return mcp
 
 
@@ -550,7 +556,7 @@ class TestPoolSearchMemoryTool:
 
         @mock_mcp.tool()
         async def pool_search_memory(query: str, limit: int = 100):
-            from mahavishnu.pools.memory_aggregator import MemoryAggregator
+            from mahavishnu.mcp.tools.pool_tools import MemoryAggregator
 
             aggregator = MemoryAggregator()
             results = await aggregator.cross_pool_search(
@@ -614,7 +620,9 @@ class TestPoolToolRegistration:
         # Track tool registrations
         registered_tools = []
 
-        def mock_tool_decorator(func):
+        def mock_tool_decorator(func=None):
+            if func is None:
+                return lambda wrapped: mock_tool_decorator(wrapped)
             registered_tools.append(func.__name__)
             return func
 

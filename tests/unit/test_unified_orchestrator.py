@@ -145,6 +145,7 @@ async def test_execute_workflow_success(monkeypatch: pytest.MonkeyPatch) -> None
     assert len(state["adapter_states"]["task_router"]["results"]) == 2
     assert state["adapter_states"][uo.AdapterType.PREFECT]["execution_id"] == "exec-1"
     assert state["adapter_states"][uo.AdapterType.AGNO]["execution_id"] == "exec-2"
+    assert all("preference_order" not in call for call in router.execute_calls)
 
 
 @pytest.mark.asyncio

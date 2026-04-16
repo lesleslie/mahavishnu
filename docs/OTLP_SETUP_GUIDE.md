@@ -97,6 +97,15 @@ Each source has dedicated pipelines for traces, metrics, and logs:
 - **Metrics**: Application → Collector → Prometheus
 - **Logs**: Application → Collector → Elasticsearch
 
+### Native OTEL Matrix
+
+| Component | Native OTEL | Collector Endpoint | Notes |
+|-----------|-------------|-------------------|-------|
+| Qwen Code | Yes | `localhost:4321` / `localhost:4322` | Use the dedicated Qwen receiver and set `telemetry.source=qwen`. |
+| FastMCP servers | Via shared middleware | `localhost:4317` / `localhost:4318` | Attach the shared FastMCP middleware from `mcp-common` at server startup. |
+| Session-Buddy | Yes, via FastMCP middleware + OTLP SDK | `localhost:4317` / `localhost:4318` | Configure tracer provider in `session_buddy.mcp.telemetry` and attach the shared middleware. |
+| Mahavishnu | Yes, via shared FastMCP middleware | `localhost:4317` / `localhost:4318` | Uses the same middleware pattern as Session-Buddy. |
+
 ______________________________________________________________________
 
 ## Ingestion Methods
@@ -448,6 +457,32 @@ ______________________________________________________________________
 
 ## Qwen-Specific Setup
 
+### Qwen Code Native Telemetry
+
+Qwen Code now ships native OpenTelemetry support. To wire it into this
+collector, point Qwen Code at the dedicated Qwen receiver and keep the source
+attribute set to `qwen`.
+
+```bash
+# Qwen Code telemetry -> Mahavishnu collector
+# gRPC receiver
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4321
+export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+
+# Optional but recommended for source attribution
+export OTEL_SERVICE_NAME=qwen-code
+export OTEL_RESOURCE_ATTRIBUTES=telemetry.source=qwen,telemetry.source.type=ai_assistant
+
+# If your Qwen Code build is configured for HTTP/protobuf instead of gRPC,
+# use the HTTP receiver instead:
+# export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4322
+# export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+```
+
+Qwen Code's own telemetry settings can still live in `.qwen/settings.json`,
+but the OTLP endpoint should point at the collector above so traces, metrics,
+and logs land in the shared ecosystem.
+
 ### Option 1: Direct OTLP Integration
 
 ```python
@@ -566,6 +601,13 @@ log_qwen_interaction(
     metadata={"tokens": 450, "duration_ms": 987}
 )
 ```
+
+### FastMCP Server Note
+
+FastMCP exposes generic middleware rather than a native OTEL exporter. For MCP
+servers, attach a shared OTEL middleware at startup so tool calls and request
+handling emit spans into the same collector without duplicating tracing logic
+in every tool.
 
 ______________________________________________________________________
 

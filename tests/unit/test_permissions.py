@@ -209,8 +209,7 @@ class TestConfigurationValidation:
         with pytest.raises(ValidationError) as exc_info:
             MahavishnuSettings(auth={"enabled": True, "secret": None})
 
-        errors = exc_info.value.errors()
-        assert any("auth_secret" in str(err.get("loc", "")) for err in errors)
+        assert "secret must be set" in str(exc_info.value)
 
     def test_config_accepts_none_secret_when_auth_disabled(self):
         """Test that config allows auth_secret=None when auth_enabled is False."""

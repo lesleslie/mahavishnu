@@ -123,6 +123,7 @@ async def test_ingest_url_mocked():
     ingester._akosha_client.post = mock_post
     ingester._crackerjack_client.post = mock_post
     ingester._session_buddy_client.post = mock_post
+    ingester._validate_url = MagicMock(return_value=None)
 
     await ingester.initialize()
 

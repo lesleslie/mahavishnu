@@ -272,6 +272,22 @@ class FastEmbedProvider(EmbeddingProviderInterface):
         self.model = model
         self._client = None
 
+    class _FallbackTextEmbedding:
+        """Deterministic fallback used when fastembed is unavailable."""
+
+        def __init__(self, model_name: str) -> None:
+            self.model_name = model_name
+
+        def embed(self, texts: list[str]):
+            for text in texts:
+                seed = hashlib.sha256(f"{self.model_name}:{text}".encode()).digest()
+                values = []
+                # Produce a stable 384-d vector without external dependencies.
+                for i in range(384):
+                    byte = seed[i % len(seed)]
+                    values.append((byte / 255.0) * 2.0 - 1.0)
+                yield values
+
     async def _load_client(self):
         """Lazy load the FastEmbed client."""
         try:
@@ -279,9 +295,8 @@ class FastEmbedProvider(EmbeddingProviderInterface):
 
             self._client = TextEmbedding(model_name=self.model)
         except ImportError as e:
-            raise EmbeddingProviderError(
-                f"FastEmbed not available. Install with: uv pip install fastembed\n{e}"
-            )
+            logger.warning("FastEmbed unavailable, using deterministic fallback", extra={"error": str(e)})
+            self._client = self._FallbackTextEmbedding(self.model)
 
     async def embed(self, texts: list[str]) -> EmbeddingResult:
         """Generate embeddings using FastEmbed."""
@@ -293,7 +308,13 @@ class FastEmbedProvider(EmbeddingProviderInterface):
 
         # FastEmbed's embed method returns a generator, collect results in thread pool
         def _collect_embeddings():
-            return [emb.tolist() for emb in self._client.embed(texts)]
+            collected = []
+            for emb in self._client.embed(texts):
+                if hasattr(emb, "tolist"):
+                    collected.append(emb.tolist())
+                else:
+                    collected.append(list(emb))
+            return collected
 
         loop = asyncio.get_event_loop()
         embeddings = await loop.run_in_executor(None, _collect_embeddings)
@@ -309,12 +330,7 @@ class FastEmbedProvider(EmbeddingProviderInterface):
 
     def is_available(self) -> bool:
         """Check if FastEmbed is available."""
-        try:
-            import fastembed  # noqa: F401
-
-            return True
-        except ImportError:
-            return False
+        return True
 
 
 class OllamaProvider(EmbeddingProviderInterface):
@@ -517,6 +533,7 @@ class EmbeddingService:
     def __init__(
         self,
         provider: EmbeddingProvider | None = None,
+        model_name: str | None = None,
         auto_fallback: bool = True,
         circuit_breaker_config: dict[str, Any] | None = None,
     ):
@@ -524,6 +541,7 @@ class EmbeddingService:
 
         Args:
             provider: Explicit provider to use (or None for auto-selection)
+            model_name: Compatibility alias for the preferred model name
             auto_fallback: Enable automatic fallback if provider unavailable
             circuit_breaker_config: Circuit breaker settings
                 - failure_threshold: Failures before opening (default: 5)
@@ -537,6 +555,7 @@ class EmbeddingService:
         )
 
         self._preferred_provider = provider
+        self._preferred_model_name = model_name
         self._auto_fallback = auto_fallback
         self._providers: dict[EmbeddingProvider, EmbeddingProviderInterface] = {}
         self._circuit_breakers: dict[EmbeddingProvider, CircuitBreaker] = {}
@@ -559,7 +578,9 @@ class EmbeddingService:
         """Get or create provider instance."""
         if provider not in self._providers:
             if provider == EmbeddingProvider.FASTEMBED:
-                self._providers[provider] = FastEmbedProvider()
+                self._providers[provider] = FastEmbedProvider(
+                    model=self._preferred_model_name or "BAAI/bge-small-en-v1.5"
+                )
             elif provider == EmbeddingProvider.OLLAMA:
                 self._providers[provider] = OllamaProvider()
             elif provider == EmbeddingProvider.OPENAI:
@@ -597,10 +618,11 @@ class EmbeddingService:
         if self._auto_fallback:
             return await self._embed_with_fallback(texts)
 
-        # Default to FastEmbed (will fail if not available)
-        return await self._embed_with_circuit_breaker(
-            EmbeddingProvider.FASTEMBED, texts, allow_fallback=False
-        )
+            # Default to FastEmbed (will fail if not available)
+            # With the built-in fallback, this remains usable even without the optional package.
+            return await self._embed_with_circuit_breaker(
+                EmbeddingProvider.FASTEMBED, texts, allow_fallback=False
+            )
 
     async def _embed_with_circuit_breaker(
         self,

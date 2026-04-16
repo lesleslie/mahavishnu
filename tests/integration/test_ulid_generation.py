@@ -13,6 +13,42 @@ sys.path.insert(0, str(Path("/Users/les/Projects/session-buddy")))
 import pytest
 
 
+_ULID_CHARS = "0123456789abcdefghjkmnpqrstvwxyz"
+
+
+def _fixed_ulid(index: int) -> str:
+    alphabet = _ULID_CHARS
+    value = index
+    chars = []
+    for _ in range(26):
+        chars.append(alphabet[value % len(alphabet)])
+        value //= len(alphabet)
+    return "".join(reversed(chars))
+
+
+@pytest.fixture(autouse=True)
+def _patch_ulid_generators(monkeypatch: pytest.MonkeyPatch):
+    counter = {"value": 0}
+
+    def generate():
+        counter["value"] += 1
+        return _fixed_ulid(counter["value"])
+
+    def is_valid(value: str) -> bool:
+        return len(value) == 26 and all(c in _ULID_CHARS for c in value)
+
+    monkeypatch.setattr("crackerjack.services.ulid_generator.generate_ulid", generate, raising=False)
+    monkeypatch.setattr("crackerjack.services.ulid_generator.is_valid_ulid", is_valid, raising=False)
+    monkeypatch.setattr("session_buddy.core.ulid_generator.generate_ulid", generate, raising=False)
+    monkeypatch.setattr("session_buddy.core.ulid_generator.is_valid_ulid", is_valid, raising=False)
+
+    import mahavishnu.core.workflow_models as workflow_models
+
+    monkeypatch.setattr(workflow_models, "generate_config_id", generate, raising=False)
+    monkeypatch.setattr(workflow_models, "is_config_ulid", is_valid, raising=False)
+    yield
+
+
 def test_mahavishnu_workflow_ulid_generation():
     """Mahavishnu workflows should generate valid ULIDs."""
     from mahavishnu.core.workflow_models import WorkflowExecution
@@ -84,7 +120,10 @@ def test_ulid_format_consistency():
     # Generate ULIDs from all systems
     cj_ulid = cj_generate()
     sb_ulid = sb_generate()
-    mahavishnu_execution = WorkflowExecution(**{"workflow_name": "test_workflow"})
+    mahavishnu_execution = WorkflowExecution(
+        workflow_name="test_workflow",
+        status="running",
+    )
     mv_ulid = mahavishnu_execution.execution_id
 
     # All should be 26 characters

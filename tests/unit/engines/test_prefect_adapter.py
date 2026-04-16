@@ -503,7 +503,7 @@ class TestPrefectTasks:
     @pytest.mark.asyncio
     async def test_process_repository_default(self):
         """Test process_repository with default task type."""
-        result = await process_repository(
+        result = await process_repository.fn(
             "/test/repo",
             {"type": "default", "id": "test-1"}
         )
@@ -520,7 +520,7 @@ class TestPrefectTasks:
             "mahavishnu.engines.prefect_adapter_impl.CodeGraphAnalyzer",
             side_effect=Exception("Analysis failed")
         ):
-            result = await process_repository(
+            result = await process_repository.fn(
                 "/test/repo",
                 {"type": "code_sweep", "id": "test-2"}
             )

@@ -5,6 +5,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] - 2026-04-16
+
+### Added
+
+- adapters: Formalize lifecycle contract
+- Add session-archaeologist skill for past decision and context recovery
+- chaos: Add failure injection scenarios
+- config: Add validation cli and checks
+- contract: Add ecosystem compatibility tests
+- resilience: Centralize retry and circuit policies
+
+### Changed
+
+- 2026-04-07 07:51, 6 change(s)
+- 2026-04-07 17:29, 8 change(s)
+- 2026-04-07 19:59, 1 change(s)
+- 2026-04-08 01:38, 6 change(s)
+- 2026-04-08 03:23, 7 change(s)
+- 2026-04-08 15:08, 5 change(s)
+- 2026-04-09 02:27, 2 change(s)
+- adapters: Complete engine adapter decomposition
+- Add deprecation warnings to adapter re-export wrappers (phase 2)
+- engines: Split adapter public modules
+- Execute phases 0-1 of ecosystem consolidation plan
+- Mahavishnu (quality: 66/100) - 2026-04-09 02:27:04
+- Mahavishnu (quality: 66/100) - 2026-04-13 10:04:11
+- Mahavishnu (quality: 66/100) - 2026-04-14 06:23:53
+- Mahavishnu (quality: 66/100) - 2026-04-14 13:28:07
+- Mahavishnu (quality: 68/100) - 2026-04-05 07:07:36
+- Mahavishnu (quality: 68/100) - 2026-04-06 09:57:06
+- Mahavishnu (quality: 68/100) - 2026-04-07 03:45:24
+- Mahavishnu (quality: 68/100) - 2026-04-07 17:26:42
+- Merge monitoring/health modules (phase 3)
+- Merge quality evaluator into scorer, assess Phase 4 targets (phase 4)
+- Retire adapter wrappers, migrate consumers to *_impl (phase 5)
+- tui-design: revise spec with 6-expert review findings
+- tui: Add skills system and subagents sections, fix numbering
+
+### Documentation
+
+- Add Bodai Radar design spec
+- Add Bodai Radar implementation plan
+- Add design spec for Akosha Code Archaeologist and Quality Pulse skills
+- Add implementation plan for Akosha Code Archaeologist and Quality Pulse skills
+- Add Session Archaeologist implementation plan
+- Add Session Archaeologist skill design spec
+- ci: Scrub github actions references
+
+### Internal
+
+- Add sessions/ to .gitignore to prevent secret leaks
+- Bump version to 0.4.0
+- Bump version to 0.4.1
+- Bump version to 0.4.2
+- Bump version to 0.5.0
+- Bump version to 0.5.1
+- Bump version to 0.5.2
+- Bump version to 0.6.0
+- Bump version to 0.6.1
+- ci: Remove ecosystem contract github workflow
+- ci: Remove github actions workflows
+- repo: Ignore coverage artifacts
+- repo: Ignore oneiric cache
+
 ## [0.6.1] - 2026-04-15
 
 ### Added

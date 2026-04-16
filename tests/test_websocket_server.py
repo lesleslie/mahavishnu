@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import socket
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -19,12 +20,16 @@ def mock_pool_manager():
 
 
 @pytest.fixture
-def websocket_server(mock_pool_manager, unused_tcp_port):
+def websocket_server(mock_pool_manager):
     """Create WebSocket server instance."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+
     server = MahavishnuWebSocketServer(
         pool_manager=mock_pool_manager,
         host="127.0.0.1",
-        port=unused_tcp_port,
+        port=port,
     )
     # Mock metrics entirely to avoid Prometheus registry conflicts
     server.metrics = MagicMock()

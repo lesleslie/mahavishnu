@@ -309,7 +309,8 @@ class BlockerPredictor:
         if not suggestions:
             suggestions.append("Monitor task progress closely")
 
-        return list(set(suggestions))[:5]  # Top 5 unique
+        # Preserve insertion order so high-signal blocker suggestions stay visible.
+        return list(dict.fromkeys(suggestions))[:5]
 
 
 class DurationEstimator:

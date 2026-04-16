@@ -200,13 +200,23 @@ class WebSocketMetrics:
         """Get or create broadcast histogram for channel."""
         self._ensure_enabled()
         if self._broadcast_histogram is None:
-            self._broadcast_histogram = Histogram(
-                "websocket_broadcast_duration_seconds",
-                "Time taken to broadcast messages to subscribers",
-                ["server", "channel"],
-                buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
-            )
-            logger.info(f"Created broadcast histogram for channel: {channel} in {self.server_name}")
+            try:
+                self._broadcast_histogram = Histogram(
+                    "websocket_broadcast_duration_seconds",
+                    "Time taken to broadcast messages to subscribers",
+                    ["server", "channel"],
+                    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
+                )
+                logger.info(
+                    f"Created broadcast histogram for channel: {channel} in {self.server_name}"
+                )
+            except ValueError:
+                self._broadcast_histogram = self._get_existing_collector(
+                    "websocket_broadcast_duration_seconds"
+                )
+                logger.debug(
+                    f"Reusing existing broadcast histogram: {self.server_name}/{channel}"
+                )
 
         return self._broadcast_histogram
 

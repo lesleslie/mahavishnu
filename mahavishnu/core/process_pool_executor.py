@@ -13,7 +13,7 @@ Key Features:
 
 import asyncio
 from collections.abc import Callable
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from functools import partial
 import logging
 import multiprocessing
@@ -84,10 +84,20 @@ class ProcessPoolTaskExecutor:
             logger.warning("ProcessPoolTaskExecutor already started")
             return
 
-        self._executor = ProcessPoolExecutor(
-            max_workers=self._max_workers,
-            max_tasks_per_child=self._max_tasks_per_child,
-        )
+        try:
+            self._executor = ProcessPoolExecutor(
+                max_workers=self._max_workers,
+                max_tasks_per_child=self._max_tasks_per_child,
+            )
+        except (PermissionError, NotImplementedError, RuntimeError) as exc:
+            # Some platforms and sandboxes reject process pools because of
+            # semaphore or sysconf restrictions. Fall back to a thread pool so
+            # the wrapper remains usable and testable without changing callers.
+            logger.warning(
+                "Falling back to ThreadPoolExecutor for process pool startup: %s",
+                exc,
+            )
+            self._executor = ThreadPoolExecutor(max_workers=self._max_workers)
 
         # Defer event-loop capture until submit() runs inside an active loop.
         self._loop = None

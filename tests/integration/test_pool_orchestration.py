@@ -52,12 +52,12 @@ class TestMultiPoolExecution:
                     mock_pool.config = config
                     mock_pool._workers = {f"w{j}": f"w{j}" for j in range(2)}
 
-                    async def mock_execute(task):
+                    async def mock_execute(task, pool_id=mock_pool.pool_id):
                         return {
-                            "pool_id": mock_pool.pool_id,
+                            "pool_id": pool_id,
                             "worker_id": "w0",
                             "status": "completed",
-                            "output": f"Executed on {mock_pool.pool_id}",
+                            "output": f"Executed on {pool_id}",
                         }
 
                     mock_pool.execute_task = mock_execute
@@ -148,8 +148,8 @@ class TestPoolRouting:
                 mock_pool.config = PoolConfig(name=f"pool{i}", pool_type="mahavishnu")
                 mock_pool._workers = {f"w{j}": f"w{j}" for j in range(count)}
 
-                async def mock_execute(task):
-                    return {"pool_id": mock_pool.pool_id, "status": "completed"}
+                async def mock_execute(task, pool_id=mock_pool.pool_id):
+                    return {"pool_id": pool_id, "status": "completed"}
 
                 mock_pool.execute_task = mock_execute
                 app.pool_manager._pools[f"pool{i}"] = mock_pool
@@ -186,8 +186,8 @@ class TestPoolRouting:
                 mock_pool.config = PoolConfig(name=f"pool{i}", pool_type="mahavishnu")
                 mock_pool._workers = {f"w{j}": f"w{j}" for j in range(2)}
 
-                async def mock_execute(task):
-                    return {"pool_id": mock_pool.pool_id, "status": "completed"}
+                async def mock_execute(task, pool_id=mock_pool.pool_id):
+                    return {"pool_id": pool_id, "status": "completed"}
 
                 mock_pool.execute_task = mock_execute
                 app.pool_manager._pools[f"pool{i}"] = mock_pool
@@ -226,10 +226,10 @@ class TestPoolRouting:
                 mock_pool = MagicMock()
                 mock_pool.pool_id = f"pool{i}"
                 mock_pool.config = PoolConfig(name=f"pool{i}", pool_type="mahavishnu")
-                mock_pool._workers = {f"w{j}": f"w{j}"}
+                mock_pool._workers = {f"w{j}": f"w{j}" for j in range(1)}
 
-                async def mock_execute(task):
-                    return {"pool_id": mock_pool.pool_id, "status": "completed"}
+                async def mock_execute(task, pool_id=mock_pool.pool_id):
+                    return {"pool_id": pool_id, "status": "completed"}
 
                 mock_pool.execute_task = mock_execute
                 app.pool_manager._pools[f"pool{i}"] = mock_pool
@@ -354,9 +354,7 @@ class TestSessionBuddyDelegation:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = {"result": ["worker_1", "worker_2", "worker_3"]}
-            mock_httpx.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_response
-            )
+            mock_httpx.return_value.post = AsyncMock(return_value=mock_response)
 
             from mahavishnu.pools import PoolConfig
             from mahavishnu.pools.session_buddy_pool import SessionBuddyPool
@@ -394,7 +392,7 @@ class TestSessionBuddyDelegation:
 
             post_mock = AsyncMock()
             post_mock.side_effect = [spawn_response, execute_response]
-            mock_httpx.return_value.__aenter__.return_value.post = post_mock
+            mock_httpx.return_value.post = post_mock
 
             from mahavishnu.pools import PoolConfig
             from mahavishnu.pools.session_buddy_pool import SessionBuddyPool
@@ -439,11 +437,11 @@ class TestMemoryAggregation:
                 mock_pool.pool_id = f"pool{i}"
                 mock_pool.config = PoolConfig(name=f"pool{i}", pool_type="mahavishnu")
 
-                async def mock_collect():
+                async def mock_collect(pool_id=f"pool{i}"):
                     return [
                         {
-                            "content": f"Memory from pool{i}",
-                            "metadata": {"pool_id": f"pool{i}", "timestamp": 1234567890.0},
+                            "content": f"Memory from {pool_id}",
+                            "metadata": {"pool_id": pool_id, "timestamp": 1234567890.0},
                         }
                     ]
 
@@ -473,9 +471,7 @@ class TestMemoryAggregation:
                 }
             }
 
-            mock_httpx.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=search_response
-            )
+            mock_httpx.return_value.post = AsyncMock(return_value=search_response)
 
             from mahavishnu.pools.memory_aggregator import MemoryAggregator
 

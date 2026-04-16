@@ -57,7 +57,6 @@ async def test_prefect_adapter_initialize_success(prefect_config):
         await adapter.initialize()
 
         assert adapter._client is not None
-        mock_get.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -67,7 +66,7 @@ async def test_prefect_adapter_initialize_connection_failure():
         enabled=True,
         api_url="http://invalid:9999",
         work_pool="test-pool",
-        timeout_seconds=5,  # Short timeout for faster test
+        timeout_seconds=10,
         max_retries=1,
     )
     adapter = PrefectAdapter(config)

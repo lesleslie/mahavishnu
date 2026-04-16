@@ -23,6 +23,12 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
+async def _await_if_needed(value: Any) -> Any:
+    if hasattr(value, "__await__"):
+        return await value
+    return value
+
+
 class _CircuitBreaker:
     """Lightweight circuit breaker for external service protection.
 
@@ -156,7 +162,7 @@ class MemoryAggregator:
             List of memory items from pool
         """
         try:
-            memory_items = await pool.collect_memory()
+            memory_items = await _await_if_needed(pool.collect_memory())
             logger.info(f"Collected {len(memory_items)} items from pool {pool_id}")
             return memory_items
         except Exception as e:
@@ -640,11 +646,11 @@ class MemoryAggregator:
 
             if pool:
                 try:
-                    memory = await pool.collect_memory()
+                    memory = await _await_if_needed(pool.collect_memory())
                     stats[pool_id] = {
                         "memory_count": len(memory),
                         "pool_type": pool.config.pool_type,
-                        "status": (await pool.status()).value,
+                        "status": (await _await_if_needed(pool.status())).value,
                     }
                 except Exception as e:
                     stats[pool_id] = {

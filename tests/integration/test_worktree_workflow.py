@@ -25,6 +25,31 @@ from mahavishnu.core.coordination.models import Dependency, DependencyStatus
 from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
 
 
+def make_repository(
+    *,
+    name: str,
+    package: str,
+    path: Path,
+    nickname: str,
+    role: str = "app",
+) -> Repository:
+    """Build a valid Repository model for the current schema."""
+    return Repository(
+        name=name.lower().replace(" ", "-"),
+        package=package,
+        path=path,
+        nickname=nickname,
+        role=role,
+        tags=["worktree"],
+        description=f"{nickname} repository",
+    )
+
+
+def make_worktree_roots(tmp_path: Path) -> list[Path]:
+    """Match the coordinator's default home-based root plus the test temp root."""
+    return [Path.home() / "worktrees", tmp_path / "worktrees"]
+
+
 class TestWorktreeWorkflowIntegration:
     """Integration tests for complete worktree workflows."""
 
@@ -73,12 +98,11 @@ class TestWorktreeWorkflowIntegration:
         )
 
         # Setup repository manager
-        mock_repo = Repository(
+        mock_repo = make_repository(
             name="Test Repo",
             package="test_repo",
-            path=str(repo_path),
+            path=repo_path,
             nickname="test-repo",
-            role="app",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -119,7 +143,7 @@ class TestWorktreeWorkflowIntegration:
             coordination_manager=mock_coord_manager,
             providers=[mock_provider],
             backup_dir=tmp_path / "backups",
-            allowed_worktree_roots=[tmp_path / "worktrees"],
+            allowed_worktree_roots=make_worktree_roots(tmp_path),
         )
 
         # Step 1: Create worktree
@@ -182,12 +206,11 @@ class TestWorktreeWorkflowIntegration:
             capture_output=True,
         )
 
-        mock_repo = Repository(
+        mock_repo = make_repository(
             name="Test",
             package="test",
-            path=str(repo_path),
+            path=repo_path,
             nickname="test",
-            role="app",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -203,15 +226,20 @@ class TestWorktreeWorkflowIntegration:
             coordination_manager=mock_coord_manager,
             providers=[mock_provider],
             backup_dir=tmp_path / "backups",
-            allowed_worktree_roots=[tmp_path / "worktrees"],
+            allowed_worktree_roots=make_worktree_roots(tmp_path),
         )
 
         worktree_path = tmp_path / "worktrees" / "test" / "main"
+        worktree_path.mkdir(parents=True)
+        (worktree_path / ".gitkeep").write_text("")
 
         # Mock uncommitted changes and branch detection
         coordinator._check_uncommitted_changes = AsyncMock(return_value=True)
         coordinator._get_worktree_branch = AsyncMock(return_value="main")
         coordinator._verify_is_worktree = AsyncMock(return_value=True)
+        coordinator.backup_manager.create_backup_before_removal = AsyncMock(
+            wraps=coordinator.backup_manager.create_backup_before_removal
+        )
 
         # Force remove with reason (should create backup)
         remove_result = await coordinator.remove_worktree(
@@ -225,7 +253,7 @@ class TestWorktreeWorkflowIntegration:
         assert remove_result["success"] is True
 
         # Verify backup was created
-        assert coordinator.backup_manager.create_backup_before_removal.called
+        coordinator.backup_manager.create_backup_before_removal.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_safety_check_workflow(self, tmp_path):
@@ -233,12 +261,11 @@ class TestWorktreeWorkflowIntegration:
         repo_path = tmp_path / "repos" / "test_repo"
         repo_path.mkdir(parents=True)
 
-        mock_repo = Repository(
+        mock_repo = make_repository(
             name="Test",
             package="test",
-            path=str(repo_path),
+            path=repo_path,
             nickname="test",
-            role="app",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -250,7 +277,7 @@ class TestWorktreeWorkflowIntegration:
             repo_manager=mock_repo_manager,
             coordination_manager=mock_coord_manager,
             providers=[MockWorktreeProvider()],
-            allowed_worktree_roots=[tmp_path / "worktrees"],
+            allowed_worktree_roots=make_worktree_roots(tmp_path),
         )
 
         worktree_path = tmp_path / "worktrees" / "test" / "main"
@@ -279,12 +306,11 @@ class TestWorktreeWorkflowIntegration:
     async def test_cross_repo_dependency_blocking(self, tmp_path):
         """Test that worktree removal is blocked when other repos depend on it."""
         # Setup provider repo
-        provider_repo = Repository(
+        provider_repo = make_repository(
             name="Provider",
             package="provider",
-            path=str(tmp_path / "repos" / "provider"),
+            path=tmp_path / "repos" / "provider",
             nickname="provider",
-            role="app",
         )
 
         mock_repo_manager = MagicMock()
@@ -303,7 +329,7 @@ class TestWorktreeWorkflowIntegration:
             repo_manager=mock_repo_manager,
             coordination_manager=mock_coord_manager,
             providers=[MockWorktreeProvider()],
-            allowed_worktree_roots=[tmp_path / "worktrees"],
+            allowed_worktree_roots=make_worktree_roots(tmp_path),
         )
 
         worktree_path = tmp_path / "worktrees" / "provider" / "api"
@@ -327,12 +353,11 @@ class TestWorktreeWorkflowIntegration:
     @pytest.mark.asyncio
     async def test_cross_repo_dependency_satisfied_no_block(self, tmp_path):
         """Test that satisfied dependencies don't block removal."""
-        provider_repo = Repository(
+        provider_repo = make_repository(
             name="Provider",
             package="provider",
-            path=str(tmp_path / "repos" / "provider"),
+            path=tmp_path / "repos" / "provider",
             nickname="provider",
-            role="app",
         )
 
         mock_repo_manager = MagicMock()
@@ -354,7 +379,7 @@ class TestWorktreeWorkflowIntegration:
             repo_manager=mock_repo_manager,
             coordination_manager=mock_coord_manager,
             providers=[mock_provider],
-            allowed_worktree_roots=[tmp_path / "worktrees"],
+            allowed_worktree_roots=make_worktree_roots(tmp_path),
         )
 
         worktree_path = tmp_path / "worktrees" / "provider" / "api"
@@ -380,12 +405,11 @@ class TestWorktreeWorkflowIntegration:
         """Test automatic fallback to secondary provider."""
         from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
 
-        mock_repo = Repository(
+        mock_repo = make_repository(
             name="Test",
             package="test",
-            path=str(tmp_path / "repos" / "test"),
+            path=tmp_path / "repos" / "test",
             nickname="test",
-            role="app",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -407,7 +431,7 @@ class TestWorktreeWorkflowIntegration:
             repo_manager=mock_repo_manager,
             coordination_manager=mock_coord_manager,
             providers=[primary_provider, secondary_provider],
-            allowed_worktree_roots=[tmp_path / "worktrees"],
+            allowed_worktree_roots=make_worktree_roots(tmp_path),
         )
 
         # Create worktree (should use secondary provider)
@@ -425,12 +449,11 @@ class TestWorktreeWorkflowIntegration:
         from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
         from mahavishnu.core.worktree_providers.errors import ProviderUnavailableError
 
-        mock_repo = Repository(
+        mock_repo = make_repository(
             name="Test",
             package="test",
-            path=str(tmp_path / "repos" / "test"),
+            path=tmp_path / "repos" / "test",
             nickname="test",
-            role="app",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -504,12 +527,11 @@ class TestWorktreeWorkflowIntegration:
             capture_output=True,
         )
 
-        mock_repo = Repository(
+        mock_repo = make_repository(
             name="Test",
             package="test",
-            path=str(repo_path),
+            path=repo_path,
             nickname="test",
-            role="app",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -557,19 +579,17 @@ class TestWorktreeWorkflowIntegration:
     async def test_multi_repo_worktree_aggregation(self, tmp_path):
         """Test listing worktrees across multiple repositories."""
         repos = [
-            Repository(
+            make_repository(
                 name="Repo 1",
                 package="repo1",
-                path=str(tmp_path / "repos" / "repo1"),
+                path=tmp_path / "repos" / "repo1",
                 nickname="repo1",
-                role="app",
             ),
-            Repository(
+            make_repository(
                 name="Repo 2",
                 package="repo2",
-                path=str(tmp_path / "repos" / "repo2"),
+                path=tmp_path / "repos" / "repo2",
                 nickname="repo2",
-                role="app",
             ),
         ]
 
@@ -623,26 +643,23 @@ class TestWorktreeWorkflowIntegration:
     async def test_recovery_from_partial_failure(self, tmp_path):
         """Test system recovery from partial failures during multi-repo operations."""
         repos = [
-            Repository(
+            make_repository(
                 name="Repo 1",
                 package="repo1",
-                path=str(tmp_path / "repos" / "repo1"),
+                path=tmp_path / "repos" / "repo1",
                 nickname="repo1",
-                role="app",
             ),
-            Repository(
+            make_repository(
                 name="Repo 2",
                 package="repo2",
-                path=str(tmp_path / "repos" / "repo2"),
+                path=tmp_path / "repos" / "repo2",
                 nickname="repo2",
-                role="app",
             ),
-            Repository(
+            make_repository(
                 name="Repo 3",
                 package="repo3",
-                path=str(tmp_path / "repos" / "repo3"),
+                path=tmp_path / "repos" / "repo3",
                 nickname="repo3",
-                role="app",
             ),
         ]
 
@@ -686,12 +703,11 @@ class TestWorktreeWorkflowIntegration:
     @pytest.mark.asyncio
     async def test_concurrent_worktree_creation(self, tmp_path):
         """Test creating multiple worktrees concurrently."""
-        mock_repo = Repository(
+        mock_repo = make_repository(
             name="Test",
             package="test",
-            path=str(tmp_path / "repos" / "test"),
+            path=tmp_path / "repos" / "test",
             nickname="test",
-            role="app",
         )
         mock_repo_manager = MagicMock()
         mock_repo_manager.get_by_name.return_value = mock_repo
@@ -708,7 +724,7 @@ class TestWorktreeWorkflowIntegration:
             repo_manager=mock_repo_manager,
             coordination_manager=mock_coord_manager,
             providers=[mock_provider],
-            allowed_worktree_roots=[tmp_path / "worktrees"],
+            allowed_worktree_roots=make_worktree_roots(tmp_path),
         )
 
         # Create multiple worktrees concurrently

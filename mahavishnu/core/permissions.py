@@ -6,7 +6,7 @@ UTC = UTC
 from enum import StrEnum
 
 import jwt
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .config import MahavishnuSettings
 from .errors import ConfigurationError
@@ -35,7 +35,7 @@ class User(BaseModel):
     roles: list[Role]
     email: str | None = None
     name: str | None = None
-    created_at: datetime = datetime.now()
+    created_at: datetime = Field(default_factory=datetime.now)
 
 
 class RBACManager:
@@ -102,6 +102,12 @@ class RBACManager:
 
     async def check_permission(self, user_id: str, repo: str, permission: Permission) -> bool:
         """Check if user has permission for repo."""
+        if isinstance(permission, str):
+            try:
+                permission = Permission(permission.lower())
+            except ValueError:
+                return False
+
         if user_id not in self.users:
             return False
 

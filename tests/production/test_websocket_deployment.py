@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import ssl
+import socket
 import time
 import uuid
 from pathlib import Path
@@ -30,6 +31,22 @@ from cryptography.x509.oid import NameOID
 
 from mcp_common.websocket import MessageType, WebSocketMessage, WebSocketProtocol, WebSocketServer
 from mcp_common.websocket.auth import WebSocketAuthenticator
+
+
+def _can_bind_localhost() -> bool:
+    """Detect whether this environment allows binding localhost sockets."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(("127.0.0.1", 0))
+        return True
+    except PermissionError:
+        return False
+
+
+if not _can_bind_localhost():
+    pytestmark = pytest.mark.skip(
+        reason="WebSocket deployment tests require local socket bind support unavailable in this environment"
+    )
 
 
 # =============================================================================

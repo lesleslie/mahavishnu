@@ -303,16 +303,19 @@ async def test_ingest_repository_success(mock_config, sample_repo_path, mock_cod
     mock_index.query = MagicMock()
 
     with (
-        patch(
-            "mahavishnu.engines.llamaindex_adapter_impl.SimpleDirectoryReader",
+        patch.object(
+            adapter_module,
+            "SimpleDirectoryReader",
             return_value=mock_reader,
         ),
-        patch(
-            "mahavishnu.engines.llamaindex_adapter_impl.VectorStoreIndex",
+        patch.object(
+            adapter_module,
+            "VectorStoreIndex",
             return_value=mock_index,
         ),
-        patch(
-            "mahavishnu.engines.llamaindex_adapter_impl.CodeGraphAnalyzer",
+        patch.object(
+            adapter_module,
+            "CodeGraphAnalyzer",
             return_value=mock_code_graph_analyzer,
         ),
     ):
@@ -352,12 +355,14 @@ async def test_ingest_repository_no_documents(mock_config, tmp_path, mock_code_g
     mock_reader.load_data.return_value = []
 
     with (
-        patch(
-            "mahavishnu.engines.llamaindex_adapter_impl.SimpleDirectoryReader",
+        patch.object(
+            adapter_module,
+            "SimpleDirectoryReader",
             return_value=mock_reader,
         ),
-        patch(
-            "mahavishnu.engines.llamaindex_adapter_impl.CodeGraphAnalyzer",
+        patch.object(
+            adapter_module,
+            "CodeGraphAnalyzer",
             return_value=mock_code_graph_analyzer,
         ),
     ):
@@ -387,16 +392,19 @@ async def test_ingest_repository_with_code_graph_enrichment(
     mock_index = MagicMock()
 
     with (
-        patch(
-            "mahavishnu.engines.llamaindex_adapter_impl.SimpleDirectoryReader",
+        patch.object(
+            adapter_module,
+            "SimpleDirectoryReader",
             return_value=mock_reader,
         ),
-        patch(
-            "mahavishnu.engines.llamaindex_adapter_impl.VectorStoreIndex",
+        patch.object(
+            adapter_module,
+            "VectorStoreIndex",
             return_value=mock_index,
         ),
-        patch(
-            "mahavishnu.engines.llamaindex_adapter_impl.CodeGraphAnalyzer",
+        patch.object(
+            adapter_module,
+            "CodeGraphAnalyzer",
             return_value=mock_code_graph_analyzer,
         ),
     ):
@@ -418,12 +426,14 @@ async def test_ingest_repository_with_custom_file_types(
     mock_reader.load_data.return_value = []
 
     with (
-        patch(
-            "mahavishnu.engines.llamaindex_adapter_impl.SimpleDirectoryReader",
+        patch.object(
+            adapter_module,
+            "SimpleDirectoryReader",
             return_value=mock_reader,
         ),
-        patch(
-            "mahavishnu.engines.llamaindex_adapter_impl.CodeGraphAnalyzer",
+        patch.object(
+            adapter_module,
+            "CodeGraphAnalyzer",
             return_value=mock_code_graph_analyzer,
         ),
     ):
@@ -737,8 +747,9 @@ async def test_ingest_retry_on_transient_failure(mock_config, sample_repo_path):
     mock_reader = MagicMock()
     mock_reader.load_data = flaky_reader
 
-    with patch(
-        "mahavishnu.engines.llamaindex_adapter_impl.SimpleDirectoryReader",
+    with patch.object(
+        adapter_module,
+        "SimpleDirectoryReader",
         return_value=mock_reader,
     ):
         result = await adapter._ingest_repository(
@@ -1063,12 +1074,14 @@ class TestStructuredErrorInResponses:
         mock_reader.load_data.side_effect = RuntimeError("Unexpected error")
 
         with (
-            patch(
-                "mahavishnu.engines.llamaindex_adapter_impl.SimpleDirectoryReader",
+            patch.object(
+                adapter_module,
+                "SimpleDirectoryReader",
                 return_value=mock_reader,
             ),
-            patch(
-                "mahavishnu.engines.llamaindex_adapter_impl.CodeGraphAnalyzer",
+            patch.object(
+                adapter_module,
+                "CodeGraphAnalyzer",
                 return_value=mock_code_graph_analyzer,
             ),
         ):
