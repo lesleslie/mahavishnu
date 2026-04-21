@@ -15,7 +15,7 @@ import logging
 from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
@@ -194,7 +194,7 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
         Raises:
             RepositoryError: If creation fails
         """
-        run_id = UUID.randomUUID()
+        run_id = uuid4()
         now = datetime.now(timezone.utc)
 
         query = f"""

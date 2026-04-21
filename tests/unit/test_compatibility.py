@@ -9,6 +9,7 @@ from mahavishnu.core.compatibility import (
     CONTRACT_MATRIX,
     ContractCheck,
     build_contract_app,
+    build_contract_report,
     _check_adapter_lifecycle_contract,
     _check_adapter_metadata_contract,
     _check_tool_versions,
@@ -334,3 +335,75 @@ class TestExports:
 
         for name in compatibility.__all__:
             assert hasattr(compatibility, name)
+
+
+# ---------------------------------------------------------------------------
+# build_contract_report (async, covers lines 266-290)
+# ---------------------------------------------------------------------------
+
+
+class TestBuildContractReport:
+    @pytest.mark.asyncio
+    async def test_report_structure(self):
+        report = await build_contract_report()
+        assert "generated_at" in report
+        assert "matrix" in report
+        assert "checks" in report
+        assert "summary" in report
+        assert report["summary"]["total"] == 5
+        assert "pass_rate" in report["summary"]
+
+    @pytest.mark.asyncio
+    async def test_checks_contain_all_contract_names(self):
+        report = await build_contract_report()
+        check_names = [c["name"] for c in report["checks"]]
+        for entry in CONTRACT_MATRIX:
+            assert entry["name"] in check_names
+
+
+# ---------------------------------------------------------------------------
+# render_contract_report with details
+# ---------------------------------------------------------------------------
+
+
+class TestRenderContractReportWithDetails:
+    def test_render_with_details(self):
+        report = {
+            "generated_at": "2026-01-01T00:00:00+00:00",
+            "summary": {"total": 1, "passed": 0, "failed": 1, "pass_rate": 0.0},
+            "checks": [
+                {
+                    "name": "test_check",
+                    "component": "comp",
+                    "passed": False,
+                    "required": True,
+                    "details": {"missing": ["tool_a"]},
+                }
+            ],
+        }
+        md = render_contract_report(report)
+        assert "FAIL" in md
+        assert "test_check" in md
+        assert "Details:" in md
+
+    def test_render_pass_and_fail_mixed(self):
+        report = {
+            "generated_at": "2026-01-01",
+            "summary": {"total": 2, "passed": 1, "failed": 1, "pass_rate": 50.0},
+            "checks": [
+                {"name": "passing", "component": "c1", "passed": True},
+                {"name": "failing", "component": "c2", "passed": False},
+            ],
+        }
+        md = render_contract_report(report)
+        assert "PASS" in md
+        assert "FAIL" in md
+
+    def test_render_includes_pass_rate(self):
+        report = {
+            "generated_at": "2026-01-01",
+            "summary": {"total": 2, "passed": 2, "failed": 0, "pass_rate": 100.0},
+            "checks": [],
+        }
+        md = render_contract_report(report)
+        assert "100.0%" in md

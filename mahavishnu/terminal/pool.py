@@ -210,25 +210,29 @@ class ITerm2SessionPool:
             session_id: Session to close
         """
         async with self._lock:
-            if session_id not in self._pool:
-                return
+            await self._close_session_unlocked(session_id)
 
-            try:
-                script = '''
-                tell application "iTerm2"
-                    tell current window
-                        tell current session
-                            close
-                        end tell
+    async def _close_session_unlocked(self, session_id: str) -> None:
+        """Close a session without acquiring the lock (caller must hold it)."""
+        if session_id not in self._pool:
+            return
+
+        try:
+            script = '''
+            tell application "iTerm2"
+                tell current window
+                    tell current session
+                        close
                     end tell
                 end tell
-                '''
-                await self._run_applescript(script)
-            except Exception as e:
-                logger.warning(f"Error closing iTerm2 session {session_id}: {e}")
-            finally:
-                del self._pool[session_id]
-                logger.info(f"Closed iTerm2 session {session_id}")
+            end tell
+            '''
+            await self._run_applescript(script)
+        except Exception as e:
+            logger.warning(f"Error closing iTerm2 session {session_id}: {e}")
+        finally:
+            del self._pool[session_id]
+            logger.info(f"Closed iTerm2 session {session_id}")
 
     async def close_all(self) -> None:
         """Close all sessions in the pool.
@@ -250,11 +254,11 @@ class ITerm2SessionPool:
                     pass
                 self._health_check_task = None
 
-            # Close all sessions
+            # Close all sessions (use _close_session_unlocked to avoid reentrant lock)
             session_ids = list(self._pool.keys())
             for session_id in session_ids:
                 try:
-                    await self.close_session(session_id)
+                    await self._close_session_unlocked(session_id)
                 except Exception as e:
                     logger.warning(f"Error closing session {session_id}: {e}")
 
@@ -411,7 +415,7 @@ class ITerm2SessionPool:
 
             for session_id in stale_ids:
                 try:
-                    await self.close_session(session_id)
+                    await self._close_session_unlocked(session_id)
                 except Exception as e:
                     logger.warning(f"Error closing stale session {session_id}: {e}")
 

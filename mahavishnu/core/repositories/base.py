@@ -24,7 +24,7 @@ from typing import Any, AsyncIterator, Generic, TypeVar
 from asyncpg import Connection, Pool
 
 from mahavishnu.core.database import Database, get_database
-from mahavishnu.core.errors import DatabaseError, MahavishnuError
+from mahavishnu.core.errors import DatabaseError, ErrorCode, MahavishnuError
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class RepositoryError(MahavishnuError):
         merged_details = {"operation": operation, **(details or {})}
         super().__init__(
             message=message,
-            error_code=None,  # Will use INTERNAL_ERROR from base
+            error_code=ErrorCode.INTERNAL_ERROR,
             details=merged_details,
         )
         self.operation = operation
@@ -145,68 +145,40 @@ class BaseRepository(ABC, Generic[CreateModel, ReadModel, UpdateModel]):
 
     # Abstract CRUD operations
 
-    @abstractmethod
     async def create(self, data: CreateModel) -> ReadModel:
         """Create a new record.
 
-        Args:
-            data: Data to create the record with
-
-        Returns:
-            The created record
+        Subclasses should override with domain-specific create methods.
 
         Raises:
-            RepositoryError: If creation fails
+            NotImplementedError: If not overridden by subclass
         """
-        ...
+        raise NotImplementedError("Subclasses must implement create() or a domain-specific variant")
 
-    @abstractmethod
     async def get(self, id: str) -> ReadModel | None:
         """Retrieve a record by ID.
 
-        Args:
-            id: Record identifier (UUID string)
-
-        Returns:
-            The record if found, None otherwise
-
         Raises:
-            RepositoryError: If retrieval fails
+            NotImplementedError: If not overridden by subclass
         """
-        ...
+        raise NotImplementedError("Subclasses must implement get() or a domain-specific variant")
 
-    @abstractmethod
     async def update(self, id: str, data: UpdateModel) -> ReadModel | None:
         """Update an existing record.
 
-        Args:
-            id: Record identifier (UUID string)
-            data: Data to update the record with
-
-        Returns:
-            The updated record if found, None otherwise
-
         Raises:
-            RepositoryError: If update fails
+            NotImplementedError: If not overridden by subclass
         """
-        ...
+        raise NotImplementedError("Subclasses must implement update() or a domain-specific variant")
 
-    @abstractmethod
     async def delete(self, id: str) -> bool:
         """Delete a record by ID.
 
-        Args:
-            id: Record identifier (UUID string)
-
-        Returns:
-            True if deleted, False if not found
-
         Raises:
-            RepositoryError: If deletion fails
+            NotImplementedError: If not overridden by subclass
         """
-        ...
+        raise NotImplementedError("Subclasses must implement delete() or a domain-specific variant")
 
-    @abstractmethod
     async def list(
         self,
         limit: int = 50,
@@ -215,18 +187,10 @@ class BaseRepository(ABC, Generic[CreateModel, ReadModel, UpdateModel]):
     ) -> list[ReadModel]:
         """List records with optional filters.
 
-        Args:
-            limit: Maximum number of records to return
-            offset: Number of records to skip
-            **filters: Additional filter criteria
-
-        Returns:
-            List of records matching filters
-
         Raises:
-            RepositoryError: If query fails
+            NotImplementedError: If not overridden by subclass
         """
-        ...
+        raise NotImplementedError("Subclasses must implement list() or a domain-specific variant")
 
     # Utility methods
 

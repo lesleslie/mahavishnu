@@ -462,3 +462,325 @@ class TestCrossRepoDependencyError:
         )
         assert error.details is not None
         assert error.details["path"] == ["task-1", "task-2", "task-1"]
+
+
+# ============================================================================
+# Additional coverage: update_all_statuses, get_dependency_count, get_all
+# ============================================================================
+
+
+class TestUpdateAllStatuses:
+    """Tests for batch status update method."""
+
+    @pytest.mark.asyncio
+    async def test_blocks_source_completed(self) -> None:
+        """BLOCKS dependency satisfied when source task completes."""
+        linker = CrossRepoDependencyLinker(AsyncMock())
+
+        dep = CrossRepoDependency(
+            id="d1",
+            source_task_id="t1",
+            source_repo="a",
+            target_task_id="t2",
+            target_repo="b",
+            dependency_type=DependencyType.BLOCKS,
+        )
+        linker._dependencies["d1"] = dep
+        linker._task_dependencies["t1"].append("d1")
+        linker._task_dependents["t2"].append("d1")
+
+        updated = linker.update_all_statuses({"t1": TaskStatus.COMPLETED})
+        assert updated == 1
+        assert dep.status == DependencyStatus.SATISFIED
+
+    @pytest.mark.asyncio
+    async def test_blocks_source_failed(self) -> None:
+        """BLOCKS dependency failed when source task fails."""
+        linker = CrossRepoDependencyLinker(AsyncMock())
+
+        dep = CrossRepoDependency(
+            id="d1",
+            source_task_id="t1",
+            source_repo="a",
+            target_task_id="t2",
+            target_repo="b",
+            dependency_type=DependencyType.BLOCKS,
+        )
+        linker._dependencies["d1"] = dep
+        linker._task_dependencies["t1"].append("d1")
+        linker._task_dependents["t2"].append("d1")
+
+        updated = linker.update_all_statuses({"t1": TaskStatus.FAILED})
+        assert updated == 1
+        assert dep.status == DependencyStatus.FAILED
+
+    @pytest.mark.asyncio
+    async def test_blocks_source_blocked(self) -> None:
+        """BLOCKS dependency blocked when source task is blocked."""
+        linker = CrossRepoDependencyLinker(AsyncMock())
+
+        dep = CrossRepoDependency(
+            id="d1",
+            source_task_id="t1",
+            source_repo="a",
+            target_task_id="t2",
+            target_repo="b",
+            dependency_type=DependencyType.BLOCKS,
+        )
+        linker._dependencies["d1"] = dep
+        linker._task_dependencies["t1"].append("d1")
+        linker._task_dependents["t2"].append("d1")
+
+        updated = linker.update_all_statuses({"t1": TaskStatus.BLOCKED})
+        assert updated == 1
+        assert dep.status == DependencyStatus.BLOCKED
+
+    @pytest.mark.asyncio
+    async def test_requires_target_completed(self) -> None:
+        """REQUIRES dependency satisfied when target task completes."""
+        linker = CrossRepoDependencyLinker(AsyncMock())
+
+        dep = CrossRepoDependency(
+            id="d1",
+            source_task_id="t1",
+            source_repo="a",
+            target_task_id="t2",
+            target_repo="b",
+            dependency_type=DependencyType.REQUIRES,
+        )
+        linker._dependencies["d1"] = dep
+        linker._task_dependencies["t1"].append("d1")
+        linker._task_dependents["t2"].append("d1")
+
+        updated = linker.update_all_statuses({"t2": TaskStatus.COMPLETED})
+        assert updated == 1
+        assert dep.status == DependencyStatus.SATISFIED
+
+    @pytest.mark.asyncio
+    async def test_requires_target_failed(self) -> None:
+        """REQUIRES dependency failed when target task fails."""
+        linker = CrossRepoDependencyLinker(AsyncMock())
+
+        dep = CrossRepoDependency(
+            id="d1",
+            source_task_id="t1",
+            source_repo="a",
+            target_task_id="t2",
+            target_repo="b",
+            dependency_type=DependencyType.REQUIRES,
+        )
+        linker._dependencies["d1"] = dep
+        linker._task_dependencies["t1"].append("d1")
+        linker._task_dependents["t2"].append("d1")
+
+        updated = linker.update_all_statuses({"t2": TaskStatus.FAILED})
+        assert updated == 1
+        assert dep.status == DependencyStatus.FAILED
+
+    @pytest.mark.asyncio
+    async def test_no_change(self) -> None:
+        """Returns 0 when no statuses change."""
+        linker = CrossRepoDependencyLinker(AsyncMock())
+
+        dep = CrossRepoDependency(
+            id="d1",
+            source_task_id="t1",
+            source_repo="a",
+            target_task_id="t2",
+            target_repo="b",
+            dependency_type=DependencyType.RELATED,
+        )
+        linker._dependencies["d1"] = dep
+        linker._task_dependencies["t1"].append("d1")
+        linker._task_dependents["t2"].append("d1")
+
+        updated = linker.update_all_statuses({"t1": TaskStatus.COMPLETED})
+        assert updated == 0  # RELATED type is not status-driven
+
+    @pytest.mark.asyncio
+    async def test_multiple_deps_updated(self) -> None:
+        """Multiple deps updated in single call."""
+        linker = CrossRepoDependencyLinker(AsyncMock())
+
+        d1 = CrossRepoDependency(
+            id="d1", source_task_id="t1", source_repo="a",
+            target_task_id="t2", target_repo="b", dependency_type=DependencyType.BLOCKS,
+        )
+        d2 = CrossRepoDependency(
+            id="d2", source_task_id="t1", source_repo="a",
+            target_task_id="t3", target_repo="c", dependency_type=DependencyType.BLOCKS,
+        )
+        for d in [d1, d2]:
+            linker._dependencies[d.id] = d
+            linker._task_dependencies["t1"].append(d.id)
+            linker._task_dependents[d.target_task_id].append(d.id)
+
+        updated = linker.update_all_statuses({"t1": TaskStatus.COMPLETED})
+        assert updated == 2
+
+
+class TestGetDependencyCount:
+    """Tests for dependency count statistics."""
+
+    def test_empty_counts(self) -> None:
+        linker = CrossRepoDependencyLinker(AsyncMock())
+        counts = linker.get_dependency_count()
+        assert counts["total"] == 0
+        assert counts["cross_repo"] == 0
+        assert counts["same_repo"] == 0
+        assert counts["by_type"]["blocks"] == 0
+        assert counts["by_status"]["pending"] == 0
+
+    def test_mixed_counts(self) -> None:
+        linker = CrossRepoDependencyLinker(AsyncMock())
+
+        deps = [
+            CrossRepoDependency(id="d1", source_task_id="t1", source_repo="a",
+                                target_task_id="t2", target_repo="b", dependency_type=DependencyType.BLOCKS),
+            CrossRepoDependency(id="d2", source_task_id="t3", source_repo="a",
+                                target_task_id="t4", target_repo="a", dependency_type=DependencyType.REQUIRES),
+            CrossRepoDependency(id="d3", source_task_id="t5", source_repo="c",
+                                target_task_id="t6", target_repo="d", dependency_type=DependencyType.RELATED,
+                status=DependencyStatus.SATISFIED),
+        ]
+        for d in deps:
+            linker._dependencies[d.id] = d
+            linker._task_dependencies[d.source_task_id].append(d.id)
+            linker._task_dependents[d.target_task_id].append(d.id)
+
+        counts = linker.get_dependency_count()
+        assert counts["total"] == 3
+        assert counts["cross_repo"] == 2
+        assert counts["same_repo"] == 1
+        assert counts["by_type"]["blocks"] == 1
+        assert counts["by_type"]["requires"] == 1
+        assert counts["by_type"]["related"] == 1
+        assert counts["by_status"]["pending"] == 2
+        assert counts["by_status"]["satisfied"] == 1
+
+
+class TestGetAllDependencies:
+    """Tests for get_all_dependencies."""
+
+    @pytest.mark.asyncio
+    async def test_returns_all(self) -> None:
+        linker = CrossRepoDependencyLinker(AsyncMock())
+
+        d1 = CrossRepoDependency(id="d1", source_task_id="t1", source_repo="a",
+                                  target_task_id="t2", target_repo="b", dependency_type=DependencyType.BLOCKS)
+        d2 = CrossRepoDependency(id="d2", source_task_id="t3", source_repo="c",
+                                  target_task_id="t4", target_repo="d", dependency_type=DependencyType.REQUIRES)
+        for d in [d1, d2]:
+            linker._dependencies[d.id] = d
+            linker._task_dependencies[d.source_task_id].append(d.id)
+            linker._task_dependents[d.target_task_id].append(d.id)
+
+        all_deps = linker.get_all_dependencies()
+        assert len(all_deps) == 2
+
+    def test_empty(self) -> None:
+        linker = CrossRepoDependencyLinker(AsyncMock())
+        assert linker.get_all_dependencies() == []
+
+
+class TestMissingTaskHandling:
+    """Tests for edge cases with missing tasks."""
+
+    @pytest.mark.asyncio
+    async def test_missing_source_task(self) -> None:
+        """Error when source task not found."""
+        mock_store = AsyncMock()
+        mock_store.get.return_value = None
+
+        linker = CrossRepoDependencyLinker(mock_store)
+        with pytest.raises(CrossRepoDependencyError, match="Source task not found"):
+            await linker.create_dependency(
+                source_task_id="missing",
+                target_task_id="t2",
+                dependency_type=DependencyType.BLOCKS,
+            )
+
+    @pytest.mark.asyncio
+    async def test_missing_target_task(self) -> None:
+        """Error when target task not found."""
+        mock_store = AsyncMock()
+        task = Task(id="t1", title="T1", repository="a")
+        mock_store.get.side_effect = lambda tid: task if tid == "t1" else None
+
+        linker = CrossRepoDependencyLinker(mock_store)
+        with pytest.raises(CrossRepoDependencyError, match="Target task not found"):
+            await linker.create_dependency(
+                source_task_id="t1",
+                target_task_id="missing",
+                dependency_type=DependencyType.BLOCKS,
+            )
+
+    @pytest.mark.asyncio
+    async def test_duplicate_dependency(self) -> None:
+        """Error when dependency already exists."""
+        mock_store = AsyncMock()
+        t1 = Task(id="t1", title="T1", repository="a")
+        t2 = Task(id="t2", title="T2", repository="b")
+        mock_store.get.side_effect = lambda tid: {"t1": t1, "t2": t2}.get(tid)
+
+        linker = CrossRepoDependencyLinker(mock_store)
+        await linker.create_dependency("t1", "t2", DependencyType.BLOCKS)
+
+        with pytest.raises(CrossRepoDependencyError, match="already exists"):
+            await linker.create_dependency("t1", "t2", DependencyType.BLOCKS)
+
+    @pytest.mark.asyncio
+    async def test_requires_status_not_found(self) -> None:
+        """Returns unchanged when task not found for update."""
+        linker = CrossRepoDependencyLinker(AsyncMock())
+
+        dep = CrossRepoDependency(
+            id="d1", source_task_id="t1", source_repo="a",
+            target_task_id="t2", target_repo="b", dependency_type=DependencyType.REQUIRES,
+        )
+        linker._dependencies["d1"] = dep
+        linker._task_dependencies["t1"].append("d1")
+        linker._task_dependents["t2"].append("d1")
+
+        updated = await linker.update_dependency_status("d1")
+        # No tasks found, status should remain PENDING
+        assert updated.status == DependencyStatus.PENDING
+
+    @pytest.mark.asyncio
+    async def test_update_status_not_found(self) -> None:
+        """Error when dependency ID not found."""
+        linker = CrossRepoDependencyLinker(AsyncMock())
+        with pytest.raises(CrossRepoDependencyError, match="not found"):
+            await linker.update_dependency_status("nonexistent")
+
+    @pytest.mark.asyncio
+    async def test_remove_nonexistent(self) -> None:
+        """Returns False for nonexistent dependency."""
+        linker = CrossRepoDependencyLinker(AsyncMock())
+        assert linker.remove_dependency("nonexistent") is False
+
+    @pytest.mark.asyncio
+    async def test_empty_query_results(self) -> None:
+        """Empty results for nonexistent tasks."""
+        linker = CrossRepoDependencyLinker(AsyncMock())
+        assert linker.get_dependencies_for_task("x") == []
+        assert linker.get_dependents_of_task("x") == []
+        assert linker.get_blocked_tasks("x") == []
+        assert linker.get_cross_repo_dependencies() == []
+        assert linker.get_dependencies_by_repo("x") == []
+
+    @pytest.mark.asyncio
+    async def test_blocking_chain_no_blocks(self) -> None:
+        """Empty chain when only RELATED deps exist."""
+        linker = CrossRepoDependencyLinker(AsyncMock())
+
+        dep = CrossRepoDependency(
+            id="d1", source_task_id="t1", source_repo="a",
+            target_task_id="t2", target_repo="b", dependency_type=DependencyType.RELATED,
+        )
+        linker._dependencies["d1"] = dep
+        linker._task_dependencies["t1"].append("d1")
+        linker._task_dependents["t2"].append("d1")
+
+        chain = linker.get_blocking_chain("t2")
+        assert chain == []
