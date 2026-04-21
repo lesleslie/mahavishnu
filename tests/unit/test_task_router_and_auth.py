@@ -57,8 +57,8 @@ class TestClassifyTask:
         assert classify_task("") == TaskCategory.GENERAL
 
     def test_none_prompt(self):
-        # Empty string handled; None would crash — verify it's handled gracefully
-        assert classify_task("") == TaskCategory.GENERAL
+        # None is coerced to string internally, falls through to GENERAL
+        assert classify_task(None) == TaskCategory.GENERAL
 
     def test_code_generation(self):
         assert classify_task("Write a function to parse JSON") == TaskCategory.CODE_GENERATION

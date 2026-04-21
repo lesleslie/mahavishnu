@@ -6,7 +6,6 @@
 """
 
 from datetime import UTC, datetime, timedelta
-from io import StringIO
 from unittest.mock import MagicMock, patch
 
 import pytest

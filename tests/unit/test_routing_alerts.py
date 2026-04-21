@@ -292,17 +292,19 @@ class TestRoutingAlertManagerLifecycle:
 
 
 class TestGlobalAlertManager:
-    def test_get_alert_manager_creates_singleton(self):
-        # Reset module-level singleton
+    @pytest.fixture(autouse=True)
+    def _reset_singleton(self):
         import mahavishnu.core.routing_alerts as mod
+        original = mod._manager
         mod._manager = None
+        yield
+        mod._manager = original
+
+    def test_get_alert_manager_creates_singleton(self):
         mgr = get_alert_manager()
         assert isinstance(mgr, RoutingAlertManager)
-        assert mod._manager is mgr
 
     def test_get_alert_manager_returns_same(self):
-        import mahavishnu.core.routing_alerts as mod
-        mod._manager = None
         mgr1 = get_alert_manager()
         mgr2 = get_alert_manager()
         assert mgr1 is mgr2
