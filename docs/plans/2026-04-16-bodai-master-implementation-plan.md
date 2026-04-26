@@ -555,6 +555,54 @@ grep -r "PropertyGraphIndex" mahavishnu/ session-buddy/  # zero results
 grep -r "code_graph" mahavishnu/ --include="*.py" | grep -v "mcp" | grep -v "test"  # no direct writes
 ```
 
+**6.4.6 Repo skill generation (--skills)**
+
+Uses Leiden community detection on the code graph to identify functional areas and generate auto-generated `SKILL.md` files that give AI agents targeted context.
+
+**Design spec reference:** Section 4.5 of the code indexing design spec.
+
+**Work:**
+
+- implement community detection using NetworkX (`networkx.community.louvain` or `python-louvain`)
+  - build undirected graph from code nodes (functions, classes, modules) and edges (calls + imports)
+  - weight calls higher than imports
+  - run Leiden algorithm with resolution 1.0
+  - merge communities with < 3 symbols into nearest neighbor
+- analyze each community:
+  - identify entry points via betweenness centrality
+  - compute internal execution flow via topological ordering
+  - identify cross-area connections (edges crossing community boundaries)
+  - compute metrics: symbol count, edge density, cross-community coupling
+- generate SKILL.md per community:
+  - output to `.claude/skills/generated/{community_name}/SKILL.md`
+  - follow existing skill format (frontmatter + overview, key files, entry points, execution flow, cross-area connections)
+  - include community metrics and last-generated timestamp
+- CLI integration:
+  - `mahavishnu index --skills --repo <path>`
+  - `mahavishnu index --skills --all-repos`
+  - `mahavishnu index --all-repos --with-skills` (combined with scheduled sweep)
+- regeneration semantics:
+  - full regeneration on each run (no incremental update)
+  - overwrite previous generated skills
+  - `generated/` prefix distinguishes from hand-written skills
+
+Acceptance criteria:
+
+- `mahavishnu index --skills --repo <path>` generates at least one SKILL.md in `.claude/skills/generated/`
+- each generated skill follows the existing skill format (frontmatter + required sections)
+- entry points list symbols with betweenness centrality > community mean
+- communities with < 3 symbols are merged into neighboring communities
+- no duplicate skill names generated for the same repo
+- generated skills placed under `generated/` prefix — never overwrite hand-written skills
+- fails with `CodeGraphRequired` error if no graph data exists for the target repo
+
+Validation:
+
+```bash
+uv run pytest tests/unit/test_skill_generation.py
+uv run pytest tests/unit/test_community_detection.py
+```
+
 ## 7. Phase 3: Symbiotic Entry Points
 
 Once the core boundaries and learning pipeline are stable, add external surfaces.
