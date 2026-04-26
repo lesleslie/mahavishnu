@@ -20,10 +20,12 @@ class PatternLibrary:
             root = Path(__file__).resolve().parent.parent.parent / "patterns"
         self.root = Path(root)
         self._cache: dict[str, Pattern] = {}
+        self._file_paths: dict[str, Path | None] = {}
 
     def load_all(self) -> list[Pattern]:
         """Load all patterns from the YAML files under root."""
         self._cache.clear()
+        self._file_paths: dict[str, Path] = {}
         if not self.root.is_dir():
             return []
         for yaml_file in sorted(self.root.rglob("*.yaml")):
@@ -32,7 +34,13 @@ class PatternLibrary:
                 if not isinstance(data, dict) or "id" not in data:
                     continue
                 pattern = Pattern.model_validate(data)
+                object.__setattr__(pattern, "_file_path", yaml_file)
                 self._cache[pattern.id] = pattern
+                # Track all file paths for duplicate detection
+                if pattern.id in self._file_paths:
+                    self._file_paths[pattern.id] = None  # None signals duplicate
+                else:
+                    self._file_paths[pattern.id] = yaml_file
             except Exception as e:
                 raise ValueError(f"Failed to load {yaml_file}: {e}") from e
         return list(self._cache.values())
