@@ -112,11 +112,11 @@ SERVICES = [
         "config_file": "/Users/les/Projects/crackerjack/crackerjack/websocket/tls_config.py",
     },
     {
-        "name": "druva",
-        "package": "druva",
-        "service_upper": "DHRUVA",
-        "server_file": "/Users/les/Projects/druva/druva/websocket/server.py",
-        "config_file": "/Users/les/Projects/druva/druva/websocket/tls_config.py",
+        "name": "dhara",
+        "package": "dhara",
+        "service_upper": "DHARA",
+        "server_file": "/Users/les/Projects/dhara/dhara/websocket/server.py",
+        "config_file": "/Users/les/Projects/dhara/dhara/websocket/tls_config.py",
     },
     {
         "name": "excalidraw-mcp",

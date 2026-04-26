@@ -1,15 +1,16 @@
 # OTel Trace Ingester
 
-Native OpenTelemetry trace ingestion using Akosha's HotStore (DuckDB) with semantic search.
+Native OpenTelemetry trace ingestion with semantic search.
 
 ## Overview
 
-The OTel Ingester converts OpenTelemetry trace data into Akosha `HotRecord` format with semantic embeddings for efficient similarity search in DuckDB. **No Docker, PostgreSQL, or pgvector required** - pure Python + DuckDB.
+The OTel Ingester converts OpenTelemetry trace data into Akosha `HotRecord` format with semantic embeddings for efficient similarity search. DuckDB via Akosha HotStore is the default local backend, and PostgreSQL + pgvector is available for durable persistence.
 
 ## Features
 
 - **Semantic Search**: Find traces by meaning, not just exact matches
-- **In-Memory Storage**: Fast DuckDB in-memory database
+- **In-Memory Storage**: Fast DuckDB in-memory database via Akosha HotStore
+- **Durable Storage**: PostgreSQL + pgvector with HNSW indexing
 - **Embedding Caching**: Reduces computation for repeated content
 - **Batch Ingestion**: Efficient bulk trace processing
 - **System Filtering**: Search traces by service (claude, qwen, etc.)
@@ -100,21 +101,25 @@ await ingester.close()
 Add to `settings/mahavishnu.yaml`:
 
 ```yaml
-otel_ingester_enabled: true
-otel_ingester_hot_store_path: ":memory:"  # Or "/path/to/traces.db"
-otel_ingester_embedding_model: "all-MiniLM-L6-v2"
-otel_ingester_cache_size: 1000
-otel_ingester_similarity_threshold: 0.7
+otel_ingester:
+  enabled: true
+  hot_store_path: ":memory:"  # Or "/path/to/traces.db"
+  embedding_model: "all-MiniLM-L6-v2"
+  cache_size: 1000
+  similarity_threshold: 0.7
+  # Optional persistent backend:
+  # storage_type: "postgresql"
+  # pgvector_dsn: "postgresql://user:pass@localhost/mahavishnu"
 ```
 
 ### Environment Variables
 
 ```bash
-export MAHAVISHNU_OTEL_INGESTER_ENABLED=true
-export MAHAVISHNU_OTEL_INGESTER_HOT_STORE_PATH="/path/to/traces.db"
-export MAHAVISHNU_OTEL_INGESTER_EMBEDDING_MODEL="all-MiniLM-L6-v2"
-export MAHAVISHNU_OTEL_INGESTER_CACHE_SIZE=1000
-export MAHAVISHNU_OTEL_INGESTER_SIMILARITY_THRESHOLD=0.7
+export MAHAVISHNU_OTEL_INGESTER__ENABLED=true
+export MAHAVISHNU_OTEL_INGESTER__HOT_STORE_PATH="/path/to/traces.db"
+export MAHAVISHNU_OTEL_INGESTER__EMBEDDING_MODEL="all-MiniLM-L6-v2"
+export MAHAVISHNU_OTEL_INGESTER__CACHE_SIZE=1000
+export MAHAVISHNU_OTEL_INGESTER__SIMILARITY_THRESHOLD=0.7
 ```
 
 ## OTel to HotRecord Mapping
@@ -337,7 +342,7 @@ results = await ingester.search_traces(
 ### Optimization Tips
 
 1. **Use In-Memory for Testing**: `hot_store_path=":memory:"`
-1. **Use Persistent for Production**: `hot_store_path="/data/traces.db"`
+1. **Use Persistent Storage**: `hot_store_path="/data/traces.db"`
 1. **Increase Cache Size**: For repeated content, set `cache_size=5000`
 1. **Batch Ingestion**: Use `ingest_batch()` for bulk loads
 1. **Tune Threshold**: Lower threshold (0.6) for more results, higher (0.9) for precision

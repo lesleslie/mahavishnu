@@ -646,7 +646,7 @@ ______________________________________________________________________
 - **[REMAINING_TASKS.md](REMAINING_TASKS.md)**: Detailed task breakdown
 - **[docs/adr/](docs/adr/)**: Architecture Decision Records
 - **[docs/MCP_TOOLS_SPECIFICATION.md](docs/MCP_TOOLS_SPECIFICATION.md)**: MCP tool API documentation
-- **[docs/IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md)**: Modernization notes
+- **[Implementation Summary](../archive/completion-reports/IMPLEMENTATION_SUMMARY.md)**: Modernization notes
 
 ______________________________________________________________________
 

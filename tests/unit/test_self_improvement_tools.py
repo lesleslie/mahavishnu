@@ -1,5 +1,6 @@
 """Tests for self-improvement MCP tools."""
 
+import subprocess
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -360,22 +361,56 @@ class TestSelfImprovementTools:
         """Test _auto_fix with empty findings."""
         result = await tools._auto_fix([])
 
-        assert result == []
+        assert result[0]["status"] == "skipped"
+        assert result[0]["reason"] == "no_python_files"
 
     @pytest.mark.asyncio
     async def test_auto_fix_with_findings(
         self,
         tools: SelfImprovementTools,
     ) -> None:
-        """Test _auto_fix with findings (placeholder implementation)."""
+        """Test _auto_fix runs Ruff fixers for Python findings."""
         findings = [
-            {"id": "MHV-001", "severity": "critical"},
+            {
+                "id": "MHV-001",
+                "severity": "critical",
+                "affected_files": ["app.py", "README.md", "pkg/module.py"],
+            },
         ]
 
-        result = await tools._auto_fix(findings)
+        completed = subprocess.CompletedProcess(args=["ruff"], returncode=0, stdout="", stderr="")
 
-        # Placeholder implementation returns empty list
+        with patch(
+            "mahavishnu.mcp.tools.self_improvement_tools.subprocess.run",
+            side_effect=[completed, completed, completed],
+        ) as mock_run:
+            result = await tools._auto_fix(findings)
+
         assert isinstance(result, list)
+        assert result[0]["status"] == "fixed"
+        assert result[0]["targets"] == ["app.py", "pkg/module.py"]
+        assert mock_run.call_args_list[0].args[0][:3] == ["ruff", "check", "--fix"]
+        assert mock_run.call_args_list[1].args[0][:2] == ["ruff", "format"]
+        assert mock_run.call_args_list[2].args[0][:2] == ["ruff", "check"]
+
+    @pytest.mark.asyncio
+    async def test_auto_fix_skips_when_no_python_targets(
+        self,
+        tools: SelfImprovementTools,
+    ) -> None:
+        """Test _auto_fix skips findings without Ruff-targetable files."""
+        result = await tools._auto_fix(
+            [
+                {
+                    "id": "MHV-002",
+                    "severity": "low",
+                    "affected_files": ["README.md"],
+                }
+            ]
+        )
+
+        assert result[0]["status"] == "skipped"
+        assert result[0]["reason"] == "no_python_files"
 
 
 class TestSelfImprovementToolsIntegration:

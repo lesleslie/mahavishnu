@@ -1,5 +1,8 @@
 """Quality management CLI commands for Mahavishnu."""
 
+from pathlib import Path
+import subprocess
+
 import typer
 
 # Quality CLI app
@@ -36,4 +39,10 @@ def quality_fix(
     typer.echo(f"Quality fix for {path}")
     if auto:
         typer.echo("Auto-fixing issues")
-    typer.echo("Quality fix complete (stub)")
+
+        target = Path(path)
+        subprocess.run(["ruff", "check", "--fix", str(target)], check=False)
+        subprocess.run(["ruff", "format", str(target)], check=False)
+        subprocess.run(["ruff", "check", str(target)], check=False)
+
+    typer.echo("Quality fix complete")

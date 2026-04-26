@@ -1,292 +1,135 @@
-"""Integration tests for Oneiric MCP integration.
+"""Integration tests for the Dhara-backed adapter registry client.
 
-Tests require Oneiric MCP server to be running.
+The filename is retained for compatibility with existing test selectors. The
+former ``oneiric_mcp`` package has been absorbed into Dhara's adapter registry
+MCP surface.
 
-Run tests:
-    # Start Oneiric MCP server in insecure mode
-    cd /Users/les/Projects/oneiric-mcp
-    python -m oneiric_mcp --port 8679
-
-    # Run integration tests
-    pytest tests/integration/test_oneiric_integration.py -v
+Run live-service tests:
+    MAHAVISHNU_DHARA_INTEGRATION=1 \
+    MAHAVISHNU_DHARA_REGISTRY_URL=http://localhost:8683/mcp \
+    uv run pytest tests/integration/test_oneiric_integration.py -v
 """
 
-import asyncio
+from __future__ import annotations
+
+import os
 
 import pytest
 
 from mahavishnu.core.oneiric_client import (
     AdapterEntry,
-    OneiricMCPClient,
-    OneiricMCPConfig,
+    DharaAdapterRegistryClient,
+    DharaAdapterRegistryConfig,
 )
 
-# Skip tests if Oneiric MCP not available
-pytest.importorskip("oneiric_mcp.grpc")
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.asyncio,
+    pytest.mark.skipif(
+        os.getenv("MAHAVISHNU_DHARA_INTEGRATION") != "1",
+        reason="set MAHAVISHNU_DHARA_INTEGRATION=1 to run live Dhara registry tests",
+    ),
+]
 
 
-@pytest.mark.integration
-@pytest.mark.asyncio
-class TestOneiricMCPIntegration:
-    """Integration tests with real Oneiric MCP server."""
+def _config(timeout_sec: int = 5, cache_ttl_sec: int = 300) -> DharaAdapterRegistryConfig:
+    return DharaAdapterRegistryConfig(
+        enabled=True,
+        base_url=os.getenv("MAHAVISHNU_DHARA_REGISTRY_URL", "http://localhost:8683/mcp"),
+        timeout_sec=timeout_sec,
+        cache_ttl_sec=cache_ttl_sec,
+        token=os.getenv("MAHAVISHNU_DHARA_TOKEN"),
+    )
 
-    async def test_connection_to_server(self):
-        """Test connection to Oneiric MCP server."""
-        config = OneiricMCPConfig(
-            enabled=True,
-            grpc_host="localhost",
-            grpc_port=8679,  # Insecure dev port
-            use_tls=False,
-        )
 
-        client = OneiricMCPClient(config)
+class TestDharaAdapterRegistryIntegration:
+    """Integration tests with a real Dhara MCP adapter registry."""
 
-        try:
-            # Ensure connected
-            await client._ensure_connected()
-
-            # Verify connection
-            assert client._connected is True
-            assert client._channel is not None
-            assert client._stub is not None
-
-        finally:
-            await client.close()
-
-    async def test_list_all_adapters(self):
-        """Test listing all adapters from registry."""
-        config = OneiricMCPConfig(
-            enabled=True,
-            grpc_host="localhost",
-            grpc_port=8679,
-            use_tls=False,
-        )
-
-        client = OneiricMCPClient(config)
+    async def test_health_check(self) -> None:
+        client = DharaAdapterRegistryClient(_config())
 
         try:
-            # List all adapters
-            adapters = await client.list_adapters()
-
-            # Verify response
-            assert isinstance(adapters, list)
-            # Note: May be empty if no adapters registered
-
-        finally:
-            await client.close()
-
-    async def test_list_adapters_with_filters(self):
-        """Test listing adapters with category filter."""
-        config = OneiricMCPConfig(
-            enabled=True,
-            grpc_host="localhost",
-            grpc_port=8679,
-            use_tls=False,
-        )
-
-        client = OneiricMCPClient(config)
-
-        try:
-            # List storage adapters
-            storage_adapters = await client.list_adapters(category="storage")
-
-            # Verify all returned adapters have category="storage"
-            for adapter in storage_adapters:
-                assert adapter.category == "storage"
-
-        finally:
-            await client.close()
-
-    async def test_list_adapters_caching(self):
-        """Test adapter list caching behavior."""
-        config = OneiricMCPConfig(
-            enabled=True,
-            grpc_host="localhost",
-            grpc_port=8679,
-            use_tls=False,
-            cache_ttl_sec=60,
-        )
-
-        client = OneiricMCPClient(config)
-
-        try:
-            # First call (cache miss)
-            adapters1 = await client.list_adapters(use_cache=True)
-            cache_entries_after_first = len(client._cache)
-
-            # Second call (cache hit)
-            adapters2 = await client.list_adapters(use_cache=True)
-            cache_entries_after_second = len(client._cache)
-
-            # Verify caching
-            assert adapters1 == adapters2
-            assert cache_entries_after_first == cache_entries_after_second
-
-            # Invalidate cache
-            await client.invalidate_cache()
-            assert len(client._cache) == 0
-
-        finally:
-            await client.close()
-
-    async def test_health_check(self):
-        """Test health check endpoint."""
-        config = OneiricMCPConfig(
-            enabled=True,
-            grpc_host="localhost",
-            grpc_port=8679,
-            use_tls=False,
-        )
-
-        client = OneiricMCPClient(config)
-
-        try:
-            # Perform health check
             health = await client.health_check()
 
-            # Verify response structure
             assert "status" in health
             assert "connected" in health
             assert "adapter_count" in health
-
-            # If connected successfully
-            if health["status"] == "healthy":
-                assert health["connected"] is True
-                assert isinstance(health["adapter_count"], int)
-
         finally:
             await client.close()
 
-    async def test_resolve_adapter(self):
-        """Test resolving adapter by domain/category/provider."""
-        config = OneiricMCPConfig(
-            enabled=True,
-            grpc_host="localhost",
-            grpc_port=8679,
-            use_tls=False,
-        )
-
-        client = OneiricMCPClient(config)
+    async def test_list_all_adapters(self) -> None:
+        client = DharaAdapterRegistryClient(_config())
 
         try:
-            # Try to resolve a storage adapter
-            # Note: This will only work if adapters are registered
+            adapters = await client.list_adapters()
+
+            assert isinstance(adapters, list)
+            for adapter in adapters:
+                assert isinstance(adapter, AdapterEntry)
+                assert adapter.adapter_id
+                assert adapter.domain
+                assert adapter.category
+                assert adapter.provider
+        finally:
+            await client.close()
+
+    async def test_list_adapters_with_filters(self) -> None:
+        client = DharaAdapterRegistryClient(_config())
+
+        try:
+            storage_adapters = await client.list_adapters(category="storage")
+
+            for adapter in storage_adapters:
+                assert adapter.category == "storage"
+        finally:
+            await client.close()
+
+    async def test_list_adapters_caching(self) -> None:
+        client = DharaAdapterRegistryClient(_config(cache_ttl_sec=60))
+
+        try:
+            adapters1 = await client.list_adapters(use_cache=True)
+            cache_entries_after_first = len(client._cache)
+
+            adapters2 = await client.list_adapters(use_cache=True)
+            cache_entries_after_second = len(client._cache)
+
+            assert adapters1 == adapters2
+            assert cache_entries_after_first == cache_entries_after_second
+
+            await client.invalidate_cache()
+            assert len(client._cache) == 0
+        finally:
+            await client.close()
+
+    async def test_resolve_adapter(self) -> None:
+        client = DharaAdapterRegistryClient(_config())
+
+        try:
             adapter = await client.resolve_adapter(
                 domain="adapter",
                 category="storage",
                 provider="s3",
-                healthy_only=False,  # Don't filter by health for testing
+                healthy_only=False,
             )
 
-            # If adapter found, verify structure
             if adapter:
-                assert isinstance(adapter, AdapterEntry)
                 assert adapter.domain == "adapter"
                 assert adapter.category == "storage"
                 assert adapter.provider == "s3"
                 assert adapter.adapter_id is not None
-
         finally:
             await client.close()
 
-    async def test_circuit_breaker(self):
-        """Test circuit breaker behavior with failing adapter."""
-        config = OneiricMCPConfig(
-            enabled=True,
-            grpc_host="localhost",
-            grpc_port=8679,
-            use_tls=False,
-        )
-
-        client = OneiricMCPClient(config)
+    async def test_adapter_entry_serialization(self) -> None:
+        client = DharaAdapterRegistryClient(_config())
 
         try:
-            # Test with non-existent adapter (will fail)
-            fake_adapter_id = "nonexistent.project.adapter.fake"
-
-            # Check health (will fail)
-            is_healthy = await client.check_adapter_health(fake_adapter_id)
-            assert is_healthy is False
-
-            # Circuit breaker should track failure
-            # Note: May not be blocked yet depending on threshold
-
-        finally:
-            await client.close()
-
-    async def test_connection_failure(self):
-        """Test handling of connection failure."""
-        config = OneiricMCPConfig(
-            enabled=True,
-            grpc_host="localhost",
-            grpc_port=9999,  # Wrong port
-            use_tls=False,
-            timeout_sec=2,  # Short timeout for testing
-        )
-
-        client = OneiricMCPClient(config)
-
-        try:
-            # Try to list adapters (should fail)
-            with pytest.raises(Exception):  # ConnectionError or similar
-                await client.list_adapters()
-
-        finally:
-            await client.close()
-
-    async def test_concurrent_requests(self):
-        """Test handling concurrent requests."""
-        config = OneiricMCPConfig(
-            enabled=True,
-            grpc_host="localhost",
-            grpc_port=8679,
-            use_tls=False,
-        )
-
-        client = OneiricMCPClient(config)
-
-        try:
-            # Launch concurrent requests
-            tasks = [
-                client.list_adapters(),
-                client.list_adapters(category="storage"),
-                client.health_check(),
-            ]
-
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            # Verify all completed
-            assert len(results) == 3
-
-            # Check for exceptions
-            exceptions = [r for r in results if isinstance(r, Exception)]
-            if exceptions:
-                # At least health_check should work
-                pass
-
-        finally:
-            await client.close()
-
-    async def test_adapter_entry_serialization(self):
-        """Test AdapterEntry to_dict conversion."""
-        config = OneiricMCPConfig(
-            enabled=True,
-            grpc_host="localhost",
-            grpc_port=8679,
-            use_tls=False,
-        )
-
-        client = OneiricMCPClient(config)
-
-        try:
-            # List adapters
             adapters = await client.list_adapters()
 
             if adapters:
-                # Test serialization of first adapter
                 adapter_dict = adapters[0].to_dict()
 
-                # Verify required fields
                 assert "adapter_id" in adapter_dict
                 assert "project" in adapter_dict
                 assert "domain" in adapter_dict
@@ -295,89 +138,20 @@ class TestOneiricMCPIntegration:
                 assert "capabilities" in adapter_dict
                 assert "factory_path" in adapter_dict
                 assert "health_status" in adapter_dict
-
         finally:
             await client.close()
 
-    async def test_cache_invalidation(self):
-        """Test cache invalidation between queries."""
-        config = OneiricMCPConfig(
-            enabled=True,
-            grpc_host="localhost",
-            grpc_port=8679,
-            use_tls=False,
-            cache_ttl_sec=300,
+    async def test_connection_failure(self) -> None:
+        client = DharaAdapterRegistryClient(
+            DharaAdapterRegistryConfig(
+                enabled=True,
+                base_url="http://localhost:9/mcp",
+                timeout_sec=1,
+            )
         )
-
-        client = OneiricMCPClient(config)
 
         try:
-            # First query
-            adapters1 = await client.list_adapters(use_cache=True)
-            cache_size_1 = len(client._cache)
-
-            # Invalidate cache
-            await client.invalidate_cache()
-            cache_size_2 = len(client._cache)
-
-            # Verify cache cleared
-            assert cache_size_1 > 0
-            assert cache_size_2 == 0
-
-            # Second query (should fetch fresh)
-            adapters2 = await client.list_adapters(use_cache=False)
-
-            # Should have cache entry again
-            cache_size_3 = len(client._cache)
-            assert cache_size_3 > 0
-
+            with pytest.raises(ConnectionError):
+                await client.list_adapters(use_cache=False)
         finally:
             await client.close()
-
-
-@pytest.mark.integration
-@pytest.mark.asyncio
-class TestOneiricMCPTools:
-    """Integration tests for Oneiric MCP tools."""
-
-    async def test_oneiric_list_adapters_tool(self):
-        """Test oneiric_list_adapters MCP tool."""
-        from mahavishnu.mcp.tools.oneiric_tools import oneiric_list_adapters
-
-        # Call tool
-        result = await oneiric_list_adapters()
-
-        # Verify structure
-        assert "count" in result
-        assert "adapters" in result
-        assert isinstance(result["adapters"], list)
-        assert isinstance(result["count"], int)
-
-    async def test_oneiric_health_check_tool(self):
-        """Test oneiric_health_check MCP tool."""
-        from mahavishnu.mcp.tools.oneiric_tools import oneiric_health_check
-
-        # Call tool
-        result = await oneiric_health_check()
-
-        # Verify structure
-        assert "status" in result
-        assert "connected" in result
-        assert result["status"] in ["healthy", "unhealthy", "disabled"]
-
-    async def test_oneiric_invalidate_cache_tool(self):
-        """Test oneiric_invalidate_cache MCP tool."""
-        from mahavishnu.mcp.tools.oneiric_tools import (
-            oneiric_invalidate_cache,
-            oneiric_list_adapters,
-        )
-
-        # List adapters to populate cache
-        await oneiric_list_adapters()
-
-        # Invalidate cache
-        result = await oneiric_invalidate_cache()
-
-        # Verify
-        assert "success" in result
-        assert isinstance(result["success"], bool)

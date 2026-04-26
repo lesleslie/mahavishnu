@@ -12,8 +12,8 @@ Security Features:
 
 from __future__ import annotations
 
-import logging
 import inspect
+import logging
 from typing import Any
 import uuid
 
@@ -868,7 +868,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
             adapter_name: Human-readable adapter name
             capabilities: List of adapter capabilities
             provider: Provider name (e.g., "prefect", "agno")
-            source: Registration source ("entry_point", "oneiric_mcp", "manual")
+            source: Registration source ("entry_point", "dhara", "manual")
         """
         event_data = {
             "adapter_id": adapter_id,

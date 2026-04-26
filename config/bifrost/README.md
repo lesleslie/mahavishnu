@@ -104,11 +104,11 @@ Supported route headers:
 
 Current task mappings:
 
-- `think` -> `anthropic/GLM-4.7`
-- `long_context` or `longContext` -> `anthropic/GLM-4.7`
-- `web_search` or `webSearch` -> `anthropic/GLM-4.7`
-- `image` -> `anthropic/GLM-4.5V` or `anthropic/GLM-4.6V`
-- `background`, `cheap`, or `high_throughput` -> `anthropic/GLM-4.5-Air`
+- `think` -> `zai-openai/glm-5.1`
+- `long_context` or `longContext` -> `zai-openai/glm-5-turbo`
+- `web_search` or `webSearch` -> `zai-openai/glm-5-turbo`
+- `image` -> `zai-openai/GLM-4.5V` or `zai-openai/GLM-4.6V`
+- `background`, `cheap`, or `high_throughput` -> `zai-openai/glm-4.7-flashx`
 
 Notes:
 
@@ -131,12 +131,12 @@ As of 2026-04-08:
 - `zai-openai/*` does not currently support the OpenAI Responses API, so Codex cannot be switched to z.ai through `/v1/responses` as a quota workaround
 - after rebootstrap, Bifrost now stores `config.db` under `~/.config/bifrost` instead of the repo root and the launchd job writes the expected ready file
 - after the config-store cleanup, `/v1/models` reports only healthy OpenAI and Anthropic key statuses; the old misleading invalid-key status was caused by the previous stale/orphaned startup state
-- `x-bf-task: think` upgrades an Anthropic-compatible request from `GLM-4.5-Air` to `GLM-4.7`
-- `x-bf-task: long_context` upgrades an Anthropic-compatible request from `GLM-4.5-Air` to `GLM-4.7`
-- `x-bf-task: web_search` upgrades an Anthropic-compatible request from `GLM-4.5-Air` to `GLM-4.7`
-- `x-bf-task: image` upgrades an Anthropic-compatible request from `GLM-4.5-Air` to `GLM-4.5V`
-- `x-bf-task: background` downgrades an Anthropic-compatible request from `GLM-4.7` to `GLM-4.5-Air`
-- `x-bf-task: cheap` downgrades an Anthropic-compatible request from `GLM-4.7` to `GLM-4.5-Air`
+- `x-bf-task: think` routes to the stronger reasoning model
+- `x-bf-task: long_context` routes to the long-context model
+- `x-bf-task: web_search` routes to the search-oriented model
+- `x-bf-task: image` routes to the vision model(s)
+- `x-bf-task: background` routes to the cheaper background model
+- `x-bf-task: cheap` routes to the cheaper background model
 - the OpenAI z.ai custom provider still does not support `list_models`, so Bifrost falls back to static datasheets for `zai-openai/*`
 - plain Homebrew Redis 8.6.2 on `6379` still lacks RediSearch `FT.*`, so Bifrost cache uses the dedicated Redis Stack instance on `6380`
 - Bifrost now reports `semantic_cache - active`

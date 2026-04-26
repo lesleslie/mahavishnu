@@ -17,12 +17,14 @@ from mahavishnu.core.repo_models import (
 @pytest.fixture
 def sample_repos_path(tmp_path: Path) -> Path:
     """Create a sample ecosystem.yaml file."""
+    repo1_path = tmp_path / "repo1"
+    repo2_path = tmp_path / "repo2"
     repos_data = {
         "repos": [
             {
                 "name": "test-repo-1",
                 "package": "test_repo_1",
-                "path": "/tmp/test1",
+                "path": str(repo1_path),
                 "nickname": "repo1",
                 "nicknames": ["r1"],
                 "tags": ["python-testing", "unit-test"],
@@ -37,7 +39,7 @@ def sample_repos_path(tmp_path: Path) -> Path:
             {
                 "name": "test-repo-2",
                 "package": "test_repo_2",
-                "path": "/tmp/test2",
+                "path": str(repo2_path),
                 "tags": ["python-testing", "integration"],  # Both repos share python-testing
                 "description": "Test repository 2",
                 "mcp": "3rd-party",
@@ -200,8 +202,8 @@ async def test_get_by_nickname_and_repo_and_paths_and_language_filter(sample_rep
     assert by_repo.package == "test_repo_1"
 
     all_paths = manager.get_all_paths()
-    assert any(path.endswith("test1") for path in all_paths)
-    assert any(path.endswith("test2") for path in all_paths)
+    assert any(path.endswith("repo1") for path in all_paths)
+    assert any(path.endswith("repo2") for path in all_paths)
 
     language_filtered = manager.filter(language="python")
     assert len(language_filtered) == 1

@@ -7,7 +7,7 @@ Scope: Mahavishnu observability cleanup, Bodai ecosystem metrics rollout, active
 ## Goals
 
 1. Establish one clear metrics architecture for Mahavishnu and the Bodai ecosystem.
-2. Eliminate stale `Druva` naming where the current system and package are `Dhara`.
+2. Eliminate stale legacy naming where the current system and package are `Dhara`.
 3. Ensure metrics that are defined are actually emitted, scraped, and queryable.
 4. Add the missing operational metrics required to run orchestration safely.
 5. Provide a phased rollout with low-risk validation at each step.
@@ -32,7 +32,7 @@ Scope: Mahavishnu observability cleanup, Bodai ecosystem metrics rollout, active
   - offline repo-quality reporting
 - `scripts/collect_metrics.py` is empty, but `mahavishnu/metrics_cli.py` depends on it.
 - `SessionBuddyPoller` reads flattened config names that do not match the nested settings model.
-- Active code still uses `druva_*` naming for Dhara clients, URLs, comments, and fallback logic.
+- Active code still uses legacy naming for Dhara clients, URLs, comments, and fallback logic.
 
 ## Active Stale Reference Findings
 
@@ -49,13 +49,13 @@ These are active references in non-archive code or current config and should be 
   - `_default_dhara_base_url`
   - `get_dhara_client()`
   - `set_dhara_client_base_url()`
-  - docstrings say "Druva MCP client"
+  - docstrings say "legacy MCP client"
 - `settings/mahavishnu.yaml`
   - `health.dependencies.dhara`
   - env var comments still use `...__DHARA__...`
 - `mahavishnu/core/workflow_models.py`
   - fallback import uses `from dhara import ...`
-  - comments say "Try Druva directly"
+  - comments say "Try the Dhara service directly"
 - `mahavishnu/core/adapter_registry.py`
   - module and class docs describe "Dhara persistence"
 - `mahavishnu/core/health_integration.py`
@@ -64,14 +64,14 @@ These are active references in non-archive code or current config and should be 
 
 ### P1: tests and operational scripts
 
-- WebSocket integration tests still refer to mixed `druva` and `dhara` service names and channels.
-- WebSocket health/deploy scripts still refer to `druva`.
-- some migration scripts and metrics schema docstrings still say "Druva".
+- WebSocket integration tests still refer to mixed legacy and `dhara` service names and channels.
+- WebSocket health/deploy scripts still refer to the legacy service name.
+- some migration scripts and metrics schema docstrings still use legacy naming.
 
 ### P2: docs
 
 - `docs/DHARA_WIRING.md` is the canonical wiring doc for Dhara integration.
-- multiple planning and architecture docs still say "Druva" for current Dhara functionality.
+- multiple planning and architecture docs still use legacy naming for current Dhara functionality.
 - archive and `.bak` content can be updated last or left as historical material if explicitly marked.
 
 ## Target Architecture
@@ -234,12 +234,12 @@ Attributes:
 
 ## Workstream 1: Naming Cleanup
 
-Objective: remove active `Druva` references where the live component is `Dhara`.
+Objective: remove active legacy references where the live component is `Dhara`.
 
 Tasks:
-- Rename active config keys and comments from `druva` to `dhara`.
-- Rename `druva_url` style variables and helper methods to `dhara_url`.
-- Rename `get_druva_client()` and related internal caches to `get_dhara_client()`.
+- Rename active config keys and comments to use the canonical `dhara` naming.
+- Rename legacy URL-style variables and helper methods to `dhara_url`.
+- Rename `get_dhara_client()` and related internal caches to the canonical names.
 - Update non-archive docs and tests to use `dhara`.
 - Add temporary compatibility shims only where required to avoid breaking callers.
 
@@ -247,7 +247,7 @@ Compatibility rule:
 - Keep old helper names only as deprecated wrappers for one release if external call sites may exist.
 
 Acceptance criteria:
-- No `Druva` references remain in active code paths, current config, or non-archive docs except for explicit historical notes.
+- No legacy references remain in active code paths, current config, or non-archive docs except for explicit historical notes.
 
 ## Workstream 2: Metrics Surface Consolidation
 
@@ -359,7 +359,7 @@ Deliverables:
 Duration: 1 to 2 days
 
 Tasks:
-- Rename active `Druva` references to `Dhara`.
+- Rename active legacy references to `Dhara`.
 - Fix `/metrics` endpoint behavior.
 - Fix Session-Buddy poller config access.
 
@@ -436,7 +436,7 @@ Deliverables:
 - No metric is defined without a confirmed emitter.
 - No endpoint is documented as `/metrics` unless it returns Prometheus text.
 - No dashboard query depends on a metric that is only present in docs/examples.
-- No active code path refers to Dhara as `Druva`.
+- No active code path refers to Dhara by the old name.
 - Repo-quality reporting is clearly separated from runtime telemetry.
 - All new metrics include bounded-cardinality attributes.
 
@@ -444,7 +444,7 @@ Deliverables:
 
 - Metric cardinality explosion from per-repo or per-workflow labels.
 - Temporary dual-publish period causing duplicate dashboards or alert noise.
-- Existing tests may assume old `druva` names.
+- Existing tests may assume old names.
 - External systems may still import old helper names.
 
 ## Mitigations
@@ -453,7 +453,7 @@ Deliverables:
 - Use compatibility wrappers during rename phase.
 - Update dashboards and alerts in the same phase as metric renames.
 - Add a short deprecation window for renamed helpers.
-- Package-level imports should move from `druva` to `dhara` as part of the cleanup.
+- Package-level imports should move to `dhara` as part of the cleanup.
 
 ## Recommended Execution Order
 
@@ -468,7 +468,7 @@ Deliverables:
 
 ### PR 1
 
-Title: `refactor(observability): rename active druva references to dhara`
+Title: `refactor(observability): rename active legacy references to dhara`
 
 Scope:
 - app config helpers

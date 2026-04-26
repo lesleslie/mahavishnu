@@ -382,12 +382,12 @@ class ContentIngester:
                 ip_str = sockaddr[0]
                 try:
                     ip = ipaddress.ip_address(ip_str)
-                    for blocked_range in BLOCKED_IP_RANGES:
-                        if ip in blocked_range:
-                            raise ValueError(f"Blocked IP range: {ip} is in {blocked_range}")
                 except ValueError:
-                    # Not a valid IP, skip
-                    pass
+                    # Not a valid IP address, skip this entry
+                    continue
+                for blocked_range in BLOCKED_IP_RANGES:
+                    if ip in blocked_range:
+                        raise ValueError(f"Blocked IP range: {ip} is in {blocked_range}")
         except socket.gaierror as e:
             # DNS resolution failed - could be intentional for SSRF
             raise ValueError(f"DNS resolution failed for {hostname}: {e}") from e

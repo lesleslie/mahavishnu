@@ -1,7 +1,7 @@
 # Initiative 13: Dashboard Phase 2 (Textual, Conditional)
 
 ## Metadata
-- Status: `complete`
+- Status: `partial`
 - Owner Role: `Platform UI`
 - Target Window: `2026-06-08` to `2026-06-26`
 
@@ -12,6 +12,7 @@ Provide live read-only ecosystem diagnostics in a unified Textual dashboard.
 - [x] `I13-1` Add `[tui]` dependency and bootstrap app shell
 - [x] `I13-2` Implement overview + sweep screens
 - [x] `I13-3` Implement routing/alerts screens + read-only constraints
+- [ ] `I13-4` Replace placeholder data with live read-only backend/MCP data
 
 ## Dependencies
 - `G1` Adoption gate: Initiative 1 command usage (`>=3` active weekly users)
@@ -34,3 +35,4 @@ Provide live read-only ecosystem diagnostics in a unified Textual dashboard.
   - DashboardApp with TabbedContent (4 tabs), key bindings (1-4 for tab switching, q for quit)
   - CLI: `mahavishnu dashboard` command registered in _main_cli.py
   - Tests: tests/unit/test_tui_dashboard.py (14 tests, all passing)
+- 2026-04-25: Status corrected from `complete` to `partial`. The Textual shell exists, but current fetchers still return placeholder data. Live read-only data wiring should follow `docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md`.

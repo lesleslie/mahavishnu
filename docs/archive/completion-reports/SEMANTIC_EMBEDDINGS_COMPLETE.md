@@ -208,7 +208,7 @@ curl http://localhost:11434/api/tags
 
 1. `/Users/les/Projects/mahavishnu/scripts/init_learning_db.py` - Database initialization
 2. `/Users/les/Projects/mahavishnu/scripts/generate_ollama_embeddings.py` - Embedding generation
-3. `/Users/les/Projects/mahavishnu/docs/SEMANTIC_EMBEDDINGS_COMPLETE.md` - This document
+3. `/Users/les/Projects/mahavishnu/docs/archive/completion-reports/SEMANTIC_EMBEDDINGS_COMPLETE.md` - This document
 
 ## Database Statistics
 

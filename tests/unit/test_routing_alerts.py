@@ -231,21 +231,21 @@ class TestRoutingAlertManagerStatus:
         mgr = RoutingAlertManager(handlers=[handler, handler])
         assert mgr.get_status()["handlers_count"] == 2
 
-    def test_status_running_after_start(self):
+    @pytest.mark.asyncio
+    async def test_status_running_after_start(self):
         mgr = RoutingAlertManager(handlers=[], evaluation_interval_seconds=3600)
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(mgr.start())
+        await mgr.start()
         try:
             status = mgr.get_status()
             assert status["running"] is True
         finally:
-            loop.run_until_complete(mgr.stop())
+            await mgr.stop()
 
-    def test_status_stopped_after_stop(self):
+    @pytest.mark.asyncio
+    async def test_status_stopped_after_stop(self):
         mgr = RoutingAlertManager(handlers=[], evaluation_interval_seconds=3600)
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(mgr.start())
-        loop.run_until_complete(mgr.stop())
+        await mgr.start()
+        await mgr.stop()
         assert mgr.get_status()["running"] is False
 
 

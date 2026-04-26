@@ -1,8 +1,24 @@
 # Bodai Agent Platform Master Spec
 
-**Status:** Draft
+**Status:** Draft (reviewed 2026-04-24; findings from 6-agent cross-review applied)
 **Date:** 2026-04-16
+**Last reviewed:** 2026-04-24
 **Scope:** Consolidated plan for Hermes-inspired TUI work, Mahavishnu adapter strategy, and Bodai ecosystem integration
+
+**Companion documents:**
+- Implementation plan: [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
+- Control plane update: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
+
+**Phase registry (cross-plan reference):**
+
+This document uses **Spec Phases** (S1-S4). Companion documents use independent phase sequences. See the companion docs for their own numbering.
+
+| Spec Phase | Focus | Maps to Impl Plan Phase | Maps to Control Plane Phase |
+|-----------|-------|------------------------|----------------------------|
+| S1 | TUI boundary, Hermes context refs, skills loader | Impl Phase 0 (boundary hardening) | CP Phase 0-1 (reconciliation, normalization), CP Phase 4 (live TUI wiring) |
+| S2 | Messaging adapters, Prefect/LlamaIndex expansion | Impl Phase 2 (engine expansion) | CP Phase 5-6 (routing visibility, capability inventory) |
+| S3 | Browser automation, plugin/hook, ACP/editor | Impl Phase 3 (symbiotic entry points) | CP Phase 7 (operator recommendations) |
+| S4 | Deeper RAG, pool, workflow integration | Impl Phase 4 (optional extensions) | — |
 
 ## 1. Purpose
 
@@ -88,8 +104,10 @@ Mahavishnu should route by task class:
 - `AI_TASK` -> Agno first
 - `RAG_QUERY` -> LlamaIndex first
 - `WORKFLOW` -> Prefect first
-- `BATCH_TASK` -> Prefect first
-- `INTERACTIVE_TASK` -> Agno first
+- `BATCH_TASK` -> Prefect first (note: not yet in `TaskType` enum; must be added to `core/task_router.py` before routing is wired)
+- `INTERACTIVE_TASK` -> Agno first (note: not yet in `TaskType` enum; must be added to `core/task_router.py` before routing is wired)
+
+**Router composition note:** Mahavishnu has two routing layers that compose: `core/task_router.py` selects the orchestration engine (Agno/Prefect/LlamaIndex) based on task class, while `workers/task_router.py` selects the LLM model (glm-4.7, qwen2.5-coder, etc.) based on task category. The engine-level router runs first; the model-level router runs within the selected engine's worker. This two-layer composition must be documented explicitly in the routing module and the two routers must not make conflicting routing decisions.
 
 Fallback behavior should remain explicit and observable:
 
@@ -206,26 +224,27 @@ The practical division is:
 
 ### 6.1 Highest Priority
 
-1. **Messaging gateway adapters**
+1. **Context-file and reference semantics**
+   - auto-load project context files
+   - `@file`, `@diff`, `@url`
+   - this belongs in the TUI and should be reflected in agent prompt construction
+
+2. **Checkpoint / rollback workflow**
+   - belongs in the TUI and Mahavishnu worktree safety path
+
+3. **Skills system**
+   - belongs in the TUI and Agno integration path
+
+4. **Provider routing / fallback / credential pools**
+   - belongs in Mahavishnu core and the LLM gateway layer
+
+5. **Messaging gateway adapters** (deferred to Impl Phase 3)
    - Telegram
    - Discord
    - Slack
    - WhatsApp
    - This should live in the ecosystem layer, not inside the TUI
-
-2. **Context-file and reference semantics**
-   - auto-load project context files
-   - `@file`, `@diff`, `@url`
-   - this belongs in the TUI and should be reflected in agent prompt construction
-
-3. **Checkpoint / rollback workflow**
-   - belongs in the TUI and Mahavishnu worktree safety path
-
-4. **Skills system**
-   - belongs in the TUI and Agno integration path
-
-5. **Provider routing / fallback / credential pools**
-   - belongs in Mahavishnu core and the LLM gateway layer
+   - **Sequencing note:** Originally listed as highest priority, but the implementation plan defers messaging to Phase 3 (symbiotic entry points) because it requires ecosystem-layer services that do not yet exist. This reordering is intentional: messaging gateways need stable routing, health, and capability discovery first.
 
 ### 6.2 Conditional Priority
 
@@ -469,7 +488,7 @@ Prefer established engines when they already solve the problem well:
 - Temporal if durable execution semantics later need to go beyond what Prefect provides
 - LlamaIndex for retrieval and knowledge workflows
 - Agno for interactive agent loops
-- OpenClaw for channel-aware delivery and messaging workflows when that runtime fits better than a custom implementation
+- OpenClaw for channel-aware delivery and messaging workflows when that runtime fits better than a custom implementation (note: OpenClaw is treated as an architectural reference, not a planned dependency. No integration work should begin until a concrete delivery use case is identified and the OpenClaw API is evaluated against Bodai's ownership model.)
 
 Only build custom subsystems when the existing tool:
 
@@ -499,31 +518,77 @@ Review these for consolidation or deprecation:
 - agent-memory defaults that conflict with the TUI memory policy
 - direct engine ownership in the TUI layer
 
-## 10. Recommended Implementation Order
+## 10. Cross-Cutting Architectural Requirements
 
-### Phase 1
+### 10.1 Security boundaries
+
+The TUI-to-Mahavishnu MCP boundary is a trust boundary. If the TUI is compromised, the attacker gains access to whatever MCP tools the TUI can invoke. Security requirements:
+
+- MCP tool access must be scoped per interface (TUI gets a subset; CLI gets full; programmatic MCP gets configurable)
+- Skill synthesis inputs must be sanitized and validated before draft generation to prevent prompt injection through skill content
+- Service-to-service MCP calls (Mahavishnu to Session-Buddy, Akosha, etc.) require authentication; inter-service auth model must be defined before Phase 2 of the implementation plan
+- The `ecosystem_status` report must not expose sensitive configuration (secrets, internal network topology beyond service names, or credential references)
+- Learning pipeline: no skill may self-promote without human review. Generated skills are isolated in a `draft` namespace until approved.
+
+### 10.2 Observability requirements
+
+The ecosystem must define SLIs/SLOs before alerting thresholds are meaningful. Minimum SLIs:
+
+| SLI | Target |
+|-----|--------|
+| Mahavishnu liveness | 99.9% |
+| Routing decision latency (p99) | < 100ms |
+| First-choice routing rate | > 95% |
+| Adapter success rate | > 95% |
+
+Health checks must distinguish liveness (process running) from readiness (able to serve traffic). The canonical status vocabulary (`ok | degraded | unhealthy | unknown | disabled`) has a severity ordering for aggregation: `disabled < unknown < degraded < unhealthy` (where `ok` is baseline). This ordering determines how component statuses roll up to overall ecosystem status.
+
+### 10.3 Operational readiness
+
+Each dependency must have a documented degradation mode: what Mahavishnu does when that dependency is down. Required dependencies (Session-Buddy) should fail closed; optional dependencies (Akosha, Dhara, Crackerjack) should degrade gracefully and annotate the status report.
+
+### 10.4 Adapter interface contracts
+
+The `OrchestratorAdapter` base interface must be strengthened:
+
+- `execute()` input/output must use typed Pydantic models (`TaskRequest` / `ExecutionResult`), not `dict[str, Any]`
+- `execute()` must accept a mandatory `timeout_seconds` parameter
+- Adapters must declare which task classes they support via `supports_task_class()` or equivalent
+- `AdapterCapabilities` should migrate from boolean flags to a set of string capability identifiers for richer matching
+- Adapter lifecycle should follow a formalized state machine: `initializing -> ready -> degraded -> unhealthy -> shutting_down`, with valid transition rules
+
+## 11. Recommended Implementation Order
+
+### Spec Phase 1 (maps to Impl Phase 0 + CP Phases 0-1)
 
 - finish the TUI boundary
 - add Hermes-style context references
 - formalize skills loading in the TUI as a read-only browser and launcher, not a persistence authority
 - keep approvals inline and tool-risk based
 - keep Agno memory externalized
+- reconcile plan state and normalize status vocabulary (see Control Plane Update Phase 0-1)
 
-### Phase 2
+**Acceptance criteria:** See Implementation Plan Section 4.0 (Phase 0 checklist, 10 items) and Section 4.1-4.5 (per-section criteria). See Control Plane Update Phase 0 (plan state reconciliation) and Phase 1 (status normalization). All three sets of criteria must pass.
 
-- add messaging adapters to the ecosystem
+### Spec Phase 2 (maps to Impl Phase 2 + CP Phases 5-6)
+
+- add messaging adapters to the ecosystem (deferred from original "highest priority" — see Section 6.1)
 - expand Prefect to blocks / events / richer work-pool management
 - expand LlamaIndex ingestion and evaluation
 - keep any TUI skills browser or session-history view read-only
 
-### Phase 3
+**Acceptance criteria:** See Implementation Plan Section 6 (Phase 2 per-engine criteria). See Control Plane Update Phase 5 (routing visibility) and Phase 6 (capability inventory). Note: Phase 2 has an explicit inter-service auth prerequisite — see Impl Plan Section 6 header.
+
+### Spec Phase 3 (maps to Impl Phase 3 + CP Phase 7)
 
 - add browser automation only if a concrete workflow demands it
 - add plugin/hook support only where explicit extension points are insufficient
 - consider ACP/editor integration if it adds meaningful value beyond the TUI and PyCharm
 - keep orchestration state and promotion logic outside the UI
 
-## 11. Decision Summary
+**Acceptance criteria:** See Implementation Plan Section 7 (Phase 3 acceptance criteria). See Control Plane Update Phase 7 (operator recommendations). Each new entry point must register as a task source in the canonical routing layer.
+
+## 12. Decision Summary
 
 ### Keep
 
@@ -555,6 +620,6 @@ Review these for consolidation or deprecation:
 - retrieval connectors and evals
 - optional browser automation
 
-## 12. Implementation Plan
+## 13. Implementation Plan
 
 The operational follow-up to this spec is [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md).

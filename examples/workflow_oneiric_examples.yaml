@@ -1,12 +1,12 @@
-# Example workflows demonstrating Oneiric MCP integration
+# Example workflows demonstrating Dhara adapter registry integration
 #
-# These workflows show how to use Oneiric MCP adapter discovery within
+# These workflows show how to use Dhara adapter registry adapter discovery within
 # Mahavishnu workflow orchestration.
 #
 # Prerequisites:
-# 1. Oneiric MCP server running (port 8679 for insecure dev)
-# 2. Mahavishnu configured with oneiric_mcp.enabled=true
-# 3. Adapters registered in Oneiric MCP registry
+# 1. Dhara adapter registry server running (port 8683)
+# 2. Mahavishnu configured with oneiric_mcp.enabled=true (legacy settings key for Dhara)
+# 3. Adapters registered in the Dhara adapter registry
 
 workflows:
   # Example 1: Dynamic storage adapter selection
@@ -17,7 +17,7 @@ workflows:
     steps:
       # Step 1: Discover available storage adapters
       - name: "discover-storage"
-        tool: "oneiric_list_adapters"
+        tool: "adapter_list"
         params:
           domain: "adapter"
           category: "storage"
@@ -27,7 +27,7 @@ workflows:
 
       # Step 2: Select S3 adapter if available
       - name: "select-s3-adapter"
-        tool: "oneiric_resolve_adapter"
+        tool: "adapter_resolve"
         params:
           domain: "adapter"
           category: "storage"
@@ -38,7 +38,7 @@ workflows:
 
       # Step 3: Verify S3 adapter health
       - name: "verify-adapter-health"
-        tool: "oneiric_check_health"
+        tool: "adapter_health"
         params:
           adapter_id: "${steps.select-s3-adapter.adapter.adapter_id}"
         outputs:
@@ -46,7 +46,7 @@ workflows:
 
       # Step 4: Fallback to SQLite if S3 unavailable
       - name: "fallback-sqlite"
-        tool: "oneiric_resolve_adapter"
+        tool: "adapter_resolve"
         params:
           domain: "adapter"
           category: "storage"
@@ -77,7 +77,7 @@ workflows:
     steps:
       # Step 1: Resolve Prefect orchestration adapter
       - name: "resolve-prefect"
-        tool: "oneiric_resolve_adapter"
+        tool: "adapter_resolve"
         params:
           domain: "adapter"
           category: "orchestration"
@@ -88,7 +88,7 @@ workflows:
 
       # Step 2: Verify adapter health
       - name: "check-prefect-health"
-        tool: "oneiric_check_health"
+        tool: "adapter_health"
         params:
           adapter_id: "${steps.resolve-prefect.adapter.adapter_id}"
         outputs:
@@ -128,7 +128,7 @@ workflows:
     steps:
       # Step 1: Try Redis first (preferred cache)
       - name: "try-redis"
-        tool: "oneiric_resolve_adapter"
+        tool: "adapter_resolve"
         params:
           domain: "adapter"
           category: "cache"
@@ -140,7 +140,7 @@ workflows:
 
       # Step 2: Fallback to Memcached if Redis unavailable
       - name: "try-memcached"
-        tool: "oneiric_resolve_adapter"
+        tool: "adapter_resolve"
         params:
           domain: "adapter"
           category: "cache"
@@ -153,7 +153,7 @@ workflows:
 
       # Step 3: Final fallback to in-memory cache
       - name: "use-memory-cache"
-        tool: "oneiric_resolve_adapter"
+        tool: "adapter_resolve"
         params:
           domain: "adapter"
           category: "cache"
@@ -185,7 +185,7 @@ workflows:
     steps:
       # Step 1: List all Mahavishnu adapters
       - name: "list-adapters"
-        tool: "oneiric_list_adapters"
+        tool: "adapter_list"
         params:
           project: "mahavishnu"
         outputs:
@@ -193,7 +193,7 @@ workflows:
 
       # Step 2: Check health of each adapter
       - name: "check-health-parallel"
-        tool: "oneiric_check_health"
+        tool: "adapter_health"
         params:
           adapter_id: "${adapter.adapter_id}"
         iterate_over: "${steps.list-adapters.adapters}"
@@ -233,7 +233,7 @@ workflows:
     steps:
       # Step 1: Discover memory aggregation adapters
       - name: "list-memory-adapters"
-        tool: "oneiric_list_adapters"
+        tool: "adapter_list"
         params:
           domain: "adapter"
           category: "memory"
@@ -243,7 +243,7 @@ workflows:
 
       # Step 2: Select best memory adapter (prefer Redis)
       - name: "select-memory-adapter"
-        tool: "oneiric_resolve_adapter"
+        tool: "adapter_resolve"
         params:
           domain: "adapter"
           category: "memory"
@@ -254,7 +254,7 @@ workflows:
 
       # Step 3: Fallback to file-based memory
       - name: "fallback-file-memory"
-        tool: "oneiric_resolve_adapter"
+        tool: "adapter_resolve"
         params:
           domain: "adapter"
           category: "memory"
@@ -287,11 +287,11 @@ workflows:
     steps:
       # Step 1: Invalidate cache to ensure fresh discovery
       - name: "invalidate-cache"
-        tool: "oneiric_invalidate_cache"
+        tool: "adapter_cache_invalidate"
 
       # Step 2: List all available adapters
       - name: "list-all-adapters"
-        tool: "oneiric_list_adapters"
+        tool: "adapter_list"
         params:
           use_cache: false
         outputs:
@@ -308,7 +308,7 @@ workflows:
 
       # Step 4: Test each adapter
       - name: "test-adapters"
-        tool: "oneiric_check_health"
+        tool: "adapter_health"
         params:
           adapter_id: "${adapter.adapter_id}"
         iterate_over: "${steps.list-all-adapters.adapters}"
@@ -344,7 +344,7 @@ workflows:
     steps:
       # Step 1: Discover coordination adapters
       - name: "list-coordination-adapters"
-        tool: "oneiric_list_adapters"
+        tool: "adapter_list"
         params:
           domain: "service"
           category: "coordination"
@@ -352,9 +352,9 @@ workflows:
         outputs:
           - coordination_adapters
 
-      # Step 2: Check Oneiric MCP integration health
+      # Step 2: Check Dhara adapter registry integration health
       - name: "check-integration-health"
-        tool: "oneiric_health_check"
+        tool: "adapter_health"
         outputs:
           - health_status
 

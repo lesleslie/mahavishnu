@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from mahavishnu.core.adapter_discovery import AdapterMetadata
 from mahavishnu.core.adapter_persistence import (
-    AdapterPersistenceLayer,
     AdapterState,
     HealthRecord,
 )
@@ -26,7 +24,6 @@ from mahavishnu.core.task_requirements import (
     TaskRequirements,
 )
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -37,7 +34,8 @@ def mock_config():
     """Create mock configuration."""
     config = MagicMock()
     config.adapter_allowlist_patterns = ["mahavishnu.adapters.*", "mahavishnu.engines.*"]
-    config.oneiric_mcp_enabled = False
+    config.oneiric_mcp = MagicMock()
+    config.oneiric_mcp.enabled = False
     return config
 
 
@@ -408,7 +406,7 @@ class TestRegistrationReport:
             discovered=10,
             registered=8,
             failed=[("bad_adapter", "Import error")],
-            sources={"entry_points": 5, "oneiric_mcp": 5},
+            sources={"entry_points": 5, "dhara": 5},
         )
 
         assert report.discovered == 10

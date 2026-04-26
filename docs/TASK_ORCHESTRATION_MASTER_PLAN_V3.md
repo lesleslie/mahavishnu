@@ -1237,7 +1237,7 @@ Three critical ADRs have been created to document architectural decisions:
 
 ### Appendix A: Phase 0 Action Plan
 
-**File**: `/docs/PHASE_0_ACTION_PLAN.md`
+**File**: `/docs/archive/implementation-plans/PHASE_0_ACTION_PLAN.md`
 
 Complete step-by-step action plan for Phase 0 (6-8 weeks):
 

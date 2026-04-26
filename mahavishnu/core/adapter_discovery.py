@@ -4,12 +4,12 @@ This module implements the adapter discovery engine that discovers adapters from
 multiple sources:
 
 1. **Python Entry Points** - Plugin discovery via `[project.entry-points."mahavishnu.adapters"]`
-2. **Oneiric MCP** - Remote adapter discovery via gRPC (uses existing `OneiricMCPClient`)
+2. **Dhara MCP** - Remote adapter discovery via Dhara's adapter registry tools
 
 Features:
 - Thread-safe with `threading.RLock`
 - Adapter allowlist security (configurable patterns)
-- Graceful fallback when Oneiric MCP unavailable
+- Graceful fallback when Dhara is unavailable
 - Cache adapter metadata with TTL
 
 Example usage:
@@ -24,7 +24,7 @@ Example usage:
 
     # Or discover from specific sources
     entry_point_adapters = await engine.discover_from_entry_points()
-    oneiric_adapters = await engine.discover_from_oneiric_mcp()
+    dhara_adapters = await engine.discover_from_dhara()
 """
 
 from dataclasses import dataclass, field
@@ -35,9 +35,8 @@ import threading
 from typing import TYPE_CHECKING, Any, cast
 
 from mahavishnu.core.oneiric_client import (
-    ONEIRIC_MCP_AVAILABLE,
-    OneiricMCPClient,
-    OneiricMCPConfig,
+    DharaAdapterRegistryClient,
+    DharaAdapterRegistryConfig,
 )
 
 if TYPE_CHECKING:
@@ -55,7 +54,7 @@ class AdapterMetadata:
     """Metadata for a discovered adapter.
 
     This dataclass captures all relevant information about an adapter
-    discovered from either entry points or Oneiric MCP.
+    discovered from either entry points or Dhara.
 
     Attributes:
         adapter_id: Unique identifier for the adapter (e.g., "mahavishnu.prefect")
@@ -67,7 +66,7 @@ class AdapterMetadata:
         priority: Priority for adapter selection (higher = preferred, default 0)
         health_check_url: Optional URL for health check endpoint
         metadata: Additional adapter-specific metadata
-        source: Discovery source ("entry_point" or "oneiric_mcp")
+        source: Discovery source ("entry_point" or "dhara")
         discovered_at: Timestamp when adapter was discovered
     """
 
@@ -168,10 +167,10 @@ class AdapterMetadata:
 
     @classmethod
     def from_adapter_entry(cls, entry: Any) -> "AdapterMetadata":
-        """Create AdapterMetadata from Oneiric MCP AdapterEntry.
+        """Create AdapterMetadata from a normalized remote adapter entry.
 
         Args:
-            entry: AdapterEntry from OneiricMCPClient
+            entry: AdapterEntry from the Dhara registry client
 
         Returns:
             AdapterMetadata instance
@@ -189,7 +188,7 @@ class AdapterMetadata:
             priority=entry_metadata.get("priority", 0),
             health_check_url=entry.health_check_url,
             metadata=entry_metadata,
-            source="oneiric_mcp",
+            source="dhara",
         )
 
 
@@ -198,7 +197,7 @@ class AdapterDiscoveryEngine:
 
     Discovers adapters from:
     1. Python entry points (`[project.entry-points."mahavishnu.adapters"]`)
-    2. Oneiric MCP gRPC registry (if available)
+    2. Dhara MCP adapter registry (if enabled)
 
     Features:
     - Thread-safe discovery with RLock
@@ -227,9 +226,9 @@ class AdapterDiscoveryEngine:
                 - allowlist_patterns: List of glob patterns for allowed adapter IDs
                     (default: ["mahavishnu.adapters.*"])
                 - cache_ttl_seconds: Cache TTL in seconds (default: 300)
-                - oneiric_mcp_config: OneiricMCPConfig or dict for Oneiric MCP client
+                - dhara_registry_config: DharaAdapterRegistryConfig or dict
                 - enable_entry_points: Enable entry point discovery (default: True)
-                - enable_oneiric_mcp: Enable Oneiric MCP discovery (default: True)
+                - enable_dhara_registry: Enable Dhara registry discovery (default: True)
         """
         config = config or {}
 
@@ -240,16 +239,20 @@ class AdapterDiscoveryEngine:
         )
         self._cache_ttl_seconds: int = config.get("cache_ttl_seconds", 300)
         self._enable_entry_points: bool = config.get("enable_entry_points", True)
-        self._enable_oneiric_mcp: bool = config.get("enable_oneiric_mcp", True)
+        self._enable_dhara_registry: bool = config.get(
+            "enable_dhara_registry",
+            config.get("enable_oneiric_mcp", True),
+        )
 
-        # Oneiric MCP client configuration
-        oneiric_config = config.get("oneiric_mcp_config")
-        if oneiric_config and isinstance(oneiric_config, dict):
-            self._oneiric_mcp_config = OneiricMCPConfig(**oneiric_config)
-        elif oneiric_config and isinstance(oneiric_config, OneiricMCPConfig):
-            self._oneiric_mcp_config = oneiric_config
+        # Dhara adapter registry client configuration. Accept the legacy key
+        # while callers migrate to dhara_registry_config.
+        dhara_config = config.get("dhara_registry_config", config.get("oneiric_mcp_config"))
+        if dhara_config and isinstance(dhara_config, dict):
+            self._dhara_registry_config = DharaAdapterRegistryConfig(**dhara_config)
+        elif dhara_config and isinstance(dhara_config, DharaAdapterRegistryConfig):
+            self._dhara_registry_config = dhara_config
         else:
-            self._oneiric_mcp_config = OneiricMCPConfig()
+            self._dhara_registry_config = DharaAdapterRegistryConfig()
 
         # Thread safety
         self._lock = threading.RLock()
@@ -259,39 +262,39 @@ class AdapterDiscoveryEngine:
         self._cache_hits: int = 0
         self._cache_misses: int = 0
 
-        # Oneiric MCP client (lazy initialization)
-        self._oneiric_client: OneiricMCPClient | None = None
+        # Dhara registry client (lazy initialization)
+        self._dhara_client: DharaAdapterRegistryClient | None = None
 
         logger.info(
             f"AdapterDiscoveryEngine initialized "
             f"(entry_points={self._enable_entry_points}, "
-            f"oneiric_mcp={self._enable_oneiric_mcp}, "
+            f"dhara_registry={self._enable_dhara_registry}, "
             f"cache_ttl={self._cache_ttl_seconds}s, "
             f"allowlist_patterns={len(self._allowlist_patterns)})"
         )
 
-    def _get_oneiric_client(self) -> OneiricMCPClient | None:
-        """Get or create Oneiric MCP client (lazy initialization).
+    def _get_dhara_client(self) -> DharaAdapterRegistryClient | None:
+        """Get or create Dhara registry client (lazy initialization).
 
         Returns:
-            OneiricMCPClient instance or None if unavailable
+            DharaAdapterRegistryClient instance or None if unavailable
         """
-        if not self._enable_oneiric_mcp:
+        if not self._enable_dhara_registry:
             return None
 
-        if not ONEIRIC_MCP_AVAILABLE:
-            logger.debug("Oneiric MCP not available, skipping remote discovery")
-            return None
-
-        if self._oneiric_client is None:
+        if self._dhara_client is None:
             try:
-                self._oneiric_client = OneiricMCPClient(self._oneiric_mcp_config)
-                logger.info("Oneiric MCP client initialized for adapter discovery")
+                self._dhara_client = DharaAdapterRegistryClient(self._dhara_registry_config)
+                logger.info("Dhara registry client initialized for adapter discovery")
             except Exception as e:
-                logger.warning(f"Failed to initialize Oneiric MCP client: {e}")
+                logger.warning(f"Failed to initialize Dhara registry client: {e}")
                 return None
 
-        return self._oneiric_client
+        return self._dhara_client
+
+    def _get_oneiric_client(self) -> DharaAdapterRegistryClient | None:
+        """Compatibility alias for older tests/callers."""
+        return self._get_dhara_client()
 
     def _is_adapter_allowed(self, adapter_id: str) -> bool:
         """Check if adapter ID matches allowlist patterns.
@@ -336,7 +339,7 @@ class AdapterDiscoveryEngine:
     async def discover_all(self) -> list[AdapterMetadata]:
         """Discover adapters from all configured sources.
 
-        Combines results from entry points and Oneiric MCP, deduplicating
+        Combines results from entry points and Dhara, deduplicating
         by adapter_id (entry points take precedence).
 
         Returns:
@@ -364,16 +367,16 @@ class AdapterDiscoveryEngine:
             except Exception as e:
                 logger.error(f"Entry point discovery failed: {e}")
 
-        # Oneiric MCP (fills in gaps not covered by entry points)
-        if self._enable_oneiric_mcp:
+        # Dhara registry (fills in gaps not covered by entry points)
+        if self._enable_dhara_registry:
             try:
-                oneiric_adapters = await self.discover_from_oneiric_mcp()
-                for adapter in oneiric_adapters:
+                dhara_adapters = await self.discover_from_dhara()
+                for adapter in dhara_adapters:
                     # Only add if not already discovered via entry points
                     if adapter.adapter_id not in all_adapters:
                         all_adapters[adapter.adapter_id] = adapter
             except Exception as e:
-                logger.warning(f"Oneiric MCP discovery failed (graceful fallback): {e}")
+                logger.warning(f"Dhara registry discovery failed (graceful fallback): {e}")
 
         result = list(all_adapters.values())
 
@@ -453,19 +456,19 @@ class AdapterDiscoveryEngine:
         logger.info(f"Discovered {len(adapters)} adapters from entry points")
         return adapters
 
-    async def discover_from_oneiric_mcp(self) -> list[AdapterMetadata]:
-        """Discover adapters from Oneiric MCP gRPC registry.
+    async def discover_from_dhara(self) -> list[AdapterMetadata]:
+        """Discover adapters from Dhara's MCP adapter registry.
 
-        Uses the existing OneiricMCPClient to fetch adapter metadata
+        Uses Dhara adapter registry MCP tools to fetch adapter metadata
         from the remote registry.
 
         Returns:
-            List of adapter metadata from Oneiric MCP
+            List of adapter metadata from Dhara
 
         Note:
-            Returns empty list if Oneiric MCP is unavailable (graceful fallback)
+            Returns empty list if Dhara is unavailable (graceful fallback)
         """
-        cache_key = "oneiric_mcp"
+        cache_key = "dhara"
 
         # Check cache
         with self._lock:
@@ -477,13 +480,13 @@ class AdapterDiscoveryEngine:
         adapters: list[AdapterMetadata] = []
 
         # Get client
-        client = self._get_oneiric_client()
+        client = self._get_dhara_client()
         if client is None:
-            logger.debug("Oneiric MCP client not available, returning empty list")
+            logger.debug("Dhara registry client not available, returning empty list")
             return adapters
 
         try:
-            # List all adapters from Oneiric MCP
+            # List all adapters from Dhara registry
             entries = await client.list_adapters(healthy_only=False, use_cache=True)
 
             for entry in entries:
@@ -494,13 +497,13 @@ class AdapterDiscoveryEngine:
 
                 adapter_meta = AdapterMetadata.from_adapter_entry(entry)
                 adapters.append(adapter_meta)
-                logger.debug(f"Discovered adapter from Oneiric MCP: {adapter_meta.adapter_id}")
+                logger.debug(f"Discovered adapter from Dhara: {adapter_meta.adapter_id}")
 
         except ConnectionError as e:
-            logger.warning(f"Oneiric MCP connection error (graceful fallback): {e}")
+            logger.warning(f"Dhara registry connection error (graceful fallback): {e}")
             # Return empty list - graceful fallback
         except Exception as e:
-            logger.error(f"Oneiric MCP discovery failed: {e}")
+            logger.error(f"Dhara registry discovery failed: {e}")
             # Still return empty list - graceful fallback
 
         # Update cache
@@ -508,8 +511,12 @@ class AdapterDiscoveryEngine:
             self._cache[cache_key] = (adapters, datetime.now(UTC))
             self._cache_misses += 1
 
-        logger.info(f"Discovered {len(adapters)} adapters from Oneiric MCP")
+        logger.info(f"Discovered {len(adapters)} adapters from Dhara")
         return adapters
+
+    async def discover_from_oneiric_mcp(self) -> list[AdapterMetadata]:
+        """Compatibility alias for older callers."""
+        return await self.discover_from_dhara()
 
     def invalidate_cache(self) -> None:
         """Clear all cached discovery results.
@@ -524,8 +531,10 @@ class AdapterDiscoveryEngine:
         """Clear cached discovery results for a specific source.
 
         Args:
-            source: Cache key/source to invalidate ("entry_points", "oneiric_mcp", etc.)
+            source: Cache key/source to invalidate ("entry_points", "dhara", etc.)
         """
+        if source == "oneiric_mcp":
+            source = "dhara"
         with self._lock:
             if source in self._cache:
                 del self._cache[source]
@@ -534,17 +543,17 @@ class AdapterDiscoveryEngine:
     async def close(self) -> None:
         """Close the discovery engine and release resources.
 
-        Closes the Oneiric MCP client if initialized.
+        Closes the Dhara registry client if initialized.
         """
         with self._lock:
-            if self._oneiric_client is not None:
+            if self._dhara_client is not None:
                 try:
-                    await self._oneiric_client.close()
-                    logger.info("Oneiric MCP client closed")
+                    await self._dhara_client.close()
+                    logger.info("Dhara registry client closed")
                 except Exception as e:
-                    logger.warning(f"Error closing Oneiric MCP client: {e}")
+                    logger.warning(f"Error closing Dhara registry client: {e}")
                 finally:
-                    self._oneiric_client = None
+                    self._dhara_client = None
 
             self._cache.clear()
 

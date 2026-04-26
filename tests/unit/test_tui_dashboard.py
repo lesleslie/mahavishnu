@@ -132,3 +132,85 @@ class TestDashboardCLI:
 
         command_names = [cmd.name for cmd in app.registered_commands]
         assert "dashboard" in command_names
+
+
+@pytest.mark.skipif(not _textual_available, reason="textual not installed")
+class TestOverviewScreenCompose:
+    """Test OverviewScreen widget composition."""
+
+    def test_compose_yields_widgets(self):
+        from mahavishnu.tui.app import OverviewScreen
+        from textual.containers import VerticalScroll
+        from textual.widgets import Label, Static
+
+        assert issubclass(OverviewScreen, VerticalScroll)
+
+    def test_overview_screen_has_status_text_reactive(self):
+        from mahavishnu.tui.app import OverviewScreen
+        from textual.reactive import Reactive
+
+        assert hasattr(OverviewScreen, "status_text")
+        reactive = getattr(OverviewScreen, "status_text")
+        assert isinstance(reactive, Reactive)
+        assert reactive._default == "Loading..."
+
+
+@pytest.mark.skipif(not _textual_available, reason="textual not installed")
+class TestSweepScreenCompose:
+    """Test SweepScreen widget composition."""
+
+    def test_compose_yields_table(self):
+        from mahavishnu.tui.app import SweepScreen
+        from textual.containers import VerticalScroll
+        from textual.widgets import Label, DataTable
+
+        assert issubclass(SweepScreen, VerticalScroll)
+
+
+@pytest.mark.skipif(not _textual_available, reason="textual not installed")
+class TestRoutingScreenCompose:
+    """Test RoutingScreen widget composition."""
+
+    def test_compose_yields_table(self):
+        from mahavishnu.tui.app import RoutingScreen
+        from textual.containers import VerticalScroll
+        from textual.widgets import Label, Static, DataTable
+
+        assert issubclass(RoutingScreen, VerticalScroll)
+
+
+@pytest.mark.skipif(not _textual_available, reason="textual not installed")
+class TestAlertsScreenCompose:
+    """Test AlertsScreen widget composition."""
+
+    def test_compose_yields_table(self):
+        from mahavishnu.tui.app import AlertsScreen
+        from textual.containers import VerticalScroll
+        from textual.widgets import Label, Static, DataTable
+
+        assert issubclass(AlertsScreen, VerticalScroll)
+
+
+@pytest.mark.skipif(not _textual_available, reason="textual not installed")
+class TestDashboardAppCompose:
+    """Test DashboardApp compose and actions."""
+
+    def test_action_switch_tab_valid(self):
+        from mahavishnu.tui.app import DashboardApp
+
+        app = DashboardApp()
+        app.action_switch_tab("sweep")  # Should not raise
+
+    def test_action_switch_tab_invalid(self):
+        from mahavishnu.tui.app import DashboardApp
+
+        app = DashboardApp()
+        app.action_switch_tab("nonexistent")  # Should not raise
+
+    def test_app_compose_structure(self):
+        from mahavishnu.tui.app import DashboardApp
+
+        app = DashboardApp()
+        # Verify the app can be instantiated (compose is deferred)
+        assert app.TITLE == "Mahavishnu Dashboard"
+        assert len(app.BINDINGS) >= 4

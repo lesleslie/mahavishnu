@@ -6,6 +6,7 @@ enabling automation of tools like GIMP, Inkscape, Blender, and mdinject.
 
 import asyncio
 import logging
+import uuid
 from typing import Any
 
 from .base import BaseWorker, WorkerResult, WorkerStatus
@@ -65,10 +66,16 @@ class ApplicationWorker(BaseWorker):
             raise ValueError(f"Worker type {worker_type} is not an MCP application worker")
 
         super().__init__(worker_type=worker_type)
+        self._worker_id = f"app_{uuid.uuid4().hex[:12]}"
         self.mcp_client = mcp_client
         self.session_buddy_client = session_buddy_client
         self._start_time: float | None = None
         self._mcp_server_name = self.config.mcp_server
+
+    @property
+    def worker_id(self) -> str:
+        """Unique identifier for this worker instance."""
+        return self._worker_id
 
     async def start(self) -> str:
         """Initialize connection to MCP application.

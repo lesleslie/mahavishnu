@@ -18,10 +18,11 @@ logger = logging.getLogger(__name__)
 class DharaClient:
     """Async client for Dhara's MCP HTTP tool endpoint."""
 
-    def __init__(self, base_url: str, timeout: float = 30.0) -> None:
+    def __init__(self, base_url: str, timeout: float = 30.0, token: str | None = None) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self._client = httpx.AsyncClient(timeout=timeout)
+        headers = {"Authorization": f"Bearer {token}"} if token else None
+        self._client = httpx.AsyncClient(timeout=timeout, headers=headers)
 
     @property
     def tools_url(self) -> str:

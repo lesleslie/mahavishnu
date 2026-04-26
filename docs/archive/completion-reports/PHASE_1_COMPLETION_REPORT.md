@@ -118,7 +118,7 @@ Phase 1 of the Task Orchestration Master Plan has been successfully completed. A
 |----------|---------|
 | `docs/QUICK_START.md` | 5-minute getting started guide |
 | `docs/ACCESSIBILITY_CHECKLIST.md` | WCAG 2.1 compliance checklist |
-| `docs/PHASE_1_ACTION_PLAN.md` | Week-by-week implementation plan |
+| `docs/archive/implementation-plans/PHASE_1_ACTION_PLAN.md` | Week-by-week implementation plan |
 | `tests/accessibility/` | Automated accessibility testing |
 
 > Note: the legacy GitHub Actions accessibility workflow referenced in earlier drafts was later removed. Current enforcement uses Crackerjack and repository-local validation commands.

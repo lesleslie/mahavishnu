@@ -79,7 +79,7 @@ open http://localhost:3000   # Grafana
 
 **Best for:** Understanding system design, planning deployments
 
-### 4. [OTLP Documentation Summary](OTLP_DOCUMENTATION_SUMMARY.md)
+### 4. [OTLP Documentation Summary](archive/summaries/OTLP_DOCUMENTATION_SUMMARY.md)
 
 **Quick reference and file inventory**
 
@@ -297,7 +297,7 @@ See [OTLP Setup Guide - Production Checklist](OTLP_SETUP_GUIDE.md#production-che
 - [OTLP Setup Guide](OTLP_SETUP_GUIDE.md) - Main documentation
 - [OTLP Troubleshooting](OTLP_TROUBLESHOOTING.md) - Problem-solving
 - [OTLP Architecture](OTLP_ARCHITECTURE.md) - Visual diagrams
-- [OTLP Summary](OTLP_DOCUMENTATION_SUMMARY.md) - Quick reference
+- [OTLP Summary](archive/summaries/OTLP_DOCUMENTATION_SUMMARY.md) - Quick reference
 
 ### Tools
 

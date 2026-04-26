@@ -301,8 +301,8 @@ class MockAdapter:
 class MockOneiricResolver:
     """Mock for Oneiric resolver with configurable candidates.
 
-    Simulates the Oneiric MCP resolver for testing adapter resolution
-    without requiring an actual Oneiric MCP connection.
+    Simulates the Dhara registry resolver for testing adapter resolution
+    without requiring an actual Dhara connection.
 
     Attributes:
         candidates: List of MockCandidate instances
@@ -656,7 +656,7 @@ class MockAdapterDiscovery:
     """Mock for adapter discovery engine.
 
     Simulates the AdapterDiscoveryEngine for testing adapter discovery
-    without requiring actual entry points or Oneiric MCP connection.
+    without requiring actual entry points or a Dhara registry connection.
 
     Attributes:
         adapters: List of AdapterMetadata-compatible dictionaries
@@ -691,9 +691,7 @@ class MockAdapterDiscovery:
         self.discover_from_entry_points = AsyncMock(
             side_effect=self._discover_from_entry_points_impl
         )
-        self.discover_from_oneiric_mcp = AsyncMock(
-            side_effect=self._discover_from_oneiric_mcp_impl
-        )
+        self.discover_from_dhara = AsyncMock(side_effect=self._discover_from_dhara_impl)
 
         # Sync method mocks
         self.invalidate_cache = MagicMock(side_effect=self._invalidate_cache_impl)
@@ -749,13 +747,11 @@ class MockAdapterDiscovery:
         ]
         return [self._create_metadata_from_dict(a) for a in entry_point_adapters]
 
-    async def _discover_from_oneiric_mcp_impl(self) -> list[MagicMock]:
-        """Implementation of discover_from_oneiric_mcp."""
-        self._record_call("discover_from_oneiric_mcp")
-        oneiric_adapters = [
-            a for a in self._adapters if a.get("source") == "oneiric_mcp"
-        ]
-        return [self._create_metadata_from_dict(a) for a in oneiric_adapters]
+    async def _discover_from_dhara_impl(self) -> list[MagicMock]:
+        """Implementation of discover_from_dhara."""
+        self._record_call("discover_from_dhara")
+        dhara_adapters = [a for a in self._adapters if a.get("source") == "dhara"]
+        return [self._create_metadata_from_dict(a) for a in dhara_adapters]
 
     def _invalidate_cache_impl(self) -> None:
         """Implementation of invalidate_cache."""

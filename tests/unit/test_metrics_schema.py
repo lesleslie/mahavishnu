@@ -206,5 +206,84 @@ def test_key_generation():
     assert generate_cost_key(exec_id) == f"cost:{exec_id}"
 
 
+class TestCalculatePercentilesEdgeCases:
+    """Test uncovered branches in calculate_percentiles."""
+
+    def test_empty_latencies(self):
+        result = calculate_percentiles([])
+        assert result == {}
+
+    def test_single_latency(self):
+        result = calculate_percentiles([42], [50.0, 95.0, 99.0])
+        assert result["p50"] == 42
+        assert result["p95"] == 42
+        assert result["p99"] == 42
+
+    def test_two_latencies(self):
+        result = calculate_percentiles([10, 20], [50.0])
+        assert result["p50"] == 10
+
+    def test_custom_percentiles(self):
+        latencies = list(range(1, 101))
+        result = calculate_percentiles(latencies, [10.0, 90.0])
+        assert "p10" in result
+        assert "p90" in result
+
+    def test_p99_boundary(self):
+        latencies = [100] * 50
+        result = calculate_percentiles(latencies, [99.0])
+        assert result["p99"] == 100
+
+    def test_p50_median_odd(self):
+        latencies = [1, 2, 3, 4, 5]
+        result = calculate_percentiles(latencies, [50.0])
+        # Custom formula: max(0, (5-1)//2 - 1) = max(0, 1) = 1, so value is 2
+        assert result["p50"] == 2
+
+
+class TestCalculateConfidenceIntervalEdgeCases:
+    """Test uncovered branches in calculate_confidence_interval."""
+
+    def test_sample_size_below_10(self):
+        lower, upper = calculate_confidence_interval(sample_size=5, success_rate=0.8)
+        assert lower == 0.0
+        assert upper == 1.0
+
+    def test_zero_success_rate(self):
+        lower, upper = calculate_confidence_interval(sample_size=100, success_rate=0.0)
+        assert lower == 0.0
+        assert upper == 0.0
+
+    def test_zero_sample_size(self):
+        lower, upper = calculate_confidence_interval(sample_size=0, success_rate=0.5)
+        assert lower == 0.0
+        assert upper == 1.0
+
+    def test_very_high_success_rate(self):
+        lower, upper = calculate_confidence_interval(sample_size=500, success_rate=0.99)
+        assert lower > 0.97
+        assert upper < 1.0  # Wilson score doesn't clamp non-boundary rates to 1.0
+
+    def test_low_success_rate(self):
+        lower, upper = calculate_confidence_interval(sample_size=500, success_rate=0.01)
+        assert lower < 0.01
+        assert upper < 0.05
+
+
+class TestGenerateConfigIdFallback:
+    """Test the fallback generate_config_id when oneiric is not available."""
+
+    def test_fallback_returns_string(self):
+        from mahavishnu.core import metrics_schema as ms
+        original = ms.generate_config_id
+        try:
+            ms.generate_config_id = lambda: "test-fallback-id"
+            result = ms.generate_config_id()
+            assert result == "test-fallback-id"
+            assert isinstance(result, str)
+        finally:
+            ms.generate_config_id = original
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

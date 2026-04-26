@@ -3,13 +3,9 @@
 import pytest
 
 from mahavishnu.core.config import (
-    AgnoAdapterConfig,
-    AgnoLLMConfig,
-    AgnoMemoryConfig,
-    AgnoToolsConfig,
-    AuthConfig,
-    AdapterConfig,
     AdapterRegistryConfig,
+    AgnoMemoryConfig,
+    AuthConfig,
     DependencyConfig,
     GoalParsingConfig,
     GoalTeamsConfig,
@@ -20,12 +16,9 @@ from mahavishnu.core.config import (
     IntegrationConfig,
     LLMConfig,
     MahavishnuSettings,
-    MemoryBackend,
     MonitoringConfig,
     ObservabilityConfig,
     OneiricMCPConfig,
-    OTelIngesterConfig,
-    OTelStorageConfig,
     PoolConfig,
     PrefectConfig,
     QualityControlConfig,
@@ -430,40 +423,13 @@ class TestOneiricMCPConfigValidation:
     def test_defaults(self):
         cfg = OneiricMCPConfig()
         assert cfg.enabled is False
-        assert cfg.grpc_port == 8679
-        assert cfg.use_tls is False
-        assert cfg.jwt_enabled is False
+        assert cfg.base_url == "http://localhost:8683/mcp"
+        assert cfg.token is None
 
-    def test_jwt_enabled_requires_secret(self):
-        with pytest.raises(Exception, match="jwt_secret"):
-            OneiricMCPConfig(jwt_enabled=True, jwt_secret=None)
-
-    def test_jwt_with_secret_ok(self):
-        cfg = OneiricMCPConfig(jwt_enabled=True, jwt_secret="mysecret")
-        assert cfg.jwt_enabled is True
-
-    def test_tls_requires_certs(self):
-        with pytest.raises(Exception, match="tls_cert_path"):
-            OneiricMCPConfig(use_tls=True, tls_cert_path=None, tls_key_path=None)
-
-    def test_tls_with_certs_ok(self):
-        # Pydantic v2 validates fields in definition order; use_tls (field 3)
-        # is validated before tls_cert_path (field 9). We need a model_validator
-        # or construct with all TLS fields first then set use_tls via model copy.
-        # For now, test that the config accepts TLS fields when use_tls=False,
-        # and validate the model_validator approach.
-        cfg = OneiricMCPConfig(
-            use_tls=False,
-            tls_cert_path="/path/cert.pem",
-            tls_key_path="/path/key.pem",
-            tls_ca_path="/path/ca.pem",
-        )
-        assert cfg.tls_cert_path == "/path/cert.pem"
-        assert cfg.tls_key_path == "/path/key.pem"
-
-    def test_grpc_port_range(self):
-        with pytest.raises(Exception):
-            OneiricMCPConfig(grpc_port=0)
+    def test_custom_base_url_and_token(self):
+        cfg = OneiricMCPConfig(base_url="http://dhara.example/mcp", token="secret")
+        assert cfg.base_url == "http://dhara.example/mcp"
+        assert cfg.token == "secret"
 
     def test_cache_ttl_range(self):
         with pytest.raises(Exception):

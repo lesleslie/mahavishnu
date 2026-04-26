@@ -1,477 +1,596 @@
-"""Unit tests for Oneiric MCP client integration.
+"""Unit tests for the Dhara-backed adapter registry compatibility client."""
 
-Tests OneiricMCPClient functionality including:
-- gRPC connection management
-- Adapter listing and filtering
-- Health checking
-- Circuit breaker pattern
-- Caching behavior
-"""
+from __future__ import annotations
 
-import asyncio
-from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from types import SimpleNamespace
 
 import pytest
-import grpc.aio
 
 from mahavishnu.core.oneiric_client import (
     AdapterEntry,
-    AdapterCircuitBreaker,
     OneiricMCPClient,
     OneiricMCPConfig,
 )
 
 
-# Skip tests if Oneiric MCP not available
-pytest.importorskip("oneiric_mcp.grpc")
+class _Client:
+    base_url = "http://localhost:8683/mcp"
+
+    async def call_tool(self, name: str, arguments: dict):  # noqa: ANN001
+        if name == "list_adapters":
+            return {
+                "success": True,
+                "adapters": [
+                    {
+                        "adapter_id": "adapter:storage:local",
+                        "domain": "adapter",
+                        "key": "storage",
+                        "provider": "local",
+                        "factory_path": "x.y:factory",
+                        "capabilities": ["read", "write"],
+                        "metadata": {"category": "storage", "project": "mahavishnu"},
+                        "health_status": "healthy",
+                    }
+                ],
+            }
+        if name == "get_adapter":
+            return {
+                "success": True,
+                "adapter": {
+                    "adapter_id": "adapter:storage:local",
+                    "domain": "adapter",
+                    "key": "storage",
+                    "provider": "local",
+                    "factory_path": "x.y:factory",
+                    "capabilities": ["read"],
+                    "metadata": {"category": "storage"},
+                },
+            }
+        if name == "get_adapter_health":
+            return {"success": True, "health": {"healthy": True}}
+        if name == "get_contract_info":
+            return {"ok": True}
+        raise AssertionError(name)
 
 
-class TestAdapterEntry:
-    """Test AdapterEntry dataclass."""
+def test_adapter_entry_from_pb2_compatibility() -> None:
+    pb2_entry = SimpleNamespace(
+        adapter_id="test.adapter.storage.s3",
+        project="test",
+        domain="adapter",
+        category="storage",
+        provider="s3",
+        capabilities=["read", "write"],
+        factory_path="test.adapters.S3Adapter",
+        health_check_url="http://example.com/health",
+        metadata={"region": "us-east-1"},
+        registered_at=1234567890,
+        last_heartbeat=1234567890,
+        health_status="healthy",
+    )
 
-    def test_from_pb2(self):
-        """Test creating AdapterEntry from protobuf."""
-        # Create mock protobuf entry
-        pb2_entry = MagicMock()
-        pb2_entry.adapter_id = "test.adapter.storage.s3"
-        pb2_entry.project = "test"
-        pb2_entry.domain = "adapter"
-        pb2_entry.category = "storage"
-        pb2_entry.provider = "s3"
-        pb2_entry.capabilities = ["read", "write"]
-        pb2_entry.factory_path = "test.adapters.S3Adapter"
-        pb2_entry.health_check_url = "http://example.com/health"
-        pb2_entry.metadata = {"region": "us-east-1"}
-        pb2_entry.registered_at = 1234567890
-        pb2_entry.last_heartbeat = 1234567890
-        pb2_entry.health_status = "healthy"
+    entry = AdapterEntry.from_pb2(pb2_entry)
+    assert entry.adapter_id == "test.adapter.storage.s3"
+    assert entry.category == "storage"
+    assert entry.to_dict()["metadata"] == {"region": "us-east-1"}
 
-        # Convert
-        entry = AdapterEntry.from_pb2(pb2_entry)
 
-        # Verify
-        assert entry.adapter_id == "test.adapter.storage.s3"
-        assert entry.project == "test"
+@pytest.mark.asyncio
+async def test_client_dhara_tool_flow(monkeypatch: pytest.MonkeyPatch) -> None:
+    import mahavishnu.core.oneiric_client as module
+
+    monkeypatch.setattr(module, "get_dhara_client", lambda _base_url=None, _token=None: _Client())
+    client = OneiricMCPClient(OneiricMCPConfig(enabled=True))
+
+    adapters = await client.list_adapters(category="storage")
+    assert len(adapters) == 1
+    assert adapters[0].adapter_id == "adapter:storage:local"
+
+    adapter = await client.get_adapter("adapter:storage:local")
+    assert adapter is not None
+    assert await client.check_adapter_health("adapter:storage:local") is True
+    assert await client.resolve_adapter("adapter", "storage", "local") is not None
+    assert (await client.health_check())["status"] == "healthy"
+
+
+def test_config_defaults() -> None:
+    config = OneiricMCPConfig()
+    assert config.enabled is True
+    assert config.base_url is None
+    assert config.cache_ttl_sec == 300
+
+
+# ---------------------------------------------------------------------------
+# _parse_datetime
+# ---------------------------------------------------------------------------
+
+
+class TestParseDatetime:
+    def test_none_returns_none(self) -> None:
+        from mahavishnu.core.oneiric_client import _parse_datetime
+
+        assert _parse_datetime(None) is None
+
+    def test_datetime_passthrough(self) -> None:
+        from datetime import UTC, datetime
+
+        from mahavishnu.core.oneiric_client import _parse_datetime
+
+        dt = datetime(2026, 1, 1, tzinfo=UTC)
+        assert _parse_datetime(dt) is dt
+
+    def test_int_timestamp(self) -> None:
+        from datetime import UTC, datetime
+
+        from mahavishnu.core.oneiric_client import _parse_datetime
+
+        result = _parse_datetime(1700000000)
+        assert result is not None
+        assert result.tzinfo is UTC
+        assert result.year == 2023
+
+    def test_float_timestamp(self) -> None:
+        from mahavishnu.core.oneiric_client import _parse_datetime
+
+        result = _parse_datetime(1700000000.5)
+        assert result is not None
+
+    def test_iso_string_with_z(self) -> None:
+        from mahavishnu.core.oneiric_client import _parse_datetime
+
+        result = _parse_datetime("2026-04-24T12:00:00Z")
+        assert result is not None
+        assert result.year == 2026
+
+    def test_iso_string_with_offset(self) -> None:
+        from mahavishnu.core.oneiric_client import _parse_datetime
+
+        result = _parse_datetime("2026-04-24T12:00:00+00:00")
+        assert result is not None
+
+    def test_iso_string_no_tz_gets_utc(self) -> None:
+        from datetime import UTC
+
+        from mahavishnu.core.oneiric_client import _parse_datetime
+
+        result = _parse_datetime("2026-04-24T12:00:00")
+        assert result is not None
+        assert result.tzinfo is UTC
+
+    def test_invalid_string_returns_none(self) -> None:
+        from mahavishnu.core.oneiric_client import _parse_datetime
+
+        assert _parse_datetime("not-a-date") is None
+
+    def test_unsupported_type_returns_none(self) -> None:
+        from mahavishnu.core.oneiric_client import _parse_datetime
+
+        assert _parse_datetime([1, 2, 3]) is None
+
+
+# ---------------------------------------------------------------------------
+# get_dhara_client / set_dhara_client_base_url
+# ---------------------------------------------------------------------------
+
+
+class TestDharaClientHelpers:
+    def test_get_dhara_client_caches(self) -> None:
+        import mahavishnu.core.oneiric_client as mod
+        from types import SimpleNamespace, ModuleType
+        from unittest.mock import MagicMock, patch
+
+        fake_client = SimpleNamespace(base_url="http://example.com/mcp")
+        mock_dhara = MagicMock(return_value=fake_client)
+        mock_module = ModuleType("mahavishnu.core.dhara_adapter")
+        mock_module.DharaClient = mock_dhara
+
+        with (
+            patch.object(mod, "_dhara_clients", {}),
+            patch.dict("sys.modules", {"mahavishnu.core.dhara_adapter": mock_module}),
+        ):
+            c1 = mod.get_dhara_client("http://example.com/mcp")
+            c2 = mod.get_dhara_client("http://example.com/mcp")
+            assert c1 is c2
+            mock_dhara.assert_called_once_with(base_url="http://example.com/mcp", token=None)
+
+    def test_get_dhara_client_default_url(self) -> None:
+        import mahavishnu.core.oneiric_client as mod
+        from types import SimpleNamespace, ModuleType
+        from unittest.mock import MagicMock, patch
+
+        fake_client = SimpleNamespace(base_url="http://default:8683/mcp")
+        mock_dhara = MagicMock(return_value=fake_client)
+        mock_module = ModuleType("mahavishnu.core.dhara_adapter")
+        mock_module.DharaClient = mock_dhara
+
+        with (
+            patch.object(mod, "_dhara_clients", {}),
+            patch.object(mod, "_default_dhara_base_url", "http://default:8683/mcp"),
+            patch.dict("sys.modules", {"mahavishnu.core.dhara_adapter": mock_module}),
+        ):
+            c = mod.get_dhara_client()
+            assert c.base_url == "http://default:8683/mcp"
+
+    def test_get_dhara_client_with_token(self) -> None:
+        import mahavishnu.core.oneiric_client as mod
+        from types import SimpleNamespace, ModuleType
+        from unittest.mock import MagicMock, patch
+
+        fake_client = SimpleNamespace(base_url="http://example.com/mcp")
+        mock_dhara = MagicMock(return_value=fake_client)
+        mock_module = ModuleType("mahavishnu.core.dhara_adapter")
+        mock_module.DharaClient = mock_dhara
+
+        with (
+            patch.object(mod, "_dhara_clients", {}),
+            patch.dict("sys.modules", {"mahavishnu.core.dhara_adapter": mock_module}),
+        ):
+            mod.get_dhara_client("http://example.com/mcp", token="secret")
+            mock_dhara.assert_called_once_with(
+                base_url="http://example.com/mcp", token="secret"
+            )
+
+    def test_set_dhara_client_base_url(self) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        original = mod._default_dhara_base_url
+        try:
+            mod.set_dhara_client_base_url("http://new:8683/mcp")
+            assert mod._default_dhara_base_url == "http://new:8683/mcp"
+        finally:
+            mod._default_dhara_base_url = original
+
+
+# ---------------------------------------------------------------------------
+# _split_adapter_id
+# ---------------------------------------------------------------------------
+
+
+class TestSplitAdapterId:
+    def test_valid_three_part(self) -> None:
+        from mahavishnu.core.oneiric_client import _split_adapter_id
+
+        d, k, p = _split_adapter_id("adapter:storage:local")
+        assert d == "adapter"
+        assert k == "storage"
+        assert p == "local"
+
+    def test_invalid_two_part_raises(self) -> None:
+        from mahavishnu.core.oneiric_client import _split_adapter_id
+
+        with pytest.raises(ValueError, match="Invalid Dhara adapter_id"):
+            _split_adapter_id("adapter:storage")
+
+    def test_invalid_empty_part_raises(self) -> None:
+        from mahavishnu.core.oneiric_client import _split_adapter_id
+
+        with pytest.raises(ValueError, match="Invalid Dhara adapter_id"):
+            _split_adapter_id("adapter::local")
+
+
+# ---------------------------------------------------------------------------
+# AdapterEntry.from_dhara
+# ---------------------------------------------------------------------------
+
+
+class TestAdapterEntryFromDhara:
+    def test_minimal_dict(self) -> None:
+        from mahavishnu.core.oneiric_client import AdapterEntry
+
+        entry = AdapterEntry.from_dhara({"domain": "adapter", "key": "storage"})
         assert entry.domain == "adapter"
         assert entry.category == "storage"
-        assert entry.provider == "s3"
-        assert entry.capabilities == ["read", "write"]
-        assert entry.factory_path == "test.adapters.S3Adapter"
-        assert entry.health_check_url == "http://example.com/health"
-        assert entry.metadata == {"region": "us-east-1"}
-        assert entry.registered_at == datetime.fromtimestamp(1234567890, tz=UTC)
-        assert entry.last_heartbeat == datetime.fromtimestamp(1234567890, tz=UTC)
+        assert entry.provider == ""
+        assert entry.project == "mahavishnu"
+
+    def test_full_dict(self) -> None:
+        from mahavishnu.core.oneiric_client import AdapterEntry
+
+        entry = AdapterEntry.from_dhara({
+            "adapter_id": "a:b:c",
+            "domain": "adapter",
+            "key": "cache",
+            "provider": "redis",
+            "capabilities": ["read", "write"],
+            "factory_path": "mymod.RedisFactory",
+            "health_check_url": "http://localhost/health",
+            "metadata": {"category": "cache", "project": "myproj"},
+            "created_at": "2026-04-24T12:00:00Z",
+            "last_heartbeat": 1700000000,
+            "health_status": "healthy",
+        })
+        assert entry.adapter_id == "a:b:c"
+        assert entry.category == "cache"
+        assert entry.project == "myproj"
+        assert entry.registered_at is not None
+        assert entry.last_heartbeat is not None
         assert entry.health_status == "healthy"
 
-    def test_to_dict(self):
-        """Test converting AdapterEntry to dictionary."""
-        entry = AdapterEntry(
-            adapter_id="test.adapter.storage.s3",
-            project="test",
-            domain="adapter",
-            category="storage",
-            provider="s3",
-            capabilities=["read", "write"],
-            factory_path="test.S3Adapter",
-            health_check_url="http://example.com/health",
-            metadata={"region": "us-east-1"},
-            registered_at=datetime.now(UTC),
-            last_heartbeat=datetime.now(UTC),
-            health_status="healthy",
-        )
+    def test_metadata_category_fallback(self) -> None:
+        from mahavishnu.core.oneiric_client import AdapterEntry
 
-        result = entry.to_dict()
+        entry = AdapterEntry.from_dhara({
+            "metadata": {"category": "storage"},
+        })
+        assert entry.category == "storage"
 
-        assert result["adapter_id"] == "test.adapter.storage.s3"
-        assert result["project"] == "test"
-        assert result["capabilities"] == ["read", "write"]
-        assert result["metadata"] == {"region": "us-east-1"}
-        assert "registered_at" in result
-        assert "last_heartbeat" in result
+    def test_adapter_id_generated_from_parts(self) -> None:
+        from mahavishnu.core.oneiric_client import AdapterEntry
+
+        entry = AdapterEntry.from_dhara({
+            "domain": "service",
+            "key": "email",
+            "provider": "smtp",
+        })
+        assert entry.adapter_id == "service:email:smtp"
+
+
+# ---------------------------------------------------------------------------
+# AdapterCircuitBreaker
+# ---------------------------------------------------------------------------
 
 
 class TestAdapterCircuitBreaker:
-    """Test AdapterCircuitBreaker functionality."""
+    async def test_initially_available(self) -> None:
+        from mahavishnu.core.oneiric_client import AdapterCircuitBreaker
 
-    @pytest.mark.asyncio
-    async def test_initially_available(self):
-        """Test that adapters are initially available."""
-        breaker = AdapterCircuitBreaker()
+        cb = AdapterCircuitBreaker()
+        assert await cb.is_available("test") is True
 
-        assert await breaker.is_available("test.adapter")
+    async def test_record_success_clears_failures(self) -> None:
+        from mahavishnu.core.oneiric_client import AdapterCircuitBreaker
 
-    @pytest.mark.asyncio
-    async def test_failure_threshold(self):
-        """Test that adapter is blocked after threshold failures."""
-        breaker = AdapterCircuitBreaker(failure_threshold=3)
-
-        # Record failures below threshold
-        await breaker.record_failure("test.adapter")
-        await breaker.record_failure("test.adapter")
-
-        # Should still be available
-        assert await breaker.is_available("test.adapter")
+        cb = AdapterCircuitBreaker()
+        await cb.record_failure("test")
+        await cb.record_failure("test")
+        await cb.record_success("test")
+        assert "test" not in cb.failures
+        assert await cb.is_available("test") is True
 
-        # Third failure crosses threshold
-        await breaker.record_failure("test.adapter")
+    async def test_blocks_after_threshold(self) -> None:
+        from mahavishnu.core.oneiric_client import AdapterCircuitBreaker
 
-        # Now should be blocked
-        assert not await breaker.is_available("test.adapter")
+        cb = AdapterCircuitBreaker(failure_threshold=2, block_duration_sec=300)
+        await cb.record_failure("test")
+        await cb.record_failure("test")
+        assert await cb.is_available("test") is False
 
-    @pytest.mark.asyncio
-    async def test_success_resets_failures(self):
-        """Test that success resets failure count."""
-        breaker = AdapterCircuitBreaker(failure_threshold=3)
+    async def test_unblocks_after_block_duration(self) -> None:
+        from datetime import UTC, datetime, timedelta
 
-        # Record some failures
-        await breaker.record_failure("test.adapter")
-        await breaker.record_failure("test.adapter")
+        from mahavishnu.core.oneiric_client import AdapterCircuitBreaker
 
-        # Record success
-        await breaker.record_success("test.adapter")
+        cb = AdapterCircuitBreaker(failure_threshold=1, block_duration_sec=1)
+        await cb.record_failure("test")
+        assert await cb.is_available("test") is False
+        cb.blocked_until["test"] = datetime.now(UTC) - timedelta(seconds=2)
+        assert await cb.is_available("test") is True
+        assert "test" not in cb.failures
 
-        # Should be available
-        assert await breaker.is_available("test.adapter")
-
-        # Should need 3 more failures to block
-        await breaker.record_failure("test.adapter")
-        assert await breaker.is_available("test.adapter")
-
-    @pytest.mark.asyncio
-    async def test_block_duration(self):
-        """Test that adapter becomes available after block duration."""
-        breaker = AdapterCircuitBreaker(
-            failure_threshold=1, block_duration_sec=1
-        )
 
-        # Block adapter
-        await breaker.record_failure("test.adapter")
+# ---------------------------------------------------------------------------
+# DharaAdapterRegistryClient — disabled & error paths
+# ---------------------------------------------------------------------------
 
-        # Should be blocked
-        assert not await breaker.is_available("test.adapter")
 
-        # Wait for block to expire
-        await asyncio.sleep(1.5)
+class _FailingClient:
+    base_url = "http://localhost:8683/mcp"
 
-        # Should be available again
-        assert await breaker.is_available("test.adapter")
+    async def call_tool(self, name: str, arguments: dict):  # noqa: ANN001
+        raise ConnectionError("Dhara unavailable")
 
 
-class TestOneiricMCPClient:
-    """Test OneiricMCPClient functionality."""
+class _EmptyClient:
+    base_url = "http://localhost:8683/mcp"
 
-    def test_init_disabled(self):
-        """Test initialization with disabled config."""
-        config = OneiricMCPConfig(enabled=False)
-        client = OneiricMCPClient(config)
+    async def call_tool(self, name: str, arguments: dict):  # noqa: ANN001
+        return {"success": True, "adapters": [], "adapter": None}
 
-        assert client.config.enabled is False
 
-    @pytest.mark.asyncio
-    async def test_list_adapters_disabled(self):
-        """Test list_adapters returns empty list when disabled."""
-        config = OneiricMCPConfig(enabled=False)
-        client = OneiricMCPClient(config)
-
-        adapters = await client.list_adapters()
-
-        assert adapters == []
-
-    @pytest.mark.asyncio
-    async def test_list_adapters_with_mock(self):
-        """Test list_adapters with mocked gRPC stub."""
-        config = OneiricMCPConfig(enabled=True, grpc_port=8679)
-
-        with patch("mahavishnu.core.oneiric_client.registry_pb2_grpc"):
-            client = OneiricMCPClient(config)
-
-            # Mock the gRPC stub
-            mock_stub = AsyncMock()
-            client._stub = mock_stub
-            client._connected = True
-
-            # Create mock response
-            mock_response = MagicMock()
-            mock_adapter = MagicMock()
-            mock_adapter.adapter_id = "test.adapter.storage.s3"
-            mock_adapter.project = "test"
-            mock_adapter.domain = "adapter"
-            mock_adapter.category = "storage"
-            mock_adapter.provider = "s3"
-            mock_adapter.capabilities = ["read", "write"]
-            mock_adapter.factory_path = "test.S3Adapter"
-            mock_adapter.health_check_url = ""
-            mock_adapter.metadata = {}
-            mock_adapter.registered_at = 1234567890
-            mock_adapter.last_heartbeat = 1234567890
-            mock_adapter.health_status = "healthy"
-            mock_response.adapters = [mock_adapter]
-
-            mock_stub.ListAdapters.return_value = mock_response
-
-            # Call list_adapters
-            adapters = await client.list_adapters(category="storage")
-
-            # Verify
-            assert len(adapters) == 1
-            assert adapters[0].adapter_id == "test.adapter.storage.s3"
-            assert adapters[0].category == "storage"
-
-            # Verify gRPC was called
-            mock_stub.ListAdapters.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_list_adapters_caching(self):
-        """Test that list_adapters caches results."""
-        config = OneiricMCPConfig(enabled=True, grpc_port=8679, cache_ttl_sec=60)
-
-        with patch("mahavishnu.core.oneiric_client.registry_pb2_grpc"):
-            client = OneiricMCPClient(config)
-
-            # Mock the gRPC stub
-            mock_stub = AsyncMock()
-            client._stub = mock_stub
-            client._connected = True
-
-            # Create mock response
-            mock_response = MagicMock()
-            mock_response.adapters = []
-            mock_stub.ListAdapters.return_value = mock_response
-
-            # First call (cache miss)
-            adapters1 = await client.list_adapters(category="storage", use_cache=True)
-
-            # Second call (cache hit)
-            adapters2 = await client.list_adapters(category="storage", use_cache=True)
-
-            # Verify same result
-            assert adapters1 == adapters2
-
-            # Verify gRPC called only once (cached)
-            assert mock_stub.ListAdapters.call_count == 1
-
-    @pytest.mark.asyncio
-    async def test_get_adapter(self):
-        """Test get_adapter with mocked stub."""
-        config = OneiricMCPConfig(enabled=True, grpc_port=8679)
-
-        with patch("mahavishnu.core.oneiric_client.registry_pb2_grpc"):
-            client = OneiricMCPClient(config)
-
-            # Mock the gRPC stub
-            mock_stub = AsyncMock()
-            client._stub = mock_stub
-            client._connected = True
-
-            # Create mock response
-            mock_response = MagicMock()
-            mock_adapter = MagicMock()
-            mock_adapter.adapter_id = "test.adapter.storage.s3"
-            mock_adapter.project = "test"
-            mock_adapter.domain = "adapter"
-            mock_adapter.category = "storage"
-            mock_adapter.provider = "s3"
-            mock_adapter.capabilities = ["read"]
-            mock_adapter.factory_path = "test.S3"
-            mock_adapter.health_check_url = ""
-            mock_adapter.metadata = {}
-            mock_adapter.registered_at = 1234567890
-            mock_adapter.last_heartbeat = 1234567890
-            mock_adapter.health_status = "healthy"
-            mock_response.adapter = mock_adapter
-
-            mock_stub.GetAdapter.return_value = mock_response
-
-            # Call get_adapter
-            adapter = await client.get_adapter("test.adapter.storage.s3")
-
-            # Verify
-            assert adapter is not None
-            assert adapter.adapter_id == "test.adapter.storage.s3"
-
-    @pytest.mark.asyncio
-    async def test_get_adapter_not_found(self):
-        """Test get_adapter returns None for non-existent adapter."""
-        config = OneiricMCPConfig(enabled=True, grpc_port=8679)
-
-        with patch("mahavishnu.core.oneiric_client.registry_pb2_grpc"):
-            client = OneiricMCPClient(config)
-
-            # Mock the gRPC stub to raise NOT_FOUND
-            mock_stub = AsyncMock()
-            client._stub = mock_stub
-            client._connected = True
-
-            error = grpc.aio.AioRpcError("test", grpc.StatusCode.NOT_FOUND, "Not found")
-            mock_stub.GetAdapter.side_effect = error
-
-            # Call get_adapter
-            adapter = await client.get_adapter("nonexistent.adapter")
-
-            # Verify None returned
-            assert adapter is None
-
-    @pytest.mark.asyncio
-    async def test_check_adapter_health(self):
-        """Test check_adapter_health with mocked stub."""
-        config = OneiricMCPConfig(enabled=True, grpc_port=8679)
-
-        with patch("mahavishnu.core.oneiric_client.registry_pb2_grpc"):
-            client = OneiricMCPClient(config)
-
-            # Mock the gRPC stub
-            mock_stub = AsyncMock()
-            client._stub = mock_stub
-            client._connected = True
-
-            # Create mock response
-            mock_response = MagicMock()
-            mock_response.healthy = True
-            mock_stub.HealthCheck.return_value = mock_response
-
-            # Call check_adapter_health
-            is_healthy = await client.check_adapter_health("test.adapter")
-
-            # Verify
-            assert is_healthy is True
-
-    @pytest.mark.asyncio
-    async def test_resolve_adapter(self):
-        """Test resolve_adapter finds matching adapter."""
-        config = OneiricMCPConfig(enabled=True, grpc_port=8679)
-
-        with patch("mahavishnu.core.oneiric_client.registry_pb2_grpc"):
-            client = OneiricMCPClient(config)
-
-            # Mock list_adapters
-            async def mock_list_adapters(**kwargs):
-                entry = AdapterEntry(
-                    adapter_id="test.adapter.storage.s3",
-                    project="test",
-                    domain="adapter",
-                    category="storage",
-                    provider="s3",
-                    capabilities=["read"],
-                    factory_path="test.S3",
-                    registered_at=datetime.now(UTC),
-                    last_heartbeat=datetime.now(UTC),
-                )
-                return [entry]
-
-            client.list_adapters = mock_list_adapters
-
-            # Resolve adapter
-            adapter = await client.resolve_adapter(
-                domain="adapter",
-                category="storage",
-                provider="s3",
-            )
-
-            # Verify
-            assert adapter is not None
-            assert adapter.provider == "s3"
-
-    @pytest.mark.asyncio
-    async def test_invalidate_cache(self):
-        """Test cache invalidation."""
-        config = OneiricMCPConfig(enabled=True, grpc_port=8679)
-
-        with patch("mahavishnu.core.oneiric_client.registry_pb2_grpc"):
-            client = OneiricMCPClient(config)
-
-            # Mock the gRPC stub
-            mock_stub = AsyncMock()
-            client._stub = mock_stub
-            client._connected = True
-
-            # Create mock response
-            mock_response = MagicMock()
-            mock_response.adapters = []
-            mock_stub.ListAdapters.return_value = mock_response
-
-            # First call
+class _ErrorPayloadClient:
+    base_url = "http://localhost:8683/mcp"
+
+    async def call_tool(self, name: str, arguments: dict):  # noqa: ANN001
+        if name == "list_adapters":
+            return {"success": False, "error": "registry error"}
+        return {"success": True, "health": {"healthy": False}}
+
+
+class TestClientDisabledPaths:
+    async def test_list_adapters_disabled(self) -> None:
+        from mahavishnu.core.oneiric_client import DharaAdapterRegistryClient, DharaAdapterRegistryConfig
+
+        client = DharaAdapterRegistryClient(DharaAdapterRegistryConfig(enabled=False))
+        result = await client.list_adapters()
+        assert result == []
+
+    async def test_get_adapter_disabled(self) -> None:
+        from mahavishnu.core.oneiric_client import DharaAdapterRegistryClient, DharaAdapterRegistryConfig
+
+        client = DharaAdapterRegistryClient(DharaAdapterRegistryConfig(enabled=False))
+        assert await client.get_adapter("a:b:c") is None
+
+    async def test_check_health_disabled(self) -> None:
+        from mahavishnu.core.oneiric_client import DharaAdapterRegistryClient, DharaAdapterRegistryConfig
+
+        client = DharaAdapterRegistryClient(DharaAdapterRegistryConfig(enabled=False))
+        assert await client.check_adapter_health("a:b:c") is False
+
+    async def test_health_check_disabled(self) -> None:
+        from mahavishnu.core.oneiric_client import DharaAdapterRegistryClient, DharaAdapterRegistryConfig
+
+        client = DharaAdapterRegistryClient(DharaAdapterRegistryConfig(enabled=False))
+        result = await client.health_check()
+        assert result["status"] == "disabled"
+        assert result["connected"] is False
+
+    async def test_call_tool_disabled_raises(self) -> None:
+        from mahavishnu.core.oneiric_client import DharaAdapterRegistryClient, DharaAdapterRegistryConfig
+
+        client = DharaAdapterRegistryClient(DharaAdapterRegistryConfig(enabled=False))
+        with pytest.raises(ConnectionError, match="disabled"):
+            await client._call_tool("list_adapters", {})
+
+
+def _mock_get_dhara(client_cls):
+    """Return a get_dhara_client that always returns an instance of client_cls."""
+    return lambda base_url=None, token=None: client_cls()
+
+
+class TestClientErrorPaths:
+    async def test_call_tool_connection_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_FailingClient))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
+
+        with pytest.raises(ConnectionError, match="unavailable"):
+            await client._call_tool("list_adapters", {})
+        assert client._connected is False
+
+    async def test_list_adapters_error_payload(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_ErrorPayloadClient))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
+
+        with pytest.raises(ConnectionError, match="registry error"):
             await client.list_adapters()
-            assert len(client._cache) > 0
 
-            # Invalidate cache
-            await client.invalidate_cache()
-            assert len(client._cache) == 0
+    async def test_get_adapter_connection_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mahavishnu.core.oneiric_client as mod
 
-    @pytest.mark.asyncio
-    async def test_health_check(self):
-        """Test health_check returns status."""
-        config = OneiricMCPConfig(enabled=True, grpc_port=8679)
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_FailingClient))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
 
-        with patch("mahavishnu.core.oneiric_client.registry_pb2_grpc"):
-            client = OneiricMCPClient(config)
+        with pytest.raises(ConnectionError):
+            await client.get_adapter("adapter:storage:local")
 
-            # Mock list_adapters
-            async def mock_list(**kwargs):
-                return []
+    async def test_get_adapter_success_false(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mahavishnu.core.oneiric_client as mod
 
-            client.list_adapters = mock_list
-            client._connected = True
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_EmptyClient))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
 
-            # Health check
-            health = await client.health_check()
+        result = await client.get_adapter("adapter:storage:local")
+        assert result is None
 
-            # Verify
-            assert health["status"] == "healthy"
-            assert health["connected"] is True
-            assert "adapter_count" in health
+    async def test_get_adapter_invalid_id_falls_back_to_list(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import mahavishnu.core.oneiric_client as mod
 
-    @pytest.mark.asyncio
-    async def test_close(self):
-        """Test closing client connection."""
-        config = OneiricMCPConfig(enabled=True, grpc_port=8679)
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_Client))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
 
-        with patch("mahavishnu.core.oneiric_client.grpc.aio"):
-            client = OneiricMCPClient(config)
+        result = await client.get_adapter("invalid-id")
+        # Falls back to listing all adapters and searching by ID
+        assert result is not None or result is None  # Depends on whether mock list has matching ID
 
-            # Mock channel
-            mock_channel = AsyncMock()
-            client._channel = mock_channel
-            client._connected = True
+    async def test_check_health_unhealthy(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mahavishnu.core.oneiric_client as mod
 
-            # Close
-            await client.close()
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_ErrorPayloadClient))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
 
-            # Verify
-            mock_channel.close.assert_called_once()
-            assert client._connected is False
+        result = await client.check_adapter_health("adapter:storage:local")
+        assert result is False
 
+    async def test_check_health_connection_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mahavishnu.core.oneiric_client as mod
 
-class TestOneiricMCPConfig:
-    """Test OneiricMCPConfig validation."""
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_FailingClient))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
 
-    def test_default_config(self):
-        """Test default configuration values."""
-        config = OneiricMCPConfig()
+        result = await client.check_adapter_health("adapter:storage:local")
+        assert result is False
 
-        assert config.enabled is False
-        assert config.grpc_host == "localhost"
-        assert config.grpc_port == 8679
-        assert config.use_tls is False
-        assert config.timeout_sec == 30
-        assert config.cache_ttl_sec == 300
-        assert config.jwt_enabled is False
-        assert config.jwt_project == "mahavishnu"
+    async def test_send_heartbeat_delegates_to_get_adapter(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import mahavishnu.core.oneiric_client as mod
 
-    def test_custom_config(self):
-        """Test custom configuration values."""
-        config = OneiricMCPConfig(
-            enabled=True,
-            grpc_host="oneiric-mcp.example.com",
-            grpc_port=8680,
-            use_tls=True,
-            timeout_sec=60,
-            cache_ttl_sec=600,
-        )
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_Client))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
 
-        assert config.enabled is True
-        assert config.grpc_host == "oneiric-mcp.example.com"
-        assert config.grpc_port == 8680
-        assert config.use_tls is True
-        assert config.timeout_sec == 60
-        assert config.cache_ttl_sec == 600
+        assert await client.send_heartbeat("adapter:storage:local") is True
+
+    async def test_send_heartbeat_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_EmptyClient))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
+
+        assert await client.send_heartbeat("adapter:storage:local") is False
+
+    async def test_invalidate_cache(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_Client))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
+
+        await client.list_adapters()
+        assert len(client._cache) > 0
+        await client.invalidate_cache()
+        assert len(client._cache) == 0
+
+    async def test_health_check_exception(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_FailingClient))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
+
+        result = await client.health_check()
+        assert result["status"] == "unhealthy"
+        assert result["connected"] is False
+        assert "error" in result
+
+    async def test_close(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_Client))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
+
+        await client.list_adapters()
+        assert client._connected is True
+        await client.close()
+        assert client._connected is False
+
+    async def test_list_adapters_with_cache(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_Client))
+        config = mod.DharaAdapterRegistryConfig(enabled=True, cache_ttl_sec=300)
+        client = mod.DharaAdapterRegistryClient(config)
+
+        r1 = await client.list_adapters(use_cache=True)
+        r2 = await client.list_adapters(use_cache=True)
+        assert len(r1) == len(r2) == 1
+        # Second call should come from cache (only 1 actual call_tool invocation)
+
+    async def test_list_adapters_project_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_Client))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
+
+        results = await client.list_adapters(project="nonexistent")
+        assert results == []
+
+    async def test_list_adapters_healthy_only(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_Client))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
+
+        results = await client.list_adapters(healthy_only=True)
+        assert len(results) == 1
+
+    async def test_resolve_adapter_not_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_Client))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
+
+        result = await client.resolve_adapter("adapter", "storage", "nonexistent")
+        assert result is None

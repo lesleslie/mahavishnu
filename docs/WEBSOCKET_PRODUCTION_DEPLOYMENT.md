@@ -1472,7 +1472,7 @@ Create `/etc/logrotate.d/mahavishnu`:
 
 - **Project Documentation:** `/docs`
 - **API Reference:** `/docs/WEBSOCKET_API_REFERENCE.md`
-- **Implementation Guide:** `/docs/WEBSOCKET_INTEGRATION_COMPLETE.md`
+- **Implementation Guide:** `/docs/archive/completion-reports/WEBSOCKET_INTEGRATION_COMPLETE.md`
 - **Grafana Dashboard:** `/docs/grafana/WebSocket_Monitoring.json`
 
 ---

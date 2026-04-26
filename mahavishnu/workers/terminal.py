@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import time
 from typing import Any
 
 from ..terminal.manager import TerminalManager
@@ -67,7 +68,7 @@ class TerminalAIWorker(BaseWorker):
         )
         self.session_id = session_ids[0]
         self._status = WorkerStatus.RUNNING
-        self._start_time = asyncio.get_event_loop().time()
+        self._start_time = asyncio.get_running_loop().time()
 
         logger.info(f"Started {self.ai_type} worker: {self.session_id}")
         return self.session_id
@@ -195,7 +196,7 @@ class TerminalAIWorker(BaseWorker):
 
             # Check timeout
             if self._start_time:
-                elapsed = asyncio.get_event_loop().time() - self._start_time
+                elapsed = asyncio.get_running_loop().time() - self._start_time
                 if elapsed > timeout:
                     logger.warning(f"Worker {self.session_id} timed out after {elapsed}s")
                     return WorkerResult(
@@ -285,7 +286,11 @@ class TerminalAIWorker(BaseWorker):
         Returns:
             Complete WorkerResult
         """
-        duration = asyncio.get_event_loop().time() - self._start_time if self._start_time else 0
+        try:
+            _loop_time = asyncio.get_running_loop().time()
+        except RuntimeError:
+            _loop_time = time.time()
+        duration = _loop_time - self._start_time if self._start_time else 0
 
         full_output = "\n".join(output_lines)
 
@@ -348,7 +353,7 @@ class TerminalAIWorker(BaseWorker):
             with contextlib.suppress(Exception):
                 output = await self.terminal_manager.capture_output(self.session_id, lines=10)
 
-        duration = asyncio.get_event_loop().time() - self._start_time if self._start_time else 0
+        duration = asyncio.get_running_loop().time() - self._start_time if self._start_time else 0
 
         return {
             "status": self._status.value,

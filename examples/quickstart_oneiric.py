@@ -1,57 +1,54 @@
 #!/usr/bin/env python3
-"""Quick start script for Oneiric MCP integration.
+"""Quick start script for Dhara adapter registry integration.
 
-This script demonstrates the simplest way to get started with Oneiric MCP
+This script demonstrates the simplest way to get started with Dhara adapter registry
 integration in Mahavishnu.
 
 Prerequisites:
-1. Oneiric MCP server running on port 8679
-   cd /Users/les/Projects/oneiric-mcp
-   python -m oneiric_mcp --port 8679
+1. Dhara adapter registry server running on port 8683
+   cd /Users/les/Projects/dhara
+   uv run dhara mcp start
 
-2. Mahavishnu configured with oneiric_mcp.enabled=true
+2. Mahavishnu configured with oneiric_mcp.enabled=true (legacy settings key for Dhara)
 
 Usage:
     python examples/quickstart_oneiric.py
 """
 
 import asyncio
-import sys
 from pathlib import Path
+import sys
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mahavishnu.core.oneiric_client import (
-    OneiricMCPClient,
-    OneiricMCPConfig,
+    DharaAdapterRegistryClient,
+    DharaAdapterRegistryConfig,
 )
 
 
 async def main():
     """Quick start demonstration."""
     print("=" * 60)
-    print("Oneiric MCP Integration - Quick Start")
+    print("Dhara adapter registry Integration - Quick Start")
     print("=" * 60)
     print()
 
     # Step 1: Configure client
-    print("Step 1: Configuring Oneiric MCP client...")
-    config = OneiricMCPConfig(
+    print("Step 1: Configuring Dhara adapter registry client...")
+    config = DharaAdapterRegistryConfig(
         enabled=True,
-        grpc_host="localhost",
-        grpc_port=8679,  # Insecure dev port
-        use_tls=False,
+        base_url="http://localhost:8683/mcp",
         timeout_sec=10,
     )
     print("  ✓ Configuration created")
-    print(f"    Host: {config.grpc_host}")
-    print(f"    Port: {config.grpc_port}")
+    print(f"    URL: {config.base_url}")
     print()
 
     # Step 2: Create client
     print("Step 2: Creating client...")
-    client = OneiricMCPClient(config)
+    client = DharaAdapterRegistryClient(config)
     print("  ✓ Client created")
     print()
 
@@ -64,13 +61,13 @@ async def main():
             print(f"  ✗ Connection failed: {health.get('error', 'Unknown error')}")
             print()
             print("Troubleshooting:")
-            print("  1. Ensure Oneiric MCP server is running:")
-            print("     cd /Users/les/Projects/oneiric-mcp")
-            print("     python -m oneiric_mcp --port 8679")
+            print("  1. Ensure Dhara adapter registry server is running:")
+            print("     cd /Users/les/Projects/dhara")
+            print("     uv run dhara mcp start")
             print()
             print("  2. Check port is correct:")
-            print("     - Development: 8679 (insecure)")
-            print("     - Production: 8680 (TLS)")
+            print("     - Development: 8683")
+            print("     - Production: configure MAHAVISHNU_DHARA_REGISTRY_URL")
             print()
             return 1
 
@@ -102,7 +99,7 @@ async def main():
             print("Step 5: Filtering adapters by category...")
 
             # Get unique categories
-            categories = set(a.category for a in adapters)
+            categories = {a.category for a in adapters}
             print(f"  Available categories: {', '.join(sorted(categories))}")
             print()
 
@@ -154,15 +151,15 @@ async def main():
         print()
         print("Next steps:")
         print("  1. Explore MCP tools:")
-        print("     - oneiric_list_adapters")
-        print("     - oneiric_resolve_adapter")
-        print("     - oneiric_check_health")
+        print("     - adapter_list")
+        print("     - adapter_resolve")
+        print("     - adapter_health")
         print()
         print("  2. Try workflow examples:")
         print("     python examples/oneiric_workflow_examples.py")
         print()
         print("  3. Read documentation:")
-        print("     docs/ONEIRIC_MCP_INTEGRATION.md")
+        print("     docs/reports/deprecation-migration.md")
         print()
 
         return 0
@@ -171,9 +168,9 @@ async def main():
         print(f"  ✗ Error: {e}")
         print()
         print("Troubleshooting:")
-        print("  1. Ensure Oneiric MCP server is running on port 8679")
+        print("  1. Ensure Dhara adapter registry server is running on port 8683")
         print("  2. Check network connectivity:")
-        print("     telnet localhost 8679")
+        print("     curl http://localhost:8683/mcp")
         print("  3. Verify configuration in settings/mahavishnu.yaml")
         print("  4. Check logs for detailed error messages")
         print()

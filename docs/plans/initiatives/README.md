@@ -6,6 +6,14 @@ These files are the executable plan set for `docs/plans/2026-04-04-ecosystem-exe
 - Update each checkbox as work completes.
 - Keep status values in sync with the master plan status/checklist.
 - Add dated progress notes in each file's `Progress Log` section.
+- For current plan authority and supersession notes, start with `../PLAN_INDEX.md`.
+
+## Current Status Summary
+
+- `00` through `08`: complete in the execution board.
+- `09` through `15`: open or partial.
+- `13`: partial. The Textual dashboard shell exists, but live read-only backend/MCP data wiring is still pending.
+- New dashboard/ecosystem-health work should follow `../2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md`.
 
 ## Initiative Documents
 - [00-phase0-cleanup.md](./00-phase0-cleanup.md)

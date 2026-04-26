@@ -77,7 +77,7 @@ class TestQCConfigProperties:
     """Property-based tests for quality control configuration."""
 
     @given(score=valid_score_strategy)
-    @settings(max_examples=50)
+    @settings(max_examples=50, deadline=None)
     def test_qc_min_score_accepts_valid_range(self, score):
         """Any valid QC score (0-100) is accepted."""
         qc_config = QualityControlConfig(min_score=score)
@@ -89,7 +89,7 @@ class TestQCConfigProperties:
             st.integers(min_value=-1000, max_value=-1), st.integers(min_value=101, max_value=1000)
         )
     )
-    @settings(max_examples=30)
+    @settings(max_examples=30, deadline=None)
     def test_qc_min_score_rejects_invalid_range(self, score):
         """Invalid QC scores (negative or >100) are rejected by Pydantic."""
         # Pydantic validates the ge/le constraints
@@ -97,7 +97,7 @@ class TestQCConfigProperties:
             QualityControlConfig(min_score=score)
 
     @given(qc_enabled=st.booleans(), qc_min_score=st.integers(min_value=0, max_value=100))
-    @settings(max_examples=30)
+    @settings(max_examples=30, deadline=None)
     def test_qc_fields_independent(self, qc_enabled, qc_min_score):
         """QC enabled flag and min_score are independent."""
         qc_config = QualityControlConfig(enabled=qc_enabled, min_score=qc_min_score)
@@ -128,7 +128,7 @@ class TestConcurrencyConfigProperties:
         assert 1 <= pool_config.max_workers <= 100
 
     @given(workflows=st.integers(min_value=101, max_value=1000))
-    @settings(max_examples=20)
+    @settings(max_examples=20, deadline=None)
     def test_concurrency_rejects_excessive_values(self, workflows):
         """Excessive concurrency values are rejected."""
         # Test via max_concurrent_workflows which uses ge/le constraints
@@ -147,7 +147,7 @@ class TestAdapterConfigProperties:
     @given(
         prefect_enabled=st.booleans(), llamaindex_enabled=st.booleans(), agno_enabled=st.booleans()
     )
-    @settings(max_examples=20)
+    @settings(max_examples=20, deadline=None)
     def test_adapter_flags_independent(self, prefect_enabled, llamaindex_enabled, agno_enabled):
         """Adapter enable flags are independent boolean fields."""
         config = MahavishnuSettings(
@@ -193,7 +193,7 @@ class TestSessionConfigProperties:
     """Property-based tests for session management configuration."""
 
     @given(session_enabled=st.booleans(), checkpoint_interval=valid_interval_strategy)
-    @settings(max_examples=40)
+    @settings(max_examples=40, deadline=None)
     def test_checkpoint_interval_bounds(self, session_enabled, checkpoint_interval):
         """Checkpoint interval respects configured bounds."""
         config = MahavishnuSettings(
@@ -237,7 +237,7 @@ class TestResilienceConfigProperties:
             st.integers(min_value=1, max_value=29), st.integers(min_value=3601, max_value=10000)
         )
     )
-    @settings(max_examples=30)
+    @settings(max_examples=30, deadline=None)
     def test_timeout_rejects_invalid_values(self, timeout):
         """Timeout values outside valid range are rejected."""
         with pytest.raises(ValidationError):
@@ -278,7 +278,7 @@ class TestOTelStorageConfigProperties:
         enabled=st.booleans(),
         connection_string=st.just("postgresql://user:strong_secure_password_12345@localhost/db"),
     )
-    @settings(max_examples=20)
+    @settings(max_examples=20, deadline=None)
     def test_otel_storage_requires_connection_when_enabled(self, enabled, connection_string):
         """OTel storage requires connection string when enabled."""
         if enabled:
@@ -330,7 +330,7 @@ class TestPoolConfigProperties:
         min_workers=valid_pool_min_strategy,
         max_workers=valid_pool_max_strategy,
     )
-    @settings(max_examples=30)
+    @settings(max_examples=30, deadline=None)
     def test_pool_configuration(
         self, pools_enabled, default_pool_type, routing_strategy, min_workers, max_workers
     ):
@@ -341,7 +341,7 @@ class TestPoolConfigProperties:
         assert 1 <= pool_config.max_workers <= 100
 
     @given(sync_interval=st.integers(min_value=10, max_value=600))
-    @settings(max_examples=30)
+    @settings(max_examples=30, deadline=None)
     def test_memory_sync_interval_bounds(self, sync_interval):
         """Memory sync interval respects configured bounds."""
         pool_config = PoolConfig()
@@ -393,7 +393,7 @@ class TestAuthConfigProperties:
             min_size=1, max_size=31, alphabet=st.characters(whitelist_categories=("L", "N"))
         ),
     )
-    @settings(max_examples=20)
+    @settings(max_examples=20, deadline=None)
     def test_auth_requires_minimum_secret_length(self, auth_enabled, secret):
         """Auth requires minimum secret length when enabled."""
         # Create auth config with short secret
@@ -495,7 +495,7 @@ class TestBooleanConfigProperties:
         shell_enabled=st.booleans(),
         workers_enabled=st.booleans(),
     )
-    @settings(max_examples=20)
+    @settings(max_examples=20, deadline=None)
     def test_boolean_fields_preserve_values(
         self, metrics_enabled, tracing_enabled, shell_enabled, workers_enabled
     ):

@@ -92,7 +92,7 @@ class TestAdapterDiscoveryCacheStats:
         from mahavishnu.core.adapter_discovery import AdapterDiscoveryEngine
 
         engine = AdapterDiscoveryEngine(
-            config={"enable_entry_points": False, "enable_oneiric_mcp": False}
+            config={"enable_entry_points": False, "enable_dhara_registry": False}
         )
         stats = engine.get_cache_stats()
         assert stats["hits"] == 0
@@ -104,7 +104,7 @@ class TestAdapterDiscoveryCacheStats:
         from mahavishnu.core.adapter_discovery import AdapterDiscoveryEngine
 
         engine = AdapterDiscoveryEngine(
-            config={"enable_entry_points": False, "enable_oneiric_mcp": False}
+            config={"enable_entry_points": False, "enable_dhara_registry": False}
         )
 
         # discover_all with no sources returns empty list; counts as miss
@@ -117,7 +117,7 @@ class TestAdapterDiscoveryCacheStats:
         from mahavishnu.core.adapter_discovery import AdapterDiscoveryEngine
 
         engine = AdapterDiscoveryEngine(
-            config={"enable_entry_points": False, "enable_oneiric_mcp": False}
+            config={"enable_entry_points": False, "enable_dhara_registry": False}
         )
 
         asyncio.run(engine.discover_all())  # miss
@@ -130,7 +130,7 @@ class TestAdapterDiscoveryCacheStats:
         from mahavishnu.core.adapter_discovery import AdapterDiscoveryEngine
 
         engine = AdapterDiscoveryEngine(
-            config={"enable_entry_points": False, "enable_oneiric_mcp": False}
+            config={"enable_entry_points": False, "enable_dhara_registry": False}
         )
 
         asyncio.run(engine.discover_all())

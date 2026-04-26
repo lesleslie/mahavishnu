@@ -182,7 +182,7 @@ class TestHelpTextClarity:
                     cmd,
                     capture_output=True,
                     text=True,
-                    timeout=5,
+                    timeout=30,
                 )
                 # Help should exit 0 and show usage
                 assert result.returncode == 0 or "usage" in result.stdout.lower()

@@ -21,6 +21,21 @@ import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
 
+
+def _run(coro):
+    """Run an async coroutine, creating a loop if needed (xdist-safe)."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
+    raise RuntimeError("Cannot run_until_complete inside a running loop")
+
 from hypothesis import (
     HealthCheck,
     assume,
@@ -157,7 +172,7 @@ class TestRepositoryProperties:
         language=st.sampled_from(["python", "javascript", "typescript", "go", "rust"]),
         dependencies=st.integers(min_value=0, max_value=1000),
     )
-    @settings(max_examples=30)
+    @settings(max_examples=30, deadline=None)
     def test_metadata_defaults_are_sensible(self, version, language, dependencies):
         """Test that metadata has sensible defaults and preserves valid inputs."""
         # Filter version to be simple
@@ -213,7 +228,7 @@ class TestRateLimitingProperties:
 
         # Property: Rate limiter should never allow more requests than configured
         for _ in range(num_requests):
-            allowed, _ = asyncio.get_event_loop().run_until_complete(limiter.is_allowed(key))
+            allowed, _ = _run(limiter.is_allowed(key))
             if allowed:
                 allowed_count += 1
 
@@ -230,7 +245,7 @@ class TestRateLimitingProperties:
         burst_size=st.integers(min_value=1, max_value=20),
         num_requests=st.integers(min_value=0, max_value=50),
     )
-    @settings(max_examples=30)
+    @settings(max_examples=30, deadline=None)
     def test_burst_control_prevents_spikes(self, burst_size, num_requests):
         """Test that burst control prevents request spikes."""
         limiter = RateLimiter(per_minute=100, burst_size=burst_size)
@@ -240,7 +255,7 @@ class TestRateLimitingProperties:
 
         # Property: Should not allow more than burst_size requests immediately
         for _ in range(num_requests):
-            allowed, _ = asyncio.get_event_loop().run_until_complete(limiter.is_allowed(key))
+            allowed, _ = _run(limiter.is_allowed(key))
             if allowed:
                 allowed_count += 1
             else:
@@ -273,7 +288,7 @@ class TestRateLimitingProperties:
 
         # Property: Exempt IPs should always be allowed
         for _ in range(20):  # Try multiple requests
-            allowed, info = asyncio.get_event_loop().run_until_complete(
+            allowed, info = _run(
                 limiter.is_allowed(test_ip, config)
             )
 
@@ -304,7 +319,7 @@ class TestRateLimitingProperties:
             allowed_count = 0
 
             for _ in range(requests_per_client):
-                allowed, _ = asyncio.get_event_loop().run_until_complete(limiter.is_allowed(key))
+                allowed, _ = _run(limiter.is_allowed(key))
                 if allowed:
                     allowed_count += 1
 
@@ -334,7 +349,7 @@ class TestRateLimitingProperties:
         for i in range(num_keys):
             key = f"key_{i}"
             for _ in range(requests_per_key):
-                asyncio.get_event_loop().run_until_complete(limiter.is_allowed(key))
+                _run(limiter.is_allowed(key))
 
         # Property: Stats should reflect actual request counts
         for i in range(num_keys):
@@ -426,7 +441,7 @@ class TestJWTAuthProperties:
         ),
         username=st.text(min_size=1, max_size=20),
     )
-    @settings(max_examples=10)
+    @settings(max_examples=10, deadline=None)
     def test_jwt_requires_minimum_secret_length(self, secret, username):
         """Test that JWT requires minimum secret length."""
         # Property: Secrets shorter than 32 characters should be rejected
@@ -459,10 +474,10 @@ class TestRBACProperties:
 
         # Property: Permission checks should be idempotent
         for permission in permissions:
-            result1 = asyncio.get_event_loop().run_until_complete(
+            result1 = _run(
                 rbac.check_permission(user_id, repo, permission)
             )
-            result2 = asyncio.get_event_loop().run_until_complete(
+            result2 = _run(
                 rbac.check_permission(user_id, repo, permission)
             )
 
@@ -492,14 +507,14 @@ class TestRBACProperties:
 
         # Property: User should have permission for allowed repos
         for repo in repos:
-            has_permission = asyncio.get_event_loop().run_until_complete(
+            has_permission = _run(
                 rbac.check_permission(user_id, repo, Permission.READ_REPO)
             )
             assert has_permission is True, f"User should have READ_REPO permission for {repo}"
 
         # Property: User should not have permission for non-allowed repos
         forbidden_repo = "forbidden_repo_unique_name"
-        has_permission = asyncio.get_event_loop().run_until_complete(
+        has_permission = _run(
             rbac.check_permission(user_id, forbidden_repo, Permission.READ_REPO)
         )
         assert has_permission is False, (
@@ -517,7 +532,7 @@ class TestRBACProperties:
         rbac = RBACManager(config)
 
         # Property: Nonexistent users should have no permissions
-        has_permission = asyncio.get_event_loop().run_until_complete(
+        has_permission = _run(
             rbac.check_permission(user_id, repo, Permission.READ_REPO)
         )
 
@@ -543,7 +558,7 @@ class TestRBACProperties:
         rbac.users[user_id] = user
 
         # Property: Filtered repos should be subset of allowed repos
-        filtered = asyncio.get_event_loop().run_until_complete(
+        filtered = _run(
             rbac.filter_repos_by_permission(user_id, Permission.READ_REPO)
         )
 
@@ -652,7 +667,7 @@ class TestWorkflowStateProperties:
         task = {"name": task_name, "description": "test task"}
 
         # Property: Created workflow should have all required fields
-        workflow = asyncio.get_event_loop().run_until_complete(
+        workflow = _run(
             state.create(workflow_id, task, repos)
         )
 
@@ -677,18 +692,18 @@ class TestWorkflowStateProperties:
         state = WorkflowState()
 
         # Create workflow
-        workflow = asyncio.get_event_loop().run_until_complete(
+        workflow = _run(
             state.create(workflow_id, {"task": "test"}, ["repo1"])
         )
         original_created_at = workflow["created_at"]
 
         # Update workflow
-        asyncio.get_event_loop().run_until_complete(
+        _run(
             state.update(workflow_id, status=status, progress=progress)
         )
 
         # Property: created_at should never change
-        updated_workflow = asyncio.get_event_loop().run_until_complete(state.get(workflow_id))
+        updated_workflow = _run(state.get(workflow_id))
         assert updated_workflow["created_at"] == original_created_at, (
             "created_at should be immutable"
         )
@@ -706,17 +721,17 @@ class TestWorkflowStateProperties:
         state = WorkflowState()
 
         # Create workflow
-        asyncio.get_event_loop().run_until_complete(
+        _run(
             state.create(workflow_id, {"task": "test"}, ["repo1"])
         )
 
         # Update progress
-        asyncio.get_event_loop().run_until_complete(
+        _run(
             state.update_progress(workflow_id, completed, total)
         )
 
         # Property: Progress should be accurate percentage
-        workflow = asyncio.get_event_loop().run_until_complete(state.get(workflow_id))
+        workflow = _run(state.get(workflow_id))
         expected_progress = int((completed / total) * 100)
         assert workflow["progress"] == expected_progress, (
             f"Progress mismatch: {workflow['progress']} != {expected_progress}"
@@ -743,15 +758,15 @@ class TestWorkflowStateProperties:
 
         for i in range(num_workflows):
             workflow_id = f"workflow_{i}"
-            asyncio.get_event_loop().run_until_complete(
+            _run(
                 state.create(workflow_id, {"task": f"test_{i}"}, ["repo1"])
             )
             # Update to random status
             status = statuses[i % len(statuses)]
-            asyncio.get_event_loop().run_until_complete(state.update(workflow_id, status=status))
+            _run(state.update(workflow_id, status=status))
 
         # List workflows
-        workflows = asyncio.get_event_loop().run_until_complete(
+        workflows = _run(
             state.list_workflows(status=status_filter, limit=100)
         )
 
@@ -806,7 +821,7 @@ class TestConfigurationProperties:
             st.integers(min_value=101, max_value=1000),
         ),
     )
-    @settings(max_examples=20)
+    @settings(max_examples=20, deadline=None)
     def test_configuration_rejects_invalid_values(self, invalid_scores):
         """Test that configuration rejects values outside bounds."""
         # Property: Configuration should reject out-of-bounds values

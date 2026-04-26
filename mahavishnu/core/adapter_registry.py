@@ -1,9 +1,9 @@
-"""Hybrid adapter registry combining Oneiric resolution + Dhara persistence.
+"""Hybrid adapter registry combining entry-point discovery + Dhara persistence.
 
 This module implements the HybridAdapterRegistry using the composite pattern,
 combining three specialized components:
 
-1. **AdapterDiscoveryEngine** - Entry points + Oneiric MCP discovery
+1. **AdapterDiscoveryEngine** - Entry points + Dhara MCP discovery
 2. **AdapterPersistenceLayer** - Dhara/SQLite state and health storage
 3. **HealthIntegration** - Health monitoring, metrics, and alerts
 
@@ -14,7 +14,7 @@ Architecture:
     │  │  Discovery      │  │  Persistence    │  │  Health         │   │
     │  │  Engine         │  │  Layer          │  │  Integration    │   │
     │  │  (entry points, │  │  (Dhara/SQLite)│  │  (metrics,      │   │
-    │  │   Oneiric MCP)  │  │                 │  │   alerts)       │   │
+    │  │   Dhara MCP)    │  │                 │  │   alerts)       │   │
     │  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘   │
     │           │                    │                    │            │
     │           └────────────────────┼────────────────────┘            │
@@ -34,12 +34,12 @@ Related: Hybrid Adapter Integration Plan Phases 1-5
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 import importlib
 import logging
 import threading
 import time
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from mahavishnu.core.adapter_discovery import (
@@ -54,7 +54,6 @@ from mahavishnu.core.adapter_persistence import (
 from mahavishnu.core.task_requirements import (
     ResolutionCache,
     RoutingDecision,
-    TaskRequirements,
 )
 
 if TYPE_CHECKING:
@@ -63,6 +62,26 @@ if TYPE_CHECKING:
     from mahavishnu.websocket.server import MahavishnuWebSocketServer
 
 logger = logging.getLogger(__name__)
+
+
+def _build_dhara_registry_config(config: Any, registry_config: Any) -> dict[str, Any]:
+    """Build AdapterDiscoveryEngine config for Dhara registry access."""
+    base_url = getattr(registry_config, "base_url", None)
+    if not base_url:
+        dependency = getattr(getattr(config, "health", None), "dependencies", {}).get("dhara")
+        if dependency is not None:
+            scheme = "https" if getattr(dependency, "use_tls", False) else "http"
+            base_url = f"{scheme}://{dependency.host}:{dependency.port}/mcp"
+        else:
+            base_url = "http://localhost:8683/mcp"
+
+    return {
+        "enabled": getattr(registry_config, "enabled", False),
+        "base_url": base_url,
+        "timeout_sec": getattr(registry_config, "timeout_sec", 30),
+        "cache_ttl_sec": getattr(registry_config, "cache_ttl_sec", 300),
+        "token": getattr(registry_config, "token", None),
+    }
 
 
 # =============================================================================
@@ -102,14 +121,14 @@ class RegistrationReport:
 
 
 class HybridAdapterRegistry:
-    """Hybrid adapter registry with Oneiric discovery + Dhara persistence.
+    """Hybrid adapter registry with entry-point discovery + Dhara persistence.
 
     This registry implements the composite pattern, delegating to specialized
     components for discovery, persistence, and health monitoring.
 
     Features:
     - Entry point plugin discovery
-    - Oneiric MCP remote discovery
+    - Dhara MCP remote discovery
     - Dhara/SQLite state persistence
     - Capability-based routing with caching
     - Health monitoring integration
@@ -137,8 +156,8 @@ class HybridAdapterRegistry:
     def __init__(
         self,
         config: Any,  # MahavishnuSettings
-        metrics: "RoutingMetrics | None" = None,
-        websocket_server: "MahavishnuWebSocketServer | None" = None,
+        metrics: RoutingMetrics | None = None,
+        websocket_server: MahavishnuWebSocketServer | None = None,
     ) -> None:
         """Initialize the hybrid adapter registry.
 
@@ -155,12 +174,25 @@ class HybridAdapterRegistry:
         self._lock = threading.RLock()
 
         # Composite components
+        adapter_registry_config = getattr(config, "adapter_registry", None)
+        oneiric_config = getattr(config, "oneiric_mcp", None)
+        dhara_registry_enabled = bool(
+            getattr(
+                oneiric_config,
+                "enabled",
+                getattr(config, "oneiric_mcp_enabled", False),
+            )
+        )
+        dhara_registry_config = _build_dhara_registry_config(config, oneiric_config)
+
         self.discovery = AdapterDiscoveryEngine(
             config={
-                "allowlist_patterns": getattr(config, "adapter_allowlist_patterns", None)
+                "allowlist_patterns": getattr(adapter_registry_config, "allowlist_patterns", None)
+                or getattr(config, "adapter_allowlist_patterns", None)
                 or ["mahavishnu.adapters.*", "mahavishnu.engines.*"],
-                "cache_ttl_seconds": 300,
-                "enable_oneiric_mcp": getattr(config, "oneiric_mcp_enabled", False),
+                "cache_ttl_seconds": getattr(adapter_registry_config, "cache_ttl_seconds", 300),
+                "enable_dhara_registry": dhara_registry_enabled,
+                "dhara_registry_config": dhara_registry_config,
             }
         )
         self.persistence = AdapterPersistenceLayer()
@@ -190,7 +222,7 @@ class HybridAdapterRegistry:
 
         This is the main entry point for adapter registration. It:
         1. Discovers adapters from entry points
-        2. Discovers adapters from Oneiric MCP
+        2. Discovers adapters from Dhara MCP
         3. Loads persisted state for known adapters
         4. Instantiates and registers adapters
 
@@ -424,7 +456,7 @@ class HybridAdapterRegistry:
 
         return matches
 
-    def get_adapter(self, name: str) -> "OrchestratorAdapter | None":
+    def get_adapter(self, name: str) -> OrchestratorAdapter | None:
         """Get a registered adapter by name.
 
         Thread-safe lookup.
@@ -645,7 +677,7 @@ class HybridAdapterRegistry:
     # =========================================================================
 
     @property
-    def adapters(self) -> dict[str, "OrchestratorAdapter"]:
+    def adapters(self) -> dict[str, OrchestratorAdapter]:
         """Get all registered adapters (backward compatibility).
 
         Returns:
@@ -681,8 +713,8 @@ def get_registry() -> HybridAdapterRegistry:
 
 async def initialize_registry(
     config: Any,
-    metrics: "RoutingMetrics | None" = None,
-    websocket_server: "MahavishnuWebSocketServer | None" = None,
+    metrics: RoutingMetrics | None = None,
+    websocket_server: MahavishnuWebSocketServer | None = None,
 ) -> HybridAdapterRegistry:
     """Initialize and return the global adapter registry.
 

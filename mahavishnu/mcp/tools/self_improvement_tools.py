@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from enum import StrEnum
 import logging
+from pathlib import Path
+import subprocess
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -36,6 +39,45 @@ class SelfImprovementTools:
             app: MahavishnuApp instance with coordination and approval managers.
         """
         self.app = app
+
+    def _collect_ruff_targets(self, findings: list[dict[str, Any]]) -> list[str]:
+        """Collect unique Python files that Ruff can fix from review findings."""
+        targets: list[str] = []
+        seen: set[str] = set()
+
+        for finding in findings:
+            for file_name in finding.get("affected_files", []) or []:
+                path = Path(str(file_name))
+                if path.suffix not in {".py", ".pyi"}:
+                    continue
+                normalized = str(path)
+                if normalized in seen:
+                    continue
+                seen.add(normalized)
+                targets.append(normalized)
+
+        return targets
+
+    def _run_ruff_command(
+        self,
+        args: list[str],
+        cwd: Path | None = None,
+    ) -> dict[str, Any]:
+        """Run a Ruff command and capture the result."""
+        command = ["ruff", *args]
+        completed = subprocess.run(
+            command,
+            cwd=str(cwd) if cwd is not None else None,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        return {
+            "command": command,
+            "returncode": completed.returncode,
+            "stdout": completed.stdout,
+            "stderr": completed.stderr,
+        }
 
     async def review_and_fix(
         self,
@@ -120,7 +162,9 @@ class SelfImprovementTools:
         # Auto-fix if requested
         if auto_fix and findings:
             auto_fix_results = await self._auto_fix(findings)
-            result["auto_fixed"] = len(auto_fix_results)
+            result["auto_fixed"] = sum(
+                1 for item in auto_fix_results if item.get("status") == "fixed"
+            )
             result["auto_fix_results"] = auto_fix_results
 
         logger.info(
@@ -384,20 +428,52 @@ class SelfImprovementTools:
             - details: Additional details about the fix
 
         Note:
-            This is a placeholder implementation. In production, this would
-            integrate with the FixOrchestrator to apply actual fixes.
+            This implementation applies Ruff's autofix and formatter passes
+            to affected Python files before validating the result. That keeps
+            deterministic lint and formatting issues from surviving the AI-fix
+            stage.
         """
         logger.debug(f"Auto-fix requested for {len(findings)} findings")
 
-        # Placeholder implementation
-        # In production, this would:
-        # 1. Filter findings to those that are auto-fixable
-        # 2. Use FixOrchestrator to apply fixes
-        # 3. Return results of fix attempts
+        targets = self._collect_ruff_targets(findings)
+        if not targets:
+            return [
+                {
+                    "status": "skipped",
+                    "reason": "no_python_files",
+                    "message": "No Ruff-targetable Python files were found in the review findings.",
+                }
+            ]
 
-        # Return empty list for now - actual implementation would
-        # use fix_orchestrator to apply real fixes
-        return []
+        workdir = Path.cwd()
+        fix_result = await asyncio.to_thread(
+            self._run_ruff_command,
+            ["check", "--fix", *targets],
+            workdir,
+        )
+        format_result = await asyncio.to_thread(
+            self._run_ruff_command,
+            ["format", *targets],
+            workdir,
+        )
+        verify_result = await asyncio.to_thread(
+            self._run_ruff_command,
+            ["check", *targets],
+            workdir,
+        )
+
+        status = "fixed" if verify_result["returncode"] == 0 else "partial"
+        result: dict[str, Any] = {
+            "status": status,
+            "targets": targets,
+            "ruff_check_fix": fix_result,
+            "ruff_format": format_result,
+            "ruff_check_validate": verify_result,
+        }
+        if verify_result["returncode"] != 0:
+            result["message"] = "Ruff autofix ran, but validation still found remaining issues."
+
+        return [result]
 
 
 def register_self_improvement_tools(

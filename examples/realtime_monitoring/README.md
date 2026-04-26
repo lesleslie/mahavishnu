@@ -26,8 +26,8 @@ Dependencies are already installed via `mahavishnu[dev]`.
 Monitor pool status, workers, and tasks in real-time.
 
 ```bash
-python examples/realtime_monitoring/pool_monitor.py pool_local
-python examples/realtime_monitoring/pool_monitor.py pool_local --host localhost --port 8690
+python examples/realtime_monitoring/pool_monitor.py run pool_local
+python examples/realtime_monitoring/pool_monitor.py run pool_local --host localhost --port 8690
 ```
 
 **Features:**
@@ -43,8 +43,8 @@ python examples/realtime_monitoring/pool_monitor.py pool_local --host localhost 
 Monitor workflow execution progress with stage tracking.
 
 ```bash
-python examples/realtime_monitoring/workflow_monitor.py wf_123
-python examples/realtime_monitoring/workflow_monitor.py wf_123 --host localhost --port 8690
+python examples/realtime_monitoring/workflow_monitor.py run wf_123
+python examples/realtime_monitoring/workflow_monitor.py run wf_123 --host localhost --port 8690
 ```
 
 **Features:**
@@ -60,8 +60,8 @@ python examples/realtime_monitoring/workflow_monitor.py wf_123 --host localhost 
 Unified dashboard for all Mahavishnu ecosystem services.
 
 ```bash
-python examples/realtime_monitoring/multi_service_dashboard.py
-python examples/realtime_monitoring/multi_service_dashboard.py --mahavishnu-host localhost --mahavishnu-port 8690
+python examples/realtime_monitoring/multi_service_dashboard.py run
+python examples/realtime_monitoring/multi_service_dashboard.py run --mahavishnu-host localhost --mahavishnu-port 8690
 ```
 
 **Features:**

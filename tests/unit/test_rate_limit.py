@@ -605,3 +605,255 @@ class TestRateLimitIntegration:
         allowed, info = await limiter.is_allowed(key)
         assert allowed is False
         assert info.limited is True
+
+
+# ============================================================================
+# Cleanup & Stats Coverage
+# ============================================================================
+
+
+class TestRateLimiterCleanup:
+    """Cover _cleanup_old_entries and get_stats global path."""
+
+    @pytest.mark.asyncio
+    async def test_cleanup_removes_old_requests(self):
+        """Old request entries should be removed by cleanup."""
+        limiter = RateLimiter(RateLimitConfig(requests_per_minute=60))
+        key = "cleanup_test"
+
+        import time
+
+        old_ts = time.time() - 7200
+        limiter._requests[key] = [(old_ts, 1)]
+
+        limiter._cleanup_old_entries()
+        assert key not in limiter._requests
+
+    @pytest.mark.asyncio
+    async def test_cleanup_keeps_recent_requests(self):
+        """Recent request entries should not be removed by cleanup."""
+        limiter = RateLimiter(RateLimitConfig(requests_per_minute=60))
+        key = "recent_test"
+
+        import time
+
+        recent_ts = time.time() - 10
+        limiter._requests[key] = [(recent_ts, 1)]
+
+        limiter._cleanup_old_entries()
+        assert key in limiter._requests
+
+    @pytest.mark.asyncio
+    async def test_cleanup_removes_old_violations(self):
+        """Old violation entries should be removed."""
+        limiter = RateLimiter(RateLimitConfig(requests_per_minute=60))
+        key = "violation_cleanup"
+
+        import time
+
+        old_ts = time.time() - 7200
+        limiter._violations[key] = [old_ts]
+
+        limiter._cleanup_old_entries()
+        assert key not in limiter._violations
+
+    @pytest.mark.asyncio
+    async def test_get_stats_global(self):
+        """get_stats without key should return global stats."""
+        limiter = RateLimiter(RateLimitConfig(requests_per_minute=60))
+        key = "stats_global"
+
+        import time
+
+        recent_ts = time.time() - 10
+        limiter._requests[key] = [(recent_ts, 3)]
+        limiter._violations[key] = [recent_ts]
+
+        stats = limiter.get_stats()
+        assert stats["total_clients"] == 1
+        assert stats["total_requests"] == 3
+        assert stats["total_violations"] == 1
+        assert stats["active_clients"] == 1
+
+    @pytest.mark.asyncio
+    async def test_get_stats_specific_key(self):
+        """get_stats with key should return per-key stats."""
+        limiter = RateLimiter(per_minute=60)
+        key = "per_key"
+
+        import time
+
+        now = time.time()
+        limiter._requests[key] = [
+            (now - 10, 1),
+            (now - 100, 1),
+            (now - 10000, 1),
+        ]
+
+        stats = limiter.get_stats(key)
+        assert stats["key"] == key
+        assert stats["requests_per_minute"] == 1
+        assert stats["requests_per_hour"] == 2
+        assert stats["requests_per_day"] == 3
+
+
+# ============================================================================
+# Middleware Coverage
+# ============================================================================
+
+
+class TestRateLimitMiddleware:
+    """Cover RateLimitMiddleware.dispatch and _get_client_ip."""
+
+    @pytest.mark.asyncio
+    async def test_exempt_user_bypasses_rate_limit(self):
+        """Users in exempt_user_ids should bypass rate limiting."""
+        from unittest.mock import AsyncMock
+
+        from mahavishnu.core.rate_limit import RateLimitMiddleware
+
+        config = RateLimitConfig(requests_per_minute=1, exempt_user_ids=["admin"])
+        limiter = RateLimiter(per_minute=1)
+
+        middleware = RateLimitMiddleware(
+            app=MagicMock(),
+            config=config,
+            limiter=limiter,
+        )
+
+        mock_request = MagicMock()
+        mock_request.headers = {"X-User-ID": "admin"}
+        call_next = AsyncMock(return_value=MagicMock(headers={}))
+        mock_request.scope = {"type": "http", "method": "GET", "path": "/test"}
+
+        response = await middleware.dispatch(mock_request, call_next)
+        call_next.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_rate_limited_request_returns_429(self):
+        """Requests exceeding limit should return 429 with retry info."""
+        from unittest.mock import AsyncMock
+
+        from mahavishnu.core.rate_limit import RateLimitMiddleware
+
+        config = RateLimitConfig(requests_per_minute=1)
+        limiter = RateLimiter(per_minute=1)
+        middleware = RateLimitMiddleware(
+            app=MagicMock(),
+            config=config,
+            limiter=limiter,
+        )
+
+        await limiter.is_allowed("192.168.1.1")
+
+        mock_request = MagicMock()
+        mock_request.headers = {}
+        mock_request.client = MagicMock()
+        mock_request.client.host = "192.168.1.1"
+        call_next = AsyncMock()
+
+        response = await middleware.dispatch(mock_request, call_next)
+        assert response.status_code == 429
+        assert "Retry-After" in response.headers
+        call_next.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_allowed_request_adds_headers(self):
+        """Allowed requests should get rate limit headers."""
+        from unittest.mock import AsyncMock
+
+        from mahavishnu.core.rate_limit import RateLimitMiddleware
+
+        config = RateLimitConfig(requests_per_minute=10)
+        limiter = RateLimiter(per_minute=10)
+        middleware = RateLimitMiddleware(
+            app=MagicMock(),
+            config=config,
+            limiter=limiter,
+        )
+
+        mock_request = MagicMock()
+        mock_request.headers = {}
+        mock_request.client = MagicMock()
+        mock_request.client.host = "10.0.0.1"
+
+        mock_response = MagicMock()
+        mock_response.headers = {}
+        call_next = AsyncMock(return_value=mock_response)
+
+        response = await middleware.dispatch(mock_request, call_next)
+        assert "X-RateLimit-Limit" in mock_response.headers
+        assert "X-RateLimit-Remaining" in mock_response.headers
+
+    def test_get_client_ip_x_forwarded_for(self):
+        """Should extract first IP from X-Forwarded-For header."""
+        from mahavishnu.core.rate_limit import RateLimitMiddleware
+
+        middleware = RateLimitMiddleware(app=MagicMock())
+        mock_request = MagicMock()
+        mock_request.headers = {"X-Forwarded-For": "10.0.0.1, 172.16.0.1"}
+        mock_request.client = MagicMock()
+        mock_request.client.host = "192.168.1.1"
+
+        ip = middleware._get_client_ip(mock_request)
+        assert ip == "10.0.0.1"
+
+    def test_get_client_ip_x_real_ip(self):
+        """Should use X-Real-IP when X-Forwarded-For is absent."""
+        from mahavishnu.core.rate_limit import RateLimitMiddleware
+
+        middleware = RateLimitMiddleware(app=MagicMock())
+        mock_request = MagicMock()
+        mock_request.headers = {"X-Real-IP": "10.0.0.2"}
+        mock_request.client = MagicMock()
+        mock_request.client.host = "192.168.1.1"
+
+        ip = middleware._get_client_ip(mock_request)
+        assert ip == "10.0.0.2"
+
+    def test_get_client_ip_fallback(self):
+        """Should fall back to client.host when no headers present."""
+        from mahavishnu.core.rate_limit import RateLimitMiddleware
+
+        middleware = RateLimitMiddleware(app=MagicMock())
+        mock_request = MagicMock()
+        mock_request.headers = {}
+        mock_request.client = MagicMock()
+        mock_request.client.host = "192.168.1.1"
+
+        ip = middleware._get_client_ip(mock_request)
+        assert ip == "192.168.1.1"
+
+    def test_get_client_ip_unknown(self):
+        """Should return 'unknown' when no client info available."""
+        from mahavishnu.core.rate_limit import RateLimitMiddleware
+
+        middleware = RateLimitMiddleware(app=MagicMock())
+        mock_request = MagicMock()
+        mock_request.headers = {}
+        mock_request.client = None
+
+        ip = middleware._get_client_ip(mock_request)
+        assert ip == "unknown"
+
+
+# ============================================================================
+# Rate Limit Decorator Error Path
+# ============================================================================
+
+
+class TestRateLimitDecoratorError:
+    """Cover rate_limit decorator no-request skip path."""
+
+    @pytest.mark.asyncio
+    async def test_decorator_no_request_skips_limiting(self):
+        """Decorator should skip rate limiting when no Request arg."""
+        @rate_limit(requests_per_minute=1)
+        async def my_func(data: str):
+            return f"ok: {data}"
+
+        result = await my_func("test")
+        assert result == "ok: test"
+
+        result = await my_func("test2")
+        assert result == "ok: test2"

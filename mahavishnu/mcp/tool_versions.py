@@ -213,13 +213,6 @@ TOOL_VERSIONS: dict[str, str] = {
     "record_user_feedback": "1.0.0",
     "team_from_goal": "1.0.0",
     "send_project_message": "1.0.0",
-    # Oneiric integration tools
-    "oneiric_check_health": "1.0.0",
-    "oneiric_get_adapter": "1.0.0",
-    "oneiric_health_check": "1.0.0",
-    "oneiric_invalidate_cache": "1.0.0",
-    "oneiric_list_adapters": "1.0.0",
-    "oneiric_resolve_adapter": "1.0.0",
     # Tree-sitter tools (treesitter_tools.py)
     "treesitter_batch_analyze": "1.0.0",
     "treesitter_cache_stats": "1.0.0",

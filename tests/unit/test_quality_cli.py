@@ -1,8 +1,10 @@
 """Tests for quality_cli.py — quality management CLI commands."""
 
+from unittest.mock import patch
+
 from typer.testing import CliRunner
 
-from mahavishnu.quality_cli import add_quality_commands, quality_app, quality_check, quality_fix
+from mahavishnu.quality_cli import add_quality_commands, quality_app
 
 runner = CliRunner()
 
@@ -35,7 +37,7 @@ class TestQualityFix:
         result = runner.invoke(quality_app, ["fix"])
         assert result.exit_code == 0
         assert "Quality fix for ." in result.output
-        assert "Quality fix complete (stub)" in result.output
+        assert "Quality fix complete" in result.output
 
     def test_custom_path(self):
         result = runner.invoke(quality_app, ["fix", "/tmp/code"])
@@ -43,14 +45,18 @@ class TestQualityFix:
         assert "Quality fix for /tmp/code" in result.output
 
     def test_auto_flag(self):
-        result = runner.invoke(quality_app, ["fix", "--auto"])
+        with patch("mahavishnu.quality_cli.subprocess.run") as mock_run:
+            result = runner.invoke(quality_app, ["fix", "--auto"])
         assert result.exit_code == 0
         assert "Auto-fixing issues" in result.output
+        assert mock_run.call_count == 3
 
     def test_auto_short_flag(self):
-        result = runner.invoke(quality_app, ["fix", "-a"])
+        with patch("mahavishnu.quality_cli.subprocess.run") as mock_run:
+            result = runner.invoke(quality_app, ["fix", "-a"])
         assert result.exit_code == 0
         assert "Auto-fixing issues" in result.output
+        assert mock_run.call_count == 3
 
 
 class TestAddQualityCommands:

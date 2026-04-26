@@ -660,10 +660,10 @@ else:
 - **Crackerjack**: `/Users/les/Projects/crackerjack/crackerjack/mcp/server_core.py:139, 347`
 
 ### Documentation
-- **Migration Complete**: `/Users/les/Projects/mahavishnu/docs/ULID_MIGRATION_COMPLETE.md`
-- **Code Updates**: `/Users/les/Projects/mahavishnu/docs/ULID_CODE_UPDATES_COMPLETE.md`
+- **Migration Complete**: `/Users/les/Projects/mahavishnu/docs/archive/completion-reports/ULID_MIGRATION_COMPLETE.md`
+- **Code Updates**: `/Users/les/Projects/mahavishnu/docs/archive/completion-reports/ULID_CODE_UPDATES_COMPLETE.md`
 - **Deployment Checklist**: `/Users/les/Projects/mahavishnu/docs/ULID_PRODUCTION_DEPLOYMENT_CHECKLIST.md`
-- **This Summary**: `/Users/les/Projects/mahavishnu/docs/ULID_MIGRATION_COMPREHENSIVE_SUMMARY.md`
+- **This Summary**: `/Users/les/Projects/mahavishnu/docs/archive/completion-reports/ULID_MIGRATION_COMPREHENSIVE_SUMMARY.md`
 
 ---
 

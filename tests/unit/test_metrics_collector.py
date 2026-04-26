@@ -472,5 +472,125 @@ class TestSingleton:
         await tracker.stop()
 
 
+class TestNotSampledPath:
+    async def test_should_sample_full(self, tracker):
+        assert tracker._should_sample(TaskType.AI_TASK) is True
+
+    async def test_should_sample_adaptive_low(self, tracker):
+        tracker.sampling_strategy = SamplingStrategy.ADAPTIVE
+        assert tracker._should_sample(TaskType.AI_TASK) is True
+
+
+class TestRecordAdapterAttempt:
+    async def test_record_adapter_attempt(self, tracker):
+        await tracker.record_adapter_attempt(
+            adapter=AdapterType.PREFECT,
+            attempt_number=1,
+            outcome="success",
+        )
+
+
+class TestFlushBatch:
+    async def test_flush_batch_no_records(self, tracker):
+        result = await tracker._flush_batch()
+        assert result["status"] == "no_records"
+        assert result["written"] == 0
+
+    async def test_flush_batch_with_storage_client(self):
+        t = ExecutionTracker(
+            sampling_strategy=SamplingStrategy.FULL,
+            batch_size=100,
+            aggregate_interval_ms=60000,
+        )
+        mock_storage = AsyncMock()
+        mock_storage.batch_write = AsyncMock(return_value={"written": 1})
+        t.storage_client = mock_storage
+
+        eid = await t.record_execution_start(AdapterType.PREFECT, TaskType.AI_TASK, ["/path"])
+        await t.record_execution_end(eid, success=True)
+
+        result = await t._flush_batch()
+        assert result["written"] == 1
+
+    async def test_flush_batch_storage_error(self):
+        t = ExecutionTracker(
+            sampling_strategy=SamplingStrategy.FULL,
+            batch_size=100,
+            aggregate_interval_ms=60000,
+        )
+        mock_storage = AsyncMock()
+        mock_storage.batch_write = AsyncMock(side_effect=RuntimeError("DB down"))
+        t.storage_client = mock_storage
+
+        eid = await t.record_execution_start(AdapterType.PREFECT, TaskType.AI_TASK, ["/path"])
+        await t.record_execution_end(eid, success=True)
+
+        result = await t._flush_batch()
+        assert result["status"] == "error"
+
+    async def test_flush_batch_legacy_storage(self):
+        t = ExecutionTracker(
+            sampling_strategy=SamplingStrategy.FULL,
+            batch_size=100,
+            aggregate_interval_ms=60000,
+        )
+        mock_storage = AsyncMock()
+        del mock_storage.batch_write
+        t.storage_client = mock_storage
+
+        eid = await t.record_execution_start(AdapterType.PREFECT, TaskType.AI_TASK, ["/path"])
+        await t.record_execution_end(eid, success=True)
+
+        result = await t._flush_batch()
+        assert result["written"] == 1
+
+
+class TestCalculateAggregates:
+    async def test_calculate_aggregates(self, tracker):
+        await tracker.record_execution_start(AdapterType.PREFECT, TaskType.AI_TASK, ["/path"])
+        await tracker.record_execution_end("test-id", success=True)
+
+        result = await tracker._calculate_aggregates()
+        assert "adapter_stats" in result
+        assert "task_type_stats" in result
+        assert "timestamp" in result
+
+
+class TestStartAlreadyStarted:
+    async def test_start_already_started(self, tracker):
+        await tracker.start()
+        # Should not raise, just warn
+        await tracker.start()
+
+
+class TestAggregationLoop:
+    async def test_aggregation_loop_with_storage(self, tracker):
+        mock_storage = AsyncMock()
+        mock_storage.write_adapter_stats = AsyncMock()
+        tracker.storage_client = mock_storage
+        tracker.aggregate_interval_ms = 1
+
+        await tracker.record_execution_start(AdapterType.PREFECT, TaskType.AI_TASK, ["/path"])
+        await tracker.record_execution_end("test-id", success=True)
+
+        # Let one aggregation cycle run
+        await asyncio.sleep(0.05)
+        await tracker.stop()
+
+
+class TestGenerateConfigIdFallback:
+    def test_fallback_uuid(self):
+        import mahavishnu.core.metrics_collector as mc
+
+        original = mc.generate_config_id
+        try:
+            # If oneiric is available, this tests the original path
+            result = mc.generate_config_id()
+            assert isinstance(result, str)
+            assert len(result) > 0
+        finally:
+            mc.generate_config_id = original
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

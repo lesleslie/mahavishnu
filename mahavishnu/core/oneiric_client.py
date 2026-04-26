@@ -1,48 +1,36 @@
-"""Oneiric MCP gRPC client for adapter discovery and resolution.
+"""Dhara-backed adapter registry client.
 
-This module provides a high-performance gRPC client for connecting to Oneiric MCP's
-adapter registry, enabling dynamic adapter discovery in Mahavishnu workflows.
-
-Features:
-- Async gRPC client with connection pooling
-- Adapter list caching with TTL
-- Health monitoring with circuit breaker
-- Graceful fallback when Oneiric MCP unavailable
-- JWT authentication support (production)
-- TLS/mTLS support (production)
+The former ``oneiric_mcp`` gRPC package has been folded into Dhara's canonical
+FastMCP surface. This module keeps the historic class names as compatibility
+aliases while routing adapter discovery through Dhara MCP tools.
 """
+
+from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import grpc.aio
+if TYPE_CHECKING:
+    from .dhara_adapter import DharaClient
 
 logger = logging.getLogger(__name__)
-_dhara_clients: dict[str, "DharaClient"] = {}
+_dhara_clients: dict[tuple[str, str | None], DharaClient] = {}
 _default_dhara_base_url = "http://localhost:8683/mcp"
 
-# Try to import Oneiric MCP gRPC modules
-try:
-    from oneiric_mcp.grpc import registry_pb2, registry_pb2_grpc
 
-    ONEIRIC_MCP_AVAILABLE = True
-except ImportError:
-    ONEIRIC_MCP_AVAILABLE = False
-    logger.warning("Oneiric MCP gRPC modules not available. Install with: pip install oneiric-mcp")
-
-
-def get_dhara_client(base_url: str | None = None) -> "DharaClient":
+def get_dhara_client(base_url: str | None = None, token: str | None = None) -> DharaClient:
     """Return a cached Dhara MCP client."""
     from .dhara_adapter import DharaClient
 
     resolved_base_url = (base_url or _default_dhara_base_url).rstrip("/")
-    client = _dhara_clients.get(resolved_base_url)
+    cache_key = (resolved_base_url, token)
+    client = _dhara_clients.get(cache_key)
     if client is None:
-        client = DharaClient(base_url=resolved_base_url)
-        _dhara_clients[resolved_base_url] = client
+        client = DharaClient(base_url=resolved_base_url, token=token)
+        _dhara_clients[cache_key] = client
     return client
 
 
@@ -52,9 +40,26 @@ def set_dhara_client_base_url(base_url: str) -> None:
     _default_dhara_base_url = base_url.rstrip("/")
 
 
+def _parse_datetime(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, int | float):
+        return datetime.fromtimestamp(value, tz=UTC)
+    if isinstance(value, str):
+        try:
+            normalized = value.replace("Z", "+00:00")
+            parsed = datetime.fromisoformat(normalized)
+            return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+        except ValueError:
+            return None
+    return None
+
+
 @dataclass
 class AdapterEntry:
-    """Represents an adapter entry from Oneiric MCP registry."""
+    """Normalized adapter entry returned from Dhara's adapter registry."""
 
     adapter_id: str
     project: str
@@ -70,15 +75,35 @@ class AdapterEntry:
     health_status: str = "unknown"
 
     @classmethod
-    def from_pb2(cls, pb2_entry: Any) -> "AdapterEntry":
-        """Create AdapterEntry from protobuf AdapterEntry.
+    def from_dhara(cls, adapter: dict[str, Any]) -> AdapterEntry:
+        """Create an entry from Dhara's adapter registry schema."""
+        metadata = dict(adapter.get("metadata") or {})
+        domain = str(adapter.get("domain") or "")
+        key = str(adapter.get("key") or metadata.get("key") or metadata.get("category") or "")
+        provider = str(adapter.get("provider") or "")
+        adapter_id = str(adapter.get("adapter_id") or f"{domain}:{key}:{provider}")
+        category = str(metadata.get("category") or key)
 
-        Args:
-            pb2_entry: Protobuf AdapterEntry message
+        return cls(
+            adapter_id=adapter_id,
+            project=str(metadata.get("project") or "mahavishnu"),
+            domain=domain,
+            category=category,
+            provider=provider,
+            capabilities=list(adapter.get("capabilities") or []),
+            factory_path=str(adapter.get("factory_path") or ""),
+            health_check_url=adapter.get("health_check_url"),
+            metadata=metadata,
+            registered_at=_parse_datetime(adapter.get("created_at") or adapter.get("registered_at")),
+            last_heartbeat=_parse_datetime(
+                adapter.get("last_health_check") or adapter.get("last_heartbeat")
+            ),
+            health_status=str(adapter.get("health_status") or "unknown"),
+        )
 
-        Returns:
-            AdapterEntry instance
-        """
+    @classmethod
+    def from_pb2(cls, pb2_entry: Any) -> AdapterEntry:
+        """Compatibility converter for old tests and fixtures."""
         return cls(
             adapter_id=pb2_entry.adapter_id,
             project=pb2_entry.project,
@@ -89,17 +114,13 @@ class AdapterEntry:
             factory_path=pb2_entry.factory_path,
             health_check_url=pb2_entry.health_check_url or None,
             metadata=dict(pb2_entry.metadata),
-            registered_at=datetime.fromtimestamp(pb2_entry.registered_at, tz=UTC),
-            last_heartbeat=datetime.fromtimestamp(pb2_entry.last_heartbeat, tz=UTC),
+            registered_at=_parse_datetime(pb2_entry.registered_at),
+            last_heartbeat=_parse_datetime(pb2_entry.last_heartbeat),
             health_status=pb2_entry.health_status,
         )
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary representation.
-
-        Returns:
-            Dictionary with adapter details
-        """
+        """Convert to dictionary representation."""
         return {
             "adapter_id": self.adapter_id,
             "project": self.project,
@@ -117,36 +138,23 @@ class AdapterEntry:
 
 
 @dataclass
-class OneiricMCPConfig:
-    """Configuration for Oneiric MCP client."""
+class DharaAdapterRegistryConfig:
+    """Configuration for Dhara adapter registry discovery."""
 
     enabled: bool = True
-    grpc_host: str = "localhost"
-    grpc_port: int = 8679
-    use_tls: bool = False
+    base_url: str | None = None
     timeout_sec: int = 30
-    cache_ttl_sec: int = 300  # 5 minutes
-    jwt_enabled: bool = False
-    jwt_secret: str | None = None
-    jwt_project: str = "mahavishnu"
-    tls_cert_path: str | None = None
-    tls_key_path: str | None = None
-    tls_ca_path: str | None = None
+    cache_ttl_sec: int = 300
+    token: str | None = None
+
+
+OneiricMCPConfig = DharaAdapterRegistryConfig
 
 
 class AdapterCircuitBreaker:
-    """Circuit breaker for failing adapters.
-
-    Prevents repeated calls to adapters that are consistently failing.
-    """
+    """Circuit breaker for failing adapters."""
 
     def __init__(self, failure_threshold: int = 3, block_duration_sec: int = 300):
-        """Initialize circuit breaker.
-
-        Args:
-            failure_threshold: Number of failures before blocking
-            block_duration_sec: How long to block adapter after threshold (default: 5 minutes)
-        """
         self.failure_threshold = failure_threshold
         self.block_duration_sec = block_duration_sec
         self.failures: dict[str, int] = {}
@@ -154,175 +162,52 @@ class AdapterCircuitBreaker:
         self._lock = asyncio.Lock()
 
     async def is_available(self, adapter_id: str) -> bool:
-        """Check if adapter is available (not blocked).
-
-        Args:
-            adapter_id: Adapter identifier
-
-        Returns:
-            True if adapter is available, False if blocked
-        """
+        """Check if adapter is available."""
         async with self._lock:
             if adapter_id in self.blocked_until:
                 if datetime.now(UTC) < self.blocked_until[adapter_id]:
-                    logger.debug(
-                        f"Adapter {adapter_id} is blocked until {self.blocked_until[adapter_id]}"
-                    )
                     return False
-                else:
-                    # Block period expired, remove from blocked list
-                    del self.blocked_until[adapter_id]
-                    self.failures.pop(adapter_id, None)
+                del self.blocked_until[adapter_id]
+                self.failures.pop(adapter_id, None)
         return True
 
-    async def record_success(self, adapter_id: str):
-        """Record successful adapter call.
-
-        Args:
-            adapter_id: Adapter identifier
-        """
+    async def record_success(self, adapter_id: str) -> None:
+        """Record successful adapter call."""
         async with self._lock:
             self.failures.pop(adapter_id, None)
             self.blocked_until.pop(adapter_id, None)
 
-    async def record_failure(self, adapter_id: str):
-        """Record adapter failure and potentially block it.
-
-        Args:
-            adapter_id: Adapter identifier
-        """
+    async def record_failure(self, adapter_id: str) -> None:
+        """Record adapter failure and potentially block it."""
         async with self._lock:
             self.failures[adapter_id] = self.failures.get(adapter_id, 0) + 1
-
             if self.failures[adapter_id] >= self.failure_threshold:
-                # Block adapter for configured duration
                 self.blocked_until[adapter_id] = datetime.now(UTC) + timedelta(
                     seconds=self.block_duration_sec
                 )
-                logger.warning(
-                    f"Adapter {adapter_id} blocked after {self.failures[adapter_id]} failures "
-                    f"until {self.blocked_until[adapter_id]}"
-                )
 
 
-class OneiricMCPClient:
-    """Async gRPC client for Oneiric MCP adapter registry.
+class DharaAdapterRegistryClient:
+    """Async client for Dhara's adapter registry MCP tools."""
 
-    Provides high-performance adapter discovery with caching, circuit breaker,
-    and health monitoring capabilities.
-    """
-
-    def __init__(self, config: OneiricMCPConfig | None = None):
-        """Initialize Oneiric MCP client.
-
-        Args:
-            config: Client configuration (defaults to OneiricMCPConfig())
-        """
-        if not ONEIRIC_MCP_AVAILABLE:
-            raise ImportError(
-                "Oneiric MCP gRPC modules not available. Install with: pip install oneiric-mcp"
-            )
-
-        self.config = config or OneiricMCPConfig()
-        self._channel: grpc.aio.Channel | None = None
-        self._stub: registry_pb2_grpc.AdapterRegistryStub | None = None
+    def __init__(self, config: DharaAdapterRegistryConfig | None = None):
+        self.config = config or DharaAdapterRegistryConfig()
+        self._client = get_dhara_client(self.config.base_url, self.config.token)
         self._circuit_breaker = AdapterCircuitBreaker()
         self._cache: dict[str, tuple[list[AdapterEntry], datetime]] = {}
-        self._lock = asyncio.Lock()
         self._connected = False
+        logger.info("Dhara adapter registry client initialized (base_url=%s)", self._client.base_url)
 
-        logger.info(
-            f"OneiricMCPClient initialized (host={self.config.grpc_host}, "
-            f"port={self.config.grpc_port}, tls={self.config.use_tls})"
-        )
-
-    async def _ensure_connected(self):
-        """Ensure gRPC channel is connected."""
-        if self._connected and self._channel:
-            return
-
-        async with self._lock:
-            # Double-check after acquiring lock
-            if self._connected and self._channel:
-                return
-
-            # Close existing connection if any
-            if self._channel:
-                await self._channel.close()
-
-            # Create new connection
-            if self.config.use_tls:
-                # TLS/mTLS mode (production)
-                if self.config.tls_cert_path and self.config.tls_key_path:
-                    # Read certificates
-                    with open(self.config.tls_cert_path, "rb") as f:
-                        cert_chain = f.read()
-                    with open(self.config.tls_key_path, "rb") as f:
-                        private_key = f.read()
-
-                    if self.config.tls_ca_path:
-                        # mTLS mode
-                        with open(self.config.tls_ca_path, "rb") as f:
-                            root_certificates = f.read()
-                        credentials = grpc.ssl_channel_credentials(
-                            root_certificates=root_certificates,
-                            private_key=private_key,
-                            certificate_chain=cert_chain,
-                        )
-                        logger.info("Using mTLS credentials")
-                    else:
-                        # TLS mode (server auth only)
-                        credentials = grpc.ssl_channel_credentials(
-                            certificate_chain=cert_chain, private_key=private_key
-                        )
-                        logger.info("Using TLS credentials")
-
-                    self._channel = grpc.aio.secure_channel(
-                        f"{self.config.grpc_host}:{self.config.grpc_port}",
-                        credentials,
-                    )
-                else:
-                    raise ValueError(
-                        "TLS enabled but certificate paths not configured. "
-                        "Set tls_cert_path and tls_key_path."
-                    )
-            else:
-                # Insecure mode (development only)
-                if self.config.grpc_port != 8679:
-                    logger.warning(
-                        f"Insecure mode on port {self.config.grpc_port} "
-                        "(dev mode should use port 8679)"
-                    )
-                self._channel = grpc.aio.insecure_channel(
-                    f"{self.config.grpc_host}:{self.config.grpc_port}"
-                )
-                logger.debug("Using insecure channel (development mode)")
-
-            # Create stub
-            self._stub = registry_pb2_grpc.AdapterRegistryStub(self._channel)
-
-            # Wait for channel ready
-            try:
-                await grpc.aio.wait_for_channel_ready(
-                    self._channel, timeout=self.config.timeout_sec
-                )
-                self._connected = True
-                logger.info(
-                    f"Connected to Oneiric MCP at {self.config.grpc_host}:{self.config.grpc_port}"
-                )
-            except TimeoutError:
-                self._connected = False
-                raise ConnectionError(
-                    f"Timeout connecting to Oneiric MCP at "
-                    f"{self.config.grpc_host}:{self.config.grpc_port}"
-                )
-
-    async def close(self):
-        """Close gRPC channel and cleanup resources."""
-        if self._channel:
-            await self._channel.close()
+    async def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+        if not self.config.enabled:
+            raise ConnectionError("Dhara adapter registry client disabled")
+        try:
+            result = await self._client.call_tool(name, arguments)
+            self._connected = True
+            return result
+        except Exception as exc:
             self._connected = False
-            logger.info("Oneiric MCP client connection closed")
+            raise ConnectionError(f"Dhara adapter registry unavailable: {exc}") from exc
 
     def _make_cache_key(
         self,
@@ -331,17 +216,6 @@ class OneiricMCPClient:
         category: str | None = None,
         healthy_only: bool = False,
     ) -> str:
-        """Generate cache key for adapter query.
-
-        Args:
-            project: Project filter
-            domain: Domain filter
-            category: Category filter
-            healthy_only: Healthy-only filter
-
-        Returns:
-            Cache key string
-        """
         parts = [
             project or "*",
             domain or "*",
@@ -358,171 +232,89 @@ class OneiricMCPClient:
         healthy_only: bool = False,
         use_cache: bool = True,
     ) -> list[AdapterEntry]:
-        """List available adapters with optional filters.
-
-        Args:
-            project: Filter by project name
-            domain: Filter by domain (e.g., "adapter", "service")
-            category: Filter by category (e.g., "storage", "orchestration")
-            healthy_only: Only return healthy adapters
-            use_cache: Use cached results if available (default: True)
-
-        Returns:
-            List of matching adapter entries
-
-        Raises:
-            ConnectionError: If cannot connect to Oneiric MCP
-        """
+        """List adapters from Dhara with optional local filtering."""
         if not self.config.enabled:
-            logger.debug("Oneiric MCP client disabled, returning empty list")
             return []
 
-        # Check cache
         cache_key = self._make_cache_key(project, domain, category, healthy_only)
         if use_cache and cache_key in self._cache:
             adapters, cached_at = self._cache[cache_key]
-            age_sec = (datetime.now(UTC) - cached_at).total_seconds()
-            if age_sec < self.config.cache_ttl_sec:
-                logger.debug(f"Cache hit for {cache_key} ({age_sec:.1f}s old)")
+            if (datetime.now(UTC) - cached_at).total_seconds() < self.config.cache_ttl_sec:
                 return adapters
-            else:
-                # Cache expired
-                del self._cache[cache_key]
+            del self._cache[cache_key]
 
-        # Ensure connected
-        await self._ensure_connected()
-
-        # Build request
-        request = registry_pb2.ListRequest(
-            project=project or "",
-            domain=domain or "",
-            category=category or "",
-            healthy_only=healthy_only,
+        payload = await self._call_tool(
+            "list_adapters",
+            {"domain": domain, "category": category},
         )
+        if isinstance(payload, dict) and payload.get("success") is False:
+            raise ConnectionError(payload.get("error") or "Dhara list_adapters failed")
 
-        try:
-            # Call gRPC
-            response = await self._stub.ListAdapters(request, timeout=self.config.timeout_sec)
+        raw_adapters = payload.get("adapters", []) if isinstance(payload, dict) else []
+        adapters = [AdapterEntry.from_dhara(a) for a in raw_adapters if isinstance(a, dict)]
 
-            # Convert to AdapterEntry objects
-            adapters = [AdapterEntry.from_pb2(pb2_adapter) for pb2_adapter in response.adapters]
+        if project:
+            adapters = [a for a in adapters if a.project == project]
+        if healthy_only:
+            adapters = [a for a in adapters if a.health_status == "healthy"]
 
-            # Cache results
-            self._cache[cache_key] = (adapters, datetime.now(UTC))
-
-            logger.info(
-                f"Listed {len(adapters)} adapters "
-                f"(project={project}, domain={domain}, category={category}, "
-                f"healthy_only={healthy_only})"
-            )
-
-            return adapters
-
-        except grpc.aio.AioRpcError as e:
-            if e.code() == grpc.StatusCode.UNAVAILABLE:
-                self._connected = False
-                raise ConnectionError(f"Oneiric MCP unavailable: {e.details()}")
-            else:
-                logger.error(f"gRPC error listing adapters: {e.code()} - {e.details()}")
-                raise
-        except Exception as e:
-            logger.error(f"Error listing adapters: {e}")
-            raise
+        self._cache[cache_key] = (adapters, datetime.now(UTC))
+        return adapters
 
     async def get_adapter(self, adapter_id: str) -> AdapterEntry | None:
-        """Get specific adapter by ID.
-
-        Args:
-            adapter_id: Adapter's unique ID (e.g., "mahavishnu.adapter.storage.s3")
-
-        Returns:
-            Adapter entry if found, None otherwise
-
-        Raises:
-            ConnectionError: If cannot connect to Oneiric MCP
-        """
+        """Get a specific adapter by Dhara adapter ID."""
         if not self.config.enabled:
             return None
-
-        # Check circuit breaker
         if not await self._circuit_breaker.is_available(adapter_id):
-            logger.warning(f"Adapter {adapter_id} is blocked by circuit breaker")
             return None
 
-        # Ensure connected
-        await self._ensure_connected()
-
-        request = registry_pb2.GetRequest(adapter_id=adapter_id)
-
         try:
-            response = await self._stub.GetAdapter(request, timeout=self.config.timeout_sec)
-            adapter = AdapterEntry.from_pb2(response.adapter)
+            domain, key, provider = _split_adapter_id(adapter_id)
+            payload = await self._call_tool(
+                "get_adapter",
+                {"domain": domain, "key": key, "provider": provider},
+            )
+            if not isinstance(payload, dict) or not payload.get("success"):
+                await self._circuit_breaker.record_failure(adapter_id)
+                return None
             await self._circuit_breaker.record_success(adapter_id)
-            return adapter
-
-        except grpc.aio.AioRpcError as e:
-            if e.code() == grpc.StatusCode.NOT_FOUND:
-                logger.debug(f"Adapter {adapter_id} not found")
-                return None
-            elif e.code() == grpc.StatusCode.UNAVAILABLE:
-                self._connected = False
-                await self._circuit_breaker.record_failure(adapter_id)
-                raise ConnectionError(f"Oneiric MCP unavailable: {e.details()}")
-            else:
-                logger.error(f"gRPC error getting adapter: {e.code()} - {e.details()}")
-                await self._circuit_breaker.record_failure(adapter_id)
-                return None
-        except Exception as e:
-            logger.error(f"Error getting adapter {adapter_id}: {e}")
+            return AdapterEntry.from_dhara(payload["adapter"])
+        except ValueError:
+            for adapter in await self.list_adapters(use_cache=False):
+                if adapter.adapter_id == adapter_id:
+                    return adapter
+            return None
+        except ConnectionError:
+            await self._circuit_breaker.record_failure(adapter_id)
+            raise
+        except Exception:
             await self._circuit_breaker.record_failure(adapter_id)
             return None
 
     async def check_adapter_health(self, adapter_id: str) -> bool:
-        """Check if adapter is healthy.
-
-        Args:
-            adapter_id: Adapter's unique ID
-
-        Returns:
-            True if adapter is healthy, False otherwise
-
-        Raises:
-            ConnectionError: If cannot connect to Oneiric MCP
-        """
+        """Check adapter health through Dhara."""
         if not self.config.enabled:
             return False
-
-        # Check circuit breaker
         if not await self._circuit_breaker.is_available(adapter_id):
             return False
 
-        # Ensure connected
-        await self._ensure_connected()
-
-        request = registry_pb2.HealthCheckRequest(adapter_id=adapter_id)
-
         try:
-            response = await self._stub.HealthCheck(request, timeout=self.config.timeout_sec)
-            is_healthy = response.healthy
-
-            if is_healthy:
+            domain, key, provider = _split_adapter_id(adapter_id)
+            payload = await self._call_tool(
+                "get_adapter_health",
+                {"domain": domain, "key": key, "provider": provider},
+            )
+            healthy = bool(
+                isinstance(payload, dict)
+                and payload.get("success")
+                and payload.get("health", {}).get("healthy")
+            )
+            if healthy:
                 await self._circuit_breaker.record_success(adapter_id)
             else:
                 await self._circuit_breaker.record_failure(adapter_id)
-
-            return is_healthy
-
-        except grpc.aio.AioRpcError as e:
-            if e.code() == grpc.StatusCode.UNAVAILABLE:
-                self._connected = False
-                await self._circuit_breaker.record_failure(adapter_id)
-                raise ConnectionError(f"Oneiric MCP unavailable: {e.details()}")
-            else:
-                logger.error(f"gRPC error checking health: {e.code()} - {e.details()}")
-                await self._circuit_breaker.record_failure(adapter_id)
-                return False
-        except Exception as e:
-            logger.error(f"Error checking health for {adapter_id}: {e}")
+            return healthy
+        except Exception:
             await self._circuit_breaker.record_failure(adapter_id)
             return False
 
@@ -534,107 +326,57 @@ class OneiricMCPClient:
         project: str | None = None,
         healthy_only: bool = True,
     ) -> AdapterEntry | None:
-        """Resolve best-matching adapter.
-
-        Args:
-            domain: Adapter domain (e.g., "adapter", "service")
-            category: Adapter category (e.g., "storage", "orchestration")
-            provider: Adapter provider (e.g., "s3", "prefect")
-            project: Optional project filter
-            healthy_only: Only return healthy adapters (default: True)
-
-        Returns:
-            Best-matching adapter entry, or None if not found
-
-        Raises:
-            ConnectionError: If cannot connect to Oneiric MCP
-        """
-        # List adapters with filters
+        """Resolve best matching adapter."""
         adapters = await self.list_adapters(
             domain=domain,
             category=category,
             project=project,
             healthy_only=healthy_only,
         )
-
-        # Find exact provider match
         for adapter in adapters:
             if adapter.provider == provider:
-                logger.info(f"Resolved adapter: {adapter.adapter_id}")
                 return adapter
-
-        # No exact match found
-        logger.warning(
-            f"No adapter found for domain={domain}, category={category}, provider={provider}"
-        )
         return None
 
     async def send_heartbeat(self, adapter_id: str) -> bool:
-        """Send heartbeat for adapter.
+        """Compatibility method; Dhara has no adapter heartbeat tool."""
+        return await self.get_adapter(adapter_id) is not None
 
-        Args:
-            adapter_id: Adapter's unique ID
-
-        Returns:
-            True if heartbeat successful, False otherwise
-
-        Raises:
-            ConnectionError: If cannot connect to Oneiric MCP
-        """
-        if not self.config.enabled:
-            return False
-
-        # Ensure connected
-        await self._ensure_connected()
-
-        request = registry_pb2.HeartbeatRequest(adapter_id=adapter_id)
-
-        try:
-            response = await self._stub.Heartbeat(request, timeout=self.config.timeout_sec)
-            return response.registered
-
-        except grpc.aio.AioRpcError as e:
-            if e.code() == grpc.StatusCode.UNAVAILABLE:
-                self._connected = False
-                raise ConnectionError(f"Oneiric MCP unavailable: {e.details()}")
-            else:
-                logger.error(f"gRPC error sending heartbeat: {e.code()} - {e.details()}")
-                return False
-        except Exception as e:
-            logger.error(f"Error sending heartbeat for {adapter_id}: {e}")
-            return False
-
-    async def invalidate_cache(self):
+    async def invalidate_cache(self) -> None:
         """Invalidate all cached adapter lists."""
         self._cache.clear()
-        logger.debug("Oneiric MCP adapter cache invalidated")
 
     async def health_check(self) -> dict[str, Any]:
-        """Check health of Oneiric MCP connection.
-
-        Returns:
-            Health status dictionary
-        """
+        """Check Dhara registry health and contract availability."""
         if not self.config.enabled:
-            return {
-                "status": "disabled",
-                "connected": False,
-            }
-
+            return {"status": "disabled", "connected": False}
         try:
-            # Try to list adapters (limit to 1 for quick check)
-            await self._ensure_connected()
+            contract = await self._call_tool("get_contract_info", {})
             adapters = await self.list_adapters(use_cache=False)
-
             return {
                 "status": "healthy",
                 "connected": True,
                 "adapter_count": len(adapters),
                 "cache_entries": len(self._cache),
+                "contract": contract,
             }
-        except Exception as e:
+        except Exception as exc:
             return {
                 "status": "unhealthy",
                 "connected": False,
-                "error": str(e),
+                "error": str(exc),
             }
+
+    async def close(self) -> None:
+        """Mark the shared Dhara client as disconnected."""
+        self._connected = False
+
+
+def _split_adapter_id(adapter_id: str) -> tuple[str, str, str]:
+    parts = adapter_id.split(":")
+    if len(parts) != 3 or not all(parts):
+        raise ValueError(f"Invalid Dhara adapter_id: {adapter_id}")
+    return parts[0], parts[1], parts[2]
+
+
+OneiricMCPClient = DharaAdapterRegistryClient

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Akosha ULID Migration Script
 
-Updates Akosha knowledge graph entities to use Druva ULIDs instead of
+Updates Akosha knowledge graph entities to use Dhara ULIDs instead of
 custom string IDs (f"system:{id}", f"user:{id}").
 
 Migration Strategy:
 - IN-MEMORY: No database migration (entities stored in-memory)
-- CODE UPDATE: Update GraphEntity class to use Druva generate()
+- CODE UPDATE: Update GraphEntity class to use Dhara generate()
 - BACKFILL: Regenerate entity IDs for in-memory entities (on restart)
 
 Usage:
@@ -33,7 +33,7 @@ def analyze_entity_id_usage(akosha_path: str) -> dict:
     results = {
         "files_checked": 0,
         "custom_id_patterns": [],
-        "uses_druva": False,
+        "uses_dhara": False,
         "recommendations": []
     }
 
@@ -60,12 +60,12 @@ def analyze_entity_id_usage(akosha_path: str) -> dict:
             })
             results["recommendations"].append({
                 "file": file_path,
-                "change": f"Replace custom ID generation with: from druva import generate; entity_id = generate()"
+                "change": f"Replace custom ID generation with: from dhara import generate; entity_id = generate()"
             })
 
-        # Check if already using Druva
-        if "from druva import" in content or "import druva" in content:
-            results["uses_druva"] = True
+        # Check if already using Dhara
+        if "from dhara import" in content or "import dhara" in content:
+            results["uses_dhara"] = True
 
     return results
 
@@ -112,11 +112,11 @@ def main():
         print("✅ No custom ID patterns found.")
         print()
 
-    if not analysis["uses_druva"]:
-        print("⚠️  Akosha is not using Druva for ID generation.")
+    if not analysis["uses_dhara"]:
+        print("⚠️  Akosha is not using Dhara for ID generation.")
         print()
     else:
-        print("✅ Akosha already using Druva.")
+        print("✅ Akosha already using Dhara.")
         print()
 
     # Step 2: Migration Plan
@@ -131,13 +131,13 @@ def main():
         print()
         print("1. Update akosha/processing/knowledge_graph.py:")
         print("   - Replace: entity_id = f\"system:{system_id}\"")
-        print("   - With: from druva import generate; entity_id = generate()")
+        print("   - With: from dhara import generate; entity_id = generate()")
         print()
         print("2. Update akosha/mcp/tools/akosha_tools.py:")
-        print("   - Replace any entity ID generation with: from druva import generate")
+        print("   - Replace any entity ID generation with: from dhara import generate")
         print()
         print("3. Update imports in affected files:")
-        print("   - Add: from druva import generate, ULID")
+        print("   - Add: from dhara import generate, ULID")
         print()
         print("4. Run tests: pytest tests/")
         print()
@@ -148,7 +148,7 @@ def main():
         print("✅ DRY RUN - Analysis complete")
         print()
         print("Note: Akosha uses in-memory storage (no database migration needed)")
-        print("      Just update code to use Druva generate().")
+        print("      Just update code to use Dhara generate().")
 
     return 0
 

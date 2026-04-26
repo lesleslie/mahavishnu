@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Session-Buddy ULID Migration Script
 
-Updates Session-Buddy session tracking to use Druva ULIDs instead of
+Updates Session-Buddy session tracking to use Dhara ULIDs instead of
 f"{project_name}-{timestamp}" format.
 
 Migration Strategy:
@@ -176,7 +176,7 @@ def main():
         print()
         print("2. Update session_buddy/session_manager.py:")
         print("   - Replace: session_id = f\"{project_name}-{timestamp}\"")
-        print("   - With: from druva import generate; session_ulid = generate()")
+        print("   - With: from dhara import generate; session_ulid = generate()")
         print()
         print("3. Backfill existing sessions:")
         print("   UPDATE sessions")
@@ -184,7 +184,7 @@ def main():
         print("   WHERE session_ulid IS NULL;")
         print()
         print("4. Update reflection/conversation creation:")
-        print("   - Use generate() from Druva instead of custom ID")
+        print("   - Use generate() from Dhara instead of custom ID")
         print()
         print("5. Run tests: pytest tests/")
         print()

@@ -1,17 +1,152 @@
 # Plan Index
 
-**Date:** 2026-04-02  
-**Purpose:** Active plan ordering, dependencies, and supersession map for execution.
+**Date:** 2026-04-25
+**Purpose:** Canonical map for finding, reviewing, and implementing active Mahavishnu/Bodai plans.
 
-## External Review
+Use this file as the first stop before reviewing or implementing plan work. Older plans remain useful as source material, but the files below define the current review order and authority.
 
-For third-party review workflow and required reading order, use:
+## Status Legend
 
-- `docs/plans/REVIEW_PACKET_2026-04-02.md`
+- `canonical`: source of truth for an active area
+- `implementation`: task-by-task build plan
+- `active`: current or next implementation candidate
+- `partial`: some code exists, but acceptance criteria are not complete
+- `historical`: useful background, not the current authority
+- `superseded`: replaced by another file
 
-## Active Execution Order
+## Review Entry Points
 
-1. **Storage Consolidation And Akosha Role**
-   - File: `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`
-2. **Nanobot Worker Integration + Claude MCP Serve Autostart** *(CURRENT)
-   - File: `docs/plans/2026-04-05-nanobot-worker-integration.md`
+1. **Current plan map**
+   - File: [PLAN_INDEX.md](./PLAN_INDEX.md)
+   - Status: `canonical`
+   - Use for: deciding which plan to review or implement next.
+
+2. **Repository plan overview**
+   - File: [README.md](./README.md)
+   - Status: `canonical`
+   - Use for: quick orientation to plan categories.
+
+3. **External review packet**
+   - File: [REVIEW_PACKET_2026-04-02.md](./REVIEW_PACKET_2026-04-02.md)
+   - Status: `historical`
+   - Use for: third-party review workflow and older required reading order.
+
+## Active Canonical Plans
+
+### Bodai Agent Platform and Agno/Textual TUI
+
+- Spec: [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
+- Implementation plan: [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
+- Status: `canonical`, `partial`
+- Use for: Agno-backed interactive agent runtime, Textual TUI boundaries, engine ownership, learning pipeline boundaries, and implementation order.
+- Current implementation note: Phase 0/Phase 1 governance and a read-only Textual dashboard shell exist, but Agno streaming, inline approvals, MCP-backed TUI data, file/diff panes, and richer session/skill views are not complete.
+
+### Mahavishnu Ecosystem Control Plane
+
+- Plan: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
+- Status: `active`, `implementation`
+- Use for: canonical ecosystem status report, health contract cleanup, capability discovery, routing observability, and wiring the TUI to live read-only data.
+- Relationship: builds on existing health/MCP/adapter work and should be reviewed before adding new dashboard or ecosystem-health features.
+
+### Ecosystem Docs Canonicalization
+
+- Plan: [2026-04-25-ecosystem-docs-canonicalization-plan.md](./2026-04-25-ecosystem-docs-canonicalization-plan.md)
+- Status: `active`, `implementation`
+- Use for: cleaning `docs/` directories across active ecosystem repos, separating current docs from archive material, and adding cross-repo docs drift checks.
+- Relationship: should be run before broad implementation review so reviewers are reading current docs and not stale completion reports.
+
+### Type Adapter Migration
+
+- Plan: [2026-04-25-type-adapter-migration-plan.md](./2026-04-25-type-adapter-migration-plan.md)
+- Status: `active`, `implementation`
+- Use for: refreshing `ty`, `pyrefly`, and `zuban` adapters to current upstream docs and aligning AI-fix routing with native fix/suppress/baseline capabilities.
+- Relationship: should be implemented before promoting `ty` or `pyrefly` out of experimental/canary usage.
+
+### Storage Consolidation and Akosha Role
+
+- Plan: [2026-04-02-storage-consolidation-and-akosha-role.md](./2026-04-02-storage-consolidation-and-akosha-role.md)
+- Status: `canonical`
+- Use for: storage ownership, Akosha optionality, and consolidated storage architecture.
+
+### Nanobot Worker Integration
+
+- Plan: [2026-04-05-nanobot-worker-integration.md](./2026-04-05-nanobot-worker-integration.md)
+- Status: `active`
+- Use for: nanobot worker integration and Claude MCP serve autostart work.
+
+## Execution Board and Initiative Plans
+
+- Board: [2026-04-04-ecosystem-execution-board.md](./2026-04-04-ecosystem-execution-board.md)
+- Initiative index: [initiatives/README.md](./initiatives/README.md)
+- Status: `historical`, `partial`
+- Use for: previously prioritized 90-day execution board and initiative-level work packages.
+
+Important reconciliation notes:
+
+- Initiatives `00` through `08` are marked complete in the board.
+- Initiatives `09` through `15` remain open in the board.
+- [initiatives/13-dashboard-phase2-textual.md](./initiatives/13-dashboard-phase2-textual.md) previously marked the Textual dashboard as complete, but current code shows a shell with placeholder data. Treat it as `partial` until live data acceptance criteria are met.
+- New ecosystem-health/dashboard work should start from the [ecosystem control plane update plan](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md), not directly from the older dashboard initiative.
+
+## Current Implementation Priority
+
+1. **Plan reconciliation**
+   - Plan: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
+   - Phase: `0`
+   - Goal: make active/superseded plan state explicit.
+
+2. **Canonical ecosystem status**
+   - Plan: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
+   - Phases: `1` through `3`
+   - Goal: normalize health/status semantics and expose one CLI/MCP report.
+
+3. **Live read-only TUI wiring**
+   - Plans:
+     - [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
+     - [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
+   - Goal: replace placeholder TUI data with MCP/backend data while preserving the TUI boundary.
+
+4. **Agno/Textual interactive agent work**
+   - Plans:
+     - [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
+     - [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
+   - Goal: continue Phase 1 work after boundary and live-data surfaces are stable.
+
+5. **Ecosystem docs canonicalization**
+   - Plan: [2026-04-25-ecosystem-docs-canonicalization-plan.md](./2026-04-25-ecosystem-docs-canonicalization-plan.md)
+   - Goal: make current docs, plans, specs, and runbooks easy to find across active repos.
+
+6. **Type adapter migration**
+   - Plan: [2026-04-25-type-adapter-migration-plan.md](./2026-04-25-type-adapter-migration-plan.md)
+   - Goal: refresh type checker adapters and make AI-fix capability-aware.
+
+## Supersession Map
+
+### TUI
+
+- Superseded: [../superpowers/specs/2026-04-09-tui-design.md](../superpowers/specs/2026-04-09-tui-design.md)
+- Canonical replacement: [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
+
+### Dashboard / Ecosystem Health
+
+- Older initiative: [initiatives/13-dashboard-phase2-textual.md](./initiatives/13-dashboard-phase2-textual.md)
+- Canonical next implementation plan: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
+
+### Health Contract
+
+- Historical design:
+  - [2026-02-27-health-check-system-design.md](./2026-02-27-health-check-system-design.md)
+  - [2026-02-27-health-check-implementation-plan.md](./2026-02-27-health-check-implementation-plan.md)
+- Completed initiative: [initiatives/01-health-contract-and-command.md](./initiatives/01-health-contract-and-command.md)
+- Canonical cleanup/extension: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
+
+## Review Checklist
+
+Before implementing from any plan:
+
+- Verify the plan is listed in this index as `canonical`, `active`, or `implementation`.
+- Check whether the plan has a supersession entry.
+- Check existing code before adding new abstractions.
+- Update the relevant plan progress log when implementation changes status.
+- Keep TUI work read-only unless a plan explicitly defines command forwarding through Mahavishnu.
+- Keep external service ports, URLs, and credentials in configuration.

@@ -199,7 +199,7 @@ EOF
 docker-compose -f docker-compose.otlp.yml logs -f otel-collector
 
 # Or with full stack
-docker-compose -f /Users/les/Projects/mahavishnu/docker-compose.buildpacks.yml logs -f otel-collector
+docker-compose -f /Users/les/Projects/mahavishnu/docker/docker-compose.buildpacks.yml logs -f otel-collector
 ```
 
 ## Cleanup
@@ -312,5 +312,5 @@ docker network inspect otlp-test-network
 ## Next Steps
 
 - See [OTLP Setup Guide](../../docs/OTLP_SETUP_GUIDE.md) for comprehensive documentation
-- Check the main [otel-collector-config.yaml](../otel-collector-config.yaml) for production configuration
+- Check the main [otel-collector-config.yaml](../otel-collector-config.yaml) for the canonical collector configuration
 - Review [OpenTelemetry Documentation](https://opentelemetry.io/docs/) for more information

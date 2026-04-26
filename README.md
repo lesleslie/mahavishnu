@@ -124,7 +124,7 @@ That gets the benefit of Hermes-style self-improvement without making the runtim
 
 - [Getting Started Guide](docs/GETTING_STARTED.md)
 - [MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md)
-- [Architecture Documentation](ARCHITECTURE.md)
+- [Architecture Documentation](docs/architecture/ARCHITECTURE.md)
 - [Visual Guide](docs/VISUAL_GUIDE.md)
 - [Workflow Diagrams](docs/WORKFLOW_DIAGRAMS.md)
 - [Pool Architecture](docs/POOL_ARCHITECTURE.md)
@@ -203,12 +203,12 @@ This table clarifies current maturity so multi-engine expectations match impleme
 
 | Capability | Status | Notes |
 |-----------|--------|-------|
-| Multi-repo orchestration | Production-ready | Repository manifest (`settings/repos.yaml`), cross-repo coordination, dependency/status tooling |
-| Async orchestration runtime | Production-ready | Async-first core, async messaging, concurrent worker and pool execution |
-| Multi-pool execution (local/delegated/K8s) | Production-ready | Routing strategies and pool health/monitoring are implemented |
-| LlamaIndex engine adapter | Production-ready | RAG pipeline integration is implemented |
-| Prefect engine adapter | Production-ready | Full Prefect 3.x SDK integration with flows, deployments, schedules, and task orchestration (1,800+ LOC) |
-| Agno engine adapter | Production-ready | Multi-agent teams with MCP tools, Ollama/Claude/OpenAI support, and agent lifecycle management (1,400+ LOC) |
+| Multi-repo orchestration | Implemented | Repository manifest (`settings/repos.yaml`), cross-repo coordination, dependency/status tooling |
+| Async orchestration runtime | Implemented | Async-first core, async messaging, concurrent worker and pool execution |
+| Multi-pool execution (local/delegated/K8s) | Implemented | Routing strategies and pool health/monitoring are implemented |
+| LlamaIndex engine adapter | Implemented | RAG pipeline integration is implemented |
+| Prefect engine adapter | Implemented | Full Prefect 3.x SDK integration with flows, deployments, schedules, and task orchestration (1,800+ LOC) |
+| Agno engine adapter | Implemented | Multi-agent teams with MCP tools, Ollama/Claude/OpenAI support, and agent lifecycle management (1,400+ LOC) |
 
 **Configuration System**
 
@@ -399,7 +399,7 @@ Mahavishnu uses a role-based taxonomy to organize repositories:
 
 - Deploys workers as Kubernetes Jobs/Pods
 - Auto-scaling via HPA
-- Use for: production deployments, auto-scaling workloads
+- Use for: deployed workloads, auto-scaling workloads
 
 ### Worker Types
 
@@ -695,11 +695,11 @@ mahavishnu/
 
 - **[Getting Started](docs/GETTING_STARTED.md)** - Installation and first steps
 - **[MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md)** - Complete API documentation
-- **[Architecture](ARCHITECTURE.md)** - System architecture and evolution
+- **[Architecture](docs/architecture/ARCHITECTURE.md)** - System architecture and evolution
 - **[Pool Architecture](docs/POOL_ARCHITECTURE.md)** - Multi-pool orchestration details
 - **[Goal-Driven Teams](docs/GOAL_DRIVEN_TEAMS.md)** - Create teams from natural language goals
 - **[Admin Shell Guide](docs/ADMIN_SHELL.md)** - Interactive debugging
-- **[Production Deployment](docs/PRODUCTION_DEPLOYMENT_GUIDE.md)** - Production readiness
+- **[Deployment Guide](docs/PRODUCTION_DEPLOYMENT_GUIDE.md)** - Deployment checklist and operational notes
 - **[MCP Tools Specification](docs/MCP_TOOLS_SPECIFICATION.md)** - Detailed tool specs
 - **[Codex + Claude Routing Playbook](docs/integrations/CODEX_CLAUDE_ENGINE_ROUTING_PLAYBOOK.md)** - Configure agents to use Mahavishnu engines and multi-repo orchestration consistently
 - **[Security Checklist](SECURITY_CHECKLIST.md)** - Security guidelines
@@ -714,9 +714,9 @@ mahavishnu/
 
 ### Current Implementation
 
-**Quality Score: 92/100 (Excellent - Production Ready)**
+**Quality Score: 92/100 (Validated and implemented)**
 
-Important scope note: Mahavishnu is production-ready for multi-repo orchestration, async coordination, and pool/worker routing. Engine adapter maturity varies by adapter (see Capability Maturity Snapshot).
+Important scope note: Mahavishnu is validated for multi-repo orchestration, async coordination, and pool/worker routing. Engine adapter maturity varies by adapter (see Capability Maturity Snapshot).
 
 **Completed:**
 
@@ -741,9 +741,9 @@ Important scope note: Mahavishnu is production-ready for multi-repo orchestratio
 
 **Roadmap:**
 
-- Phase 4: Production Features (error recovery, full observability)
+- Phase 4: Deployment Features (error recovery, full observability)
 - Phase 5: Comprehensive Testing & Documentation
-- Phase 6: Production Readiness (security audit, benchmarking)
+- Phase 6: Release Readiness (security audit, benchmarking)
 
 ## Contributing
 

@@ -209,12 +209,11 @@ adapter_registry:
   cache_ttl_seconds: 300  # Resolution cache TTL
   discovery_timeout_seconds: 30  # Timeout for adapter discovery
 
-# Oneiric MCP integration for remote adapter discovery
+# Dhara adapter registry integration for remote adapter discovery.
+# The historical oneiric_mcp key is retained for settings compatibility.
 oneiric_mcp:
-  enabled: false  # Enable gRPC discovery from Oneiric MCP server
-  grpc_host: "localhost"
-  grpc_port: 8681
-  use_tls: false  # Enable TLS in production
+  enabled: false  # Enable adapter discovery from Dhara MCP registry tools
+  base_url: "http://localhost:8683/mcp"
   cache_ttl_sec: 300  # Adapter metadata cache TTL
 
 # Feature flags for hybrid registry

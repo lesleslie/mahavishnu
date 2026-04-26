@@ -1,17 +1,15 @@
-"""Example workflows demonstrating Oneiric MCP integration in Python.
+"""Example workflows demonstrating Dhara adapter registry integration in Python.
 
-These examples show how to programmatically use Oneiric MCP adapter discovery
+These examples show how to programmatically use Dhara adapter registry adapter discovery
 within Mahavishnu workflows and applications.
 """
 
 import asyncio
 import logging
-from typing import Any
 
 from mahavishnu.core.oneiric_client import (
-    OneiricMCPClient,
-    OneiricMCPConfig,
-    AdapterEntry,
+    DharaAdapterRegistryClient,
+    DharaAdapterRegistryConfig,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -26,14 +24,12 @@ async def example_1_list_storage_adapters():
     logger.info("Example 1: Listing storage adapters")
 
     # Configure client (insecure dev mode)
-    config = OneiricMCPConfig(
+    config = DharaAdapterRegistryConfig(
         enabled=True,
-        grpc_host="localhost",
-        grpc_port=8679,  # Insecure dev port
-        use_tls=False,
+        base_url="http://localhost:8683/mcp",
     )
 
-    client = OneiricMCPClient(config)
+    client = DharaAdapterRegistryClient(config)
 
     try:
         # List all storage adapters
@@ -63,14 +59,12 @@ async def example_2_resolve_with_fallback():
     """
     logger.info("Example 2: Resolving adapter with fallback")
 
-    config = OneiricMCPConfig(
+    config = DharaAdapterRegistryConfig(
         enabled=True,
-        grpc_host="localhost",
-        grpc_port=8679,
-        use_tls=False,
+        base_url="http://localhost:8683/mcp",
     )
 
-    client = OneiricMCPClient(config)
+    client = DharaAdapterRegistryClient(config)
 
     try:
         # Try S3 first (preferred)
@@ -118,14 +112,12 @@ async def example_3_health_monitoring():
     """
     logger.info("Example 3: Adapter health monitoring")
 
-    config = OneiricMCPConfig(
+    config = DharaAdapterRegistryConfig(
         enabled=True,
-        grpc_host="localhost",
-        grpc_port=8679,
-        use_tls=False,
+        base_url="http://localhost:8683/mcp",
     )
 
-    client = OneiricMCPClient(config)
+    client = DharaAdapterRegistryClient(config)
 
     try:
         # List all adapters
@@ -165,15 +157,13 @@ async def example_4_cache_management():
     """
     logger.info("Example 4: Cache management")
 
-    config = OneiricMCPConfig(
+    config = DharaAdapterRegistryConfig(
         enabled=True,
-        grpc_host="localhost",
-        grpc_port=8679,
-        use_tls=False,
+        base_url="http://localhost:8683/mcp",
         cache_ttl_sec=300,  # 5 minute cache
     )
 
-    client = OneiricMCPClient(config)
+    client = DharaAdapterRegistryClient(config)
 
     try:
         # First query (cache miss)
@@ -208,14 +198,12 @@ async def example_5_workflow_integration():
     """
     logger.info("Example 5: Workflow integration")
 
-    config = OneiricMCPConfig(
+    config = DharaAdapterRegistryConfig(
         enabled=True,
-        grpc_host="localhost",
-        grpc_port=8679,
-        use_tls=False,
+        base_url="http://localhost:8683/mcp",
     )
 
-    client = OneiricMCPClient(config)
+    client = DharaAdapterRegistryClient(config)
 
     try:
         # Step 1: Discover available storage adapters
@@ -278,14 +266,12 @@ async def example_6_parallel_discovery():
     """
     logger.info("Example 6: Parallel adapter discovery")
 
-    config = OneiricMCPConfig(
+    config = DharaAdapterRegistryConfig(
         enabled=True,
-        grpc_host="localhost",
-        grpc_port=8679,
-        use_tls=False,
+        base_url="http://localhost:8683/mcp",
     )
 
-    client = OneiricMCPClient(config)
+    client = DharaAdapterRegistryClient(config)
 
     try:
         # Query multiple categories in parallel
@@ -303,10 +289,10 @@ async def example_6_parallel_discovery():
         results = await asyncio.gather(*tasks)
 
         # Report results
-        for category, adapters in zip(categories, results):
+        for category, adapters in zip(categories, results, strict=True):
             logger.info(f"  {category}: {len(adapters)} adapters")
 
-        return dict(zip(categories, results))
+        return dict(zip(categories, results, strict=True))
 
     finally:
         await client.close()
@@ -319,16 +305,12 @@ async def example_7_circuit_breaker():
     """
     logger.info("Example 7: Circuit breaker pattern")
 
-    config = OneiricMCPConfig(
+    config = DharaAdapterRegistryConfig(
         enabled=True,
-        grpc_host="localhost",
-        grpc_port=8679,
-        use_tls=False,
-        circuit_breaker_threshold=2,  # Block after 2 failures
-        circuit_breaker_duration_sec=10,  # Block for 10 seconds
+        base_url="http://localhost:8683/mcp",
     )
 
-    client = OneiricMCPClient(config)
+    client = DharaAdapterRegistryClient(config)
 
     try:
         # Try to check health of non-existent adapter
@@ -372,7 +354,7 @@ async def main():
     ]
 
     logger.info("=" * 60)
-    logger.info("Oneiric MCP Integration Examples")
+    logger.info("Dhara adapter registry Integration Examples")
     logger.info("=" * 60)
 
     for name, example_func in examples:

@@ -175,7 +175,7 @@ class TokenBucketRateLimiter:
         # No tokens available - rate limited
         # Calculate retry_after based on tokens needed
         tokens_needed = 1.0 - tokens
-        retry_after = tokens_needed / self.rate
+        retry_after = tokens_needed / self.rate if self.rate > 0 else float("inf")
 
         # Update state
         self._tokens[connection_id] = tokens

@@ -125,7 +125,6 @@ async def test_agno_adapter_initialization_with_defaults():
 # ============================================================================
 
 
-@pytest.mark.skip(reason="agno package not installed")
 @pytest.mark.asyncio
 async def test_get_llm_ollama(mock_config):
     """Test Ollama LLM configuration."""
@@ -137,7 +136,6 @@ async def test_get_llm_ollama(mock_config):
     assert llm is not None
 
 
-@pytest.mark.skip(reason="agno package not installed")
 @pytest.mark.asyncio
 async def test_get_llm_anthropic_no_key(mock_config_anthropic, monkeypatch):
     """Test Anthropic LLM configuration fails without API key."""
@@ -153,7 +151,6 @@ async def test_get_llm_anthropic_no_key(mock_config_anthropic, monkeypatch):
     assert "ANTHROPIC_API_KEY" in str(exc_info.value)
 
 
-@pytest.mark.skip(reason="agno package not installed")
 @pytest.mark.asyncio
 async def test_get_llm_openai_no_key(mock_config_openai, monkeypatch):
     """Test OpenAI LLM configuration fails without API key."""

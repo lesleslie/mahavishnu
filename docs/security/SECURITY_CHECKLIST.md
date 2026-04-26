@@ -145,5 +145,5 @@ pytest tests/security/ --cov=mahavishnu.core --cov-report=html
 ## Related Documentation
 
 - [Security Runbook](runbooks/security.md) - Incident response procedures
-- [Phase 0 Action Plan](../PHASE_0_ACTION_PLAN.md) - Implementation details
+- [Phase 0 Action Plan](../archive/implementation-plans/PHASE_0_ACTION_PLAN.md) - Implementation details
 - [Master Plan v3](../TASK_ORCHESTRATION_MASTER_PLAN_V3.md) - Architecture overview

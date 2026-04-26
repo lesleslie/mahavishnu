@@ -4,7 +4,7 @@ These tests verify graceful degradation when various components fail:
 
 1. Feature flag disabled -> falls back to legacy initialization
 2. Registry init failure -> gracefully degrades with error handling
-3. Oneiric MCP unavailable -> uses local-only discovery
+3. Dhara registry unavailable -> uses local-only discovery
 4. Dhara persistence unavailable -> uses in-memory fallback
 5. Partial discovery failure -> continues with successful adapters
 
@@ -15,33 +15,24 @@ Run tests:
 
 from __future__ import annotations
 
-import asyncio
-import tempfile
-from datetime import UTC, datetime
 from pathlib import Path
+import tempfile
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from mahavishnu.core.adapter_discovery import (
-    AdapterDiscoveryEngine,
     AdapterMetadata,
 )
 from mahavishnu.core.adapter_persistence import (
-    AdapterPersistenceLayer,
-    AdapterState,
-    HealthRecord,
     PersistenceError,
 )
 from mahavishnu.core.adapter_registry import (
     HybridAdapterRegistry,
-    RegistrationReport,
 )
 from mahavishnu.core.task_requirements import (
-    ResolutionCache,
     RoutingDecision,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -56,7 +47,8 @@ def mock_config():
         "mahavishnu.adapters.*",
         "mahavishnu.engines.*",
     ]
-    config.oneiric_mcp_enabled = False
+    config.oneiric_mcp = MagicMock()
+    config.oneiric_mcp.enabled = False
     config.adapter_registry = MagicMock()
     config.adapter_registry.enabled = True
     config.adapter_registry.allowlist_patterns = [
@@ -68,14 +60,15 @@ def mock_config():
 
 
 @pytest.fixture
-def mock_config_with_oneiric_enabled():
-    """Create mock configuration with Oneiric MCP enabled."""
+def mock_config_with_dhara_enabled():
+    """Create mock configuration with Dhara registry enabled."""
     config = MagicMock()
     config.adapter_allowlist_patterns = [
         "mahavishnu.adapters.*",
         "mahavishnu.engines.*",
     ]
-    config.oneiric_mcp_enabled = True  # Enable Oneiric MCP
+    config.oneiric_mcp = MagicMock()
+    config.oneiric_mcp.enabled = True
     config.adapter_registry = MagicMock()
     config.adapter_registry.enabled = True
     config.adapter_registry.allowlist_patterns = [
@@ -94,7 +87,8 @@ def mock_config_with_feature_disabled():
         "mahavishnu.adapters.*",
         "mahavishnu.engines.*",
     ]
-    config.oneiric_mcp_enabled = False
+    config.oneiric_mcp = MagicMock()
+    config.oneiric_mcp.enabled = False
     config.adapter_registry = MagicMock()
     config.adapter_registry.enabled = False  # Feature flag disabled
     config.adapter_registry.allowlist_patterns = [
@@ -170,8 +164,8 @@ class TestFeatureFlagDisabledUsesLegacy:
         assert registry is not None
         assert registry.config == config
 
-        # The discovery engine should be configured with oneiric disabled
-        assert registry.discovery._enable_oneiric_mcp is False
+        # The discovery engine should be configured with Dhara registry disabled
+        assert registry.discovery._enable_dhara_registry is False
 
     async def test_feature_flag_disabled_uses_entry_points_only(
         self,
@@ -204,10 +198,10 @@ class TestFeatureFlagDisabledUsesLegacy:
 
             with patch.object(
                 registry.discovery,
-                "discover_from_oneiric_mcp",
+                "discover_from_dhara",
                 new_callable=AsyncMock,
-            ) as mock_oneiric:
-                mock_oneiric.return_value = []
+            ) as mock_dhara:
+                mock_dhara.return_value = []
 
                 # Discover adapters
                 adapters = await registry.discovery.discover_all()
@@ -215,7 +209,7 @@ class TestFeatureFlagDisabledUsesLegacy:
                 # Entry points should be called
                 mock_ep.assert_called_once()
 
-                # Oneiric MCP should NOT be called (disabled)
+                # Dhara registry should NOT be called (disabled)
                 # Note: It may be called but returns empty list due to disabled flag
 
         await registry.close()
@@ -343,68 +337,68 @@ class TestRegistryInitFailureFallsBack:
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-class TestOneiricMCPFailureLocalOnly:
-    """Tests for local-only fallback when Oneiric MCP server is unavailable."""
+class TestDharaRegistryFailureLocalOnly:
+    """Tests for local-only fallback when Dhara registry is unavailable."""
 
-    async def test_oneiric_unavailable_returns_empty_list(
+    async def test_dhara_unavailable_returns_empty_list(
         self,
         mock_config,
     ):
-        """When Oneiric MCP is unavailable, discover_from_oneiric_mcp should return empty."""
+        """When Dhara registry is unavailable, discover_from_dhara should return empty."""
         registry = HybridAdapterRegistry(mock_config)
 
-        # Configure discovery with Oneiric enabled but unavailable
-        registry.discovery._enable_oneiric_mcp = True
+        # Configure discovery with Dhara enabled but unavailable
+        registry.discovery._enable_dhara_registry = True
 
-        # Mock _get_oneiric_client to return None (unavailable)
+        # Mock _get_dhara_client to return None (unavailable)
         with patch.object(
             registry.discovery,
-            "_get_oneiric_client",
+            "_get_dhara_client",
             return_value=None,
         ):
-            adapters = await registry.discovery.discover_from_oneiric_mcp()
+            adapters = await registry.discovery.discover_from_dhara()
 
             # Should return empty list gracefully
             assert adapters == []
 
         await registry.close()
 
-    async def test_oneiric_connection_error_falls_back_gracefully(
+    async def test_dhara_connection_error_falls_back_gracefully(
         self,
         mock_config,
         caplog,
     ):
-        """When Oneiric MCP connection fails, should log warning and continue."""
+        """When Dhara registry connection fails, should log warning and continue."""
         registry = HybridAdapterRegistry(mock_config)
         await registry.initialize()
 
-        # Configure discovery with Oneiric enabled
-        registry.discovery._enable_oneiric_mcp = True
+        # Configure discovery with Dhara enabled
+        registry.discovery._enable_dhara_registry = True
 
         # Create a mock client that raises ConnectionError
         mock_client = MagicMock()
         mock_client.list_adapters = AsyncMock(
-            side_effect=ConnectionError("Oneiric MCP unavailable")
+            side_effect=ConnectionError("Dhara registry unavailable")
         )
 
         with patch.object(
             registry.discovery,
-            "_get_oneiric_client",
+            "_get_dhara_client",
             return_value=mock_client,
         ):
             # Should not raise, just return empty list
-            adapters = await registry.discovery.discover_from_oneiric_mcp()
+            adapters = await registry.discovery.discover_from_dhara()
 
             assert adapters == []
-            assert "Oneiric MCP" in caplog.text or "unavailable" in caplog.text.lower()
+            assert "Dhara" in caplog.text or "unavailable" in caplog.text.lower()
 
         await registry.close()
 
-    async def test_oneiric_failure_entry_points_still_work(
+    async def test_dhara_failure_entry_points_still_work(
         self,
         mock_config,
     ):
-        """When Oneiric MCP fails, entry point discovery should still work."""
+        """When Dhara registry fails, entry point discovery should still work."""
         registry = HybridAdapterRegistry(mock_config)
         await registry.initialize()
 
@@ -430,11 +424,11 @@ class TestOneiricMCPFailureLocalOnly:
         ):
             with patch.object(
                 registry.discovery,
-                "discover_from_oneiric_mcp",
+                "discover_from_dhara",
                 new_callable=AsyncMock,
-                side_effect=ConnectionError("MCP unavailable"),
+                side_effect=ConnectionError("Dhara unavailable"),
             ):
-                # discover_all should combine results, handling Oneiric failure
+                # discover_all should combine results, handling Dhara failure
                 adapters = await registry.discovery.discover_all()
 
                 # Entry point adapters should still be present
@@ -443,29 +437,29 @@ class TestOneiricMCPFailureLocalOnly:
 
         await registry.close()
 
-    async def test_oneiric_timeout_falls_back(
+    async def test_dhara_timeout_falls_back(
         self,
         mock_config,
     ):
-        """When Oneiric MCP times out, should fall back gracefully."""
+        """When Dhara registry times out, should fall back gracefully."""
         registry = HybridAdapterRegistry(mock_config)
         await registry.initialize()
 
-        registry.discovery._enable_oneiric_mcp = True
+        registry.discovery._enable_dhara_registry = True
 
         # Mock client that times out
         mock_client = MagicMock()
         mock_client.list_adapters = AsyncMock(
-            side_effect=TimeoutError("Oneiric MCP timeout")
+            side_effect=TimeoutError("Dhara registry timeout")
         )
 
         with patch.object(
             registry.discovery,
-            "_get_oneiric_client",
+            "_get_dhara_client",
             return_value=mock_client,
         ):
             # Should not raise
-            adapters = await registry.discovery.discover_from_oneiric_mcp()
+            adapters = await registry.discovery.discover_from_dhara()
             assert adapters == []
 
         await registry.close()
@@ -644,7 +638,7 @@ class TestPartialDiscoveryContinues:
             )
         ]
 
-        # Oneiric fails
+        # Dhara fails
         with patch.object(
             registry.discovery,
             "discover_from_entry_points",
@@ -653,9 +647,9 @@ class TestPartialDiscoveryContinues:
         ):
             with patch.object(
                 registry.discovery,
-                "discover_from_oneiric_mcp",
+                "discover_from_dhara",
                 new_callable=AsyncMock,
-                side_effect=Exception("Oneiric discovery failed"),
+                side_effect=Exception("Dhara discovery failed"),
             ):
                 adapters = await registry.discovery.discover_all()
 
@@ -740,14 +734,14 @@ class TestPartialDiscoveryContinues:
 
     async def test_discovery_source_tracking(
         self,
-        mock_config_with_oneiric_enabled,
+        mock_config_with_dhara_enabled,
     ):
         """Discovery report should track adapter sources."""
-        registry = HybridAdapterRegistry(mock_config_with_oneiric_enabled)
+        registry = HybridAdapterRegistry(mock_config_with_dhara_enabled)
         await registry.initialize()
 
-        # Verify Oneiric MCP is enabled in discovery engine
-        assert registry.discovery._enable_oneiric_mcp is True
+        # Verify Dhara registry is enabled in discovery engine
+        assert registry.discovery._enable_dhara_registry is True
 
         # Create adapters with valid factory paths so they register successfully
         entry_adapters = [
@@ -763,16 +757,16 @@ class TestPartialDiscoveryContinues:
             )
         ]
 
-        oneiric_adapters = [
+        dhara_adapters = [
             AdapterMetadata(
-                adapter_id="oneiric.adapter.1",
+                adapter_id="dhara.adapter.1",
                 domain="test",
                 category="test",
-                provider="oneiric1",
+                provider="dhara1",
                 capabilities=["test"],
                 factory_path="os:path",  # Valid import path
                 priority=80,
-                source="oneiric_mcp",
+                source="dhara",
             )
         ]
 
@@ -784,19 +778,19 @@ class TestPartialDiscoveryContinues:
         ):
             with patch.object(
                 registry.discovery,
-                "discover_from_oneiric_mcp",
+                "discover_from_dhara",
                 new_callable=AsyncMock,
-                return_value=oneiric_adapters,
+                return_value=dhara_adapters,
             ):
                 report = await registry.discover_and_register()
 
                 # Sources should be tracked
                 assert "entry_point" in report.sources
-                assert "oneiric_mcp" in report.sources
+                assert "dhara" in report.sources
 
                 # Counts should match
                 assert report.sources["entry_point"] == 1
-                assert report.sources["oneiric_mcp"] == 1
+                assert report.sources["dhara"] == 1
 
         await registry.close()
 
@@ -943,9 +937,9 @@ class TestFallbackChainIntegration:
         ):
             with patch.object(
                 registry.discovery,
-                "discover_from_oneiric_mcp",
+                "discover_from_dhara",
                 new_callable=AsyncMock,
-                side_effect=ConnectionError("Oneiric MCP unavailable"),
+                side_effect=ConnectionError("Dhara registry unavailable"),
             ):
                 # This should not raise
                 report = await registry.discover_and_register()

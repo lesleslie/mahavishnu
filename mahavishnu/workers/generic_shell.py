@@ -138,15 +138,15 @@ class GenericShellWorker(BaseWorker):
         Returns:
             WorkerResult with execution results
         """
+        prompt = task.get("prompt", "")
+        timeout = task.get("timeout", self.config.default_timeout)
+        wait_for_completion = task.get("wait_for_completion", True)
+
         if not self.session_id:
             if "{prompt}" in self.config.command:
                 await self.start(launch_command=self._format_command(prompt))
             else:
                 await self.start()
-
-        prompt = task.get("prompt", "")
-        timeout = task.get("timeout", self.config.default_timeout)
-        wait_for_completion = task.get("wait_for_completion", True)
 
         if "{prompt}" not in self.config.command:
             # Interactive workers start a long-lived process and receive prompts over stdin.
