@@ -702,7 +702,73 @@ grep -r "PropertyGraphIndex" mahavishnu/ session-buddy/  # should return zero re
 grep -r "code_graph" mahavishnu/ --include="*.py" | grep -v "mcp" | grep -v "test"  # no direct writes
 ```
 
-## 11. ADR Reference
+## 11. External Research Enhancements
+
+Analysis of multi-agent orchestration projects identified patterns applicable to the code indexing workflow.
+
+### 11.1 Adaptive Indexing Intervals (from Agent Farm)
+
+Agent Farm calculates timing dynamically: 3x median cycle time bounded to 30s-600s. Apply to the scheduled sweep in Section 4.3:
+
+```python
+# Instead of fixed "*/15 * * * *" schedule
+# Calculate adaptive sweep interval based on actual commit frequency
+def calculate_sweep_interval(repo_path: str) -> int:
+    """Return sweep interval in minutes based on recent commit cadence."""
+    commits_last_hour = count_commits_since(repo_path, hours=1)
+    if commits_last_hour > 10:
+        return 5   # Active repo — sweep every 5 minutes
+    elif commits_last_hour > 2:
+        return 15  # Moderate — default interval
+    else:
+        return 60  # Quiet repo — sweep hourly
+```
+
+### 11.2 WorkItem Graph for Indexing (from MCP Task Orchestrator)
+
+MCP Task Orchestrator uses a WorkItem graph with role-based lifecycle (`queue → work → review → terminal`) and dependency blocking. The indexing workflow (Section 4.3) could track its state as WorkItems:
+
+```python
+class IndexWorkItem(BaseModel):
+    repo_path: str
+    trigger: Literal["git-event", "schedule", "manual"]
+    files_changed: list[str]
+    status: Literal["queued", "parsing", "upserting", "notifying", "complete", "failed"]
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    parse_failures: int = 0
+```
+
+This enables:
+- `mahavishnu index --status` to show a real-time WorkItem dashboard
+- Dependency blocking: don't notify Akosha until upsert is confirmed
+- Retry semantics: failed WorkItems get requeued automatically
+
+### 11.3 Filesystem Coordination Fallback (from Agent Farm)
+
+When Session-Buddy MCP is unavailable during indexing, fall back to filesystem-based graph persistence:
+
+1. Write parsed nodes/edges to `/tmp/mahavishnu-index/{repo_name}_{timestamp}.json`
+2. On Session-Buddy recovery, batch-replay all pending JSON files
+3. Delete processed files after successful upsert
+
+This ensures indexing never blocks on MCP availability — work queues locally and replays when the graph owner is reachable.
+
+### 11.4 Heartbeat for Long-Running Index Operations (from Agent Farm)
+
+For repos with 100k+ LOC, indexing can exceed 60 seconds. Add per-file heartbeat logging:
+
+```python
+async def parse_file(file_path: str):
+    write_heartbeat(f"parsing:{file_path}")
+    result = CodeGraphAnalyzer.parse(file_path)
+    write_heartbeat(f"parsed:{file_path}:nodes={result.node_count}")
+    return result
+```
+
+Heartbeat files in `/tmp/mahavishnu-index/heartbeats/` enable external monitoring tools to track indexing progress without polling the MCP server.
+
+## 12. ADR Reference
 
 This design should be accompanied by an ADR in `docs/adr/` documenting:
 - Decision to extend Session-Buddy's DuckDB/DuckPGQ vs. alternatives

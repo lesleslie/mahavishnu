@@ -235,7 +235,71 @@ These commands read from the local `.claude/` and `.mcp.json` — no dependency 
 
 All 33 MCP servers use either `http` transport to `localhost:8xxx` or local command execution. No API keys are stored in `.mcp.json`. Secrets remain in `~/.claude/settings.json`.
 
-## 9. Edge Cases
+## 9. External Research Enhancements
+
+Analysis of multi-agent orchestration projects identified patterns that strengthen config management.
+
+### 9.1 Anti-Drift Validation (from Ruflo)
+
+Ruflo uses Zod validation schemas to catch configuration drift between expected and actual state. Enhance `mahavishnu config validate` with drift detection:
+
+```python
+def validate_config_drift():
+    """Detect configuration drift across the ecosystem."""
+    drift = []
+
+    # Cross-reference integrity
+    for skill_file in all_skills():
+        referenced_agents = extract_agent_references(skill_file)
+        for agent in referenced_agents:
+            if agent not in registered_agents:
+                drift.append(f"Skill '{skill_file}' references missing agent '{agent}'")
+
+    # Port consistency
+    mcp_ports = extract_ports_from_mcp_json()
+    doc_ports = extract_ports_from_skill_docs()
+    for server, doc_port in doc_ports.items():
+        if server in mcp_ports and mcp_ports[server] != doc_port:
+            drift.append(f"Port drift: {server} is {mcp_ports[server]} in .mcp.json but documented as {doc_port}")
+
+    return drift
+```
+
+### 9.2 Config Profiles (from Ruflo TOML)
+
+Ruflo uses `dev`, `safe`, and `CI` profiles with per-profile overrides. The consolidated config could support environment-specific profiles via `.claude/profiles/{name}/` directories that override base config:
+
+```
+.claude/
+├── agents/          # Base agents (all profiles)
+├── profiles/
+│   ├── dev/         # dev-specific agent overrides
+│   │   └── agents/  # Override specific agents for dev
+│   └── ci/          # CI-specific overrides (minimal agent set)
+│       └── agents/  # Only agents needed for CI
+```
+
+This is a future enhancement — not required for initial consolidation.
+
+### 9.3 Smart Timeout Defaults (from MCP Orchestrator)
+
+MCP Orchestrator defines per-server-type timeout defaults. The consolidated `.mcp.json` could include optional timeout hints:
+
+```json
+{
+  "mcpServers": {
+    "crackerjack": {
+      "command": "uvx",
+      "args": ["crackerjack-mcp"],
+      "timeout_hint": 120
+    }
+  }
+}
+```
+
+This is informational — Mahavishnu's pool routing reads `timeout_hint` as a suggestion, not a hard limit.
+
+## 10. Edge Cases
 
 | Edge Case | Handling |
 |-----------|----------|
@@ -248,7 +312,7 @@ All 33 MCP servers use either `http` transport to `localhost:8xxx` or local comm
 | **Hook scripts** | `~/.claude/scripts/` stays global (hardcoded paths). Only `mcp-hooks.json` config moves. The JSON references scripts at `~/.claude/scripts/*` by absolute path — these continue to work since the scripts don't move. |
 | **Other project sessions** | Non-Mahavishnu sessions won't see these configs. They can add Mahavishnu to their `additionalDirectories` if needed. |
 
-## 10. Acceptance Criteria
+## 11. Acceptance Criteria
 
 1. All 101 agents are present in `mahavishnu/.claude/agents/` and discoverable by Claude Code
 2. All 27 skills (22 native + 5 from `~/.agents/` symlinks) are present in `mahavishnu/.claude/skills/` and discoverable by Claude Code
@@ -266,7 +330,7 @@ All 33 MCP servers use either `http` transport to `localhost:8xxx` or local comm
 14. `.gitignore` correctly excludes runtime-only files while including canonical configs
 15. All committed files contain no secrets (API keys, tokens)
 
-## 11. ADR Reference
+## 12. ADR Reference
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
@@ -279,7 +343,7 @@ All 33 MCP servers use either `http` transport to `localhost:8xxx` or local comm
 | Migration | Scripted with dry-run + rollback | Safe, repeatable, verifiable. |
 | Multi-tool access | Shared formats + CLI commands | Markdown + JSON are universally parseable. CLI provides management interface. |
 
-## 12. Delivery Order
+## 13. Delivery Order
 
 | # | Item | Dependencies |
 |---|------|-------------|

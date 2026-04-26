@@ -225,7 +225,119 @@ This validation runs as part of `mahavishnu config validate` and reports:
 - References to servers not in `.mcp.json`
 - Tool name format violations (missing `mcp__` prefix)
 
-## 8. Delivery Order
+## 8. External Research Enhancements
+
+Analysis of 5+ multi-agent orchestration projects (Claude Code Agent Farm, Ruflo, CLI Agent Orchestrator, MCP Task Orchestrator, MCP Orchestrator) identified borrowable patterns that strengthen this design.
+
+### 8.1 Per-Task MCP Server Routing (from MCP Orchestrator)
+
+Each spawned sub-agent can enable specific MCP servers. Agent descriptions should declare which MCP servers they require, enabling per-task routing in Mahavishnu pools:
+
+**Enrichment format update — add `requires_mcp` field:**
+```yaml
+---
+name: security-auditor
+description: >-
+  Expert security auditor. Reviews code for OWASP top 10 vulnerabilities.
+  Ecosystem: use mcp__crackerjack__crackerjack_run for security scans,
+  mcp__mahavishnu__pool_route_execute for distributed audits.
+requires_mcp: [crackerjack, mahavishnu]
+model: opus
+---
+```
+
+This enables Mahavishnu's pool routing to match agents to pools that have the required MCP servers available, reducing cost and attack surface.
+
+### 8.2 Context Injection Modes (from MCP Orchestrator)
+
+MCP Orchestrator uses `full`, `summary`, and `grep` modes for passing file context to sub-agents. Skills should recommend a context injection mode in their MCP reference table:
+
+```markdown
+| Server | Port | Context Mode | Relevant Tools |
+|--------|------|-------------|---------------|
+| akosha | 8682 | summary | search_all_systems, find_function_usage |
+| session-buddy | 8678 | full | search_conversations, store_reflection |
+```
+
+- **full**: Inject complete file content (for code review, debugging)
+- **summary**: Inject summarized context (for cross-repo search, pattern discovery)
+- **grep**: Inject only matching lines (for targeted queries, error investigation)
+
+### 8.3 Notes-as-Memory (from MCP Task Orchestrator)
+
+MCP Task Orchestrator achieves 90% token reduction by replacing 5k+ token conversation history with 200-token structured notes. Apply to Session-Buddy checkpoint skills:
+
+**Enhanced checkpoint format:**
+```markdown
+## Checkpoint Notes (instead of full conversation replay)
+
+- **Decision**: Chose strategy pattern over factory pattern
+- **Reason**: Factory requires concrete class registration at import time
+- **Files changed**: `mahavishnu/core/adapters/strategy.py` (new), `mahavishnu/core/config.py` (modified)
+- **Next step**: Implement concrete strategies for prefect and agno
+- **Blockers**: None
+```
+
+This replaces the current full-conversation checkpoint with structured, token-efficient notes.
+
+### 8.4 Adaptive Health Monitoring (from Agent Farm)
+
+Agent Farm calculates idle timeout as 3x median cycle time (bounded 30s-600s) and adaptive stagger delays. Add to skill MCP reference tables:
+
+```markdown
+## Health Monitoring
+
+- **Stagger**: 10s initial, halves on success, doubles on failure (max 60s)
+- **Idle timeout**: 3x median cycle time (bounded 30s-600s)
+- **Heartbeat**: Per-agent heartbeat files as lightweight fallback
+```
+
+### 8.5 Smart Timeouts Per MCP Type (from MCP Orchestrator)
+
+Different MCP servers have different latency profiles. Skills should specify expected timeout ranges:
+
+```markdown
+| Server | Default Timeout | Notes |
+|--------|----------------|-------|
+| akosha | 60s | Semantic search can be slow on large corpora |
+| session-buddy | 30s | Local DuckDB, generally fast |
+| crackerjack | 120s | Test execution can be slow |
+| mahavishnu | 60s | Pool operations |
+| dhara | 30s | ACID transactions, fast reads |
+```
+
+### 8.6 Filesystem Coordination Fallback (from Agent Farm + CLI Orchestrator)
+
+When MCP servers are unavailable, skills should fall back to filesystem-based coordination:
+
+**Fallback pattern (add to skill degradation sections):**
+```markdown
+## Degradation: MCP Unavailable
+
+1. Check `mahavishnu/.claude/settings.local.json` for registered MCP servers
+2. Fall back to filesystem-based coordination:
+   - Work claims: write to `/tmp/mahavishnu-work/{agent_id}.json`
+   - Status updates: append to `/tmp/mahavishnu-work/status.log`
+   - Conflict detection: check existing work files before claiming
+3. Inform user: "MCP servers unavailable. Using filesystem coordination."
+```
+
+### 8.7 Anti-Drift Config Validation (from Ruflo)
+
+Ruflo uses Zod schemas to catch configuration drift. Enhance `mahavishnu config validate` (Section 7.2) with drift detection:
+
+```python
+# Additional validation checks
+def validate_config_drift():
+    # 1. Detect agents referenced in skills but not in agents/
+    # 2. Detect skills referenced in workflows but not in skills/
+    # 3. Detect MCP servers in skill references but not in .mcp.json
+    # 4. Detect port conflicts between .mcp.json and documented ports
+    # 5. Detect model values not in {sonnet, opus, haiku}
+    # 6. Detect description length > 300 characters
+```
+
+## 9. Delivery Order
 
 | # | Item | Depends On | Effort |
 |---|------|-----------|--------|
@@ -235,9 +347,12 @@ This validation runs as part of `mahavishnu config validate` and reports:
 | 4 | Add MCP reference tables to 2 missing skills | Config consolidation complete | Small |
 | 5 | Fix stale references across all 20 skills | Items 3-4 | Medium |
 | 6 | Add stale reference validation to `mahavishnu config validate` | Config consolidation complete | Small |
-| 7 | Commit and verify with fresh Claude Code session | Items 1-6 | Small |
+| 7 | Add context injection modes to skill MCP tables | Items 3-4 | Small |
+| 8 | Add smart timeout hints to skill MCP tables | Items 3-4 | Small |
+| 9 | Add anti-drift validation to `mahavishnu config validate` | Item 6 | Small |
+| 10 | Commit and verify with fresh Claude Code session | Items 1-9 | Small |
 
-## 9. Acceptance Criteria
+## 10. Acceptance Criteria
 
 1. All 15 enriched agents include at least one `mcp__` tool reference in their description
 2. All 20 skills have an "Available MCP Servers" section
@@ -249,8 +364,12 @@ This validation runs as part of `mahavishnu config validate` and reports:
 8. `swiftui-ipc-client` skill references at least one ecosystem MCP server
 9. `testing-strategies` skill references Crackerjack tools
 10. A fresh Claude Code session from Mahavishnu correctly routes to enriched agents
+11. All skill MCP reference tables include a "Context Mode" column (full/summary/grep)
+12. All skill MCP reference tables include a "Default Timeout" row
+13. `mahavishnu config validate` reports zero cross-reference drift (agents referenced in skills exist, servers in docs match .mcp.json)
+14. Notes-as-memory format is documented in at least the checkpoint skill
 
-## 10. ADR Reference
+## 11. ADR Reference
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
