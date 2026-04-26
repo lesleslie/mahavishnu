@@ -1,0 +1,28 @@
+id: deployment/github-actions
+name: GitHub Actions CI/CD
+description: Continuous integration and deployment with GitHub Actions.
+version: 1.0.0
+source_repos:
+  - fastblocks
+tags:
+  - deployment
+  - ci
+  - github
+structure:
+  files:
+    - path: .github/workflows/ci.yml
+      required: true
+      template: github-actions-ci
+templates:
+  github-actions-ci: |
+    name: CI
+    on: [push, pull_request]
+    jobs:
+      test:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v4
+          - uses: actions/setup-python@v5
+          - run: pip install -e ".[dev]" && pytest
+depends: []
+confidence: 0.7

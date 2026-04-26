@@ -1,0 +1,34 @@
+id: adapters/auth
+name: Auth Adapter
+description: Session-based authentication adapter with JWT tokens.
+version: 1.0.0
+source_repos:
+  - splashstand
+tags:
+  - auth
+  - session
+  - security
+structure:
+  dirs:
+    - path: adapters/
+      required: true
+      description: Adapter directory
+  files:
+    - path: adapters/auth/_base.py
+      required: true
+      template: adapter-base
+    - path: adapters/auth/firebase.py
+      required: true
+      template: adapter-impl
+templates:
+  adapter-base: |
+    from oneiric.config import AdapterBase
+    class AuthBase(AdapterBase):
+        """Auth adapter base class."""
+  adapter-impl: |
+    class FirebaseAuth(AuthBase):
+        """Firebase authentication implementation."""
+depends:
+  - id: scaffolding/project
+    version: ">=1.0.0"
+confidence: 0.8

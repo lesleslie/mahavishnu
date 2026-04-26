@@ -1,0 +1,27 @@
+id: deployment/cloudrun
+name: Cloud Run Deployment
+description: Deploy to Google Cloud Run with Docker container.
+version: 1.0.0
+source_repos:
+  - fastblocks
+tags:
+  - deployment
+  - cloudrun
+  - serverless
+structure:
+  dirs:
+    - path: .cloudrun/
+      required: false
+  files:
+    - path: Dockerfile
+      required: true
+      template: dockerfile
+templates:
+  dockerfile: |
+    FROM python:3.13-slim
+    WORKDIR /app
+    COPY pyproject.toml .
+    RUN pip install -e ".[prod]"
+    CMD ["uvicorn", "main:app", "--host", "0.0.0.0"]
+depends: []
+confidence: 0.7

@@ -1,0 +1,27 @@
+id: components/hero
+name: Hero Section
+description: Full-width hero banner with headline, subheadline, and CTA.
+version: 1.0.0
+source_repos:
+  - fastblocks
+tags:
+  - hero
+  - landing
+  - component
+structure:
+  dirs:
+    - path: templates/components/
+      required: true
+  files:
+    - path: templates/components/hero.html
+      required: true
+      template: hero-component
+templates:
+  hero-component: |
+    <section class="hero">
+      <h1>{{ headline }}</h1>
+      <p>{{ subheadline }}</p>
+      <a href="{{ cta_url }}" class="btn btn-primary">{{ cta_label }}</a>
+    </section>
+depends: []
+confidence: 0.8

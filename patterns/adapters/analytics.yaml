@@ -1,0 +1,25 @@
+id: adapters/analytics
+name: Analytics Adapter
+description: Analytics tracking adapter for page views and events.
+version: 1.0.0
+source_repos:
+  - splashstand
+tags:
+  - analytics
+  - tracking
+structure:
+  dirs:
+    - path: adapters/
+      required: true
+  files:
+    - path: adapters/analytics/google.py
+      required: true
+      template: adapter-impl
+templates:
+  adapter-impl: |
+    class GoogleAnalytics:
+        """Google Analytics adapter."""
+depends:
+  - id: scaffolding/project
+    version: ">=1.0.0"
+confidence: 0.7

@@ -1,0 +1,29 @@
+id: components/table
+name: Data Table
+description: Paginated data table with sorting and filtering.
+version: 1.0.0
+source_repos:
+  - fastblocks
+tags:
+  - table
+  - component
+  - data
+structure:
+  dirs:
+    - path: templates/components/
+      required: true
+  files:
+    - path: templates/components/table.html
+      required: true
+      template: table-component
+    - path: static/css/table.css
+      required: false
+      template: table-styles
+templates:
+  table-component: |
+    <table class="table">
+      <thead><tr>{{ header_row }}</tr></thead>
+      <tbody>{{ body_rows }}</tbody>
+    </table>
+depends: []
+confidence: 0.8

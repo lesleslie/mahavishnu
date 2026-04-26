@@ -1,0 +1,33 @@
+id: components/dashboard
+name: Dashboard Layout
+description: Multi-panel dashboard with sidebar navigation and content area.
+version: 1.0.0
+source_repos:
+  - fastblocks
+tags:
+  - dashboard
+  - layout
+  - admin
+structure:
+  dirs:
+    - path: templates/
+      required: true
+      description: Dashboard templates
+  files:
+    - path: templates/dashboard.html
+      required: true
+      template: dashboard-layout
+    - path: static/css/dashboard.css
+      required: false
+      template: dashboard-styles
+templates:
+  dashboard-layout: |
+    <div class="dashboard">
+      <aside class="sidebar">{{ sidebar_content }}</aside>
+      <main class="content">{{ main_content }}</main>
+    </div>
+depends:
+  - id: components/nav
+    version: ">=1.0.0"
+  - id: components/card
+confidence: 0.8

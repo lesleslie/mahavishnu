@@ -1,0 +1,29 @@
+id: scaffolding/minimal
+name: Minimal Project
+description: Stripped-down project with just entry point and settings.
+version: 1.0.0
+source_repos:
+  - fastblocks
+tags:
+  - fastblocks
+  - minimal
+structure:
+  dirs:
+    - path: settings/
+      required: true
+      description: Configuration directory
+  files:
+    - path: main.py
+      required: true
+      template: entry-point
+    - path: pyproject.toml
+      required: true
+      description: Project metadata
+templates:
+  entry-point: |
+    from fastblocks.applications import FastBlocks
+    app = FastBlocks()
+depends:
+  - id: scaffolding/project
+    version: ">=1.0.0"
+confidence: 0.9

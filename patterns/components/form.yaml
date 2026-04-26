@@ -1,0 +1,31 @@
+id: components/form
+name: Form Component
+description: Form with validation and CSRF protection.
+version: 1.0.0
+source_repos:
+  - fastblocks
+tags:
+  - form
+  - component
+  - validation
+structure:
+  dirs:
+    - path: templates/components/
+      required: true
+  files:
+    - path: templates/components/form.html
+      required: true
+      template: form-component
+templates:
+  form-component: |
+    <form method="POST" action="{{ action }}">
+      {% for field in fields %}
+      <div class="form-group">
+        <label>{{ field.label }}</label>
+        <input type="{{ field.type }}" name="{{ field.name }}" required="{{ field.required }}">
+      </div>
+      {% endfor %}
+      <button type="submit">{{ submit_label }}</button>
+    </form>
+depends: []
+confidence: 0.8

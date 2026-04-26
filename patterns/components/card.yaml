@@ -1,0 +1,27 @@
+id: components/card
+name: Card Component
+description: Content card with header, body, and optional footer.
+version: 1.0.0
+source_repos:
+  - fastblocks
+tags:
+  - card
+  - component
+  - layout
+structure:
+  dirs:
+    - path: templates/components/
+      required: true
+  files:
+    - path: templates/components/card.html
+      required: true
+      template: card-component
+templates:
+  card-component: |
+    <div class="card">
+      {% if title %}<div class="card-header">{{ title }}</div>{% endif %}
+      <div class="card-body">{{ body }}</div>
+      {% if footer %}<div class="card-footer">{{ footer }}</div>{% endif %}
+    </div>
+depends: []
+confidence: 0.8

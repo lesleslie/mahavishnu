@@ -1,0 +1,25 @@
+id: adapters/admin
+name: Admin Adapter
+description: SQL admin panel adapter for database management.
+version: 1.0.0
+source_repos:
+  - splashstand
+tags:
+  - admin
+  - sqladmin
+structure:
+  dirs:
+    - path: adapters/
+      required: true
+  files:
+    - path: adapters/admin/sqladmin.py
+      required: true
+      template: adapter-impl
+templates:
+  adapter-impl: |
+    class AdminAdapter:
+        """SQL Admin adapter."""
+depends:
+  - id: scaffolding/project
+    version: ">=1.0.0"
+confidence: 0.7

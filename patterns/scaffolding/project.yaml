@@ -1,0 +1,42 @@
+id: scaffolding/project
+name: Fastblocks Project Skeleton
+description: Base project structure with settings, templates, and entry point.
+version: 1.0.0
+source_repos:
+  - fastblocks
+tags:
+  - fastblocks
+  - skeleton
+structure:
+  dirs:
+    - path: settings/
+      required: true
+      description: Configuration directory
+    - path: templates/
+      required: true
+      description: Jinja2 templates
+    - path: static/
+      required: false
+      description: Static assets
+  files:
+    - path: main.py
+      required: true
+      template: entry-point
+    - path: pyproject.toml
+      required: true
+      description: Project metadata
+    - path: settings/mahavishnu.yaml
+      required: false
+      description: Local settings
+templates:
+  entry-point: |
+    from fastblocks.applications import FastBlocks
+    app = FastBlocks()
+slots:
+  nav:
+    path: templates/base/blocks/
+    type: directory
+    files:
+      - nav.html
+depends: []
+confidence: 1.0

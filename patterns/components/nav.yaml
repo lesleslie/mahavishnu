@@ -1,0 +1,27 @@
+id: components/nav
+name: Navigation Bar
+description: Responsive navigation component with mobile hamburger menu.
+version: 1.0.0
+source_repos:
+  - fastblocks
+tags:
+  - navigation
+  - component
+  - responsive
+structure:
+  dirs:
+    - path: templates/components/
+      required: true
+      description: Component templates
+  files:
+    - path: templates/components/nav.html
+      required: true
+      template: nav-component
+templates:
+  nav-component: |
+    <nav class="navbar">
+      <div class="navbar-brand">{{ site_name }}</div>
+      <button class="navbar-toggler">{{ toggle_label }}</button>
+    </nav>
+depends: []
+confidence: 0.8

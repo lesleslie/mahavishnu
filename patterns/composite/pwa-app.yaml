@@ -1,0 +1,34 @@
+id: composite/pwa-app
+name: PWA Application
+description: Progressive Web App with service worker, manifest, and offline support.
+version: 1.0.0
+source_repos:
+  - splashstand
+tags:
+  - pwa
+  - composite
+  - progressive-web
+structure:
+  dirs:
+    - path: static/
+      required: false
+  files:
+    - path: manifest.json
+      required: true
+      template: pwa-manifest
+templates:
+  pwa-manifest: |
+    {
+      "name": "{{ app_name }}",
+      "short_name": "{{ app_short_name }}",
+      "start_url": "/",
+      "display": "standalone"
+    }
+depends:
+  - id: scaffolding/project
+    version: ">=1.0.0"
+  - id: components/nav
+    version: ">=1.0.0"
+  - id: deployment/cloudrun
+    version: ">=1.0.0"
+confidence: 0.7

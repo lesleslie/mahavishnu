@@ -1,0 +1,26 @@
+id: deployment/docker
+name: Docker Compose
+description: Local Docker Compose configuration for development.
+version: 1.0.0
+source_repos:
+  - fastblocks
+tags:
+  - deployment
+  - docker
+  - development
+structure:
+  files:
+    - path: docker-compose.yml
+      required: true
+      template: docker-compose
+templates:
+  docker-compose: |
+    services:
+      app:
+        build: .
+        ports:
+          - "8000:8000"
+        volumes:
+          - .:/app
+depends: []
+confidence: 0.7
