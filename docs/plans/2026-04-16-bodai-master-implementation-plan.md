@@ -381,6 +381,180 @@ Acceptance criteria:
 - all state flows through Mahavishnu/Session-Buddy APIs
 - integration test confirms no Agno-owned storage paths are created during execution
 
+### 6.4 Code Knowledge Graph
+
+**Design spec:** [2026-04-26-code-indexing-integration-design.md](../superpowers/specs/2026-04-26-code-indexing-integration-design.md)
+
+This section adds three code intelligence capabilities by extending existing infrastructure (DuckDB/DuckPGQ, tree-sitter, mcp-common) rather than introducing new dependencies. No Neo4j, no TiDB, no external graph database.
+
+**Incremental delivery order:**
+
+| Delivery | Capability | Effort | Value |
+|----------|-----------|--------|-------|
+| 1st | Call chain resolution | Medium | Highest — "who calls this?" queries |
+| 2nd | Change impact analysis | Medium | High — "what breaks if I change this?" |
+| 3rd | Incremental re-indexing | Low | Medium — automation, not strictly required |
+
+**Prerequisites (all must resolve before this section begins):**
+
+- Inter-service auth between Mahavishnu and Session-Buddy (hard gate — no unauthenticated MCP calls)
+- Storage path reconciliation decision: extend DuckPGQ `kg_entities`/`kg_relationships` tables with code-graph-specific columns (Option A recommended), extend reflection DB (Option B), or create new dedicated tables (Option C)
+- Upsert logic (ON CONFLICT DO UPDATE) implemented in Session-Buddy's code graph storage
+
+**6.4.1 Storage reconciliation**
+
+Work:
+
+- audit the two existing code graph storage paths in Session-Buddy:
+  - DuckPGQ path: `kg_entities`/`kg_relationships` tables (populated by `KGExtractor`)
+  - Reflection DB path: `store_code_graph_from_mahavishnu` (consumed by Akosha `CodeGraphIngester`)
+- resolve which path becomes the canonical code graph store (recommendation: extend DuckPGQ tables)
+- implement the chosen reconciliation approach
+- if Option A: add `repo_path`, `commit_hash`, `is_deleted`, `complexity` to `kg_entities.properties` JSON blob; migrate existing reflection DB data; update Akosha ingestion path
+- if Option B: add PGQ-compatible query layer to reflection DB
+- implement upsert logic for the canonical storage path: the reflection DB already has `INSERT OR REPLACE`; the DuckPGQ path (`kg_entities`/`kg_relationships`) needs `ON CONFLICT DO UPDATE` if Option A is chosen
+
+Acceptance criteria:
+
+- one canonical storage path for code graph data (verified by grep: no duplicate writes)
+- Akosha `CodeGraphIngester` pulls from the canonical path
+- upsert semantics verified: re-indexing the same file does not create duplicate nodes
+- existing code graph data is migrated without loss
+- all new tools return Pydantic-typed responses with no raw dicts
+- no new infrastructure dependencies (no Neo4j, no TiDB, no external graph DB)
+- Session-Buddy remains the single authority for code graph storage (verified by grep)
+
+Validation:
+
+```bash
+uv run pytest tests/integration/test_upsert_semantics.py
+uv run pytest tests/unit/test_storage_reconciliation.py
+```
+
+**6.4.2 Call chain resolution**
+
+Work:
+
+- implement `code_call_chain` MCP tool in Session-Buddy
+- input: qualified symbol ID (`repo_path:file:function:name`), direction (callers/callees/both), max depth (default 5), optional edge type filter
+- output: Pydantic-typed `CallChainResult` with chains, total_nodes, truncated flag, stale flag, last_indexed_at
+- implement PGQ query for bounded BFS traversal with edge-type filtering
+- Session-Buddy independently validates all MCP tool inputs using the same Pydantic models
+- symbol IDs validated against format regex; no string interpolation into PGQ queries
+- `max_depth` field validator with upper bound of 10 (default 5)
+- result size limit: 1000 nodes max; query timeout: 30 seconds
+- add `stale: true` flag when index is > 24 hours old
+- add Tier 4 degradation: structured `CodeGraphUnavailable` response when DuckDB is down; fallback to tree-sitter single-file AST queries
+- implement qualified symbol ID format: `{repo_path}:{file_path}:{symbol_type}:{symbol_name}` (extends existing `{file_id}:function:{name}` format used by CodeGraphAnalyzer)
+
+Acceptance criteria:
+
+- transitive callers/callees returned up to 5 hops with correct qualified symbol IDs, file paths, and edge types
+- stale flag is set when index is > 24 hours old
+- Tier 4 returns structured response, never empty list or untyped error
+- PGQ handles depth-5 queries on repos under 50k symbols; if performance insufficient, materialized views per edge type are created
+
+Validation:
+
+```bash
+uv run pytest tests/unit/test_code_call_chain.py
+uv run pytest tests/unit/test_code_graph_degradation.py
+```
+
+**6.4.3 Change impact analysis**
+
+Work:
+
+- implement `code_impact_analysis` MCP tool in Session-Buddy
+- input: qualified symbol ID, optional repo_path, include_indirect (default true), max depth (default 5)
+- output: Pydantic-typed `ImpactAnalysisResult` with direct/indirect dependents, affected files, risk level (low/medium/high based on direct dependents only), stale flag
+- implement reverse call graph traversal via PGQ
+- risk level: low (< 3 direct dependents), medium (3-10), high (> 10)
+
+Acceptance criteria:
+
+- all direct and indirect dependents returned with correct depth and dependency type
+- `affected_files` list is verified against actual file imports
+- `dependency_type` field accuracy verified
+- risk level classification matches the defined thresholds
+- stale flag is set when index is > 24 hours old
+- `last_indexed_at` timestamp is included in response
+
+Validation:
+
+```bash
+uv run pytest tests/unit/test_code_impact_analysis.py
+```
+
+**6.4.4 Incremental re-indexing**
+
+Work:
+
+- implement `index-code-graph` Prefect workflow in Mahavishnu
+- trigger mechanisms (priority order):
+  1. Git hook (`post-commit`, `post-merge`, `post-rewrite`) calls `mahavishnu index --trigger git-event --repo <path>`
+  2. Scheduled sweep (default: every 15 minutes) calls `mahavishnu index --all-repos`
+  3. Manual CLI: `mahavishnu index --repo <path>` for on-demand full re-index
+- git event handling:
+  - merge conflict: use `git merge-base HEAD MERGE_HEAD` for correct diff
+  - force push: full re-index fallback when last-indexed commit hash is not an ancestor of HEAD
+  - branch deletion: soft-delete symbols from pruned branch files
+- per-file parse failure handling: log, skip, continue; warn if > 25% failure rate
+- atomic replacement: write to staging table, swap in single transaction; rollback on failure
+- CLI: `mahavishnu index --install-hooks`, `--uninstall-hooks`, `--force`, `--status`
+- hook security: validate `--repo` against `repos.yaml`; header comment; overwrite protection; permission 0755; owner verification
+- concurrent indexing safety: per-repo file-based lock (`.git/mahavishnu-index.lock`); skip with log if lock held
+- comprehensive audit trail: log index_started, index_completed, index_failed, signature_redacted, hook_installed, hook_removed events
+
+Acceptance criteria:
+
+- incremental re-index processes only changed files (parse count == diff count)
+- per-file parse failures logged and skipped without aborting batch
+- parse failure rate > 25% emits a warning
+- soft delete mechanism (is_deleted flag) verified for renamed/removed symbols
+- atomic replacement: failed swaps leave existing graph intact
+- `--install-hooks` creates hooks with mahavishnu header; `--force` overwrites with confirmation; `--uninstall-hooks` removes only mahavishnu hooks
+- `--repo` rejects unregistered repositories
+- full re-index of single repo under 100k LOC completes in under 60 seconds
+
+Validation:
+
+```bash
+uv run pytest tests/unit/test_reindex_workflow.py
+uv run pytest tests/unit/test_hook_installation.py
+uv run pytest tests/unit/test_path_validation.py
+```
+
+**6.4.5 Security hardening**
+
+Work:
+
+- implement signature redaction: scan function signatures for secret patterns (API_KEY, PASSWORD, TOKEN, SECRET) and replace matches with `"<REDACTED>"` before storage
+- set DuckDB file permissions: 0600 for database file, 0700 for database directory
+- verify auth gate: all MCP calls to Session-Buddy require valid auth token; fail immediately with `AuthenticationRequired` error if not configured
+
+Acceptance criteria:
+
+- signatures containing secret patterns are redacted in stored graph nodes
+- DuckDB file and directory permissions verified at creation and on startup
+- DuckDB corruption triggers automatic re-index from scratch with a logged corruption event
+- workflow fails immediately when auth is not configured (no silent fallback)
+
+Validation:
+
+```bash
+uv run pytest tests/unit/test_signature_redaction.py
+uv run pytest tests/unit/test_auth_gate.py
+```
+
+**Authority verification:**
+
+```bash
+# No competing code graph authorities
+grep -r "PropertyGraphIndex" mahavishnu/ session-buddy/  # zero results
+grep -r "code_graph" mahavishnu/ --include="*.py" | grep -v "mcp" | grep -v "test"  # no direct writes
+```
+
 ## 7. Phase 3: Symbiotic Entry Points
 
 Once the core boundaries and learning pipeline are stable, add external surfaces.
