@@ -427,3 +427,90 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
         except ConfigurationError as e:
             typer.echo(f"❌ Configuration Error: {e.message}", err=True)
             raise typer.Exit(code=1) from None
+
+    @app.command("status")
+    def ecosystem_status(json_output: bool = typer.Option(False, "--json", help="Output as JSON")) -> None:
+        """Show canonical ecosystem health status."""
+        import asyncio
+        import json
+
+        from mahavishnu.core.ecosystem_status import EcosystemStatusService
+
+        async def _run():
+            service = EcosystemStatusService()
+            report = await service.generate_report()
+            return report
+
+        try:
+            loop = asyncio.new_event_loop()
+            report = loop.run_until_complete(_run())
+        finally:
+            loop.close()
+
+        if json_output:
+            typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, default=str))
+        else:
+            typer.echo(f"Ecosystem Status: {report.status.value}")
+            typer.echo(f"Generated at: {report.generated_at}")
+            typer.echo(f"Duration: {report.duration_ms:.0f}ms")
+            if report.errors:
+                typer.echo(f"Section errors: {len(report.errors)}")
+            if report.services:
+                typer.echo(f"\nServices ({len(report.services)}):")
+                for name, svc in report.services.items():
+                    req = " [required]" if svc.required else ""
+                    typer.echo(f"  {name}: {svc.status.value}{req}")
+            if report.adapters:
+                typer.echo(f"\nAdapters ({len(report.adapters)}):")
+                for name, adp in report.adapters.items():
+                    typer.echo(f"  {name}: {adp.status.value}")
+            if report.workflows:
+                w = report.workflows
+                typer.echo(f"\nWorkflows: active={w.active_count} failed={w.failed_count} recent={w.recent_count}")
+            if report.alerts:
+                a = report.alerts
+                typer.echo(f"\nAlerts: total={a.total_active} critical={a.by_severity.get('critical', 0)}")
+            if report.recommendations:
+                typer.echo(f"\nRecommendations ({len(report.recommendations)}):")
+                for rec in report.recommendations:
+                    cmd = f" -> {rec.suggested_command}" if rec.suggested_command else ""
+                    typer.echo(f"  [{rec.severity.value}] {rec.message}{cmd}")
+
+    @app.command("capabilities")
+    def ecosystem_capabilities(
+        json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
+        capability: str = typer.Option(None, "--capability", help="Filter by capability name"),
+    ) -> None:
+        """Show ecosystem capabilities and adapter capabilities."""
+        import asyncio
+        import json
+
+        from mahavishnu.core.ecosystem_status import EcosystemStatusService
+
+        async def _run():
+            service = EcosystemStatusService()
+            report = await service.generate_report()
+            return report
+
+        try:
+            loop = asyncio.new_event_loop()
+            report = loop.run_until_complete(_run())
+        finally:
+            loop.close()
+
+        caps = report.capabilities
+        if capability:
+            caps = {k: v for k, v in caps.items() if capability.lower() in k.lower()}
+
+        if json_output:
+            typer.echo(json.dumps(
+                {k: v.model_dump(mode="json") for k, v in caps.items()},
+                indent=2, default=str
+            ))
+        else:
+            if not caps:
+                typer.echo(f"No capabilities found{f' matching \"{capability}\"' if capability else ''}.")
+                return
+            typer.echo(f"Capabilities ({len(caps)}):")
+            for name, cap in caps.items():
+                typer.echo(f"  {name}: {cap.status.value}")

@@ -232,6 +232,10 @@ TOOL_VERSIONS: dict[str, str] = {
     "wait_for_all_dependencies": "1.0.0",
     # Documentation indexing
     "index_documentation": "1.0.0",
+    # Ecosystem status tools (ecosystem_tools.py) -- Control Plane Phase 3
+    "ecosystem_status": "1.0.0",
+    "ecosystem_capabilities": "1.0.0",
+    "ecosystem_routing_readiness": "1.0.0",
 }
 
 

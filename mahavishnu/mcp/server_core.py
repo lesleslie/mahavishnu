@@ -1376,6 +1376,9 @@ class FastMCPServer:
         # Health tools are mandatory regardless of profile
         self._register_health_tools()
 
+        # Ecosystem status tools are mandatory (canonical status surface)
+        self._register_ecosystem_tools()
+
         if "_register_pycharm_tools" in methods_set:
             self._register_pycharm_tools()
 
@@ -1579,6 +1582,13 @@ class FastMCPServer:
 
         register_health_tools(self.server, self.app)
         logger.info("Registered health check tools with MCP server")
+
+    def _register_ecosystem_tools(self) -> None:
+        """Register canonical ecosystem status tools with MCP server."""
+        from ..mcp.tools.ecosystem_tools import register_ecosystem_tools
+
+        register_ecosystem_tools(self.server)
+        logger.info("Registered 3 canonical ecosystem status tools with MCP server")
 
     def _register_pycharm_tools(self) -> None:
         """Register PyCharm IDE tools with MCP server."""
