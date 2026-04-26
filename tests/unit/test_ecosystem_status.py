@@ -122,3 +122,132 @@ class TestValidTransitions:
     def test_unknown_to_any(self):
         assert is_valid_transition(CanonicalStatus.UNKNOWN, CanonicalStatus.OK) is True
         assert is_valid_transition(CanonicalStatus.UNKNOWN, CanonicalStatus.UNHEALTHY) is True
+
+
+from datetime import datetime, timedelta
+
+from mahavishnu.core.ecosystem_status import (
+    AdapterStatus,
+    AlertSummary,
+    CapabilityStatus,
+    CanonicalStatus,
+    DegradationTrend,
+    EcosystemStatusReport,
+    EcosystemStatusService,
+    OperationalRecommendation,
+    SectionError,
+    ServiceStatus,
+    WorkflowSummary,
+)
+
+
+class TestEcosystemStatusReport:
+    def test_default_report(self):
+        report = EcosystemStatusReport(
+            status=CanonicalStatus.OK,
+            generated_at=datetime.now(),
+            duration_ms=10.0,
+        )
+        assert report.schema_version == "1.0"
+        assert report.services == {}
+        assert report.adapters == {}
+        assert report.errors == []
+
+    def test_report_with_services(self):
+        report = EcosystemStatusReport(
+            status=CanonicalStatus.DEGRADED,
+            generated_at=datetime.now(),
+            duration_ms=50.0,
+            services={
+                "session_buddy": ServiceStatus(status=CanonicalStatus.OK, required=True),
+                "akosha": ServiceStatus(status=CanonicalStatus.DEGRADED, required=False),
+            },
+        )
+        assert len(report.services) == 2
+        assert report.services["session_buddy"].required is True
+
+
+class TestEcosystemStatusService:
+    @pytest.mark.asyncio
+    async def test_generate_empty_report(self):
+        service = EcosystemStatusService()
+        report = await service.generate_report()
+        assert report.schema_version == "1.0"
+        assert report.status == CanonicalStatus.UNKNOWN  # No services -> UNKNOWN
+        assert report.duration_ms >= 0
+        assert report.errors == []
+
+    @pytest.mark.asyncio
+    async def test_generate_report_with_request_id(self):
+        service = EcosystemStatusService()
+        report = await service.generate_report(request_id="test-123")
+        assert report.request_id == "test-123"
+
+    @pytest.mark.asyncio
+    async def test_section_failure_produces_error_not_exception(self):
+        """A failing section should produce a SectionError, not crash the report."""
+        service = EcosystemStatusService()
+
+        # Monkey-patch a collector to raise
+        original = service._collect_services
+
+        async def failing():
+            raise RuntimeError("connection refused")
+
+        service._collect_services = failing
+
+        report = await service.generate_report()
+        assert len(report.errors) == 1
+        assert report.errors[0].section == "services"
+        assert "connection refused" in report.errors[0].message
+        # Report still generates
+        assert report.generated_at is not None
+
+        service._collect_services = original
+
+    @pytest.mark.asyncio
+    async def test_staleness_detection(self):
+        """Services with old last_check should be flagged as UNKNOWN."""
+        service = EcosystemStatusService(staleness_threshold_seconds=60.0)
+
+        stale_time = datetime.now() - timedelta(seconds=120)
+        fresh_time = datetime.now() - timedelta(seconds=10)
+
+        services = {
+            "stale_service": ServiceStatus(
+                status=CanonicalStatus.OK,
+                last_check=stale_time,
+            ),
+            "fresh_service": ServiceStatus(
+                status=CanonicalStatus.OK,
+                last_check=fresh_time,
+            ),
+        }
+
+        result = service._detect_staleness(services)
+        assert result["stale_service"].status == CanonicalStatus.UNKNOWN
+        assert result["fresh_service"].status == CanonicalStatus.OK
+
+    def test_staleness_no_last_check(self):
+        """Items without last_check should not be flagged."""
+        service = EcosystemStatusService(staleness_threshold_seconds=60.0)
+        services = {
+            "no_check": ServiceStatus(status=CanonicalStatus.OK),
+        }
+        result = service._detect_staleness(services)
+        assert result["no_check"].status == CanonicalStatus.OK
+
+
+class TestSectionError:
+    def test_basic_error(self):
+        err = SectionError(section="services", message="timeout")
+        assert err.section == "services"
+        assert err.original_exception is None
+
+    def test_error_with_exception(self):
+        err = SectionError(
+            section="adapters",
+            message="connection refused",
+            original_exception="ConnectionError",
+        )
+        assert err.original_exception == "ConnectionError"
