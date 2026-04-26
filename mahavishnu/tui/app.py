@@ -11,7 +11,8 @@ All screens are read-only (no mutations).
 
 from __future__ import annotations
 
-from typing import Any
+import asyncio
+from typing import TYPE_CHECKING, Any
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -27,6 +28,9 @@ from textual.widgets import (
     TabPane,
 )
 
+if TYPE_CHECKING:
+    from mahavishnu.core.ecosystem_status import EcosystemStatusReport
+
 __all__ = ["MahavishnuDashboard", "DashboardApp"]
 
 
@@ -35,35 +39,108 @@ __all__ = ["MahavishnuDashboard", "DashboardApp"]
 # ---------------------------------------------------------------------------
 
 
+async def _get_report() -> EcosystemStatusReport | None:
+    """Fetch canonical ecosystem status report. Returns None on error."""
+    try:
+        from mahavishnu.core.ecosystem_status import EcosystemStatusService
+
+        service = EcosystemStatusService()
+        return await service.generate_report()
+    except Exception:
+        return None
+
+
 async def fetch_system_overview() -> dict[str, Any]:
     """Fetch system health, active workflows, recent alerts."""
-    # Stub: returns placeholder data until wired to live MCP tools
+    report = await _get_report()
+    if report is None:
+        return {
+            "status": "unknown",
+            "active_workflows": 0,
+            "total_adapters": 0,
+            "healthy_adapters": 0,
+            "recent_alerts": 0,
+            "uptime_seconds": 0,
+        }
+    adapters = report.adapters or {}
+    workflows = report.workflows
+    alerts = report.alerts
+    healthy_adapters = sum(
+        1 for a in adapters.values() if a.status.value == "ok"
+    )
     return {
-        "status": "healthy",
-        "active_workflows": 0,
-        "total_adapters": 3,
-        "healthy_adapters": 3,
-        "recent_alerts": 0,
-        "uptime_seconds": 0,
+        "status": report.status.value,
+        "active_workflows": workflows.active_count if workflows else 0,
+        "total_adapters": len(adapters),
+        "healthy_adapters": healthy_adapters,
+        "recent_alerts": alerts.total_active if alerts else 0,
+        "generated_at": (
+            report.generated_at.isoformat() if report.generated_at else None
+        ),
     }
 
 
 async def fetch_sweep_history() -> list[dict[str, Any]]:
     """Fetch recent sweep history."""
+    report = await _get_report()
+    if report is None:
+        return []
+    w = report.workflows
+    if w and (w.active_count or w.failed_count or w.recent_count):
+        return [
+            {
+                "status": "active",
+                "active": w.active_count,
+                "failed": w.failed_count,
+                "recent": w.recent_count,
+            }
+        ]
     return []
 
 
 async def fetch_routing_stats() -> dict[str, Any]:
     """Fetch adapter routing statistics."""
+    report = await _get_report()
+    if report is None:
+        return {"adapters": [], "total_decisions": 0, "cache_hit_rate": 0.0}
+    adapters = report.adapters or {}
+    adapter_list = []
+    for name, adp in adapters.items():
+        adapter_list.append(
+            {
+                "name": name,
+                "status": adp.status.value,
+                "capabilities": adp.capabilities or {},
+                "preference_score": adp.preference_score,
+            }
+        )
+    healthy = sum(1 for a in adapter_list if a["status"] == "ok")
     return {
-        "adapters": [],
-        "total_decisions": 0,
-        "cache_hit_rate": 0.0,
+        "adapters": adapter_list,
+        "total_decisions": len(adapter_list),
+        "cache_hit_rate": healthy / len(adapter_list) if adapter_list else 0.0,
     }
 
 
 async def fetch_active_alerts() -> list[dict[str, Any]]:
     """Fetch active alerts."""
+    report = await _get_report()
+    if report is None:
+        return []
+    alerts = report.alerts
+    if alerts and alerts.top_alerts:
+        return [
+            {
+                "id": str(i),
+                "severity": a.severity,
+                "title": f"{a.source}: {a.message}",
+                "description": a.message,
+                "time": (
+                    a.created_at.isoformat() if a.created_at else ""
+                ),
+            }
+            for i, a in enumerate(alerts.top_alerts)
+        ]
     return []
 
 
@@ -85,13 +162,26 @@ class OverviewScreen(VerticalScroll):
         self._load_data()
 
     def _load_data(self) -> None:
-        """Load overview data (sync for now — stub data)."""
-        self.status_text = (
-            "[bold green]Status:[/] Healthy  |  "
-            "[bold]Adapters:[/] 3 registered  |  "
-            "[bold]Workflows:[/] 0 active  |  "
-            "[bold]Alerts:[/] 0"
-        )
+        """Load overview data asynchronously from EcosystemStatusService."""
+
+        async def _fetch() -> None:
+            data = await fetch_system_overview()
+            status = data.get("status", "unknown")
+            if status == "ok":
+                color = "green"
+            elif status == "degraded":
+                color = "yellow"
+            else:
+                color = "red"
+            self.status_text = (
+                f"[bold {color}]Status:[/] {status.capitalize()}  |  "
+                f"[bold]Adapters:[/] "
+                f"{data.get('healthy_adapters', 0)}/{data.get('total_adapters', 0)}  |  "
+                f"[bold]Workflows:[/] {data.get('active_workflows', 0)} active  |  "
+                f"[bold]Alerts:[/] {data.get('recent_alerts', 0)}"
+            )
+
+        asyncio.create_task(_fetch())
 
     def watch_status_text(self, new_text: str) -> None:
         status = self.query_one("#overview-status", Static)
@@ -113,9 +203,24 @@ class SweepScreen(VerticalScroll):
         yield table
 
     def on_mount(self) -> None:
-        table = self.query_one("#sweep-table", DataTable)
-        # Placeholder row until wired to live data
-        table.add_row("—", "No sweeps yet", "—", "0", "—", "—")
+        async def _fetch() -> None:
+            data = await fetch_sweep_history()
+            table = self.query_one("#sweep-table", DataTable)
+            table.clear()
+            if data:
+                for entry in data:
+                    table.add_row(
+                        "—",
+                        entry.get("status", "—"),
+                        "—",
+                        str(entry.get("active", 0) + entry.get("failed", 0)),
+                        "—",
+                        "—",
+                    )
+            else:
+                table.add_row("—", "No sweeps yet", "—", "0", "—", "—")
+
+        asyncio.create_task(_fetch())
 
 
 # ---------------------------------------------------------------------------
@@ -134,13 +239,38 @@ class RoutingScreen(VerticalScroll):
         yield table
 
     def on_mount(self) -> None:
-        summary = self.query_one("#routing-summary", Static)
-        summary.update("[bold]Cache Hit Rate:[/] 0.0%  |  [bold]Total Decisions:[/] 0")
+        async def _fetch() -> None:
+            data = await fetch_routing_stats()
+            adapters = data.get("adapters", [])
+            healthy = sum(1 for a in adapters if a["status"] == "ok")
+            total = len(adapters)
+            hit_rate = data.get("cache_hit_rate", 0.0)
+            summary = self.query_one("#routing-summary", Static)
+            summary.update(
+                f"[bold]Healthy:[/] {healthy}/{total}  |  "
+                f"[bold]Total Decisions:[/] {data.get('total_decisions', 0)}  |  "
+                f"[bold]Hit Rate:[/] {hit_rate:.1%}"
+            )
+            table = self.query_one("#routing-table", DataTable)
+            table.clear()
+            if adapters:
+                for a in adapters:
+                    caps = (
+                        ", ".join(a.get("capabilities", {}).keys())
+                        if a.get("capabilities")
+                        else "—"
+                    )
+                    table.add_row(
+                        a["name"],
+                        "orchestration",
+                        a["status"],
+                        str(a.get("preference_score", 0) or 0),
+                        caps,
+                    )
+            else:
+                table.add_row("—", "—", "no adapters", "—", "—")
 
-        table = self.query_one("#routing-table", DataTable)
-        table.add_row("prefect", "orchestration", "unknown", "0", "—")
-        table.add_row("agno", "orchestration", "unknown", "0", "—")
-        table.add_row("llamaindex", "orchestration", "unknown", "0", "—")
+        asyncio.create_task(_fetch())
 
 
 # ---------------------------------------------------------------------------
@@ -159,9 +289,27 @@ class AlertsScreen(VerticalScroll):
         yield table
 
     def on_mount(self) -> None:
-        count = self.query_one("#alerts-count", Static)
-        count.update("[bold green]No active alerts[/]")
-        _table = self.query_one("#alerts-table", DataTable)
+        async def _fetch() -> None:
+            alerts = await fetch_active_alerts()
+            count = self.query_one("#alerts-count", Static)
+            total = len(alerts)
+            color = "red" if total > 0 else "green"
+            count.update(
+                f"[bold {color}]{total} active alert{'s' if total != 1 else ''}[/]"
+            )
+            table = self.query_one("#alerts-table", DataTable)
+            table.clear()
+            if alerts:
+                for a in alerts:
+                    table.add_row(
+                        a["id"],
+                        a.get("severity", "unknown"),
+                        a.get("title", ""),
+                        a.get("description", ""),
+                        a.get("time", ""),
+                    )
+
+        asyncio.create_task(_fetch())
 
 
 # ---------------------------------------------------------------------------
@@ -194,6 +342,7 @@ class DashboardApp(App):
 
     BINDINGS = [
         Binding("q", "quit", "Quit"),
+        Binding("r", "refresh_data", "Refresh"),
         Binding("1", "switch_tab('overview')", "Overview"),
         Binding("2", "switch_tab('sweep')", "Sweep"),
         Binding("3", "switch_tab('routing')", "Routing"),
@@ -220,6 +369,17 @@ class DashboardApp(App):
             tc.active = tab_id
         except Exception:
             pass
+
+    def action_refresh_data(self) -> None:
+        """Refresh all screen data from EcosystemStatusService."""
+        for screen in self.query(OverviewScreen):
+            screen._load_data()
+        for screen in self.query(SweepScreen):
+            screen.on_mount()
+        for screen in self.query(RoutingScreen):
+            screen.on_mount()
+        for screen in self.query(AlertsScreen):
+            screen.on_mount()
 
 
 # Alias for convenience
