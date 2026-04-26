@@ -1,6 +1,6 @@
 # Plan Index
 
-**Date:** 2026-04-25
+**Date:** 2026-04-26
 **Purpose:** Canonical map for finding, reviewing, and implementing active Mahavishnu/Bodai plans.
 
 Use this file as the first stop before reviewing or implementing plan work. Older plans remain useful as source material, but the files below define the current review order and authority.
@@ -74,6 +74,32 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 - Status: `active`
 - Use for: nanobot worker integration and Claude MCP serve autostart work.
 
+### Superpowers Implementation Plans
+
+#### Code Indexing Integration
+
+- Spec: [../superpowers/specs/2026-04-26-code-indexing-integration-design.md](../superpowers/specs/2026-04-26-code-indexing-integration-design.md)
+- Plan: [../superpowers/plans/2026-04-26-code-indexing-integration.md](../superpowers/plans/2026-04-26-code-indexing-integration.md)
+- Status: `active`, `implementation`
+- Use for: call chain resolution, impact analysis, and incremental re-indexing for Mahavishnu. Session-Buddy owns the code graph; Mahavishnu provides CLI and query tools.
+- Relationship: feeds into the ecosystem control plane (priority #2) by providing code-aware intelligence for health and routing.
+
+#### Pattern Learning and Scaffolding
+
+- Spec: [../superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md](../superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md)
+- Plan: [../superpowers/plans/2026-04-26-pattern-learning-scaffolding.md](../superpowers/plans/2026-04-26-pattern-learning-scaffolding.md)
+- Status: `active`, `implementation`
+- Use for: pattern library, scaffolding engine, and pattern extraction ("Lovable for Fastblocks"). Extracts web development patterns from existing projects and scaffolds new apps.
+- Relationship: independent of TUI/control-plane work — can execute in parallel.
+
+#### Splashstand ACB → Oneiric Migration
+
+- Spec: [../superpowers/specs/2026-04-26-splashstand-oneiric-migration-design.md](../superpowers/specs/2026-04-26-splashstand-oneiric-migration-design.md)
+- Plan: [../superpowers/plans/2026-04-26-splashstand-oneiric-migration.md](../superpowers/plans/2026-04-26-splashstand-oneiric-migration.md)
+- Status: `active`, `implementation`
+- Use for: mechanical import rename across 17 Splashstand files. ACB → Oneiric, `depends.inject` → `resolve_dep()`, `dump`/`load` → `yaml`/`json` stdlib.
+- Relationship: independent migration — can execute in parallel with Mahavishnu work.
+
 ## Execution Board and Initiative Plans
 
 - Board: [2026-04-04-ecosystem-execution-board.md](./2026-04-04-ecosystem-execution-board.md)
@@ -119,6 +145,18 @@ Important reconciliation notes:
 6. **Type adapter migration**
    - Plan: [2026-04-25-type-adapter-migration-plan.md](./2026-04-25-type-adapter-migration-plan.md)
    - Goal: refresh type checker adapters and make AI-fix capability-aware.
+
+7. **Splashstand ACB → Oneiric migration** (independent, parallel-safe)
+   - Plan: [../superpowers/plans/2026-04-26-splashstand-oneiric-migration.md](../superpowers/plans/2026-04-26-splashstand-oneiric-migration.md)
+   - Goal: replace all ACB imports with Oneiric across 17 files in Splashstand.
+
+8. **Pattern learning and scaffolding** (independent, parallel-safe)
+   - Plan: [../superpowers/plans/2026-04-26-pattern-learning-scaffolding.md](../superpowers/plans/2026-04-26-pattern-learning-scaffolding.md)
+   - Goal: extract Fastblocks/Oneiric patterns from existing projects, scaffold new web apps.
+
+9. **Code indexing integration** (feeds into control plane)
+   - Plan: [../superpowers/plans/2026-04-26-code-indexing-integration.md](../superpowers/plans/2026-04-26-code-indexing-integration.md)
+   - Goal: call chain resolution, impact analysis, incremental re-indexing for Mahavishnu.
 
 ## Supersession Map
 

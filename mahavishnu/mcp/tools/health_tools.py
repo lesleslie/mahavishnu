@@ -2,6 +2,32 @@
 
 These tools provide health checking capabilities for the Mahavishnu ecosystem
 following the design in docs/plans/2026-02-27-health-check-system-design.md.
+
+.. _deprecation-plan:
+
+Deprecation Plan (Control Plane Phase 2)
+-----------------------------------------
+The following tools are flagged for deprecation and eventual replacement by a
+unified ``ecosystem_status`` MCP tool (to be created in Control Plane Phase 2).
+
+- **health_check_service** -- redundant with ``health_check_all``, which already
+  iterates over all configured dependencies.  Prefer ``health_check_all`` for
+  bulk checks; single-service pings should use ``mcp_test_connection``.
+- **get_liveness** -- liveness semantics will be subsumed by ``ecosystem_status``
+  (which will report liveness for *all* ecosystem services, not just this one).
+- **get_readiness** -- readiness semantics will be subsumed by ``ecosystem_status``
+  (same rationale as liveness).
+
+Tools that remain **canonical** and will *not* be removed:
+
+- ``health_check_all`` -- canonical bulk health check.
+- ``mcp_test_connection`` -- MCP-level connectivity probe (distinct from HTTP health).
+- ``mcp_list_tools`` -- tool introspection.
+- ``mcp_get_metrics`` -- metrics snapshot.
+- ``wait_for_dependency`` -- blocking dependency gate.
+- ``wait_for_all_dependencies`` -- blocking multi-dependency gate.
+
+Reference: docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md
 """
 
 from __future__ import annotations
@@ -63,6 +89,8 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
             summary["parameters"] = parameters
         return summary
 
+    # deprecated: redundant with health_check_all; use mcp_test_connection for single-service pings
+    # deprecated_replaced_by: ecosystem_status (CP2)
     @mcp.tool()
     async def health_check_service(
         service_name: str,
@@ -335,6 +363,8 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
 
         return response
 
+    # deprecated: will be subsumed by ecosystem_status (CP2)
+    # deprecated_replaced_by: ecosystem_status (CP2)
     @mcp.tool()
     async def get_liveness() -> dict[str, Any]:
         """Get liveness status for this service."""
@@ -352,6 +382,8 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
         response = await endpoint.liveness()
         return response.model_dump()
 
+    # deprecated: will be subsumed by ecosystem_status (CP2)
+    # deprecated_replaced_by: ecosystem_status (CP2)
     @mcp.tool()
     async def get_readiness() -> dict[str, Any]:
         """Get readiness status for this service."""
