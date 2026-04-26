@@ -1,0 +1,37 @@
+<h2>Pattern Learning & Scaffolding — Architecture</h2>
+<p class="subtitle">Three approaches for enabling Mahavishnu to learn and reproduce Fastblocks patterns</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Pattern Templates in Skills</h3>
+      <p>Encode patterns as structured data inside skill SKILL.md files. Mahavishnu reads skill docs and generates projects by following the template instructions.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>No new infrastructure — uses existing skill system</li><li>Patterns are human-readable markdown</li><li>Skills already have MCP tool references</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Skills aren't designed for structured data extraction</li><li>Hard to compose multiple patterns</li><li>No machine-readable pattern format</li><li>Generation logic embedded in skill instructions (fragile)</li></ul></div>
+      </div>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Pattern Library Service (new)</h3>
+      <p>New lightweight service or module that stores patterns as structured JSON/YAML. Mahavishnu's scaffolding engine queries the library and composes projects from pattern definitions.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Machine-readable patterns enable composition</li><li>Pattern versioning and evolution</li><li>Separation of pattern data from generation logic</li><li>Can query "show me all auth patterns" reliably</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>New component to build and maintain</li><li>Storage decision (DuckDB? YAML files? Both?)</li><li>Need a pattern schema/format</li></ul></div>
+      </div>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Extended Code Graph + Templates</h3>
+      <p>Extend the code indexing spec's graph with pattern-level nodes. Use the existing DuckPGQ infrastructure to store and query patterns alongside symbols. Templates live alongside code in the graph.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Patterns live next to the code they describe</li><li>Reuses code indexing infrastructure (spec 3)</li><li>Rich querying via PGQ (graph traversal)</li><li>Single source of truth for code + patterns</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Graph schema becomes more complex</li><li>Pattern queries compete with code queries</li><li>Code indexing spec isn't merged yet — dependency risk</li><li>Overloads the code graph's purpose</li></ul></div>
+      </div>
+    </div>
+</div>

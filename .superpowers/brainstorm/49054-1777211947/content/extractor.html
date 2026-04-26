@@ -1,0 +1,36 @@
+<h2>Pattern Extractor — How Patterns Enter the Library</h2>
+<p class="subtitle">Manual curation + AI-suggested patterns from existing projects</p>
+
+<div class="mockup">
+  <div class="mockup-header">Extraction Pipeline</div>
+  <div class="mockup-body" style="font-family: monospace; font-size: 12.5px; line-height: 1.5; padding: 20px; white-space: pre; overflow-x: auto;"><span style="color:#888;"># Three ways patterns enter the library:</span>
+
+<span style="color:#5f5;">1. MANUAL CURATION</span>  <span style="color:#888;">(primary method)</span>
+   Developer writes pattern YAML directly by analyzing their projects.
+   No automation needed — just encode what you know.
+   mahavishnu patterns create --name "auth" --from-project splashstand
+
+<span style="color:#5f5;">2. AI SUGGESTION</span>  <span style="color:#888;">(builds on code indexing spec)</span>
+   After code graph exists (spec 3), extractor analyzes symbol graph
+   to find recurring structures across repos:
+   mahavishnu patterns suggest --repos fastblocks,splashstand
+   → "Detected auth pattern in 2/2 repos: session middleware,
+      login route, user model, CSRF protection. Create pattern?"
+
+<span style="color:#5f5;">3. CONVERSATION CAPTURE</span>  <span style="color:#888;">(builds on session-buddy)</span>
+   After successfully building a Fastblocks app via chat, Mahavishnu
+   can offer to extract the generated structure as a reusable pattern:
+   → "This app used auth + dashboard + Cloud Run patterns.
+      Save as a new composite pattern?"</span></div>
+</div>
+
+<div class="section">
+  <p><strong>AI Suggestion details:</strong></p>
+  <ul>
+    <li><strong>Input:</strong> code graph from spec 3 (symbols, edges, directory structure)</li>
+    <li><strong>Detection:</strong> cluster projects by structural similarity (shared directory layouts, similar adapter registrations, common import patterns)</li>
+    <li><strong>Output:</strong> proposed pattern YAML with confidence score — shown to human for approval or rejection</li>
+    <li><strong>Does NOT:</strong> auto-save to library. Always requires human approval.</li>
+  </ul>
+  <p style="color: #888;">The AI suggestion is a time-saver, not an autonomous agent. It drafts the YAML, the human reviews and edits it before it enters the library.</p>
+</div>

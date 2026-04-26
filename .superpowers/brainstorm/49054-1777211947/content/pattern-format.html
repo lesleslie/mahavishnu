@@ -1,0 +1,87 @@
+<h2>Pattern Library — YAML Format</h2>
+<p class="subtitle">What a pattern definition looks like. Each pattern is a single YAML file organized by category.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Example: scaffolding/project.yaml</div>
+  <div class="mockup-body" style="font-family: monospace; font-size: 12.5px; line-height: 1.5; padding: 16px; white-space: pre; overflow-x: auto;"><span style="color:#888;"># Pattern: Fastblocks project skeleton</span>
+<span style="color:#5f5;">id</span>: <span style="color:#5a5;">scaffolding/project</span>
+<span style="color:#5f5;">name</span>: Fastblocks Project Skeleton
+<span style="color:#5f5;">description</span>: Base project structure with Oneiric config, entry point, and settings
+<span style="color:#5f5;">version</span>: <span style="color:#a3a;">1.0</span>
+<span style="color:#5f5;">source_repos</span>: [fastblocks, splashstand]  <span style="color:#888;"># where this pattern was learned from</span>
+<span style="color:#5f5;">confidence</span>: <span style="color:#a3a;">0.95</span>  <span style="color:#888;"># how consistently this pattern appears across repos</span>
+<span style="color:#5f5;">depends</span>: []  <span style="color:#888;"># no dependencies — this is the base pattern</span>
+
+<span style="color:#5f5;">structure</span>:
+  <span style="color:#a6e;">dirs</span>:
+    - path: <span style="color:#5a5;">settings/</span>
+      required: true
+    - path: <span style="color:#5a5;">templates/base/blocks/</span>
+      required: true
+    - path: <span style="color:#5a5;">templates/pages/</span>
+      required: false
+    - path: <span style="color:#5a5;">adapters/</span>
+      required: false
+    - path: <span style="color:#5a5;">static/</span>
+      required: false
+
+  <span style="color:#a6e;">files</span>:
+    - path: <span style="color:#5a5;">main.py</span>
+      required: true
+      template: <span style="color:#5a5;">entry-point</span>  <span style="color:#888;"># references a Jinja template</span>
+    - path: <span style="color:#5a5;">pyproject.toml</span>
+      required: true
+      template: <span style="color:#5a5;">pyproject</span>
+    - path: <span style="color:#5a5;">settings/app.yml</span>
+      required: true
+      template: <span style="color:#5a5;">settings-app</span>
+    - path: <span style="color:#5a5;">settings/adapters.yml</span>
+      required: false
+      template: <span style="color:#5a5;">settings-adapters</span>
+
+<span style="color:#5f5;">templates</span>:  <span style="color:#888;"># Jinja templates for file generation</span>
+  entry-point: |
+    from starlette.routing import Route
+    from oneiric.core.resolution import Resolver
+
+    depends = Resolver()
+
+    def resolve_dep(key):
+        candidate = depends.resolve("<span style="color:#a5a;">{{ project_name }}</span>", key)
+        if candidate is None:
+            raise RuntimeError(f"Missing dependency: {key}")
+        factory = getattr(candidate, "factory", None)
+        return factory() if callable(factory) else candidate
+
+    routes = [Route("/", endpoint=homepage)]
+    app = resolve_dep("app")
+  pyproject: |
+    [project]
+    name = "<span style="color:#a5a;">{{ project_name }}</span>"
+    requires-python = ">=3.12"
+    dependencies = [
+        "fastblocks",
+        "oneiric",
+    ]
+  settings-app: |
+    app:
+      name: "<span style="color:#a5a;">{{ project_name }}</span>"
+      title: "<span style="color:#a5a;">{{ project_title }}</span>"
+      debug: true
+
+<span style="color:#5f5;">slots</span>:  <span style="color:#888;"># extension points for component patterns</span>
+  - <span style="color:#5a6e;">nav</span>: templates/base/blocks/  <span style="color:#888;"># navigation pattern plugs in here</span>
+  - <span style="color:#5a6e;">auth</span>: adapters/              <span style="color:#888;"># auth pattern plugs in here</span>
+  - <span style="color:#5a6e;">middleware</span>: main.py          <span style="color:#888;"># middleware pattern modifies entry point</span></div>
+</div>
+
+<div class="section">
+  <p><strong>Key design decisions:</strong></p>
+  <ul>
+    <li><code>structure.dirs</code> — defines the directory skeleton. <code>required: true</code> means every generated project gets this directory.</li>
+    <li><code>structure.files</code> — defines files with Jinja templates for content generation. Templates use <code>{{ project_name }}</code> variables.</li>
+    <li><code>slots</code> — named extension points where component patterns plug in. The <code>nav</code> slot means "the navigation component pattern writes its files into this directory."</li>
+    <li><code>source_repos</code> — provenance: where this pattern was learned from. Enables "show me patterns used in Splashstand."</li>
+    <li><code>depends</code> — patterns this pattern requires. An <code>auth.yaml</code> pattern would depend on <code>scaffolding/project.yaml</code>.</li>
+  </ul>
+</div>

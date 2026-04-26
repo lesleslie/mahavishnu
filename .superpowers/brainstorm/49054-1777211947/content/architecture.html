@@ -1,0 +1,69 @@
+<h2>Pattern Learning & Scaffolding — Architecture</h2>
+<p class="subtitle">Pattern Library Service (Approach B) — how patterns flow from extraction to generation</p>
+
+<div class="mockup">
+  <div class="mockup-header">System Architecture</div>
+  <div class="mockup-body" style="font-family: monospace; font-size: 13px; line-height: 1.6; padding: 20px; white-space: pre; overflow-x: auto;">┌─────────────────────────────────────────────────────────────────┐
+│                    Existing Projects                          │
+│              Fastblocks / Splashstand / Future Apps                │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Pattern Extractor (Mahavishnu module)                         │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  1. Scan project structure (dirs, config, entry points)  │   │
+│  │  2. Detect recurring conventions (template blocks,       │   │
+│  │     adapter wiring, HTMX patterns)                       │   │
+│  │  3. Suggest new patterns to human curator                │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Pattern Library (YAML files + query module)                   │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐        │
+│  │ scaffolding/  │  │ components/  │  │ deployment/ │        │
+│  │  project.yaml │  │  table.yaml  │  │  cloudrun.yml│        │
+│  │  auth.yaml    │  │  form.yaml   │  │  docker.yml │        │
+│  │  dashboard.yl │  │  nav.yaml    │  │              │        │
+│  └──────────────┘  └──────────────┘  └──────────────┘        │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Scaffolding Engine (Mahavishnu module)                       │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  1. Compose project from selected patterns              │   │
+│  │  2. Generate skeleton (dirs, config, entry point)        │   │
+│  │  │    → Pattern-driven, not hardcoded                   │   │
+│  │  3. Chat-driven refinement for custom parts              │   │
+│  │     → Business logic, specific pages, custom components  │   │
+│  │  4. Validate output (structure matches pattern spec)     │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  New Fastblocks App (on disk, ready to run)                   │
+│  my-new-app/                                                    │
+│  ├── main.py            ← from project.yaml                  │
+│  ├── settings/           ← from project.yaml                  │
+│  ├── templates/         ← from component patterns             │
+│  │   ├── base/                                              │
+│  │   │   └── blocks/  ← nav.yaml, table.yaml, form.yaml     │
+│  │   └── pages/        ← chat-generated custom pages         │
+│  ├── adapters/           ← from auth.yaml, etc.              │
+│  └── pyproject.toml      ← from project.yaml                  │
+└─────────────────────────────────────────────────────────────────┘</div>
+</div>
+
+<div class="section">
+  <p><strong>Three modules, one pipeline:</strong></p>
+  <ul>
+    <li><strong>Extractor</strong> — reads existing projects, suggests patterns (feeds code graph data from spec 3)</li>
+    <li><strong>Library</strong> — YAML files organized by category, versioned, queryable</li>
+    <li><strong>Engine</strong> — composes patterns into a working project, then refines via chat</li>
+  </ul>
+  <p style="color: #888;">Green = new code in this spec. Blue = builds on existing specs (1, 2, 3).</p>
+</div>

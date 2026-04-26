@@ -1,0 +1,63 @@
+<h2>Scaffolding Engine — From Patterns to Working Project</h2>
+<p class="subtitle">Two-phase generation: pattern composition (deterministic) + chat refinement (AI-driven)</p>
+
+<div class="mockup">
+  <div class="mockup-header">Generation Pipeline</div>
+  <div class="mockup-body" style="font-family: monospace; font-size: 12.5px; line-height: 1.5; padding: 20px; white-space: pre; overflow-x: auto;"><span style="color:#888;"># Phase 1: Pattern Composition (deterministic, no AI needed)</span>
+
+mahavishnu scaffold "my-app" \
+  --patterns scaffolding/project,components/table,components/form \
+  --slots nav=components/nav
+
+<span style="color:#888;">→ Resolves dependency graph:</span>
+   scaffolding/project (base)
+     ├── components/table (plugs into templates/base/blocks/)
+     ├── components/form  (plugs into templates/base/blocks/)
+     └── components/nav   (plugs into templates/base/blocks/)
+
+<span style="color:#888;">→ Generates deterministic output:</span>
+   my-app/
+   ├── main.py               ← from project.yaml template
+   ├── settings/
+   │   ├── app.yml          ← from project.yaml template
+   │   └── adapters.yml     ← from project.yaml template
+   ├── templates/
+   │   ├── base/
+   │   │   └── blocks/
+   │   │       ├── nav.html      ← from nav.yaml template
+   │   │       ├── table.html    ← from table.yaml template
+   │   │       └── form.html     ← from form.yaml template
+   │   └── pages/             ← empty, ready for Phase 2
+   ├── adapters/
+   └── pyproject.toml        ← from project.yaml template
+
+<span style="color:#888;">─────────────────────────────────────────────────────</span>
+
+<span style="color:#888;"># Phase 2: Chat-Driven Refinement (AI-assisted)</span>
+
+<span style="color:#5f5;">User:</span> "Add a dashboard page with a stats summary card"
+<span style="color:#5f5;">Mahavishnu:</span> → generates templates/pages/dashboard.html
+             → adds dashboard route to main.py
+             → creates settings/dashboard.yml if needed
+
+<span style="color:#5f5;">User:</span> "Use the Splashstand auth pattern with Google OAuth"
+<span style="color:#5f5;">Mahavishnu:</span> → adds auth.yaml pattern to the project
+             → generates adapters/auth.py
+             → adds session middleware to main.py
+             → creates settings/auth.yml with Google OAuth config
+
+<span style="color:#5f5;">User:</span> "Deploy to Cloud Run"
+<span style="color:#5f5;">Mahavishnu:</span> → adds deployment/cloudrun.yaml pattern
+             → generates Dockerfile, cloudbuild.yaml
+             → adds deploy command to pyproject.toml</div>
+</div>
+
+<div class="section">
+  <p><strong>Key design decisions:</strong></p>
+  <ul>
+    <li><strong>Phase 1 is pure template rendering</strong> — no AI needed. Takes patterns + variables, produces files. Fast, deterministic, repeatable. Same patterns + same inputs = same output.</li>
+    <li><strong>Phase 2 is AI-assisted</strong> — uses Claude to generate custom pages, business logic, and wiring. This is where the "Lovable-like" experience happens.</li>
+    <li><strong>Patterns can be added incrementally</strong> — start with the base project, add components one at a time via chat. Each addition is a new pattern composition step.</li>
+    <li><strong>Validation after each step</strong> — the engine checks that the generated structure still matches the composed pattern spec. If a manual edit breaks a pattern contract, it warns.</li>
+  </ul>
+</div>
