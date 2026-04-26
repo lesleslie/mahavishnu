@@ -45,6 +45,8 @@ from .cli.team_cli import add_team_commands
 
 # Import events CLI
 from .cli.events import add_events_commands
+# Import code indexing CLI
+from .cli.index_cli import add_index_commands
 
 # Import comprehensive help system
 # NOTE: help_cli uses Click which is incompatible with Typer's add_typer()
@@ -965,6 +967,8 @@ add_team_commands(app)
 
 # Add events commands
 add_events_commands(app)
+# Add code indexing commands
+add_index_commands(app)
 
 # Worker management
 workers_app = typer.Typer(help="Worker orchestration and management")
