@@ -1,6 +1,6 @@
 # Code Knowledge Graph Integration Design
 
-**Status:** Draft — pending multi-agent review
+**Status:** Draft
 **Date:** 2026-04-26
 **Source:** Multi-agent review of GitNexus integration alternatives
 
@@ -137,7 +137,7 @@ This design was shaped by a four-agent review (Architecture Council, Plan Agent,
 **Input (Pydantic model):**
 ```python
 class CallChainRequest(BaseModel):
-    symbol_name: str           # qualified: "{repo_path}:{file_path}:{symbol_type}:{symbol_name}" or bare for single-repo
+    symbol_name: str           # qualified: "{repo_path}|||{file_path}|||{symbol_type}|||{symbol_name}" or bare for single-repo
     direction: Literal["callers", "callees", "both"]
     max_depth: int = 5
     repo_path: str | None = None  # disambiguates bare symbol_name
@@ -170,7 +170,7 @@ class CallChain(BaseModel):
 **Input (Pydantic model):**
 ```python
 class ImpactAnalysisRequest(BaseModel):
-    symbol_name: str           # qualified: "{repo_path}:{file_path}:{symbol_type}:{symbol_name}" or bare (with repo_path to disambiguate)
+    symbol_name: str           # qualified: "{repo_path}|||{file_path}|||{symbol_type}|||{symbol_name}" or bare (with repo_path to disambiguate)
     repo_path: str | None = None
     include_indirect: bool = True  # transitive dependents
     max_depth: int = 5
@@ -183,7 +183,8 @@ class ImpactAnalysisResult(BaseModel):
     direct_dependents: list[SymbolImpact]
     indirect_dependents: list[SymbolImpact]
     affected_files: list[str]
-    risk_level: Literal["low", "medium", "high"]  # based on fan-out
+    risk_level: Literal["low", "medium", "high"]  # based on direct caller count
+    blast_radius: int  # total transitive reach (all depths)
     stale: bool = False
     last_indexed_at: datetime | None = None
 
@@ -195,7 +196,7 @@ class SymbolImpact(BaseModel):
     dependency_type: Literal["calls", "imports", "inherits", "contains", "implements"]
 ```
 
-**Implementation:** Reverse call graph traversal via PGQ. Risk level is computed from direct dependents only (not transitive): low (< 3 direct), medium (3-10 direct), high (> 10 direct).
+**Implementation:** Reverse call graph traversal via PGQ. `risk_level` is computed from direct dependents only: low (< 3 direct), medium (3-10 direct), high (> 10 direct). `blast_radius` counts total transitive reach (all depths) to give a holistic impact picture.
 
 ### 4.3 Incremental re-indexing workflow (Mahavishnu Prefect flow)
 
@@ -249,13 +250,16 @@ class SymbolImpact(BaseModel):
    - Build ON CONFLICT DO UPDATE logic (upsert) — not currently
      implemented in KGExtractor (sequential inserts only)
    - Batch upserts for efficiency
-   - Atomic replacement guarantee: write to a staging table first,
-     then swap in a single transaction. If any step fails, the
-     existing graph remains intact (no partial state).
-     - Staging table naming: `code_nodes_staging_{repo_name}_{timestamp}`
-     - After failed or successful swap, drop the staging table
-     - DuckDB's single-writer model provides the atomic guarantee
-       (no traditional WAL like PostgreSQL)
+   - Atomic replacement guarantee: write to a temporary table first,
+     then INSERT INTO ... SELECT from temp to target in a single statement.
+     DuckDB's single-writer model serializes writes but does not provide
+     multi-statement DDL transactional atomicity (CREATE/DROP TABLE within
+     a transaction may not be fully rollback-safe). Therefore, the approach is:
+     (a) CREATE temporary table (connection-scoped, auto-dropped on disconnect),
+     (b) INSERT all data into the temp table,
+     (c) INSERT INTO target SELECT * FROM temp (single statement),
+     (d) If step (c) fails, the temp table is auto-cleaned by DuckDB on disconnect.
+     On startup, scan for and drop any orphaned temp tables older than 1 hour.
    - Record last-indexed commit hash per repo
 
 6. Notify Akosha
@@ -263,10 +267,15 @@ class SymbolImpact(BaseModel):
    - Akosha pulls updated graph on its next polling cycle (existing behavior)
 
 7. Concurrent indexing safety
-   - Use a per-repo file-based lock: `.git/mahavishnu-index.lock`
-   - If a lock is already held, the second indexing operation skips
+   - Use a per-repo PID-based lock file: `.git/mahavishnu-index.lock`
+   - Lock file format: `{pid}\n{timestamp}\n{repo_path}`
+   - On lock acquisition: write PID and timestamp. If lock file exists,
+     read PID and check if process is alive (os.kill(pid, 0) on Unix).
+     If PID is dead or lock is > 10 minutes old, acquire (stale lock recovery).
+   - If lock is held by a live process, the second indexing operation skips
      with a log message (does not queue or retry)
-   - Lock is released on workflow completion or failure
+   - Git hook fires asynchronously: `mahavishnu index --trigger git-event --repo <path> &`
+     to avoid blocking the commit
 
 8. Indexing audit trail
    - Log events using the existing TaskAuditLogger infrastructure:
@@ -463,7 +472,7 @@ Each tier is documented, tested, and returns typed Pydantic responses — never 
 
 ```python
 class CodeGraphNode(BaseModel):
-    symbol_id: str                    # qualified: "{repo_path}:{file_path}:{symbol_type}:{symbol_name}"
+    symbol_id: str                    # qualified: "{repo_path}|||{file_path}|||{symbol_type}|||{symbol_name}"
     symbol_name: str                  # human-readable name (for display)
     symbol_type: Literal["function", "class", "module", "file", "variable"]
     file_path: str
@@ -478,7 +487,7 @@ class CodeGraphNode(BaseModel):
     commit_hash: str
 ```
 
-> **Qualified symbol IDs:** The `symbol_id` field uses the format `"{repo_path}:{file_path}:{symbol_type}:{symbol_name}"` to guarantee uniqueness across repos and files. This replaces bare `symbol_name` as the primary identifier in all graph queries. The `symbol_name` field is retained for display purposes and single-repo queries.
+> **Qualified symbol IDs:** The `symbol_id` field uses the format `"{repo_path}|||{file_path}|||{symbol_type}|||{symbol_name}"` to guarantee uniqueness across repos and files. The `|||` sentinel delimiter is used instead of colons because colons appear in macOS paths (`/Users/name:folder/`), Python symbol names (type annotations, lambdas), and could cause ambiguous parsing. The `id` field in `kg_entities` stores a UUID; the `name` field stores the qualified symbol ID. This replaces bare `symbol_name` as the primary identifier in all graph queries. The `symbol_name` field is retained for display purposes and single-repo queries.
 
 ### 6.2 Graph edges
 
@@ -503,15 +512,13 @@ Session-Buddy currently has two code graph storage paths that must be reconciled
 | DuckPGQ property graph | `kg_entities`, `kg_relationships` | `KGExtractor` | General KG queries |
 | Reflection database | Code graph tables | `store_code_graph_from_mahavishnu` | Akosha `CodeGraphIngester` |
 
-**Decision required (Phase 2 prerequisite):** Choose one of:
+**Chosen approach: Option A** — extend the DuckPGQ tables with code-graph-specific columns stored as JSON properties (since `kg_entities.properties` is already a JSON blob). This avoids a schema migration on the relational columns while adding the fields PGQ queries need. Akosha's ingestion path would then switch from reflection DB to DuckPGQ (a one-time migration of existing data). This decision is binding for all subsequent sections in this spec — all SQL, PGQ queries, and acceptance criteria are written against Option A.
 
 | Option | Description | Tradeoff |
 |--------|-------------|----------|
 | A: Extend DuckPGQ tables | Add `repo_path`, `commit_hash`, `is_deleted`, `complexity` columns to `kg_entities` | One storage path; PGQ queries are native; requires schema migration |
 | B: Extend reflection DB | Add PGQ-compatible query layer to reflection DB | No migration; Akosha already pulls from here; PGQ support unclear |
 | C: New dedicated tables | Create `code_nodes` / `code_edges` alongside existing tables | Clean separation; two code graph stores; more operational complexity |
-
-**Recommendation:** Option A — extend the DuckPGQ tables with code-graph-specific columns stored as JSON properties (since `kg_entities.properties` is already a JSON blob). This avoids a schema migration on the relational columns while adding the fields PGQ queries need. Akosha's ingestion path would then switch from reflection DB to DuckPGQ (a one-time migration of existing data).
 
 ### 6.4 Upsert logic
 
@@ -523,9 +530,12 @@ The reflection DB already implements upsert via `INSERT OR REPLACE` in `storage.
 
 ```sql
 -- Upsert pattern for code nodes (Option A: DuckPGQ tables)
-INSERT INTO kg_entities (name, entity_type, properties)
+-- NOTE: kg_entities uses `id` as PRIMARY KEY, not `name`.
+-- The qualified symbol_id is stored in `name` for display,
+-- and in `properties` for structured access.
+INSERT INTO kg_entities (id, name, entity_type, properties)
 VALUES (?, ?, ?)
-ON CONFLICT (name) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
     properties = json_patch(
         json_set(
             CASE WHEN json_extract(properties, '$.is_deleted') = true
@@ -550,18 +560,20 @@ ON CONFLICT (name) DO UPDATE SET
 CREATE PROPERTY GRAPH code_graph
   VERTEX TABLES (
     kg_entities
-      PRIMARY KEY (name)
+      PRIMARY KEY (id)
       LABEL symbol
   )
   EDGE TABLES (
     kg_relationships
-      SOURCE KEY (source) REFERENCES kg_entities (name)
-      DESTINATION KEY (target) REFERENCES kg_entities (name)
-      -- Edge type is stored as relationship_type and filtered in PGQ queries
+      SOURCE KEY (source) REFERENCES kg_entities (id)
+      DESTINATION KEY (target) REFERENCES kg_entities (id)
+      -- relation_type column stores the edge type (calls, imports, inherits, etc.)
+      -- Note: The model uses `edge_type` (CodeGraphEdge) but the existing
+      -- table uses `relation_type`. PGQ queries must reference `relation_type`.
   );
 ```
 
-> **PGQ edge-type filtering caveat:** DuckPGQ edge-type filtering via WHERE clauses on `edge_type` property is unproven at scale. Performance testing is required before relying on this for repos with > 50k symbols (see Acceptance Criterion 10). If performance is insufficient, a pre-filtered materialized view per edge type may be needed.
+> **PGQ edge-type filtering caveat:** DuckPGQ edge-type filtering via WHERE clauses on `relation_type` column is unproven at scale. Performance testing is required before relying on this for repos with > 50k symbols (see Acceptance Criterion 10). If performance is insufficient, a pre-filtered materialized view per edge type may be needed.
 
 ## 7. Plan Placement
 
@@ -638,7 +650,7 @@ Inter-service authentication between Mahavishnu and Session-Buddy is a **hard pr
 Session-Buddy must independently validate all inputs received from Mahavishnu, not rely on Mahavishnu's validation:
 
 - **Input validation:** Session-Buddy must validate `CallChainRequest` and `ImpactAnalysisRequest` using the same Pydantic models, regardless of what Mahavishnu sends
-- **Symbol ID sanitization:** Validate qualified symbol IDs against the expected format using a regex like `^[^:]+:[^:]+:[^:]+:[^:]+$` to prevent injection via malformed IDs
+- **Symbol ID sanitization:** Validate qualified symbol IDs against the expected format using a regex like `^[^|]+(\|\|\|[^|]+){3}[^|]+$` to prevent injection via malformed IDs
 - **Parameterized queries:** All PGQ queries must use DuckDB's `?` parameterized placeholders — no string interpolation of symbol IDs or edge types
 - **max_depth bounds:** `max_depth` field must have an `@field_validator` with upper bound of 10 (default 5) to prevent expensive graph traversals
 - **Result size limit:** Graph traversal queries must have a maximum result size (1000 nodes) and query timeout (30 seconds)
@@ -652,7 +664,7 @@ Session-Buddy must independently validate all inputs received from Mahavishnu, n
 ## 9. Acceptance Criteria
 
 1. `code_call_chain` returns transitive callers/callees up to 5 hops with correct qualified symbol IDs, file paths, and edge types
-2. `code_impact_analysis` returns all direct and indirect dependents with risk level classification (based on direct dependents only)
+2. `code_impact_analysis` returns all direct and indirect dependents with risk level classification (based on direct dependents only) and blast_radius (total transitive reach)
 3. Both tools include `stale` and `last_indexed_at` fields in responses when the index is > 24 hours old
 4. Incremental re-indexing processes only changed files (verified by comparing parse count to diff count)
 5. Per-file parse failures are logged and skipped without aborting the batch; failure rate > 25% emits a warning
@@ -746,13 +758,15 @@ This enables:
 
 ### 11.3 Filesystem Coordination Fallback (from Agent Farm)
 
-When Session-Buddy MCP is unavailable during indexing, fall back to filesystem-based graph persistence:
+When Session-Buddy MCP is unavailable during indexing, fall back to filesystem-based persistence:
 
-1. Write parsed nodes/edges to `/tmp/mahavishnu-index/{repo_name}_{timestamp}.json`
+1. Write parsed nodes/edges to `~/.claude/data/mahavishnu-index-queue/{repo_name}_{timestamp}.json`
 2. On Session-Buddy recovery, batch-replay all pending JSON files
 3. Delete processed files after successful upsert
+4. Deduplicate replay: skip files whose `(repo_path, commit_hash, file_path)` tuple matches a recently processed entry
+5. Maximum queue age: 48 hours — items older than this are discarded with a warning
 
-This ensures indexing never blocks on MCP availability — work queues locally and replays when the graph owner is reachable.
+This ensures indexing never blocks on MCP availability — work queues locally and replays when the graph owner is reachable. The persistent directory (`~/.claude/data/`) survives reboots, unlike `/tmp/`.
 
 ### 11.4 Heartbeat for Long-Running Index Operations (from Agent Farm)
 
@@ -766,7 +780,7 @@ async def parse_file(file_path: str):
     return result
 ```
 
-Heartbeat files in `/tmp/mahavishnu-index/heartbeats/` enable external monitoring tools to track indexing progress without polling the MCP server.
+Heartbeat files in `~/.claude/data/mahavishnu-index/heartbeats/` enable external monitoring tools to track indexing progress without polling the MCP server.
 
 ## 12. ADR Reference
 
@@ -777,5 +791,5 @@ This design should be accompanied by an ADR in `docs/adr/` documenting:
 - Rejection of Neo4j (infrastructure dependency conflict)
 - Ownership assignment: Session-Buddy as single code graph authority
 - Storage path reconciliation: extend DuckPGQ tables vs. reflection DB vs. new tables
-- Qualified symbol IDs: `{repo_path}:{file_path}:{symbol_type}:{symbol_name}` format
+- Qualified symbol IDs: `{repo_path}|||{file_path}|||{symbol_type}|||{symbol_name}` format (uses `|||` sentinel to avoid colon ambiguity in paths)
 - Security hardening: path validation, signature redaction, DuckDB permissions, auth gate

@@ -108,10 +108,7 @@ Existing Projects (Fastblocks, Splashstand, future apps)
 |--------|-------|--------|-----------|
 | Pattern Extractor | Code graph (spec 3), project files | Pattern Library (YAML files) | `mahavishnu patterns create/suggest` CLI commands |
 | Pattern Library | YAML pattern files | Nothing (read-only for Phase 1 scaffolding) | YAML file system + query module |
-| Scaffolding Engine | Pattern Library, project manifest | File system (new project), Pattern Library (composite capture only) | `mahavishnu scaffold` CLI command + chat integration |
-
-**Note on conversation capture:** The Scaffolding Engine writes to the Pattern Library only when the user explicitly approves saving a composite pattern after a Phase 2 session (Section 7.1). This is a user-initiated write, not an autonomous one. Phase 1 scaffolding never writes to the Library.
-| Scaffolding Engine | Pattern Library, user chat | File system (new project) | `mahavishnu scaffold` CLI command + chat integration |
+| Scaffolding Engine | Pattern Library, project manifest | File system (new project), Pattern Library (user-approved composite capture only) | `mahavishnu scaffold` CLI command + chat integration |
 
 ### 5.3 Storage Location
 
@@ -147,7 +144,7 @@ Patterns are YAML files, not database records. Rationale:
 - Git-versioned (pattern evolution is trackable)
 - Git-friendly (diffs show pattern changes clearly)
 - No operational complexity (no database to run, backup, or migrate)
-- Queryable via simple YAML parsing (no query language needed)
+- Queryable via keyword matching on `name`, `description`, and `tags` fields (no query language needed)
 
 ### 5.4 Principle Compliance
 
@@ -178,6 +175,8 @@ description: Base project structure with Oneiric config, entry point, and settin
 version: "1.0.0"
 source_repos: [fastblocks, splashstand]
 confidence: 1.0  # 1.0 for manually curated; computed for AI-suggested
+# Pattern composition dependencies (NOT Python package dependencies —
+# those are handled by the pyproject.toml template)
 depends: []
 tags: [fastblocks, skeleton, base]
 
@@ -241,7 +240,10 @@ templates:
     [project]
     name = "{{ project_name }}"
     requires-python = ">=3.12"
-    dependencies = {{ dependencies | to_toml_array }}
+    dependencies = {{ dependencies | toml_array }}
+    # toml_array: custom Jinja2 filter registered by the Engine.
+    # Takes a list of strings, outputs a TOML array: ["dep1", "dep2"]
+    # The Engine registers this filter at startup alongside the Jinja2 environments.
 
 # Extension points for other patterns
 slots:
@@ -287,7 +289,6 @@ The owning pattern's template includes markers that merging patterns inject into
 ```python
 # In scaffolding/project's main.py template:
 routes = [Route("/", endpoint=homepage)]
-app = resolve_dep("app")
 
 # {{slot:middleware}}
 
@@ -483,7 +484,9 @@ def validate_pattern(pattern: Pattern, library: PatternLibrary) -> list[Validati
         if f.required and not has_template(pattern, f):
             issues.append(f"Required file '{f.path}' has no template")
 
-    # Path traversal prevention (reuse PathValidator from mahavishnu/core/validators.py)
+    # Path traversal prevention
+    # NOTE: PathValidator and dependency graph utilities are new modules
+    # to be created as part of this spec's implementation.
     for d in pattern.structure.dirs:
         if not is_safe_path(d.path):
             issues.append(f"Directory path '{d.path}' contains path traversal")
@@ -513,7 +516,9 @@ def validate_pattern(pattern: Pattern, library: PatternLibrary) -> list[Validati
             if not library.has(dep_id):
                 issues.append(f"Dependency '{dep_id}' not found in library")
 
-    # Circular dependency detection (DFS-based, reuses mahavishnu/core/dependency_graph.py)
+    # Circular dependency detection (DFS-based)
+    # NOTE: detect_dependency_cycles is a new utility to be created
+    # in the scaffolding module (not reusing an existing module).
     cycles = detect_dependency_cycles(pattern.id, library)
     if cycles:
         issues.append(f"Circular dependency detected: {' -> '.join(cycles)}")
@@ -605,8 +610,14 @@ User: "Deploy to Cloud Run"
 ```
 
 Each Phase 2 step is either:
-- **Pattern composition** (loading a new pattern and re-running the full Phase 1 pipeline on the expanded pattern set with conflict detection against existing files)
+- **Pattern composition** (loading a new pattern and running an incremental merge against the existing project — see below)
 - **AI generation** (Claude generates custom content for pages, business logic, etc. — written to new files that don't conflict with pattern-managed files)
+
+**Incremental merge for pattern composition:** When adding a pattern to an existing project (detected by the presence of `.mahavishnu/manifest.json`), the Engine does NOT re-run the full Phase 1 pipeline (which would conflict with the existing directory). Instead:
+1. Scaffolds the new pattern to a temp directory
+2. Merges temp contents into the existing project directory using the conflict detection logic from Section 8.4 (hash comparison, keep/overwrite/merge prompts)
+3. Updates `.mahavishnu/manifest.json` with the new pattern
+4. Creates a git commit for the change
 
 **Phase 2 staging:** AI-generated content is written to files first, then shown to the user for approval before committing. Pattern composition steps are deterministic and commit automatically after validation passes.
 
@@ -804,7 +815,7 @@ This spec is **Phase 2.5** in the master plan — after the three prerequisite s
 5. `mahavishnu scaffold "test-app" --patterns scaffolding/project` generates a working Fastblocks project that runs with `python main.py`
 6. Generated project has the correct directory structure matching the pattern's `structure.dirs` specification
 7. Generated files contain the pattern management header comment
-8. `mahavishnu scaffold "test-app" --add-pattern components/nav` adds the nav component without breaking existing files
+8. `mahavishnu scaffold add --project /path/to/test-app --pattern components/nav` adds the nav component without breaking existing files
 9. `mahavishnu scaffold "test-app" --validate` reports zero contract violations
 10. Re-scaffolding with the same patterns produces the same output (deterministic)
 11. Phase 2 chat refinement ("add a dashboard page") generates `templates/pages/dashboard.html` and updates `main.py`

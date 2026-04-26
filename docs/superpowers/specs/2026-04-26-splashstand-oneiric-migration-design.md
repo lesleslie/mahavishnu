@@ -25,7 +25,7 @@ Splashstand depends on ACB (action-class-blocks), an archived project that is no
 
 ### 4.1 Import Inventory
 
-Splashstand has ~25 ACB import statements across ~12 files. Zero `from oneiric` or `import oneiric` imports exist.
+Splashstand has ~37 ACB import statements across 10 files. Zero `from oneiric` or `import oneiric` imports exist.
 
 | File | ACB Imports |
 |------|------------|
@@ -72,6 +72,7 @@ Derived from patterns in the three successfully migrated projects (Crackerjack, 
 | `from acb.adapters import root_path` | `from oneiric.adapters import root_path` | Direct rename |
 | `from acb.adapters import tmp_path` | `from oneiric.adapters import tmp_path` | Direct rename |
 | `from acb.adapters.dns._base import DnsRecord` | `from oneiric.adapters.dns._base import DnsRecord` | Direct rename |
+| `from fastblocks.applications import FastBlocks` | `from fastblocks.applications import FastBlocks` | No change — FastBlocks is not an ACB module |
 
 ### 5.3 Utility Imports
 
@@ -85,23 +86,23 @@ Derived from patterns in the three successfully migrated projects (Crackerjack, 
 
 ### 5.4 The `resolve_dep()` Helper Pattern
 
-The migrated projects wrap Oneiric's `Candidate` unwrapping in a helper function. This pattern goes in `main.py` alongside the app setup:
+The migrated projects wrap Oneiric's `Candidate` unwrapping in a helper function. This helper goes in a dedicated module (`splashstand/deps.py`) with no side effects, so adapter files can import it safely:
 
 ```python
-from oneiric import register_pkg
+# splashstand/deps.py
 from oneiric.core.resolution import Resolver
 
-depends = Resolver()
+_resolver = Resolver()
 
 def resolve_dep(key):
-    candidate = depends.resolve("splashstand", key)
+    candidate = _resolver.resolve("splashstand", key)
     if candidate is None:
         raise RuntimeError(f"Missing dependency: {key}")
     factory = getattr(candidate, "factory", None)
     return factory() if callable(factory) else candidate
 ```
 
-Sites that call `depends.resolve(...)` and unwrap the result manually should switch to `resolve_dep(key)`.
+In `main.py`, replace `from acb.depends import depends` with `from splashstand.deps import resolve_dep`. Adapter files that previously imported `depends` from `acb.depends` should import `resolve_dep` from `splashstand.deps` instead — this avoids shadowing the `depends` name and keeps the helper importable without triggering entry-point side effects.
 
 ## 6. Migration Phases
 
@@ -113,7 +114,7 @@ Sites that call `depends.resolve(...)` and unwrap the result manually should swi
 
 ### Phase 1: Core Infrastructure
 
-1. Add `resolve_dep()` helper to `main.py`.
+1. Create `splashstand/deps.py` with the `resolve_dep()` helper (no side effects — importable by all modules).
 2. Replace `from acb import register_pkg` → `from oneiric import register_pkg`.
 3. Replace `from acb.depends import depends` → `from oneiric.core.resolution import Resolver`.
 4. Update any direct `depends.resolve(...)` calls to use `resolve_dep(key)`.
@@ -136,12 +137,12 @@ Each file gets a mechanical `acb` → `oneiric` import rename. Files using `dump
 ### Phase 3: CLI Migration
 
 1. `cli.py` — Replace all 8 ACB imports with Oneiric equivalents.
-2. Replace `from acb.actions.encode import dump, load` → `import yaml`.
-3. Replace `load.yaml(debug_file)` → `yaml.safe_load(open(debug_file))`.
-4. Replace `dump.yaml(debug_settings, debug_file)` → `yaml.dump(debug_settings, open(debug_file, "w"))`.
+2. Replace `from acb.actions.encode import dump, load` → `import yaml` (add `from pathlib import Path` if not already imported).
+3. Replace `load.yaml(debug_file)` → `yaml.safe_load(Path(debug_file).read_text())`.
+4. Replace `dump.yaml(debug_settings, debug_file)` → `Path(debug_file).write_text(yaml.dump(debug_settings))`.
 5. Verify CLI commands still work (`dev`, `run`, etc.).
 
-**Note:** `adapters/admin/sqladmin.py` also uses `from acb.actions.encode import load` with `load.json(...)`. This file is migrated in Phase 2. Replace `load.json(path)` → `json.loads(open(path).read())` and add `import json`.
+**Note:** `adapters/admin/sqladmin.py` also uses `from acb.actions.encode import load` with `load.json(...)`. This file is migrated in Phase 2. Replace `load.json(path)` → `json.loads(Path(path).read_text())` and add `import json`.
 
 ### Phase 4: Cleanup and Validation
 
@@ -160,6 +161,7 @@ Each file gets a mechanical `acb` → `oneiric` import rename. Files using `dump
 | `get_adapter` removed or renamed in Oneiric | Verify against Oneiric 0.19+ API. Fallback: use `import_adapter` + manual instantiation. |
 | Template delimiter collision | Not applicable — Splashstand already uses `[[ ]]`. |
 | Adapter initialization order changes | Oneiric preserves ACB's lazy resolution semantics. No order changes expected. |
+| Partial migration failure leaves codebase in half-migrated state | All migration work happens on a dedicated branch (`migration/acb-to-oneiric`). If any phase fails, the branch can be discarded and rebuilt from main. |
 
 ## 8. Acceptance Criteria
 
@@ -167,7 +169,7 @@ Each file gets a mechanical `acb` → `oneiric` import rename. Files using `dump
 2. `grep -r "import acb" splashstand/` returns zero results.
 3. `acb` is not listed in `pyproject.toml` dependencies.
 4. `oneiric` is listed in `pyproject.toml` dependencies.
-5. `resolve_dep()` helper exists in `main.py`.
+5. `resolve_dep()` helper exists in `splashstand/deps.py`.
 6. `main.py` uses `from oneiric import register_pkg`.
 7. `main.py` uses `from oneiric.core.resolution import Resolver`.
 8. All adapter files use `from oneiric.*` imports exclusively.
