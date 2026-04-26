@@ -107,7 +107,10 @@ Existing Projects (Fastblocks, Splashstand, future apps)
 | Module | Reads | Writes | Interface |
 |--------|-------|--------|-----------|
 | Pattern Extractor | Code graph (spec 3), project files | Pattern Library (YAML files) | `mahavishnu patterns create/suggest` CLI commands |
-| Pattern Library | YAML pattern files | Nothing (read-only) | YAML file system + query module |
+| Pattern Library | YAML pattern files | Nothing (read-only for Phase 1 scaffolding) | YAML file system + query module |
+| Scaffolding Engine | Pattern Library, project manifest | File system (new project), Pattern Library (composite capture only) | `mahavishnu scaffold` CLI command + chat integration |
+
+**Note on conversation capture:** The Scaffolding Engine writes to the Pattern Library only when the user explicitly approves saving a composite pattern after a Phase 2 session (Section 7.1). This is a user-initiated write, not an autonomous one. Phase 1 scaffolding never writes to the Library.
 | Scaffolding Engine | Pattern Library, user chat | File system (new project) | `mahavishnu scaffold` CLI command + chat integration |
 
 ### 5.3 Storage Location
@@ -165,13 +168,16 @@ Patterns are YAML files, not database records. Rationale:
 Each pattern is a single YAML file with this structure:
 
 ```yaml
+# Format version (enables future migrations)
+schema_version: 1
+
 # Metadata
 id: scaffolding/project
 name: Fastblocks Project Skeleton
 description: Base project structure with Oneiric config, entry point, and settings
-version: 1.0
+version: "1.0.0"
 source_repos: [fastblocks, splashstand]
-confidence: 0.95
+confidence: 1.0  # 1.0 for manually curated; computed for AI-suggested
 depends: []
 tags: [fastblocks, skeleton, base]
 
@@ -212,6 +218,9 @@ structure:
       description: Adapter configuration
 
 # Jinja templates for file content generation
+# NOTE: Pattern templates use standard Jinja2 {{ }} delimiters.
+# Generated .html template files use Fastblocks [[ ]] delimiters.
+# The Engine configures the Jinja2 environment based on output file type.
 templates:
   entry-point: |
     from starlette.routing import Route
@@ -232,24 +241,74 @@ templates:
     [project]
     name = "{{ project_name }}"
     requires-python = ">=3.12"
-    dependencies = ["fastblocks", "oneiric"]
+    dependencies = {{ dependencies | to_toml_array }}
 
 # Extension points for other patterns
 slots:
-  nav: templates/base/blocks/
-  auth: adapters/
-  middleware: main.py
+  nav:
+    path: templates/base/blocks/
+    files: [nav.html, nav-mobile.html]
+    required: false
+  auth:
+    path: adapters/
+    files: [auth.py]
+    required: false
+  middleware:
+    path: main.py
+    type: file-merge
+    merge_strategy: marker-injection
+    required: false
 ```
 
 ### 6.2 Slot Mechanism
 
-Slots are named extension points where component patterns plug in. When a pattern declares `slot: scaffolding/project:templates/base/blocks/`, it means "this pattern's files go into the project's base blocks directory."
+Slots are named extension points where component patterns plug in. Each slot has a type:
+
+**Directory slots** (default) — the pattern writes files into a directory:
+```yaml
+slots:
+  nav:
+    path: templates/base/blocks/
+    files: [nav.html, nav-mobile.html]
+    required: false
+```
+Multiple patterns can write to the same directory as long as their `files` lists are disjoint. Conflict detection is **file-level**, not directory-level.
+
+**File-merge slots** — the pattern injects content into an existing file:
+```yaml
+slots:
+  middleware:
+    path: main.py
+    type: file-merge
+    merge_strategy: marker-injection
+    required: false
+```
+The owning pattern's template includes markers that merging patterns inject into:
+```python
+# In scaffolding/project's main.py template:
+routes = [Route("/", endpoint=homepage)]
+app = resolve_dep("app")
+
+# {{slot:middleware}}
+
+app = resolve_dep("app")
+```
+When `adapters/auth` claims the `middleware` slot, its template provides the injection content:
+```python
+# Content injected at {{slot:middleware}}:
+from starlette.middleware import Middleware
+middleware = [
+    Middleware(SessionMiddleware, secret_key="{{ session_secret }}"),
+]
+```
 
 **Slot resolution rules:**
-1. Only one pattern can claim a slot per project (conflict detection)
+1. **File-level conflict detection**: two patterns conflict only if they both write the same output file path. Multiple patterns writing to the same directory is allowed.
 2. Slot paths are relative to the project root
 3. If a required slot has no pattern, scaffolding fails with a clear error ("nav slot declared by project pattern but no nav pattern included")
-4. Optional slots are silently skipped if unpopulated
+4. Optional slots (required: false) are silently skipped if unpopulated
+5. File-merge slots use marker-injection: the base template defines `{{slot:<name>}}` markers, merging patterns provide replacement content
+6. A pattern's `id` prefix must match its parent directory (e.g., `adapters/auth` must live in `patterns/adapters/auth.yaml`)
 
 ### 6.3 Pattern Composition
 
@@ -260,19 +319,24 @@ Patterns compose via dependency resolution:
 id: composite/pwa-app
 name: Full PWA Application
 depends:
-  - scaffolding/project
-  - components/nav
-  - components/form
-  - components/table
-  - adapters/auth
-  - deployment/cloudrun
+  - id: scaffolding/project
+    version: ">=1.0.0"
+  - id: components/nav
+  - id: components/form
+  - id: components/table
+  - id: adapters/auth
+  - id: deployment/cloudrun
 ```
+
+Composite patterns are **purely additive** — they declare `depends` and `tags` but no `structure`, `templates`, or `slots` of their own. They cannot override a dependency's template. If a different variant is needed (e.g., PWA-specific auth), create a separate pattern (e.g., `adapters/auth-pwa`) that the composite references instead.
 
 The Engine resolves this as a dependency graph:
 1. `scaffolding/project` is the root (no dependencies)
-2. Component patterns plug into project's slots
+2. Component patterns plug into project's slots via file-level claims
 3. Adapter patterns plug into project's adapter slot
 4. Deployment patterns add deployment config files
+
+**Circular dependency detection:** The Engine runs cycle detection (DFS-based) on the dependency graph during validation. Patterns with circular dependencies fail validation with a clear error identifying the cycle.
 
 ### 6.4 Pattern Variables
 
@@ -280,12 +344,30 @@ Templates use Jinja2 variables for customization:
 
 | Variable | Source | Description |
 |----------|--------|-------------|
-| `{{ project_name }}` | CLI argument | Python package name (kebab-case) |
-| `{{ project_title }}` | CLI argument or config | Human-readable title |
+| `{{ project_name }}` | CLI argument | Python package name (kebab-case, e.g., `my-app`) |
+| `{{ project_slug }}` | Derived | Python-importable name (snake_case, e.g., `my_app`) |
+| `{{ project_title }}` | CLI argument or config | Human-readable title (e.g., `My Application`) |
 | `{{ author }}` | Git config | Author name for pyproject.toml |
-| `{{ version }}` | CLI flag or "0.1.0" | Initial version |
+| `{{ version }}` | CLI flag or `"0.1.0"` | Initial version |
+| `{{ python_version }}` | Config or `"3.12"` | Python version for pyproject.toml |
+| `{{ dependencies }}` | Computed from pattern set | List of package names, joinable with Jinja2 filters |
+| `{{ adapter_names }}` | Computed from pattern set | Names of included adapter patterns |
+| `{{ session_secret }}` | Auto-generated | Random secret for session middleware (auth patterns) |
 
-Templates are rendered with these variables at generation time. The same template with different variables produces different content.
+### 6.5 Jinja2 Delimiter Layers
+
+The scaffolding system uses two Jinja2 delimiter configurations:
+
+| Layer | Delimiters | Used For |
+|-------|-----------|----------|
+| Pattern templates | `{{ }}` / `{% %}` | Scaffolding variables in `.py`, `.toml`, `.yml` templates |
+| Generated HTML templates | `[[ ]]` / `[% %]` | Fastblocks-compatible HTML templates (runtime rendering) |
+
+The Engine creates two Jinja2 environments:
+1. **Scaffold environment**: standard delimiters (`{{ }}`), used for Python/YAML/TOML files
+2. **Template environment**: Fastblocks delimiters (`[[ ]]`), used for `.html` files
+
+Template file selection is based on output file extension: `.html` → template environment, all others → scaffold environment. Templates are rendered in **strict mode** — undefined variables raise an error rather than rendering empty strings.
 
 ## 7. Pattern Extractor
 
@@ -323,27 +405,37 @@ After successfully building an app via chat, Mahavishnu offers:
 
 ### 7.2 AI Suggestion Algorithm
 
-```python
-def suggest_patterns(repo_paths: list[str]) -> list[PatternDraft]:
-    """Analyze repos and suggest patterns using code graph data."""
-    # 1. Collect directory structures from all repos
-    dir_structures = {repo: get_directory_tree(repo) for repo in repo_paths}
+The AI suggestion operates at two levels: **structural** (filesystem-based, always available) and **content** (requires code graph from spec 3 or LLM assist).
 
-    # 2. Find shared directory patterns (directories appearing in N/M repos)
-    shared_dirs = find_common_subtrees(dir_structures, min_prevalence=0.5)
+```python
+def suggest_patterns(repo_paths: list[str], min_prevalence: float = 0.7) -> list[PatternDraft]:
+    """Analyze repos and suggest patterns."""
+    # 1. Collect directory structures from all repos (filesystem-level, no code graph needed)
+    dir_structures = {repo: get_sorted_path_list(repo) for repo in repo_paths}
+
+    # 2. Find shared directory patterns
+    # Uses difflib.SequenceMatcher on sorted path lists to compute directory-tree edit distance
+    shared_dirs = find_common_subtrees(dir_structures, min_prevalence=min_prevalence)
 
     # 3. For each shared directory, find shared files
     for dir_path, prevalence in shared_dirs.items():
-        shared_files = find_common_files(dir_structures, dir_path, min_prevalence=0.5)
+        shared_files = find_common_files(dir_structures, dir_path, min_prevalence=min_prevalence)
 
-    # 4. Cluster into pattern categories
+    # 4. Cluster into pattern categories using hierarchical agglomerative clustering
+    # Distance metric: normalized path-list edit distance (difflib.SequenceMatcher ratio)
+    # Stopping criterion: clusters merge until inter-cluster distance > 0.3
+    # Labeling: most common directory path in the cluster becomes the pattern category
     patterns = cluster_into_patterns(shared_dirs, shared_files)
 
-    # 5. For each pattern, extract common file content as templates
+    # 5. For each pattern, extract file content templates
+    # SCOPE: structural similarity only (shared filenames, directory layout).
+    # Content-level template extraction (diffing file contents to find variable regions)
+    # is deferred to LLM-assisted refinement in the editor step, or manual curation.
+    # Rationale: synthesizing Jinja2 templates from N similar files requires understanding
+    # which differences are project-specific variables vs. genuine code differences.
+    # This is an LLM task, not a diff task.
     for pattern in patterns:
-        pattern.templates = extract_common_templates(
-            dir_structures, pattern.files, min_prevalence=0.5
-        )
+        pattern.structure = build_structure_from_clusters(pattern.clusters)
 
     # 6. Score by confidence (prevalence across repos + structural consistency)
     for pattern in patterns:
@@ -355,34 +447,80 @@ def suggest_patterns(repo_paths: list[str]) -> list[PatternDraft]:
     return [p for p in patterns if p.confidence >= threshold]
 ```
 
+**Note on code graph usage:** When the code graph from spec 3 is available, the algorithm additionally queries it for shared adapter registrations, middleware stacks, and import patterns. These enrich the structural analysis with symbol-level evidence. When the code graph is unavailable, the algorithm degrades to filesystem-only analysis (directory layout + file names).
+
 **Important:** The suggestion algorithm produces drafts, not patterns. All drafts require human review before entering the Pattern Library.
+
+### 7.2.1 Manual Curation Details
+
+The `--from-project` flag resolves the named repo from `settings/repos.yaml`, then:
+1. Reads the repo's directory tree and file listing
+2. Pre-populates `structure.dirs` and `structure.files` with the repo's layout
+3. Copies file contents into `templates` (raw, not parameterized)
+4. Sets `source_repos` to `[<repo_name>]`
+5. Opens the draft in the user's `$EDITOR` for refinement (remove irrelevant files, parameterize values, declare slots)
+
+The developer then edits the draft down to just the pattern-specific parts and saves.
 
 ### 7.3 Pattern Validation
 
 When a pattern is saved (manually or after review), it's validated:
 
 ```python
-def validate_pattern(pattern: Pattern) -> list[ValidationIssue]:
+def validate_pattern(pattern: Pattern, library: PatternLibrary) -> list[ValidationIssue]:
     issues = []
 
-    # Schema validation
+    # Schema validation (Pydantic model)
     issues.extend(validate_yaml_schema(pattern))
+
+    # ID matches file path (e.g., adapters/auth must be in patterns/adapters/)
+    expected_prefix = pattern.file_path.parent.name  # directory name
+    if not pattern.id.startswith(expected_prefix + "/"):
+        issues.append(f"Pattern ID '{pattern.id}' doesn't match directory '{expected_prefix}/'")
 
     # Structural integrity
     for f in pattern.structure.files:
         if f.required and not has_template(pattern, f):
             issues.append(f"Required file '{f.path}' has no template")
 
-    # Slot compatibility
-    for slot_name, slot_path in pattern.slots.items():
-        if not slot_path.startswith(pattern.structure.dirs[0].path):
-            issues.append(f"Slot '{slot_name}' path '{slot_path}' is outside pattern dirs")
+    # Path traversal prevention (reuse PathValidator from mahavishnu/core/validators.py)
+    for d in pattern.structure.dirs:
+        if not is_safe_path(d.path):
+            issues.append(f"Directory path '{d.path}' contains path traversal")
+    for f in pattern.structure.files:
+        if not is_safe_path(f.path):
+            issues.append(f"File path '{f.path}' contains path traversal")
+
+    # Slot compatibility — check against ALL pattern dirs, not just dirs[0]
+    all_dir_paths = {d.path for d in pattern.structure.dirs}
+    for slot_name, slot in pattern.slots.items():
+        # Find a parent dir that contains this slot path
+        parent = find_parent_dir(slot.path, all_dir_paths)
+        if parent is None:
+            issues.append(f"Slot '{slot_name}' path '{slot.path}' is outside all pattern dirs")
+
+    # Template syntax validation (parse with Jinja2 to catch syntax errors)
+    for name, template_str in pattern.templates.items():
+        try:
+            jinja_env.parse(template_str)
+        except TemplateSyntaxError as e:
+            issues.append(f"Template '{name}' has Jinja2 syntax error: {e}")
 
     # Cross-pattern consistency
     if pattern.depends:
-        for dep_id in pattern.depends:
-            if not pattern_library.has(dep_id):
+        for dep in pattern.depends:
+            dep_id = dep.id if isinstance(dep, dict) else dep
+            if not library.has(dep_id):
                 issues.append(f"Dependency '{dep_id}' not found in library")
+
+    # Circular dependency detection (DFS-based, reuses mahavishnu/core/dependency_graph.py)
+    cycles = detect_dependency_cycles(pattern.id, library)
+    if cycles:
+        issues.append(f"Circular dependency detected: {' -> '.join(cycles)}")
+
+    # ID uniqueness across library
+    if library.has(pattern.id) and library.get(pattern.id).file_path != pattern.file_path:
+        issues.append(f"Duplicate pattern ID '{pattern.id}'")
 
     return issues
 ```
@@ -402,43 +540,75 @@ mahavishnu scaffold "my-app" \
 **Execution:**
 1. Load all pattern YAMLs from the library
 2. Build dependency graph from `depends` fields
-3. Validate: all dependencies satisfied, no slot conflicts
-4. Topological sort patterns (dependencies first)
-5. For each pattern (in order):
-   a. Create required directories
-   b. Render required files from templates (with variables filled in)
-   c. Register slot claims (so dependent patterns know where to write)
-6. Write pyproject.toml, settings, entry point
-7. Run `uv init` or equivalent to install dependencies
-8. Verify: `mahavishnu patterns validate --project /Users/les/Projects/my-app`
+3. Validate: all dependencies satisfied, no file-level conflicts, no circular dependencies
+4. Topological sort patterns (dependencies first). **Secondary sort:** alphabetical by pattern ID for deterministic ordering among same-level patterns.
+5. Scaffold to a **temporary directory** (e.g., `/tmp/mahavishnu-scaffold-{uuid}/`):
+   a. For each pattern (in sorted order):
+      - Create required directories
+      - Render required files from templates (with variables filled in)
+      - Apply file-merge slot injections (replace `{{slot:<name>}}` markers with claiming pattern content)
+      - Register slot claims (so dependent patterns know where to write)
+6. Write `.mahavishnu/manifest.json` with pattern set, versions, and content hashes
+7. Write `.mahavishnu/patterns.lock` with exact pattern IDs and versions used
+8. Initialize git repo and create initial commit
+9. **Atomically rename** temp directory to final output path (on success only)
+10. Run `uv init` or equivalent to install dependencies
+11. Verify: `mahavishnu scaffold validate --project /Users/les/Projects/my-app`
+
+**Rollback:** If any step fails (template rendering error, missing dependency, write failure), the temp directory is deleted and the user receives a clear error. The final output path is never touched unless all steps succeed.
 
 **Output:** A working Fastblocks project with proper structure, config, and basic components. Ready to `python main.py`.
 
+### 8.1.1 Project Manifest
+
+Phase 1 writes `.mahavishnu/manifest.json` to every generated project:
+
+```json
+{
+  "schema_version": 1,
+  "project_name": "my-app",
+  "patterns": [
+    {"id": "scaffolding/project", "version": "1.0.0", "file_hash": "sha256:abc123..."},
+    {"id": "components/nav", "version": "1.0.0", "file_hash": "sha256:def456..."}
+  ],
+  "generated_at": "2026-04-26T12:00:00Z",
+  "variables": {"project_name": "my-app", "project_slug": "my_app"}
+}
+```
+
+This manifest bridges Phase 1 and Phase 2: when the user continues in a Mahavishnu session, the Engine reads the manifest to know which project and patterns are active. Phase 2 reads the manifest to determine the target project directory and active pattern set.
+
 ### 8.2 Phase 2: Chat-Driven Refinement
 
-After Phase 1, the user continues in a Mahavishnu session:
+After Phase 1, the user continues in a Mahavishnu session. The Engine reads `.mahavishnu/manifest.json` from the project directory to determine the active pattern set and project location. The user can also explicitly specify the project: `mahavishnu scaffold --project /path/to/my-app`.
 
 ```
 User: "Add a dashboard page with a stats summary card"
-→ Mahavishnu generates templates/pages/dashboard.html
-→ Adds dashboard route to main.py
+→ Mahavishnu generates templates/pages/dashboard.html (AI generation)
+→ Adds dashboard route to main.py (AI generation)
 → Validates output against composed pattern spec
 
 User: "Use the auth pattern with Google OAuth"
 → Mahavishnu loads adapters/auth.yaml pattern
-→ Runs Phase 1 composition with auth pattern added
+→ Re-runs Phase 1 pipeline on the expanded pattern set (original + auth)
 → Generates adapters/auth.py, settings/auth.yml
-→ Updates main.py with session middleware
+→ Updates main.py with session middleware (via middleware file-merge slot)
+→ Updates manifest.json with the new pattern
+→ Creates a git commit for the change
 
 User: "Deploy to Cloud Run"
 → Mahavishnu loads deployment/cloudrun.yaml pattern
+→ Re-runs Phase 1 pipeline on the expanded pattern set
 → Generates Dockerfile, cloudbuild.yaml
 → Adds deploy command to pyproject.toml
+→ Updates manifest.json and commits
 ```
 
 Each Phase 2 step is either:
-- **Pattern composition** (loading a new pattern and re-running Phase 1 for affected files)
-- **AI generation** (Claude generates custom content for pages, business logic, etc.)
+- **Pattern composition** (loading a new pattern and re-running the full Phase 1 pipeline on the expanded pattern set with conflict detection against existing files)
+- **AI generation** (Claude generates custom content for pages, business logic, etc. — written to new files that don't conflict with pattern-managed files)
+
+**Phase 2 staging:** AI-generated content is written to files first, then shown to the user for approval before committing. Pattern composition steps are deterministic and commit automatically after validation passes.
 
 ### 8.3 Pattern Contract Validation
 
@@ -474,23 +644,26 @@ def validate_project(project_path: str, patterns: list[Pattern]) -> list[Issue]:
 
 ### 8.4 Generation Idempotency
 
-Re-running scaffolding with the same patterns and variables produces the same output. This enables:
+Re-running scaffolding with the same patterns and variables produces the same output. This is verified via the `.mahavishnu/patterns.lock` file and per-file content hashes in the manifest.
 
-- **Diffing** two generated projects to see what changed
-- **Re-scaffolding** a project to update it to a new pattern version
-- **Conflict detection** when manual edits overlap with pattern-managed files
+**Idempotency mechanism:**
+1. `.mahavishnu/patterns.lock` records exact pattern IDs and versions used
+2. `.mahavishnu/manifest.json` records SHA-256 hashes of every generated file
+3. Re-scaffolding with the same lock file produces identical file contents (verified by hash comparison)
+4. If a pattern version changed since the lock file was created, the Engine warns and offers to update
 
-Pattern-managed files include a header comment:
+**Conflict detection for manual edits:**
+When re-scaffolding, the Engine compares each file's current hash against the manifest hash. If a file was manually edited:
+- Pattern-managed files (generated from templates): Engine shows diff between current content and expected template output, offers keep/overwrite/merge
+- User-added files (not in manifest): left untouched
+
+**Pattern-managed file markers:** Generated files include a lightweight comment header:
 ```python
-# pattern: scaffolding/project v1.0
-# DO NOT EDIT BELOW THIS LINE — managed by mahavishnu scaffold
-# To customize, modify the pattern template, not this file
+# Managed by mahavishnu scaffold — pattern: scaffolding/project v1.0.0
+# Manual edits detected on re-scaffold. Edit the pattern template to make permanent changes.
 ```
 
-If a user edits a pattern-managed file and then re-scaffolds, the Engine detects the conflict and offers:
-1. Keep manual edits (remove pattern management header from that file)
-2. Overwrite with pattern (lose manual edits)
-3. Show diff and let user decide
+**Atomic writes:** Pattern YAML files in the library use atomic write (write to temp file, then rename) to prevent concurrent write corruption.
 
 ## 9. CLI Interface
 
@@ -506,30 +679,34 @@ mahavishnu patterns suggest --repos fastblocks,splashstand --confidence-threshol
 # List all patterns
 mahavishnu patterns list [--category scaffolding|components|adapters|deployment|composite]
 
-# Show pattern details
-mahavishnu patterns show auth
+# Show pattern details (full ID required to avoid ambiguity)
+mahavishnu patterns show adapters/auth
 
 # Validate pattern library integrity
 mahavishnu patterns validate
 
 # Search patterns
 mahavishnu patterns search --query "authentication" --source-repos splashstand
+
+# Edit a pattern (opens in $EDITOR)
+mahavishnu patterns edit adapters/auth
 ```
 
 ### 9.2 Scaffolding Commands
 
 ```bash
-# Scaffold a new project
+# Scaffold a new project (Phase 1 — deterministic)
 mahavishnu scaffold "my-app" \
   --patterns scaffolding/project,components/nav \
   --title "My Application" \
   --output /path/to/my-app
 
-# Add a pattern to an existing project
-mahavishnu scaffold "my-app" --add-pattern components/form --output /path/to/my-app
+# Add a pattern to an existing project (Phase 1 re-scaffolding)
+# Re-runs the full Phase 1 pipeline with the expanded pattern set
+mahavishnu scaffold add --project /path/to/my-app --pattern components/form
 
-# Validate a generated project against its patterns
-mahavishnu scaffold "my-app" --validate --output /path/to/my-app
+# Validate a generated project against its manifest
+mahavishnu scaffold validate --project /path/to/my-app
 
 # Show what patterns would be included (dry run)
 mahavishnu scaffold "my-app" --patterns "*" --dry-run
@@ -610,10 +787,13 @@ This spec is **Phase 2.5** in the master plan — after the three prerequisite s
 |----------|-----------|-----------|--------|
 | **1st** | Pattern format + library storage + manual create command | Config consolidation | Small |
 | **2nd** | Scaffolding engine Phase 1 (deterministic) | Item 1 | Medium |
-| **3rd** | Pattern Extractor (manual + basic AI suggestion) | Code indexing spec | Medium |
-| **4th** | Scaffolding engine Phase 2 (chat refinement) | Items 1-3 | Medium |
+| **3a** | Pattern Extractor (manual curation only) | Item 1 | Small |
+| **3b** | Pattern Extractor (AI suggestion) | Code indexing spec + auth gate | Medium |
+| **4th** | Scaffolding engine Phase 2 (chat refinement) | Items 1-3a | Medium |
 | **5th** | Conversation capture (save session as composite pattern) | Items 1-4 | Small |
 | **6th** | Pattern validation and contract enforcement | Items 1-5 | Small |
+
+**Note:** Delivery 3b (AI suggestion) has a transitive dependency on the auth gate from the Code Indexing spec. If auth is delayed, AI suggestion is delayed. Delivery 3a (manual curation) has no such dependency and can proceed independently.
 
 ## 12. Acceptance Criteria
 
@@ -638,10 +818,14 @@ This spec is **Phase 2.5** in the master plan — after the three prerequisite s
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | Storage format | YAML files in project directory | Human-editable, git-versioned, no database needed. |
-| Pattern composition | Dependency graph with topological sort | Clean ordering, no circular dependencies. |
-| Slot mechanism | Named extension points with path resolution | Components declare where they plug in, engine resolves conflicts. |
-| Template engine | Jinja2 | Same templating Fastblocks already uses. No new dependency. |
+| Pattern composition | Dependency graph with topological sort + alphabetical secondary key | Clean ordering, no circular dependencies, deterministic output. |
+| Slot mechanism | File-level claims + marker-injection for file merges | Multiple patterns can share a directory; file-level conflicts detected precisely. |
+| Template engine | Jinja2 with two delimiter environments | Scaffold templates use `{{ }}`, generated HTML uses `[[ ]]` (Fastblocks). |
 | Phase separation | Deterministic (Phase 1) then AI-assisted (Phase 2) | Phase 1 is repeatable and testable. Phase 2 adds flexibility. |
-| File management | Header comments mark pattern-managed files | Enables conflict detection and manual override. |
-| AI suggestion | Draft-only, never auto-save | Prevents noise from false-positive pattern detection. |
+| File management | Manifest + lockfile + hash verification | `.mahavishnu/manifest.json` and `.mahavishnu/patterns.lock` enable idempotency and conflict detection. |
+| Rollback | Temp-dir-then-rename | Partial failures never corrupt the output directory. |
+| AI suggestion | Structural similarity only, content via LLM/manual | Template synthesis from diffs is unreliable; structural analysis is sufficient for drafts. |
+| Clustering algorithm | Hierarchical agglomerative with path-list edit distance | Feasible with stdlib (difflib), appropriate for small repo counts. |
 | Pattern provenance | `source_repos` field in pattern metadata | Enables "show patterns from Splashstand" queries. |
+| Version format | Semantic versioning as string (`"1.0.0"`) | Avoids float parsing issues; supports pre-release tags. |
+| Confidence | 1.0 for manual, computed for AI-suggested | Manual curation is authoritative; AI needs scoring. |
