@@ -11,7 +11,7 @@ After consolidating all Claude Code configuration into the Mahavishnu project di
 
 **Current state:**
 - **101 agents**: Only 5 (5%) reference any ecosystem component. The remaining 97 are generic stubs with no awareness of Mahavishnu, Akosha, Session-Buddy, Crackerjack, or Dhara.
-- **22 skills** (20 native + 5 symlinked from `~/.agents/`): 18 (82%) already reference ecosystem tools, but many have stale references (wrong tool names, outdated ports, missing new tools).
+- **27 skills** (22 native + 5 symlinked from `~/.agents/`): Of the 22 native skills, 18 (82%) already reference ecosystem tools, but many have stale references (wrong tool names, outdated ports, missing new tools).
 
 **Impact:** When Claude dispatches to a subagent or invokes a skill, it doesn't know what ecosystem MCP tools are available, leading to redundant work, missed optimization opportunities, and inconsistent tool usage patterns.
 
@@ -36,10 +36,10 @@ After consolidating all Claude Code configuration into the Mahavishnu project di
 
 | Category | Count | Percentage |
 |----------|-------|------------|
-| Reference ecosystem components | 4 | 4% |
-| No ecosystem references | 97 | 96% |
+| Reference ecosystem components | 5 | 5% |
+| No ecosystem references | 96 | 95% |
 
-**Ecosystem-aware agents (4):**
+**Ecosystem-aware agents (5):**
 - `mahavishnu-specialist.md` — references Mahavishnu
 - `akasha-specialist.md` — references "Akasha" (misspelled — should be "Akosha", grep misses it)
 - `mcp-integration-expert.md` — references Crackerjack, MCP, WebSocket
@@ -47,6 +47,8 @@ After consolidating all Claude Code configuration into the Mahavishnu project di
 - `oneiric-specialist.md` — references Oneiric
 
 ### 4.2 Skill MCP Integration
+
+Auditing the 22 native skills (the 5 symlinked from `~/.agents/` are not in scope for this spec):
 
 | Category | Count | Percentage |
 |----------|-------|------------|
@@ -127,7 +129,7 @@ model: sonnet
 ### 5.3 Enrichment Rules
 
 1. **Keep descriptions under 300 characters** — agents are persona stubs, not instruction documents
-2. **Use exact `mcp__<server>__<tool>` names** — match the Claude Code tool registry
+2. **Use exact `mcp__<server>__<tool>` names** — match the Claude Code tool registry. Note: some FastMCP-derived tools use triple underscores (e.g., `mcp__session-buddy___code_ingest_file_impl`) due to Python function naming conventions with hyphens in server names. Verify exact tool names from `.mcp.json` or the running MCP server's tool list before writing references.
 3. **Only reference tools the agent would realistically use** — don't add irrelevant tools
 4. **Don't reference tools requiring secrets** — agents don't have auth context
 5. **Ecosystem line is a routing hint** — it helps Claude decide when to dispatch to this agent
@@ -231,9 +233,9 @@ Analysis of 5+ multi-agent orchestration projects (Claude Code Agent Farm, Ruflo
 
 ### 8.1 Per-Task MCP Server Routing (from MCP Orchestrator)
 
-Each spawned sub-agent can enable specific MCP servers. Agent descriptions should declare which MCP servers they require, enabling per-task routing in Mahavishnu pools:
+Each spawned sub-agent can enable specific MCP servers. Agent descriptions should declare which MCP servers they require, enabling per-task routing in Mahavushnu pools:
 
-**Enrichment format update — add `requires_mcp` field:**
+**Future enhancement — `requires_mcp` field:**
 ```yaml
 ---
 name: security-auditor
@@ -246,7 +248,7 @@ model: opus
 ---
 ```
 
-This enables Mahavishnu's pool routing to match agents to pools that have the required MCP servers available, reducing cost and attack surface.
+> **Note:** `requires_mcp` is not a standard Claude Code agent frontmatter field. This is a proposed Mahavishnu-specific extension for future pool routing infrastructure. In the current delivery, the ecosystem line in `description` provides the same routing hint without requiring code changes. Defer `requires_mcp` to a future phase.
 
 ### 8.2 Context Injection Modes (from MCP Orchestrator)
 
@@ -262,6 +264,8 @@ MCP Orchestrator uses `full`, `summary`, and `grep` modes for passing file conte
 - **full**: Inject complete file content (for code review, debugging)
 - **summary**: Inject summarized context (for cross-repo search, pattern discovery)
 - **grep**: Inject only matching lines (for targeted queries, error investigation)
+
+> **Note:** Context injection modes are a documentation convention for skill authors, not a Claude Code feature. Claude Code does not have a built-in mode selector — this table provides guidance on how much context to include when manually invoking MCP tools for each use case.
 
 ### 8.3 Notes-as-Memory (from MCP Task Orchestrator)
 
@@ -324,17 +328,16 @@ When MCP servers are unavailable, skills should fall back to filesystem-based co
 
 ### 8.7 Anti-Drift Config Validation (from Ruflo)
 
-Ruflo uses Zod schemas to catch configuration drift. Enhance `mahavishnu config validate` (Section 7.2) with drift detection:
+Ruflo uses Zod schemas to catch configuration drift. The config-consolidation spec (Section 9.1) owns the general anti-drift validation framework. This spec adds skill-specific drift checks that integrate into that framework:
 
 ```python
-# Additional validation checks
-def validate_config_drift():
-    # 1. Detect agents referenced in skills but not in agents/
-    # 2. Detect skills referenced in workflows but not in skills/
-    # 3. Detect MCP servers in skill references but not in .mcp.json
-    # 4. Detect port conflicts between .mcp.json and documented ports
-    # 5. Detect model values not in {sonnet, opus, haiku}
-    # 6. Detect description length > 300 characters
+# Skill-specific drift checks (runs as part of mahavishnu config validate)
+def validate_skill_drift():
+    # 1. Detect MCP servers referenced in skills but not in .mcp.json
+    # 2. Detect port conflicts between .mcp.json and documented ports in skills
+    # 3. Detect mcp__ tool references in skills that don't match the running server's tool list
+    # 4. Detect description length > 300 characters in agent frontmatter
+    # 5. Detect stale tool names (mcp__ references not found in tool registry)
 ```
 
 ## 9. Delivery Order
@@ -344,7 +347,7 @@ def validate_config_drift():
 | 1 | Enrich 5 ecosystem agent descriptions | Config consolidation complete | Small |
 | 2 | Enrich 10 generic agent descriptions | Config consolidation complete | Small |
 | 3 | Add MCP reference tables to 18 existing skills | Config consolidation complete | Medium |
-| 4 | Add MCP reference tables to 2 missing skills | Config consolidation complete | Small |
+| 4 | Add MCP reference tables to 2 missing skills (swiftui-ipc-client, testing-strategies) | Config consolidation complete | Small |
 | 5 | Fix stale references across all 20 skills | Items 3-4 | Medium |
 | 6 | Add stale reference validation to `mahavishnu config validate` | Config consolidation complete | Small |
 | 7 | Add context injection modes to skill MCP tables | Items 3-4 | Small |
@@ -355,7 +358,7 @@ def validate_config_drift():
 ## 10. Acceptance Criteria
 
 1. All 15 enriched agents include at least one `mcp__` tool reference in their description
-2. All 20 skills have an "Available MCP Servers" section
+2. All 22 native skills have an "Available MCP Servers" section (5 symlinked skills are out of scope)
 3. `mahavishnu config validate` passes with zero stale reference warnings
 4. No agent description exceeds 300 characters
 5. All `mcp__` references in skills use exact tool names from the registry
@@ -366,7 +369,7 @@ def validate_config_drift():
 10. A fresh Claude Code session from Mahavishnu correctly routes to enriched agents
 11. All skill MCP reference tables include a "Context Mode" column (full/summary/grep)
 12. All skill MCP reference tables include a "Default Timeout" row
-13. `mahavishnu config validate` reports zero cross-reference drift (agents referenced in skills exist, servers in docs match .mcp.json)
+13. `mahavishnu config validate` reports zero skill-specific drift (stale tool references, port mismatches, description length violations)
 14. Notes-as-memory format is documented in at least the checkpoint skill
 
 ## 11. ADR Reference

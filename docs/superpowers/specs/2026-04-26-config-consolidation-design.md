@@ -152,8 +152,17 @@ Claude Code will repopulate app-state keys in `~/.claude.json` on next launch.
 ### 6.2 Safety Features
 
 - `--dry-run` flag: prints all planned operations without executing
-- `--backup` flag: creates timestamped backup of `~/.claude/CLAUDE.md` before overwriting
-- `--rollback` flag: reverses the migration (copies files back to `~/.claude/`, restores `~/.claude.json`)
+- `--backup` flag: creates timestamped backups before modifying:
+  - `~/.claude/CLAUDE.md` (before overwriting with thin stub)
+  - `~/.claude.json` (before extracting mcpServers)
+  - `~/.claude/settings.local.json` (before modifying additionalDirectories)
+  - Backup location: `mahavishnu/.claude/backups/{timestamp}/`
+- `--rollback` flag: reverses the migration using the backups:
+  1. Restore `~/.claude.json` from backup (re-inserts mcpServers key)
+  2. Restore `~/.claude/settings.local.json` from backup (re-adds `~/.claude` to additionalDirectories)
+  3. Restore `~/.claude/CLAUDE.md` from backup (full ecosystem manifest)
+  4. Copy agents, skills, commands back to `~/.claude/`
+  5. Verify restoration by checking file counts match originals
 - Validation step: after copy, verifies all expected files exist in new locations
 - Idempotent: running twice is safe (skips existing files)
 
@@ -233,7 +242,17 @@ These commands read from the local `.claude/` and `.mcp.json` — no dependency 
 
 ### 8.3 `.mcp.json` Security
 
-All 33 MCP servers use either `http` transport to `localhost:8xxx` or local command execution. No API keys are stored in `.mcp.json`. Secrets remain in `~/.claude/settings.json`.
+**WARNING: `env` blocks must be stripped during extraction.** The current `~/.claude.json` `mcpServers` section contains `env` blocks with API keys (e.g., `GITLAB_PERSONAL_ACCESS_TOKEN`, `Z_AI_API_KEY`). The migration script must:
+
+```python
+# Phase 2: Extract MCP servers (with env stripping)
+for server_name, server_config in mcp_servers.items():
+    server_config.pop("env", None)  # Strip ALL env blocks — secrets stay in settings.json
+```
+
+After stripping, `.mcp.json` contains only transport config (command, args, url) with no secrets. Secrets remain in `~/.claude/settings.json` (global, not version-controlled).
+
+All 33 MCP servers use either `http` transport to `localhost:8xxx` or local command execution. No API keys are committed to `.mcp.json`.
 
 ## 9. External Research Enhancements
 

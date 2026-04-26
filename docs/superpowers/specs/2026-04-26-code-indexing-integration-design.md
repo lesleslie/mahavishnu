@@ -345,7 +345,7 @@ mahavishnu index --all-repos --schedule "*/15 * * * *" --with-skills
 1. **Run community detection on the code graph**
    - Query all code nodes and edges from Session-Buddy for the target repo
    - Build an undirected NetworkX graph: nodes = symbols (functions, classes, modules), edges = calls + imports (weighted by frequency)
-   - Run Leiden community detection (`networkx.community.louvain` or `python-louvain` package) to partition the graph into functional areas
+   - Run Leiden community detection (`leidenalg` package) to partition the graph into functional areas
    - Each community represents a cohesive functional area (e.g., "authentication", "content ingestion", "pool management")
 
 2. **Analyze each community**
@@ -369,7 +369,7 @@ mahavishnu index --all-repos --schedule "*/15 * * * *" --with-skills
 
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
-| Algorithm | Leiden (via `networkx.community`) | Handles overlapping communities; well-suited for code graphs |
+| Algorithm | Leiden (via `leidenalg`) | Guarantees well-connected communities; fixes Louvain's bad-connectivity defect where nodes can have zero intra-community edges |
 | Resolution | 1.0 (default) | Higher resolution = more, smaller communities |
 | Minimum community size | 3 symbols | Prevents trivial single-function "communities" |
 | Edge weights | Call frequency + import indicator | Calls weighted higher than imports |
@@ -524,17 +524,18 @@ The reflection DB already implements upsert via `INSERT OR REPLACE` in `storage.
 ```sql
 -- Upsert pattern for code nodes (Option A: DuckPGQ tables)
 INSERT INTO kg_entities (name, entity_type, properties)
-VALUES ($1, $2, $3)
+VALUES (?, ?, ?)
 ON CONFLICT (name) DO UPDATE SET
-    properties = json_patch(properties, EXCLUDED.properties),
-    -- Mark as active (un-delete if previously soft-deleted)
-    properties = json_set(
-        CASE WHEN json_extract(properties, '$.is_deleted') = true
-        THEN json_set(properties, '$.is_deleted', false)
-        ELSE properties
-    END,
-        '$.last_indexed_at', $4::VARCHAR,
-        '$.commit_hash', $5::VARCHAR
+    properties = json_patch(
+        json_set(
+            CASE WHEN json_extract(properties, '$.is_deleted') = true
+            THEN json_set(properties, '$.is_deleted', false)
+            ELSE properties
+            END,
+            '$.last_indexed_at', ?,
+            '$.commit_hash', ?
+        ),
+        EXCLUDED.properties
     );
 ```
 
@@ -543,21 +544,20 @@ ON CONFLICT (name) DO UPDATE SET
 ### 6.5 PGQ schema
 
 ```sql
--- Property graph schema for DuckDB/DuckPGQ
--- Note: DuckPGQ supports multiple edge tables with different labels
+-- Property graph schema for DuckDB/DuckPGQ (Option A: extend existing tables)
+-- Uses kg_entities/kg_relationships from Session-Buddy's DuckPGQ property graph
+-- Code-graph-specific fields are stored in the existing JSON properties blob
 CREATE PROPERTY GRAPH code_graph
   VERTEX TABLES (
-    code_nodes
-      PRIMARY KEY (symbol_id)
+    kg_entities
+      PRIMARY KEY (name)
       LABEL symbol
   )
   EDGE TABLES (
-    code_edges
-      SOURCE KEY (source) REFERENCES code_nodes (symbol_id)
-      DESTINATION KEY (target) REFERENCES code_nodes (symbol_id)
-      -- Edge type is stored as a property and filtered in PGQ queries
-      -- DuckPGQ does not support per-row labels, so type filtering
-      -- is done via WHERE clauses on edge_type property
+    kg_relationships
+      SOURCE KEY (source) REFERENCES kg_entities (name)
+      DESTINATION KEY (target) REFERENCES kg_entities (name)
+      -- Edge type is stored as relationship_type and filtered in PGQ queries
   );
 ```
 
@@ -761,7 +761,7 @@ For repos with 100k+ LOC, indexing can exceed 60 seconds. Add per-file heartbeat
 ```python
 async def parse_file(file_path: str):
     write_heartbeat(f"parsing:{file_path}")
-    result = CodeGraphAnalyzer.parse(file_path)
+    result = await CodeGraphAnalyzer._analyze_python_file(file_path)
     write_heartbeat(f"parsed:{file_path}:nodes={result.node_count}")
     return result
 ```
