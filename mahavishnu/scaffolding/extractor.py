@@ -161,13 +161,22 @@ class PatternExtractor:
                     source_repos=[
                         n
                         for n in repo_structures
-                        if dir_path
-                        in " ".join(repo_structures[n])
+                        if _dir_in_repo(dir_path, repo_structures[n])
                     ],
                 )
             )
 
         return sorted(drafts, key=lambda d: -d.confidence)
+
+
+def _dir_in_repo(dir_path: str, file_paths: list[str]) -> bool:
+    """Check whether *dir_path* is a real directory in the repo.
+
+    Uses prefix matching so that a directory like ``core`` does not falsely
+    match a file such as ``src/score/models.py``.
+    """
+    prefix = dir_path + "/"
+    return any(fp.startswith(prefix) for fp in file_paths)
 
 
 def _get_sorted_path_list(repo_path: Path) -> list[str]:
@@ -193,7 +202,7 @@ def _find_common_subtrees(
         if not dir_path:
             continue
         count = sum(
-            1 for files in repo_structures.values() if dir_path in " ".join(files)
+            1 for files in repo_structures.values() if _dir_in_repo(dir_path, files)
         )
         prevalence = count / n_repos
         if prevalence >= min_prevalence:
