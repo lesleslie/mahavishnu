@@ -29,5 +29,6 @@ def create_template_env() -> Environment:
 
 def _toml_array_filter(value: list[str]) -> str:
     """Jinja2 filter: render a list as a TOML array."""
-    items = ", ".join(f'"{v}"' for v in value)
+    escaped = (v.replace("\\", "\\\\").replace('"', '\\"') for v in value)
+    items = ", ".join(f'"{v}"' for v in escaped)
     return f"[{items}]"

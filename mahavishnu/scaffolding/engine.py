@@ -14,13 +14,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import yaml
-from jinja2 import Environment, StrictUndefined
 
 from mahavishnu.scaffolding.dependency_graph import PatternDependencyGraph
+from mahavishnu.scaffolding.jinjava_env import create_scaffold_env, create_template_env
 from mahavishnu.scaffolding.models import Pattern
 from mahavishnu.scaffolding.validation import validate_pattern
 
 if TYPE_CHECKING:
+    from jinja2 import Environment
+
     from mahavishnu.scaffolding.library import PatternLibrary
 
 logger = logging.getLogger(__name__)
@@ -108,17 +110,8 @@ class ScaffoldingEngine:
         variables = self._compute_variables(project_name, title, author, version, python_version, resolved)
 
         # 5. Create Jinja2 environments
-        scaffold_env = Environment(undefined=StrictUndefined)
-        scaffold_env.filters["toml_array"] = _toml_array_filter
-        template_env = Environment(
-            variable_start_string="[[",
-            variable_end_string="]]",
-            block_start_string="[%",
-            block_end_string="%]",
-            comment_start_string="[#",
-            comment_end_string="#]",
-            undefined=StrictUndefined,
-        )
+        scaffold_env = create_scaffold_env()
+        template_env = create_template_env()
 
         # 6. Scaffold to temp directory (atomic)
         temp_dir = output.parent / f".mahavishnu-scaffold-{uuid.uuid4().hex[:8]}"
@@ -464,8 +457,3 @@ class ScaffoldingEngine:
         except subprocess.CalledProcessError as exc:
             logger.warning("git command failed for %s: %s", project_name, exc)
 
-
-def _toml_array_filter(value: list[str]) -> str:
-    """Jinja2 filter: render a list as a TOML array."""
-    items = ", ".join(f'"{v}"' for v in value)
-    return f"[{items}]"
