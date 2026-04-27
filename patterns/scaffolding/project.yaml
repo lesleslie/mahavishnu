@@ -24,6 +24,7 @@ structure:
       template: entry-point
     - path: pyproject.toml
       required: true
+      template: pyproject
       description: Project metadata
     - path: settings/mahavishnu.yaml
       required: false
@@ -32,11 +33,22 @@ templates:
   entry-point: |
     from fastblocks.applications import FastBlocks
     app = FastBlocks()
+    {{ slot_middleware }}
+  pyproject: |
+    [project]
+    name = "{{ project_name }}"
+    version = "{{ version }}"
+    description = "{{ project_title }}"
+    requires-python = ">={{ python_version }}"
 slots:
   nav:
     path: templates/base/blocks/
     type: directory
     files:
       - nav.html
+  middleware:
+    path: .
+    type: file-merge
+    merge_strategy: marker-injection
 depends: []
 confidence: 1.0

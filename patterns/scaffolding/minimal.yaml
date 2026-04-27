@@ -18,11 +18,18 @@ structure:
       template: entry-point
     - path: pyproject.toml
       required: true
+      template: pyproject
       description: Project metadata
 templates:
   entry-point: |
     from fastblocks.applications import FastBlocks
     app = FastBlocks()
+  pyproject: |
+    [project]
+    name = "{{ project_name }}"
+    version = "{{ version }}"
+    description = "{{ project_title }}"
+    requires-python = ">={{ python_version }}"
 depends:
   - id: scaffolding/project
     version: ">=1.0.0"

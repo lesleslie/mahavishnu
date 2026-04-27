@@ -1,0 +1,440 @@
+"""Scaffolding Engine Phase 1: deterministic template rendering."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+import secrets
+import shutil
+import subprocess
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+import yaml
+from jinja2 import Environment, StrictUndefined
+
+from mahavishnu.scaffolding.dependency_graph import PatternDependencyGraph
+from mahavishnu.scaffolding.models import Pattern
+from mahavishnu.scaffolding.validation import validate_pattern
+
+if TYPE_CHECKING:
+    from mahavishnu.scaffolding.library import PatternLibrary
+
+logger = logging.getLogger(__name__)
+
+_MANAGED_HEADER = (
+    "# Managed by mahavishnu scaffold — pattern: {pattern_id} v{version}\n"
+    "# Project: {project_name} ({project_title})\n"
+)
+
+
+class ScaffoldingEngine:
+    """Render patterns into project files using Jinja2 templates.
+
+    Workflow:
+    1. Resolve all patterns (expand composites and their dependencies).
+    2. Build a dependency graph and topologically sort.
+    3. Validate patterns and check for file conflicts.
+    4. Render each pattern's templates into a temporary directory.
+    5. Write manifest and lockfile.
+    6. Initialize git.
+    7. Atomically move the result to the output directory.
+    """
+
+    def __init__(self, library: PatternLibrary) -> None:
+        self.library = library
+
+    def scaffold(
+        self,
+        project_name: str,
+        patterns: list[str],
+        output_dir: Path | str,
+        title: str | None = None,
+        author: str | None = None,
+        version: str = "0.1.0",
+        python_version: str = "3.12",
+    ) -> Path:
+        """Scaffold a project from one or more patterns.
+
+        Args:
+            project_name: Slug-style project name (e.g. "my-app").
+            patterns: Pattern IDs to include (composites auto-expand deps).
+            output_dir: Where to write the generated project.
+            title: Human-readable project title. Defaults to title-cased name.
+            author: Author name. Defaults to "Unknown".
+            version: Initial version string. Defaults to "0.1.0".
+            python_version: Target Python version. Defaults to "3.12".
+
+        Returns:
+            Path to the generated project directory.
+
+        Raises:
+            ValueError: On validation failure or missing patterns.
+            CircularDependencyError: On circular pattern dependencies.
+        """
+        output = Path(output_dir)
+
+        # 1. Resolve all patterns (expand composites)
+        resolved = self._resolve_patterns(patterns)
+
+        # 2. Build dependency graph and sort
+        graph = self._build_graph(resolved)
+
+        # 3. Validate
+        issues: list[str] = []
+        for p in resolved.values():
+            for issue in validate_pattern(p, self.library):
+                # Skip slot path warnings for root-level file-merge slots
+                if "outside all pattern dirs" in issue:
+                    continue
+                issues.append(issue)
+        file_conflicts = self._check_file_conflicts(resolved, graph)
+        issues.extend(file_conflicts)
+        if issues:
+            raise ValueError("Validation failed:\n" + "\n".join(f"  - {i}" for i in issues))
+
+        # 4. Compute variables
+        variables = self._compute_variables(project_name, title, author, version, python_version, resolved)
+
+        # 5. Create Jinja2 environments
+        scaffold_env = Environment(undefined=StrictUndefined)
+        scaffold_env.filters["toml_array"] = _toml_array_filter
+        template_env = Environment(
+            variable_start_string="[[",
+            variable_end_string="]]",
+            block_start_string="[%",
+            block_end_string="%]",
+            comment_start_string="[#",
+            comment_end_string="#]",
+            undefined=StrictUndefined,
+        )
+
+        # 6. Scaffold to temp directory (atomic)
+        temp_dir = output.parent / f".mahavishnu-scaffold-{uuid.uuid4().hex[:8]}"
+        try:
+            temp_dir.mkdir(parents=True)
+
+            # First pass: collect file-merge injection templates from all patterns
+            slot_injections = self._collect_slot_injections(resolved, variables, scaffold_env, template_env)
+
+            # Collect all declared slot names and provide empty defaults
+            all_slot_names: set[str] = set()
+            for p in resolved.values():
+                for slot_name, slot in p.get_slots().items():
+                    if slot.type == "file-merge":
+                        all_slot_names.add(slot_name)
+
+            # Add slot injections as template variables (slot_<name> = content)
+            slot_variables = {f"slot_{name}": "" for name in all_slot_names}
+            slot_variables.update({f"slot_{name}": content for name, content in slot_injections.items()})
+            all_variables = {**variables, **slot_variables}
+
+            # Second pass: render patterns in topological order
+            for pattern_id in graph.topological_sort():
+                pattern = resolved[pattern_id]
+                self._render_pattern(pattern, all_variables, temp_dir, scaffold_env, template_env)
+
+            # 7. Write manifest and lockfile
+            self._write_manifest(temp_dir, project_name, resolved, variables)
+
+            # 8. Initialize git
+            self._init_git(temp_dir, project_name)
+
+            # 9. Atomic move (copytree then cleanup, avoids move issues)
+            if output.exists():
+                shutil.rmtree(output)
+            shutil.copytree(str(temp_dir), str(output))
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+            return output
+        except Exception:
+            if temp_dir.exists():
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            if output.exists():
+                shutil.rmtree(output, ignore_errors=True)
+            raise
+
+    def validate_project(self, project_path: Path) -> list[str]:
+        """Validate a scaffolded project against its manifest patterns.
+
+        Checks that required directories and files still exist.
+        """
+        manifest_path = project_path / ".mahavishnu" / "manifest.json"
+        if not manifest_path.exists():
+            return ["No manifest.json found -- not a mahavishnu-scaffolded project"]
+        manifest = json.loads(manifest_path.read_text())
+        issues: list[str] = []
+        for entry in manifest.get("patterns", []):
+            p = self.library.get(entry["id"])
+            if p is None:
+                issues.append(f"Pattern '{entry['id']}' not found in library")
+                continue
+            for d in p.get_dirs():
+                if d.required and not (project_path / d.path).exists():
+                    issues.append(f"Required directory '{d.path}' missing")
+            for f in p.get_files():
+                if f.required and not (project_path / f.path).exists():
+                    issues.append(f"Required file '{f.path}' missing")
+        return issues
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _check_file_conflicts(
+        self, resolved: dict[str, Pattern], graph: PatternDependencyGraph
+    ) -> list[str]:
+        """Check for file conflicts between unrelated patterns.
+
+        Allows a pattern to override files from its dependencies (topological
+        order ensures the dependent pattern renders last and wins).
+        """
+        issues: list[str] = []
+        file_claims: dict[str, list[str]] = {}
+        for pid in resolved:
+            for f in resolved[pid].get_files():
+                if f.required:
+                    file_claims.setdefault(f.path, []).append(pid)
+
+        # Build ancestor sets for dependency-aware conflict detection
+        ancestors: dict[str, set[str]] = {}
+        for pid in resolved:
+            ancestors[pid] = set()
+            queue = list(resolved[pid].get_dependency_ids())
+            visited: set[str] = set()
+            while queue:
+                dep = queue.pop(0)
+                if dep in visited:
+                    continue
+                visited.add(dep)
+                ancestors[pid].add(dep)
+                dep_pattern = resolved.get(dep)
+                if dep_pattern:
+                    queue.extend(dep_pattern.get_dependency_ids())
+
+        for path, claimants in file_claims.items():
+            unique = list(dict.fromkeys(claimants))
+            for i in range(len(unique)):
+                for j in range(i + 1, len(unique)):
+                    p1, p2 = unique[i], unique[j]
+                    # No conflict if one is an ancestor of the other
+                    if p2 in ancestors.get(p1, set()) or p1 in ancestors.get(p2, set()):
+                        continue
+                    issues.append(
+                        f"File conflict: {p1} and {p2} both claim '{path}'"
+                    )
+        return issues
+
+    def _resolve_patterns(self, pattern_ids: list[str]) -> dict[str, Pattern]:
+        """BFS resolve all pattern IDs including their transitive dependencies."""
+        resolved: dict[str, Pattern] = {}
+        queue = list(pattern_ids)
+
+        while queue:
+            pid = queue.pop(0)
+            if pid in resolved:
+                continue
+            pattern = self.library.get(pid)
+            if pattern is None:
+                raise ValueError(f"Pattern '{pid}' not found in library")
+            resolved[pid] = pattern
+            for dep_id in pattern.get_dependency_ids():
+                if dep_id not in resolved:
+                    queue.append(dep_id)
+        return resolved
+
+    def _build_graph(self, resolved: dict[str, Pattern]) -> PatternDependencyGraph:
+        """Build dependency graph from resolved patterns.
+
+        Edge semantics: ``add_edge(prerequisite, dependent)`` so that
+        topological sort produces prerequisites before dependents.
+        """
+        graph = PatternDependencyGraph()
+        for pid in resolved:
+            graph.add(pid)
+            # For each dependency of pid: the dependency is the prerequisite
+            for dep_id in resolved[pid].get_dependency_ids():
+                graph.add_edge(dep_id, pid)
+            for f in resolved[pid].get_files():
+                if f.required:
+                    graph.claim_file(pid, f.path)
+        return graph
+
+    def _compute_variables(
+        self,
+        project_name: str,
+        title: str | None,
+        author: str | None,
+        version: str,
+        python_version: str,
+        resolved: dict[str, Pattern],
+    ) -> dict[str, str]:
+        """Build the template variable context."""
+        slug = project_name.replace("-", "_")
+        project_title = title or project_name.replace("-", " ").title()
+        return {
+            "project_name": project_name,
+            "project_slug": slug,
+            "project_title": project_title,
+            "app_name": project_title,
+            "app_short_name": project_name,
+            "site_name": project_title,
+            "toggle_label": "Menu",
+            "author": author or "Unknown",
+            "version": version,
+            "python_version": python_version,
+            "session_secret": secrets.token_urlsafe(32),
+            "dependencies": ", ".join(
+                sorted({dep for p in resolved.values() for dep in p.get_dependency_ids()})
+            ),
+            "adapter_names": ", ".join(
+                sorted({pid.split("/")[0] for pid in resolved if pid.startswith("adapters/")})
+            ),
+        }
+
+    def _collect_slot_injections(
+        self,
+        resolved: dict[str, Pattern],
+        variables: dict[str, str],
+        scaffold_env: Environment,
+        template_env: Environment,
+    ) -> dict[str, str]:
+        """Collect file-merge injection templates from all patterns.
+
+        Scans all patterns for templates named ``<slot_name>-injection`` where
+        ``<slot_name>`` matches a declared file-merge slot in any pattern.
+
+        Returns a mapping of slot_name -> rendered injection content.
+        """
+        # First, find all declared file-merge slot names
+        declared_slots: set[str] = set()
+        for pattern in resolved.values():
+            for slot_name, slot in pattern.get_slots().items():
+                if slot.type == "file-merge":
+                    declared_slots.add(slot_name)
+
+        # Then, collect injection templates from ALL patterns
+        injections: dict[str, str] = {}
+        for pid, pattern in resolved.items():
+            for slot_name in declared_slots:
+                injection_key = f"{slot_name}-injection"
+                if injection_key in pattern.templates:
+                    # Determine the env based on the slot's target path
+                    slot = None
+                    for p in resolved.values():
+                        for sn, s in p.get_slots().items():
+                            if sn == slot_name:
+                                slot = s
+                                break
+                    env = template_env if slot and slot.path.endswith(".html") else scaffold_env
+                    content = env.from_string(
+                        pattern.templates[injection_key]
+                    ).render(**variables)
+                    if slot_name in injections:
+                        injections[slot_name] += "\n" + content
+                    else:
+                        injections[slot_name] = content
+        return injections
+
+    def _render_pattern(
+        self,
+        pattern: Pattern,
+        variables: dict[str, str],
+        output_dir: Path,
+        scaffold_env: Environment,
+        template_env: Environment,
+    ) -> None:
+        """Render a single pattern's directories, files, and slots."""
+        # Create directories
+        for d in pattern.get_dirs():
+            dir_path = output_dir / d.path
+            dir_path.mkdir(parents=True, exist_ok=True)
+
+        # Create slot directories
+        for slot_name, slot in pattern.get_slots().items():
+            slot_path = output_dir / slot.path
+            slot_path.mkdir(parents=True, exist_ok=True)
+
+        # Render files
+        for f in pattern.get_files():
+            template_name = f.template
+            template_str = pattern.templates.get(template_name, "")
+            if not template_str:
+                continue
+
+            env = template_env if f.path.endswith(".html") else scaffold_env
+            try:
+                rendered = env.from_string(template_str).render(**variables)
+            except Exception as e:
+                raise ValueError(
+                    f"Template render error in '{template_name}' for '{pattern.id}': {e}"
+                ) from e
+
+            # Add managed header
+            if not rendered.startswith("# Managed by"):
+                rendered = _MANAGED_HEADER.format(
+                    pattern_id=pattern.id,
+                    version=pattern.version,
+                    project_name=variables["project_name"],
+                    project_title=variables["project_title"],
+                ) + "\n" + rendered
+
+            file_path = output_dir / f.path
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text(rendered)
+
+    def _write_manifest(
+        self,
+        output_dir: Path,
+        project_name: str,
+        resolved: dict[str, Pattern],
+        variables: dict[str, str],
+    ) -> None:
+        """Write .mahavishnu/manifest.json and patterns.lock."""
+        manifest_dir = output_dir / ".mahavishnu"
+        manifest_dir.mkdir(parents=True, exist_ok=True)
+
+        patterns_list = []
+        for pid in sorted(resolved):
+            p = resolved[pid]
+            file_hash = hashlib.sha256(
+                yaml.dump(p.model_dump(mode="json")).encode()
+            ).hexdigest()[:16]
+            patterns_list.append({
+                "id": p.id,
+                "version": p.version,
+                "file_hash": f"sha256:{file_hash}",
+            })
+
+        manifest = {
+            "schema_version": 1,
+            "project_name": project_name,
+            "patterns": patterns_list,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "variables": {
+                k: v for k, v in variables.items() if k != "session_secret"
+            },
+        }
+        (manifest_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+        (manifest_dir / "patterns.lock").write_text(
+            "\n".join(f"{p['id']}=={p['version']}" for p in patterns_list) + "\n"
+        )
+
+    def _init_git(self, project_dir: Path, project_name: str) -> None:
+        """Initialize a git repo and create the initial commit."""
+        subprocess.run(["git", "init"], cwd=project_dir, capture_output=True)
+        subprocess.run(["git", "add", "-A"], cwd=project_dir, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", f"init: scaffold {project_name} via mahavishnu"],
+            cwd=project_dir,
+            capture_output=True,
+        )
+
+
+def _toml_array_filter(value: list[str]) -> str:
+    """Jinja2 filter: render a list as a TOML array."""
+    items = ", ".join(f'"{v}"' for v in value)
+    return f"[{items}]"

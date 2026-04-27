@@ -28,6 +28,12 @@ templates:
   adapter-impl: |
     class FirebaseAuth(AuthBase):
         """Firebase authentication implementation."""
+  middleware-injection: |
+    # Auth middleware
+    @app.middleware("http")
+    async def auth_middleware(request, call_next):
+        """Session-based authentication middleware."""
+        return await call_next(request)
 depends:
   - id: scaffolding/project
     version: ">=1.0.0"
