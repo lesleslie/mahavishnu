@@ -84,10 +84,7 @@ class PatternLibrary:
         return dest
 
     def delete(self, pattern_id: str) -> bool:
-        pattern = self._cache.pop(pattern_id, None)
-        if pattern is None:
-            return False
-        return True
+        return self._cache.pop(pattern_id, None) is not None
 
 
 def atomic_write(path: Path, content: str) -> None:

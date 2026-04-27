@@ -2,28 +2,28 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import hashlib
 import json
 import logging
+from pathlib import Path
 import secrets
 import shutil
 import subprocess
-import uuid
-from datetime import datetime, timezone
-from pathlib import Path
 from typing import TYPE_CHECKING
+import uuid
 
 import yaml
 
 from mahavishnu.scaffolding.dependency_graph import PatternDependencyGraph
 from mahavishnu.scaffolding.jinjava_env import create_scaffold_env, create_template_env
-from mahavishnu.scaffolding.models import Pattern
 from mahavishnu.scaffolding.validation import validate_pattern
 
 if TYPE_CHECKING:
     from jinja2 import Environment
 
     from mahavishnu.scaffolding.library import PatternLibrary
+    from mahavishnu.scaffolding.models import Pattern
 
 logger = logging.getLogger(__name__)
 
@@ -319,7 +319,7 @@ class ScaffoldingEngine:
 
         # Then, collect injection templates from ALL patterns
         injections: dict[str, str] = {}
-        for pid, pattern in resolved.items():
+        for _pid, pattern in resolved.items():
             for slot_name in declared_slots:
                 injection_key = f"{slot_name}-injection"
                 if injection_key in pattern.templates:
@@ -355,7 +355,7 @@ class ScaffoldingEngine:
             dir_path.mkdir(parents=True, exist_ok=True)
 
         # Create slot directories
-        for slot_name, slot in pattern.get_slots().items():
+        for _slot_name, slot in pattern.get_slots().items():
             slot_path = output_dir / slot.path
             slot_path.mkdir(parents=True, exist_ok=True)
 
@@ -430,7 +430,7 @@ class ScaffoldingEngine:
             "schema_version": 1,
             "project_name": project_name,
             "patterns": patterns_list,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "variables": {
                 k: v for k, v in variables.items() if k != "session_secret"
             },
