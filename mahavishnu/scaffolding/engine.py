@@ -30,6 +30,14 @@ _MANAGED_HEADER = (
     "# Project: {project_name} ({project_title})\n"
 )
 
+# Extensions where ``#`` is a valid comment character.
+_MANAGED_HEADER_EXTENSIONS: frozenset[str] = frozenset({
+    ".py", ".yaml", ".yml", ".sh", ".html", ".css", ".js", ".ts",
+    ".jsx", ".tsx", ".vue", ".svelte", ".scss", ".sass", ".less",
+    ".lua", ".pl", ".rb", ".r", ".jl", ".toml-comment", ".md",
+    ".txt", ".env", ".gitignore", ".dockerignore", ".editorconfig",
+})
+
 
 class ScaffoldingEngine:
     """Render patterns into project files using Jinja2 templates.
@@ -373,8 +381,25 @@ class ScaffoldingEngine:
                     f"Template render error in '{template_name}' for '{pattern.id}': {e}"
                 ) from e
 
-            # Add managed header
-            if not rendered.startswith("# Managed by"):
+            file_path = output_dir / f.path
+
+            # Add managed header only for files where # is a valid comment
+            file_ext = file_path.suffix.lower()
+            file_name = file_path.name
+            supports_hash_comment = (
+                file_ext in _MANAGED_HEADER_EXTENSIONS
+                or file_name.startswith(".")
+                or file_name in {"Makefile", "Rakefile", "Gemfile", "Justfile"}
+            )
+            # Explicitly exclude formats where # is NOT a comment
+            _no_header_extensions = {".toml", ".json", ".cfg", ".ini", ".xml"}
+            _no_header_names = {"Dockerfile", "Jenkinsfile"}
+            if (
+                supports_hash_comment
+                and file_ext not in _no_header_extensions
+                and file_name not in _no_header_names
+                and not rendered.startswith("# Managed by")
+            ):
                 rendered = _MANAGED_HEADER.format(
                     pattern_id=pattern.id,
                     version=pattern.version,
@@ -382,7 +407,6 @@ class ScaffoldingEngine:
                     project_title=variables["project_title"],
                 ) + "\n" + rendered
 
-            file_path = output_dir / f.path
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(rendered)
 
@@ -425,13 +449,20 @@ class ScaffoldingEngine:
 
     def _init_git(self, project_dir: Path, project_name: str) -> None:
         """Initialize a git repo and create the initial commit."""
-        subprocess.run(["git", "init"], cwd=project_dir, capture_output=True)
-        subprocess.run(["git", "add", "-A"], cwd=project_dir, capture_output=True)
-        subprocess.run(
-            ["git", "commit", "-m", f"init: scaffold {project_name} via mahavishnu"],
-            cwd=project_dir,
-            capture_output=True,
-        )
+        try:
+            subprocess.run(["git", "init"], cwd=project_dir, capture_output=True, check=True, text=True)
+            subprocess.run(["git", "add", "-A"], cwd=project_dir, capture_output=True, check=True, text=True)
+            subprocess.run(
+                ["git", "commit", "-m", f"init: scaffold {project_name} via mahavishnu"],
+                cwd=project_dir,
+                capture_output=True,
+                check=True,
+                text=True,
+            )
+        except FileNotFoundError:
+            logger.warning("git not found — skipping repository initialization for %s", project_name)
+        except subprocess.CalledProcessError as exc:
+            logger.warning("git command failed for %s: %s", project_name, exc)
 
 
 def _toml_array_filter(value: list[str]) -> str:
