@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import heapq
 from collections import defaultdict
+import heapq
 
 
 class CircularDependencyError(Exception):

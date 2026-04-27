@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import logging
-import re
 from pathlib import Path
-
-from mahavishnu.scaffolding.models import Pattern
+import re
 
 logger = logging.getLogger(__name__)
 

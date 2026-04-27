@@ -7,7 +7,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-
 _PATH_TRAVERSAL_RE = re.compile(r"(\.\./|\.\.\\|/etc/|/tmp/|/var/)")
 
 
