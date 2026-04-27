@@ -47,6 +47,8 @@ from .cli.team_cli import add_team_commands
 from .cli.events import add_events_commands
 # Import code indexing CLI
 from .cli.index_cli import add_index_commands
+# Import scaffold CLI
+from .cli.scaffold_cli import app as scaffold_app
 
 # Import comprehensive help system
 # NOTE: help_cli uses Click which is incompatible with Typer's add_typer()
@@ -969,6 +971,9 @@ add_team_commands(app)
 add_events_commands(app)
 # Add code indexing commands
 add_index_commands(app)
+
+# Add scaffold CLI
+app.add_typer(scaffold_app, name="scaffold")
 
 # Worker management
 workers_app = typer.Typer(help="Worker orchestration and management")
