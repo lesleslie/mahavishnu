@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import typer
@@ -129,7 +128,8 @@ def patterns_validate():
     if total_issues == 0:
         typer.echo("All patterns valid.")
     else:
-        typer.echo(f"\n{total_issues} validation errors across {len(lib._cache)} patterns.")
+        typer.echo(f"\n{total_issues} validation errors across {len(lib._cache)} patterns.", err=True)
+        raise typer.Exit(code=1)
 
 
 @patterns_app.command("search")
@@ -178,7 +178,7 @@ def scaffold(
                 continue
             p = lib.get(pid)
             if p is None:
-                typer.echo(f"Pattern '{pid}' not found.")
+                typer.echo(f"Pattern '{pid}' not found.", err=True)
                 raise typer.Exit(code=1)
             resolved.append(p)
             seen.add(pid)
@@ -189,6 +189,11 @@ def scaffold(
         for p in resolved:
             typer.echo(f"  - {p.id} v{p.version}")
         return
+
+    # Guard against path traversal
+    if "/" in project_name or "\\" in project_name or ".." in project_name:
+        typer.echo("Error: project_name must not contain '/', '\\', or '..'", err=True)
+        raise typer.Exit(code=1)
 
     if output is None:
         output = Path.cwd() / project_name

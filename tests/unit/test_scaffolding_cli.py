@@ -44,8 +44,12 @@ class TestPatternsShow:
 class TestPatternsValidate:
     def test_validate_library(self):
         result = runner.invoke(app, ["patterns", "validate"])
-        assert result.exit_code == 0
-        assert "validation errors" in result.output.lower() or "valid" in result.output.lower()
+        if "validation errors" in result.output.lower():
+            # Non-zero exit when issues exist
+            assert result.exit_code == 1
+        else:
+            assert "valid" in result.output.lower()
+            assert result.exit_code == 0
 
 
 class TestScaffoldCommand:
@@ -61,6 +65,13 @@ class TestScaffoldCommand:
             "scaffold", "test-bad", "--patterns", "nonexistent/x",
         ])
         assert result.exit_code == 1
+
+    def test_scaffold_rejects_path_traversal(self):
+        result = runner.invoke(app, [
+            "scaffold", "../../etc", "--patterns", "scaffolding/minimal",
+        ])
+        assert result.exit_code == 1
+        assert "must not contain" in result.output
 
 
 class TestScaffoldValidate:
