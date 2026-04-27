@@ -84,6 +84,18 @@ class TestBasicScaffold:
         # Managed header is NOT added for .toml files
         assert "# Managed by" not in content
 
+    def test_pyproject_has_dependencies(self, scaffolded_project: Path):
+        content = (scaffolded_project / "pyproject.toml").read_text()
+        # The project pattern template renders project metadata with template variables
+        assert "[project]" in content
+        assert "name = " in content
+
+    def test_validate_passes(self, scaffolded_project: Path):
+        result = runner.invoke(
+            app, ["scaffold-validate", "--project", str(scaffolded_project)]
+        )
+        assert result.exit_code == 0, f"Validate failed: {result.output}"
+
 
 class TestCompositeScaffold:
     """Verify composite/pwa-app scaffolds all dependency patterns."""
