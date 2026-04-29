@@ -114,15 +114,17 @@ If no code graphs exist, inform the user:
 **Function archaeology workflow:**
 
 1. Call `mcp__akosha__get_cross_repo_function_usage` with the function/class name
-2. Present file locations with line numbers across all repos
-3. For each usage site, call `mcp__akosha__search_all_systems` for context about why it was used that way
+2. If the result is empty or contains no usages, inform the user: "No cross-repo usages found for `[name]`. It may not be indexed yet — run `code_ingest_directory` on the target repos first." Then stop.
+3. Present file locations with line numbers across all repos
+4. For each usage site, call `mcp__akosha__search_all_systems` for context about why it was used that way
 
 **Pattern mining workflow:**
 
 1. Call `mcp__akosha__search_all_systems` with the pattern query
-2. Extract repo and file references from conversation results
-3. Cross-reference with code graph data for structural context
-4. Present a summary: which repos implement this pattern, how they differ, and what trade-offs were discussed
+2. If no results are returned, inform the user: "No matching patterns found across ingested repos. Try a broader query or ingest more repos." Then stop.
+3. Extract repo and file references from conversation results
+4. Cross-reference with code graph data for structural context
+5. Present a summary: which repos implement this pattern, how they differ, and what trade-offs were discussed
 
 ### Step 4: Present Findings
 
@@ -293,7 +295,9 @@ If no metrics are returned, inform the user:
 
 1. Identify the metric the user is asking about (default: all metrics)
 2. Call `mcp__akosha__analyze_trends` with the metric name and appropriate time window
-3. Present:
+3. If the result includes fewer than 5 data points, prepend a warning to the output:
+   > "⚠️ Low data volume: trend based on [N] data points — results may not be statistically reliable. Run `crackerjack run` more times to build a larger sample."
+4. Present:
    - Trend direction (increasing/decreasing/stable)
    - Confidence (R-squared score)
    - Percent change
@@ -346,13 +350,18 @@ Format results as structured markdown:
 
 ### Step 5: Fallback (Akosha Unavailable)
 
-If Akosha MCP tools are not available:
+If Akosha MCP tools are not available, use this three-tier fallback chain:
 
-1. Direct user to check Crackerjack's local data directly:
-   ```
-   sqlite3 .crackerjack/adapter_learning.db "SELECT adapter_name, COUNT(*), AVG(execution_time_ms) FROM executions GROUP BY adapter_name ORDER BY AVG(execution_time_ms) DESC;"
-   ```
-2. Inform the user: "Akosha is not available. Showing local Crackerjack data only. For cross-system trends, ensure Akosha is running."
+**Tier 1 (Akosha):** Unavailable — skip.
+
+**Tier 2 (Mahavishnu MCP):** If `mcp__mahavishnu__*` tools are available, call `mcp__mahavishnu__get_health` to retrieve service health status across ecosystem components. Present as a simplified health table without trend data.
+
+**Tier 3 (Local Crackerjack data):** If Mahavishnu MCP is also unavailable, direct user to check Crackerjack's local data directly:
+```
+sqlite3 .crackerjack/adapter_learning.db "SELECT adapter_name, COUNT(*), AVG(execution_time_ms) FROM executions GROUP BY adapter_name ORDER BY AVG(execution_time_ms) DESC;"
+```
+
+Inform the user at each tier: "Akosha is not available. Showing [tier description] only. For cross-system trends, ensure Akosha is running at `http://localhost:8682`."
 
 ## Common Mistakes
 

@@ -81,7 +81,7 @@ Each Bodai component provides exactly one primary health signal:
 | **Crackerjack** | `mcp__session-buddy__get_crackerjack_quality_metrics` | Quality scores, pass/fail rates, adapter performance | Green: all adapters passing. Yellow: 1+ adapter degrading. Red: adapter failures |
 | **Mahavishnu** | `mcp__mahavishnu__get_health` | Overall health, active workflows, pool status | Green: healthy. Yellow: degraded dependency. Red: critical failure |
 | **Akosha** | `mcp__akosha__detect_anomalies` on `conversation_count` | Anomalies in cross-system metrics | Green: no anomalies. Yellow: low-confidence (< 2 std dev). Red: high-confidence (>= 2 std dev) |
-| **Dhara** | `mcp__dhara__get_storage_status` | Storage tier health and availability | Green: all tiers healthy. Yellow: one tier degraded. Red: tier unavailable |
+| **Dhara** | `mcp__dhara__get_adapter_health` | Storage adapter health and availability | Green: all tiers healthy. Yellow: one tier degraded. Red: tier unavailable |
 | **Session-Buddy** | `mcp__session-buddy__get_activity_summary` | Recent session activity | Green: normal activity. Yellow: low activity (stale). Red: no activity (may be stuck) |
 
 ## Implementation
@@ -94,7 +94,7 @@ Call all five signal tools. Each call is independent — a failure in one does n
 mcp__session-buddy__get_crackerjack_quality_metrics(days=7)
 mcp__mahavishnu__get_health()
 mcp__akosha__detect_anomalies(metric_name="conversation_count", time_window_days=7)
-mcp__dhara__get_storage_status()
+mcp__dhara__get_adapter_health()
 mcp__session-buddy__get_activity_summary(hours=2)
 ```
 
@@ -121,7 +121,7 @@ For each component, classify the result into green, yellow, red, or grey (unavai
 - Red: High-confidence anomaly detected
 
 **Dhara classification:**
-- Grey: `get_storage_status` call failed or timed out
+- Grey: `get_adapter_health` call failed or timed out
 - Green: All storage tiers operational
 - Yellow: One tier degraded but functional
 - Red: Tier unavailable
@@ -182,12 +182,12 @@ When the summary flags a problem, include a skill recommendation:
 | Crackerjack yellow/red | `run-quality-checks` | Trigger quality gates for immediate action |
 | Crackerjack yellow/red (trends) | `quality-pulse` | Analyze quality trends over time |
 | Mahavishnu yellow/red | `manage-pools` | Pool lifecycle management |
-| Mahavishnu yellow/red (workflows) | `orchestrate-workflow` | Workflow orchestration issues |
+| Mahavishnu yellow/red (workflows) | `search-insights` + direct Mahavishnu CLI | `orchestrate-workflow` skill may not exist — use MCP tools or CLI directly |
 | Akosha yellow/red | `quality-pulse` | Trend analysis on anomalies |
 | Akosha yellow/red (search) | `search-insights` | Deep semantic search across systems |
 | Dhara yellow/red | Direct user to check Dhara MCP server | Infrastructure issue |
 | Session-Buddy yellow/red | `session-archaeologist` | Recover lost context |
-| Session-Buddy yellow/red (recent) | `search-sessions` | Search recent session history |
+| Session-Buddy yellow/red (recent) | `search-insights` | `search-sessions` skill may not exist — use `search-insights` instead |
 
 ## Graceful Degradation
 
@@ -307,7 +307,7 @@ Confirm the SKILL.md references one tool from each component:
 1. Crackerjack: `mcp__session-buddy__get_crackerjack_quality_metrics`
 2. Mahavishnu: `mcp__mahavishnu__get_health`
 3. Akosha: `mcp__akosha__detect_anomalies`
-4. Dhara: `mcp__dhara__get_storage_status`
+4. Dhara: `mcp__dhara__get_adapter_health`
 5. Session-Buddy: `mcp__session-buddy__get_activity_summary`
 
 - [x] **Step 8: Verify cross-references are correct**

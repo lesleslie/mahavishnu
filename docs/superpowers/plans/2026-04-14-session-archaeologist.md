@@ -4,7 +4,7 @@
 
 **Goal:** Create a standalone Claude Code skill (SKILL.md file) that recovers past decisions, solutions, and session context from across all Session-Buddy instances via Akosha.
 
-**Architecture:** Pure SKILL.md prompt file in `~/.claude/skills/`. No Python code, no new MCP tools. Composes existing Akosha MCP tools (`search_all_systems`, `query_knowledge_graph`, `generate_embedding`) with a narrative-synthesis workflow that differentiates it from the generic `search-insights` skill.
+**Architecture:** Pure SKILL.md prompt file in `~/.claude/skills/`. No Python code, no new MCP tools. Composes existing Akosha MCP tools (`search_all_systems`, `query_knowledge_graph`) with a narrative-synthesis workflow that differentiates it from the generic `search-insights` skill.
 
 **Tech Stack:** Claude Code skills (SKILL.md with YAML frontmatter), Akosha MCP tools, Session-Buddy MCP tools (fallback)
 
@@ -201,7 +201,7 @@ Deduplicate across conversation fragments, order chronologically, and present in
 If Akosha MCP tools are not available, fall back to Session-Buddy MCP tools directly:
 
 1. Try `mcp__session-buddy__search_conversations(query="<topic>", limit=10)`
-2. Try `mcp__session-buddy__search_reflections(query="<topic>", limit=10)`
+2. Try `mcp__session-buddy__search_by_concept(concept="<topic>", limit=10)` (reflections and knowledge graph entities)
 3. Try `mcp__session-buddy__search_entities(query="<topic>", limit=10)`
 
 If Session-Buddy MCP is also unavailable, fall back to direct filesystem search:

@@ -74,7 +74,52 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 - Status: `active`
 - Use for: nanobot worker integration and Claude MCP serve autostart work.
 
+### Bodai Inter-Service Authentication
+
+- Spec: [../superpowers/specs/2026-04-27-bodai-auth-standardization-design.md](../superpowers/specs/2026-04-27-bodai-auth-standardization-design.md)
+- Plan: [../superpowers/plans/2026-04-27-bodai-auth-standardization.md](../superpowers/plans/2026-04-27-bodai-auth-standardization.md)
+- Status: `active`, `implementation`
+- Use for: canonical JWT primitives, RBAC (Permission enum), audit logging, Oneiric secrets integration, and per-service migration from divergent auth implementations. Also migrates Dhara backup storage from custom S3/GCS/Azure code to Oneiric storage adapters.
+- Relationship: unblocks Phase 2 engine surface expansion. Must be implemented before adding new inter-service calls or promoting any service to production auth.
+
+### Config Consolidation
+
+- Spec: [../superpowers/specs/2026-04-26-config-consolidation-design.md](../superpowers/specs/2026-04-26-config-consolidation-design.md)
+- Plan: [../superpowers/plans/2026-04-26-config-consolidation.md](../superpowers/plans/2026-04-26-config-consolidation.md)
+- Status: `active`, `implementation`
+- Use for: migrating all Claude Code configuration (agents, skills, settings, MCP server config) from global `~/.claude/` into the versioned `mahavishnu/.claude/` project directory for portability and multi-tool access.
+- Relationship: prerequisite for Agent & Skill Modernization. Must run before enriching agent/skill content.
+
+### Agent & Skill Modernization
+
+- Spec: [../superpowers/specs/2026-04-26-agent-skill-modernization-design.md](../superpowers/specs/2026-04-26-agent-skill-modernization-design.md)
+- Plan: [../superpowers/plans/2026-04-26-agent-skill-modernization.md](../superpowers/plans/2026-04-26-agent-skill-modernization.md)
+- Status: `active`, `implementation`
+- Use for: enriching 15 agent descriptions with ecosystem MCP tool references, adding "Available MCP Servers" sections to all 22 native skills, fixing stale references, and wiring automated drift validation into `mahavishnu config validate`.
+- Relationship: depends on Config Consolidation. Run after agents/skills are in the Mahavishnu project directory.
+
 ### Superpowers Implementation Plans
+
+#### Akosha Skills
+
+- Plan: [../superpowers/plans/2026-04-14-akosha-skills.md](../superpowers/plans/2026-04-14-akosha-skills.md)
+- Status: `active`, `implementation`
+- Use for: creating the Code Archaeologist and Quality Pulse Claude Code skills that compose Akosha MCP tools into focused discovery and trend-analysis workflows.
+- Relationship: independent of TUI/auth work — can execute in parallel.
+
+#### Bodai Radar
+
+- Plan: [../superpowers/plans/2026-04-14-bodai-radar.md](../superpowers/plans/2026-04-14-bodai-radar.md)
+- Status: `active`, `implementation`
+- Use for: creating the Bodai Radar skill — a unified traffic-light health dashboard across all 5 Bodai network components in a single command.
+- Relationship: independent — can execute in parallel. Supersedes ad hoc health checks.
+
+#### Session Archaeologist
+
+- Plan: [../superpowers/plans/2026-04-14-session-archaeologist.md](../superpowers/plans/2026-04-14-session-archaeologist.md)
+- Status: `active`, `implementation`
+- Use for: creating the Session Archaeologist skill — recovers past decisions, solutions, and session context from across all Session-Buddy instances via Akosha semantic search.
+- Relationship: independent — can execute in parallel.
 
 #### Code Indexing Integration
 
