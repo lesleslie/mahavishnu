@@ -196,3 +196,6 @@ secrets/
 *.orig
 *.tmp
 health.db
+
+# Git worktrees
+.worktrees/
