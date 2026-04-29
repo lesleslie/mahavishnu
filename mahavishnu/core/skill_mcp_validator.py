@@ -79,8 +79,8 @@ KNOWN_PORTS: dict[str, int] = {
     "dhara": 8683,
 }
 
-_MCP_REF_RE = re.compile(r"mcp__[\w-]+___?[\w]+(?:__[\w]+)*")
-_PORT_RE = re.compile(r"\b(crackerjack|session[_-]buddy|mahavishnu|akosha|dhara)\b.*?(?:port\s+)?(\d{4,5})", re.IGNORECASE)
+_MCP_REF_RE = re.compile(r"mcp__[a-zA-Z\d](?:[a-zA-Z\d-]*[a-zA-Z\d])?___?[\w]+(?:__[\w]+)*")
+_PORT_RE = re.compile(r"\b(crackerjack|session[_-]buddy|mahavishnu|akosha|dhara)\b[^.\n]*?\bport\s+(\d{4,5})", re.IGNORECASE)
 
 
 @dataclass
