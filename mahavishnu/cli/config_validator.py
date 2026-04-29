@@ -14,6 +14,7 @@ import yaml
 
 from ..core.config import MahavishnuSettings
 from ..core.config_validator import ConfigValidationReport, ValidationResult, validate_config
+from ..core.skill_mcp_validator import validate_agent_dir, validate_skill_dir
 from ..core.health import HealthChecker
 from ..core.health_schemas import HealthStatus
 
@@ -313,6 +314,24 @@ async def run_validation(config_dir: str | Path = "settings", full: bool = False
             )
         else:
             runtime_validations = _validate_runtime_settings(settings)
+            # Drift check: find .claude/ in project dir first, fall back to global
+            claude_dir = Path(__file__).parents[2] / ".claude"
+            if not claude_dir.exists():
+                claude_dir = Path.home() / ".claude"
+            drift_report = check_skill_agent_drift(
+                agents_dir=claude_dir / "agents",
+                skills_dir=claude_dir / "skills",
+            )
+            drift_errors = [
+                ValidationResult(valid=False, message=e, path="mcp_drift")
+                for e in drift_report.errors
+            ]
+            drift_warnings = [
+                ValidationResult(valid=True, message=w, path="mcp_drift")
+                for w in drift_report.warnings
+            ]
+            runtime_validations.extend(drift_errors)
+            runtime_validations.extend(drift_warnings)
             if full:
                 runtime_checks = await _validate_runtime_connectivity(settings)
 
@@ -433,7 +452,55 @@ def add_config_validation_commands(app: typer.Typer) -> None:
         asyncio.run(_validate())
 
 
+@dataclass(slots=True)
+class DriftReport:
+    """Aggregated skill/agent MCP drift report."""
+
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+    @property
+    def error_count(self) -> int:
+        return len(self.errors)
+
+    @property
+    def valid(self) -> bool:
+        return not self.errors
+
+
+def check_skill_agent_drift(
+    agents_dir: Path,
+    skills_dir: Path,
+) -> DriftReport:
+    """Check agents and skills for stale MCP references and description violations."""
+    report = DriftReport()
+
+    if agents_dir.exists():
+        for name, agent_report in validate_agent_dir(agents_dir).items():
+            for ref in agent_report.stale_refs:
+                report.errors.append(
+                    f"Agent {name}: stale MCP ref {ref!r} not in KNOWN_TOOLS"
+                )
+            if agent_report.description_too_long:
+                report.warnings.append(
+                    f"Agent {name}: description exceeds 300 characters"
+                )
+
+    if skills_dir.exists():
+        for rel_path, skill_report in validate_skill_dir(skills_dir).items():
+            for ref in skill_report.stale_refs:
+                report.errors.append(
+                    f"Skill {rel_path}: stale MCP ref {ref!r} not in KNOWN_TOOLS"
+                )
+            for wrong in skill_report.wrong_ports:
+                report.errors.append(f"Skill {rel_path}: wrong port — {wrong}")
+
+    return report
+
+
 __all__ = [
     "add_config_validation_commands",
+    "check_skill_agent_drift",
+    "DriftReport",
     "run_validation",
 ]

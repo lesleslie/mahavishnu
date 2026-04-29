@@ -11,7 +11,7 @@ import pytest
 from typer.testing import CliRunner
 
 from mahavishnu._main_cli import app
-from mahavishnu.cli.config_validator import run_validation
+from mahavishnu.cli.config_validator import DriftReport, run_validation
 from mahavishnu.core.health_schemas import HealthStatus
 
 if TYPE_CHECKING:
@@ -120,6 +120,9 @@ class TestValidationHelper:
         with patch(
             "mahavishnu.cli.config_validator.HealthChecker.check",
             new=AsyncMock(return_value=fake_result),
+        ), patch(
+            "mahavishnu.cli.config_validator.check_skill_agent_drift",
+            return_value=DriftReport(),
         ):
             report = await run_validation(config_dir=config_dir, full=True)
 
