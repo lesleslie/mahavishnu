@@ -62,7 +62,7 @@ session-buddy/
 - Create: `mahavishnu/mahavishnu/core/code_index/__init__.py`
 - Create: `mahavishnu/mahavishnu/core/code_index/models.py`
 
-- [ ] **Step 1: Create the code_index package**
+- [x] **Step 1: Create the code_index package**
 
 ```python
 # mahavishnu/mahavishnu/core/code_index/__init__.py
@@ -83,7 +83,7 @@ from .models import (
 )
 ```
 
-- [ ] **Step 2: Write the models module**
+- [x] **Step 2: Write the models module**
 
 ```python
 # mahavishnu/mahavishnu/core/code_index/models.py
@@ -236,14 +236,14 @@ class DegradationTier(BaseModel):
     total_files: int = 0
 ```
 
-- [ ] **Step 3: Verify models import**
+- [x] **Step 3: Verify models import**
 
 ```bash
 cd /Users/les/Projects/mahavishnu
 python -c "from mahavishnu.core.code_index.models import CallChainRequest; print('OK')"
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add mahavishnu/core/code_index/
@@ -257,7 +257,7 @@ git commit -m "feat: add Pydantic models for code graph indexing"
 **Files:**
 - Create: `mahavishnu/mahavishnu/core/code_index/path_validation.py`
 
-- [ ] **Step 1: Write path validator**
+- [x] **Step 1: Write path validator**
 
 ```python
 # mahavishnu/mahavishnu/core/code_index/path_validation.py
@@ -304,7 +304,7 @@ def validate_repo_path(repo_path: str) -> str:
     return resolved
 ```
 
-- [ ] **Step 2: Write test**
+- [x] **Step 2: Write test**
 
 ```python
 # mahavishnu/tests/unit/test_path_validation.py
@@ -346,14 +346,14 @@ def test_validate_repo_path_unregistered(tmp_path, monkeypatch):
         validate_repo_path("/unregistered/path")
 ```
 
-- [ ] **Step 3: Run test**
+- [x] **Step 3: Run test**
 
 ```bash
 pytest tests/unit/test_path_validation.py -v
 ```
 Expected: 2 passed
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add mahavishnu/core/code_index/path_validation.py tests/unit/test_path_validation.py
@@ -367,7 +367,7 @@ git commit -m "feat: add repo path validation against repos.yaml"
 **Files:**
 - Create: `mahavishnu/mahavishnu/core/code_index/signature_redaction.py`
 
-- [ ] **Step 1: Write redaction module**
+- [x] **Step 1: Write redaction module**
 
 ```python
 # mahavishnu/mahavishnu/core/code_index/signature_redaction.py
@@ -415,7 +415,7 @@ def has_secrets(signature: str | None) -> bool:
     return any(p.search(signature) for p in SECRET_PATTERNS)
 ```
 
-- [ ] **Step 2: Write test**
+- [x] **Step 2: Write test**
 
 ```python
 # mahavishnu/tests/unit/test_signature_redaction.py
@@ -462,14 +462,14 @@ def test_redact_connection_string():
     assert redact_signature('database_url = "postgres://..."') == 'database_url = "<REDACTED>"'
 ```
 
-- [ ] **Step 3: Run test**
+- [x] **Step 3: Run test**
 
 ```bash
 pytest tests/unit/test_signature_redaction.py -v
 ```
 Expected: 8 passed
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add mahavishnu/core/code_index/signature_redaction.py tests/unit/test_signature_redaction.py
@@ -483,7 +483,7 @@ git commit -m "feat: add signature redaction for code graph storage"
 **Files:**
 - Create: `mahavishnu/mahavishnu/core/code_index/lock.py`
 
-- [ ] **Step 1: Write lock module**
+- [x] **Step 1: Write lock module**
 
 ```python
 # mahavishnu/mahavishnu/core/code_index/lock.py
@@ -571,7 +571,7 @@ class RepoIndexLock:
             return e.errno != errno.ESRCH
 ```
 
-- [ ] **Step 2: Write test**
+- [x] **Step 2: Write test**
 
 ```python
 # mahavishnu/tests/unit/test_git_hooks.py
@@ -608,14 +608,14 @@ def test_acquire_reclaims_dead_process(tmp_path):
     lock.release()
 ```
 
-- [ ] **Step 3: Run test**
+- [x] **Step 3: Run test**
 
 ```bash
 pytest tests/unit/test_git_hooks.py -v
 ```
 Expected: 3 passed
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add mahavishnu/core/code_index/lock.py tests/unit/test_git_hooks.py
@@ -629,7 +629,7 @@ git commit -m "feat: add PID-based locking for concurrent indexing safety"
 **Files:**
 - Create: `mahavishnu/mahavishnu/core/code_index/parser.py`
 
-- [ ] **Step 1: Write parser that wraps mcp-common CodeGraphAnalyzer**
+- [x] **Step 1: Write parser that wraps mcp-common CodeGraphAnalyzer**
 
 ```python
 # mahavishnu/mahavishnu/core/code_index/parser.py
@@ -787,7 +787,7 @@ def filter_changed_files(
     )
 ```
 
-- [ ] **Step 2: Write test**
+- [x] **Step 2: Write test**
 
 ```python
 # mahavishnu/tests/unit/test_code_index_parser.py
@@ -846,14 +846,14 @@ def test_skip_dirs():
     assert "node_modules" in SKIP_DIRS
 ```
 
-- [ ] **Step 3: Run test**
+- [x] **Step 3: Run test**
 
 ```bash
 pytest tests/unit/test_code_index_parser.py -v
 ```
 Expected: 5 passed
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add mahavishnu/core/code_index/parser.py tests/unit/test_code_index_parser.py
@@ -867,7 +867,7 @@ git commit -m "feat: add file parser wrapping mcp-common CodeGraphAnalyzer"
 **Files:**
 - Create: `mahavishnu/mahavishnu/core/code_index/indexer.py`
 
-- [ ] **Step 1: Write indexer module**
+- [x] **Step 1: Write indexer module**
 
 ```python
 # mahavishnu/mahavishnu/core/code_index/indexer.py
@@ -1072,7 +1072,7 @@ def _queue_locally(
     logger.info(f"Queued {len(nodes)} nodes to {queue_file}")
 ```
 
-- [ ] **Step 2: Write test**
+- [x] **Step 2: Write test**
 
 ```python
 # mahavishnu/tests/unit/test_code_index_indexer.py
@@ -1113,14 +1113,14 @@ def test_index_repo_no_changes(tmp_path, monkeypatch):
     assert result.files_changed == []
 ```
 
-- [ ] **Step 3: Run test**
+- [x] **Step 3: Run test**
 
 ```bash
 pytest tests/unit/test_code_index_indexer.py -v
 ```
 Expected: 3 passed
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add mahavishnu/core/code_index/indexer.py tests/unit/test_code_index_indexer.py
@@ -1135,7 +1135,7 @@ git commit -m "feat: add indexer module with MCP upsert and filesystem fallback"
 - Create: `mahavishnu/mahavishnu/cli/index_cli.py`
 - Modify: `mahavishnu/_main_cli.py`
 
-- [ ] **Step 1: Write index CLI**
+- [x] **Step 1: Write index CLI**
 
 ```python
 # mahavishnu/mahavishnu/cli/index_cli.py
@@ -1193,7 +1193,7 @@ def add_index_commands(app: typer.Typer) -> None:
     app.add_typer(index_app, name="index")
 ```
 
-- [ ] **Step 2: Register in _main_cli.py**
+- [x] **Step 2: Register in _main_cli.py**
 
 Add to `mahavishnu/_main_cli.py` imports:
 ```python
@@ -1205,14 +1205,14 @@ Add after the existing `add_*_commands` calls:
 add_index_commands(app)
 ```
 
-- [ ] **Step 3: Verify CLI registration**
+- [x] **Step 3: Verify CLI registration**
 
 ```bash
 python -m mahavishnu index --help
 ```
 Expected: Shows `repo` and `status` subcommands
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add mahavishnu/cli/index_cli.py mahavishnu/_main_cli.py
@@ -1227,7 +1227,7 @@ git commit -m "feat: add index CLI commands (index repo, index status)"
 - Create: `mahavishnu/mahavishnu/core/code_index/git_hooks.py`
 - Modify: `mahavishnu/cli/index_cli.py`
 
-- [ ] **Step 1: Write git hook module**
+- [x] **Step 1: Write git hook module**
 
 ```python
 # mahavishnu/mahavishnu/core/code_index/git_hooks.py
@@ -1292,7 +1292,7 @@ def uninstall_hooks(repo_path: str) -> list[str]:
     return removed
 ```
 
-- [ ] **Step 2: Add install/uninstall to index CLI**
+- [x] **Step 2: Add install/uninstall to index CLI**
 
 Add to `mahavishnu/cli/index_cli.py`:
 
@@ -1324,7 +1324,7 @@ def uninstall_repo_hooks(
     typer.echo(f"Removed hooks: {', '.join(removed) or 'none'}")
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add mahavishnu/core/code_index/git_hooks.py mahavishnu/cli/index_cli.py
@@ -1341,7 +1341,7 @@ git commit -m "feat: add git hook installation for automatic indexing"
 - Create: `session_buddy/mcp/tools/code_graph_tools.py`
 - Modify: `session_buddy/mcp/server.py`
 
-- [ ] **Step 1: Write Session-Buddy MCP tools**
+- [x] **Step 1: Write Session-Buddy MCP tools**
 
 ```python
 # session_buddy/session_buddy/mcp/tools/code_graph_tools.py
@@ -1469,7 +1469,7 @@ def register_code_graph_tools(mcp) -> None:
         }
 ```
 
-- [ ] **Step 2: Register tools in server.py**
+- [x] **Step 2: Register tools in server.py**
 
 Add to `session_buddy/mcp/server.py` (in the tool registration section):
 ```python
@@ -1477,14 +1477,14 @@ from .tools.code_graph_tools import register_code_graph_tools
 register_code_graph_tools(mcp)
 ```
 
-- [ ] **Step 3: Verify tools are registered**
+- [x] **Step 3: Verify tools are registered**
 
 ```bash
 cd /Users/les/Projects/session-buddy
 python -c "from session_buddy.mcp.tools.code_graph_tools import register_code_graph_tools; print('OK')"
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 cd /Users/les/Projects/session-buddy
@@ -1499,7 +1499,7 @@ git commit -m "feat: add code_call_chain and code_impact_analysis MCP tools"
 **Files:**
 - Create: `mahavishnu/tests/unit/test_code_graph_degradation.py`
 
-- [ ] **Step 1: Write degradation tests**
+- [x] **Step 1: Write degradation tests**
 
 ```python
 # mahavishnu/tests/unit/test_code_graph_degradation.py
@@ -1553,14 +1553,14 @@ def test_max_depth_clamp():
         ImpactAnalysisRequest(symbol_name="test", max_depth=15)
 ```
 
-- [ ] **Step 2: Run test**
+- [x] **Step 2: Run test**
 
 ```bash
 pytest tests/unit/test_code_graph_degradation.py -v
 ```
 Expected: 4 passed
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add tests/unit/test_code_graph_degradation.py
@@ -1571,28 +1571,28 @@ git commit -m "test: add degradation tier and validation tests"
 
 ### Task 11: Run full test suite and authority verification
 
-- [ ] **Step 1: Run all new tests**
+- [x] **Step 1: Run all new tests**
 
 ```bash
 pytest tests/unit/test_code_index_models.py tests/unit/test_code_index_parser.py tests/unit/test_code_index_indexer.py tests/unit/test_signature_redaction.py tests/unit/test_git_hooks.py tests/unit/test_path_validation.py tests/unit/test_code_graph_degradation.py -v
 ```
 Expected: All pass
 
-- [ ] **Step 2: Authority verification — no other service writes to code graph**
+- [x] **Step 2: Authority verification — no other service writes to code graph**
 
 ```bash
 grep -r "store_code_graph" mahavishnu/ --include="*.py" | grep -v "test" | grep -v "mcp" | grep -v "queue"
 ```
 Expected: No results (Mahavishnu doesn't write directly — it goes through MCP to Session-Buddy)
 
-- [ ] **Step 3: Verify no new infrastructure dependencies**
+- [x] **Step 3: Verify no new infrastructure dependencies**
 
 ```bash
 grep -E "neo4j|tidb|property_graph_index" mahavishnu/core/code_index/ --include="*.py"
 ```
 Expected: No results
 
-- [ ] **Step 4: Final commit (if any cleanup needed)**
+- [x] **Step 4: Final commit (if any cleanup needed)**
 
 ```bash
 git add -A

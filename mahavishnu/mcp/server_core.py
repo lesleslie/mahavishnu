@@ -1364,8 +1364,10 @@ class FastMCPServer:
         if "_register_goal_team_tools" in methods_set:
             self._register_goal_team_tools()
 
-        if "_register_team_learning_tools" in methods_set:
-            self._register_team_learning_tools()
+        # team_learning_tools is de-authorized from live MCP (Bodai I0: Phase 4.4).
+        # The module remains importable for CLI debugging but is no longer
+        # registered as an MCP tool — skill_governance.py is the canonical
+        # learning authority.
 
         if "_register_treesitter_tools" in methods_set:
             self._register_treesitter_tools()
@@ -1526,25 +1528,6 @@ class FastMCPServer:
 
         register_goal_team_tools(self.server)
         logger.info("Registered 3 goal-driven team tools with MCP server")
-
-    def _register_team_learning_tools(self) -> None:
-        """Register team learning tools with MCP server."""
-        # Check if learning system is enabled
-        from ..core.feature_flags import is_feature_enabled
-
-        if not is_feature_enabled("enabled"):
-            logger.debug("Goal-Driven Teams disabled, skipping learning tool registration")
-            return
-
-        if not is_feature_enabled("learning_system_enabled"):
-            logger.info("Learning system disabled, skipping learning tool registration")
-            return
-
-        # Import and register team learning tools
-        from ..mcp.tools.team_learning_tools import register_team_learning_tools
-
-        register_team_learning_tools(self.server)
-        logger.info("Registered 5 team learning tools with MCP server")
 
     def _register_treesitter_tools(self) -> None:
         """Register tree-sitter code analysis tools with MCP server."""

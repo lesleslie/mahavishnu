@@ -1,7 +1,7 @@
 # Type Adapter Migration Plan
 
 **Date**: 2026-04-25  
-**Status**: active, implementation  
+**Status**: active, Phase 3 (canary/promotion)  
 **Scope**: Crackerjack `ty`, `pyrefly`, and `zuban` adapters plus AI-fix routing
 
 ## Summary
@@ -147,14 +147,14 @@ Exit criteria:
 
 ## Required Code Changes
 
-- [ ] [crackerjack/adapters/type/ty.py](/Users/les/Projects/crackerjack/crackerjack/adapters/type/ty.py)
-- [ ] [crackerjack/adapters/type/pyrefly.py](/Users/les/Projects/crackerjack/crackerjack/adapters/type/pyrefly.py)
-- [ ] [crackerjack/adapters/type/zuban.py](/Users/les/Projects/crackerjack/crackerjack/adapters/type/zuban.py)
-- [ ] [crackerjack/adapters/type/README.md](/Users/les/Projects/crackerjack/crackerjack/adapters/type/README.md)
-- [ ] [crackerjack/config/hooks.py](/Users/les/Projects/crackerjack/crackerjack/config/hooks.py)
-- [ ] [crackerjack/config/tool_commands.py](/Users/les/Projects/crackerjack/crackerjack/config/tool_commands.py)
-- [ ] [crackerjack/core/autofix_coordinator.py](/Users/les/Projects/crackerjack/crackerjack/core/autofix_coordinator.py)
-- [ ] [tests/adapters/test_type_adapters.py](/Users/les/Projects/crackerjack/tests/adapters/test_type_adapters.py)
+- [x] [crackerjack/adapters/type/ty.py](/Users/les/Projects/crackerjack/crackerjack/adapters/type/ty.py) — `ty check`, `--output-format`, `--fix`, `--add-ignore`, capability methods
+- [x] [crackerjack/adapters/type/pyrefly.py](/Users/les/Projects/crackerjack/crackerjack/adapters/type/pyrefly.py) — `pyrefly check --output-format=json`, baseline, suppress, JSON parser
+- [x] [crackerjack/adapters/type/zuban.py](/Users/les/Projects/crackerjack/crackerjack/adapters/type/zuban.py) — `zuban mypy --config-file mypy.ini`, mypy-format text parser
+- [x] [crackerjack/adapters/type/README.md](/Users/les/Projects/crackerjack/crackerjack/adapters/type/README.md) — settings docs, AI-fix workflow notes
+- [x] [crackerjack/config/hooks.py](/Users/les/Projects/crackerjack/crackerjack/config/hooks.py) — `_build_opt_in_type_hooks()` for ty/pyrefly, zuban in COMPREHENSIVE_HOOKS
+- [x] [crackerjack/config/tool_commands.py](/Users/les/Projects/crackerjack/crackerjack/config/tool_commands.py) — all three tools wired via `_preferred_binary_command`
+- [x] [crackerjack/core/autofix_coordinator.py](/Users/les/Projects/crackerjack/crackerjack/core/autofix_coordinator.py) — `_run_native_tool_fix` gated by `supports_fix()`, `_refresh_type_tool_issues` re-checks after fix
+- [x] [tests/adapters/test_type_adapters.py](/Users/les/Projects/crackerjack/tests/adapters/test_type_adapters.py) — 22 tests: Ty (7), Pyrefly (7), Zuban (8)
 
 ## Validation Matrix
 

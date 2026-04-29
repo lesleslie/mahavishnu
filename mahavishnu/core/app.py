@@ -219,10 +219,15 @@ class MahavishnuApp:
         # Initialize pool manager
         self.pool_manager = None
         self.memory_aggregator = None
+        self._learning_pipeline = None
         if self.config.pools.enabled:
             self.pool_manager = self._init_pool_manager()
             if self.config.pools.memory_aggregation_enabled:
                 self.memory_aggregator = self._init_memory_aggregator()
+
+        # Initialize learning pipeline (review-gated evidence→skill synthesis)
+        if self.config.learning.enabled:
+            self._learning_pipeline = self._init_learning_pipeline()
 
         # Initialize RBAC manager
         self.rbac_manager = RBACManager(self.config)
@@ -428,6 +433,35 @@ class MahavishnuApp:
             logger = __import__("logging").getLogger(__name__)
             logger.info("Session-Buddy poller stopped")
 
+    async def start_learning_pipeline(self) -> None:
+        """Start the learning pipeline if configured.
+
+        This method should be called after the async event loop is running.
+        It's safe to call multiple times (idempotent).
+
+        Example:
+            >>> app = MahavishnuApp()
+            >>> await app.start_learning_pipeline()
+        """
+        if self._learning_pipeline is not None and not self._learning_pipeline.is_running:
+            await self._learning_pipeline.start()
+            logger = __import__("logging").getLogger(__name__)
+            logger.info("Learning pipeline started")
+
+    async def stop_learning_pipeline(self) -> None:
+        """Stop the learning pipeline gracefully.
+
+        This method should be called before shutting down the application.
+        It's safe to call multiple times (idempotent).
+
+        Example:
+            >>> await app.stop_learning_pipeline()
+        """
+        if self._learning_pipeline is not None:
+            await self._learning_pipeline.stop()
+            logger = __import__("logging").getLogger(__name__)
+            logger.info("Learning pipeline stopped")
+
     async def initialize_worktree_coordinator(self) -> None:
         """Initialize WorktreeCoordinator after async event loop is running.
 
@@ -604,6 +638,40 @@ class MahavishnuApp:
         except Exception as e:
             logger = __import__("logging").getLogger(__name__)
             logger.warning(f"Failed to initialize memory aggregator: {e}")
+            return None
+
+    def _init_learning_pipeline(self):
+        """Initialize the review-gated learning pipeline service.
+
+        Returns:
+            LearningPipelineService instance or None if initialization fails
+
+        Note:
+            The pipeline must be started explicitly via await start_learning_pipeline()
+            after the async event loop is running.  All skill drafts remain in DRAFT
+            state pending human review (never auto-activated).
+        """
+        try:
+            from .learning_pipeline import LearningPipelineService
+
+            pipeline = LearningPipelineService(
+                config=self.config.learning,
+                session_buddy_url=self.config.pools.session_buddy_url,
+                akosha_url=self.config.pools.akosha_url,
+            )
+
+            logger = __import__("logging").getLogger(__name__)
+            logger.info(
+                f"Learning pipeline initialized "
+                f"(interval={self.config.learning.collection_interval_seconds}s, "
+                f"max_evidence={self.config.learning.max_evidence_per_cycle})"
+            )
+
+            return pipeline
+
+        except Exception as e:
+            logger = __import__("logging").getLogger(__name__)
+            logger.warning(f"Failed to initialize learning pipeline: {e}")
             return None
 
     def _load_config(self) -> MahavishnuSettings:

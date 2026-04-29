@@ -496,9 +496,14 @@ def learning_stats(
         console.print("[dim]Enable learning_system_enabled in goal_teams.feature_flags[/dim]")
         raise typer.Exit(code=1)
 
-    from mahavishnu.core.team_learning import get_learning_engine, reset_learning_engine
-
-    engine = get_learning_engine()
+    # DEPRECATED (Bodai I0.4): team_learning.py is de-authorized.
+    # skill_governance.py is the canonical learning authority.
+    console.print(
+        "\n[yellow]The legacy learning system is deprecated (Bodai I0.4).[/yellow]\n"
+        "[dim]skill_governance.py is now the canonical learning authority.[/dim]\n"
+        "[dim]This command will be removed in a future release.[/dim]"
+    )
+    raise typer.Exit(code=0)
 
     # Handle clear flag
     if clear:
@@ -635,9 +640,14 @@ def recommend_mode(
         console.print("[dim]Enable learning_system_enabled in goal_teams.feature_flags[/dim]")
         raise typer.Exit(code=1)
 
-    from mahavishnu.core.team_learning import get_learning_engine
-
-    engine = get_learning_engine()
+    # DEPRECATED (Bodai I0.4): team_learning.py is de-authorized.
+    # skill_governance.py is the canonical learning authority.
+    console.print(
+        "\n[yellow]The legacy learning system is deprecated (Bodai I0.4).[/yellow]\n"
+        "[dim]skill_governance.py is now the canonical learning authority.[/dim]\n"
+        "[dim]This command will be removed in a future release.[/dim]"
+    )
+    raise typer.Exit(code=0)
     recommendation = engine.get_mode_recommendation(intent)
 
     console.print(f"\n[bold cyan]Mode Recommendation for '{intent}'[/bold cyan]\n")

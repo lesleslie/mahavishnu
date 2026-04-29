@@ -34,11 +34,11 @@ No other files are created or modified. This is a pure prompt file.
 **Files:**
 - Create: `~/.claude/skills/bodai-radar/SKILL.md`
 
-- [ ] **Step 1: Create the directory**
+- [x] **Step 1: Create the directory**
 
 Run: `mkdir -p ~/.claude/skills/bodai-radar`
 
-- [ ] **Step 2: Write the SKILL.md file**
+- [x] **Step 2: Write the SKILL.md file**
 
 Create `~/.claude/skills/bodai-radar/SKILL.md` with this content:
 
@@ -229,12 +229,12 @@ This skill uses **parallel graceful degradation** — each component is queried 
 - **RELATED:** `manage-pools` - Manage pool lifecycle (bodai-radar reports pool health)
 ```
 
-- [ ] **Step 3: Verify the file**
+- [x] **Step 3: Verify the file**
 
 Run: `head -3 ~/.claude/skills/bodai-radar/SKILL.md`
 Expected: YAML frontmatter with `name: bodai-radar`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 Run:
 ```bash
@@ -254,7 +254,7 @@ git commit -m "feat: add bodai-radar skill for unified ecosystem health dashboar
 - Read: `~/.claude/skills/run-quality-checks/SKILL.md`
 - Read: `~/.claude/skills/search-insights/SKILL.md`
 
-- [ ] **Step 1: Verify frontmatter consistency**
+- [x] **Step 1: Verify frontmatter consistency**
 
 Check the file has:
 - `name` field matching directory name (`bodai-radar`)
@@ -266,42 +266,42 @@ Run:
 head -5 ~/.claude/skills/bodai-radar/SKILL.md
 ```
 
-- [ ] **Step 2: Verify no overlap with quality-pulse**
+- [x] **Step 2: Verify no overlap with quality-pulse**
 
 Read `~/.claude/skills/quality-pulse/SKILL.md` and confirm:
 - quality-pulse does deep trend analysis with `analyze_trends`, `correlate_systems`
 - bodai-radar reads a single health signal and routes to quality-pulse for depth
 - Both use `detect_anomalies` but with different workflows (quality-pulse is trend-focused, bodai-radar is snapshot-focused)
 
-- [ ] **Step 3: Verify no overlap with ecosystem-awareness**
+- [x] **Step 3: Verify no overlap with ecosystem-awareness**
 
 Read `~/.claude/skills/ecosystem-awareness/SKILL.md` and confirm:
 - ecosystem-awareness discovers repo structure and roles via `list_repos`
 - bodai-radar checks operational health via `get_health`
 - Different tools, different purpose, no overlap
 
-- [ ] **Step 4: Verify no overlap with session-archaeologist**
+- [x] **Step 4: Verify no overlap with session-archaeologist**
 
 Read `~/.claude/skills/session-archaeologist/SKILL.md` and confirm:
 - session-archaeologist recovers past decisions via `search_all_systems`
 - bodai-radar checks current activity via `get_activity_summary`
 - Different tools, different time horizon, no overlap
 
-- [ ] **Step 5: Verify no overlap with run-quality-checks**
+- [x] **Step 5: Verify no overlap with run-quality-checks**
 
 Read `~/.claude/skills/run-quality-checks/SKILL.md` and confirm:
 - run-quality-checks triggers quality gates via `crackerjack run`
 - bodai-radar reads recent quality metrics via `get_crackerjack_quality_metrics`
 - One triggers action, the other reads status
 
-- [ ] **Step 6: Verify no overlap with search-insights**
+- [x] **Step 6: Verify no overlap with search-insights**
 
 Read `~/.claude/skills/search-insights/SKILL.md` and confirm:
 - search-insights does semantic search across system memories
 - bodai-radar shows health signals
 - Completely different purpose and tools
 
-- [ ] **Step 7: Verify all five component tools are referenced**
+- [x] **Step 7: Verify all five component tools are referenced**
 
 Confirm the SKILL.md references one tool from each component:
 1. Crackerjack: `mcp__session-buddy__get_crackerjack_quality_metrics`
@@ -310,13 +310,13 @@ Confirm the SKILL.md references one tool from each component:
 4. Dhara: `mcp__dhara__get_storage_status`
 5. Session-Buddy: `mcp__session-buddy__get_activity_summary`
 
-- [ ] **Step 8: Verify cross-references are correct**
+- [x] **Step 8: Verify cross-references are correct**
 
 - bodai-radar references `run-quality-checks`, `quality-pulse`, `session-archaeologist`, `search-insights`, `ecosystem-awareness`, `manage-pools`, `orchestrate-workflow`, `search-sessions`
 - All referenced skills exist in `~/.claude/skills/`
 - No references to non-existent skills
 
-- [ ] **Step 9: Verify graceful degradation is consistent**
+- [x] **Step 9: Verify graceful degradation is consistent**
 
 Confirm:
 - Each component can fail independently without blocking others
@@ -324,6 +324,6 @@ Confirm:
 - No filesystem fallback (intentional — prevents false health signals)
 - Summary template handles partial availability
 
-- [ ] **Step 10: Final commit (if any fixes needed)**
+- [x] **Step 10: Final commit (if any fixes needed)**
 
 If validation found issues, fix and commit. If no issues, this step is a no-op.

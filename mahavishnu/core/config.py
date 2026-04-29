@@ -1265,6 +1265,81 @@ class GoalTeamsConfig(BaseModel):
 
 
 # ============================================================================
+# Learning Pipeline Configuration (Phase 1B)
+# ============================================================================
+
+
+class LearningConfig(BaseModel):
+    """Review-gated learning pipeline configuration.
+
+    Controls the observe→store→retrieve→synthesize→review→activate pipeline
+    that enables Mahavishnu to learn from successful task executions.
+
+    Configuration can be set via:
+    1. settings/mahavishnu.yaml under learning:
+    2. settings/local.yaml
+    3. Environment variables: MAHAVISHNU_LEARNING__ENABLED, etc.
+
+    Example YAML:
+        learning:
+          enabled: true
+          collection_interval_seconds: 300
+          max_evidence_per_cycle: 50
+          synthesis_min_evidence: 5
+          retention_days: 90
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable the review-gated learning pipeline",
+    )
+    collection_interval_seconds: int = Field(
+        default=300,
+        ge=60,
+        le=3600,
+        description="Seconds between evidence collection cycles (60-3600)",
+    )
+    max_evidence_per_cycle: int = Field(
+        default=50,
+        ge=1,
+        le=500,
+        description="Maximum evidence items collected per cycle (rate limiting)",
+    )
+    synthesis_min_evidence: int = Field(
+        default=5,
+        ge=1,
+        le=100,
+        description="Minimum evidence count before attempting skill synthesis",
+    )
+    retention_days: int = Field(
+        default=90,
+        ge=1,
+        le=365,
+        description="Days to retain raw evidence before cleanup (1-365)",
+    )
+    max_drafts_per_cycle: int = Field(
+        default=3,
+        ge=1,
+        le=20,
+        description="Maximum skill drafts synthesized per cycle",
+    )
+    store_timeout_seconds: int = Field(
+        default=10,
+        ge=1,
+        le=60,
+        description="Timeout for Session-Buddy evidence storage calls",
+    )
+    retrieve_timeout_seconds: int = Field(
+        default=15,
+        ge=1,
+        le=60,
+        description="Timeout for Akosha evidence retrieval calls",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
+# ============================================================================
 # Health Check Configuration
 # ============================================================================
 
@@ -1650,6 +1725,12 @@ class MahavishnuSettings(BaseSettings):
         description="Feature flags for external platform integrations",
     )
 
+    # Learning pipeline (Phase 1B)
+    learning: LearningConfig = Field(
+        default_factory=LearningConfig,
+        description="Review-gated learning pipeline configuration",
+    )
+
     @field_validator("repos_path")
     @classmethod
     def validate_repos_path(cls, v: str) -> str:
@@ -1723,5 +1804,7 @@ __all__ = [
     # Health check configuration
     "DependencyConfig",
     "HealthConfig",
+    # Learning pipeline configuration
+    "LearningConfig",
     "MahavishnuSettings",
 ]

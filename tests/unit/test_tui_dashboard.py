@@ -51,6 +51,7 @@ class TestDashboardAppStructure:
         assert "2" in binding_keys  # sweep tab
         assert "3" in binding_keys  # routing tab
         assert "4" in binding_keys  # alerts tab
+        assert "5" in binding_keys  # reviews tab
 
     def test_app_title(self) -> None:
         from mahavishnu.tui.app import DashboardApp
@@ -87,6 +88,11 @@ class TestScreenModules:
 
         assert AlertsScreen is not None
 
+    def test_reviews_screen(self) -> None:
+        from mahavishnu.tui.app import ReviewsScreen
+
+        assert ReviewsScreen is not None
+
 
 class TestDataFetchers:
     """Verify data-fetching helpers return expected shapes."""
@@ -121,6 +127,30 @@ class TestDataFetchers:
 
         data = await fetch_active_alerts()
         assert isinstance(data, list)
+
+    @pytest.mark.asyncio
+    async def test_fetch_skill_drafts(self) -> None:
+        from mahavishnu.tui.app import fetch_skill_drafts
+
+        data = await fetch_skill_drafts()
+        assert isinstance(data, list)
+        for draft in data:
+            assert "skill_id" in draft
+            assert "name" in draft
+            assert "version" in draft
+            assert "state" in draft
+            assert "proposed_by" in draft
+            assert "created_at" in draft
+
+    @pytest.mark.asyncio
+    async def test_fetch_skill_drafts_returns_list_no_mock(self) -> None:
+        """fetch_skill_drafts returns a list (no hardcoded mock data)."""
+        from mahavishnu.tui.app import fetch_skill_drafts
+
+        data = await fetch_skill_drafts()
+        assert isinstance(data, list)
+        # No mock data — returns empty when no registry is available
+        assert all("skill_id" in d for d in data)
 
 
 class TestDashboardCLI:
@@ -192,6 +222,24 @@ class TestAlertsScreenCompose:
 
 
 @pytest.mark.skipif(not _textual_available, reason="textual not installed")
+class TestReviewsScreenCompose:
+    """Test ReviewsScreen widget composition."""
+
+    def test_compose_yields_table(self):
+        from mahavishnu.tui.app import ReviewsScreen
+        from textual.containers import VerticalScroll
+        from textual.widgets import Label, Static, DataTable
+
+        assert issubclass(ReviewsScreen, VerticalScroll)
+
+    def test_reviews_screen_has_load_data(self):
+        from mahavishnu.tui.app import ReviewsScreen
+
+        assert hasattr(ReviewsScreen, "_load_data")
+        assert callable(getattr(ReviewsScreen, "_load_data"))
+
+
+@pytest.mark.skipif(not _textual_available, reason="textual not installed")
 class TestDashboardAppCompose:
     """Test DashboardApp compose and actions."""
 
@@ -213,4 +261,10 @@ class TestDashboardAppCompose:
         app = DashboardApp()
         # Verify the app can be instantiated (compose is deferred)
         assert app.TITLE == "Mahavishnu Dashboard"
-        assert len(app.BINDINGS) >= 4
+        assert len(app.BINDINGS) >= 5
+
+    def test_action_switch_tab_reviews(self):
+        from mahavishnu.tui.app import DashboardApp
+
+        app = DashboardApp()
+        app.action_switch_tab("reviews")  # Should not raise

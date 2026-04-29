@@ -1,8 +1,8 @@
 # Bodai Master Implementation Plan
 
-**Status:** Phase 0 in progress; Phase 1 governance schemas implemented (runtime deferred)
+**Status:** Phase 0 complete (10/10); Phase 1A complete (6/6 acceptance criteria); Phase 1B complete (37 tests passing)
 **Date:** 2026-04-16
-**Last reviewed:** 2026-04-24
+**Last reviewed:** 2026-04-27
 **Source:** [Bodai Agent Platform Master Spec](./2026-04-16-bodai-agent-platform-master-spec.md)
 
 **Companion documents:**
@@ -61,16 +61,20 @@ This phase removes the overlap that the reviewers flagged.
 
 ### 4.0 Execution checklist
 
-- [ ] Replace global Prefect-first default routing with task-class-aware routing
-- [ ] Add `BATCH_TASK` and `INTERACTIVE_TASK` to the `TaskType` enum in `core/task_router.py`
-- [ ] Document the two-router composition between `core/task_router.py` (engine selection) and `workers/task_router.py` (model selection)
-- [ ] Make `TaskRouter.StateManager` the canonical workflow-state owner for live coordination
-- [ ] Add persistence strategy for `StateManager` (persist to Dhara via MCP or Session-Buddy; do not leave purely in-memory)
-- [ ] Wrap `workflow_state.py` as a compatibility shim that delegates to `StateManager`; remove OpenSearch-backed persistence path (durable workflow history stays with Prefect)
-- [ ] Make Agno memory off or externalized by default for Bodai/TUI paths (externalized target: Session-Buddy, not local SQLite)
-- [ ] De-authorize `team_learning.py` as the canonical learning authority; remove its MCP tool registrations, CLI exposure, and imports from `goal_team_tools.py` and `team_cli.py`; classify as experimental/cache-only
-- [ ] Lock the TUI to read-only / command-forwarding behavior for stateful surfaces
-- [ ] Add regression tests for all of the above
+- [x] Replace global Prefect-first default routing with task-class-aware routing
+- [x] Add `BATCH_TASK` and `INTERACTIVE_TASK` to the `TaskType` enum in `core/task_router.py`
+- [x] Document the two-router composition between `core/task_router.py` (engine selection) and `workers/task_router.py` (model selection) → ADR 011
+- [x] Make `TaskRouter.StateManager` the canonical workflow-state owner for live coordination (already the case; no competing authority in live code paths)
+- [x] Add persistence strategy for `StateManager` (persist to Dhara via MCP or Session-Buddy; do not leave purely in-memory) → file-based JSON persistence in `data/workflow_state/workflows.json`; Dhara migration deferred to Phase 2
+- [x] Wrap `workflow_state.py` as a compatibility shim that delegates to `StateManager`; remove OpenSearch-backed persistence path (durable workflow history stays with Prefect) → already deprecated (only test files import it); deprecation notice updated in docstring
+- [x] Make Agno memory off or externalized by default for Bodai/TUI paths (externalized target: Session-Buddy, not local SQLite) → already done: `AgnoMemoryConfig.backend` defaults to `MemoryBackend.NONE`
+- [x] De-authorize `team_learning.py` as the canonical learning authority; remove its MCP tool registrations, CLI exposure, and imports from `goal_team_tools.py` and `team_cli.py`; classify as experimental/cache-only
+  - MCP registration call and dead method removed from `server_core.py`
+  - `__init__.py` and `profiles.py` updated
+  - `team_cli.py` commands emit deprecation notice and exit
+  - `goal_team_tools.py` gated blocks replaced with no-op log messages
+- [x] Lock the TUI to read-only / command-forwarding behavior for stateful surfaces → already enforced (zero persistence writes in TUI modules)
+- [x] Add regression tests for all of the above → `tests/unit/test_bodai_phase0_regression.py` (14 tests)
 
 ### 4.1 Canonical routing
 
@@ -204,80 +208,79 @@ Current status:
 - runtime integration into the broader ecosystem is intentionally deferred until the ownership model is finalized
 - **Blocking gap (2026-04-24 review):** Phase 1 Section 5.2 says the "owning service" is "a dedicated Bodai learning service or worker managed by Mahavishnu." This service does not exist yet. Phase 1 is split below into two sub-phases to unblock work that can proceed now.
 
-### 5.1 Phase 1A: Schemas, Review Gate, and Rollback (unblocked)
+### 5.1 Phase 1A: Schemas, Review Gate, and Rollback (complete)
 
 This sub-phase can proceed immediately after Phase 0 boundary hardening.
 
+**Completion status (2026-04-26):** All 6 acceptance criteria met. 24 regression tests passing.
+
 Work items:
 
-- validate that `skill_governance.py` artifact schemas are complete and tested
-- implement the review queue surface (read-only) in the TUI
-- implement the review gate integration point with Crackerjack
-- implement rollback semantics: each activation records the previous active version; rollback restores it without mutating evidence
-- add promotion state machine enforcement: `draft -> review -> active -> deprecated` with no self-promotion path
-- add tests for promotion and rollback paths
-- add security validation: skill synthesis inputs must be sanitized; draft skills are isolated in a `draft` namespace
+- [x] validate that `skill_governance.py` artifact schemas are complete and tested
+- [x] implement the review queue surface (read-only) in the TUI
+- [x] implement the review gate integration point with Crackerjack
+- [x] implement rollback semantics: each activation records the previous active version; rollback restores it without mutating evidence
+- [x] add promotion state machine enforcement: `draft -> review -> active -> deprecated` with no self-promotion path
+- [x] add tests for promotion and rollback paths
+- [x] add security validation: skill synthesis inputs must be sanitized; draft skills are isolated in a `draft` namespace
 
 Acceptance criteria:
 
-- `skill_governance.py` artifact schemas pass schema validation tests
-- Crackerjack review gate integration point is wired and returns accept/reject
-- rollback restores the previous active skill version without mutating evidence history
-- promotion state machine rejects invalid transitions (e.g., `draft -> active` without passing through `review`)
-- draft skills are isolated in a `draft` namespace and cannot be loaded by runtime
-- TUI review queue surface renders read-only
+- [x] A1: `skill_governance.py` artifact schemas pass schema validation tests
+- [x] A2: Crackerjack review gate integration point is wired and returns accept/reject
+- [x] A3: rollback restores the previous active skill version without mutating evidence history
+- [x] A4: promotion state machine rejects invalid transitions (e.g., `draft -> active` without passing through `review`)
+- [x] A5: draft skills are isolated in a `draft` namespace and cannot be loaded by runtime
+- [x] A6: TUI review queue surface renders read-only
+
+Implementation summary:
+
+- `mahavishnu/core/review_gate.py` — 5 quality checks (body validation, triggers, metadata, injection warning, Crackerjack integration)
+- `mahavishnu/core/skill_registry.py` — in-memory version tracking with rollback execution and evidence preservation
+- `mahavishnu/core/skill_security.py` — body sanitization (redaction, truncation) and draft isolation validation
+- `mahavishnu/tui/app.py` — `ReviewsScreen` with colored state markup, added as 5th tab
+- `mahavishnu/core/skill_governance.py` — fixed `promote_draft()` guard clause to assert REVIEW state instead of validating REVIEW→REVIEW transition
+- `tests/unit/test_bodai_phase1a_regression.py` — 24 regression tests covering A1–A6
 
 Validation:
 
 ```bash
-uv run pytest tests/unit/test_skill_governance.py tests/unit/test_tui_dashboard.py
+uv run pytest tests/unit/test_bodai_phase1a_regression.py -v
 ```
 
-### 5.2 Phase 1B: Full Pipeline Runtime (blocked on design decision)
+### 5.2 Phase 1B: Full Pipeline Runtime (complete)
 
-This sub-phase requires a concrete answer to "what is the learning service?" before work begins.
+**Design decision resolved (2026-04-27):** ADR 012 — Mahavishnu internal async service, following the `MemoryAggregator` pattern. No Prefect dependency. See `docs/adr/012-learning-pipeline-runtime-owner.md`.
 
-**Open design decision:** The learning pipeline runtime needs an owning process. Options:
+**Completion status (2026-04-27):** All 11 work items implemented. 37 tests passing.
 
-| Option | Description | Tradeoff |
-|--------|-------------|----------|
-| A: Prefect workflow | Learning pipeline as a scheduled Prefect flow | Leverages existing engine; adds learning as a first-class workflow type |
-| B: Mahavishnu worker | Dedicated worker in the existing pool | Simpler deployment; competes with task execution for pool resources |
-| C: Standalone service | New Python process managed by Mahavishnu | Clean isolation; adds operational complexity |
+**Phase 1B work items:**
 
-**Recommendation:** Option A (Prefect workflow) aligns with the "one owner per concern" principle — Prefect owns durable workflows, and the learning pipeline is fundamentally a durable workflow with review gates. This avoids introducing a new service type.
-
-**Owner and target date:** This decision requires input from the ecosystem architecture owner. Target resolution: before Phase 1A is complete (so Phase 1B can begin immediately after). Add a decision record to `docs/adr/` once resolved.
-
-**While the design decision is pending, the following preparatory work can proceed:**
-- refine and test the `learning_evidence` artifact schema
-- define the Akosha retrieval interface as a protocol
-- define the Session-Buddy evidence storage interface as a protocol
-
-**Phase 1B work items (after design decision):**
-
-- implement the observe stage: record successful sessions, tool usage, and outcomes in Session-Buddy
-- implement the store stage: persist evidence with provenance metadata
-- implement the retrieve stage: use Akosha to find similar successes and failures
-- implement the synthesize stage: draft candidate skills from evidence
-- wire the full pipeline: observe -> store -> retrieve -> synthesize -> review gate -> activate
-- add rate limiting and retention policy for evidence collection
-- add tests for end-to-end pipeline execution
+- [x] implement `LearningPipelineService` with asyncio periodic collection (observe→store→retrieve→synthesize cycle)
+- [x] implement the observe stage: record successful sessions, tool usage, and outcomes as `LearningEvidence` artifacts
+- [x] implement the store stage: persist evidence to Session-Buddy via MCP with provenance metadata
+- [x] implement the retrieve stage: use Akosha semantic search to find similar successes and failures
+- [x] implement the synthesize stage: draft candidate `SkillDraft` proposals from clustered evidence
+- [x] wire the full pipeline: observe -> store -> retrieve -> synthesize -> review gate -> activate
+- [x] add rate limiting and retention policy for evidence collection
+- [x] add MCP tools for the governed pipeline (create evidence, list drafts, trigger synthesis)
+- [x] wire `LearningPipelineService` into `MahavishnuApp` startup/shutdown
+- [x] add configuration fields for pipeline control (`learning.enabled`, `learning.collection_interval_seconds`, `learning.max_evidence_per_cycle`)
+- [x] add tests for end-to-end pipeline execution
 
 Acceptance criteria:
 
 - every skill promotion has a traceable record: evidence -> draft -> review -> activation
 - test queries a skill's promotion history and receives a complete chain of artifact IDs, timestamps, and reviewer identities
-- the pipeline runtime executes within the configured owning process
+- the pipeline runtime executes as an asyncio service within MahavishnuApp
 - rate limiting prevents unbounded evidence collection
+- pipeline can be disabled via `learning.enabled: false`
 
 Validation:
 
 ```bash
-uv run pytest tests/unit/test_skill_governance.py tests/integration/test_learning_pipeline.py
+uv run pytest tests/unit/test_skill_governance.py tests/unit/test_learning_pipeline.py -v
 ```
-
-Note: `tests/integration/test_learning_pipeline.py` does not exist yet. It must be created as part of Phase 1B when the pipeline runtime is implemented.
 
 ### 5.3 Pipeline stages
 

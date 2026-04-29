@@ -251,3 +251,68 @@ class TestSectionError:
             original_exception="ConnectionError",
         )
         assert err.original_exception == "ConnectionError"
+
+
+# ── Live data collection tests ──────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_collect_services_with_no_configs():
+    """No service configs returns empty dict."""
+    from mahavishnu.core.ecosystem_status import EcosystemStatusService
+
+    svc = EcosystemStatusService()
+    result = await svc._collect_services()
+    assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_collect_services_disabled_url():
+    """Empty URL returns DISABLED status."""
+    from mahavishnu.core.ecosystem_status import EcosystemStatusService
+
+    svc = EcosystemStatusService(service_configs={"test": {"url": "", "required": False}})
+    result = await svc._collect_services()
+    assert result["test"].status == CanonicalStatus.DISABLED
+
+
+@pytest.mark.asyncio
+async def test_collect_services_unreachable():
+    """Unreachable URL returns UNKNOWN status."""
+    from mahavishnu.core.ecosystem_status import EcosystemStatusService
+
+    svc = EcosystemStatusService(
+        service_configs={"ghost": {"url": "http://127.0.0.1:1/health", "timeout_s": 1}}
+    )
+    result = await svc._collect_services()
+    assert result["ghost"].status == CanonicalStatus.UNKNOWN
+
+
+@pytest.mark.asyncio
+async def test_collect_adapters_with_no_adapters():
+    """No adapters returns empty dict."""
+    from mahavishnu.core.ecosystem_status import EcosystemStatusService
+
+    svc = EcosystemStatusService()
+    result = await svc._collect_adapters()
+    assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_collect_workflows_with_no_provider():
+    """No workflow provider returns zeroed summary."""
+    from mahavishnu.core.ecosystem_status import EcosystemStatusService, WorkflowSummary
+
+    svc = EcosystemStatusService()
+    result = await svc._collect_workflows()
+    assert result == WorkflowSummary()
+
+
+@pytest.mark.asyncio
+async def test_collect_alerts_with_no_provider():
+    """No alert provider returns empty summary."""
+    from mahavishnu.core.ecosystem_status import EcosystemStatusService, AlertSummary
+
+    svc = EcosystemStatusService()
+    result = await svc._collect_alerts()
+    assert result == AlertSummary()

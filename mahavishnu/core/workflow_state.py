@@ -1,8 +1,10 @@
 """Legacy workflow state tracking for Mahavishnu.
 
-The canonical live workflow coordination state now lives in
-TaskRouter.StateManager. This module is retained for compatibility and
-tests until the legacy OpenSearch/local-memory path is retired.
+DEPRECATED (Bodai I0.6): This module is retained for backward-compatible
+tests only. The canonical live workflow coordination state lives in
+TaskRouter.StateManager (mahavishnu/core/task_router.py). No live code
+path should import this module. The OpenSearch-backed persistence path
+is retired — durable workflow execution history stays with Prefect.
 """
 
 from datetime import datetime

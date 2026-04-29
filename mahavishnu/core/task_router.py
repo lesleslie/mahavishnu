@@ -37,9 +37,11 @@ Architecture:
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass, field
 from enum import StrEnum
+from pathlib import Path
 from typing import Any
 
 from mahavishnu.core.adapters.base import (
@@ -82,6 +84,8 @@ class TaskType(StrEnum):
     WORKFLOW = "workflow"
     AI_TASK = "ai_task"
     RAG_QUERY = "rag_query"
+    BATCH_TASK = "batch_task"
+    INTERACTIVE_TASK = "interactive_task"
 
 
 class RouterMode(StrEnum):
@@ -169,10 +173,50 @@ class WorkflowState:
 
 
 class StateManager:
-    """In-memory workflow state manager used by the unified orchestrator."""
+    """Workflow state manager with file-based persistence.
 
-    def __init__(self) -> None:
+    State is kept in-memory for fast access and persisted to a JSON file
+    so that in-flight workflow state survives Mahavishnu restarts.
+
+    Migration note (Bodai I0.5): File-based persistence is the Phase 0
+    baseline. Migration to Dhara via MCP is deferred to Phase 2 pending
+    inter-service auth.
+    """
+
+    _DEFAULT_STATE_DIR = Path("data/workflow_state")
+
+    def __init__(self, state_dir: Path | str | None = None) -> None:
         self._workflows: dict[str, WorkflowState] = {}
+        self._state_dir = Path(state_dir) if state_dir else self._DEFAULT_STATE_DIR
+        self._load()
+
+    def _state_file(self) -> Path:
+        return self._state_dir / "workflows.json"
+
+    def _load(self) -> None:
+        path = self._state_file()
+        if not path.is_file():
+            return
+        try:
+            data = json.loads(path.read_text())
+            for wf_id, wf_data in data.items():
+                ws = WorkflowState(workflow_id=wf_id)
+                ws.adapter_states = wf_data.get("adapter_states", {})
+                self._workflows[wf_id] = ws
+            logger.debug("Loaded %d workflow states from %s", len(self._workflows), path)
+        except Exception:
+            logger.warning("Failed to load workflow state from %s", path, exc_info=True)
+
+    def _persist(self) -> None:
+        try:
+            self._state_dir.mkdir(parents=True, exist_ok=True)
+            data = {
+                wf_id: {"workflow_id": ws.workflow_id, "adapter_states": ws.adapter_states}
+                for wf_id, ws in self._workflows.items()
+            }
+            self._state_file().write_text(json.dumps(data, indent=2))
+        except Exception:
+            logger.warning("Failed to persist workflow state", exc_info=True)
 
     async def create_workflow_state(
         self,
@@ -183,6 +227,7 @@ class StateManager:
         state = WorkflowState(workflow_id=workflow_id)
         state.adapter_states[self._adapter_key(adapter_type)] = dict(initial_state)
         self._workflows[workflow_id] = state
+        self._persist()
         return state
 
     async def update_adapter_state(
@@ -193,6 +238,7 @@ class StateManager:
     ) -> WorkflowState:
         workflow_state = self._workflows.setdefault(workflow_id, WorkflowState(workflow_id=workflow_id))
         workflow_state.adapter_states[self._adapter_key(adapter_type)] = dict(state)
+        self._persist()
         return workflow_state
 
     async def get_workflow_state(self, workflow_id: str) -> dict[str, Any] | None:
@@ -242,6 +288,8 @@ class CapabilityRouter:
     # Task type → required capabilities mapping
     TASK_CAPABILITY_REQUIREMENTS: dict[TaskType, list[str]] = {
         TaskType.RAG_QUERY: ["rag", "vector_search"],
+        TaskType.BATCH_TASK: ["batch", "workflow", "deploy_flows"],
+        TaskType.INTERACTIVE_TASK: ["multi_agent", "tool_use", "conversational"],
         TaskType.AI_TASK: ["multi_agent", "tool_use"],
         TaskType.WORKFLOW: ["deploy_flows", "monitor_execution"],
     }
@@ -407,6 +455,16 @@ class TaskRouter:
             AdapterType.AGNO,
             AdapterType.PREFECT,
         ],
+        TaskType.BATCH_TASK: [
+            AdapterType.PREFECT,
+            AdapterType.AGNO,
+            AdapterType.LLAMAINDEX,
+        ],
+        TaskType.INTERACTIVE_TASK: [
+            AdapterType.AGNO,
+            AdapterType.PREFECT,
+            AdapterType.LLAMAINDEX,
+        ],
     }
 
     DEFAULT_PREFERENCE_ORDER = [
@@ -484,8 +542,9 @@ class TaskRouter:
 
         needs_deployment = task.get("needs_deployment", False)
         needs_monitoring = task.get("needs_monitoring", False)
-        needs_ai_agents = task_type == TaskType.AI_TASK
+        needs_ai_agents = task_type in (TaskType.AI_TASK, TaskType.INTERACTIVE_TASK)
         needs_rag = task_type == TaskType.RAG_QUERY
+        needs_batch = task_type == TaskType.BATCH_TASK
 
         if task_type == TaskType.WORKFLOW:
             recommended_adapter = AdapterType.PREFECT
@@ -493,6 +552,10 @@ class TaskRouter:
             recommended_adapter = AdapterType.AGNO
         elif task_type == TaskType.RAG_QUERY:
             recommended_adapter = AdapterType.LLAMAINDEX
+        elif task_type == TaskType.BATCH_TASK:
+            recommended_adapter = AdapterType.PREFECT
+        elif task_type == TaskType.INTERACTIVE_TASK:
+            recommended_adapter = AdapterType.AGNO
         else:
             recommended_adapter = AdapterType.PREFECT
 
@@ -507,7 +570,8 @@ class TaskRouter:
                 f"Task requires {'deployment' if needs_deployment else 'standard'} processing"
                 f"{' with monitoring' if needs_monitoring else ''}"
                 f"{' and AI agents' if needs_ai_agents else ''}"
-                f"{' and RAG' if needs_rag else ''}"
+                f"{', RAG' if needs_rag else ''}"
+                f"{', batch' if needs_batch else ''}"
             ),
         }
 

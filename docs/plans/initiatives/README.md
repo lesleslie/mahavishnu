@@ -10,10 +10,8 @@ These files are the executable plan set for `docs/plans/2026-04-04-ecosystem-exe
 
 ## Current Status Summary
 
-- `00` through `08`: complete in the execution board.
-- `09` through `15`: open or partial.
-- `13`: partial. The Textual dashboard shell exists, but live read-only backend/MCP data wiring is still pending.
-- New dashboard/ecosystem-health work should follow `../2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md`.
+- `00` through `15`: all complete.
+- All work packages checked off. No remaining open items.
 
 ## Initiative Documents
 - [00-phase0-cleanup.md](./00-phase0-cleanup.md)

@@ -195,7 +195,10 @@ class SkillPromotionPolicy:
     ) -> SkillActivation:
         """Create an activation record after validating the review gate."""
 
-        self.validate_transition(draft.state, SkillPromotionState.REVIEW)
+        if draft.state != SkillPromotionState.REVIEW:
+            raise ValueError(
+                f"promote_draft requires a draft in REVIEW state, got {draft.state.value}"
+            )
         self.validate_review_for_activation(review)
         if review.skill_id != draft.skill_id:
             raise ValueError("Review skill_id does not match the draft")

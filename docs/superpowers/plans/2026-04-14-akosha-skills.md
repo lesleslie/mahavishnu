@@ -33,11 +33,11 @@ No other files are created or modified. These are pure prompt files.
 **Files:**
 - Create: `~/.claude/skills/code-archaeologist/SKILL.md`
 
-- [ ] **Step 1: Create the directory**
+- [x] **Step 1: Create the directory**
 
 Run: `mkdir -p ~/.claude/skills/code-archaeologist`
 
-- [ ] **Step 2: Write the SKILL.md file**
+- [x] **Step 2: Write the SKILL.md file**
 
 Create `~/.claude/skills/code-archaeologist/SKILL.md` with this content:
 
@@ -175,12 +175,12 @@ If Akosha MCP tools are not available, fall back to direct filesystem search acr
 - **RELATED:** `quality-pulse` - After finding patterns, check if quality is degrading
 ```
 
-- [ ] **Step 3: Verify the file**
+- [x] **Step 3: Verify the file**
 
 Run: `cat ~/.claude/skills/code-archaeologist/SKILL.md | head -3`
 Expected: YAML frontmatter with `name: code-archaeologist`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 Run:
 ```bash
@@ -195,11 +195,11 @@ git commit -m "feat: add code-archaeologist skill for cross-repo code discovery"
 **Files:**
 - Create: `~/.claude/skills/quality-pulse/SKILL.md`
 
-- [ ] **Step 1: Create the directory**
+- [x] **Step 1: Create the directory**
 
 Run: `mkdir -p ~/.claude/skills/quality-pulse`
 
-- [ ] **Step 2: Write the SKILL.md file**
+- [x] **Step 2: Write the SKILL.md file**
 
 Create `~/.claude/skills/quality-pulse/SKILL.md` with this content:
 
@@ -369,12 +369,12 @@ If Akosha MCP tools are not available:
 - **RELATED:** `run-quality-checks` - Trigger quality data collection before analyzing trends
 ```
 
-- [ ] **Step 3: Verify the file**
+- [x] **Step 3: Verify the file**
 
 Run: `cat ~/.claude/skills/quality-pulse/SKILL.md | head -3`
 Expected: YAML frontmatter with `name: quality-pulse`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 Run:
 ```bash
@@ -390,7 +390,7 @@ git commit -m "feat: add quality-pulse skill for adapter execution trend analysi
 - Read: `~/.claude/skills/code-archaeologist/SKILL.md`
 - Read: `~/.claude/skills/quality-pulse/SKILL.md`
 
-- [ ] **Step 1: Verify frontmatter consistency**
+- [x] **Step 1: Verify frontmatter consistency**
 
 Check both files have:
 - `name` field (no spaces, lowercase-with-hyphens matching directory name)
@@ -407,14 +407,14 @@ for f in code-archaeologist quality-pulse; do
 done
 ```
 
-- [ ] **Step 2: Verify no overlap with search-insights**
+- [x] **Step 2: Verify no overlap with search-insights**
 
 Read `~/.claude/skills/search-insights/SKILL.md` and confirm:
 - Code Archaeologist focuses on code graphs + function usage (not in search-insights)
 - Quality Pulse focuses on time-series analytics + anomaly detection (not in search-insights)
 - Both reference search-insights as "RELATED" not "REQUIRED"
 
-- [ ] **Step 3: Verify fallback chain is consistent**
+- [x] **Step 3: Verify fallback chain is consistent**
 
 Both skills reference the same fallback chain:
 1. Akosha MCP tools (primary)
@@ -423,12 +423,12 @@ Both skills reference the same fallback chain:
 
 Verify this matches Mahavishnu's `_load_repos()` at `mahavishnu/core/app.py:615-688`.
 
-- [ ] **Step 4: Verify cross-references are correct**
+- [x] **Step 4: Verify cross-references are correct**
 
 - Code Archaeologist references `ecosystem-awareness` and `quality-pulse` correctly
 - Quality Pulse references `code-archaeologist` and `run-quality-checks` correctly
 - Neither skill references non-existent skills
 
-- [ ] **Step 5: Final commit (if any fixes needed)**
+- [x] **Step 5: Final commit (if any fixes needed)**
 
 If validation found issues, fix and commit. If no issues, this step is a no-op.

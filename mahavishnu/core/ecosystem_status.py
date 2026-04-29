@@ -5,9 +5,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Literal
+from typing import Any, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field
 
@@ -114,6 +114,34 @@ def aggregate_with_optional(
         return CanonicalStatus.OK
 
     return CanonicalStatus.OK
+
+
+# ---------------------------------------------------------------------------
+# Data source protocols (for dependency injection)
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class AdapterProvider(Protocol):
+    """Provides adapter instances and health information."""
+
+    def get_adapter(self, name: str) -> Any: ...
+
+    async def get_health(self) -> dict[str, Any]: ...
+
+
+@runtime_checkable
+class AlertProvider(Protocol):
+    """Provides active alert data."""
+
+    def get_active_alerts_sync(self) -> list[Any]: ...
+
+
+@runtime_checkable
+class WorkflowProvider(Protocol):
+    """Provides workflow state data."""
+
+    async def list_workflows(self, limit: int = 100) -> list[dict[str, Any]]: ...
 
 
 # ---------------------------------------------------------------------------
@@ -224,15 +252,26 @@ class EcosystemStatusService:
     Collects health, adapter, monitoring, workflow, and alert signals
     concurrently using asyncio.gather with per-section timeouts.
     No state mutation happens during report generation.
+
+    Data sources can be injected via constructor parameters. When not
+    provided, collection methods return empty defaults (graceful degradation).
     """
 
     def __init__(
         self,
         section_timeout_ms: int = 5000,
         staleness_threshold_seconds: float = 300.0,
+        adapters: dict[str, Any] | None = None,
+        alert_provider: AlertProvider | None = None,
+        workflow_provider: WorkflowProvider | None = None,
+        service_configs: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         self.section_timeout_ms = section_timeout_ms
         self.staleness_threshold_seconds = staleness_threshold_seconds
+        self._adapters = adapters or {}
+        self._alert_provider = alert_provider
+        self._workflow_provider = workflow_provider
+        self._service_configs = service_configs or {}
 
     async def generate_report(self, request_id: str | None = None) -> EcosystemStatusReport:
         """Generate a full ecosystem status report.
@@ -304,24 +343,101 @@ class EcosystemStatusService:
     async def _collect_services(self) -> dict[str, ServiceStatus]:
         """Collect service health from configured dependencies.
 
-        Stub implementation -- will be wired to HealthChecker in a follow-up.
+        Checks each configured service URL via HTTP GET with timeout.
+        Falls back to UNKNOWN for unreachable services.
         """
-        return {}
+        import httpx
+
+        services: dict[str, ServiceStatus] = {}
+        for name, cfg in self._service_configs.items():
+            url = cfg.get("url", "")
+            required = cfg.get("required", False)
+            if not url:
+                services[name] = ServiceStatus(
+                    status=CanonicalStatus.DISABLED, required=required,
+                )
+                continue
+            try:
+                timeout_s = cfg.get("timeout_s", 3)
+                async with httpx.AsyncClient(timeout=timeout_s) as client:
+                    resp = await client.get(f"{url.rstrip('/')}/health")
+                    body = resp.json()
+                    raw_status = body.get("status", "unknown")
+                    services[name] = ServiceStatus(
+                        status=normalize_status(raw_status),
+                        last_check=datetime.now(UTC),
+                        required=required,
+                        latency_ms=body.get("latency_ms"),
+                    )
+            except Exception:
+                services[name] = ServiceStatus(
+                    status=CanonicalStatus.UNKNOWN,
+                    required=required,
+                    last_check=datetime.now(UTC),
+                )
+        return services
 
     async def _collect_adapters(self) -> dict[str, AdapterStatus]:
-        """Collect adapter inventory and health.
-
-        Stub implementation -- will be wired to HybridAdapterRegistry in a follow-up.
-        """
-        return {}
+        """Collect adapter inventory and health from registered adapters."""
+        if not self._adapters:
+            return {}
+        adapters: dict[str, AdapterStatus] = {}
+        for name, adapter in self._adapters.items():
+            try:
+                health = await adapter.get_health() if hasattr(adapter, "get_health") else {}
+                raw_status = health.get("status", "unknown")
+                adapters[name] = AdapterStatus(
+                    status=normalize_status(raw_status),
+                    last_check=datetime.now(UTC),
+                    preference_score=health.get("preference_score"),
+                )
+            except Exception:
+                adapters[name] = AdapterStatus(
+                    status=CanonicalStatus.UNKNOWN,
+                    last_check=datetime.now(UTC),
+                )
+        return adapters
 
     async def _collect_workflows(self) -> WorkflowSummary:
-        """Collect workflow summary."""
-        return WorkflowSummary()
+        """Collect workflow summary from StateManager."""
+        if not self._workflow_provider:
+            return WorkflowSummary()
+        try:
+            workflows = await self._workflow_provider.list_workflows(limit=100)
+            active = sum(1 for w in workflows if w.get("status") == "running")
+            failed = sum(1 for w in workflows if w.get("status") == "failed")
+            return WorkflowSummary(
+                active_count=active,
+                failed_count=failed,
+                recent_count=len(workflows),
+            )
+        except Exception:
+            return WorkflowSummary()
 
     async def _collect_alerts(self) -> AlertSummary:
-        """Collect alert summary."""
-        return AlertSummary()
+        """Collect active alerts from AlertManager."""
+        if not self._alert_provider:
+            return AlertSummary()
+        try:
+            alerts = self._alert_provider.get_active_alerts_sync()
+            by_severity: dict[str, int] = {}
+            top: list[AlertRef] = []
+            for a in alerts[:20]:
+                sev = a.severity.value if hasattr(a.severity, "value") else str(a.severity)
+                by_severity[sev] = by_severity.get(sev, 0) + 1
+                top.append(AlertRef(
+                    severity=sev,
+                    source=getattr(a, "type", "unknown"),
+                    message=getattr(a, "description", "") or getattr(a, "title", ""),
+                    created_at=getattr(a, "timestamp", datetime.now(UTC)),
+                ))
+            return AlertSummary(
+                total_active=len(alerts),
+                by_severity=by_severity,
+                top_alerts=top,
+            )
+        except Exception:
+            return AlertSummary()
 
     def _detect_staleness(
         self,

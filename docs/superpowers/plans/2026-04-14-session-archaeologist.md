@@ -32,11 +32,11 @@ No other files are created or modified. This is a pure prompt file.
 **Files:**
 - Create: `~/.claude/skills/session-archaeologist/SKILL.md`
 
-- [ ] **Step 1: Create the directory**
+- [x] **Step 1: Create the directory**
 
 Run: `mkdir -p ~/.claude/skills/session-archaeologist`
 
-- [ ] **Step 2: Write the SKILL.md file**
+- [x] **Step 2: Write the SKILL.md file**
 
 Create `~/.claude/skills/session-archaeologist/SKILL.md` with this content:
 
@@ -237,12 +237,12 @@ Inform the user: "Akosha is not available. Falling back to [Session-Buddy MCP / 
 - **RELATED:** `run-quality-checks` - Trigger quality checks (use before archaeology to generate fresh data)
 ```
 
-- [ ] **Step 3: Verify the file**
+- [x] **Step 3: Verify the file**
 
 Run: `head -3 ~/.claude/skills/session-archaeologist/SKILL.md`
 Expected: YAML frontmatter with `name: session-archaeologist`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 Run:
 ```bash
@@ -259,7 +259,7 @@ git commit -m "feat: add session-archaeologist skill for past decision and conte
 - Read: `~/.claude/skills/search-insights/SKILL.md`
 - Read: `~/.claude/skills/code-archaeologist/SKILL.md`
 
-- [ ] **Step 1: Verify frontmatter consistency**
+- [x] **Step 1: Verify frontmatter consistency**
 
 Check the file has:
 - `name` field matching directory name (`session-archaeologist`)
@@ -271,27 +271,27 @@ Run:
 head -5 ~/.claude/skills/session-archaeologist/SKILL.md
 ```
 
-- [ ] **Step 2: Verify no overlap with search-insights**
+- [x] **Step 2: Verify no overlap with search-insights**
 
 Read `~/.claude/skills/search-insights/SKILL.md` and confirm:
 - Session Archaeologist focuses on narrative synthesis of decisions/solutions (not in search-insights)
 - search-insights returns ranked results; session-archaeologist returns structured narratives
 - Both reference `search_all_systems` as a tool but with different workflows
 
-- [ ] **Step 3: Verify no overlap with code-archaeologist**
+- [x] **Step 3: Verify no overlap with code-archaeologist**
 
 Read `~/.claude/skills/code-archaeologist/SKILL.md` and confirm:
 - code-archaeologist searches code graphs and function usage (conversations are secondary enrichment)
 - session-archaeologist searches conversations primarily (code is not in scope)
 - Neither skill duplicates the other's sub-modes
 
-- [ ] **Step 4: Verify cross-references are correct**
+- [x] **Step 4: Verify cross-references are correct**
 
 - Session Archaeologist references `search-insights`, `code-archaeologist`, `quality-pulse`, `run-quality-checks`, and `ecosystem-awareness`
 - All referenced skills exist in `~/.claude/skills/`
 - No references to non-existent skills
 
-- [ ] **Step 5: Verify fallback chain is consistent**
+- [x] **Step 5: Verify fallback chain is consistent**
 
 Session Archaeologist uses a three-tier fallback:
 1. Akosha MCP tools (primary)
@@ -300,6 +300,6 @@ Session Archaeologist uses a three-tier fallback:
 
 This differs from code-archaeologist/quality-pulse (which fall back to Mahavishnu config + filesystem) because session-archaeologist searches **conversation data**, not code or metrics. Session-Buddy is the correct fallback, not Mahavishnu.
 
-- [ ] **Step 6: Final commit (if any fixes needed)**
+- [x] **Step 6: Final commit (if any fixes needed)**
 
 If validation found issues, fix and commit. If no issues, this step is a no-op.
