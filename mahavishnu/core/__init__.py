@@ -6,6 +6,10 @@ submodules are needed.  Access anything from ``mahavishnu.core`` and it will
 be imported on first use.
 """
 
+from __future__ import annotations
+
+import asyncio
+
 __all__ = [
     "MahavishnuApp",
     "MahavishnuSettings",
@@ -151,3 +155,14 @@ def __getattr__(name: str):
         module = import_module(entry[0], __name__)
         return getattr(module, entry[1])
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def _ensure_default_event_loop() -> None:
+    """Create a default event loop for legacy sync tests on Python 3.13+."""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
+
+_ensure_default_event_loop()

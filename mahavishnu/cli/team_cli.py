@@ -33,6 +33,7 @@ import typer
 
 from mahavishnu.core.errors import GoalParsingError, GoalTeamError
 from mahavishnu.core.feature_flags import is_feature_enabled
+from mahavishnu.core import team_learning
 from mahavishnu.engines.agno_teams.config import TeamConfig, TeamMode
 from mahavishnu.engines.goal_team_factory import (
     SKILL_MAPPING,
@@ -496,19 +497,12 @@ def learning_stats(
         console.print("[dim]Enable learning_system_enabled in goal_teams.feature_flags[/dim]")
         raise typer.Exit(code=1)
 
-    # DEPRECATED (Bodai I0.4): team_learning.py is de-authorized.
-    # skill_governance.py is the canonical learning authority.
-    console.print(
-        "\n[yellow]The legacy learning system is deprecated (Bodai I0.4).[/yellow]\n"
-        "[dim]skill_governance.py is now the canonical learning authority.[/dim]\n"
-        "[dim]This command will be removed in a future release.[/dim]"
-    )
-    raise typer.Exit(code=0)
+    engine = team_learning.get_learning_engine()
 
     # Handle clear flag
     if clear:
         if typer.confirm("Are you sure you want to clear all learning data?"):
-            reset_learning_engine()
+            team_learning.reset_learning_engine()
             console.print("\n[green]Learning data cleared successfully.[/green]")
         return
 
@@ -640,14 +634,8 @@ def recommend_mode(
         console.print("[dim]Enable learning_system_enabled in goal_teams.feature_flags[/dim]")
         raise typer.Exit(code=1)
 
-    # DEPRECATED (Bodai I0.4): team_learning.py is de-authorized.
-    # skill_governance.py is the canonical learning authority.
-    console.print(
-        "\n[yellow]The legacy learning system is deprecated (Bodai I0.4).[/yellow]\n"
-        "[dim]skill_governance.py is now the canonical learning authority.[/dim]\n"
-        "[dim]This command will be removed in a future release.[/dim]"
-    )
-    raise typer.Exit(code=0)
+    engine = team_learning.get_learning_engine()
+
     recommendation = engine.get_mode_recommendation(intent)
 
     console.print(f"\n[bold cyan]Mode Recommendation for '{intent}'[/bold cyan]\n")

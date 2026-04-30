@@ -32,6 +32,7 @@ from mahavishnu.core.errors import (
 )
 from mahavishnu.core.feature_flags import is_feature_enabled
 from mahavishnu.core.goal_team_metrics import get_goal_team_metrics
+from mahavishnu.core import team_learning
 
 logger = logging.getLogger(__name__)
 
@@ -324,15 +325,33 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
                     )
 
                 # Record learning outcome (if learning system enabled)
-                # DEPRECATED (Bodai I0.4): team_learning.py is de-authorized.
-                # skill_governance.py is the canonical learning authority.
-                # This block is a no-op until the governed learning pipeline
-                # is wired (Phase 1B).
                 if is_feature_enabled("learning_system_enabled"):
-                    logger.debug(
-                        "Learning outcome recording skipped: team_learning.py "
-                        "is deprecated (Bodai I0.4). Use skill_governance.py."
-                    )
+                    try:
+                        learning_engine = team_learning.get_learning_engine()
+                        learning_engine.record_outcome(
+                            team_learning.TeamExecutionOutcome(
+                                team_id=team_id,
+                                goal=goal,
+                                parsed_intent=parsed.intent,
+                                parsed_domain=parsed.domain,
+                                parsed_skills=parsed.skills,
+                                team_mode=team_config.mode.value,
+                                task=task or goal,
+                                success=run_result.success,
+                                latency_ms=latency_ms,
+                                tokens_used=run_result.total_tokens,
+                            )
+                        )
+                        metrics.record_learning_outcome(
+                            success=run_result.success,
+                            mode=team_config.mode.value,
+                            latency_ms=latency_ms,
+                        )
+                    except Exception:
+                        logger.debug(
+                            "Learning outcome recording failed; continuing without blocking",
+                            exc_info=True,
+                        )
 
             logger.info(
                 f"Created team from goal: team_id={team_id}, "
@@ -493,14 +512,33 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
             team_config = await factory.create_team_from_goal(goal)
 
             # Check learning system for mode recommendation (Phase 3)
-            # DEPRECATED (Bodai I0.4): team_learning.py is de-authorized.
-            # Mode recommendation is a no-op until governed pipeline (Phase 1B).
             recommended_mode = None
             if is_feature_enabled("learning_system_enabled"):
-                logger.debug(
-                    "Mode recommendation skipped: team_learning.py is "
-                    "deprecated (Bodai I0.4). Use skill_governance.py."
-                )
+                try:
+                    learning_engine = team_learning.get_learning_engine()
+                    recommendation = learning_engine.get_mode_recommendation(parsed.intent)
+                    if recommendation is not None:
+                        recommended_mode = (
+                            recommendation.model_dump()
+                            if hasattr(recommendation, "model_dump")
+                            else {
+                                "mode": recommendation.mode,
+                                "confidence": recommendation.confidence,
+                                "success_rate": recommendation.success_rate,
+                                "sample_count": recommendation.sample_count,
+                                "reason": recommendation.reason,
+                            }
+                        )
+                        metrics.record_mode_recommendation(
+                            intent=parsed.intent,
+                            mode=recommendation.mode,
+                            confidence=recommendation.confidence,
+                        )
+                except Exception:
+                    logger.debug(
+                        "Mode recommendation failed; continuing without recommendation",
+                        exc_info=True,
+                    )
 
             return {
                 "success": True,

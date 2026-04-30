@@ -10,6 +10,14 @@ from ...messaging.repository_messenger import (
 )
 
 
+def _coerce_message_type(value: str) -> MessageType:
+    return MessageType(value.lower())
+
+
+def _coerce_priority(value: str) -> MessagePriority:
+    return MessagePriority(value.lower())
+
+
 def register_repository_messaging_tools(server, app, mcp_client):
     """Register repository messaging tools with the MCP server."""
 
@@ -28,7 +36,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
         try:
             # Validate message type
             try:
-                msg_type = MessageType(message_type.upper())
+                msg_type = _coerce_message_type(message_type)
             except ValueError:
                 return {
                     "status": "error",
@@ -37,7 +45,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
 
             # Validate priority
             try:
-                priority_enum = MessagePriority(priority.upper())
+                priority_enum = _coerce_priority(priority)
             except ValueError:
                 return {
                     "status": "error",
@@ -74,7 +82,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
         try:
             # Validate message type
             try:
-                msg_type = MessageType(message_type.upper())
+                msg_type = _coerce_message_type(message_type)
             except ValueError:
                 return {
                     "status": "error",
@@ -83,7 +91,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
 
             # Validate priority
             try:
-                priority_enum = MessagePriority(priority.upper())
+                priority_enum = _coerce_priority(priority)
             except ValueError:
                 return {
                     "status": "error",
@@ -121,7 +129,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
             msg_type = None
             if message_type:
                 try:
-                    msg_type = MessageType(message_type.upper())
+                    msg_type = _coerce_message_type(message_type)
                 except ValueError:
                     return {
                         "status": "error",

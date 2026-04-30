@@ -7,6 +7,10 @@ from ...messaging import MessagePriority
 from ...mcp.auth import require_mcp_auth
 
 
+def _coerce_priority(value: str) -> MessagePriority:
+    return MessagePriority(value.lower())
+
+
 def register_session_buddy_tools(
     server, session_manager, mcp_client, rbac_manager: RBACManager | None = None
 ):
@@ -146,7 +150,7 @@ def register_session_buddy_tools(
 
             # Convert priority string to enum
             try:
-                priority_enum = MessagePriority(priority.upper())
+                priority_enum = _coerce_priority(priority)
             except ValueError:
                 return {
                     "status": "error",
