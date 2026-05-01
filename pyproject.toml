@@ -102,6 +102,8 @@ dependencies = [
     # In-process AI workers (nanobot Python API for AgentRunner/AgentLoop)
     "gpt4all>=2.8.2",
     "llama-cpp-python>=0.3.20",
+    # RunPod Flash: serverless GPU pool execution
+    "runpod-flash~=1.7",
 ]
 
 [project.scripts]
