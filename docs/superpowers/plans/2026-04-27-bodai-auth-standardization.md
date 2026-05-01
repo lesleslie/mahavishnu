@@ -1,6 +1,6 @@
 # Bodai Inter-Service Authentication Standardization — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add a canonical `mcp_common/auth/` package that provides standardized JWT primitives, RBAC, audit logging, and Oneiric secrets integration, then migrate all five Bodai services from their divergent auth implementations to thin wrappers around this shared core.
 
@@ -50,7 +50,7 @@
 - Create: `mcp_common/auth/exceptions.py`
 - Test: `tests/auth/test_exceptions.py`
 
-- [ ] **Step 1: Write the failing import test**
+- [x] **Step 1: Write the failing import test**
 
 ```python
 # tests/auth/test_exceptions.py
@@ -79,7 +79,7 @@ def test_auth_error_message():
     assert str(err) == "token expired"
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd /Users/les/Projects/mcp-common
@@ -88,7 +88,7 @@ pytest tests/auth/test_exceptions.py -v
 
 Expected: `ModuleNotFoundError: No module named 'mcp_common.auth'`
 
-- [ ] **Step 3: Create the exceptions module**
+- [x] **Step 3: Create the exceptions module**
 
 ```python
 # mcp_common/auth/exceptions.py
@@ -123,7 +123,7 @@ class SecretNotConfiguredError(AuthError):
     pass
 ```
 
-- [ ] **Step 4: Create the `__init__.py` stub** (will grow as tasks are added)
+- [x] **Step 4: Create the `__init__.py` stub** (will grow as tasks are added)
 
 ```python
 # mcp_common/auth/__init__.py
@@ -150,7 +150,7 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 ```bash
 pytest tests/auth/test_exceptions.py -v
@@ -158,7 +158,7 @@ pytest tests/auth/test_exceptions.py -v
 
 Expected: All tests PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /Users/les/Projects/mcp-common
@@ -174,7 +174,7 @@ git commit -m "feat(auth): add mcp_common/auth package skeleton with exception h
 - Create: `mcp_common/auth/permissions.py`
 - Test: `tests/auth/test_permissions.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/auth/test_permissions.py
@@ -221,7 +221,7 @@ def test_invalid_permission_raises():
         Permission("superuser")
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 pytest tests/auth/test_permissions.py -v
@@ -229,7 +229,7 @@ pytest tests/auth/test_permissions.py -v
 
 Expected: `ImportError` — `permissions` module doesn't exist yet.
 
-- [ ] **Step 3: Implement permissions.py**
+- [x] **Step 3: Implement permissions.py**
 
 ```python
 # mcp_common/auth/permissions.py
@@ -262,7 +262,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
 }
 ```
 
-- [ ] **Step 4: Add Permission to `__init__.py`**
+- [x] **Step 4: Add Permission to `__init__.py`**
 
 ```python
 # mcp_common/auth/__init__.py  (append to existing imports and __all__)
@@ -271,7 +271,7 @@ from mcp_common.auth.permissions import Permission, Role, ROLE_PERMISSIONS
 
 Add `"Permission"`, `"Role"`, `"ROLE_PERMISSIONS"` to `__all__`.
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 ```bash
 pytest tests/auth/test_permissions.py -v
@@ -279,7 +279,7 @@ pytest tests/auth/test_permissions.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add mcp_common/auth/permissions.py mcp_common/auth/__init__.py tests/auth/test_permissions.py
@@ -294,7 +294,7 @@ git commit -m "feat(auth): add Permission enum and Role definitions"
 - Create: `mcp_common/auth/identity.py`
 - Test: `tests/auth/test_identity.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/auth/test_identity.py
@@ -326,7 +326,7 @@ def test_verify_audience_raises_when_mismatch():
         verify_audience(claimed="akosha", expected="session-buddy")
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 pytest tests/auth/test_identity.py -v
@@ -334,7 +334,7 @@ pytest tests/auth/test_identity.py -v
 
 Expected: `ImportError`.
 
-- [ ] **Step 3: Implement identity.py**
+- [x] **Step 3: Implement identity.py**
 
 ```python
 # mcp_common/auth/identity.py
@@ -373,7 +373,7 @@ def verify_audience(claimed: str, expected: str) -> None:
         )
 ```
 
-- [ ] **Step 4: Add to `__init__.py`**
+- [x] **Step 4: Add to `__init__.py`**
 
 ```python
 from mcp_common.auth.identity import KNOWN_SERVICES, verify_issuer, verify_audience
@@ -381,7 +381,7 @@ from mcp_common.auth.identity import KNOWN_SERVICES, verify_issuer, verify_audie
 
 Add `"KNOWN_SERVICES"`, `"ServiceIdentity"`, `"verify_issuer"`, `"verify_audience"` to `__all__`.
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 ```bash
 pytest tests/auth/test_identity.py -v
@@ -389,7 +389,7 @@ pytest tests/auth/test_identity.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add mcp_common/auth/identity.py mcp_common/auth/__init__.py tests/auth/test_identity.py
@@ -404,7 +404,7 @@ git commit -m "feat(auth): add KNOWN_SERVICES registry and issuer/audience verif
 - Create: `mcp_common/auth/core.py`
 - Test: `tests/auth/test_core.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 # tests/auth/test_core.py
@@ -491,7 +491,7 @@ def test_token_payload_has_jti():
     assert len(payload.jti) > 0
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 pytest tests/auth/test_core.py -v
@@ -499,7 +499,7 @@ pytest tests/auth/test_core.py -v
 
 Expected: `ImportError`.
 
-- [ ] **Step 3: Implement core.py**
+- [x] **Step 3: Implement core.py**
 
 ```python
 # mcp_common/auth/core.py
@@ -607,7 +607,7 @@ def verify_token(
     )
 ```
 
-- [ ] **Step 4: Add to `__init__.py`**
+- [x] **Step 4: Add to `__init__.py`**
 
 ```python
 from mcp_common.auth.core import TokenPayload, create_service_token, verify_token
@@ -615,7 +615,7 @@ from mcp_common.auth.core import TokenPayload, create_service_token, verify_toke
 
 Add `"TokenPayload"`, `"create_service_token"`, `"verify_token"` to `__all__`.
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 ```bash
 pytest tests/auth/test_core.py -v
@@ -623,7 +623,7 @@ pytest tests/auth/test_core.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add mcp_common/auth/core.py mcp_common/auth/__init__.py tests/auth/test_core.py
@@ -638,7 +638,7 @@ git commit -m "feat(auth): add JWT create/verify with issuer, audience, and perm
 - Create: `mcp_common/auth/config.py`
 - Test: `tests/auth/test_config.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 # tests/auth/test_config.py
@@ -691,7 +691,7 @@ def test_get_secret_raises_when_disabled(monkeypatch):
         _ = cfg.secret
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 pytest tests/auth/test_config.py -v
@@ -699,7 +699,7 @@ pytest tests/auth/test_config.py -v
 
 Expected: `ImportError`.
 
-- [ ] **Step 3: Implement config.py**
+- [x] **Step 3: Implement config.py**
 
 ```python
 # mcp_common/auth/config.py
@@ -769,7 +769,7 @@ class AuthConfig:
         return self._secret
 ```
 
-- [ ] **Step 4: Add to `__init__.py`**
+- [x] **Step 4: Add to `__init__.py`**
 
 ```python
 from mcp_common.auth.config import AuthConfig
@@ -777,7 +777,7 @@ from mcp_common.auth.config import AuthConfig
 
 Add `"AuthConfig"` to `__all__`.
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 ```bash
 pytest tests/auth/test_config.py -v
@@ -785,7 +785,7 @@ pytest tests/auth/test_config.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add mcp_common/auth/config.py mcp_common/auth/__init__.py tests/auth/test_config.py
@@ -800,7 +800,7 @@ git commit -m "feat(auth): add AuthConfig with env-var secret loading and placeh
 - Create: `mcp_common/auth/decorator.py`
 - Test: `tests/auth/test_decorator.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 # tests/auth/test_decorator.py
@@ -910,7 +910,7 @@ async def test_denied_token_emits_audit_event(config, read_token):
     assert received[0].permission == Permission.WRITE
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 pytest tests/auth/test_decorator.py -v
@@ -918,7 +918,7 @@ pytest tests/auth/test_decorator.py -v
 
 Expected: `ImportError`.
 
-- [ ] **Step 3: Implement decorator.py**
+- [x] **Step 3: Implement decorator.py**
 
 ```python
 # mcp_common/auth/decorator.py
@@ -1009,7 +1009,7 @@ def require_auth(
     return decorator
 ```
 
-- [ ] **Step 4: Add to `__init__.py`**
+- [x] **Step 4: Add to `__init__.py`**
 
 ```python
 from mcp_common.auth.decorator import require_auth
@@ -1017,14 +1017,14 @@ from mcp_common.auth.decorator import require_auth
 
 Add `"require_auth"` to `__all__`.
 
-- [ ] **Step 5: Install pytest-asyncio if needed**
+- [x] **Step 5: Install pytest-asyncio if needed**
 
 ```bash
 cd /Users/les/Projects/mcp-common
 uv add --dev pytest-asyncio
 ```
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 ```bash
 pytest tests/auth/test_decorator.py -v
@@ -1032,7 +1032,7 @@ pytest tests/auth/test_decorator.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add mcp_common/auth/decorator.py mcp_common/auth/__init__.py tests/auth/test_decorator.py
@@ -1047,7 +1047,7 @@ git commit -m "feat(auth): add @require_auth() decorator with Permission-level e
 - Create: `mcp_common/auth/audit.py`
 - Test: `tests/auth/test_audit.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 # tests/auth/test_audit.py
@@ -1127,7 +1127,7 @@ def test_custom_sink_receives_event():
     assert received[0].result == "denied"
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 pytest tests/auth/test_audit.py -v
@@ -1135,7 +1135,7 @@ pytest tests/auth/test_audit.py -v
 
 Expected: `ImportError`.
 
-- [ ] **Step 3: Implement audit.py**
+- [x] **Step 3: Implement audit.py**
 
 ```python
 # mcp_common/auth/audit.py
@@ -1201,7 +1201,7 @@ class AuditLogger:
                 logger.exception("AuditSink %r raised during emit", sink)
 ```
 
-- [ ] **Step 4: Add to `__init__.py`**
+- [x] **Step 4: Add to `__init__.py`**
 
 ```python
 from mcp_common.auth.audit import AuditLogger, AuditSink, AuthAuditEvent
@@ -1209,7 +1209,7 @@ from mcp_common.auth.audit import AuditLogger, AuditSink, AuthAuditEvent
 
 Add `"AuditLogger"`, `"AuditSink"`, `"AuthAuditEvent"` to `__all__`.
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 ```bash
 pytest tests/auth/test_audit.py -v
@@ -1217,7 +1217,7 @@ pytest tests/auth/test_audit.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 6: Smoke test the full public API**
+- [x] **Step 6: Smoke test the full public API**
 
 ```bash
 python -c "from mcp_common.auth import AuthConfig, require_auth, Permission, AuthAuditEvent, AuthError, KNOWN_SERVICES; print('OK')"
@@ -1225,7 +1225,7 @@ python -c "from mcp_common.auth import AuthConfig, require_auth, Permission, Aut
 
 Expected: prints `OK`.
 
-- [ ] **Step 7: Run all auth tests**
+- [x] **Step 7: Run all auth tests**
 
 ```bash
 pytest tests/auth/ -v
@@ -1233,7 +1233,7 @@ pytest tests/auth/ -v
 
 Expected: All PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add mcp_common/auth/audit.py mcp_common/auth/__init__.py tests/auth/test_audit.py
@@ -1250,7 +1250,7 @@ git commit -m "feat(auth): add AuthAuditEvent and AuditLogger with custom sink s
 
 Current state: ~60-line module using `WebSocketAuthenticator` from mcp-common; no Permission model; no RBAC; `AUTH_ENABLED` env var guard.
 
-- [ ] **Step 1: Write the test first**
+- [x] **Step 1: Write the test first**
 
 ```python
 # crackerjack/tests/unit/test_websocket_auth.py
@@ -1281,14 +1281,14 @@ def test_generate_and_verify_round_trip(monkeypatch):
     assert payload is not None
 ```
 
-- [ ] **Step 2: Run test to verify it fails (or passes — either is fine since we're testing behavior)**
+- [x] **Step 2: Run test to verify it fails (or passes — either is fine since we're testing behavior)**
 
 ```bash
 cd /Users/les/Projects/crackerjack
 pytest tests/unit/test_websocket_auth.py -v
 ```
 
-- [ ] **Step 3: Replace `crackerjack/websocket/auth.py` internals**
+- [x] **Step 3: Replace `crackerjack/websocket/auth.py` internals**
 
 ```python
 # crackerjack/crackerjack/websocket/auth.py
@@ -1339,7 +1339,7 @@ def verify_token(token: str) -> dict[str, Any] | None:
         return None
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 pytest tests/unit/test_websocket_auth.py -v
@@ -1347,13 +1347,13 @@ pytest tests/unit/test_websocket_auth.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 5: Run full Crackerjack test suite to confirm no regressions**
+- [x] **Step 5: Run full Crackerjack test suite to confirm no regressions**
 
 ```bash
 pytest -x -q
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /Users/les/Projects/crackerjack
@@ -1371,7 +1371,7 @@ git commit -m "feat(auth): delegate websocket auth to mcp_common.auth"
 
 Current state: ~190 lines. Has its own `MCPAuthError`, bare `require_auth(func)` decorator (no Permission), `validate_auth_config()`, and `generate_jwt_token()`. Uses `JWT_SECRET` env var.
 
-- [ ] **Step 1: Write the tests**
+- [x] **Step 1: Write the tests**
 
 ```python
 # akosha/tests/unit/test_mcp_auth.py
@@ -1406,14 +1406,14 @@ async def test_require_auth_passes_when_disabled(monkeypatch):
     assert result == "ok"
 ```
 
-- [ ] **Step 2: Run test to understand current behavior**
+- [x] **Step 2: Run test to understand current behavior**
 
 ```bash
 cd /Users/les/Projects/akosha
 pytest tests/unit/test_mcp_auth.py -v
 ```
 
-- [ ] **Step 3: Replace `akosha/mcp/auth.py` internals**
+- [x] **Step 3: Replace `akosha/mcp/auth.py` internals**
 
 Note: Keep `MCPAuthError`, `require_auth`, `validate_auth_config`, `generate_jwt_token` in `__all__` for backward compatibility. The `require_auth` signature changes: it now takes an optional Permission, defaulting to `Permission.READ`.
 
@@ -1534,7 +1534,7 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 pytest tests/unit/test_mcp_auth.py -v
@@ -1542,13 +1542,13 @@ pytest tests/unit/test_mcp_auth.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 5: Run full Akosha test suite**
+- [x] **Step 5: Run full Akosha test suite**
 
 ```bash
 pytest -x -q
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /Users/les/Projects/akosha
@@ -1566,7 +1566,7 @@ git commit -m "feat(auth): delegate MCP auth to mcp_common.auth, keep MCPAuthErr
 
 Current state: ~350 lines. Has `AuthConfig`, `JWTManager`, `CrossProjectAuth`, `require_auth(optional=True)`, `validate_token`, `generate_test_token`. Uses `SESSION_BUDDY_SECRET` env var.
 
-- [ ] **Step 1: Write the tests**
+- [x] **Step 1: Write the tests**
 
 ```python
 # session_buddy/tests/unit/test_mcp_auth.py
@@ -1604,7 +1604,7 @@ def test_generate_test_token_and_validate(monkeypatch):
     assert "iss" in payload or "sub" in payload  # decoded JWT has standard claims
 ```
 
-- [ ] **Step 2: Run test to verify it fails (before replacement)**
+- [x] **Step 2: Run test to verify it fails (before replacement)**
 
 ```bash
 cd /Users/les/Projects/session-buddy
@@ -1613,7 +1613,7 @@ pytest tests/unit/test_mcp_auth.py -v
 
 Expected: Tests fail with `ImportError` or assertion errors since the new public API (`is_authentication_enabled`) doesn't exist yet in the old implementation.
 
-- [ ] **Step 3: Replace `session_buddy/mcp/auth.py` internals**
+- [x] **Step 3: Replace `session_buddy/mcp/auth.py` internals**
 
 Keep public API: `AuthConfig`, `validate_token`, `require_auth`, `CrossProjectAuth`, `is_authentication_enabled`, `generate_test_token`.
 
@@ -1734,7 +1734,7 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 pytest tests/unit/test_mcp_auth.py -v
@@ -1742,13 +1742,13 @@ pytest tests/unit/test_mcp_auth.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 5: Run full Session-Buddy test suite**
+- [x] **Step 5: Run full Session-Buddy test suite**
 
 ```bash
 pytest -x -q
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /Users/les/Projects/session-buddy
@@ -1766,7 +1766,7 @@ git commit -m "feat(auth): delegate MCP auth to mcp_common.auth, keep full backw
 
 Current state: Full `RBACManager`, `AuditLogger`, `CredentialManager`, `require_mcp_auth(rbac_manager, required_permission, require_repo_param)`. The `RBACManager` and `AuditLogger` should delegate to mcp-common; the `CredentialManager` stays local (it's Mahavishnu-specific credential redaction).
 
-- [ ] **Step 1: Write the tests**
+- [x] **Step 1: Write the tests**
 
 ```python
 # tests/unit/test_mcp_auth.py
@@ -1793,7 +1793,7 @@ async def test_require_mcp_auth_passes_with_user_id():
     assert "alice" in result
 ```
 
-- [ ] **Step 2: Replace `mahavishnu/mcp/auth.py` internals**
+- [x] **Step 2: Replace `mahavishnu/mcp/auth.py` internals**
 
 ```python
 # mahavishnu/mahavishnu/mcp/auth.py
@@ -1896,7 +1896,7 @@ class CredentialManager:
         return SecretStr(value)
 ```
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 ```bash
 cd /Users/les/Projects/mahavishnu
@@ -1905,13 +1905,13 @@ pytest tests/unit/test_mcp_auth.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 4: Run full Mahavishnu test suite**
+- [x] **Step 4: Run full Mahavishnu test suite**
 
 ```bash
 pytest -x -q
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add mahavishnu/mcp/auth.py tests/unit/test_mcp_auth.py
@@ -1928,7 +1928,7 @@ git commit -m "feat(auth): delegate MCP auth to mcp_common.auth, keep require_mc
 
 Current state: Most comprehensive auth in the ecosystem — full RBAC with rate limiting, token revocation, audit logging. Keep Dhara's `Permission` extensions (`CHECKPOINT`, `RESTORE`) as local additions on top of the shared enum.
 
-- [ ] **Step 1: Write the tests**
+- [x] **Step 1: Write the tests**
 
 ```python
 # dhara/tests/unit/test_mcp_auth.py
@@ -1958,7 +1958,7 @@ async def test_require_dhara_auth_passes_when_disabled(monkeypatch):
     assert result == "ok"
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 cd /Users/les/Projects/dhara
@@ -1967,7 +1967,7 @@ pytest tests/unit/test_mcp_auth.py -v
 
 Expected: `ImportError` or `AttributeError` — `DharaPermission` and `require_dhara_auth` don't exist yet.
 
-- [ ] **Step 3: Implement `dhara/mcp/auth.py` migration**
+- [x] **Step 3: Implement `dhara/mcp/auth.py` migration**
 
 ```python
 # dhara/dhara/mcp/auth.py
@@ -2043,7 +2043,7 @@ def require_dhara_auth(
 __all__ = ["DharaPermission", "require_dhara_auth"]
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 cd /Users/les/Projects/dhara
@@ -2052,7 +2052,7 @@ pytest tests/unit/test_mcp_auth.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add dhara/mcp/auth.py tests/unit/test_mcp_auth.py
@@ -2070,7 +2070,7 @@ git commit -m "feat(auth): delegate Dhara MCP auth to mcp_common.auth, keep Dhar
 
 Current state: ~400 lines of custom `S3Storage`, `GCSStorage`, `AzureBlobStorage` using sync `boto3`/GCS/Azure SDKs. Oneiric already has async `S3StorageAdapter`, `GCSStorageAdapter`, `AzureBlobStorageAdapter`.
 
-- [ ] **Step 1: Write the tests**
+- [x] **Step 1: Write the tests**
 
 ```python
 # dhara/tests/unit/test_backup_storage.py (additions)
@@ -2091,7 +2091,7 @@ def test_factory_raises_for_unknown_provider():
         create_storage_adapter("ftp", settings={})
 ```
 
-- [ ] **Step 2: Replace `dhara/backup/storage.py`**
+- [x] **Step 2: Replace `dhara/backup/storage.py`**
 
 ```python
 # dhara/dhara/backup/storage.py
@@ -2143,7 +2143,7 @@ class StorageAdapterFactory:
         return adapter_cls(settings)
 ```
 
-- [ ] **Step 3: Update imports in backup manager**
+- [x] **Step 3: Update imports in backup manager**
 
 Find all files that import the old storage classes:
 ```bash
@@ -2168,7 +2168,7 @@ storage = StorageAdapterFactory.create_storage("s3", bucket=cfg.bucket, region=c
 
 If `manager.py` calls `.upload()`, `.download()`, `.delete()` — these method names are the same in Oneiric adapters, so call sites don't change. Only the import and instantiation lines need updating.
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 cd /Users/les/Projects/dhara
@@ -2177,13 +2177,13 @@ pytest tests/unit/test_backup_storage.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 5: Run full Dhara test suite**
+- [x] **Step 5: Run full Dhara test suite**
 
 ```bash
 pytest -x -q
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add dhara/backup/storage.py dhara/backup/manager.py tests/unit/test_backup_storage.py
@@ -2197,7 +2197,7 @@ git commit -m "feat(backup): replace custom S3/GCS/Azure storage with Oneiric st
 **Files:**
 - Create: `tests/integration/test_inter_service_auth.py` (in mcp-common)
 
-- [ ] **Step 1: Write integration test**
+- [x] **Step 1: Write integration test**
 
 ```python
 # tests/integration/test_inter_service_auth.py
@@ -2248,7 +2248,7 @@ def test_unique_jti_per_token():
     assert p1.jti != p2.jti
 ```
 
-- [ ] **Step 2: Run integration tests**
+- [x] **Step 2: Run integration tests**
 
 ```bash
 cd /Users/les/Projects/mcp-common
@@ -2257,7 +2257,7 @@ pytest tests/integration/test_inter_service_auth.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 3: Run spec validation command**
+- [x] **Step 3: Run spec validation command**
 
 ```bash
 python -c "from mcp_common.auth import AuthConfig, require_auth, Permission, AuthAuditEvent, AuthError, KNOWN_SERVICES; print('OK')"
@@ -2265,7 +2265,7 @@ python -c "from mcp_common.auth import AuthConfig, require_auth, Permission, Aut
 
 Expected: `OK`.
 
-- [ ] **Step 4: Verify no duplicate auth implementations remain**
+- [x] **Step 4: Verify no duplicate auth implementations remain**
 
 ```bash
 grep -r "class.*Auth" \
@@ -2279,7 +2279,7 @@ grep -r "class.*Auth" \
 
 Review output — each remaining class should be a thin shim (e.g., `DharaPermission`, `MCPAuthError`, `CrossProjectAuth`) not a full JWT implementation.
 
-- [ ] **Step 5: Commit and tag**
+- [x] **Step 5: Commit and tag**
 
 ```bash
 cd /Users/les/Projects/mcp-common

@@ -78,8 +78,8 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 
 - Spec: [../superpowers/specs/2026-04-27-bodai-auth-standardization-design.md](../superpowers/specs/2026-04-27-bodai-auth-standardization-design.md)
 - Plan: [../superpowers/plans/2026-04-27-bodai-auth-standardization.md](../superpowers/plans/2026-04-27-bodai-auth-standardization.md)
-- Status: `active`, `implementation`
-- Use for: canonical JWT primitives, RBAC (Permission enum), audit logging, Oneiric secrets integration, and per-service migration from divergent auth implementations. Also migrates Dhara backup storage from custom S3/GCS/Azure code to Oneiric storage adapters.
+- Status: `complete` — shipped 2026-04-30, all 14 tasks done, all 6 repos pushed
+- Use for: reference only. `mcp_common.auth` is now the canonical JWT package. See memory entry for API, env vars, and commit SHAs.
 - Relationship: unblocks Phase 2 engine surface expansion. Must be implemented before adding new inter-service calls or promoting any service to production auth.
 
 ### Config Consolidation
