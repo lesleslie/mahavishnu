@@ -92,9 +92,9 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 
 - Spec: [../superpowers/specs/2026-04-26-agent-skill-modernization-design.md](../superpowers/specs/2026-04-26-agent-skill-modernization-design.md)
 - Plan: [../superpowers/plans/2026-04-26-agent-skill-modernization.md](../superpowers/plans/2026-04-26-agent-skill-modernization.md)
-- Status: `active`, `implementation`
-- Use for: enriching 15 agent descriptions with ecosystem MCP tool references, adding "Available MCP Servers" sections to all 22 native skills, fixing stale references, and wiring automated drift validation into `mahavishnu config validate`.
-- Relationship: depends on Config Consolidation. Run after agents/skills are in the Mahavishnu project directory.
+- Status: `shipped` — all tasks complete as of 2026-05-01
+- Delivered: `skill_mcp_validator.py` (stale-ref validator), `DriftReport`/`check_skill_agent_drift` wired into `mahavishnu config validate`, 15 agent descriptions enriched with ecosystem MCP refs, 28 active skills with "Available MCP Servers" sections, `akasha-specialist` renamed to `akosha-specialist`, validator skips `.archive/` by default.
+- Use for: reference only.
 
 ### Superpowers Implementation Plans
 
@@ -154,7 +154,7 @@ Important reconciliation notes:
 
 ## Current Implementation Priority
 
-*Last verified: 2026-04-30. Items below are confirmed unfinished against codebase and plan checkboxes.*
+*Last verified: 2026-05-01. Items below are confirmed unfinished against codebase and plan checkboxes.*
 
 1. **Config Consolidation** — shipped 2026-04-30
    - Plan: [../superpowers/plans/2026-04-26-config-consolidation.md](../superpowers/plans/2026-04-26-config-consolidation.md)
@@ -164,13 +164,13 @@ Important reconciliation notes:
    - Plan: [2026-04-25-ecosystem-docs-canonicalization-plan.md](./2026-04-25-ecosystem-docs-canonicalization-plan.md)
    - Delivered: `mahavishnu docs audit` CLI command wrapping `scripts/audit_ecosystem_docs.py`.
 
-3. **Nanobot Phase A** — `claude mcp serve` autostart, not started
+3. **Agent & Skill Modernization** — shipped 2026-05-01
+   - Plan: [../superpowers/plans/2026-04-26-agent-skill-modernization.md](../superpowers/plans/2026-04-26-agent-skill-modernization.md)
+   - Delivered: validator, DriftReport wired into `config validate`, 15 agents enriched, 28 skills with MCP sections, `akosha-specialist` rename.
+
+4. **Nanobot Phase A** — `claude mcp serve` autostart, not started
    - Plan: [2026-04-05-nanobot-worker-integration.md](./2026-04-05-nanobot-worker-integration.md)
    - Goal: wire `claude mcp serve` via Supergateway into the autostart script and `~/.claude.json`. Phase B (`NanobotWorker`) is already complete.
-
-4. **Agent & Skill Modernization** — 41 tasks, unblocked (Config Consolidation shipped 2026-04-30)
-   - Plan: [../superpowers/plans/2026-04-26-agent-skill-modernization.md](../superpowers/plans/2026-04-26-agent-skill-modernization.md)
-   - Goal: enrich 15 agent descriptions with ecosystem MCP tool refs; add "Available MCP Servers" sections to 22 skills; wire drift validation into `mahavishnu config validate`.
 
 5. **Bodai Agent Platform I4 Optional Extensions** — gate: written product justification required per extension
    - Plans: [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md), [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
