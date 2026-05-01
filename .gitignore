@@ -146,7 +146,12 @@ tests/archived/
 # ============================================================================
 # Claude Code Project-Specific Data
 # ============================================================================
-.claude/
+# Track canonical config (agents, skills, commands, CLAUDE.md, mcp-hooks.json,
+# settings.local.json, CLAUDE.md); ignore runtime-only and secret-adjacent dirs.
+.claude/settings.json
+.claude/hooks/scripts/
+.claude/skills/*/.archive/
+.claude/backups/
 
 
 # ============================================================================

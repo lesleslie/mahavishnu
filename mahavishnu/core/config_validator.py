@@ -11,6 +11,7 @@ Note: repos.yaml is legacy. Use ecosystem.yaml as the single source of truth.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -416,6 +417,47 @@ def validate_config(config_dir: str | Path | None = None) -> ConfigValidationRep
                 combined_report.add_warning(warning)
 
     return combined_report
+
+
+def _extract_mcp_ports_from_json(project_root: Path) -> dict[str, int]:
+    """Extract server_name → port from .mcp.json."""
+    mcp_path = project_root / ".mcp.json"
+    if not mcp_path.exists():
+        return {}
+    data = json.loads(mcp_path.read_text())
+    ports: dict[str, int] = {}
+    for name, cfg in data.get("mcpServers", {}).items():
+        url = cfg.get("url", "")
+        match = re.search(r":(\d+)", url)
+        if match:
+            ports[name] = int(match.group(1))
+    return ports
+
+
+def check_skill_mcp_drift(project_root: Path) -> list[str]:
+    """Report port drift between .mcp.json and skill MCP reference tables."""
+    issues: list[str] = []
+    known_ports = _extract_mcp_ports_from_json(project_root)
+    if not known_ports:
+        return issues
+
+    skills_dir = project_root / ".claude" / "skills"
+    if not skills_dir.exists():
+        return issues
+
+    for skill_file in skills_dir.rglob("SKILL.md"):
+        content = skill_file.read_text()
+        for server_name, actual_port in known_ports.items():
+            pattern = rf"\|\s*{re.escape(server_name)}\s*\|\s*(\d+)"
+            for match in re.finditer(pattern, content):
+                doc_port = int(match.group(1))
+                if doc_port != actual_port:
+                    issues.append(
+                        f"Port drift in {skill_file.relative_to(project_root)}: "
+                        f"{server_name} documented as :{doc_port}, "
+                        f"but .mcp.json says :{actual_port}"
+                    )
+    return issues
 
 
 class ConfigurationWizard:

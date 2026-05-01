@@ -302,6 +302,7 @@ disallow_untyped_defs = false
 minversion = "7.0"
 asyncio_mode = "auto"
 testpaths = ["tests"]
+pythonpath = [".", "scripts"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 python_classes = ["Test*"]

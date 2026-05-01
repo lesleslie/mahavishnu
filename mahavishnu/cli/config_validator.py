@@ -498,7 +498,90 @@ def check_skill_agent_drift(
     return report
 
 
+_PROJECT_ROOT = Path(__file__).parents[2]
+
+
+def _get_project_root() -> Path:
+    """Return project root, overridable via MAHAVISHNU_PROJECT_ROOT for tests."""
+    import os
+    override = os.environ.get("MAHAVISHNU_PROJECT_ROOT")
+    return Path(override) if override else _PROJECT_ROOT
+
+
+def add_config_inventory_commands(app: typer.Typer) -> None:
+    """Add config inventory commands (list-agents, list-skills, list-mcp-servers, sync-from-global, rollback)."""
+
+    @app.command("list-agents")
+    def list_agents(
+        role: str | None = typer.Option(None, help="Filter by role tag in frontmatter"),
+    ) -> None:
+        """List all agents in .claude/agents/."""
+        agents_dir = _get_project_root() / ".claude" / "agents"
+        if not agents_dir.exists():
+            typer.echo("No agents directory found. Run migration first.")
+            raise typer.Exit(1)
+        agents = sorted(agents_dir.glob("*.md"))
+        typer.echo(f"{len(agents)} agents found:")
+        for a in agents:
+            typer.echo(f"  {a.stem}")
+
+    @app.command("list-skills")
+    def list_skills() -> None:
+        """List all skills in .claude/skills/."""
+        skills_dir = _get_project_root() / ".claude" / "skills"
+        if not skills_dir.exists():
+            typer.echo("No skills directory found. Run migration first.")
+            raise typer.Exit(1)
+        skills = [d for d in skills_dir.iterdir() if (d / "SKILL.md").exists()]
+        typer.echo(f"{len(skills)} skills found:")
+        for s in sorted(skills):
+            typer.echo(f"  {s.name}")
+
+    @app.command("list-mcp-servers")
+    def list_mcp_servers() -> None:
+        """List MCP servers from .mcp.json."""
+        mcp_path = _get_project_root() / ".mcp.json"
+        if not mcp_path.exists():
+            typer.echo(".mcp.json not found. Run migration first.")
+            raise typer.Exit(1)
+        data = json.loads(mcp_path.read_text())
+        servers = data.get("mcpServers", {})
+        typer.echo(f"{len(servers)} MCP servers:")
+        for name, cfg in sorted(servers.items()):
+            url = cfg.get("url", cfg.get("command", "local"))
+            typer.echo(f"  {name}: {url}")
+
+    @app.command("sync-from-global")
+    def sync_from_global(
+        dry_run: bool = typer.Option(False, "--dry-run"),
+    ) -> None:
+        """Re-import agents/skills added to ~/.claude/ since last migration."""
+        import sys
+        sys.path.insert(0, str(_PROJECT_ROOT / "scripts"))
+        from migrate_config_to_project import MigrationRunner  # noqa: PLC0415
+        home = Path.home()
+        runner = MigrationRunner(
+            source_claude=home / ".claude",
+            source_claude_json=home / ".claude.json",
+            dest_project=_get_project_root(),
+            dry_run=dry_run,
+            backup=False,
+        )
+        runner.run()
+
+    @app.command("rollback")
+    def rollback_cmd(
+        timestamp: str = typer.Argument(help="Backup timestamp (YYYYMMDDTHHmmSS)"),
+    ) -> None:
+        """Restore ~/.claude.json, settings.local.json, and agents/skills from backup."""
+        import sys
+        sys.path.insert(0, str(_PROJECT_ROOT / "scripts"))
+        from migrate_config_to_project import rollback  # noqa: PLC0415
+        rollback(_get_project_root(), timestamp)
+
+
 __all__ = [
+    "add_config_inventory_commands",
     "add_config_validation_commands",
     "check_skill_agent_drift",
     "DriftReport",
