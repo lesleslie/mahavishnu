@@ -1,5 +1,5 @@
 ---
-name: akasha-specialist
+name: akosha-specialist
 description: >-
   Expert in Akosha cross-system intelligence and embeddings. Runs semantic search,
   pattern detection, and correlation queries.

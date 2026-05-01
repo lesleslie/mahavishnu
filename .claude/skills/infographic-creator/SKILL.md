@@ -11,6 +11,12 @@ This task uses [AntV Infographic](https://infographic.antv.vision/) to create vi
 
 Before starting the task, you need to understand the AntV Infographic syntax specifications, including template list, data structure, themes, etc.
 
+## Available MCP Servers
+
+| Server | Port | Context Mode | Relevant Tools | Default Timeout |
+|--------|------|-------------|---------------|----------------|
+| akosha | 8682 | grep | mcp__akosha__search_all_systems | 60s |
+
 ## Specifications
 
 ### AntV Infographic Syntax

@@ -932,9 +932,9 @@
       "max_concurrent_tasks": 3,
       "discovery": true
     },
-    "akasha-specialist": {
-      "name": "akasha-specialist",
-      "file": "/Users/les/.claude/agents/akasha-specialist.md",
+    "akosha-specialist": {
+      "name": "akosha-specialist",
+      "file": "/Users/les/.claude/agents/akosha-specialist.md",
       "capabilities": [
         "code_analysis",
         "doc_generation"
@@ -1130,7 +1130,7 @@
       "anthropic-claude-specialist",
       "langchain-specialist",
       "c-pro",
-      "akasha-specialist",
+      "akosha-specialist",
       "graphql-architect",
       "pycharm-plugin-creator",
       "mobile-developer",
@@ -1199,7 +1199,7 @@
       "langchain-specialist",
       "documentation-specialist",
       "c-pro",
-      "akasha-specialist",
+      "akosha-specialist",
       "graphql-architect",
       "pycharm-plugin-creator",
       "mobile-developer",

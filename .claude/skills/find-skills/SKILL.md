@@ -7,6 +7,12 @@ description: Helps users discover and install agent skills when they ask questio
 
 This skill helps you discover and install skills from the open agent skills ecosystem.
 
+## Available MCP Servers
+
+| Server | Port | Context Mode | Relevant Tools | Default Timeout |
+|--------|------|-------------|---------------|----------------|
+| session-buddy | 8678 | grep | mcp__session-buddy__search_conversations, mcp__session-buddy__search_entities | 30s |
+
 ## When to Use This Skill
 
 Use this skill when the user:

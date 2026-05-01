@@ -9,6 +9,12 @@ dependency:
 
 This skill provides icon search and SVG string retrieval capabilities. It helps users find appropriate icons for various use cases including infographics, web development, design, and more.
 
+## Available MCP Servers
+
+| Server | Port | Context Mode | Relevant Tools | Default Timeout |
+|--------|------|-------------|---------------|----------------|
+| mahavishnu | 8680 | grep | mcp__mahavishnu__get_health | 60s |
+
 ## Purpose
 
 This skill helps discover available icons by:

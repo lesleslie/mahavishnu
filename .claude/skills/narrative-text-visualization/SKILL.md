@@ -7,6 +7,12 @@ description: Generate structured narrative text visualizations from data using T
 
 This skill provides a workflow for transforming data into structured narrative text visualizations using the AntV T8 (Text) schema. T8 is designed for unstructured data visualization where `T` stands for Text, and `8` represents a byte of 8 bits, symbolizing deep insights hidden beneath the text.
 
+## Available MCP Servers
+
+| Server | Port | Context Mode | Relevant Tools | Default Timeout |
+|--------|------|-------------|---------------|----------------|
+| akosha | 8682 | grep | mcp__akosha__search_all_systems | 60s |
+
 ## Overview
 
 `T8` is a declarative JSON Schema syntax used to describe data interpretation reports with semantic entity labeling. It's designed to be:

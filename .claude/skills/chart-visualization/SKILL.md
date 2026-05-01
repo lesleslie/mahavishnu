@@ -9,6 +9,12 @@ dependency:
 
 This skill provides a comprehensive workflow for transforming data into visual charts. It handles chart selection, parameter extraction, and image generation.
 
+## Available MCP Servers
+
+| Server | Port | Context Mode | Relevant Tools | Default Timeout |
+|--------|------|-------------|---------------|----------------|
+| mahavishnu | 8680 | grep | mcp__mahavishnu__get_health | 60s |
+
 ## Workflow
 
 To visualize data, follow these steps:

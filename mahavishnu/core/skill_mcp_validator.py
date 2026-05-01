@@ -220,11 +220,17 @@ def validate_agent_dir(directory: Path) -> dict[str, AgentValidationReport]:
     }
 
 
-def validate_skill_dir(directory: Path) -> dict[str, SkillValidationReport]:
-    """Validate all SKILL.md files recursively under a skills directory."""
+def validate_skill_dir(
+    directory: Path, *, skip_archive: bool = True
+) -> dict[str, SkillValidationReport]:
+    """Validate all SKILL.md files recursively under a skills directory.
+
+    skip_archive: when True (default), ignores files under any .archive/ subdirectory.
+    """
     return {
         str(path.relative_to(directory)): validate_skill_file(path)
         for path in sorted(directory.rglob("SKILL.md"))
+        if not (skip_archive and ".archive" in path.parts)
     }
 
 

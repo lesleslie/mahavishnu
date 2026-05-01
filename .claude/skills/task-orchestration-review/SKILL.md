@@ -9,6 +9,13 @@ description: Use when reviewing Task Orchestration components at phase boundarie
 
 ---
 
+## Available MCP Servers
+
+| Server | Port | Context Mode | Relevant Tools | Default Timeout |
+|--------|------|-------------|---------------|----------------|
+| mahavishnu | 8680 | summary | mcp__mahavishnu__pool_route_execute, mcp__mahavishnu__get_health, mcp__mahavishnu__get_workflow_status | 60s |
+| crackerjack | 8676 | summary | mcp__crackerjack__crackerjack_run, mcp__crackerjack__get_comprehensive_status, mcp__crackerjack__smart_error_analysis | 120s |
+
 ## When to Use
 
 ```dot
