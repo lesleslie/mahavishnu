@@ -129,9 +129,9 @@
       "Read(//Users/les/.claude/agents/**)",
       "Bash(do)",
       "Bash(sed -i 's/^model: opus$/model: sonnet/' \"$f\")",
-      "Bash(echo \"\u2713 $f: opus \u2192 sonnet\")",
+      "Bash(echo \"✓ $f: opus → sonnet\")",
       "Bash(sed -i 's/^model: sonnet$/model: haiku/' \"$f\")",
-      "Bash(echo \"\u2713 $f: sonnet \u2192 haiku\")",
+      "Bash(echo \"✓ $f: sonnet → haiku\")",
       "Bash(mv druva:*)",
       "Bash(mv:*)",
       "Bash(jq - '.')",
@@ -293,7 +293,13 @@
       "Bash(AI_AGENT= python -m pytest tests/unit/test_websocket_auth.py -v)",
       "Bash(PYTHONPATH=/Users/les/Projects/akosha python -c \"from akosha.mcp.auth import validate_auth_config; print\\('OK'\\)\")",
       "Bash(CRACKERJACK_AI_AGENT=false pytest tests/unit/test_mcp_auth.py --no-cov -v --tb=short)",
-      "Bash(/Users/les/Projects/dhara/.venv/bin/pytest tests/test_backup_storage.py::TestS3StorageInit::test_s3_raises_when_no_bucket -xvs)"
+      "Bash(/Users/les/Projects/dhara/.venv/bin/pytest tests/test_backup_storage.py::TestS3StorageInit::test_s3_raises_when_no_bucket -xvs)",
+      "Bash(cp .claude/agents/akasha-specialist.md .claude/agents/akosha-specialist.md)",
+      "Bash(rm .claude/agents/akasha-specialist.md)",
+      "Bash(cp /Users/les/.claude/agents/akasha-specialist.md /Users/les/.claude/agents/akosha-specialist.md)",
+      "Bash(rm /Users/les/.claude/agents/akasha-specialist.md)",
+      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pip install *)",
+      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pytest tests/unit/pools/test_runpod_pool.py -v --no-cov --tb=short)"
     ]
   },
   "outputStyle": "Explanatory",

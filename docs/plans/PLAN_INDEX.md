@@ -177,6 +177,13 @@ Important reconciliation notes:
    - Extensions: browser automation, plugin/hook system, public API-server mode, additional routing/fallback layers.
    - Do not start any I4 extension without first writing a product justification document.
 
+### RunPod Flash Pool
+
+- Plan: [../superpowers/plans/2026-05-01-runpod-flash-pool.md](../superpowers/plans/2026-05-01-runpod-flash-pool.md)
+- Status: `active`, `implementation`
+- Use for: adding `RunPodPool` as a 4th pool type in Mahavishnu's multi-pool orchestration system. Backed by `runpod-flash` SDK for serverless GPU task execution (VISION, REASONING). Implements `BasePool`, registers in `PoolManager.spawn_pool()` factory, exports from `mahavishnu.pools`. Requires `RUNPOD_API_KEY` env var.
+- Relationship: complements `KubernetesPool` (K8s = general cloud-native; RunPod = GPU/AI-specific serverless). Independent of all other active plans — no blockers.
+
 ## Supersession Map
 
 ### TUI
