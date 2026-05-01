@@ -1,6 +1,6 @@
 # Plan Index
 
-**Date:** 2026-04-26
+**Date:** 2026-04-30
 **Purpose:** Canonical map for finding, reviewing, and implementing active Mahavishnu/Bodai plans.
 
 Use this file as the first stop before reviewing or implementing plan work. Older plans remain useful as source material, but the files below define the current review order and authority.
@@ -11,6 +11,7 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 - `implementation`: task-by-task build plan
 - `active`: current or next implementation candidate
 - `partial`: some code exists, but acceptance criteria are not complete
+- `shipped`: all tasks complete, verified against codebase
 - `historical`: useful background, not the current authority
 - `superseded`: replaced by another file
 
@@ -51,16 +52,15 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 ### Ecosystem Docs Canonicalization
 
 - Plan: [2026-04-25-ecosystem-docs-canonicalization-plan.md](./2026-04-25-ecosystem-docs-canonicalization-plan.md)
-- Status: `active`, `implementation`
-- Use for: cleaning `docs/` directories across active ecosystem repos, separating current docs from archive material, and adding cross-repo docs drift checks.
-- Relationship: should be run before broad implementation review so reviewers are reading current docs and not stale completion reports.
+- Status: `partial` — Phases 0–3 complete (structural cleanup done); Phase 4 (cross-repo drift checks and automation) not started
+- Use for: Phase 4 only — adding automated drift detection to prevent re-divergence across active repos.
+- Relationship: low-risk, independent; can run in parallel with other work.
 
 ### Type Adapter Migration
 
 - Plan: [2026-04-25-type-adapter-migration-plan.md](./2026-04-25-type-adapter-migration-plan.md)
-- Status: `active`, `implementation`
-- Use for: refreshing `ty`, `pyrefly`, and `zuban` adapters to current upstream docs and aligning AI-fix routing with native fix/suppress/baseline capabilities.
-- Relationship: should be implemented before promoting `ty` or `pyrefly` out of experimental/canary usage.
+- Status: `shipped` — all phases (0–3) complete as of 2026-04-30; `ty`, `pyrefly`, `zuban` adapters refreshed and canary-promoted
+- Use for: reference only. All capability-based AI-fix routing is live in Crackerjack.
 
 ### Storage Consolidation and Akosha Role
 
@@ -71,8 +71,8 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 ### Nanobot Worker Integration
 
 - Plan: [2026-04-05-nanobot-worker-integration.md](./2026-04-05-nanobot-worker-integration.md)
-- Status: `active`
-- Use for: nanobot worker integration and Claude MCP serve autostart work.
+- Status: `partial` — Phase B (`NanobotWorker` class, `WorkerManager` wiring, exports) complete; Phase A (`claude mcp serve` autostart via Supergateway) not started
+- Use for: Phase A only — wiring `claude mcp serve` into the autostart script and `~/.claude.json`.
 
 ### Bodai Inter-Service Authentication
 
@@ -103,47 +103,41 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 #### Akosha Skills
 
 - Plan: [../superpowers/plans/2026-04-14-akosha-skills.md](../superpowers/plans/2026-04-14-akosha-skills.md)
-- Status: `active`, `implementation`
-- Use for: creating the Code Archaeologist and Quality Pulse Claude Code skills that compose Akosha MCP tools into focused discovery and trend-analysis workflows.
-- Relationship: independent of TUI/auth work — can execute in parallel.
+- Status: `shipped` — `code-archaeologist` and `quality-pulse` skills exist at `~/.claude/skills/code-archaeologist/SKILL.md` and `~/.claude/skills/quality-pulse/SKILL.md`
+- Use for: reference only.
 
 #### Bodai Radar
 
 - Plan: [../superpowers/plans/2026-04-14-bodai-radar.md](../superpowers/plans/2026-04-14-bodai-radar.md)
-- Status: `active`, `implementation`
-- Use for: creating the Bodai Radar skill — a unified traffic-light health dashboard across all 5 Bodai network components in a single command.
-- Relationship: independent — can execute in parallel. Supersedes ad hoc health checks.
+- Status: `shipped` — skill exists at `~/.claude/skills/bodai-radar/SKILL.md`
+- Use for: reference only.
 
 #### Session Archaeologist
 
 - Plan: [../superpowers/plans/2026-04-14-session-archaeologist.md](../superpowers/plans/2026-04-14-session-archaeologist.md)
-- Status: `active`, `implementation`
-- Use for: creating the Session Archaeologist skill — recovers past decisions, solutions, and session context from across all Session-Buddy instances via Akosha semantic search.
-- Relationship: independent — can execute in parallel.
+- Status: `shipped` — skill exists at `~/.claude/skills/session-archaeologist/SKILL.md`
+- Use for: reference only.
 
 #### Code Indexing Integration
 
 - Spec: [../superpowers/specs/2026-04-26-code-indexing-integration-design.md](../superpowers/specs/2026-04-26-code-indexing-integration-design.md)
 - Plan: [../superpowers/plans/2026-04-26-code-indexing-integration.md](../superpowers/plans/2026-04-26-code-indexing-integration.md)
-- Status: `active`, `implementation`
-- Use for: call chain resolution, impact analysis, and incremental re-indexing for Mahavishnu. Session-Buddy owns the code graph; Mahavishnu provides CLI and query tools.
-- Relationship: feeds into the ecosystem control plane (priority #2) by providing code-aware intelligence for health and routing.
+- Status: `shipped` — all 42 tasks complete as of 2026-04-30
+- Use for: reference only. Call chain resolution, impact analysis, and incremental re-indexing are live.
 
 #### Pattern Learning and Scaffolding
 
 - Spec: [../superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md](../superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md)
 - Plan: [../superpowers/plans/2026-04-26-pattern-learning-scaffolding.md](../superpowers/plans/2026-04-26-pattern-learning-scaffolding.md)
-- Status: `active`, `implementation`
-- Use for: pattern library, scaffolding engine, and pattern extraction ("Lovable for Fastblocks"). Extracts web development patterns from existing projects and scaffolds new apps.
-- Relationship: independent of TUI/control-plane work — can execute in parallel.
+- Status: `shipped` — all 63 tasks complete as of 2026-04-30
+- Use for: reference only. Pattern library, scaffolding engine, and Fastblocks pattern extraction are live.
 
 #### Splashstand ACB → Oneiric Migration
 
 - Spec: [../superpowers/specs/2026-04-26-splashstand-oneiric-migration-design.md](../superpowers/specs/2026-04-26-splashstand-oneiric-migration-design.md)
 - Plan: [../superpowers/plans/2026-04-26-splashstand-oneiric-migration.md](../superpowers/plans/2026-04-26-splashstand-oneiric-migration.md)
-- Status: `active`, `implementation`
-- Use for: mechanical import rename across 17 Splashstand files. ACB → Oneiric, `depends.inject` → `resolve_dep()`, `dump`/`load` → `yaml`/`json` stdlib.
-- Relationship: independent migration — can execute in parallel with Mahavishnu work.
+- Status: `shipped` — all 43 tasks complete; 0 `from acb` imports remain in Splashstand codebase
+- Use for: reference only.
 
 ## Execution Board and Initiative Plans
 
@@ -154,54 +148,37 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 
 Important reconciliation notes:
 
-- Initiatives `00` through `08` are marked complete in the board.
-- Initiatives `09` through `15` remain open in the board.
-- [initiatives/13-dashboard-phase2-textual.md](./initiatives/13-dashboard-phase2-textual.md) previously marked the Textual dashboard as complete, but current code shows a shell with placeholder data. Treat it as `partial` until live data acceptance criteria are met.
+- Initiatives `00` through `15` are all complete as of 2026-04-30 (verified against initiative progress logs).
+- I09 (Typed Event Envelope), I11 (Cache/Tiered Retrieval), I12 (Golden Paths), I14 (Grafana Alignment), I15 (Content Quality ML): all marked complete in their progress logs.
+- I10 (Tool Retirement): I10-2 and I10-3 done; worktree tools consolidation deferred to v0.6.0 — treat as `partial`.
+- I13 (Dashboard Phase 2): superseded and delivered by the Ecosystem Control Plane plan (CP0–CP7 shipped 2026-04-30).
 - New ecosystem-health/dashboard work should start from the [ecosystem control plane update plan](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md), not directly from the older dashboard initiative.
 
 ## Current Implementation Priority
 
-1. **Plan reconciliation**
-   - Plan: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
-   - Phase: `0`
-   - Goal: make active/superseded plan state explicit.
+*Last verified: 2026-04-30. Items below are confirmed unfinished against codebase and plan checkboxes.*
 
-2. **Canonical ecosystem status**
-   - Plan: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
-   - Phases: `1` through `3`
-   - Goal: normalize health/status semantics and expose one CLI/MCP report.
+1. **Config Consolidation** — 37 tasks, not started
+   - Plan: [../superpowers/plans/2026-04-26-config-consolidation.md](../superpowers/plans/2026-04-26-config-consolidation.md)
+   - Goal: migrate Claude Code agents/skills/settings from global `~/.claude/` into the versioned `mahavishnu/.claude/` project directory.
+   - Unblocks: Agent & Skill Modernization (#2).
 
-3. **Live read-only TUI wiring**
-   - Plans:
-     - [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
-     - [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
-   - Goal: replace placeholder TUI data with MCP/backend data while preserving the TUI boundary.
+2. **Agent & Skill Modernization** — 41 tasks, not started; depends on #1
+   - Plan: [../superpowers/plans/2026-04-26-agent-skill-modernization.md](../superpowers/plans/2026-04-26-agent-skill-modernization.md)
+   - Goal: enrich 15 agent descriptions with ecosystem MCP tool refs; add "Available MCP Servers" sections to 22 skills; wire drift validation into `mahavishnu config validate`.
 
-4. **Agno/Textual interactive agent work**
-   - Plans:
-     - [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
-     - [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
-   - Goal: continue Phase 1 work after boundary and live-data surfaces are stable.
-
-5. **Ecosystem docs canonicalization**
+3. **Ecosystem Docs Phase 4** — cross-repo drift checks, not started
    - Plan: [2026-04-25-ecosystem-docs-canonicalization-plan.md](./2026-04-25-ecosystem-docs-canonicalization-plan.md)
-   - Goal: make current docs, plans, specs, and runbooks easy to find across active repos.
+   - Goal: automated detection to prevent re-divergence across active repos. Phases 0–3 are complete.
 
-6. **Type adapter migration**
-   - Plan: [2026-04-25-type-adapter-migration-plan.md](./2026-04-25-type-adapter-migration-plan.md)
-   - Goal: refresh type checker adapters and make AI-fix capability-aware.
+4. **Nanobot Phase A** — `claude mcp serve` autostart, not started
+   - Plan: [2026-04-05-nanobot-worker-integration.md](./2026-04-05-nanobot-worker-integration.md)
+   - Goal: wire `claude mcp serve` via Supergateway into the autostart script and `~/.claude.json`. Phase B (`NanobotWorker`) is already complete.
 
-7. **Splashstand ACB → Oneiric migration** (independent, parallel-safe)
-   - Plan: [../superpowers/plans/2026-04-26-splashstand-oneiric-migration.md](../superpowers/plans/2026-04-26-splashstand-oneiric-migration.md)
-   - Goal: replace all ACB imports with Oneiric across 17 files in Splashstand.
-
-8. **Pattern learning and scaffolding** (independent, parallel-safe)
-   - Plan: [../superpowers/plans/2026-04-26-pattern-learning-scaffolding.md](../superpowers/plans/2026-04-26-pattern-learning-scaffolding.md)
-   - Goal: extract Fastblocks/Oneiric patterns from existing projects, scaffold new web apps.
-
-9. **Code indexing integration** (feeds into control plane)
-   - Plan: [../superpowers/plans/2026-04-26-code-indexing-integration.md](../superpowers/plans/2026-04-26-code-indexing-integration.md)
-   - Goal: call chain resolution, impact analysis, incremental re-indexing for Mahavishnu.
+5. **Bodai Agent Platform I4 Optional Extensions** — gate: written product justification required per extension
+   - Plans: [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md), [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
+   - Extensions: browser automation, plugin/hook system, public API-server mode, additional routing/fallback layers.
+   - Do not start any I4 extension without first writing a product justification document.
 
 ## Supersession Map
 
