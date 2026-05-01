@@ -1,0 +1,378 @@
+---
+name: search-sessions
+description: Use when searching Session-Buddy for past conversations or cross-project knowledge. Use when user asks to find past solutions, search by meaning, or query session history with semantic embeddings.
+---
+
+# Search Sessions
+
+## Overview
+
+## Available MCP Servers
+
+| Server | Port | Context Mode | Relevant Tools | Default Timeout |
+|--------|------|-------------|---------------|----------------|
+| session-buddy | 8678 | full | mcp__session-buddy__search_conversations, mcp__session-buddy__search_entities | 30s |
+
+Session-Buddy provides semantic search across all your conversations using local ONNX embeddings. This skill guides you through searching sessions with dependency-aware cross-project knowledge sharing.
+
+**Core principle:** Search by meaning, not keywords. Find what you meant, not just what you said.
+
+## When to Use
+
+**Use when:**
+- Finding past solutions or approaches
+- Searching by semantic similarity
+- Cross-project knowledge discovery
+- Reviewing session history
+- Finding insights from previous work
+
+**Don't use when:**
+- Capturing new knowledge (use `capture-insights`)
+- Managing session lifecycle (use `manage-sessions`)
+- Grepping for keywords (use simple text search)
+
+## Search Types
+
+**3 Search Modes:**
+
+| Mode | Purpose | Latency | Best For |
+|------|---------|---------|----------|
+| **Quick Search** | Fast results from top matches | <20ms | "I remember discussing X" |
+| **Concept Search** | Semantic meaning search | <50ms | "How do I..." queries |
+| **Temporal Search** | Time-bounded search | <30ms | "Last 30 days" |
+
+## Quick Reference
+
+```python
+# Via Session-Buddy MCP server
+
+# 1. Quick search
+results = await mcp.call_tool("mcp__session-buddy__quick_search", {
+    "query": "database connection pooling"
+})
+
+# 2. Concept search (semantic)
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "async Rust shared state patterns"
+})
+
+# 3. Temporal search
+results = await mcp.call_tool("mcp__session-buddy__search_temporal", {
+    "query": "authentication microservices",
+    "time_range": "last_90_days"
+})
+
+# 4. Dependency-aware search
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "JWT token validation",
+    "dependencies": true  # Include related projects
+})
+```
+
+## Implementation
+
+### Step 1: Quick Search
+
+**Fast top-N results:**
+```python
+results = await mcp.call_tool("mcp__session-buddy__quick_search", {
+    "query": "database optimization",
+    "limit": 5  # Top 5 results only
+})
+```
+
+**Result format:**
+```json
+{
+    "results": [
+        {
+            "session_id": "session_abc123",
+            "timestamp": "2025-01-15T10:30:00Z",
+            "similarity": 0.92,
+            "excerpt": "Use connection pooling with pgBouncer...",
+            "project": "user-service"
+        }
+    ]
+}
+```
+
+**When to use:**
+- You remember discussing something but not the exact context
+- Want the fastest possible search
+- Need quick reference, not comprehensive results
+
+### Step 2: Concept Search (Semantic)
+
+**Search by meaning:**
+```python
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "How do I handle async Rust borrowing errors?"
+})
+```
+
+**How it works:**
+1. Query converted to vector embedding (local ONNX, all-MiniLM-L6-v2)
+2. Compared against all stored conversation embeddings
+3. Results ranked by semantic similarity (cosine similarity)
+4. Returns results above similarity threshold (default: 0.6)
+
+**Example semantic matches:**
+```python
+# Query: "async Rust shared state"
+# Matches (with similarity scores):
+# - "Using Arc<T> for shared state in async tasks" (0.91)
+# - "Rc vs Arc for thread safety" (0.87)
+# - "Async Rust ownership and borrowing" (0.85)
+# - "Database connection pooling" (0.42) - filtered out as too different
+```
+
+**Filtering options:**
+```python
+# Project-specific
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "database optimization",
+    "filters": {
+        "project": "auth-service"
+    }
+})
+
+# Time-bounded
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "API authentication",
+    "filters": {
+        "after": "2025-01-01T00:00:00Z"
+    }
+})
+
+# Tag filtering
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "microservices architecture",
+    "filters": {
+        "tags": ["production", "incident"]
+    }
+})
+```
+
+### Step 3: Temporal Search
+
+**Search by time range:**
+```python
+# Last N days
+results = await mcp.call_tool("mcp__session-buddy__search_temporal", {
+    "query": "deployment issues",
+    "time_range": "last_30_days"
+})
+
+# Date range
+results = await mcp.call_tool("mcp__session-buddy__search_temporal", {
+    "query": "database migration",
+    "time_range": "2025-01-01:2025-01-31"
+})
+```
+
+**Temporal patterns:**
+```python
+# Recent activity (last 7 days)
+results = await mcp.call_tool("mcp__session-buddy__search_temporal", {
+    "query": "CI/CD improvements",
+    "time_range": "last_7_days"
+})
+
+# Historical patterns (last year)
+results = await mcp.call_tool("mcp__session-buddy__search_temporal", {
+    "query": "security vulnerabilities",
+    "time_range": "last_365_days"
+})
+```
+
+### Step 4: Dependency-Aware Search
+
+**Cross-project knowledge sharing:**
+```python
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "JWT token validation patterns",
+    "dependencies": true  # Enable cross-project search
+})
+```
+
+**How dependency-aware search works:**
+```
+Current project: user-service
+Dependencies: auth-service, shared-utils
+
+Search in: user-service + auth-service + shared-utils
+```
+
+**Example scenario:**
+```python
+# You're working on user-service
+# You search for "authentication patterns"
+
+# Without dependency-aware:
+# - Only searches user-service
+
+# With dependency-aware:
+# - Searches user-service
+# - Also searches auth-service (dependency)
+# - Also searches shared-utils (dependency)
+```
+
+**Via CLI:**
+```bash
+# Search with dependencies
+session-buddy search "authentication" --include-dependencies
+
+# Check dependencies
+session-buddy dependencies list
+```
+
+## Search Strategies
+
+### Strategy 1: Progressive Refinement
+
+```python
+# 1. Start broad
+results = await mcp.call_tool("mcp__session-buddy__quick_search", {
+    "query": "database"
+})
+
+# 2. Refine with semantic search
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "PostgreSQL connection pooling optimization"
+})
+
+# 3. Filter by project
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "PostgreSQL connection pooling optimization",
+    "filters": {"project": "auth-service"}
+})
+```
+
+### Strategy 2: Contextual Search
+
+```python
+# Search within context
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "error handling for database timeouts",
+    "context": {
+        "language": "python",
+        "framework": "fastapi"
+    }
+})
+```
+
+### Strategy 3: Pattern Discovery
+
+```python
+# Find recurring problems
+results = await mcp.call_tool("mcp__session-buddy__search_temporal", {
+    "query": "timeout errors in production",
+    "time_range": "last_90_days",
+    "pattern_matching": true
+})
+```
+
+## Common Mistakes
+
+| Mistake | Symptom | Fix |
+|---------|---------|-----|
+| **Keyword search instead of semantic** | No results when different words used | Use concept search for meaning-based results |
+| **Not using filters** | Too many results from unrelated projects | Filter by project, time range, or tags |
+| **Ignoring dependency search** | Missing solutions in related projects | Enable `dependencies=true` for cross-project search |
+| **Too-specific query** | No semantic matches | Use broader terms, then refine |
+| **Not checking similarity scores** | Low-quality results accepted | Review similarity scores, filter >0.7 for high quality |
+
+## Real-World Impact
+
+**Before this skill:**
+- Manual grep through logs → 20+ minutes per search
+- No cross-project sharing → repeated solutions
+- Keyword-only search → missed relevant results
+
+**After this skill:**
+- Semantic search → <50ms, finds meaning-based results
+- Dependency-aware → solutions flow across related projects
+- High-quality results → 95% relevance with similarity >0.7
+
+## Example Workflows
+
+**Finding Past Solutions:**
+```python
+# User: "We're seeing the same JWT validation error"
+
+# Search for past solutions
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "JWT token validation error expired claims",
+    "filters": {"tags": ["production", "incident"]},
+    "dependencies": true  # Search auth-service too
+})
+
+# Found solution from 3 months ago
+print(results["results"][0]["excerpt"])
+# "Use clock skew tolerance of 30 seconds when validating JWT exp claims"
+```
+
+**Cross-Project Discovery:**
+```python
+# User: "How did we handle the database migration in auth-service?"
+
+# Dependency-aware search
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "PostgreSQL migration blue-green deployment",
+    "dependencies": true
+})
+
+# Results from auth-service (dependency):
+for result in results["results"]:
+    if result["project"] == "auth-service":
+        print(f"Found in auth-service: {result['excerpt']}")
+```
+
+**Learning New Pattern:**
+```python
+# User: "I want to understand async Rust patterns"
+
+# Comprehensive search
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "async Rust patterns Arc Send Sync shared state",
+    "time_range": "last_180_days",  # Last 6 months
+    "filters": {"min_similarity": 0.75}  # High quality only
+})
+
+# Learn from past discussions
+for result in results["results"]:
+    print(f"{result['excerpt']}")
+    print(f"  Session: {result['session_id']}")
+    print(f"  Date: {result['timestamp']}")
+```
+
+## Privacy & Performance
+
+**100% Local Processing:**
+- ✅ No external API calls
+- ✅ Local ONNX embeddings (all-MiniLM-L6-v2)
+- ✅ No data leaves your machine
+- ✅ Search queries private
+
+**Performance:**
+- Quick search: <20ms
+- Concept search: <50ms
+- Temporal search: <30ms
+- Cross-project search: <100ms
+
+**Storage:**
+- SQLite database: `.session_buddy/data.db`
+- Typical size: 10-100MB for 1 year of sessions
+- Embeddings compressed for efficiency
+
+## Related Skills
+
+- **REQUIRED:** `capture-insights` - Capture before searching
+- **REQUIRED:** `manage-sessions` - Session lifecycle management
+- **REQUIRED:** Akosha - Cross-system aggregation and analytics
+
+## Related Documentation
+
+- [Session-Buddy README](https://github.com/lesleslie/session-buddy) - Complete documentation
+- [MCP Tools Spec](docs/MCP_TOOLS_SPECIFICATION.md) - Session-Buddy MCP tools
+- [Privacy Architecture](docs/PRIVACY.md) - Local embeddings, zero external calls

@@ -1,0 +1,293 @@
+---
+name: capture-insights
+description: Use when capturing knowledge from conversations with Session-Buddy's automatic insight extraction. Use when user wants to build a personal knowledge base, document learning, or share insights across projects automatically.
+---
+
+# Capture Insights
+
+## Overview
+
+## Available MCP Servers
+
+| Server | Port | Context Mode | Relevant Tools | Default Timeout |
+|--------|------|-------------|---------------|----------------|
+| session-buddy | 8678 | full | mcp__session-buddy__store_reflection, mcp__session-buddy__search_conversations | 30s |
+| akosha | 8682 | summary | mcp__akosha__store_memory, mcp__akosha__query_knowledge_graph | 60s |
+
+Session-Buddy automatically extracts and stores educational insights from your conversations using deterministic pattern matching and semantic embeddings. This skill guides you through writing insights in the correct format for automatic capture.
+
+**Core principle:** Write insights once, capture automatically, search forever across all projects.
+
+## When to Use
+
+**Use when:**
+- Explaining a technical concept or pattern
+- Documenting a lesson learned or debugging discovery
+- Sharing a best practice or design decision
+- Building a personal knowledge base
+- Creating reusable knowledge for future sessions
+
+**Don't use when:**
+- Quick status updates or progress reports
+- Simple factual statements (not insights)
+- Temporary notes or throwaway comments
+
+## Insight Format
+
+**Required format for automatic capture:**
+
+```markdown
+★ Insight ─────────────────────────────────────
+[Your educational insight here]
+─────────────────────────────────────────────────
+```
+
+**Rules:**
+- Must start with exact header: `★ Insight ─────────────────────────────────────`
+- Must end with exact footer: `─────────────────────────────────────────────────`
+- Content between header and footer is extracted
+- Duplicates prevented via SHA-256 hashing
+- Semantic embeddings generated automatically (local ONNX, no API calls)
+
+**Example (Correct):**
+```markdown
+★ Insight ─────────────────────────────────────
+Use Arc<T> instead of Rc<T> when sharing state across async tasks in Rust. Rc is not Send-safe, but Arc is. This prevents compiler errors E0277 when passing shared references to spawned tasks.
+─────────────────────────────────────────────────
+```
+
+## Quick Reference
+
+```python
+# Via MCP
+await mcp.call_tool("mcp__session-buddy__extract_and_store_memory_tool", {
+    "content": """
+★ Insight ─────────────────────────────────────
+[Your insight here]
+─────────────────────────────────────────────────
+    """,
+    "session_id": "current_session_id"
+})
+
+# Search stored insights
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "Arc vs Rust async"
+})
+
+# Check insight statistics
+stats = await mcp.call_tool("mcp__session-buddy__reflection_stats", {})
+```
+
+## Implementation
+
+### Step 1: Write Insight
+
+**Good insights:**
+- Explain WHY something works, not just WHAT
+- Include context and reasoning
+- Share lessons learned from debugging
+- Document patterns and best practices
+- Connect concepts to real examples
+
+**Bad insights:**
+- Simple facts ("Rust has ownership")
+- Opinions without reasoning ("I like Python")
+- Temporary status ("Fixed the bug")
+- Commands without context ("Run pytest")
+
+### Step 2: Verify Format
+
+**Checklist:**
+- [ ] Exact header: `★ Insight ─────────────────────────────────────`
+- [ ] Exact footer: `─────────────────────────────────────────────────`
+- [ ] Educational content between header and footer
+- [ ] Explains WHY, not just WHAT
+- [ ] Includes context or examples
+
+**Common format mistakes:**
+```markdown
+# ❌ BAD: Wrong header
+## Insight
+Content here...
+
+# ❌ BAD: Wrong footer
+Content here...
+____________________
+
+# ❌ BAD: Missing dashes
+★ Insight ─────
+Content
+────
+
+# ✅ GOOD: Correct format
+★ Insight ─────────────────────────────────────
+Content here...
+─────────────────────────────────────────────────
+```
+
+### Step 3: Automatic Extraction
+
+**What happens automatically:**
+
+1. **Pattern matching**: Session-Buddy detects insight format
+2. **SHA-256 hashing**: Creates unique hash to prevent duplicates
+3. **Semantic embedding**: Generates vector embedding using local ONNX models
+4. **Storage**: Stores in Session-Buddy database with metadata
+5. **Indexing**: Makes searchable across all future sessions
+
+**Performance:**
+- Extraction: <50ms
+- Embedding generation: <100ms
+- Duplicate check: <10ms
+- Total: <150ms per insight
+
+### Step 4: Cross-Project Sharing
+
+**Dependency-aware search:**
+
+Session-Buddy automatically shares insights across related projects based on dependency graphs.
+
+**Example:**
+- Fix authentication issue in `auth-service`
+- Later work on `user-service` (which depends on `auth-service`)
+- Session-Buddy surfaces the authentication solution automatically
+
+**Via MCP:**
+```python
+# Search with dependency awareness
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "authentication patterns",
+    "dependencies": true  # Include dependent projects
+})
+```
+
+### Step 5: Search Insights
+
+**Semantic search:**
+```python
+results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
+    "query": "async Rust shared state"
+})
+
+# Returns ranked results by semantic similarity
+```
+
+**Temporal search:**
+```python
+results = await mcp.call_tool("mcp__session-buddy__search_temporal", {
+    "query": "debugging memory leaks",
+    "time_range": "last_30_days"
+})
+```
+
+**Quick search:**
+```python
+results = await mcp.call_tool("mcp__session-buddy__quick_search", {
+    "query": "Arc vs Rc"
+})
+```
+
+## Privacy Guarantees
+
+**100% Local Processing:**
+- ✅ No external API calls
+- ✅ Local ONNX embeddings (all-MiniLM-L6-v2)
+- ✅ No data leaves your machine
+- ✅ No telemetry or analytics
+- ✅ Open source, auditable code
+
+**Performance:**
+- Extraction: <50ms
+- Search: <20ms
+- Storage: SQLite database (`.session_buddy/data.db`)
+
+## Quality Guidelines
+
+**Write high-quality insights:**
+
+| Dimension | Good | Bad |
+|-----------|------|-----|
+| **Depth** | Explains underlying principles | Surface-level observation |
+| **Context** | Includes real examples | Abstract theory only |
+| **Actionability** | Can be applied to future problems | Interesting but not useful |
+| **Clarity** | Clear, concise explanation | Rambling or vague |
+| **Uniqueness** | New perspective or connection | Restates common knowledge |
+
+**Example transformation:**
+
+```
+❌ BAD: Surface-level
+★ Insight ─────────────────────────────────────
+Use Arc in Rust for shared state.
+─────────────────────────────────────────────────
+
+✅ GOOD: Deep explanation
+★ Insight ─────────────────────────────────────
+Use Arc<T> instead of Rc<T> when sharing state across async tasks in Rust. Rc uses reference counting only and isn't thread-safe (doesn't implement Send), while Arc uses atomic reference counting and is Send-safe. When spawning tasks with std::thread::spawn or tokio::spawn, Arc allows safe shared access. Compiler error E0277 "the trait Send is not implemented for Rc<T>" indicates you need Arc instead.
+─────────────────────────────────────────────────
+```
+
+## Common Mistakes
+
+| Mistake | Symptom | Fix |
+|---------|---------|-----|
+| **Wrong header/footer format** | Insight not extracted | Use exact header/footer with correct dash count |
+| **Writing facts instead of insights** | Low search relevance | Explain WHY, not just WHAT |
+| **Missing context** | Hard to apply later | Include examples and reasoning |
+| **Forgetting format** | Manual note-taking required | Use insight format consistently |
+| **Assuming sync is instant** | Can't find insight immediately | Search takes <20ms, be patient |
+
+## Real-World Impact
+
+**Before this skill:**
+- Manual note-taking in separate files → 80% forgotten
+- No cross-project sharing → repeated learning
+- Full-text search only → poor relevance
+
+**After this skill:**
+- Automatic capture → zero overhead
+- Dependency-aware sharing → learn once, apply everywhere
+- Semantic search → relevant results every time
+
+## Example Workflows
+
+**Debugging Session:**
+```markdown
+# While debugging...
+Hmm, getting E0277 error about Send not implemented...
+
+# After discovering solution...
+★ Insight ─────────────────────────────────────
+Compiler error E0277 "trait Send is not implemented for Rc<T>" means you're trying to share non-thread-safe reference across threads. Solution: Replace Rc<T> with Arc<T> which uses atomic operations and is Send-safe. Common when spawning threads or using async tasks in Rust.
+─────────────────────────────────────────────────
+
+# Next time you see E0277
+# Session-Buddy automatically surfaces this insight
+```
+
+**Architecture Discussion:**
+```markdown
+★ Insight ─────────────────────────────────────
+When designing microservices, use async messaging for inter-service communication instead of synchronous REST calls. This prevents cascading failures, improves resilience, and allows services to scale independently. Message queues (RabbitMQ, Kafka) provide durability and retry logic that synchronous calls lack.
+─────────────────────────────────────────────────
+```
+
+**Best Practice Discovery:**
+```markdown
+★ Insight ─────────────────────────────────────
+Always use type hints in Python function signatures, even for private methods. While Python doesn't enforce them at runtime, tools like mypy can catch type errors during development. This prevents entire classes of bugs related to type mismatches and improves code documentation. Combined with strict mode in mypy, it catches ~40% of bugs before runtime.
+─────────────────────────────────────────────────
+```
+
+## Related Skills
+
+- **REQUIRED:** `search-sessions` - Find insights from past sessions
+- **REQUIRED:** `manage-sessions` - Session lifecycle and tracking
+- `learn-from-errors` - Error fix learning (error fixes are a type of insight, but use that skill's structured format instead)
+- `code-knowledge-builder` - Proactive code knowledge graph enrichment (complementary during code exploration)
+
+## Related Documentation
+
+- [Session-Buddy README](https://github.com/lesleslie/session-buddy) - Complete documentation
+- [MCP Tools Specification](docs/MCP_TOOLS_SPECIFICATION.md) - Session-Buddy MCP tools
+- [Privacy Architecture](docs/PRIVACY.md) - How local embeddings work

@@ -1,0 +1,158 @@
+---
+name: task-orchestration-review
+description: Use when reviewing Task Orchestration components at phase boundaries. Coordinates pooled multi-agent reviews for security, database, and API quality. Use at end of each phase or before deployment.
+---
+
+# Task Orchestration Multi-Agent Review Skill
+
+**Purpose**: Coordinate pooled multi-agent reviews for Task Orchestration components, ensuring code quality, security, and architectural consistency.
+
+---
+
+## When to Use
+
+```dot
+digraph review_decision {
+    "Phase complete?" [shape=diamond];
+    "Pre-deployment?" [shape=diamond];
+    "Security critical code?" [shape=diamond];
+    "Use task-orchestration-review" [shape=box];
+
+    "Phase complete?" -> "Use task-orchestration-review" [label="yes"];
+    "Phase complete?" -> "Pre-deployment?";
+    "Pre-deployment?" -> "Use task-orchestration-review" [label="yes"];
+    "Pre-deployment?" -> "Security critical code?";
+    "Security critical code?" -> "Use task-orchestration-review" [label="yes"];
+}
+```
+
+**Use when:**
+- End of phase completion (before sync points)
+- Security-critical code review
+- Database schema changes
+- API design validation
+- Pre-deployment review
+
+---
+
+## Review Pool Configuration
+
+### Pool Types by Review Scope
+
+| Review Type | Agents | Pool | Duration |
+|-------------|--------|------|----------|
+| **Security Review** | Security Auditor + Python Pro | crackerjack | 30 min |
+| **Database Review** | Postgres Pro + SRE + Architect | mahavishnu | 45 min |
+| **API Design Review** | Backend Dev + UX Researcher | mahavishnu | 30 min |
+| **Full Review** | All relevant specialists | multi-pool | 60 min |
+
+---
+
+## Pooled Review Pattern
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Pooled Review Dispatch                       │
+├─────────────────────────────────────────────────────────────────┤
+│   Component ──────► Review Orchestrator                         │
+│                           │                                     │
+│          ┌────────────────┼────────────────┐                   │
+│          ▼                ▼                ▼                    │
+│   ┌──────────┐    ┌──────────┐    ┌──────────┐                │
+│   │ Security │    │  Python  │    │   SRE    │                │
+│   │ Auditor  │    │   Pro    │    │ Engineer │                │
+│   └────┬─────┘    └────┬─────┘    └────┬─────┘                │
+│        └───────────────┴───────────────┘                        │
+│                        ▼                                        │
+│               ┌────────────────┐                               │
+│               │  Consolidated  │                               │
+│               │  Review Report │                               │
+│               └────────────────┘                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Review Checklist by Type
+
+### Security Review Pool
+
+**Agent A: Security Auditor**
+- [ ] Input validation (all user inputs sanitized)
+- [ ] SQL injection prevention (parameterized queries)
+- [ ] Path traversal prevention (validated paths)
+- [ ] Authentication/authorization checks
+- [ ] Secrets management (no hardcoded credentials)
+- [ ] Audit logging (sensitive operations logged)
+
+**Agent B: Python Pro**
+- [ ] Type hints complete and accurate
+- [ ] Pydantic v2 validation (field_validator usage)
+- [ ] Exception handling (specific exceptions, chaining)
+- [ ] Async patterns (proper async/await usage)
+
+### Database Review Pool
+
+**Agent A: Postgres Pro**
+- [ ] Normalization (appropriate level)
+- [ ] Index strategy (covering indexes, partial indexes)
+- [ ] Foreign key constraints (ON DELETE/UPDATE behavior)
+- [ ] pgvector setup (HNSW indexes for vectors)
+
+**Agent B: SRE Engineer**
+- [ ] Migration rollback plan
+- [ ] Connection pooling configuration
+- [ ] Backup/restore testing
+- [ ] Monitoring queries (slow query log)
+
+---
+
+## Mahavishnu Pool Commands
+
+```bash
+# Dispatch security review pool (2 agents in parallel)
+mahavishnu pool spawn --type mahavishnu --name security-review --min 2 --max 2
+
+mahavishnu pool execute security-review --agent security-auditor \
+  --prompt "Review [FILE] for security vulnerabilities..."
+
+mahavishnu pool execute security-review --agent python-pro \
+  --prompt "Review [FILE] for Python code quality..."
+
+# Aggregate results
+mahavishnu pool aggregate security-review --output review-report.md
+```
+
+---
+
+## Review Schedule by Phase
+
+| Phase End | Review Type | Agents | Blocking |
+|-----------|-------------|--------|----------|
+| Phase 0 | Security | Security + Python | ✅ Yes |
+| Phase 1 | Full | All specialists | ✅ Yes |
+| Phase 2 | ML/NLP | NLP + ML + Python | ✅ Yes |
+| Phase 3 | API + Security | Backend + Security + UX | ✅ Yes |
+| Phase 4 | Quality | QA + SRE | ✅ Yes |
+| Phase 5-6 | UI/UX | Frontend + UX + Accessibility | ✅ Yes |
+| Phase 7 | Performance | SRE + DBA | ✅ Yes |
+| Phase 8 | Deployment | DevOps + Security + SRE | ✅ Yes |
+
+---
+
+## Success Metrics
+
+| Metric | Target |
+|--------|--------|
+| Critical issues caught before merge | > 95% |
+| Review completion time | < 60 min |
+| False positive rate | < 10% |
+| Coverage (files reviewed) | 100% of critical paths |
+
+---
+
+## Related Documentation
+
+- [Parallel Execution Plan](../PARALLEL_EXECUTION_PLAN.md)
+- [Master Plan V3](../TASK_ORCHESTRATION_MASTER_PLAN_V3.md)
+- [Phase 0 Action Plan](../PHASE_0_ACTION_PLAN.md)

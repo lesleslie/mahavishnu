@@ -1,0 +1,31 @@
+{
+  "mcp_health_monitor": {
+    "name": "MCP Health Monitor",
+    "description": "Monitor MCP server health and track status",
+    "command": "~/.claude/scripts/mcp-health-monitor.sh",
+    "trigger": "interval",
+    "interval_minutes": 5,
+    "enabled": true
+  },
+  "mcp_pre_checkpoint": {
+    "name": "MCP Pre-Checkpoint Sync",
+    "description": "Sync MCP states before session checkpoint",
+    "command": "~/.claude/scripts/mcp-pre-checkpoint-sync.sh",
+    "trigger": "pre_checkpoint",
+    "enabled": true
+  },
+  "mcp_session_start": {
+    "name": "MCP Session Start Tracker",
+    "description": "Initialize MCP monitoring at session start",
+    "command": "~/.claude/scripts/mcp-session-start-tracker.sh",
+    "trigger": "session_start",
+    "enabled": true
+  },
+  "mcp_session_end": {
+    "name": "MCP Session End Cleanup",
+    "description": "Cleanup MCP connections at session end",
+    "command": "~/.claude/scripts/mcp-session-end-cleanup.sh",
+    "trigger": "session_end",
+    "enabled": true
+  }
+}
