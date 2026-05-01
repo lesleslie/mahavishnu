@@ -30,7 +30,7 @@ def pool(config):
 
 @pytest.mark.asyncio
 async def test_start_returns_pool_id(pool):
-    with patch("runpod_flash.Endpoint", return_value=MagicMock()):
+    with patch("mahavishnu.pools.runpod_pool.Endpoint", return_value=MagicMock()):
         pool_id = await pool.start()
     assert pool_id == pool.pool_id
     assert pool._status == PoolStatus.RUNNING
@@ -38,8 +38,7 @@ async def test_start_returns_pool_id(pool):
 
 @pytest.mark.asyncio
 async def test_execute_task_success(pool):
-    mock_endpoint = MagicMock()
-    mock_endpoint.__call__ = AsyncMock(return_value={"output": "result"})
+    mock_endpoint = AsyncMock(return_value={"output": "result"})
     pool._endpoint = mock_endpoint
     pool._status = PoolStatus.RUNNING
 
@@ -53,8 +52,7 @@ async def test_execute_task_success(pool):
 
 @pytest.mark.asyncio
 async def test_execute_task_failure(pool):
-    mock_endpoint = MagicMock()
-    mock_endpoint.__call__ = AsyncMock(side_effect=RuntimeError("RunPod error"))
+    mock_endpoint = AsyncMock(side_effect=RuntimeError("RunPod error"))
     pool._endpoint = mock_endpoint
     pool._status = PoolStatus.RUNNING
 
@@ -107,6 +105,7 @@ async def test_scale_is_noop(pool):
     """Flash handles scaling; scale() should log and return without error."""
     pool._status = PoolStatus.RUNNING
     await pool.scale(5)  # No exception
+    assert pool._status == PoolStatus.RUNNING
 
 
 @pytest.mark.asyncio
