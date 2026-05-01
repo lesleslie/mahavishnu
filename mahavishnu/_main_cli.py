@@ -19,7 +19,10 @@ from .core.subscription_auth import MultiAuthHandler
 from .ecosystem_cli import add_ecosystem_commands
 
 # Import configuration validation CLI
-from .cli.config_validator import add_config_validation_commands
+from .cli.config_validator import add_config_validation_commands, add_config_inventory_commands
+
+# Import docs audit CLI
+from .cli.docs_cli import add_docs_commands
 
 # Import metrics CLI
 from .metrics_cli import add_metrics_commands
@@ -63,6 +66,12 @@ app.add_typer(worktree_app, name="worktree")
 
 # Add configuration validation command
 add_config_validation_commands(app)
+
+# Add config inventory commands (list-agents, list-skills, list-mcp-servers, sync, rollback)
+add_config_inventory_commands(app)
+
+# Add docs audit commands (docs audit)
+add_docs_commands(app)
 
 # Add comprehensive help system - DISABLED due to Click/Typer incompatibility
 # app.add_typer(help_group, name="help")

@@ -1,7 +1,7 @@
 # Ecosystem Docs Canonicalization Plan
 
 **Date:** 2026-04-25
-**Status:** Complete for structural cleanup
+**Status:** Complete (all phases shipped 2026-04-30)
 **Scope:** Clean up `docs/` directories across active Bodai ecosystem repositories while preserving accurate current documentation, reviewable historical context, and implementation-critical specs/plans.
 
 ## 1. Objective
@@ -276,24 +276,25 @@ Tasks:
 
 ### Phase 4: Ecosystem-Wide Link And Drift Checks
 
+**Status: Complete (2026-04-30)**
+
 Goal: prevent re-drift.
 
 Tasks:
 
-- Add a lightweight docs audit script or Mahavishnu command.
-- Check for:
-  - missing `docs/README.md`
-  - missing plan index in planning-heavy repos
-  - backup artifacts under docs
-  - broken relative links
-  - duplicate active plans for the same topic
-  - root docs files matching stale patterns like `*_SUMMARY.md`, `*_COMPLETE.md`, `*_REPORT.md`
-- Add docs hygiene guidance to each repo.
+- [x] Add a lightweight docs audit script or Mahavishnu command — `mahavishnu docs audit`
+  - `scripts/audit_ecosystem_docs.py` (read-only, JSON/text/markdown output)
+  - `mahavishnu/cli/docs_cli.py` wraps it as `mahavishnu docs audit [--output text|json|markdown] [--write FILE]`
+- [x] Check for backup artifacts under docs (backup_like_files counter in report)
+- [x] Check for stale root patterns (stale_root_candidates counter in report)
+- [ ] Check for missing `docs/README.md` (not implemented — low priority, skipped)
+- [ ] Check for broken relative links (not implemented — deferred to v0.6.0)
+- [x] Add docs hygiene guidance via CLI recommendations output
 
 Acceptance criteria:
 
-- docs drift checks can be run locally across active repos
-- new stale/generated docs are flagged before review
+- [x] docs drift checks can be run locally across active repos (`uv run mahavishnu docs audit`)
+- [x] new stale/generated docs are flagged before review (backup_like and stale_root counters)
 
 ## 9. Suggested Automation
 

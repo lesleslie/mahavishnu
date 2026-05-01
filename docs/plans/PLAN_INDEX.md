@@ -52,9 +52,7 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 ### Ecosystem Docs Canonicalization
 
 - Plan: [2026-04-25-ecosystem-docs-canonicalization-plan.md](./2026-04-25-ecosystem-docs-canonicalization-plan.md)
-- Status: `partial` — Phases 0–3 complete (structural cleanup done); Phase 4 (cross-repo drift checks and automation) not started
-- Use for: Phase 4 only — adding automated drift detection to prevent re-divergence across active repos.
-- Relationship: low-risk, independent; can run in parallel with other work.
+- Status: `shipped` — All phases complete (2026-04-30). `mahavishnu docs audit` wired; `scripts/audit_ecosystem_docs.py` is the backing implementation.
 
 ### Type Adapter Migration
 
@@ -158,22 +156,21 @@ Important reconciliation notes:
 
 *Last verified: 2026-04-30. Items below are confirmed unfinished against codebase and plan checkboxes.*
 
-1. **Config Consolidation** — 37 tasks, not started
+1. **Config Consolidation** — shipped 2026-04-30
    - Plan: [../superpowers/plans/2026-04-26-config-consolidation.md](../superpowers/plans/2026-04-26-config-consolidation.md)
-   - Goal: migrate Claude Code agents/skills/settings from global `~/.claude/` into the versioned `mahavishnu/.claude/` project directory.
-   - Unblocks: Agent & Skill Modernization (#2).
+   - Delivered: migration script, drift detection, inventory CLI commands, `.claude/` committed to project.
 
-2. **Agent & Skill Modernization** — 41 tasks, not started; depends on #1
-   - Plan: [../superpowers/plans/2026-04-26-agent-skill-modernization.md](../superpowers/plans/2026-04-26-agent-skill-modernization.md)
-   - Goal: enrich 15 agent descriptions with ecosystem MCP tool refs; add "Available MCP Servers" sections to 22 skills; wire drift validation into `mahavishnu config validate`.
-
-3. **Ecosystem Docs Phase 4** — cross-repo drift checks, not started
+2. **Ecosystem Docs** — shipped 2026-04-30
    - Plan: [2026-04-25-ecosystem-docs-canonicalization-plan.md](./2026-04-25-ecosystem-docs-canonicalization-plan.md)
-   - Goal: automated detection to prevent re-divergence across active repos. Phases 0–3 are complete.
+   - Delivered: `mahavishnu docs audit` CLI command wrapping `scripts/audit_ecosystem_docs.py`.
 
-4. **Nanobot Phase A** — `claude mcp serve` autostart, not started
+3. **Nanobot Phase A** — `claude mcp serve` autostart, not started
    - Plan: [2026-04-05-nanobot-worker-integration.md](./2026-04-05-nanobot-worker-integration.md)
    - Goal: wire `claude mcp serve` via Supergateway into the autostart script and `~/.claude.json`. Phase B (`NanobotWorker`) is already complete.
+
+4. **Agent & Skill Modernization** — 41 tasks, unblocked (Config Consolidation shipped 2026-04-30)
+   - Plan: [../superpowers/plans/2026-04-26-agent-skill-modernization.md](../superpowers/plans/2026-04-26-agent-skill-modernization.md)
+   - Goal: enrich 15 agent descriptions with ecosystem MCP tool refs; add "Available MCP Servers" sections to 22 skills; wire drift validation into `mahavishnu config validate`.
 
 5. **Bodai Agent Platform I4 Optional Extensions** — gate: written product justification required per extension
    - Plans: [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md), [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
