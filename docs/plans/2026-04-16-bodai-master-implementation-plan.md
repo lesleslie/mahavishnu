@@ -1,8 +1,8 @@
 # Bodai Master Implementation Plan
 
-**Status:** Phase 0 complete (10/10); Phase 1A complete (6/6 acceptance criteria); Phase 1B complete (37 tests passing)
+**Status:** Phase 0 complete (10/10); Phase 1A complete (6/6 acceptance criteria); Phase 1B complete (37 tests passing); CP0–CP7 all shipped (2026-04-30) — I0–I3 fully satisfied by control plane delivery
 **Date:** 2026-04-16
-**Last reviewed:** 2026-04-27
+**Last reviewed:** 2026-04-30
 **Source:** [Bodai Agent Platform Master Spec](./2026-04-16-bodai-agent-platform-master-spec.md)
 
 **Companion documents:**
@@ -13,13 +13,13 @@
 
 This document uses **Impl Phases** (I0-I4). See companion docs for their own numbering.
 
-| Impl Phase | Focus | Maps to Spec Phase | Maps to Control Plane Phase |
-|-----------|-------|--------------------|----------------------------|
-| I0 | Boundary hardening | S1 | CP Phase 0-1 |
-| I1 | Review-gated learning pipeline | — | CP Phase 2-3 |
-| I2 | Engine surface expansion | S2 | CP Phase 5-6 |
-| I3 | Symbiotic entry points | S3 | CP Phase 7 |
-| I4 | Optional extensions | S4 | — |
+| Impl Phase | Focus | Maps to Spec Phase | Maps to Control Plane Phase | CP Status |
+|-----------|-------|--------------------|----------------------------|-----------|
+| I0 | Boundary hardening | S1 | CP Phase 0-1 | ✅ shipped |
+| I1 | Review-gated learning pipeline | — | CP Phase 2-3 | ✅ shipped |
+| I2 | Engine surface expansion | S2 | CP Phase 5-6 | ✅ shipped |
+| I3 | Symbiotic entry points | S3 | CP Phase 7 | ✅ shipped |
+| I4 | Optional extensions | S4 | — | not started |
 
 **Status note (2026-04-24):** The previous header claimed "Phase 0 complete; Phase 1 governance foundation implemented" but the Phase 0 execution checklist (Section 4.0) has zero checked items. This was a documentation-only status advance, not a code-level completion. The `skill_governance.py` artifact schemas are implemented, but the runtime pipeline (observe, store, retrieve, synthesize, review, activate, rollback) has no owning service. Corrected above to reflect actual state.
 

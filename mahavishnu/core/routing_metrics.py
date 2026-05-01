@@ -207,12 +207,15 @@ class RoutingMetrics:
         except ValueError:
             logger.debug(f"Reusing existing budget alert counter: {self.server_name}")
 
-        # Create A/B test counter
+        # Create A/B test counter.
+        # Uses 'experiment_group' (not 'experiment_id') to keep Prometheus
+        # label cardinality bounded. Per-experiment detail is emitted as a
+        # structured log event, not a metric label.
         try:
             self._ab_test_counter = Counter(
                 "mahavishnu_ab_tests_total",
                 "Total A/B test events",
-                ["server", "experiment_id", "event_type"],
+                ["server", "experiment_group", "event_type"],
             )
         except ValueError:
             logger.debug(f"Reusing existing A/B test counter: {self.server_name}")
@@ -453,21 +456,32 @@ class RoutingMetrics:
 
     def record_ab_test_event(
         self,
-        experiment_id: str,
+        experiment_group: str,
         event_type: str,
+        experiment_id: str | None = None,
     ) -> None:
         """Record A/B test event.
 
         Args:
-            experiment_id: Unique experiment identifier
+            experiment_group: Bounded group name (e.g. "control", "variant_a").
+                Used as the Prometheus label to keep cardinality bounded.
             event_type: Event type (start, complete, evaluate, variant_assigned)
+            experiment_id: Optional unique experiment identifier for structured
+                logging only — not recorded as a Prometheus label.
         """
         self._ensure_enabled()
         if self._ab_test_counter:
             self._ab_test_counter.labels(
-                server=self.server_name, experiment_id=experiment_id, event_type=event_type
+                server=self.server_name,
+                experiment_group=experiment_group,
+                event_type=event_type,
             ).inc()
-            logger.debug(f"Recorded A/B test event: {event_type} for {experiment_id}")
+            logger.debug(
+                "Recorded A/B test event: %s for group=%s id=%s",
+                event_type,
+                experiment_group,
+                experiment_id,
+            )
 
     def set_active_experiments(self, count: int) -> None:
         """Set active experiments gauge.

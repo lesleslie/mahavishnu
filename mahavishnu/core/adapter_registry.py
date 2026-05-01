@@ -52,8 +52,8 @@ from mahavishnu.core.adapter_persistence import (
     HealthRecord,
 )
 from mahavishnu.core.task_requirements import (
+    AdapterResolutionResult,
     ResolutionCache,
-    RoutingDecision,
 )
 
 if TYPE_CHECKING:
@@ -344,7 +344,7 @@ class HybridAdapterRegistry:
         domain: str,
         key: str,
         capabilities: list[str] | None = None,
-    ) -> RoutingDecision | None:
+    ) -> AdapterResolutionResult | None:
         """Resolve the best adapter for the given requirements.
 
         .. note:: **Golden Path**: Prefer ``mahavishnu adapter resolve`` (CLI) or
@@ -359,7 +359,7 @@ class HybridAdapterRegistry:
             capabilities: Required capabilities
 
         Returns:
-            RoutingDecision with selected adapter, or None if no match
+            AdapterResolutionResult with selected adapter, or None if no match
         """
         start_time = time.time()
 
@@ -411,7 +411,7 @@ class HybridAdapterRegistry:
         if capabilities:
             matched_caps = [cap for cap in capabilities if cap in selected_meta.capabilities]
 
-        decision = RoutingDecision(
+        decision = AdapterResolutionResult(
             adapter_name=selected_name,
             adapter=selected_adapter,
             matched_capabilities=matched_caps,

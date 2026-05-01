@@ -44,9 +44,9 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 ### Mahavishnu Ecosystem Control Plane
 
 - Plan: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
-- Status: `active`, `implementation`
+- Status: `shipped` — all CP0–CP7 phases complete as of 2026-04-30
 - Use for: canonical ecosystem status report, health contract cleanup, capability discovery, routing observability, and wiring the TUI to live read-only data.
-- Relationship: builds on existing health/MCP/adapter work and should be reviewed before adding new dashboard or ecosystem-health features.
+- Delivered: `CanonicalStatus`, `EcosystemStatusService`, `EcosystemStatusReport`, `RoutingDecision` observability model, `RoutingDecisionBuffer`, `_collect_capabilities`, `_generate_recommendations`, `experiment_id` cardinality fix, `AdapterResolutionResult` rename. CLI (`mahavishnu ecosystem status/capabilities`), MCP tools (`ecosystem_status`, `ecosystem_capabilities`, `ecosystem_routing_readiness`), and TUI all wired to the canonical report.
 
 ### Ecosystem Docs Canonicalization
 

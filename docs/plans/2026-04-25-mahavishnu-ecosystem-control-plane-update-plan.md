@@ -1,8 +1,8 @@
 # Mahavishnu Ecosystem Control Plane Update Plan
 
 **Date:** 2026-04-25
-**Last reviewed:** 2026-04-24
-**Status:** Proposed (reviewed; findings from 6-agent cross-review applied)
+**Last reviewed:** 2026-04-30
+**Status:** SHIPPED — all CP0–CP7 phases complete as of 2026-04-30
 **Scope:** Mahavishnu health, readiness, capability discovery, routing observability, and TUI/dashboard integration across the Bodai ecosystem.
 
 **Companion documents:**

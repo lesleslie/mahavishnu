@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import collections
 import logging
 import time
+import uuid
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Literal, Protocol, runtime_checkable
@@ -30,6 +32,135 @@ class DegradationTrend(str, Enum):
     IMPROVING = "improving"
     STABLE = "stable"
     WORSENING = "worsening"
+
+
+class RejectionReason(str, Enum):
+    """Reason an adapter was not selected during routing."""
+
+    HEALTH_FAILED = "health_failed"
+    CAPABILITY_MISSING = "capability_missing"
+    COST_EXCEEDED = "cost_exceeded"
+    TIMEOUT = "timeout"
+    RATE_LIMITED = "rate_limited"
+    DISABLED = "disabled"
+
+
+# ---------------------------------------------------------------------------
+# Phase 5: Canonical routing observability models
+# ---------------------------------------------------------------------------
+
+
+class FallbackCandidate(BaseModel):
+    """An adapter that could serve as a fallback if the primary is unavailable."""
+
+    adapter_name: str
+    status: CanonicalStatus
+    estimated_latency_ms: float | None = None
+    match_score: float | None = None
+
+
+class CandidateEvaluation(BaseModel):
+    """Score and metadata for an adapter considered during a routing decision."""
+
+    adapter_name: str
+    score: float
+    match_rate: float
+    estimated_latency_ms: float | None = None
+    cost_estimate_usd: float | None = None
+
+
+class RejectedAdapter(BaseModel):
+    """An adapter that was considered but not selected."""
+
+    adapter_name: str
+    reason: RejectionReason
+    detail: str | None = None
+
+
+class RoutingDecision(BaseModel):
+    """Canonical operator-facing record of a single routing decision.
+
+    This is the observability model. For the internal adapter resolution
+    result see ``mahavishnu.core.task_requirements.AdapterResolutionResult``.
+
+    Ring-buffer note: instances are stored in a bounded per-task-class
+    ring buffer (see :class:`RoutingDecisionBuffer`) — never as raw Prometheus
+    labels. Only ``task_class`` and ``routing_strategy`` are used as Prometheus
+    labels; ``task_id`` / ``decision_id`` are structural metadata only.
+    """
+
+    decision_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    task_id: str
+    task_class: str
+    required_capabilities: list[str] = Field(default_factory=list)
+    selected_adapter: str
+    candidate_adapters: list[CandidateEvaluation] = Field(default_factory=list)
+    rejected_adapters: list[RejectedAdapter] = Field(default_factory=list)
+    fallback_used: bool = False
+    fallback_chain: list[str] = Field(default_factory=list)
+    health_at_decision: dict[str, CanonicalStatus] = Field(default_factory=dict)
+    cache_hit: bool = False
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    decision_latency_ms: float = 0.0
+    routing_strategy: str = ""
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class RoutingReadiness(BaseModel):
+    """Routing readiness summary for a given task class."""
+
+    task_class: str
+    primary_adapter: str | None = None
+    primary_status: CanonicalStatus = CanonicalStatus.UNKNOWN
+    fallback_chain: list[FallbackCandidate] = Field(default_factory=list)
+    circuit_breakers_open: list[str] = Field(default_factory=list)
+    routing_strategy: str = ""
+    last_decision: RoutingDecision | None = None
+
+
+class RoutingDecisionBuffer:
+    """Bounded ring buffer for recent routing decisions per task class.
+
+    Stores at most ``maxlen`` decisions per task class. Older entries are
+    automatically evicted when the buffer is full.
+
+    Data classification: stores only structural routing metadata — never
+    task prompts, user inputs, or response content.
+    """
+
+    def __init__(self, maxlen: int = 1000) -> None:
+        self._maxlen = maxlen
+        self._buffers: dict[str, collections.deque[RoutingDecision]] = {}
+
+    def record(self, decision: RoutingDecision) -> None:
+        """Add a routing decision to the ring buffer."""
+        key = decision.task_class
+        if key not in self._buffers:
+            self._buffers[key] = collections.deque(maxlen=self._maxlen)
+        self._buffers[key].append(decision)
+
+    def recent(self, task_class: str, limit: int = 10) -> list[RoutingDecision]:
+        """Return the most recent decisions for the given task class."""
+        buf = self._buffers.get(task_class)
+        if not buf:
+            return []
+        items = list(buf)
+        return items[-limit:]
+
+    def all_task_classes(self) -> list[str]:
+        return list(self._buffers.keys())
+
+    def clear(self) -> None:
+        self._buffers.clear()
+
+
+# Module-level singleton ring buffer.
+_routing_buffer: RoutingDecisionBuffer = RoutingDecisionBuffer()
+
+
+def get_routing_buffer() -> RoutingDecisionBuffer:
+    """Return the module-level routing decision ring buffer."""
+    return _routing_buffer
 
 
 # Mapping from adapter-native statuses to canonical.
@@ -288,6 +419,7 @@ class EcosystemStatusService:
             self._collect_adapters(),
             self._collect_workflows(),
             self._collect_alerts(),
+            self._collect_capabilities(),
             return_exceptions=True,
         )
 
@@ -295,9 +427,10 @@ class EcosystemStatusService:
         adapters: dict[str, AdapterStatus] = {}
         workflows = WorkflowSummary()
         alerts = AlertSummary()
+        capabilities: dict[str, CapabilityStatus] = {}
         errors: list[SectionError] = []
 
-        section_names = ["services", "adapters", "workflows", "alerts"]
+        section_names = ["services", "adapters", "workflows", "alerts", "capabilities"]
         for name, result in zip(section_names, section_results):
             if isinstance(result, BaseException):
                 errors.append(SectionError(
@@ -313,6 +446,8 @@ class EcosystemStatusService:
                 workflows = result
             elif name == "alerts":
                 alerts = result
+            elif name == "capabilities":
+                capabilities = result
 
         # Compute overall status
         all_statuses = list(services.values()) if services else []
@@ -326,6 +461,9 @@ class EcosystemStatusService:
         services = self._detect_staleness(services)
         adapters = self._detect_staleness(adapters)
 
+        # Generate deterministic recommendations (Phase 7)
+        recommendations = self._generate_recommendations(services, adapters, alerts)
+
         duration_ms = (time.monotonic() - start) * 1000
 
         return EcosystemStatusReport(
@@ -335,8 +473,10 @@ class EcosystemStatusService:
             request_id=request_id,
             services=services,
             adapters=adapters,
+            capabilities=capabilities,
             workflows=workflows,
             alerts=alerts,
+            recommendations=recommendations,
             errors=errors,
         )
 
@@ -439,6 +579,146 @@ class EcosystemStatusService:
         except Exception:
             return AlertSummary()
 
+    async def _collect_capabilities(self) -> dict[str, CapabilityStatus]:
+        """Build the capability inventory from registered adapters (Phase 6).
+
+        Aggregates local adapter capabilities into named ecosystem capabilities
+        grouped by category. Remote service capability probes are out of scope
+        for this phase — only local adapter metadata is used.
+
+        Categories: orchestration, retrieval, session, storage, quality,
+        monitoring, messaging, worker_pool.
+        """
+        CAPABILITY_CATEGORIES: dict[str, str] = {
+            "deploy_flows": "orchestration",
+            "schedule": "orchestration",
+            "monitor_execution": "orchestration",
+            "multi_agent": "orchestration",
+            "tool_use": "orchestration",
+            "rag": "retrieval",
+            "vector_search": "retrieval",
+            "session": "session",
+            "memory": "session",
+            "storage": "storage",
+            "persist": "storage",
+            "quality": "quality",
+            "lint": "quality",
+            "test": "quality",
+            "monitor": "monitoring",
+            "alerts": "monitoring",
+            "metrics": "monitoring",
+            "message": "messaging",
+            "broadcast": "messaging",
+            "worker": "worker_pool",
+            "pool": "worker_pool",
+        }
+
+        cap_providers: dict[str, list[str]] = {}
+        cap_statuses: dict[str, CanonicalStatus] = {}
+
+        for name, adapter in self._adapters.items():
+            try:
+                health = await adapter.get_health() if hasattr(adapter, "get_health") else {}
+                adapter_status = normalize_status(health.get("status", "unknown"))
+                caps: list[str] = []
+                if hasattr(adapter, "capabilities"):
+                    caps = list(adapter.capabilities) if adapter.capabilities else []
+                elif isinstance(health.get("capabilities"), list):
+                    caps = health["capabilities"]
+                for cap in caps:
+                    if cap not in cap_providers:
+                        cap_providers[cap] = []
+                        cap_statuses[cap] = adapter_status
+                    cap_providers[cap].append(name)
+                    if STATUS_SEVERITY.get(adapter_status, 0) > STATUS_SEVERITY.get(
+                        cap_statuses[cap], 0
+                    ):
+                        cap_statuses[cap] = adapter_status
+            except Exception:
+                pass
+
+        result: dict[str, CapabilityStatus] = {}
+        for cap, providers in cap_providers.items():
+            category = next(
+                (v for k, v in CAPABILITY_CATEGORIES.items() if k in cap.lower()),
+                "other",
+            )
+            result[cap] = CapabilityStatus(
+                status=cap_statuses.get(cap, CanonicalStatus.UNKNOWN),
+                provided_by=providers,
+                category=category,
+                last_verified=datetime.now(UTC),
+            )
+        return result
+
+    def _generate_recommendations(
+        self,
+        services: dict[str, ServiceStatus],
+        adapters: dict[str, AdapterStatus],
+        alerts: AlertSummary,
+    ) -> list[OperationalRecommendation]:
+        """Generate deterministic operator recommendations (Phase 7).
+
+        Rules are evaluated in order. Each unhealthy required component
+        produces at least one recommendation.
+        """
+        recs: list[OperationalRecommendation] = []
+
+        for name, svc in services.items():
+            if svc.required and svc.status == CanonicalStatus.UNHEALTHY:
+                recs.append(OperationalRecommendation(
+                    severity=CanonicalStatus.UNHEALTHY,
+                    component=name,
+                    message=f"Required service '{name}' is unhealthy. Check that it is running.",
+                    suggested_command=f"mahavishnu health --service {name}",
+                ))
+            elif svc.required and svc.status == CanonicalStatus.UNKNOWN:
+                recs.append(OperationalRecommendation(
+                    severity=CanonicalStatus.DEGRADED,
+                    component=name,
+                    message=f"Required service '{name}' is unreachable or health check timed out.",
+                    suggested_command=f"mahavishnu health --service {name}",
+                ))
+            elif not svc.required and svc.status in (
+                CanonicalStatus.UNHEALTHY, CanonicalStatus.DEGRADED
+            ):
+                recs.append(OperationalRecommendation(
+                    severity=CanonicalStatus.DEGRADED,
+                    component=name,
+                    message=(
+                        f"Optional service '{name}' is {svc.status.value}. "
+                        "Some features may be degraded."
+                    ),
+                    suggested_command=f"mahavishnu health --service {name}",
+                ))
+
+        if not adapters:
+            recs.append(OperationalRecommendation(
+                severity=CanonicalStatus.DEGRADED,
+                component="adapters",
+                message="No adapters registered. Run adapter discovery.",
+                suggested_command="mahavishnu adapter list",
+            ))
+        else:
+            for name, adp in adapters.items():
+                if adp.status == CanonicalStatus.UNHEALTHY:
+                    recs.append(OperationalRecommendation(
+                        severity=CanonicalStatus.UNHEALTHY,
+                        component=name,
+                        message=f"Adapter '{name}' is unhealthy. Inspect recent failures.",
+                        suggested_command=f"mahavishnu adapter health --name {name}",
+                    ))
+
+        if alerts.total_active > 10:
+            recs.append(OperationalRecommendation(
+                severity=CanonicalStatus.DEGRADED,
+                component="alerts",
+                message=f"High alert count ({alerts.total_active} active). Check monitoring dashboard.",
+                suggested_command="mahavishnu ecosystem status --sections alerts",
+            ))
+
+        return recs
+
     def _detect_staleness(
         self,
         items: dict[str, ServiceStatus] | dict[str, AdapterStatus],
@@ -455,3 +735,39 @@ class EcosystemStatusService:
                 item = item.model_copy(update={"status": CanonicalStatus.UNKNOWN})
             updated[key] = item
         return updated
+
+
+__all__ = [
+    # Enums
+    "CanonicalStatus",
+    "DegradationTrend",
+    "RejectionReason",
+    # Status helpers
+    "normalize_status",
+    "aggregate_statuses",
+    "aggregate_with_optional",
+    "is_valid_transition",
+    "ADAPTER_STATUS_MAP",
+    "STATUS_SEVERITY",
+    "VALID_TRANSITIONS",
+    # Report models
+    "SectionError",
+    "ServiceStatus",
+    "AdapterStatus",
+    "CapabilityStatus",
+    "WorkflowSummary",
+    "AlertRef",
+    "AlertSummary",
+    "OperationalRecommendation",
+    "EcosystemStatusReport",
+    # Routing observability models (Phase 5)
+    "FallbackCandidate",
+    "CandidateEvaluation",
+    "RejectedAdapter",
+    "RoutingDecision",
+    "RoutingReadiness",
+    "RoutingDecisionBuffer",
+    "get_routing_buffer",
+    # Service
+    "EcosystemStatusService",
+]

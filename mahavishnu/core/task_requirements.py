@@ -4,11 +4,16 @@ This module defines data structures for Phase 2 of the routing plan,
 enabling intelligent capability-based task routing across adapters.
 
 Architecture:
-    TaskRequirements --> ResolutionCache --> RoutingDecision
+    TaskRequirements --> ResolutionCache --> AdapterResolutionResult
            |                  |                   |
            v                  v                   v
     TaskType mapping    TTL-based caching    Adapter selection
                                                with explanation
+
+Note: The legacy ``RoutingDecision`` name was renamed to
+``AdapterResolutionResult`` in CP Phase 5 to avoid collision with the
+canonical operator-facing ``RoutingDecision`` observability model in
+``mahavishnu.core.ecosystem_status``.
 """
 
 from __future__ import annotations
@@ -93,11 +98,14 @@ class TaskRequirements:
 
 
 @dataclass
-class RoutingDecision:
-    """Result of a routing decision for a task.
+class AdapterResolutionResult:
+    """Result of an internal adapter resolution for a task.
 
     Captures which adapter was selected, why it was chosen, and
     metadata about the resolution process.
+
+    This is the internal routing result. For the canonical operator-facing
+    observability model see ``mahavishnu.core.ecosystem_status.RoutingDecision``.
 
     Attributes:
         adapter_name: Name of the selected adapter
@@ -116,7 +124,7 @@ class RoutingDecision:
     explanation: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert routing decision to dictionary for serialization.
+        """Convert resolution result to dictionary for serialization.
 
         Returns:
             Dictionary representation (excludes adapter instance)
@@ -128,6 +136,10 @@ class RoutingDecision:
             "fallback_used": self.fallback_used,
             "explanation": self.explanation,
         }
+
+
+# Backward-compat alias — remove after all callers are updated.
+RoutingDecision = AdapterResolutionResult
 
 
 # Mapping of task types to their required capabilities
@@ -284,7 +296,8 @@ class ResolutionCache:
 
 __all__ = [
     "TaskRequirements",
-    "RoutingDecision",
+    "AdapterResolutionResult",
+    "RoutingDecision",  # backward-compat alias
     "TASK_CAPABILITY_REQUIREMENTS",
     "ResolutionCache",
 ]

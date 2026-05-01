@@ -61,8 +61,8 @@ if TYPE_CHECKING:
 # Import capability routing types (optional - for hybrid registry)
 try:
     from mahavishnu.core.task_requirements import (
+        AdapterResolutionResult,
         TaskRequirements,
-        RoutingDecision,
         ResolutionCache,
         TASK_CAPABILITY_REQUIREMENTS,
     )
@@ -71,7 +71,7 @@ try:
 except ImportError:
     CAPABILITY_ROUTING_AVAILABLE = False
     TaskRequirements = None  # type: ignore[misc,assignment]
-    RoutingDecision = None  # type: ignore[misc,assignment]
+    AdapterResolutionResult = None  # type: ignore[misc,assignment]
     ResolutionCache = None  # type: ignore[misc,assignment]
     TASK_CAPABILITY_REQUIREMENTS = {}  # type: ignore[misc]
 
@@ -331,7 +331,7 @@ class CapabilityRouter:
             domain: Domain for adapter resolution
 
         Returns:
-            RoutingDecision with selected adapter, or dict with error
+            AdapterResolutionResult with selected adapter, or dict with error
         """
         # Check cache first
         cache_key = f"{domain}:{task_type.value}:{additional_capabilities or []}"
@@ -376,8 +376,8 @@ class CapabilityRouter:
             resolution_time_ms = (time.time() - start_time) * 1000
 
             # Create routing decision
-            if CAPABILITY_ROUTING_AVAILABLE and RoutingDecision is not None:
-                decision = RoutingDecision(
+            if CAPABILITY_ROUTING_AVAILABLE and AdapterResolutionResult is not None:
+                decision = AdapterResolutionResult(
                     adapter_name=best_adapter.adapter_id,
                     adapter=None,  # Lazy-loaded by registry
                     matched_capabilities=[

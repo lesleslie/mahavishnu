@@ -316,3 +316,225 @@ async def test_collect_alerts_with_no_provider():
     svc = EcosystemStatusService()
     result = await svc._collect_alerts()
     assert result == AlertSummary()
+
+
+# ── Phase 5: Routing decision models and ring buffer ───────────────────────
+
+
+class TestRejectionReason:
+    def test_all_values_are_strings(self):
+        from mahavishnu.core.ecosystem_status import RejectionReason
+
+        for reason in RejectionReason:
+            assert isinstance(reason.value, str)
+
+    def test_expected_values_present(self):
+        from mahavishnu.core.ecosystem_status import RejectionReason
+
+        assert RejectionReason.HEALTH_FAILED.value == "health_failed"
+        assert RejectionReason.CAPABILITY_MISSING.value == "capability_missing"
+        assert RejectionReason.DISABLED.value == "disabled"
+
+
+class TestRoutingDecision:
+    def test_default_decision_id_is_set(self):
+        from mahavishnu.core.ecosystem_status import RoutingDecision
+
+        d = RoutingDecision(
+            task_id="t1",
+            task_class="AI_TASK",
+            selected_adapter="prefect",
+        )
+        assert d.decision_id
+        assert d.confidence == 1.0
+        assert d.fallback_used is False
+
+    def test_confidence_bounds(self):
+        from mahavishnu.core.ecosystem_status import RoutingDecision
+        import pytest
+
+        with pytest.raises(Exception):
+            RoutingDecision(
+                task_id="t2",
+                task_class="AI_TASK",
+                selected_adapter="agno",
+                confidence=1.5,
+            )
+
+    def test_rejected_adapters_with_enum(self):
+        from mahavishnu.core.ecosystem_status import RoutingDecision, RejectedAdapter, RejectionReason
+
+        d = RoutingDecision(
+            task_id="t3",
+            task_class="RAG",
+            selected_adapter="llamaindex",
+            rejected_adapters=[
+                RejectedAdapter(adapter_name="prefect", reason=RejectionReason.CAPABILITY_MISSING)
+            ],
+        )
+        assert d.rejected_adapters[0].reason == RejectionReason.CAPABILITY_MISSING
+
+
+class TestRoutingDecisionBuffer:
+    def test_record_and_recent(self):
+        from mahavishnu.core.ecosystem_status import RoutingDecision, RoutingDecisionBuffer
+
+        buf = RoutingDecisionBuffer()
+        d = RoutingDecision(task_id="t1", task_class="AI_TASK", selected_adapter="agno")
+        buf.record(d)
+        recent = buf.recent("AI_TASK")
+        assert len(recent) == 1
+        assert recent[0].task_id == "t1"
+
+    def test_bounded_by_maxlen(self):
+        from mahavishnu.core.ecosystem_status import RoutingDecision, RoutingDecisionBuffer
+
+        buf = RoutingDecisionBuffer(maxlen=3)
+        for i in range(5):
+            buf.record(RoutingDecision(task_id=f"t{i}", task_class="X", selected_adapter="a"))
+        recent = buf.recent("X", limit=10)
+        assert len(recent) == 3  # oldest evicted
+
+    def test_recent_empty_for_unknown_class(self):
+        from mahavishnu.core.ecosystem_status import RoutingDecisionBuffer
+
+        buf = RoutingDecisionBuffer()
+        assert buf.recent("NONEXISTENT") == []
+
+    def test_all_task_classes(self):
+        from mahavishnu.core.ecosystem_status import RoutingDecision, RoutingDecisionBuffer
+
+        buf = RoutingDecisionBuffer()
+        buf.record(RoutingDecision(task_id="a", task_class="T1", selected_adapter="x"))
+        buf.record(RoutingDecision(task_id="b", task_class="T2", selected_adapter="y"))
+        assert set(buf.all_task_classes()) == {"T1", "T2"}
+
+    def test_get_routing_buffer_singleton(self):
+        from mahavishnu.core.ecosystem_status import get_routing_buffer, RoutingDecisionBuffer
+
+        buf = get_routing_buffer()
+        assert isinstance(buf, RoutingDecisionBuffer)
+        assert get_routing_buffer() is buf
+
+
+# ── Phase 6: Capability collection ─────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_collect_capabilities_no_adapters():
+    from mahavishnu.core.ecosystem_status import EcosystemStatusService
+
+    svc = EcosystemStatusService()
+    result = await svc._collect_capabilities()
+    assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_collect_capabilities_with_adapter():
+    from mahavishnu.core.ecosystem_status import EcosystemStatusService, CanonicalStatus
+
+    class FakeAdapter:
+        capabilities = ["rag", "vector_search"]
+
+        async def get_health(self):
+            return {"status": "healthy"}
+
+    svc = EcosystemStatusService(adapters={"llamaindex": FakeAdapter()})
+    result = await svc._collect_capabilities()
+    assert "rag" in result
+    assert result["rag"].status == CanonicalStatus.OK
+    assert "llamaindex" in result["rag"].provided_by
+    assert result["rag"].category == "retrieval"
+
+
+# ── Phase 7: Operational recommendations ───────────────────────────────────
+
+
+class TestGenerateRecommendations:
+    def test_unhealthy_required_service_gets_recommendation(self):
+        from mahavishnu.core.ecosystem_status import (
+            EcosystemStatusService, ServiceStatus, AdapterStatus, AlertSummary, CanonicalStatus,
+        )
+
+        svc = EcosystemStatusService()
+        services = {
+            "session_buddy": ServiceStatus(
+                status=CanonicalStatus.UNHEALTHY, required=True
+            )
+        }
+        adapters = {"prefect": AdapterStatus(status=CanonicalStatus.OK)}
+        recs = svc._generate_recommendations(services, adapters, AlertSummary())
+        assert any(
+            r.severity == CanonicalStatus.UNHEALTHY and "session_buddy" in r.component
+            for r in recs
+        )
+
+    def test_optional_degraded_service_still_gets_recommendation(self):
+        from mahavishnu.core.ecosystem_status import (
+            EcosystemStatusService, ServiceStatus, AlertSummary, CanonicalStatus,
+        )
+
+        svc = EcosystemStatusService()
+        services = {
+            "akosha": ServiceStatus(status=CanonicalStatus.DEGRADED, required=False)
+        }
+        recs = svc._generate_recommendations(services, {}, AlertSummary())
+        assert len(recs) >= 1
+        assert any("akosha" in r.component for r in recs)
+
+    def test_no_adapters_recommendation(self):
+        from mahavishnu.core.ecosystem_status import EcosystemStatusService, AlertSummary
+
+        svc = EcosystemStatusService()
+        recs = svc._generate_recommendations({}, {}, AlertSummary())
+        assert any(r.component == "adapters" for r in recs)
+
+    def test_high_alert_count_recommendation(self):
+        from mahavishnu.core.ecosystem_status import (
+            EcosystemStatusService, AlertSummary, CanonicalStatus, AdapterStatus,
+        )
+
+        svc = EcosystemStatusService()
+        alerts = AlertSummary(total_active=15)
+        recs = svc._generate_recommendations(
+            {},
+            {"a": AdapterStatus(status=CanonicalStatus.OK)},
+            alerts,
+        )
+        assert any(r.component == "alerts" for r in recs)
+
+    def test_healthy_system_no_critical_recommendations(self):
+        from mahavishnu.core.ecosystem_status import (
+            EcosystemStatusService, ServiceStatus, AdapterStatus, AlertSummary, CanonicalStatus,
+        )
+
+        svc = EcosystemStatusService()
+        services = {"session_buddy": ServiceStatus(status=CanonicalStatus.OK, required=True)}
+        adapters = {"prefect": AdapterStatus(status=CanonicalStatus.OK)}
+        recs = svc._generate_recommendations(services, adapters, AlertSummary())
+        assert not any(r.severity == CanonicalStatus.UNHEALTHY for r in recs)
+
+
+# ── AdapterResolutionResult rename ─────────────────────────────────────────
+
+
+def test_adapter_resolution_result_is_renamed():
+    from mahavishnu.core.task_requirements import AdapterResolutionResult, RoutingDecision
+
+    assert AdapterResolutionResult is RoutingDecision  # backward-compat alias
+
+
+def test_adapter_resolution_result_to_dict():
+    from mahavishnu.core.task_requirements import AdapterResolutionResult
+
+    result = AdapterResolutionResult(
+        adapter_name="prefect",
+        adapter=None,
+        matched_capabilities=["deploy_flows"],
+        resolution_time_ms=12.5,
+        fallback_used=False,
+        explanation="best match",
+    )
+    d = result.to_dict()
+    assert d["adapter_name"] == "prefect"
+    assert "adapter" not in d  # adapter instance excluded
