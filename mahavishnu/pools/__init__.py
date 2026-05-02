@@ -37,6 +37,7 @@ __all__ = [
     "PoolManager",
     "PoolSelector",
     "MemoryAggregator",
+    "RunPodPool",
     "WebSocketBroadcaster",
     "create_broadcaster",
 ]
@@ -50,6 +51,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "PoolManager": (".manager", "PoolManager"),
     "PoolSelector": (".manager", "PoolSelector"),
     "MemoryAggregator": (".memory_aggregator", "MemoryAggregator"),
+    "RunPodPool": (".runpod_pool", "RunPodPool"),
     "WebSocketBroadcaster": (".websocket", "WebSocketBroadcaster"),
     "create_broadcaster": (".websocket", "create_broadcaster"),
 }
