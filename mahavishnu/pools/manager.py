@@ -12,6 +12,7 @@ from monitoring.metrics import pool_workers_active
 from ..mcp.protocols.message_bus import MessageBus
 from .base import BasePool, PoolConfig
 from .kubernetes_pool import KubernetesPool
+from .runpod_pool import RunPodPool
 from .mahavishnu_pool import MahavishnuPool
 from .session_buddy_pool import SessionBuddyPool
 
@@ -116,7 +117,7 @@ class PoolManager:
             if pool is not None:
                 worker_counts.setdefault(pool.config.pool_type, 0)
 
-        known_types = {"mahavishnu", "session-buddy", "kubernetes"} | set(worker_counts.keys())
+        known_types = {"mahavishnu", "session-buddy", "kubernetes", "runpod"} | set(worker_counts.keys())
         for pool_type in known_types:
             pool_workers_active.labels(pool_type=pool_type).set(worker_counts.get(pool_type, 0))
 
@@ -128,7 +129,7 @@ class PoolManager:
         """Spawn a new pool of specified type.
 
         Args:
-            pool_type: Type of pool ("mahavishnu", "session-buddy", "kubernetes")
+            pool_type: Type of pool ("mahavishnu", "session-buddy", "kubernetes", "runpod")
             config: Pool configuration
 
         Returns:
@@ -170,6 +171,8 @@ class PoolManager:
                     kubeconfig_path=config.get("kubeconfig_path"),
                     container_image=config.get("container_image", "python:3.13-slim"),
                 )
+            elif pool_type == "runpod":
+                pool = RunPodPool(config=config)
             else:
                 raise ValueError(f"Unknown pool type: {pool_type}")
 
