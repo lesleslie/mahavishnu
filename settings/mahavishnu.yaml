@@ -77,6 +77,17 @@ pools:
   session_buddy_url: "http://localhost:8678/mcp"  # Session-Buddy MCP server URL for delegated pools
   akosha_url: "http://localhost:8682/mcp"  # Akosha MCP server URL for cross-pool analytics
 
+# RunPod Flash pool configuration
+# Set RUNPOD_API_KEY env var before spawning runpod pools
+runpod_pool:
+  enabled: false           # set to true to allow runpod pool spawning
+  default_gpu: "NVIDIA_GEFORCE_RTX_4090"
+  default_workers: 3
+  default_endpoint_name: "mahavishnu-worker"
+  default_dependencies:
+    - "torch"
+    - "transformers"
+
 # Worker orchestration for headless AI execution
 workers:
   enabled: true  # Enable worker orchestration
