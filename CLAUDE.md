@@ -44,6 +44,10 @@ Mahavishnu is a multi-engine orchestration platform that provides a unified inte
 1. `settings/local.yaml` (gitignored, local dev)
 1. Environment variables `MAHAVISHNU_{FIELD}`
 
+**Key environment variables:**
+- `MAHAVISHNU_AUTH_SECRET` — JWT secret (minimum 32 chars)
+- `RUNPOD_API_KEY` — required for RunPodPool; set before spawning `pool_type="runpod"` pools
+
 **Adapter Pattern**: All orchestration engines implement `OrchestratorAdapter` from `mahavishnu/core/adapters/base.py`. Adapters are initialized in `MahavishnuApp._initialize_adapters()` only if enabled in configuration.
 
 **Error Handling**: Custom exception hierarchy in `mahavishnu/core/errors.py` provides structured error context with `message`, `details`, and `to_dict()` method for API responses.
