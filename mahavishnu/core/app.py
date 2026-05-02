@@ -7,6 +7,7 @@ repository loading and adapter initialization using Oneiric patterns.
 import asyncio
 from asyncio import Semaphore
 from datetime import datetime
+import os
 from pathlib import Path
 import tempfile
 import time
@@ -519,46 +520,26 @@ class MahavishnuApp:
     def _init_nanobot_provider(self) -> Any | None:
         """Initialize nanobot LLM provider for in-process workers.
 
-        Uses ANTHROPIC_AUTH_TOKEN + ANTHROPIC_BASE_URL env vars
-        (already set in your environment for z.ai).
+        Uses ZAI_API_KEY + ZAI_BASE_URL env vars.
 
         Returns:
             nanobot provider instance or None if unavailable
         """
         logger = __import__("logging").getLogger(__name__)
         try:
-            from ..llm_gateway import ProtocolFamily, gateway_api_base
-
-            auth_token = __import__("os").environ.get("ANTHROPIC_AUTH_TOKEN")
-            gateway_base_url = __import__("os").environ.get("BIFROST_BASE_URL") or __import__(
-                "os"
-            ).environ.get("MAHAVISHNU_LLM_GATEWAY_BASE_URL")
-            base_url = __import__("os").environ.get(
-                "ANTHROPIC_BASE_URL", "https://api.anthropic.com"
+            auth_token = os.environ.get("ZAI_API_KEY")
+            base_url = os.environ.get(
+                "ZAI_BASE_URL", "https://api.z.ai/api/coding/paas/v4"
             )
 
             if not auth_token:
-                logger.debug(
-                    "ANTHROPIC_AUTH_TOKEN not set; nanobot provider not configured"
-                )
+                logger.debug("ZAI_API_KEY not set; nanobot provider not configured")
                 return None
 
             from nanobot.providers import OpenAICompatProvider
 
-            if gateway_base_url:
-                base_url = gateway_api_base(
-                    ProtocolFamily.OPENAI,
-                    base_url=gateway_base_url,
-                )
-
-            provider = OpenAICompatProvider(
-                api_key=auth_token,
-                base_url=base_url,
-            )
-            logger.info(
-                f"Nanobot provider initialized: OpenAICompatProvider "
-                f"(base_url={base_url})"
-            )
+            provider = OpenAICompatProvider(api_key=auth_token, base_url=base_url)
+            logger.info("Nanobot provider initialized via ZAI (base_url=%s)", base_url)
             return provider
 
         except ImportError:
