@@ -304,7 +304,12 @@
       "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pytest /Users/les/Projects/mahavishnu/.worktrees/feat/runpod-flash-pool/tests/unit/pools/test_runpod_pool.py -v --no-cov)",
       "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pytest tests/integration/pools/test_runpod_pool_smoke.py -v --no-cov)",
       "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pytest tests/unit/pools/test_runpod_pool.py tests/integration/pools/test_runpod_pool_smoke.py -v --no-cov)",
-      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pytest tests/unit/pools/test_runpod_pool.py --no-cov -q)"
+      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pytest tests/unit/pools/test_runpod_pool.py --no-cov -q)",
+      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pip show *)",
+      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pip search *)",
+      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pip index *)",
+      "Bash(/Users/les/.local/share/uv/tools/nanobot-ai/bin/nanobot --version)",
+      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pip uninstall *)"
     ]
   },
   "outputStyle": "Explanatory",

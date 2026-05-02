@@ -20,23 +20,11 @@
         "to": null
       },
       "state": {
-        "nextRunAtMs": 1777699590310,
-        "lastRunAtMs": 1777692389790,
+        "nextRunAtMs": 1777721064273,
+        "lastRunAtMs": 1777713864180,
         "lastStatus": "ok",
         "lastError": null,
         "runHistory": [
-          {
-            "runAtMs": 1777507593473,
-            "status": "ok",
-            "durationMs": 1101,
-            "error": null
-          },
-          {
-            "runAtMs": 1777514794666,
-            "status": "ok",
-            "durationMs": 319,
-            "error": null
-          },
           {
             "runAtMs": 1777521994997,
             "status": "ok",
@@ -144,11 +132,23 @@
             "status": "ok",
             "durationMs": 511,
             "error": null
+          },
+          {
+            "runAtMs": 1777706663943,
+            "status": "ok",
+            "durationMs": 230,
+            "error": null
+          },
+          {
+            "runAtMs": 1777713864180,
+            "status": "ok",
+            "durationMs": 93,
+            "error": null
           }
         ]
       },
       "createdAtMs": 1776693678544,
-      "updatedAtMs": 1777692390301,
+      "updatedAtMs": 1777713864273,
       "deleteAfterRun": false
     }
   ]

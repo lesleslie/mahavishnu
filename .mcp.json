@@ -18,7 +18,7 @@
     },
     "mermaid": {
       "type": "http",
-      "url": "https://mcp.mermaid.ai/mcp"
+      "url": "http://localhost:3033/mcp"
     },
     "chart-antv": {
       "type": "http",

@@ -10,7 +10,9 @@
 >
 > Part of the [Bodai Ecosystem](https://github.com/lesleslie/bodai) - The Orchestrator component
 
-**Mahavishnu** is a multi-repo, multi-engine, async-first orchestration platform that provides unified interfaces for managing workflows across multiple repositories. It enables intelligent workflow routing, cross-repository coordination, and headless AI worker orchestration.
+**Mahavishnu** is the internal control plane for the Bodai ecosystem: a multi-repo, multi-engine, async-first orchestration system for coordinating work across our own repositories, MCP services, and AI-capable backends. It enables workflow routing, cross-repository coordination, operational tooling, and headless worker orchestration.
+
+Mahavishnu is maintained first as ecosystem infrastructure for Bodai-owned repos. Some parts are reusable and may have future commercial value, but the current product posture is internal orchestration rather than a polished general-purpose external platform.
 
 ## Quality & CI
 
@@ -27,16 +29,35 @@ Crackerjack is the standard quality-control and CI/CD gate across Mahavishnu and
 | [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector | 8676 | Quality gates & CI/CD validation |
 | [Oneiric](https://github.com/lesleslie/oneiric) | Foundation | N/A | Component resolution, lifecycle management, adapter system, action kits, domain bridges, runtime orchestration, remote delivery |
 
-## Features
+## Positioning
 
-- **Multi-Pool Orchestration** - Horizontal scaling across local, delegated, and cloud workers
-- **Cross-Repository Coordination** - Track issues, todos, and dependencies across your entire ecosystem
-- **Headless AI Workers** - Execute tasks in parallel using Claude Code and Qwen workers
-- **Goal-Driven Teams** - Create intelligent multi-agent teams from natural language goals
-- **OpenTelemetry Integration** - Native OTel trace ingestion with semantic search using DuckDB
-- **Repository Messaging** - Async message passing between repositories for event-driven coordination
-- **Role-Based Organization** - Intelligent repository taxonomy for workflow routing
-- **MCP Server** - FastMCP-based server exposing 49+ orchestration and coordination tools
+Mahavishnu is best understood as an ecosystem control plane, not as a general-purpose coding agent. Its current sweet spot is coordinating repo-centric workflows, tools, and services across the Bodai stack.
+
+Commercially, the most plausible future niche is a narrow B2B control plane for AI-native engineering teams managing many repos, tools, and agent workflows. That is a possible direction, not the current primary product shape.
+
+## Capabilities
+
+### Implemented and actively used
+
+- **Multi-repo orchestration** - Coordinate workflows across Bodai-owned repositories and services
+- **MCP server surface** - FastMCP-based server exposing orchestration, coordination, and operational tools
+- **Cross-repository coordination** - Track issues, todos, dependencies, and status across the ecosystem
+- **Repository messaging** - Async message passing between repositories for event-driven coordination
+- **Headless worker orchestration** - Execute tasks in parallel using terminal-based and adapter-backed workers
+- **Goal-driven teams** - Create multi-agent teams from natural-language goals
+- **OpenTelemetry ingestion and search** - Ingest traces and search them semantically
+- **Role-based organization and routing** - Classify repos and route work by role and task type
+
+### Implemented but uneven in maturity
+
+- **Multi-pool execution** - Local and delegated pools are real; some cloud-oriented paths are less mature than the core local control plane
+- **Multiple orchestration adapters** - Prefect, Agno, and LlamaIndex integrations exist, but operator maturity varies by workflow and deployment context
+- **Observability and monitoring** - Present across metrics, health, and WebSocket surfaces, but some surrounding docs and dashboards are still catching up
+
+### Experimental or planned edges
+
+- **Broader cloud pool execution** - Treat specialized cloud/GPU paths as experimental unless validated for the target workflow
+- **Autonomous skill synthesis / self-improvement loops** - Supporting pieces exist, but fully autonomous self-modification is not the current operating model
 
 ## Orchestrator Landscape
 
@@ -51,7 +72,7 @@ Legend:
 |--------|--------------|-------------------|--------|----------|
 | Hermes Agent | End-user agent runtime | External reference; borrow UX/runtime patterns selectively | external | You want a user-facing assistant/runtime first |
 | OpenClaw | Channel-aware gateway/runtime | Shipped delivery integration; not the canonical control plane | shipped | You need message delivery, handoffs, or channel operations |
-| Mahavishnu | Control plane / orchestrator | Canonical internal control plane | shipped | You want to orchestrate work across many repos and services |
+| Mahavishnu | Control plane / orchestrator | Canonical internal control plane | shipped | You want to orchestrate work across many Bodai repos and services |
 | Agno | Interactive agent engine | Canonical runtime adapter behind Mahavishnu | shipped | You want an embedded agent runtime inside your own system |
 | Prefect | Durable workflow engine | Canonical workflow engine | shipped | You need reliable batch or scheduled automation |
 | LlamaIndex | Retrieval / knowledge engine | Canonical retrieval engine | shipped | You need knowledge-grounded responses or RAG |

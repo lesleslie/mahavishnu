@@ -2,16 +2,24 @@
 
 **Single Source of Truth for Mahavishnu Architecture**
 
-**Last Updated**: 2026-01-24
-**Status**: Phase 1 Complete (Foundation + Core Architecture)
+**Last Updated**: 2026-05-02
+**Status**: Historical snapshot with partial drift from current implementation
+
+> **Document status**
+>
+> This file contains useful architectural background, but parts of it no longer match the current codebase.
+> In particular, the adapter maturity summary below predates the current `*_impl.py` implementations for Prefect, Agno, and LlamaIndex.
+> For current product posture and top-level capability framing, prefer `README.md`, `CLAUDE.md`, and the code under `mahavishnu/engines/`, `mahavishnu/mcp/`, and `mahavishnu/core/`.
 
 ______________________________________________________________________
 
 ## Executive Summary
 
-Mahavishnu is a multi-engine orchestration platform that provides unified interfaces for managing workflows across multiple repositories. It currently has **one fully functional adapter** (LlamaIndex) and **two stub adapters** (Prefect, Agno) that require implementation.
+Mahavishnu is the internal control plane for the Bodai ecosystem: a multi-engine orchestration platform for coordinating workflows across Bodai-owned repositories, MCP services, and AI-capable backends.
 
-### Current State (2026-01-24)
+This document should be read as an architectural reference and historical snapshot, not as the canonical implementation status ledger.
+
+### Historical State Snapshot (2026-01-24)
 
 **Complete**:
 

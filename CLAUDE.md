@@ -25,7 +25,11 @@ Mahavishnu is part of the **Bodai Ecosystem** - a collection of interconnected c
 
 ## Project Overview
 
-Mahavishnu is a multi-engine orchestration platform that provides a unified interface for managing workflows across multiple repositories. It currently provides:
+Mahavishnu is the internal control plane for the Bodai ecosystem. It is optimized first for orchestrating Bodai-owned repositories, MCP services, and AI-capable backends, with reusable patterns exposed through adapters and MCP tools.
+
+It is not primarily a general-purpose end-user coding product. The most accurate mental model is repo-centric orchestration and operations infrastructure with agent and workflow backends behind it.
+
+It currently provides:
 
 - **Prefect adapter** - High-level orchestration with dynamic flows, deployment CRUD, schedules
 - **LlamaIndex adapter** - RAG pipelines with Ollama embeddings (re-enabled 2026-02-23 with 0.14.x)
@@ -34,6 +38,12 @@ Mahavishnu is a multi-engine orchestration platform that provides a unified inte
 - **WebSocket infrastructure** for real-time workflow monitoring and coordination
 - **Content ingestion** system for blogs, webpages, and books
 - **OpenTelemetry ingester** with semantic search using pgvector
+
+### Product posture
+
+- Internal-first: treat Mahavishnu as ecosystem infrastructure for our own repos unless a task explicitly targets external reuse
+- MCP-first: prefer reusable orchestration capabilities exposed via tools and service layers over one-off scripts
+- Control-plane scope: emphasize routing, coordination, monitoring, and operational workflows more than "write code" framing
 
 ### Key Architectural Patterns
 
