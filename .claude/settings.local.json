@@ -299,7 +299,12 @@
       "Bash(cp /Users/les/.claude/agents/akasha-specialist.md /Users/les/.claude/agents/akosha-specialist.md)",
       "Bash(rm /Users/les/.claude/agents/akasha-specialist.md)",
       "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pip install *)",
-      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pytest tests/unit/pools/test_runpod_pool.py -v --no-cov --tb=short)"
+      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pytest tests/unit/pools/test_runpod_pool.py -v --no-cov --tb=short)",
+      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pytest tests/unit/pools/test_runpod_pool.py -v --no-cov)",
+      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pytest /Users/les/Projects/mahavishnu/.worktrees/feat/runpod-flash-pool/tests/unit/pools/test_runpod_pool.py -v --no-cov)",
+      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pytest tests/integration/pools/test_runpod_pool_smoke.py -v --no-cov)",
+      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pytest tests/unit/pools/test_runpod_pool.py tests/integration/pools/test_runpod_pool_smoke.py -v --no-cov)",
+      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pytest tests/unit/pools/test_runpod_pool.py --no-cov -q)"
     ]
   },
   "outputStyle": "Explanatory",
