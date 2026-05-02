@@ -118,6 +118,8 @@ My builder recommendation is consistent with that model. The builder product is 
 
 - [docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md](/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md:1)
 
+**Status note**: This spec is fully shipped as of 2026-04-30 (all 63 tasks complete). The pattern library, scaffolding engine, and FastBlocks pattern extraction are live in Mahavishnu. The overlap analysis below remains valid; treat the spec as describing the current production state rather than future work.
+
 This is the most directly relevant existing spec. It already proposes:
 
 - a pattern library
@@ -135,6 +137,8 @@ This overlaps heavily with:
 ### 3. Code indexing integration is useful supporting infrastructure
 
 - [docs/superpowers/specs/2026-04-26-code-indexing-integration-design.md](/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-04-26-code-indexing-integration-design.md:1)
+
+**Status note**: Shipped 2026-04-30 (all 42 tasks complete). Call chain resolution, impact analysis, and incremental re-indexing are live in Session-Buddy.
 
 This does not conflict with the builder proposal. It is useful input for:
 

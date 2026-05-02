@@ -103,6 +103,7 @@ Without this phase, the ecosystem risks building more advanced automation on top
 ## Phase 2: Standardize Trust, Audit, and Shared Contracts
 
 **Window**: 30-60 days
+**Status**: COMPLETE — shipped 2026-04-30. `mcp_common.auth` is the canonical JWT package across all 6 Bodai services. See memory entry `project_bodai_auth_standardization.md` for API, env vars, and commit SHAs. The workstreams below are reference only.
 
 **Goal**: Make inter-service communication safe, inspectable, and uniform.
 
@@ -183,6 +184,7 @@ This is the phase that makes Mahavishnu feel like an actual control plane instea
 ## Phase 4: Add Code-Aware Automation and Safer Agent Work
 
 **Window**: 90-120 days
+**Status**: COMPLETE — shipped 2026-04-30. All 42 tasks in `docs/superpowers/plans/2026-04-26-code-indexing-integration.md` are done. Call chain resolution, impact analysis, and incremental re-indexing are live in Session-Buddy. The workstreams below are reference only.
 
 **Goal**: Give the ecosystem structural code understanding so automation can reason about blast radius and dependencies before acting.
 
