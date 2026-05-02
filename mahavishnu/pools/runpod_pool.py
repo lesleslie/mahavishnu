@@ -8,6 +8,7 @@ Do not use for latency-sensitive routing; prefer for VISION/REASONING batch work
 """
 
 import asyncio
+import collections
 import logging
 import time
 from typing import Any
@@ -36,7 +37,7 @@ class RunPodPool(BasePool):
     def __init__(self, config: PoolConfig, pool_id: str | None = None) -> None:
         super().__init__(config, pool_id)
         self._endpoint: Any = None
-        self._task_results: list[dict[str, Any]] = []
+        self._task_results: collections.deque[dict[str, Any]] = collections.deque(maxlen=1000)
         self._tasks_completed = 0
         self._tasks_failed = 0
         self._task_durations: list[float] = []
@@ -84,9 +85,11 @@ class RunPodPool(BasePool):
             dependencies=deps,
         )
         def _run_task(task_payload: dict) -> dict:
-            prompt = task_payload.get("prompt", "")
-            category = task_payload.get("category", "general")
-            return {"output": f"[{category}] processed: {prompt}", "status": "ok"}
+            # Override _build_endpoint in a subclass to provide a real GPU handler.
+            raise NotImplementedError(
+                "RunPodPool._run_task is a stub. "
+                "Subclass RunPodPool and override _build_endpoint to register a real handler."
+            )
 
         return _run_task
 
