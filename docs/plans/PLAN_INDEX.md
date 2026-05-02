@@ -168,9 +168,10 @@ Important reconciliation notes:
    - Plan: [../superpowers/plans/2026-04-26-agent-skill-modernization.md](../superpowers/plans/2026-04-26-agent-skill-modernization.md)
    - Delivered: validator, DriftReport wired into `config validate`, 15 agents enriched, 28 skills with MCP sections, `akosha-specialist` rename.
 
-4. **Nanobot Phase A** — `claude mcp serve` autostart, not started
+4. **Nanobot Worker Phase B completion** — `active`, `implementation`
    - Plan: [2026-04-05-nanobot-worker-integration.md](./2026-04-05-nanobot-worker-integration.md)
-   - Goal: wire `claude mcp serve` via Supergateway into the autostart script and `~/.claude.json`. Phase B (`NanobotWorker`) is already complete.
+   - Phase A (claude mcp serve autostart) removed 2026-05-01 — no concrete need, Supergateway adds Node.js dep, loop risk, autostart infrastructure never existed.
+   - Remaining: 3 tasks — add `nanobot` dep to `pyproject.toml`, fix `_init_nanobot_provider()` to use `ZAI_API_KEY` (not `ANTHROPIC_AUTH_TOKEN`), write unit tests.
 
 5. **Bodai Agent Platform I4 Optional Extensions** — gate: written product justification required per extension
    - Plans: [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md), [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)

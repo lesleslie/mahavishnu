@@ -1,226 +1,116 @@
-# Plan: Nanobot Worker Integration + Claude MCP Serve Autostart
+# Plan: NanobotWorker In-Process Integration (Phase B only)
+
+> **Phase A (claude mcp serve autostart via Supergateway) removed 2026-05-01.**
+> Rationale: nanobot has its own tool set; the autostart infrastructure never existed;
+> Supergateway adds Node.js dependency to a Python ecosystem; loop risk requires
+> permanent operational vigilance. Revisit only if a concrete workflow emerges that
+> requires nanobot agents to call Claude Code's file tools specifically.
 
 ## Context
 
-Mahavishnu's ecosystem has multiple AI assistants (Claude Code, Codex, Qwen, Nanobot) that currently operate independently. This plan adds:
+Mahavishnu's ecosystem includes nanobot, an AI agent with its own `AgentRunner`/`AgentLoop`
+Python API, session management, memory, and MCP tool integration. This plan wires nanobot
+as an **in-process Mahavishnu worker** — no terminal, no subprocess, direct Python API call.
 
-1. **`claude mcp serve` to autostart** — via supergateway stdio→HTTP bridge, giving nanobot and other MCP clients access to Claude Code's tools
-2. **`NanobotWorker`** — an in-process worker using nanobot's Python API (`AgentRunner`/`AgentLoop`) for structured AI task execution without terminal overhead
-3. **New `IN_PROCESS` worker category** — for workers that run via Python API directly (no terminal, no MCP client)
+`NanobotWorker` is unique among Mahavishnu workers because `AgentLoop` mode provides
+persistent sessions + memory + MCP tools in a single stateful worker — not just stateless
+LLM calls like `CloudWorker`.
 
-Existing workers (`terminal-claude`, `terminal-codex`, `terminal-qwen`, `terminal-openclaw`) remain unchanged.
+**What is already complete (Phase B1–B6):**
+- `IN_PROCESS` worker category in `mahavishnu/workers/registry.py`
+- `in-process-nanobot` and `in-process-nanobot-loop` registered in `WORKER_REGISTRY`
+- `mahavishnu/workers/nanobot_worker.py` — full `NanobotWorker` class
+- `WorkerManager` wiring (`IN_PROCESS` branch in `_create_worker()`)
+- `_init_nanobot_provider()` exists in `mahavishnu/core/app.py`
+- `NanobotWorker` exported from `mahavishnu/workers/__init__.py`
+
+**What remains (Phase B completion):**
 
 ---
 
-## Phase A: Autostart — `claude mcp serve` via Supergateway
+## Task 1: Add `nanobot` dependency
 
-### A1. Add entry to `~/.claude.json`
+**File:** `pyproject.toml`
 
-Add `"claude-code"` MCP server config under `mcpServers`:
-```json
-"claude-code": {
-  "type": "http",
-  "url": "http://localhost:8700/mcp"
-}
+The comment at line 102 exists but no actual dep line. Add:
+```toml
+"nanobot>=0.1.4",
 ```
+under the in-process workers comment. Then install into the main venv.
 
-### A2. Add case to autostart script
-
-**File**: `~/.claude/scripts/auto-start-mcp-servers.sh`
-
-Add before the `*)` catch-all (~line 180):
+**Verify:**
 ```bash
-"claude-code"|"claude-mcp-serve")
-    start_server_if_needed "$server_name" "$port" \
-        "npx -y supergateway --stdio \"claude mcp serve\" --outputTransport streamableHttp --port $port --streamableHttpPath /mcp --stateful --logLevel info"
-    ;;
+python -c "import nanobot; print(nanobot.__version__)"
 ```
-
-Note: supergateway takes 5-10s to initialize. The existing `max_wait=8` in `start_server_if_needed` may need bumping to `max_wait=15` for this entry if initial testing shows timeouts.
-
-### A3. Add to nanobot config (optional)
-
-**File**: `~/.nanobot/config.json`
-
-Add under `tools.mcpServers`:
-```json
-"claude-code": {
-  "type": "streamableHttp",
-  "url": "http://localhost:8700/mcp",
-  "tool_timeout": 120,
-  "enabled_tools": ["Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch", "LSP"]
-}
-```
-
-**Critical**: Limit `enabled_tools` to non-recursive tools. No `Bash` or `Skill` to prevent loops (nanobot → claude → bash → nanobot).
 
 ---
 
-## Phase B: NanobotWorker Core Implementation
+## Task 2: Fix provider init to use ZAI (not ANTHROPIC_AUTH_TOKEN)
 
-### B1. Add `IN_PROCESS` worker category
+**File:** `mahavishnu/core/app.py`, method `_init_nanobot_provider()` (~line 519)
 
-**File**: `mahavishnu/workers/registry.py`
+The current implementation reads `ANTHROPIC_AUTH_TOKEN` but nanobot in this ecosystem
+uses the ZAI GLM API (`ZAI_API_KEY`, `https://api.z.ai/api/coding/paas/v4`).
 
-Add to `WorkerCategory` enum:
+Replace the env var logic:
 ```python
-IN_PROCESS = "in_process"  # In-process Python API workers
-```
-
-### B2. Register nanobot worker types
-
-**File**: `mahavishnu/workers/registry.py`
-
-Add to `WORKER_REGISTRY`:
-```python
-"in-process-nanobot": WorkerConfig(
-    name="Nanobot AgentRunner",
-    worker_type="in-process-nanobot",
-    command="",
-    category=WorkerCategory.IN_PROCESS,
-    description="In-process nanobot AgentRunner for lightweight AI tasks",
-    completion_markers=[],
-    stream_format="text",
-    supports_interactive=False,
-    default_timeout=300,
-),
-"in-process-nanobot-loop": WorkerConfig(
-    name="Nanobot AgentLoop",
-    worker_type="in-process-nanobot-loop",
-    command="",
-    category=WorkerCategory.IN_PROCESS,
-    description="Full nanobot AgentLoop with sessions, memory, MCP tools",
-    completion_markers=[],
-    stream_format="text",
-    supports_interactive=False,
-    default_timeout=600,
-),
-```
-
-### B3. Create NanobotWorker class
-
-**New file**: `mahavishnu/workers/nanobot_worker.py`
-
-Two modes:
-- **Runner mode** (`in-process-nanobot`): Uses `nanobot.agent.runner.AgentRunner` — bare LLM+tools loop, no sessions/memory, lightweight
-- **Loop mode** (`in-process-nanobot-loop`): Uses `nanobot.agent.loop.AgentLoop` — full features (sessions, memory, MCP tools, skills)
-
-Key design:
-- Extends `BaseWorker`, implements all 5 abstract methods
-- Accepts `nanobot_provider` (nanobot LLM provider instance) via constructor
-- No terminal dependency, no MCP client dependency
-- Timeout enforced via `asyncio.wait_for()`
-- `worker_id` generated as `nanobot_{uuid_hex[:12]}` (avoids the ApplicationWorker bug where worker_id is never set)
-- Loop mode creates a fresh `AgentLoop` per execute call (prevents state leakage), cleans up with `close_mcp()`
-
-### B4. Update WorkerManager
-
-**File**: `mahavishnu/workers/manager.py`
-
-1. Add `nanobot_provider: Any = None` to `WorkerManager.__init__()`
-2. Add `IN_PROCESS` branch in `_create_worker()`:
-```python
-elif config.category == WorkerCategory.IN_PROCESS:
-    if worker_type.startswith("in-process-nanobot"):
-        from .nanobot_worker import NanobotWorker
-        return NanobotWorker(
-            worker_type=worker_type,
-            nanobot_provider=self.nanobot_provider,
-            config=config,
-            session_buddy_client=self.session_buddy_client,
-        )
-    raise ValueError(f"Unknown in-process worker: {worker_type}")
-```
-
-### B5. Wire provider through app initialization
-
-**File**: `mahavishnu/core/adapters/worker.py` (line 59-64)
-
-Pass `nanobot_provider` when constructing `WorkerManager`:
-```python
-self.worker_manager = WorkerManager(
-    terminal_manager=terminal_mgr,
-    max_concurrent=max_concurrent,
-    debug_mode=False,
-    session_buddy_client=None,
-    nanobot_provider=...,  # from config/env
+auth_token = os.environ.get("ZAI_API_KEY")
+base_url = os.environ.get(
+    "ZAI_BASE_URL", "https://api.z.ai/api/coding/paas/v4"
 )
+
+if not auth_token:
+    logger.debug("ZAI_API_KEY not set; nanobot provider not configured")
+    return None
+
+from nanobot.providers import OpenAICompatProvider
+
+provider = OpenAICompatProvider(api_key=auth_token, base_url=base_url)
+logger.info("Nanobot provider initialized via ZAI (base_url=%s)", base_url)
+return provider
 ```
 
-**File**: `mahavishnu/core/app.py`
-
-Add `_init_nanobot_provider()` method that:
-1. Checks for `ANTHROPIC_AUTH_TOKEN` + `ANTHROPIC_BASE_URL` env vars (already set in your environment for z.ai)
-2. Creates an `OpenAICompatProvider` from nanobot
-3. Stores as `self._nanobot_provider`
-4. Logs a warning (not crash) if provider can't be configured
-
-### B6. Update exports
-
-**File**: `mahavishnu/workers/__init__.py`
-
-- Add `from .nanobot_worker import NanobotWorker`
-- Add `"NanobotWorker"` to `__all__`
-- Update module docstring
-
-### B7. Add nanobot dependency
-
-**File**: `pyproject.toml`
-
-Add to dependencies: `"nanobot>=0.1.4"` (already installed in venv)
+Remove the gateway_api_base / BIFROST_BASE_URL / ANTHROPIC_BASE_URL logic — that was
+the wrong provider family.
 
 ---
 
-## Phase C: Optional MCP Tool for External Consumers
+## Task 3: Write unit tests
 
-**File**: `mahavishnu/mcp/tools/worker_tools.py`
+**New file:** `tests/unit/workers/test_nanobot_worker.py`
 
-Add `nanobot_run` convenience MCP tool — a one-shot wrapper that:
-1. Creates a temporary `NanobotWorker`
-2. Executes the task
-3. Returns result
-4. Cleans up
-
-This lets any MCP client (nanobot, session-buddy, external tools) call nanobot's AI capabilities through Mahavishnu without managing workers.
+Tests to cover:
+- `NanobotWorker` constructs without error (provider=None)
+- `initialize()` raises `RuntimeError` when provider is None
+- `execute()` calls provider and returns result (provider mocked)
+- `worker_id` is set and starts with `"nanobot_"`
+- Loop mode (`in-process-nanobot-loop`) constructs correctly
+- `_init_nanobot_provider()` returns None when `ZAI_API_KEY` not set
 
 ---
 
 ## Verification
 
-### Phase A verification:
 ```bash
-# 1. Start claude mcp serve via supergateway
-# Check it's running:
-lsof -i :8700
-# 2. Test MCP endpoint:
-curl -X POST http://localhost:8700/mcp -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
-# Should return list of Claude Code tools
-```
+# 1. Import check
+python -c "from mahavishnu.workers import NanobotWorker; print('ok')"
 
-### Phase B verification:
-```bash
-# 1. Run existing tests
-pytest tests/unit/test_workers.py -v
-
-# 2. Test NanobotWorker directly
-python -c "
-from mahavishnu.workers.nanobot_worker import NanobotWorker
-w = NanobotWorker(nanobot_provider=None)  # Should construct without error
-print(w.worker_id)
-print(w.worker_type)
-"
-
-# 3. Test worker creation via registry
+# 2. Worker registry check
 python -c "
 from mahavishnu.workers.registry import get_worker_config
-config = get_worker_config('in-process-nanobot')
-print(config.name, config.category)
+c = get_worker_config('in-process-nanobot')
+print(c.name, c.category)
 "
-```
 
-### Phase C verification:
-```bash
-# Test via MCP tool call (if nanobot provider configured)
-# Through mahavishnu MCP: nanobot_run(prompt="Hello", mode="runner")
+# 3. Provider init check (ZAI_API_KEY must be set)
+python -c "
+import asyncio
+from mahavishnu.core.app import MahavishnuApp
+app = MahavishnuApp.__new__(MahavishnuApp)
+p = app._init_nanobot_provider()
+print('provider:', p)
+"
+
+# 4. Run tests
+pytest tests/unit/workers/test_nanobot_worker.py -v --no-cov
 ```
