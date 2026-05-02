@@ -794,3 +794,39 @@ None — all code blocks are complete implementations.
 - `PoolConfig`, `PoolMetrics`, `PoolStatus` — imported from `.base` in both implementation and tests ✓
 - `execute_task()` return shape (`pool_id`, `worker_id`, `status`, `output`, `error`, `duration`) matches `BasePool` docstring contract ✓
 - `collect_memory()` metadata shape matches `KubernetesPool` and `SessionBuddyPool` conventions ✓
+
+---
+
+## Future Work
+
+### Concrete GPU handler (required before production use)
+
+`RunPodPool._run_task` raises `NotImplementedError` by design. To use the pool in production, subclass it and override `_build_endpoint`:
+
+```python
+from mahavishnu.pools.runpod_pool import RunPodPool
+from runpod_flash import Endpoint, GpuType
+
+class VisionPool(RunPodPool):
+    def _build_endpoint(self):
+        @Endpoint(
+            name="mahavishnu-vision",
+            gpu=GpuType.NVIDIA_GEFORCE_RTX_4090,
+            workers=self._num_workers,
+            dependencies=["torch", "transformers", "Pillow"],
+        )
+        def _run_task(task_payload: dict) -> dict:
+            # real GPU inference code here
+            ...
+        return _run_task
+```
+
+Register the subclass in `PoolManager.spawn_pool()` under a new `pool_type` string (e.g. `"runpod-vision"`) or pass a factory callable.
+
+### Task-category routing
+
+`TaskRouter` in `mahavishnu/workers/task_router.py` maps `TaskCategory` → model. A parallel mechanism to map `TaskCategory.VISION` or `TaskCategory.REASONING` → `pool_type="runpod"` would allow automatic pool selection during task routing. This would go in `PoolManager.route_task()`.
+
+### Integration smoke test
+
+Run `tests/integration/pools/test_runpod_pool_smoke.py` with a real `RUNPOD_API_KEY` to validate the full SDK round-trip against live RunPod infrastructure before any production deployment.
