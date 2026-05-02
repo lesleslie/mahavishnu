@@ -110,10 +110,12 @@ async def test_scale_is_noop(pool):
 
 @pytest.mark.asyncio
 async def test_collect_memory_returns_items(pool):
-    pool._task_results = [
-        {"worker_id": "ep-1", "output": "result A", "status": "completed",
-         "timestamp": time.time()},
-    ]
+    import collections
+    pool._task_results = collections.deque(
+        [{"worker_id": "ep-1", "output": "result A", "status": "completed",
+          "timestamp": time.time()}],
+        maxlen=1000,
+    )
     items = await pool.collect_memory()
     assert len(items) == 1
     assert items[0]["metadata"]["pool_type"] == "runpod"

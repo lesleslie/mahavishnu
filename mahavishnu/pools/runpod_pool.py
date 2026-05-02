@@ -53,6 +53,11 @@ class RunPodPool(BasePool):
         try:
             self._endpoint = self._build_endpoint()
             self._status = PoolStatus.RUNNING
+            logger.warning(
+                "RunPodPool %s: default _run_task handler raises NotImplementedError. "
+                "Subclass RunPodPool and override _build_endpoint to register a real GPU handler.",
+                self.pool_id,
+            )
             logger.info(
                 "RunPodPool %s started (endpoint=%s, gpu=%s)",
                 self.pool_id, self._endpoint_name, self._gpu_type,
@@ -108,6 +113,7 @@ class RunPodPool(BasePool):
         worker_id = f"{self._endpoint_name}-{int(start_time)}"
 
         try:
+            # Flash @Endpoint decorator makes the decorated function awaitable.
             output = await self._endpoint(task)
             duration = time.time() - start_time
             self._tasks_completed += 1
