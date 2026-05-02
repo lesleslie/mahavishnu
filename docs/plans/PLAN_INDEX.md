@@ -168,10 +168,10 @@ Important reconciliation notes:
    - Plan: [../superpowers/plans/2026-04-26-agent-skill-modernization.md](../superpowers/plans/2026-04-26-agent-skill-modernization.md)
    - Delivered: validator, DriftReport wired into `config validate`, 15 agents enriched, 28 skills with MCP sections, `akosha-specialist` rename.
 
-4. **Nanobot Worker Phase B completion** — `active`, `implementation`
+4. **Nanobot Worker Phase B completion** — `shipped` 2026-05-02
    - Plan: [2026-04-05-nanobot-worker-integration.md](./2026-04-05-nanobot-worker-integration.md)
-   - Phase A (claude mcp serve autostart) removed 2026-05-01 — no concrete need, Supergateway adds Node.js dep, loop risk, autostart infrastructure never existed.
-   - Remaining: 3 tasks — add `nanobot` dep to `pyproject.toml`, fix `_init_nanobot_provider()` to use `ZAI_API_KEY` (not `ANTHROPIC_AUTH_TOKEN`), write unit tests.
+   - Delivered: `nanobot-ai>=0.1.4` dep (corrected from wrong `nanobot` robotics package), `_init_nanobot_provider()` fixed to use `ZAI_API_KEY` + `https://api.z.ai/api/coding/paas/v4`, `tests/unit/workers/test_nanobot_worker.py` (6 tests). `gpt4all` dep removed (ollama is the local inference backend).
+   - Use for: reference only.
 
 5. **Bodai Agent Platform I4 Optional Extensions** — gate: written product justification required per extension
    - Plans: [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md), [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
