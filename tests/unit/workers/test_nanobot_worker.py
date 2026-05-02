@@ -35,6 +35,7 @@ def _install_nanobot_runner_mock(response: str = "runner output") -> dict:
         "nanobot": nanobot_ns,
         "nanobot.agent": agent_ns,
         "nanobot.agent.runner": runner_ns,
+        "nanobot.agent.loop": agent_ns.loop,
     }
 
 
