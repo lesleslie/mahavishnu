@@ -180,9 +180,9 @@ Important reconciliation notes:
 ### RunPod Flash Pool
 
 - Plan: [../superpowers/plans/2026-05-01-runpod-flash-pool.md](../superpowers/plans/2026-05-01-runpod-flash-pool.md)
-- Status: `active`, `implementation`
-- Use for: adding `RunPodPool` as a 4th pool type in Mahavishnu's multi-pool orchestration system. Backed by `runpod-flash` SDK for serverless GPU task execution (VISION, REASONING). Implements `BasePool`, registers in `PoolManager.spawn_pool()` factory, exports from `mahavishnu.pools`. Requires `RUNPOD_API_KEY` env var.
-- Relationship: complements `KubernetesPool` (K8s = general cloud-native; RunPod = GPU/AI-specific serverless). Independent of all other active plans — no blockers.
+- Status: `shipped` — all 7 tasks complete, merged and pushed 2026-05-01
+- Delivered: `mahavishnu/pools/runpod_pool.py` (`RunPodPool` implementing `BasePool` via `runpod-flash~=1.7`), registered in `PoolManager` factory as `pool_type="runpod"`, exported from `mahavishnu.pools`, `runpod_pool:` config stanza in `settings/mahavishnu.yaml` (disabled by default), `RUNPOD_API_KEY` documented in `CLAUDE.md`, 9 unit tests + 2 opt-in integration smoke tests.
+- Use for: reference only. Subclass `RunPodPool` and override `_build_endpoint` to register a real GPU handler.
 
 ## Supersession Map
 
