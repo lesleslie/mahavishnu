@@ -5,13 +5,13 @@ This runbook provides procedures for recovering from major incidents and disaste
 ## Table of Contents
 
 1. [Disaster Severity Levels](#disaster-severity-levels)
-2. [Immediate Response](#immediate-response)
-3. [Database Recovery](#database-recovery)
-4. [Service Recovery](#service-recovery)
-5. [Data Validation](#data-validation)
-6. [Post-Recovery Actions](#post-recovery-actions)
+1. [Immediate Response](#immediate-response)
+1. [Database Recovery](#database-recovery)
+1. [Service Recovery](#service-recovery)
+1. [Data Validation](#data-validation)
+1. [Post-Recovery Actions](#post-recovery-actions)
 
----
+______________________________________________________________________
 
 ## Disaster Severity Levels
 
@@ -24,7 +24,7 @@ This runbook provides procedures for recovering from major incidents and disaste
 **RTO**: Recovery Time Objective (how fast we must recover)
 **RPO**: Recovery Point Objective (maximum data loss acceptable)
 
----
+______________________________________________________________________
 
 ## Immediate Response
 
@@ -47,8 +47,8 @@ curl -s "http://prometheus.example.com/api/v1/query?query=rate(mahavishnu_task_e
 ### Step 2: Notify Stakeholders (5-10 minutes)
 
 1. Page on-call engineer if not already alerted
-2. Create incident channel: `#incident-YYYY-MM-DD`
-3. Notify stakeholders based on severity:
+1. Create incident channel: `#incident-YYYY-MM-DD`
+1. Notify stakeholders based on severity:
    - **SEV1**: Exec team, all engineers
    - **SEV2**: Engineering manager, relevant team
    - **SEV3**: Relevant team only
@@ -75,7 +75,7 @@ data:
 EOF
 ```
 
----
+______________________________________________________________________
 
 ## Database Recovery
 
@@ -131,7 +131,7 @@ aws s3 cp s3://mahavishnu-backups/database/backup-2026-02-18-0400.dump /tmp/
 pg_restore -h $DB_HOST -U $DB_USER -d mahavishnu --clean /tmp/backup-2026-02-18-0400.dump
 ```
 
----
+______________________________________________________________________
 
 ## Service Recovery
 
@@ -194,7 +194,7 @@ kubectl set env deployment/mahavishnu \
 kubectl rollout restart deployment/mahavishnu -n mahavishnu
 ```
 
----
+______________________________________________________________________
 
 ## Data Validation
 
@@ -205,7 +205,7 @@ After recovery, validate data integrity:
 ```bash
 # Check row counts
 psql -h $DB_HOST -U $DB_USER -d mahavishnu -c "
-SELECT 
+SELECT
   'tasks' as table_name, COUNT(*) as count FROM tasks
 UNION ALL
 SELECT 'webhook_events', COUNT(*) FROM webhook_events
@@ -258,7 +258,7 @@ curl -s "https://mahavishnu.example.com/api/tasks/$TASK_ID" | jq '.status'
 curl -s -X DELETE "https://mahavishnu.example.com/api/tasks/$TASK_ID"
 ```
 
----
+______________________________________________________________________
 
 ## Post-Recovery Actions
 
@@ -278,24 +278,24 @@ curl -s "http://prometheus.example.com/api/v1/query?query=rate(mahavishnu_task_e
 ### Step 2: Update Stakeholders (30-60 minutes)
 
 1. Post recovery update in incident channel
-2. Email stakeholders with recovery summary
-3. Update status page
+1. Email stakeholders with recovery summary
+1. Update status page
 
 ### Step 3: Document Incident (1-24 hours)
 
 1. Create post-incident report
-2. Document root cause
-3. List remediation steps taken
-4. Schedule post-mortem meeting
+1. Document root cause
+1. List remediation steps taken
+1. Schedule post-mortem meeting
 
 ### Step 4: Post-Mortem (24-72 hours)
 
 1. Conduct blameless post-mortem
-2. Identify action items
-3. Create tickets for improvements
-4. Update runbooks based on learnings
+1. Identify action items
+1. Create tickets for improvements
+1. Update runbooks based on learnings
 
----
+______________________________________________________________________
 
 ## Monthly DR Test Schedule
 
@@ -472,7 +472,7 @@ mahavishnu db failback --to-primary
 - **Type**: [Test type]
 ```
 
----
+______________________________________________________________________
 
 ## Emergency Contacts
 

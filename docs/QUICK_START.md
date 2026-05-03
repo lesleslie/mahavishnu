@@ -5,6 +5,7 @@ Get up and running with Mahavishnu in 5 minutes!
 ## What is Mahavishnu?
 
 Mahavishnu is a multi-engine orchestration platform that helps you:
+
 - **Manage tasks** across multiple repositories
 - **Search semantically** to find related work
 - **Track progress** with status and priority management
@@ -305,6 +306,6 @@ docker-compose up -d postgres
 mahavishnu health
 ```
 
----
+______________________________________________________________________
 
 **Need more help?** Check the [full documentation](docs/) or open an issue on GitHub.

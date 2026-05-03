@@ -6,12 +6,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from mahavishnu.core.config import MahavishnuSettings
+from mahavishnu.integrations.session_buddy_poller import SessionBuddyPoller
 from monitoring.metrics import (
     bodai_bridge_metric_ingest_total,
     bodai_bridge_polls_total,
 )
-from mahavishnu.core.config import MahavishnuSettings
-from mahavishnu.integrations.session_buddy_poller import SessionBuddyPoller
 
 
 @pytest.fixture
@@ -55,9 +55,7 @@ class TestSessionBuddyPoller:
 
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {
-            "result": {"active_sessions": 2, "total_sessions": 5}
-        }
+        mock_response.json.return_value = {"result": {"active_sessions": 2, "total_sessions": 5}}
         poller._http_client.post.return_value = mock_response
 
         result = await poller.poll_once()

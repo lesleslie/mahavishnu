@@ -3,6 +3,7 @@
 **Date**: 2026-04-05
 **Reviewer**: Senior Architect (agent)
 **Files**:
+
 - `scripts/rank-tools.py` (130 lines)
 - `scripts/eval-content-quality.py` (544 lines)
 - `docs/policies/cache-policy.md` (160 lines)
@@ -10,7 +11,7 @@
 
 **Scope**: Scoring formulas & weight choices, heuristic validity, cache tier model & TTL recommendations, data-conclusion alignment, project-pattern fit, design smells.
 
----
+______________________________________________________________________
 
 ## Per-Deliverable Ratings
 
@@ -50,10 +51,10 @@ Where `tool_score = log₂(tools+1) / log₂(25)` and ratios are `count / max(to
 **Recommendations**
 
 1. Use `ast.parse()` instead of regex — eliminates all four heuristic gaps above.
-2. Reduce tool-count weight to 0.25, redistribute to error_handling (0.25) and add a *test_coverage* signal (0.10).
-3. Count only top-level async defs decorated with `@server.tool()` or `@mcp.tool()` as tools.
+1. Reduce tool-count weight to 0.25, redistribute to error_handling (0.25) and add a *test_coverage* signal (0.10).
+1. Count only top-level async defs decorated with `@server.tool()` or `@mcp.tool()` as tools.
 
----
+______________________________________________________________________
 
 ### 2. `scripts/eval-content-quality.py` — ★★★☆☆ (3/5)
 
@@ -80,11 +81,11 @@ All five scoring functions (`score_readability`, `score_depth`, `score_completen
 **Recommendations**
 
 1. Remove the automated scoring section entirely until real scorers exist, or gate it behind a `--dry-run` flag with a loud warning.
-2. Implement at least `score_readability` using Flesch-Kincaid (via `textstat` or a simple syllable counter) — it's the easiest dimension to automate and the most immediately useful.
-3. Delete `LABEL_THRESHOLDS` or use it in the label/score consistency check.
-4. Add unit tests for `validate_sample()` — the consistency checks are the most valuable logic in the file.
+1. Implement at least `score_readability` using Flesch-Kincaid (via `textstat` or a simple syllable counter) — it's the easiest dimension to automate and the most immediately useful.
+1. Delete `LABEL_THRESHOLDS` or use it in the label/score consistency check.
+1. Add unit tests for `validate_sample()` — the consistency checks are the most valuable logic in the file.
 
----
+______________________________________________________________________
 
 ### 3. `docs/policies/cache-policy.md` — ★★★★☆ (4/5)
 
@@ -120,10 +121,10 @@ The hit/miss tracking matrix (CacheManager ✅, EmbeddingCache ✅, Tree-sitter 
 **Recommendations**
 
 1. Fix pool search cache entry: TTL is `300s (5 min)`, not "None (manual)". Remove from "Known Gaps" and from I11-2 recommendation #3.
-2. Add a "Last verified" date column to the L1/L2/L3 tables — caches drift faster than documentation.
-3. Consider adding cache key collision examples for the "Medium" risk entry (pool search `query:limit`).
+1. Add a "Last verified" date column to the L1/L2/L3 tables — caches drift faster than documentation.
+1. Consider adding cache key collision examples for the "Medium" risk entry (pool search `query:limit`).
 
----
+______________________________________________________________________
 
 ### 4. `docs/reports/tool-ranking-report.md` — ★★☆☆☆ (2/5)
 
@@ -156,10 +157,10 @@ The report's core thesis — "5 modules are stuck at the floor score of 0.600 du
 **Recommendations**
 
 1. **Regenerate the report immediately** — `uv run python scripts/rank-tools.py > docs/reports/tool-ranking-report.md` (or pipe through the script and update the markdown).
-2. Add a `--markdown` flag to `rank-tools.py` that outputs the full report with methodology and summary stats, not just the table — so the report can be regenerated automatically.
-3. Pin the report to a specific git commit hash for reproducibility.
+1. Add a `--markdown` flag to `rank-tools.py` that outputs the full report with methodology and summary stats, not just the table — so the report can be regenerated automatically.
+1. Pin the report to a specific git commit hash for reproducibility.
 
----
+______________________________________________________________________
 
 ## Cross-Cutting Observations
 
@@ -168,7 +169,7 @@ The report's core thesis — "5 modules are stuck at the floor score of 0.600 du
 | Pattern | Consistent? | Notes |
 |---------|:-----------:|-------|
 | Script invocation (`uv run python scripts/...`) | ✅ | Matches existing scripts |
-| Review format (docs/reviews/review-N-*.md) | ✅ | Follows established convention |
+| Review format (docs/reviews/review-N-\*.md) | ✅ | Follows established convention |
 | Markdown tables for structured data | ✅ | Consistent with project docs |
 | Exit code discipline | ⚠️ | `rank-tools.py` returns `int` correctly; `eval-content-quality.py` returns `None` (see review-5 H-1) |
 
@@ -182,7 +183,7 @@ The report's core thesis — "5 modules are stuck at the floor score of 0.600 du
 | D-4 | 544-line file where the core logic (scoring) is entirely stubs | **Medium** | `eval-content-quality.py` |
 | D-5 | No automated pipeline to keep report in sync with script output | **Low** | Tool ranking workflow |
 
----
+______________________________________________________________________
 
 ## Overall Verdict
 

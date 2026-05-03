@@ -1,7 +1,6 @@
----
-name: testing-strategies
-description: Use when designing test suites, choosing testing approaches, or implementing quality gates. Use when user asks about testing strategies, test organization, property-based testing, or cross-ecosystem testing patterns.
----
+______________________________________________________________________
+
+## name: testing-strategies description: Use when designing test suites, choosing testing approaches, or implementing quality gates. Use when user asks about testing strategies, test organization, property-based testing, or cross-ecosystem testing patterns.
 
 # Testing Strategies
 
@@ -15,13 +14,14 @@ description: Use when designing test suites, choosing testing approaches, or imp
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| crackerjack | 8676 | summary | mcp__crackerjack__crackerjack_run, mcp__crackerjack__smart_error_analysis, mcp__crackerjack__get_stage_status | 120s |
-| session-buddy | 8678 | full | mcp__session-buddy__search_conversations, mcp__session-buddy__store_reflection | 30s |
-| akosha | 8682 | summary | mcp__akosha__search_code_patterns, mcp__akosha__detect_anomalies | 60s |
+| crackerjack | 8676 | summary | mcp\_\_crackerjack\_\_crackerjack_run, mcp\_\_crackerjack\_\_smart_error_analysis, mcp\_\_crackerjack\_\_get_stage_status | 120s |
+| session-buddy | 8678 | full | mcp\_\_session-buddy\_\_search_conversations, mcp\_\_session-buddy\_\_store_reflection | 30s |
+| akosha | 8682 | summary | mcp\_\_akosha\_\_search_code_patterns, mcp\_\_akosha\_\_detect_anomalies | 60s |
 
 ## When to Use
 
 **Use when:**
+
 - Designing a new test suite or testing architecture
 - Choosing between unit, integration, and E2E tests
 - Implementing property-based testing with Hypothesis
@@ -31,6 +31,7 @@ description: Use when designing test suites, choosing testing approaches, or imp
 - Setting up test coverage and metrics
 
 **Don't use when:**
+
 - Writing individual test cases (use test framework docs)
 - Debugging specific test failures (use systematic-debugging)
 - Simple code that doesn't warrant complex testing
@@ -594,12 +595,14 @@ crackerjack report test --format html --output test-report.html
 ## Real-World Impact
 
 **Before testing strategies:**
+
 - Brittle tests that break on refactoring
 - Flaky tests that developers ignore
 - Edge case bugs in production
 - Slow feedback loops (minutes to hours)
 
 **After testing strategies:**
+
 - Robust test suite that survives refactoring
 - Reliable tests with fast feedback (seconds)
 - Property tests catch edge cases

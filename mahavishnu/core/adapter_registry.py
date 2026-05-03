@@ -287,10 +287,7 @@ class HybridAdapterRegistry:
             module = importlib.import_module(module_path)
 
             # Get class/function
-            if class_name:
-                factory = getattr(module, class_name)
-            else:
-                factory = module
+            factory = getattr(module, class_name) if class_name else module
 
             # Instantiate adapter
             if callable(factory):

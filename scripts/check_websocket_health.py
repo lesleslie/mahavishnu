@@ -31,18 +31,18 @@ Exit Codes:
 from __future__ import annotations
 
 import asyncio
-import json
-import socket
-import sys
-import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
+import json
 from pathlib import Path
+import socket
+import sys
+import time
 from typing import Any
 
+from typer import Exit, Option, Typer
 import yaml
-from typer import Option, Typer, Exit
 
 # Type aliases for cleaner code
 ServerConfig = dict[str, Any]
@@ -114,6 +114,7 @@ SERVICE_DEPENDENCIES: dict[ServerName, list[ServerName]] = {
 # =============================================================================
 # Data Structures
 # =============================================================================
+
 
 class HealthStatus(str, Enum):
     """Health status enumeration.
@@ -241,6 +242,7 @@ class HealthCheckSummary:
 # Health Check Logic
 # =============================================================================
 
+
 async def check_websocket_server(
     name: ServerName,
     host: str,
@@ -280,7 +282,7 @@ async def check_websocket_server(
                 result = sock.connect_ex((host, port))
                 sock.close()
                 return result == 0
-            except Exception as e:
+            except Exception:
                 return False
 
         # Run TCP check in thread pool to avoid blocking
@@ -343,7 +345,7 @@ async def check_websocket_server(
                             status = HealthStatus.DEGRADED
                             error_msg = "Invalid JSON response"
 
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         # Connected but no response to ping
                         status = HealthStatus.DEGRADED
                         error_msg = "No response to ping"
@@ -372,7 +374,7 @@ async def check_websocket_server(
     except socket.gaierror:
         error_msg = "DNS resolution failed"
         status = HealthStatus.UNHEALTHY
-    except socket.timeout:
+    except TimeoutError:
         error_msg = f"Connection timeout after {timeout}s"
         status = HealthStatus.UNHEALTHY
     except Exception as e:
@@ -423,6 +425,7 @@ async def check_all_servers(
 # Output Formatting
 # =============================================================================
 
+
 class OutputFormatter:
     """Format health check results for different output modes."""
 
@@ -463,7 +466,7 @@ class OutputFormatter:
                 color = cls.COLOR_GREEN
                 latency_str = f"{result.latency_ms:.0f}ms" if result.latency_ms else "N/A"
             elif result.status == HealthStatus.DEGRADED:
-                symbol = "\u26A0"  # Warning sign
+                symbol = "\u26a0"  # Warning sign
                 color = cls.COLOR_YELLOW
                 latency_str = f"{result.latency_ms:.0f}ms" if result.latency_ms else "N/A"
             else:
@@ -569,6 +572,7 @@ class OutputFormatter:
 # Configuration Loading
 # =============================================================================
 
+
 def load_config_from_yaml(config_path: Path | None = None) -> dict[ServerName, ServerConfig] | None:
     """Load server configurations from YAML file.
 
@@ -594,7 +598,7 @@ def load_config_from_yaml(config_path: Path | None = None) -> dict[ServerName, S
         if servers_config and isinstance(servers_config, dict):
             return servers_config
 
-    except Exception as e:
+    except Exception:
         # Silently fall back to defaults on any error
         pass
 
@@ -604,6 +608,7 @@ def load_config_from_yaml(config_path: Path | None = None) -> dict[ServerName, S
 # =============================================================================
 # CLI Application
 # =============================================================================
+
 
 @app.command()
 def main(
@@ -669,9 +674,7 @@ def main(
     if servers:
         selected_servers = servers.split(",")
         servers_to_check = {
-            name: servers_config[name]
-            for name in selected_servers
-            if name in servers_config
+            name: servers_config[name] for name in selected_servers if name in servers_config
         }
         if not servers_to_check:
             print(f"Error: No valid servers found in '{servers}'", file=sys.stderr)

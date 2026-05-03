@@ -15,14 +15,13 @@ to avoid dependencies on actual network connections and external services.
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from mahavishnu.pools.websocket import WebSocketBroadcaster
 from mahavishnu.websocket.server import MahavishnuWebSocketServer
-
 
 # =============================================================================
 # WebSocket Server Configuration
@@ -82,8 +81,9 @@ WEBSOCKET_SERVERS = {
 @pytest.fixture(autouse=True)
 def reset_websocket_metrics(monkeypatch):
     """Reset websocket metrics and normalize protocol decode output."""
-    from mahavishnu.websocket.metrics import reset_metrics
     from mcp_common.websocket import WebSocketProtocol
+
+    from mahavishnu.websocket.metrics import reset_metrics
 
     reset_metrics()
 
@@ -108,6 +108,7 @@ def reset_websocket_metrics(monkeypatch):
     yield
 
     reset_metrics()
+
 
 @pytest.fixture
 def mock_pool_manager() -> MagicMock:
@@ -156,6 +157,7 @@ def test_room() -> str:
 # Server Initialization Tests
 # =============================================================================
 
+
 @pytest.mark.integration
 class TestWebSocketServerInitialization:
     """Test WebSocket server initialization and configuration."""
@@ -182,6 +184,7 @@ class TestWebSocketServerInitialization:
 # Connection Handling Tests
 # =============================================================================
 
+
 @pytest.mark.integration
 class TestConnectionHandling:
     """Test WebSocket connection handling."""
@@ -202,8 +205,8 @@ class TestConnectionHandling:
         sent_message = mock_websocket.send.call_args[0][0]
 
         # Should be JSON encoded welcome message
-        import json
         from mcp_common.websocket import WebSocketProtocol
+
         decoded = WebSocketProtocol.decode(sent_message)
         assert decoded["event"] == "session.created"
         assert decoded["data"]["connection_id"] == connection_id
@@ -255,6 +258,7 @@ class TestConnectionHandling:
 # Message Handling Tests
 # =============================================================================
 
+
 @pytest.mark.integration
 class TestMessageHandling:
     """Test WebSocket message handling."""
@@ -263,7 +267,8 @@ class TestMessageHandling:
     async def test_subscribe_request(self, websocket_server: MahavishnuWebSocketServer):
         """Test subscribe request adds connection to room."""
         # Arrange
-        from mcp_common.websocket import WebSocketMessage, MessageType
+        from mcp_common.websocket import MessageType, WebSocketMessage
+
         mock_websocket = MagicMock()
         mock_websocket.id = "test_conn"
         mock_websocket.send = AsyncMock()
@@ -287,6 +292,7 @@ class TestMessageHandling:
 
         # Check response
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_websocket.send.call_args[0][0])
         assert sent_msg["type"] == "response"
         assert sent_msg["data"]["status"] == "subscribed"
@@ -295,7 +301,8 @@ class TestMessageHandling:
     async def test_unsubscribe_request(self, websocket_server: MahavishnuWebSocketServer):
         """Test unsubscribe request removes connection from room."""
         # Arrange
-        from mcp_common.websocket import WebSocketMessage, MessageType
+        from mcp_common.websocket import MessageType, WebSocketMessage
+
         mock_websocket = MagicMock()
         mock_websocket.id = "test_conn"
         mock_websocket.send = AsyncMock()
@@ -322,7 +329,8 @@ class TestMessageHandling:
     async def test_unknown_request_returns_error(self, websocket_server: MahavishnuWebSocketServer):
         """Test unknown request type returns error response."""
         # Arrange
-        from mcp_common.websocket import WebSocketMessage, MessageType
+        from mcp_common.websocket import MessageType, WebSocketMessage
+
         mock_websocket = MagicMock()
         mock_websocket.send = AsyncMock()
         connection_id = "test_conn"
@@ -342,6 +350,7 @@ class TestMessageHandling:
         # Assert
         mock_websocket.send.assert_called_once()
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_websocket.send.call_args[0][0])
         assert sent_msg["type"] == "error"
         assert "UNKNOWN_REQUEST" in sent_msg["code"]
@@ -350,6 +359,7 @@ class TestMessageHandling:
 # =============================================================================
 # Broadcast Tests
 # =============================================================================
+
 
 @pytest.mark.integration
 class TestBroadcastFunctionality:
@@ -376,6 +386,7 @@ class TestBroadcastFunctionality:
 
         # Act
         from mcp_common.websocket import WebSocketProtocol
+
         event = WebSocketProtocol.create_event(
             "test.event",
             {"message": "Hello room1"},
@@ -405,6 +416,7 @@ class TestBroadcastFunctionality:
         # Assert
         assert mock_client.send.called
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
         assert sent_msg["event"] == "pool.status_changed"
         assert sent_msg["data"]["pool_id"] == "test_pool"
@@ -428,13 +440,16 @@ class TestBroadcastFunctionality:
         # Assert
         assert mock_client.send.called
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
         assert sent_msg["event"] == "workflow.started"
         assert sent_msg["data"]["workflow_id"] == "wf123"
         assert sent_msg["data"]["prompt"] == "Write code"
 
     @pytest.mark.asyncio
-    async def test_broadcast_workflow_stage_completed(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_broadcast_workflow_stage_completed(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test broadcasting workflow stage completed event."""
         # Arrange
         mock_client = AsyncMock()
@@ -452,6 +467,7 @@ class TestBroadcastFunctionality:
         # Assert
         assert mock_client.send.called
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
         assert sent_msg["event"] == "workflow.stage_completed"
         assert sent_msg["data"]["stage_name"] == "stage1"
@@ -474,12 +490,15 @@ class TestBroadcastFunctionality:
         # Assert
         assert mock_client.send.called
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
         assert sent_msg["event"] == "workflow.failed"
         assert sent_msg["data"]["error"] == "Execution error: timeout"
 
     @pytest.mark.asyncio
-    async def test_broadcast_worker_status_changed(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_broadcast_worker_status_changed(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test broadcasting worker status changed event."""
         # Arrange
         mock_client = AsyncMock()
@@ -497,6 +516,7 @@ class TestBroadcastFunctionality:
         # Assert
         assert mock_client.send.called
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
         assert sent_msg["event"] == "worker.status_changed"
         assert sent_msg["data"]["worker_id"] == "worker_001"
@@ -506,6 +526,7 @@ class TestBroadcastFunctionality:
 # =============================================================================
 # Room Management Tests
 # =============================================================================
+
 
 @pytest.mark.integration
 class TestRoomManagement:
@@ -518,6 +539,7 @@ class TestRoomManagement:
 
         # Act
         import asyncio
+
         asyncio.run(websocket_server.join_room("test_room", connection_id))
 
         # Assert
@@ -528,6 +550,7 @@ class TestRoomManagement:
         # Arrange
         connection_id = "conn1"
         import asyncio
+
         asyncio.run(websocket_server.join_room("test_room", connection_id))
 
         # Act
@@ -541,6 +564,7 @@ class TestRoomManagement:
         # Arrange
         connection_id = "conn1"
         import asyncio
+
         asyncio.run(websocket_server.join_room("room1", connection_id))
         asyncio.run(websocket_server.join_room("room2", connection_id))
 
@@ -555,6 +579,7 @@ class TestRoomManagement:
 # =============================================================================
 # Pool Status Tests
 # =============================================================================
+
 
 @pytest.mark.integration
 class TestPoolStatus:
@@ -595,6 +620,7 @@ class TestPoolStatus:
 # Pool Broadcasting Integration Tests
 # =============================================================================
 
+
 @pytest.mark.integration
 class TestPoolBroadcasting:
     """Test pool event broadcasting integration."""
@@ -625,13 +651,16 @@ class TestPoolBroadcasting:
         assert mock_client.send.called
 
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
         assert sent_msg["event"] == "pool.spawned"
         assert sent_msg["data"]["pool_id"] == "pool_abc"
         assert sent_msg["data"]["config"] == pool_config
 
     @pytest.mark.asyncio
-    async def test_broadcaster_worker_status_changed(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_broadcaster_worker_status_changed(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test broadcasting worker status changed via WebSocketBroadcaster."""
         # Arrange
         broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
@@ -649,6 +678,7 @@ class TestPoolBroadcasting:
         assert mock_client.send.called
 
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
         assert sent_msg["event"] == "worker.status_changed"
         assert sent_msg["data"]["worker_id"] == "worker_1"
@@ -675,6 +705,7 @@ class TestPoolBroadcasting:
         assert mock_client.send.called
 
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
         assert sent_msg["event"] == "task.assigned"
         assert sent_msg["data"]["task"] == task
@@ -693,13 +724,16 @@ class TestPoolBroadcasting:
         result = {"status": "success", "output": "Code generated"}
 
         # Act
-        broadcast_result = await broadcaster.broadcast_task_completed("pool_abc", "worker_1", result)
+        broadcast_result = await broadcaster.broadcast_task_completed(
+            "pool_abc", "worker_1", result
+        )
 
         # Assert
         assert broadcast_result is True
         assert mock_client.send.called
 
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
         assert sent_msg["event"] == "task.completed"
         assert sent_msg["data"]["result"] == result
@@ -723,12 +757,15 @@ class TestPoolBroadcasting:
         assert mock_client.send.called
 
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
         assert sent_msg["event"] == "pool.scaled"
         assert sent_msg["data"]["worker_count"] == 5
 
     @pytest.mark.asyncio
-    async def test_broadcaster_pool_status_changed(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_broadcaster_pool_status_changed(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test broadcasting pool status changed via WebSocketBroadcaster."""
         # Arrange
         broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
@@ -748,6 +785,7 @@ class TestPoolBroadcasting:
         assert mock_client.send.called
 
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
         assert sent_msg["event"] == "pool.status_changed"
         assert sent_msg["data"]["status"] == status
@@ -771,6 +809,7 @@ class TestPoolBroadcasting:
         assert mock_client.send.called
 
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
         assert sent_msg["event"] == "worker.added"
         assert sent_msg["data"]["worker_id"] == "worker_1"
@@ -794,12 +833,15 @@ class TestPoolBroadcasting:
         assert mock_client.send.called
 
         from mcp_common.websocket import WebSocketProtocol
+
         sent_msg = WebSocketProtocol.decode(mock_client.send.call_args[0][0])
         assert sent_msg["event"] == "worker.removed"
         assert sent_msg["data"]["worker_id"] == "worker_1"
 
     @pytest.mark.asyncio
-    async def test_broadcaster_graceful_degradation(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_broadcaster_graceful_degradation(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test graceful degradation when WebSocket unavailable."""
         # Arrange
         broadcaster = WebSocketBroadcaster(websocket_server=None)
@@ -814,6 +856,7 @@ class TestPoolBroadcasting:
 # =============================================================================
 # Multi-Server Configuration Tests
 # =============================================================================
+
 
 @pytest.mark.integration
 class TestMultiServerConfiguration:

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Analyze session transcripts to understand token aggregation"""
+
 import json
 from pathlib import Path
-from datetime import datetime
 
 transcript_dir = Path.home() / ".claude/projects/-Users-les--claude"
 
@@ -21,11 +21,11 @@ for filename in transcripts:
         print(f"{filename}: NOT FOUND")
         continue
 
-    with open(path, 'r') as f:
+    with open(path) as f:
         first_line = f.readline()
         try:
             first_entry = json.loads(first_line)
-            timestamp = first_entry.get('timestamp', 'N/A')
+            timestamp = first_entry.get("timestamp", "N/A")
             print(f"{filename}")
             print(f"  First: {timestamp}")
 
@@ -34,9 +34,9 @@ for filename in transcripts:
             total_tokens = 0
             for line in f:
                 entry = json.loads(line.strip())
-                usage = entry.get('message', {}).get('usage', {})
+                usage = entry.get("message", {}).get("usage", {})
                 if usage:
-                    total_tokens += usage.get('input_tokens', 0) + usage.get('output_tokens', 0)
+                    total_tokens += usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
 
             print(f"  Tokens: {total_tokens:,}")
             print()

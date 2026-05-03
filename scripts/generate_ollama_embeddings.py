@@ -37,9 +37,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+from pathlib import Path
 import sys
 import time
-from pathlib import Path
 from typing import Any
 
 import httpx
@@ -290,7 +290,7 @@ async def generate_embeddings(
                     metrics["generated"] / metrics["duration_seconds"]
                 )
 
-            logger.info(f"Embedding generation complete:")
+            logger.info("Embedding generation complete:")
             logger.info(f"  - Generated: {metrics['generated']}")
             logger.info(f"  - Skipped: {metrics['skipped']}")
             logger.info(f"  - Errors: {metrics['errors']}")
@@ -555,9 +555,7 @@ Available Models:
         metavar="QUERY",
         help="Test semantic search with a query",
     )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable verbose logging"
-    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
 

@@ -3,15 +3,16 @@
 Tests intent classification, entity extraction, and confidence scoring.
 """
 
-import pytest
 from datetime import datetime, timedelta
 
+import pytest
+
 from mahavishnu.core.nlp_parser import (
-    NlpParser,
     Intent,
-    Priority,
-    ParseResult,
+    NlpParser,
     ParsedEntity,
+    ParseResult,
+    Priority,
 )
 
 
@@ -25,31 +26,34 @@ class TestIntentClassification:
     """Test intent classification."""
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("text,expected_intent", [
-        ("create a task to fix the bug", Intent.CREATE),
-        ("add new task for session-buddy repo", Intent.CREATE),
-        ("make a task about authentication", Intent.CREATE),
-        ("new task: implement login", Intent.CREATE),
-        ("list all tasks", Intent.LIST),
-        ("show me tasks for mahavishnu", Intent.LIST),
-        ("display tasks", Intent.LIST),
-        ("what are the tasks", Intent.LIST),
-        ("update task 123", Intent.UPDATE),
-        ("change status of task 5", Intent.UPDATE),
-        ("mark task 10 as complete", Intent.COMPLETE),  # "mark as complete" is COMPLETE
-        ("delete task 456", Intent.DELETE),
-        ("remove task 789", Intent.DELETE),
-        ("cancel task 100", Intent.DELETE),
-        ("search for authentication tasks", Intent.SEARCH),
-        ("find tasks about API", Intent.SEARCH),
-        ("look for bug fixes", Intent.SEARCH),
-        ("complete task 50", Intent.COMPLETE),
-        ("mark task as done", Intent.COMPLETE),
-        ("finish task 25", Intent.COMPLETE),
-        ("assign task 10 to john", Intent.ASSIGN),
-        ("block task 5", Intent.BLOCK),
-        ("task is waiting for API", Intent.BLOCK),
-    ])
+    @pytest.mark.parametrize(
+        "text,expected_intent",
+        [
+            ("create a task to fix the bug", Intent.CREATE),
+            ("add new task for session-buddy repo", Intent.CREATE),
+            ("make a task about authentication", Intent.CREATE),
+            ("new task: implement login", Intent.CREATE),
+            ("list all tasks", Intent.LIST),
+            ("show me tasks for mahavishnu", Intent.LIST),
+            ("display tasks", Intent.LIST),
+            ("what are the tasks", Intent.LIST),
+            ("update task 123", Intent.UPDATE),
+            ("change status of task 5", Intent.UPDATE),
+            ("mark task 10 as complete", Intent.COMPLETE),  # "mark as complete" is COMPLETE
+            ("delete task 456", Intent.DELETE),
+            ("remove task 789", Intent.DELETE),
+            ("cancel task 100", Intent.DELETE),
+            ("search for authentication tasks", Intent.SEARCH),
+            ("find tasks about API", Intent.SEARCH),
+            ("look for bug fixes", Intent.SEARCH),
+            ("complete task 50", Intent.COMPLETE),
+            ("mark task as done", Intent.COMPLETE),
+            ("finish task 25", Intent.COMPLETE),
+            ("assign task 10 to john", Intent.ASSIGN),
+            ("block task 5", Intent.BLOCK),
+            ("task is waiting for API", Intent.BLOCK),
+        ],
+    )
     async def test_intent_classification(self, parser, text, expected_intent):
         """Test that intents are correctly classified."""
         result = await parser.parse(text)
@@ -75,16 +79,19 @@ class TestEntityExtraction:
         assert result.entities["repository"].value == "mahavishnu"
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("text,expected_priority", [
-        ("create critical task", Priority.CRITICAL),
-        ("urgent bug fix needed", Priority.CRITICAL),
-        ("this is a blocker", Priority.CRITICAL),
-        ("high priority task", Priority.HIGH),
-        ("important feature", Priority.HIGH),
-        ("normal task", Priority.MEDIUM),
-        ("low priority cleanup", Priority.LOW),
-        ("nice to have feature", Priority.LOW),
-    ])
+    @pytest.mark.parametrize(
+        "text,expected_priority",
+        [
+            ("create critical task", Priority.CRITICAL),
+            ("urgent bug fix needed", Priority.CRITICAL),
+            ("this is a blocker", Priority.CRITICAL),
+            ("high priority task", Priority.HIGH),
+            ("important feature", Priority.HIGH),
+            ("normal task", Priority.MEDIUM),
+            ("low priority cleanup", Priority.LOW),
+            ("nice to have feature", Priority.LOW),
+        ],
+    )
     async def test_extract_priority(self, parser, text, expected_priority):
         """Test priority extraction."""
         result = await parser.parse(text)
@@ -206,7 +213,9 @@ class TestClarification:
         """Test clarification when task ID is missing for update."""
         result = await parser.parse("update the task status")
         if not result.is_confident():
-            assert any("task ID" in c or "which task" in c.lower() for c in result.clarification_needed)
+            assert any(
+                "task ID" in c or "which task" in c.lower() for c in result.clarification_needed
+            )
 
     @pytest.mark.asyncio
     async def test_clarification_prompt_format(self, parser):
@@ -227,7 +236,9 @@ class TestParseResult:
             confidence=0.9,
             entities={
                 "title": ParsedEntity("title", "Fix bug", 0.9, "fix bug"),
-                "repository": ParsedEntity("repository", "session-buddy", 0.95, "session-buddy repo"),
+                "repository": ParsedEntity(
+                    "repository", "session-buddy", 0.95, "session-buddy repo"
+                ),
             },
             raw_text="create fix bug task for session-buddy repo",
         )

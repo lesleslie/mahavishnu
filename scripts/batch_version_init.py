@@ -11,13 +11,13 @@ Usage:
 """
 
 from pathlib import Path
-import click
 import sys
+
+import click
 
 # Add agent_versioning to path
 sys.path.insert(0, str(Path(__file__).parent))
 from agent_versioning import AgentVersionManager
-
 
 # Agent categorization for versioning
 AGENT_VERSIONS = {
@@ -31,30 +31,25 @@ AGENT_VERSIONS = {
         "golang-pro",
         "java-pro",
         "flutter-expert",
-
         # Databases
         "postgresql-specialist",
         "mysql-specialist",
         "sqlite-specialist",
         "redis-specialist",
         "database-operations-specialist",
-
         # Protocols
         "websocket-specialist",
         "grpc-specialist",
         "graphql-architect",
         "htmx-specialist",
-
         # Data platforms (data-engineer already has 1.1.0)
         "data-pipeline-engineer",
         "data-scientist",
-
         # Frontend
         "frontend-developer",
         "css-architect",
         "responsive-design-specialist",
         "accessibility-specialist",
-
         # Backend & Infrastructure
         "backend-architect",
         "docker-specialist",
@@ -63,28 +58,23 @@ AGENT_VERSIONS = {
         "devops-troubleshooter",
         "cloud-architect",
         "cloud-native-architect",
-
         # Testing
         "comprehensive-test-specialist",
         "pytest-hypothesis-specialist",
         "qa-strategist",
-
         # Security
         "security-auditor",
         "api-security-specialist",
         "authentication-specialist",
-
         # AI/ML
         "ai-engineer",
         "ml-engineer",
         "mlops-engineer",
-
         # Meta
         "code-reviewer",
         "refactoring-specialist",
         "documentation-specialist",
     ],
-
     # Established specialists (0.9.0)
     "0.9.0": [
         # Specialized frameworks
@@ -93,14 +83,11 @@ AGENT_VERSIONS = {
         "web-components-specialist",
         "pwa-specialist",
         "htmy-specialist",
-
         # Specialized storage
         "vector-database-specialist",
-
         # Specialized AI
         "gemini-consultant",
         "liquid-ai-specialist",
-
         # Leadership
         "product-manager",
         "architecture-council",
@@ -108,12 +95,10 @@ AGENT_VERSIONS = {
         "release-manager",
         "observability-incident-lead",
         "incident-responder",
-
         # Monitoring
         "monitoring-specialist",
         "sentry-logfire-specialist",
         "log-analyzer",
-
         # Meta
         "agent-creation-specialist",
         "critical-audit-specialist",
@@ -121,28 +106,23 @@ AGENT_VERSIONS = {
         "search-specialist",
         "mcp-integration-expert",
     ],
-
     # Newer or niche specialists (0.5.0)
     "0.5.0": [
         # Mobile & Embedded
         "mobile-developer",
         "embedded-systems-engineer",
         "electrical-engineer",
-
         # Specialized templates
         "jinja2-template-designer",
         "tui-designer",
         "mermaid-expert",
-
         # Specialized development
         "payment-integration",
         "pyo3-specialist",
         "pycharm-plugin-creator",
-
         # Performance
         "performance-engineer",
         "finops-specialist",
-
         # Process & Compliance
         "privacy-officer",
         "legal-advisor",
@@ -153,11 +133,9 @@ AGENT_VERSIONS = {
         "ux-researcher",
         "content-designer",
         "developer-enablement-lead",
-
         # Testing
         "dev-testing-assistant",
         "crackerjack-test-specialist",
-
         # Specialized
         "acb-specialist",
         "sql-pro",
@@ -176,29 +154,32 @@ def get_initial_changelog(version: str, agent_name: str) -> list[str]:
             "Production-ready agent with comprehensive capabilities",
             "Mature instruction set and examples",
             "Proven patterns and best practices",
-            "Established integration points"
+            "Established integration points",
         ]
     elif version == "0.9.0":
         return [
             "Well-established specialist with proven capabilities",
             "Comprehensive instruction set",
             "Active integration patterns",
-            "Approaching production maturity"
+            "Approaching production maturity",
         ]
     else:  # 0.5.0
         return [
             "Specialized agent with focused capabilities",
             "Initial instruction set and patterns",
             "Domain-specific expertise",
-            "Foundational capabilities established"
+            "Foundational capabilities established",
         ]
 
 
 @click.command()
 @click.option("--dry-run", is_flag=True, help="Preview changes without modifying files")
-@click.option("--agents-dir", type=click.Path(path_type=Path),
-              default=Path.home() / ".claude" / "agents",
-              help="Path to agents directory")
+@click.option(
+    "--agents-dir",
+    type=click.Path(path_type=Path),
+    default=Path.home() / ".claude" / "agents",
+    help="Path to agents directory",
+)
 def main(dry_run: bool, agents_dir: Path):
     """Initialize versioning for all agents"""
 
@@ -211,12 +192,7 @@ def main(dry_run: bool, agents_dir: Path):
             version_map[agent] = version
 
     # Track results
-    results = {
-        "initialized": [],
-        "already_versioned": [],
-        "not_found": [],
-        "errors": []
-    }
+    results = {"initialized": [], "already_versioned": [], "not_found": [], "errors": []}
 
     click.echo("\n=== Agent Versioning Initialization ===\n")
 
@@ -244,11 +220,12 @@ def main(dry_run: bool, agents_dir: Path):
                 version_info = manager.get_version_info(agent_file)
 
                 if version_info and version_info.current_version != "0.0.0":
-                    click.echo(f"{progress} ℹ️  {agent_name}: Already versioned ({version_info.current_version})")
-                    results["already_versioned"].append({
-                        "name": agent_name,
-                        "version": version_info.current_version
-                    })
+                    click.echo(
+                        f"{progress} ℹ️  {agent_name}: Already versioned ({version_info.current_version})"
+                    )
+                    results["already_versioned"].append(
+                        {"name": agent_name, "version": version_info.current_version}
+                    )
                     continue
 
                 # Initialize version
@@ -257,17 +234,11 @@ def main(dry_run: bool, agents_dir: Path):
                     manager.add_version(agent_file, version, changelog)
 
                 click.echo(f"{progress} ✓ {agent_name}: Initialized at {version}")
-                results["initialized"].append({
-                    "name": agent_name,
-                    "version": version
-                })
+                results["initialized"].append({"name": agent_name, "version": version})
 
             except Exception as e:
                 click.echo(f"{progress} ❌ {agent_name}: Error - {e}", err=True)
-                results["errors"].append({
-                    "name": agent_name,
-                    "error": str(e)
-                })
+                results["errors"].append({"name": agent_name, "error": str(e)})
 
     # Summary
     click.echo("\n=== Summary ===\n")

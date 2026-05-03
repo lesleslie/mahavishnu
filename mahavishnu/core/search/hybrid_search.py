@@ -36,19 +36,22 @@ SQL Query Pattern (from plan):
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from datetime import UTC, datetime
 import inspect
 import logging
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
-from contextlib import asynccontextmanager
-from typing import Any
-from uuid import UUID
+from typing import TYPE_CHECKING, Any
 
-from asyncpg import Pool
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from mahavishnu.core.database import Database, get_database
-from mahavishnu.core.embeddings import EmbeddingService, EmbeddingProvider
+from mahavishnu.core.embeddings import EmbeddingProvider, EmbeddingService
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from asyncpg import Pool
 
 logger = logging.getLogger(__name__)
 
@@ -83,9 +86,13 @@ class HybridSearchConfig:
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
         if not 0.0 <= self.semantic_weight <= 1.0:
-            raise ValueError(f"semantic_weight must be between 0.0 and 1.0, got {self.semantic_weight}")
+            raise ValueError(
+                f"semantic_weight must be between 0.0 and 1.0, got {self.semantic_weight}"
+            )
         if not 0.0 <= self.lexical_weight <= 1.0:
-            raise ValueError(f"lexical_weight must be between 0.0 and 1.0, got {self.lexical_weight}")
+            raise ValueError(
+                f"lexical_weight must be between 0.0 and 1.0, got {self.lexical_weight}"
+            )
         if not 0.0 <= self.min_score <= 1.0:
             raise ValueError(f"min_score must be between 0.0 and 1.0, got {self.min_score}")
 
@@ -435,8 +442,8 @@ class HybridSearchEngine:
 
             # Calculate combined score
             combined_score = (
-                self.config.semantic_weight * semantic_score +
-                self.config.lexical_weight * lexical_score
+                self.config.semantic_weight * semantic_score
+                + self.config.lexical_weight * lexical_score
             )
 
             result = HybridSearchResult(
@@ -622,7 +629,8 @@ class HybridSearchEngine:
                     "doc_id": str(doc_id),
                     "title": title[:50] if title else None,
                     "repository": repository,
-                    "has_embedding": embedding_result.embeddings is not None and len(embedding_result.embeddings) > 0,
+                    "has_embedding": embedding_result.embeddings is not None
+                    and len(embedding_result.embeddings) > 0,
                 },
             )
 

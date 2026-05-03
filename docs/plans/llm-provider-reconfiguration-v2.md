@@ -4,18 +4,18 @@
 **Status**: Reviewed — ready for implementation
 **Replaces**: `peppy-cooking-graham.md` plan (superseded)
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
 This plan reconfigures the Bodai Ecosystem's LLM provider system across 4 repositories (Mahavishnu, Crackerjack, Session-Buddy, mcp-common) to:
 
 1. **Use ZAI GLM models as primary cloud provider** via coding plan subscription
-2. **Keep Ollama as local fallback** (GPT4All dropped)
-3. **Keep Bifrost gateway as optional** cross-client caching layer (not routing)
-4. **Make all LLM defaults YAML-configurable** with clear provider names
-5. **Consolidate duplicated LLM code** into `mcp_common/llm/`
-6. **Use free GLM models** when subscription credits run out
+1. **Keep Ollama as local fallback** (GPT4All dropped)
+1. **Keep Bifrost gateway as optional** cross-client caching layer (not routing)
+1. **Make all LLM defaults YAML-configurable** with clear provider names
+1. **Consolidate duplicated LLM code** into `mcp_common/llm/`
+1. **Use free GLM models** when subscription credits run out
 
 ### What Changed from v1
 
@@ -27,7 +27,7 @@ This plan reconfigures the Bodai Ecosystem's LLM provider system across 4 reposi
 | Qwen env vars for ZAI config | New YAML-driven config with clear provider names |
 | OpenAI as fallback | Keep as emergency fallback only |
 
----
+______________________________________________________________________
 
 ## 1. ZAI API Landscape
 
@@ -85,7 +85,7 @@ All tested against `https://api.z.ai/api/coding/paas/v4` on 2026-04-13:
 | glm-4.5-airx | Separate paid tier ($1.10/$4.50) — premium |
 | glm-5v-turbo | Not in current subscription plan |
 
----
+______________________________________________________________________
 
 ## 2. Task-to-Model Mapping
 
@@ -122,7 +122,7 @@ Per ZAI documentation, the intended mapping for Claude Code tiers:
 - **glm-4.7-flash for free fallback**: Zero cost, good quality, high concurrency.
 - **Ollama for offline**: No API dependency, privacy for sensitive code.
 
----
+______________________________________________________________________
 
 ## 3. Seven LLM Selection Scenarios
 
@@ -134,6 +134,7 @@ Per ZAI documentation, the intended mapping for Claude Code tiers:
 **Problem**: ProviderID hardcoded as `Literal["claude", "qwen", "ollama"]`. QwenCodeFixer abuses env var names when targeting ZAI.
 
 **Proposed**:
+
 - Provider enum becomes config-driven from `settings/ai.yaml`
 - Default chain: `zai → ollama`
 - Rename `QwenCodeFixer` to `ZAICodeFixer` (or generic `OpenAICompatFixer`)
@@ -147,6 +148,7 @@ Per ZAI documentation, the intended mapping for Claude Code tiers:
 **Problem**: Cannot swap to cloud provider — different API format
 
 **Proposed**:
+
 - New `CloudWorker` class using OpenAI-compatible API (handles ZAI, Qwen, OpenAI)
 - Keep `OllamaWorker` for local execution only
 - Extract shared task routing logic into `TaskRouter` utility (both workers use it)
@@ -161,6 +163,7 @@ Per ZAI documentation, the intended mapping for Claude Code tiers:
 **Problem**: Claude not available without subscription
 
 **Proposed**:
+
 - Add `zai` case to `LLMProviderFactory` using Agno's `OpenAIChat` with ZAI base URL
 - Factory must pass `base_url="https://api.z.ai/api/coding/paas/v4"` and `api_key`
 - Update team YAMLs to use GLM model IDs
@@ -175,6 +178,7 @@ Per ZAI documentation, the intended mapping for Claude Code tiers:
 **Problem**: Defaults to OpenAI/Anthropic which cost money or aren't configured
 
 **Proposed**:
+
 - Default chain: `zai → ollama`
 - ZAI provider uses coding plan endpoint
 - Ollama for offline/privacy-sensitive operations
@@ -188,6 +192,7 @@ Per ZAI documentation, the intended mapping for Claude Code tiers:
 **Problem**: Config has wrong ZAI API path (`/api/paas/v4/` instead of `/api/coding/paas/v4/`)
 
 **Proposed**:
+
 - Fix API path in Bifrost config template
 - Update model lists with verified available models
 - Keep as optional — activated via env vars only
@@ -201,6 +206,7 @@ Per ZAI documentation, the intended mapping for Claude Code tiers:
 **Problem**: Different defaults, inconsistent error handling, duplicated code
 
 **Proposed**:
+
 - Single `OpenAICompatibleProvider` class for ZAI/Qwen/OpenAI
 - Shared configuration loading from YAML
 - Built-in prompt caching (ZAI native cache)
@@ -215,11 +221,12 @@ Per ZAI documentation, the intended mapping for Claude Code tiers:
 **Problem**: No cross-client caching without Bifrost
 
 **Proposed**:
+
 - Claude Code uses ZAI's Anthropic-compatible endpoint (`/api/anthropic`)
 - OpenClaw and Nanobot can optionally route through Bifrost
 - Terminal workers (Mahavishnu) use `settings/models.yaml`
 
----
+______________________________________________________________________
 
 ## 4. Bifrost Configuration Fix
 
@@ -253,11 +260,12 @@ Update routing rules and datasheets:
 ### Reactivation
 
 No code changes needed. When ready to reactivate:
-1. Fix the config template path
-2. Run `scripts/bifrost-ctl rebootstrap`
-3. Set `BIFROST_BASE_URL=http://127.0.0.1:8471` in client environments
 
----
+1. Fix the config template path
+1. Run `scripts/bifrost-ctl rebootstrap`
+1. Set `BIFROST_BASE_URL=http://127.0.0.1:8471` in client environments
+
+______________________________________________________________________
 
 ## 5. mcp-common LLM Consolidation
 
@@ -393,12 +401,13 @@ The provider module lazy-imports `openai` and raises a clear `ImportError` if no
 ### Migration Path
 
 For each repo:
-1. Add `mcp-common[llm]>=0.10.0` dependency
-2. Replace inline `openai.AsyncOpenAI(...)` calls with `from mcp_common.llm import LLMSettings, FallbackChain`
-3. Remove repo-specific provider configuration code
-4. Point to shared `settings/models.yaml` or `settings/llm.yaml`
 
----
+1. Add `mcp-common[llm]>=0.10.0` dependency
+1. Replace inline `openai.AsyncOpenAI(...)` calls with `from mcp_common.llm import LLMSettings, FallbackChain`
+1. Remove repo-specific provider configuration code
+1. Point to shared `settings/models.yaml` or `settings/llm.yaml`
+
+______________________________________________________________________
 
 ## 6. Repository-Specific Changes
 
@@ -519,12 +528,13 @@ qwen:
 **File**: `config/bifrost/config.template.json`
 
 Changes:
-1. Fix zai-openai provider `request_path_overrides` from `/api/paas/v4/` to `/api/coding/paas/v4/`
-2. Add new models to datasheets: `glm-5`, `glm-5-turbo`, `glm-4.6`, `glm-4.5-flash`
-3. Update governance routing to use `zai-openai/` namespace
-4. Remove model references not in coding plan (glm-4.7-flashx, glm-4.5-x)
 
----
+1. Fix zai-openai provider `request_path_overrides` from `/api/paas/v4/` to `/api/coding/paas/v4/`
+1. Add new models to datasheets: `glm-5`, `glm-5-turbo`, `glm-4.6`, `glm-4.5-flash`
+1. Update governance routing to use `zai-openai/` namespace
+1. Remove model references not in coding plan (glm-4.7-flashx, glm-4.5-x)
+
+______________________________________________________________________
 
 ## 7. Implementation Phases
 
@@ -533,11 +543,11 @@ Changes:
 **Goal**: Get the right API endpoint and models configured. Make Agno recognize ZAI.
 
 1. Add `ZAI` to `LLMProvider` enum in Agno adapter
-2. Add `zai` case to `LLMProviderFactory` with ZAI base_url and api_key kwargs
-3. Fix Bifrost config template API path
-4. Update `settings/models.yaml` with ZAI provider and task routing
-5. Update Agno team YAMLs with GLM model IDs
-6. Verify ZAI API access from each component
+1. Add `zai` case to `LLMProviderFactory` with ZAI base_url and api_key kwargs
+1. Fix Bifrost config template API path
+1. Update `settings/models.yaml` with ZAI provider and task routing
+1. Update Agno team YAMLs with GLM model IDs
+1. Verify ZAI API access from each component
 
 **Validation**: Agno teams can use `glm-4.7` through the coding plan endpoint.
 
@@ -546,12 +556,12 @@ Changes:
 **Goal**: Create shared LLM infrastructure in mcp-common.
 
 1. Create `mcp_common/llm/` package with provider, config, fallback, exceptions, types modules
-2. Implement `OpenAICompatibleProvider` (handles ZAI, Qwen, OpenAI) with lazy import
-3. Implement `FallbackChain` with circuit breaker (threshold=5, reset=60s, chained errors)
-4. Implement `LLMSettings` with YAML loading, env var resolution, `SecretStr` for keys
-5. Add `[llm]` optional dependency group to pyproject.toml
-6. Write tests with mocked API responses
-7. Publish mcp-common v0.10.0
+1. Implement `OpenAICompatibleProvider` (handles ZAI, Qwen, OpenAI) with lazy import
+1. Implement `FallbackChain` with circuit breaker (threshold=5, reset=60s, chained errors)
+1. Implement `LLMSettings` with YAML loading, env var resolution, `SecretStr` for keys
+1. Add `[llm]` optional dependency group to pyproject.toml
+1. Write tests with mocked API responses
+1. Publish mcp-common v0.10.0
 
 **Validation**: Unit tests pass, provider can make real API calls when key is available.
 
@@ -560,11 +570,11 @@ Changes:
 **Goal**: Make Crackerjack's AI config intuitive and YAML-driven.
 
 1. Create `settings/ai.yaml` with provider configuration
-2. Update `AISettings` — change `ai_provider` type from `Literal` to `str` with runtime validation against YAML
-3. Add `ZAI` to `ProviderID` enum
-4. Update `ProviderFactory` to create ZAI provider from config
-5. Default chain: `zai → ollama`
-6. Test `crackerjack run` with ZAI provider
+1. Update `AISettings` — change `ai_provider` type from `Literal` to `str` with runtime validation against YAML
+1. Add `ZAI` to `ProviderID` enum
+1. Update `ProviderFactory` to create ZAI provider from config
+1. Default chain: `zai → ollama`
+1. Test `crackerjack run` with ZAI provider
 
 **Validation**: `crackerjack run --ai-fix` works with ZAI GLM-4.7.
 
@@ -573,10 +583,10 @@ Changes:
 **Goal**: Add cloud worker support and update all LLM touchpoints.
 
 1. Extract shared task routing logic from `OllamaWorker` into `TaskRouter` utility
-2. Create `CloudWorker` class (OpenAI-compatible, for ZAI/Qwen/OpenAI) using `TaskRouter`
-3. Update pool routing to prefer cloud workers for complex tasks
-4. Update WebSocket monitoring for cloud worker events
-5. Test swarm execution with `glm-4.5-air`
+1. Create `CloudWorker` class (OpenAI-compatible, for ZAI/Qwen/OpenAI) using `TaskRouter`
+1. Update pool routing to prefer cloud workers for complex tasks
+1. Update WebSocket monitoring for cloud worker events
+1. Test swarm execution with `glm-4.5-air`
 
 **Validation**: Pool can spawn both Ollama and cloud workers, routes correctly.
 
@@ -585,8 +595,8 @@ Changes:
 **Goal**: Switch Session-Buddy to shared mcp-common LLM module.
 
 1. Replace inline provider creation with `mcp_common.llm` imports
-2. Update default fallback chain to `zai → ollama`
-3. Test reflection generation, conversation summarization
+1. Update default fallback chain to `zai → ollama`
+1. Test reflection generation, conversation summarization
 
 **Validation**: Session-Buddy LLM features work with ZAI provider.
 
@@ -595,13 +605,13 @@ Changes:
 **Goal**: Comprehensive testing and documentation.
 
 1. Integration tests across all repos
-2. Fallback chain validation (ZAI down → Ollama works)
-3. Free tier fallback (credits exhausted → glm-4.7-flash works)
-4. Bifrost reactivation test (optional)
-5. Update CLAUDE.md in all repos
-6. Create migration guide for future provider additions (e.g., Qwen)
+1. Fallback chain validation (ZAI down → Ollama works)
+1. Free tier fallback (credits exhausted → glm-4.7-flash works)
+1. Bifrost reactivation test (optional)
+1. Update CLAUDE.md in all repos
+1. Create migration guide for future provider additions (e.g., Qwen)
 
----
+______________________________________________________________________
 
 ## 8. Configuration Reference
 
@@ -631,7 +641,7 @@ zai:
   base_url: "https://api.z.ai/api/coding/paas/v4"
 ```
 
----
+______________________________________________________________________
 
 ## 9. Cost Analysis
 
@@ -656,7 +666,7 @@ Assuming moderate usage (50 coding tasks/day, 10 swarm tasks/day):
 
 The v2 draft estimated $14/month because it assumed all thinking models always produce reasoning tokens. Context7 revealed that thinking is **opt-in** (`extra_body={"thinking": {"type": "enabled"}}`). For routine API calls without thinking enabled, models like glm-4.7 produce output directly without reasoning overhead.
 
----
+______________________________________________________________________
 
 ## 10. Risk Mitigation
 
@@ -670,7 +680,7 @@ The v2 draft estimated $14/month because it assumed all thinking models always p
 | Wrong API endpoint | Balance errors | Config validation rejects non-coding-plan URLs |
 | Prompt cache cross-session leak | Data exposure | Cache keyed by session/namespace identifier |
 
----
+______________________________________________________________________
 
 ## 11. Future Providers
 
@@ -679,6 +689,7 @@ The v2 draft estimated $14/month because it assumed all thinking models always p
 When Qwen API tokens are available:
 
 1. Add to `settings/models.yaml`:
+
 ```yaml
 qwen:
   enabled: true
@@ -694,6 +705,7 @@ qwen:
 ### Adding OpenAI as Fallback
 
 Already supported — just add to fallback chain:
+
 ```yaml
 openai:
   enabled: true
@@ -702,7 +714,7 @@ openai:
     fallback: "gpt-4.1-mini"
 ```
 
----
+______________________________________________________________________
 
 ## Appendix A: Review Findings Incorporated
 
@@ -736,26 +748,29 @@ This section documents all findings from the three-agent review and how they wer
 
 | # | Finding | Severity | Resolution |
 |---|---------|----------|-----------|
-| 1 | glm-4.5-air vs glm-4.7-flash for swarms | IMPORTANT | Threshold: <10 workers free, >=10 workers paid |
+| 1 | glm-4.5-air vs glm-4.7-flash for swarms | IMPORTANT | Threshold: \<10 workers free, >=10 workers paid |
 | 2 | Sonnet thinking overhead expensive | IMPORTANT | ZAI recommends glm-4.7; thinking is opt-in (Context7) |
 | 3 | $14/month estimate too optimistic | IMPORTANT | Revised to $8/month with opt-in thinking |
 | 4 | Prompt caching underleveraged | IMPORTANT | Standardize system prompts per task type |
 | 5 | glm-4.6 deserves a task role | SUGGESTION | Listed as option; test vs glm-4.7 for code |
 
----
+______________________________________________________________________
 
 ## Appendix B: Thinking vs Non-Thinking Model Cheat Sheet
 
 **Thinking-capable models** (reasoning available via `extra_body={"thinking": {"type": "enabled"}}`):
+
 - glm-5, glm-5.1, glm-5-turbo, glm-4.7, glm-4.6
 - Enable thinking for: Complex reasoning, multi-step debugging, architecture decisions
 - Disable thinking for: Routine edits, formatting, simple Q&A
 
 **Non-thinking models** (no reasoning capability):
+
 - glm-4.5, glm-4.5-air, GLM-4.5V
 - Always use for: Swarm workers, bulk operations, documentation, quick queries
 
 **Free models** (no credits needed):
+
 - glm-4.7-flash, glm-4.5-flash
 - Use for: Swarm workers when credits exhausted, low-stakes tasks
 
@@ -764,25 +779,25 @@ This section documents all findings from the three-agent review and how they wer
 ### New Files (8)
 
 1. `mcp_common/llm/__init__.py`
-2. `mcp_common/llm/provider.py`
-3. `mcp_common/llm/config.py`
-4. `mcp_common/llm/fallback.py`
-5. `mcp_common/llm/cache.py`
-6. `mcp_common/llm/exceptions.py`
-7. `mcp_common/llm/types.py`
-8. `mahavishnu/workers/task_router.py`
+1. `mcp_common/llm/provider.py`
+1. `mcp_common/llm/config.py`
+1. `mcp_common/llm/fallback.py`
+1. `mcp_common/llm/cache.py`
+1. `mcp_common/llm/exceptions.py`
+1. `mcp_common/llm/types.py`
+1. `mahavishnu/workers/task_router.py`
 
 ### Modified Files (12)
 
 1. `mahavishnu/settings/models.yaml` — Add ZAI provider config
-2. `mahavishnu/config/bifrost/config.template.json` — Fix API path
-3. `mahavishnu/mahavishnu/engines/agno_adapter_impl.py` — Add ZAI case
-4. `mahavishnu/settings/agno_teams/*.yaml` — Replace Claude model IDs
-5. `crackerjack/crackerjack/config/settings.py` — Dynamic provider config
-6. `crackerjack/crackerjack/adapters/ai/registry.py` — Add ZAI to ProviderID
-7. `crackerjack/settings/ai.yaml` — New provider config file
-8. `session_buddy/session_buddy/llm_providers.py` — Use mcp-common module
-9. `mcp-common/pyproject.toml` — Add `[llm]` optional dependency group
-10. `mahavishnu/mahavishnu/workers/ollama.py` — Extract shared routing
-11. `mahavishnu/CLAUDE.md` — Update LLM configuration section
-12. `crackerjack/CLAUDE.md` — Update AI provider section
+1. `mahavishnu/config/bifrost/config.template.json` — Fix API path
+1. `mahavishnu/mahavishnu/engines/agno_adapter_impl.py` — Add ZAI case
+1. `mahavishnu/settings/agno_teams/*.yaml` — Replace Claude model IDs
+1. `crackerjack/crackerjack/config/settings.py` — Dynamic provider config
+1. `crackerjack/crackerjack/adapters/ai/registry.py` — Add ZAI to ProviderID
+1. `crackerjack/settings/ai.yaml` — New provider config file
+1. `session_buddy/session_buddy/llm_providers.py` — Use mcp-common module
+1. `mcp-common/pyproject.toml` — Add `[llm]` optional dependency group
+1. `mahavishnu/mahavishnu/workers/ollama.py` — Extract shared routing
+1. `mahavishnu/CLAUDE.md` — Update LLM configuration section
+1. `crackerjack/CLAUDE.md` — Update AI provider section

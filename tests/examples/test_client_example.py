@@ -2,9 +2,9 @@
 
 import asyncio
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import sys
+from unittest.mock import AsyncMock, MagicMock
+
 sys.path.insert(0, "/Users/les/Projects/mahavishnu")
 
 from examples.websocket_client_examples import MahavishnuWebSocketClient
@@ -36,11 +36,13 @@ async def test_client_subscription():
 
     # Mock recv to return subscription confirmation
     async def mock_recv():
-        return json.dumps({
-            "type": "response",
-            "event": "subscribe",
-            "data": {"status": "subscribed", "channel": "workflow:test123"}
-        })
+        return json.dumps(
+            {
+                "type": "response",
+                "event": "subscribe",
+                "data": {"status": "subscribed", "channel": "workflow:test123"},
+            }
+        )
 
     mock_ws.recv = mock_recv
 
@@ -106,6 +108,7 @@ def main():
     except Exception as e:
         print(f"\n✗ TEST FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

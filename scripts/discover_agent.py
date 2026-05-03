@@ -8,44 +8,45 @@ Usage:
     python3 discover_agent.py --list-tags
 """
 
+from collections import defaultdict
 import glob
 import re
 import sys
-from collections import defaultdict
-from typing import List, Dict, Tuple
 
-def parse_agent_file(file_path: str) -> Dict:
+
+def parse_agent_file(file_path: str) -> dict:
     """Parse agent metadata from markdown file."""
-    with open(file_path, 'r') as f:
+    with open(file_path) as f:
         content = f.read()
 
     # Extract frontmatter
-    name = re.search(r'^name:\s*(.+)$', content, re.MULTILINE)
-    desc = re.search(r'^description:\s*(.+?)(?=\nmodel:)', content, re.DOTALL | re.MULTILINE)
-    model = re.search(r'^model:\s*(.+)$', content, re.MULTILINE)
-    color = re.search(r'^color:\s*(.+)$', content, re.MULTILINE)
-    tags = re.search(r'^tags:\s*\n((?:^-\s*.+$\n?)+)', content, re.MULTILINE)
+    name = re.search(r"^name:\s*(.+)$", content, re.MULTILINE)
+    desc = re.search(r"^description:\s*(.+?)(?=\nmodel:)", content, re.DOTALL | re.MULTILINE)
+    model = re.search(r"^model:\s*(.+)$", content, re.MULTILINE)
+    color = re.search(r"^color:\s*(.+)$", content, re.MULTILINE)
+    tags = re.search(r"^tags:\s*\n((?:^-\s*.+$\n?)+)", content, re.MULTILINE)
 
     # Parse tags
     tag_list = []
     if tags:
-        tag_lines = tags.group(1).strip().split('\n')
-        tag_list = [line.strip('- ').strip() for line in tag_lines]
+        tag_lines = tags.group(1).strip().split("\n")
+        tag_list = [line.strip("- ").strip() for line in tag_lines]
 
     return {
-        'name': name.group(1) if name else 'Unknown',
-        'description': desc.group(1).strip() if desc else '',
-        'model': model.group(1) if model else 'unknown',
-        'color': color.group(1) if color else None,
-        'tags': tag_list,
-        'file': file_path.split('/')[-1],
-        'has_proactive': 'PROACTIVELY' in content or 'IMMEDIATELY' in content
+        "name": name.group(1) if name else "Unknown",
+        "description": desc.group(1).strip() if desc else "",
+        "model": model.group(1) if model else "unknown",
+        "color": color.group(1) if color else None,
+        "tags": tag_list,
+        "file": file_path.split("/")[-1],
+        "has_proactive": "PROACTIVELY" in content or "IMMEDIATELY" in content,
     }
 
-def load_all_agents() -> List[Dict]:
+
+def load_all_agents() -> list[dict]:
     """Load all agent metadata."""
     agents = []
-    for file_path in glob.glob('/Users/les/.claude/agents/*.md'):
+    for file_path in glob.glob("/Users/les/.claude/agents/*.md"):
         try:
             agent = parse_agent_file(file_path)
             agents.append(agent)
@@ -53,7 +54,8 @@ def load_all_agents() -> List[Dict]:
             print(f"Error parsing {file_path}: {e}", file=sys.stderr)
     return agents
 
-def search_agents(query: str, agents: List[Dict]) -> List[Tuple[Dict, float]]:
+
+def search_agents(query: str, agents: list[dict]) -> list[tuple[dict, float]]:
     """Search agents by query with relevance scoring."""
     results = []
     query_lower = query.lower()
@@ -63,11 +65,11 @@ def search_agents(query: str, agents: List[Dict]) -> List[Tuple[Dict, float]]:
         score = 0.0
 
         # Name match (highest weight)
-        if query_lower in agent['name'].lower():
+        if query_lower in agent["name"].lower():
             score += 10.0
 
         # Description match
-        desc_lower = agent['description'].lower()
+        desc_lower = agent["description"].lower()
         if query_lower in desc_lower:
             score += 5.0
 
@@ -77,7 +79,7 @@ def search_agents(query: str, agents: List[Dict]) -> List[Tuple[Dict, float]]:
         score += word_matches * 2.0
 
         # Tag matches
-        for tag in agent['tags']:
+        for tag in agent["tags"]:
             if query_lower in tag.lower():
                 score += 3.0
 
@@ -86,36 +88,53 @@ def search_agents(query: str, agents: List[Dict]) -> List[Tuple[Dict, float]]:
 
     return sorted(results, key=lambda x: x[1], reverse=True)
 
-def filter_by_tag(tag: str, agents: List[Dict]) -> List[Dict]:
-    """Filter agents by tag."""
-    return [a for a in agents if tag.lower() in [t.lower() for t in a['tags']]]
 
-def get_all_tags(agents: List[Dict]) -> Dict[str, int]:
+def filter_by_tag(tag: str, agents: list[dict]) -> list[dict]:
+    """Filter agents by tag."""
+    return [a for a in agents if tag.lower() in [t.lower() for t in a["tags"]]]
+
+
+def get_all_tags(agents: list[dict]) -> dict[str, int]:
     """Get all unique tags with counts."""
     tag_counts = defaultdict(int)
     for agent in agents:
-        for tag in agent['tags']:
+        for tag in agent["tags"]:
             tag_counts[tag] += 1
     return dict(sorted(tag_counts.items()))
 
-def print_agent(agent: Dict, score: float = None):
+
+def print_agent(agent: dict, score: float = None):
     """Print agent information."""
     color_emoji = {
-        'red': '🔴', 'orange': '🟠', 'amber': '🟡', 'green': '🟢',
-        'blue': '🔵', 'purple': '🟣', 'cyan': '🩵', 'emerald': '💚',
-        'pink': '🩷', 'teal': '🔷', 'indigo': '🟦', 'violet': '🟪'
+        "red": "🔴",
+        "orange": "🟠",
+        "amber": "🟡",
+        "green": "🟢",
+        "blue": "🔵",
+        "purple": "🟣",
+        "cyan": "🩵",
+        "emerald": "💚",
+        "pink": "🩷",
+        "teal": "🔷",
+        "indigo": "🟦",
+        "violet": "🟪",
     }
 
-    emoji = color_emoji.get(agent['color'], '⚪')
-    model_emoji = {'opus': '💎', 'sonnet': '🎵', 'haiku-4.5': '⚡'}.get(agent['model'], '🤖')
+    emoji = color_emoji.get(agent["color"], "⚪")
+    model_emoji = {"opus": "💎", "sonnet": "🎵", "haiku-4.5": "⚡"}.get(agent["model"], "🤖")
 
     print(f"\n{emoji} {agent['name']}")
     if score:
         print(f"   Relevance: {score:.1f}/10")
     print(f"   Model: {model_emoji} {agent['model']}")
     print(f"   Tags: {', '.join(agent['tags'][:5])}")
-    desc_short = agent['description'][:150] + '...' if len(agent['description']) > 150 else agent['description']
+    desc_short = (
+        agent["description"][:150] + "..."
+        if len(agent["description"]) > 150
+        else agent["description"]
+    )
     print(f"   {desc_short}")
+
 
 def main():
     """Main entry point."""
@@ -129,14 +148,14 @@ def main():
     agents = load_all_agents()
     print(f"Loaded {len(agents)} agents\n")
 
-    if sys.argv[1] == '--list-tags':
+    if sys.argv[1] == "--list-tags":
         tags = get_all_tags(agents)
         print("Available tags:")
         for tag, count in tags.items():
             print(f"  {tag}: {count} agents")
         return
 
-    if sys.argv[1] == '--tag':
+    if sys.argv[1] == "--tag":
         if len(sys.argv) < 3:
             print("Error: --tag requires a tag name")
             sys.exit(1)
@@ -148,7 +167,7 @@ def main():
         return
 
     # Search query
-    query = ' '.join(sys.argv[1:])
+    query = " ".join(sys.argv[1:])
     results = search_agents(query, agents)
 
     if not results:
@@ -170,5 +189,6 @@ def main():
         print(f"\n... and {len(results) - 5} more results")
         print("Refine your search for more specific results")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

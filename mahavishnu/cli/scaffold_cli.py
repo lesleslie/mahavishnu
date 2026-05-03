@@ -128,14 +128,18 @@ def patterns_validate():
     if total_issues == 0:
         typer.echo("All patterns valid.")
     else:
-        typer.echo(f"\n{total_issues} validation errors across {len(lib._cache)} patterns.", err=True)
+        typer.echo(
+            f"\n{total_issues} validation errors across {len(lib._cache)} patterns.", err=True
+        )
         raise typer.Exit(code=1)
 
 
 @patterns_app.command("search")
 def patterns_search(
     query: str = typer.Argument(..., help="Search query"),
-    source_repos: str | None = typer.Option(None, "--source-repos", "-s", help="Filter by source repos"),
+    source_repos: str | None = typer.Option(
+        None, "--source-repos", "-s", help="Filter by source repos"
+    ),
 ):
     """Search patterns by keyword."""
     lib = _get_library()

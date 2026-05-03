@@ -19,7 +19,6 @@ from mahavishnu.core.task_requirements import (
     TaskRequirements,
 )
 
-
 # ============================================================================
 # TaskRequirements Tests
 # ============================================================================
@@ -65,9 +64,7 @@ class TestTaskRequirementsCreation:
             TaskRequirements(task_type="workflow", required_capabilities=[])
 
     def test_default_preferred_capabilities(self):
-        req = TaskRequirements(
-            task_type="test", required_capabilities=["a"]
-        )
+        req = TaskRequirements(task_type="test", required_capabilities=["a"])
         assert req.preferred_capabilities == []
 
 
@@ -208,8 +205,9 @@ class TestTaskCapabilityRequirements:
     """Test TASK_CAPABILITY_REQUIREMENTS mapping."""
 
     def test_workflow_has_requirements(self):
-        assert "WORKFLOW" in TASK_CAPABILITY_REQUIREMENTS or \
-               any(t.value == "workflow" for t in TASK_CAPABILITY_REQUIREMENTS)
+        assert "WORKFLOW" in TASK_CAPABILITY_REQUIREMENTS or any(
+            t.value == "workflow" for t in TASK_CAPABILITY_REQUIREMENTS
+        )
 
     def test_ai_task_has_requirements(self):
         assert any(
@@ -313,8 +311,10 @@ class TestResolutionCache:
     def test_size_tracks_entries(self):
         cache = ResolutionCache()
         decision = RoutingDecision(
-            adapter_name="t", adapter=None,
-            matched_capabilities=[], resolution_time_ms=1.0,
+            adapter_name="t",
+            adapter=None,
+            matched_capabilities=[],
+            resolution_time_ms=1.0,
         )
         assert cache.size == 0
         cache.set("k1", decision)
@@ -325,8 +325,10 @@ class TestResolutionCache:
     def test_invalidate_specific_key(self):
         cache = ResolutionCache()
         decision = RoutingDecision(
-            adapter_name="t", adapter=None,
-            matched_capabilities=[], resolution_time_ms=1.0,
+            adapter_name="t",
+            adapter=None,
+            matched_capabilities=[],
+            resolution_time_ms=1.0,
         )
         cache.set("k1", decision)
         cache.set("k2", decision)
@@ -337,8 +339,10 @@ class TestResolutionCache:
     def test_invalidate_all(self):
         cache = ResolutionCache()
         decision = RoutingDecision(
-            adapter_name="t", adapter=None,
-            matched_capabilities=[], resolution_time_ms=1.0,
+            adapter_name="t",
+            adapter=None,
+            matched_capabilities=[],
+            resolution_time_ms=1.0,
         )
         cache.set("k1", decision)
         cache.set("k2", decision)
@@ -348,8 +352,10 @@ class TestResolutionCache:
     def test_ttl_expiration(self):
         cache = ResolutionCache(ttl_seconds=1)
         decision = RoutingDecision(
-            adapter_name="t", adapter=None,
-            matched_capabilities=[], resolution_time_ms=1.0,
+            adapter_name="t",
+            adapter=None,
+            matched_capabilities=[],
+            resolution_time_ms=1.0,
         )
         cache.set("key1", decision)
         assert cache.get("key1") is not None
@@ -359,12 +365,16 @@ class TestResolutionCache:
     def test_overwrite_existing_key(self):
         cache = ResolutionCache()
         d1 = RoutingDecision(
-            adapter_name="first", adapter=None,
-            matched_capabilities=[], resolution_time_ms=1.0,
+            adapter_name="first",
+            adapter=None,
+            matched_capabilities=[],
+            resolution_time_ms=1.0,
         )
         d2 = RoutingDecision(
-            adapter_name="second", adapter=None,
-            matched_capabilities=[], resolution_time_ms=2.0,
+            adapter_name="second",
+            adapter=None,
+            matched_capabilities=[],
+            resolution_time_ms=2.0,
         )
         cache.set("key1", d1)
         cache.set("key1", d2)
@@ -374,8 +384,10 @@ class TestResolutionCache:
     def test_hit_miss_stats(self):
         cache = ResolutionCache()
         decision = RoutingDecision(
-            adapter_name="t", adapter=None,
-            matched_capabilities=[], resolution_time_ms=1.0,
+            adapter_name="t",
+            adapter=None,
+            matched_capabilities=[],
+            resolution_time_ms=1.0,
         )
         cache.set("k1", decision)
         cache.get("k1")  # hit
@@ -388,8 +400,10 @@ class TestResolutionCache:
     def test_hit_rate_calculation(self):
         cache = ResolutionCache()
         decision = RoutingDecision(
-            adapter_name="t", adapter=None,
-            matched_capabilities=[], resolution_time_ms=1.0,
+            adapter_name="t",
+            adapter=None,
+            matched_capabilities=[],
+            resolution_time_ms=1.0,
         )
         cache.set("k1", decision)
         cache.get("k1")  # hit
@@ -407,8 +421,10 @@ class TestResolutionCache:
     def test_reset_stats(self):
         cache = ResolutionCache()
         decision = RoutingDecision(
-            adapter_name="t", adapter=None,
-            matched_capabilities=[], resolution_time_ms=1.0,
+            adapter_name="t",
+            adapter=None,
+            matched_capabilities=[],
+            resolution_time_ms=1.0,
         )
         cache.set("k1", decision)
         cache.get("k1")
@@ -422,8 +438,10 @@ class TestResolutionCache:
         """Cache should be thread-safe."""
         cache = ResolutionCache()
         decision = RoutingDecision(
-            adapter_name="t", adapter=None,
-            matched_capabilities=[], resolution_time_ms=1.0,
+            adapter_name="t",
+            adapter=None,
+            matched_capabilities=[],
+            resolution_time_ms=1.0,
         )
         errors = []
 
@@ -457,8 +475,10 @@ class TestResolutionCache:
     def test_stats_include_ages(self):
         cache = ResolutionCache()
         decision = RoutingDecision(
-            adapter_name="t", adapter=None,
-            matched_capabilities=[], resolution_time_ms=1.0,
+            adapter_name="t",
+            adapter=None,
+            matched_capabilities=[],
+            resolution_time_ms=1.0,
         )
         cache.set("k1", decision)
         time.sleep(0.1)

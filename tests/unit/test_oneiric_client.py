@@ -120,7 +120,7 @@ class TestParseDatetime:
         assert _parse_datetime(dt) is dt
 
     def test_int_timestamp(self) -> None:
-        from datetime import UTC, datetime
+        from datetime import UTC
 
         from mahavishnu.core.oneiric_client import _parse_datetime
 
@@ -175,9 +175,10 @@ class TestParseDatetime:
 
 class TestDharaClientHelpers:
     def test_get_dhara_client_caches(self) -> None:
-        import mahavishnu.core.oneiric_client as mod
-        from types import SimpleNamespace, ModuleType
+        from types import ModuleType, SimpleNamespace
         from unittest.mock import MagicMock, patch
+
+        import mahavishnu.core.oneiric_client as mod
 
         fake_client = SimpleNamespace(base_url="http://example.com/mcp")
         mock_dhara = MagicMock(return_value=fake_client)
@@ -194,9 +195,10 @@ class TestDharaClientHelpers:
             mock_dhara.assert_called_once_with(base_url="http://example.com/mcp", token=None)
 
     def test_get_dhara_client_default_url(self) -> None:
-        import mahavishnu.core.oneiric_client as mod
-        from types import SimpleNamespace, ModuleType
+        from types import ModuleType, SimpleNamespace
         from unittest.mock import MagicMock, patch
+
+        import mahavishnu.core.oneiric_client as mod
 
         fake_client = SimpleNamespace(base_url="http://default:8683/mcp")
         mock_dhara = MagicMock(return_value=fake_client)
@@ -212,9 +214,10 @@ class TestDharaClientHelpers:
             assert c.base_url == "http://default:8683/mcp"
 
     def test_get_dhara_client_with_token(self) -> None:
-        import mahavishnu.core.oneiric_client as mod
-        from types import SimpleNamespace, ModuleType
+        from types import ModuleType, SimpleNamespace
         from unittest.mock import MagicMock, patch
+
+        import mahavishnu.core.oneiric_client as mod
 
         fake_client = SimpleNamespace(base_url="http://example.com/mcp")
         mock_dhara = MagicMock(return_value=fake_client)
@@ -226,9 +229,7 @@ class TestDharaClientHelpers:
             patch.dict("sys.modules", {"mahavishnu.core.dhara_adapter": mock_module}),
         ):
             mod.get_dhara_client("http://example.com/mcp", token="secret")
-            mock_dhara.assert_called_once_with(
-                base_url="http://example.com/mcp", token="secret"
-            )
+            mock_dhara.assert_called_once_with(base_url="http://example.com/mcp", token="secret")
 
     def test_set_dhara_client_base_url(self) -> None:
         import mahavishnu.core.oneiric_client as mod
@@ -286,19 +287,21 @@ class TestAdapterEntryFromDhara:
     def test_full_dict(self) -> None:
         from mahavishnu.core.oneiric_client import AdapterEntry
 
-        entry = AdapterEntry.from_dhara({
-            "adapter_id": "a:b:c",
-            "domain": "adapter",
-            "key": "cache",
-            "provider": "redis",
-            "capabilities": ["read", "write"],
-            "factory_path": "mymod.RedisFactory",
-            "health_check_url": "http://localhost/health",
-            "metadata": {"category": "cache", "project": "myproj"},
-            "created_at": "2026-04-24T12:00:00Z",
-            "last_heartbeat": 1700000000,
-            "health_status": "healthy",
-        })
+        entry = AdapterEntry.from_dhara(
+            {
+                "adapter_id": "a:b:c",
+                "domain": "adapter",
+                "key": "cache",
+                "provider": "redis",
+                "capabilities": ["read", "write"],
+                "factory_path": "mymod.RedisFactory",
+                "health_check_url": "http://localhost/health",
+                "metadata": {"category": "cache", "project": "myproj"},
+                "created_at": "2026-04-24T12:00:00Z",
+                "last_heartbeat": 1700000000,
+                "health_status": "healthy",
+            }
+        )
         assert entry.adapter_id == "a:b:c"
         assert entry.category == "cache"
         assert entry.project == "myproj"
@@ -309,19 +312,23 @@ class TestAdapterEntryFromDhara:
     def test_metadata_category_fallback(self) -> None:
         from mahavishnu.core.oneiric_client import AdapterEntry
 
-        entry = AdapterEntry.from_dhara({
-            "metadata": {"category": "storage"},
-        })
+        entry = AdapterEntry.from_dhara(
+            {
+                "metadata": {"category": "storage"},
+            }
+        )
         assert entry.category == "storage"
 
     def test_adapter_id_generated_from_parts(self) -> None:
         from mahavishnu.core.oneiric_client import AdapterEntry
 
-        entry = AdapterEntry.from_dhara({
-            "domain": "service",
-            "key": "email",
-            "provider": "smtp",
-        })
+        entry = AdapterEntry.from_dhara(
+            {
+                "domain": "service",
+                "key": "email",
+                "provider": "smtp",
+            }
+        )
         assert entry.adapter_id == "service:email:smtp"
 
 
@@ -398,26 +405,38 @@ class _ErrorPayloadClient:
 
 class TestClientDisabledPaths:
     async def test_list_adapters_disabled(self) -> None:
-        from mahavishnu.core.oneiric_client import DharaAdapterRegistryClient, DharaAdapterRegistryConfig
+        from mahavishnu.core.oneiric_client import (
+            DharaAdapterRegistryClient,
+            DharaAdapterRegistryConfig,
+        )
 
         client = DharaAdapterRegistryClient(DharaAdapterRegistryConfig(enabled=False))
         result = await client.list_adapters()
         assert result == []
 
     async def test_get_adapter_disabled(self) -> None:
-        from mahavishnu.core.oneiric_client import DharaAdapterRegistryClient, DharaAdapterRegistryConfig
+        from mahavishnu.core.oneiric_client import (
+            DharaAdapterRegistryClient,
+            DharaAdapterRegistryConfig,
+        )
 
         client = DharaAdapterRegistryClient(DharaAdapterRegistryConfig(enabled=False))
         assert await client.get_adapter("a:b:c") is None
 
     async def test_check_health_disabled(self) -> None:
-        from mahavishnu.core.oneiric_client import DharaAdapterRegistryClient, DharaAdapterRegistryConfig
+        from mahavishnu.core.oneiric_client import (
+            DharaAdapterRegistryClient,
+            DharaAdapterRegistryConfig,
+        )
 
         client = DharaAdapterRegistryClient(DharaAdapterRegistryConfig(enabled=False))
         assert await client.check_adapter_health("a:b:c") is False
 
     async def test_health_check_disabled(self) -> None:
-        from mahavishnu.core.oneiric_client import DharaAdapterRegistryClient, DharaAdapterRegistryConfig
+        from mahavishnu.core.oneiric_client import (
+            DharaAdapterRegistryClient,
+            DharaAdapterRegistryConfig,
+        )
 
         client = DharaAdapterRegistryClient(DharaAdapterRegistryConfig(enabled=False))
         result = await client.health_check()
@@ -425,7 +444,10 @@ class TestClientDisabledPaths:
         assert result["connected"] is False
 
     async def test_call_tool_disabled_raises(self) -> None:
-        from mahavishnu.core.oneiric_client import DharaAdapterRegistryClient, DharaAdapterRegistryConfig
+        from mahavishnu.core.oneiric_client import (
+            DharaAdapterRegistryClient,
+            DharaAdapterRegistryConfig,
+        )
 
         client = DharaAdapterRegistryClient(DharaAdapterRegistryConfig(enabled=False))
         with pytest.raises(ConnectionError, match="disabled"):

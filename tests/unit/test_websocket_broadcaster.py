@@ -5,13 +5,11 @@ Tests WebSocketBroadcaster functionality with mocked WebSocket server.
 
 from __future__ import annotations
 
-from collections import deque
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from mahavishnu.pools.websocket import WebSocketBroadcaster, create_broadcaster
-
 
 # =============================================================================
 # Test Fixtures
@@ -143,7 +141,10 @@ class TestPoolLifecycleEvents:
     """Test pool lifecycle event broadcasting."""
 
     async def test_broadcast_pool_spawned(
-        self, broadcaster: WebSocketBroadcaster, mock_websocket_server: MagicMock, sample_pool_config: dict
+        self,
+        broadcaster: WebSocketBroadcaster,
+        mock_websocket_server: MagicMock,
+        sample_pool_config: dict,
     ):
         """Test broadcasting pool spawned event."""
         # Act
@@ -166,7 +167,9 @@ class TestPoolLifecycleEvents:
         assert event["data"]["config"] == sample_pool_config
         assert "timestamp" in event["data"]
 
-    async def test_broadcast_pool_scaled(self, broadcaster: WebSocketBroadcaster, mock_websocket_server: MagicMock):
+    async def test_broadcast_pool_scaled(
+        self, broadcaster: WebSocketBroadcaster, mock_websocket_server: MagicMock
+    ):
         """Test broadcasting pool scaled event."""
         # Act
         result = await broadcaster.broadcast_pool_scaled("pool_abc", 5)
@@ -226,7 +229,9 @@ class TestPoolLifecycleEvents:
 
         assert event["data"]["status"] == status
 
-    async def test_broadcast_pool_closed(self, broadcaster: WebSocketBroadcaster, mock_websocket_server: MagicMock):
+    async def test_broadcast_pool_closed(
+        self, broadcaster: WebSocketBroadcaster, mock_websocket_server: MagicMock
+    ):
         """Test broadcasting pool closed event."""
         # Act
         result = await broadcaster.broadcast_pool_closed("pool_abc")
@@ -339,7 +344,10 @@ class TestTaskEvents:
         assert event["data"]["task"] == sample_task
 
     async def test_broadcast_task_completed(
-        self, broadcaster: WebSocketBroadcaster, mock_websocket_server: MagicMock, sample_result: dict
+        self,
+        broadcaster: WebSocketBroadcaster,
+        mock_websocket_server: MagicMock,
+        sample_result: dict,
     ):
         """Test broadcasting task completed event."""
         # Act

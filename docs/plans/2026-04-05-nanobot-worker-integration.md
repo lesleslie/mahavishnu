@@ -17,6 +17,7 @@ persistent sessions + memory + MCP tools in a single stateful worker — not jus
 LLM calls like `CloudWorker`.
 
 **What is already complete (Phase B1–B6):**
+
 - `IN_PROCESS` worker category in `mahavishnu/workers/registry.py`
 - `in-process-nanobot` and `in-process-nanobot-loop` registered in `WORKER_REGISTRY`
 - `mahavishnu/workers/nanobot_worker.py` — full `NanobotWorker` class
@@ -26,24 +27,27 @@ LLM calls like `CloudWorker`.
 
 **What remains (Phase B completion):**
 
----
+______________________________________________________________________
 
 ## Task 1: Add `nanobot` dependency
 
 **File:** `pyproject.toml`
 
 The comment at line 102 exists but no actual dep line. Add:
+
 ```toml
 "nanobot>=0.1.4",
 ```
+
 under the in-process workers comment. Then install into the main venv.
 
 **Verify:**
+
 ```bash
 python -c "import nanobot; print(nanobot.__version__)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Fix provider init to use ZAI (not ANTHROPIC_AUTH_TOKEN)
 
@@ -53,6 +57,7 @@ The current implementation reads `ANTHROPIC_AUTH_TOKEN` but nanobot in this ecos
 uses the ZAI GLM API (`ZAI_API_KEY`, `https://api.z.ai/api/coding/paas/v4`).
 
 Replace the env var logic:
+
 ```python
 auth_token = os.environ.get("ZAI_API_KEY")
 base_url = os.environ.get(
@@ -73,13 +78,14 @@ return provider
 Remove the gateway_api_base / BIFROST_BASE_URL / ANTHROPIC_BASE_URL logic — that was
 the wrong provider family.
 
----
+______________________________________________________________________
 
 ## Task 3: Write unit tests
 
 **New file:** `tests/unit/workers/test_nanobot_worker.py`
 
 Tests to cover:
+
 - `NanobotWorker` constructs without error (provider=None)
 - `initialize()` raises `RuntimeError` when provider is None
 - `execute()` calls provider and returns result (provider mocked)
@@ -87,7 +93,7 @@ Tests to cover:
 - Loop mode (`in-process-nanobot-loop`) constructs correctly
 - `_init_nanobot_provider()` returns None when `ZAI_API_KEY` not set
 
----
+______________________________________________________________________
 
 ## Verification
 

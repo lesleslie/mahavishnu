@@ -22,18 +22,19 @@ Usage:
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
-from typing import Any
+from datetime import UTC, datetime
+from enum import StrEnum
+import logging
+from typing import TYPE_CHECKING, Any
 
-from mahavishnu.core.task_store import TaskStore
+if TYPE_CHECKING:
+    from mahavishnu.core.task_store import TaskStore
 
 logger = logging.getLogger(__name__)
 
 
-class CheckSeverity(str, Enum):
+class CheckSeverity(StrEnum):
     """Severity level for quality checks."""
 
     REQUIRED = "required"  # Must pass for gate to pass
@@ -41,7 +42,7 @@ class CheckSeverity(str, Enum):
     OPTIONAL = "optional"  # Informational only
 
 
-class CheckType(str, Enum):
+class CheckType(StrEnum):
     """Types of quality checks."""
 
     LINT = "lint"
@@ -312,7 +313,7 @@ class QualityGateManager:
                 check_type=rule.check_type,
                 passed=True,
                 score=100.0,
-                message=f"Check skipped (no Crackerjack client)",
+                message="Check skipped (no Crackerjack client)",
                 severity=rule.severity,
             )
 

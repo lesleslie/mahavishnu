@@ -22,14 +22,13 @@ Example:
 from __future__ import annotations
 
 import asyncio
-import ipaddress
-import socket
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
-from fnmatch import fnmatch
 from functools import lru_cache
+import ipaddress
 from pathlib import Path
+import socket
 from typing import Any
 import urllib.parse
 
@@ -37,8 +36,7 @@ import httpx
 import structlog
 
 from ..core.embeddings import EmbeddingProvider, EmbeddingService, get_embedding_service
-from ..core.observability import observe, span
-
+from ..core.observability import observe
 
 # SSRF protection: blocked IP ranges
 BLOCKED_IP_RANGES = [
@@ -222,9 +220,7 @@ class ContentIngester:
             # Create HTTP clients for MCP servers
             timeout = httpx.Timeout(30.0, connect=10.0)
             if self._akosha_client is None:
-                self._akosha_client = httpx.AsyncClient(
-                    base_url=self._akosha_url, timeout=timeout
-                )
+                self._akosha_client = httpx.AsyncClient(base_url=self._akosha_url, timeout=timeout)
             if self._crackerjack_client is None:
                 self._crackerjack_client = httpx.AsyncClient(
                     base_url=self._crackerjack_url, timeout=timeout
@@ -378,7 +374,7 @@ class ContentIngester:
             addr_info = socket.getaddrinfo(
                 hostname, parsed.port or (443 if parsed.scheme == "https" else 80)
             )
-            for family, _, _, _, sockaddr in addr_info:
+            for _family, _, _, _, sockaddr in addr_info:
                 ip_str = sockaddr[0]
                 try:
                     ip = ipaddress.ip_address(ip_str)
@@ -903,7 +899,7 @@ class ContentIngester:
 
         # Convert exceptions to failed results
         final_results = []
-        for url, result in zip(urls, results):
+        for url, result in zip(urls, results, strict=False):
             if isinstance(result, Exception):
                 final_results.append(
                     IngestionResult(

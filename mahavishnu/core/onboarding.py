@@ -9,18 +9,21 @@ Provides an interactive tutorial for new users:
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
-from typing import Any, Callable
+from datetime import UTC, datetime
+from enum import StrEnum
+import logging
+from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
 
-class OnboardingStep(str, Enum):
+class OnboardingStep(StrEnum):
     """Onboarding steps in order."""
 
     WELCOME = "welcome"
@@ -31,7 +34,7 @@ class OnboardingStep(str, Enum):
     COMPLETE = "complete"
 
 
-class OnboardingStatus(str, Enum):
+class OnboardingStatus(StrEnum):
     """Status of onboarding process."""
 
     NOT_STARTED = "not_started"

@@ -1,7 +1,7 @@
 """Export skill graphs to various formats."""
 
 import json
-from typing import Dict, Any
+from typing import Any
 
 from .graph import SkillGraph
 
@@ -24,7 +24,9 @@ def export_mermaid(graph: SkillGraph, direction: str = "TD") -> str:
         label = skill_name.replace("-", " ").title()
         color = _get_mermaid_color(skill.system)
         lines.append(f'  {skill_name.replace("-", "_")}["{label}"]')
-        lines.append(f'  style {skill_name.replace("-", "_")} fill:{color},stroke:#333,stroke-width:2px')
+        lines.append(
+            f"  style {skill_name.replace('-', '_')} fill:{color},stroke:#333,stroke-width:2px"
+        )
 
     # Add edges
     for source, target, data in graph.graph.edges(data=True):
@@ -32,7 +34,7 @@ def export_mermaid(graph: SkillGraph, direction: str = "TD") -> str:
         style = _get_mermaid_edge_style(rel_type)
         source_id = source.replace("-", "_")
         target_id = target.replace("-", "_")
-        lines.append(f'  {source_id} {style} {target_id}')
+        lines.append(f"  {source_id} {style} {target_id}")
 
     return "\n".join(lines)
 
@@ -47,18 +49,15 @@ def export_graphviz(graph: SkillGraph) -> str:
     Returns:
         Graphviz DOT string
     """
-    lines = [
-        "digraph SkillGraph {",
-        "  rankdir=TD;",
-        "  node [shape=box, style=rounded];",
-        ""
-    ]
+    lines = ["digraph SkillGraph {", "  rankdir=TD;", "  node [shape=box, style=rounded];", ""]
 
     # Add nodes
     for skill_name, skill in graph.skills.items():
         label = skill_name.replace("-", " ").title()
         color = _get_graphviz_color(skill.system)
-        lines.append(f'  "{skill_name}" [label="{label}", fillcolor="{color}", style="filled,rounded"];')
+        lines.append(
+            f'  "{skill_name}" [label="{label}", fillcolor="{color}", style="filled,rounded"];'
+        )
 
     # Add edges
     for source, target, data in graph.graph.edges(data=True):
@@ -81,36 +80,39 @@ def export_json(graph: SkillGraph, indent: int = 2) -> str:
     Returns:
         JSON string
     """
-    data = {
-        "nodes": [],
-        "edges": []
-    }
+    data = {"nodes": [], "edges": []}
 
     # Add nodes
     for skill_name, skill in graph.skills.items():
-        data["nodes"].append({
-            "id": skill_name,
-            "label": skill_name,
-            "system": skill.system,
-            "description": skill.description[:100] + "..." if len(skill.description) > 100 else skill.description,
-            "keywords": skill.keywords[:5],
-            "color": _get_hex_color(skill.system),
-            "related_count": len(skill.related_skills),
-            "referenced_by_count": len(skill.referenced_by)
-        })
+        data["nodes"].append(
+            {
+                "id": skill_name,
+                "label": skill_name,
+                "system": skill.system,
+                "description": skill.description[:100] + "..."
+                if len(skill.description) > 100
+                else skill.description,
+                "keywords": skill.keywords[:5],
+                "color": _get_hex_color(skill.system),
+                "related_count": len(skill.related_skills),
+                "referenced_by_count": len(skill.referenced_by),
+            }
+        )
 
     # Add edges
     for source, target, edge_data in graph.graph.edges(data=True):
-        data["edges"].append({
-            "source": source,
-            "target": target,
-            "relationship_type": edge_data.get("relationship_type", "RELATED")
-        })
+        data["edges"].append(
+            {
+                "source": source,
+                "target": target,
+                "relationship_type": edge_data.get("relationship_type", "RELATED"),
+            }
+        )
 
     return json.dumps(data, indent=indent)
 
 
-def export_cytoscape(graph: SkillGraph) -> Dict[str, Any]:
+def export_cytoscape(graph: SkillGraph) -> dict[str, Any]:
     """
     Export skill graph as Cytoscape.js JSON format.
 
@@ -124,27 +126,31 @@ def export_cytoscape(graph: SkillGraph) -> Dict[str, Any]:
 
     # Add nodes
     for skill_name, skill in graph.skills.items():
-        elements["nodes"].append({
-            "data": {
-                "id": skill_name,
-                "label": skill_name,
-                "system": skill.system,
-                "description": skill.description[:100],
-                "keywords": ", ".join(skill.keywords[:5]),
-                "color": _get_hex_color(skill.system)
+        elements["nodes"].append(
+            {
+                "data": {
+                    "id": skill_name,
+                    "label": skill_name,
+                    "system": skill.system,
+                    "description": skill.description[:100],
+                    "keywords": ", ".join(skill.keywords[:5]),
+                    "color": _get_hex_color(skill.system),
+                }
             }
-        })
+        )
 
     # Add edges
     for source, target, data in graph.graph.edges(data=True):
-        elements["edges"].append({
-            "data": {
-                "id": f"{source}-{target}",
-                "source": source,
-                "target": target,
-                "label": data.get("relationship_type", "RELATED")
+        elements["edges"].append(
+            {
+                "data": {
+                    "id": f"{source}-{target}",
+                    "source": source,
+                    "target": target,
+                    "label": data.get("relationship_type", "RELATED"),
+                }
             }
-        })
+        )
 
     return elements
 

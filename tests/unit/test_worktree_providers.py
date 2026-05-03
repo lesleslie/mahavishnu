@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-import sys
 from pathlib import Path
 from types import ModuleType
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -20,7 +18,6 @@ from mahavishnu.core.worktree_providers.errors import (
 from mahavishnu.core.worktree_providers.session_buddy import (
     SessionBuddyWorktreeProvider,
 )
-
 
 # ---------------------------------------------------------------------------
 # SessionBuddyWorktreeProvider
@@ -123,9 +120,7 @@ class TestSessionBuddyCreateWorktree:
         provider = SessionBuddyWorktreeProvider()
         mock_client = AsyncMock()
         provider._mcp_client = mock_client
-        mock_client.call_tool = AsyncMock(
-            side_effect=WorktreeCreationError("already exists")
-        )
+        mock_client.call_tool = AsyncMock(side_effect=WorktreeCreationError("already exists"))
 
         with pytest.raises(WorktreeCreationError):
             await provider.create_worktree(Path("/repo"), "main", Path("/wt"))
@@ -165,9 +160,7 @@ class TestSessionBuddyRemoveWorktree:
         provider = SessionBuddyWorktreeProvider()
         mock_client = AsyncMock()
         provider._mcp_client = mock_client
-        mock_client.call_tool = AsyncMock(
-            side_effect=WorktreeRemovalError("locked")
-        )
+        mock_client.call_tool = AsyncMock(side_effect=WorktreeRemovalError("locked"))
 
         with pytest.raises(WorktreeRemovalError):
             await provider.remove_worktree(Path("/repo"), Path("/wt"))
@@ -205,9 +198,7 @@ class TestSessionBuddyListWorktrees:
         provider = SessionBuddyWorktreeProvider()
         mock_client = AsyncMock()
         provider._mcp_client = mock_client
-        mock_client.call_tool = AsyncMock(
-            side_effect=WorktreeValidationError("invalid")
-        )
+        mock_client.call_tool = AsyncMock(side_effect=WorktreeValidationError("invalid"))
 
         with pytest.raises(WorktreeValidationError):
             await provider.list_worktrees(Path("/repo"))
@@ -246,9 +237,7 @@ class TestSessionBuddyHealthCheck:
             assert provider.health_check() is False
 
     def test_custom_port(self):
-        provider = SessionBuddyWorktreeProvider(
-            session_buddy_url="http://example.com:9999/mcp"
-        )
+        provider = SessionBuddyWorktreeProvider(session_buddy_url="http://example.com:9999/mcp")
         mock_socket = MagicMock()
         mock_socket.connect_ex.return_value = 0
 
@@ -381,10 +370,7 @@ class TestDirectGitRemoveWorktree:
 class TestDirectGitListWorktrees:
     async def test_success(self):
         provider = DirectGitWorktreeProvider()
-        output = (
-            b"/repo/main main abc123 ok\n"
-            b"/repo/feature feature def456 ok\n"
-        )
+        output = b"/repo/main main abc123 ok\n/repo/feature feature def456 ok\n"
         process = _make_process(stdout=output)
 
         with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)):

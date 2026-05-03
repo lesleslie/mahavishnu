@@ -62,6 +62,7 @@ class TestQualityFix:
 class TestAddQualityCommands:
     def test_registers_with_parent(self):
         import typer
+
         parent = typer.Typer()
         add_quality_commands(parent)
         # The subcommand should be registered under "quality"

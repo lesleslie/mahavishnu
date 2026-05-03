@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
-from dataclasses import dataclass
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
 from mahavishnu.core.status import WorkerStatus
-from mahavishnu.workers.base import BaseWorker, WorkerResult
+from mahavishnu.workers.base import BaseWorker
 from mahavishnu.workers.openclaw_gateway import (
     HTTPOpenClawGatewayClient,
     OpenClawGatewayClient,
@@ -485,9 +482,11 @@ class TestOpenClawGatewayWorker:
     async def test_execute_timeout(self):
         client = AsyncMock(spec=OpenClawGatewayClient)
         client.health.return_value = {"healthy": True}
-        client.call.side_effect = asyncio.TimeoutError()
+        client.call.side_effect = TimeoutError()
 
-        worker = self._make_worker(gateway_client=client, config=OpenClawGatewayConfig(default_timeout=1))
+        worker = self._make_worker(
+            gateway_client=client, config=OpenClawGatewayConfig(default_timeout=1)
+        )
 
         with patch("asyncio.get_event_loop") as mock_loop:
             mock_loop.return_value.time.return_value = 0.0
@@ -543,10 +542,12 @@ class TestOpenClawGatewayWorker:
             mock_loop.return_value.time.return_value = 0.0
             await worker.start()
 
-        result = await worker.execute({
-            "session_id": "sess-42",
-            "agent_id": "agent-7",
-        })
+        result = await worker.execute(
+            {
+                "session_id": "sess-42",
+                "agent_id": "agent-7",
+            }
+        )
         assert result.metadata["session_id"] == "sess-42"
         assert result.metadata["agent_id"] == "agent-7"
         assert result.metadata["gateway_url"] == "http://localhost:8787"
@@ -556,9 +557,7 @@ class TestOpenClawGatewayWorkerNormalizeTask:
     """Test OpenClawGatewayWorker._normalize_task."""
 
     def test_normalize_with_method_and_params(self):
-        worker = OpenClawGatewayWorker(
-            gateway_client=AsyncMock(spec=OpenClawGatewayClient)
-        )
+        worker = OpenClawGatewayWorker(gateway_client=AsyncMock(spec=OpenClawGatewayClient))
         task = {"method": "task.run", "params": {"key": "val"}}
         req = worker._normalize_task(task)
         assert req.method == "task.run"
@@ -573,26 +572,22 @@ class TestOpenClawGatewayWorkerNormalizeTask:
         assert req.method == "default.run"
 
     def test_normalize_includes_prompt_in_params(self):
-        worker = OpenClawGatewayWorker(
-            gateway_client=AsyncMock(spec=OpenClawGatewayClient)
-        )
+        worker = OpenClawGatewayWorker(gateway_client=AsyncMock(spec=OpenClawGatewayClient))
         req = worker._normalize_task({"prompt": "hello world"})
         assert req.params["prompt"] == "hello world"
 
     def test_normalize_prompt_does_not_override_existing(self):
-        worker = OpenClawGatewayWorker(
-            gateway_client=AsyncMock(spec=OpenClawGatewayClient)
+        worker = OpenClawGatewayWorker(gateway_client=AsyncMock(spec=OpenClawGatewayClient))
+        req = worker._normalize_task(
+            {
+                "prompt": "new",
+                "params": {"prompt": "original"},
+            }
         )
-        req = worker._normalize_task({
-            "prompt": "new",
-            "params": {"prompt": "original"},
-        })
         assert req.params["prompt"] == "original"
 
     def test_normalize_timeout_from_task(self):
-        worker = OpenClawGatewayWorker(
-            gateway_client=AsyncMock(spec=OpenClawGatewayClient)
-        )
+        worker = OpenClawGatewayWorker(gateway_client=AsyncMock(spec=OpenClawGatewayClient))
         req = worker._normalize_task({"timeout": 60})
         assert req.timeout_seconds == 60
 
@@ -605,20 +600,18 @@ class TestOpenClawGatewayWorkerNormalizeTask:
         assert req.timeout_seconds == 180
 
     def test_normalize_session_and_agent_ids(self):
-        worker = OpenClawGatewayWorker(
-            gateway_client=AsyncMock(spec=OpenClawGatewayClient)
+        worker = OpenClawGatewayWorker(gateway_client=AsyncMock(spec=OpenClawGatewayClient))
+        req = worker._normalize_task(
+            {
+                "session_id": "s1",
+                "agent_id": "a1",
+            }
         )
-        req = worker._normalize_task({
-            "session_id": "s1",
-            "agent_id": "a1",
-        })
         assert req.session_id == "s1"
         assert req.agent_id == "a1"
 
     def test_normalize_does_not_mutate_input_params(self):
-        worker = OpenClawGatewayWorker(
-            gateway_client=AsyncMock(spec=OpenClawGatewayClient)
-        )
+        worker = OpenClawGatewayWorker(gateway_client=AsyncMock(spec=OpenClawGatewayClient))
         original = {"params": {"key": "val"}}
         worker._normalize_task(original)
         assert "prompt" not in original["params"]
@@ -644,12 +637,14 @@ class TestOpenClawGatewayWorkerExtractOutput:
         assert result == "hello"
 
     def test_output_key_has_priority(self):
-        result = OpenClawGatewayWorker._extract_output({
-            "output": "first",
-            "result": "second",
-            "message": "third",
-            "text": "fourth",
-        })
+        result = OpenClawGatewayWorker._extract_output(
+            {
+                "output": "first",
+                "result": "second",
+                "message": "third",
+                "text": "fourth",
+            }
+        )
         assert result == "first"
 
     def test_non_string_value_is_stringified(self):
@@ -657,11 +652,13 @@ class TestOpenClawGatewayWorkerExtractOutput:
         assert result == "42"
 
     def test_none_values_are_skipped(self):
-        result = OpenClawGatewayWorker._extract_output({
-            "output": None,
-            "result": None,
-            "message": None,
-        })
+        result = OpenClawGatewayWorker._extract_output(
+            {
+                "output": None,
+                "result": None,
+                "message": None,
+            }
+        )
         assert result == str({"output": None, "result": None, "message": None})
 
     def test_empty_dict_falls_through_to_str(self):
@@ -682,9 +679,7 @@ class TestOpenClawGatewayWorkerDuration:
         return OpenClawGatewayWorker(gateway_client=client, config=config)
 
     def test_duration_is_zero_before_start(self):
-        worker = OpenClawGatewayWorker(
-            gateway_client=AsyncMock(spec=OpenClawGatewayClient)
-        )
+        worker = OpenClawGatewayWorker(gateway_client=AsyncMock(spec=OpenClawGatewayClient))
         assert worker._duration() == 0.0
 
     @pytest.mark.asyncio

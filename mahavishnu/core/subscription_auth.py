@@ -178,9 +178,9 @@ class MultiAuthHandler:
         subscription_algorithm = getattr(subscription_config, "algorithm", None) or getattr(
             config, "subscription_auth_algorithm", "HS256"
         )
-        subscription_expire_minutes = getattr(subscription_config, "expire_minutes", None) or getattr(
-            config, "subscription_auth_expire_minutes", 60
-        )
+        subscription_expire_minutes = getattr(
+            subscription_config, "expire_minutes", None
+        ) or getattr(config, "subscription_auth_expire_minutes", 60)
 
         if subscription_enabled and subscription_secret:
             self.subscription_auth = SubscriptionAuth(

@@ -1,11 +1,11 @@
 # Nanobot v0.1.5 Hook Architecture Review
 
-**Date:** 2026-04-07  
-**Version:** nanobot-ai 0.1.5  
-**Goal:** Evaluate hook injection points for Session-Buddy integration  
+**Date:** 2026-04-07
+**Version:** nanobot-ai 0.1.5
+**Goal:** Evaluate hook injection points for Session-Buddy integration
 **Reviewer:** Subagent (automated code review)
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
@@ -13,7 +13,7 @@
 
 This review covers six questions in detail, identifies gotchas, and proposes a minimal PR path.
 
----
+______________________________________________________________________
 
 ## 1. Hook Injection Mechanisms — Is There Any Way In?
 
@@ -77,11 +77,12 @@ Entry point discovery exists but is **exclusively** for `BaseChannel` subclasses
 ### Answer: **No external hook injection is possible in v0.1.5.**
 
 Workarounds require either:
+
 - A monkey-patch (fragile, breaks on updates)
 - Source modification (lose `uv` managed install)
 - A PR to add hook discovery
 
----
+______________________________________________________________________
 
 ## 2. AgentHookContext — What Data Is Available?
 
@@ -134,10 +135,11 @@ class _LoopHook(AgentHook):
 But this is constructed inside `_run_agent_loop()` and not exposed to extra hooks. The `_LoopHookChain` runs `_primary` (which has the data) then `_extras` (which don't), but the extra hooks receive the same `AgentHookContext` which lacks channel/chat routing.
 
 ### Answer: **AgentHookContext is LLM-loop-scoped, not message-scoped.** It has no channel, chat_id, session_key, or sender_id. For Session-Buddy tracking, we need either:
-1. Extend `AgentHookContext` with routing fields, or
-2. Pass routing data through a separate mechanism (e.g., contextvars)
 
----
+1. Extend `AgentHookContext` with routing fields, or
+1. Pass routing data through a separate mechanism (e.g., contextvars)
+
+______________________________________________________________________
 
 ## 3. Lifecycle — When Do Hooks Fire?
 
@@ -149,14 +151,14 @@ for iteration in range(max_iterations):
     2. await hook.before_iteration(context)          ← BEFORE LLM call
     3. response = await _request_model(...)          ← LLM call
     4. context.response = response
-    
+
     if response.has_tool_calls:
         5. await hook.on_stream_end(context, resuming=True)  ← if streaming
         6. await hook.before_execute_tools(context)          ← BEFORE tool execution
         7. results = await _execute_tools(...)
         8. await hook.after_iteration(context)               ← AFTER tool execution
         continue  ← loop back to step 1
-    
+
     # No tool calls — final response
     9. await hook.on_stream_end(context, resuming=False)
     10. await hook.after_iteration(context)                  ← AFTER final response
@@ -185,7 +187,7 @@ for iteration in range(max_iterations):
 
 ### Answer: **Hooks fire on every agent loop execution** (user messages, cron, heartbeat, system/subagent). They do NOT fire on Dream consolidation. A single message may trigger multiple iterations (tool call loops), so `before_iteration`/`after_iteration` fire multiple times per message.
 
----
+______________________________________________________________________
 
 ## 4. Is a Channel Plugin (BaseChannel) a Viable Alternative?
 
@@ -209,11 +211,13 @@ class BaseChannel(ABC):
 ### Can a channel plugin observe all messages?
 
 **No, not passively.** Channel plugins are **inbound producers and outbound consumers**. They:
+
 1. Receive messages from external platforms (Telegram, etc.)
-2. Publish `InboundMessage` to the bus
-3. Receive `OutboundMessage` from the bus
+1. Publish `InboundMessage` to the bus
+1. Receive `OutboundMessage` from the bus
 
 A channel plugin can observe **outbound** messages via `_dispatch_outbound()` in `ChannelManager`, but:
+
 - It only sees outbound for its own channel name
 - It doesn't see messages routed to other channels
 - It doesn't see the agent's internal iterations, tool calls, or timing
@@ -222,6 +226,7 @@ A channel plugin can observe **outbound** messages via `_dispatch_outbound()` in
 ### Could we abuse the channel system?
 
 Theoretically, a "spy channel" could:
+
 - Subscribe to outbound messages by being in the dispatch loop
 - But it would need to be enabled in config, and `_dispatch_outbound()` only delivers to the matching `msg.channel`
 
@@ -229,7 +234,7 @@ Theoretically, a "spy channel" could:
 
 ### Answer: **Channel plugins are not a viable alternative.** They're I/O adapters, not middleware. They can't observe the agent loop internals or cross-channel traffic.
 
----
+______________________________________________________________________
 
 ## 5. Minimal PR to Add Hook Discovery via entry_points
 
@@ -295,7 +300,7 @@ class AgentHookContext:
     ...
 ```
 
-### Changes to _run_agent_loop (pass routing to context)
+### Changes to \_run_agent_loop (pass routing to context)
 
 ```python
 # loop.py — in _run_agent_loop, before runner.run()
@@ -351,7 +356,7 @@ session-buddy = "session_buddy_hook:SessionBuddyHook"
 
 **Total: ~40 lines of core changes.**
 
----
+______________________________________________________________________
 
 ## 6. Gotchas
 
@@ -404,6 +409,7 @@ The agent persists in-flight state via `_set_runtime_checkpoint()` / `_restore_r
 ### Multiple Iterations Per Message
 
 A single user message can trigger many iterations (tool call loops). `before_iteration`/`after_iteration` fire on EACH iteration, not just once per message. For Session-Buddy:
+
 - `before_iteration` on iteration 0 = message start
 - `after_iteration` with `stop_reason="completed"` = message end
 - Intermediate iterations = tool processing
@@ -423,17 +429,17 @@ async def before_iteration(self, context):
 
 This is correct — internal bookkeeping happens before plugin hooks see the context.
 
----
+______________________________________________________________________
 
 ## Recommendations for Session-Buddy Integration
 
 ### Option A: Minimal PR (Recommended)
 
 1. Add `nanobot/agent/hooks_registry.py` with `discover_hooks()` using `entry_points(group="nanobot.hooks")`
-2. Extend `AgentHookContext` with `channel`, `chat_id`, `session_key` fields
-3. Wire `discover_hooks()` into `AgentLoop.__init__()` and the three `commands.py` call sites
-4. Build `session-buddy-hook` as a separate package with `nanobot.hooks` entry point
-5. The hook calls Session-Buddy's HTTP API at `localhost:8678` in `before_iteration` (iteration 0) and `after_iteration` (final)
+1. Extend `AgentHookContext` with `channel`, `chat_id`, `session_key` fields
+1. Wire `discover_hooks()` into `AgentLoop.__init__()` and the three `commands.py` call sites
+1. Build `session-buddy-hook` as a separate package with `nanobot.hooks` entry point
+1. The hook calls Session-Buddy's HTTP API at `localhost:8678` in `before_iteration` (iteration 0) and `after_iteration` (final)
 
 ### Option B: Bus Interceptor (No PR needed, more hacky)
 
@@ -443,7 +449,7 @@ Subscribe to the `MessageBus` inbound/outbound queues as a side effect. This giv
 
 Add a `hooks` section to `Config` schema that references hook classes by dotted path, then instantiate them. More explicit than entry_points but requires config changes per installation.
 
----
+______________________________________________________________________
 
 ## Files Reviewed
 

@@ -12,9 +12,9 @@ Tests mahavishnu/learning/models.py for:
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-import pytest
-from hypothesis import given, settings, assume
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
+import pytest
 
 # NOTE: Property tests disabled until learning models are implemented
 pytest.skip("Learning models not yet implemented", allow_module_level=True)
@@ -32,6 +32,7 @@ pytest.skip("Learning models not yet implemented", allow_module_level=True)
 # ExecutionRecord Field Constraint Tests (5 tests)
 # =============================================================================
 
+
 class TestExecutionRecordConstraints:
     """Property-based tests for ExecutionRecord field constraints."""
 
@@ -43,7 +44,9 @@ class TestExecutionRecordConstraints:
         pool_type=st.sampled_from(["mahavishnu", "session-buddy", "kubernetes"]),
     )
     @settings(max_examples=50)
-    def test_required_string_fields_accepted(self, task_type, task_description, repo, model_tier, pool_type):
+    def test_required_string_fields_accepted(
+        self, task_type, task_description, repo, model_tier, pool_type
+    ):
         """Valid string fields should be accepted."""
         record = ExecutionRecord(
             task_type=task_type,
@@ -113,7 +116,9 @@ class TestExecutionRecordConstraints:
             )
 
     @given(
-        routing_confidence=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
+        routing_confidence=st.floats(
+            min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False
+        ),
     )
     @settings(max_examples=50)
     def test_routing_confidence_bounds(self, routing_confidence):
@@ -160,11 +165,14 @@ class TestExecutionRecordConstraints:
 # Cost Calculation Tests (4 tests)
 # =============================================================================
 
+
 class TestCostCalculation:
     """Property-based tests for cost calculation accuracy."""
 
     @given(
-        cost_estimate=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        cost_estimate=st.floats(
+            min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
         actual_cost=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
     )
     @settings(max_examples=100)
@@ -187,7 +195,9 @@ class TestCostCalculation:
         assert error["cost_error_abs"] >= 0
 
     @given(
-        cost_estimate=st.floats(min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False),
+        cost_estimate=st.floats(
+            min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
         actual_cost=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
     )
     @settings(max_examples=100)
@@ -238,7 +248,9 @@ class TestCostCalculation:
         assert error["cost_error_abs"] == actual_cost
 
     @given(
-        cost_estimate=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        cost_estimate=st.floats(
+            min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
         actual_cost=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
     )
     @settings(max_examples=100)
@@ -281,6 +293,7 @@ class TestCostCalculation:
 # =============================================================================
 # Serialization Round-Trip Tests (4 tests)
 # =============================================================================
+
 
 class TestSerializationRoundTrip:
     """Property-based tests for dictionary serialization round-trip."""
@@ -340,6 +353,7 @@ class TestSerializationRoundTrip:
 # Embedding Content Generation Tests (3 tests)
 # =============================================================================
 
+
 class TestEmbeddingContentGeneration:
     """Property-based tests for embedding content generation."""
 
@@ -375,7 +389,9 @@ class TestEmbeddingContentGeneration:
         pool_type=st.sampled_from(["mahavishnu", "session-buddy", "kubernetes"]),
     )
     @settings(max_examples=50)
-    def test_embedding_content_contains_key_fields(self, task_type, task_description, repo, model_tier, pool_type):
+    def test_embedding_content_contains_key_fields(
+        self, task_type, task_description, repo, model_tier, pool_type
+    ):
         """Embedding content should contain all key fields."""
         record = ExecutionRecord(
             task_type=task_type,
@@ -432,6 +448,7 @@ class TestEmbeddingContentGeneration:
 # SolutionRecord Tests (3 tests)
 # =============================================================================
 
+
 class TestSolutionRecord:
     """Property-based tests for SolutionRecord model."""
 
@@ -481,6 +498,7 @@ class TestSolutionRecord:
 # FeedbackRecord Tests (3 tests)
 # =============================================================================
 
+
 class TestFeedbackRecord:
     """Property-based tests for FeedbackRecord model."""
 
@@ -523,13 +541,16 @@ class TestFeedbackRecord:
 # QualityPolicy Tests (3 tests)
 # =============================================================================
 
+
 class TestQualityPolicy:
     """Property-based tests for QualityPolicy model."""
 
     @given(
         repo=st.text(min_size=1, max_size=100),
         project_maturity=st.sampled_from(["new", "stable", "mature"]),
-        coverage_threshold=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
+        coverage_threshold=st.floats(
+            min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False
+        ),
     )
     @settings(max_examples=50)
     def test_quality_policy_bounds(self, repo, project_maturity, coverage_threshold):

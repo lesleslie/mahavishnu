@@ -1,4 +1,5 @@
 """Tests for core/task_audit.py — audit logging with field redaction."""
+
 from unittest.mock import AsyncMock
 
 import pytest
@@ -8,7 +9,6 @@ from mahavishnu.core.task_audit import (
     TaskEventType,
     get_task_audit_logger,
 )
-
 
 # ---------------------------------------------------------------------------
 # TaskEventType enum
@@ -80,9 +80,7 @@ class TestRedaction:
         assert result["priority"] == "high"
 
     def test_recursive_nested_dict(self):
-        result = self.logger._redact_sensitive_fields(
-            {"config": {"nested": {"api_key": "s123"}}}
-        )
+        result = self.logger._redact_sensitive_fields({"config": {"nested": {"api_key": "s123"}}})
         assert result["config"]["nested"]["api_key"] == "[REDACTED (4 characters)]"
 
     def test_non_sensitive_nested_preserved(self):
@@ -115,9 +113,7 @@ class TestLogEventNoDb:
         mock_db = AsyncMock()
         mock_db.execute.return_value = "INSERT 42"
         logger = TaskAuditLogger(mock_db)
-        result = await logger.log_event(
-            TaskEventType.TASK_CREATED, 45, "user-1", {"title": "Test"}
-        )
+        result = await logger.log_event(TaskEventType.TASK_CREATED, 45, "user-1", {"title": "Test"})
         mock_db.execute.assert_called_once()
         assert result == 42
 
@@ -195,12 +191,16 @@ class TestLogEventNoDb:
 
     async def test_log_quality_gate_result_passed(self):
         logger = TaskAuditLogger()
-        result = await logger.log_quality_gate_result(1, "u1", True, [{"name": "lint", "passed": True}], 0.95)
+        result = await logger.log_quality_gate_result(
+            1, "u1", True, [{"name": "lint", "passed": True}], 0.95
+        )
         assert result == 0
 
     async def test_log_quality_gate_result_failed(self):
         logger = TaskAuditLogger()
-        result = await logger.log_quality_gate_result(1, "u1", False, [{"name": "lint", "passed": False}])
+        result = await logger.log_quality_gate_result(
+            1, "u1", False, [{"name": "lint", "passed": False}]
+        )
         assert result == 0
 
     async def test_log_worktree_created(self):
@@ -286,6 +286,7 @@ class TestGetTaskAuditLogger:
 
     def test_with_db(self):
         import mahavishnu.core.task_audit as mod
+
         # Reset singleton so we can test db injection
         original = mod._audit_logger
         try:

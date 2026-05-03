@@ -8,14 +8,11 @@ Tests mahavishnu/learning/database.py for:
 - Cleanup operations
 """
 
-import asyncio
-from datetime import UTC, datetime
-from pathlib import Path
 from uuid import uuid4
 
-import pytest
-from hypothesis import given, settings, assume
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
+import pytest
 
 # NOTE: Property tests disabled until learning models are implemented
 pytest.skip("Learning models not yet implemented", allow_module_level=True)
@@ -27,6 +24,7 @@ pytest.skip("Learning models not yet implemented", allow_module_level=True)
 # =============================================================================
 # Batch Insertion Tests (4 tests)
 # ============================================================================
+
 
 class TestBatchInsertion:
     """Property-based tests for batch insertion."""
@@ -119,6 +117,7 @@ class TestBatchInsertion:
 # Single Insertion Tests (3 tests)
 # ============================================================================
 
+
 class TestSingleInsertion:
     """Property-based tests for single record insertion."""
 
@@ -137,8 +136,7 @@ class TestSingleInsertion:
             conn = await db._pool.get_connection()
             try:
                 result = conn.execute(
-                    "SELECT * FROM executions WHERE task_id = ?",
-                    [str(record.task_id)]
+                    "SELECT * FROM executions WHERE task_id = ?", [str(record.task_id)]
                 ).fetchone()
 
                 assert result is not None
@@ -193,6 +191,7 @@ class TestSingleInsertion:
 # =============================================================================
 # Query Result Consistency Tests (3 tests)
 # ============================================================================
+
 
 class TestQueryConsistency:
     """Property-based tests for query result consistency."""
@@ -268,8 +267,7 @@ class TestQueryConsistency:
             conn = await db._pool.get_connection()
             try:
                 result = conn.execute(
-                    "SELECT COUNT(*) FROM executions WHERE repo = ?",
-                    [test_repo]
+                    "SELECT COUNT(*) FROM executions WHERE repo = ?", [test_repo]
                 ).fetchone()
 
                 assert result[0] == expected_count
@@ -284,6 +282,7 @@ class TestQueryConsistency:
 # =============================================================================
 # Connection Pool Tests (3 tests)
 # ============================================================================
+
 
 class TestConnectionPool:
     """Property-based tests for connection pool behavior."""
@@ -354,6 +353,7 @@ class TestConnectionPool:
 # Data Integrity Tests (3 tests)
 # ============================================================================
 
+
 class TestDataIntegrity:
     """Property-based tests for data integrity constraints."""
 
@@ -373,8 +373,7 @@ class TestDataIntegrity:
             conn = await db._pool.get_connection()
             try:
                 result = conn.execute(
-                    "SELECT COUNT(*) FROM executions WHERE task_id = ?",
-                    [str(record.task_id)]
+                    "SELECT COUNT(*) FROM executions WHERE task_id = ?", [str(record.task_id)]
                 ).fetchone()
 
                 # Should have exactly one record with this UUID
@@ -440,6 +439,7 @@ class TestDataIntegrity:
 # =============================================================================
 # Cleanup Operations Tests (3 tests)
 # ============================================================================
+
 
 class TestCleanupOperations:
     """Property-based tests for cleanup operations."""

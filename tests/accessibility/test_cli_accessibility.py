@@ -12,9 +12,9 @@ Run with: pytest tests/accessibility/ -v
 
 from __future__ import annotations
 
-import subprocess
-import re
 from dataclasses import dataclass
+import re
+import subprocess
 from typing import Any
 
 
@@ -109,8 +109,7 @@ class TestScreenReaderCompatibility:
 
             has_code = bool(re.search(r"MHV-\d+", error))
             has_category = any(
-                word in error.lower()
-                for word in ["error", "warning", "not found", "missing"]
+                word in error.lower() for word in ["error", "warning", "not found", "missing"]
             )
 
             if not has_code:
@@ -288,8 +287,7 @@ class TestErrorMessageRecovery:
             # In the actual implementation, errors would include guidance
             # This test verifies the pattern is followed
             has_guidance_pattern = any(
-                word in error.lower()
-                for word in ["use", "run", "add", "check", "try"]
+                word in error.lower() for word in ["use", "run", "add", "check", "try"]
             ) or any(word in expected_guidance.lower() for word in ["use", "add"])
 
             if not has_guidance_pattern:

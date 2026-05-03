@@ -1,15 +1,16 @@
 """Tests for core/webhook_auth.py — HMAC signature verification with replay prevention."""
+
+from datetime import UTC, datetime, timedelta
 import hashlib
 import hmac
-from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
 
-from mahavishnu.core.errors import WebhookAuthError, ErrorCode
+from mahavishnu.core.errors import WebhookAuthError
 from mahavishnu.core.webhook_auth import (
-    SUPPORTED_ALGORITHMS,
     DEFAULT_MAX_AGE_MINUTES,
+    SUPPORTED_ALGORITHMS,
     WebhookAuthenticator,
     create_webhook_authenticator,
 )
@@ -101,18 +102,18 @@ class TestHMACVerification:
 class TestTimestampValidation:
     def test_valid_current_timestamp(self):
         auth = WebhookAuthenticator("db")
-        ts = datetime.now(timezone.utc).isoformat()
+        ts = datetime.now(UTC).isoformat()
         auth._validate_timestamp(ts)  # Should not raise
 
     def test_expired_timestamp(self):
         auth = WebhookAuthenticator("db", max_age_minutes=1)
-        old_ts = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        old_ts = (datetime.now(UTC) - timedelta(minutes=10)).isoformat()
         with pytest.raises(WebhookAuthError, match="too old"):
             auth._validate_timestamp(old_ts)
 
     def test_future_timestamp(self):
         auth = WebhookAuthenticator("db")
-        future_ts = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+        future_ts = (datetime.now(UTC) + timedelta(minutes=10)).isoformat()
         with pytest.raises(WebhookAuthError, match="future"):
             auth._validate_timestamp(future_ts)
 
@@ -124,7 +125,7 @@ class TestTimestampValidation:
     def test_naive_timestamp_gets_utc(self):
         auth = WebhookAuthenticator("db")
         # Naive timestamp should not raise
-        auth._validate_timestamp(datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
+        auth._validate_timestamp(datetime.now(UTC).replace(tzinfo=None).isoformat())
 
 
 # ---------------------------------------------------------------------------

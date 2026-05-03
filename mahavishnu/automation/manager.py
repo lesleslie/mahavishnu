@@ -24,10 +24,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from logging import getLogger
 import time
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from mahavishnu.automation.backends.atomac import ATOMacBackend
-from mahavishnu.automation.backends.base import DesktopAutomationBackend
 from mahavishnu.automation.backends.pyautogui import PyAutoGUIBackend
 from mahavishnu.automation.backends.pyxa import PyXABackend
 from mahavishnu.automation.capabilities import Capability, CapabilityDetector
@@ -42,6 +41,9 @@ from mahavishnu.automation.models import (
 )
 from mahavishnu.automation.permissions import PermissionChecker
 from mahavishnu.automation.security import AutomationSecurity, get_security
+
+if TYPE_CHECKING:
+    from mahavishnu.automation.backends.base import DesktopAutomationBackend
 
 logger = getLogger(__name__)
 

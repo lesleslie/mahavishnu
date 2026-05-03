@@ -20,19 +20,19 @@ Usage:
 
 from __future__ import annotations
 
-import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, UTC, timedelta
-from enum import Enum
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum
+import logging
 from typing import Any
 
-from mahavishnu.core.task_store import Task, TaskStatus, TaskPriority, TaskStore, TaskListFilter
+from mahavishnu.core.task_store import Task, TaskListFilter, TaskPriority, TaskStatus, TaskStore
 
 logger = logging.getLogger(__name__)
 
 
-class HealthIndicator(str, Enum):
+class HealthIndicator(StrEnum):
     """Health status for a repository."""
 
     HEALTHY = "healthy"

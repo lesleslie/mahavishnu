@@ -1,8 +1,8 @@
 # Golden Paths Guide
 
-**Version**: 1.0.0  
-**Date**: 2026-04-05  
-**Initiative**: I12-3  
+**Version**: 1.0.0
+**Date**: 2026-04-05
+**Initiative**: I12-3
 **Scope**: Canonical CLI and MCP pathways for top workflows
 
 ## Overview
@@ -13,11 +13,12 @@ canonical entry point. Internal Python APIs still work but emit guidance
 pointing to these canonical pathways.
 
 **Why golden paths?** Canonical pathways guarantee:
+
 - Consistent logging, metrics, and error handling
 - Documented, versioned interfaces
 - Forward-compatible upgrades (internal APIs may change; CLI/MCP contracts are stable)
 
----
+______________________________________________________________________
 
 ## Top 10 Workflows — Canonical Pathways
 
@@ -106,7 +107,7 @@ Internal API: `HybridAdapterRegistry.check_all_health()` — use only from canon
 
 Internal API: `SelfImprovementTools.review_and_fix()` — use only from canonical layers.
 
----
+______________________________________________________________________
 
 ## CLI Quick Reference
 
@@ -130,7 +131,7 @@ mahavishnu backup create --type full
 mahavishnu backup restore --id backup_20260405_120000
 ```
 
----
+______________________________________________________________________
 
 ## Non-Canonical Usage Warnings
 
@@ -139,8 +140,8 @@ pointing to the canonical pathway. These are informational — the APIs continue
 to work — but direct usage outside the CLI/MCP layers is discouraged because:
 
 1. **No guaranteed stability** — internal APIs may change between minor versions
-2. **Missing observability** — bypassing canonical layers skips metrics and tracing
-3. **Inconsistent error handling** — canonical layers add structured error responses
+1. **Missing observability** — bypassing canonical layers skips metrics and tracing
+1. **Inconsistent error handling** — canonical layers add structured error responses
 
 ### Affected Internal APIs
 
@@ -156,19 +157,19 @@ to work — but direct usage outside the CLI/MCP layers is discouraged because:
 | `core/backup_recovery.py` | `BackupManager.restore_backup()` | CLI: `backup restore` / MCP: `restore_backup` |
 | `mcp/tools/self_improvement_tools.py` | `SelfImprovementTools.review_and_fix()` | CLI: `workflow review` / MCP: `review_and_fix` |
 
----
+______________________________________________________________________
 
 ## Adding a New Golden Path
 
 When introducing a new high-value workflow:
 
 1. **Add a CLI command** in `_main_cli.py` under the appropriate sub-app
-2. **Add an MCP tool** in `mahavishnu/mcp/tools/` and register in `server_core.py`
-3. **Add a golden-path docstring notice** to the underlying internal API method
-4. **Update this guide** with the new entry
-5. **Add a test** in `tests/unit/test_workflow_cli.py` (AST-based)
+1. **Add an MCP tool** in `mahavishnu/mcp/tools/` and register in `server_core.py`
+1. **Add a golden-path docstring notice** to the underlying internal API method
+1. **Update this guide** with the new entry
+1. **Add a test** in `tests/unit/test_workflow_cli.py` (AST-based)
 
----
+______________________________________________________________________
 
 ## Related Documentation
 

@@ -7,9 +7,7 @@ their WebSocket server __init__ methods to support TLS parameters.
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
-
 
 # TLS config template
 TLS_CONFIG_TEMPLATE = '''"""TLS configuration for {service_name} WebSocket server.
@@ -182,7 +180,9 @@ def main():
     print("\n✓ TLS config modules created")
     print("\nNext steps:")
     print("1. Review and update each WebSocket server __init__ method")
-    print("2. Add TLS parameters: cert_file, key_file, ca_file, tls_enabled, verify_client, auto_cert")
+    print(
+        "2. Add TLS parameters: cert_file, key_file, ca_file, tls_enabled, verify_client, auto_cert"
+    )
     print("3. Import and use load_ssl_context() from tls_config module")
     print("4. Update integration.py to pass TLS parameters")
 

@@ -20,9 +20,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import logging
+from pathlib import Path
 import sys
 import time
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -148,8 +148,7 @@ def create_hnsw_index(conn: duckdb.DuckDBPyConnection) -> bool:
 
         if not result or result[0] == 0:
             logger.warning(
-                "No embeddings found in executions table. "
-                "Run 'generate-embeddings' first."
+                "No embeddings found in executions table. Run 'generate-embeddings' first."
             )
             return False
 
@@ -175,7 +174,7 @@ def create_hnsw_index(conn: duckdb.DuckDBPyConnection) -> bool:
             f"""
             CREATE INDEX hnsw_embeddings ON executions
             USING HNSW (embedding)
-            WITH (M = {HNSW_CONFIG['M']}, ef_construction = {HNSW_CONFIG['ef_construction']})
+            WITH (M = {HNSW_CONFIG["M"]}, ef_construction = {HNSW_CONFIG["ef_construction"]})
         """
         )
 
@@ -323,9 +322,7 @@ def benchmark_search(db_path: str) -> dict[str, Any]:
 
         try:
             # Check data availability
-            result = conn.execute(
-                "SELECT COUNT(*), COUNT(embedding) FROM executions"
-            ).fetchone()
+            result = conn.execute("SELECT COUNT(*), COUNT(embedding) FROM executions").fetchone()
 
             if not result:
                 logger.error("No data found")
@@ -430,9 +427,7 @@ def main() -> int:
     Returns:
         Exit code (0 for success, 1 for failure)
     """
-    parser = argparse.ArgumentParser(
-        description="HNSW index migration for learning database"
-    )
+    parser = argparse.ArgumentParser(description="HNSW index migration for learning database")
     parser.add_argument(
         "action",
         choices=["upgrade", "benchmark", "generate-embeddings"],
@@ -443,9 +438,7 @@ def main() -> int:
         default=DEFAULT_DB_PATH,
         help=f"Path to database file (default: {DEFAULT_DB_PATH})",
     )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable verbose logging"
-    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
     parser.add_argument(
         "--limit",
         type=int,

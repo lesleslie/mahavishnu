@@ -1,4 +1,5 @@
 """Tests for core/secrets_scanner.py — secret detection, scanning, and redaction."""
+
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -14,7 +15,6 @@ from mahavishnu.core.secrets_scanner import (
     SecretType,
     scan_and_validate,
 )
-
 
 # ---------------------------------------------------------------------------
 # SecretSeverity
@@ -489,9 +489,7 @@ class TestSecretRedactor:
 class TestPreIndexValidator:
     async def test_validate_clean_repo(self, tmp_path):
         mock_scanner = MagicMock(spec=SecretsScanner)
-        scan_result = SecretScanResult(
-            scanned_files=5, secrets_found=[], scan_duration_seconds=0.1
-        )
+        scan_result = SecretScanResult(scanned_files=5, secrets_found=[], scan_duration_seconds=0.1)
         mock_scanner.scan_directory = AsyncMock(return_value=scan_result)
         mock_scanner.should_block_indexing.return_value = (False, "No secrets found")
 

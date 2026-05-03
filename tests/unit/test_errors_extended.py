@@ -9,22 +9,20 @@ Tests cover:
 
 from __future__ import annotations
 
-import pytest
-
 from mahavishnu.core.errors import (
-    ErrorCode,
-    MahavishnuError,
-    ValidationError,
-    DatabaseError,
     ConfigurationError,
-    TaskNotFoundError,
-    RepositoryNotFoundError,
-    WebhookAuthError,
-    ExternalServiceError,
-    get_contextual_help,
-    format_error_for_cli,
-    create_error_from_exception,
+    DatabaseError,
+    ErrorCode,
     ErrorTemplates,
+    ExternalServiceError,
+    MahavishnuError,
+    RepositoryNotFoundError,
+    TaskNotFoundError,
+    ValidationError,
+    WebhookAuthError,
+    create_error_from_exception,
+    format_error_for_cli,
+    get_contextual_help,
 )
 
 

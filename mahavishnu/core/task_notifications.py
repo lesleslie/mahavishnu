@@ -24,18 +24,21 @@ Usage:
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import StrEnum
 import json
 import logging
+from typing import TYPE_CHECKING, Any
 import uuid
-from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
-from typing import Any, Callable
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
 
-class TaskEventType(str, Enum):
+class TaskEventType(StrEnum):
     """Types of task events."""
 
     CREATED = "created"

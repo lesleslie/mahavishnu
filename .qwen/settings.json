@@ -1,8 +1,8 @@
 {
+  "$version": 3,
   "permissions": {
     "allow": [
       "WebSearch"
     ]
-  },
-  "$version": 3
+  }
 }

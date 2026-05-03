@@ -11,14 +11,16 @@ Schema: search.document_embeddings
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import logging
-from datetime import datetime, timezone
-from typing import Any
-from uuid import UUID
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -117,10 +119,12 @@ class EmbeddingUpdate(BaseModel):
     """
 
     embedding: list[float] | None = Field(
-        None, description="Updated embedding vector",
+        None,
+        description="Updated embedding vector",
     )
     metadata: dict[str, Any] | None = Field(
-        None, description="Metadata updates",
+        None,
+        description="Metadata updates",
     )
 
 
@@ -171,7 +175,7 @@ class EmbeddingRepository(
         Raises:
             RepositoryError: If storage fails
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         query = f"""
             INSERT INTO {self._table} (
@@ -390,9 +394,7 @@ class EmbeddingRepository(
         embedding = row["embedding"]
         if isinstance(embedding, str):
             # Parse vector string representation
-            embedding = [
-                float(x) for x in embedding.strip("[]").split(",") if x.strip()
-            ]
+            embedding = [float(x) for x in embedding.strip("[]").split(",") if x.strip()]
 
         return EmbeddingRead(
             document_id=row["document_id"],

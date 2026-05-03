@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 import typer
 from typer.testing import CliRunner
 
@@ -254,9 +253,7 @@ class TestValidateCommand:
         assert "missing required field" in result.output.lower()
 
     @patch("mahavishnu.ecosystem_cli.get_ecosystem_loader")
-    def test_invalid_config_with_errors_and_warnings(
-        self, mock_get_loader: MagicMock
-    ) -> None:
+    def test_invalid_config_with_errors_and_warnings(self, mock_get_loader: MagicMock) -> None:
         loader = _build_mock_loader()
         loader.validate_mcp_servers.return_value = {
             "errors": ["Bad config"],
@@ -1030,9 +1027,7 @@ class TestUpdateAuditCommand:
         )
 
     @patch("mahavishnu.ecosystem_cli.get_ecosystem_loader")
-    def test_successful_update_short_notes_flag(
-        self, mock_get_loader: MagicMock
-    ) -> None:
+    def test_successful_update_short_notes_flag(self, mock_get_loader: MagicMock) -> None:
         loader = _build_mock_loader()
         mock_get_loader.return_value = loader
 
@@ -1120,9 +1115,7 @@ class TestGenerateClaudeConfigCommand:
         output_file = tmp_path / "claude_test.json"
 
         app = _make_app()
-        result = runner.invoke(
-            app, ["generate-claude-config", "--output", str(output_file)]
-        )
+        result = runner.invoke(app, ["generate-claude-config", "--output", str(output_file)])
         assert result.exit_code == 0
         assert "generated mcp configuration" in result.output.lower()
         assert str(output_file) in result.output
@@ -1145,8 +1138,6 @@ class TestGenerateClaudeConfigCommand:
         output_file = tmp_path / "claude.json"
 
         app = _make_app()
-        result = runner.invoke(
-            app, ["generate-claude-config", "--output", str(output_file)]
-        )
+        result = runner.invoke(app, ["generate-claude-config", "--output", str(output_file)])
         assert result.exit_code == 0
         assert "creating new config file" in result.output.lower()

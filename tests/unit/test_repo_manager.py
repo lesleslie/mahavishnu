@@ -189,7 +189,9 @@ async def test_cache_invalidation(sample_repos_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_by_nickname_and_repo_and_paths_and_language_filter(sample_repos_path: Path) -> None:
+async def test_get_by_nickname_and_repo_and_paths_and_language_filter(
+    sample_repos_path: Path,
+) -> None:
     manager = RepositoryManager(sample_repos_path)
     await manager.load()
 

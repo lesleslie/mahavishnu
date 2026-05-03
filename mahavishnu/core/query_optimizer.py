@@ -23,19 +23,19 @@ Usage:
 
 from __future__ import annotations
 
+from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 import hashlib
 import logging
 import re
-from collections import defaultdict
-from dataclasses import dataclass, field
-from datetime import datetime, UTC, timedelta
-from enum import Enum
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class QueryType(str, Enum):
+class QueryType(StrEnum):
     """SQL query types."""
 
     SELECT = "SELECT"

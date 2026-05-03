@@ -6,7 +6,7 @@
 **Scope:** Mahavishnu v0.3.2 + Bodai ecosystem control plane (local workspace)
 **Status:** Draft for Team Review
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
@@ -28,7 +28,7 @@
 - **Mahavishnu** is implementationally deeper than prior reviews claimed; it is not a stub‑level project.
 - **Bodai** is now a functioning control plane with explicit `start_command` configuration and host‑aware health checks.
 
----
+______________________________________________________________________
 
 ## 1. Mahavishnu: The Orchestrator
 
@@ -44,22 +44,26 @@
 ### 1.2 Current Weaknesses / Risks ⚠️
 
 #### 1.2.1 Scope Breadth vs. Maturity
+
 Mahavishnu still spans orchestration, workers, pools, ingestion, and desktop automation. This creates complexity risk in a pre‑1.0 system even when pieces are implemented.
 
 **Evidence:** repository structure and multiple subsystems under `mahavishnu/`.
 
 #### 1.2.2 Evidence Hygiene in Prior Review
+
 The previous critical review claimed Prefect/Agno adapters were 143/116 LOC stubs and that there were 372 TODO markers. Those claims are incorrect in the current code.
 
 **Current evidence:**
+
 - `prefect_adapter.py` = 1828 LOC
 - `agno_adapter.py` = 1419 LOC
 - TODO/FIXME/WIP markers in `mahavishnu/` = 25
 
 #### 1.2.3 Security Evidence Must Reference Real Files
+
 Prior review cited `mahavishnu/core/security.py`, which does not exist in this repo. Security claims should be tied to actual modules (auth, permissions, websocket controls).
 
----
+______________________________________________________________________
 
 ## 2. Bodai Ecosystem: Control Plane
 
@@ -76,7 +80,7 @@ Prior review cited `mahavishnu/core/security.py`, which does not exist in this r
 - **Non-network components** (e.g., SplashStand) are skipped in lifecycle operations; this is correct but should be documented explicitly.
 - **Start command verification** should be automated to validate modules exist and ports match expected service config.
 
----
+______________________________________________________________________
 
 ## 3. Evidence Appendix
 
@@ -103,16 +107,16 @@ python -m bodai.cli config validate
 pytest -q -p no:cacheprovider tests/test_config.py tests/test_health.py
 ```
 
----
+______________________________________________________________________
 
 ## 4. Recommendations (Evidence-Based)
 
 1. **Maintain evidence hygiene** in reviews. Every quantitative claim should cite a command, file path, and timestamp.
-2. **Scope control for pre‑1.0:** consider explicitly labeling features as `experimental` vs `stable`.
-3. **Formalize control‑plane contracts:** add validation to ensure `start_command` modules exist and that health endpoints are consistent.
-4. **Security review update:** tie claims to actual auth/permission code paths; remove references to non‑existent files.
+1. **Scope control for pre‑1.0:** consider explicitly labeling features as `experimental` vs `stable`.
+1. **Formalize control‑plane contracts:** add validation to ensure `start_command` modules exist and that health endpoints are consistent.
+1. **Security review update:** tie claims to actual auth/permission code paths; remove references to non‑existent files.
 
----
+______________________________________________________________________
 
 ## 5. Final Verdict (Current State)
 
@@ -120,8 +124,7 @@ pytest -q -p no:cacheprovider tests/test_config.py tests/test_health.py
 - Bodai is **now operationally useful** as a control plane, not just a registry.
 - The most urgent improvement is **credible, reproducible documentation** rather than more features.
 
----
+______________________________________________________________________
 
 **Review Status:** Draft for Team Discussion
 **Next Review:** After evidence‑based action items complete
-

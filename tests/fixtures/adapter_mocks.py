@@ -190,21 +190,25 @@ class MockAdapter:
         original_get_health = self.get_health
 
         async def tracked_execute(*args: Any, **kwargs: Any) -> Any:
-            self.call_history.append({
-                "method": "execute",
-                "args": args,
-                "kwargs": kwargs,
-                "timestamp": datetime.now(UTC),
-            })
+            self.call_history.append(
+                {
+                    "method": "execute",
+                    "args": args,
+                    "kwargs": kwargs,
+                    "timestamp": datetime.now(UTC),
+                }
+            )
             return await original_execute(*args, **kwargs)
 
         async def tracked_get_health(*args: Any, **kwargs: Any) -> Any:
-            self.call_history.append({
-                "method": "get_health",
-                "args": args,
-                "kwargs": kwargs,
-                "timestamp": datetime.now(UTC),
-            })
+            self.call_history.append(
+                {
+                    "method": "get_health",
+                    "args": args,
+                    "kwargs": kwargs,
+                    "timestamp": datetime.now(UTC),
+                }
+            )
             return await original_get_health(*args, **kwargs)
 
         self.execute = tracked_execute  # type: ignore[method-assign]
@@ -274,9 +278,7 @@ class MockAdapter:
         """
         self.execute.return_value = result  # type: ignore[misc]
 
-    def set_execute_side_effect(
-        self, side_effect: Exception | Callable[..., Any]
-    ) -> None:
+    def set_execute_side_effect(self, side_effect: Exception | Callable[..., Any]) -> None:
         """Configure the execute method to raise or use side effect.
 
         Args:
@@ -346,12 +348,14 @@ class MockOneiricResolver:
 
     def _record_call(self, method: str, *args: Any, **kwargs: Any) -> None:
         """Record a method call."""
-        self.call_history.append({
-            "method": method,
-            "args": args,
-            "kwargs": kwargs,
-            "timestamp": datetime.now(UTC),
-        })
+        self.call_history.append(
+            {
+                "method": method,
+                "args": args,
+                "kwargs": kwargs,
+                "timestamp": datetime.now(UTC),
+            }
+        )
 
     async def _resolve_impl(
         self,
@@ -531,12 +535,14 @@ class MockDharaRegistry:
 
     def _record_call(self, method: str, *args: Any, **kwargs: Any) -> None:
         """Record a method call."""
-        self.call_history.append({
-            "method": method,
-            "args": args,
-            "kwargs": kwargs,
-            "timestamp": datetime.now(UTC),
-        })
+        self.call_history.append(
+            {
+                "method": method,
+                "args": args,
+                "kwargs": kwargs,
+                "timestamp": datetime.now(UTC),
+            }
+        )
 
     async def _save_state_impl(self, adapter_id: str, state: dict[str, Any]) -> None:
         """Implementation of save_state."""
@@ -562,10 +568,12 @@ class MockDharaRegistry:
         adapter_id = record.get("adapter_id", "unknown")
         if adapter_id not in self._health_records:
             self._health_records[adapter_id] = []
-        self._health_records[adapter_id].append({
-            **record,
-            "timestamp": datetime.now(UTC).isoformat(),
-        })
+        self._health_records[adapter_id].append(
+            {
+                **record,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        )
 
     async def _get_health_history_impl(
         self, adapter_id: str, limit: int = 100
@@ -615,10 +623,12 @@ class MockDharaRegistry:
         """
         if adapter_id not in self._health_records:
             self._health_records[adapter_id] = []
-        self._health_records[adapter_id].append({
-            **record,
-            "timestamp": datetime.now(UTC).isoformat(),
-        })
+        self._health_records[adapter_id].append(
+            {
+                **record,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        )
 
     def clear_all(self) -> None:
         """Clear all stored data."""
@@ -699,12 +709,14 @@ class MockAdapterDiscovery:
 
     def _record_call(self, method: str, *args: Any, **kwargs: Any) -> None:
         """Record a method call."""
-        self.call_history.append({
-            "method": method,
-            "args": args,
-            "kwargs": kwargs,
-            "timestamp": datetime.now(UTC),
-        })
+        self.call_history.append(
+            {
+                "method": method,
+                "args": args,
+                "kwargs": kwargs,
+                "timestamp": datetime.now(UTC),
+            }
+        )
 
     def _create_metadata_from_dict(self, data: dict[str, Any]) -> MagicMock:
         """Create a mock AdapterMetadata from dictionary.

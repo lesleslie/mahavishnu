@@ -6,6 +6,7 @@
 **Scope:** Mahavishnu health, readiness, capability discovery, routing observability, and TUI/dashboard integration across the Bodai ecosystem.
 
 **Companion documents:**
+
 - Master spec: [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
 - Implementation plan: [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
 
@@ -437,7 +438,7 @@ Add a read-only aggregation service:
 - no orchestration side effects
 - safe timeout behavior (configurable per-section)
 - deterministic JSON output
-- **concurrent collection** using `asyncio.gather` with per-section timeouts (not sequential — sequential collection against N services with a 5s timeout means worst-case N*5s latency)
+- **concurrent collection** using `asyncio.gather` with per-section timeouts (not sequential — sequential collection against N services with a 5s timeout means worst-case N\*5s latency)
 - staleness detection: flag sections whose `last_check` exceeds a configurable threshold as `unknown`
 
 The aggregator should call existing components:
@@ -466,6 +467,7 @@ Expose the same report through:
 Keep existing commands for compatibility, but have them delegate to or embed the canonical report where practical.
 
 **`ecosystem_routing_readiness` schema:**
+
 ```python
 class RoutingReadiness(BaseModel):
     task_class: str
@@ -801,13 +803,13 @@ uv run pytest tests/unit/test_ecosystem_status.py
 ## 6. Suggested Execution Order
 
 1. Phase 0: reconcile plan state.
-2. Phase 1: normalize status vocabulary and optional dependency semantics.
-3. Phase 2: implement `EcosystemStatusService`.
-4. Phase 3: expose CLI/MCP canonical status tools.
-5. Phase 4: wire TUI to canonical read-only data.
-6. Phase 5: improve routing decision explainability.
-7. Phase 6: add ecosystem capability inventory.
-8. Phase 7: add deterministic operator recommendations.
+1. Phase 1: normalize status vocabulary and optional dependency semantics.
+1. Phase 2: implement `EcosystemStatusService`.
+1. Phase 3: expose CLI/MCP canonical status tools.
+1. Phase 4: wire TUI to canonical read-only data.
+1. Phase 5: improve routing decision explainability.
+1. Phase 6: add ecosystem capability inventory.
+1. Phase 7: add deterministic operator recommendations.
 
 ## 7. Non-Goals
 
@@ -863,10 +865,13 @@ All open decisions from the initial draft have been resolved based on 6-agent cr
 **Resolved:** Optional unhealthy dependencies produce overall `degraded`, not `ok` with warnings. An operator who glances at top-level status needs to see that something is wrong. Buried warnings are invisible warnings.
 
 **Severity ordering for aggregation:**
+
 ```
 disabled < unknown < degraded < unhealthy
 ```
+
 (where `ok` is baseline). Rules:
+
 - `disabled` component: intentionally off; does not affect overall status
 - `unknown` component (timeout): treated as `degraded` for required, ignored for optional
 - Single `degraded` optional component: overall `degraded`
@@ -896,6 +901,7 @@ disabled < unknown < degraded < unhealthy
 ### Decision 7 (new): Status vocabulary transitions
 
 **Resolved:** The canonical status vocabulary supports the following valid transitions:
+
 - `unknown -> ok | degraded | unhealthy` (on first successful health check)
 - `ok -> degraded` (on partial failure)
 - `ok -> unhealthy` (on complete failure)
@@ -946,4 +952,3 @@ This update is done when:
   - what routing paths are currently viable?
   - why did Mahavishnu choose this adapter for my task?
   - what should I check next?
-

@@ -1,12 +1,6 @@
----
-name: refactoring-specialist
-description: >-
-  Expert refactoring specialist for safe code transformation, pattern application,
-  and reducing complexity while preserving behavior.
-  Ecosystem: mcp__crackerjack__crackerjack_run (quality gates post-refactor),
-  mcp__akosha__search_code_patterns (find usage patterns before changing).
-model: sonnet
----
+______________________________________________________________________
+
+## name: refactoring-specialist description: >- Expert refactoring specialist for safe code transformation, pattern application, and reducing complexity while preserving behavior. Ecosystem: mcp\_\_crackerjack\_\_crackerjack_run (quality gates post-refactor), mcp\_\_akosha\_\_search_code_patterns (find usage patterns before changing). model: sonnet
 
 ## Refactoring Standards
 
@@ -84,5 +78,5 @@ Add it if missing — it is required for forward references and PEP 563.
 After each refactoring batch:
 
 1. `mcp__crackerjack__crackerjack_run` — must report zero failures
-2. Run existing tests to confirm behavior is preserved
-3. Only commit when both pass
+1. Run existing tests to confirm behavior is preserved
+1. Only commit when both pass

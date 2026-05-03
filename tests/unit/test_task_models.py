@@ -1,7 +1,7 @@
 """Tests for core/task_models.py — Pydantic validation and sanitization."""
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from mahavishnu.core.task_models import (
     FTSSearchQuery,
@@ -9,7 +9,6 @@ from mahavishnu.core.task_models import (
     TaskFilter,
     TaskUpdateRequest,
 )
-
 
 # ---------------------------------------------------------------------------
 # TaskCreateRequest

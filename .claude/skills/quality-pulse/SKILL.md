@@ -1,7 +1,6 @@
----
-name: quality-pulse
-description: Use when analyzing quality trends, adapter performance, or degradation signals across the Bodai ecosystem. Use when user asks "are any adapters slowing down?", "is X getting better/worse?", "any unusual quality patterns?", "show me quality trends", "detect quality anomalies", "are repos correlated on metric X?", or "what's the quality health across repos?". Also use when user wants a quality dashboard or health summary.
----
+______________________________________________________________________
+
+## name: quality-pulse description: Use when analyzing quality trends, adapter performance, or degradation signals across the Bodai ecosystem. Use when user asks "are any adapters slowing down?", "is X getting better/worse?", "any unusual quality patterns?", "show me quality trends", "detect quality anomalies", "are repos correlated on metric X?", or "what's the quality health across repos?". Also use when user wants a quality dashboard or health summary.
 
 # Quality Pulse
 
@@ -11,8 +10,8 @@ description: Use when analyzing quality trends, adapter performance, or degradat
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| akosha | 8682 | summary | mcp__akosha__analyze_trends, mcp__akosha__detect_anomalies | 60s |
-| crackerjack | 8676 | summary | mcp__crackerjack__get_comprehensive_status, mcp__crackerjack__get_stage_status | 120s |
+| akosha | 8682 | summary | mcp\_\_akosha\_\_analyze_trends, mcp\_\_akosha\_\_detect_anomalies | 60s |
+| crackerjack | 8676 | summary | mcp\_\_crackerjack\_\_get_comprehensive_status, mcp\_\_crackerjack\_\_get_stage_status | 120s |
 
 Analyzes quality trends, anomalies, and cross-system correlations using Akosha's time-series analytics. Answers "is something getting worse?" across adapter execution, error rates, and workflow metrics collected by Crackerjack's adapter learning system.
 
@@ -21,6 +20,7 @@ Analyzes quality trends, anomalies, and cross-system correlations using Akosha's
 ## When to Use
 
 **Use when:**
+
 - Checking quality trends across repos or adapters
 - Detecting unusual patterns or anomalies in quality metrics
 - Correlating quality metrics between systems
@@ -28,6 +28,7 @@ Analyzes quality trends, anomalies, and cross-system correlations using Akosha's
 - After activating adapter learning in Crackerjack, to verify data is flowing
 
 **Don't use when:**
+
 - Running quality checks (use `run-quality-checks`)
 - Searching for cross-repo code patterns (use `code-archaeologist`)
 - Searching for past quality conversations (use `search-insights`)
@@ -36,11 +37,12 @@ Analyzes quality trends, anomalies, and cross-system correlations using Akosha's
 ## Data Source
 
 Quality data flows through this pipeline:
+
 1. Crackerjack runs adapters with timing (`HookExecutor`, `AutofixCoordinator`)
-2. Adapter execution data stored in `.crackerjack/adapter_learning.db` (SQLite)
-3. Session-Buddy syncs memories to Akosha (cloud or HTTP)
-4. Akosha aggregates into time-series metrics
-5. This skill queries Akosha's analytics API
+1. Adapter execution data stored in `.crackerjack/adapter_learning.db` (SQLite)
+1. Session-Buddy syncs memories to Akosha (cloud or HTTP)
+1. Akosha aggregates into time-series metrics
+1. This skill queries Akosha's analytics API
 
 **Note:** Adapter learning was activated 2026-04-14 in Crackerjack. Data accumulates with each `crackerjack run`. Early analyses may have sparse data.
 
@@ -72,11 +74,13 @@ mcp__akosha__get_system_metrics()
 ```
 
 This returns all metric names currently being tracked. Common metrics include:
+
 - `conversation_count` — sessions per system
 - `quality_score` — aggregate quality (if tracked)
 - `error_rate` — failure frequency
 
 If no metrics are returned, inform the user:
+
 > "No metrics are tracked yet. Quality data comes from Crackerjack's adapter learning (activated 2026-04-14). Run `crackerjack run` a few times to generate data, then retry."
 
 ### Step 3: Route to Sub-Mode
@@ -84,17 +88,17 @@ If no metrics are returned, inform the user:
 **Health snapshot workflow:**
 
 1. Call `mcp__akosha__get_system_metrics` to get current state
-2. For each system, classify status:
+1. For each system, classify status:
    - **Green**: All metrics within normal range
    - **Yellow**: One metric trending negative (flagged by `analyze_trends`)
    - **Red**: Anomaly detected (flagged by `detect_anomalies`)
-3. Present as a traffic-light table
+1. Present as a traffic-light table
 
 **Trend analysis workflow:**
 
 1. Identify the metric the user is asking about (default: all metrics)
-2. Call `mcp__akosha__analyze_trends` with the metric name and appropriate time window
-3. Present:
+1. Call `mcp__akosha__analyze_trends` with the metric name and appropriate time window
+1. Present:
    - Trend direction (increasing/decreasing/stable)
    - Confidence (R-squared score)
    - Percent change
@@ -103,8 +107,8 @@ If no metrics are returned, inform the user:
 **Anomaly alert workflow:**
 
 1. Call `mcp__akosha__detect_anomalies` on error-related metrics
-2. Use threshold 2.0 (default) — 2 standard deviations
-3. Present anomalies ranked by severity:
+1. Use threshold 2.0 (default) — 2 standard deviations
+1. Present anomalies ranked by severity:
    - High: >3.0 standard deviations from mean
    - Medium: 2.0-3.0
    - Low: 1.5-2.0
@@ -112,12 +116,12 @@ If no metrics are returned, inform the user:
 **Correlation workflow:**
 
 1. Identify the two metrics/systems the user wants to compare
-2. Call `mcp__akosha__correlate_systems` with the metric name
-3. Present correlation matrix:
+1. Call `mcp__akosha__correlate_systems` with the metric name
+1. Present correlation matrix:
    - Strong: |r| > 0.7
    - Moderate: 0.4 < |r| < 0.7
    - Weak: |r| < 0.4
-4. Include interpretation: "High positive correlation between system A and B on error_rate — when one degrades, the other tends to follow."
+1. Include interpretation: "High positive correlation between system A and B on error_rate — when one degrades, the other tends to follow."
 
 ### Step 4: Present Findings
 
@@ -153,7 +157,7 @@ If Akosha MCP tools are not available:
    ```
    sqlite3 .crackerjack/adapter_learning.db "SELECT adapter_name, COUNT(*), AVG(execution_time_ms) FROM executions GROUP BY adapter_name ORDER BY AVG(execution_time_ms) DESC;"
    ```
-2. Inform the user: "Akosha is not available. Showing local Crackerjack data only. For cross-system trends, ensure Akosha is running."
+1. Inform the user: "Akosha is not available. Showing local Crackerjack data only. For cross-system trends, ensure Akosha is running."
 
 ## Common Mistakes
 
@@ -168,4 +172,6 @@ If Akosha MCP tools are not available:
 - **RELATED:** `code-archaeologist` - After Quality Pulse surfaces degradation, find how other repos solved it
 - **RELATED:** `search-insights` - Broader Akosha analytics (conversations, knowledge graph)
 - **RELATED:** `run-quality-checks` - Trigger quality data collection before analyzing trends
+
+```
 ```

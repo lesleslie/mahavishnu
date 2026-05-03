@@ -4,12 +4,8 @@ Tests all 6 CLI commands by running them and verifying output/behavior.
 Uses MockWorktreeProvider to ensure safe testing.
 """
 
-import asyncio
-import subprocess
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from typer.testing import CliRunner
 
 from mahavishnu.worktree_cli import worktree_app
@@ -22,7 +18,6 @@ class TestWorktreeCLI:
         """Set up test fixtures."""
         self.runner = CliRunner()
 
-    
     def test_create_worktree_command(self, tmp_path):
         """Test 'mhv worktree create' command."""
         # Mock WorktreeCoordinator
@@ -51,7 +46,7 @@ class TestWorktreeCLI:
             return_value=MagicMock(
                 worktree_coordinator=mock_coordinator,
                 initialize_worktree_coordinator=AsyncMock(),
-            )
+            ),
         ):
             result = self.runner.invoke(
                 worktree_app,
@@ -62,7 +57,6 @@ class TestWorktreeCLI:
         assert "✅" in result.output
         assert "Created worktree" in result.output
 
-    
     def test_create_worktree_with_create_branch_flag(self, tmp_path):
         """Test 'mhv worktree create --create-branch' command."""
         mock_coordinator = MagicMock()
@@ -83,7 +77,7 @@ class TestWorktreeCLI:
             return_value=MagicMock(
                 worktree_coordinator=mock_coordinator,
                 initialize_worktree_coordinator=AsyncMock(),
-            )
+            ),
         ):
             result = self.runner.invoke(
                 worktree_app,
@@ -97,7 +91,6 @@ class TestWorktreeCLI:
         call_kwargs = mock_coordinator.create_worktree.call_args.kwargs
         assert call_kwargs["create_branch"] is True
 
-    
     def test_create_worktree_with_custom_name(self, tmp_path):
         """Test 'mhv worktree create --name' command."""
         mock_coordinator = MagicMock()
@@ -118,7 +111,7 @@ class TestWorktreeCLI:
             return_value=MagicMock(
                 worktree_coordinator=mock_coordinator,
                 initialize_worktree_coordinator=AsyncMock(),
-            )
+            ),
         ):
             result = self.runner.invoke(
                 worktree_app,
@@ -137,7 +130,6 @@ class TestWorktreeCLI:
         assert result.exit_code != 0
         assert "Missing argument" in result.output or "requires" in result.output.lower()
 
-    
     def test_remove_worktree_command(self, tmp_path):
         """Test 'mhv worktree remove' command."""
         mock_coordinator = MagicMock()
@@ -166,7 +158,7 @@ class TestWorktreeCLI:
             return_value=MagicMock(
                 worktree_coordinator=mock_coordinator,
                 initialize_worktree_coordinator=AsyncMock(),
-            )
+            ),
         ):
             result = self.runner.invoke(
                 worktree_app,
@@ -177,7 +169,6 @@ class TestWorktreeCLI:
         assert "✅" in result.output
         assert "Removed worktree" in result.output
 
-    
     def test_remove_worktree_with_force_and_reason(self, tmp_path):
         """Test 'mhv worktree remove --force --force-reason' command."""
         mock_coordinator = MagicMock()
@@ -212,7 +203,7 @@ class TestWorktreeCLI:
             return_value=MagicMock(
                 worktree_coordinator=mock_coordinator,
                 initialize_worktree_coordinator=AsyncMock(),
-            )
+            ),
         ):
             result = self.runner.invoke(
                 worktree_app,
@@ -233,7 +224,6 @@ class TestWorktreeCLI:
         assert call_kwargs["force"] is True
         assert call_kwargs["force_reason"] == "Fixing critical bug"
 
-    
     def test_remove_worktree_blocked_by_uncommitted_changes(self, tmp_path):
         """Test that removal is blocked by uncommitted changes."""
         mock_coordinator = MagicMock()
@@ -252,7 +242,7 @@ class TestWorktreeCLI:
             return_value=MagicMock(
                 worktree_coordinator=mock_coordinator,
                 initialize_worktree_coordinator=AsyncMock(),
-            )
+            ),
         ):
             result = self.runner.invoke(
                 worktree_app,
@@ -262,7 +252,6 @@ class TestWorktreeCLI:
         assert result.exit_code == 1
         assert "⚠️" in result.output or "uncommitted" in result.output.lower()
 
-    
     def test_list_worktrees_command(self, tmp_path):
         """Test 'mhv worktree list' command."""
         mock_coordinator = MagicMock()
@@ -296,7 +285,7 @@ class TestWorktreeCLI:
             return_value=MagicMock(
                 worktree_coordinator=mock_coordinator,
                 initialize_worktree_coordinator=AsyncMock(),
-            )
+            ),
         ):
             result = self.runner.invoke(worktree_app, ["list"])
 
@@ -305,7 +294,6 @@ class TestWorktreeCLI:
         assert "Worktrees" in result.output
         assert "2 total" in result.output
 
-    
     def test_list_worktrees_with_repo_filter(self, tmp_path):
         """Test 'mhv worktree list --repo' command."""
         mock_coordinator = MagicMock()
@@ -337,14 +325,13 @@ class TestWorktreeCLI:
             return_value=MagicMock(
                 worktree_coordinator=mock_coordinator,
                 initialize_worktree_coordinator=AsyncMock(),
-            )
+            ),
         ):
             result = self.runner.invoke(worktree_app, ["list", "--repo", "test"])
 
         assert result.exit_code == 0
         assert "Worktrees" in result.output
 
-    
     def test_prune_worktrees_command(self, tmp_path):
         """Test 'mhv worktree prune' command."""
         mock_coordinator = MagicMock()
@@ -358,7 +345,7 @@ class TestWorktreeCLI:
             return_value=MagicMock(
                 worktree_coordinator=mock_coordinator,
                 initialize_worktree_coordinator=AsyncMock(),
-            )
+            ),
         ):
             result = self.runner.invoke(worktree_app, ["prune", "test"])
 
@@ -367,7 +354,6 @@ class TestWorktreeCLI:
         assert "Pruned" in result.output
         assert "2" in result.output
 
-    
     def test_safety_status_command(self, tmp_path):
         """Test 'mhv worktree safety-status' command."""
         mock_coordinator = MagicMock()
@@ -386,7 +372,7 @@ class TestWorktreeCLI:
             return_value=MagicMock(
                 worktree_coordinator=mock_coordinator,
                 initialize_worktree_coordinator=AsyncMock(),
-            )
+            ),
         ):
             result = self.runner.invoke(
                 worktree_app,
@@ -403,7 +389,6 @@ class TestWorktreeCLI:
         assert "Uncommitted changes:" in result.output
         assert "Dependencies found:" in result.output
 
-    
     def test_safety_status_clean(self, tmp_path):
         """Test safety status command with clean worktree."""
         mock_coordinator = MagicMock()
@@ -422,7 +407,7 @@ class TestWorktreeCLI:
             return_value=MagicMock(
                 worktree_coordinator=mock_coordinator,
                 initialize_worktree_coordinator=AsyncMock(),
-            )
+            ),
         ):
             result = self.runner.invoke(
                 worktree_app,
@@ -436,7 +421,6 @@ class TestWorktreeCLI:
         assert result.exit_code == 0
         assert "✅ No blocking dependencies" in result.output
 
-    
     def test_provider_health_command(self, tmp_path):
         """Test 'mhv worktree provider-health' command."""
         mock_coordinator = MagicMock()
@@ -453,7 +437,7 @@ class TestWorktreeCLI:
             return_value=MagicMock(
                 worktree_coordinator=mock_coordinator,
                 initialize_worktree_coordinator=AsyncMock(),
-            )
+            ),
         ):
             result = self.runner.invoke(worktree_app, ["provider-health"])
 
@@ -462,17 +446,13 @@ class TestWorktreeCLI:
         assert "Worktree Provider Health:" in result.output
         assert "Healthy" in result.output
 
-    
     def test_error_messages_are_clear(self, tmp_path):
         """Test that error messages are clear and actionable."""
         mock_coordinator = MagicMock()
 
         # Return error result instead of raising exception
         mock_coordinator.create_worktree = AsyncMock(
-            return_value={
-                "success": False,
-                "error": "Repository not found: nonexistent-repo"
-            }
+            return_value={"success": False, "error": "Repository not found: nonexistent-repo"}
         )
 
         with patch(
@@ -480,7 +460,7 @@ class TestWorktreeCLI:
             return_value=MagicMock(
                 worktree_coordinator=mock_coordinator,
                 initialize_worktree_coordinator=AsyncMock(),
-            )
+            ),
         ):
             result = self.runner.invoke(
                 worktree_app,

@@ -18,8 +18,9 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mahavishnu.core.config import MahavishnuSettings
 from oneiric.adapters.observability import OTelStorageAdapter, OTelStorageSettings
+
+from mahavishnu.core.config import MahavishnuSettings
 
 
 async def example_basic_usage():

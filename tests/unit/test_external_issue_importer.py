@@ -1,16 +1,17 @@
 """Tests for ExternalIssueImporter - Import issues from GitHub/GitLab."""
 
-import pytest
-from datetime import datetime, UTC
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from mahavishnu.core.external_issue_importer import (
-    ExternalIssueImporter,
-    ImportResult,
-    ImportConfig,
-    IssueMapping,
     ExternalIssue,
+    ExternalIssueImporter,
+    ImportConfig,
+    ImportResult,
+    IssueMapping,
     IssueSource,
 )
 

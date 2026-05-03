@@ -1,18 +1,17 @@
 """Tests for Cache Manager - LRU cache with optional Redis backend."""
 
-import pytest
-import asyncio
 import time
-from datetime import datetime, UTC, timedelta
-from unittest.mock import MagicMock, AsyncMock, patch
 from typing import Any
+from unittest.mock import AsyncMock
+
+import pytest
 
 from mahavishnu.core.cache_manager import (
-    CacheManager,
     CacheBackend,
-    LRUCache,
-    CacheStats,
     CacheKey,
+    CacheManager,
+    CacheStats,
+    LRUCache,
     aggregate_cache_health,
 )
 
@@ -577,9 +576,7 @@ class TestCacheManager:
             def get_stats(self) -> dict[str, Any]:
                 return {"hits": 2, "misses": 1, "hit_rate": 2 / 3}
 
-        result = aggregate_cache_health(
-            {"dataclass": _DataclassCache(), "mapping": _DictCache()}
-        )
+        result = aggregate_cache_health({"dataclass": _DataclassCache(), "mapping": _DictCache()})
 
         assert result["caches"]["dataclass"]["hits"] == 1
         assert result["caches"]["mapping"]["hits"] == 2

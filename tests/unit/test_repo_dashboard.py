@@ -1,19 +1,19 @@
 """Tests for RepositoryDashboard - Repository-specific dashboard views."""
 
-import pytest
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
-from typing import Any
+
+import pytest
 
 from mahavishnu.core.repo_dashboard import (
-    RepositoryDashboard,
-    DashboardView,
     ActivityMetrics,
+    DashboardView,
     HealthIndicator,
-    TaskDistribution,
+    RepositoryDashboard,
     RiskAssessment,
+    TaskDistribution,
 )
-from mahavishnu.core.task_store import Task, TaskStatus, TaskPriority
+from mahavishnu.core.task_store import Task, TaskPriority, TaskStatus
 
 
 @pytest.fixture
@@ -256,9 +256,7 @@ class TestRepositoryDashboard:
         assert view.distribution.by_status[TaskStatus.BLOCKED] == 1
 
     @pytest.mark.asyncio
-    async def test_dashboard_health_healthy(
-        self, mock_task_store: AsyncMock
-    ) -> None:
+    async def test_dashboard_health_healthy(self, mock_task_store: AsyncMock) -> None:
         """Dashboard shows healthy status when no issues."""
         # All completed tasks = healthy
         tasks = [
@@ -280,9 +278,7 @@ class TestRepositoryDashboard:
         assert view.health == HealthIndicator.HEALTHY
 
     @pytest.mark.asyncio
-    async def test_dashboard_health_warning(
-        self, mock_task_store: AsyncMock
-    ) -> None:
+    async def test_dashboard_health_warning(self, mock_task_store: AsyncMock) -> None:
         """Dashboard shows warning when some issues."""
         now = datetime.now(UTC)
         tasks = [
@@ -312,9 +308,7 @@ class TestRepositoryDashboard:
         assert view.health in [HealthIndicator.WARNING, HealthIndicator.CRITICAL]
 
     @pytest.mark.asyncio
-    async def test_dashboard_health_critical(
-        self, mock_task_store: AsyncMock
-    ) -> None:
+    async def test_dashboard_health_critical(self, mock_task_store: AsyncMock) -> None:
         """Dashboard shows critical when many issues."""
         now = datetime.now(UTC)
         # Many blocked and high priority tasks
@@ -401,9 +395,7 @@ class TestRepositoryDashboard:
         assert len(views) >= 2
 
     @pytest.mark.asyncio
-    async def test_dashboard_empty_repository(
-        self, mock_task_store: AsyncMock
-    ) -> None:
+    async def test_dashboard_empty_repository(self, mock_task_store: AsyncMock) -> None:
         """Dashboard for repository with no tasks."""
         mock_task_store.list.return_value = []
 
@@ -414,9 +406,7 @@ class TestRepositoryDashboard:
         assert view.health == HealthIndicator.HEALTHY
 
     @pytest.mark.asyncio
-    async def test_dashboard_identifies_at_risk_tasks(
-        self, mock_task_store: AsyncMock
-    ) -> None:
+    async def test_dashboard_identifies_at_risk_tasks(self, mock_task_store: AsyncMock) -> None:
         """Dashboard identifies at-risk tasks."""
         now = datetime.now(UTC)
         tasks = [
@@ -447,9 +437,7 @@ class TestRepositoryDashboard:
         assert len(view.risk.risks) > 0
 
     @pytest.mark.asyncio
-    async def test_dashboard_completion_rate(
-        self, mock_task_store: AsyncMock
-    ) -> None:
+    async def test_dashboard_completion_rate(self, mock_task_store: AsyncMock) -> None:
         """Dashboard calculates completion rate."""
         now = datetime.now(UTC)
         tasks = [
@@ -472,9 +460,7 @@ class TestRepositoryDashboard:
         assert view.completion_rate == pytest.approx(0.5, rel=0.1)
 
     @pytest.mark.asyncio
-    async def test_dashboard_block_rate(
-        self, mock_task_store: AsyncMock
-    ) -> None:
+    async def test_dashboard_block_rate(self, mock_task_store: AsyncMock) -> None:
         """Dashboard calculates block rate."""
         now = datetime.now(UTC)
         tasks = [
@@ -497,9 +483,7 @@ class TestRepositoryDashboard:
         assert view.blocked_rate == pytest.approx(0.2, rel=0.1)
 
     @pytest.mark.asyncio
-    async def test_dashboard_recent_activity(
-        self, mock_task_store: AsyncMock
-    ) -> None:
+    async def test_dashboard_recent_activity(self, mock_task_store: AsyncMock) -> None:
         """Dashboard tracks recent activity."""
         now = datetime.now(UTC)
         tasks = [

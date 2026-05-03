@@ -21,11 +21,11 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import StrEnum
 import json
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
@@ -309,7 +309,7 @@ class OrchestrationCoordinator:
         """
         event = {
             "type": event_type,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "payload": payload,
         }
         self.websocket_events.append(event)
@@ -324,7 +324,7 @@ class OrchestrationCoordinator:
             "message": message
         })
         """
-        msg = {"topic": topic, "timestamp": datetime.now(timezone.utc).isoformat(), **message}
+        msg = {"topic": topic, "timestamp": datetime.now(UTC).isoformat(), **message}
         self.message_bus.append(msg)
         logger.debug(f"[MessageBus] {topic}: {message.get('type', 'unknown')}")
 
@@ -373,7 +373,7 @@ class OrchestrationCoordinator:
         )
         """
         task.status = TaskStatus.IN_PROGRESS
-        task.started_at = datetime.now(timezone.utc)
+        task.started_at = datetime.now(UTC)
 
         self._broadcast_websocket(
             "task_started",
@@ -389,7 +389,7 @@ class OrchestrationCoordinator:
             result = {"status": "would_execute", "task": task.name}
 
         task.status = TaskStatus.COMPLETED
-        task.completed_at = datetime.now(timezone.utc)
+        task.completed_at = datetime.now(UTC)
         task.result = result
 
         # Update workstream progress
@@ -427,9 +427,11 @@ class OrchestrationCoordinator:
         Returns:
             Orchestration results summary
         """
-        self._broadcast_websocket("orchestration_started", {"phase": phase, "dry_run": self.dry_run})
+        self._broadcast_websocket(
+            "orchestration_started", {"phase": phase, "dry_run": self.dry_run}
+        )
 
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC)
         total_completed = 0
         total_failed = 0
 
@@ -476,7 +478,7 @@ class OrchestrationCoordinator:
                 else:
                     total_completed += 1
 
-        end_time = datetime.now(timezone.utc)
+        end_time = datetime.now(UTC)
         duration = (end_time - start_time).total_seconds()
 
         # Aggregate results (demonstrates concurrent collection)
@@ -530,7 +532,9 @@ async def main(dry_run: bool = False, phase: str | None = None) -> int:
 
     for ws_name, ws_data in summary["workstreams"].items():
         status = "✅" if ws_data["failed_tasks"] == 0 else "⚠️"
-        print(f"{status} {ws_name}: {ws_data['completed_tasks']}/{ws_data['total_tasks']} ({ws_data['progress_pct']:.0f}%)")
+        print(
+            f"{status} {ws_name}: {ws_data['completed_tasks']}/{ws_data['total_tasks']} ({ws_data['progress_pct']:.0f}%)"
+        )
 
     print("")
     print(f"WebSocket events: {summary['websocket_events']}")

@@ -31,9 +31,9 @@ from rich.syntax import Syntax
 from rich.table import Table
 import typer
 
+from mahavishnu.core import team_learning
 from mahavishnu.core.errors import GoalParsingError, GoalTeamError
 from mahavishnu.core.feature_flags import is_feature_enabled
-from mahavishnu.core import team_learning
 from mahavishnu.engines.agno_teams.config import TeamConfig, TeamMode
 from mahavishnu.engines.goal_team_factory import (
     SKILL_MAPPING,
@@ -69,7 +69,7 @@ def _check_feature_flags() -> None:
 def _get_factory() -> GoalDrivenTeamFactory:
     """Get or create the GoalDrivenTeamFactory instance."""
     # Check if LLM fallback is enabled
-    use_llm_fallback = is_feature_enabled("llm_fallback_enabled")
+    is_feature_enabled("llm_fallback_enabled")
     return GoalDrivenTeamFactory(
         llm_factory=None  # CLI doesn't have access to LLM factory context
     )

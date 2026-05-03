@@ -10,10 +10,6 @@ This module provides MCP tools for:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from ..websocket.server import MahavishnuWebSocketServer
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +158,7 @@ def register_websocket_tools(server, websocket_server):
             subscribers = len(websocket_server.connection_rooms.get(room, set()))
 
             # Create test event
-            from mcp_common.websocket import WebSocketProtocol, EventTypes
+            from mcp_common.websocket import EventTypes, WebSocketProtocol
 
             # Map common event types
             event_mapping = {

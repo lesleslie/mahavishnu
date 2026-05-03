@@ -3,7 +3,6 @@
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
-
 _MODULE_PATH = Path("scripts/verify_ecosystem_metrics.py")
 _SPEC = spec_from_file_location("verify_ecosystem_metrics", _MODULE_PATH)
 assert _SPEC is not None and _SPEC.loader is not None

@@ -7,13 +7,13 @@ Note: Oneiric path is configured in tests/conftest.py
 """
 
 import pytest
-from datetime import datetime
 
 
 @pytest.fixture
 def clear_ulid_registry():
     """Clear ULID registry before tests that need clean state."""
     from oneiric.core.ulid_resolution import _ulid_registry
+
     _ulid_registry.clear()
 
 
@@ -39,7 +39,9 @@ def _patch_ulid_generators(monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr("oneiric.core.ulid.generate", generate, raising=False)
     monkeypatch.setattr("oneiric.core.ulid.is_ulid", is_valid, raising=False)
-    monkeypatch.setattr("crackerjack.services.ulid_generator.generate_ulid", generate, raising=False)
+    monkeypatch.setattr(
+        "crackerjack.services.ulid_generator.generate_ulid", generate, raising=False
+    )
     monkeypatch.setattr("session_buddy.core.ulid_generator.generate_ulid", generate, raising=False)
 
     import mahavishnu.core.workflow_models as workflow_models
@@ -53,12 +55,13 @@ def _patch_ulid_generators(monkeypatch: pytest.MonkeyPatch):
 async def test_workflow_creates_ulid_with_cross_system_trace():
     """Mahavishnu workflow should generate traceable ULID and correlate across systems."""
     # Import here to avoid module-level import issues
-    from mahavishnu.core.workflow_models import WorkflowExecution
     from oneiric.core.ulid_resolution import (
+        get_cross_system_trace,
         register_reference,
         resolve_ulid,
-        get_cross_system_trace,
     )
+
+    from mahavishnu.core.workflow_models import WorkflowExecution
 
     # Create workflow execution with ULID
     execution = WorkflowExecution(
@@ -95,12 +98,12 @@ async def test_workflow_creates_ulid_with_cross_system_trace():
 @pytest.mark.integration
 async def test_akosha_entity_ulid_resolution():
     """Akosha entities should use ULID and be resolvable across systems."""
+    from oneiric.core.ulid import generate
     from oneiric.core.ulid_resolution import (
+        find_references_by_system,
         register_reference,
         resolve_ulid,
-        find_references_by_system,
     )
-    from oneiric.core.ulid import generate
 
     # Generate ULID for Akosha entity
     entity_ulid = generate()
@@ -130,12 +133,12 @@ async def test_akosha_entity_ulid_resolution():
 @pytest.mark.integration
 async def test_crackerjack_test_ulid_tracking():
     """Crackerjack tests should have ULID-based tracking and cross-system resolution."""
+    from oneiric.core.ulid import generate
     from oneiric.core.ulid_resolution import (
+        get_cross_system_trace,
         register_reference,
         resolve_ulid,
-        get_cross_system_trace,
     )
-    from oneiric.core.ulid import generate
 
     # Generate ULID for Crackerjack test
     test_ulid = generate()
@@ -167,12 +170,12 @@ async def test_crackerjack_test_ulid_tracking():
 @pytest.mark.integration
 async def test_session_buddy_ulid_integration():
     """Session-Buddy sessions should use ULID for correlation."""
+    from oneiric.core.ulid import generate
     from oneiric.core.ulid_resolution import (
+        find_references_by_system,
         register_reference,
         resolve_ulid,
-        find_references_by_system,
     )
-    from oneiric.core.ulid import generate
 
     # Generate ULID for Session-Buddy session
     session_ulid = generate()
@@ -200,12 +203,11 @@ async def test_session_buddy_ulid_integration():
 @pytest.mark.integration
 async def test_cross_system_time_correlation():
     """Should find ULIDs correlated by time proximity across systems."""
-    from oneiric.core.ulid_resolution import (
-        register_reference,
-        find_related_ulids,
-        get_cross_system_trace,
-    )
     from oneiric.core.ulid import generate
+    from oneiric.core.ulid_resolution import (
+        find_related_ulids,
+        register_reference,
+    )
 
     # Generate ULIDs at approximately same time
     ulid1 = generate()
@@ -227,13 +229,13 @@ async def test_cross_system_time_correlation():
 @pytest.mark.integration
 async def test_cross_system_complete_trace(clear_ulid_registry):
     """Should provide complete trace across all systems."""
-    from oneiric.core.ulid_resolution import (
-        register_reference,
-        find_references_by_system,
-        export_registry,
-        get_registry_stats,
-    )
     from oneiric.core.ulid import generate
+    from oneiric.core.ulid_resolution import (
+        export_registry,
+        find_references_by_system,
+        get_registry_stats,
+        register_reference,
+    )
 
     # Register references from all systems
     mahavishnu_ulid = generate()
@@ -273,8 +275,7 @@ async def test_cross_system_complete_trace(clear_ulid_registry):
 @pytest.mark.integration
 async def test_ulid_time_based_sorting():
     """ULIDs should be time-ordered for chronological queries."""
-    from oneiric.core.ulid import generate
-    from oneiric.core.ulid import extract_timestamp
+    from oneiric.core.ulid import extract_timestamp, generate
 
     # Generate 3 ULIDs in sequence
     ulids = [generate() for _ in range(3)]
@@ -294,11 +295,11 @@ async def test_ulid_time_based_sorting():
 @pytest.mark.integration
 async def test_ulid_uniqueness_across_systems():
     """ULIDs should be unique across all systems in registry."""
-    from oneiric.core.ulid_resolution import (
-        register_reference,
-        export_registry,
-    )
     from oneiric.core.ulid import generate
+    from oneiric.core.ulid_resolution import (
+        export_registry,
+        register_reference,
+    )
 
     # Generate 1000 ULIDs and register
     ulids = [generate() for _ in range(1000)]

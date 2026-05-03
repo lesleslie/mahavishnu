@@ -416,24 +416,26 @@ class TestDharaRegistryFailureLocalOnly:
             )
         ]
 
-        with patch.object(
-            registry.discovery,
-            "discover_from_entry_points",
-            new_callable=AsyncMock,
-            return_value=entry_adapters,
-        ):
-            with patch.object(
+        with (
+            patch.object(
+                registry.discovery,
+                "discover_from_entry_points",
+                new_callable=AsyncMock,
+                return_value=entry_adapters,
+            ),
+            patch.object(
                 registry.discovery,
                 "discover_from_dhara",
                 new_callable=AsyncMock,
                 side_effect=ConnectionError("Dhara unavailable"),
-            ):
-                # discover_all should combine results, handling Dhara failure
-                adapters = await registry.discovery.discover_all()
+            ),
+        ):
+            # discover_all should combine results, handling Dhara failure
+            adapters = await registry.discovery.discover_all()
 
-                # Entry point adapters should still be present
-                adapter_ids = [a.adapter_id for a in adapters]
-                assert "entry.adapter" in adapter_ids
+            # Entry point adapters should still be present
+            adapter_ids = [a.adapter_id for a in adapters]
+            assert "entry.adapter" in adapter_ids
 
         await registry.close()
 
@@ -449,9 +451,7 @@ class TestDharaRegistryFailureLocalOnly:
 
         # Mock client that times out
         mock_client = MagicMock()
-        mock_client.list_adapters = AsyncMock(
-            side_effect=TimeoutError("Dhara registry timeout")
-        )
+        mock_client.list_adapters = AsyncMock(side_effect=TimeoutError("Dhara registry timeout"))
 
         with patch.object(
             registry.discovery,
@@ -576,13 +576,15 @@ class TestDharaUnavailableUsesMemory:
 
         # Don't initialize persistence
         # Mock initialize to fail
-        with patch.object(
-            registry.persistence,
-            "initialize",
-            side_effect=PersistenceError("Database unavailable"),
+        with (
+            patch.object(
+                registry.persistence,
+                "initialize",
+                side_effect=PersistenceError("Database unavailable"),
+            ),
+            pytest.raises(PersistenceError),
         ):
-            with pytest.raises(PersistenceError):
-                await registry.initialize()
+            await registry.initialize()
 
         # Even with persistence failure, in-memory operations should work
         metadata = AdapterMetadata(
@@ -639,23 +641,25 @@ class TestPartialDiscoveryContinues:
         ]
 
         # Dhara fails
-        with patch.object(
-            registry.discovery,
-            "discover_from_entry_points",
-            new_callable=AsyncMock,
-            return_value=entry_adapters,
-        ):
-            with patch.object(
+        with (
+            patch.object(
+                registry.discovery,
+                "discover_from_entry_points",
+                new_callable=AsyncMock,
+                return_value=entry_adapters,
+            ),
+            patch.object(
                 registry.discovery,
                 "discover_from_dhara",
                 new_callable=AsyncMock,
                 side_effect=Exception("Dhara discovery failed"),
-            ):
-                adapters = await registry.discovery.discover_all()
+            ),
+        ):
+            adapters = await registry.discovery.discover_all()
 
-                # Should have entry point adapters
-                assert len(adapters) >= 1
-                assert any(a.adapter_id == "entry.success" for a in adapters)
+            # Should have entry point adapters
+            assert len(adapters) >= 1
+            assert any(a.adapter_id == "entry.success" for a in adapters)
 
         await registry.close()
 
@@ -770,27 +774,29 @@ class TestPartialDiscoveryContinues:
             )
         ]
 
-        with patch.object(
-            registry.discovery,
-            "discover_from_entry_points",
-            new_callable=AsyncMock,
-            return_value=entry_adapters,
-        ):
-            with patch.object(
+        with (
+            patch.object(
+                registry.discovery,
+                "discover_from_entry_points",
+                new_callable=AsyncMock,
+                return_value=entry_adapters,
+            ),
+            patch.object(
                 registry.discovery,
                 "discover_from_dhara",
                 new_callable=AsyncMock,
                 return_value=dhara_adapters,
-            ):
-                report = await registry.discover_and_register()
+            ),
+        ):
+            report = await registry.discover_and_register()
 
-                # Sources should be tracked
-                assert "entry_point" in report.sources
-                assert "dhara" in report.sources
+            # Sources should be tracked
+            assert "entry_point" in report.sources
+            assert "dhara" in report.sources
 
-                # Counts should match
-                assert report.sources["entry_point"] == 1
-                assert report.sources["dhara"] == 1
+            # Counts should match
+            assert report.sources["entry_point"] == 1
+            assert report.sources["dhara"] == 1
 
         await registry.close()
 
@@ -855,15 +861,11 @@ class TestPartialDiscoveryContinues:
 
         # Good adapter
         good_adapter = MagicMock()
-        good_adapter.get_health = AsyncMock(
-            return_value={"status": "healthy", "latency_ms": 10}
-        )
+        good_adapter.get_health = AsyncMock(return_value={"status": "healthy", "latency_ms": 10})
 
         # Failing adapter
         failing_adapter = MagicMock()
-        failing_adapter.get_health = AsyncMock(
-            side_effect=RuntimeError("Health check failed")
-        )
+        failing_adapter.get_health = AsyncMock(side_effect=RuntimeError("Health check failed"))
 
         # Add both to registry
         registry._adapters["good"] = good_adapter
@@ -929,24 +931,26 @@ class TestFallbackChainIntegration:
             )
         ]
 
-        with patch.object(
-            registry.discovery,
-            "discover_from_entry_points",
-            new_callable=AsyncMock,
-            return_value=entry_adapters,
-        ):
-            with patch.object(
+        with (
+            patch.object(
+                registry.discovery,
+                "discover_from_entry_points",
+                new_callable=AsyncMock,
+                return_value=entry_adapters,
+            ),
+            patch.object(
                 registry.discovery,
                 "discover_from_dhara",
                 new_callable=AsyncMock,
                 side_effect=ConnectionError("Dhara registry unavailable"),
-            ):
-                # This should not raise
-                report = await registry.discover_and_register()
+            ),
+        ):
+            # This should not raise
+            report = await registry.discover_and_register()
 
-                # Should have discovered entry point adapters
-                assert report.discovered >= 1
-                assert report.sources.get("entry_point", 0) >= 1
+            # Should have discovered entry point adapters
+            assert report.discovered >= 1
+            assert report.sources.get("entry_point", 0) >= 1
 
         await registry.close()
 

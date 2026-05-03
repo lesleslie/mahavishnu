@@ -38,8 +38,8 @@ from mahavishnu.adapters.ai.pydantic_ai_adapter import (
 )
 from mahavishnu.adapters.pgvector_adapter import (
     HNSWConfig,
-    IVFFlatConfig,
     IndexType,
+    IVFFlatConfig,
     PgvectorAdapter,
     PgvectorSettings,
 )

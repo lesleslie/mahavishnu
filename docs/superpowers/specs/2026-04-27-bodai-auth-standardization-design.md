@@ -14,12 +14,12 @@ The master plan states: "A separate security architecture document must exist be
 ## 2. Goals
 
 1. Standardize inter-service authentication across all Bodai ecosystem components via a shared package in mcp-common
-2. Add mutual service verification (issuer + audience claims) so a compromised service cannot impersonate another
-3. Implement full RBAC across all services, based on Dhara's existing Permission model
-4. Integrate secret management through Oneiric's adapter system (Infisical, AWS, GCP, Keyring, env, file)
-5. Add structured audit logging for all authenticated MCP calls
-6. Maintain full backward compatibility — auth defaults to disabled, existing env vars work, existing JWT tokens remain valid
-7. Keep localhost development trivial — one env var, no ceremony
+1. Add mutual service verification (issuer + audience claims) so a compromised service cannot impersonate another
+1. Implement full RBAC across all services, based on Dhara's existing Permission model
+1. Integrate secret management through Oneiric's adapter system (Infisical, AWS, GCP, Keyring, env, file)
+1. Add structured audit logging for all authenticated MCP calls
+1. Maintain full backward compatibility — auth defaults to disabled, existing env vars work, existing JWT tokens remain valid
+1. Keep localhost development trivial — one env var, no ceremony
 
 ## 3. Non-Goals
 
@@ -124,9 +124,9 @@ KNOWN_SERVICES: frozenset[str] = frozenset({
 ### 6.3 Verification Rules
 
 1. **Signature check** — JWT must be signed with a trusted secret
-2. **Issuer check** — `iss` must be in `KNOWN_SERVICES`
-3. **Audience check** — `aud` must match the receiving service name
-4. **Expiry check** — Standard JWT expiry
+1. **Issuer check** — `iss` must be in `KNOWN_SERVICES`
+1. **Audience check** — `aud` must match the receiving service name
+1. **Expiry check** — Standard JWT expiry
 
 ### 6.4 Dev Mode vs Production
 
@@ -307,8 +307,8 @@ audit_logger.register_sink(my_database_sink)
 Each service follows 3 steps:
 
 1. **Install and wire** — Replace auth module internals with mcp-common delegates, keep public API
-2. **Update decorators** — Replace service-local `@require_auth()` with mcp-common version, add Permission levels
-3. **Verify** — Run existing tests, confirm audit logs appear
+1. **Update decorators** — Replace service-local `@require_auth()` with mcp-common version, add Permission levels
+1. **Verify** — Run existing tests, confirm audit logs appear
 
 ### 10.3 Backward Compatibility
 

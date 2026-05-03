@@ -13,11 +13,12 @@ This runbook provides step-by-step procedures for recovering from various failur
 | Application | 5 min | N/A | Container orchestration restart |
 | Embeddings | 4 hours | 24 hours | Re-compute from source documents |
 
----
+______________________________________________________________________
 
 ## Scenario 1: PostgreSQL Failure
 
 ### Symptoms
+
 - Connection errors to database
 - Vector search queries failing
 - Application logs showing "connection refused"
@@ -38,6 +39,7 @@ docker exec mahavishnu-postgres pg_isready -U mahavishnu
 ### Recovery Steps
 
 #### 1. Automatic Restart (if container crashed)
+
 ```bash
 # Docker will auto-restart with restart: unless-stopped
 docker-compose up -d postgres
@@ -88,11 +90,12 @@ docker exec mahavishnu-postgres psql -U mahavishnu -c "SELECT * FROM pg_extensio
 docker exec mahavishnu-postgres psql -U mahavishnu -c "SELECT COUNT(*) FROM task_embeddings"
 ```
 
----
+______________________________________________________________________
 
 ## Scenario 2: Redis Failure
 
 ### Symptoms
+
 - Cache misses increasing dramatically
 - L2 cache operations timing out
 - Higher latency on repeated queries
@@ -113,6 +116,7 @@ docker exec mahavishnu-redis redis-cli -a $(cat secrets/redis_password.txt) ping
 ### Recovery Steps
 
 #### 1. Automatic Restart
+
 ```bash
 # Redis will auto-restart
 docker-compose up -d redis
@@ -166,11 +170,12 @@ docker exec mahavishnu-redis redis-cli -a $(cat secrets/redis_password.txt) DEL 
 docker exec mahavishnu-redis redis-cli -a $(cat secrets/redis_password.txt) INFO memory
 ```
 
----
+______________________________________________________________________
 
 ## Scenario 3: Embedding Service Failure
 
 ### Symptoms
+
 - "using_mock_embedding" warnings in logs
 - Circuit breaker open alerts
 - Degraded search quality
@@ -216,6 +221,7 @@ curl http://localhost:8682/mcp/health
 #### 3. Fallback Mode
 
 If all embedding sources fail:
+
 - System automatically falls back to mock embeddings
 - Search functionality continues but with reduced quality
 - Monitor for when sources recover
@@ -232,11 +238,12 @@ curl -X POST http://localhost:8680/api/embed -d '{"text": "test query"}'
 # Should return non-mock source if recovered
 ```
 
----
+______________________________________________________________________
 
 ## Scenario 4: Complete System Failure
 
 ### Symptoms
+
 - All services down
 - No response from any endpoint
 - Infrastructure completely unavailable
@@ -297,11 +304,12 @@ docker exec mahavishnu-postgres psql -U mahavishnu -c "
 docker exec mahavishnu-redis redis-cli -a $(cat secrets/redis_password.txt) DBSIZE
 ```
 
----
+______________________________________________________________________
 
 ## Scenario 5: Data Corruption
 
 ### Symptoms
+
 - SQL errors in logs
 - Missing or invalid embeddings
 - Vector search returning unexpected results
@@ -357,7 +365,7 @@ cat backups/latest.sql | docker exec -i mahavishnu-postgres psql -U mahavishnu
 docker-compose start mahavishnu
 ```
 
----
+______________________________________________________________________
 
 ## Monitoring and Alerts
 
@@ -384,7 +392,7 @@ docker-compose start mahavishnu
 - [ ] Application logs showing normal operation
 - [ ] End-to-end test query successful
 
----
+______________________________________________________________________
 
 ## Contact Information
 
@@ -394,7 +402,7 @@ docker-compose start mahavishnu
 | Platform Team | platform@example.com | 15 min |
 | Database Admin | dba@example.com | 30 min |
 
----
+______________________________________________________________________
 
 **Last Updated:** 2026-02-22
 **Next Review:** 2026-03-22

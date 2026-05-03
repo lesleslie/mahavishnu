@@ -1,7 +1,7 @@
 # Ecosystem Metrics Standardization Spec
 
-**Date:** 2026-04-03  
-**Status:** Proposed standard  
+**Date:** 2026-04-03
+**Status:** Proposed standard
 **Scope:** Mahavishnu, Session-Buddy, Akosha, Dhara, Crackerjack, and future Bodai services
 
 ## Purpose
@@ -85,10 +85,10 @@ Shared cross-service families are allowed where the semantics are truly identica
 A service is considered metrics-ready only if all of the following are true:
 
 1. `GET /metrics` returns `200 OK`
-2. content type is Prometheus-compatible text
-3. body contains recognizable Prometheus markers such as `# HELP` and `# TYPE`
-4. the route is served from the primary service process
-5. the route is covered by a repo-local smoke test
+1. content type is Prometheus-compatible text
+1. body contains recognizable Prometheus markers such as `# HELP` and `# TYPE`
+1. the route is served from the primary service process
+1. the route is covered by a repo-local smoke test
 
 ## Deployment Standard
 

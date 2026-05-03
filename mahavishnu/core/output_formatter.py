@@ -21,17 +21,20 @@ Usage:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from enum import StrEnum
 import json
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
 
-class OutputFormat(str, Enum):
+class OutputFormat(StrEnum):
     """Output format types."""
 
     TABLE = "table"
@@ -41,7 +44,7 @@ class OutputFormat(str, Enum):
     PLAIN = "plain"
 
 
-class OutputTheme(str, Enum):
+class OutputTheme(StrEnum):
     """Output color theme."""
 
     DARK = "dark"
@@ -49,7 +52,7 @@ class OutputTheme(str, Enum):
     MONOCHROME = "monochrome"
 
 
-class OutputLevel(str, Enum):
+class OutputLevel(StrEnum):
     """Output verbosity level."""
 
     QUIET = "quiet"  # Only errors
@@ -476,9 +479,10 @@ class OutputFormatter:
     ) -> str:
         """Format as Rich table."""
         try:
-            from rich.table import Table
-            from rich.console import Console
             from io import StringIO
+
+            from rich.console import Console
+            from rich.table import Table
 
             table = Table(
                 title=config.title,
@@ -675,7 +679,7 @@ class OutputFormatter:
             return
 
         prefix = "  " * indent
-        label = data.get("label", "")
+        data.get("label", "")
 
         children = data.get("children", [])
         for i, child in enumerate(children):

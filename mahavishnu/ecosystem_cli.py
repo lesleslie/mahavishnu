@@ -429,7 +429,9 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
             raise typer.Exit(code=1) from None
 
     @app.command("status")
-    def ecosystem_status(json_output: bool = typer.Option(False, "--json", help="Output as JSON")) -> None:
+    def ecosystem_status(
+        json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
+    ) -> None:
         """Show canonical ecosystem health status."""
         import asyncio
         import json
@@ -466,10 +468,14 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
                     typer.echo(f"  {name}: {adp.status.value}")
             if report.workflows:
                 w = report.workflows
-                typer.echo(f"\nWorkflows: active={w.active_count} failed={w.failed_count} recent={w.recent_count}")
+                typer.echo(
+                    f"\nWorkflows: active={w.active_count} failed={w.failed_count} recent={w.recent_count}"
+                )
             if report.alerts:
                 a = report.alerts
-                typer.echo(f"\nAlerts: total={a.total_active} critical={a.by_severity.get('critical', 0)}")
+                typer.echo(
+                    f"\nAlerts: total={a.total_active} critical={a.by_severity.get('critical', 0)}"
+                )
             if report.recommendations:
                 typer.echo(f"\nRecommendations ({len(report.recommendations)}):")
                 for rec in report.recommendations:
@@ -503,13 +509,16 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
             caps = {k: v for k, v in caps.items() if capability.lower() in k.lower()}
 
         if json_output:
-            typer.echo(json.dumps(
-                {k: v.model_dump(mode="json") for k, v in caps.items()},
-                indent=2, default=str
-            ))
+            typer.echo(
+                json.dumps(
+                    {k: v.model_dump(mode="json") for k, v in caps.items()}, indent=2, default=str
+                )
+            )
         else:
             if not caps:
-                typer.echo(f"No capabilities found{f' matching \"{capability}\"' if capability else ''}.")
+                typer.echo(
+                    f"No capabilities found{f' matching "{capability}"' if capability else ''}."
+                )
                 return
             typer.echo(f"Capabilities ({len(caps)}):")
             for name, cap in caps.items():

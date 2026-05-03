@@ -86,16 +86,19 @@ Mahavishnu worktree management implements **defense-in-depth** security across m
 The worktree system uses a **provider pattern** for resilience:
 
 1. **SessionBuddyWorktreeProvider** (Primary)
+
    - Uses Session-Buddy MCP integration
    - Session state preservation
    - Advanced worktree features
 
-2. **DirectGitWorktreeProvider** (Fallback)
+1. **DirectGitWorktreeProvider** (Fallback)
+
    - Uses subprocess git commands
    - Always available (no external dependencies)
    - Activates automatically if Session-Buddy unavailable
 
-3. **MockWorktreeProvider** (Testing)
+1. **MockWorktreeProvider** (Testing)
+
    - Safe testing without real git operations
    - Used in all automated tests
 
@@ -106,11 +109,13 @@ The worktree system uses a **provider pattern** for resilience:
 **Problem**: Force flag bypassing ALL safety checks without reason or backup creates risk of accidental data loss.
 
 **Solution**:
+
 - `--force` flag with uncommitted changes **requires** `--force-reason`
 - Automatic backup creation before any force removal
 - Comprehensive audit logging of all force operations
 
 **Example**:
+
 ```bash
 # SAFE: Force removal with reason
 mahavishnu worktree remove repo /worktrees/repo/feature \
@@ -129,12 +134,14 @@ mahavishnu worktree remove repo /worktrees/repo/feature --force
 **Solution**: **Defense-in-depth** - validate at Mahavishnu layer BEFORE provider calls
 
 **Security Checks**:
+
 - Null byte prevention (CWE-170)
 - Path traversal prevention (CWE-22)
 - Shell metacharacter detection (CWE-114)
 - Allowed root verification
 
 **Example**:
+
 ```bash
 # BLOCKED: Path with null bytes
 mahavishnu worktree create repo /worktrees/repo\x00feature
@@ -156,6 +163,7 @@ mahavishnu worktree create repo "/worktrees/repo;rm -rf /"
 **Solution**: Comprehensive audit logging for ALL operations with sensitive data redaction
 
 **Logged Events**:
+
 - `worktree_create_attempt` - Before creation
 - `worktree_create_success` - After successful creation
 - `worktree_create_failure` - After failed creation
@@ -169,6 +177,7 @@ mahavishnu worktree create repo "/worktrees/repo;rm -rf /"
 - `security_rejection` - Blocked malicious operations
 
 **Audit Log Location**:
+
 ```
 ~/.local/state/mahavishnu/audit.log  # XDG-compliant
 ```
@@ -178,6 +187,7 @@ mahavishnu worktree create repo "/worktrees/repo;rm -rf /"
 **Feature**: Automatic backup creation before force removal with uncommitted changes
 
 **Storage**:
+
 ```
 ~/.local/state/mahavishnu/worktree_backups/
 ├── mahavishnu_feature_20260218_120000/
@@ -189,6 +199,7 @@ mahavishnu worktree create repo "/worktrees/repo;rm -rf /"
 ```
 
 **Retention Policy**:
+
 - Default: 30 days
 - Configurable via WorktreeBackupManager(retention_days=N)
 
@@ -199,6 +210,7 @@ mahavishnu worktree create repo "/worktrees/repo;rm -rf /"
 **Solution**: Worktree-level dependency tracking with specific worktree paths
 
 **Example**:
+
 ```bash
 # Create worktree
 mahavishnu worktree create backend-api feature-auth
@@ -311,11 +323,11 @@ Mahavishnu exposes worktree management via MCP tools for AI agent integration:
 ### Available Tools
 
 1. **create_ecosystem_worktree**
-2. **remove_ecosystem_worktree**
-3. **list_ecosystem_worktrees**
-4. **prune_ecosystem_worktrees**
-5. **get_worktree_safety_status**
-6. **get_worktree_provider_health**
+1. **remove_ecosystem_worktree**
+1. **list_ecosystem_worktrees**
+1. **prune_ecosystem_worktrees**
+1. **get_worktree_safety_status**
+1. **get_worktree_provider_health**
 
 ### Example MCP Client Usage
 
@@ -402,6 +414,7 @@ repos:
 **Cause**: Repository nickname not found in `settings/repos.yaml`
 
 **Solution**:
+
 ```bash
 # List available repositories
 mahavishnu list-repos
@@ -415,6 +428,7 @@ mahavishnu worktree create mahavishnu main  # Use nickname, not full name
 **Cause**: Trying to remove worktree with uncommitted changes without `--force`
 
 **Solution**:
+
 ```bash
 # Option 1: Commit changes first
 cd ~/worktrees/repo/branch
@@ -432,6 +446,7 @@ mahavishnu worktree remove repo ~/worktrees/repo/branch \
 **Cause**: Worktree path not in allowed roots
 
 **Solution**:
+
 ```bash
 # Create in allowed location (default: ~/worktrees)
 mahavishnu worktree create repo feature  # Goes to ~/worktrees/repo/feature
@@ -444,6 +459,7 @@ mahavishnu worktree create repo feature  # Goes to ~/worktrees/repo/feature
 **Cause**: All worktree providers are unhealthy
 
 **Solution**:
+
 ```bash
 # Check provider health
 mahavishnu worktree provider-health
@@ -459,6 +475,7 @@ git --version
 **Cause**: Insufficient permissions or disk space
 
 **Solution**:
+
 ```bash
 # Check backup directory permissions
 ls -la ~/.local/state/mahavishnu/worktree_backups
@@ -583,6 +600,7 @@ async def create_ecosystem_worktree(...):
 ### Path Security
 
 All paths validated before operations:
+
 - Null bytes rejected (CWE-170)
 - Path traversal blocked (CWE-22)
 - Shell metacharacters blocked (CWE-114)
@@ -608,9 +626,9 @@ Worktree management is compliant with:
 For issues or questions:
 
 1. Check logs: `~/.local/state/mahavishnu/audit.log`
-2. Check provider health: `mahavishnu worktree provider-health`
-3. Review safety status: `mahavishnu worktree safety-status`
-4. Report bugs with audit log excerpts
+1. Check provider health: `mahavishnu worktree provider-health`
+1. Review safety status: `mahavishnu worktree safety-status`
+1. Report bugs with audit log excerpts
 
 ## References
 

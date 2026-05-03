@@ -3,14 +3,16 @@
 Claude Code Session Progress StatusLine
 Shows a progress bar for the 5-hour session limit using alive-progress
 """
-import sys
-from datetime import datetime, timedelta
-from pathlib import Path
+
+from datetime import datetime
 import json
+from pathlib import Path
+import sys
 
 # Session limit constants
 SESSION_HOURS = 5
 SESSION_SECONDS = SESSION_HOURS * 3600
+
 
 def get_session_start_time():
     """Get session start time from Claude Code's session file"""
@@ -33,17 +35,20 @@ def get_session_start_time():
 
     return start_time
 
+
 def create_progress_bar(percentage: float, width: int = 30) -> str:
     """Create a simple ASCII progress bar"""
     filled = int(width * percentage / 100)
     bar = "█" * filled + "░" * (width - filled)
     return bar
 
+
 def format_time_remaining(seconds: int) -> str:
     """Format remaining time as HH:MM"""
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     return f"{hours}h {minutes:02d}m"
+
 
 def main():
     try:
@@ -77,6 +82,7 @@ def main():
         # Fallback output on error
         print(f"⚠️  Session tracking error: {str(e)}", file=sys.stderr)
         print("🟢 Claude Code Active")
+
 
 if __name__ == "__main__":
     main()

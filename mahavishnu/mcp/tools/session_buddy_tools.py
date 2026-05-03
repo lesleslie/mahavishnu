@@ -3,8 +3,8 @@
 from typing import Any
 
 from ...core.permissions import Permission, RBACManager
-from ...messaging import MessagePriority
 from ...mcp.auth import require_mcp_auth
+from ...messaging import MessagePriority
 
 
 def _coerce_priority(value: str) -> MessagePriority:

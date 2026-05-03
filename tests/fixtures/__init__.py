@@ -59,9 +59,9 @@ Available fixtures:
     - test_env_vars: Test environment variables
 """
 
-from tests.fixtures.workflow_fixtures import WorkflowFixtures
-from tests.fixtures.shell_fixtures import ShellFixtures
 from tests.fixtures.conftest import IntegrationFixtures
+from tests.fixtures.shell_fixtures import ShellFixtures
+from tests.fixtures.workflow_fixtures import WorkflowFixtures
 
 __all__ = [
     "WorkflowFixtures",

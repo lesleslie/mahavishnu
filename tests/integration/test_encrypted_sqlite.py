@@ -4,11 +4,10 @@ Tests the application-level encryption using cryptography.fernet
 instead of SQLCipher's pysqlcipher3 (which has Python 3.13 compatibility issues).
 """
 
-import asyncio
 import os
+from pathlib import Path
 import sqlite3
 import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -17,11 +16,10 @@ from mahavishnu.storage.encrypted_sqlite import (
     EncryptedSQLitePool,
     EncryptionKeyError,
     generate_encryption_key,
-    validate_encryption_key,
     migrate_plaintext_to_encrypted,
+    validate_encryption_key,
     verify_encrypted_database,
 )
-
 
 # =============================================================================
 # FIXTURES

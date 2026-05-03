@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-import tempfile
-from pathlib import Path
-
 from typer.testing import CliRunner
 
 from mahavishnu.cli.scaffold_cli import app
-
 
 runner = CliRunner()
 
@@ -54,22 +50,41 @@ class TestPatternsValidate:
 
 class TestScaffoldCommand:
     def test_scaffold_dry_run(self):
-        result = runner.invoke(app, [
-            "scaffold", "test-dry", "--patterns", "scaffolding/minimal", "--dry-run",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "scaffold",
+                "test-dry",
+                "--patterns",
+                "scaffolding/minimal",
+                "--dry-run",
+            ],
+        )
         assert result.exit_code == 0
         assert "dry-run" in result.output.lower() or "would include" in result.output.lower()
 
     def test_scaffold_missing_pattern(self):
-        result = runner.invoke(app, [
-            "scaffold", "test-bad", "--patterns", "nonexistent/x",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "scaffold",
+                "test-bad",
+                "--patterns",
+                "nonexistent/x",
+            ],
+        )
         assert result.exit_code == 1
 
     def test_scaffold_rejects_path_traversal(self):
-        result = runner.invoke(app, [
-            "scaffold", "../../etc", "--patterns", "scaffolding/minimal",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "scaffold",
+                "../../etc",
+                "--patterns",
+                "scaffolding/minimal",
+            ],
+        )
         assert result.exit_code == 1
         assert "must not contain" in result.output
 

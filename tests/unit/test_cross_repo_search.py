@@ -1,18 +1,18 @@
 """Tests for CrossRepoSearch - Cross-repository task search."""
 
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock
+
 import pytest
-from datetime import datetime, UTC
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Any
 
 from mahavishnu.core.cross_repo_search import (
     CrossRepoSearch,
     SearchCriteria,
-    SearchResult,
     SearchMatch,
+    SearchResult,
     SearchType,
 )
-from mahavishnu.core.task_store import Task, TaskStatus, TaskPriority
+from mahavishnu.core.task_store import Task, TaskPriority, TaskStatus
 
 
 @pytest.fixture
@@ -185,9 +185,7 @@ class TestCrossRepoSearch:
     """Tests for CrossRepoSearch class."""
 
     @pytest.mark.asyncio
-    async def test_text_search(
-        self, mock_task_store: AsyncMock, sample_tasks: list[Task]
-    ) -> None:
+    async def test_text_search(self, mock_task_store: AsyncMock, sample_tasks: list[Task]) -> None:
         """Test basic text search."""
         mock_task_store.list.return_value = sample_tasks
 
@@ -265,9 +263,7 @@ class TestCrossRepoSearch:
         assert all("search" in r.task.tags for r in results)
 
     @pytest.mark.asyncio
-    async def test_search_limit(
-        self, mock_task_store: AsyncMock, sample_tasks: list[Task]
-    ) -> None:
+    async def test_search_limit(self, mock_task_store: AsyncMock, sample_tasks: list[Task]) -> None:
         """Test search with result limit."""
         mock_task_store.list.return_value = sample_tasks
 

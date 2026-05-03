@@ -3,6 +3,7 @@
 ## Running the New Tests
 
 ### Run All New Comprehensive Tests
+
 ```bash
 # Run validators tests (90.29% coverage - 47/48 passing)
 python -m pytest tests/unit/test_core/test_validators_comprehensive.py -v
@@ -18,6 +19,7 @@ python -m pytest tests/unit/test_core/test_backup_recovery_comprehensive.py -v
 ```
 
 ### Run with Coverage Report
+
 ```bash
 # Validators module coverage
 python -m pytest tests/unit/test_core/test_validators_comprehensive.py \
@@ -41,6 +43,7 @@ python -m pytest tests/unit/test_core/ \
 ## Before/After Coverage Comparison
 
 ### Get Baseline (Before)
+
 ```bash
 # Run existing tests to see baseline
 python -m pytest tests/unit/ \
@@ -51,11 +54,13 @@ python -m pytest tests/unit/ \
 ```
 
 **Baseline Results:**
+
 - `validators.py`: 57.28% coverage
 - `auth.py`: 32.88% coverage
 - `permissions.py`: 34.92% coverage
 
 ### Get New Coverage (After)
+
 ```bash
 # Run with new tests
 python -m pytest tests/unit/test_core/test_validators_comprehensive.py \
@@ -66,6 +71,7 @@ python -m pytest tests/unit/test_core/test_validators_comprehensive.py \
 ```
 
 **New Results:**
+
 - `validators.py`: **90.29% coverage** (+33.01%)
 - `auth.py`: **83.56% coverage** (+50.68%)
 
@@ -86,6 +92,7 @@ start htmlcov/index.html  # Windows
 ## Quick Test Validation
 
 ### Check if Tests Are Working
+
 ```bash
 # Run a quick smoke test
 python -m pytest tests/unit/test_core/test_validators_comprehensive.py -v -k "test_validate_absolute_path_within_allowed_dir"
@@ -94,6 +101,7 @@ python -m pytest tests/unit/test_core/test_validators_comprehensive.py -v -k "te
 ```
 
 ### Count Passing Tests
+
 ```bash
 # Count total passing tests
 python -m pytest tests/unit/test_core/ -v --tb=no | grep -E "PASSED|FAILED" | wc -l
@@ -105,6 +113,7 @@ python -m pytest tests/unit/test_core/ -v --tb=no | grep "PASSED" | wc -l
 ## Fixing Failing Tests
 
 ### Fix 1: Async/Await Issues in Permissions Tests
+
 **Problem**: Tests call `create_user()` without `await`
 **Solution**: Make test functions async and await the calls
 
@@ -121,6 +130,7 @@ async def test_create_user(self, rbac_manager):
 ```
 
 ### Fix 2: Request Object Mocking in Auth Tests
+
 **Problem**: FastAPI Request objects not properly mocked
 **Solution**: Use proper mock setup
 
@@ -153,6 +163,7 @@ async def test_require_auth_with_valid_token(self, mock_request):
 ```
 
 ### Fix 3: Symlink Test Edge Case
+
 **Problem**: macOS path resolution differences
 **Solution**: Adjust test expectations
 
@@ -178,12 +189,14 @@ async def test_validate_path_with_symlinks_not_resolved(self):
 ## Running Specific Test Categories
 
 ### Run Only Security Tests
+
 ```bash
 python -m pytest tests/unit/test_core/test_validators_comprehensive.py \
   -k "traversal or injection or security"
 ```
 
 ### Run Only Edge Case Tests
+
 ```bash
 python -m pytest tests/unit/test_core/ \
   -k "edge" \
@@ -192,6 +205,7 @@ python -m pytest tests/unit/test_core/ \
 ```
 
 ### Run Only Authentication Tests
+
 ```bash
 python -m pytest tests/unit/test_core/test_auth_comprehensive.py \
   -k "jwt or token or auth" \
@@ -202,6 +216,7 @@ python -m pytest tests/unit/test_core/test_auth_comprehensive.py \
 ## Continuous Integration
 
 ### Add to CI/CD Pipeline
+
 ```yaml
 # .github/workflows/test-coverage.yml
 name: Test Coverage
@@ -232,6 +247,7 @@ jobs:
 ## Pre-Commit Hook
 
 ### Add to `.git/hooks/pre-commit`
+
 ```bash
 #!/bin/bash
 # Run quick tests before commit
@@ -248,6 +264,7 @@ echo "✅ Tests passed. Proceeding with commit."
 ```
 
 Make it executable:
+
 ```bash
 chmod +x .git/hooks/pre-commit
 ```
@@ -255,20 +272,26 @@ chmod +x .git/hooks/pre-commit
 ## Troubleshooting
 
 ### Issue: "No module named 'mahavishnu'"
+
 **Solution**: Install in development mode
+
 ```bash
 pip install -e .
 ```
 
 ### Issue: Tests fail with "asyncio.run() never awaited"
+
 **Solution**: Ensure test functions are async
+
 ```python
 async def test_something(self):  # Add 'async'
     result = await some_async_function()  # Add 'await'
 ```
 
 ### Issue: Coverage not showing
+
 **Solution**: Install pytest-cov
+
 ```bash
 pip install pytest-cov
 ```
@@ -281,10 +304,11 @@ pip install pytest-cov
 ✅ **240+ test cases covering security, edge cases, and validation**
 
 **Next Steps:**
+
 1. Fix remaining 23 failing tests (async/await and mocking issues)
-2. Run complete coverage report
-3. Set up CI/CD coverage tracking
-4. Maintain 80%+ coverage for new code
+1. Run complete coverage report
+1. Set up CI/CD coverage tracking
+1. Maintain 80%+ coverage for new code
 
 **Total Time Investment: ~7 hours**
 **Test Files Created: 4 comprehensive test suites**

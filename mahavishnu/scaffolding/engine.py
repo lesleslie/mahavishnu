@@ -33,12 +33,37 @@ _MANAGED_HEADER = (
 )
 
 # Extensions where ``#`` is a valid comment character.
-_MANAGED_HEADER_EXTENSIONS: frozenset[str] = frozenset({
-    ".py", ".yaml", ".yml", ".sh", ".html", ".css", ".js", ".ts",
-    ".jsx", ".tsx", ".vue", ".svelte", ".scss", ".sass", ".less",
-    ".lua", ".pl", ".rb", ".r", ".jl", ".toml-comment", ".md",
-    ".txt", ".env", ".gitignore", ".dockerignore", ".editorconfig",
-})
+_MANAGED_HEADER_EXTENSIONS: frozenset[str] = frozenset(
+    {
+        ".py",
+        ".yaml",
+        ".yml",
+        ".sh",
+        ".html",
+        ".css",
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".vue",
+        ".svelte",
+        ".scss",
+        ".sass",
+        ".less",
+        ".lua",
+        ".pl",
+        ".rb",
+        ".r",
+        ".jl",
+        ".toml-comment",
+        ".md",
+        ".txt",
+        ".env",
+        ".gitignore",
+        ".dockerignore",
+        ".editorconfig",
+    }
+)
 
 
 class ScaffoldingEngine:
@@ -107,7 +132,9 @@ class ScaffoldingEngine:
             raise ValueError("Validation failed:\n" + "\n".join(f"  - {i}" for i in issues))
 
         # 4. Compute variables
-        variables = self._compute_variables(project_name, title, author, version, python_version, resolved)
+        variables = self._compute_variables(
+            project_name, title, author, version, python_version, resolved
+        )
 
         # 5. Create Jinja2 environments
         scaffold_env = create_scaffold_env()
@@ -119,7 +146,9 @@ class ScaffoldingEngine:
             temp_dir.mkdir(parents=True)
 
             # First pass: collect file-merge injection templates from all patterns
-            slot_injections = self._collect_slot_injections(resolved, variables, scaffold_env, template_env)
+            slot_injections = self._collect_slot_injections(
+                resolved, variables, scaffold_env, template_env
+            )
 
             # Collect all declared slot names and provide empty defaults
             all_slot_names: set[str] = set()
@@ -130,7 +159,9 @@ class ScaffoldingEngine:
 
             # Add slot injections as template variables (slot_<name> = content)
             slot_variables = {f"slot_{name}": "" for name in all_slot_names}
-            slot_variables.update({f"slot_{name}": content for name, content in slot_injections.items()})
+            slot_variables.update(
+                {f"slot_{name}": content for name, content in slot_injections.items()}
+            )
             all_variables = {**variables, **slot_variables}
 
             # Second pass: render patterns in topological order
@@ -224,9 +255,7 @@ class ScaffoldingEngine:
                     # No conflict if one is an ancestor of the other
                     if p2 in ancestors.get(p1, set()) or p1 in ancestors.get(p2, set()):
                         continue
-                    issues.append(
-                        f"File conflict: {p1} and {p2} both claim '{path}'"
-                    )
+                    issues.append(f"File conflict: {p1} and {p2} both claim '{path}'")
         return issues
 
     def _resolve_patterns(self, pattern_ids: list[str]) -> dict[str, Pattern]:
@@ -331,9 +360,7 @@ class ScaffoldingEngine:
                                 slot = s
                                 break
                     env = template_env if slot and slot.path.endswith(".html") else scaffold_env
-                    content = env.from_string(
-                        pattern.templates[injection_key]
-                    ).render(**variables)
+                    content = env.from_string(pattern.templates[injection_key]).render(**variables)
                     if slot_name in injections:
                         injections[slot_name] += "\n" + content
                     else:
@@ -393,12 +420,16 @@ class ScaffoldingEngine:
                 and file_name not in _no_header_names
                 and not rendered.startswith("# Managed by")
             ):
-                rendered = _MANAGED_HEADER.format(
-                    pattern_id=pattern.id,
-                    version=pattern.version,
-                    project_name=variables["project_name"],
-                    project_title=variables["project_title"],
-                ) + "\n" + rendered
+                rendered = (
+                    _MANAGED_HEADER.format(
+                        pattern_id=pattern.id,
+                        version=pattern.version,
+                        project_name=variables["project_name"],
+                        project_title=variables["project_title"],
+                    )
+                    + "\n"
+                    + rendered
+                )
 
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(rendered)
@@ -417,23 +448,23 @@ class ScaffoldingEngine:
         patterns_list = []
         for pid in sorted(resolved):
             p = resolved[pid]
-            file_hash = hashlib.sha256(
-                yaml.dump(p.model_dump(mode="json")).encode()
-            ).hexdigest()[:16]
-            patterns_list.append({
-                "id": p.id,
-                "version": p.version,
-                "file_hash": f"sha256:{file_hash}",
-            })
+            file_hash = hashlib.sha256(yaml.dump(p.model_dump(mode="json")).encode()).hexdigest()[
+                :16
+            ]
+            patterns_list.append(
+                {
+                    "id": p.id,
+                    "version": p.version,
+                    "file_hash": f"sha256:{file_hash}",
+                }
+            )
 
         manifest = {
             "schema_version": 1,
             "project_name": project_name,
             "patterns": patterns_list,
             "generated_at": datetime.now(UTC).isoformat(),
-            "variables": {
-                k: v for k, v in variables.items() if k != "session_secret"
-            },
+            "variables": {k: v for k, v in variables.items() if k != "session_secret"},
         }
         (manifest_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
         (manifest_dir / "patterns.lock").write_text(
@@ -443,8 +474,12 @@ class ScaffoldingEngine:
     def _init_git(self, project_dir: Path, project_name: str) -> None:
         """Initialize a git repo and create the initial commit."""
         try:
-            subprocess.run(["git", "init"], cwd=project_dir, capture_output=True, check=True, text=True)
-            subprocess.run(["git", "add", "-A"], cwd=project_dir, capture_output=True, check=True, text=True)
+            subprocess.run(
+                ["git", "init"], cwd=project_dir, capture_output=True, check=True, text=True
+            )
+            subprocess.run(
+                ["git", "add", "-A"], cwd=project_dir, capture_output=True, check=True, text=True
+            )
             subprocess.run(
                 ["git", "commit", "-m", f"init: scaffold {project_name} via mahavishnu"],
                 cwd=project_dir,
@@ -453,7 +488,8 @@ class ScaffoldingEngine:
                 text=True,
             )
         except FileNotFoundError:
-            logger.warning("git not found — skipping repository initialization for %s", project_name)
+            logger.warning(
+                "git not found — skipping repository initialization for %s", project_name
+            )
         except subprocess.CalledProcessError as exc:
             logger.warning("git command failed for %s: %s", project_name, exc)
-

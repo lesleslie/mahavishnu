@@ -31,19 +31,19 @@ Usage:
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 import asyncio
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from enum import Enum
+from functools import lru_cache
 import hashlib
 import logging
 import re
 import time
+from typing import Any
 import unicodedata
 import warnings
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
-from enum import Enum
-from functools import lru_cache
-from typing import Any
 
 import httpx
 from pydantic import BaseModel, Field, field_validator
@@ -295,7 +295,9 @@ class FastEmbedProvider(EmbeddingProviderInterface):
 
             self._client = TextEmbedding(model_name=self.model)
         except ImportError as e:
-            logger.warning("FastEmbed unavailable, using deterministic fallback", extra={"error": str(e)})
+            logger.warning(
+                "FastEmbed unavailable, using deterministic fallback", extra={"error": str(e)}
+            )
             self._client = self._FallbackTextEmbedding(self.model)
 
     async def embed(self, texts: list[str]) -> EmbeddingResult:
@@ -856,7 +858,7 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
     if len(a) != len(b):
         raise ValueError("Vectors must have the same length")
 
-    dot_product = sum(x * y for x, y in zip(a, b))
+    dot_product = sum(x * y for x, y in zip(a, b, strict=False))
     norm_a = math.sqrt(sum(x * x for x in a))
     norm_b = math.sqrt(sum(x * x for x in b))
 
@@ -886,7 +888,7 @@ def euclidean_distance(a: list[float], b: list[float]) -> float:
     if len(a) != len(b):
         raise ValueError("Vectors must have the same length")
 
-    return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))
+    return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b, strict=False)))
 
 
 # =============================================================================

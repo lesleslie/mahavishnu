@@ -10,24 +10,27 @@ Run: pytest tests/security/test_sql_injection.py -v
 
 import pytest
 
-from mahavishnu.core.task_models import TaskCreateRequest, TaskUpdateRequest, FTSSearchQuery
+from mahavishnu.core.task_models import FTSSearchQuery, TaskCreateRequest, TaskUpdateRequest
 
 
 class TestSQLInjectionInTaskCreate:
     """Test SQL injection prevention in task creation."""
 
-    @pytest.mark.parametrize("malicious_title", [
-        "'; DROP TABLE tasks; --",
-        "' OR '1'='1",
-        "1' UNION SELECT * FROM users--",
-        "'; EXEC xp_cmdshell('format c:'); --",
-        "admin'--",
-        "' OR 1=1--",
-        "'; INSERT INTO tasks VALUES (1, 'hacked'); --",
-        "1; SELECT * FROM tasks WHERE '1'='1",
-        "' UNION SELECT username, password FROM users--",
-        "'; TRUNCATE TABLE tasks; --",
-    ])
+    @pytest.mark.parametrize(
+        "malicious_title",
+        [
+            "'; DROP TABLE tasks; --",
+            "' OR '1'='1",
+            "1' UNION SELECT * FROM users--",
+            "'; EXEC xp_cmdshell('format c:'); --",
+            "admin'--",
+            "' OR 1=1--",
+            "'; INSERT INTO tasks VALUES (1, 'hacked'); --",
+            "1; SELECT * FROM tasks WHERE '1'='1",
+            "' UNION SELECT username, password FROM users--",
+            "'; TRUNCATE TABLE tasks; --",
+        ],
+    )
     def test_sql_injection_in_title_rejected(self, malicious_title: str) -> None:
         """Test that SQL injection attempts in title are handled."""
         # TaskCreateRequest doesn't block SQL-like strings in title
@@ -41,16 +44,19 @@ class TestSQLInjectionInTaskCreate:
         assert "\x00" not in request.title
         assert request.title == request.title.strip()
 
-    @pytest.mark.parametrize("malicious_repo", [
-        "'; DROP TABLE tasks; --",
-        "../../../etc/passwd",
-        "repo/../../../..",
-        "test://malicious.com",
-        "repo|cat /etc/passwd",
-        "repo$(whoami)",
-        "repo`id`",
-        "repo; rm -rf /",
-    ])
+    @pytest.mark.parametrize(
+        "malicious_repo",
+        [
+            "'; DROP TABLE tasks; --",
+            "../../../etc/passwd",
+            "repo/../../../..",
+            "test://malicious.com",
+            "repo|cat /etc/passwd",
+            "repo$(whoami)",
+            "repo`id`",
+            "repo; rm -rf /",
+        ],
+    )
     def test_sql_injection_in_repository_rejected(self, malicious_repo: str) -> None:
         """Test that SQL injection in repository name is rejected."""
         with pytest.raises(ValueError, match="Repository name invalid"):
@@ -82,14 +88,17 @@ class TestSQLInjectionInTaskCreate:
 class TestSQLInjectionInSearch:
     """Test SQL injection prevention in search queries."""
 
-    @pytest.mark.parametrize("malicious_query", [
-        "'; DROP TABLE tasks; --",
-        "1' UNION SELECT * FROM users--",
-        "'; EXEC xp_cmdshell('dir'); --",
-        "'; TRUNCATE tasks; --",
-        "admin'--",
-        "' OR 1=1; --",
-    ])
+    @pytest.mark.parametrize(
+        "malicious_query",
+        [
+            "'; DROP TABLE tasks; --",
+            "1' UNION SELECT * FROM users--",
+            "'; EXEC xp_cmdshell('dir'); --",
+            "'; TRUNCATE tasks; --",
+            "admin'--",
+            "' OR 1=1; --",
+        ],
+    )
     def test_sql_injection_in_search_rejected(self, malicious_query: str) -> None:
         """Test that SQL injection in search queries with dangerous patterns is rejected."""
         with pytest.raises(ValueError, match="dangerous pattern"):
@@ -153,14 +162,15 @@ class TestSQLInjectionInSearch:
 class TestSQLInjectionInUpdate:
     """Test SQL injection prevention in task updates."""
 
-    @pytest.mark.parametrize("malicious_repo", [
-        "'; DROP TABLE tasks; --",
-        "../../../etc/passwd",
-        "repo$(whoami)",
-    ])
-    def test_sql_injection_in_update_repository_rejected(
-        self, malicious_repo: str
-    ) -> None:
+    @pytest.mark.parametrize(
+        "malicious_repo",
+        [
+            "'; DROP TABLE tasks; --",
+            "../../../etc/passwd",
+            "repo$(whoami)",
+        ],
+    )
+    def test_sql_injection_in_update_repository_rejected(self, malicious_repo: str) -> None:
         """Test that SQL injection in update repository is rejected."""
         # TaskUpdateRequest doesn't have repository field
         # Just verify the update model works
@@ -181,6 +191,7 @@ class TestSearchQueryLength:
         """Test that empty queries are rejected."""
         # Pydantic raises ValidationError for min_length constraint
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             FTSSearchQuery(query="")
 
@@ -200,6 +211,7 @@ class TestSearchQueryLength:
         """Test that too long queries are rejected."""
         # Pydantic raises ValidationError for max_length constraint
         from pydantic import ValidationError
+
         too_long = "a" * 501
         with pytest.raises(ValidationError):
             FTSSearchQuery(query=too_long)

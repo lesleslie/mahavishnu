@@ -10,15 +10,13 @@ Tests comprehensive backup creation and restoration for worktree safety:
 - Error handling for missing/non-existent paths
 """
 
-import asyncio
-import json
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+import json
+from unittest.mock import MagicMock, patch
 
-import pytest
 import aiofiles
 import aiofiles.os
+import pytest
 
 from mahavishnu.core.worktree_backup import WorktreeBackupManager
 
@@ -121,7 +119,7 @@ class TestWorktreeBackupManager:
         assert metadata_file.exists()
 
         # Verify metadata contents
-        async with aiofiles.open(metadata_file, "r") as f:
+        async with aiofiles.open(metadata_file) as f:
             metadata = json.loads(await f.read())
 
         assert metadata["repo_nickname"] == "repo"
@@ -285,7 +283,7 @@ class TestWorktreeBackupManager:
         metadata_file = backup_path / ".backup_metadata.json"
         assert metadata_file.exists()
 
-        async with aiofiles.open(metadata_file, "r") as f:
+        async with aiofiles.open(metadata_file) as f:
             metadata = json.loads(await f.read())
 
         assert metadata["repo_nickname"] == "test-repo"
@@ -314,7 +312,7 @@ class TestWorktreeBackupManager:
 
         # Verify timestamp format
         metadata_file = backup_path / ".backup_metadata.json"
-        async with aiofiles.open(metadata_file, "r") as f:
+        async with aiofiles.open(metadata_file) as f:
             metadata = json.loads(await f.read())
 
         timestamp_str = metadata["created_at"]
@@ -562,7 +560,7 @@ class TestWorktreeBackupManager:
 
         # Create multiple backups
         for i in range(3):
-            backup_path = backup_dir / f"repo_main_202602{i+1}_120000"
+            backup_path = backup_dir / f"repo_main_202602{i + 1}_120000"
             backup_path.mkdir(parents=True)
             metadata = {
                 "backup_path": str(backup_path),
@@ -657,7 +655,7 @@ class TestWorktreeBackupManager:
         with patch.object(
             manager,
             "_copy_directory_async",
-            side_effect=IOError("Copy failed"),
+            side_effect=OSError("Copy failed"),
         ):
             # Should raise IOError
             with pytest.raises(IOError) as exc_info:
@@ -681,7 +679,7 @@ class TestWorktreeBackupManager:
         with patch.object(
             manager,
             "_copy_directory_async",
-            side_effect=IOError("Restore failed"),
+            side_effect=OSError("Restore failed"),
         ):
             restore_location = tmp_path / "restored"
 

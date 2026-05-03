@@ -17,16 +17,15 @@ Usage:
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
-from typing import Any, Callable
+from enum import StrEnum
+import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class DashboardState(str, Enum):
+class DashboardState(StrEnum):
     """State of the dashboard."""
 
     NORMAL = "normal"

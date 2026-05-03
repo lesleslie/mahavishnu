@@ -3,11 +3,10 @@
 Tests cover the deprecation warning and tool behavior with/without coordinator.
 """
 
-import warnings
 from unittest.mock import AsyncMock, MagicMock, patch
+import warnings
 
 import pytest
-
 
 # Suppress the import-time deprecation warning for test collection
 with warnings.catch_warnings():
@@ -35,7 +34,9 @@ class TestToolsWithoutCoordinator:
             return_value=None,
         ):
             result = await create_ecosystem_worktree(
-                user_id="u1", repo_nickname="repo", branch="main",
+                user_id="u1",
+                repo_nickname="repo",
+                branch="main",
             )
             assert result["success"] is False
             assert "not initialized" in result["error"].lower()
@@ -46,7 +47,9 @@ class TestToolsWithoutCoordinator:
             return_value=None,
         ):
             result = await remove_ecosystem_worktree(
-                user_id="u1", repo_nickname="repo", worktree_path="/tmp/wt",
+                user_id="u1",
+                repo_nickname="repo",
+                worktree_path="/tmp/wt",
             )
             assert result["success"] is False
 
@@ -64,7 +67,8 @@ class TestToolsWithoutCoordinator:
             return_value=None,
         ):
             result = await prune_ecosystem_worktrees(
-                user_id="u1", repo_nickname="repo",
+                user_id="u1",
+                repo_nickname="repo",
             )
             assert result["success"] is False
 
@@ -74,7 +78,9 @@ class TestToolsWithoutCoordinator:
             return_value=None,
         ):
             result = await get_worktree_safety_status(
-                user_id="u1", repo_nickname="repo", worktree_path="/tmp/wt",
+                user_id="u1",
+                repo_nickname="repo",
+                worktree_path="/tmp/wt",
             )
             assert result["success"] is False
 
@@ -102,8 +108,11 @@ class TestToolsWithCoordinator:
             return_value=coord,
         ):
             result = await create_ecosystem_worktree(
-                user_id="u1", repo_nickname="repo", branch="feat",
-                worktree_name="my-wt", create_branch=True,
+                user_id="u1",
+                repo_nickname="repo",
+                branch="feat",
+                worktree_name="my-wt",
+                create_branch=True,
             )
             assert result["success"] is True
             coord.create_worktree.assert_called_once_with(
@@ -122,8 +131,11 @@ class TestToolsWithCoordinator:
             return_value=coord,
         ):
             result = await remove_ecosystem_worktree(
-                user_id="u1", repo_nickname="repo", worktree_path="/wt",
-                force=True, force_reason="cleanup",
+                user_id="u1",
+                repo_nickname="repo",
+                worktree_path="/wt",
+                force=True,
+                force_reason="cleanup",
             )
             assert result["success"] is True
             coord.remove_worktree.assert_called_once_with(
@@ -142,7 +154,8 @@ class TestToolsWithCoordinator:
             return_value=coord,
         ):
             result = await list_ecosystem_worktrees(
-                user_id="u1", repo_nickname="repo",
+                user_id="u1",
+                repo_nickname="repo",
             )
             coord.list_worktrees.assert_called_once_with(repo_nickname="repo")
 
@@ -154,7 +167,8 @@ class TestToolsWithCoordinator:
             return_value=coord,
         ):
             result = await prune_ecosystem_worktrees(
-                user_id="u1", repo_nickname="repo",
+                user_id="u1",
+                repo_nickname="repo",
             )
             coord.prune_worktrees.assert_called_once_with("repo")
 
@@ -166,7 +180,9 @@ class TestToolsWithCoordinator:
             return_value=coord,
         ):
             result = await get_worktree_safety_status(
-                user_id="u1", repo_nickname="repo", worktree_path="/wt",
+                user_id="u1",
+                repo_nickname="repo",
+                worktree_path="/wt",
             )
             coord.get_worktree_safety_status.assert_called_once_with(
                 repo_nickname="repo",
@@ -195,7 +211,9 @@ class TestDeprecationWarning:
             warnings.simplefilter("always")
             # Re-import to trigger warning
             import importlib
+
             import mahavishnu.mcp.tools.worktree_tools as wt
+
             importlib.reload(wt)
             deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
             assert len(deprecation_warnings) >= 1

@@ -31,11 +31,13 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from mahavishnu.pools import PoolManager
-from mahavishnu.terminal import TerminalManager
 from mahavishnu.websocket import MahavishnuWebSocketServer
+
+if TYPE_CHECKING:
+    from mahavishnu.terminal import TerminalManager
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +195,7 @@ def initialize_websocket_server(
     """
     global _websocket_server
 
-    server = get_websocket_server(
+    get_websocket_server(
         pool_manager=pool_manager,
         host=host,
         port=port,

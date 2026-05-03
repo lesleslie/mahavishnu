@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import argparse
 import logging
-import sys
 from pathlib import Path
+import sys
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -154,7 +154,7 @@ def init_database(db_path: str, force: bool = False) -> bool:
         # Check if database exists
         if Path(db_path).exists():
             if force:
-                logger.warning(f"Database exists, recreating (--force)")
+                logger.warning("Database exists, recreating (--force)")
                 Path(db_path).unlink()
             else:
                 logger.error(f"Database already exists: {db_path}")
@@ -192,9 +192,7 @@ def main() -> int:
     Returns:
         Exit code (0 for success, 1 for failure)
     """
-    parser = argparse.ArgumentParser(
-        description="Initialize learning database schema"
-    )
+    parser = argparse.ArgumentParser(description="Initialize learning database schema")
 
     parser.add_argument(
         "--db-path",
@@ -206,9 +204,7 @@ def main() -> int:
         action="store_true",
         help="Drop and recreate if exists",
     )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable verbose logging"
-    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
 

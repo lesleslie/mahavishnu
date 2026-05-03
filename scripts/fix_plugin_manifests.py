@@ -6,6 +6,7 @@ Fix plugin manifest files to use array of agent file paths instead of directory 
 import json
 from pathlib import Path
 
+
 def fix_plugin_manifest(plugin_dir: Path):
     """Fix a single plugin manifest."""
     manifest_path = plugin_dir / ".claude-plugin" / "plugin.json"
@@ -20,7 +21,7 @@ def fix_plugin_manifest(plugin_dir: Path):
         return False
 
     # Load existing manifest
-    with open(manifest_path, 'r') as f:
+    with open(manifest_path) as f:
         manifest = json.load(f)
 
     # Get all .md files in agents directory
@@ -34,12 +35,13 @@ def fix_plugin_manifest(plugin_dir: Path):
     manifest["agents"] = agent_files
 
     # Write updated manifest
-    with open(manifest_path, 'w') as f:
+    with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=2)
 
     plugin_name = manifest.get("name", "unknown")
     print(f"✅ Fixed {plugin_name}: {len(agent_files)} agents")
     return True
+
 
 def main():
     """Fix all plugin manifests in dot-claude marketplace."""
@@ -62,6 +64,7 @@ def main():
                 failed += 1
 
     print(f"\n📊 Summary: {fixed} fixed, {failed} failed")
+
 
 if __name__ == "__main__":
     main()

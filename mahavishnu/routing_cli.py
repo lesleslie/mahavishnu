@@ -4,12 +4,8 @@ Provides commands for managing the adaptive router system including
 statistical scoring, cost optimization, and A/B testing.
 """
 
-import asyncio
-from typing import Optional
-
-import typer
 from rich.console import Console
-from rich import table as Table
+import typer
 
 # Create routing app
 routing_app = typer.Typer(help="Adaptive routing management")
@@ -31,7 +27,7 @@ def routing_stats(
     limit: int = typer.Option(10, "--limit", "-l", help="Number of results"),
 ) -> None:
     """Show routing statistics."""
-    console.print(f"[bold]Routing Statistics[/bold]\n")
+    console.print("[bold]Routing Statistics[/bold]\n")
     console.print(f"Repo: {repo or 'All'}")
     console.print(f"Limit: {limit}")
     console.print("\nRouting stats (stub)")

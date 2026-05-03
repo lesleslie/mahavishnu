@@ -1,15 +1,15 @@
 """Tests for Command Execution API - RPC method handlers for GUI clients."""
 
-import pytest
-from datetime import datetime, UTC
-from unittest.mock import MagicMock, AsyncMock
 from typing import Any
+from unittest.mock import AsyncMock
+
+import pytest
 
 from mahavishnu.core.command_api import (
-    CommandRegistry,
-    CommandHandler,
-    CommandResult,
     CommandError,
+    CommandHandler,
+    CommandRegistry,
+    CommandResult,
     ErrorCode,
 )
 
@@ -149,6 +149,7 @@ class TestCommandHandler:
 
     def test_create_handler(self) -> None:
         """Create a command handler."""
+
         async def get_task(params: dict) -> dict:
             return {"id": params["task_id"]}
 
@@ -164,6 +165,7 @@ class TestCommandHandler:
     @pytest.mark.asyncio
     async def test_invoke_handler(self) -> None:
         """Invoke a command handler."""
+
         async def get_task(params: dict) -> dict:
             return {"id": params["task_id"], "title": "Test"}
 
@@ -200,7 +202,7 @@ class TestCommandHandler:
     @pytest.mark.asyncio
     async def test_handler_validation_error(self) -> None:
         """Handler with validation error."""
-        from pydantic import BaseModel, ValidationError
+        from pydantic import BaseModel
 
         class GetTaskParams(BaseModel):
             task_id: str

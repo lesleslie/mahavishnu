@@ -5,6 +5,7 @@ This directory contains interactive terminal demonstrations of Mahavishnu's WebS
 ## Overview
 
 These demos showcase real-time updates from Mahavishnu's WebSocket server, including:
+
 - Pool status monitoring with worker tracking
 - Workflow execution monitoring with progress tracking
 - Multi-service unified dashboard
@@ -12,6 +13,7 @@ These demos showcase real-time updates from Mahavishnu's WebSocket server, inclu
 ## Requirements
 
 All demos require:
+
 - Python 3.13+
 - `websockets` library (already installed)
 - `rich` library for terminal UI
@@ -31,6 +33,7 @@ python examples/realtime_monitoring/pool_monitor.py run pool_local --host localh
 ```
 
 **Features:**
+
 - Real-time pool status (worker count, queue size)
 - Worker status tracking (idle, busy, error)
 - Task assignment/completion events
@@ -48,6 +51,7 @@ python examples/realtime_monitoring/workflow_monitor.py run wf_123 --host localh
 ```
 
 **Features:**
+
 - Workflow status tracking (pending, running, completed, failed)
 - Stage completion progress bar
 - Current stage indicator
@@ -65,6 +69,7 @@ python examples/realtime_monitoring/multi_service_dashboard.py run --mahavishnu-
 ```
 
 **Features:**
+
 - Three-panel layout (Mahavishnu, Pool, Akosha)
 - Concurrent updates from all services
 - Connection status indicators
@@ -231,23 +236,26 @@ async def connect_with_retry():
 ### Connection Refused
 
 If you see "Connection refused", ensure:
+
 1. WebSocket server is running (`mahavishnu mcp start`)
-2. Correct host/port specified
-3. No firewall blocking port 8690
+1. Correct host/port specified
+1. No firewall blocking port 8690
 
 ### No Events Received
 
 If no events appear:
+
 1. Verify subscription to correct channel
-2. Check WebSocket server logs
-3. Ensure pool/workflow IDs are valid
+1. Check WebSocket server logs
+1. Ensure pool/workflow IDs are valid
 
 ### Terminal UI Issues
 
 If terminal UI doesn't render correctly:
+
 1. Ensure terminal supports ANSI colors
-2. Try different terminal (iTerm2, Terminal.app)
-3. Increase terminal window size
+1. Try different terminal (iTerm2, Terminal.app)
+1. Increase terminal window size
 
 ## Development
 
@@ -256,15 +264,16 @@ If terminal UI doesn't render correctly:
 To add a new monitoring demo:
 
 1. Create new file in `examples/realtime_monitoring/`
-2. Use `from __future__ import annotations` as first import
-3. Implement async WebSocket client with `websockets` library
-4. Use `rich` for terminal UI (tables, panels, layouts)
-5. Add `--help` documentation via typer
-6. Implement graceful shutdown on SIGINT
+1. Use `from __future__ import annotations` as first import
+1. Implement async WebSocket client with `websockets` library
+1. Use `rich` for terminal UI (tables, panels, layouts)
+1. Add `--help` documentation via typer
+1. Implement graceful shutdown on SIGINT
 
 ### Code Style
 
 All demos follow Mahavishnu code standards:
+
 - Type hints for all functions
 - Comprehensive docstrings
 - Modern async/await patterns

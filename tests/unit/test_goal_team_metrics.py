@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib
-from types import SimpleNamespace
 
 import pytest
 
@@ -193,7 +192,9 @@ def test_fallback_module_import_and_dummy_metrics(monkeypatch: pytest.MonkeyPatc
     importlib.reload(gtm)
 
 
-def test_initialize_metrics_valueerror_paths_and_recorder_start_none(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_initialize_metrics_valueerror_paths_and_recorder_start_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(gtm, "PROMETHEUS_AVAILABLE", True)
 
     def _raise(*args, **kwargs):  # noqa: ANN002,ANN003

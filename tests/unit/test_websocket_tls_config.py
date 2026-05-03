@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import ssl
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,10 +14,10 @@ from mahavishnu.websocket.tls_config import (
     load_ssl_context,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _set_env(key: str, value: str) -> None:
     """Set an environment variable for testing."""
@@ -43,6 +42,7 @@ TLS_ENV_KEYS = [
 # ---------------------------------------------------------------------------
 # get_websocket_tls_config
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestGetWebsocketTlsConfig:
@@ -161,9 +161,7 @@ class TestGetWebsocketTlsConfig:
         """Verify the function delegates with the correct prefix."""
         _del_env(*TLS_ENV_KEYS)
 
-        with patch(
-            "mahavishnu.websocket.tls_config.get_tls_config_from_env"
-        ) as mock_from_env:
+        with patch("mahavishnu.websocket.tls_config.get_tls_config_from_env") as mock_from_env:
             mock_from_env.return_value = {"tls_enabled": False}
             get_websocket_tls_config()
 
@@ -173,6 +171,7 @@ class TestGetWebsocketTlsConfig:
 # ---------------------------------------------------------------------------
 # load_ssl_context
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestLoadSslContext:
@@ -262,10 +261,13 @@ class TestLoadSslContext:
         """Should re-raise exceptions from create_ssl_context."""
         _del_env(*TLS_ENV_KEYS)
 
-        with patch(
-            "mahavishnu.websocket.tls_config.create_ssl_context",
-            side_effect=FileNotFoundError("cert not found"),
-        ), pytest.raises(FileNotFoundError, match="cert not found"):
+        with (
+            patch(
+                "mahavishnu.websocket.tls_config.create_ssl_context",
+                side_effect=FileNotFoundError("cert not found"),
+            ),
+            pytest.raises(FileNotFoundError, match="cert not found"),
+        ):
             load_ssl_context(
                 cert_file="/missing/cert.pem",
                 key_file="/missing/key.pem",
@@ -275,10 +277,13 @@ class TestLoadSslContext:
         """Should re-raise SSLError from create_ssl_context."""
         _del_env(*TLS_ENV_KEYS)
 
-        with patch(
-            "mahavishnu.websocket.tls_config.create_ssl_context",
-            side_effect=ssl.SSLError("bad cipher"),
-        ), pytest.raises(ssl.SSLError, match="bad cipher"):
+        with (
+            patch(
+                "mahavishnu.websocket.tls_config.create_ssl_context",
+                side_effect=ssl.SSLError("bad cipher"),
+            ),
+            pytest.raises(ssl.SSLError, match="bad cipher"),
+        ):
             load_ssl_context(
                 cert_file="/bad/cert.pem",
                 key_file="/bad/key.pem",
@@ -291,9 +296,7 @@ class TestLoadSslContext:
         _del_env(*TLS_ENV_KEYS)
         _set_env("MAHAVISHNU_WS_TLS_ENABLED", "false")
 
-        with patch(
-            "mahavishnu.websocket.tls_config.create_ssl_context"
-        ) as mock_create:
+        with patch("mahavishnu.websocket.tls_config.create_ssl_context") as mock_create:
             result = load_ssl_context()
 
         mock_create.assert_not_called()
@@ -349,9 +352,7 @@ class TestLoadSslContext:
         _set_env("MAHAVISHNU_WS_TLS_ENABLED", "true")
         # cert and key files are not set, so they will be None
 
-        with patch(
-            "mahavishnu.websocket.tls_config.create_ssl_context"
-        ) as mock_create:
+        with patch("mahavishnu.websocket.tls_config.create_ssl_context") as mock_create:
             result = load_ssl_context()
 
         # create_ssl_context should not be called because cert_file and key_file
@@ -363,9 +364,7 @@ class TestLoadSslContext:
         """Providing only cert_file (no key_file) should skip SSL context creation."""
         _del_env(*TLS_ENV_KEYS)
 
-        with patch(
-            "mahavishnu.websocket.tls_config.create_ssl_context"
-        ) as mock_create:
+        with patch("mahavishnu.websocket.tls_config.create_ssl_context") as mock_create:
             result = load_ssl_context(cert_file="/c.pem")
 
         mock_create.assert_not_called()
@@ -376,9 +375,7 @@ class TestLoadSslContext:
         """Providing only key_file (no cert_file) should skip SSL context creation."""
         _del_env(*TLS_ENV_KEYS)
 
-        with patch(
-            "mahavishnu.websocket.tls_config.create_ssl_context"
-        ) as mock_create:
+        with patch("mahavishnu.websocket.tls_config.create_ssl_context") as mock_create:
             result = load_ssl_context(key_file="/k.pem")
 
         mock_create.assert_not_called()
@@ -428,10 +425,13 @@ class TestLoadSslContext:
         """Should log an error message when SSL context creation fails."""
         _del_env(*TLS_ENV_KEYS)
 
-        with patch(
-            "mahavishnu.websocket.tls_config.create_ssl_context",
-            side_effect=OSError("disk error"),
-        ), patch("mahavishnu.websocket.tls_config.logger") as mock_logger:
+        with (
+            patch(
+                "mahavishnu.websocket.tls_config.create_ssl_context",
+                side_effect=OSError("disk error"),
+            ),
+            patch("mahavishnu.websocket.tls_config.logger") as mock_logger,
+        ):
             with pytest.raises(OSError, match="disk error"):
                 load_ssl_context(
                     cert_file="/c.pem",
@@ -447,10 +447,13 @@ class TestLoadSslContext:
 
         mock_ctx = MagicMock(spec=ssl.SSLContext)
 
-        with patch(
-            "mahavishnu.websocket.tls_config.create_ssl_context",
-            return_value=mock_ctx,
-        ), patch("mahavishnu.websocket.tls_config.logger") as mock_logger:
+        with (
+            patch(
+                "mahavishnu.websocket.tls_config.create_ssl_context",
+                return_value=mock_ctx,
+            ),
+            patch("mahavishnu.websocket.tls_config.logger") as mock_logger,
+        ):
             load_ssl_context(
                 cert_file="/c.pem",
                 key_file="/k.pem",
@@ -463,6 +466,7 @@ class TestLoadSslContext:
 # ---------------------------------------------------------------------------
 # get_tls_cli_options
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestGetTlsCliOptions:
@@ -544,9 +548,7 @@ class TestGetTlsCliOptions:
         """Should delegate to get_websocket_tls_config."""
         _del_env(*TLS_ENV_KEYS)
 
-        with patch(
-            "mahavishnu.websocket.tls_config.get_websocket_tls_config"
-        ) as mock_config:
+        with patch("mahavishnu.websocket.tls_config.get_websocket_tls_config") as mock_config:
             mock_config.return_value = {
                 "tls_enabled": True,
                 "cert_file": "/c.pem",

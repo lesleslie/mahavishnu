@@ -1,11 +1,11 @@
 """OpenSearch integration for log analytics and search."""
 
-import asyncio
 from datetime import UTC, datetime
 
 UTC = UTC
 import logging
 from typing import Any
+
 
 class MockIndicesClient:
     async def __call__(self):

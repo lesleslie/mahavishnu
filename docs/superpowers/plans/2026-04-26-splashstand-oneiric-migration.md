@@ -12,7 +12,7 @@
 
 **Working directory:** `/Users/les/Projects/splashstand`
 
----
+______________________________________________________________________
 
 ## Import Mapping Reference
 
@@ -35,12 +35,14 @@
 | `from acb.actions.encode import dump, load` | `import yaml` (direct calls) | 2 files |
 | `from fastblocks.applications import FastBlocks` | No change | 2 files |
 
----
+______________________________________________________________________
 
 ### Task 1: Create migration branch and restore pyproject.toml
 
 **Files:**
+
 - Create: branch `migration/acb-to-oneiric`
+
 - Modify: `pyproject.toml`
 
 - [x] **Step 1: Create migration branch**
@@ -112,6 +114,7 @@ timeout = 600
 cd /Users/les/Projects/splashstand
 python -c "import tomllib; tomllib.load(open('pyproject.toml', 'rb'))"
 ```
+
 Expected: No output (successful parse)
 
 - [x] **Step 4: Commit**
@@ -121,11 +124,12 @@ git add pyproject.toml
 git commit -m "fix: restore pyproject.toml [project] table with oneiric dependency"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Create resolve_dep() helper module
 
 **Files:**
+
 - Create: `splashstand/deps.py`
 
 - [x] **Step 1: Write splashstand/deps.py**
@@ -160,11 +164,12 @@ git add splashstand/deps.py
 git commit -m "feat: add resolve_dep() helper for Oneiric dependency resolution"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Migrate main.py
 
 **Files:**
+
 - Modify: `splashstand/main.py`
 
 - [x] **Step 1: Replace imports and update depends calls**
@@ -185,8 +190,11 @@ logger.info(f"Starting application at: {app.__module__}")
 ```
 
 Key changes:
+
 - `from acb import register_pkg` → `from oneiric import register_pkg`
+
 - `from acb.depends import depends` → `from splashstand.deps import resolve_dep`
+
 - `depends.get()` → `resolve_dep(...)`
 
 - [x] **Step 2: Verify no ACB imports remain**
@@ -194,6 +202,7 @@ Key changes:
 ```bash
 grep -n "acb" splashstand/main.py
 ```
+
 Expected: No output
 
 - [x] **Step 3: Commit**
@@ -203,107 +212,135 @@ git add splashstand/main.py
 git commit -m "refactor: migrate main.py from ACB to Oneiric"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Migrate adapter base classes (6 files)
 
 These files all follow the same pattern: replace `acb.config` imports with `oneiric.config`.
 
 **Files:**
+
 - Modify: `splashstand/adapters/app/_base.py`
+
 - Modify: `splashstand/adapters/auth/_base.py`
+
 - Modify: `splashstand/adapters/admin/_base.py`
+
 - Modify: `splashstand/adapters/schemas/_base.py`
+
 - Modify: `splashstand/adapters/captcha/_base.py`
+
 - Modify: `splashstand/adapters/pwa/_base.py`
 
-- [x] **Step 1: Migrate app/_base.py**
+- [x] **Step 1: Migrate app/\_base.py**
 
 In `splashstand/adapters/app/_base.py`, replace:
+
 ```python
 from acb.config import AdapterBase
 from acb.config import AppSettings as AppConfigSettings
 ```
+
 with:
+
 ```python
 from oneiric.config import AdapterBase
 from oneiric.config import AppSettings as AppConfigSettings
 ```
 
-- [x] **Step 2: Migrate auth/_base.py**
+- [x] **Step 2: Migrate auth/\_base.py**
 
 In `splashstand/adapters/auth/_base.py`, replace:
+
 ```python
 from acb.config import AdapterBase, Config, Settings
 from acb.depends import depends
 ```
+
 with:
+
 ```python
 from oneiric.config import AdapterBase, Config, Settings
 from splashstand.deps import resolve_dep
 ```
 
 Then update the `@depends.inject` decorator on `AuthBaseSettings.__init__`. Replace:
+
 ```python
     @depends.inject
     def __init__(self, config: Config = depends(), **data: t.Any) -> None:
 ```
+
 with:
+
 ```python
     def __init__(self, config: Config | None = None, **data: t.Any) -> None:
         if config is None:
             config = resolve_dep("config")
 ```
 
-- [x] **Step 3: Migrate admin/_base.py**
+- [x] **Step 3: Migrate admin/\_base.py**
 
 In `splashstand/adapters/admin/_base.py`, replace:
+
 ```python
 from acb.config import AdapterBase, Settings
 ```
+
 with:
+
 ```python
 from oneiric.config import AdapterBase, Settings
 ```
 
-- [x] **Step 4: Migrate schemas/_base.py**
+- [x] **Step 4: Migrate schemas/\_base.py**
 
 In `splashstand/adapters/schemas/_base.py`, replace:
+
 ```python
 from acb.config import AdapterBase, Settings
 ```
+
 with:
+
 ```python
 from oneiric.config import AdapterBase, Settings
 ```
 
-- [x] **Step 5: Migrate captcha/_base.py**
+- [x] **Step 5: Migrate captcha/\_base.py**
 
 In `splashstand/adapters/captcha/_base.py`, replace:
+
 ```python
 from acb.config import AdapterBase, Settings
 ```
+
 with:
+
 ```python
 from oneiric.config import AdapterBase, Settings
 ```
 
-- [x] **Step 6: Migrate pwa/_base.py**
+- [x] **Step 6: Migrate pwa/\_base.py**
 
 In `splashstand/adapters/pwa/_base.py`, replace:
+
 ```python
 from acb.config import AdapterBase, Settings
 ```
+
 with:
+
 ```python
 from oneiric.config import AdapterBase, Settings
 ```
 
-- [x] **Step 7: Verify no ACB imports remain in _base files**
+- [x] **Step 7: Verify no ACB imports remain in \_base files**
 
 ```bash
 grep -rn "from acb" splashstand/adapters/*/_base.py
 ```
+
 Expected: No output
 
 - [x] **Step 8: Commit**
@@ -313,27 +350,38 @@ git add splashstand/adapters/
 git commit -m "refactor: migrate all adapter base classes from ACB to Oneiric"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Migrate adapter implementation files (10 files)
 
 These files contain the bulk of ACB imports including `depends`, `debug`, `Logger`, `import_adapter`, `Config`, and `load`.
 
 **Files:**
+
 - Modify: `splashstand/adapters/admin/sqladmin.py`
+
 - Modify: `splashstand/adapters/analytics/google.py`
+
 - Modify: `splashstand/adapters/app/default.py`
+
 - Modify: `splashstand/adapters/app/demo.py`
+
 - Modify: `splashstand/adapters/auth/firebase.py`
+
 - Modify: `splashstand/adapters/captcha/google.py`
+
 - Modify: `splashstand/adapters/pwa/_routes.py`
+
 - Modify: `splashstand/adapters/pwa/app.py`
+
 - Modify: `splashstand/adapters/schemas/_models/__init__.py`
+
 - Modify: `splashstand/adapters/schemas/schemaorg.py`
 
 - [x] **Step 1: Migrate admin/sqladmin.py**
 
 Replace these imports:
+
 ```python
 from acb.actions.encode import load          → import json
 from acb.adapters import import_adapter      → from oneiric.adapters import import_adapter
@@ -342,19 +390,22 @@ from acb.debug import debug                  → from oneiric.debug import debug
 from acb.depends import depends              → from splashstand.deps import resolve_dep
 ```
 
-Find all `load.json(...)` calls and replace with `json.loads(Path(...).read_text())`. Find all `@depends.inject` decorators and `depends()` default arguments, replacing with `resolve_dep()` calls (same pattern as auth/_base.py in Task 4 Step 2).
+Find all `load.json(...)` calls and replace with `json.loads(Path(...).read_text())`. Find all `@depends.inject` decorators and `depends()` default arguments, replacing with `resolve_dep()` calls (same pattern as auth/\_base.py in Task 4 Step 2).
 
 - [x] **Step 2: Migrate analytics/google.py**
 
 Replace:
+
 ```python
 from acb.depends import depends → from splashstand.deps import resolve_dep
 ```
+
 Update `@depends.inject` decorators and `depends()` defaults as needed.
 
 - [x] **Step 3: Migrate app/default.py**
 
 Replace:
+
 ```python
 from acb.adapters import get_adapter, import_adapter → from oneiric.adapters import get_adapter, import_adapter
 from acb.config import Config                       → from oneiric.config import Config
@@ -364,6 +415,7 @@ from acb.depends import depends                     → from splashstand.deps im
 - [x] **Step 4: Migrate app/demo.py**
 
 Replace:
+
 ```python
 from acb.adapters import import_adapter → from oneiric.adapters import import_adapter
 from acb.config import Config          → from oneiric.config import Config
@@ -375,6 +427,7 @@ from acb.logger import Logger          → from oneiric.logger import Logger
 - [x] **Step 5: Migrate auth/firebase.py**
 
 Replace:
+
 ```python
 from acb.config import Config     → from oneiric.config import Config
 from acb.debug import debug       → from oneiric.debug import debug
@@ -384,6 +437,7 @@ from acb.depends import depends   → from splashstand.deps import resolve_dep
 - [x] **Step 6: Migrate captcha/google.py**
 
 Replace:
+
 ```python
 from acb.adapters import import_adapter → from oneiric.adapters import import_adapter
 from acb.config import Config          → from oneiric.config import Config
@@ -391,9 +445,10 @@ from acb.depends import depends        → from splashstand.deps import resolve_
 from acb.logger import Logger          → from oneiric.logger import Logger
 ```
 
-- [x] **Step 7: Migrate pwa/_routes.py**
+- [x] **Step 7: Migrate pwa/\_routes.py**
 
 Replace:
+
 ```python
 from acb.adapters import import_adapter → from oneiric.adapters import import_adapter
 from acb.debug import debug            → from oneiric.debug import debug
@@ -403,14 +458,16 @@ from acb.depends import depends        → from splashstand.deps import resolve_
 - [x] **Step 8: Migrate pwa/app.py**
 
 Replace:
+
 ```python
 from acb.config import Config     → from oneiric.config import Config
 from acb.depends import depends   → from splashstand.deps import resolve_dep
 ```
 
-- [x] **Step 9: Migrate schemas/_models/__init__.py**
+- [x] **Step 9: Migrate schemas/\_models/__init__.py**
 
 Replace:
+
 ```python
 from acb.depends import depends → from splashstand.deps import resolve_dep
 ```
@@ -418,6 +475,7 @@ from acb.depends import depends → from splashstand.deps import resolve_dep
 - [x] **Step 10: Migrate schemas/schemaorg.py**
 
 Replace:
+
 ```python
 from acb.adapters import import_adapter → from oneiric.adapters import import_adapter
 from acb.config import Config          → from oneiric.config import Config
@@ -431,6 +489,7 @@ from acb.logger import Logger          → from oneiric.logger import Logger
 ```bash
 grep -rn "from acb\|import acb" splashstand/adapters/
 ```
+
 Expected: No output
 
 - [x] **Step 12: Commit**
@@ -440,11 +499,12 @@ git add splashstand/adapters/
 git commit -m "refactor: migrate all adapter implementations from ACB to Oneiric"
 ```
 
----
+______________________________________________________________________
 
 ### Task 6: Migrate cli.py (the most complex file)
 
 **Files:**
+
 - Modify: `splashstand/cli.py`
 
 `cli.py` is the most import-heavy file (6 ACB imports) and includes the `dump`/`load` convenience methods from `acb.actions.encode`.
@@ -458,6 +518,7 @@ grep -n "acb\|dump\.\|load\." splashstand/cli.py
 - [x] **Step 2: Replace imports**
 
 Replace:
+
 ```python
 from acb.actions.encode import dump, load          → import yaml, json (add to existing imports)
 from acb.adapters import import_adapter, root_path, tmp_path → from oneiric.adapters import import_adapter, root_path, tmp_path
@@ -469,6 +530,7 @@ from acb.depends import depends                     → from splashstand.deps im
 - [x] **Step 3: Replace dump/load calls**
 
 Find each usage and replace:
+
 - `dump.yaml(data, path)` → `Path(path).write_text(yaml.dump(data))`
 - `dump.json(data, path)` → `Path(path).write_text(json.dumps(data, indent=2))`
 - `load.yaml(path)` → `yaml.safe_load(Path(path).read_text())`
@@ -485,6 +547,7 @@ Find `depends.get()` and `depends.inject` patterns and replace with `resolve_dep
 ```bash
 grep -n "acb" splashstand/cli.py
 ```
+
 Expected: No output
 
 - [x] **Step 6: Commit**
@@ -494,7 +557,7 @@ git add splashstand/cli.py
 git commit -m "refactor: migrate cli.py from ACB to Oneiric, replace dump/load with yaml/json"
 ```
 
----
+______________________________________________________________________
 
 ### Task 7: Final verification and cleanup
 
@@ -503,6 +566,7 @@ git commit -m "refactor: migrate cli.py from ACB to Oneiric, replace dump/load w
 ```bash
 grep -rn "from acb\|import acb" splashstand/
 ```
+
 Expected: No output
 
 - [x] **Step 2: Verify oneiric is in dependencies**
@@ -510,6 +574,7 @@ Expected: No output
 ```bash
 grep "oneiric" pyproject.toml
 ```
+
 Expected: `oneiric>=0.19.0` in dependencies
 
 - [x] **Step 3: Verify acb is NOT in dependencies**
@@ -517,6 +582,7 @@ Expected: `oneiric>=0.19.0` in dependencies
 ```bash
 grep "acb" pyproject.toml
 ```
+
 Expected: No output
 
 - [x] **Step 4: Verify deps.py exists**
@@ -524,6 +590,7 @@ Expected: No output
 ```bash
 test -f splashstand/deps.py && echo "OK" || echo "MISSING"
 ```
+
 Expected: OK
 
 - [x] **Step 5: Run tests**
@@ -536,9 +603,13 @@ python -m pytest tests/ -v 2>&1 | tail -20
 - [x] **Step 6: Update MIGRATION-3.1.0.md**
 
 Add a section documenting the completed ACB → Oneiric migration:
+
 - Date completed
+
 - Files changed (17)
+
 - Import replacements (47)
+
 - Key pattern changes (depends → resolve_dep, dump/load → yaml/json)
 
 - [x] **Step 7: Final commit**

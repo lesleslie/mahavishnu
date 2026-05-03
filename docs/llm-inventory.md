@@ -23,13 +23,16 @@ Date: 2026-04-09
 ## Session-Buddy
 
 Primary entrypoint:
+
 - `session_buddy/llm_providers.py`
 
 Provider order:
+
 - default provider: `openai`
 - fallbacks: `anthropic -> gemini -> ollama`
 
 Important callsites:
+
 - `session_buddy/mcp/tools/intelligence/llm_tools.py`
   - operator-facing MCP tools for listing, testing, configuring, and generating with LLM providers
 - `session_buddy/memory/entity_extractor.py`
@@ -43,6 +46,7 @@ Important callsites:
   - local Ollama provider
 
 Practical reading:
+
 - Session-Buddy is not local-Ollama-first.
 - If OpenAI is configured and available, it is the first paid path.
 - Ollama is the tail fallback, not the default.
@@ -50,13 +54,16 @@ Practical reading:
 ## Crackerjack
 
 Primary entrypoint:
+
 - `crackerjack/adapters/ai/registry.py`
 
 Provider order:
+
 - default configured provider in `crackerjack/config/settings.py`: `claude`
 - provider chain: `claude -> qwen -> ollama`
 
 Important callsites:
+
 - `crackerjack/adapters/ai/claude.py`
   - `anthropic.AsyncAnthropic(...)`
 - `crackerjack/adapters/ai/qwen.py`
@@ -71,6 +78,7 @@ Important callsites:
   - direct `anthropic.Anthropic(...)` use for AI-powered documentation updates
 
 Practical reading:
+
 - Crackerjack is not local-first by default.
 - Claude is the primary external provider.
 - Qwen is the secondary external provider.
@@ -83,39 +91,48 @@ Mahavishnu has multiple LLM paths rather than one global default.
 ### Agno path
 
 Primary config:
+
 - `mahavishnu/core/config.py`
 
 Defaults:
+
 - provider: `ollama`
 - model: `qwen2.5:7b`
 - base URL: `http://localhost:11434`
 
 Runtime path:
+
 - `mahavishnu/core/app.py`
   - `DefaultLLMFactory.create_llm(...)` uses the configured Agno provider
 
 Practical reading:
+
 - The Agno-based orchestration path is local-Ollama-first by default.
 
 ### Nanobot in-process path
 
 Primary callsites:
+
 - `mahavishnu/core/app.py`
 - `mahavishnu/core/adapters/worker.py`
 
 Behavior:
+
 - creates `nanobot.providers.OpenAICompatProvider`
 - uses `ANTHROPIC_AUTH_TOKEN` + `ANTHROPIC_BASE_URL`
 
 Practical reading:
+
 - When those env vars are present, this path uses a remote Anthropic-compatible endpoint, not Ollama.
 
 ### Terminal worker path
 
 Primary config:
+
 - `mahavishnu/workers/registry.py`
 
 Relevant workers:
+
 - `terminal-claude`
 - `terminal-qwen`
 - `terminal-codex`
@@ -123,6 +140,7 @@ Relevant workers:
 - `terminal-ollama`
 
 Practical reading:
+
 - These workers now defer to each CLI's native configuration.
 - The explicit local path is `terminal-ollama`.
 - The other terminal workers use whatever their corresponding CLI is configured to use.
@@ -130,14 +148,17 @@ Practical reading:
 ### RAG and embeddings
 
 Primary callsites:
+
 - `mahavishnu/engines/llamaindex_adapter_impl.py`
 - `mahavishnu/core/embeddings.py`
 
 Behavior:
+
 - LlamaIndex uses `OllamaEmbedding(...)` and `Ollama(...)`
 - embedding fallback order is `FastEmbed -> Ollama -> OpenAI`
 
 Practical reading:
+
 - Mahavishnu is strongly local-first for embeddings and LlamaIndex-backed retrieval.
 
 ## Bottom Line
@@ -172,15 +193,18 @@ This is intentionally rough. It ignores local infra cost because on this machine
 ### Example: OpenAI `gpt-5.4-mini`
 
 Reference pricing:
+
 - input: `$0.75 / 1M`
 - cached input at provider: `$0.075 / 1M`
 - output: `$4.50 / 1M`
 
 Example request:
+
 - 20k input tokens
 - 2k output tokens
 
 Approximate cost without gateway cache:
+
 - input: `$0.015`
 - output: `$0.009`
 - total: `$0.024`
@@ -196,15 +220,18 @@ Approximate savings per 1,000 similar requests:
 ### Example: OpenAI `gpt-5.4`
 
 Reference pricing:
+
 - input: `$2.50 / 1M`
 - cached input at provider: `$0.25 / 1M`
 - output: `$15 / 1M`
 
 Same example request:
+
 - 20k input tokens
 - 2k output tokens
 
 Approximate cost without gateway cache:
+
 - input: `$0.05`
 - output: `$0.03`
 - total: `$0.08`
@@ -228,6 +255,7 @@ Rough expectations for coding-agent workloads:
 | Highly repetitive agent loops, retries, summaries, and templated tasks | strong, often 30% to 60% |
 
 Practical reading:
+
 - Exact-match cache helps most when agents repeat the same prompt structure with similar context.
 - Semantic cache helps when prompts vary a bit but still land in a stable intent pattern.
 - The larger the model and the more output-heavy the task, the more valuable a cache hit becomes.

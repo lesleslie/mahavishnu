@@ -8,8 +8,7 @@ Tests cover:
 - Helper functions (get_contextual_help, format_error_for_cli, create_error_from_exception)
 """
 
-import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -44,7 +43,6 @@ from mahavishnu.core.errors import (
     format_error_for_cli,
     get_contextual_help,
 )
-
 
 # ============================================================================
 # ErrorCode Enum Tests
@@ -322,16 +320,12 @@ class TestWorkflowExecutionError:
         assert err.details["workflow_id"] == "wf_123"
 
     def test_with_step(self):
-        err = WorkflowExecutionError(
-            "wf_123", "Deploy failed", step_name="deploy"
-        )
+        err = WorkflowExecutionError("wf_123", "Deploy failed", step_name="deploy")
         assert "deploy" in err.message
         assert err.details["step_name"] == "deploy"
 
     def test_with_adapter(self):
-        err = WorkflowExecutionError(
-            "wf_123", "Failed", adapter_name="prefect"
-        )
+        err = WorkflowExecutionError("wf_123", "Failed", adapter_name="prefect")
         assert err.details["adapter_name"] == "prefect"
 
 
@@ -458,18 +452,14 @@ class TestFeatureDisabledError:
 
 class TestErrorTemplates:
     def test_task_create_validation(self):
-        err = ErrorTemplates.task_create_validation(
-            "My Task", "test-repo", ["title too short"]
-        )
+        err = ErrorTemplates.task_create_validation("My Task", "test-repo", ["title too short"])
         assert isinstance(err, ValidationError)
         assert err.details["title"] == "My Task"
         assert err.details["repository"] == "test-repo"
         assert "title too short" in err.details["issues"]
 
     def test_database_connection_failed(self):
-        err = ErrorTemplates.database_connection_failed(
-            "localhost", 5432, "Connection refused"
-        )
+        err = ErrorTemplates.database_connection_failed("localhost", 5432, "Connection refused")
         assert isinstance(err, DatabaseError)
         assert "localhost" in err.message
         assert err.details["host"] == "localhost"
@@ -486,9 +476,7 @@ class TestErrorTemplates:
         assert "/etc/config.yaml" in err.message
 
     def test_webhook_failed(self):
-        err = ErrorTemplates.webhook_failed(
-            "push", "Invalid signature", payload_id="abc"
-        )
+        err = ErrorTemplates.webhook_failed("push", "Invalid signature", payload_id="abc")
         assert isinstance(err, WebhookAuthError)
         assert err.details["payload_id"] == "abc"
 
@@ -497,9 +485,7 @@ class TestErrorTemplates:
         assert "payload_id" not in err.details
 
     def test_prefect_flow_failed(self):
-        err = ErrorTemplates.prefect_flow_failed(
-            "my-flow", "run_123", "Timeout"
-        )
+        err = ErrorTemplates.prefect_flow_failed("my-flow", "run_123", "Timeout")
         assert isinstance(err, PrefectError)
         assert err.error_code == ErrorCode.PREFECT_FLOW_RUN_FAILED
         assert "my-flow" in err.message
@@ -520,9 +506,7 @@ class TestErrorTemplates:
         assert err.error_code == ErrorCode.AGNO_LLM_PROVIDER_ERROR
 
     def test_adapter_init_failed(self):
-        err = ErrorTemplates.adapter_init_failed(
-            "prefect", "No API key", missing_deps=["prefect"]
-        )
+        err = ErrorTemplates.adapter_init_failed("prefect", "No API key", missing_deps=["prefect"])
         assert isinstance(err, AdapterInitializationError)
         assert err.details["missing_deps"] == ["prefect"]
 
@@ -533,16 +517,12 @@ class TestErrorTemplates:
         assert err.details["config_issues"] == ["missing url"]
 
     def test_workflow_step_failed(self):
-        err = ErrorTemplates.workflow_step_failed(
-            "wf_1", "build", "Compile error", retry_count=3
-        )
+        err = ErrorTemplates.workflow_step_failed("wf_1", "build", "Compile error", retry_count=3)
         assert isinstance(err, WorkflowExecutionError)
         assert err.details["retry_count"] == 3
 
     def test_goal_team_creation_failed(self):
-        err = ErrorTemplates.goal_team_creation_failed(
-            "Build the API", "No agents available"
-        )
+        err = ErrorTemplates.goal_team_creation_failed("Build the API", "No agents available")
         assert isinstance(err, GoalTeamError)
         assert len(err.details["goal"]) <= 100
 
@@ -560,9 +540,7 @@ class TestErrorTemplates:
         assert err.details["actual_length"] == 5000
 
     def test_learning_feedback_failed(self):
-        err = ErrorTemplates.learning_feedback_failed(
-            "team_1", "positive", "DB error"
-        )
+        err = ErrorTemplates.learning_feedback_failed("team_1", "positive", "DB error")
         assert isinstance(err, LearningSystemError)
         assert "team_1" in err.message
 
@@ -581,9 +559,7 @@ class TestGetContextualHelp:
         assert "docs.mahavishnu.org" in help_text
 
     def test_with_context(self):
-        help_text = get_contextual_help(
-            ErrorCode.TASK_NOT_FOUND, context={"task_id": "abc"}
-        )
+        help_text = get_contextual_help(ErrorCode.TASK_NOT_FOUND, context={"task_id": "abc"})
         assert "abc" in help_text
         assert "task_id" in help_text
 
@@ -625,16 +601,12 @@ class TestCreateErrorFromException:
 
     def test_custom_error_code(self):
         original = ConnectionError("timeout")
-        err = create_error_from_exception(
-            original, error_code=ErrorCode.DATABASE_CONNECTION_ERROR
-        )
+        err = create_error_from_exception(original, error_code=ErrorCode.DATABASE_CONNECTION_ERROR)
         assert err.error_code == ErrorCode.DATABASE_CONNECTION_ERROR
 
     def test_with_context(self):
         original = RuntimeError("test")
-        err = create_error_from_exception(
-            original, context={"adapter": "prefect"}
-        )
+        err = create_error_from_exception(original, context={"adapter": "prefect"})
         assert err.details["adapter"] == "prefect"
         assert err.details["original_type"] == "RuntimeError"
 
@@ -703,7 +675,9 @@ class TestMahavishnuErrorInit:
         err = MahavishnuError("msg", ErrorCode.CONFIGURATION_ERROR, recovery=None)
         # Should pull from RECOVERY_GUIDANCE
         assert len(err.recovery) >= 1
-        assert err.recovery == MahavishnuError.RECOVERY_GUIDANCE[ErrorCode.CONFIGURATION_ERROR.value]
+        assert (
+            err.recovery == MahavishnuError.RECOVERY_GUIDANCE[ErrorCode.CONFIGURATION_ERROR.value]
+        )
 
     def test_init_fallback_recovery_for_unknown_code(self):
         """Error code not in RECOVERY_GUIDANCE gets default recovery."""
@@ -726,11 +700,12 @@ class TestMahavishnuErrorInit:
     def test_timestamp_is_recent(self):
         """Timestamp should be very close to now."""
         import time
-        before = datetime.now(timezone.utc)
+
+        before = datetime.now(UTC)
         time.sleep(0.01)
         err = MahavishnuError("msg", ErrorCode.INTERNAL_ERROR)
         time.sleep(0.01)
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
         assert before <= err.timestamp <= after
 
 
@@ -741,7 +716,14 @@ class TestMahavishnuErrorToDict:
         """to_dict must return exactly the expected keys."""
         err = MahavishnuError("msg", ErrorCode.VALIDATION_ERROR)
         d = err.to_dict()
-        expected_keys = {"error_code", "message", "recovery", "details", "timestamp", "documentation"}
+        expected_keys = {
+            "error_code",
+            "message",
+            "recovery",
+            "details",
+            "timestamp",
+            "documentation",
+        }
         assert set(d.keys()) == expected_keys
 
     def test_to_dict_error_code_is_string(self):
@@ -989,16 +971,17 @@ class TestWorkflowExecutionErrorExtended:
         assert err.details["adapter_name"] == "agno"
 
     def test_extra_details_merged(self):
-        err = WorkflowExecutionError(
-            "wf1", "fail", details={"retry_count": 5, "last_error": "OOM"}
-        )
+        err = WorkflowExecutionError("wf1", "fail", details={"retry_count": 5, "last_error": "OOM"})
         assert err.details["retry_count"] == 5
         assert err.details["last_error"] == "OOM"
         assert err.details["workflow_id"] == "wf1"
 
     def test_all_params_combined(self):
         err = WorkflowExecutionError(
-            "wf1", "OOM", step_name="deploy", adapter_name="prefect",
+            "wf1",
+            "OOM",
+            step_name="deploy",
+            adapter_name="prefect",
             details={"retry_count": 3},
         )
         assert "wf1" in err.message
@@ -1324,7 +1307,9 @@ class TestErrorTemplatesExtended:
 
     def test_task_create_validation_recovery_for_repo_issues(self):
         """task_create_validation with repository issues."""
-        err = ErrorTemplates.task_create_validation("Task", "unknown-repo", ["repository not found"])
+        err = ErrorTemplates.task_create_validation(
+            "Task", "unknown-repo", ["repository not found"]
+        )
         assert isinstance(err, ValidationError)
         assert err.details["repository"] == "unknown-repo"
 
@@ -1412,9 +1397,7 @@ class TestErrorTemplatesExtended:
         assert "retry_count" not in err.details
 
     def test_goal_team_creation_failed_details(self):
-        err = ErrorTemplates.goal_team_creation_failed(
-            "Build a REST API", "No agents available"
-        )
+        err = ErrorTemplates.goal_team_creation_failed("Build a REST API", "No agents available")
         assert err.details["reason"] == "No agents available"
         assert len(err.details["goal"]) <= 100
 
@@ -1461,7 +1444,9 @@ class TestErrorTemplatesExtended:
             (ErrorTemplates.learning_feedback_failed("t", "f", "r"), LearningSystemError),
         ]
         for err, expected_type in templates:
-            assert isinstance(err, expected_type), f"{type(err).__name__} is not {expected_type.__name__}"
+            assert isinstance(err, expected_type), (
+                f"{type(err).__name__} is not {expected_type.__name__}"
+            )
 
     def test_all_templates_are_mahavishnu_errors(self):
         """Every template method returns a MahavishnuError subclass."""
@@ -1483,4 +1468,6 @@ class TestErrorTemplatesExtended:
             ErrorTemplates.learning_feedback_failed("t", "f", "r"),
         ]
         for err in templates:
-            assert isinstance(err, MahavishnuError), f"{type(err).__name__} is not a MahavishnuError"
+            assert isinstance(err, MahavishnuError), (
+                f"{type(err).__name__} is not a MahavishnuError"
+            )

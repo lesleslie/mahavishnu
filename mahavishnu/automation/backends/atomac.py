@@ -133,7 +133,7 @@ class ATOMacBackend(DesktopAutomationBackend):
 
     async def list_applications(self) -> list[ApplicationInfo]:
         """List all running applications."""
-        atomac = self._get_atomac()
+        self._get_atomac()
 
         def _list() -> list[ApplicationInfo]:
             try:
@@ -211,7 +211,7 @@ class ATOMacBackend(DesktopAutomationBackend):
 
     async def get_active_application(self) -> ApplicationInfo | None:
         """Get the currently active application."""
-        atomac = self._get_atomac()
+        self._get_atomac()
 
         def _get() -> ApplicationInfo | None:
             try:

@@ -6,7 +6,7 @@
 
 **Tech Stack:** Claude Code skills (SKILL.md with YAML frontmatter), MCP tools from Crackerjack, Mahavishnu, Akosha, Dhara, and Session-Buddy.
 
----
+______________________________________________________________________
 
 ## Skill Definition
 
@@ -101,9 +101,9 @@ When the summary flags a problem, it routes to the appropriate dedicated skill:
 If a component's MCP server is unreachable:
 
 1. Catch the failure gracefully — never let one component failure block the others
-2. Mark the unreachable component as `:grey_circle: Unavailable`
-3. Continue collecting results from remaining components
-4. Include a note at the bottom of the dashboard: "[N] component(s) unreachable: [list]. For full radar, ensure all MCP servers are running."
+1. Mark the unreachable component as `:grey_circle: Unavailable`
+1. Continue collecting results from remaining components
+1. Include a note at the bottom of the dashboard: "[N] component(s) unreachable: [list]. For full radar, ensure all MCP servers are running."
 
 ## Edge Cases
 

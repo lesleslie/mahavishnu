@@ -280,10 +280,7 @@ async def example_6_parallel_discovery():
         logger.info(f"Discovering adapters for {len(categories)} categories in parallel")
 
         # Create tasks
-        tasks = [
-            client.list_adapters(domain="adapter", category=cat)
-            for cat in categories
-        ]
+        tasks = [client.list_adapters(domain="adapter", category=cat) for cat in categories]
 
         # Execute in parallel
         results = await asyncio.gather(*tasks)

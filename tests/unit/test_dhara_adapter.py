@@ -1,10 +1,10 @@
 """Tests for core/dhara_adapter.py — DharaClient and DharaAdapter."""
-from unittest.mock import AsyncMock, MagicMock, patch
+
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from mahavishnu.core.dhara_adapter import DharaAdapter, DharaClient
-
 
 # ---------------------------------------------------------------------------
 # DharaClient
@@ -143,9 +143,7 @@ class TestDharaAdapterInit:
 class TestDharaAdapterQueryTimeSeries:
     async def test_returns_list_result(self):
         adapter = DharaAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(
-            return_value=[{"ts": "2026-01-01", "value": 42}]
-        )
+        adapter.client.call_tool = AsyncMock(return_value=[{"ts": "2026-01-01", "value": 42}])
 
         result = await adapter.query_time_series("commits", "repo1")
         assert len(result) == 1
@@ -153,27 +151,21 @@ class TestDharaAdapterQueryTimeSeries:
 
     async def test_returns_records_from_dict(self):
         adapter = DharaAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(
-            return_value={"records": [{"ts": "2026-01-01"}]}
-        )
+        adapter.client.call_tool = AsyncMock(return_value={"records": [{"ts": "2026-01-01"}]})
 
         result = await adapter.query_time_series("commits", "repo1")
         assert len(result) == 1
 
     async def test_returns_items_from_dict(self):
         adapter = DharaAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(
-            return_value={"items": [{"ts": "2026-01-01"}]}
-        )
+        adapter.client.call_tool = AsyncMock(return_value={"items": [{"ts": "2026-01-01"}]})
 
         result = await adapter.query_time_series("commits", "repo1")
         assert len(result) == 1
 
     async def test_returns_result_key_from_dict(self):
         adapter = DharaAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(
-            return_value={"result": [{"ts": "2026-01-01"}]}
-        )
+        adapter.client.call_tool = AsyncMock(return_value={"result": [{"ts": "2026-01-01"}]})
 
         result = await adapter.query_time_series("commits", "repo1")
         assert len(result) == 1
@@ -189,9 +181,7 @@ class TestDharaAdapterQueryTimeSeries:
         adapter = DharaAdapter("http://localhost")
         adapter.client.call_tool = AsyncMock(return_value=[])
 
-        await adapter.query_time_series(
-            "commits", "repo1", start_date="2026-01-01", limit=50
-        )
+        await adapter.query_time_series("commits", "repo1", start_date="2026-01-01", limit=50)
 
         call_args = adapter.client.call_tool.call_args
         args = call_args[1] if call_args[1] else call_args[0][1]
@@ -214,27 +204,21 @@ class TestDharaAdapterQueryTimeSeries:
 class TestDharaAdapterAggregatePatterns:
     async def test_returns_list_result(self):
         adapter = DharaAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(
-            return_value=[{"pattern": "test", "count": 5}]
-        )
+        adapter.client.call_tool = AsyncMock(return_value=[{"pattern": "test", "count": 5}])
 
         result = await adapter.aggregate_patterns("2026-01-01", min_occurrences=3)
         assert len(result) == 1
 
     async def test_returns_patterns_from_dict(self):
         adapter = DharaAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(
-            return_value={"patterns": [{"pattern": "test"}]}
-        )
+        adapter.client.call_tool = AsyncMock(return_value={"patterns": [{"pattern": "test"}]})
 
         result = await adapter.aggregate_patterns("2026-01-01")
         assert len(result) == 1
 
     async def test_returns_result_from_dict(self):
         adapter = DharaAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(
-            return_value={"result": [{"pattern": "test"}]}
-        )
+        adapter.client.call_tool = AsyncMock(return_value={"result": [{"pattern": "test"}]})
 
         result = await adapter.aggregate_patterns("2026-01-01")
         assert len(result) == 1

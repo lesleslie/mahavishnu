@@ -1,6 +1,6 @@
 # MCP Tool Ranking Report
 
-**Generated**: 2026-04-05  
+**Generated**: 2026-04-05
 **Scope**: All tool modules in `mahavishnu/mcp/tools/`
 
 ## Methodology
@@ -35,11 +35,11 @@ Files using the programmatic `register_*_tools(server, ...)` pattern are noted �
 | 13 | desktop_automation_tools.py | 23 | 555 | 26 | 0 | 9 | **0.673** |
 | 14 | worktree_tools.py | 6 | 226 | 8 | 0 | 6 | **0.642** |
 | 15 | content_ingestion_tools.py | 5 | 213 | 8 | 0 | 7 | **0.623** |
-| — | git_analytics.py* | 3 | 463 | 12 | 6 | 10 | **0.600** |
-| — | oneiric_tools.py* | 5 | 474 | 9 | 7 | 8 | **0.600** |
-| — | otel_tools.py* | 4 | 347 | 6 | 6 | 4 | **0.600** |
-| — | repository_messaging_tools.py* | 5 | 308 | 9 | 13 | 7 | **0.600** |
-| — | session_buddy_tools.py* | 5 | 246 | 9 | 8 | 7 | **0.600** |
+| — | git_analytics.py\* | 3 | 463 | 12 | 6 | 10 | **0.600** |
+| — | oneiric_tools.py\* | 5 | 474 | 9 | 7 | 8 | **0.600** |
+| — | otel_tools.py\* | 4 | 347 | 6 | 6 | 4 | **0.600** |
+| — | repository_messaging_tools.py\* | 5 | 308 | 9 | 13 | 7 | **0.600** |
+| — | session_buddy_tools.py\* | 5 | 246 | 9 | 8 | 7 | **0.600** |
 
 *\* These modules use the programmatic `register_*_tools(server, ...)` pattern rather than `@mcp.tool()` decorators. They are functional but scored at the floor for tool count due to the different registration mechanism.*
 
@@ -68,10 +68,10 @@ The bottom quintile (scores < 0.642) comprises:
 ### Recommendations
 
 1. **No immediate removals** — all modules serve functional purposes
-2. **Add error handling** to `worktree_tools.py` and `content_ingestion_tools.py` (both have zero try/except blocks)
-3. **Consolidate registration patterns** — migrate programmatic registrations to `@mcp.tool()` decorators for consistency and better quality scoring
-4. **Evaluate overlap** between `repository_messaging_tools.py` and `coordination_tools.py` — both handle cross-repo communication
-5. **Conditionally load** `oneiric_tools.py` and `otel_tools.py` behind feature flags since they depend on optional packages
+1. **Add error handling** to `worktree_tools.py` and `content_ingestion_tools.py` (both have zero try/except blocks)
+1. **Consolidate registration patterns** — migrate programmatic registrations to `@mcp.tool()` decorators for consistency and better quality scoring
+1. **Evaluate overlap** between `repository_messaging_tools.py` and `coordination_tools.py` — both handle cross-repo communication
+1. **Conditionally load** `oneiric_tools.py` and `otel_tools.py` behind feature flags since they depend on optional packages
 
 ## Re-runnable Script
 

@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-import logging
-from collections.abc import Callable
 from datetime import UTC, datetime
 from functools import wraps
-from typing import Any
-
-from pydantic import SecretStr
+import logging
+from typing import TYPE_CHECKING, Any
 
 from mcp_common.auth.audit import AuditLogger, AuthAuditEvent
 from mcp_common.auth.config import AuthConfig
 from mcp_common.auth.permissions import Permission
+from pydantic import SecretStr
 
 from ..core.auth import AuthenticationError
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -45,37 +46,43 @@ def require_mcp_auth(
             user_id = kwargs.get("user_id")
             perm = required_permission or Permission.READ
             if not user_id:
-                _audit_logger.emit(AuthAuditEvent(
-                    timestamp=datetime.now(UTC),
-                    service="mahavishnu",
-                    caller_service="unknown",
-                    caller_id="unknown",
-                    action=func.__name__,
-                    permission=perm,
-                    result="denied",
-                    reason="No user_id provided",
-                    source_ip=None,
-                    token_id=None,
-                ))
+                _audit_logger.emit(
+                    AuthAuditEvent(
+                        timestamp=datetime.now(UTC),
+                        service="mahavishnu",
+                        caller_service="unknown",
+                        caller_id="unknown",
+                        action=func.__name__,
+                        permission=perm,
+                        result="denied",
+                        reason="No user_id provided",
+                        source_ip=None,
+                        token_id=None,
+                    )
+                )
                 return {
                     "status": "error",
                     "error": "Authentication required: user_id parameter missing",
                     "error_code": "AUTH_REQUIRED",
                 }
-            _audit_logger.emit(AuthAuditEvent(
-                timestamp=datetime.now(UTC),
-                service="mahavishnu",
-                caller_service="unknown",
-                caller_id=user_id,
-                action=func.__name__,
-                permission=perm,
-                result="allowed",
-                reason=None,
-                source_ip=None,
-                token_id=None,
-            ))
+            _audit_logger.emit(
+                AuthAuditEvent(
+                    timestamp=datetime.now(UTC),
+                    service="mahavishnu",
+                    caller_service="unknown",
+                    caller_id=user_id,
+                    action=func.__name__,
+                    permission=perm,
+                    result="allowed",
+                    reason=None,
+                    source_ip=None,
+                    token_id=None,
+                )
+            )
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -109,14 +116,28 @@ async def extract_auth_from_request(request: dict[str, Any]) -> dict[str, Any]:
 
 
 class CredentialManager:
-    _SENSITIVE_KEYS = frozenset({
-        "password", "token", "key", "secret", "credential", "api_key",
-        "apikey", "auth_token", "access_token", "ssh_key", "private_key",
-        "passphrase", "jwt_secret",
-    })
+    _SENSITIVE_KEYS = frozenset(
+        {
+            "password",
+            "token",
+            "key",
+            "secret",
+            "credential",
+            "api_key",
+            "apikey",
+            "auth_token",
+            "access_token",
+            "ssh_key",
+            "private_key",
+            "passphrase",
+            "jwt_secret",
+        }
+    )
 
     @staticmethod
-    def redact_from_dict(data: dict[str, Any], sensitive_keys: list[str] | None = None) -> dict[str, Any]:
+    def redact_from_dict(
+        data: dict[str, Any], sensitive_keys: list[str] | None = None
+    ) -> dict[str, Any]:
         keys = frozenset(sensitive_keys or []) | CredentialManager._SENSITIVE_KEYS
         redacted = {}
         for k, v in data.items():

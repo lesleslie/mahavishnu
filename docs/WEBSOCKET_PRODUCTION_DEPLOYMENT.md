@@ -4,23 +4,23 @@
 **Last Updated:** 2025-02-11
 **Status:** Production Ready
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Prerequisites](#1-prerequisites)
-2. [Environment Variables](#2-environment-variables)
-3. [Deployment Architecture](#3-deployment-architecture)
-4. [TLS/WSS Configuration](#4-tlswss-configuration)
-5. [Nginx Reverse Proxy Configuration](#5-nginx-reverse-proxy-configuration)
-6. [Health Check Procedures](#6-health-check-procedures)
-7. [Prometheus Metrics Integration](#7-prometheus-metrics-integration)
-8. [Grafana Dashboard Setup](#8-grafana-dashboard-setup)
-9. [Security Hardening Checklist](#9-security-hardening-checklist)
-10. [Troubleshooting Common Issues](#10-troubleshooting-common-issues)
-11. [Rollback Procedures](#11-rollback-procedures)
+1. [Environment Variables](#2-environment-variables)
+1. [Deployment Architecture](#3-deployment-architecture)
+1. [TLS/WSS Configuration](#4-tlswss-configuration)
+1. [Nginx Reverse Proxy Configuration](#5-nginx-reverse-proxy-configuration)
+1. [Health Check Procedures](#6-health-check-procedures)
+1. [Prometheus Metrics Integration](#7-prometheus-metrics-integration)
+1. [Grafana Dashboard Setup](#8-grafana-dashboard-setup)
+1. [Security Hardening Checklist](#9-security-hardening-checklist)
+1. [Troubleshooting Common Issues](#10-troubleshooting-common-issues)
+1. [Rollback Procedures](#11-rollback-procedures)
 
----
+______________________________________________________________________
 
 ## 1. Prerequisites
 
@@ -103,7 +103,7 @@ sudo ufw allow from 10.0.0.0/8 to any port 9090
 sudo ufw allow from 10.0.0.0/8 to any port 6379
 ```
 
----
+______________________________________________________________________
 
 ## 2. Environment Variables
 
@@ -220,7 +220,7 @@ print(f"TLS Enabled: {settings.tls_enabled}")
 print(f"JWT Secret: {settings.jwt_secret}")
 ```
 
----
+______________________________________________________________________
 
 ## 3. Deployment Architecture
 
@@ -325,7 +325,7 @@ Mahavishnu WebSocket
     └── Queries Prometheus
 ```
 
----
+______________________________________________________________________
 
 ## 4. TLS/WSS Configuration
 
@@ -443,7 +443,7 @@ if tls_config["tls_enabled"]:
     )
 ```
 
----
+______________________________________________________________________
 
 ## 5. Nginx Reverse Proxy Configuration
 
@@ -706,7 +706,7 @@ http {
 }
 ```
 
----
+______________________________________________________________________
 
 ## 6. Health Check Procedures
 
@@ -827,7 +827,7 @@ backend mahavishnu_websocket
     server web2 10.0.1.11:8686 check backup
 ```
 
----
+______________________________________________________________________
 
 ## 7. Prometheus Metrics Integration
 
@@ -981,7 +981,7 @@ groups:
           description: "Server {{ $labels.instance }} is not responding"
 ```
 
----
+______________________________________________________________________
 
 ## 8. Grafana Dashboard Setup
 
@@ -992,16 +992,16 @@ The dashboard JSON is available at `/docs/grafana/WebSocket_Monitoring.json`.
 **Steps to import:**
 
 1. Open Grafana: `http://your-grafana:3000`
-2. Navigate to **Dashboards** -> **Import**
-3. Upload `WebSocket_Monitoring.json` or paste JSON
-4. Select data source: `Prometheus`
-5. Click **Import**
+1. Navigate to **Dashboards** -> **Import**
+1. Upload `WebSocket_Monitoring.json` or paste JSON
+1. Select data source: `Prometheus`
+1. Click **Import**
 
 ### 8.2 Configure Data Source
 
 1. Go to **Configuration** -> **Data Sources**
-2. Add **Prometheus** data source
-3. Configure:
+1. Add **Prometheus** data source
+1. Configure:
 
 ```yaml
 Name: Prometheus
@@ -1025,22 +1025,22 @@ The dashboard includes the following variables:
 ### 8.4 Dashboard Panels
 
 1. **Active Connections** - Real-time connection count
-2. **Message Rate (Sent)** - Messages sent per second
-3. **Message Rate (Received)** - Messages received per second
-4. **Broadcast Rate** - Broadcast operations per second
-5. **Broadcast Latency** - P50, P95, P99 percentiles
-6. **Message Latency** - Processing latency by type
-7. **Connection Error Rate** - Errors by type
-8. **Message Error Rate** - Processing errors
+1. **Message Rate (Sent)** - Messages sent per second
+1. **Message Rate (Received)** - Messages received per second
+1. **Broadcast Rate** - Broadcast operations per second
+1. **Broadcast Latency** - P50, P95, P99 percentiles
+1. **Message Latency** - Processing latency by type
+1. **Connection Error Rate** - Errors by type
+1. **Message Error Rate** - Processing errors
 
 ### 8.5 Set Up Alerts
 
 1. Click on any panel
-2. Select **Set alert rule**
-3. Configure alert conditions
-4. Set notification channel
+1. Select **Set alert rule**
+1. Configure alert conditions
+1. Set notification channel
 
----
+______________________________________________________________________
 
 ## 9. Security Hardening Checklist
 
@@ -1144,7 +1144,7 @@ X-Content-Type-Options: nosniff
 X-XSS-Protection: 1; mode=block
 ```
 
----
+______________________________________________________________________
 
 ## 10. Troubleshooting Common Issues
 
@@ -1268,7 +1268,7 @@ sudo journalctl -u redis-server -f
 redis-cli info clients
 ```
 
----
+______________________________________________________________________
 
 ## 11. Rollback Procedures
 
@@ -1360,7 +1360,7 @@ curl -f http://localhost:8680/metrics || exit 1
 wscat -c "ws://localhost:8686" --connect-timeout 5
 ```
 
----
+______________________________________________________________________
 
 ## Appendix
 
@@ -1466,7 +1466,7 @@ Create `/etc/logrotate.d/mahavishnu`:
 | `curl http://localhost:8680/metrics` | View metrics |
 | `wscat -c "ws://localhost:8686"` | Test WebSocket |
 
----
+______________________________________________________________________
 
 ## Support and Documentation
 
@@ -1475,7 +1475,7 @@ Create `/etc/logrotate.d/mahavishnu`:
 - **Implementation Guide:** `/docs/archive/completion-reports/WEBSOCKET_INTEGRATION_COMPLETE.md`
 - **Grafana Dashboard:** `/docs/grafana/WebSocket_Monitoring.json`
 
----
+______________________________________________________________________
 
 **Document Version:** 1.0.0
 **Last Updated:** 2025-02-11

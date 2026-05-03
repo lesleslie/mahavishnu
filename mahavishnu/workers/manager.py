@@ -6,12 +6,15 @@ import os
 from pathlib import Path
 from typing import Any
 
-from monitoring.metrics import agent_task_duration_seconds, agent_tasks_in_progress, agent_tasks_total
+from monitoring.metrics import (
+    agent_task_duration_seconds,
+    agent_tasks_in_progress,
+    agent_tasks_total,
+)
 
 from ..terminal.manager import TerminalManager
 from .base import BaseWorker, WorkerResult, WorkerStatus
 from .container import ContainerWorker
-from .terminal import TerminalAIWorker
 
 logger = logging.getLogger(__name__)
 

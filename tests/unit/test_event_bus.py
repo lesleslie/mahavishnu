@@ -1,9 +1,8 @@
 """Tests for core/event_bus.py — EventType, Event, SQLiteEventStorage, EventBus."""
+
 import asyncio
 from datetime import UTC, datetime
-from pathlib import Path
-import tempfile
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -14,7 +13,6 @@ from mahavishnu.core.event_bus import (
     SQLiteEventStorage,
     get_event_bus,
 )
-
 
 # ---------------------------------------------------------------------------
 # EventType enum
@@ -151,9 +149,7 @@ class TestSQLiteEventStorage:
         assert conn is not None
 
         # Verify tables exist
-        cursor = await conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        )
+        cursor = await conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = {row[0] for row in await cursor.fetchall()}
         assert "events" in tables
         assert "event_deliveries" in tables
@@ -467,8 +463,9 @@ class TestEventBus:
 
     async def test_publish_envelope_requires_start(self, tmp_path):
         bus = EventBus(storage_path=tmp_path / "bus.db")
-        from mahavishnu.core.events.envelope import EventEnvelope
         import uuid as uuid_mod
+
+        from mahavishnu.core.events.envelope import EventEnvelope
 
         envelope = EventEnvelope(
             event_id=uuid_mod.uuid4(),

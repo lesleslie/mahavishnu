@@ -12,14 +12,16 @@ Schema: search.documents
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import logging
-from datetime import datetime, timezone
-from typing import Any
-from uuid import UUID
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +96,8 @@ class DocumentUpdate(BaseModel):
     repository: str | None = Field(None, description="Repository name")
     system_name: str | None = Field(None, description="System name")
     metadata: dict[str, Any] | None = Field(
-        None, description="Metadata updates (merged)",
+        None,
+        description="Metadata updates (merged)",
     )
 
 
@@ -320,13 +323,13 @@ class DocumentRepository(
         if not updates:
             return await self.get_document(document_id)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         updates.append(f"updated_at = ${param_idx}")
         params.append(now)
 
         query = f"""
             UPDATE {self._table}
-            SET {', '.join(updates)}
+            SET {", ".join(updates)}
             WHERE id = $1
             RETURNING *
         """
@@ -419,7 +422,7 @@ class DocumentRepository(
                        plainto_tsquery('english', ${1})
                    ) as score
             FROM {self._table}
-            WHERE {' AND '.join(conditions)}
+            WHERE {" AND ".join(conditions)}
             ORDER BY score DESC
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
         """
@@ -484,9 +487,7 @@ class DocumentRepository(
             params.append(source_type)
             param_idx += 1
 
-        where_clause = (
-            f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        )
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         params.extend([limit, offset])
 
         query = f"""

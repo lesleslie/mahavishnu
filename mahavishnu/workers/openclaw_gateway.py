@@ -174,7 +174,7 @@ class OpenClawGatewayWorker(BaseWorker):
                     "response": response,
                 },
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return WorkerResult(
                 worker_id=self.worker_id,
                 status=WorkerStatus.TIMEOUT,

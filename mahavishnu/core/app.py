@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 import uuid
 
 import yaml
+
 from monitoring.metrics import (
     mahavishnu_active_workflows,
     mahavishnu_repos_processed_total,
@@ -28,17 +29,17 @@ from ..qc.checker import QualityControl
 from ..session.checkpoint import SessionBuddy
 from .circuit_breaker import CircuitBreaker
 from .config import MahavishnuSettings
+from .context import set_app_context
 from .errors import AdapterError, ConfigurationError, ValidationError
+from .metrics_schema import AdapterType, TaskType
 from .monitoring import MonitoringService
 from .observability import init_observability
 from .opensearch_integration import OpenSearchIntegration
 from .permissions import Permission, RBACManager
-from .resilience import ErrorRecoveryManager, ResiliencePatterns
-from .workflow_state import WorkflowState
-from .context import set_app_context
 from .repo_nicknames import get_repo_nicknames
-from .routing import TaskRouter, RoutingStrategy
-from .metrics_schema import AdapterType, TaskType
+from .resilience import ErrorRecoveryManager, ResiliencePatterns
+from .routing import RoutingStrategy, TaskRouter
+from .workflow_state import WorkflowState
 
 if TYPE_CHECKING:
     from ..terminal.manager import TerminalManager
@@ -272,9 +273,8 @@ class MahavishnuApp:
         # Initialize worktree coordinator (Phase 1 integration)
         self.worktree_coordinator = None
         try:
-            from .worktree_coordination import WorktreeCoordinator
-            from .repo_manager import RepositoryManager
             from .coordination.manager import CoordinationManager
+            from .repo_manager import RepositoryManager
 
             # Create repository manager (loads from repos_path)
             repos_path = _validate_path(self.config.repos_path).expanduser()
@@ -362,7 +362,7 @@ class MahavishnuApp:
             >>> if not await app.wait_for_dependencies():
             ...     raise RuntimeError("Required dependencies unavailable")
         """
-        from .health import DependencyWaiter, ServiceInfo
+        from .health import DependencyWaiter
 
         config = self.config.health
         if not config.enabled or not config.dependencies:
@@ -385,8 +385,7 @@ class MahavishnuApp:
                 extra={
                     "total_wait_seconds": result.total_wait_seconds,
                     "dependencies": {
-                        name: dep.status.value
-                        for name, dep in result.dependencies.items()
+                        name: dep.status.value for name, dep in result.dependencies.items()
                     },
                 },
             )
@@ -528,9 +527,7 @@ class MahavishnuApp:
         logger = __import__("logging").getLogger(__name__)
         try:
             auth_token = os.environ.get("ZAI_API_KEY")
-            base_url = os.environ.get(
-                "ZAI_BASE_URL", "https://api.z.ai/api/coding/paas/v4"
-            )
+            base_url = os.environ.get("ZAI_BASE_URL", "https://api.z.ai/api/coding/paas/v4")
 
             if not auth_token:
                 logger.debug("ZAI_API_KEY not set; nanobot provider not configured")
@@ -882,7 +879,6 @@ class MahavishnuApp:
         llm_factory = None
         if agno_adapter is not None:
             # Use Agno's LLM configuration as the default factory
-            from .context import LLMFactory
 
             class DefaultLLMFactory:
                 """Default LLM factory using Agno configuration."""
@@ -1042,7 +1038,7 @@ class MahavishnuApp:
         try:
             # Check if there's already a running event loop
             try:
-                loop = asyncio.get_running_loop()
+                asyncio.get_running_loop()
                 # We're in an async context - schedule the coroutine
                 # Create a Future and run the coroutine in the current loop
                 import concurrent.futures

@@ -60,7 +60,9 @@ class RunPodPool(BasePool):
             )
             logger.info(
                 "RunPodPool %s started (endpoint=%s, gpu=%s)",
-                self.pool_id, self._endpoint_name, self._gpu_type,
+                self.pool_id,
+                self._endpoint_name,
+                self._gpu_type,
             )
         except Exception as e:
             self._status = PoolStatus.FAILED
@@ -77,8 +79,7 @@ class RunPodPool(BasePool):
         gpu = getattr(GpuType, self._gpu_type, None)
         if gpu is None:
             raise ValueError(
-                f"Unknown GpuType: {self._gpu_type}. "
-                f"Valid values: {[g.name for g in GpuType]}"
+                f"Unknown GpuType: {self._gpu_type}. Valid values: {[g.name for g in GpuType]}"
             )
 
         deps = self._dependencies
@@ -118,12 +119,14 @@ class RunPodPool(BasePool):
             duration = time.time() - start_time
             self._tasks_completed += 1
             self._task_durations.append(duration)
-            self._task_results.append({
-                "worker_id": worker_id,
-                "output": output,
-                "status": "completed",
-                "timestamp": start_time,
-            })
+            self._task_results.append(
+                {
+                    "worker_id": worker_id,
+                    "output": output,
+                    "status": "completed",
+                    "timestamp": start_time,
+                }
+            )
             return {
                 "pool_id": self.pool_id,
                 "worker_id": worker_id,
@@ -191,8 +194,7 @@ class RunPodPool(BasePool):
 
     async def get_metrics(self) -> PoolMetrics:
         avg_duration = (
-            sum(self._task_durations) / len(self._task_durations)
-            if self._task_durations else 0.0
+            sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
         )
         return PoolMetrics(
             pool_id=self.pool_id,

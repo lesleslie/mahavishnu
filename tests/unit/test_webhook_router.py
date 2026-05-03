@@ -1,12 +1,12 @@
 """Comprehensive unit tests for mahavishnu/webhooks/router.py."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from fastapi import HTTPException, Request
-from fastapi.testclient import TestClient
 from pydantic import ValidationError
+import pytest
 
 from mahavishnu.core.errors import AuthenticationError
 from mahavishnu.core.metrics_schema import AdapterType, TaskType
@@ -16,11 +16,11 @@ from mahavishnu.webhooks.models import (
     WebhookStatus,
 )
 from mahavishnu.webhooks.router import (
-    webhook_router,
-    validate_auth,
     sweep_endpoint,
-    workflow_endpoint,
+    validate_auth,
     webhook_health,
+    webhook_router,
+    workflow_endpoint,
 )
 
 
@@ -159,7 +159,9 @@ class TestValidateAuth:
         }
 
         with (
-            patch("mahavishnu.webhooks.router.get_auth_handler", return_value=mock_handler) as mock_get_handler,
+            patch(
+                "mahavishnu.webhooks.router.get_auth_handler", return_value=mock_handler
+            ) as mock_get_handler,
         ):
             await validate_auth("Bearer some-token")
             mock_get_handler.assert_called_once()
@@ -205,7 +207,11 @@ class TestSweepEndpoint:
             patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
-            unwrapped = sweep_endpoint.__wrapped__ if hasattr(sweep_endpoint, "__wrapped__") else sweep_endpoint
+            unwrapped = (
+                sweep_endpoint.__wrapped__
+                if hasattr(sweep_endpoint, "__wrapped__")
+                else sweep_endpoint
+            )
             try:
                 response = await unwrapped(request, sweep_req, auth_result)
             except TypeError:
@@ -711,5 +717,6 @@ class TestAllExportedNames:
 
     def test_all_contains_expected_names(self):
         from mahavishnu.webhooks.router import __all__
+
         expected = {"webhook_router", "validate_auth", "sweep_endpoint", "workflow_endpoint"}
         assert set(__all__) == expected

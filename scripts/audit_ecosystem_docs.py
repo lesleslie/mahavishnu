@@ -111,9 +111,7 @@ def summarize_repo(repo: dict[str, Any]) -> RepoDocsSummary:
     archive_files = [path for path in files if "archive" in path.parts]
     backup_like_files = [path for path in files if is_backup_like(path)]
     generated_files = [path for path in files if is_generated(path)]
-    root_markdown_files = [
-        path for path in markdown_files if path.parent == docs_path
-    ]
+    root_markdown_files = [path for path in markdown_files if path.parent == docs_path]
     stale_root_candidates = [
         path for path in markdown_files if is_stale_root_candidate(path, docs_path)
     ]
@@ -242,9 +240,7 @@ def render_markdown(
             lines.append(f"### {summary.name}")
             lines.append("")
             if not (
-                summary.backup_like_paths
-                or summary.generated_paths
-                or summary.stale_root_paths
+                summary.backup_like_paths or summary.generated_paths or summary.stale_root_paths
             ):
                 lines.append("- no detailed candidates")
                 lines.append("")

@@ -24,20 +24,20 @@ Usage:
 
 from __future__ import annotations
 
-import logging
-import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
+import logging
 from typing import Any
+import uuid
 
 from mahavishnu.core.task_store import Task, TaskStatus, TaskStore
 
 logger = logging.getLogger(__name__)
 
 
-class DependencyType(str, Enum):
+class DependencyType(StrEnum):
     """Type of dependency between tasks."""
 
     BLOCKS = "blocks"  # Source task blocks target (target waits for source)
@@ -45,7 +45,7 @@ class DependencyType(str, Enum):
     RELATED = "related"  # Tasks are related but no blocking
 
 
-class DependencyStatus(str, Enum):
+class DependencyStatus(StrEnum):
     """Status of a dependency relationship."""
 
     PENDING = "pending"  # Dependency not yet satisfied
@@ -395,12 +395,11 @@ class CrossRepoDependencyLinker:
                     dep.status = DependencyStatus.FAILED
                 elif source_task.status == TaskStatus.BLOCKED:
                     dep.status = DependencyStatus.BLOCKED
-        elif dep.dependency_type == DependencyType.REQUIRES:
-            if target_task:
-                if target_task.status == TaskStatus.COMPLETED:
-                    dep.status = DependencyStatus.SATISFIED
-                elif target_task.status == TaskStatus.FAILED:
-                    dep.status = DependencyStatus.FAILED
+        elif dep.dependency_type == DependencyType.REQUIRES and target_task:
+            if target_task.status == TaskStatus.COMPLETED:
+                dep.status = DependencyStatus.SATISFIED
+            elif target_task.status == TaskStatus.FAILED:
+                dep.status = DependencyStatus.FAILED
 
         return dep
 

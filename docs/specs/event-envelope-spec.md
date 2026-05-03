@@ -22,16 +22,16 @@ EventEnvelope (Pydantic BaseModel, frozen)
 
 ### Field Constraints
 
-| Field         | Type     | Required | Constraints              |
+| Field | Type | Required | Constraints |
 |---------------|----------|----------|--------------------------|
-| event_id      | UUID     | yes      | auto-generated UUIDv4    |
-| event_type    | str      | yes      | 1–128 chars, non-blank   |
-| version       | str      | yes      | semver, validated by EventVersion |
-| timestamp     | datetime | yes      | UTC, auto-generated      |
-| source        | str      | yes      | 1–128 chars, non-blank   |
-| correlation_id| UUID?    | no       | for distributed tracing  |
-| payload       | dict     | yes      | validated per schema     |
-| metadata      | dict     | yes      | defaults to empty dict   |
+| event_id | UUID | yes | auto-generated UUIDv4 |
+| event_type | str | yes | 1–128 chars, non-blank |
+| version | str | yes | semver, validated by EventVersion |
+| timestamp | datetime | yes | UTC, auto-generated |
+| source | str | yes | 1–128 chars, non-blank |
+| correlation_id| UUID? | no | for distributed tracing |
+| payload | dict | yes | validated per schema |
+| metadata | dict | yes | defaults to empty dict |
 
 ## Versioning Policy
 
@@ -43,35 +43,35 @@ EventEnvelope (Pydantic BaseModel, frozen)
 
 ### Compatibility Rules
 
-| Producer | Consumer | Compatible? | Level  |
+| Producer | Consumer | Compatible? | Level |
 |----------|----------|-------------|--------|
-| 1.0.0    | 1.0.0    | Yes         | PATCH  |
-| 1.1.0    | 1.0.0    | Yes         | MINOR  |
-| 1.0.0    | 1.1.0    | No          | —      |
-| 2.0.0    | 1.0.0    | No          | MAJOR  |
+| 1.0.0 | 1.0.0 | Yes | PATCH |
+| 1.1.0 | 1.0.0 | Yes | MINOR |
+| 1.0.0 | 1.1.0 | No | — |
+| 2.0.0 | 1.0.0 | No | MAJOR |
 
 ## Schema Registry
 
 Built-in schemas registered at startup for all Mahavishnu event types:
 
-| Event Type                | Version | Required Fields           |
+| Event Type | Version | Required Fields |
 |---------------------------|---------|---------------------------|
-| code.graph.indexed        | 1.0.0   | repo_path, nodes_count    |
-| code.graph.index_failed   | —       | —                         |
-| code.graph.cache_invalidated | —    | —                         |
-| worker.started            | 1.0.0   | worker_id, worker_type    |
-| worker.stopped            | 1.0.0   | worker_id                 |
-| worker.status_changed     | 1.0.0   | worker_id, status         |
-| worker.error              | 1.0.0   | worker_id, error          |
-| backup.started            | 1.0.0   | backup_type               |
-| backup.completed          | 1.0.0   | backup_id                 |
-| backup.failed             | 1.0.0   | error                     |
-| backup.restored           | 1.0.0   | backup_id                 |
-| pool.spawned              | 1.0.0   | pool_id, pool_type        |
-| pool.closed               | 1.0.0   | pool_id                   |
-| pool.scaled               | 1.0.0   | pool_id, target_workers   |
-| workflow.started          | 1.0.0   | workflow_id               |
-| task.created              | 1.0.0   | task_id                   |
+| code.graph.indexed | 1.0.0 | repo_path, nodes_count |
+| code.graph.index_failed | — | — |
+| code.graph.cache_invalidated | — | — |
+| worker.started | 1.0.0 | worker_id, worker_type |
+| worker.stopped | 1.0.0 | worker_id |
+| worker.status_changed | 1.0.0 | worker_id, status |
+| worker.error | 1.0.0 | worker_id, error |
+| backup.started | 1.0.0 | backup_type |
+| backup.completed | 1.0.0 | backup_id |
+| backup.failed | 1.0.0 | error |
+| backup.restored | 1.0.0 | backup_id |
+| pool.spawned | 1.0.0 | pool_id, pool_type |
+| pool.closed | 1.0.0 | pool_id |
+| pool.scaled | 1.0.0 | pool_id, target_workers |
+| workflow.started | 1.0.0 | workflow_id |
+| task.created | 1.0.0 | task_id |
 
 ## Implementation
 
@@ -85,6 +85,6 @@ Built-in schemas registered at startup for all Mahavishnu event types:
 The `EventBus` provides two paths:
 
 1. `publish(event_type, data, source)` — legacy, auto-wraps in EventEnvelope
-2. `publish_envelope(envelope)` — preferred, explicit envelope construction
+1. `publish_envelope(envelope)` — preferred, explicit envelope construction
 
 All persisted events include the envelope JSON in a dedicated `envelope` column.

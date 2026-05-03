@@ -16,11 +16,11 @@ IMPORTANT - Implementation Note:
 """
 
 import asyncio
-import shutil
-import uuid
 from datetime import datetime
 from logging import getLogger
+import shutil
 from typing import Any
+import uuid
 
 from .base import TerminalAdapter
 
@@ -67,9 +67,7 @@ class ITerm2Adapter(TerminalAdapter):
             ImportError: If osascript is not available (not macOS)
         """
         if not OSASCRIPT_AVAILABLE:
-            raise ImportError(
-                "osascript not available. iTerm2 adapter requires macOS."
-            )
+            raise ImportError("osascript not available. iTerm2 adapter requires macOS.")
 
         self._default_profile = default_profile
         self._sessions: dict[str, dict[str, Any]] = {}
@@ -301,16 +299,16 @@ class ITerm2Adapter(TerminalAdapter):
 
             if was_new_window:
                 # Close the window
-                script = '''
+                script = """
                 tell application "iTerm2"
                     tell current window
                         close
                     end tell
                 end tell
-                '''
+                """
             else:
                 # Close the current tab
-                script = '''
+                script = """
                 tell application "iTerm2"
                     tell current window
                         tell current tab
@@ -318,7 +316,7 @@ class ITerm2Adapter(TerminalAdapter):
                         end tell
                     end tell
                 end tell
-                '''
+                """
 
             await self._run_applescript(script)
 
@@ -386,11 +384,11 @@ class ITerm2Adapter(TerminalAdapter):
 
     async def _ensure_iterm2_running(self) -> None:
         """Ensure iTerm2 is running, launch if needed."""
-        script = '''
+        script = """
         tell application "iTerm2"
             if it is not running then
                 launch
             end if
         end tell
-        '''
+        """
         await self._run_applescript(script)

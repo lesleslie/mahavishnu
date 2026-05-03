@@ -11,10 +11,9 @@ For each project:
 5. Provides migration report
 """
 
-import json
-import shutil
-from pathlib import Path
 from collections import defaultdict
+import json
+from pathlib import Path
 
 
 def load_agent_categorization(claude_home: Path) -> dict:
@@ -53,21 +52,13 @@ def generate_plugins_json(plugins: list[str]) -> dict:
     return {
         "version": "1.0.0",
         "plugins": [
-            {
-                "marketplace": "dot-claude",
-                "id": plugin_id,
-                "enabled": True
-            }
-            for plugin_id in plugins
-        ]
+            {"marketplace": "dot-claude", "id": plugin_id, "enabled": True} for plugin_id in plugins
+        ],
     }
 
 
 def migrate_project(
-    project_path: Path,
-    categorization: dict,
-    dry_run: bool = False,
-    remove_agents: bool = False
+    project_path: Path, categorization: dict, dry_run: bool = False, remove_agents: bool = False
 ) -> dict:
     """
     Migrate a single project to plugin-based architecture.
@@ -88,7 +79,7 @@ def migrate_project(
         "success": False,
         "agents_found": [],
         "plugins_required": [],
-        "actions_taken": []
+        "actions_taken": [],
     }
 
     # Get agents in project
@@ -97,7 +88,9 @@ def migrate_project(
 
     if not agent_names:
         report["success"] = True
-        report["actions_taken"].append("No agents found - project already clean or has no .claude/agents/")
+        report["actions_taken"].append(
+            "No agents found - project already clean or has no .claude/agents/"
+        )
         return report
 
     # Map agents to plugins
@@ -113,7 +106,9 @@ def migrate_project(
         # Write plugins.json
         with open(plugins_json_path, "w") as f:
             json.dump(plugins_json, f, indent=2)
-        report["actions_taken"].append(f"Created .claude/plugins.json with {len(plugin_ids)} plugins")
+        report["actions_taken"].append(
+            f"Created .claude/plugins.json with {len(plugin_ids)} plugins"
+        )
 
         # Optionally remove agent files
         if remove_agents:
@@ -127,7 +122,9 @@ def migrate_project(
                 agents_dir.rmdir()
                 report["actions_taken"].append("Removed empty .claude/agents/ directory")
     else:
-        report["actions_taken"].append(f"[DRY RUN] Would create .claude/plugins.json with {len(plugin_ids)} plugins")
+        report["actions_taken"].append(
+            f"[DRY RUN] Would create .claude/plugins.json with {len(plugin_ids)} plugins"
+        )
         if remove_agents:
             report["actions_taken"].append(f"[DRY RUN] Would remove {len(agent_names)} agent files")
 
@@ -136,10 +133,7 @@ def migrate_project(
 
 
 def migrate_all_projects(
-    projects_file: Path,
-    claude_home: Path,
-    dry_run: bool = False,
-    remove_agents: bool = False
+    projects_file: Path, claude_home: Path, dry_run: bool = False, remove_agents: bool = False
 ) -> list[dict]:
     """
     Migrate all projects listed in active_projects.txt.
@@ -168,12 +162,14 @@ def migrate_all_projects(
     for project_name in project_names:
         project_path = projects_base / project_name
         if not project_path.exists():
-            reports.append({
-                "project": project_name,
-                "path": str(project_path),
-                "success": False,
-                "error": "Project directory not found"
-            })
+            reports.append(
+                {
+                    "project": project_name,
+                    "path": str(project_path),
+                    "success": False,
+                    "error": "Project directory not found",
+                }
+            )
             continue
 
         report = migrate_project(project_path, categorization, dry_run, remove_agents)
@@ -236,20 +232,16 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Migrate projects to plugin-based architecture")
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview changes without modifying files"
+        "--dry-run", action="store_true", help="Preview changes without modifying files"
     )
     parser.add_argument(
-        "--remove-agents",
-        action="store_true",
-        help="Remove duplicate agent files after migration"
+        "--remove-agents", action="store_true", help="Remove duplicate agent files after migration"
     )
     parser.add_argument(
         "--output",
         type=Path,
         default=Path.home() / ".claude/scripts/marketplace/migration-report.json",
-        help="Path to save migration report JSON"
+        help="Path to save migration report JSON",
     )
 
     args = parser.parse_args()
@@ -260,10 +252,7 @@ if __name__ == "__main__":
 
     # Run migration
     reports = migrate_all_projects(
-        projects_file,
-        claude_home,
-        dry_run=args.dry_run,
-        remove_agents=args.remove_agents
+        projects_file, claude_home, dry_run=args.dry_run, remove_agents=args.remove_agents
     )
 
     # Print and save report

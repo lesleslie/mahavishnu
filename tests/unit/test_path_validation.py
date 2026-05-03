@@ -19,9 +19,7 @@ def _make_mock_settings(config_dir: str):
 def test_validate_repo_path_registered(tmp_path, monkeypatch):
     """Accepts a path listed in repos.yaml."""
     repos_yaml = tmp_path / "repos.yaml"
-    repos_yaml.write_text(
-        f"repos:\n  - path: {tmp_path / 'my-repo'}\n"
-    )
+    repos_yaml.write_text(f"repos:\n  - path: {tmp_path / 'my-repo'}\n")
     monkeypatch.setattr(
         "mahavishnu.core.code_index.path_validation.MahavishnuSettings",
         lambda: _make_mock_settings(str(tmp_path)),
@@ -67,9 +65,7 @@ def test_get_registered_repos_missing_file(tmp_path, monkeypatch):
 def test_get_registered_repos_filters_missing_path(tmp_path, monkeypatch):
     """Ignores repo entries that lack a 'path' key."""
     repos_yaml = tmp_path / "repos.yaml"
-    repos_yaml.write_text(
-        f"repos:\n  - name: no-path-repo\n  - path: {tmp_path / 'valid-repo'}\n"
-    )
+    repos_yaml.write_text(f"repos:\n  - name: no-path-repo\n  - path: {tmp_path / 'valid-repo'}\n")
     monkeypatch.setattr(
         "mahavishnu.core.code_index.path_validation.MahavishnuSettings",
         lambda: _make_mock_settings(str(tmp_path)),
@@ -86,9 +82,7 @@ def test_validate_repo_path_resolves_symlinks(tmp_path, monkeypatch):
     link_dir.symlink_to(repo_dir)
 
     repos_yaml = tmp_path / "repos.yaml"
-    repos_yaml.write_text(
-        f"repos:\n  - path: {repo_dir}\n"
-    )
+    repos_yaml.write_text(f"repos:\n  - path: {repo_dir}\n")
     monkeypatch.setattr(
         "mahavishnu.core.code_index.path_validation.MahavishnuSettings",
         lambda: _make_mock_settings(str(tmp_path)),

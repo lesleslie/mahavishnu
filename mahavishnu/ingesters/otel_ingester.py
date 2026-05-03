@@ -261,7 +261,7 @@ class AkoshaEmbedder:
         import asyncio
 
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             # We're in an async context, create a task
             import concurrent.futures
 
@@ -604,7 +604,7 @@ class OtelIngester:
                 "Set the MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING environment variable."
             )
 
-        from mahavishnu.adapters import HNSWConfig, PgvectorAdapter, PgvectorSettings
+        from mahavishnu.adapters import PgvectorAdapter, PgvectorSettings
 
         settings = PgvectorSettings(
             dsn=self._pgvector_dsn,

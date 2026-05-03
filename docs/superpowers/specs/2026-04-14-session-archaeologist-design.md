@@ -6,7 +6,7 @@
 
 **Tech Stack:** Claude Code skills (SKILL.md with YAML frontmatter), Akosha MCP tools, Session-Buddy MCP tools (fallback)
 
----
+______________________________________________________________________
 
 ## Skill Definition
 
@@ -148,14 +148,15 @@ The skill reformulates the user's natural question into archaeology-specific que
 Three-tier fallback (same pattern as code-archaeologist and quality-pulse):
 
 1. **Akosha MCP tools** (primary) — `search_all_systems`, `query_knowledge_graph`, `generate_embedding`. Cross-system semantic search with knowledge graph enrichment.
-2. **Session-Buddy MCP tools** (secondary) — `search_conversations`, `search_reflections`, `search_entities`. Direct search within the local Session-Buddy instance. No cross-system scope.
-3. **Direct filesystem** (last resort) — Grep across Session-Buddy data directories (typically `~/.session-buddy/` or project-local `.session-buddy/`). Text search only, no semantic understanding.
+1. **Session-Buddy MCP tools** (secondary) — `search_conversations`, `search_reflections`, `search_entities`. Direct search within the local Session-Buddy instance. No cross-system scope.
+1. **Direct filesystem** (last resort) — Grep across Session-Buddy data directories (typically `~/.session-buddy/` or project-local `.session-buddy/`). Text search only, no semantic understanding.
 
 When falling back, inform the user: "Akosha is not available. Falling back to [tier]. [Limitation note]."
 
 ## Auto-Detection
 
 The `description` field in YAML frontmatter drives Claude Code's skill matching. It must include:
+
 - Specific trigger phrases from real developer workflows
 - The skill name explicitly
 - Clear differentiation phrases ("past decisions", "conversation history", "context recovery")

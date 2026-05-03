@@ -19,7 +19,6 @@ import requests
 from ..core.status import HealthStatus as ComponentHealthStatus
 from ..core.workflow_state import WorkflowStatus
 
-
 # ---------------------------------------------------------------------------
 # Dashboard configuration (merged from dashboard_config.py)
 # ---------------------------------------------------------------------------
@@ -879,7 +878,9 @@ class ComponentHealthChecker:
     def register_check(
         self,
         name: str,
-        check_func: Callable[[], ComponentHealthResult | Coroutine[Any, Any, ComponentHealthResult]],
+        check_func: Callable[
+            [], ComponentHealthResult | Coroutine[Any, Any, ComponentHealthResult]
+        ],
     ) -> None:
         self.checks[name] = check_func
 

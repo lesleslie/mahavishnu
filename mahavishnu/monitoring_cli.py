@@ -7,7 +7,7 @@ import typer
 
 def add_monitoring_commands(app: typer.Typer) -> None:
     """Add monitoring commands to the main CLI app."""
-    from .core.monitoring import MonitoringDashboard, MonitoringService
+    from .core.monitoring import MonitoringService
 
     monitor_app = typer.Typer(help="System monitoring and alerting")
     app.add_typer(monitor_app, name="monitor")

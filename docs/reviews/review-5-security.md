@@ -3,11 +3,12 @@
 **Date**: 2026-04-05
 **Reviewer**: agent
 **Files**:
+
 - `scripts/rank-tools.py` (130 lines)
 - `scripts/eval-content-quality.py` (544 lines)
-**Scope**: Input validation, safe file handling, dangerous constructs, error handling, entry-point hygiene, mutable defaults.
+  **Scope**: Input validation, safe file handling, dangerous constructs, error handling, entry-point hygiene, mutable defaults.
 
----
+______________________________________________________________________
 
 ## Findings
 
@@ -15,7 +16,7 @@
 
 No critical security issues found. Neither script contains hardcoded secrets, `eval()`/`exec()`, `subprocess`, or any mechanism for remote code execution.
 
----
+______________________________________________________________________
 
 ### HIGH
 
@@ -25,7 +26,7 @@ No critical security issues found. Neither script contains hardcoded secrets, `e
 
 **Recommendation for H-1**: Change `main()` to return `int` (0 on success, 1 on validation errors) and use `sys.exit(main())` in the guard.
 
----
+______________________________________________________________________
 
 ### MEDIUM
 
@@ -36,7 +37,7 @@ No critical security issues found. Neither script contains hardcoded secrets, `e
 | M-3 | `eval-content-quality.py` | 176–177, 196–197 | **`load_samples()` calls `sys.exit(1)` directly** instead of raising an exception or returning an error sentinel. This makes the function untestable in isolation and prevents callers from handling the error programmatically. |
 | M-4 | `eval-content-quality.py` | 179 | **`PermissionError` not caught.** `path.exists()` passes but `open(path)` can still fail with `PermissionError`. The `open()` call is not wrapped in try/except, producing an unhandled traceback. |
 
----
+______________________________________________________________________
 
 ### LOW
 
@@ -46,7 +47,7 @@ No critical security issues found. Neither script contains hardcoded secrets, `e
 | L-2 | `eval-content-quality.py` | 41 | **Dead code.** `LABEL_THRESHOLDS` dict is defined but never referenced anywhere in the module. |
 | L-3 | `eval-content-quality.py` | 543 | **`__main__` guard does not propagate exit code.** `main()` is called bare; if H-1 is fixed, the guard must also change to `sys.exit(main())`. |
 
----
+______________________________________________________________________
 
 ### NONE (Positive Findings)
 
@@ -63,7 +64,7 @@ No critical security issues found. Neither script contains hardcoded secrets, `e
 | Explicit `encoding="utf-8"` | ⚠️ Present in `eval-content-quality.py`; missing in `rank-tools.py` (see M-1) |
 | Return type on `main()` | ✅ `rank-tools.py` returns `int`; ⚠️ `eval-content-quality.py` returns `None` (see H-1) |
 
----
+______________________________________________________________________
 
 ## Overall Verdict
 
@@ -74,7 +75,7 @@ Both scripts are clean, well-structured, and free of dangerous constructs. The H
 ### Recommended priority
 
 1. **H-1 + L-3** — Make `eval-content-quality.py` return a meaningful exit code (~5 min fix).
-2. **M-1** — Add `encoding="utf-8"` to `rank-tools.py` line 35.
-3. **M-2** — Wrap per-file analysis in try/except with a warning to stderr.
-4. **M-3 + M-4** — Refactor `load_samples()` to raise exceptions instead of calling `sys.exit()`, and catch `PermissionError`.
-5. **L-2** — Remove or document `LABEL_THRESHOLDS`.
+1. **M-1** — Add `encoding="utf-8"` to `rank-tools.py` line 35.
+1. **M-2** — Wrap per-file analysis in try/except with a warning to stderr.
+1. **M-3 + M-4** — Refactor `load_samples()` to raise exceptions instead of calling `sys.exit()`, and catch `PermissionError`.
+1. **L-2** — Remove or document `LABEL_THRESHOLDS`.

@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-from typing import Any
 
 from .base import WorktreeProvider
 from .errors import ProviderUnavailableError

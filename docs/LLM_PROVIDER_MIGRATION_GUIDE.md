@@ -33,6 +33,7 @@ new_provider:
 For each repo that uses the provider, add settings fields:
 
 **Session-Buddy** (`session_buddy/settings.py`):
+
 ```python
 new_provider_api_key: str | None = Field(
     default=None,
@@ -41,6 +42,7 @@ new_provider_api_key: str | None = Field(
 ```
 
 Update `get_llm_api_key()` field_map:
+
 ```python
 field_map = {
     ...
@@ -56,16 +58,19 @@ Add to the AI settings or load from YAML.
 **Session-Buddy** (`session_buddy/llm_providers.py`):
 
 1. Add env var mapping in `_get_provider_api_key_and_env()`:
+
 ```python
 "new_provider": "NEW_PROVIDER_API_KEY",
 ```
 
 2. Add to `_get_configured_providers()`:
+
 ```python
 "NEW_PROVIDER_API_KEY": "new_provider",
 ```
 
 3. Add config loading in `_load_config()`:
+
 ```python
 if not config["providers"].get("new_provider"):
     config["providers"]["new_provider"] = {
@@ -76,17 +81,20 @@ if not config["providers"].get("new_provider"):
 ```
 
 4. Add to `_initialize_providers()`:
+
 ```python
 "new_provider": OpenAIProvider,  # Uses OpenAI-compatible API
 ```
 
 **Crackerjack** (`crackerjack/adapters/ai/registry.py`):
+
 1. Add to `ProviderID` enum
-2. Register in `ProviderFactory`
+1. Register in `ProviderFactory`
 
 ### Step 4: Update Fallback Chain
 
 **Session-Buddy** (`settings.py`):
+
 ```python
 llm_fallback_chain: list[str] = Field(
     default=["zai", "new_provider", "ollama"],
@@ -116,13 +124,13 @@ Add the new provider to the LLM configuration section in each repo's CLAUDE.md.
 
 1. **OpenAI-Compatible First**: All providers use `OpenAIProvider` or `OpenAICompatibleProvider`. No custom provider classes needed.
 
-2. **YAML-Driven Configuration**: Provider settings come from YAML files with env var resolution (`${ENV_VAR}`).
+1. **YAML-Driven Configuration**: Provider settings come from YAML files with env var resolution (`${ENV_VAR}`).
 
-3. **Fallback Chain**: Every provider should have a fallback. The chain is `primary → secondary → ollama`.
+1. **Fallback Chain**: Every provider should have a fallback. The chain is `primary → secondary → ollama`.
 
-4. **API Key Security**: Use `SecretStr` in Pydantic models. Never log full API keys.
+1. **API Key Security**: Use `SecretStr` in Pydantic models. Never log full API keys.
 
-5. **Task-Based Routing**: Map task categories to optimal models per provider.
+1. **Task-Based Routing**: Map task categories to optimal models per provider.
 
 ## File Reference
 

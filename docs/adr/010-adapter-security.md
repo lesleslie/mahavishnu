@@ -9,10 +9,10 @@
 The Hybrid Adapter Registry (ADR 009) introduces dynamic adapter discovery via Python entry points. This creates security risks that must be addressed:
 
 1. **Malicious Package Injection** - Third-party packages could register malicious adapters
-2. **Code Execution** - Adapters execute with full application privileges
-3. **Supply Chain Attacks** - Compromised dependencies could inject adapters
-4. **Unauthorized Registration** - Unauthenticated adapter registration
-5. **Data Exfiltration** - Malicious adapters could access sensitive data
+1. **Code Execution** - Adapters execute with full application privileges
+1. **Supply Chain Attacks** - Compromised dependencies could inject adapters
+1. **Unauthorized Registration** - Unauthenticated adapter registration
+1. **Data Exfiltration** - Malicious adapters could access sensitive data
 
 ## Decision
 
@@ -222,16 +222,16 @@ Security alerts in Grafana dashboard:
 ### Development
 
 1. **Never disable allowlist** - Even in development, use patterns
-2. **Log all rejections** - Monitor for suspicious patterns
-3. **Review third-party adapters** - Code review before allowlisting
+1. **Log all rejections** - Monitor for suspicious patterns
+1. **Review third-party adapters** - Code review before allowlisting
 
 ### Production
 
 1. **Enable signature verification** - `verify_signatures: true`
-2. **Reject unsigned adapters** - `reject_unsigned: true`
-3. **Use TLS for gRPC** - `use_tls: true`
-4. **Restrict allowlist** - Only trusted modules
-5. **Monitor alerts** - Configure Grafana alerting
+1. **Reject unsigned adapters** - `reject_unsigned: true`
+1. **Use TLS for gRPC** - `use_tls: true`
+1. **Restrict allowlist** - Only trusted modules
+1. **Monitor alerts** - Configure Grafana alerting
 
 ### Secrets Management
 

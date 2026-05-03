@@ -26,7 +26,6 @@ from mahavishnu.webhooks.models import (
     WebhookStatus,
 )
 
-
 # =============================================================================
 # WebhookStatus Tests
 # =============================================================================
@@ -276,22 +275,16 @@ class TestOpenClawWorkflowRequest:
     def test_metadata_exceeds_4kb_rejected(self):
         large_value = "y" * 4097
         with pytest.raises(ValidationError, match="4KB"):
-            OpenClawWorkflowRequest(
-                repos=["org/repo"], metadata={"payload": large_value}
-            )
+            OpenClawWorkflowRequest(repos=["org/repo"], metadata={"payload": large_value})
 
     # -- Workflow type validation ---------------------------------------------
 
     def test_workflow_type_too_long_rejected(self):
         with pytest.raises(ValidationError):
-            OpenClawWorkflowRequest(
-                repos=["org/repo"], workflow_type="w" * 65
-            )
+            OpenClawWorkflowRequest(repos=["org/repo"], workflow_type="w" * 65)
 
     def test_workflow_type_at_max_length(self):
-        req = OpenClawWorkflowRequest(
-            repos=["org/repo"], workflow_type="w" * 64
-        )
+        req = OpenClawWorkflowRequest(repos=["org/repo"], workflow_type="w" * 64)
         assert len(req.workflow_type) == 64
 
 
@@ -369,18 +362,14 @@ class TestWebhookErrorResponse:
         assert err.message == "Invalid tag format"
         assert len(err.recovery) == 1
         assert err.details["field"] == "tag"
-        assert err.documentation_url == (
-            "https://docs.mahavishnu.org/errors/validation"
-        )
+        assert err.documentation_url == ("https://docs.mahavishnu.org/errors/validation")
 
     def test_status_always_defaults_to_error(self):
         err = WebhookErrorResponse(message="fail")
         assert err.status == WebhookStatus.ERROR
 
     def test_error_code_max_length(self):
-        err = WebhookErrorResponse(
-            message="fail", error_code="E" * 64
-        )
+        err = WebhookErrorResponse(message="fail", error_code="E" * 64)
         assert len(err.error_code) == 64
 
     def test_error_code_exceeds_max_rejected(self):

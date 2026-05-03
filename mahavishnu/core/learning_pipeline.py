@@ -8,19 +8,21 @@ activate skills — all drafts remain in DRAFT state awaiting human review.
 from __future__ import annotations
 
 import asyncio
-import logging
+import contextlib
 from datetime import UTC, datetime
-from typing import Any
+import logging
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
-from mahavishnu.core.config import LearningConfig
 from mahavishnu.core.evidence_collector import EvidenceCollector
 from mahavishnu.core.evidence_retriever import EvidenceRetriever
 from mahavishnu.core.evidence_store import EvidenceStore
 from mahavishnu.core.review_gate import ReviewGate
-from mahavishnu.core.skill_governance import LearningEvidence, SkillDraft
 from mahavishnu.core.skill_synthesizer import SkillSynthesizer
+
+if TYPE_CHECKING:
+    from mahavishnu.core.config import LearningConfig
 
 logger = logging.getLogger(__name__)
 
@@ -123,10 +125,8 @@ class LearningPipelineService:
         self._shutdown.set()
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
         self._task = None
         logger.info(
             "learning_pipeline_stopped: cycles=%d, total_drafts=%d",
@@ -158,13 +158,11 @@ class LearningPipelineService:
             except Exception:
                 logger.exception("learning_pipeline_cycle_error")
 
-            try:
+            with contextlib.suppress(TimeoutError):
                 await asyncio.wait_for(
                     self._shutdown.wait(),
                     timeout=self._config.collection_interval_seconds,
                 )
-            except asyncio.TimeoutError:
-                pass
 
     async def _run_cycle(self) -> PipelineCycleResult:
         result = PipelineCycleResult()

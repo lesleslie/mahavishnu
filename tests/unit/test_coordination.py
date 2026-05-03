@@ -7,10 +7,10 @@ of external dependencies.
 
 from __future__ import annotations
 
-import os
-import tempfile
 from datetime import datetime
+import os
 from pathlib import Path
+import tempfile
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -31,13 +31,11 @@ from mahavishnu.core.coordination.models import (
     DependencyStatus,
     DependencyType,
     Milestone,
-    PlanStatus,
     Priority,
     TodoStatus,
 )
 from mahavishnu.core.errors import ConfigurationError
 from mahavishnu.core.status import IssueStatus
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -986,9 +984,7 @@ class TestCoordinationMemoryStoreDependencyEvent:
             updated="2026-01-15T00:00:00",
             notes="test",
         )
-        await mem.store_dependency_event(
-            "validated", dep, validation_result={"passed": True}
-        )
+        await mem.store_dependency_event("validated", dep, validation_result={"passed": True})
         mock_sb.store_memory.assert_awaited_once()
         call_kwargs = mock_sb.store_memory.call_args[1]
         assert call_kwargs["metadata"]["entity_type"] == "dependency"
@@ -1430,9 +1426,7 @@ class TestCoordinationExecutorExecuteTodo:
                 coordination_manager=cm,
                 pool_manager=pool_mgr,
             )
-            result = await executor.execute_todo(
-                "TODO-001", pool_type="mahavishnu"
-            )
+            result = await executor.execute_todo("TODO-001", pool_type="mahavishnu")
             assert result["success"] is True
             pool_mgr.route_task.assert_awaited_once()
         finally:
@@ -1921,9 +1915,7 @@ class TestCoordinationExecutorSequential:
                 CrossRepoTodo(**cm._normalize_todo_record(t))
                 for t in cm._coordination.get("todos", [])
             ]
-            results = await executor._execute_sequential(
-                todo_objs, "mahavishnu", "least_loaded"
-            )
+            results = await executor._execute_sequential(todo_objs, "mahavishnu", "least_loaded")
             assert len(results) == 1  # Should stop after first failure
             assert results[0]["success"] is False
         finally:

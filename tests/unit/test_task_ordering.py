@@ -10,13 +10,13 @@ Tests cover:
 
 from __future__ import annotations
 
-import pytest
 from datetime import UTC, datetime, timedelta
+
+import pytest
 
 from mahavishnu.core.task_ordering import (
     OrderingFactor,
     OrderingStrategy,
-    Priority,
     TaskOrderer,
     TaskOrderingConfig,
     TaskOrderingResult,
@@ -199,9 +199,7 @@ class TestTaskOrderer:
         assert result.total_tasks == 0
         assert len(result.recommendations) == 0
 
-    def test_order_tasks_basic(
-        self, orderer: TaskOrderer, sample_tasks: list[dict]
-    ) -> None:
+    def test_order_tasks_basic(self, orderer: TaskOrderer, sample_tasks: list[dict]) -> None:
         """Test basic task ordering."""
         result = orderer.order_tasks(sample_tasks)
 
@@ -258,9 +256,7 @@ class TestTaskOrderer:
         task_2_rec = next(r for r in result.recommendations if r.task_id == "task-2")
         assert "task-1" in task_2_rec.blocked_by
 
-    def test_order_by_deadline_first(
-        self, orderer: TaskOrderer, sample_tasks: list[dict]
-    ) -> None:
+    def test_order_by_deadline_first(self, orderer: TaskOrderer, sample_tasks: list[dict]) -> None:
         """Test deadline-first ordering strategy."""
         result = orderer.order_tasks(
             sample_tasks,
@@ -274,9 +270,7 @@ class TestTaskOrderer:
         )
         assert task_1_position < 2  # Should be in top 2
 
-    def test_order_by_priority_first(
-        self, orderer: TaskOrderer, sample_tasks: list[dict]
-    ) -> None:
+    def test_order_by_priority_first(self, orderer: TaskOrderer, sample_tasks: list[dict]) -> None:
         """Test priority-first ordering strategy."""
         result = orderer.order_tasks(
             sample_tasks,
@@ -406,9 +400,7 @@ class TestTaskOrderer:
         task = {"priority": "medium"}
         assert orderer._calculate_urgency(task, {"total_score": 0.5}) == "low"
 
-    def test_calculate_critical_path(
-        self, orderer: TaskOrderer, sample_tasks: list[dict]
-    ) -> None:
+    def test_calculate_critical_path(self, orderer: TaskOrderer, sample_tasks: list[dict]) -> None:
         """Test critical path calculation."""
         dependencies = {
             "task-2": ["task-1"],
@@ -423,9 +415,7 @@ class TestTaskOrderer:
         # Critical path should include task-1 (no blockers)
         assert "task-1" in critical_path
 
-    def test_estimate_completion_time(
-        self, orderer: TaskOrderer, sample_tasks: list[dict]
-    ) -> None:
+    def test_estimate_completion_time(self, orderer: TaskOrderer, sample_tasks: list[dict]) -> None:
         """Test completion time estimation."""
         predictions = {
             "task-1": {"estimated_hours": 2.0},
@@ -439,9 +429,7 @@ class TestTaskOrderer:
         # Total hours = 15, adjusted for parallel work
         assert 0 < time_estimate < 20
 
-    def test_build_dependency_graph(
-        self, orderer: TaskOrderer, sample_tasks: list[dict]
-    ) -> None:
+    def test_build_dependency_graph(self, orderer: TaskOrderer, sample_tasks: list[dict]) -> None:
         """Test dependency graph building."""
         dependencies = {
             "task-2": ["task-1"],
@@ -454,9 +442,7 @@ class TestTaskOrderer:
         assert "task-2" in graph["blocking"]["task-1"]
         assert "task-2" in graph["blocked_by"]["task-3"]
 
-    def test_build_dependency_graph_from_tasks(
-        self, orderer: TaskOrderer
-    ) -> None:
+    def test_build_dependency_graph_from_tasks(self, orderer: TaskOrderer) -> None:
         """Test dependency graph building from task data."""
         tasks = [
             {"id": "task-1", "title": "First task"},
@@ -469,9 +455,7 @@ class TestTaskOrderer:
         assert "task-1" in graph["blocked_by"]["task-2"]
         assert "task-2" in graph["blocked_by"]["task-3"]
 
-    def test_topological_sort(
-        self, orderer: TaskOrderer
-    ) -> None:
+    def test_topological_sort(self, orderer: TaskOrderer) -> None:
         """Test topological sort."""
         tasks = [
             {"id": "task-1", "title": "First", "priority": "low"},
@@ -572,9 +556,7 @@ class TestStrategyComparison:
             },
         ]
 
-    def test_deadline_first_strategy(
-        self, orderer: TaskOrderer, complex_tasks: list[dict]
-    ) -> None:
+    def test_deadline_first_strategy(self, orderer: TaskOrderer, complex_tasks: list[dict]) -> None:
         """Test deadline-first prioritizes earliest deadline."""
         result = orderer.order_tasks(
             complex_tasks,
@@ -584,9 +566,7 @@ class TestStrategyComparison:
         # Urgent task should be first due to deadline
         assert result.recommendations[0].task_id == "urgent-long"
 
-    def test_priority_first_strategy(
-        self, orderer: TaskOrderer, complex_tasks: list[dict]
-    ) -> None:
+    def test_priority_first_strategy(self, orderer: TaskOrderer, complex_tasks: list[dict]) -> None:
         """Test priority-first prioritizes highest priority."""
         result = orderer.order_tasks(
             complex_tasks,
@@ -596,9 +576,7 @@ class TestStrategyComparison:
         # Critical task should be first
         assert result.recommendations[0].task_id == "urgent-long"
 
-    def test_blocker_aware_strategy(
-        self, orderer: TaskOrderer, complex_tasks: list[dict]
-    ) -> None:
+    def test_blocker_aware_strategy(self, orderer: TaskOrderer, complex_tasks: list[dict]) -> None:
         """Test blocker-aware strategy."""
         predictions = {
             "urgent-long": {"blocker_probability": 0.8, "estimated_hours": 16.0},
@@ -619,9 +597,7 @@ class TestStrategyComparison:
         # low-quick has 0.05 blocker probability
         assert "low-quick" in ids[:2]
 
-    def test_balanced_strategy(
-        self, orderer: TaskOrderer, complex_tasks: list[dict]
-    ) -> None:
+    def test_balanced_strategy(self, orderer: TaskOrderer, complex_tasks: list[dict]) -> None:
         """Test balanced strategy considers all factors."""
         result = orderer.order_tasks(
             complex_tasks,

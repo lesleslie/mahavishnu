@@ -8,14 +8,15 @@ Tests for webhook authentication and replay attack prevention:
 Run: pytest tests/security/test_webhooks.py -v
 """
 
+from datetime import UTC, datetime, timedelta
 import hashlib
 import hmac
-import pytest
-from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
+from mahavishnu.core.errors import ErrorCode, WebhookAuthError
 from mahavishnu.core.webhook_auth import WebhookAuthenticator
-from mahavishnu.core.errors import WebhookAuthError, ErrorCode
 
 
 class TestWebhookSignatureValidation:
@@ -55,7 +56,7 @@ class TestWebhookSignatureValidation:
             payload=payload,
             signature=signature,
             webhook_id="test-webhook-123",
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             secret=secret,
         )
         assert result is True
@@ -183,7 +184,7 @@ class TestTimestampValidation:
             payload=payload,
             signature=self._make_signature(payload, secret),
             webhook_id="test-webhook-123",
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             secret=secret,
         )
         assert result is True
@@ -198,9 +199,7 @@ class TestTimestampValidation:
         secret = "test-secret"
 
         # Create timestamp 10 minutes ago (older than 5 minute max)
-        old_timestamp = (
-            datetime.now(timezone.utc) - timedelta(minutes=10)
-        ).isoformat()
+        old_timestamp = (datetime.now(UTC) - timedelta(minutes=10)).isoformat()
 
         with pytest.raises(WebhookAuthError) as exc_info:
             await authenticator.verify_webhook_signature(
@@ -223,9 +222,7 @@ class TestTimestampValidation:
         secret = "test-secret"
 
         # Create timestamp 10 minutes in the future
-        future_timestamp = (
-            datetime.now(timezone.utc) + timedelta(minutes=10)
-        ).isoformat()
+        future_timestamp = (datetime.now(UTC) + timedelta(minutes=10)).isoformat()
 
         with pytest.raises(WebhookAuthError) as exc_info:
             await authenticator.verify_webhook_signature(
@@ -299,7 +296,7 @@ class TestReplayAttackPrevention:
             payload=payload,
             signature=self._make_signature(payload, secret),
             webhook_id="test-webhook-123",
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             secret=secret,
         )
         assert result is True
@@ -310,7 +307,7 @@ class TestReplayAttackPrevention:
                 payload=payload,
                 signature=self._make_signature(payload, secret),
                 webhook_id="test-webhook-123",
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=datetime.now(UTC).isoformat(),
                 secret=secret,
             )
 
@@ -331,7 +328,7 @@ class TestReplayAttackPrevention:
             payload=payload,
             signature=self._make_signature(payload, secret),
             webhook_id="webhook-001",
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             secret=secret,
         )
         assert result1 is True
@@ -341,7 +338,7 @@ class TestReplayAttackPrevention:
             payload=payload,
             signature=self._make_signature(payload, secret),
             webhook_id="webhook-002",
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             secret=secret,
         )
         assert result2 is True

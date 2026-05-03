@@ -1,11 +1,6 @@
----
-title: Plan-Then-Execute Feature Development
-category: feature/
-status: active
-owner: orchestration
-last_reviewed: 2025-01-15
-risk_level: low
----
+______________________________________________________________________
+
+## title: Plan-Then-Execute Feature Development category: feature/ status: active owner: orchestration last_reviewed: 2025-01-15 risk_level: low
 
 # Plan-Then-Execute Workflow
 
@@ -14,6 +9,7 @@ This workflow implements the **Plan-Then-Execute Pattern** for complex feature d
 ## When to Use This Workflow
 
 Use this workflow for:
+
 - ✅ Multi-file refactoring affecting 3+ files
 - ✅ Architecture changes requiring structural modifications
 - ✅ Complex features with multiple components
@@ -22,6 +18,7 @@ Use this workflow for:
 - ✅ Migration tasks from one approach to another
 
 **Do NOT use for:**
+
 - ❌ Simple single-file fixes (use domain specialist directly)
 - ❌ Straightforward bug fixes (use debugging specialist)
 - ❌ Simple feature additions (use domain specialist directly)
@@ -78,6 +75,7 @@ Use this workflow for:
 **Tasks**:
 
 ### 1. Requirements Analysis
+
 - Understand the problem statement deeply
 - Identify explicit and implicit requirements
 - Clarify ambiguities before proceeding
@@ -85,6 +83,7 @@ Use this workflow for:
 - Document acceptance criteria
 
 ### 2. Current State Analysis
+
 - Explore the codebase thoroughly
 - Identify relevant files and components
 - Understand existing patterns and conventions
@@ -92,6 +91,7 @@ Use this workflow for:
 - Map dependencies and interactions
 
 ### 3. Solution Architecture Design
+
 - Design solution architecture
 - Identify multiple approaches when applicable
 - Evaluate trade-offs of each approach
@@ -99,6 +99,7 @@ Use this workflow for:
 - Document why other approaches were not chosen
 
 ### 4. Implementation Planning
+
 - Break down into 5 discrete phases (Analysis, Design, Implementation, Testing, Documentation)
 - Create detailed step-by-step plan
 - Estimate complexity and duration for each phase
@@ -106,6 +107,7 @@ Use this workflow for:
 - Sequence phases optimally
 
 ### 5. Risk Assessment
+
 - Identify technical risks (performance, security, compatibility)
 - Identify dependency risks (external services, libraries)
 - Plan specific mitigations for each risk
@@ -113,6 +115,7 @@ Use this workflow for:
 - Assess overall risk level
 
 **Output**: Comprehensive implementation plan document including:
+
 - Problem statement and requirements
 - Current state analysis
 - Solution architecture with rationale
@@ -126,28 +129,32 @@ Use this workflow for:
 **CRITICAL**: Execution MUST NOT proceed without explicit approval.
 
 **Process**:
+
 1. Present the plan clearly and concisely
-2. Explain approach and rationale
-3. Highlight why this approach was chosen
-4. Discuss alternatives considered
-5. Identify risks and planned mitigations
-6. Provide realistic timeline estimates
-7. Wait for user questions and concerns
-8. Address feedback and revise plan if needed
-9. **Wait for explicit "proceed", "approved", or "start" signal**
+1. Explain approach and rationale
+1. Highlight why this approach was chosen
+1. Discuss alternatives considered
+1. Identify risks and planned mitigations
+1. Provide realistic timeline estimates
+1. Wait for user questions and concerns
+1. Address feedback and revise plan if needed
+1. **Wait for explicit "proceed", "approved", or "start" signal**
 
 **Valid Approval Signals**:
+
 - "Proceed" / "Approved" / "Start"
 - "Looks good, go ahead"
 - "Plan approved"
 
 **Invalid Signals** (MUST wait for clearer approval):
+
 - "OK" (ambiguous)
 - "Thanks" (not approval)
 - [Silence] (not approval)
 - "Interesting" (not approval)
 
 **If Feedback Provided**:
+
 - Revise plan based on user feedback
 - Present updated plan
 - Explain changes and rationale
@@ -181,9 +188,11 @@ Do you approve this plan? I can adjust based on your feedback.
 **The 5 Discrete Phases**:
 
 ### Phase 2.1: Analysis Phase
+
 **Goal**: Deep understanding of specific problem areas
 
 **Tasks**:
+
 - Perform detailed analysis of problem
 - Gather specific requirements for each component
 - Identify edge cases and boundary conditions
@@ -191,12 +200,14 @@ Do you approve this plan? I can adjust based on your feedback.
 - Document analysis findings
 
 **Completion Criteria**:
+
 - ✅ Problem fully understood and documented
 - ✅ All requirements captured
 - ✅ Edge cases identified
 - ✅ Integration points mapped
 
 **Checkpoint**:
+
 - Verify analysis completeness
 - Review findings for accuracy
 - Get confirmation before proceeding
@@ -204,9 +215,11 @@ Do you approve this plan? I can adjust based on your feedback.
 **Typical Duration**: 30-60 minutes
 
 ### Phase 2.2: Design Phase
+
 **Goal**: Create detailed solution design
 
 **Tasks**:
+
 - Design data structures, algorithms, APIs
 - Plan implementation details
 - Consider error handling strategies
@@ -214,12 +227,14 @@ Do you approve this plan? I can adjust based on your feedback.
 - Document design decisions
 
 **Completion Criteria**:
+
 - ✅ Design fully specified
 - ✅ Implementation approach clear
 - ✅ Error handling planned
 - ✅ Test strategy defined
 
 **Checkpoint**:
+
 - Verify design completeness
 - Review design decisions
 - Get confirmation before implementing
@@ -227,9 +242,11 @@ Do you approve this plan? I can adjust based on your feedback.
 **Typical Duration**: 45-90 minutes
 
 ### Phase 2.3: Implementation Phase
+
 **Goal**: Write code following design
 
 **Tasks**:
+
 - Implement according to design
 - Follow code quality standards
 - Write clean, maintainable code
@@ -237,12 +254,14 @@ Do you approve this plan? I can adjust based on your feedback.
 - Follow project conventions
 
 **Completion Criteria**:
+
 - ✅ Implementation complete per design
 - ✅ Code follows quality standards
 - ✅ Error handling in place
 - ✅ No obvious bugs or issues
 
 **Checkpoint**:
+
 - Verify implementation completeness
 - Code review for quality
 - Get confirmation before testing
@@ -250,9 +269,11 @@ Do you approve this plan? I can adjust based on your feedback.
 **Typical Duration**: 1-3 hours
 
 ### Phase 2.4: Testing Phase
+
 **Goal**: Verify implementation correctness
 
 **Tasks**:
+
 - Write comprehensive tests
 - Test happy paths
 - Test edge cases
@@ -260,12 +281,14 @@ Do you approve this plan? I can adjust based on your feedback.
 - Verify against requirements
 
 **Completion Criteria**:
+
 - ✅ All tests passing
 - ✅ Edge cases covered
 - ✅ Error conditions tested
 - ✅ Requirements verified
 
 **Checkpoint**:
+
 - Verify test coverage
 - Run full test suite
 - Get confirmation before documenting
@@ -273,9 +296,11 @@ Do you approve this plan? I can adjust based on your feedback.
 **Typical Duration**: 30-90 minutes
 
 ### Phase 2.5: Documentation Phase
+
 **Goal**: Document changes and rationale
 
 **Tasks**:
+
 - Document what was changed and why
 - Update relevant documentation
 - Create usage examples if applicable
@@ -283,12 +308,14 @@ Do you approve this plan? I can adjust based on your feedback.
 - Update README or guides as needed
 
 **Completion Criteria**:
+
 - ✅ Changes documented
 - ✅ Rationale explained
 - ✅ Examples provided (if applicable)
 - ✅ Related docs updated
 
 **Checkpoint**:
+
 - Verify documentation completeness
 - Review for clarity and accuracy
 - Final sign-off
@@ -296,6 +323,7 @@ Do you approve this plan? I can adjust based on your feedback.
 **Typical Duration**: 30-60 minutes
 
 **Phase Transition Rules**:
+
 - ✅ Complete one phase fully before starting next
 - ✅ Verify completion at checkpoint
 - ✅ Get confirmation before proceeding
@@ -311,30 +339,35 @@ Do you approve this plan? I can adjust based on your feedback.
 **Tasks**:
 
 ### 1. Outcome Comparison
+
 - Compare actual outcomes to planned outcomes
 - Identify deviations from plan
 - Analyze reasons for deviations (technical, estimation, scope changes)
 - Assess overall success against criteria
 
 ### 2. Pattern Capture
+
 - Identify successful patterns used
 - Document what worked well
 - Note reusable solutions for future
 - Capture anti-patterns to avoid
 
 ### 3. Lessons Learned
+
 - Identify what could have been better
 - Note inefficiencies or bottlenecks
 - Suggest process improvements
 - Document estimation improvements
 
 ### 4. Knowledge Feeding
+
 - Feed learnings back into planning knowledge
 - Update risk assessments for similar tasks
 - Improve estimation accuracy
 - Enhance future planning quality
 
 **Output**: Post-execution review document including:
+
 - Summary of what was accomplished
 - Timeline comparison (planned vs actual)
 - Complexity comparison (planned vs actual)
@@ -507,26 +540,29 @@ achieving all success criteria.
 This workflow integrates with the multi-stage code review workflow:
 
 1. **After Implementation Phase**: Run security, performance, test, and documentation reviews
-2. **Address Findings**: Fix any issues identified in reviews
-3. **Proceed to Testing**: Only after review issues addressed
+1. **Address Findings**: Fix any issues identified in reviews
+1. **Proceed to Testing**: Only after review issues addressed
 
 ## Quality Checks
 
 Throughout execution, maintain quality standards:
 
 **Code Quality**:
+
 - Follow crackerjack style guidelines
 - Maintain type hints and docstrings
 - Write clean, readable code
 - Follow project conventions
 
 **Testing Quality**:
+
 - Comprehensive test coverage
 - Test edge cases and error conditions
 - Verify against requirements
 - Ensure all tests pass
 
 **Documentation Quality**:
+
 - Clear explanations of changes
 - Rationale for design decisions
 - Usage examples where applicable
@@ -537,16 +573,19 @@ Throughout execution, maintain quality standards:
 Track these metrics to assess workflow effectiveness:
 
 **Planning Metrics**:
+
 - Plan accuracy (timeline, complexity)
 - Risk identification quality
 - Alternative considerations
 
 **Execution Metrics**:
+
 - Phase completion rate
 - Checkpoint effectiveness
 - Issues caught at checkpoints
 
 **Outcome Metrics**:
+
 - Requirements satisfaction
 - Quality standards met
 - Timeline adherence
@@ -571,12 +610,12 @@ Track these metrics to assess workflow effectiveness:
 ## Best Practices
 
 1. **Thorough Planning**: Invest time in planning to save time in execution
-2. **Clear Communication**: State which phase you're in explicitly
-3. **Checkpoint Discipline**: Never skip checkpoints, always verify completion
-4. **Quality Over Speed**: Don't rush phases to save time
-5. **Honest Reporting**: Report issues and delays immediately, don't hide them
-6. **Pattern Capture**: Always capture successful patterns for reuse
-7. **Learning Focus**: Treat every task as learning opportunity
+1. **Clear Communication**: State which phase you're in explicitly
+1. **Checkpoint Discipline**: Never skip checkpoints, always verify completion
+1. **Quality Over Speed**: Don't rush phases to save time
+1. **Honest Reporting**: Report issues and delays immediately, don't hide them
+1. **Pattern Capture**: Always capture successful patterns for reuse
+1. **Learning Focus**: Treat every task as learning opportunity
 
 ## Related Workflows
 

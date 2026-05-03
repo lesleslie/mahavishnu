@@ -19,10 +19,8 @@ from mahavishnu.core.config import MahavishnuSettings, PrefectConfig
 from mahavishnu.core.errors import ErrorCode, PrefectError
 from mahavishnu.engines.prefect_adapter_impl import (
     PrefectAdapter,
-    process_repository,
-)
-from mahavishnu.engines.prefect_adapter_impl import (
     _map_prefect_exception,
+    process_repository,
 )
 
 # =============================================================================
@@ -183,7 +181,9 @@ class TestLifecycleManagement:
         with patch.object(
             adapter,
             "_get_client_context",
-            return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_prefect_client), __aexit__=AsyncMock())
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_prefect_client), __aexit__=AsyncMock()
+            ),
         ):
             await adapter.initialize()
 
@@ -503,10 +503,7 @@ class TestPrefectTasks:
     @pytest.mark.asyncio
     async def test_process_repository_default(self):
         """Test process_repository with default task type."""
-        result = await process_repository.fn(
-            "/test/repo",
-            {"type": "default", "id": "test-1"}
-        )
+        result = await process_repository.fn("/test/repo", {"type": "default", "id": "test-1"})
 
         assert result["repo"] == "/test/repo"
         assert result["status"] == "completed"
@@ -518,11 +515,10 @@ class TestPrefectTasks:
         """Test process_repository handles exceptions gracefully."""
         with patch(
             "mahavishnu.engines.prefect_adapter_impl.CodeGraphAnalyzer",
-            side_effect=Exception("Analysis failed")
+            side_effect=Exception("Analysis failed"),
         ):
             result = await process_repository.fn(
-                "/test/repo",
-                {"type": "code_sweep", "id": "test-2"}
+                "/test/repo", {"type": "code_sweep", "id": "test-2"}
             )
 
         assert result["status"] == "failed"

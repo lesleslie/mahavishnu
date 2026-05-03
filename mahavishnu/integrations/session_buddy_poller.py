@@ -20,6 +20,7 @@ import logging
 from typing import Any
 
 import httpx
+
 from monitoring.metrics import (
     bodai_bridge_freshness_seconds,
     bodai_bridge_metric_ingest_total,
@@ -330,7 +331,9 @@ class SessionBuddyPoller:
             max_attempts=self.max_retries,
             initial_delay_seconds=self.retry_delay,
             backoff_factor=2.0,
-            max_delay_seconds=max(self.retry_delay * (2 ** max(self.max_retries - 1, 0)), self.retry_delay),
+            max_delay_seconds=max(
+                self.retry_delay * (2 ** max(self.max_retries - 1, 0)), self.retry_delay
+            ),
             retryable_exceptions=(httpx.HTTPError,),
         )
 

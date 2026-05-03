@@ -4,13 +4,13 @@
 **Base URL:** `ws://127.0.0.1:8690`
 **Status:** Production Ready
 
----
+______________________________________________________________________
 
 ## Overview
 
 The Mahavishnu WebSocket server provides real-time updates for workflow orchestration, pool management, and system events. This document describes the complete API for connecting to and interacting with the server.
 
----
+______________________________________________________________________
 
 ## Connection
 
@@ -43,7 +43,7 @@ Upon successful connection, the server sends a welcome message:
 }
 ```
 
----
+______________________________________________________________________
 
 ## Message Protocol
 
@@ -72,7 +72,7 @@ All messages follow this structure:
 | `event` | Broadcast event (no response) | Server → Client |
 | `error` | Error message | Server → Client |
 
----
+______________________________________________________________________
 
 ## Client Requests
 
@@ -81,6 +81,7 @@ All messages follow this structure:
 Subscribe to receive events for a specific channel.
 
 **Request:**
+
 ```json
 {
   "type": "request",
@@ -93,6 +94,7 @@ Subscribe to receive events for a specific channel.
 ```
 
 **Response:**
+
 ```json
 {
   "type": "response",
@@ -108,6 +110,7 @@ Subscribe to receive events for a specific channel.
 ### Unsubscribe from Channel
 
 **Request:**
+
 ```json
 {
   "type": "request",
@@ -120,6 +123,7 @@ Subscribe to receive events for a specific channel.
 ```
 
 **Response:**
+
 ```json
 {
   "type": "response",
@@ -137,6 +141,7 @@ Subscribe to receive events for a specific channel.
 Query the current status of a worker pool.
 
 **Request:**
+
 ```json
 {
   "type": "request",
@@ -149,6 +154,7 @@ Query the current status of a worker pool.
 ```
 
 **Response:**
+
 ```json
 {
   "type": "response",
@@ -167,6 +173,7 @@ Query the current status of a worker pool.
 Query the current status of a workflow.
 
 **Request:**
+
 ```json
 {
   "type": "request",
@@ -179,6 +186,7 @@ Query the current status of a workflow.
 ```
 
 **Response:**
+
 ```json
 {
   "type": "response",
@@ -193,7 +201,7 @@ Query the current status of a workflow.
 }
 ```
 
----
+______________________________________________________________________
 
 ## Server Events
 
@@ -296,6 +304,7 @@ Broadcasted when a worker's status changes.
 ```
 
 **Worker Status Values:**
+
 - `idle` - Worker available for tasks
 - `busy` - Worker executing task
 - `error` - Worker encountered error
@@ -323,7 +332,7 @@ Broadcasted when pool metrics change.
 }
 ```
 
----
+______________________________________________________________________
 
 ## Channels
 
@@ -332,6 +341,7 @@ Broadcasted when pool metrics change.
 Channels use the pattern: `{resource_type}:{resource_id}`
 
 **Examples:**
+
 - `workflow:abc123` - Events for workflow abc123
 - `pool:local` - Events for local pool
 - `worker:worker_001` - Events for specific worker
@@ -346,7 +356,7 @@ Channels use the pattern: `{resource_type}:{resource_id}`
 | `worker:{id}` | Worker-specific events | worker.status_changed |
 | `global` | System-wide events | All events (high volume) |
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -370,7 +380,7 @@ Channels use the pattern: `{resource_type}:{resource_id}`
 | `NOT_FOUND` | Resource not found |
 | `SERVER_ERROR` | Internal server error |
 
----
+______________________________________________________________________
 
 ## Rate Limiting
 
@@ -378,7 +388,7 @@ Channels use the pattern: `{resource_type}:{resource_id}`
 - **Message Rate Limit:** 100 messages per second per connection
 - **Exceeded Limit:** Connection may be terminated
 
----
+______________________________________________________________________
 
 ## Examples
 
@@ -450,7 +460,7 @@ ws.onclose = () => {
 };
 ```
 
----
+______________________________________________________________________
 
 ## Best Practices
 
@@ -522,7 +532,7 @@ request = {
 }
 ```
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
@@ -531,38 +541,41 @@ request = {
 **Problem:** Cannot connect to WebSocket server
 
 **Solutions:**
+
 1. Verify server is running: Check if port 8690 is listening
-2. Check firewall settings
-3. Verify correct host/port
+1. Check firewall settings
+1. Verify correct host/port
 
 ### No Events Received
 
 **Problem:** Connected but no events received
 
 **Solutions:**
+
 1. Verify subscribed to correct channel
-2. Check if events are being broadcast
-3. Check server logs for errors
+1. Check if events are being broadcast
+1. Check server logs for errors
 
 ### Connection Drops
 
 **Problem:** Connection closes unexpectedly
 
 **Solutions:**
-1. Implement reconnection logic
-2. Check network stability
-3. Verify not exceeding rate limits
 
----
+1. Implement reconnection logic
+1. Check network stability
+1. Verify not exceeding rate limits
+
+______________________________________________________________________
 
 ## Performance Considerations
 
-- **Broadcast Latency:** <10ms for local connections
+- **Broadcast Latency:** \<10ms for local connections
 - **Message Size:** Keep event data under 1KB
 - **Connection Pool:** Reuse connections when possible
 - **Event Volume:** Monitor subscription to high-volume channels
 
----
+______________________________________________________________________
 
 ## Security
 
@@ -571,27 +584,29 @@ request = {
 Currently, WebSocket connections do not require authentication. This is suitable for local development. For production:
 
 1. Implement token-based authentication
-2. Use TLS/WSS for encrypted connections
-3. Validate channel subscriptions
+1. Use TLS/WSS for encrypted connections
+1. Validate channel subscriptions
 
 ### Authorization
 
 Clients can only subscribe to channels; they cannot publish events. All events are broadcast by the server based on internal state changes.
 
----
+______________________________________________________________________
 
 ## Support
 
 For issues or questions:
+
 - Check server logs: `/var/log/mahavishnu/websocket.log`
 - Review health status: Use MCP `websocket_health_check` tool
 - API issues: Open issue on GitHub
 
----
+______________________________________________________________________
 
 ## Changelog
 
 ### Version 1.0.0 (2026-02-10)
+
 - Initial release
 - Workflow event broadcasting
 - Pool status monitoring

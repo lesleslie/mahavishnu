@@ -2,16 +2,17 @@
 """
 Debug script to capture what Claude Code sends to statusline script
 """
-import sys
-import json
+
 from datetime import datetime
+import json
+import sys
 
 # Read stdin
 input_data = sys.stdin.read()
 
 # Write to debug log
-debug_log = '/tmp/statusline_debug.log'
-with open(debug_log, 'w') as f:
+debug_log = "/tmp/statusline_debug.log"
+with open(debug_log, "w") as f:
     f.write(f"=== StatusLine Input Debug - {datetime.now()} ===\n\n")
     f.write("RAW INPUT:\n")
     f.write(input_data)

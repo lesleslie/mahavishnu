@@ -46,7 +46,7 @@ This checklist ensures security best practices are followed during development a
 - [ ] Rollback procedures are documented and tested
 - [ ] Security patches are applied promptly
 
----
+______________________________________________________________________
 
 ## Task Orchestration Security (Phase 0)
 
@@ -73,6 +73,7 @@ This checklist ensures security best practices are followed during development a
 - [x] Tag validation (pattern, length, deduplication)
 
 **Dangerous Patterns Blocked:**
+
 - SQL comments: `--`, `/*`, `*/`
 - SQL statement separator: `;`
 - Extended stored procedures: `xp_`
@@ -91,6 +92,7 @@ This checklist ensures security best practices are followed during development a
 - [x] Structured logging for forensic analysis
 
 **Events Logged:**
+
 - task_created, task_updated, task_deleted
 - task_assigned, task_started, task_completed, task_cancelled
 - task_blocked, task_unblocked
@@ -116,7 +118,7 @@ This checklist ensures security best practices are followed during development a
 - [x] Security runbook (`docs/runbooks/security.md`)
 - [x] Updated SECURITY_CHECKLIST.md with Task Orchestration components
 
----
+______________________________________________________________________
 
 ## Security Test Commands
 

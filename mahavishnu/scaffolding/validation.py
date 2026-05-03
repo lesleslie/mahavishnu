@@ -20,10 +20,11 @@ def validate_pattern(pattern: Pattern, library: PatternLibrary) -> list[str]:
     fp = getattr(pattern, "_file_path", None)
     if fp and isinstance(fp, Path):
         expected_dir = fp.parent.name
-        if not pattern.id.startswith(expected_dir + "/") and pattern.id.split("/")[0] != expected_dir:
-            issues.append(
-                f"Pattern ID '{pattern.id}' doesn't match directory '{expected_dir}/'"
-            )
+        if (
+            not pattern.id.startswith(expected_dir + "/")
+            and pattern.id.split("/")[0] != expected_dir
+        ):
+            issues.append(f"Pattern ID '{pattern.id}' doesn't match directory '{expected_dir}/'")
 
     # Required files have templates
     for f in pattern.get_files():

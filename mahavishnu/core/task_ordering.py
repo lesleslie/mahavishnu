@@ -10,11 +10,11 @@ Provides intelligent task prioritization and ordering based on:
 
 from __future__ import annotations
 
-import logging
 from collections import defaultdict
-from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
-from enum import Enum
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from enum import StrEnum
+import logging
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 
-class OrderingStrategy(str, Enum):
+class OrderingStrategy(StrEnum):
     """Strategy for task ordering."""
 
     DEADLINE_FIRST = "deadline_first"  # Earliest deadline first
@@ -32,7 +32,7 @@ class OrderingStrategy(str, Enum):
     BALANCED = "balanced"  # Balance all factors
 
 
-class Priority(str, Enum):
+class Priority(StrEnum):
     """Task priority levels."""
 
     CRITICAL = "critical"
@@ -709,7 +709,6 @@ class TaskOrderer:
 
         # Find longest path to any end task (simplified)
         # For a proper implementation, would use dynamic programming
-        critical_path = []
 
         blocked_by = dep_graph.get("blocked_by", {})
 

@@ -15,21 +15,21 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
+from enum import Enum
 import json
 import signal
 import sys
-from datetime import datetime, UTC
-from enum import Enum
 from typing import Any
 
-import websockets
-from websockets.exceptions import ConnectionClosed
 from rich.console import Console
+from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from rich.layout import Layout
+import websockets
+from websockets.exceptions import ConnectionClosed
 
 
 class ConnectionStatus(Enum):
@@ -220,9 +220,12 @@ class PoolMonitor:
             type_color = "white"
             if "spawned" in event_type.lower() or "added" in event_type.lower():
                 type_color = "green"
-            elif "closed" in event_type.lower() or "removed" in event_type.lower():
-                type_color = "red"
-            elif "error" in event_type.lower() or "failed" in event_type.lower():
+            elif (
+                "closed" in event_type.lower()
+                or "removed" in event_type.lower()
+                or "error" in event_type.lower()
+                or "failed" in event_type.lower()
+            ):
                 type_color = "red"
             elif "status" in event_type.lower():
                 type_color = "yellow"
@@ -302,10 +305,10 @@ class PoolMonitor:
             response = await asyncio.wait_for(self.websocket.recv(), timeout=5.0)
             data = json.loads(response)
             if data.get("status") == "subscribed":
-                self.console.print(f"[green]Subscription confirmed[/green]")
+                self.console.print("[green]Subscription confirmed[/green]")
             else:
                 self.console.print(f"[yellow]Subscription response: {data}[/yellow]")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self.console.print("[yellow]No subscription confirmation received[/yellow]")
 
     def _add_event(self, event_type: str, details: str) -> None:
@@ -325,7 +328,7 @@ class PoolMonitor:
 
         # Trim old events
         if len(self.recent_events) > self.max_events:
-            self.recent_events = self.recent_events[-self.max_events:]
+            self.recent_events = self.recent_events[-self.max_events :]
 
     async def _handle_message(self, message: str) -> None:
         """Handle incoming WebSocket message.
@@ -459,7 +462,7 @@ class PoolMonitor:
                         await self._handle_message(message)
                         self._update_layout()
 
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         # Update layout periodically
                         self._update_layout()
                         continue

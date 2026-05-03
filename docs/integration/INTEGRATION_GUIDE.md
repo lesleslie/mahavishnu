@@ -40,11 +40,13 @@ result = await mcp_client.call_tool("get_tool_versions", {"tool_name": "trigger_
 All tools follow a consistent return pattern:
 
 **Success:**
+
 ```json
 {"status": "success", "...": "..."}
 ```
 
 **Error:**
+
 ```json
 {"status": "error", "error": "descriptive message", "...": "..."}
 ```

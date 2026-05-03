@@ -8,12 +8,13 @@ Tests security validation of worktree paths with comprehensive coverage of:
 - Audit logging for security rejections
 """
 
-import pytest
-from hypothesis import given, strategies as st
 from pathlib import Path
 
+from hypothesis import given
+from hypothesis import strategies as st
+import pytest
+
 from mahavishnu.core.worktree_validation import WorktreePathValidator
-from mahavishnu.core.errors import ValidationError
 
 
 class TestWorktreePathValidator:
@@ -134,9 +135,7 @@ class TestWorktreePathValidator:
         """Test that paths with tilde are rejected."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
-        is_valid, error = validator.validate_worktree_path(
-            "~root/.ssh", user_id="test-user"
-        )
+        is_valid, error = validator.validate_worktree_path("~root/.ssh", user_id="test-user")
 
         assert not is_valid
         assert "outside allowed directories" in error.lower()
@@ -194,9 +193,7 @@ class TestWorktreePathValidator:
 
     def test_accept_path_outside_allowed_roots_in_non_strict_mode(self, tmp_path):
         """Test that paths outside allowed roots are accepted in non-strict mode."""
-        validator = WorktreePathValidator(
-            allowed_roots=[tmp_path / "worktrees"], strict_mode=False
-        )
+        validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"], strict_mode=False)
 
         # Path outside allowed roots - should pass in non-strict mode
         is_valid, error = validator.validate_worktree_path(
@@ -356,12 +353,11 @@ class TestWorktreePathValidator:
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
         # Don't specify base_dir (should default to ~/worktrees)
-        worktree_path = validator.get_safe_worktree_path(
-            repo_nickname="mahavishnu", branch="main"
-        )
+        worktree_path = validator.get_safe_worktree_path(repo_nickname="mahavishnu", branch="main")
 
         # Should use home directory
         import pathlib
+
         assert worktree_path == pathlib.Path.home() / "worktrees" / "mahavishnu" / "main"
 
     def test_get_safe_worktree_path_empty_branch(self, tmp_path):
@@ -422,9 +418,7 @@ class TestWorktreePathValidator:
         repo_dir = tmp_path / "repos" / "repo"
         (repo_dir / ".git").mkdir(parents=True)
 
-        is_valid, error = validator.validate_repository_path(
-            str(repo_dir), user_id="test-user"
-        )
+        is_valid, error = validator.validate_repository_path(str(repo_dir), user_id="test-user")
 
         assert is_valid
         assert error is None
@@ -432,9 +426,7 @@ class TestWorktreePathValidator:
     def test_validate_repository_path_exception_is_handled(self, tmp_path, mocker):
         """Test that repository validation exceptions are handled cleanly."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "repos"])
-        mocker.patch.object(
-            validator, "_is_git_repository", side_effect=RuntimeError("repo boom")
-        )
+        mocker.patch.object(validator, "_is_git_repository", side_effect=RuntimeError("repo boom"))
 
         is_valid, error = validator.validate_repository_path(
             str(tmp_path / "repos" / "repo"), user_id="test-user"
@@ -446,7 +438,9 @@ class TestWorktreePathValidator:
     def test_validate_worktree_path_resolve_failure(self, tmp_path, mocker):
         """Test that path resolution failures are handled cleanly."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
-        mocker.patch("mahavishnu.core.worktree_validation.Path.resolve", side_effect=OSError("boom"))
+        mocker.patch(
+            "mahavishnu.core.worktree_validation.Path.resolve", side_effect=OSError("boom")
+        )
 
         is_valid, error = validator.validate_worktree_path(
             str(tmp_path / "worktrees" / "repo"), user_id="test-user"
@@ -459,7 +453,9 @@ class TestWorktreePathValidator:
     def test_validate_repository_path_resolve_failure(self, tmp_path, mocker):
         """Test that repository path resolution failures are handled cleanly."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "repos"])
-        mocker.patch("mahavishnu.core.worktree_validation.Path.resolve", side_effect=OSError("boom"))
+        mocker.patch(
+            "mahavishnu.core.worktree_validation.Path.resolve", side_effect=OSError("boom")
+        )
 
         is_valid, error = validator.validate_repository_path(
             str(tmp_path / "repos" / "repo"), user_id="test-user"
@@ -501,9 +497,7 @@ class TestWorktreePathValidator:
         """Test validation of relative path."""
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
-        is_valid, error = validator.validate_worktree_path(
-            "relative/path", user_id="test-user"
-        )
+        is_valid, error = validator.validate_worktree_path("relative/path", user_id="test-user")
 
         # Relative path should be rejected (not in allowed roots)
         assert not is_valid

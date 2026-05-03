@@ -1,7 +1,6 @@
----
-name: swiftui-ipc-client
-description: Use when building native macOS SwiftUI apps that communicate with Python backends via Unix Domain Socket (JSON-RPC 2.0). Use when implementing IPC between Swift frontend and Python backend. Based on mdinject architecture pattern.
----
+______________________________________________________________________
+
+## name: swiftui-ipc-client description: Use when building native macOS SwiftUI apps that communicate with Python backends via Unix Domain Socket (JSON-RPC 2.0). Use when implementing IPC between Swift frontend and Python backend. Based on mdinject architecture pattern.
 
 # SwiftUI IPC Client Development Skill
 
@@ -9,16 +8,16 @@ description: Use when building native macOS SwiftUI apps that communicate with P
 
 **Based On**: mdinject architecture pattern
 
----
+______________________________________________________________________
 
 ## Available MCP Servers
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| session-buddy | 8678 | grep | mcp__session-buddy__search_conversations, mcp__session-buddy___code_search_symbols_impl | 30s |
-| mahavishnu | 8680 | grep | mcp__mahavishnu__get_health | 60s |
+| session-buddy | 8678 | grep | mcp\_\_session-buddy\_\_search_conversations, mcp\_\_session-buddy\_\_\_code_search_symbols_impl | 30s |
+| mahavishnu | 8680 | grep | mcp\_\_mahavishnu\_\_get_health | 60s |
 
----
+______________________________________________________________________
 
 ## When to Use
 
@@ -34,15 +33,17 @@ digraph ipc_decision {
 ```
 
 **Use when:**
+
 - Building native macOS SwiftUI apps that need backend services
 - Implementing IPC between Swift frontend and Python backend
 - Creating JSON-RPC 2.0 clients over Unix sockets
 
 **Don't use when:**
+
 - Building web apps (use React/Vue instead)
 - Cross-platform mobile apps (use Flutter instead)
 
----
+______________________________________________________________________
 
 ## Architecture Pattern
 
@@ -82,7 +83,7 @@ digraph ipc_decision {
 └─────────────────────────────────────────────────────────────────┘
 ```
 
----
+______________________________________________________________________
 
 ## IPC Protocol Specification
 
@@ -96,6 +97,7 @@ let socketPath = "~/Library/Application Support/\(appName)/\(appName.lowercased(
 ### JSON-RPC 2.0 Format
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -106,6 +108,7 @@ let socketPath = "~/Library/Application Support/\(appName)/\(appName.lowercased(
 ```
 
 **Response (Success):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -115,6 +118,7 @@ let socketPath = "~/Library/Application Support/\(appName)/\(appName.lowercased(
 ```
 
 **Response (Error):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -123,7 +127,7 @@ let socketPath = "~/Library/Application Support/\(appName)/\(appName.lowercased(
 }
 ```
 
----
+______________________________________________________________________
 
 ## Swift Implementation
 
@@ -210,7 +214,7 @@ enum IPCMethod {
 }
 ```
 
----
+______________________________________________________________________
 
 ## Python Backend Implementation
 
@@ -255,7 +259,7 @@ class JSONRPCServer:
             return {"jsonrpc": "2.0", "id": request_id, "error": {"code": -32603, "message": str(e)}}
 ```
 
----
+______________________________________________________________________
 
 ## Directory Structure
 
@@ -281,7 +285,7 @@ app/
 │       └── WebSocketService.swift  # Real-time updates
 ```
 
----
+______________________________________________________________________
 
 ## Testing Checklist
 
@@ -293,11 +297,12 @@ app/
 - [ ] Offline mode with local cache
 - [ ] macOS menu bar integration
 
----
+______________________________________________________________________
 
 ## Reference Implementation
 
 See `~/Projects/mdinject/` for the reference implementation:
+
 - `app/IPC_SPEC.md` - Protocol specification
 - `app/MdInjectApp/IPC/` - Swift IPC client code
 - `mdinject/ipc/` - Python IPC server code

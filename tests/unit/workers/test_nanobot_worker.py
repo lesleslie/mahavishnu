@@ -12,10 +12,10 @@ import mahavishnu.core.app as appmod
 from mahavishnu.workers.base import WorkerResult
 from mahavishnu.workers.nanobot_worker import NanobotWorker
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _mock_provider() -> MagicMock:
     """Create a mock provider with a `complete` attribute."""
@@ -43,6 +43,7 @@ def _install_nanobot_runner_mock(response: str = "runner output") -> dict:
 # Spec #1 — construction with no provider
 # ---------------------------------------------------------------------------
 
+
 def test_construction_with_no_provider() -> None:
     """NanobotWorker(worker_type='in-process-nanobot') constructs without error;
     _nanobot_provider is None."""
@@ -53,6 +54,7 @@ def test_construction_with_no_provider() -> None:
 # ---------------------------------------------------------------------------
 # Spec #2 — initialize raises when provider is None
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_initialize_raises_when_provider_none() -> None:
@@ -65,6 +67,7 @@ async def test_initialize_raises_when_provider_none() -> None:
 # ---------------------------------------------------------------------------
 # Spec #3 — execute calls provider and returns WorkerResult(success=True)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_execute_calls_provider_and_returns_result() -> None:
@@ -87,6 +90,7 @@ async def test_execute_calls_provider_and_returns_result() -> None:
 # Spec #4 — worker_id starts with "nanobot_"
 # ---------------------------------------------------------------------------
 
+
 def test_worker_id_starts_with_nanobot() -> None:
     """worker_id property returns a string starting with 'nanobot_'."""
     worker = NanobotWorker()
@@ -97,6 +101,7 @@ def test_worker_id_starts_with_nanobot() -> None:
 # Spec #5 — loop mode construction sets _is_loop_mode = True
 # ---------------------------------------------------------------------------
 
+
 def test_loop_mode_construction() -> None:
     """NanobotWorker(worker_type='in-process-nanobot-loop') sets _is_loop_mode=True."""
     worker = NanobotWorker(worker_type="in-process-nanobot-loop")
@@ -106,6 +111,7 @@ def test_loop_mode_construction() -> None:
 # ---------------------------------------------------------------------------
 # Spec #6 — _init_nanobot_provider returns None when ZAI_API_KEY not set
 # ---------------------------------------------------------------------------
+
 
 def test_init_nanobot_provider_returns_none_when_key_not_set(monkeypatch) -> None:
     """MahavishnuApp._init_nanobot_provider() returns None when ZAI_API_KEY is absent."""

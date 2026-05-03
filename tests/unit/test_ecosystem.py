@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+import mahavishnu.core.ecosystem as ecosystem_module
 from mahavishnu.core.ecosystem import (
     EcosystemLoader,
     MCPServerConfig,
@@ -14,7 +15,6 @@ from mahavishnu.core.ecosystem import (
     get_ecosystem_loader,
 )
 from mahavishnu.core.errors import ConfigurationError
-import mahavishnu.core.ecosystem as ecosystem_module
 
 
 def _base_ecosystem_dict() -> dict:

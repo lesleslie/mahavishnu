@@ -3,18 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+
 import pytest
 
 
 # pytest markers
 def pytest_configure(config):
     """Configure pytest markers."""
-    config.addinivalue_line(
-        "markers", "production: marks tests as production tests"
-    )
-    config.addinivalue_line(
-        "markers", "slow: marks tests as slow (performance/load tests)"
-    )
+    config.addinivalue_line("markers", "production: marks tests as production tests")
+    config.addinivalue_line("markers", "slow: marks tests as slow (performance/load tests)")
 
 
 @pytest.fixture(scope="session")
@@ -41,5 +38,5 @@ def pytest_addoption(parser):
         "--runslow",
         action="store_true",
         default=False,
-        help="run slow tests (performance/load tests)"
+        help="run slow tests (performance/load tests)",
     )

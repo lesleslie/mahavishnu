@@ -27,14 +27,11 @@ Performance Targets:
 from __future__ import annotations
 
 import argparse
-import hashlib
 import logging
+from pathlib import Path
 import sys
 import time
-from pathlib import Path
 from typing import Any
-
-import numpy as np
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -88,7 +85,7 @@ def get_embedding_model(model_name: str = DEFAULT_MODEL):
 
             _embedding_model = SentenceTransformer(model_name)
 
-            logger.info(f"Model loaded successfully")
+            logger.info("Model loaded successfully")
             logger.info(f"  - Model: {model_name}")
             logger.info(f"  - Dimensions: {_embedding_model.get_sentence_embedding_dimension()}")
             logger.info(f"  - Max sequence length: {_embedding_model.max_seq_length}")
@@ -269,7 +266,7 @@ def generate_embeddings(
                     metrics["generated"] / metrics["duration_seconds"]
                 )
 
-            logger.info(f"Embedding generation complete:")
+            logger.info("Embedding generation complete:")
             logger.info(f"  - Generated: {metrics['generated']}")
             logger.info(f"  - Skipped: {metrics['skipped']}")
             logger.info(f"  - Errors: {metrics['errors']}")
@@ -459,9 +456,7 @@ Available Models:
         metavar="QUERY",
         help="Test semantic search with a query",
     )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable verbose logging"
-    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
 
@@ -482,9 +477,7 @@ Available Models:
         # Execute action
         if args.test_search:
             # Test semantic search
-            results = test_semantic_search(
-                args.db_path, args.test_search, args.model
-            )
+            results = test_semantic_search(args.db_path, args.test_search, args.model)
             success = len(results["results"]) > 0
         else:
             # Generate embeddings

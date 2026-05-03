@@ -300,7 +300,9 @@ class TestMonitorCompletion:
 
         worker = _make_shell_worker(terminal_manager=tm, worker_type="terminal-shell")
 
-        with patch("mahavishnu.workers.generic_shell.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with patch(
+            "mahavishnu.workers.generic_shell.asyncio.sleep", new_callable=AsyncMock
+        ) as mock_sleep:
             mock_sleep.side_effect = [None, asyncio.TimeoutError]
             result = await worker._monitor_completion({}, 0)
         assert result.status == WorkerStatus.TIMEOUT
@@ -313,7 +315,9 @@ class TestMonitorCompletion:
 
         worker = _make_shell_worker(terminal_manager=tm, worker_type="terminal-shell")
 
-        with patch("mahavishnu.workers.generic_shell.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with patch(
+            "mahavishnu.workers.generic_shell.asyncio.sleep", new_callable=AsyncMock
+        ) as mock_sleep:
             mock_sleep.side_effect = [None, asyncio.TimeoutError]
             result = await worker._monitor_completion({}, 0)
         assert result.status == WorkerStatus.TIMEOUT
@@ -474,7 +478,9 @@ class TestCheckTextCompletion:
 
     def test_completion_marker_mid_line_not_detected(self) -> None:
         worker = _make_shell_worker(worker_type="terminal-shell")
-        completed, content = worker._check_text_completion("line with $ sign in middle\nmore output")
+        completed, content = worker._check_text_completion(
+            "line with $ sign in middle\nmore output"
+        )
         assert completed is False
 
 

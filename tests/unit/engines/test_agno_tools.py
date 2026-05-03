@@ -12,25 +12,23 @@ the Agno tool decorator wraps them in non-callable Function objects.
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
-from typing import Any
+import tempfile
 
 import pytest
 
 from mahavishnu.core.errors import AgnoError, ErrorCode
+from mahavishnu.engines.agno_tools.code_tools import (
+    _analyze_code_impl,
+    _get_function_signature_impl,
+    _search_code_impl,
+)
 from mahavishnu.engines.agno_tools.file_tools import (
     _list_directory_impl,
     _read_file_impl,
     _search_files_impl,
     _write_file_impl,
 )
-from mahavishnu.engines.agno_tools.code_tools import (
-    _analyze_code_impl,
-    _get_function_signature_impl,
-    _search_code_impl,
-)
-
 
 # ============================================================================
 # Fixtures
@@ -537,13 +535,13 @@ class TestGetFunctionSignature:
         """Test that decorators are captured."""
         # Create a file with decorated function
         decorated_file = sample_python_file.parent / "decorated.py"
-        decorated_file.write_text('''
+        decorated_file.write_text("""
 from functools import lru_cache
 
 @lru_cache(maxsize=128)
 def cached_func(x: int) -> int:
     return x * 2
-''')
+""")
 
         result = _get_function_signature_impl(str(decorated_file), "cached_func")
 

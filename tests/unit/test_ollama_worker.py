@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -307,9 +305,7 @@ class TestClassifyTask:
         assert result == TaskCategory.EMBEDDING
 
     def test_context_image_takes_priority_over_text_patterns(self):
-        result = classify_task(
-            "Write unit tests for the module", context={"has_image": True}
-        )
+        result = classify_task("Write unit tests for the module", context={"has_image": True})
         assert result == TaskCategory.VISION
 
     def test_no_pattern_match_returns_general(self):
@@ -363,25 +359,19 @@ class TestGetModelForTask:
     def test_reasoning_task_prefers_llama(self):
         config = OllamaConfig(model="nonexistent")
         available = ["llama3:8b"]
-        model, category = get_model_for_task(
-            "compare the trade offs", available, config
-        )
+        model, category = get_model_for_task("compare the trade offs", available, config)
         assert category == TaskCategory.REASONING
 
     def test_vision_task_prefers_llava(self):
         config = OllamaConfig(model="nonexistent")
         available = ["llava:7b"]
-        model, category = get_model_for_task(
-            "what is shown in this image", available, config
-        )
+        model, category = get_model_for_task("what is shown in this image", available, config)
         assert category == TaskCategory.VISION
 
     def test_embedding_task_prefers_embed_model(self):
         config = OllamaConfig(model="nonexistent")
         available = ["all-minilm:latest"]
-        model, category = get_model_for_task(
-            "compute embedding vectors", available, config
-        )
+        model, category = get_model_for_task("compute embedding vectors", available, config)
         assert category == TaskCategory.EMBEDDING
 
     def test_uses_context_for_classification(self):
@@ -395,9 +385,7 @@ class TestGetModelForTask:
     def test_debugging_falls_back_to_coder_family(self):
         config = OllamaConfig(model="nonexistent")
         available = ["phi3-coder:3.8b"]
-        model, category = get_model_for_task(
-            "debug the error in the module", available, config
-        )
+        model, category = get_model_for_task("debug the error in the module", available, config)
         assert category == TaskCategory.DEBUGGING
         assert "coder" in model.lower()
 
@@ -481,13 +469,9 @@ class TestOllamaWorkerStart:
         avail_response.text = "Ollama is running"
 
         tags_response = MagicMock()
-        tags_response.json.return_value = {
-            "models": [{"name": "qwen2.5-coder:7b"}]
-        }
+        tags_response.json.return_value = {"models": [{"name": "qwen2.5-coder:7b"}]}
 
-        mock_client.get = AsyncMock(
-            side_effect=[avail_response, tags_response]
-        )
+        mock_client.get = AsyncMock(side_effect=[avail_response, tags_response])
         mock_client.aclose = AsyncMock()
 
         with patch("mahavishnu.workers.ollama.httpx.AsyncClient", return_value=mock_client):
@@ -524,9 +508,7 @@ class TestOllamaWorkerStart:
         pull_response = MagicMock()
         pull_response.json.return_value = {"status": "success"}
 
-        mock_client.get = AsyncMock(
-            side_effect=[avail_response, tags_response]
-        )
+        mock_client.get = AsyncMock(side_effect=[avail_response, tags_response])
         mock_client.post = AsyncMock(return_value=pull_response)
         mock_client.aclose = AsyncMock()
 
@@ -547,11 +529,11 @@ class TestOllamaWorkerStart:
         tags_response = MagicMock()
         tags_response.json.return_value = {"models": [{"name": "llama3:8b"}]}
 
-        mock_client.get = AsyncMock(
-            side_effect=[avail_response, tags_response]
-        )
+        mock_client.get = AsyncMock(side_effect=[avail_response, tags_response])
         mock_client.post = AsyncMock(
-            side_effect=httpx.HTTPStatusError("Not found", request=MagicMock(), response=MagicMock())
+            side_effect=httpx.HTTPStatusError(
+                "Not found", request=MagicMock(), response=MagicMock()
+            )
         )
         mock_client.aclose = AsyncMock()
 
@@ -570,13 +552,9 @@ class TestOllamaWorkerStart:
         avail_response.text = "Ollama is running"
 
         tags_response = MagicMock()
-        tags_response.json.return_value = {
-            "models": [{"name": "qwen2.5-coder:7b"}]
-        }
+        tags_response.json.return_value = {"models": [{"name": "qwen2.5-coder:7b"}]}
 
-        mock_client.get = AsyncMock(
-            side_effect=[avail_response, tags_response]
-        )
+        mock_client.get = AsyncMock(side_effect=[avail_response, tags_response])
         mock_client.aclose = AsyncMock()
 
         with patch("mahavishnu.workers.ollama.httpx.AsyncClient", return_value=mock_client):
@@ -722,7 +700,7 @@ class TestOllamaWorkerExecute:
     async def test_execute_timeout(self):
         config = OllamaConfig(intelligent_routing=False)
         worker, mock_client = self._make_running_worker(config=config)
-        mock_client.post = AsyncMock(side_effect=asyncio.TimeoutError())
+        mock_client.post = AsyncMock(side_effect=TimeoutError())
 
         task = {"prompt": "slow task", "timeout": 0.001, "raw": True}
         result = await worker.execute(task)
@@ -752,9 +730,7 @@ class TestOllamaWorkerExecute:
     async def test_execute_connect_error_returns_failed(self):
         config = OllamaConfig(intelligent_routing=False)
         worker, mock_client = self._make_running_worker(config=config)
-        mock_client.post = AsyncMock(
-            side_effect=httpx.ConnectError("Connection refused")
-        )
+        mock_client.post = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
 
         task = {"prompt": "test", "raw": True}
         result = await worker.execute(task)
@@ -773,15 +749,11 @@ class TestOllamaWorkerExecute:
         avail_response.text = "Ollama is running"
 
         tags_response = MagicMock()
-        tags_response.json.return_value = {
-            "models": [{"name": "qwen2.5-coder:7b"}]
-        }
+        tags_response.json.return_value = {"models": [{"name": "qwen2.5-coder:7b"}]}
 
         chat_response = self._make_chat_response("Auto-started result")
 
-        mock_client.get = AsyncMock(
-            side_effect=[avail_response, tags_response]
-        )
+        mock_client.get = AsyncMock(side_effect=[avail_response, tags_response])
         self._mock_post_chat(mock_client, chat_response)
         mock_client.aclose = AsyncMock()
 
@@ -870,7 +842,7 @@ class TestOllamaWorkerExecute:
     async def test_execute_timeout_metadata_includes_timeout_value(self):
         config = OllamaConfig(intelligent_routing=False)
         worker, mock_client = self._make_running_worker(config=config)
-        mock_client.post = AsyncMock(side_effect=asyncio.TimeoutError())
+        mock_client.post = AsyncMock(side_effect=TimeoutError())
 
         task = {"prompt": "test", "timeout": 5, "raw": True}
         result = await worker.execute(task)
@@ -1315,14 +1287,16 @@ class TestOllamaWorkerGenerate:
 
     @pytest.mark.asyncio
     async def test_generate_sends_correct_payload(self):
-        worker = OllamaWorker(config=OllamaConfig(
-            temperature=0.5,
-            num_ctx=2048,
-            num_predict=1024,
-            top_p=0.8,
-            top_k=20,
-            keep_alive="10m",
-        ))
+        worker = OllamaWorker(
+            config=OllamaConfig(
+                temperature=0.5,
+                num_ctx=2048,
+                num_predict=1024,
+                top_p=0.8,
+                top_k=20,
+                keep_alive="10m",
+            )
+        )
         mock_client = AsyncMock(spec=httpx.AsyncClient)
         mock_resp = MagicMock()
         mock_resp.json.return_value = {
@@ -1557,9 +1531,7 @@ class TestOllamaWorkerStoreResult:
         sb_client.call_tool = AsyncMock(side_effect=Exception("Connection lost"))
         worker.session_buddy_client = sb_client
 
-        result = WorkerResult(
-            worker_id="test", status=WorkerStatus.COMPLETED, output="data"
-        )
+        result = WorkerResult(worker_id="test", status=WorkerStatus.COMPLETED, output="data")
         task = {"prompt": "test"}
 
         await worker._store_result_in_session_buddy(result, task)
@@ -1641,4 +1613,7 @@ class TestOllamaConfigModelRouting:
         custom = {TaskCategory.REASONING: "reasoning-model:latest"}
         config = OllamaConfig(model_routing=custom)
         assert config.get_model_for_category(TaskCategory.REASONING) == "reasoning-model:latest"
-        assert config.get_model_for_category(TaskCategory.CODE_GENERATION) == DEFAULT_MODEL_ROUTING[TaskCategory.CODE_GENERATION]
+        assert (
+            config.get_model_for_category(TaskCategory.CODE_GENERATION)
+            == DEFAULT_MODEL_ROUTING[TaskCategory.CODE_GENERATION]
+        )

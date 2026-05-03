@@ -46,9 +46,9 @@ from mahavishnu.ingesters.otel_ingester import (
     create_otel_ingester,
 )
 from mahavishnu.ingesters.quality_evaluator import (
-    QualityEvaluator,
     EvaluationReport,
     MetricScore,
+    QualityEvaluator,
     QualityMetric,
     create_quality_evaluator,
 )

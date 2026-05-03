@@ -1,36 +1,39 @@
 # Security Review — TensorZero Gateway Plan
 
-**Reviewer**: Security subagent  
-**Date**: 2026-04-06  
-**Document reviewed**: `docs/plans/tensorzero-gateway-plan.md`  
+**Reviewer**: Security subagent
+**Date**: 2026-04-06
+**Document reviewed**: `docs/plans/tensorzero-gateway-plan.md`
 **Related files inspected**: `docker-compose.yml`, `~/.claude-code-router/config.json`, environment variables
 
----
+______________________________________________________________________
 
 ## 🔴 Critical Issues (Must Fix Before Deployment)
 
 ### C1. Zero authentication on the TensorZero gateway
 
-**Severity: Critical**  
+**Severity: Critical**
 **Location**: `tensorzero.toml` — no `api_keys` or auth section configured.
 
 The gateway binds on `0.0.0.0:8471` (see C2) with **no authentication whatsoever**. Any process on the machine — or any device on the same network if the firewall allows it — can submit inference requests that consume your **paid** z.ai, Anthropic, and OpenAI API credits. This is equivalent to leaving an open proxy to paid services.
 
 **Evidence**: The plan's client configs confirm the problem:
+
 - Qwen: `OPENAI_API_KEY="none"` — deliberately sends no key.
 - Codex: `env_key = "TENSORZERO_API_KEY"` — but TensorZero never validates it.
 - CCR: "API key can remain the z.ai key (forwarded through)" — key passed but not checked.
 
 **Fix**: Configure TensorZero's `api_keys` block to require a shared gateway key, and distribute that key to legitimate clients:
+
 ```toml
 [api_keys]
 gateway = ["${TENSORZERO_API_KEY}"]
 ```
+
 Then have each client send this key. Unauthenticated requests should be rejected with 401.
 
 ### C2. Gateway binds 0.0.0.0 — exposes to the network
 
-**Severity: Critical**  
+**Severity: Critical**
 **Location**: `tensorzero.toml` line `gateway_url = "http://0.0.0.0:8471"`
 
 This binds to **all network interfaces**, not just localhost. Combined with C1 (no auth), any device on your LAN or VPN can reach the gateway. This is especially dangerous on a laptop that hops between trusted and untrusted networks (coffee shops, airports, coworking spaces).
@@ -41,28 +44,29 @@ Note: the existing `docker-compose.yml` has the same pattern for Redis (0.0.0.0:
 
 ### C3. Unauthenticated Redis accessible to TensorZero cache
 
-**Severity: Critical**  
+**Severity: Critical**
 **Location**: `tensorzero.toml` → `[redis] url = "redis://localhost:6379"`, `docker-compose.yml` Redis service.
 
 The plan enables TensorZero's inference cache (`cache_mode = "on"`) pointing at the shared Redis instance that has **no AUTH** configured (confirmed in `docker-compose.yml` lines 96-97, commented out). This means:
 
 1. **Cached LLM responses** (which contain user prompts, code, and model outputs) are stored in plaintext in an unauthenticated Redis instance.
-2. Any process on the machine can `redis-cli GET` and read cached inference data — potentially containing proprietary code, system prompts, or sensitive conversations.
-3. Any process can also `redis-cli FLUSHALL` and evict the cache, or `redis-cli SET` to poison it.
+1. Any process on the machine can `redis-cli GET` and read cached inference data — potentially containing proprietary code, system prompts, or sensitive conversations.
+1. Any process can also `redis-cli FLUSHALL` and evict the cache, or `redis-cli SET` to poison it.
 
-**Fix (minimum)**: Enable Redis AUTH (`--requirepass`) and use `redis://:password@localhost:6379` in the TensorZero config.  
+**Fix (minimum)**: Enable Redis AUTH (`--requirepass`) and use `redis://:password@localhost:6379` in the TensorZero config.
 **Fix (better)**: Run a separate Redis instance for TensorZero with `appendonly no` (ephemeral, no disk persistence of cached prompts), and isolate it with AUTH + a dedicated password.
 
----
+______________________________________________________________________
 
 ## 🟡 Warnings (Should Address)
 
 ### W1. API key propagation through CCR headers
 
-**Severity: Medium**  
+**Severity: Medium**
 **Location**: Plan § "CCR (Claude Code)" — "API key can remain the z.ai key (forwarded through)."
 
 If CCR forwards the actual `ZAI_API_KEY` in request headers to the TensorZero gateway, the key is visible in:
+
 - TensorZero's access logs (if request logging is enabled)
 - Docker container logs (`docker compose logs tensorzero`)
 - Any proxy or debugging tool in the path
@@ -73,7 +77,7 @@ Even with C1 fixed (gateway auth), having the **upstream provider key** travel a
 
 ### W2. CCR logging may capture prompt/response content
 
-**Severity: Medium**  
+**Severity: Medium**
 **Location**: `~/.claude-code-router/config.json` — `"LOG": true`, `"LOG_LEVEL": "info"`.
 
 CCR is configured to log at `info` level. Depending on CCR's implementation, this may log request bodies (containing user prompts and model responses) to stdout/log files. These logs could contain sensitive project code, system prompts, or private conversations.
@@ -82,10 +86,11 @@ CCR is configured to log at `info` level. Depending on CCR's implementation, thi
 
 ### W3. Docker containers run without security hardening
 
-**Severity: Medium**  
+**Severity: Medium**
 **Location**: `docker-compose.yml` — all services, and the planned TensorZero service.
 
 No containers in the Compose file use:
+
 - `read_only: true` (immutable filesystem)
 - `security_opt: ["no-new-privileges:true"]` (prevent privilege escalation)
 - `cap_drop: [ALL]` (drop Linux capabilities)
@@ -94,6 +99,7 @@ No containers in the Compose file use:
 For TensorZero specifically, this means if a vulnerability is found in the gateway, an attacker could potentially escape the container with full root capabilities on the host.
 
 **Recommendation**: Add basic hardening to the TensorZero service definition:
+
 ```yaml
 tensorzero:
   image: tensorzero/gateway
@@ -108,7 +114,7 @@ tensorzero:
 
 ### W4. Multiple API keys in single container environment
 
-**Severity: Medium**  
+**Severity: Medium**
 **Location**: Plan § "tensorzero.toml" — three providers configured (`zai`, `anthropic`, `openai`).
 
 The TensorZero container will receive **all three** API keys via environment variables (`ZAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`). If any client can reach the gateway (see C1/C2), they can use **all three** provider keys, not just the one they normally need. For example, a Qwen client intended only for z.ai could burn through OpenAI credits.
@@ -117,7 +123,7 @@ The TensorZero container will receive **all three** API keys via environment var
 
 ### W5. Pre-existing: Adminer exposed without auth on 0.0.0.0:8080
 
-**Severity: Medium** (pre-existing, not introduced by this plan)  
+**Severity: Medium** (pre-existing, not introduced by this plan)
 **Location**: `docker-compose.yml` lines 126-137.
 
 Adminer (database management UI) is exposed on all interfaces with no authentication. Anyone who can reach port 8080 gets a web UI pointed at your Postgres instance. The plan doesn't change this, but adding TensorZero increases the attack surface of the overall Compose stack.
@@ -126,7 +132,7 @@ Adminer (database management UI) is exposed on all interfaces with no authentica
 
 ### W6. Pre-existing: PostgreSQL with weak credentials on 0.0.0.0:5432
 
-**Severity: Medium** (pre-existing)  
+**Severity: Medium** (pre-existing)
 **Location**: `docker-compose.yml` line 25 — `POSTGRES_PASSWORD: mahavishnu_dev`.
 
 The database password is a trivially guessable dev default, and the port is exposed to all interfaces. Same bind-address concern as C2.
@@ -135,14 +141,14 @@ The database password is a trivially guessable dev default, and the port is expo
 
 ### W7. Cache TTL of 1 hour may retain sensitive data
 
-**Severity: Low**  
+**Severity: Low**
 **Location**: `tensorzero.toml` — `default_ttl_secs = 3600`
 
 Prompt/response pairs are cached for 1 hour. If these contain proprietary code, credentials discussed in conversation, or other sensitive data, they persist in Redis for the full TTL. A Redis compromise (see C3) within that window exposes recent inference data.
 
 **Recommendation**: Consider a shorter TTL (300s / 5 min) for a dev setup, or disable the cache entirely until Redis is properly secured with AUTH.
 
----
+______________________________________________________________________
 
 ## 🟢 Good Practices Already in Place
 
@@ -194,7 +200,7 @@ The plan notes "Redis state expires naturally" for rollback. This means cached d
 
 CCR references environment variables (not literal keys) for API keys. This is the correct approach.
 
----
+______________________________________________________________________
 
 ## Summary
 
@@ -207,8 +213,9 @@ CCR references environment variables (not literal keys) for API keys. This is th
 **Deployment recommendation**: **Do not deploy** until C1 (gateway auth), C2 (bind to localhost), and C3 (Redis AUTH) are resolved. These three issues together create a scenario where any network-adjacent attacker can read your cached LLM prompts/responses and make unlimited inference requests using your paid API keys.
 
 The fix is straightforward:
+
 1. Add `api_keys` to `tensorzero.toml` and distribute a gateway key to clients.
-2. Change `gateway_url` to `127.0.0.1`.
-3. Enable Redis AUTH and update the connection URL.
+1. Change `gateway_url` to `127.0.0.1`.
+1. Enable Redis AUTH and update the connection URL.
 
 Total estimated effort: ~30 minutes.

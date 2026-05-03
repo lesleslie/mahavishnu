@@ -1,9 +1,6 @@
----
-name: icon-retrieval
-description: Search and retrieve icon SVG strings from icon library. Returns up to 5 matching icons by default, customizable via topK parameter.
-dependency:
-  nodejs: ">=18.0.0"
----
+______________________________________________________________________
+
+## name: icon-retrieval description: Search and retrieve icon SVG strings from icon library. Returns up to 5 matching icons by default, customizable via topK parameter. dependency: nodejs: ">=18.0.0"
 
 # Icon Search
 
@@ -13,11 +10,12 @@ This skill provides icon search and SVG string retrieval capabilities. It helps 
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| mahavishnu | 8680 | grep | mcp__mahavishnu__get_health | 60s |
+| mahavishnu | 8680 | grep | mcp\_\_mahavishnu\_\_get_health | 60s |
 
 ## Purpose
 
 This skill helps discover available icons by:
+
 - Searching the icon library by keywords
 - Retrieving SVG strings directly for use in your projects
 - Providing icon metadata including names and URLs
@@ -33,10 +31,12 @@ node ./scripts/search.js '<search_query>' [topK]
 ```
 
 **Parameters:**
+
 - `search_query` (required): The keyword or phrase to search for
 - `topK` (optional): Maximum number of results to return (default: 5)
 
 **Examples:**
+
 ```bash
 # Search for document icons (default 5 results)
 node ./scripts/search.js 'document'
@@ -51,6 +51,7 @@ node ./scripts/search.js 'tech' 20
 ### Understanding Results
 
 The script returns a JSON object containing:
+
 - `query`: The search query used
 - `topK`: Maximum number of results requested
 - `count`: Actual number of results returned (may be less than topK)
@@ -62,20 +63,22 @@ The script returns a JSON object containing:
 
 1. **Identify the Icon Need**: Determine what concept you want to represent with an icon (e.g., "security", "speed", "data")
 
-2. **Search for Icons**: Run the search script with relevant keywords
+1. **Search for Icons**: Run the search script with relevant keywords
+
    ```bash
    # Default search (returns up to 5 results)
    node ./scripts/search.js 'security'
-   
+
    # Or specify a custom topK value
    node ./scripts/search.js 'security' 10
    ```
 
-3. **Review Results**: The script returns the requested number of matching icons with:
+1. **Review Results**: The script returns the requested number of matching icons with:
+
    - Icon source URLs
    - SVG content for preview or direct use
 
-4. **Use the Icon**: Use the SVG content directly in your project (web pages, designs, infographics, etc.)
+1. **Use the Icon**: Use the SVG content directly in your project (web pages, designs, infographics, etc.)
 
 ## Important Notes
 

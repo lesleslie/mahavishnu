@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-04-14-bodai-radar-design.md`
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -21,17 +21,19 @@
 No other files are created or modified. This is a pure prompt file.
 
 **Pattern reference** (read-only, for consistency):
+
 - `~/.claude/skills/session-archaeologist/SKILL.md` — Most recent Akosha skill (same fallback pattern)
 - `~/.claude/skills/quality-pulse/SKILL.md` — Quality analytics skill (same backend, same degradation pattern)
 - `~/.claude/skills/ecosystem-awareness/SKILL.md` — Ecosystem discovery skill (complementary, not overlapping)
 - `~/.claude/skills/search-insights/SKILL.md` — Generic Akosha search skill (different output format)
 - `~/.claude/skills/run-quality-checks/SKILL.md` — Quality gate skill (triggers checks, bodai-radar reads metrics)
 
----
+______________________________________________________________________
 
 ### Task 1: Create Bodai Radar SKILL.md
 
 **Files:**
+
 - Create: `~/.claude/skills/bodai-radar/SKILL.md`
 
 - [x] **Step 1: Create the directory**
@@ -91,12 +93,14 @@ Each Bodai component provides exactly one primary health signal:
 Call all five signal tools. Each call is independent — a failure in one does not block the others. Execute all five in parallel when possible:
 
 ```
-mcp__session-buddy__get_crackerjack_quality_metrics(days=7)
-mcp__mahavishnu__get_health()
-mcp__akosha__detect_anomalies(metric_name="conversation_count", time_window_days=7)
-mcp__dhara__get_adapter_health()
-mcp__session-buddy__get_activity_summary(hours=2)
-```
+
+mcp\_\_session-buddy\_\_get_crackerjack_quality_metrics(days=7)
+mcp\_\_mahavishnu\_\_get_health()
+mcp\_\_akosha\_\_detect_anomalies(metric_name="conversation_count", time_window_days=7)
+mcp\_\_dhara\_\_get_adapter_health()
+mcp\_\_session-buddy\_\_get_activity_summary(hours=2)
+
+````
 
 ### Step 2: Apply Traffic Light Logic Per Component
 
@@ -149,9 +153,10 @@ Format all five component signals into the unified dashboard:
 
 ### Summary
 [auto-generated summary based on state]
-```
+````
 
 Status emojis:
+
 - Green: `:green_circle:`
 - Yellow: `:yellow_circle:`
 - Red: `:red_circle:`
@@ -162,15 +167,19 @@ Status emojis:
 Write the summary based on the overall dashboard state:
 
 **All green:**
+
 > All 5 components healthy. No action needed.
 
 **One or more yellow:**
+
 > N/5 components healthy. [Component] shows [signal detail]. Run `[recommended skill]` for details.
 
 **One or more red:**
+
 > N/5 components healthy. **[Component] requires attention**: [detail].
 
 **Components unavailable:**
+
 > N/5 components reachable. [Unavailable list]. Ensure all MCP servers are running.
 
 ### Step 5: Route to Related Skills
@@ -194,9 +203,9 @@ When the summary flags a problem, include a skill recommendation:
 This skill uses **parallel graceful degradation** — each component is queried independently:
 
 1. If a component's MCP tool call fails, catch the error
-2. Mark that component as `:grey_circle: Unavailable`
-3. Continue with the remaining components
-4. At the bottom of the dashboard, add: "[N] component(s) unreachable: [list]. For full radar, ensure all MCP servers are running."
+1. Mark that component as `:grey_circle: Unavailable`
+1. Continue with the remaining components
+1. At the bottom of the dashboard, add: "[N] component(s) unreachable: [list]. For full radar, ensure all MCP servers are running."
 
 **No filesystem fallback.** A health check that silently falls back to stale data would give a false sense of health. If an MCP server is down, the signal is simply unavailable — that's the correct answer.
 
@@ -227,7 +236,8 @@ This skill uses **parallel graceful degradation** — each component is queried 
 - **RELATED:** `search-insights` - Semantic search across systems (bodai-radar shows health signals)
 - **RELATED:** `ecosystem-awareness` - Discover repo structure and roles (bodai-radar checks operational health)
 - **RELATED:** `manage-pools` - Manage pool lifecycle (bodai-radar reports pool health)
-```
+
+````
 
 - [x] **Step 3: Verify the file**
 
@@ -240,28 +250,36 @@ Run:
 ```bash
 cd ~/.claude && git add skills/bodai-radar/SKILL.md
 git commit -m "feat: add bodai-radar skill for unified ecosystem health dashboard"
-```
+````
 
----
+______________________________________________________________________
 
 ### Task 2: Validate the Skill
 
 **Files:**
+
 - Read: `~/.claude/skills/bodai-radar/SKILL.md`
+
 - Read: `~/.claude/skills/quality-pulse/SKILL.md`
+
 - Read: `~/.claude/skills/ecosystem-awareness/SKILL.md`
+
 - Read: `~/.claude/skills/session-archaeologist/SKILL.md`
+
 - Read: `~/.claude/skills/run-quality-checks/SKILL.md`
+
 - Read: `~/.claude/skills/search-insights/SKILL.md`
 
 - [x] **Step 1: Verify frontmatter consistency**
 
 Check the file has:
+
 - `name` field matching directory name (`bodai-radar`)
 - `description` field contains specific trigger phrases for auto-detection
 - `description` field mentions the skill name explicitly ("bodai radar")
 
 Run:
+
 ```bash
 head -5 ~/.claude/skills/bodai-radar/SKILL.md
 ```
@@ -269,59 +287,81 @@ head -5 ~/.claude/skills/bodai-radar/SKILL.md
 - [x] **Step 2: Verify no overlap with quality-pulse**
 
 Read `~/.claude/skills/quality-pulse/SKILL.md` and confirm:
+
 - quality-pulse does deep trend analysis with `analyze_trends`, `correlate_systems`
+
 - bodai-radar reads a single health signal and routes to quality-pulse for depth
+
 - Both use `detect_anomalies` but with different workflows (quality-pulse is trend-focused, bodai-radar is snapshot-focused)
 
 - [x] **Step 3: Verify no overlap with ecosystem-awareness**
 
 Read `~/.claude/skills/ecosystem-awareness/SKILL.md` and confirm:
+
 - ecosystem-awareness discovers repo structure and roles via `list_repos`
+
 - bodai-radar checks operational health via `get_health`
+
 - Different tools, different purpose, no overlap
 
 - [x] **Step 4: Verify no overlap with session-archaeologist**
 
 Read `~/.claude/skills/session-archaeologist/SKILL.md` and confirm:
+
 - session-archaeologist recovers past decisions via `search_all_systems`
+
 - bodai-radar checks current activity via `get_activity_summary`
+
 - Different tools, different time horizon, no overlap
 
 - [x] **Step 5: Verify no overlap with run-quality-checks**
 
 Read `~/.claude/skills/run-quality-checks/SKILL.md` and confirm:
+
 - run-quality-checks triggers quality gates via `crackerjack run`
+
 - bodai-radar reads recent quality metrics via `get_crackerjack_quality_metrics`
+
 - One triggers action, the other reads status
 
 - [x] **Step 6: Verify no overlap with search-insights**
 
 Read `~/.claude/skills/search-insights/SKILL.md` and confirm:
+
 - search-insights does semantic search across system memories
+
 - bodai-radar shows health signals
+
 - Completely different purpose and tools
 
 - [x] **Step 7: Verify all five component tools are referenced**
 
 Confirm the SKILL.md references one tool from each component:
+
 1. Crackerjack: `mcp__session-buddy__get_crackerjack_quality_metrics`
-2. Mahavishnu: `mcp__mahavishnu__get_health`
-3. Akosha: `mcp__akosha__detect_anomalies`
-4. Dhara: `mcp__dhara__get_adapter_health`
-5. Session-Buddy: `mcp__session-buddy__get_activity_summary`
+1. Mahavishnu: `mcp__mahavishnu__get_health`
+1. Akosha: `mcp__akosha__detect_anomalies`
+1. Dhara: `mcp__dhara__get_adapter_health`
+1. Session-Buddy: `mcp__session-buddy__get_activity_summary`
 
 - [x] **Step 8: Verify cross-references are correct**
 
 - bodai-radar references `run-quality-checks`, `quality-pulse`, `session-archaeologist`, `search-insights`, `ecosystem-awareness`, `manage-pools`, `orchestrate-workflow`, `search-sessions`
+
 - All referenced skills exist in `~/.claude/skills/`
+
 - No references to non-existent skills
 
 - [x] **Step 9: Verify graceful degradation is consistent**
 
 Confirm:
+
 - Each component can fail independently without blocking others
+
 - Grey circle used for unavailable components
+
 - No filesystem fallback (intentional — prevents false health signals)
+
 - Summary template handles partial availability
 
 - [x] **Step 10: Final commit (if any fixes needed)**

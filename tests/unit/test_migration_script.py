@@ -1,8 +1,8 @@
 """Tests for scripts/migrate_config_to_project.py."""
+
 from __future__ import annotations
 
 import json
-import shutil
 from pathlib import Path
 
 import pytest
@@ -58,9 +58,7 @@ def _make_dest(tmp_path: Path) -> Path:
     dest = tmp_path / "mahavishnu"
     dest.mkdir()
     (dest / ".claude").mkdir()
-    (dest / ".claude" / "settings.local.json").write_text(
-        json.dumps({"additionalDirectories": []})
-    )
+    (dest / ".claude" / "settings.local.json").write_text(json.dumps({"additionalDirectories": []}))
     return dest
 
 
@@ -88,9 +86,7 @@ def test_full_migration_copies_agents(fake_home, tmp_path):
     dest_claude = dest / ".claude"
     dest_claude.mkdir()
     (dest_claude / "settings.local.json").write_text(
-        json.dumps(
-            {"additionalDirectories": [str(fake_home / ".claude"), "/other/path"]}
-        )
+        json.dumps({"additionalDirectories": [str(fake_home / ".claude"), "/other/path"]})
     )
 
     from migrate_config_to_project import MigrationRunner
@@ -151,9 +147,7 @@ def test_additional_directories_updated(fake_home, tmp_path):
     dest.mkdir()
     (dest / ".claude").mkdir()
     (dest / ".claude" / "settings.local.json").write_text(
-        json.dumps(
-            {"additionalDirectories": [str(fake_home / ".claude"), "/keep/me"]}
-        )
+        json.dumps({"additionalDirectories": [str(fake_home / ".claude"), "/keep/me"]})
     )
 
     from migrate_config_to_project import MigrationRunner

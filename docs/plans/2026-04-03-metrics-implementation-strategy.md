@@ -24,9 +24,9 @@ Mahavishnu now exposes a valid Prometheus `/metrics` endpoint, but the overall m
 The core strategic decision is:
 
 1. Use OpenTelemetry as the canonical instrumentation model.
-2. Use one Mahavishnu metrics surface for scrape exposure.
-3. Treat separate ad hoc metric servers as transitional and remove them once consolidated.
-4. Standardize a small ecosystem metric contract before expanding dashboards and alerts.
+1. Use one Mahavishnu metrics surface for scrape exposure.
+1. Treat separate ad hoc metric servers as transitional and remove them once consolidated.
+1. Standardize a small ecosystem metric contract before expanding dashboards and alerts.
 
 ## Current State
 
@@ -45,6 +45,7 @@ The core strategic decision is:
 - `monitoring/metrics.py` defines a broad shared registry but is only partially adopted
 
 Result:
+
 - there is no single trustworthy answer to "where all Mahavishnu metrics live"
 
 ### 2. OTEL is present but too narrow
@@ -52,6 +53,7 @@ Result:
 `mahavishnu/core/observability.py` emits only a small set of workflow-centric metrics.
 
 Result:
+
 - key orchestrator behavior is still invisible:
   - queue depth
   - retry and timeout rates
@@ -65,6 +67,7 @@ Result:
 - `config/otel-collector-config.yaml` scrapes only a very limited subset
 
 Result:
+
 - config implies ecosystem observability that is not yet verified in runtime
 
 ### 4. Session-Buddy metrics bridge is likely broken
@@ -77,6 +80,7 @@ Result:
 But current settings use nested configuration structures.
 
 Result:
+
 - one of the intended cross-service telemetry bridges probably does not start correctly
 
 ### 5. Dashboards and alerts are ahead of the data
@@ -84,16 +88,17 @@ Result:
 Dashboard queries and scrape config were written for an intended final architecture, not the current live contract.
 
 Result:
+
 - dashboards may render, but they are not yet a trustworthy operational surface
 
 ## Strategic Goals
 
 1. Make Mahavishnu metrics trustworthy and complete enough for daily operation.
-2. Establish one canonical metrics path for Mahavishnu.
-3. Make OTEL the authoritative instrumentation model.
-4. Define a minimal ecosystem metrics contract that other Bodai services can implement consistently.
-5. Ensure dashboards and alerts only depend on verified metrics.
-6. Build validation into CI and local smoke testing so regressions are caught early.
+1. Establish one canonical metrics path for Mahavishnu.
+1. Make OTEL the authoritative instrumentation model.
+1. Define a minimal ecosystem metrics contract that other Bodai services can implement consistently.
+1. Ensure dashboards and alerts only depend on verified metrics.
+1. Build validation into CI and local smoke testing so regressions are caught early.
 
 ## Non-Goals
 
@@ -346,13 +351,13 @@ Tasks:
    - `core/task_metrics.py`
    - `websocket/metrics.py`
    - `core/observability.py`
-2. Classify each source as:
+1. Classify each source as:
    - keep and integrate
    - rewrite into shared registry
    - deprecate
-3. Stop treating the separate routing metrics port as a first-class endpoint.
-4. Move routing metrics onto the main metrics surface.
-5. Ensure all retained Prometheus-native metrics use the same default registry.
+1. Stop treating the separate routing metrics port as a first-class endpoint.
+1. Move routing metrics onto the main metrics surface.
+1. Ensure all retained Prometheus-native metrics use the same default registry.
 
 Acceptance criteria:
 
@@ -369,10 +374,10 @@ Objective:
 Tasks:
 
 1. Add workflow lifecycle counters and duration histograms.
-2. Add queue depth, wait time, and concurrency metrics.
-3. Add dependency request and failure metrics around external service calls.
-4. Add MCP tool call and latency metrics.
-5. Add worker and pool execution metrics.
+1. Add queue depth, wait time, and concurrency metrics.
+1. Add dependency request and failure metrics around external service calls.
+1. Add MCP tool call and latency metrics.
+1. Add worker and pool execution metrics.
 
 Acceptance criteria:
 
@@ -391,13 +396,13 @@ Objective:
 Tasks:
 
 1. Align poller config with the real settings model.
-2. Add startup-time validation that logs effective poller config.
-3. Instrument poll cycles:
+1. Add startup-time validation that logs effective poller config.
+1. Instrument poll cycles:
    - poll count
    - poll latency
    - failures
    - freshness
-4. Add tests for:
+1. Add tests for:
    - config parsing
    - enabled/disabled startup behavior
    - failure and circuit breaker behavior
@@ -417,13 +422,13 @@ Objective:
 Tasks:
 
 1. Audit each service in `monitoring/prometheus.yml`.
-2. Mark each target as:
+1. Mark each target as:
    - verified metrics endpoint
    - planned but not yet implemented
    - remove from default scrape config
-3. Narrow default scrape config to verified targets only.
-4. Add optional profiles or commented blocks for planned services.
-5. Align OTEL collector scrape config with the same truth set.
+1. Narrow default scrape config to verified targets only.
+1. Add optional profiles or commented blocks for planned services.
+1. Align OTEL collector scrape config with the same truth set.
 
 Acceptance criteria:
 
@@ -439,15 +444,15 @@ Objective:
 Tasks:
 
 1. Audit all Grafana dashboards against actual emitted metric names.
-2. Remove references to deprecated metric surfaces and ports.
-3. Define first operational alert set for Mahavishnu:
+1. Remove references to deprecated metric surfaces and ports.
+1. Define first operational alert set for Mahavishnu:
    - metrics endpoint down
    - workflow failure rate spike
    - queue age too high
    - dependency error rate too high
    - websocket error rate spike
    - poller stale
-4. Add runbook notes for each alert.
+1. Add runbook notes for each alert.
 
 Acceptance criteria:
 
@@ -463,13 +468,13 @@ Objective:
 Tasks:
 
 1. Add unit tests for metrics registration and export.
-2. Add smoke tests for `/metrics` content and key metric presence.
-3. Add contract tests for naming and label expectations.
-4. Add a local validation command for operators:
+1. Add smoke tests for `/metrics` content and key metric presence.
+1. Add contract tests for naming and label expectations.
+1. Add a local validation command for operators:
    - scrape endpoint check
    - metric presence check
    - collector config consistency check
-5. Optionally add snapshot-style tests for exported exposition text for critical metrics.
+1. Optionally add snapshot-style tests for exported exposition text for critical metrics.
 
 Acceptance criteria:
 
@@ -625,21 +630,21 @@ Add or update tests for:
 Provide documented commands to verify:
 
 1. Mahavishnu `/metrics` reachable
-2. key metric families present
-3. Prometheus target healthy
-4. Grafana panel queries returning data
+1. key metric families present
+1. Prometheus target healthy
+1. Grafana panel queries returning data
 
 ## Success Criteria
 
 The metrics system is considered in good shape when all of the following are true:
 
 1. Mahavishnu has one supported metrics endpoint.
-2. Routing metrics are no longer split onto a separate metrics port.
-3. Workflow lifecycle, queue, dependency, MCP tool, and transport metrics are emitted.
-4. Session-Buddy poller configuration is correct and measurable.
-5. Prometheus default scrape config contains only verified targets.
-6. Dashboards query live, verified metrics.
-7. Health and metrics contract tests pass in CI.
+1. Routing metrics are no longer split onto a separate metrics port.
+1. Workflow lifecycle, queue, dependency, MCP tool, and transport metrics are emitted.
+1. Session-Buddy poller configuration is correct and measurable.
+1. Prometheus default scrape config contains only verified targets.
+1. Dashboards query live, verified metrics.
+1. Health and metrics contract tests pass in CI.
 
 ## Risks
 

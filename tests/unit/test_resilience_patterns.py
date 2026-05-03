@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import time
-from datetime import datetime, timedelta, UTC
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -25,7 +24,6 @@ from mahavishnu.core.resilience import (
     circuit_breaker,
     retry_async,
 )
-
 
 # ---------------------------------------------------------------------------
 # RetryPolicy
@@ -231,8 +229,10 @@ class TestCircuitBreakerCall:
     @pytest.mark.asyncio
     async def test_call_success(self):
         cb = CircuitBreaker(threshold=3)
+
         async def ok():
             return "result"
+
         result = await cb.call(ok)
         assert result == "result"
         assert cb.failure_count == 0
@@ -240,8 +240,10 @@ class TestCircuitBreakerCall:
     @pytest.mark.asyncio
     async def test_call_records_failure(self):
         cb = CircuitBreaker(threshold=3)
+
         async def fail():
             raise RuntimeError("err")
+
         with pytest.raises(RuntimeError):
             await cb.call(fail)
         assert cb.failure_count == 1
@@ -250,16 +252,20 @@ class TestCircuitBreakerCall:
     async def test_call_blocked_when_open(self):
         cb = CircuitBreaker(threshold=1, timeout=60)
         cb.record_failure()
+
         async def ok():
             return "result"
+
         with pytest.raises(Exception, match="open"):
             await cb.call(ok)
 
     @pytest.mark.asyncio
     async def test_call_works_with_sync_function(self):
         cb = CircuitBreaker(threshold=3)
+
         def sync_ok():
             return "sync_result"
+
         result = await cb.call(sync_ok)
         assert result == "sync_result"
         assert cb.failure_count == 0
@@ -267,8 +273,10 @@ class TestCircuitBreakerCall:
     @pytest.mark.asyncio
     async def test_call_sync_failure_records(self):
         cb = CircuitBreaker(threshold=3)
+
         def sync_fail():
             raise ValueError("v")
+
         with pytest.raises(ValueError):
             await cb.call(sync_fail)
         assert cb.failure_count == 1
@@ -537,10 +545,16 @@ class TestErrorRecoveryManagerHeal:
     @pytest.mark.asyncio
     async def test_heal_workflow_success(self):
         app = _mock_app()
-        app.workflow_state_manager.list_workflows = AsyncMock(return_value=[
-            {"id": "wf1", "task": {"adapter": "prefect", "id": "t1"}, "repos": ["/repo1"],
-            "errors": []},
-        ])
+        app.workflow_state_manager.list_workflows = AsyncMock(
+            return_value=[
+                {
+                    "id": "wf1",
+                    "task": {"adapter": "prefect", "id": "t1"},
+                    "repos": ["/repo1"],
+                    "errors": [],
+                },
+            ]
+        )
         app.execute_workflow = AsyncMock(return_value={"status": "ok"})
         app.workflow_state_manager.update = AsyncMock()
 
@@ -553,9 +567,11 @@ class TestErrorRecoveryManagerHeal:
     @pytest.mark.asyncio
     async def test_heal_workflow_too_many_errors(self):
         app = _mock_app()
-        app.workflow_state_manager.list_workflows = AsyncMock(return_value=[
-            {"id": "wf1", "errors": ["e"] * 6, "task": {"adapter": "prefect"}, "repos": ["/r"]},
-        ])
+        app.workflow_state_manager.list_workflows = AsyncMock(
+            return_value=[
+                {"id": "wf1", "errors": ["e"] * 6, "task": {"adapter": "prefect"}, "repos": ["/r"]},
+            ]
+        )
 
         mgr = ErrorRecoveryManager(app)
         await mgr.monitor_and_heal_workflows()
@@ -564,9 +580,11 @@ class TestErrorRecoveryManagerHeal:
     @pytest.mark.asyncio
     async def test_heal_workflow_missing_task(self):
         app = _mock_app()
-        app.workflow_state_manager.list_workflows = AsyncMock(return_value=[
-            {"id": "wf1", "errors": [], "task": {}, "repos": []},
-        ])
+        app.workflow_state_manager.list_workflows = AsyncMock(
+            return_value=[
+                {"id": "wf1", "errors": [], "task": {}, "repos": []},
+            ]
+        )
 
         mgr = ErrorRecoveryManager(app)
         await mgr.monitor_and_heal_workflows()
@@ -586,9 +604,11 @@ class TestErrorRecoveryManagerStuckWorkflows:
     async def test_stuck_workflow_marked_failed(self):
         app = _mock_app()
         stuck_time = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
-        app.workflow_state_manager.list_workflows = AsyncMock(return_value=[
-            {"id": "wf_stuck", "updated_at": stuck_time},
-        ])
+        app.workflow_state_manager.list_workflows = AsyncMock(
+            return_value=[
+                {"id": "wf_stuck", "updated_at": stuck_time},
+            ]
+        )
         app.workflow_state_manager.update = AsyncMock()
 
         mgr = ErrorRecoveryManager(app)
@@ -603,9 +623,11 @@ class TestErrorRecoveryManagerStuckWorkflows:
     async def test_recent_workflow_not_marked(self):
         app = _mock_app()
         recent_time = datetime.now(UTC).isoformat()
-        app.workflow_state_manager.list_workflows = AsyncMock(return_value=[
-            {"id": "wf_ok", "updated_at": recent_time},
-        ])
+        app.workflow_state_manager.list_workflows = AsyncMock(
+            return_value=[
+                {"id": "wf_ok", "updated_at": recent_time},
+            ]
+        )
 
         mgr = ErrorRecoveryManager(app)
         await mgr._check_stuck_workflows()
@@ -614,9 +636,11 @@ class TestErrorRecoveryManagerStuckWorkflows:
     @pytest.mark.asyncio
     async def test_stuck_workflow_bad_timestamp_skipped(self):
         app = _mock_app()
-        app.workflow_state_manager.list_workflows = AsyncMock(return_value=[
-            {"id": "wf_bad", "updated_at": "not-a-date"},
-        ])
+        app.workflow_state_manager.list_workflows = AsyncMock(
+            return_value=[
+                {"id": "wf_bad", "updated_at": "not-a-date"},
+            ]
+        )
 
         mgr = ErrorRecoveryManager(app)
         await mgr._check_stuck_workflows()  # no exception
@@ -684,7 +708,7 @@ class TestGetResilienceMetrics:
     """Line 176: get_resilience_metrics() returns the shared singleton."""
 
     def test_returns_shared_instance(self):
-        from mahavishnu.core.resilience import get_resilience_metrics, RESILIENCE_METRICS
+        from mahavishnu.core.resilience import RESILIENCE_METRICS, get_resilience_metrics
 
         assert get_resilience_metrics() is RESILIENCE_METRICS
 
@@ -873,8 +897,13 @@ class TestRetryOperationExhausted:
             raise ConnectionError("always fails")
 
         result = await mgr._retry_operation(
-            always_fail, (), {}, max_attempts=3, backoff_factor=1.0,
-            workflow_id="wf1", repo_path="/repo",
+            always_fail,
+            (),
+            {},
+            max_attempts=3,
+            backoff_factor=1.0,
+            workflow_id="wf1",
+            repo_path="/repo",
         )
         assert result["success"] is False
         assert result["recovered"] is False
@@ -895,8 +924,13 @@ class TestRetryOperationExhausted:
             return "success"
 
         result = await mgr._retry_operation(
-            flaky, (), {}, max_attempts=3, backoff_factor=1.0,
-            workflow_id="wf1", repo_path="/repo",
+            flaky,
+            (),
+            {},
+            max_attempts=3,
+            backoff_factor=1.0,
+            workflow_id="wf1",
+            repo_path="/repo",
         )
         assert result["success"] is True
         assert result["result"] == "success"
@@ -911,14 +945,16 @@ class TestHealWorkflowFailure:
     @pytest.mark.asyncio
     async def test_heal_workflow_execution_fails(self):
         app = _mock_app()
-        app.workflow_state_manager.list_workflows = AsyncMock(return_value=[
-            {
-                "id": "wf1",
-                "task": {"adapter": "prefect", "id": "t1"},
-                "repos": ["/repo1"],
-                "errors": [],
-            },
-        ])
+        app.workflow_state_manager.list_workflows = AsyncMock(
+            return_value=[
+                {
+                    "id": "wf1",
+                    "task": {"adapter": "prefect", "id": "t1"},
+                    "repos": ["/repo1"],
+                    "errors": [],
+                },
+            ]
+        )
         # execute_workflow raises — so execute_with_resilience recovery fails
         app.execute_workflow = AsyncMock(side_effect=RuntimeError("unrecoverable"))
 
@@ -930,14 +966,16 @@ class TestHealWorkflowFailure:
     @pytest.mark.asyncio
     async def test_heal_workflow_exception_during_heal(self):
         app = _mock_app()
-        app.workflow_state_manager.list_workflows = AsyncMock(return_value=[
-            {
-                "id": "wf2",
-                "task": {"adapter": "prefect", "id": "t2"},
-                "repos": ["/repo1"],
-                "errors": [],
-            },
-        ])
+        app.workflow_state_manager.list_workflows = AsyncMock(
+            return_value=[
+                {
+                    "id": "wf2",
+                    "task": {"adapter": "prefect", "id": "t2"},
+                    "repos": ["/repo1"],
+                    "errors": [],
+                },
+            ]
+        )
         # execute_workflow raises an exception that propagates past recovery
         app.execute_workflow = AsyncMock(side_effect=MemoryError("oom during heal"))
         app.workflow_state_manager.update = AsyncMock(side_effect=RuntimeError("db down"))
@@ -1041,8 +1079,8 @@ class TestStartMonitoringService:
             # Second call: 60s timeout in the except block -> TimeoutError
             # Third call: normal 300s timeout -> event is set, returns
             mock_wait.side_effect = [
-                asyncio.TimeoutError(),
-                asyncio.TimeoutError(),
+                TimeoutError(),
+                TimeoutError(),
                 None,  # shutdown event set, returns immediately
             ]
 

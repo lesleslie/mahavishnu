@@ -11,15 +11,15 @@ Version: 3.1
 Related: Security Auditor P0-3 - task-specific audit logging
 """
 
+from datetime import UTC, datetime
+from enum import StrEnum
 import logging
-from datetime import datetime, timezone
-from enum import Enum
 from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
 
-class TaskEventType(str, Enum):
+class TaskEventType(StrEnum):
     """Task event types for audit logging."""
 
     # Lifecycle events
@@ -139,12 +139,12 @@ class TaskAuditLogger:
         redacted_details = self._redact_sensitive_fields(details)
 
         # Add metadata
-        audit_entry = {
+        {
             "event_type": event_type.value,
             "task_id": task_id,
             "user_id": user_id,
             "details": redacted_details,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         audit_id = 0
@@ -162,7 +162,7 @@ class TaskAuditLogger:
                 event_type.value,
                 user_id,
                 redacted_details,
-                datetime.now(timezone.utc),
+                datetime.now(UTC),
             )
             audit_id = int(result.split()[-1]) if result else 0
 

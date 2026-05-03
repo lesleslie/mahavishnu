@@ -1,7 +1,6 @@
----
-name: orchestrate-workflow
-description: Use when orchestrating workflows across multiple repositories with Mahavishnu adapters (LlamaIndex, Prefect, Agno). Use when user asks to run workflows, sweep repositories, or execute orchestration tasks but hasn't specified adapter, targets, or validation approach.
----
+______________________________________________________________________
+
+## name: orchestrate-workflow description: Use when orchestrating workflows across multiple repositories with Mahavishnu adapters (LlamaIndex, Prefect, Agno). Use when user asks to run workflows, sweep repositories, or execute orchestration tasks but hasn't specified adapter, targets, or validation approach.
 
 # Orchestrate Workflow
 
@@ -11,8 +10,8 @@ description: Use when orchestrating workflows across multiple repositories with 
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| mahavishnu | 8680 | summary | mcp__mahavishnu__trigger_workflow, mcp__mahavishnu__get_workflow_status, mcp__mahavishnu__list_workflows | 60s |
-| crackerjack | 8676 | grep | mcp__crackerjack__crackerjack_run | 120s |
+| mahavishnu | 8680 | summary | mcp\_\_mahavishnu\_\_trigger_workflow, mcp\_\_mahavishnu\_\_get_workflow_status, mcp\_\_mahavishnu\_\_list_workflows | 60s |
+| crackerjack | 8676 | grep | mcp\_\_crackerjack\_\_crackerjack_run | 120s |
 
 Mahavishnu provides three orchestration adapters, each optimized for specific use cases. This skill guides you through selecting the right adapter, targeting appropriate repositories, and executing workflows with proper validation.
 
@@ -35,12 +34,14 @@ digraph orchestrate_decision {
 ```
 
 **Use when:**
+
 - User asks to "orchestrate", "run workflows", "sweep repos", "execute tasks"
 - User mentions specific adapters (LlamaIndex, Prefect, Agno) but unclear on process
 - User wants to coordinate operations across multiple repositories
 - User needs to choose between orchestration engines
 
 **Don't use when:**
+
 - Simple single-repository operations (use repo-specific commands)
 - Manual task execution without orchestration
 - Pool/worker management (use `manage-pools` skill)
@@ -54,6 +55,7 @@ digraph orchestrate_decision {
 | **Agno** | Agent execution, multi-step reasoning | Stub only - framework exists | `adapters.agno: true` |
 
 **Selection guidance:**
+
 - RAG/document workflows → LlamaIndex (only production-ready adapter)
 - Complex DAG orchestration → Prefect (requires implementation)
 - Agent-based workflows → Agno (requires implementation)
@@ -93,6 +95,7 @@ if not settings.adapters.llamaindex:
 ```
 
 **Available via MCP:**
+
 ```python
 await mcp.call_tool("mcp__mahavishnu__get_health", {})
 ```
@@ -113,6 +116,7 @@ mahavishnu list-repos --tag ml
 ```
 
 **Available via MCP:**
+
 ```python
 repos = await mcp.call_tool("mcp__mahavishnu__list_repos", {
     "role": "app",
@@ -160,6 +164,7 @@ stats = await mcp.call_tool("mcp__mahavishnu__get_workflow_statistics", {})
 ## Validation Checklist
 
 Before executing workflows:
+
 - [ ] Adapter enabled in `settings/mahavishnu.yaml`
 - [ ] Target repositories identified (role/tag query)
 - [ ] Adapter supports requested workflow type
@@ -167,6 +172,7 @@ Before executing workflows:
 - [ ] Required configuration loaded (Oneiric patterns)
 
 After workflow execution:
+
 - [ ] Workflow status is "completed" (not "failed" or "timeout")
 - [ ] Results aggregated from all target repositories
 - [ ] Errors logged and reviewed
@@ -185,11 +191,13 @@ After workflow execution:
 ## Real-World Impact
 
 **Before this skill:**
+
 - Users tried using Prefect for RAG workflows (not implemented)
 - Sweeps executed on all repos causing 60% failure rate
 - No validation led to 15-minute debug cycles
 
 **After this skill:**
+
 - Correct adapter selection 100% of the time
 - Targeted sweeps achieve 95% success rate
 - Validation reduces debugging by 80%

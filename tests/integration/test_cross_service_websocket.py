@@ -20,17 +20,14 @@ Services Tested:
 from __future__ import annotations
 
 import asyncio
-import time
-import uuid
 from collections.abc import AsyncGenerator
+import time
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mahavishnu.pools.websocket import WebSocketBroadcaster
 from mahavishnu.websocket.server import MahavishnuWebSocketServer
-
 
 # =============================================================================
 # WebSocket Server Configuration
@@ -86,6 +83,7 @@ WEBSOCKET_SERVERS = {
 # Test Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def mock_pool_manager() -> MagicMock:
     """Create mock pool manager for testing.
@@ -99,7 +97,9 @@ def mock_pool_manager() -> MagicMock:
 
 
 @pytest.fixture
-async def mahavishnu_server(mock_pool_manager: MagicMock) -> AsyncGenerator[MahavishnuWebSocketServer, None]:
+async def mahavishnu_server(
+    mock_pool_manager: MagicMock,
+) -> AsyncGenerator[MahavishnuWebSocketServer]:
     """Create Mahavishnu WebSocket server instance for testing.
 
     Args:
@@ -135,6 +135,7 @@ def event_recorder() -> dict[str, list[dict[str, Any]]]:
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
 
 def create_mock_websocket(
     event_recorder: dict[str, list[dict[str, Any]]],
@@ -178,6 +179,7 @@ def create_mock_websocket(
 # Service Discovery Tests
 # =============================================================================
 
+
 @pytest.mark.integration
 class TestServiceDiscovery:
     """Test service discovery between WebSocket servers."""
@@ -213,9 +215,7 @@ class TestServiceDiscovery:
         # Arrange
         mahavishnu_config = WEBSOCKET_SERVERS["mahavishnu"]
         other_services = {
-            name: config
-            for name, config in WEBSOCKET_SERVERS.items()
-            if name != "mahavishnu"
+            name: config for name, config in WEBSOCKET_SERVERS.items() if name != "mahavishnu"
         }
 
         # Act & Assert
@@ -262,6 +262,7 @@ class TestServiceDiscovery:
 # =============================================================================
 # Cross-Service Communication Tests
 # =============================================================================
+
 
 @pytest.mark.integration
 class TestCrossServiceCommunication:
@@ -442,6 +443,7 @@ class TestCrossServiceCommunication:
 # Message Routing Tests
 # =============================================================================
 
+
 @pytest.mark.integration
 class TestMessageRouting:
     """Test message routing across different WebSocket servers."""
@@ -542,6 +544,7 @@ class TestMessageRouting:
 # Event Correlation Tests
 # =============================================================================
 
+
 @pytest.mark.integration
 class TestEventCorrelation:
     """Test event correlation across different services."""
@@ -621,9 +624,7 @@ class TestEventCorrelation:
         assert "workflow:workflow_abc123" in event_recorder
         events = event_recorder["workflow:workflow_abc123"]
         assert len(events) >= 1
-        completion_event = next(
-            (e for e in events if e["event"] == "workflow.completed"), None
-        )
+        completion_event = next((e for e in events if e["event"] == "workflow.completed"), None)
         assert completion_event is not None
         assert completion_event["data"]["workflow_id"] == "workflow_abc123"
 
@@ -676,6 +677,7 @@ class TestEventCorrelation:
 # =============================================================================
 # Service Mesh Tests
 # =============================================================================
+
 
 @pytest.mark.integration
 class TestServiceMesh:
@@ -819,12 +821,15 @@ class TestServiceMesh:
 # Failure Scenario Tests
 # =============================================================================
 
+
 @pytest.mark.integration
 class TestFailureScenarios:
     """Test failure scenarios and recovery."""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip("Test has timing/xdist issues - covered by test_network_partition_simulation and test_reconnection_after_service_restart")
+    @pytest.mark.skip(
+        "Test has timing/xdist issues - covered by test_network_partition_simulation and test_reconnection_after_service_restart"
+    )
     async def test_service_goes_down_mid_test(self):
         """Test behavior when one service goes down during communication."""
         # Arrange
@@ -841,18 +846,18 @@ class TestFailureScenarios:
         # Create 3 clients with clear IDs
         conn0_client = MagicMock()
         conn0_client.send = AsyncMock()
-        
+
         conn1_client = MagicMock()
         conn1_client.send = AsyncMock()
-        
+
         conn2_client = MagicMock()
         conn2_client.send = AsyncMock()
-        
+
         # Add to server
         server.connections["conn0"] = conn0_client
         server.connections["conn1"] = conn1_client
         server.connections["conn2"] = conn2_client
-        
+
         # Create room
         server.connection_rooms["test"] = {"conn0", "conn1", "conn2"}
 
@@ -882,18 +887,28 @@ class TestFailureScenarios:
 
         # Broadcast again (conn1 should not receive this)
         # Debug: check state before second broadcast
-        print(f"DEBUG before 2nd broadcast: room={server.connection_rooms['test']}, conns={list(server.connections.keys())}")
-        
+        print(
+            f"DEBUG before 2nd broadcast: room={server.connection_rooms['test']}, conns={list(server.connections.keys())}"
+        )
+
         event2 = WebSocketProtocol.create_event("test.event", {"seq": 2})
         await server.broadcast_to_room("test", event2)
-        
+
         # Debug: check call counts after
-        print(f"DEBUG after 2nd broadcast: conn0={conn0_client.send.call_count}, conn1={conn1_client.send.call_count}, conn2={conn2_client.send.call_count}")
+        print(
+            f"DEBUG after 2nd broadcast: conn0={conn0_client.send.call_count}, conn1={conn1_client.send.call_count}, conn2={conn2_client.send.call_count}"
+        )
 
         # Assert - remaining clients should have 2 calls, conn1 should have 1
-        assert conn0_client.send.call_count == 1, f"conn0 has {conn0_client.send.call_count} calls, expected 1"
-        assert conn1_client.send.call_count == 2, f"conn2 has {clients[1].send.call_count} calls, expected 2"
-        assert conn2_client.send.call_count == 2, f"conn3 has {clients[2].send.call_count} calls, expected 2"
+        assert conn0_client.send.call_count == 1, (
+            f"conn0 has {conn0_client.send.call_count} calls, expected 1"
+        )
+        assert conn1_client.send.call_count == 2, (
+            f"conn2 has {clients[1].send.call_count} calls, expected 2"
+        )
+        assert conn2_client.send.call_count == 2, (
+            f"conn3 has {clients[2].send.call_count} calls, expected 2"
+        )
 
         # Cleanup
         server.connections.clear()
@@ -929,9 +944,9 @@ class TestFailureScenarios:
             group_b.append(client)
             server.connections[f"group_b_{i}"] = client
 
-        server.connection_rooms["test"] = {
-            f"group_a_{i}" for i in range(3)
-        } | {f"group_b_{i}" for i in range(3)}
+        server.connection_rooms["test"] = {f"group_a_{i}" for i in range(3)} | {
+            f"group_b_{i}" for i in range(3)
+        }
 
         # Act - Broadcast to all
         from mcp_common.websocket import WebSocketProtocol
@@ -1011,6 +1026,7 @@ class TestFailureScenarios:
 # =============================================================================
 # Performance Tests
 # =============================================================================
+
 
 @pytest.mark.integration
 class TestPerformance:

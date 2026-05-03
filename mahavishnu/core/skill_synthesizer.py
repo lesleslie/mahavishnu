@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from mahavishnu.core.evidence_retriever import EvidenceCluster, RetrievedEvidence
 from mahavishnu.core.skill_governance import SkillDraft, SkillPromotionState
 from mahavishnu.core.skill_security import sanitize_skill_body
+
+if TYPE_CHECKING:
+    from mahavishnu.core.evidence_retriever import EvidenceCluster, RetrievedEvidence
 
 logger = logging.getLogger(__name__)
 
@@ -151,8 +153,7 @@ class SkillSynthesizer:
                     goal_keywords.add(word)
 
         frequent_keywords = [
-            kw for kw in goal_keywords
-            if sum(1 for g in all_goals if kw in g.lower()) >= 2
+            kw for kw in goal_keywords if sum(1 for g in all_goals if kw in g.lower()) >= 2
         ]
         for kw in frequent_keywords[:3]:
             conditions.append(f"Goal mentions '{kw}'")

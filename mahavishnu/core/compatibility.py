@@ -259,7 +259,10 @@ def _check_tool_versions() -> ContractCheck:
         name="tool_version_registry",
         component="mcp/tool_versions",
         passed=not missing,
-        details={"missing": missing, "versions": {name: versions.get(name) for name in required_versions}},
+        details={
+            "missing": missing,
+            "versions": {name: versions.get(name) for name in required_versions},
+        },
     )
 
 

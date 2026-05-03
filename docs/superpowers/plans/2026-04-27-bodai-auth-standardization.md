@@ -8,7 +8,7 @@
 
 **Tech Stack:** PyJWT (already in mcp-common deps), Oneiric `SecretValueCache` for TTL caching, Python `logging` for structured audit output, Pydantic for `AuthConfig` validation.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -41,13 +41,16 @@
 | Dhara | `dhara/mcp/auth.py` | Delegate JWT/RBAC/audit core to mcp-common; keep `CHECKPOINT`/`RESTORE` permissions as Dhara-local extensions |
 | Dhara | `dhara/backup/storage.py` | Replace `S3Storage`/`GCSStorage`/`AzureBlobStorage` with Oneiric storage adapters (`S3StorageAdapter`, `GCSStorageAdapter`, `AzureBlobStorageAdapter`) |
 
----
+______________________________________________________________________
 
 ## Task 1: Add the `mcp_common/auth/` skeleton
 
 **Files:**
+
 - Create: `mcp_common/auth/__init__.py`
+
 - Create: `mcp_common/auth/exceptions.py`
+
 - Test: `tests/auth/test_exceptions.py`
 
 - [x] **Step 1: Write the failing import test**
@@ -166,12 +169,14 @@ git add mcp_common/auth/ tests/auth/
 git commit -m "feat(auth): add mcp_common/auth package skeleton with exception hierarchy"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Add Permission enum and Role definitions
 
 **Files:**
+
 - Create: `mcp_common/auth/permissions.py`
+
 - Test: `tests/auth/test_permissions.py`
 
 - [x] **Step 1: Write the failing test**
@@ -286,12 +291,14 @@ git add mcp_common/auth/permissions.py mcp_common/auth/__init__.py tests/auth/te
 git commit -m "feat(auth): add Permission enum and Role definitions"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Add Service Identity (KNOWN_SERVICES + issuer/audience helpers)
 
 **Files:**
+
 - Create: `mcp_common/auth/identity.py`
+
 - Test: `tests/auth/test_identity.py`
 
 - [x] **Step 1: Write the failing test**
@@ -396,12 +403,14 @@ git add mcp_common/auth/identity.py mcp_common/auth/__init__.py tests/auth/test_
 git commit -m "feat(auth): add KNOWN_SERVICES registry and issuer/audience verification"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Add JWT core (create + verify)
 
 **Files:**
+
 - Create: `mcp_common/auth/core.py`
+
 - Test: `tests/auth/test_core.py`
 
 - [x] **Step 1: Write the failing tests**
@@ -630,12 +639,14 @@ git add mcp_common/auth/core.py mcp_common/auth/__init__.py tests/auth/test_core
 git commit -m "feat(auth): add JWT create/verify with issuer, audience, and permission claims"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: Add AuthConfig (secret loading + Oneiric integration)
 
 **Files:**
+
 - Create: `mcp_common/auth/config.py`
+
 - Test: `tests/auth/test_config.py`
 
 - [x] **Step 1: Write the failing tests**
@@ -792,12 +803,14 @@ git add mcp_common/auth/config.py mcp_common/auth/__init__.py tests/auth/test_co
 git commit -m "feat(auth): add AuthConfig with env-var secret loading and placeholder rejection"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: Add `@require_auth()` decorator
 
 **Files:**
+
 - Create: `mcp_common/auth/decorator.py`
+
 - Test: `tests/auth/test_decorator.py`
 
 - [x] **Step 1: Write the failing tests**
@@ -895,10 +908,10 @@ async def test_denied_token_emits_audit_event(config, read_token):
         def emit(self, event):
             received.append(event)
 
-    alog = AuditLogger()
-    alog.register_sink(CaptureSink())
+    along = AuditLogger()
+    along.register_sink(CaptureSink())
 
-    @require_auth(Permission.WRITE, config=config, service_name="test-service", audit_logger=alog)
+    @require_auth(Permission.WRITE, config=config, service_name="test-service", audit_logger=along)
     async def my_tool(**kwargs):
         return "ok"
 
@@ -952,7 +965,7 @@ def require_auth(
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             cfg = config
             svc = service_name or (cfg.service_name if cfg else "unknown")
-            alog = audit_logger or _default_audit
+            along = audit_logger or _default_audit
 
             if cfg is None or not cfg.enabled:
                 logger.debug("auth disabled for %s — allowing anonymous", func.__name__)
@@ -960,7 +973,7 @@ def require_auth(
 
             token_str = kwargs.pop("__auth_token__", None)
             if token_str is None:
-                alog.emit(AuthAuditEvent(
+                along.emit(AuthAuditEvent(
                     timestamp=datetime.now(UTC), service=svc,
                     caller_service="unknown", caller_id="unknown",
                     action=func.__name__, permission=permission,
@@ -972,7 +985,7 @@ def require_auth(
             try:
                 payload = verify_token(token_str, secret=cfg.secret, expected_audience=svc)
             except AuthError as exc:
-                alog.emit(AuthAuditEvent(
+                along.emit(AuthAuditEvent(
                     timestamp=datetime.now(UTC), service=svc,
                     caller_service="unknown", caller_id="unknown",
                     action=func.__name__, permission=permission,
@@ -982,7 +995,7 @@ def require_auth(
                 raise
 
             if permission not in payload.permissions:
-                alog.emit(AuthAuditEvent(
+                along.emit(AuthAuditEvent(
                     timestamp=datetime.now(UTC), service=svc,
                     caller_service=payload.issuer, caller_id=payload.subject,
                     action=func.__name__, permission=permission,
@@ -994,7 +1007,7 @@ def require_auth(
                     f"caller has {[p.value for p in payload.permissions]}"
                 )
 
-            alog.emit(AuthAuditEvent(
+            along.emit(AuthAuditEvent(
                 timestamp=datetime.now(UTC), service=svc,
                 caller_service=payload.issuer, caller_id=payload.subject,
                 action=func.__name__, permission=permission,
@@ -1039,12 +1052,14 @@ git add mcp_common/auth/decorator.py mcp_common/auth/__init__.py tests/auth/test
 git commit -m "feat(auth): add @require_auth() decorator with Permission-level enforcement"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: Add AuthAuditEvent and AuditLogger
 
 **Files:**
+
 - Create: `mcp_common/auth/audit.py`
+
 - Test: `tests/auth/test_audit.py`
 
 - [x] **Step 1: Write the failing tests**
@@ -1240,11 +1255,12 @@ git add mcp_common/auth/audit.py mcp_common/auth/__init__.py tests/auth/test_aud
 git commit -m "feat(auth): add AuthAuditEvent and AuditLogger with custom sink support"
 ```
 
----
+______________________________________________________________________
 
 ## Task 8: Migrate Crackerjack
 
 **Files:**
+
 - Modify: `crackerjack/crackerjack/websocket/auth.py`
 - Test: `crackerjack/tests/unit/test_websocket_auth.py` (create if not exists)
 
@@ -1361,11 +1377,12 @@ git add crackerjack/websocket/auth.py tests/unit/test_websocket_auth.py
 git commit -m "feat(auth): delegate websocket auth to mcp_common.auth"
 ```
 
----
+______________________________________________________________________
 
 ## Task 9: Migrate Akosha
 
 **Files:**
+
 - Modify: `akosha/akosha/mcp/auth.py`
 - Test: `akosha/tests/unit/test_mcp_auth.py` (create if not exists)
 
@@ -1556,11 +1573,12 @@ git add akosha/mcp/auth.py tests/unit/test_mcp_auth.py
 git commit -m "feat(auth): delegate MCP auth to mcp_common.auth, keep MCPAuthError backward compat"
 ```
 
----
+______________________________________________________________________
 
 ## Task 10: Migrate Session-Buddy
 
 **Files:**
+
 - Modify: `session_buddy/mcp/auth.py`
 - Test: `session_buddy/tests/unit/test_mcp_auth.py` (create if not exists)
 
@@ -1756,11 +1774,12 @@ git add session_buddy/mcp/auth.py tests/unit/test_mcp_auth.py
 git commit -m "feat(auth): delegate MCP auth to mcp_common.auth, keep full backward-compat API"
 ```
 
----
+______________________________________________________________________
 
 ## Task 11: Migrate Mahavishnu
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/auth.py`
 - Test: `tests/unit/test_mcp_auth.py` (create if not exists)
 
@@ -1918,11 +1937,12 @@ git add mahavishnu/mcp/auth.py tests/unit/test_mcp_auth.py
 git commit -m "feat(auth): delegate MCP auth to mcp_common.auth, keep require_mcp_auth and CredentialManager"
 ```
 
----
+______________________________________________________________________
 
 ## Task 12: Migrate Dhara — auth module
 
 **Files:**
+
 - Modify: `dhara/dhara/mcp/auth.py`
 - Test: `dhara/tests/unit/test_mcp_auth.py` (create)
 
@@ -2059,11 +2079,12 @@ git add dhara/mcp/auth.py tests/unit/test_mcp_auth.py
 git commit -m "feat(auth): delegate Dhara MCP auth to mcp_common.auth, keep DharaPermission extensions"
 ```
 
----
+______________________________________________________________________
 
 ## Task 13: Migrate Dhara backup storage to Oneiric storage adapters
 
 **Files:**
+
 - Modify: `dhara/dhara/backup/storage.py`
 - Modify: `dhara/dhara/backup/manager.py` (update import)
 - Test: `dhara/tests/unit/test_backup_storage.py`
@@ -2146,6 +2167,7 @@ class StorageAdapterFactory:
 - [x] **Step 3: Update imports in backup manager**
 
 Find all files that import the old storage classes:
+
 ```bash
 grep -rn "from.*backup.storage import\|from.*backup import.*Storage\|S3Storage\|GCSStorage\|AzureBlobStorage" /Users/les/Projects/dhara/dhara/ --include="*.py" | grep -v __pycache__
 ```
@@ -2190,11 +2212,12 @@ git add dhara/backup/storage.py dhara/backup/manager.py tests/unit/test_backup_s
 git commit -m "feat(backup): replace custom S3/GCS/Azure storage with Oneiric storage adapters"
 ```
 
----
+______________________________________________________________________
 
 ## Task 14: Integration smoke test + validation script
 
 **Files:**
+
 - Create: `tests/integration/test_inter_service_auth.py` (in mcp-common)
 
 - [x] **Step 1: Write integration test**
@@ -2287,7 +2310,7 @@ git add tests/integration/test_inter_service_auth.py
 git commit -m "test(auth): add inter-service auth integration tests"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 

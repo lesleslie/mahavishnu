@@ -1,17 +1,18 @@
 """Tests for core/slo.py — SLO calculations, thresholds, and reporting."""
+
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from mahavishnu.core.slo import (
-    SLOCalculator,
     SLO_THRESHOLDS,
+    SLOCalculator,
     check_slo_threshold,
     generate_slo_report,
+    record_event_delivered,
+    record_event_published,
     record_poll,
     record_reindex,
-    record_event_published,
-    record_event_delivered,
     set_service_up,
 )
 

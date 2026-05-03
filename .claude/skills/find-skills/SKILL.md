@@ -1,7 +1,6 @@
----
-name: find-skills
-description: Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is there a skill that can...", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.
----
+______________________________________________________________________
+
+## name: find-skills description: Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is there a skill that can...", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.
 
 # Find Skills
 
@@ -11,7 +10,7 @@ This skill helps you discover and install skills from the open agent skills ecos
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| session-buddy | 8678 | grep | mcp__session-buddy__search_conversations, mcp__session-buddy__search_entities | 30s |
+| session-buddy | 8678 | grep | mcp\_\_session-buddy\_\_search_conversations, mcp\_\_session-buddy\_\_search_entities | 30s |
 
 ## When to Use This Skill
 
@@ -44,8 +43,8 @@ The Skills CLI (`npx skills`) is the package manager for the open agent skills e
 When a user asks for help with something, identify:
 
 1. The domain (e.g., React, testing, design, deployment)
-2. The specific task (e.g., writing tests, creating animations, reviewing PRs)
-3. Whether this is a common enough task that a skill likely exists
+1. The specific task (e.g., writing tests, creating animations, reviewing PRs)
+1. Whether this is a common enough task that a skill likely exists
 
 ### Step 2: Search for Skills
 
@@ -75,8 +74,8 @@ vercel-labs/agent-skills@vercel-react-best-practices
 When you find relevant skills, present them to the user with:
 
 1. The skill name and what it does
-2. The install command they can run
-3. A link to learn more at skills.sh
+1. The install command they can run
+1. A link to learn more at skills.sh
 
 Example response:
 
@@ -104,29 +103,29 @@ The `-g` flag installs globally (user-level) and `-y` skips confirmation prompts
 
 When searching, consider these common categories:
 
-| Category        | Example Queries                          |
+| Category | Example Queries |
 | --------------- | ---------------------------------------- |
 | Web Development | react, nextjs, typescript, css, tailwind |
-| Testing         | testing, jest, playwright, e2e           |
-| DevOps          | deploy, docker, kubernetes, ci-cd        |
-| Documentation   | docs, readme, changelog, api-docs        |
-| Code Quality    | review, lint, refactor, best-practices   |
-| Design          | ui, ux, design-system, accessibility     |
-| Productivity    | workflow, automation, git                |
+| Testing | testing, jest, playwright, e2e |
+| DevOps | deploy, docker, kubernetes, ci-cd |
+| Documentation | docs, readme, changelog, api-docs |
+| Code Quality | review, lint, refactor, best-practices |
+| Design | ui, ux, design-system, accessibility |
+| Productivity | workflow, automation, git |
 
 ## Tips for Effective Searches
 
 1. **Use specific keywords**: "react testing" is better than just "testing"
-2. **Try alternative terms**: If "deploy" doesn't work, try "deployment" or "ci-cd"
-3. **Check popular sources**: Many skills come from `vercel-labs/agent-skills` or `ComposioHQ/awesome-claude-skills`
+1. **Try alternative terms**: If "deploy" doesn't work, try "deployment" or "ci-cd"
+1. **Check popular sources**: Many skills come from `vercel-labs/agent-skills` or `ComposioHQ/awesome-claude-skills`
 
 ## When No Skills Are Found
 
 If no relevant skills exist:
 
 1. Acknowledge that no existing skill was found
-2. Offer to help with the task directly using your general capabilities
-3. Suggest the user could create their own skill with `npx skills init`
+1. Offer to help with the task directly using your general capabilities
+1. Suggest the user could create their own skill with `npx skills init`
 
 Example:
 

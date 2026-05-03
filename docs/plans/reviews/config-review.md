@@ -1,10 +1,10 @@
 # Configuration & API Compatibility Review — TensorZero Gateway Plan
 
-**Reviewer**: nanobot (inline)  
-**Date**: 2026-04-06  
+**Reviewer**: nanobot (inline)
+**Date**: 2026-04-06
 **Document reviewed**: `docs/plans/tensorzero-gateway-plan.md`
 
----
+______________________________________________________________________
 
 ## 🔴 Critical Issues
 
@@ -39,6 +39,7 @@ Or use TensorZero's function-based routing with variants for each provider.
 ### C2. z.ai provider type is wrong
 
 The plan defines z.ai as `type = "openai"`:
+
 ```toml
 api_base = "https://api.z.ai/api/anthropic/v1/messages"
 ```
@@ -46,8 +47,9 @@ api_base = "https://api.z.ai/api/anthropic/v1/messages"
 But z.ai's `/api/anthropic/v1/messages` endpoint uses **Anthropic Messages format**, not OpenAI format. Setting `type = "openai"` tells TensorZero to serialize requests as OpenAI chat completions, which z.ai's Anthropic endpoint won't understand.
 
 **Fix**: Either:
+
 1. Use z.ai's OpenAI-compatible endpoint if one exists (e.g., `https://api.z.ai/api/openai/v1/chat/completions`) with `type = "openai"`, OR
-2. Use `type = "anthropic"` with the Anthropic endpoint URL
+1. Use `type = "anthropic"` with the Anthropic endpoint URL
 
 Need to verify which API formats z.ai actually supports. The plan should document the correct endpoint + type combination.
 
@@ -61,7 +63,7 @@ CCR receives Anthropic Messages format from Claude Code and translates to OpenAI
 
 **Fix**: Test the CCR → TensorZero path explicitly. Consider disabling retries on one side (preferably CCR) to avoid double-retry. Verify header passthrough.
 
----
+______________________________________________________________________
 
 ## 🟡 Warnings
 
@@ -76,6 +78,7 @@ The plan sets `OPENAI_BASE_URL=http://localhost:8471/openai/v1` globally for Qwe
 Coding agents (Claude Code, Codex, Qwen) all use streaming responses. The plan doesn't verify that TensorZero's `/openai/v1/chat/completions` endpoint supports Server-Sent Events (SSE) streaming, or that tool calls work correctly through the gateway.
 
 **Fix**: Add a streaming smoke test to the deployment steps:
+
 ```bash
 curl -N http://localhost:8471/openai/v1/chat/completions \
   -H "Content-Type: application/json" \
@@ -102,6 +105,7 @@ refill_rate = 10  # 10 inferences/sec
 ### W5. Cache config syntax may be incorrect
 
 The plan shows:
+
 ```toml
 [caching]
 enabled = true
@@ -111,23 +115,27 @@ cache_mode = "on"
 
 TensorZero's actual caching config uses per-model cache settings, not a global `[caching]` block. Need to verify the correct TOML structure from TensorZero docs.
 
----
+______________________________________________________________________
 
 ## 🟢 Good Practices
 
 ### ✅ G1. All clients use OpenAI-compatible format (or have a translator)
+
 Five of six clients natively speak OpenAI format. CCR handles the one exception. This minimizes integration surface area.
 
 ### ✅ G2. Version-controlled config
+
 `tensorzero.toml` in GitOps-friendly format. Changes are auditable and reproducible.
 
 ### ✅ G3. Independent client migration
+
 Each client can be configured and tested independently. No big-bang cutover.
 
 ### ✅ G4. Conservative default rate limits
+
 Starting with rate limiting enabled (even if the numbers need tuning) is safer than starting without it.
 
----
+______________________________________________________________________
 
 ## Summary
 
@@ -140,7 +148,8 @@ Starting with rate limiting enabled (even if the numbers need tuning) is safer t
 **The biggest gap**: The `tensorzero.toml` config is incomplete — it has providers but no model routing definitions, and the z.ai provider type may be wrong. The config needs to be rewritten against actual TensorZero documentation before any testing can begin.
 
 **Recommended next steps**:
+
 1. Verify z.ai's API formats (OpenAI-compatible vs Anthropic) and choose correct provider types
-2. Add model definitions to `tensorzero.toml` for every model name clients will send
-3. Test CCR → TensorZero streaming + tool calling end-to-end before wiring other clients
-4. Verify TensorZero caching config syntax against official docs
+1. Add model definitions to `tensorzero.toml` for every model name clients will send
+1. Test CCR → TensorZero streaming + tool calling end-to-end before wiring other clients
+1. Verify TensorZero caching config syntax against official docs

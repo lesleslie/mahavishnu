@@ -13,13 +13,12 @@ protection against automating sensitive applications and typing sensitive data.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
 from logging import getLogger
 import re
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from mahavishnu.automation.errors import (
     BlockedAppError,
@@ -27,6 +26,9 @@ from mahavishnu.automation.errors import (
     RateLimitedError,
 )
 from mahavishnu.automation.models import AutomationConfig
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = getLogger(__name__)
 
@@ -182,10 +184,7 @@ class AutomationSecurity:
             return bundle_id in {a.lower() for a in self._allowed_apps}
 
         # Check blocklist
-        if bundle_id in {b.lower() for b in self._blocked_apps}:
-            return False
-
-        return True
+        return bundle_id not in {b.lower() for b in self._blocked_apps}
 
     def validate_app(self, bundle_id: str) -> None:
         """Validate that an app can be automated.
@@ -271,7 +270,6 @@ class AutomationSecurity:
             RateLimitedError: If rate limit is exceeded.
         """
         state = self._rate_limit_state[key]
-        max_ops = self.config.max_operations_per_second
 
         if not self.check_rate_limit(key):
             # Calculate retry time

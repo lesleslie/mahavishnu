@@ -9,17 +9,18 @@ Provides vector similarity search using PostgreSQL + pgvector:
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
 from enum import Enum
-from typing import Any
+import logging
+from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-from mahavishnu.core.database import Database
 from mahavishnu.core.embeddings import EmbeddingService, cosine_similarity
-from mahavishnu.core.errors import MahavishnuError, ErrorCode
+from mahavishnu.core.errors import ErrorCode, MahavishnuError
+
+if TYPE_CHECKING:
+    from mahavishnu.core.database import Database
 
 logger = logging.getLogger(__name__)
 
@@ -260,9 +261,9 @@ class VectorStore:
                 ]
 
                 if texts_to_embed:
-                    indices, texts = zip(*texts_to_embed)
+                    indices, texts = zip(*texts_to_embed, strict=False)
                     result = await self.embedding_service.embed(list(texts))
-                    for idx, embedding in zip(indices, result.embeddings):
+                    for idx, embedding in zip(indices, result.embeddings, strict=False):
                         batch[idx]["embedding"] = embedding
 
             # Insert batch

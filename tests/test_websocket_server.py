@@ -3,7 +3,7 @@
 import asyncio
 import json
 import socket
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import websockets
@@ -100,7 +100,7 @@ class TestMahavishnuWebSocketServer:
         websocket_server.rate_limiter.check = MagicMock(return_value=rate_result)
 
         # Create subscribe message
-        from mcp_common.websocket import WebSocketMessage, MessageType
+        from mcp_common.websocket import MessageType, WebSocketMessage
 
         message = WebSocketMessage(
             type=MessageType.REQUEST,
@@ -297,7 +297,7 @@ class TestWebSocketIntegration:
 
                 assert data["type"] in ["response", "event"]
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pytest.skip("WebSocket server not available")
         finally:
             await websocket_server.stop()
@@ -331,7 +331,7 @@ class TestWebSocketIntegration:
                             msg = await asyncio.wait_for(ws.recv(), timeout=2.0)
                             data = json.loads(msg)
                             received_events.append(data)
-                        except asyncio.TimeoutError:
+                        except TimeoutError:
                             break
 
             # Start client
@@ -355,7 +355,7 @@ class TestWebSocketIntegration:
             assert "workflow.stage_completed" in event_types
             assert "workflow.completed" in event_types
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pytest.skip("WebSocket server not available")
         finally:
             await websocket_server.stop()

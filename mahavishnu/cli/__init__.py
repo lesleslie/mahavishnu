@@ -12,17 +12,19 @@ This package contains modular CLI components:
 Note: The main CLI app is defined in mahavishnu/_main_cli.py (separate module).
 """
 
-from .help_cli import help_group, show_general_help, show_command_help, show_all_help
+from .docs_cli import add_docs_commands
+from .events import add_events_commands
+from .help_cli import help_group, show_all_help, show_command_help, show_general_help
 from .team_cli import (
-    app as team_app,
     add_team_commands,
     create_team,
-    parse_goal_cmd,
     list_skills,
     list_teams,
+    parse_goal_cmd,
 )
-from .events import add_events_commands
-from .docs_cli import add_docs_commands
+from .team_cli import (
+    app as team_app,
+)
 
 __all__ = [
     "app",

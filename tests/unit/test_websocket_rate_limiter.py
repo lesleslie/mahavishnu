@@ -1,8 +1,9 @@
 """Comprehensive unit tests for mahavishnu/websocket/rate_limiter.py."""
+
 from __future__ import annotations
 
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -12,7 +13,6 @@ from mahavishnu.websocket.rate_limiter import (
     get_rate_limiter,
     reset_rate_limiter,
 )
-
 
 # ---------------------------------------------------------------------------
 # RateLimitResult dataclass

@@ -10,6 +10,7 @@
 Mahavishnu can orchestrate workflows across repositories but cannot learn and reproduce the architectural patterns used in existing Fastblocks/Oneiric web applications. When building a new Fastblocks app, every project starts from scratch — there is no mechanism to say "use the auth pattern from Splashstand" or "generate a project skeleton like Fastblocks."
 
 **Current state:**
+
 - **Fastblocks** is an async Python web framework (Starlette + Jinja2 `[[ ]]` delimiters + HTMX + Oneiric adapters)
 - **Splashstand** is a production reference implementation demonstrating real-world Fastblocks patterns (auth, admin, analytics, PWA, Cloud Run deployment)
 - The ecosystem has symbol-level code graphs (functions, classes, imports) but no **architectural pattern** detection or storage
@@ -65,9 +66,9 @@ Mahavishnu can orchestrate workflows across repositories but cannot learn and re
 Lovable generates full React/Supabase apps from chat. Key capabilities to learn from:
 
 1. **Template library** — curated component templates (auth flows, dashboards, forms) with metadata
-2. **Code generation** — natural language → working project with real dependencies
-3. **Iterative refinement** — chat-driven modifications after initial generation
-4. **Framework awareness** — understands React conventions, Supabase schemas, Tailwind classes
+1. **Code generation** — natural language → working project with real dependencies
+1. **Iterative refinement** — chat-driven modifications after initial generation
+1. **Framework awareness** — understands React conventions, Supabase schemas, Tailwind classes
 
 This spec adapts those capabilities for the Fastblocks/Oneiric ecosystem.
 
@@ -140,6 +141,7 @@ mahavishnu/
 ```
 
 Patterns are YAML files, not database records. Rationale:
+
 - Human-editable (manual curation is the primary input method)
 - Git-versioned (pattern evolution is trackable)
 - Git-friendly (diffs show pattern changes clearly)
@@ -267,6 +269,7 @@ slots:
 Slots are named extension points where component patterns plug in. Each slot has a type:
 
 **Directory slots** (default) — the pattern writes files into a directory:
+
 ```yaml
 slots:
   nav:
@@ -274,9 +277,11 @@ slots:
     files: [nav.html, nav-mobile.html]
     required: false
 ```
+
 Multiple patterns can write to the same directory as long as their `files` lists are disjoint. Conflict detection is **file-level**, not directory-level.
 
 **File-merge slots** — the pattern injects content into an existing file:
+
 ```yaml
 slots:
   middleware:
@@ -285,7 +290,9 @@ slots:
     merge_strategy: marker-injection
     required: false
 ```
+
 The owning pattern's template includes markers that merging patterns inject into:
+
 ```python
 # In scaffolding/project's main.py template:
 routes = [Route("/", endpoint=homepage)]
@@ -294,7 +301,9 @@ routes = [Route("/", endpoint=homepage)]
 
 app = resolve_dep("app")
 ```
+
 When `adapters/auth` claims the `middleware` slot, its template provides the injection content:
+
 ```python
 # Content injected at {{slot:middleware}}:
 from starlette.middleware import Middleware
@@ -304,12 +313,13 @@ middleware = [
 ```
 
 **Slot resolution rules:**
+
 1. **File-level conflict detection**: two patterns conflict only if they both write the same output file path. Multiple patterns writing to the same directory is allowed.
-2. Slot paths are relative to the project root
-3. If a required slot has no pattern, scaffolding fails with a clear error ("nav slot declared by project pattern but no nav pattern included")
-4. Optional slots (required: false) are silently skipped if unpopulated
-5. File-merge slots use marker-injection: the base template defines `{{slot:<name>}}` markers, merging patterns provide replacement content
-6. A pattern's `id` prefix must match its parent directory (e.g., `adapters/auth` must live in `patterns/adapters/auth.yaml`)
+1. Slot paths are relative to the project root
+1. If a required slot has no pattern, scaffolding fails with a clear error ("nav slot declared by project pattern but no nav pattern included")
+1. Optional slots (required: false) are silently skipped if unpopulated
+1. File-merge slots use marker-injection: the base template defines `{{slot:<name>}}` markers, merging patterns provide replacement content
+1. A pattern's `id` prefix must match its parent directory (e.g., `adapters/auth` must live in `patterns/adapters/auth.yaml`)
 
 ### 6.3 Pattern Composition
 
@@ -332,10 +342,11 @@ depends:
 Composite patterns are **purely additive** — they declare `depends` and `tags` but no `structure`, `templates`, or `slots` of their own. They cannot override a dependency's template. If a different variant is needed (e.g., PWA-specific auth), create a separate pattern (e.g., `adapters/auth-pwa`) that the composite references instead.
 
 The Engine resolves this as a dependency graph:
+
 1. `scaffolding/project` is the root (no dependencies)
-2. Component patterns plug into project's slots via file-level claims
-3. Adapter patterns plug into project's adapter slot
-4. Deployment patterns add deployment config files
+1. Component patterns plug into project's slots via file-level claims
+1. Adapter patterns plug into project's adapter slot
+1. Deployment patterns add deployment config files
 
 **Circular dependency detection:** The Engine runs cycle detection (DFS-based) on the dependency graph during validation. Patterns with circular dependencies fail validation with a clear error identifying the cycle.
 
@@ -365,8 +376,9 @@ The scaffolding system uses two Jinja2 delimiter configurations:
 | Generated HTML templates | `[[ ]]` / `[% %]` | Fastblocks-compatible HTML templates (runtime rendering) |
 
 The Engine creates two Jinja2 environments:
+
 1. **Scaffold environment**: standard delimiters (`{{ }}`), used for Python/YAML/TOML files
-2. **Template environment**: Fastblocks delimiters (`[[ ]]`), used for `.html` files
+1. **Template environment**: Fastblocks delimiters (`[[ ]]`), used for `.html` files
 
 Template file selection is based on output file extension: `.html` → template environment, all others → scaffold environment. Templates are rendered in **strict mode** — undefined variables raise an error rather than rendering empty strings.
 
@@ -375,6 +387,7 @@ Template file selection is based on output file extension: `.html` → template 
 ### 7.1 Three Entry Points
 
 **Manual curation (primary):**
+
 ```bash
 mahavishnu patterns create \
   --name "auth" \
@@ -386,6 +399,7 @@ mahavishnu patterns create \
 Opens an editor with a draft YAML pre-populated from the source project's structure. Developer edits and saves.
 
 **AI suggestion (builds on code indexing spec):**
+
 ```bash
 mahavishnu patterns suggest \
   --repos fastblocks,splashstand \
@@ -393,14 +407,16 @@ mahavishnu patterns suggest \
 ```
 
 Uses the code graph to find recurring structures:
+
 1. Cluster projects by directory layout similarity (shared dirs, similar nesting depth)
-2. Within clusters, identify shared files (same filenames, similar imports)
-3. Extract common adapter registrations, middleware stacks, template structures
-4. Draft a pattern YAML with confidence score based on prevalence across repos
-5. Present to human for approval — never auto-saves
+1. Within clusters, identify shared files (same filenames, similar imports)
+1. Extract common adapter registrations, middleware stacks, template structures
+1. Draft a pattern YAML with confidence score based on prevalence across repos
+1. Present to human for approval — never auto-saves
 
 **Conversation capture (builds on session-buddy):**
 After successfully building an app via chat, Mahavishnu offers:
+
 - "This app used 4 patterns: project, nav, auth, cloudrun. Save as a composite pattern?"
 - The composite pattern captures the exact file structure and configuration from the session
 
@@ -455,11 +471,12 @@ def suggest_patterns(repo_paths: list[str], min_prevalence: float = 0.7) -> list
 ### 7.2.1 Manual Curation Details
 
 The `--from-project` flag resolves the named repo from `settings/repos.yaml`, then:
+
 1. Reads the repo's directory tree and file listing
-2. Pre-populates `structure.dirs` and `structure.files` with the repo's layout
-3. Copies file contents into `templates` (raw, not parameterized)
-4. Sets `source_repos` to `[<repo_name>]`
-5. Opens the draft in the user's `$EDITOR` for refinement (remove irrelevant files, parameterize values, declare slots)
+1. Pre-populates `structure.dirs` and `structure.files` with the repo's layout
+1. Copies file contents into `templates` (raw, not parameterized)
+1. Sets `source_repos` to `[<repo_name>]`
+1. Opens the draft in the user's `$EDITOR` for refinement (remove irrelevant files, parameterize values, declare slots)
 
 The developer then edits the draft down to just the pattern-specific parts and saves.
 
@@ -543,22 +560,23 @@ mahavishnu scaffold "my-app" \
 ```
 
 **Execution:**
+
 1. Load all pattern YAMLs from the library
-2. Build dependency graph from `depends` fields
-3. Validate: all dependencies satisfied, no file-level conflicts, no circular dependencies
-4. Topological sort patterns (dependencies first). **Secondary sort:** alphabetical by pattern ID for deterministic ordering among same-level patterns.
-5. Scaffold to a **temporary directory** (e.g., `/tmp/mahavishnu-scaffold-{uuid}/`):
+1. Build dependency graph from `depends` fields
+1. Validate: all dependencies satisfied, no file-level conflicts, no circular dependencies
+1. Topological sort patterns (dependencies first). **Secondary sort:** alphabetical by pattern ID for deterministic ordering among same-level patterns.
+1. Scaffold to a **temporary directory** (e.g., `/tmp/mahavishnu-scaffold-{uuid}/`):
    a. For each pattern (in sorted order):
-      - Create required directories
-      - Render required files from templates (with variables filled in)
-      - Apply file-merge slot injections (replace `{{slot:<name>}}` markers with claiming pattern content)
-      - Register slot claims (so dependent patterns know where to write)
-6. Write `.mahavishnu/manifest.json` with pattern set, versions, and content hashes
-7. Write `.mahavishnu/patterns.lock` with exact pattern IDs and versions used
-8. Initialize git repo and create initial commit
-9. **Atomically rename** temp directory to final output path (on success only)
-10. Run `uv init` or equivalent to install dependencies
-11. Verify: `mahavishnu scaffold validate --project /Users/les/Projects/my-app`
+   - Create required directories
+   - Render required files from templates (with variables filled in)
+   - Apply file-merge slot injections (replace `{{slot:<name>}}` markers with claiming pattern content)
+   - Register slot claims (so dependent patterns know where to write)
+1. Write `.mahavishnu/manifest.json` with pattern set, versions, and content hashes
+1. Write `.mahavishnu/patterns.lock` with exact pattern IDs and versions used
+1. Initialize git repo and create initial commit
+1. **Atomically rename** temp directory to final output path (on success only)
+1. Run `uv init` or equivalent to install dependencies
+1. Verify: `mahavishnu scaffold validate --project /Users/les/Projects/my-app`
 
 **Rollback:** If any step fails (template rendering error, missing dependency, write failure), the temp directory is deleted and the user receives a clear error. The final output path is never touched unless all steps succeed.
 
@@ -610,14 +628,16 @@ User: "Deploy to Cloud Run"
 ```
 
 Each Phase 2 step is either:
+
 - **Pattern composition** (loading a new pattern and running an incremental merge against the existing project — see below)
 - **AI generation** (Claude generates custom content for pages, business logic, etc. — written to new files that don't conflict with pattern-managed files)
 
 **Incremental merge for pattern composition:** When adding a pattern to an existing project (detected by the presence of `.mahavishnu/manifest.json`), the Engine does NOT re-run the full Phase 1 pipeline (which would conflict with the existing directory). Instead:
+
 1. Scaffolds the new pattern to a temp directory
-2. Merges temp contents into the existing project directory using the conflict detection logic from Section 8.4 (hash comparison, keep/overwrite/merge prompts)
-3. Updates `.mahavishnu/manifest.json` with the new pattern
-4. Creates a git commit for the change
+1. Merges temp contents into the existing project directory using the conflict detection logic from Section 8.4 (hash comparison, keep/overwrite/merge prompts)
+1. Updates `.mahavishnu/manifest.json` with the new pattern
+1. Creates a git commit for the change
 
 **Phase 2 staging:** AI-generated content is written to files first, then shown to the user for approval before committing. Pattern composition steps are deterministic and commit automatically after validation passes.
 
@@ -658,17 +678,20 @@ def validate_project(project_path: str, patterns: list[Pattern]) -> list[Issue]:
 Re-running scaffolding with the same patterns and variables produces the same output. This is verified via the `.mahavishnu/patterns.lock` file and per-file content hashes in the manifest.
 
 **Idempotency mechanism:**
+
 1. `.mahavishnu/patterns.lock` records exact pattern IDs and versions used
-2. `.mahavishnu/manifest.json` records SHA-256 hashes of every generated file
-3. Re-scaffolding with the same lock file produces identical file contents (verified by hash comparison)
-4. If a pattern version changed since the lock file was created, the Engine warns and offers to update
+1. `.mahavishnu/manifest.json` records SHA-256 hashes of every generated file
+1. Re-scaffolding with the same lock file produces identical file contents (verified by hash comparison)
+1. If a pattern version changed since the lock file was created, the Engine warns and offers to update
 
 **Conflict detection for manual edits:**
 When re-scaffolding, the Engine compares each file's current hash against the manifest hash. If a file was manually edited:
+
 - Pattern-managed files (generated from templates): Engine shows diff between current content and expected template output, offers keep/overwrite/merge
 - User-added files (not in manifest): left untouched
 
 **Pattern-managed file markers:** Generated files include a lightweight comment header:
+
 ```python
 # Managed by mahavishnu scaffold — pattern: scaffolding/project v1.0.0
 # Manual edits detected on re-scaffold. Edit the pattern template to make permanent changes.
@@ -726,6 +749,7 @@ mahavishnu scaffold "my-app" --patterns "*" --dry-run
 ### 9.3 Integration with Existing Mahavishnu CLI
 
 Pattern commands extend the existing CLI namespace:
+
 - `mahavishnu patterns *` — pattern library management
 - `mahavishnu scaffold *` — project scaffolding
 - Both are subcommands of the `mahavishnu` CLI, following the existing command pattern
@@ -809,20 +833,20 @@ This spec is **Phase 2.5** in the master plan — after the three prerequisite s
 ## 12. Acceptance Criteria
 
 1. `mahavishnu patterns create --name auth --from-project splashstand` generates a draft pattern YAML in `patterns/adapters/auth.yaml`
-2. `mahavishnu patterns suggest --repos fastblocks,splashstand` produces at least 3 suggested patterns with confidence scores
-3. Suggested patterns are never auto-saved to the library without human approval
-4. `mahavishnu patterns list` shows all patterns grouped by category with version and source repos
-5. `mahavishnu scaffold "test-app" --patterns scaffolding/project` generates a working Fastblocks project that runs with `python main.py`
-6. Generated project has the correct directory structure matching the pattern's `structure.dirs` specification
-7. Generated files contain the pattern management header comment
-8. `mahavishnu scaffold add --project /path/to/test-app --pattern components/nav` adds the nav component without breaking existing files
-9. `mahavishnu scaffold "test-app" --validate` reports zero contract violations
-10. Re-scaffolding with the same patterns produces the same output (deterministic)
-11. Phase 2 chat refinement ("add a dashboard page") generates `templates/pages/dashboard.html` and updates `main.py`
-12. Adding a pattern via chat triggers validation and reports any contract violations
-13. All 15 initial patterns in Section 10 exist in the library
-14. `mahavishnu patterns validate` passes with zero errors on the default pattern catalog
-15. No generated project contains secrets, API keys, or credentials — all config values are placeholders
+1. `mahavishnu patterns suggest --repos fastblocks,splashstand` produces at least 3 suggested patterns with confidence scores
+1. Suggested patterns are never auto-saved to the library without human approval
+1. `mahavishnu patterns list` shows all patterns grouped by category with version and source repos
+1. `mahavishnu scaffold "test-app" --patterns scaffolding/project` generates a working Fastblocks project that runs with `python main.py`
+1. Generated project has the correct directory structure matching the pattern's `structure.dirs` specification
+1. Generated files contain the pattern management header comment
+1. `mahavishnu scaffold add --project /path/to/test-app --pattern components/nav` adds the nav component without breaking existing files
+1. `mahavishnu scaffold "test-app" --validate` reports zero contract violations
+1. Re-scaffolding with the same patterns produces the same output (deterministic)
+1. Phase 2 chat refinement ("add a dashboard page") generates `templates/pages/dashboard.html` and updates `main.py`
+1. Adding a pattern via chat triggers validation and reports any contract violations
+1. All 15 initial patterns in Section 10 exist in the library
+1. `mahavishnu patterns validate` passes with zero errors on the default pattern catalog
+1. No generated project contains secrets, API keys, or credentials — all config values are placeholders
 
 ## 13. ADR Reference
 

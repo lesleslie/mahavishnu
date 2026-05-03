@@ -13,8 +13,7 @@ These tests verify the foundation functionality of the Agno adapter:
 from __future__ import annotations
 
 import os
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -27,7 +26,7 @@ from mahavishnu.core.config import (
     LLMProvider,
     MemoryBackend,
 )
-from mahavishnu.core.errors import AgnoError, ConfigurationError, ErrorCode
+from mahavishnu.core.errors import AgnoError, ConfigurationError
 from mahavishnu.engines.agno_adapter_impl import (
     AgentRunResult,
     AgnoAdapter,
@@ -35,7 +34,6 @@ from mahavishnu.engines.agno_adapter_impl import (
     MCPToolsRegistry,
     TeamRunResult,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -351,9 +349,7 @@ class TestMCPToolsRegistry:
             assert registry._mcp_tools == mock_tools
 
     @pytest.mark.asyncio
-    async def test_initialize_failure_graceful(
-        self, agno_tools_config: AgnoToolsConfig
-    ) -> None:
+    async def test_initialize_failure_graceful(self, agno_tools_config: AgnoToolsConfig) -> None:
         """Test that MCP init failure is handled gracefully."""
         registry = MCPToolsRegistry(agno_tools_config)
 
@@ -444,6 +440,7 @@ class TestAgnoAdapter:
 
     def test_config_fallback(self) -> None:
         """Test fallback to default config when no agno attribute."""
+
         # Create an object with no agno attribute
         class EmptyConfig:
             pass

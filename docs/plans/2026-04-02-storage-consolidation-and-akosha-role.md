@@ -13,21 +13,21 @@ Items from earlier plans that are carried forward into this workflow:
 1. Adaptive routing metrics and learning loops:
    - Keep `ExecutionTracker`, statistical routing, cost optimization, and A/B testing.
    - Change persistence target from Dhara-style metrics storage to PostgreSQL tables owned by Mahavishnu.
-2. Self-improvement workflow:
+1. Self-improvement workflow:
    - Keep review/fix orchestration and approval workflows.
    - Replace placeholder quality and coordination integrations with real service integrations.
    - Persist findings, approvals, and fix events in Mahavishnu PostgreSQL event/search schemas.
-3. Status enum consolidation:
+1. Status enum consolidation:
    - Keep as an enabling refactor.
    - Complete migration to `mahavishnu/core/status.py` before broad persistence cutover to reduce state drift.
-4. Health dependency behavior:
+1. Health dependency behavior:
    - Keep health-check architecture.
    - Update startup dependency policy so Akosha is optional for core Mahavishnu operation.
 
 Items treated as secondary or out-of-scope for this workflow:
 
 1. Prefect adapter expansion beyond currently required capability.
-2. TLS/WebSocket ecosystem hardening tasks outside storage and persistence critical path.
+1. TLS/WebSocket ecosystem hardening tasks outside storage and persistence critical path.
 
 ## Supersession Matrix
 
@@ -55,10 +55,10 @@ It also redefines `Akosha` as an optional ecosystem intelligence layer rather th
 ### Primary Decisions
 
 1. `Mahavishnu` owns operational persistence.
-2. `Mahavishnu` owns primary search persistence.
-3. `PostgreSQL + pgvector` is one logical database system, not two systems.
-4. `Session-Buddy` remains best-effort and asynchronous for context/history.
-5. `Akosha` is removed from the critical storage path.
+1. `Mahavishnu` owns primary search persistence.
+1. `PostgreSQL + pgvector` is one logical database system, not two systems.
+1. `Session-Buddy` remains best-effort and asynchronous for context/history.
+1. `Akosha` is removed from the critical storage path.
 
 ### Why
 
@@ -73,6 +73,7 @@ It also redefines `Akosha` as an optional ecosystem intelligence layer rather th
 ### Ownership
 
 - `Mahavishnu`
+
   - tasks
   - task runs
   - dependencies
@@ -82,12 +83,14 @@ It also redefines `Akosha` as an optional ecosystem intelligence layer rather th
   - hybrid search APIs
 
 - `Session-Buddy`
+
   - session context
   - conversation history
   - assistant-facing memory
   - best-effort mirrored writes only
 
 - `Akosha`
+
   - analytics
   - pattern detection
   - cross-system aggregation
@@ -282,43 +285,43 @@ Default query-time weights:
 ## Retention And Partitioning Policy
 
 1. Partition `audit.task_events` monthly by `event_time`.
-2. Keep a rolling 12 months in primary storage by default.
-3. Archive older partitions to object storage before detach/drop.
-4. Add automated partition management (create next 2 months, retire expired partitions).
-5. Use `pg_partman` where available; otherwise use a scheduled Mahavishnu maintenance job.
-6. Track retention metrics with alerts.
+1. Keep a rolling 12 months in primary storage by default.
+1. Archive older partitions to object storage before detach/drop.
+1. Add automated partition management (create next 2 months, retire expired partitions).
+1. Use `pg_partman` where available; otherwise use a scheduled Mahavishnu maintenance job.
+1. Track retention metrics with alerts.
 
 ## Embedding Model Strategy
 
 1. v1 baseline uses `vector(384)` with explicit `model_name`.
-2. If model dimension changes, add a model-specific embedding table and backfill asynchronously.
-3. Keep reads behind repository interfaces so model migration does not break callers.
-4. Validate recall/precision before switching default retrieval model.
+1. If model dimension changes, add a model-specific embedding table and backfill asynchronously.
+1. Keep reads behind repository interfaces so model migration does not break callers.
+1. Validate recall/precision before switching default retrieval model.
 
 ## Runtime Connection Management
 
 1. Use application-level pooling for Mahavishnu DB clients.
-2. Use PgBouncer in transaction pooling mode for production deployments.
-3. Standardize settings:
+1. Use PgBouncer in transaction pooling mode for production deployments.
+1. Standardize settings:
    - `pool_min_size`
    - `pool_max_size`
    - `pool_acquire_timeout_ms`
    - `pool_idle_timeout_ms`
-4. Add alerts for pool saturation and connection errors.
+1. Add alerts for pool saturation and connection errors.
 
 ## Migration And Backfill Strategy
 
 1. Existing task data:
    - migrate task/task_run/task_event rows with idempotent scripts
    - preserve original identifiers and timestamps
-2. Search documents:
+1. Search documents:
    - backfill `search.documents` from current searchable artifacts
    - generate embeddings in background batches with checkpoints
    - tune batch size and checkpoint frequency during rollout based on DB latency, embedding throughput, and retry behavior
-3. Cutover expectations:
+1. Cutover expectations:
    - no full downtime required
    - brief read-only window allowed only for final consistency verification if needed
-4. Validation:
+1. Validation:
    - row-count parity checks
    - status distribution parity checks
    - search sample quality checks
@@ -326,11 +329,11 @@ Default query-time weights:
 ## Rough Timeline Estimates
 
 1. Phase 1: ~1 week
-2. Phase 2: ~2 weeks
-3. Phase 3: ~1 week
-4. Phase 4: ~1 week for role correction and initial Akosha refactor
-5. Phase 5: ~1 week including cutover rehearsal and validation
-6. Phase 6: ~2 to 3 days
+1. Phase 2: ~2 weeks
+1. Phase 3: ~1 week
+1. Phase 4: ~1 week for role correction and initial Akosha refactor
+1. Phase 5: ~1 week including cutover rehearsal and validation
+1. Phase 6: ~2 to 3 days
 
 ## Implementation Plan
 
@@ -504,9 +507,9 @@ Consolidate operational data and semantic search into one PostgreSQL system with
 ### Refactor Priorities
 
 1. Remove or de-emphasize mocked storage ownership claims.
-2. Stop presenting Akosha as a source-of-truth search store.
-3. Add PostgreSQL-backed derived reads if retained.
-4. Focus MCP APIs on higher-order intelligence rather than basic storage.
+1. Stop presenting Akosha as a source-of-truth search store.
+1. Add PostgreSQL-backed derived reads if retained.
+1. Focus MCP APIs on higher-order intelligence rather than basic storage.
 
 ## Session-Buddy Impact
 
@@ -525,9 +528,9 @@ Consolidate operational data and semantic search into one PostgreSQL system with
 ### Recommended Integration Pattern
 
 1. Write task and run data to PostgreSQL synchronously.
-2. Queue async context write to `Session-Buddy`.
-3. Track sync outcome in `integration.session_context_links`.
-4. Retry failures later.
+1. Queue async context write to `Session-Buddy`.
+1. Track sync outcome in `integration.session_context_links`.
+1. Retry failures later.
 
 ## Akosha V2 Charter
 
@@ -601,26 +604,26 @@ Akosha should not be:
 ### Phase 1: Role Correction
 
 1. Remove critical-path claims from docs and integration.
-2. Make Mahavishnu the only required owner of task and search persistence.
-3. Reduce Akosha startup coupling.
+1. Make Mahavishnu the only required owner of task and search persistence.
+1. Reduce Akosha startup coupling.
 
 ### Phase 2: Derived Read Models
 
 1. Add read-only PostgreSQL integration.
-2. Build event-derived analytics tables or materialized views.
-3. Add real federated search and reranking.
+1. Build event-derived analytics tables or materialized views.
+1. Add real federated search and reranking.
 
 ### Phase 3: Intelligence APIs
 
 1. Pattern-detection endpoints
-2. targeted recommendation endpoints, only after post-cutover stability is established
-3. optional summarization endpoints, only if backed by demonstrated operator need
+1. targeted recommendation endpoints, only after post-cutover stability is established
+1. optional summarization endpoints, only if backed by demonstrated operator need
 
 ### Phase 4: Feedback Loops
 
 1. Measure orchestration outcomes.
-2. Compare workers, prompts, and tools.
-3. Feed recommendations back into Mahavishnu as optional hints.
+1. Compare workers, prompts, and tools.
+1. Feed recommendations back into Mahavishnu as optional hints.
 
 ## Recommended Responsibility Matrix
 
@@ -651,8 +654,8 @@ Akosha should not be:
 Build the ecosystem around this boundary:
 
 1. `Mahavishnu` writes and owns.
-2. `Session-Buddy` mirrors context asynchronously.
-3. `Akosha` derives intelligence from what already happened.
+1. `Session-Buddy` mirrors context asynchronously.
+1. `Akosha` derives intelligence from what already happened.
 
 This gives the ecosystem:
 
@@ -660,4 +663,6 @@ This gives the ecosystem:
 - cleaner ownership
 - simpler debugging
 - better long-term extensibility
+
+```
 ```

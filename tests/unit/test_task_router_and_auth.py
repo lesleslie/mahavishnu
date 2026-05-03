@@ -6,10 +6,11 @@
 """
 
 import re
-import time
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from mahavishnu.core.auth import JWTAuth, TokenPayload, get_auth_from_config
 from mahavishnu.workers.task_router import (
     DEFAULT_OLLAMA_ROUTING,
     DEFAULT_ZAI_ROUTING,
@@ -18,8 +19,6 @@ from mahavishnu.workers.task_router import (
     classify_task,
     get_model_for_task,
 )
-from mahavishnu.core.auth import JWTAuth, TokenPayload, get_auth_from_config
-
 
 # =========================================================================
 # TaskCategory enum
@@ -33,9 +32,20 @@ class TestTaskCategory:
 
     def test_all_values(self):
         expected = {
-            "code_generation", "code_review", "debugging", "refactoring",
-            "documentation", "testing", "reasoning", "creative",
-            "analysis", "vision", "embedding", "general", "swarm", "quick",
+            "code_generation",
+            "code_review",
+            "debugging",
+            "refactoring",
+            "documentation",
+            "testing",
+            "reasoning",
+            "creative",
+            "analysis",
+            "vision",
+            "embedding",
+            "general",
+            "swarm",
+            "quick",
         }
         assert set(TaskCategory) == expected
 
@@ -67,10 +77,14 @@ class TestClassifyTask:
         assert classify_task("Create a new API endpoint for users") == TaskCategory.CODE_GENERATION
 
     def test_code_generation_build(self):
-        assert classify_task("Build a class for database connections") == TaskCategory.CODE_GENERATION
+        assert (
+            classify_task("Build a class for database connections") == TaskCategory.CODE_GENERATION
+        )
 
     def test_code_generation_script(self):
-        assert classify_task("Write a script to automate deployment") == TaskCategory.CODE_GENERATION
+        assert (
+            classify_task("Write a script to automate deployment") == TaskCategory.CODE_GENERATION
+        )
 
     def test_code_review(self):
         # "code review" must appear as a phrase to beat CODE_GENERATION
@@ -83,7 +97,10 @@ class TestClassifyTask:
         assert classify_task("Fix the bug in the authentication module") == TaskCategory.DEBUGGING
 
     def test_debugging_error(self):
-        assert classify_task("The error says NoneType has no attribute 'foo'") == TaskCategory.DEBUGGING
+        assert (
+            classify_task("The error says NoneType has no attribute 'foo'")
+            == TaskCategory.DEBUGGING
+        )
 
     def test_debugging_traceback(self):
         assert classify_task("Here's the traceback from the crash") == TaskCategory.DEBUGGING
@@ -92,7 +109,10 @@ class TestClassifyTask:
         assert classify_task("The tests are failing") == TaskCategory.DEBUGGING
 
     def test_refactoring(self):
-        assert classify_task("Refactor the user service to use dependency injection") == TaskCategory.REFACTORING
+        assert (
+            classify_task("Refactor the user service to use dependency injection")
+            == TaskCategory.REFACTORING
+        )
 
     def test_refactoring_simplify(self):
         # "Simplify" alone might not score high enough vs other categories
@@ -104,7 +124,10 @@ class TestClassifyTask:
         assert classify_task("Document and comment the API endpoints") == TaskCategory.DOCUMENTATION
 
     def test_documentation_readme(self):
-        assert classify_task("Update the README with installation instructions") == TaskCategory.DOCUMENTATION
+        assert (
+            classify_task("Update the README with installation instructions")
+            == TaskCategory.DOCUMENTATION
+        )
 
     def test_testing(self):
         # Use pytest to uniquely identify testing without triggering code_generation
@@ -117,33 +140,35 @@ class TestClassifyTask:
         assert classify_task("Add pytest fixtures for database tests") == TaskCategory.TESTING
 
     def test_reasoning(self):
-        assert classify_task("Compare the trade-offs between REST and GraphQL") == TaskCategory.REASONING
+        assert (
+            classify_task("Compare the trade-offs between REST and GraphQL")
+            == TaskCategory.REASONING
+        )
 
     def test_creative(self):
-        assert classify_task("Brainstorm ideas for the new dashboard design") == TaskCategory.CREATIVE
+        assert (
+            classify_task("Brainstorm ideas for the new dashboard design") == TaskCategory.CREATIVE
+        )
 
     def test_analysis(self):
-        assert classify_task("Analyze the performance metrics from last month") == TaskCategory.ANALYSIS
+        assert (
+            classify_task("Analyze the performance metrics from last month")
+            == TaskCategory.ANALYSIS
+        )
 
     def test_vision_context(self):
-        assert classify_task(
-            "describe this", context={"has_image": True}
-        ) == TaskCategory.VISION
+        assert classify_task("describe this", context={"has_image": True}) == TaskCategory.VISION
 
     def test_vision_file_type(self):
-        assert classify_task(
-            "what is this", context={"file_type": "image/png"}
-        ) == TaskCategory.VISION
+        assert (
+            classify_task("what is this", context={"file_type": "image/png"}) == TaskCategory.VISION
+        )
 
     def test_embedding_context(self):
-        assert classify_task(
-            "process this", context={"embedding": True}
-        ) == TaskCategory.EMBEDDING
+        assert classify_task("process this", context={"embedding": True}) == TaskCategory.EMBEDDING
 
     def test_vector_context(self):
-        assert classify_task(
-            "handle this data", context={"vector": True}
-        ) == TaskCategory.EMBEDDING
+        assert classify_task("handle this data", context={"vector": True}) == TaskCategory.EMBEDDING
 
     def test_swarm(self):
         assert classify_task("Run batch processing across multiple workers") == TaskCategory.SWARM
@@ -304,6 +329,7 @@ class TestJWTAuth:
         token = auth.create_token(user_id="u1")
         bad_auth = JWTAuth(secret="b" * 32)
         from mahavishnu.core.errors import AuthenticationError
+
         with pytest.raises(AuthenticationError, match="signature"):
             bad_auth.verify_token(token)
 
@@ -311,12 +337,14 @@ class TestJWTAuth:
         auth = JWTAuth(secret=SECRET, expire_minutes=-1)
         token = auth.create_token(user_id="u1")
         from mahavishnu.core.errors import AuthenticationError
+
         with pytest.raises(AuthenticationError, match="expired"):
             auth.verify_token(token)
 
     def test_malformed_token(self):
         auth = JWTAuth(secret=SECRET)
         from mahavishnu.core.errors import AuthenticationError
+
         with pytest.raises(AuthenticationError, match="decode"):
             auth.verify_token("not-a-jwt")
 
@@ -372,6 +400,7 @@ class TestJWTAuth:
         auth_b = JWTAuth(secret="b" * 32)
         token_a = auth_a.create_token(user_id="shared-user")
         from mahavishnu.core.errors import AuthenticationError
+
         with pytest.raises(AuthenticationError):
             auth_b.verify_token(token_a)
 
@@ -395,7 +424,9 @@ class TestGetAuthFromConfig:
     def test_auth_enabled(self):
         config = MagicMock()
         config.auth.enabled = True
-        with patch("mahavishnu.core.auth.MultiAuthHandler", return_value=MagicMock()) as mock_handler:
+        with patch(
+            "mahavishnu.core.auth.MultiAuthHandler", return_value=MagicMock()
+        ) as mock_handler:
             handler = get_auth_from_config(config)
             assert handler is not None
             mock_handler.assert_called_once_with(config)
@@ -414,8 +445,10 @@ class TestWorkflowState:
     @pytest.fixture
     def ws(self):
         # Local-memory only (no OpenSearch)
-        from mahavishnu.core.workflow_state import WorkflowState
         import warnings
+
+        from mahavishnu.core.workflow_state import WorkflowState
+
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", DeprecationWarning)
             state = WorkflowState(opensearch_client=None)
@@ -483,6 +516,7 @@ class TestWorkflowState:
         await ws.update("wf-8", status="completed")
         await ws.create("wf-9", {"task": "b"}, ["repo-b"])
         from mahavishnu.core.status import WorkflowStatus
+
         completed = await ws.list_workflows(status=WorkflowStatus.COMPLETED)
         assert len(completed) == 1
 
@@ -525,14 +559,16 @@ class TestWorkflowState:
 
     async def test_deprecation_warning(self):
         from mahavishnu.core.workflow_state import WorkflowState
+
         with pytest.warns(DeprecationWarning, match="legacy"):
             WorkflowState(opensearch_client=None)
 
     async def test_opensearch_fallback_on_get(self):
         """When OpenSearch is configured but get fails, falls back to local."""
+        import warnings
+
         from mahavishnu.core import workflow_state as ws_mod
         from mahavishnu.core.workflow_state import WorkflowState
-        import warnings
 
         mock_os = AsyncMock()
         mock_os.index = AsyncMock()
@@ -546,9 +582,12 @@ class TestWorkflowState:
                 warnings.simplefilter("ignore", DeprecationWarning)
                 ws = WorkflowState(opensearch_client=mock_os)
                 ws.local_states["wf-os-1"] = {
-                    "id": "wf-os-1", "status": "pending",
-                    "task": {"x": 1}, "repos": ["a"],
-                    "results": [], "errors": [],
+                    "id": "wf-os-1",
+                    "status": "pending",
+                    "task": {"x": 1},
+                    "repos": ["a"],
+                    "results": [],
+                    "errors": [],
                 }
 
             result = await ws.get("wf-os-1")
@@ -559,9 +598,10 @@ class TestWorkflowState:
 
     async def test_opensearch_fallback_on_list(self):
         """When OpenSearch is configured but search fails, falls back to local."""
+        import warnings
+
         from mahavishnu.core import workflow_state as ws_mod
         from mahavishnu.core.workflow_state import WorkflowState
-        import warnings
 
         mock_os = AsyncMock()
         mock_os.index = AsyncMock()
@@ -575,9 +615,12 @@ class TestWorkflowState:
                 warnings.simplefilter("ignore", DeprecationWarning)
                 ws = WorkflowState(opensearch_client=mock_os)
                 ws.local_states["wf-os-2"] = {
-                    "id": "wf-os-2", "status": "pending",
-                    "task": {"y": 1}, "repos": ["b"],
-                    "results": [], "errors": [],
+                    "id": "wf-os-2",
+                    "status": "pending",
+                    "task": {"y": 1},
+                    "repos": ["b"],
+                    "results": [],
+                    "errors": [],
                 }
 
             workflows = await ws.list_workflows()
@@ -587,8 +630,9 @@ class TestWorkflowState:
 
     async def test_opensearch_fallback_on_delete(self):
         """OpenSearch delete fails → falls back to local storage."""
-        from mahavishnu.core.workflow_state import WorkflowState
         import warnings
+
+        from mahavishnu.core.workflow_state import WorkflowState
 
         mock_os = AsyncMock()
         mock_os.index = AsyncMock()
@@ -604,8 +648,9 @@ class TestWorkflowState:
 
     async def test_opensearch_create_stores_remotely(self):
         """With OS client, create() calls opensearch.index()."""
-        from mahavishnu.core.workflow_state import WorkflowState, OPENSEARCH_AVAILABLE
         import warnings
+
+        from mahavishnu.core.workflow_state import OPENSEARCH_AVAILABLE, WorkflowState
 
         if not OPENSEARCH_AVAILABLE:
             pytest.skip("OpenSearch not installed")
@@ -621,8 +666,9 @@ class TestWorkflowState:
         assert call_args.kwargs["id"] == "wf-os-4"
 
     async def test_opensearch_update_stores_remotely(self):
-        from mahavishnu.core.workflow_state import WorkflowState, OPENSEARCH_AVAILABLE
         import warnings
+
+        from mahavishnu.core.workflow_state import OPENSEARCH_AVAILABLE, WorkflowState
 
         if not OPENSEARCH_AVAILABLE:
             pytest.skip("OpenSearch not installed")

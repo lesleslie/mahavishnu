@@ -24,15 +24,14 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from mahavishnu.core.errors import AuthenticationError
 from mahavishnu.core.rate_limiting import rate_limit
-from mahavishnu.core.routing import TaskRouter, RoutingStrategy
-from mahavishnu.core.metrics_schema import TaskType
+from mahavishnu.core.routing import TaskRouter
 from mahavishnu.factories import get_pool_manager
 
 from .models import (
     OpenClawSweepRequest,
     OpenClawWorkflowRequest,
-    WebhookResponse,
     WebhookErrorResponse,
+    WebhookResponse,
     WebhookStatus,
 )
 
@@ -183,7 +182,7 @@ async def sweep_endpoint(
     )
 
     # Get pool manager singleton
-    pool_mgr = get_pool_manager()
+    get_pool_manager()
 
     # Get task router singleton
     task_router = TaskRouter()
@@ -268,7 +267,7 @@ async def workflow_endpoint(
     )
 
     # Get pool manager singleton
-    pool_mgr = get_pool_manager()
+    get_pool_manager()
 
     # Get task router singleton
     task_router = TaskRouter()

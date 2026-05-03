@@ -7,7 +7,6 @@ mocking CoordinationManager to avoid filesystem access to ecosystem.yaml.
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 import typer
 from typer.testing import CliRunner
 
@@ -170,6 +169,7 @@ class TestAddCoordinationCommands:
     def test_coord_app_is_typer_instance(self):
         """The registered coord app should be a Typer instance."""
         import typer
+
         from mahavishnu.coordination_cli import coord_app
 
         assert isinstance(coord_app, typer.Typer)
@@ -331,10 +331,14 @@ class TestCreateIssue:
             [
                 "coord",
                 "create-issue",
-                "--title", "New issue",
-                "--description", "Issue description",
-                "--repos", "repo-a,repo-b",
-                "--priority", "high",
+                "--title",
+                "New issue",
+                "--description",
+                "Issue description",
+                "--repos",
+                "repo-a,repo-b",
+                "--priority",
+                "high",
             ],
         )
         assert result.exit_code == 0
@@ -352,10 +356,14 @@ class TestCreateIssue:
             [
                 "coord",
                 "create-issue",
-                "--title", "Bad priority",
-                "--description", "desc",
-                "--repos", "repo-a",
-                "--priority", "ultra",
+                "--title",
+                "Bad priority",
+                "--description",
+                "desc",
+                "--repos",
+                "repo-a",
+                "--priority",
+                "ultra",
             ],
         )
         assert result.exit_code == 1
@@ -448,9 +456,7 @@ class TestListTodos:
         assert result.exit_code == 0
         assert "TODO-001" in result.output
         assert "First task" in result.output
-        mock_mgr.list_todos.assert_called_once_with(
-            status=None, repo=None, assignee=None
-        )
+        mock_mgr.list_todos.assert_called_once_with(status=None, repo=None, assignee=None)
 
     @patch("mahavishnu.coordination_cli.CoordinationManager")
     def test_list_todos_with_status_filter(self, MockMgr):
@@ -473,9 +479,7 @@ class TestListTodos:
         app = _make_app()
         result = runner.invoke(app, ["coord", "list-todos", "--repo", "mahavishnu"])
         assert result.exit_code == 0
-        mock_mgr.list_todos.assert_called_once_with(
-            status=None, repo="mahavishnu", assignee=None
-        )
+        mock_mgr.list_todos.assert_called_once_with(status=None, repo="mahavishnu", assignee=None)
 
     @patch("mahavishnu.coordination_cli.CoordinationManager")
     def test_list_todos_with_assignee_filter(self, MockMgr):
@@ -486,9 +490,7 @@ class TestListTodos:
         app = _make_app()
         result = runner.invoke(app, ["coord", "list-todos", "--assignee", "carol"])
         assert result.exit_code == 0
-        mock_mgr.list_todos.assert_called_once_with(
-            status=None, repo=None, assignee="carol"
-        )
+        mock_mgr.list_todos.assert_called_once_with(status=None, repo=None, assignee="carol")
 
     @patch("mahavishnu.coordination_cli.CoordinationManager")
     def test_list_todos_empty_results(self, MockMgr):
@@ -560,11 +562,16 @@ class TestCreateTodo:
             [
                 "coord",
                 "create-todo",
-                "--task", "Implement feature",
-                "--description", "Feature details",
-                "--repo", "mahavishnu",
-                "--estimate", "8",
-                "--priority", "high",
+                "--task",
+                "Implement feature",
+                "--description",
+                "Feature details",
+                "--repo",
+                "mahavishnu",
+                "--estimate",
+                "8",
+                "--priority",
+                "high",
             ],
         )
         assert result.exit_code == 0
@@ -584,11 +591,16 @@ class TestCreateTodo:
             [
                 "coord",
                 "create-todo",
-                "--task", "Task",
-                "--description", "Desc",
-                "--repo", "repo-a",
-                "--estimate", "2",
-                "--priority", "superhigh",
+                "--task",
+                "Task",
+                "--description",
+                "Desc",
+                "--repo",
+                "repo-a",
+                "--estimate",
+                "2",
+                "--priority",
+                "superhigh",
             ],
         )
         assert result.exit_code == 1
@@ -732,9 +744,7 @@ class TestListDeps:
         app = _make_app()
         result = runner.invoke(app, ["coord", "list-deps", "--consumer", "mahavishnu"])
         assert result.exit_code == 0
-        mock_mgr.list_dependencies.assert_called_once_with(
-            consumer="mahavishnu", provider=None
-        )
+        mock_mgr.list_dependencies.assert_called_once_with(consumer="mahavishnu", provider=None)
 
     @patch("mahavishnu.coordination_cli.CoordinationManager")
     def test_list_deps_with_provider_filter(self, MockMgr):
@@ -745,9 +755,7 @@ class TestListDeps:
         app = _make_app()
         result = runner.invoke(app, ["coord", "list-deps", "--provider", "oneiric"])
         assert result.exit_code == 0
-        mock_mgr.list_dependencies.assert_called_once_with(
-            consumer=None, provider="oneiric"
-        )
+        mock_mgr.list_dependencies.assert_called_once_with(consumer=None, provider="oneiric")
 
     @patch("mahavishnu.coordination_cli.CoordinationManager")
     def test_list_deps_empty_results(self, MockMgr):

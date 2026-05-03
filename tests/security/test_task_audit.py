@@ -8,8 +8,7 @@ This module tests the TaskAuditLogger class to ensure:
 5. Structured logging works correctly
 """
 
-import logging
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -83,7 +82,7 @@ class TestSensitiveFieldRedaction:
         }
         redacted = audit_logger._redact_sensitive_fields(data)
 
-        assert "[REDACTED (3 items)]" == redacted["tags"]
+        assert redacted["tags"] == "[REDACTED (3 items)]"
 
     def test_safe_fields_not_redacted(self, audit_logger):
         """Test that safe fields are not redacted."""
@@ -334,6 +333,7 @@ class TestSingleton:
     def test_get_task_audit_logger_returns_singleton(self):
         """Test that get_task_audit_logger returns same instance."""
         import mahavishnu.core.task_audit as module
+
         module._audit_logger = None  # Reset singleton
 
         logger1 = get_task_audit_logger()

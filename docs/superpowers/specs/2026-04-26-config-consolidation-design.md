@@ -9,10 +9,10 @@
 All Claude Code configuration is currently scattered across global `~/.claude/` and `~/.claude.json`, with Mahavishnu using an `additionalDirectories` workaround to access them. This creates several problems:
 
 1. **No single source of truth** — configs live in two global locations plus Mahavishnu's local `.claude/`
-2. **Not version-controlled** — global configs are invisible to git, making changes untrackable
-3. **Not portable** — can't share the dev environment across machines or team members
-4. **Not product-like** — Mahavishnu can't be distributed as a pre-packaged environment
-5. **Not multi-tool** — only Claude Code can read the configs; Mahavishnu CLI/TUI cannot
+1. **Not version-controlled** — global configs are invisible to git, making changes untrackable
+1. **Not portable** — can't share the dev environment across machines or team members
+1. **Not product-like** — Mahavishnu can't be distributed as a pre-packaged environment
+1. **Not multi-tool** — only Claude Code can read the configs; Mahavishnu CLI/TUI cannot
 
 ## 2. Goals
 
@@ -97,6 +97,7 @@ mahavishnu/
 ### 5.3 What Happens to `~/.claude/` After Migration
 
 After migration, `~/.claude/` retains only:
+
 - `settings.json` (secrets, env, plugins — unchanged)
 - `settings.local.json` (existing project-scoped permissions — unchanged)
 - `CLAUDE.md` — replaced with a thin stub:
@@ -145,9 +146,9 @@ Claude Code will repopulate app-state keys in `~/.claude.json` on next launch.
 **Phase 3: Update project config**
 
 1. Remove `~/.claude` from `mahavishnu/.claude/settings.local.json` `additionalDirectories`
-2. Keep `mcp-common`, `crackerjack`, `session-buddy` in `additionalDirectories`
-3. Replace `~/.claude/CLAUDE.md` with thin stub
-4. Delete `claude-island-state.py` (removed per user decision)
+1. Keep `mcp-common`, `crackerjack`, `session-buddy` in `additionalDirectories`
+1. Replace `~/.claude/CLAUDE.md` with thin stub
+1. Delete `claude-island-state.py` (removed per user decision)
 
 ### 6.2 Safety Features
 
@@ -159,10 +160,10 @@ Claude Code will repopulate app-state keys in `~/.claude.json` on next launch.
   - Backup location: `mahavishnu/.claude/backups/{timestamp}/`
 - `--rollback` flag: reverses the migration using the backups:
   1. Restore `~/.claude.json` from backup (re-inserts mcpServers key)
-  2. Restore `~/.claude/settings.local.json` from backup (re-adds `~/.claude` to additionalDirectories)
-  3. Restore `~/.claude/CLAUDE.md` from backup (full ecosystem manifest)
-  4. Copy agents, skills, commands back to `~/.claude/`
-  5. Verify restoration by checking file counts match originals
+  1. Restore `~/.claude/settings.local.json` from backup (re-adds `~/.claude` to additionalDirectories)
+  1. Restore `~/.claude/CLAUDE.md` from backup (full ecosystem manifest)
+  1. Copy agents, skills, commands back to `~/.claude/`
+  1. Verify restoration by checking file counts match originals
 - Validation step: after copy, verifies all expected files exist in new locations
 - Idempotent: running twice is safe (skips existing files)
 
@@ -334,20 +335,20 @@ This is informational — Mahavishnu's pool routing reads `timeout_hint` as a su
 ## 11. Acceptance Criteria
 
 1. All 101 agents are present in `mahavishnu/.claude/agents/` and discoverable by Claude Code
-2. All 27 skills (22 native + 5 from `~/.agents/` symlinks) are present in `mahavishnu/.claude/skills/` and discoverable by Claude Code
-3. All 33 MCP servers are defined in `mahavishnu/.mcp.json` and connectable
-4. `mahavishnu/.claude/CLAUDE.md` contains the full ecosystem manifest
-5. `~/.claude/CLAUDE.md` is a thin stub pointing to Mahavishnu
-6. `~/.claude.json` no longer contains `mcpServers` key
-7. `~/.claude` is removed from `additionalDirectories`
-8. `mahavishnu config validate` passes with no errors
-9. No symlinks in the new `.claude/skills/` directory (all resolved to real content)
-10. Migration script runs successfully with `--dry-run` (no changes made)
-11. Migration script runs successfully without `--dry-run` (files moved)
-12. `mahavishnu config rollback` successfully reverses the migration
-13. A fresh Claude Code session from Mahavishnu discovers all agents, skills, and MCP servers
-14. `.gitignore` correctly excludes runtime-only files while including canonical configs
-15. All committed files contain no secrets (API keys, tokens)
+1. All 27 skills (22 native + 5 from `~/.agents/` symlinks) are present in `mahavishnu/.claude/skills/` and discoverable by Claude Code
+1. All 33 MCP servers are defined in `mahavishnu/.mcp.json` and connectable
+1. `mahavishnu/.claude/CLAUDE.md` contains the full ecosystem manifest
+1. `~/.claude/CLAUDE.md` is a thin stub pointing to Mahavishnu
+1. `~/.claude.json` no longer contains `mcpServers` key
+1. `~/.claude` is removed from `additionalDirectories`
+1. `mahavishnu config validate` passes with no errors
+1. No symlinks in the new `.claude/skills/` directory (all resolved to real content)
+1. Migration script runs successfully with `--dry-run` (no changes made)
+1. Migration script runs successfully without `--dry-run` (files moved)
+1. `mahavishnu config rollback` successfully reverses the migration
+1. A fresh Claude Code session from Mahavishnu discovers all agents, skills, and MCP servers
+1. `.gitignore` correctly excludes runtime-only files while including canonical configs
+1. All committed files contain no secrets (API keys, tokens)
 
 ## 12. ADR Reference
 

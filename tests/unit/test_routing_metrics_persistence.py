@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import builtins
+from datetime import UTC, datetime
 import runpy
 import sys
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -28,10 +28,10 @@ from mahavishnu.core.routing_metrics_persistence import (
 
 
 class _FakeAcquire:
-    def __init__(self, connection: "_FakeConnection") -> None:
+    def __init__(self, connection: _FakeConnection) -> None:
         self._connection = connection
 
-    async def __aenter__(self) -> "_FakeConnection":
+    async def __aenter__(self) -> _FakeConnection:
         return self._connection
 
     async def __aexit__(self, exc_type, exc, tb) -> None:  # noqa: ANN001,ANN201,ANN202
@@ -39,7 +39,7 @@ class _FakeAcquire:
 
 
 class _FakeConnection:
-    def __init__(self, pool: "_FakePool") -> None:
+    def __init__(self, pool: _FakePool) -> None:
         self.pool = pool
 
     async def executemany(self, query: str, values: list[tuple[object, ...]]) -> None:
@@ -236,7 +236,9 @@ class TestRoutingMetricsPersistence:
         await persistence.close()
 
     @pytest.mark.asyncio
-    async def test_write_routing_decision_and_cost_tracking(self, persistence: RoutingMetricsPersistence) -> None:
+    async def test_write_routing_decision_and_cost_tracking(
+        self, persistence: RoutingMetricsPersistence
+    ) -> None:
         """Test writing routing decisions and cost tracking records."""
         await persistence.initialize()
 
@@ -373,7 +375,9 @@ class TestRoutingMetricsPersistence:
     @pytest.mark.asyncio
     async def test_uninitialized_write_and_flush_branches(self) -> None:
         """Test write and flush branches that should no-op without a pool."""
-        persistence = RoutingMetricsPersistence(dsn="postgresql://les@localhost/mahavishnu", batch_size=1)
+        persistence = RoutingMetricsPersistence(
+            dsn="postgresql://les@localhost/mahavishnu", batch_size=1
+        )
 
         record = ExecutionRecord(
             execution_id="no-pool",
@@ -414,7 +418,9 @@ class TestRoutingMetricsPersistence:
         assert await persistence._flush_all_pending() is None
 
     @pytest.mark.asyncio
-    async def test_periodic_flush_exception_branch(self, persistence: RoutingMetricsPersistence, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_periodic_flush_exception_branch(
+        self, persistence: RoutingMetricsPersistence, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test the periodic flush loop error branch."""
         persistence = RoutingMetricsPersistence(dsn="postgresql://les@localhost/mahavishnu")
 
@@ -561,7 +567,9 @@ class TestRoutingMetricsPersistence:
 
         await persistence.close()
 
-    def test_import_error_branch_raises_without_asyncpg(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_import_error_branch_raises_without_asyncpg(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test asyncpg import fallback and constructor guard."""
         original_import = builtins.__import__
 
@@ -571,7 +579,9 @@ class TestRoutingMetricsPersistence:
             return original_import(name, globals, locals, fromlist, level)
 
         monkeypatch.setattr(builtins, "__import__", guarded_import)
-        for module_name in [name for name in sys.modules if name == "asyncpg" or name.startswith("asyncpg.")]:
+        for module_name in [
+            name for name in sys.modules if name == "asyncpg" or name.startswith("asyncpg.")
+        ]:
             monkeypatch.delitem(sys.modules, module_name, raising=False)
 
         namespace = runpy.run_module(

@@ -23,19 +23,20 @@ Usage:
 
 from __future__ import annotations
 
-import logging
-import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
-from typing import Any
+from datetime import UTC, datetime
+from enum import StrEnum
+import logging
+from typing import TYPE_CHECKING, Any
+import uuid
 
-from mahavishnu.core.task_store import TaskStore
+if TYPE_CHECKING:
+    from mahavishnu.core.task_store import TaskStore
 
 logger = logging.getLogger(__name__)
 
 
-class SyncStatus(str, Enum):
+class SyncStatus(StrEnum):
     """Status of a sync item."""
 
     PENDING = "pending"  # Awaiting approval
@@ -46,7 +47,7 @@ class SyncStatus(str, Enum):
     FAILED = "failed"  # Sync failed
 
 
-class ConflictResolution(str, Enum):
+class ConflictResolution(StrEnum):
     """How to resolve a sync conflict."""
 
     KEEP_LOCAL = "keep_local"  # Keep local version
@@ -501,14 +502,12 @@ class SyncCoordinator:
                 continue
 
             # Check label filter
-            if label_filter:
-                if not any(label in item.labels for label in label_filter):
-                    continue
+            if label_filter and not any(label in item.labels for label in label_filter):
+                continue
 
             # Check repository filter
-            if repository_filter:
-                if item.repository not in repository_filter:
-                    continue
+            if repository_filter and item.repository not in repository_filter:
+                continue
 
             item.status = SyncStatus.APPROVED
             item.approved_at = datetime.now(UTC)

@@ -18,17 +18,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 import re
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Quality types (merged from quality_evaluator.py)
 # ---------------------------------------------------------------------------
 
 
-class QualityMetric(str, Enum):
+class QualityMetric(StrEnum):
     """Quality metric types."""
 
     READABILITY = "readability"
@@ -89,7 +88,10 @@ class QualityThresholds:
 
         completeness = metrics.get(QualityMetric.COMPLETENESS.value, 1.0)
         if completeness < self.completeness_augment:
-            return True, f"Completeness {completeness:.2f} below threshold {self.completeness_augment}"
+            return (
+                True,
+                f"Completeness {completeness:.2f} below threshold {self.completeness_augment}",
+            )
 
         return False, ""
 
@@ -217,9 +219,15 @@ def _score_api_coverage(text: str) -> float:
 def _score_edge_cases(text: str) -> float:
     """Score based on error/edge case discussion."""
     edge_patterns = [
-        r"\berror\b", r"\bexception\b", r"\bfallback\b",
-        r"\btimeout\b", r"\bretry\b", r"\bvalidation\b",
-        r"\bhandle\b", r"\bsafety\b", r"\bcheck\b",
+        r"\berror\b",
+        r"\bexception\b",
+        r"\bfallback\b",
+        r"\btimeout\b",
+        r"\bretry\b",
+        r"\bvalidation\b",
+        r"\bhandle\b",
+        r"\bsafety\b",
+        r"\bcheck\b",
     ]
     matches = sum(len(re.findall(p, text, re.IGNORECASE)) for p in edge_patterns)
     if matches == 0:
@@ -234,9 +242,15 @@ def _score_edge_cases(text: str) -> float:
 def _score_architecture(text: str) -> float:
     """Score based on architectural discussion."""
     arch_patterns = [
-        r"\bpattern\b", r"\bdesign\b", r"\barchitecture\b",
-        r"\btrade-?off\b", r"\bdecision\b", r"\bstrategy\b",
-        r"\babstraction\b", r"\bcomponent\b", r"\bmodule\b",
+        r"\bpattern\b",
+        r"\bdesign\b",
+        r"\barchitecture\b",
+        r"\btrade-?off\b",
+        r"\bdecision\b",
+        r"\bstrategy\b",
+        r"\babstraction\b",
+        r"\bcomponent\b",
+        r"\bmodule\b",
     ]
     matches = sum(len(re.findall(p, text, re.IGNORECASE)) for p in arch_patterns)
     if matches == 0:
@@ -288,9 +302,13 @@ def _score_topic_coverage(text: str) -> float:
 def _score_prerequisites(text: str) -> float:
     """Score based on prerequisites/requirements mentions."""
     prereq_patterns = [
-        r"\bprerequisite\b", r"\brequir(?:e|ment)\b",
-        r"\bdepend(?:enc(?:y|ies))?\b", r"\binstall\b",
-        r"\bsetup\b", r"\bconfigure\b", r"\bbefore you\b",
+        r"\bprerequisite\b",
+        r"\brequir(?:e|meant)\b",
+        r"\bdepend(?:enc(?:y|ies))?\b",
+        r"\binstall\b",
+        r"\bsetup\b",
+        r"\bconfigure\b",
+        r"\bbefore you\b",
         r"\bfirst\b",
     ]
     matches = sum(len(re.findall(p, text, re.IGNORECASE)) for p in prereq_patterns)
@@ -306,9 +324,15 @@ def _score_prerequisites(text: str) -> float:
 def _score_next_steps(text: str) -> float:
     """Score based on follow-up / next step references."""
     next_patterns = [
-        r"\bnext\b", r"\bfollow\b", r"\bsee also\b",
-        r"\bfor more\b", r"\breference\b", r"\bdocs\b",
-        r"\bhttp[s]?://\b", r"\bfurther\b", r"\bcontinue\b",
+        r"\bnext\b",
+        r"\bfollow\b",
+        r"\bsee also\b",
+        r"\bfor more\b",
+        r"\breference\b",
+        r"\bdocs\b",
+        r"\bhttp[s]?://\b",
+        r"\bfurther\b",
+        r"\bcontinue\b",
     ]
     matches = sum(len(re.findall(p, text, re.IGNORECASE)) for p in next_patterns)
     if matches == 0:
@@ -323,8 +347,11 @@ def _score_next_steps(text: str) -> float:
 def _score_examples(text: str) -> float:
     """Score based on worked examples."""
     example_patterns = [
-        r"\bexample\b", r"\be\.g\.", r"\bsample\b",
-        r"\bdemo\b", r"\btutorial\b",
+        r"\bexample\b",
+        r"\be\.g\.",
+        r"\bsample\b",
+        r"\bdemo\b",
+        r"\btutorial\b",
     ]
     matches = sum(len(re.findall(p, text, re.IGNORECASE)) for p in example_patterns)
     code_blocks = len(re.findall(r"```[\s\S]*?```", text))

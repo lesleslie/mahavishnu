@@ -86,8 +86,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         name="Codex CLI",
         worker_type="terminal-codex",
         command=(
-            "sh -lc 'codex exec --json \"$1\"; "
-            "printf \"\\n__MAHAVISHNU_DONE__\\n\"' _ {prompt}"
+            'sh -lc \'codex exec --json "$1"; printf "\\n__MAHAVISHNU_DONE__\\n"\' _ {prompt}'
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="Codex CLI one-shot execution with marker-based completion",
@@ -110,8 +109,8 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         name="DeepAgents CLI",
         worker_type="terminal-deepagents",
         command=(
-            "sh -lc 'deepagents-cli --non-interactive \"$1\" --quiet --no-stream; "
-            "printf \"\\n__MAHAVISHNU_DONE__\\n\"' _ {prompt}"
+            'sh -lc \'deepagents-cli --non-interactive "$1" --quiet --no-stream; '
+            'printf "\\n__MAHAVISHNU_DONE__\\n"\' _ {prompt}'
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="DeepAgents CLI one-shot execution with marker-based completion",
@@ -122,10 +121,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
     "terminal-clai": WorkerConfig(
         name="CLAI",
         worker_type="terminal-clai",
-        command=(
-            "sh -lc 'clai --no-stream \"$1\"; "
-            "printf \"\\n__MAHAVISHNU_DONE__\\n\"' _ {prompt}"
-        ),
+        command=('sh -lc \'clai --no-stream "$1"; printf "\\n__MAHAVISHNU_DONE__\\n"\' _ {prompt}'),
         category=WorkerCategory.AI_ASSISTANT,
         description="CLAI one-shot execution with marker-based completion",
         completion_markers=["__MAHAVISHNU_DONE__"],
@@ -568,13 +564,14 @@ def resolve_worker_type(
         "chatops",
     }
 
-    if (
-        worker_type
-        in {"terminal-qwen", "terminal-claude", "terminal-codex", "terminal-openclaw"}
-        and (
-            normalized_task in communication_task_types
-            or any(marker in combined for marker in communication_markers)
-        )
+    if worker_type in {
+        "terminal-qwen",
+        "terminal-claude",
+        "terminal-codex",
+        "terminal-openclaw",
+    } and (
+        normalized_task in communication_task_types
+        or any(marker in combined for marker in communication_markers)
     ):
         return "gateway-openclaw" if os.getenv("OPENCLAW_GATEWAY_URL") else "terminal-openclaw"
 

@@ -9,8 +9,8 @@
 Add three missing code intelligence capabilities to the Bodai ecosystem by extending existing infrastructure rather than introducing new dependencies:
 
 1. **Call chain resolution** — "find all transitive callers/callees of function X"
-2. **Change impact analysis** — "if function X changes, what files and functions are affected?"
-3. **Incremental re-indexing** — re-parse only changed files on git events
+1. **Change impact analysis** — "if function X changes, what files and functions are affected?"
+1. **Incremental re-indexing** — re-parse only changed files on git events
 
 This design was shaped by a four-agent review (Architecture Council, Plan Agent, Delivery Lead, Explore Agent) that evaluated GitNexus (PolyForm Noncommercial license — blocked), LlamaIndex PropertyGraphIndex (wrong tool for code graphs — blocked), and multiple open-source alternatives before converging on extending existing infrastructure.
 
@@ -135,6 +135,7 @@ This design was shaped by a four-agent review (Architecture Council, Plan Agent,
 **Tool name:** `code_call_chain`
 
 **Input (Pydantic model):**
+
 ```python
 class CallChainRequest(BaseModel):
     symbol_name: str           # qualified: "{repo_path}|||{file_path}|||{symbol_type}|||{symbol_name}" or bare for single-repo
@@ -145,6 +146,7 @@ class CallChainRequest(BaseModel):
 ```
 
 **Output:**
+
 ```python
 class CallChainResult(BaseModel):
     root_symbol: str
@@ -168,6 +170,7 @@ class CallChain(BaseModel):
 **Tool name:** `code_impact_analysis`
 
 **Input (Pydantic model):**
+
 ```python
 class ImpactAnalysisRequest(BaseModel):
     symbol_name: str           # qualified: "{repo_path}|||{file_path}|||{symbol_type}|||{symbol_name}" or bare (with repo_path to disambiguate)
@@ -177,6 +180,7 @@ class ImpactAnalysisRequest(BaseModel):
 ```
 
 **Output:**
+
 ```python
 class ImpactAnalysisResult(BaseModel):
     target: str
@@ -203,11 +207,13 @@ class SymbolImpact(BaseModel):
 **Flow name:** `index-code-graph`
 
 **Trigger mechanisms (priority order):**
+
 1. **Git hook** — `.git/hooks/post-commit` calls `mahavishnu index --trigger git-event --repo <path>`
-2. **Scheduled sweep** — Prefect schedule (default: every 15 minutes) calls `mahavishnu index --all-repos`
-3. **Manual CLI** — `mahavishnu index --repo <path>` for on-demand full re-index
+1. **Scheduled sweep** — Prefect schedule (default: every 15 minutes) calls `mahavishnu index --all-repos`
+1. **Manual CLI** — `mahavishnu index --repo <path>` for on-demand full re-index
 
 **Workflow steps:**
+
 ```
 1. Detect changes
    - Git trigger: git diff HEAD~1 --name-only
@@ -288,6 +294,7 @@ class SymbolImpact(BaseModel):
 ```
 
 **CLI interface:**
+
 ```bash
 # Triggered by git hook
 mahavishnu index --trigger git-event --repo /path/to/repo
@@ -316,28 +323,31 @@ mahavishnu index --install-hooks --repo /path/to/repo --force
 ```
 
 **What `--install-hooks` does:**
+
 1. Validates `--repo` path against `repos.yaml` (rejects unregistered repos)
-2. Creates `.git/hooks/post-commit` with header comment identifying mahavishnu:
+1. Creates `.git/hooks/post-commit` with header comment identifying mahavishnu:
    ```sh
    #!/bin/sh
    # Managed by mahavishnu index --install-hooks
    # Remove with: mahavishnu index --uninstall-hooks --repo <path>
    mahavishnu index --trigger git-event --repo "$(pwd)"
    ```
-3. Creates `.git/hooks/post-merge` and `.git/hooks/post-rewrite` with same content
-4. If a hook file already exists and lacks the mahavishnu header comment, refuses to overwrite unless `--force` is passed
-5. Sets file permissions to 0755 (owner read/write/execute, group/other read/execute)
-6. Verifies hook file owner matches the repo directory owner (refuses if mismatch)
+1. Creates `.git/hooks/post-merge` and `.git/hooks/post-rewrite` with same content
+1. If a hook file already exists and lacks the mahavishnu header comment, refuses to overwrite unless `--force` is passed
+1. Sets file permissions to 0755 (owner read/write/execute, group/other read/execute)
+1. Verifies hook file owner matches the repo directory owner (refuses if mismatch)
 
 **What `--uninstall-hooks` does:**
+
 1. Removes only hooks that contain the mahavishnu header comment
-2. Leaves non-mahavishnu hooks untouched
+1. Leaves non-mahavishnu hooks untouched
 
 ### 4.5 Repo skill generation (--skills)
 
 When `mahavishnu index --skills --repo <path>` is run, the system detects functional areas of the codebase and generates a `SKILL.md` file for each area. These skills give AI agents targeted context for the exact area of code being worked on.
 
 **CLI interface:**
+
 ```bash
 # Generate skills for a single repo
 mahavishnu index --skills --repo /path/to/repo
@@ -352,23 +362,27 @@ mahavishnu index --all-repos --schedule "*/15 * * * *" --with-skills
 **What `--skills` does:**
 
 1. **Run community detection on the code graph**
+
    - Query all code nodes and edges from Session-Buddy for the target repo
    - Build an undirected NetworkX graph: nodes = symbols (functions, classes, modules), edges = calls + imports (weighted by frequency)
    - Run Leiden community detection (`leidenalg` package) to partition the graph into functional areas
    - Each community represents a cohesive functional area (e.g., "authentication", "content ingestion", "pool management")
 
-2. **Analyze each community**
+1. **Analyze each community**
+
    - Identify entry points: symbols with high betweenness centrality (called by other communities)
    - Identify internal execution flows: topological ordering within the community
    - Identify cross-area connections: edges that cross community boundaries
    - Compute community metrics: size (symbol count), cohesion (edge density), coupling (cross-community edge ratio)
 
-3. **Generate SKILL.md per community**
+1. **Generate SKILL.md per community**
+
    - Output directory: `.claude/skills/generated/{community_name}/SKILL.md`
    - Follow the existing skill format (frontmatter + sections)
    - Include: key files, entry points, execution flows, cross-area connections, related communities
 
-4. **Regeneration semantics**
+1. **Regeneration semantics**
+
    - Skills are regenerated on each `--skills` run (no incremental update — full regeneration)
    - Previous generated skills are overwritten
    - A `generated/` directory prefix distinguishes auto-generated skills from hand-written ones
@@ -582,6 +596,7 @@ CREATE PROPERTY GRAPH code_graph
 **Phase 2 (I2), Section 6 (Engine Surface Expansion)** — as a new sub-section "6.4 Code Knowledge Graph" alongside the existing Prefect (6.1), LlamaIndex (6.2), and Agno (6.3) sections.
 
 Rationale from Delivery Lead review:
+
 - Phase 0 (boundary hardening) does not need to complete first — indexing is self-contained
 - Learning pipeline (Phase 1) has a soft dependency only — improves evidence quality, not a gate
 - Nothing downstream (Phase 3, 4) depends on this — low slippage risk
@@ -637,6 +652,7 @@ Matches are replaced with `"<REDACTED>"` in the stored signature. The original s
 ### 8.3 DuckDB file permissions
 
 The DuckDB database file used for the code graph must have restrictive permissions:
+
 - Database file: `0600` (owner read/write only)
 - Database directory: `0700` (owner access only)
 - Applied at creation time; verified on startup
@@ -664,27 +680,27 @@ Session-Buddy must independently validate all inputs received from Mahavishnu, n
 ## 9. Acceptance Criteria
 
 1. `code_call_chain` returns transitive callers/callees up to 5 hops with correct qualified symbol IDs, file paths, and edge types
-2. `code_impact_analysis` returns all direct and indirect dependents with risk level classification (based on direct dependents only) and blast_radius (total transitive reach)
-3. Both tools include `stale` and `last_indexed_at` fields in responses when the index is > 24 hours old
-4. Incremental re-indexing processes only changed files (verified by comparing parse count to diff count)
-5. Per-file parse failures are logged and skipped without aborting the batch; failure rate > 25% emits a warning
-6. Full re-index of a single repo completes in under 60 seconds for repos under 100k LOC (per-repo, not cumulative)
-7. All new tools return Pydantic-typed responses with no raw dicts
-8. Degradation Tier 4 returns structured `CodeGraphUnavailable` responses, never empty results or untyped errors
-9. DuckDB corruption triggers automatic re-index from scratch with a logged corruption event
-10. Atomic replacement guarantee: failed staging table swaps leave the existing graph intact
-11. `mahavishnu index --install-hooks` creates executable git hooks with mahavishnu header comment
-12. `mahavishnu index --install-hooks --force` overwrites existing non-mahavishnu hooks with confirmation
-13. `mahavishnu index --uninstall-hooks` removes only mahavishnu-managed hooks
-14. `--repo` path validation rejects unregistered repositories
-15. Function signatures containing secret patterns (API_KEY, PASSWORD, TOKEN) are redacted before storage
-16. DuckDB database file has permissions 0600; database directory has permissions 0700
-17. No MCP calls to Session-Buddy execute without valid auth token (hard blocker, not soft)
-18. No new infrastructure dependencies (no Neo4j, no TiDB, no external graph DB)
-19. Session-Buddy remains the single authority for code graph storage (verified by grep: no other service writes to the code graph)
-20. PGQ queries on DuckDB handle call chains of depth 5 without truncation on repos under 50k symbols; if performance is insufficient, materialized views per edge type are created
-21. Upsert logic (ON CONFLICT DO UPDATE) is implemented and tested for code node and edge tables
-22. Soft delete mechanism (is_deleted flag) is implemented and verified for renamed/removed symbols
+1. `code_impact_analysis` returns all direct and indirect dependents with risk level classification (based on direct dependents only) and blast_radius (total transitive reach)
+1. Both tools include `stale` and `last_indexed_at` fields in responses when the index is > 24 hours old
+1. Incremental re-indexing processes only changed files (verified by comparing parse count to diff count)
+1. Per-file parse failures are logged and skipped without aborting the batch; failure rate > 25% emits a warning
+1. Full re-index of a single repo completes in under 60 seconds for repos under 100k LOC (per-repo, not cumulative)
+1. All new tools return Pydantic-typed responses with no raw dicts
+1. Degradation Tier 4 returns structured `CodeGraphUnavailable` responses, never empty results or untyped errors
+1. DuckDB corruption triggers automatic re-index from scratch with a logged corruption event
+1. Atomic replacement guarantee: failed staging table swaps leave the existing graph intact
+1. `mahavishnu index --install-hooks` creates executable git hooks with mahavishnu header comment
+1. `mahavishnu index --install-hooks --force` overwrites existing non-mahavishnu hooks with confirmation
+1. `mahavishnu index --uninstall-hooks` removes only mahavishnu-managed hooks
+1. `--repo` path validation rejects unregistered repositories
+1. Function signatures containing secret patterns (API_KEY, PASSWORD, TOKEN) are redacted before storage
+1. DuckDB database file has permissions 0600; database directory has permissions 0700
+1. No MCP calls to Session-Buddy execute without valid auth token (hard blocker, not soft)
+1. No new infrastructure dependencies (no Neo4j, no TiDB, no external graph DB)
+1. Session-Buddy remains the single authority for code graph storage (verified by grep: no other service writes to the code graph)
+1. PGQ queries on DuckDB handle call chains of depth 5 without truncation on repos under 50k symbols; if performance is insufficient, materialized views per edge type are created
+1. Upsert logic (ON CONFLICT DO UPDATE) is implemented and tested for code node and edge tables
+1. Soft delete mechanism (is_deleted flag) is implemented and verified for renamed/removed symbols
 
 ## 10. Validation
 
@@ -752,6 +768,7 @@ class IndexWorkItem(BaseModel):
 ```
 
 This enables:
+
 - `mahavishnu index --status` to show a real-time WorkItem dashboard
 - Dependency blocking: don't notify Akosha until upsert is confirmed
 - Retry semantics: failed WorkItems get requeued automatically
@@ -761,10 +778,10 @@ This enables:
 When Session-Buddy MCP is unavailable during indexing, fall back to filesystem-based persistence:
 
 1. Write parsed nodes/edges to `~/.claude/data/mahavishnu-index-queue/{repo_name}_{timestamp}.json`
-2. On Session-Buddy recovery, batch-replay all pending JSON files
-3. Delete processed files after successful upsert
-4. Deduplicate replay: skip files whose `(repo_path, commit_hash, file_path)` tuple matches a recently processed entry
-5. Maximum queue age: 48 hours — items older than this are discarded with a warning
+1. On Session-Buddy recovery, batch-replay all pending JSON files
+1. Delete processed files after successful upsert
+1. Deduplicate replay: skip files whose `(repo_path, commit_hash, file_path)` tuple matches a recently processed entry
+1. Maximum queue age: 48 hours — items older than this are discarded with a warning
 
 This ensures indexing never blocks on MCP availability — work queues locally and replays when the graph owner is reachable. The persistent directory (`~/.claude/data/`) survives reboots, unlike `/tmp/`.
 
@@ -785,6 +802,7 @@ Heartbeat files in `~/.claude/data/mahavishnu-index/heartbeats/` enable external
 ## 12. ADR Reference
 
 This design should be accompanied by an ADR in `docs/adr/` documenting:
+
 - Decision to extend Session-Buddy's DuckDB/DuckPGQ vs. alternatives
 - Rejection of GitNexus (PolyForm Noncommercial license)
 - Rejection of LlamaIndex PropertyGraphIndex (data model mismatch, traversal limitations)

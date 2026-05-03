@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import os
-import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -56,10 +54,16 @@ class TestCloudWorkerConfig:
 
         cfg = CloudWorkerConfig(model="default-model")
         # When model_routing is None, falls back to DEFAULT_ZAI_ROUTING
-        assert cfg.get_model_for_category(TaskCategory.CODE_GENERATION) == DEFAULT_ZAI_ROUTING[TaskCategory.CODE_GENERATION]
+        assert (
+            cfg.get_model_for_category(TaskCategory.CODE_GENERATION)
+            == DEFAULT_ZAI_ROUTING[TaskCategory.CODE_GENERATION]
+        )
 
     def test_get_model_for_category_with_routing(self):
-        routing = {TaskCategory.REASONING: "reasoning-model", TaskCategory.CODE_GENERATION: "code-model"}
+        routing = {
+            TaskCategory.REASONING: "reasoning-model",
+            TaskCategory.CODE_GENERATION: "code-model",
+        }
         cfg = CloudWorkerConfig(model="fallback", model_routing=routing)
         assert cfg.get_model_for_category(TaskCategory.REASONING) == "reasoning-model"
         # GENERAL not in routing dict, falls back to config model
@@ -70,7 +74,10 @@ class TestCloudWorkerConfig:
 
         cfg = CloudWorkerConfig(model="fallback")
         # GENERAL is in DEFAULT_ZAI_ROUTING → returns "glm-4.5", not config model
-        assert cfg.get_model_for_category(TaskCategory.GENERAL) == DEFAULT_ZAI_ROUTING[TaskCategory.GENERAL]
+        assert (
+            cfg.get_model_for_category(TaskCategory.GENERAL)
+            == DEFAULT_ZAI_ROUTING[TaskCategory.GENERAL]
+        )
 
 
 class TestCloudWorkerInit:
@@ -358,10 +365,12 @@ class TestCloudWorkerExecuteAdvanced:
 
         with patch.dict("sys.modules", {"openai": mock_openai}):
             await worker.start()
-            result = await worker.execute({
-                "prompt": "hello",
-                "system": "You are helpful.",
-            })
+            result = await worker.execute(
+                {
+                    "prompt": "hello",
+                    "system": "You are helpful.",
+                }
+            )
 
             assert result.output == "system result"
             call_args = mock_client.chat.completions.create.call_args
@@ -378,11 +387,13 @@ class TestCloudWorkerExecuteAdvanced:
 
         with patch.dict("sys.modules", {"openai": mock_openai}):
             await worker.start()
-            result = await worker.execute({
-                "prompt": "test",
-                "temperature": 0.1,
-                "max_tokens": 100,
-            })
+            result = await worker.execute(
+                {
+                    "prompt": "test",
+                    "temperature": 0.1,
+                    "max_tokens": 100,
+                }
+            )
 
             assert result.is_success()
             call_kwargs = mock_client.chat.completions.create.call_args.kwargs
@@ -394,9 +405,7 @@ class TestCloudWorkerExecuteAdvanced:
         cfg = CloudWorkerConfig(api_key="test-key", intelligent_routing=False)
         worker = CloudWorker(config=cfg, worker_id="timeout-test")
         mock_client, mock_openai = _make_openai_mock()
-        mock_client.chat.completions.create = AsyncMock(
-            side_effect=asyncio.TimeoutError()
-        )
+        mock_client.chat.completions.create = AsyncMock(side_effect=TimeoutError())
 
         with patch.dict("sys.modules", {"openai": mock_openai}):
             await worker.start()
@@ -410,9 +419,7 @@ class TestCloudWorkerExecuteAdvanced:
         cfg = CloudWorkerConfig(api_key="test-key", intelligent_routing=False)
         worker = CloudWorker(config=cfg, worker_id="err-test")
         mock_client, mock_openai = _make_openai_mock()
-        mock_client.chat.completions.create = AsyncMock(
-            side_effect=RuntimeError("API down")
-        )
+        mock_client.chat.completions.create = AsyncMock(side_effect=RuntimeError("API down"))
 
         with patch.dict("sys.modules", {"openai": mock_openai}):
             await worker.start()
@@ -429,7 +436,9 @@ class TestCloudWorkerExecuteAdvanced:
 
         with patch.dict("sys.modules", {"openai": mock_openai}):
             await worker.start()
-            result = await worker.execute({"prompt": "explain and reason about this architecture decision"})
+            result = await worker.execute(
+                {"prompt": "explain and reason about this architecture decision"}
+            )
 
             assert result.output == "routed result"
             assert result.is_success()

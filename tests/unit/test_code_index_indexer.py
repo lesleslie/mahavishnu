@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import UTC
 import os
-import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+import time
 
 import pytest
 
@@ -69,8 +69,9 @@ def test_index_repo_full_with_changes(
         lambda _repo, _commit: ["foo.py"],
     )
 
-    from datetime import datetime, timezone
-    from mahavishnu.core.code_index.models import CodeGraphNode, CodeGraphEdge
+    from datetime import datetime
+
+    from mahavishnu.core.code_index.models import CodeGraphNode
 
     mock_node = CodeGraphNode(
         symbol_id="test|||foo.py|||function|||bar",
@@ -78,7 +79,7 @@ def test_index_repo_full_with_changes(
         symbol_type="function",
         file_path="foo.py",
         repo_path=str(tmp_path),
-        last_indexed_at=datetime.now(timezone.utc),
+        last_indexed_at=datetime.now(UTC),
         commit_hash="sha1full",
     )
     monkeypatch.setattr(
@@ -121,7 +122,8 @@ def test_index_repo_parse_failure_tolerance(
         call_count += 1
         if _fp == "bad.py":
             raise RuntimeError("parse error")
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         from mahavishnu.core.code_index.models import CodeGraphNode
 
         return (
@@ -132,7 +134,7 @@ def test_index_repo_parse_failure_tolerance(
                     symbol_type="function",
                     file_path=_fp,
                     repo_path=str(tmp_path),
-                    last_indexed_at=datetime.now(timezone.utc),
+                    last_indexed_at=datetime.now(UTC),
                     commit_hash="sha2partial",
                 )
             ],

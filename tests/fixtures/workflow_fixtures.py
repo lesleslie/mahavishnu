@@ -7,8 +7,9 @@ failed) for testing workflow state management, execution, and monitoring.
 
 from datetime import datetime, timedelta
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 import uuid
+
 import pytest
 
 

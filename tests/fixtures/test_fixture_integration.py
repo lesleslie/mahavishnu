@@ -5,9 +5,10 @@ used in actual tests.
 """
 
 import pytest
-from tests.fixtures.workflow_fixtures import WorkflowFixtures
-from tests.fixtures.shell_fixtures import ShellFixtures
+
 from tests.fixtures.conftest import IntegrationFixtures
+from tests.fixtures.shell_fixtures import ShellFixtures
+from tests.fixtures.workflow_fixtures import WorkflowFixtures
 
 
 class TestWorkflowFixtures:

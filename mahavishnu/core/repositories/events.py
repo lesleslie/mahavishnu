@@ -10,14 +10,16 @@ Schema: audit.task_events
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import logging
-from datetime import datetime, timezone
-from typing import Any
-from uuid import UUID
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +45,7 @@ class TaskEventCreate(BaseModel):
     run_id: UUID | None = Field(None, description="Run ID")
     event_type: str = Field(..., description="Event type")
     event_time: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
     )
     payload: dict[str, Any] = Field(
         default_factory=dict,

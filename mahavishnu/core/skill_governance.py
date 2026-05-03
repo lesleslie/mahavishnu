@@ -81,7 +81,7 @@ class SkillDraft(BaseModel):
     model_config = {"extra": "forbid"}
 
     @model_validator(mode="after")
-    def _validate_trigger_conditions(self) -> "SkillDraft":
+    def _validate_trigger_conditions(self) -> SkillDraft:
         if not self.trigger_conditions:
             raise ValueError("trigger_conditions must contain at least one condition")
         return self
@@ -102,7 +102,7 @@ class SkillReview(BaseModel):
     model_config = {"extra": "forbid"}
 
     @model_validator(mode="after")
-    def _validate_required_changes(self) -> "SkillReview":
+    def _validate_required_changes(self) -> SkillReview:
         if self.decision in {SkillReviewDecision.REJECT, SkillReviewDecision.REQUEST_CHANGES}:
             if not self.required_changes:
                 raise ValueError("required_changes must be provided when review is not approved")
@@ -139,7 +139,7 @@ class SkillRollback(BaseModel):
     model_config = {"extra": "forbid"}
 
     @model_validator(mode="after")
-    def _validate_version_pair(self) -> "SkillRollback":
+    def _validate_version_pair(self) -> SkillRollback:
         if self.from_version == self.to_version:
             raise ValueError("from_version and to_version must be different")
         return self
@@ -155,7 +155,10 @@ class SkillPromotionPolicy:
     def allowed_transitions() -> dict[SkillPromotionState, set[SkillPromotionState]]:
         return {
             SkillPromotionState.DRAFT: {SkillPromotionState.REVIEW},
-            SkillPromotionState.REVIEW: {SkillPromotionState.ACTIVE, SkillPromotionState.DEPRECATED},
+            SkillPromotionState.REVIEW: {
+                SkillPromotionState.ACTIVE,
+                SkillPromotionState.DEPRECATED,
+            },
             SkillPromotionState.ACTIVE: {SkillPromotionState.DEPRECATED},
             SkillPromotionState.DEPRECATED: set(),
         }

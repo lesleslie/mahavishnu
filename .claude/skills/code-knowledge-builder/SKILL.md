@@ -1,11 +1,6 @@
----
-name: code-knowledge-builder
-description: >
-  Proactive code knowledge graph enrichment. Use automatically when exploring unfamiliar code,
-  making significant edits, or reasoning through design decisions. Ingests key files into the
-  Session-Buddy knowledge graph, creates entities for architectural decisions, and maintains
-  graph freshness. NOT user-invoked — Claude activates this autonomously during code work.
----
+______________________________________________________________________
+
+## name: code-knowledge-builder description: > Proactive code knowledge graph enrichment. Use automatically when exploring unfamiliar code, making significant edits, or reasoning through design decisions. Ingests key files into the Session-Buddy knowledge graph, creates entities for architectural decisions, and maintains graph freshness. NOT user-invoked — Claude activates this autonomously during code work.
 
 # Code Knowledge Builder
 
@@ -15,8 +10,8 @@ description: >
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| session-buddy | 8678 | full | mcp__session-buddy___code_ingest_file_impl, mcp__session-buddy___code_ingest_directory_impl, mcp__session-buddy___code_search_symbols_impl | 30s |
-| akosha | 8682 | summary | mcp__akosha__search_code_patterns, mcp__akosha__find_function_usage | 60s |
+| session-buddy | 8678 | full | mcp\_\_session-buddy\_\_\_code_ingest_file_impl, mcp\_\_session-buddy\_\_\_code_ingest_directory_impl, mcp\_\_session-buddy\_\_\_code_search_symbols_impl | 30s |
+| akosha | 8682 | summary | mcp\_\_akosha\_\_search_code_patterns, mcp\_\_akosha\_\_find_function_usage | 60s |
 
 Every code exploration and significant edit should enrich the knowledge graph for future sessions. This skill teaches Claude to selectively ingest code, capture design decisions, and keep the knowledge graph current.
 
@@ -25,6 +20,7 @@ Every code exploration and significant edit should enrich the knowledge graph fo
 ## Activation
 
 **Reactive** — triggers automatically when Claude:
+
 - Starts exploring an unfamiliar module, package, or codebase area
 - Completes a significant code change (new class, refactor, new adapter, interface change)
 - Is asked "how does X work?" about code it hasn't seen before
@@ -66,7 +62,9 @@ Call mcp__session-buddy___code_list_projects_impl with: {}
 ```
 
 **If project is NOT tracked:**
+
 - Ingest the relevant directory (not the whole project — use `max_files=50` to bound the operation)
+
 ```
 Call mcp__session-buddy___code_ingest_directory_impl with:
   - directory: <project_path>
@@ -76,6 +74,7 @@ Call mcp__session-buddy___code_ingest_directory_impl with:
 ```
 
 **If project IS tracked:**
+
 - Skip bulk ingestion, proceed to symbol search
 
 ### Step 2: Search for Relevant Symbols
@@ -91,6 +90,7 @@ Call mcp__session-buddy___code_search_symbols_impl with:
 ```
 
 **Use this to:**
+
 - Discover which files contain relevant code
 - Find the class hierarchy before reading implementation details
 - Identify related functions that might also need modification
@@ -106,12 +106,14 @@ Call mcp__session-buddy___code_get_symbol_graph_impl with:
 ```
 
 **This returns:**
+
 - The symbol's definition location
 - Symbols it calls (outgoing edges)
 - Symbols that call it (incoming edges)
 - Related symbols (same module, same base class, etc.)
 
 **Use this to:**
+
 - Understand the impact of modifying a function (who calls it?)
 - Find the base class before implementing a subclass
 - Discover utility functions that are used alongside the target code
@@ -121,6 +123,7 @@ Call mcp__session-buddy___code_get_symbol_graph_impl with:
 **Only re-ingest files that changed significantly.** This is NOT triggered by every edit.
 
 **Ingest when:**
+
 - A new class, function, or module is added
 - An interface, protocol, or abstract base class is changed
 - A significant refactor changes a file's structure (not line-level changes)
@@ -128,6 +131,7 @@ Call mcp__session-buddy___code_get_symbol_graph_impl with:
 - An adapter or integration point is added/changed
 
 **Do NOT ingest when:**
+
 - Only reading a file for context
 - Making trivial changes (typo fixes, formatting, import reordering)
 - The file is auto-generated, boilerplate, or configuration
@@ -145,6 +149,7 @@ Call mcp__session-buddy___code_ingest_file_impl with:
 When Claude reasons through a design choice during code work, capture it as an entity.
 
 **Capture when:**
+
 - Choosing between multiple approaches ("I chose X over Y because...")
 - Making an architectural decision ("I used the adapter pattern because...")
 - Discovering a non-obvious constraint ("This has to be async because...")
@@ -164,6 +169,7 @@ Call mcp__session-buddy__create_entity with:
 ```
 
 **Link the decision to the relevant code:**
+
 ```
 Call mcp__session-buddy__create_relation with:
   - from_entity: "decision:<topic>"
@@ -184,6 +190,7 @@ Call mcp__session-buddy__find_duplicates with:
 ```
 
 **If duplicates found (similarity > 0.85):**
+
 - Do NOT create a new entity — the existing one already covers this
 - Instead, add a new observation to the existing entity using `add_observation`
 - This prevents the knowledge graph from accumulating redundant entries

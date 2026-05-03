@@ -9,19 +9,16 @@ Tests cover:
 
 from __future__ import annotations
 
-from io import StringIO
-from unittest.mock import patch, MagicMock
-
-import pytest
 from click.testing import CliRunner
+import pytest
 
 from mahavishnu.cli.help_cli import (
-    help_group,
-    show_general_help,
-    show_command_help,
-    show_all_help,
     COMMAND_CATEGORIES,
     _show_category_help,
+    help_group,
+    show_all_help,
+    show_command_help,
+    show_general_help,
 )
 
 
@@ -45,7 +42,9 @@ class TestGeneralHelp:
         assert "Repository Management" in output
         assert "Search & Discovery" in output
 
-    def test_show_general_help_displays_common_workflows(self, capsys: pytest.CaptureFixture) -> None:
+    def test_show_general_help_displays_common_workflows(
+        self, capsys: pytest.CaptureFixture
+    ) -> None:
         """Test general help shows common workflows."""
         show_general_help()
 
@@ -217,6 +216,7 @@ class TestHelpGroupCLI:
     def test_help_tasks_subcommand(self, runner: CliRunner) -> None:
         """Test help tasks shows task management help."""
         from mahavishnu.cli.help_cli import help_tasks
+
         result = runner.invoke(help_tasks, [])
 
         assert result.exit_code == 0
@@ -225,6 +225,7 @@ class TestHelpGroupCLI:
     def test_help_repos_subcommand(self, runner: CliRunner) -> None:
         """Test help repos shows repository management help."""
         from mahavishnu.cli.help_cli import help_repos
+
         result = runner.invoke(help_repos, [])
 
         assert result.exit_code == 0
@@ -233,6 +234,7 @@ class TestHelpGroupCLI:
     def test_help_search_subcommand(self, runner: CliRunner) -> None:
         """Test help search shows search help."""
         from mahavishnu.cli.help_cli import help_search
+
         result = runner.invoke(help_search, [])
 
         assert result.exit_code == 0
@@ -241,6 +243,7 @@ class TestHelpGroupCLI:
     def test_help_mcp_subcommand(self, runner: CliRunner) -> None:
         """Test help mcp shows MCP help."""
         from mahavishnu.cli.help_cli import help_mcp
+
         result = runner.invoke(help_mcp, [])
 
         assert result.exit_code == 0
@@ -249,6 +252,7 @@ class TestHelpGroupCLI:
     def test_help_pools_subcommand(self, runner: CliRunner) -> None:
         """Test help pools shows pool management help."""
         from mahavishnu.cli.help_cli import help_pools
+
         result = runner.invoke(help_pools, [])
 
         assert result.exit_code == 0
@@ -257,6 +261,7 @@ class TestHelpGroupCLI:
     def test_help_terminal_subcommand(self, runner: CliRunner) -> None:
         """Test help terminal shows terminal management help."""
         from mahavishnu.cli.help_cli import help_terminal
+
         result = runner.invoke(help_terminal, [])
 
         assert result.exit_code == 0

@@ -16,8 +16,8 @@ Requirements:
 from __future__ import annotations
 
 import asyncio
-import logging
 from dataclasses import dataclass
+import logging
 from typing import Any
 
 # Configure logging
@@ -226,7 +226,7 @@ async def tutorial_step_2_create_team():
     print(f"  Mode:        {team_config.mode}")
 
     if team_config.leader:
-        print(f"\n  Leader Agent:")
+        print("\n  Leader Agent:")
         print(f"    Name:         {team_config.leader.name}")
         print(f"    Role:         {team_config.leader.role}")
         print(f"    Model:        {team_config.leader.model}")

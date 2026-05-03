@@ -1,7 +1,7 @@
 """Comprehensive unit tests for mahavishnu/websocket/metrics.py."""
+
 from __future__ import annotations
 
-import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,7 +12,6 @@ from mahavishnu.websocket.metrics import (
     reset_metrics,
     start_metrics_server,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -152,7 +151,9 @@ class TestWebSocketMetricsInit:
             # Counter may also trigger fallback if already registered.
             mock_get.assert_any_call("websocket_connections")
 
-    def test_initialize_metrics_handles_duplicate_subscription_gauge(self, metrics: WebSocketMetrics):
+    def test_initialize_metrics_handles_duplicate_subscription_gauge(
+        self, metrics: WebSocketMetrics
+    ):
         """When Gauge() raises ValueError for the subscription gauge,
         _get_existing_collector is used to recover it."""
         metrics._initialize_metrics()
@@ -734,13 +735,15 @@ class TestStartMetricsServer:
                 mock_start.assert_called_once_with(9091)
 
     def test_returns_none_on_os_error(self):
-        with patch("mahavishnu.websocket.metrics.PROMETHEUS_AVAILABLE", True):
-            with patch(
+        with (
+            patch("mahavishnu.websocket.metrics.PROMETHEUS_AVAILABLE", True),
+            patch(
                 "mahavishnu.websocket.metrics.start_http_server",
                 side_effect=OSError("Address already in use"),
-            ):
-                result = start_metrics_server(port=9091)
-                assert result is None
+            ),
+        ):
+            result = start_metrics_server(port=9091)
+            assert result is None
 
     def test_default_port_is_9090(self):
         with patch("mahavishnu.websocket.metrics.PROMETHEUS_AVAILABLE", True):
@@ -807,6 +810,7 @@ class TestResetMetrics:
 def _get_instances() -> dict:
     """Helper to access the private _instances dict from the module."""
     import mahavishnu.websocket.metrics as mod
+
     return mod._instances
 
 

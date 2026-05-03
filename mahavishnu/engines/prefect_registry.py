@@ -20,9 +20,10 @@ Example:
     ```
 """
 
+from collections.abc import Callable
 import logging
+from typing import Any
 import uuid
-from typing import Any, Callable
 
 from prefect import Flow
 

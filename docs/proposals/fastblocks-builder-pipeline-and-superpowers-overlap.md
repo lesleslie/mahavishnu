@@ -9,7 +9,7 @@
 This document does two things:
 
 1. defines a concrete `prompt -> spec -> generate -> preview -> refine -> publish` pipeline for a FastBlocks-native builder product
-2. compares that proposal to the existing `docs/superpowers/specs` and `docs/superpowers/plans` documents to identify overlap, reuse opportunities, and boundary risks
+1. compares that proposal to the existing `docs/superpowers/specs` and `docs/superpowers/plans` documents to identify overlap, reuse opportunities, and boundary risks
 
 ## Recommended Pipeline
 
@@ -73,28 +73,28 @@ User prompt
 ### Initial generation
 
 1. Product repo stores the user prompt and creates a draft
-2. Product repo translates the prompt into an `AppSpec`
-3. Mahavishnu receives a workflow request with `AppSpec`
-4. FastBlocks generates the first app version
-5. FastBlocks validates the output
-6. If invalid, Mahavishnu runs repair passes
-7. Product repo opens preview session
+1. Product repo translates the prompt into an `AppSpec`
+1. Mahavishnu receives a workflow request with `AppSpec`
+1. FastBlocks generates the first app version
+1. FastBlocks validates the output
+1. If invalid, Mahavishnu runs repair passes
+1. Product repo opens preview session
 
 ### Iterative refinement
 
 1. User requests a change
-2. Product repo updates `AppSpec` or records a patch request
-3. Mahavishnu orchestrates delta generation
-4. FastBlocks re-renders or patches the app
-5. FastBlocks validates again
-6. Preview refreshes
+1. Product repo updates `AppSpec` or records a patch request
+1. Mahavishnu orchestrates delta generation
+1. FastBlocks re-renders or patches the app
+1. FastBlocks validates again
+1. Preview refreshes
 
 ### Publish
 
 1. User clicks publish
-2. Product repo creates `PublishRequest`
-3. Mahavishnu runs validation, tests, build, target-specific deploy steps
-4. Product repo reports status and resulting URL/domain/artifacts
+1. Product repo creates `PublishRequest`
+1. Mahavishnu runs validation, tests, build, target-specific deploy steps
+1. Product repo reports status and resulting URL/domain/artifacts
 
 ## Comparison to Superpowers Docs
 
@@ -286,8 +286,8 @@ Do not treat it as:
 The cleanest next step is:
 
 1. keep evolving pattern-learning/scaffolding in a way that can call into FastBlocks-owned template and validation contracts
-2. keep Mahavishnu focused on orchestration
-3. introduce a separate product repo if you want a real Lovable-style offering
+1. keep Mahavishnu focused on orchestration
+1. introduce a separate product repo if you want a real Lovable-style offering
 
 ## Most Relevant Existing Docs
 

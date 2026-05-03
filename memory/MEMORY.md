@@ -29,9 +29,11 @@ This file stores important information that should persist across sessions.
 ## Local Infrastructure
 
 ### Currently Running Services (brew services)
+
 - **started**: grafana
 
 ### MCP Server Management
+
 - **MCP config**: `~/.nanobot/config.json` under `tools.mcpServers`
 - **Gateway logs**: `/Users/les/.local/state/mcp/logs/nanobot.log` and `nanobot.err`
 - **Allow list**: User decided to set up an MCP server allow list
@@ -40,11 +42,13 @@ This file stores important information that should persist across sessions.
 - **homebrew MCP server**: Keep if it doesn't consume too much context
 
 ### Installed CLI Tools
+
 - `mcp-grafana` at `/usr/local/bin/mcp-grafana` (Homebrew install) — running on port 3035 (MCP proxy, NOT Grafana itself)
 - `cmake` at `/usr/local/bin/cmake` — version 4.3.1
 - `ccr` (Claude Code Router) at `/usr/local/bin/ccr` — binary installed, **server not currently running**
 
 ### Infrastructure
+
 - **Postgres 18**: Running via Homebrew — `tensorzero` database exists with `pg_trgm` and `vector` extensions created
 - **Postgres auth**: No password for local deployment; password required when deployed remotely
 - **psql path**: `/usr/local/opt/postgresql@18/bin/psql` (NOT on default PATH)
@@ -53,11 +57,13 @@ This file stores important information that should persist across sessions.
 - **Python compatibility**: `onnxruntime<1.24` pin required for macOS x86_64 (affects session-buddy, crackerjack, oneiric)
 
 ### ⚠️ IMPORTANT: Port Clarification
+
 - **Grafana server**: port **3030** (configured in `/usr/local/etc/grafana/grafana.ini`)
 - **mcp-grafana MCP proxy**: port **3035** (separate service, `com.mcp.grafana.plist`)
 - Previous memory incorrectly stated Grafana port as 3035 — this is the MCP proxy
 
 ### TensorZero Gateway Plan
+
 - **Plan file**: `/Users/les/Projects/mahavishnu/docs/plans/tensorzero-gateway-plan.md`
 - **Status**: v3.0 with Postgres auth + Tempo (Phase 1.6) — 1047 lines — all remaining TODOs addressed
 - **Resume prompt**: `docs/llm-gateway-resume-prompt.md` (saved for restarting work)
@@ -78,6 +84,7 @@ This file stores important information that should persist across sessions.
 - **z.ai**: Two API formats (OpenAI + Anthropic), coding plan has dedicated endpoint
 
 ### Phase 1.6: Tempo (Tracing) — All TODOs Complete
+
 - **Decision**: Replace OTelStorageAdapter's Postgres/pgvector trace storage with Grafana Tempo
 - **Architecture**: Services → OTLP → Tempo (direct). Alloy skipped for single-user dev.
 - **Tempo**: NO macOS binary — must build from source. `go build ./cmd/tempo`
@@ -99,12 +106,14 @@ This file stores important information that should persist across sessions.
 - **Log rotation**: Still TODO for Tempo/gateway logs
 
 ### Claude Code OTEL Monitoring
+
 - **Claude Code has native OTEL**: metrics (tokens, cost, LoC, commits, tool decisions), logs/events, traces (beta)
 - **No CCR-specific monitoring**: CCR is a proxy — all telemetry comes from Claude Code itself
 - **Env vars**: `CLAUDE_CODE_ENABLE_TELEMETRY=1`, `OTEL_METRICS_EXPORTER=otlp`, `OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318`
 - **Traces pass through CCR transparently** via `traceparent` header → TensorZero → z.ai
 
 ### TensorZero Monitoring
+
 - **Prometheus metrics**: Exposed at `/metrics` on gateway port 8471 (always available, no config needed)
 - **OTEL traces**: Exported via OTLP to Tempo at `http://127.0.0.1:4318`
 - **Key metrics**: `tensorzero_inferences_total`, `tensorzero_requests_total`, `tensorzero_inference_latency_overhead_seconds`
@@ -112,17 +121,20 @@ This file stores important information that should persist across sessions.
 ## Mahavishnu Architecture
 
 ### MCP Server
+
 - **Mahavishnu MCP server**: `python -m mahavishnu mcp start` (PID varies, workspace: `/Users/les/Projects/mahavishnu`)
 - **Nanobot gateway**: `nanobot gateway --workspace /Users/les/Projects/mahavishnu` — manages MCP stdio pipe to Mahavishnu
 - **Known issue**: MCP stdio pipe can break between nanobot gateway and Mahavishnu MCP server, causing `ClosedResourceError` on all tool calls. Fix by restarting nanobot gateway.
 - **No workspace nanobot config** — gateway uses `--workspace` flag only
 
 ### Adapter Health Status (2026-04-07)
+
 - **Worker adapter**: ✅ Healthy — workers_active: 0, max_concurrent: 10
 - **Prefect adapter**: ⚠️ Unhealthy — `'MahavishnuSettings' object has no attribute 'api_url'` (config error)
 - **Agno adapter**: ⚠️ Not initialized — using ollama with qwen2.5:7b, agents_cached: 0, teams_count: 0
 
 ### Worker Registry (Mahavishnu)
+
 - **Registry file**: `/Users/les/Projects/mahavishnu/mahavishnu/workers/registry.py`
 - **Workers enabled**: `workers.enabled: true` in `settings/mahavishnu.yaml`, max_concurrent: 10
 - **Worker types** (40+):
@@ -138,6 +150,7 @@ This file stores important information that should persist across sessions.
 - **Worker categories**: AI_ASSISTANT, REMOTE, SHELL, CONTAINER, APPLICATION, etc.
 
 ### Session-Buddy Integration
+
 - **Session-Buddy process**: Running on port **8678** (PID 60943, project at `/Users/les/Projects/session-buddy`)
 - **Mahavishnu config**: `session_buddy_url: "http://localhost:8678/mcp"`, integration enabled for worker pools and result storage
 - **Scope**: Session-Buddy currently tracks **nanobot terminal sessions** only (workspace, shell type, PID, hostname). Does NOT track Slack or Signal sessions yet.
@@ -152,6 +165,7 @@ This file stores important information that should persist across sessions.
 ## Nanobot — Version & Source
 
 ### Version Status
+
 - **Installed**: **v0.1.5** (upgraded 2026-04-07 via `uv tool install nanobot-ai`)
 - **Previous**: v0.1.4.post6
 - **Installed path**: `/Users/les/.local/share/uv/tools/nanobot-ai/lib/python3.13/site-packages/`
@@ -162,6 +176,7 @@ This file stores important information that should persist across sessions.
 - **PATH warning**: `/Users/les/.local/bin` not on PATH — run `export PATH="/Users/les/.local/bin:$PATH"` or `uv tool update-shell`
 
 ### v0.1.5 New Features (NOW INSTALLED)
+
 - **`CompositeHook`** — fan-out hook with per-hook error isolation (async methods catch/log exceptions)
 - **`_LoopHookChain`** — inject custom hooks into the agent loop alongside core `_LoopHook`
 - **`Dream` memory** — two-stage background consolidation (Phase 1: extract, Phase 2: synthesize), configurable via `DreamConfig`
@@ -174,6 +189,7 @@ This file stores important information that should persist across sessions.
 - **New deps**: dulwich, jinja2, markupsafe
 
 ### ⚠️ CRITICAL: Hook Injection Gap in v0.1.5
+
 - **`hooks=` param exists on `AgentLoop.__init__`** but NO command (gateway, agent, serve) passes it
 - **No config field**, no `entry_points` group, no env var for hook discovery
 - **`AgentHookContext` lacks routing data** — no channel, chat_id, session_key, sender_id, or message_id. Internal `_LoopHook` has this data but doesn't expose it.
@@ -187,6 +203,7 @@ This file stores important information that should persist across sessions.
 - **contextvars recommended** for routing data (cleaner than modifying AgentRunSpec) — **confirmed as implementation approach**
 
 ### Phase 2 Hook Discovery PR — Pushed
+
 - **Branch**: `feat/hook-discovery` (local clone at `/Users/les/Projects/nanobot`)
 - **PR**: #2901 — entry_points discovery + 8 unit tests
 - **Scope**: `entry_points(group="nanobot.hooks")` discovery + routing data via contextvars
@@ -194,10 +211,12 @@ This file stores important information that should persist across sessions.
 - **Status**: ✅ Committed and pushed to fork
 
 ### Session-Buddy Path Validation Bug — Fixed
+
 - **Was**: SB `track_session_start` rejected paths outside `/Users/les/Projects/session-buddy` — path validation too restrictive
 - **Fix**: Commit f39e8592 — `_setup_working_directory` uses simple resolve+exists+is_dir instead of restrictive base-dir validation
 
 ### Matrix Channel — Build Blocked
+
 - **`nanobot-ai[matrix]` install FAILS** — `python-olm` v3.2.16 won't compile on macOS with newer clang
 - **Root cause**: `lib/list.hh:106` — `const` variable assignment rejected by modern clang (C++11 strict)
 - **Dependency chain**: `nanobot-ai[matrix]` → `matrix-nio[e2e]` → `python-olm` (C++ crypto for E2EE)
@@ -207,6 +226,7 @@ This file stores important information that should persist across sessions.
 - **Status**: ⛔ SKIPPED — user doesn't use Matrix (decided 2026-04-07)
 
 ### Session-Buddy Integration — Revised Plan (2026-04-07)
+
 - **Decision: Skill now, PR soon, plugin after PR merges**
 - **Phase 1 (Now)**: Skill-based approach — LLM reads SKILL.md, calls SB MCP tools. Works on v0.1.5 with no fork. One skill covers all channels (terminal, Slack, Signal). **Status: ✅ Working** — SKILL.md at 77 lines, channel-agnostic (fires on agent loop, not per-channel).
 - **Phase 2 (Soon)**: PR to nanobot for `entry_points(group="nanobot.hooks")` discovery + `AgentHookContext` routing fields. **Status: ✅ Pushed** — PR #2901, branch `feat/hook-discovery` with 4 files/~50 lines + 8 unit tests. Local clone at `/Users/les/Projects/nanobot`.
@@ -219,14 +239,16 @@ This file stores important information that should persist across sessions.
 - **Key insight**: SB skill is already channel-agnostic — if user messages from Slack, session tracking works the same as terminal. The missing piece is automatic hook-based tracking (no reliance on LLM reading skill and deciding to call tools).
 
 ### Review Documents
+
 - **Hook Architecture Review #1**: `/Users/les/Projects/mahavishnu/docs/reviews/nanobot-hook-review-1.md` (460 lines, 18653 bytes)
 - **Skill vs Plugin Comparison Review #2**: `/Users/les/Projects/mahavishnu/docs/reviews/nanobot-skill-vs-plugin-review-2.md`
 
 ### Nanobot Channel Architecture (from latest source)
+
 - **`BaseChannel`** (`nanobot/channels/base.py`): ABC with `start()`, `stop()`, `send()`, `send_delta()`, `_handle_message()`, `login()`, `transcribe_audio()`, `is_allowed()`, `supports_streaming`, `default_config()`, `is_running`
 - **`ChannelManager`** (`nanobot/channels/manager.py`): Initializes enabled channels, dispatches outbound with retry/exponential backoff, coalesces stream deltas
 - **`MessageBus`** (`nanobot/bus/`): `InboundMessage` → `OutboundMessage` via async queue
-- **`InboundMessage fields`: `channel`, `sender_id`, `chat_id`, `content`, `timestamp`, `media`, `metadata` (free-form dict), `session_key_override`
+- \*\*`InboundMessage fields`: `channel`, `sender_id`, `chat_id`, `content`, `timestamp`, `media`, `metadata` (free-form dict), `session_key_override`
   - `session_key` property: `session_key_override or f"{channel}:{chat_id}"`
 - **Built-in channels**: slack, discord, telegram, whatsapp, matrix, dingtalk, feishu, mochat, qq, wecom, weixin, email
 - **Slack channel** (`slack.py`): Socket Mode, thread-scoped session keys (`slack:{chat_id}:{thread_ts}` for group, no override for DMs), reaction emoji (eyes/check_mark), markdown→mrkdwn conversion, group_policy (open/mention/allowlist), DM policy (open/allowlist)
@@ -238,6 +260,7 @@ This file stores important information that should persist across sessions.
 - **Discovery**: `discover_all()` merges built-in channels (pkgutil scan) with external plugins (entry_points). Built-ins take priority.
 
 ### Nanobot Config Schema — Key Fields
+
 - **`AgentDefaults`**: model, provider ("auto"), max_tokens (8192), context_window_tokens (65536), temperature (0.1), max_tool_iterations (200), reasoning_effort, timezone, dream config
 - **Config applied** (global only, no per-model overrides exist): max_tokens=128000, context_window_tokens=200000, max_tool_iterations=120, send_tool_hints=true
 - **Reasoning effort**: User prefers `medium` as default (likes `high` but acknowledges overkill for most interactions)
@@ -250,6 +273,7 @@ This file stores important information that should persist across sessions.
 - **`ToolsConfig`**: web (WebToolsConfig), exec (ExecToolConfig with sandbox: "bwrap"), restrict_to_workspace, mcp_servers, ssrf_whitelist
 
 ### Nanobot Memory System (v0.1.5)
+
 - **`MemoryStore`**: Pure file I/O for MEMORY.md, history.jsonl, SOUL.md, USER.md
 - **Legacy migration**: HISTORY.md → history.jsonl (automatic, one-time)
 - **`Consolidator`**: Lightweight memory consolidation
@@ -257,24 +281,28 @@ This file stores important information that should persist across sessions.
 - **Token consolidation trigger**: budget = `context_window - max_completion_tokens - 1024` — e.g., at 48K/65K context, budget is ~56K so consolidation won't trigger
 
 ### Slack Integration
+
 - **Slack is the only enabled messaging channel**
 - **No dedicated Vish Slack bot or slash commands** — all Mahavishnu commands route through nanobot gateway's Slack adapter
 - To execute Vish commands from Slack, user asks nanobot (in Slack) which calls Mahavishnu MCP tools
 - A dedicated Slack bot for direct Vish commands would need to be built
 
 ### Slack Hang Bug (Recurring)
+
 - **Root cause**: Parallel tool calls blocked by slow/hanging MCP tool (likely `web_search`)
 - **Contributing factor**: Slack session context bloat at 65,536 token limit causes multi-tool calls that trigger the hang
 - **Status**: Known issue, no fix yet
 - **Root cause detail**: Stuck parallel `web_search` tool calls that **never return** (not just slow)
 
 ### Slack Progress Indication
+
 - **User prefers progress updates in Slack** for long-running operations
 - **Known gap**: Slack adapter goes silent between tool calls until final response — no streaming progress
 - **Typing indicator** only covers LLM thinking time, NOT tool execution duration
 - **Emoji reactions** (👀 eyes / ✅ check_mark) are now **active** — wired up and working
 
 ### Mahavishnu Config Structure
+
 - Main config: `settings/mahavishnu.yaml`
 - Additional configs: `settings/models.yaml`, `settings/embeddings.yaml`, `settings/repos.yaml`, `settings/ecosystem.yaml`
 - Worker pool types: mahavishnu, session-buddy, kubernetes
@@ -294,16 +322,18 @@ This file stores important information that should persist across sessions.
 ## Power Trio Review — TensorZero Plan v3.0 (2026-04-07)
 
 ### 8 Must-Fix Errors Found
+
 1. ~~**Config**: `type = "openai-compatible"` → must be `type = "openai"` (5 occurrences, L271/281/291/321/331)~~ ✅ Fixed
-2. ~~**Config**: `[gateway.export.prometheus]` section doesn't exist — remove it~~ ✅ Fixed
-3. **Config**: `[gateway.export.otlp.traces] endpoint=` field invalid — use `enabled = true` + env var `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`
-4. **Config**: Missing `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` in TensorZero LaunchAgent env vars
-5. **Ops**: Grafana port is 3030, not 3035 — fix all 3 references in plan (L794, 802, 808)
-6. **Ops**: Grafana datasource provisioning path not scanned — use HTTP API or enable provisioning in grafana.ini
-7. **Security**: Duplicate port 4318 row in port map (L551–552)
-8. **Security**: Components table conflates query gRPC (3201) and OTLP gRPC (4317)
+1. ~~**Config**: `[gateway.export.prometheus]` section doesn't exist — remove it~~ ✅ Fixed
+1. **Config**: `[gateway.export.otlp.traces] endpoint=` field invalid — use `enabled = true` + env var `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`
+1. **Config**: Missing `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` in TensorZero LaunchAgent env vars
+1. **Ops**: Grafana port is 3030, not 3035 — fix all 3 references in plan (L794, 802, 808)
+1. **Ops**: Grafana datasource provisioning path not scanned — use HTTP API or enable provisioning in grafana.ini
+1. **Security**: Duplicate port 4318 row in port map (L551–552)
+1. **Security**: Components table conflates query gRPC (3201) and OTLP gRPC (4317)
 
 ### Key Warnings
+
 - Anthropic `api_base` may cause double `/messages` path (needs testing)
 - Missing `OTEL_TRACES_EXPORTER=otlp` in Claude Code env vars
 - CCR lists GLM-4.5V, GLM-4.6V but no model definitions exist
@@ -317,4 +347,5 @@ This file stores important information that should persist across sessions.
 - Log rotation still TODO — newsyslog recipe available
 
 ## Tools & External Services
+
 - **Context7**: MCP server for fetching up-to-date library documentation (context7.com) — indexes thousands of open-source libraries, serves via MCP. Has Claude Code client docs. Useful for checking latest APIs instead of relying on training data.

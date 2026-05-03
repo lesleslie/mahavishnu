@@ -1,18 +1,19 @@
 """Tests for TaskDashboard - Textual-based TUI for task management."""
 
-import pytest
-from datetime import datetime, UTC
-from unittest.mock import MagicMock, AsyncMock, patch
+from datetime import UTC, datetime
 from typing import Any
+from unittest.mock import AsyncMock
+
+import pytest
 
 from mahavishnu.core.task_dashboard import (
-    TaskDashboard,
     DashboardState,
-    TaskListPanel,
-    TaskDetailPanel,
-    HelpPanel,
     DashboardTheme,
+    HelpPanel,
     KeyBinding,
+    TaskDashboard,
+    TaskDetailPanel,
+    TaskListPanel,
 )
 
 

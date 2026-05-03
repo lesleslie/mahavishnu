@@ -25,13 +25,15 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import logging
-import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Coroutine
+import logging
+from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Coroutine
 
 logger = logging.getLogger(__name__)
 
@@ -235,7 +237,7 @@ class CommandPalette:
             return sorted(commands, key=lambda m: (-m.command.priority, m.command.name))
 
         matches: list[CommandMatch] = []
-        query_lower = query.lower()
+        query.lower()
 
         for cmd in self._commands.values():
             if not cmd.enabled:

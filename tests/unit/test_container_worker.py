@@ -20,7 +20,6 @@ def _make_process(returncode=0, stdout=b"", stderr=b""):
 
 
 class TestContainerWorkerInit:
-
     def test_default_initialization(self):
         worker = ContainerWorker()
         assert worker.runtime == "docker"
@@ -58,7 +57,6 @@ class TestContainerWorkerInit:
 
 
 class TestValidateCommand:
-
     def test_non_string_raises(self):
         worker = ContainerWorker()
         with pytest.raises(ValueError, match="Command must be a string"):
@@ -144,7 +142,6 @@ class TestValidateCommand:
 
 
 class TestSanitizeCommand:
-
     def test_sanitize_quotes_special_chars(self):
         worker = ContainerWorker()
         result = worker._sanitize_command("python -c 'print(42)'")
@@ -164,13 +161,14 @@ class TestSanitizeCommand:
 
 
 class TestStart:
-
     @pytest.mark.asyncio
     async def test_start_success(self):
         worker = ContainerWorker(image="python:3.13-slim")
         fake_id = b"abc123container"
         proc = _make_process(returncode=0, stdout=fake_id)
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             with patch("mahavishnu.workers.container.asyncio.sleep", new_callable=AsyncMock):
                 container_id = await worker.start()
         assert container_id == "abc123container"
@@ -182,7 +180,9 @@ class TestStart:
     async def test_start_failure_nonzero_return(self):
         worker = ContainerWorker()
         proc = _make_process(returncode=1, stderr=b"image not found")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             with pytest.raises(RuntimeError, match="Failed to launch container"):
                 await worker.start()
         assert worker._status == WorkerStatus.FAILED
@@ -202,7 +202,9 @@ class TestStart:
             capture_starting()
             await original_sleep(0)
 
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             with patch("mahavishnu.workers.container.asyncio.sleep", side_effect=tracked_sleep):
                 await worker.start()
         assert WorkerStatus.STARTING in status_transitions
@@ -211,7 +213,10 @@ class TestStart:
     @pytest.mark.asyncio
     async def test_start_exception_wraps_in_runtime_error(self):
         worker = ContainerWorker()
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", side_effect=OSError("docker not found")):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec",
+            side_effect=OSError("docker not found"),
+        ):
             with pytest.raises(RuntimeError, match="Container worker failed to start"):
                 await worker.start()
         assert worker._status == WorkerStatus.FAILED
@@ -220,7 +225,9 @@ class TestStart:
     async def test_start_uses_correct_runtime(self):
         worker = ContainerWorker(runtime="podman", image="alpine:3.18")
         proc = _make_process(returncode=0, stdout=b"pcid")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc) as mock_exec:
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ) as mock_exec:
             with patch("mahavishnu.workers.container.asyncio.sleep", new_callable=AsyncMock):
                 await worker.start()
         call_args = mock_exec.call_args[0]
@@ -230,7 +237,6 @@ class TestStart:
 
 
 class TestExecute:
-
     @pytest.mark.asyncio
     async def test_execute_without_start_raises(self):
         worker = ContainerWorker()
@@ -265,7 +271,9 @@ class TestExecute:
         worker.container_id = "cid123"
         worker._running = True
         proc = _make_process(returncode=0, stdout=b"42\n", stderr=b"")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             result = await worker.execute({"command": "python -c 'print(42)'"})
         assert isinstance(result, WorkerResult)
         assert result.status == WorkerStatus.COMPLETED
@@ -282,7 +290,9 @@ class TestExecute:
         worker.container_id = "cid"
         worker._running = True
         proc = _make_process(returncode=1, stdout=b"", stderr=b"Traceback (error)")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             result = await worker.execute({"command": "python -c 'raise Exception'"})
         assert result.status == WorkerStatus.FAILED
         assert result.exit_code == 1
@@ -294,7 +304,9 @@ class TestExecute:
         worker.container_id = "cid"
         worker._running = True
         proc = _make_process(returncode=1, stdout=b"", stderr=b"err")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             await worker.execute({"command": "python -c 'fail'"})
         assert worker._status == WorkerStatus.FAILED
 
@@ -305,7 +317,9 @@ class TestExecute:
         worker.container_id = "cid"
         worker._running = True
         proc = _make_process(returncode=0, stdout=b"ok", stderr=b"")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             result = await worker.execute({"command": "echo hello"})
         client.call_tool.assert_called_once()
         positional_args, call_kwargs = client.call_tool.call_args
@@ -324,7 +338,9 @@ class TestExecute:
         worker.container_id = "cid"
         worker._running = True
         proc = _make_process(returncode=0, stdout=b"ok", stderr=b"")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             result = await worker.execute({"command": "echo hello"})
         assert result.status == WorkerStatus.COMPLETED
 
@@ -334,7 +350,9 @@ class TestExecute:
         worker.container_id = "cid"
         worker._running = True
         proc = _make_process(returncode=0, stdout=b"ok", stderr=b"")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             result = await worker.execute({"command": "echo hello"})
         assert result.status == WorkerStatus.COMPLETED
 
@@ -343,7 +361,10 @@ class TestExecute:
         worker = ContainerWorker()
         worker.container_id = "cid"
         worker._running = True
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", side_effect=OSError("permission denied")):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec",
+            side_effect=OSError("permission denied"),
+        ):
             result = await worker.execute({"command": "python -c '1'"})
         assert result.status == WorkerStatus.FAILED
         assert result.output is None
@@ -357,7 +378,9 @@ class TestExecute:
         worker.container_id = "mycontainer"
         worker._running = True
         proc = _make_process(returncode=0, stdout=b"out", stderr=b"")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc) as mock_exec:
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ) as mock_exec:
             await worker.execute({"command": "ls"})
         call_args = mock_exec.call_args[0]
         assert call_args[0] == "podman"
@@ -370,7 +393,9 @@ class TestExecute:
         worker.container_id = "cid"
         worker._running = True
         proc = _make_process(returncode=0, stdout=b"out", stderr=b"")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             result = await worker.execute({"command": "ls"})
         assert result.error is None
 
@@ -380,7 +405,9 @@ class TestExecute:
         worker.container_id = "cid"
         worker._running = True
         proc = _make_process(returncode=0, stdout=b"out", stderr=b"warning msg")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             result = await worker.execute({"command": "ls"})
         assert result.status == WorkerStatus.COMPLETED
         assert result.error == "warning msg"
@@ -391,7 +418,9 @@ class TestExecute:
         worker.container_id = "cid"
         worker._running = True
         proc = _make_process(returncode=1, stdout=b"", stderr=b"")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             result = await worker.execute({"command": "ls"})
         assert "Command failed with exit code 1" in result.error
 
@@ -400,13 +429,15 @@ class TestExecute:
         worker = ContainerWorker()
         worker.container_id = "cid"
         worker._running = True
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", side_effect=FileNotFoundError("no such file")):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec",
+            side_effect=FileNotFoundError("no such file"),
+        ):
             result = await worker.execute({"command": "python -c '1'"})
         assert result.metadata["exception"] == "FileNotFoundError"
 
 
 class TestStop:
-
     @pytest.mark.asyncio
     async def test_stop_without_container_returns_early(self):
         worker = ContainerWorker()
@@ -419,7 +450,9 @@ class TestStop:
         worker.container_id = "cid"
         worker._running = True
         proc = _make_process(returncode=0)
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             await worker.stop()
         assert worker._running is False
         assert worker.container_id is None
@@ -430,7 +463,10 @@ class TestStop:
         worker = ContainerWorker()
         worker.container_id = "cid"
         worker._running = True
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", side_effect=OSError("error")):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec",
+            side_effect=OSError("error"),
+        ):
             with pytest.raises(RuntimeError, match="Failed to stop container"):
                 await worker.stop()
         assert worker._status == WorkerStatus.FAILED
@@ -440,7 +476,10 @@ class TestStop:
         worker = ContainerWorker()
         worker.container_id = "cid"
         worker._running = True
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", side_effect=OSError("err")):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec",
+            side_effect=OSError("err"),
+        ):
             with pytest.raises(RuntimeError):
                 await worker.stop()
         assert worker.container_id is None
@@ -451,7 +490,9 @@ class TestStop:
         worker.container_id = "mypod"
         worker._running = True
         proc = _make_process(returncode=0)
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc) as mock_exec:
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ) as mock_exec:
             await worker.stop()
         call_args = mock_exec.call_args[0]
         assert call_args[0] == "podman"
@@ -460,7 +501,6 @@ class TestStop:
 
 
 class TestStatus:
-
     @pytest.mark.asyncio
     async def test_status_no_container_returns_pending(self):
         worker = ContainerWorker()
@@ -481,7 +521,9 @@ class TestStatus:
         worker.container_id = "cid"
         worker._running = True
         proc = _make_process(returncode=0, stdout=b"running")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             result = await worker.status()
         assert result == WorkerStatus.RUNNING
 
@@ -491,7 +533,9 @@ class TestStatus:
         worker.container_id = "cid"
         worker._running = True
         proc = _make_process(returncode=0, stdout=b"exited")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             result = await worker.status()
         assert result == WorkerStatus.COMPLETED
         assert worker._running is False
@@ -501,7 +545,10 @@ class TestStatus:
         worker = ContainerWorker()
         worker.container_id = "cid"
         worker._running = True
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", side_effect=OSError("docker error")):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec",
+            side_effect=OSError("docker error"),
+        ):
             result = await worker.status()
         assert result == WorkerStatus.FAILED
         assert worker._running is False
@@ -512,7 +559,9 @@ class TestStatus:
         worker.container_id = "cid"
         worker._running = True
         proc = _make_process(returncode=0, stdout=b"running")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc) as mock_exec:
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ) as mock_exec:
             await worker.status()
         call_args = mock_exec.call_args[0]
         assert call_args[0] == "podman"
@@ -520,7 +569,6 @@ class TestStatus:
 
 
 class TestGetProgress:
-
     @pytest.mark.asyncio
     async def test_get_progress_before_start(self):
         worker = ContainerWorker()
@@ -537,7 +585,9 @@ class TestGetProgress:
         worker.container_id = "cid"
         worker._running = True
         proc = _make_process(returncode=0, stdout=b"running")
-        with patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc):
+        with patch(
+            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        ):
             progress = await worker.get_progress()
         assert progress["status"] == WorkerStatus.RUNNING
         assert progress["container_id"] == "cid"
@@ -547,18 +597,17 @@ class TestGetProgress:
 
 
 class TestWorkerType:
-
     def test_worker_type_is_container_executor(self):
         worker = ContainerWorker()
         assert worker.worker_type == "container-executor"
 
     def test_inherits_from_base_worker(self):
         from mahavishnu.workers.base import BaseWorker
+
         assert issubclass(ContainerWorker, BaseWorker)
 
 
 class TestEdgeCases:
-
     def test_validate_command_dangerous_pattern_dd_if(self):
         worker = ContainerWorker()
         with pytest.raises(ValueError, match="dangerous pattern"):

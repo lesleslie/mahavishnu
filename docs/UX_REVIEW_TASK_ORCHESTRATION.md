@@ -1,4 +1,5 @@
 # UX Review: Task Orchestration Master Plan
+
 ## User Experience Research Assessment
 
 **Review Date**: 2026-02-18
@@ -7,32 +8,35 @@
 **Overall Assessment**: **APPROVE WITH CHANGES**
 **UX Rating**: **7.5/10**
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
 The Task Orchestration Master Plan presents a compelling vision for natural language-powered task management across multi-repository ecosystems. The plan demonstrates strong understanding of developer workflows and leverages existing ecosystem components effectively. However, several **critical UX issues** must be addressed before implementation to ensure adoption and usability.
 
 **Key Strengths**:
+
 - Natural language task creation reduces cognitive load
 - Semantic search addresses discoverability gaps
 - Multi-interface approach (CLI, TUI, GUI, Web) accommodates different workflows
 - Quality gate integration ensures developer-centric design
 
 **Critical Issues**:
+
 - CLI command discoverability is insufficient
 - TUI design lacks modern UX patterns from existing research
 - Error handling and recovery strategies are underdeveloped
 - Onboarding and training gaps exist
 - Accessibility considerations are missing
 
----
+______________________________________________________________________
 
 ## 1. CLI UX Assessment
 
 ### 1.1 Command Structure & Discoverability
 
 **Current Design**:
+
 ```bash
 mhv task add "Fix auth bug in session-buddy by Friday"
 mhv task list --status pending
@@ -51,14 +55,17 @@ mhv task complete 42
 The plan shows standard CLI commands but lacks the **command palette** pattern identified as high-impact in existing UX research (`/docs/archive/analysis/TUI_UI_INNOVATION_ANALYSIS.md`).
 
 **Evidence from Existing Research**:
+
 > "Command Palette (Ctrl+K style) - Impact: ⭐⭐⭐⭐⭐, Effort: ⭐⭐"
 
 **Impact**:
+
 - Users must memorize command syntax or read docs
 - Contradicts "natural language" value proposition
 - Creates friction for new users
 
 **Recommended Fix**:
+
 ```bash
 # Add command palette to CLI
 mhv --help  # Show: Press Ctrl+K for command palette
@@ -75,7 +82,7 @@ mhv --help  # Show: Press Ctrl+K for command palette
 **Implementation Priority**: Phase 1 (Foundation)
 **Effort**: 1-2 days (using prompt_toolkit or Textual)
 
----
+______________________________________________________________________
 
 #### ❌ Issue 2: No Command Shorthands (HIGH)
 
@@ -88,6 +95,7 @@ Commands are verbose compared to developer expectations from tools like Git, Doc
 From UX assessment: "Alias provides shell-like convenience without shell overhead"
 
 **Current**:
+
 ```bash
 mahavishnu task add "Fix bug"
 mahavishnu task list --status pending
@@ -95,6 +103,7 @@ mahavishnu task complete 42
 ```
 
 **Recommended**:
+
 ```bash
 # Full commands (for scripts)
 mhv task add "Fix bug"
@@ -114,7 +123,7 @@ mhv task 42 --complete      # Subcommand pattern
 **Implementation Priority**: Phase 1
 **Effort**: 1 day (add Typer aliases)
 
----
+______________________________________________________________________
 
 #### ⚠️ Issue 3: Natural Language Parser Uncertainty (MEDIUM)
 
@@ -124,6 +133,7 @@ mhv task 42 --complete      # Subcommand pattern
 The plan shows regex-based parser in Phase 1, LLM-based in Phase 8. This creates **uncertainty** about which features work when.
 
 **Example**:
+
 ```bash
 # Will this work in Phase 1?
 mhv task add "Fix the thing that's broken in the API"
@@ -134,6 +144,7 @@ mhv task add "Fix the thing that's broken in the API"
 **Recommended Fix**:
 
 1. **Set Clear Expectations** in CLI output:
+
 ```bash
 $ mhv task add "Fix the thing"
 ⚠️  Simple parser active: Be specific
@@ -142,6 +153,7 @@ $ mhv task add "Fix the thing"
 ```
 
 2. **Provide Fallback to Manual Mode**:
+
 ```bash
 # If parser is uncertain
 $ mhv task add "Fix that thing" --interactive
@@ -152,6 +164,7 @@ $ mhv task add "Fix that thing" --interactive
 ```
 
 3. **Show Extracted Metadata for Confirmation**:
+
 ```bash
 $ mhv task add "Fix auth bug by Friday"
 ✅ Created task #42: Fix auth bug
@@ -164,13 +177,14 @@ $ mhv task add "Fix auth bug by Friday"
 **Implementation Priority**: Phase 1
 **Effort**: 2-3 days
 
----
+______________________________________________________________________
 
 ### 1.2 Output Design & Feedback
 
 #### ✅ Strength: Rich Console Output
 
 **Example from plan**:
+
 ```bash
 ✅ Created task #42: Fix authentication bug
    Repository: session-buddy
@@ -181,18 +195,21 @@ $ mhv task add "Fix auth bug by Friday"
 ```
 
 **Assessment**: EXCELLENT
+
 - Clear visual hierarchy
 - Actionable insights
 - Emoji status indicators (matches terminal conventions)
 
 **Minor Recommendation**:
+
 - Add hyperlinks to related tasks (OSC 8 protocol):
+
 ```bash
    🔗 Related: #41, #45
    🔗 View: https://github.com/user/repo/issues/42
 ```
 
----
+______________________________________________________________________
 
 #### ❌ Issue 4: Error Messages Lack Recovery Guidance (CRITICAL)
 
@@ -273,7 +290,7 @@ $ mhv task complete 42
 **Implementation Priority**: Phase 1
 **Effort**: 3-5 days (all error paths)
 
----
+______________________________________________________________________
 
 ### 1.3 Interactive vs Scriptable
 
@@ -282,24 +299,28 @@ $ mhv task complete 42
 **Assessment**: The plan correctly supports both interactive and scripted usage.
 
 **Interactive Mode** (Phase 2+):
+
 ```bash
 mhv task  # Enter TUI
 ```
 
 **Scriptable Mode** (Phase 1):
+
 ```bash
 mhv task add "Fix bug" --repo session-buddy
 ```
 
 **Recommendation**:
+
 - Document all commands for CI/CD use
 - Provide JSON output option:
+
 ```bash
 mhv task list --format json
 # For parsing in scripts
 ```
 
----
+______________________________________________________________________
 
 ## 2. TUI Design Assessment
 
@@ -310,16 +331,18 @@ mhv task list --format json
 **Assessment**: EXCELLENT choice
 
 **Evidence from Existing Research**:
+
 > "Textual - ⭐⭐⭐⭐⭐ (Production), Rich widgets, Async/Event-driven, Medium learning curve - PRIMARY CHOICE"
 
 **Rationale**:
+
 - Modern async architecture (fits Mahavishnu)
 - Rich widget ecosystem (DataTable, TreeView, etc.)
 - CSS-like styling (familiar to web developers)
 - Built-in testing (headless mode)
 - Active development (10K+ GitHub stars)
 
----
+______________________________________________________________________
 
 ### 2.2 TUI Layout & Navigation
 
@@ -331,6 +354,7 @@ mhv task list --format json
 The proposed TUI layout is functional but lacks **modern UX patterns** identified as high-impact in existing research.
 
 **Current Design** (from plan):
+
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │  Mahavishnu Task Manager                          [All Tasks ▼]│
@@ -347,22 +371,27 @@ The proposed TUI layout is functional but lacks **modern UX patterns** identifie
 **Missing Features** (from UX research):
 
 1. **Command Palette** (⭐⭐⭐⭐⭐ impact)
+
    - Current: No search capability
    - Needed: Ctrl+K fuzzy search for all commands
 
-2. **Contextual Help** (⭐⭐⭐⭐ impact)
+1. **Contextual Help** (⭐⭐⭐⭐ impact)
+
    - Current: Static help screen
    - Needed: Hover tooltips, context-sensitive help
 
-3. **Split Panes** (⭐⭐⭐⭐⭐ impact)
+1. **Split Panes** (⭐⭐⭐⭐⭐ impact)
+
    - Current: Fixed layout
    - Needed: Resizable panels (e.g., `vim` splits)
 
-4. **Tabbed Interface** (⭐⭐⭐⭐ impact)
+1. **Tabbed Interface** (⭐⭐⭐⭐ impact)
+
    - Current: Single view
    - Needed: Tabs for Tasks, Workflows, Analytics
 
-5. **Keyboard Shortcuts Display** (⭐⭐⭐⭐ impact)
+1. **Keyboard Shortcuts Display** (⭐⭐⭐⭐ impact)
+
    - Current: Footer shows basic shortcuts
    - Needed: Context-aware shortcuts (change per view)
 
@@ -401,16 +430,17 @@ The proposed TUI layout is functional but lacks **modern UX patterns** identifie
 ```
 
 **Key Improvements**:
+
 1. Tabbed interface (switch views)
-2. Command palette indicator (top-right)
-3. Contextual shortcuts (bottom)
-4. Split pane with resize (drag border)
-5. Insights panel (bottom-left)
+1. Command palette indicator (top-right)
+1. Contextual shortcuts (bottom)
+1. Split pane with resize (drag border)
+1. Insights panel (bottom-left)
 
 **Implementation Priority**: Phase 6 (TUI) - Week 1
 **Effort**: 3-5 days
 
----
+______________________________________________________________________
 
 #### ❌ Issue 6: No Visual Workflow Builder (HIGH)
 
@@ -420,9 +450,11 @@ The proposed TUI layout is functional but lacks **modern UX patterns** identifie
 The plan mentions "visual workflow builder" in GUI/Web (Phase 7) but NOT in TUI (Phase 6).
 
 **Evidence from UX Research**:
+
 > "Visual Workflow Builder - Impact: ⭐⭐⭐⭐⭐, Effort: ⭐⭐⭐⭐"
 
 **Why This Matters**:
+
 - Developers live in the terminal
 - Switching to GUI breaks flow
 - TUI can do node-based workflows (TreeView)
@@ -459,6 +491,7 @@ class WorkflowBuilder(Vertical):
 ```
 
 **Screen Layout**:
+
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │  Workflow Builder: Task #42                          [Save] [Run]│
@@ -494,7 +527,7 @@ class WorkflowBuilder(Vertical):
 **Implementation Priority**: Phase 6 (TUI) - Week 2
 **Effort**: 1 week
 
----
+______________________________________________________________________
 
 ### 2.3 Real-Time Updates
 
@@ -503,6 +536,7 @@ class WorkflowBuilder(Vertical):
 **Assessment**: EXCELLENT design
 
 **Current Design** (from plan):
+
 ```python
 # WebSocket integration for real-time updates
 async def update_metrics(self):
@@ -511,15 +545,17 @@ async def update_metrics(self):
 ```
 
 **Recommendation**:
+
 - Show "Live" indicator when connected
 - Handle disconnect gracefully:
+
 ```bash
 📋 Task List (23) [🔴 Live]
 # vs
 📋 Task List (23) [⚠️ Disconnected - Retrying...]
 ```
 
----
+______________________________________________________________________
 
 ## 3. GUI/Web Interface Assessment
 
@@ -530,11 +566,13 @@ async def update_metrics(self):
 **Assessment**: GOOD approach
 
 **Desktop (Electron)**:
+
 - Native notifications
 - Menu bar integration (macOS)
 - Offline capability
 
 **Web (FastAPI + React)**:
+
 - Mobile-responsive
 - Real-time collaboration
 - Lower distribution barrier
@@ -542,17 +580,19 @@ async def update_metrics(self):
 **Concern**: Electron app adds maintenance burden
 
 **Alternative**: Progressive Web App (PWA)
+
 - Single codebase (React/Next.js)
 - Native-like features (notifications, offline)
 - Installable from browser
 - Auto-updates
 
 **Recommendation**:
+
 - Build **PWA** instead of Electron (Phase 7)
 - Reduces maintenance from 2 codebases to 1
 - Still provides native app experience
 
----
+______________________________________________________________________
 
 ### 3.2 Mobile Responsiveness
 
@@ -564,6 +604,7 @@ async def update_metrics(self):
 The plan shows mobile view but lacks **mobile-specific UX patterns**.
 
 **Current Design** (from plan):
+
 ```
 ┌─────────────────────────────┐
 │  ☰  Tasks             @les  │
@@ -574,11 +615,12 @@ The plan shows mobile view but lacks **mobile-specific UX patterns**.
 ```
 
 **Missing**:
+
 1. **Swipe gestures** (archive, complete)
-2. **Pull-to-refresh**
-3. **Bottom navigation** (easier for thumbs)
-4. **Haptic feedback**
-5. **Offline mode** (view tasks without network)
+1. **Pull-to-refresh**
+1. **Bottom navigation** (easier for thumbs)
+1. **Haptic feedback**
+1. **Offline mode** (view tasks without network)
 
 **Recommended Mobile UX**:
 
@@ -605,7 +647,7 @@ The plan shows mobile view but lacks **mobile-specific UX patterns**.
 **Implementation Priority**: Phase 7 (Web) - Week 2
 **Effort**: 3-5 days
 
----
+______________________________________________________________________
 
 ## 4. Onboarding & Training
 
@@ -619,9 +661,11 @@ The plan shows mobile view but lacks **mobile-specific UX patterns**.
 The plan has NO onboarding, tutorials, or interactive guidance.
 
 **Evidence from UX Research**:
+
 > "Interactive Tutorials - Impact: ⭐⭐⭐⭐, Effort: ⭐⭐⭐"
 
 **User Impact**:
+
 ```bash
 # First-time user experience
 $ mhv task add "Fix bug"
@@ -632,6 +676,7 @@ $ mhv task add "Fix bug"
 **Recommended Onboarding Flow**:
 
 **1. First Run Detection**:
+
 ```bash
 $ mhv task
 ┌────────────────────────────────────────────────────────────────┐
@@ -653,6 +698,7 @@ $ mhv task
 ```
 
 **2. Interactive Tutorial** (TUI):
+
 ```python
 class InteractiveTutorial:
     """Step-by-step guided onboarding"""
@@ -684,6 +730,7 @@ class InteractiveTutorial:
 ```
 
 **3. Progressive Hints** (after tutorial):
+
 ```bash
 # Show contextual hints based on user actions
 $ mhv task add "Fix bug"
@@ -701,7 +748,7 @@ $ mhv task add "Fix bug"
 **Implementation Priority**: Phase 1 (Foundation)
 **Effort**: 1 week
 
----
+______________________________________________________________________
 
 ### 4.2 Documentation & Help
 
@@ -713,12 +760,14 @@ $ mhv task add "Fix bug"
 The plan shows help commands but doesn't specify **help discoverability**.
 
 **Current**:
+
 ```bash
 mhv task --help  # Show help for task commands
 mhv task add --help  # Show help for add
 ```
 
 **Missing**:
+
 - Global help index (search all docs)
 - Contextual help (show help relevant to current action)
 - Example library (common patterns)
@@ -766,7 +815,7 @@ $ mhv help examples
 **Implementation Priority**: Phase 1
 **Effort**: 3-5 days
 
----
+______________________________________________________________________
 
 ## 5. Accessibility Assessment
 
@@ -780,6 +829,7 @@ $ mhv help examples
 The plan has ZERO mention of accessibility, screen readers, or assistive technologies.
 
 **Impact**:
+
 - Developers with visual disabilities cannot use the system
 - Violates inclusive design principles
 - May have legal compliance implications (WCAG)
@@ -787,6 +837,7 @@ The plan has ZERO mention of accessibility, screen readers, or assistive technol
 **Recommended Accessibility Features**:
 
 **CLI Accessibility**:
+
 ```bash
 # Screen reader friendly mode
 $ mhv task list --accessibility
@@ -801,6 +852,7 @@ $ mhv task list --speak
 ```
 
 **TUI Accessibility**:
+
 ```python
 # Textual has accessibility support
 from textual.widgets import DataTable
@@ -817,6 +869,7 @@ class AccessibleDataTable(DataTable):
 ```
 
 **Web Accessibility**:
+
 - ARIA labels on all interactive elements
 - Keyboard navigation (not just mouse)
 - High contrast mode support
@@ -825,7 +878,7 @@ class AccessibleDataTable(DataTable):
 **Implementation Priority**: Phase 1 (Foundation)
 **Effort**: Ongoing (test with screen readers)
 
----
+______________________________________________________________________
 
 ### 5.2 Color Blindness
 
@@ -837,6 +890,7 @@ class AccessibleDataTable(DataTable):
 The plan uses emoji/color for status but lacks **alternative indicators**.
 
 **Current**:
+
 ```
 🔴 High priority
 🟡 Medium priority
@@ -844,6 +898,7 @@ The plan uses emoji/color for status but lacks **alternative indicators**.
 ```
 
 **For Color-Blind Users** (red-green color blindness):
+
 ```
 🔴 High priority → ❌ Cannot distinguish red
 🟡 Medium priority → ⚠️ May look like red/green
@@ -853,6 +908,7 @@ The plan uses emoji/color for status but lacks **alternative indicators**.
 **Recommended Fix**:
 
 **1. Add Text Labels**:
+
 ```bash
 🔴 HIGH   Fix auth bug
 🟡 MEDIUM Update API
@@ -860,6 +916,7 @@ The plan uses emoji/color for status but lacks **alternative indicators**.
 ```
 
 **2. Add Icon Indicators**:
+
 ```bash
 🔴 ⬆️ HIGH   Fix auth bug        # Arrow up = high
 🟡 ➡️ MEDIUM Update API          # Arrow right = medium
@@ -867,20 +924,21 @@ The plan uses emoji/color for status but lacks **alternative indicators**.
 ```
 
 **3. Use Color Blind-Safe Palette**:
+
 ```python
 # Use Okabe-Ito palette (color blind safe)
 COLORS = {
     "HIGH": "#E69F00",      # Orange (visible to all)
     "MEDIUM": "#56B4E9",    # Sky blue
     "LOW": "#009E73",       # Bluish green
-    "CRITICAL": "#D55E00",  # Vermillion
+    "CRITICAL": "#D55E00",  # Vermilion
 }
 ```
 
 **Implementation Priority**: Phase 1
 **Effort**: 1 day (add text labels, change palette)
 
----
+______________________________________________________________________
 
 ## 6. Mental Model & Cognitive Load
 
@@ -891,22 +949,27 @@ COLORS = {
 **Assessment**: GOOD alignment with developer mental models
 
 **Task Lifecycle**:
+
 ```
 pending → in_progress → completed
 ```
+
 **Matches**: Git workflow, Jira, GitHub Projects
 
 **Worktree Integration**:
+
 ```
 task → worktree → terminal → quality gates → complete
 ```
+
 **Matches**: Existing development workflow
 
 **Minor Issue**:
+
 - "Orchestration" terminology may confuse new users
 - Suggest: Use "task management" in docs, "orchestration" in code
 
----
+______________________________________________________________________
 
 ### 6.2 Cognitive Load
 
@@ -918,6 +981,7 @@ task → worktree → terminal → quality gates → complete
 The plan uses **3 storage systems** (SQLite, Akosha, Session-Buddy), which creates cognitive load.
 
 **User Impact**:
+
 ```bash
 # User question: "Where is my task stored?"
 # Answer: "Well, it's complicated..."
@@ -926,6 +990,7 @@ The plan uses **3 storage systems** (SQLite, Akosha, Session-Buddy), which creat
 **Recommended Simplification**:
 
 **Hide Complexity from Users**:
+
 ```bash
 # User sees:
 $ mhv task add "Fix bug"
@@ -942,6 +1007,7 @@ $ mhv task show 1 --storage
 ```
 
 **Developer Docs** (separate):
+
 ```markdown
 ## Storage Architecture
 - SQLite: Primary store (structured data)
@@ -952,7 +1018,7 @@ $ mhv task show 1 --storage
 **Implementation Priority**: Phase 2 (document in developer guide)
 **Effort**: 1 day (docs only)
 
----
+______________________________________________________________________
 
 ## 7. Error Handling & Recovery
 
@@ -970,6 +1036,7 @@ $ mhv task show 1 --storage
 The plan has NO undo/redo for destructive operations.
 
 **User Impact**:
+
 ```bash
 $ mhv task delete 42
 # Oops! Wrong task. Can't undo.
@@ -978,6 +1045,7 @@ $ mhv task delete 42
 **Recommended Fix**:
 
 **1. Soft Delete**:
+
 ```bash
 $ mhv task delete 42
 ✅ Task moved to archive (restore with --unarchive)
@@ -986,6 +1054,7 @@ $ mhv task list --archived
 ```
 
 **2. Confirmation Prompt**:
+
 ```bash
 $ mhv task delete 42
 ⚠️  Delete task #42: Fix auth bug?
@@ -994,12 +1063,14 @@ $ mhv task delete 42
 ```
 
 **3. Undo Command**:
+
 ```bash
 $ mhv task undo
 # Undo last destructive action
 ```
 
 **4. Time-Travel for Task State**:
+
 ```bash
 $ mhv task history 42
 # Show all state changes
@@ -1015,7 +1086,7 @@ $ mhv task restore 42 --to-state 2025-02-18T10:00
 **Implementation Priority**: Phase 1 (soft delete), Phase 4 (history)
 **Effort**: 2-3 days
 
----
+______________________________________________________________________
 
 ## 8. Performance & Responsiveness
 
@@ -1026,13 +1097,16 @@ $ mhv task restore 42 --to-state 2025-02-18T10:00
 **Assessment**: GOOD performance foundation
 
 **From Plan**:
+
 ```python
 async def create_task(self, description: str) -> Task:
     # Non-blocking operations
 ```
 
 **Recommendation**:
+
 - Add progress indicators for long operations:
+
 ```bash
 $ mhv task add "Fix bug"
 ⏳ Creating task...
@@ -1042,7 +1116,7 @@ $ mhv task add "Fix bug"
 ✅ Task created (3.2s)
 ```
 
----
+______________________________________________________________________
 
 ### 8.2 TUI Performance
 
@@ -1056,6 +1130,7 @@ The plan doesn't address TUI performance optimization.
 **Recommended Optimizations**:
 
 **1. Lazy Loading**:
+
 ```python
 # Don't load all 1000 tasks at once
 async def load_tasks_paginated(self, page: int = 0, per_page: int = 50):
@@ -1065,6 +1140,7 @@ async def load_tasks_paginated(self, page: int = 0, per_page: int = 50):
 ```
 
 **2. Virtual Scrolling**:
+
 ```python
 # Only render visible rows
 from textual.widgets import DataTable
@@ -1072,6 +1148,7 @@ table = DataTable(virtual_scroll=True)  # Not actual API, but concept
 ```
 
 **3. Debounced Search**:
+
 ```python
 # Don't search on every keystroke
 async def on_input_changed(self, event: Input.Changed):
@@ -1081,6 +1158,7 @@ async def on_input_changed(self, event: Input.Changed):
 ```
 
 **4. Caching**:
+
 ```python
 # Cache frequently accessed data
 from functools import lru_cache
@@ -1093,7 +1171,7 @@ def get_task_cached(self, task_id: int):
 **Implementation Priority**: Phase 6 (TUI)
 **Effort**: 2-3 days
 
----
+______________________________________________________________________
 
 ## 9. Internationalization (i18n)
 
@@ -1107,12 +1185,14 @@ def get_task_cached(self, task_id: int):
 The plan assumes English-only natural language processing.
 
 **Impact**:
+
 - Non-English developers cannot use NL features
 - Date/time parsing fails for non-English formats
 
 **Recommended Fix**:
 
 **1. Locale Detection**:
+
 ```python
 import locale
 
@@ -1124,6 +1204,7 @@ nlp_patterns = load_patterns(locale=user_locale)
 ```
 
 **2. Multi-Language Date Parsing**:
+
 ```python
 # English: "by Friday"
 # German: "bis Freitag"
@@ -1131,10 +1212,11 @@ nlp_patterns = load_patterns(locale=user_locale)
 
 from dateparser import parse
 # Supports 70+ languages
-date = parse("vor 3 tagen", languages=['de'])  # German
+date = parse("for 3 tagen", languages=['de'])  # German
 ```
 
 **3. UI Translations**:
+
 ```python
 # Use gettext for translations
 import gettext
@@ -1146,7 +1228,7 @@ print(_("Task created successfully"))
 **Implementation Priority**: Phase 8 (Advanced Features)
 **Effort**: 2-3 weeks (all languages)
 
----
+______________________________________________________________________
 
 ## 10. Developer Experience (DX)
 
@@ -1157,17 +1239,19 @@ print(_("Task created successfully"))
 **Assessment**: EXCELLENT extensibility
 
 **From Plan**:
+
 ```python
 # MCP server integration
 await mcp.call_tool("create_task", {...})
 ```
 
 **Recommendation**:
+
 - Document plugin API
 - Provide plugin examples
 - Create plugin template
 
----
+______________________________________________________________________
 
 ### 10.2 Testing & Debugging
 
@@ -1200,7 +1284,7 @@ $ mhv task add "Fix bug" --debug
 **Implementation Priority**: Phase 1
 **Effort**: 1 day
 
----
+______________________________________________________________________
 
 ## 11. Summary of Critical Issues
 
@@ -1240,60 +1324,64 @@ $ mhv task add "Fix bug" --debug
 |-------|-------------|-------|--------|
 | **#15** | English-only design | 8 | 2-3 weeks |
 
----
+______________________________________________________________________
 
 ## 12. Recommendations by Phase
 
 ### Phase 1: Foundation (Week 1-2)
 
 **Must Add**:
+
 1. ✅ Command palette (Ctrl+K) - Issue #1
-2. ✅ Error recovery guidance - Issue #4
-3. ✅ Command shorthands - Issue #2
-4. ✅ Interactive onboarding - Issue #8
-5. ✅ Accessibility mode - Issue #10
-6. ✅ Soft delete with undo - Issue #13
-7. ✅ Debug/verbose mode - Issue #16
-8. ✅ Color blind-safe palette - Issue #11
+1. ✅ Error recovery guidance - Issue #4
+1. ✅ Command shorthands - Issue #2
+1. ✅ Interactive onboarding - Issue #8
+1. ✅ Accessibility mode - Issue #10
+1. ✅ Soft delete with undo - Issue #13
+1. ✅ Debug/verbose mode - Issue #16
+1. ✅ Color blind-safe palette - Issue #11
 
 **Estimated Additional Effort**: **3-4 weeks** (vs 2 weeks planned)
 
 **Recommendation**: Extend Phase 1 to 4-5 weeks or defer some issues to Phase 2
 
----
+______________________________________________________________________
 
 ### Phase 2: Semantic Search (Week 3-4)
 
 **Should Add**:
+
 1. ✅ Document storage architecture - Issue #12
-2. ✅ Contextual help for search - Issue #9
+1. ✅ Contextual help for search - Issue #9
 
 **Estimated Additional Effort**: **3-5 days** (minimal impact)
 
----
+______________________________________________________________________
 
 ### Phase 6: TUI (Week 9-10)
 
 **Must Add**:
+
 1. ✅ Modern UX patterns (command palette, tabs, split panes) - Issue #5
-2. ✅ Visual workflow builder - Issue #6
-3. ✅ Performance optimization (lazy loading, caching) - Issue #14
+1. ✅ Visual workflow builder - Issue #6
+1. ✅ Performance optimization (lazy loading, caching) - Issue #14
 
 **Estimated Additional Effort**: **2-3 weeks** (vs 2 weeks planned)
 
 **Recommendation**: Extend Phase 6 to 4-5 weeks or split into Phase 6a and 6b
 
----
+______________________________________________________________________
 
 ### Phase 7: GUI & Web (Week 11-14)
 
 **Should Add**:
+
 1. ✅ PWA instead of Electron (reduces maintenance)
-2. ✅ Mobile gestures and UX patterns - Issue #7
+1. ✅ Mobile gestures and UX patterns - Issue #7
 
 **Estimated Additional Effort**: **1 week** (PWA is simpler than Electron)
 
----
+______________________________________________________________________
 
 ## 13. UX Rating Breakdown
 
@@ -1309,10 +1397,12 @@ $ mhv task add "Fix bug" --debug
 **Overall UX Rating**: **7.5/10**
 
 **Breakdown**:
+
 - **Strengths**: CLI/TUI/GUI architecture, natural language interface, quality gate integration
 - **Weaknesses**: Onboarding, accessibility, error recovery, command discoverability
 
 **Rating Scale**:
+
 - 9-10: Exceptional (industry-leading)
 - 7-8: Good (solid, with improvements needed)
 - 5-6: Fair (functional, but significant gaps)
@@ -1321,7 +1411,7 @@ $ mhv task add "Fix bug" --debug
 
 **Verdict**: **7.5/10 - GOOD** (Approve with Changes)
 
----
+______________________________________________________________________
 
 ## 14. Final Recommendation
 
@@ -1334,18 +1424,21 @@ The Task Orchestration Master Plan presents a **solid foundation** with excellen
 **Before Implementation Starts**:
 
 1. **Address P0 Issues** (Week 1 of Phase 1):
+
    - Add command palette design (1 day)
    - Design error recovery patterns (2 days)
    - Create onboarding flow plan (2 days)
    - Add accessibility audit checklist (1 day)
 
-2. **Update Master Plan**:
+1. **Update Master Plan**:
+
    - Add "UX & Accessibility" section
    - Include onboarding flow in Phase 1
    - Add visual workflow builder to Phase 6
    - Specify error handling patterns
 
-3. **Create UX Deliverables**:
+1. **Create UX Deliverables**:
+
    - Wireframes for TUI layouts (1 week)
    - Error message style guide (2 days)
    - Onboarding flow mockups (3 days)
@@ -1354,18 +1447,21 @@ The Task Orchestration Master Plan presents a **solid foundation** with excellen
 ### Implementation Guidance
 
 **Phase 1** (Foundation): **Extend to 4-5 weeks**
+
 - Week 1: Core CLI + command palette + error handling
 - Week 2: NLP parser + command shorthands + accessibility mode
 - Week 3: Interactive onboarding + help system
 - Week 4-5: Testing and refinement
 
 **Phase 6** (TUI): **Extend to 4-5 weeks**
+
 - Week 1: Basic TUI + command palette + tabs
 - Week 2: Split panes + contextual help
 - Week 3-4: Visual workflow builder
 - Week 5: Performance optimization + testing
 
 **Phase 7** (GUI/Web): **Reduce to 3-4 weeks**
+
 - Build PWA instead of Electron (simpler)
 - Week 1: PWA foundation + responsive design
 - Week 2: Core features (tasks, workflows)
@@ -1375,6 +1471,7 @@ The Task Orchestration Master Plan presents a **solid foundation** with excellen
 ### Success Criteria
 
 **Before Phase 1 Completion**:
+
 - [ ] Command palette implemented and working
 - [ ] All error messages include recovery guidance
 - [ ] Interactive onboarding completed
@@ -1382,24 +1479,27 @@ The Task Orchestration Master Plan presents a **solid foundation** with excellen
 - [ ] 5+ users complete onboarding without help
 
 **Before Phase 6 Completion**:
+
 - [ ] TUI supports command palette, tabs, split panes
 - [ ] Visual workflow builder functional
-- [ ] Performance tests pass (<100ms response time)
+- [ ] Performance tests pass (\<100ms response time)
 - [ ] 5+ users rate TUI 4+ stars (out of 5)
 
 **Before Public Launch**:
+
 - [ ] All P0 and P1 issues resolved
 - [ ] Accessibility audit passed (WCAG 2.1 AA)
 - [ ] 10+ users provide positive feedback
 - [ ] Documentation complete and tested
 
----
+______________________________________________________________________
 
 ## 15. Conclusion
 
 The Task Orchestration Master Plan demonstrates **strong technical foundation** and **thoughtful ecosystem integration**. The natural language task creation, semantic search, and multi-interface approach are innovative and valuable.
 
 However, the plan falls short on **user experience fundamentals**:
+
 - **Discoverability** (command palette, onboarding)
 - **Error recovery** (actionable error messages, undo)
 - **Accessibility** (screen reader support, color blindness)
@@ -1408,13 +1508,14 @@ However, the plan falls short on **user experience fundamentals**:
 **By addressing the critical issues identified in this review**, the system can evolve from "functional" to "delightful" and achieve its goal of becoming the **most user-friendly task orchestration platform** for multi-repository development.
 
 **Recommended Next Steps**:
-1. Incorporate UX feedback into master plan
-2. Create wireframes and mockups for TUI/GUI
-3. Implement P0 issues in Phase 1
-4. Conduct user testing after Phase 1
-5. Iterate based on feedback
 
----
+1. Incorporate UX feedback into master plan
+1. Create wireframes and mockups for TUI/GUI
+1. Implement P0 issues in Phase 1
+1. Conduct user testing after Phase 1
+1. Iterate based on feedback
+
+______________________________________________________________________
 
 **Review Status**: ✅ COMPLETE
 **Reviewer**: UX Research Agent

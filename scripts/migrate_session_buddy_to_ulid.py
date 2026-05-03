@@ -18,9 +18,9 @@ Environment:
 """
 
 import argparse
+from pathlib import Path
 import sqlite3
 import sys
-from pathlib import Path
 
 
 def validate_session_ids(db_path: str) -> list[dict]:
@@ -40,29 +40,31 @@ def validate_session_ids(db_path: str) -> list[dict]:
     try:
         # Check for invalid formats (not matching expected pattern)
         # Expected: project_name-timestamp
-        cursor.execute(
-            "SELECT session_id FROM sessions WHERE LENGTH(session_id) < 10 LIMIT 100"
-        )
+        cursor.execute("SELECT session_id FROM sessions WHERE LENGTH(session_id) < 10 LIMIT 100")
 
         too_short = cursor.fetchall()
         if too_short:
-            issues.append({
-                "issue": "too_short",
-                "count": len(too_short),
-                "sample": too_short[0][0] if too_short else None,
-                "recommendation": "Session IDs should be >10 chars (project-timestamp format)"
-            })
+            issues.append(
+                {
+                    "issue": "too_short",
+                    "count": len(too_short),
+                    "sample": too_short[0][0] if too_short else None,
+                    "recommendation": "Session IDs should be >10 chars (project-timestamp format)",
+                }
+            )
 
         # Check for NULL session_ids
         cursor.execute("SELECT COUNT(*) FROM sessions WHERE session_id IS NULL LIMIT 100")
         null_count = cursor.fetchone()[0]
 
         if null_count > 0:
-            issues.append({
-                "issue": "null_session_ids",
-                "count": null_count,
-                "recommendation": "All sessions should have valid session_id"
-            })
+            issues.append(
+                {
+                    "issue": "null_session_ids",
+                    "count": null_count,
+                    "recommendation": "All sessions should have valid session_id",
+                }
+            )
 
     finally:
         conn.close()
@@ -119,15 +121,11 @@ def main():
     )
 
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Validate and show changes without executing"
+        "--dry-run", action="store_true", help="Validate and show changes without executing"
     )
 
     parser.add_argument(
-        "--db",
-        default=str(Path.cwd() / "session_buddy.db"),
-        help="Path to session_buddy.db"
+        "--db", default=str(Path.cwd() / "session_buddy.db"), help="Path to session_buddy.db"
     )
 
     args = parser.parse_args()
@@ -147,7 +145,7 @@ def main():
         print(f"❌ Found {len(validation_issues)} validation issues:")
         for issue in validation_issues:
             print(f"  • {issue['issue']}: {issue['count']} affected")
-            if issue['sample']:
+            if issue["sample"]:
                 print(f"   Sample: {issue['sample']}")
             print(f"   Recommendation: {issue['recommendation']}")
         print()
@@ -175,7 +173,7 @@ def main():
         print("   ALTER TABLE sessions ADD COLUMN session_ulid TEXT;")
         print()
         print("2. Update session_buddy/session_manager.py:")
-        print("   - Replace: session_id = f\"{project_name}-{timestamp}\"")
+        print('   - Replace: session_id = f"{project_name}-{timestamp}"')
         print("   - With: from dhara import generate; session_ulid = generate()")
         print()
         print("3. Backfill existing sessions:")

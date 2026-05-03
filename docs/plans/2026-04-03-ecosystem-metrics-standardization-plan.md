@@ -1,6 +1,6 @@
 # Ecosystem Metrics Standardization Plan
 
-**Date:** 2026-04-03  
+**Date:** 2026-04-03
 **Status:** Ready for implementation
 
 ## Goal
@@ -137,11 +137,11 @@ Acceptance:
 ## Recommended Implementation Order
 
 1. Mahavishnu policy and docs finalization
-2. Session-Buddy migration
-3. Dhara migration
-4. Akosha port consolidation
-5. Crackerjack metrics route
-6. final ecosystem promotion sweep
+1. Session-Buddy migration
+1. Dhara migration
+1. Akosha port consolidation
+1. Crackerjack metrics route
+1. final ecosystem promotion sweep
 
 ## Concrete PR Sequence
 

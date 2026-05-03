@@ -169,18 +169,19 @@ class TestOverviewScreenCompose:
     """Test OverviewScreen widget composition."""
 
     def test_compose_yields_widgets(self):
-        from mahavishnu.tui.app import OverviewScreen
         from textual.containers import VerticalScroll
-        from textual.widgets import Label, Static
+
+        from mahavishnu.tui.app import OverviewScreen
 
         assert issubclass(OverviewScreen, VerticalScroll)
 
     def test_overview_screen_has_status_text_reactive(self):
-        from mahavishnu.tui.app import OverviewScreen
         from textual.reactive import Reactive
 
+        from mahavishnu.tui.app import OverviewScreen
+
         assert hasattr(OverviewScreen, "status_text")
-        reactive = getattr(OverviewScreen, "status_text")
+        reactive = OverviewScreen.status_text
         assert isinstance(reactive, Reactive)
         assert reactive._default == "Loading..."
 
@@ -190,9 +191,9 @@ class TestSweepScreenCompose:
     """Test SweepScreen widget composition."""
 
     def test_compose_yields_table(self):
-        from mahavishnu.tui.app import SweepScreen
         from textual.containers import VerticalScroll
-        from textual.widgets import Label, DataTable
+
+        from mahavishnu.tui.app import SweepScreen
 
         assert issubclass(SweepScreen, VerticalScroll)
 
@@ -202,9 +203,9 @@ class TestRoutingScreenCompose:
     """Test RoutingScreen widget composition."""
 
     def test_compose_yields_table(self):
-        from mahavishnu.tui.app import RoutingScreen
         from textual.containers import VerticalScroll
-        from textual.widgets import Label, Static, DataTable
+
+        from mahavishnu.tui.app import RoutingScreen
 
         assert issubclass(RoutingScreen, VerticalScroll)
 
@@ -214,9 +215,9 @@ class TestAlertsScreenCompose:
     """Test AlertsScreen widget composition."""
 
     def test_compose_yields_table(self):
-        from mahavishnu.tui.app import AlertsScreen
         from textual.containers import VerticalScroll
-        from textual.widgets import Label, Static, DataTable
+
+        from mahavishnu.tui.app import AlertsScreen
 
         assert issubclass(AlertsScreen, VerticalScroll)
 
@@ -226,9 +227,9 @@ class TestReviewsScreenCompose:
     """Test ReviewsScreen widget composition."""
 
     def test_compose_yields_table(self):
-        from mahavishnu.tui.app import ReviewsScreen
         from textual.containers import VerticalScroll
-        from textual.widgets import Label, Static, DataTable
+
+        from mahavishnu.tui.app import ReviewsScreen
 
         assert issubclass(ReviewsScreen, VerticalScroll)
 
@@ -236,7 +237,7 @@ class TestReviewsScreenCompose:
         from mahavishnu.tui.app import ReviewsScreen
 
         assert hasattr(ReviewsScreen, "_load_data")
-        assert callable(getattr(ReviewsScreen, "_load_data"))
+        assert callable(ReviewsScreen._load_data)
 
 
 @pytest.mark.skipif(not _textual_available, reason="textual not installed")

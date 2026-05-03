@@ -1,23 +1,23 @@
 """Tests for CrossRepoBlockerTracker - Cross-repository blocking tracking."""
 
+from datetime import UTC, datetime
+from unittest.mock import MagicMock
+
 import pytest
-from datetime import datetime, UTC
-from unittest.mock import AsyncMock, MagicMock
-from typing import Any
 
 from mahavishnu.core.cross_repo_blocker import (
-    CrossRepoBlockerTracker,
-    BlockingChain,
     BlockerImpact,
+    BlockingChain,
     BlockingStatus,
+    CrossRepoBlockerTracker,
 )
 from mahavishnu.core.cross_repo_dependency import (
-    CrossRepoDependencyLinker,
     CrossRepoDependency,
-    DependencyType,
+    CrossRepoDependencyLinker,
     DependencyStatus,
+    DependencyType,
 )
-from mahavishnu.core.task_store import Task, TaskStatus, TaskPriority
+from mahavishnu.core.task_store import Task, TaskPriority, TaskStatus
 
 
 @pytest.fixture

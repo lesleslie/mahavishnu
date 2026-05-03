@@ -1,16 +1,17 @@
 """Tests for Task Notification System - Real-time task event broadcasting."""
 
-import pytest
-from datetime import datetime, UTC
-from unittest.mock import MagicMock, AsyncMock, patch
+from datetime import UTC, datetime
 from typing import Any
+from unittest.mock import MagicMock
+
+import pytest
 
 from mahavishnu.core.task_notifications import (
+    EventFilter,
+    EventSubscription,
+    TaskEvent,
     TaskEventEmitter,
     TaskEventType,
-    TaskEvent,
-    EventSubscription,
-    EventFilter,
 )
 
 
@@ -230,9 +231,7 @@ class TestEventFilter:
         sample_task: dict[str, Any],
     ) -> None:
         """Filter with custom predicate."""
-        filter = EventFilter(
-            predicate=lambda e: e.data.get("task", {}).get("priority") == "high"
-        )
+        filter = EventFilter(predicate=lambda e: e.data.get("task", {}).get("priority") == "high")
 
         event = TaskEvent(
             event_type=TaskEventType.UPDATED,

@@ -11,18 +11,16 @@ Tests cover:
 """
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from mahavishnu.core.process_pool_executor import (
     ProcessPoolTaskExecutor,
-    _process_pool_instance,
     get_process_pool,
     init_process_pool,
     shutdown_process_pool,
 )
-
 
 # ============================================================================
 # ProcessPoolTaskExecutor Initialization

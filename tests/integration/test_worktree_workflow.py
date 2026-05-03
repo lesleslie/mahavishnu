@@ -12,16 +12,14 @@ All tests use isolated git repos and MockWorktreeProvider for safe testing.
 """
 
 import asyncio
-import subprocess
-from datetime import UTC, datetime
 from pathlib import Path
+import subprocess
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mahavishnu.core.worktree_coordination import WorktreeCoordinator
 from mahavishnu.core.repo_models import Repository
-from mahavishnu.core.coordination.models import Dependency, DependencyStatus
+from mahavishnu.core.worktree_coordination import WorktreeCoordinator
 from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
 
 
@@ -446,8 +444,8 @@ class TestWorktreeWorkflowIntegration:
     @pytest.mark.asyncio
     async def test_all_providers_unavailable(self, tmp_path):
         """Test error when all providers are unavailable."""
-        from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
         from mahavishnu.core.worktree_providers.errors import ProviderUnavailableError
+        from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
 
         mock_repo = make_repository(
             name="Test",

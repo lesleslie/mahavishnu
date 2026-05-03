@@ -28,8 +28,6 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-from ..core.paths import get_data_path, ensure_directories
-
 logger = logging.getLogger(__name__)
 
 

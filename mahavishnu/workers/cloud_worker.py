@@ -15,10 +15,10 @@ Features:
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass, field
 import logging
 import os
 import time
-from dataclasses import dataclass, field
 from typing import Any
 
 from mahavishnu.core.status import WorkerStatus
@@ -27,7 +27,6 @@ from .base import BaseWorker, WorkerResult
 from .task_router import (
     DEFAULT_ZAI_ROUTING,
     TaskCategory,
-    classify_task,
     get_model_for_task,
 )
 
@@ -52,13 +51,9 @@ class CloudWorkerConfig:
     """
 
     base_url: str = field(
-        default_factory=lambda: os.environ.get(
-            "ZAI_BASE_URL", ZAI_CODING_PLAN_URL
-        )
+        default_factory=lambda: os.environ.get("ZAI_BASE_URL", ZAI_CODING_PLAN_URL)
     )
-    api_key: str = field(
-        default_factory=lambda: os.environ.get("ZAI_API_KEY", "")
-    )
+    api_key: str = field(default_factory=lambda: os.environ.get("ZAI_API_KEY", ""))
     model: str = "glm-4.7"
     timeout: int = 300
     temperature: float = 0.7
@@ -124,8 +119,7 @@ class CloudWorker(BaseWorker):
         except ImportError:
             self._status = WorkerStatus.FAILED
             raise RuntimeError(
-                "openai package required for CloudWorker. "
-                "Install with: pip install mcp-common[llm]"
+                "openai package required for CloudWorker. Install with: pip install mcp-common[llm]"
             ) from None
 
         self._client = openai.AsyncOpenAI(
@@ -234,8 +228,7 @@ class CloudWorker(BaseWorker):
                     "base_url": self.config.base_url,
                     "temperature": temperature,
                     "max_tokens": max_tokens,
-                    "intelligent_routing": self.config.intelligent_routing
-                    and not explicit_model,
+                    "intelligent_routing": self.config.intelligent_routing and not explicit_model,
                     "usage": usage,
                 },
             )
@@ -246,7 +239,7 @@ class CloudWorker(BaseWorker):
 
             return result
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             duration = time.time() - start_time
             logger.warning("Cloud task timed out after %ss", duration)
             return WorkerResult(

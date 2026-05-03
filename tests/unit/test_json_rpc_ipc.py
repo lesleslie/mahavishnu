@@ -1,18 +1,17 @@
 """Tests for JSON-RPC IPC Server - Unix socket communication for GUI."""
 
-import pytest
 import asyncio
 import json
-from datetime import datetime, UTC
-from unittest.mock import MagicMock, AsyncMock, patch
 from typing import Any
 
+import pytest
+
 from mahavishnu.core.json_rpc_ipc import (
-    JSONRPCServer,
-    JSONRPCRequest,
-    JSONRPCResponse,
     JSONRPCError,
     JSONRPCErrorCode,
+    JSONRPCRequest,
+    JSONRPCResponse,
+    JSONRPCServer,
     MethodHandler,
 )
 
@@ -282,6 +281,7 @@ class TestMethodHandler:
 
     def test_create_handler(self) -> None:
         """Create a method handler."""
+
         async def get_task(params: dict[str, Any]) -> dict[str, Any]:
             return {"id": params["task_id"]}
 
@@ -297,6 +297,7 @@ class TestMethodHandler:
     @pytest.mark.asyncio
     async def test_invoke_handler(self) -> None:
         """Invoke a method handler."""
+
         async def get_task(params: dict[str, Any]) -> dict[str, Any]:
             return {"id": params["task_id"], "title": "Test"}
 
@@ -508,7 +509,11 @@ class TestJSONRPCServer:
 
         batch = [
             {"jsonrpc": "2.0", "method": "get_task", "params": {"task_id": "t1"}, "id": 1},
-            {"jsonrpc": "2.0", "method": "log_event", "params": {"event": "test"}},  # No id = notification
+            {
+                "jsonrpc": "2.0",
+                "method": "log_event",
+                "params": {"event": "test"},
+            },  # No id = notification
             {"jsonrpc": "2.0", "method": "get_task", "params": {"task_id": "t2"}, "id": 2},
         ]
 

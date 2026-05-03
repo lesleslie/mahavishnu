@@ -23,24 +23,21 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import json
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from enum import StrEnum
 import logging
-import sqlite3
-import time
-from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
 from pathlib import Path
+import sqlite3
 from typing import Any
 
-from mahavishnu.core.database import Database, DatabaseConfig, DatabaseStatus
-from mahavishnu.core.errors import DatabaseError, MahavishnuError
+from mahavishnu.core.database import Database, DatabaseConfig
+from mahavishnu.core.errors import DatabaseError
 
 logger = logging.getLogger(__name__)
 
 
-class MigrationPhase(str, Enum):
+class MigrationPhase(StrEnum):
     """Migration phases for dual-write strategy."""
 
     NOT_STARTED = "not_started"
@@ -52,7 +49,7 @@ class MigrationPhase(str, Enum):
     ROLLED_BACK = "rolled_back"
 
 
-class MigrationStatus(str, Enum):
+class MigrationStatus(StrEnum):
     """Status of a migration step."""
 
     PENDING = "pending"
@@ -130,7 +127,7 @@ class MigrationConfig:
     enable_validation: bool = True
 
     @classmethod
-    def from_env(cls) -> "MigrationConfig":
+    def from_env(cls) -> MigrationConfig:
         """Create configuration from environment variables."""
         import os
 
@@ -456,7 +453,7 @@ class DatabaseMigrator:
                 break
 
             # Get column names
-            columns = [description[0] for description in sqlite_cursor.description]
+            [description[0] for description in sqlite_cursor.description]
 
             # Insert into PostgreSQL
             # Note: In production, we'd use proper INSERT statements

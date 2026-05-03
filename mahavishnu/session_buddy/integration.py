@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from mcp_common.code_graph import CodeGraphAnalyzer
+
 from messaging.types import Priority, ProjectMessage
 
 

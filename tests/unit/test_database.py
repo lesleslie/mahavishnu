@@ -13,16 +13,17 @@ Note: Integration tests with actual PostgreSQL are in tests/integration/
 from __future__ import annotations
 
 import os
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from mahavishnu.core.database import (
     Database,
     DatabaseConfig,
     DatabaseStatus,
     PoolMetrics,
-    get_database,
     close_database,
+    get_database,
 )
 
 
@@ -165,7 +166,9 @@ class TestDatabase:
         mock_pool.get_idle_size.return_value = 2
         mock_pool.close = AsyncMock()
 
-        with patch("mahavishnu.core.database.asyncpg.create_pool", new_callable=AsyncMock) as mock_create:
+        with patch(
+            "mahavishnu.core.database.asyncpg.create_pool", new_callable=AsyncMock
+        ) as mock_create:
             mock_create.return_value = mock_pool
 
             await db.connect()
@@ -187,7 +190,9 @@ class TestDatabase:
         mock_pool.get_idle_size.return_value = 2
         mock_pool.close = AsyncMock()
 
-        with patch("mahavishnu.core.database.asyncpg.create_pool", new_callable=AsyncMock) as mock_create:
+        with patch(
+            "mahavishnu.core.database.asyncpg.create_pool", new_callable=AsyncMock
+        ) as mock_create:
             mock_create.return_value = mock_pool
 
             await db.connect()
@@ -209,7 +214,9 @@ class TestDatabase:
         mock_pool.get_idle_size.return_value = 2
         mock_pool.close = AsyncMock()
 
-        with patch("mahavishnu.core.database.asyncpg.create_pool", new_callable=AsyncMock) as mock_create:
+        with patch(
+            "mahavishnu.core.database.asyncpg.create_pool", new_callable=AsyncMock
+        ) as mock_create:
             mock_create.return_value = mock_pool
             await db.connect()
 
@@ -251,7 +258,9 @@ class TestDatabase:
         mock_pool.fetchval = AsyncMock(return_value=1)
         mock_pool.close = AsyncMock()
 
-        with patch("mahavishnu.core.database.asyncpg.create_pool", new_callable=AsyncMock) as mock_create:
+        with patch(
+            "mahavishnu.core.database.asyncpg.create_pool", new_callable=AsyncMock
+        ) as mock_create:
             mock_create.return_value = mock_pool
             await db.connect()
 
@@ -345,7 +354,9 @@ class TestDatabaseSingleton:
         mock_pool.get_idle_size.return_value = 2
         mock_pool.close = AsyncMock()
 
-        with patch("mahavishnu.core.database.asyncpg.create_pool", new_callable=AsyncMock) as mock_create:
+        with patch(
+            "mahavishnu.core.database.asyncpg.create_pool", new_callable=AsyncMock
+        ) as mock_create:
             mock_create.return_value = mock_pool
 
             db1 = await get_database()
@@ -365,7 +376,9 @@ class TestDatabaseSingleton:
         mock_pool.get_idle_size.return_value = 2
         mock_pool.close = AsyncMock()
 
-        with patch("mahavishnu.core.database.asyncpg.create_pool", new_callable=AsyncMock) as mock_create:
+        with patch(
+            "mahavishnu.core.database.asyncpg.create_pool", new_callable=AsyncMock
+        ) as mock_create:
             mock_create.return_value = mock_pool
 
             db = await get_database()

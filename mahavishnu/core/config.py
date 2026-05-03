@@ -11,7 +11,7 @@ Architecture:
     - YAML files use nested structure matching the model hierarchy
 """
 
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -24,7 +24,7 @@ from ..terminal.config import TerminalSettings
 # ============================================================================
 
 
-class LLMProvider(str, Enum):
+class LLMProvider(StrEnum):
     """Supported LLM providers for Agno agents."""
 
     ANTHROPIC = "anthropic"
@@ -32,7 +32,7 @@ class LLMProvider(str, Enum):
     OLLAMA = "ollama"
 
 
-class MemoryBackend(str, Enum):
+class MemoryBackend(StrEnum):
     """Memory backend storage types for Agno agents."""
 
     SQLITE = "sqlite"
@@ -1059,7 +1059,7 @@ class OneiricMCPConfig(BaseModel):
 # ============================================================================
 
 
-class FallbackStrategy(str, Enum):
+class FallbackStrategy(StrEnum):
     """Fallback strategy when goal parsing fails."""
 
     SIMPLE = "simple"  # Use simple keyword extraction

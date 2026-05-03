@@ -272,12 +272,16 @@ class TestWorkerCommands:
             mock_app.config.max_concurrent_workers = 5
             mock_app_class.return_value = mock_app
 
-            with patch("mahavishnu.terminal.manager.TerminalManager.create", new_callable=AsyncMock) as mock_terminal_create:
+            with patch(
+                "mahavishnu.terminal.manager.TerminalManager.create", new_callable=AsyncMock
+            ) as mock_terminal_create:
                 mock_terminal_create.return_value = MagicMock()
 
                 with patch("mahavishnu.workers.WorkerManager") as mock_worker_mgr_class:
                     mock_worker_mgr = MagicMock()
-                    mock_worker_mgr.spawn_workers = AsyncMock(return_value=["worker-1", "worker-2", "worker-3"])
+                    mock_worker_mgr.spawn_workers = AsyncMock(
+                        return_value=["worker-1", "worker-2", "worker-3"]
+                    )
                     mock_worker_mgr.close_worker = AsyncMock(return_value=True)
 
                     def _result(worker_id: str) -> MagicMock:

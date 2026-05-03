@@ -1,7 +1,6 @@
----
-name: run-quality-checks
-description: Use when running Crackerjack quality gates or executing Python code quality checks. Use when user asks to check code quality, run tests, lint code, or validate Python projects. Use for AI-assisted issue fixing with Crackerjack agents.
----
+______________________________________________________________________
+
+## name: run-quality-checks description: Use when running Crackerjack quality gates or executing Python code quality checks. Use when user asks to check code quality, run tests, lint code, or validate Python projects. Use for AI-assisted issue fixing with Crackerjack agents.
 
 # Run Quality Checks
 
@@ -11,8 +10,8 @@ description: Use when running Crackerjack quality gates or executing Python code
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| crackerjack | 8676 | summary | mcp__crackerjack__crackerjack_run, mcp__crackerjack__get_comprehensive_status, mcp__crackerjack__smart_error_analysis | 120s |
-| mahavishnu | 8680 | grep | mcp__mahavishnu__get_health | 60s |
+| crackerjack | 8676 | summary | mcp\_\_crackerjack\_\_crackerjack_run, mcp\_\_crackerjack\_\_get_comprehensive_status, mcp\_\_crackerjack\_\_smart_error_analysis | 120s |
+| mahavishnu | 8680 | grep | mcp\_\_mahavishnu\_\_get_health | 60s |
 
 Crackerjack provides unified quality enforcement through 11 concurrent adapters. This skill guides you through running quality gates, interpreting results, and leveraging AI-powered auto-fixing.
 
@@ -21,6 +20,7 @@ Crackerjack provides unified quality enforcement through 11 concurrent adapters.
 ## When to Use
 
 **Use when:**
+
 - User asks to "check code quality", "run quality gates", "validate code"
 - Before committing code or creating pull requests
 - After implementing features or bug fixes
@@ -28,6 +28,7 @@ Crackerjack provides unified quality enforcement through 11 concurrent adapters.
 - Fixing quality issues with AI assistance
 
 **Don't use when:**
+
 - Manual code formatting (use IDE or `ruff format` directly)
 - Running specific test suites without quality gates
 - Non-Python projects (Crackerjack is Python-specific)
@@ -79,18 +80,21 @@ crackerjack history
 ### Step 1: Run Quality Checks
 
 **Basic execution:**
+
 ```bash
 crackerjack run
 ```
 
 **What happens:**
+
 1. Discovers project configuration (pyproject.toml, setup.cfg, .crackerjack.toml)
-2. Runs all 11 adapters concurrently
-3. Collects and aggregates results
-4. Displays summary with pass/fail status
-5. Exits with non-zero if any checks fail
+1. Runs all 11 adapters concurrently
+1. Collects and aggregates results
+1. Displays summary with pass/fail status
+1. Exits with non-zero if any checks fail
 
 **Via MCP:**
+
 ```python
 # Run quality checks via MCP server
 result = await mcp.call_tool("mcp__crackerjack__execute_crackerjack", {})
@@ -105,6 +109,7 @@ result = await mcp.call_tool("mcp__crackerjack__execute_crackerjack", {})
 ### Step 2: Interpret Results
 
 **Result format:**
+
 ```
 ✅ Format (black, ruff) - PASSED
 ✅ Import (isort, ruff) - PASSED
@@ -119,6 +124,7 @@ result = await mcp.call_tool("mcp__crackerjack__execute_crackerjack", {})
 ```
 
 **Status meanings:**
+
 - ✅ **PASSED** - All checks in category passed
 - ❌ **FAILED** - Critical failures, must fix
 - ⚠️ **WARNINGS** - Non-critical issues, should fix
@@ -127,21 +133,23 @@ result = await mcp.call_tool("mcp__crackerjack__execute_crackerjack", {})
 ### Step 3: AI Auto-Fix (Recommended)
 
 **Enable AI fixing:**
+
 ```bash
 crackerjack run --ai-fix
 ```
 
 **How it works:**
+
 1. Run quality checks normally
-2. Identify fixable issues
-3. Dispatch to specialized AI agents:
+1. Identify fixable issues
+1. Dispatch to specialized AI agents:
    - **RefactoringAgent** - Code structure and modernization
    - **SecurityAgent** - Security vulnerabilities
    - **PerformanceAgent** - Performance optimization
    - **TestAgent** - Test generation and improvement
    - **DocumentationAgent** - Documentation enhancement
-4. Apply fixes automatically
-5. Re-run checks to verify
+1. Apply fixes automatically
+1. Re-run checks to verify
 
 **AI Agent Capabilities:**
 
@@ -156,6 +164,7 @@ crackerjack run --ai-fix
 ### Step 4: Specific Check Execution
 
 **Run only specific adapters:**
+
 ```bash
 # Linting only
 crackerjack run --check ruff --check flake8
@@ -171,6 +180,7 @@ crackerjack run --check pytest
 ```
 
 **Via MCP:**
+
 ```python
 # Get available skills for issue type
 skills = await mcp.call_tool("mcp__crackerjack__get_skills_for_issue", {
@@ -191,11 +201,13 @@ result = await mcp.call_tool("mcp__crackerjack__execute_skill", {
 ### Step 5: Coverage Management
 
 **Run with coverage:**
+
 ```bash
 crackerjack run --run-tests --cov
 ```
 
 **Coverage ratchet:**
+
 ```toml
 # pyproject.toml
 [tool.crackerjack]
@@ -204,6 +216,7 @@ min_coverage = 80  # Fail if coverage below 80%
 ```
 
 **Result:**
+
 ```
 ✅ Test (pytest) - PASSED (32/32 tests)
    - Coverage: 87.3% (↑ from 85.1%)
@@ -213,18 +226,21 @@ min_coverage = 80  # Fail if coverage below 80%
 ## Quality Gates
 
 **Pre-commit gate:**
+
 ```bash
 # Runs fast checks only (no slow tests)
 crackerjack run --fast
 ```
 
 **CI/CD gate:**
+
 ```bash
 # Full quality suite
 crackerjack run --all
 ```
 
 **Release gate:**
+
 ```bash
 # Complete validation including packaging
 crackerjack run --all patch
@@ -243,11 +259,13 @@ crackerjack run --all patch
 ## Real-World Impact
 
 **Before this skill:**
+
 - Manual quality checks → 5-10 minutes execution
 - No AI fixing → hours of manual work
 - Inconsistent checks → quality gaps
 
 **After this skill:**
+
 - Unified execution → 30-60 seconds
 - AI auto-fix → 80% reduction in manual work
 - Consistent enforcement → zero quality gaps
@@ -255,6 +273,7 @@ crackerjack run --all patch
 ## Example Workflows
 
 **Before Commit:**
+
 ```bash
 # 1. Run quality checks
 crackerjack run
@@ -267,6 +286,7 @@ git commit -m "feat: add feature"
 ```
 
 **CI/CD Pipeline:**
+
 ```yaml
 # .github/workflows/quality.yml
 - name: Run Crackerjack
@@ -278,6 +298,7 @@ git commit -m "feat: add feature"
 ```
 
 **New Project Setup:**
+
 ```bash
 # 1. Create project
 crackerjack init myproject

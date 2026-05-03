@@ -35,7 +35,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
     def health_check(self) -> bool:
         """Check if git is available."""
         try:
-            process = asyncio.create_subprocess_exec(
+            asyncio.create_subprocess_exec(
                 self._git_executable,
                 "--version",
                 stdout=asyncio.subprocess.PIPE,

@@ -11,28 +11,30 @@ Usage:
     uv run agent_metrics_system.py optimize
 """
 
-import json
-import sqlite3
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Literal, Optional
-from dataclasses import dataclass, asdict
 from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+import json
+from pathlib import Path
+import sqlite3
+from typing import Literal
+
 import click
 
 
 @dataclass
 class AgentMetric:
     """Single agent invocation metric"""
+
     agent_name: str
     task_type: str
     timestamp: datetime
     tokens_used: int
     success: bool
     execution_time_ms: float
-    user_feedback: Optional[Literal["positive", "neutral", "negative"]] = None
-    error_type: Optional[str] = None
-    context_size: Optional[int] = None
+    user_feedback: Literal["positive", "neutral", "negative"] | None = None
+    error_type: str | None = None
+    context_size: int | None = None
 
 
 class AgentMetricsDB:
@@ -80,29 +82,28 @@ class AgentMetricsDB:
     def log_metric(self, metric: AgentMetric) -> None:
         """Log a single agent metric"""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO agent_metrics (
                     agent_name, task_type, timestamp, tokens_used,
                     success, execution_time_ms, user_feedback,
                     error_type, context_size
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                metric.agent_name,
-                metric.task_type,
-                metric.timestamp.isoformat(),
-                metric.tokens_used,
-                metric.success,
-                metric.execution_time_ms,
-                metric.user_feedback,
-                metric.error_type,
-                metric.context_size
-            ))
+            """,
+                (
+                    metric.agent_name,
+                    metric.task_type,
+                    metric.timestamp.isoformat(),
+                    metric.tokens_used,
+                    metric.success,
+                    metric.execution_time_ms,
+                    metric.user_feedback,
+                    metric.error_type,
+                    metric.context_size,
+                ),
+            )
 
-    def get_metrics(
-        self,
-        agent_name: Optional[str] = None,
-        days: int = 30
-    ) -> list[dict]:
+    def get_metrics(self, agent_name: str | None = None, days: int = 30) -> list[dict]:
         """Retrieve metrics with optional filtering"""
         cutoff = datetime.now() - timedelta(days=days)
 
@@ -130,11 +131,7 @@ class AgentAnalyzer:
     def __init__(self, db: AgentMetricsDB):
         self.db = db
 
-    def generate_report(
-        self,
-        agent_name: Optional[str] = None,
-        days: int = 30
-    ) -> dict:
+    def generate_report(self, agent_name: str | None = None, days: int = 30) -> dict:
         """Generate comprehensive performance report"""
         metrics = self.db.get_metrics(agent_name, days)
 
@@ -142,17 +139,19 @@ class AgentAnalyzer:
             return {"error": "No metrics found for the specified period"}
 
         # Aggregate by agent
-        by_agent = defaultdict(lambda: {
-            "invocations": 0,
-            "successes": 0,
-            "failures": 0,
-            "total_tokens": 0,
-            "total_time_ms": 0,
-            "positive_feedback": 0,
-            "negative_feedback": 0,
-            "errors": defaultdict(int),
-            "task_types": defaultdict(int)
-        })
+        by_agent = defaultdict(
+            lambda: {
+                "invocations": 0,
+                "successes": 0,
+                "failures": 0,
+                "total_tokens": 0,
+                "total_time_ms": 0,
+                "positive_feedback": 0,
+                "negative_feedback": 0,
+                "errors": defaultdict(int),
+                "task_types": defaultdict(int),
+            }
+        )
 
         for metric in metrics:
             agent = metric["agent_name"]
@@ -187,28 +186,24 @@ class AgentAnalyzer:
                 "avg_tokens": stats["total_tokens"] / invocations if invocations > 0 else 0,
                 "avg_time_ms": stats["total_time_ms"] / invocations if invocations > 0 else 0,
                 "satisfaction_rate": (
-                    stats["positive_feedback"] /
-                    (stats["positive_feedback"] + stats["negative_feedback"])
+                    stats["positive_feedback"]
+                    / (stats["positive_feedback"] + stats["negative_feedback"])
                     if (stats["positive_feedback"] + stats["negative_feedback"]) > 0
                     else None
                 ),
-                "top_errors": dict(sorted(
-                    stats["errors"].items(),
-                    key=lambda x: x[1],
-                    reverse=True
-                )[:5]),
-                "top_tasks": dict(sorted(
-                    stats["task_types"].items(),
-                    key=lambda x: x[1],
-                    reverse=True
-                )[:5])
+                "top_errors": dict(
+                    sorted(stats["errors"].items(), key=lambda x: x[1], reverse=True)[:5]
+                ),
+                "top_tasks": dict(
+                    sorted(stats["task_types"].items(), key=lambda x: x[1], reverse=True)[:5]
+                ),
             }
 
         return {
             "period_days": days,
             "total_invocations": len(metrics),
             "agents": report,
-            "generated_at": datetime.now().isoformat()
+            "generated_at": datetime.now().isoformat(),
         }
 
     def identify_optimization_opportunities(self, days: int = 30) -> dict:
@@ -223,7 +218,7 @@ class AgentAnalyzer:
             "low_success_rate": [],
             "high_token_usage": [],
             "low_satisfaction": [],
-            "recommendations": []
+            "recommendations": [],
         }
 
         agents = report["agents"]
@@ -233,37 +228,45 @@ class AgentAnalyzer:
         for agent_name, stats in agents.items():
             # Underutilized agents
             if stats["invocations"] < avg_invocations * 0.25:
-                opportunities["underutilized"].append({
-                    "agent": agent_name,
-                    "invocations": stats["invocations"],
-                    "issue": "Low usage - may need better triggers or documentation"
-                })
+                opportunities["underutilized"].append(
+                    {
+                        "agent": agent_name,
+                        "invocations": stats["invocations"],
+                        "issue": "Low usage - may need better triggers or documentation",
+                    }
+                )
 
             # Low success rate
             if stats["success_rate"] < 0.8 and stats["invocations"] > 5:
-                opportunities["low_success_rate"].append({
-                    "agent": agent_name,
-                    "success_rate": stats["success_rate"],
-                    "invocations": stats["invocations"],
-                    "top_errors": stats["top_errors"],
-                    "issue": "High failure rate - needs investigation"
-                })
+                opportunities["low_success_rate"].append(
+                    {
+                        "agent": agent_name,
+                        "success_rate": stats["success_rate"],
+                        "invocations": stats["invocations"],
+                        "top_errors": stats["top_errors"],
+                        "issue": "High failure rate - needs investigation",
+                    }
+                )
 
             # High token usage
             if stats["avg_tokens"] > 50000:
-                opportunities["high_token_usage"].append({
-                    "agent": agent_name,
-                    "avg_tokens": stats["avg_tokens"],
-                    "issue": "Consider optimizing prompts or context"
-                })
+                opportunities["high_token_usage"].append(
+                    {
+                        "agent": agent_name,
+                        "avg_tokens": stats["avg_tokens"],
+                        "issue": "Consider optimizing prompts or context",
+                    }
+                )
 
             # Low satisfaction
             if stats["satisfaction_rate"] and stats["satisfaction_rate"] < 0.6:
-                opportunities["low_satisfaction"].append({
-                    "agent": agent_name,
-                    "satisfaction_rate": stats["satisfaction_rate"],
-                    "issue": "User dissatisfaction - review agent instructions"
-                })
+                opportunities["low_satisfaction"].append(
+                    {
+                        "agent": agent_name,
+                        "satisfaction_rate": stats["satisfaction_rate"],
+                        "issue": "User dissatisfaction - review agent instructions",
+                    }
+                )
 
         # Generate recommendations
         if opportunities["low_success_rate"]:
@@ -298,8 +301,15 @@ def cli():
 @click.option("--time-ms", type=float, required=True)
 @click.option("--feedback", type=click.Choice(["positive", "neutral", "negative"]))
 @click.option("--error-type", type=str)
-def log(agent_name: str, task: str, tokens: int, success: bool,
-        time_ms: float, feedback: Optional[str], error_type: Optional[str]):
+def log(
+    agent_name: str,
+    task: str,
+    tokens: int,
+    success: bool,
+    time_ms: float,
+    feedback: str | None,
+    error_type: str | None,
+):
     """Log an agent metric"""
     db = AgentMetricsDB()
 
@@ -311,7 +321,7 @@ def log(agent_name: str, task: str, tokens: int, success: bool,
         success=success,
         execution_time_ms=time_ms,
         user_feedback=feedback,
-        error_type=error_type
+        error_type=error_type,
     )
 
     db.log_metric(metric)
@@ -322,7 +332,7 @@ def log(agent_name: str, task: str, tokens: int, success: bool,
 @click.option("--agent", type=str, help="Filter by agent name")
 @click.option("--days", type=int, default=30, help="Days to analyze")
 @click.option("--format", type=click.Choice(["json", "text"]), default="text")
-def report(agent: Optional[str], days: int, format: str):
+def report(agent: str | None, days: int, format: str):
     """Generate performance report"""
     db = AgentMetricsDB()
     analyzer = AgentAnalyzer(db)
@@ -356,7 +366,7 @@ def optimize(days: int):
         click.echo("❌ Low Success Rate:")
         for item in opportunities["low_success_rate"]:
             click.echo(f"  - {item['agent']}: {item['success_rate']:.1%} success")
-            if item['top_errors']:
+            if item["top_errors"]:
                 click.echo(f"    Top errors: {list(item['top_errors'].keys())}\n")
 
     if opportunities.get("high_token_usage"):
@@ -381,11 +391,7 @@ def _print_text_report(report: dict):
     click.echo(f"\n=== Agent Performance Report ({report['period_days']} days) ===\n")
     click.echo(f"Total Invocations: {report['total_invocations']}\n")
 
-    agents = sorted(
-        report["agents"].items(),
-        key=lambda x: x[1]["invocations"],
-        reverse=True
-    )
+    agents = sorted(report["agents"].items(), key=lambda x: x[1]["invocations"], reverse=True)
 
     for agent_name, stats in agents:
         click.echo(f"Agent: {agent_name}")
@@ -394,13 +400,13 @@ def _print_text_report(report: dict):
         click.echo(f"  Avg Tokens: {stats['avg_tokens']:.0f}")
         click.echo(f"  Avg Time: {stats['avg_time_ms']:.0f}ms")
 
-        if stats['satisfaction_rate'] is not None:
+        if stats["satisfaction_rate"] is not None:
             click.echo(f"  Satisfaction: {stats['satisfaction_rate']:.1%}")
 
-        if stats['top_tasks']:
+        if stats["top_tasks"]:
             click.echo(f"  Top Tasks: {', '.join(stats['top_tasks'].keys())}")
 
-        if stats['top_errors']:
+        if stats["top_errors"]:
             click.echo(f"  Top Errors: {', '.join(stats['top_errors'].keys())}")
 
         click.echo()

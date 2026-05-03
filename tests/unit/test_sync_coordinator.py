@@ -1,17 +1,16 @@
 """Tests for SyncCoordinator - One-way sync with approval workflow."""
 
-import pytest
-from datetime import datetime, UTC, timedelta
 from unittest.mock import AsyncMock, MagicMock
-from typing import Any
+
+import pytest
 
 from mahavishnu.core.sync_coordinator import (
-    SyncCoordinator,
-    SyncPlan,
-    SyncItem,
-    SyncStatus,
-    SyncConflict,
     ConflictResolution,
+    SyncConflict,
+    SyncCoordinator,
+    SyncItem,
+    SyncPlan,
+    SyncStatus,
 )
 
 
@@ -405,9 +404,12 @@ class TestSyncCoordinator:
         coordinator = SyncCoordinator(mock_task_store, mock_external_importer)
 
         statuses = [
-            SyncStatus.PENDING, SyncStatus.PENDING,
+            SyncStatus.PENDING,
+            SyncStatus.PENDING,
             SyncStatus.APPROVED,
-            SyncStatus.SYNCED, SyncStatus.SYNCED, SyncStatus.SYNCED,
+            SyncStatus.SYNCED,
+            SyncStatus.SYNCED,
+            SyncStatus.SYNCED,
             SyncStatus.CONFLICT,
         ]
 
@@ -441,7 +443,14 @@ class TestSyncCoordinator:
         items = [
             SyncItem("1", "Bug fix", "github", "repo", SyncStatus.PENDING, labels=["bug"]),
             SyncItem("2", "Feature", "github", "repo", SyncStatus.PENDING, labels=["feature"]),
-            SyncItem("3", "Critical bug", "github", "repo", SyncStatus.PENDING, labels=["bug", "critical"]),
+            SyncItem(
+                "3",
+                "Critical bug",
+                "github",
+                "repo",
+                SyncStatus.PENDING,
+                labels=["bug", "critical"],
+            ),
         ]
 
         for item in items:

@@ -90,9 +90,7 @@ class JWTAuth:
             raise ValueError("JWT claims must include 'sub' or 'user_id'")
 
         merged_claims = {
-            key: value
-            for key, value in claims.items()
-            if key not in {"sub", "user_id", "scopes"}
+            key: value for key, value in claims.items() if key not in {"sub", "user_id", "scopes"}
         }
         merged_claims.update(extra_claims)
         token_scopes = scopes if scopes is not None else claims.get("scopes")

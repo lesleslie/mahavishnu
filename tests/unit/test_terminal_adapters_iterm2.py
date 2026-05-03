@@ -3,16 +3,14 @@
 These tests are for the AppleScript-based iTerm2 adapter implementation.
 """
 
-import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from mahavishnu.terminal.adapters.iterm2 import (
-    ITERM2_AVAILABLE,
-    ITerm2Adapter,
     OSASCRIPT_AVAILABLE,
+    ITerm2Adapter,
 )
 
 
@@ -196,6 +194,7 @@ class TestITerm2Adapter:
     @pytest.mark.asyncio
     async def test_run_applescript_failure(self, adapter):
         """Test AppleScript execution failure."""
+
         async def mock_exec(*args, **kwargs):
             proc = MagicMock()
             proc.communicate = AsyncMock(return_value=(b"", b"AppleScript error"))
@@ -204,7 +203,7 @@ class TestITerm2Adapter:
 
         with patch("asyncio.create_subprocess_exec", mock_exec):
             with pytest.raises(RuntimeError, match="AppleScript failed"):
-                await adapter._run_applescript('invalid script')
+                await adapter._run_applescript("invalid script")
 
     @pytest.mark.asyncio
     async def test_ensure_iterm2_running(self, adapter):
@@ -227,11 +226,11 @@ class TestITerm2AdapterNotAvailable:
 
     def test_init_fails_without_osascript(self):
         """Test that adapter initialization fails without osascript."""
-        with patch(
-            "mahavishnu.terminal.adapters.iterm2.OSASCRIPT_AVAILABLE", False
+        with (
+            patch("mahavishnu.terminal.adapters.iterm2.OSASCRIPT_AVAILABLE", False),
+            pytest.raises(ImportError, match="osascript not available"),
         ):
-            with pytest.raises(ImportError, match="osascript not available"):
-                ITerm2Adapter()
+            ITerm2Adapter()
 
 
 class TestITerm2AdapterEdgeCases:
@@ -266,11 +265,11 @@ class TestITerm2AdapterEdgeCases:
             "new_window": False,
         }
 
-        with patch.object(
-            adapter, "_run_applescript", side_effect=RuntimeError("Failed")
+        with (
+            patch.object(adapter, "_run_applescript", side_effect=RuntimeError("Failed")),
+            pytest.raises(RuntimeError),
         ):
-            with pytest.raises(RuntimeError):
-                await adapter.close_session("test")
+            await adapter.close_session("test")
 
         # Should still be removed from tracking
         assert "test" not in adapter._sessions

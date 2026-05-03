@@ -9,14 +9,12 @@ Provides automatic blocking and unblocking based on dependencies:
 
 from __future__ import annotations
 
-import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
-from typing import Any, Callable
-
-from pydantic import BaseModel, Field
+from enum import StrEnum
+import logging
+from typing import TYPE_CHECKING, Any
 
 from mahavishnu.core.dependency_graph import (
     DependencyEdge,
@@ -25,10 +23,13 @@ from mahavishnu.core.dependency_graph import (
     DependencyType,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 logger = logging.getLogger(__name__)
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     """Task completion status."""
 
     PENDING = "pending"
@@ -38,7 +39,7 @@ class TaskStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class DependencyEvent(str, Enum):
+class DependencyEvent(StrEnum):
     """Types of dependency events."""
 
     TASK_BLOCKED = "task_blocked"
@@ -196,7 +197,7 @@ class DependencyManager:
         Returns:
             List of newly unblocked task IDs
         """
-        old_status = self._task_statuses.get(task_id)
+        self._task_statuses.get(task_id)
         self._task_statuses[task_id] = status
 
         newly_unblocked: list[str] = []

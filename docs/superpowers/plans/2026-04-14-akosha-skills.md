@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-04-14-akosha-skills-design.md`
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -22,15 +22,17 @@
 No other files are created or modified. These are pure prompt files.
 
 **Pattern reference** (read-only, for consistency):
+
 - `~/.claude/skills/search-insights/SKILL.md` — Akosha search skill (same backend)
 - `~/.claude/skills/ecosystem-awareness/SKILL.md` — Mahavishnu ecosystem discovery (same fallback pattern)
 - `~/.claude/skills/run-quality-checks/SKILL.md` — Crackerjack quality skill (same domain)
 
----
+______________________________________________________________________
 
 ### Task 1: Create Code Archaeologist SKILL.md
 
 **Files:**
+
 - Create: `~/.claude/skills/code-archaeologist/SKILL.md`
 
 - [x] **Step 1: Create the directory**
@@ -87,7 +89,9 @@ The skill routes to the appropriate workflow based on the user's question:
 Verify Akosha MCP tools are accessible by calling a lightweight probe:
 
 ```
-mcp__akosha__get_liveness()
+
+mcp\_\_akosha\_\_get_liveness()
+
 ```
 
 If Akosha is unavailable, proceed to **Fallback** (Step 5).
@@ -97,8 +101,10 @@ If Akosha is unavailable, proceed to **Fallback** (Step 5).
 Discover which repos have been indexed:
 
 ```
-mcp__akosha__list_ingested_code_graphs()
-```
+
+mcp\_\_akosha\_\_list_ingested_code_graphs()
+
+````
 
 If no code graphs exist, inform the user:
 > "No code graphs are ingested yet. Run `code_ingest_directory` on your target repos via Session-Buddy to enable cross-repo search."
@@ -149,7 +155,7 @@ Format results as structured markdown:
 
 Based on [N] repos, the most common approach is [X].
 Repo [Y] has the cleanest implementation at `path/to/file.py:42`.
-```
+````
 
 ### Step 5: Fallback (Akosha Unavailable)
 
@@ -159,8 +165,8 @@ If Akosha MCP tools are not available, fall back to direct filesystem search acr
    - Primary: `settings/ecosystem.yaml` (canonical)
    - Fallback: `settings/repos.yaml` (legacy)
    - If neither exists and Mahavishnu MCP is available: `mcp__mahavishnu__list_repos`
-2. Use Grep/Glob to search across resolved repo paths
-3. Inform the user: "Akosha is not available. Falling back to direct filesystem search across [N] repos. For richer semantic search, ensure Akosha is running."
+1. Use Grep/Glob to search across resolved repo paths
+1. Inform the user: "Akosha is not available. Falling back to direct filesystem search across [N] repos. For richer semantic search, ensure Akosha is running."
 
 ## Common Mistakes
 
@@ -175,7 +181,8 @@ If Akosha MCP tools are not available, fall back to direct filesystem search acr
 - **REQUIRED:** `ecosystem-awareness` - Discover which repos exist before searching
 - **RELATED:** `search-insights` - Broader Akosha semantic search (conversations, not code)
 - **RELATED:** `quality-pulse` - After finding patterns, check if quality is degrading
-```
+
+````
 
 - [x] **Step 3: Verify the file**
 
@@ -188,13 +195,14 @@ Run:
 ```bash
 git add ~/.claude/skills/code-archaeologist/SKILL.md
 git commit -m "feat: add code-archaeologist skill for cross-repo code discovery"
-```
+````
 
----
+______________________________________________________________________
 
 ### Task 2: Create Quality Pulse SKILL.md
 
 **Files:**
+
 - Create: `~/.claude/skills/quality-pulse/SKILL.md`
 
 - [x] **Step 1: Create the directory**
@@ -261,7 +269,9 @@ Quality data flows through this pipeline:
 Verify Akosha MCP tools are accessible:
 
 ```
-mcp__akosha__get_liveness()
+
+mcp\_\_akosha\_\_get_liveness()
+
 ```
 
 If Akosha is unavailable, proceed to **Fallback** (Step 5).
@@ -269,8 +279,10 @@ If Akosha is unavailable, proceed to **Fallback** (Step 5).
 ### Step 2: Discover Available Metrics
 
 ```
-mcp__akosha__get_system_metrics()
-```
+
+mcp\_\_akosha\_\_get_system_metrics()
+
+````
 
 This returns all metric names currently being tracked. Common metrics include:
 - `conversation_count` — sessions per system
@@ -346,7 +358,7 @@ Format results as structured markdown:
 ### Recommendation
 
 [System] is showing [pattern]. Suggested action: [specific recommendation].
-```
+````
 
 ### Step 5: Fallback (Akosha Unavailable)
 
@@ -357,6 +369,7 @@ If Akosha MCP tools are not available, use this three-tier fallback chain:
 **Tier 2 (Mahavishnu MCP):** If `mcp__mahavishnu__*` tools are available, call `mcp__mahavishnu__get_health` to retrieve service health status across ecosystem components. Present as a simplified health table without trend data.
 
 **Tier 3 (Local Crackerjack data):** If Mahavishnu MCP is also unavailable, direct user to check Crackerjack's local data directly:
+
 ```
 sqlite3 .crackerjack/adapter_learning.db "SELECT adapter_name, COUNT(*), AVG(execution_time_ms) FROM executions GROUP BY adapter_name ORDER BY AVG(execution_time_ms) DESC;"
 ```
@@ -376,7 +389,8 @@ Inform the user at each tier: "Akosha is not available. Showing [tier descriptio
 - **RELATED:** `code-archaeologist` - After Quality Pulse surfaces degradation, find how other repos solved it
 - **RELATED:** `search-insights` - Broader Akosha analytics (conversations, knowledge graph)
 - **RELATED:** `run-quality-checks` - Trigger quality data collection before analyzing trends
-```
+
+````
 
 - [x] **Step 3: Verify the file**
 
@@ -389,24 +403,28 @@ Run:
 ```bash
 git add ~/.claude/skills/quality-pulse/SKILL.md
 git commit -m "feat: add quality-pulse skill for adapter execution trend analysis"
-```
+````
 
----
+______________________________________________________________________
 
 ### Task 3: Validate Both Skills
 
 **Files:**
+
 - Read: `~/.claude/skills/code-archaeologist/SKILL.md`
+
 - Read: `~/.claude/skills/quality-pulse/SKILL.md`
 
 - [x] **Step 1: Verify frontmatter consistency**
 
 Check both files have:
+
 - `name` field (no spaces, lowercase-with-hyphens matching directory name)
 - `description` field contains specific trigger phrases for auto-detection
 - `description` field mentions the skill name explicitly
 
 Run:
+
 ```bash
 # Extract and compare frontmatter
 for f in code-archaeologist quality-pulse; do
@@ -419,23 +437,29 @@ done
 - [x] **Step 2: Verify no overlap with search-insights**
 
 Read `~/.claude/skills/search-insights/SKILL.md` and confirm:
+
 - Code Archaeologist focuses on code graphs + function usage (not in search-insights)
+
 - Quality Pulse focuses on time-series analytics + anomaly detection (not in search-insights)
+
 - Both reference search-insights as "RELATED" not "REQUIRED"
 
 - [x] **Step 3: Verify fallback chain is consistent**
 
 Both skills reference the same fallback chain:
+
 1. Akosha MCP tools (primary)
-2. Mahavishnu config resolution: `settings/ecosystem.yaml` then `settings/repos.yaml`
-3. Direct filesystem / sqlite3
+1. Mahavishnu config resolution: `settings/ecosystem.yaml` then `settings/repos.yaml`
+1. Direct filesystem / sqlite3
 
 Verify this matches Mahavishnu's `_load_repos()` at `mahavishnu/core/app.py:615-688`.
 
 - [x] **Step 4: Verify cross-references are correct**
 
 - Code Archaeologist references `ecosystem-awareness` and `quality-pulse` correctly
+
 - Quality Pulse references `code-archaeologist` and `run-quality-checks` correctly
+
 - Neither skill references non-existent skills
 
 - [x] **Step 5: Final commit (if any fixes needed)**

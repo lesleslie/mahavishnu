@@ -102,9 +102,7 @@ class Pattern(BaseModel):
 
     @field_validator("structure", mode="after")
     @classmethod
-    def validate_paths(
-        cls, v: dict[str, list[dict[str, Any]]]
-    ) -> dict[str, list[dict[str, Any]]]:
+    def validate_paths(cls, v: dict[str, list[dict[str, Any]]]) -> dict[str, list[dict[str, Any]]]:
         for d in v.get("dirs", []):
             if not _is_safe_path(d.get("path", "")):
                 raise ValueError(f"Path traversal detected: {d['path']}")

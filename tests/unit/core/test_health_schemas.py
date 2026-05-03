@@ -1,14 +1,11 @@
 """Tests for health check schemas."""
 
-import pytest
-from datetime import datetime
-
 from mahavishnu.core.health_schemas import (
-    HealthStatus,
-    HealthResponse,
     DependencyStatus,
-    ReadyResponse,
     HealthCheckResult,
+    HealthResponse,
+    HealthStatus,
+    ReadyResponse,
     WaitResult,
 )
 
@@ -110,9 +107,7 @@ class TestReadyResponse:
         response = ReadyResponse(
             ready=True,
             service="mahavishnu",
-            dependencies={
-                "session_buddy": DependencyStatus(status=HealthStatus.OK, latency_ms=5)
-            },
+            dependencies={"session_buddy": DependencyStatus(status=HealthStatus.OK, latency_ms=5)},
             checks={"database": "ok"},
         )
         assert response.ready is True

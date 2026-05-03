@@ -1,11 +1,7 @@
 """Comprehensive unit tests for mahavishnu.workers.registry module."""
 
 import os
-import shutil
-from dataclasses import fields
 from unittest.mock import patch
-
-import pytest
 
 from mahavishnu.workers.registry import (
     WORKER_REGISTRY,
@@ -110,22 +106,14 @@ class TestWorkerConfig:
         assert cfg.complete_on_valid_json is True
 
     def test_default_error_markers_is_independent_per_instance(self):
-        cfg1 = WorkerConfig(
-            name="A", worker_type="a", command="", category=WorkerCategory.SHELL
-        )
-        cfg2 = WorkerConfig(
-            name="B", worker_type="b", command="", category=WorkerCategory.SHELL
-        )
+        cfg1 = WorkerConfig(name="A", worker_type="a", command="", category=WorkerCategory.SHELL)
+        cfg2 = WorkerConfig(name="B", worker_type="b", command="", category=WorkerCategory.SHELL)
         cfg1.error_markers.append("extra")
         assert "extra" not in cfg2.error_markers
 
     def test_completion_markers_is_independent_per_instance(self):
-        cfg1 = WorkerConfig(
-            name="A", worker_type="a", command="", category=WorkerCategory.SHELL
-        )
-        cfg2 = WorkerConfig(
-            name="B", worker_type="b", command="", category=WorkerCategory.SHELL
-        )
+        cfg1 = WorkerConfig(name="A", worker_type="a", command="", category=WorkerCategory.SHELL)
+        cfg2 = WorkerConfig(name="B", worker_type="b", command="", category=WorkerCategory.SHELL)
         cfg1.completion_markers.append("marker")
         assert "marker" not in cfg2.completion_markers
 
@@ -222,15 +210,11 @@ class TestListWorkerTypes:
 
     def test_filter_by_ai_assistant_category(self):
         result = list_worker_types(WorkerCategory.AI_ASSISTANT)
-        assert all(
-            WORKER_REGISTRY[wt].category == WorkerCategory.AI_ASSISTANT for wt in result
-        )
+        assert all(WORKER_REGISTRY[wt].category == WorkerCategory.AI_ASSISTANT for wt in result)
 
     def test_filter_by_shell_category(self):
         result = list_worker_types(WorkerCategory.SHELL)
-        assert all(
-            WORKER_REGISTRY[wt].category == WorkerCategory.SHELL for wt in result
-        )
+        assert all(WORKER_REGISTRY[wt].category == WorkerCategory.SHELL for wt in result)
 
     def test_filter_by_container_category(self):
         result = list_worker_types(WorkerCategory.CONTAINER)
@@ -244,9 +228,7 @@ class TestListWorkerTypes:
     def test_filter_by_application_category(self):
         result = list_worker_types(WorkerCategory.APPLICATION)
         assert len(result) > 0
-        assert all(
-            WORKER_REGISTRY[wt].category == WorkerCategory.APPLICATION for wt in result
-        )
+        assert all(WORKER_REGISTRY[wt].category == WorkerCategory.APPLICATION for wt in result)
 
     def test_filter_by_remote_category(self):
         result = list_worker_types(WorkerCategory.REMOTE)
@@ -254,9 +236,7 @@ class TestListWorkerTypes:
 
     def test_filter_by_in_process_category(self):
         result = list_worker_types(WorkerCategory.IN_PROCESS)
-        assert all(
-            WORKER_REGISTRY[wt].category == WorkerCategory.IN_PROCESS for wt in result
-        )
+        assert all(WORKER_REGISTRY[wt].category == WorkerCategory.IN_PROCESS for wt in result)
         assert "in-process-nanobot" in result
 
     def test_none_filter_returns_more_than_any_single_category(self):
@@ -342,7 +322,10 @@ class TestResolveWorkerType:
         assert resolve_worker_type("terminal-qwen", "coding", "write a function") == "terminal-qwen"
 
     def test_non_communication_worker_returns_same_type(self):
-        assert resolve_worker_type("terminal-shell", "communication", "send message") == "terminal-shell"
+        assert (
+            resolve_worker_type("terminal-shell", "communication", "send message")
+            == "terminal-shell"
+        )
 
     def test_no_task_or_prompt_returns_same_type(self):
         assert resolve_worker_type("terminal-qwen") == "terminal-qwen"
@@ -422,7 +405,15 @@ class TestResolveWorkerType:
     def test_communication_task_types_set(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("OPENCLAW_GATEWAY_URL", None)
-            task_types = ["communication", "notification", "messaging", "handoff", "delivery", "outreach", "chatops"]
+            task_types = [
+                "communication",
+                "notification",
+                "messaging",
+                "handoff",
+                "delivery",
+                "outreach",
+                "chatops",
+            ]
             for tt in task_types:
                 result = resolve_worker_type("terminal-qwen", tt, "do something")
                 assert result == "terminal-openclaw", f"Failed for task_type: {tt}"

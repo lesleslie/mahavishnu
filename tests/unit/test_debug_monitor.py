@@ -1,15 +1,14 @@
 """Comprehensive tests for the DebugMonitorWorker class."""
 
 import asyncio
-import logging
-import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+import sys
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from mahavishnu.core.status import WorkerStatus
-from mahavishnu.workers.base import BaseWorker, WorkerResult
+from mahavishnu.workers.base import BaseWorker
 from mahavishnu.workers.debug_monitor import DebugMonitorWorker
 
 
@@ -384,7 +383,7 @@ class TestStreamToSessionBuddy:
             monitor_with_sb._running = False
             try:
                 await asyncio.wait_for(mock_task, timeout=2.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 mock_task.cancel()
                 try:
                     await mock_task
@@ -442,7 +441,7 @@ class TestStreamToSessionBuddy:
             monitor._running = False
             try:
                 await asyncio.wait_for(mock_task, timeout=2.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 mock_task.cancel()
                 try:
                     await mock_task
@@ -485,7 +484,7 @@ class TestStreamToSessionBuddy:
             monitor._running = False
             try:
                 await asyncio.wait_for(mock_task, timeout=2.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 mock_task.cancel()
                 try:
                     await mock_task
@@ -522,7 +521,7 @@ class TestStreamToSessionBuddy:
             monitor._running = False
             try:
                 await asyncio.wait_for(mock_task, timeout=2.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 mock_task.cancel()
                 try:
                     await mock_task
@@ -560,7 +559,7 @@ class TestStreamToSessionBuddy:
             monitor._running = False
             try:
                 await asyncio.wait_for(mock_task, timeout=2.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 mock_task.cancel()
                 try:
                     await mock_task
@@ -596,7 +595,7 @@ class TestStreamToSessionBuddy:
             monitor._running = False
             try:
                 await asyncio.wait_for(mock_task, timeout=2.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 mock_task.cancel()
                 try:
                     await mock_task
@@ -619,7 +618,7 @@ class TestStreamToSessionBuddy:
             monitor_with_sb._running = False
             try:
                 await asyncio.wait_for(mock_task, timeout=2.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 mock_task.cancel()
                 try:
                     await mock_task

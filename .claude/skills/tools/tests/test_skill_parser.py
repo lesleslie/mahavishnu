@@ -1,21 +1,21 @@
 """Unit tests for skill parser."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 from skill_parser import (
-    parse_skill_file,
-    parse_all_skills,
-    build_reverse_references,
-    SkillMetadata,
     MalformedFrontmatterError,
     MissingRequiredFieldError,
+    build_reverse_references,
+    parse_all_skills,
+    parse_skill_file,
 )
 
 
 @pytest.fixture
 def sample_skill_file(tmp_path: Path) -> Path:
     """Create a sample SKILL.md file for testing."""
-    content = '''---
+    content = """---
 name: test-skill
 description: Use when testing parser functionality and validating YAML frontmatter. Use when implementing parser features.
 ---
@@ -35,8 +35,8 @@ This is a test skill for parser validation.
 def example():
     pass
 ```
-'''
-    skill_file = tmp_path / 'test-skill' / 'SKILL.md'
+"""
+    skill_file = tmp_path / "test-skill" / "SKILL.md"
     skill_file.parent.mkdir(parents=True, exist_ok=True)
     skill_file.write_text(content)
     return skill_file
@@ -45,7 +45,7 @@ def example():
 @pytest.fixture
 def real_skills_dir() -> Path:
     """Path to the real skills directory."""
-    return Path('/Users/les/.claude/skills')
+    return Path("/Users/les/.claude/skills")
 
 
 class TestParseSkillFile:
@@ -55,21 +55,21 @@ class TestParseSkillFile:
         """Test basic parsing of skill file."""
         metadata = parse_skill_file(sample_skill_file)
 
-        assert metadata.name == 'test-skill'
-        assert metadata.description.startswith('Use when testing')
+        assert metadata.name == "test-skill"
+        assert metadata.description.startswith("Use when testing")
         assert metadata.file_path == sample_skill_file
-        assert 'testing' in metadata.keywords or 'parser' in metadata.keywords
+        assert "testing" in metadata.keywords or "parser" in metadata.keywords
         assert len(metadata.related_skills) == 2
         assert metadata.has_examples is True
         assert metadata.word_count > 0
 
     def test_parse_skill_file_missing_name(self, tmp_path: Path):
         """Test error when name field is missing."""
-        content = '''---
+        content = """---
 description: Test
 ---
-'''
-        skill_file = tmp_path / 'SKILL.md'
+"""
+        skill_file = tmp_path / "SKILL.md"
         skill_file.write_text(content)
 
         with pytest.raises(MissingRequiredFieldError):
@@ -77,11 +77,11 @@ description: Test
 
     def test_parse_skill_file_missing_description(self, tmp_path: Path):
         """Test error when description field is missing."""
-        content = '''---
+        content = """---
 name: test
 ---
-'''
-        skill_file = tmp_path / 'SKILL.md'
+"""
+        skill_file = tmp_path / "SKILL.md"
         skill_file.write_text(content)
 
         with pytest.raises(MissingRequiredFieldError):
@@ -89,12 +89,12 @@ name: test
 
     def test_parse_skill_file_invalid_yaml(self, tmp_path: Path):
         """Test error when YAML is malformed."""
-        content = '''---
+        content = """---
 name: test
 description: : invalid yaml [[[
 ---
-'''
-        skill_file = tmp_path / 'SKILL.md'
+"""
+        skill_file = tmp_path / "SKILL.md"
         skill_file.write_text(content)
 
         with pytest.raises(MalformedFrontmatterError):
@@ -102,11 +102,11 @@ description: : invalid yaml [[[
 
     def test_parse_skill_file_no_frontmatter(self, tmp_path: Path):
         """Test error when YAML frontmatter is missing."""
-        content = '''# Test Skill
+        content = """# Test Skill
 
 No frontmatter here.
-'''
-        skill_file = tmp_path / 'SKILL.md'
+"""
+        skill_file = tmp_path / "SKILL.md"
         skill_file.write_text(content)
 
         with pytest.raises(MalformedFrontmatterError):
@@ -117,15 +117,15 @@ No frontmatter here.
         metadata = parse_skill_file(sample_skill_file)
 
         related_names = [rs.name for rs in metadata.related_skills]
-        assert 'other-skill' in related_names
-        assert 'another-skill' in related_names
+        assert "other-skill" in related_names
+        assert "another-skill" in related_names
 
         # Check relationship types
-        other_skill = next(rs for rs in metadata.related_skills if rs.name == 'other-skill')
-        assert other_skill.relationship_type == 'REQUIRED'
+        other_skill = next(rs for rs in metadata.related_skills if rs.name == "other-skill")
+        assert other_skill.relationship_type == "REQUIRED"
 
-        another_skill = next(rs for rs in metadata.related_skills if rs.name == 'another-skill')
-        assert another_skill.relationship_type == 'RELATED'
+        another_skill = next(rs for rs in metadata.related_skills if rs.name == "another-skill")
+        assert another_skill.relationship_type == "RELATED"
 
 
 class TestParseAllSkills:
@@ -140,15 +140,15 @@ class TestParseAllSkills:
 
         # Check known skills exist
         skill_names = {s.name for s in skills}
-        assert 'testing-strategies' in skill_names
-        assert 'observability' in skill_names
-        assert 'orchestrate-workflow' in skill_names
-        assert 'error-handling' in skill_names
+        assert "testing-strategies" in skill_names
+        assert "observability" in skill_names
+        assert "orchestrate-workflow" in skill_names
+        assert "error-handling" in skill_names
 
         # All skills should have descriptions
         for skill in skills:
             assert len(skill.description) > 0
-            assert skill.description.startswith('Use when')
+            assert skill.description.startswith("Use when")
 
     def test_all_skills_have_valid_metadata(self, real_skills_dir: Path):
         """Test that all skills have valid metadata fields."""
@@ -176,13 +176,13 @@ class TestParseAllSkills:
             system_counts[skill.system] = system_counts.get(skill.system, 0) + 1
 
         # Verify expected system counts
-        assert system_counts.get('mahavishnu', 0) == 5
-        assert system_counts.get('oneiric', 0) == 4
-        assert system_counts.get('crackerjack', 0) == 2
-        assert system_counts.get('session-buddy', 0) == 3
-        assert system_counts.get('akosha', 0) == 2
-        assert system_counts.get('dhruva', 0) == 2
-        assert system_counts.get('cross-ecosystem', 0) == 5
+        assert system_counts.get("mahavishnu", 0) == 5
+        assert system_counts.get("oneiric", 0) == 4
+        assert system_counts.get("crackerjack", 0) == 2
+        assert system_counts.get("session-buddy", 0) == 3
+        assert system_counts.get("akosha", 0) == 2
+        assert system_counts.get("dhruva", 0) == 2
+        assert system_counts.get("cross-ecosystem", 0) == 5
 
 
 class TestBuildReverseReferences:
@@ -191,7 +191,7 @@ class TestBuildReverseReferences:
     def test_build_reverse_references_simple(self, sample_skill_file: Path):
         """Test building reverse references."""
         # Create a second skill that references the first
-        second_content = '''---
+        second_content = """---
 name: second-skill
 description: Use when testing reverse references.
 ---
@@ -201,8 +201,8 @@ description: Use when testing reverse references.
 ## Related Skills
 
 - **REQUIRED:** `test-skill`
-'''
-        second_file = sample_skill_file.parent.parent / 'second-skill' / 'SKILL.md'
+"""
+        second_file = sample_skill_file.parent.parent / "second-skill" / "SKILL.md"
         second_file.parent.mkdir(parents=True, exist_ok=True)
         second_file.write_text(second_content)
 
@@ -214,8 +214,8 @@ description: Use when testing reverse references.
         build_reverse_references(skills)
 
         # test-skill should be referenced by second-skill
-        test_skill = next(s for s in skills if s.name == 'test-skill')
-        assert 'second-skill' in test_skill.referenced_by
+        test_skill = next(s for s in skills if s.name == "test-skill")
+        assert "second-skill" in test_skill.referenced_by
 
     def test_build_reverse_references_real_data(self, real_skills_dir: Path):
         """Test reverse references with real skills."""
@@ -223,7 +223,7 @@ description: Use when testing reverse references.
         build_reverse_references(skills)
 
         # error-handling is referenced by many skills
-        error_handling = next(s for s in skills if s.name == 'error-handling')
+        error_handling = next(s for s in skills if s.name == "error-handling")
         assert len(error_handling.referenced_by) > 0
 
         # Some skills should have references
@@ -239,24 +239,26 @@ class TestSystemClassification:
         skills = parse_all_skills(real_skills_dir)
 
         cross_ecosystem = [
-            'mcp-integration',
-            'error-handling',
-            'observability',
-            'oneiric-integration',
-            'testing-strategies'
+            "mcp-integration",
+            "error-handling",
+            "observability",
+            "oneiric-integration",
+            "testing-strategies",
         ]
 
         for skill_name in cross_ecosystem:
             skill = next(s for s in skills if s.name == skill_name)
-            assert skill.system == 'cross-ecosystem', f"{skill_name} should be cross-ecosystem but is {skill.system}"
+            assert skill.system == "cross-ecosystem", (
+                f"{skill_name} should be cross-ecosystem but is {skill.system}"
+            )
 
     def test_explicit_name_classification(self, real_skills_dir: Path):
         """Test that explicit system names in descriptions trigger correct classification."""
         skills = parse_all_skills(real_skills_dir)
 
         # search-sessions mentions "Session-Buddy" explicitly
-        search_sessions = next(s for s in skills if s.name == 'search-sessions')
-        assert search_sessions.system == 'session-buddy'
+        search_sessions = next(s for s in skills if s.name == "search-sessions")
+        assert search_sessions.system == "session-buddy"
 
     def test_system_keywords_priority(self, real_skills_dir: Path):
         """Test that more specific keywords take priority over generic ones."""
@@ -264,8 +266,8 @@ class TestSystemClassification:
 
         # manage-sessions has "session" (3x) and "lifecycle" (1x)
         # Should be classified as session-buddy due to higher keyword score
-        manage_sessions = next(s for s in skills if s.name == 'manage-sessions')
-        assert manage_sessions.system == 'session-buddy'
+        manage_sessions = next(s for s in skills if s.name == "manage-sessions")
+        assert manage_sessions.system == "session-buddy"
 
 
 class TestSkillMetadata:
@@ -277,17 +279,17 @@ class TestSkillMetadata:
 
         data = metadata.to_dict()
 
-        assert data['name'] == metadata.name
-        assert data['description'] == metadata.description
-        assert isinstance(data['file_path'], str)  # Path converted to string
-        assert isinstance(data['directory'], str)
-        assert isinstance(data['related_skills'], list)
+        assert data["name"] == metadata.name
+        assert data["description"] == metadata.description
+        assert isinstance(data["file_path"], str)  # Path converted to string
+        assert isinstance(data["directory"], str)
+        assert isinstance(data["related_skills"], list)
 
         # Check RelatedSkill serialization
-        if data['related_skills']:
-            related = data['related_skills'][0]
-            assert 'name' in related
-            assert 'relationship_type' in related
+        if data["related_skills"]:
+            related = data["related_skills"][0]
+            assert "name" in related
+            assert "relationship_type" in related
 
 
 @pytest.mark.integration

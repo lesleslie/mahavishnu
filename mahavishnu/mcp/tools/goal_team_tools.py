@@ -13,11 +13,11 @@ from __future__ import annotations
 import contextlib
 import logging
 import time
-from datetime import UTC, datetime
 from typing import Any
 
 from fastmcp import FastMCP  # noqa: TC002
 
+from mahavishnu.core import team_learning
 from mahavishnu.core.context import (
     get_agno_adapter,
     get_llm_factory,
@@ -32,7 +32,6 @@ from mahavishnu.core.errors import (
 )
 from mahavishnu.core.feature_flags import is_feature_enabled
 from mahavishnu.core.goal_team_metrics import get_goal_team_metrics
-from mahavishnu.core import team_learning
 
 logger = logging.getLogger(__name__)
 

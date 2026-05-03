@@ -1,15 +1,16 @@
 """Tests for OutputFormatter - Rich console output formatting."""
 
-import pytest
-from datetime import datetime, UTC
-from unittest.mock import MagicMock, patch
+from datetime import UTC, datetime
 from typing import Any
+from unittest.mock import MagicMock
+
+import pytest
 
 from mahavishnu.core.output_formatter import (
-    OutputFormatter,
     OutputFormat,
-    OutputTheme,
+    OutputFormatter,
     OutputLevel,
+    OutputTheme,
     TableColumn,
     TableConfig,
 )
@@ -475,6 +476,7 @@ class TestOutputFormatter:
 
         # Use old timestamp (10 days ago) to get date format
         from datetime import timedelta
+
         ts = datetime.now(UTC) - timedelta(days=10)
         output = formatter.format_timestamp(ts)
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import builtins
 import sys
 import time
 from types import SimpleNamespace
@@ -13,7 +12,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from mahavishnu.core.status import WorkerStatus
-from mahavishnu.workers.base import WorkerResult
 from mahavishnu.workers.nanobot_worker import NanobotWorker
 
 
@@ -46,7 +44,6 @@ def _install_nanobot_mock(
 
 
 class TestNanobotWorkerInit:
-
     def test_default_runner_mode(self) -> None:
         worker = NanobotWorker()
         assert worker.worker_type == "in-process-nanobot"
@@ -101,7 +98,6 @@ class TestNanobotWorkerInit:
 
 
 class TestNanobotWorkerStart:
-
     @pytest.mark.asyncio
     async def test_start_returns_worker_id(self) -> None:
         provider = _make_provider()
@@ -155,7 +151,6 @@ class TestNanobotWorkerStart:
 
 
 class TestNanobotWorkerStop:
-
     @pytest.mark.asyncio
     async def test_stop_sets_completed_status(self) -> None:
         provider = _make_provider()
@@ -166,7 +161,6 @@ class TestNanobotWorkerStop:
 
 
 class TestNanobotWorkerStatus:
-
     @pytest.mark.asyncio
     async def test_status_returns_pending_initially(self) -> None:
         worker = NanobotWorker()
@@ -183,7 +177,6 @@ class TestNanobotWorkerStatus:
 
 
 class TestNanobotWorkerGetProgress:
-
     @pytest.mark.asyncio
     async def test_progress_before_start(self) -> None:
         worker = NanobotWorker()
@@ -233,7 +226,6 @@ class TestNanobotWorkerGetProgress:
 
 
 class TestNanobotWorkerExecute:
-
     @pytest.mark.asyncio
     async def test_execute_auto_starts_if_not_running(self) -> None:
         provider = _make_provider()
@@ -268,7 +260,9 @@ class TestNanobotWorkerExecute:
         config = _make_config(60)
         worker = NanobotWorker(nanobot_provider=provider, config=config)
         await worker.start()
-        with patch.object(worker, "_execute_runner", new_callable=AsyncMock, return_value="done") as mock_runner:
+        with patch.object(
+            worker, "_execute_runner", new_callable=AsyncMock, return_value="done"
+        ) as mock_runner:
             await worker.execute({"prompt": "test"})
         assert mock_runner.called
 
@@ -278,7 +272,9 @@ class TestNanobotWorkerExecute:
         config = _make_config(300)
         worker = NanobotWorker(nanobot_provider=provider, config=config)
         await worker.start()
-        with patch.object(worker, "_execute_runner", new_callable=AsyncMock, return_value="done") as mock_runner:
+        with patch.object(
+            worker, "_execute_runner", new_callable=AsyncMock, return_value="done"
+        ) as mock_runner:
             result = await worker.execute({"prompt": "test", "timeout": 10})
         assert result.duration_seconds is not None
 
@@ -287,19 +283,22 @@ class TestNanobotWorkerExecute:
         provider = _make_provider()
         worker = NanobotWorker(nanobot_provider=provider)
         await worker.start()
-        with patch.object(worker, "_execute_runner", new_callable=AsyncMock, return_value="done") as mock_runner:
+        with patch.object(
+            worker, "_execute_runner", new_callable=AsyncMock, return_value="done"
+        ) as mock_runner:
             await worker.execute({"prompt": "test"})
         assert mock_runner.called
 
 
 class TestNanobotWorkerExecuteRunner:
-
     @pytest.mark.asyncio
     async def test_runner_mode_success(self) -> None:
         provider = _make_provider("runner output")
         worker = NanobotWorker(nanobot_provider=provider)
         await worker.start()
-        with patch.object(worker, "_execute_runner", new_callable=AsyncMock, return_value="runner output"):
+        with patch.object(
+            worker, "_execute_runner", new_callable=AsyncMock, return_value="runner output"
+        ):
             result = await worker.execute({"prompt": "hello"})
         assert result.status == WorkerStatus.COMPLETED
         assert result.exit_code == 0
@@ -312,7 +311,9 @@ class TestNanobotWorkerExecuteRunner:
         provider = _make_provider()
         worker = NanobotWorker(nanobot_provider=provider)
         await worker.start()
-        with patch.object(worker, "_execute_runner", new_callable=AsyncMock, return_value="ok") as mock:
+        with patch.object(
+            worker, "_execute_runner", new_callable=AsyncMock, return_value="ok"
+        ) as mock:
             await worker.execute({"prompt": "hello", "system": "Be concise"})
             mock.assert_called_once_with("hello", system="Be concise", tools=None)
 
@@ -322,19 +323,22 @@ class TestNanobotWorkerExecuteRunner:
         worker = NanobotWorker(nanobot_provider=provider)
         await worker.start()
         tools = [{"name": "read", "desc": "Read file"}]
-        with patch.object(worker, "_execute_runner", new_callable=AsyncMock, return_value="ok") as mock:
+        with patch.object(
+            worker, "_execute_runner", new_callable=AsyncMock, return_value="ok"
+        ) as mock:
             await worker.execute({"prompt": "hello", "tools": tools})
             mock.assert_called_once_with("hello", system=None, tools=tools)
 
 
 class TestNanobotWorkerExecuteLoop:
-
     @pytest.mark.asyncio
     async def test_loop_mode_success(self) -> None:
         provider = _make_provider()
         worker = NanobotWorker(worker_type="in-process-nanobot-loop", nanobot_provider=provider)
         await worker.start()
-        with patch.object(worker, "_execute_loop", new_callable=AsyncMock, return_value="loop output") as mock_loop:
+        with patch.object(
+            worker, "_execute_loop", new_callable=AsyncMock, return_value="loop output"
+        ) as mock_loop:
             result = await worker.execute({"prompt": "hello"})
         assert result.status == WorkerStatus.COMPLETED
         assert result.metadata["mode"] == "loop"
@@ -391,7 +395,6 @@ class TestNanobotWorkerExecuteLoop:
 
 
 class TestNanobotWorkerTimeout:
-
     @pytest.mark.asyncio
     async def test_runner_timeout(self) -> None:
         provider = _make_provider()
@@ -427,14 +430,15 @@ class TestNanobotWorkerTimeout:
 
 
 class TestNanobotWorkerErrorHandling:
-
     @pytest.mark.asyncio
     async def test_execute_catches_generic_exception(self) -> None:
         provider = _make_provider()
         worker = NanobotWorker(nanobot_provider=provider)
         await worker.start()
 
-        with patch.object(worker, "_execute_runner", new_callable=AsyncMock, side_effect=ValueError("bad input")):
+        with patch.object(
+            worker, "_execute_runner", new_callable=AsyncMock, side_effect=ValueError("bad input")
+        ):
             result = await worker.execute({"prompt": "hello"})
 
         assert result.status == WorkerStatus.FAILED
@@ -447,7 +451,9 @@ class TestNanobotWorkerErrorHandling:
         worker = NanobotWorker(nanobot_provider=provider)
         await worker.start()
 
-        with patch.object(worker, "_execute_runner", new_callable=AsyncMock, side_effect=RuntimeError("api down")):
+        with patch.object(
+            worker, "_execute_runner", new_callable=AsyncMock, side_effect=RuntimeError("api down")
+        ):
             result = await worker.execute({"prompt": "hello"})
 
         assert result.status == WorkerStatus.FAILED
@@ -470,7 +476,6 @@ class TestNanobotWorkerErrorHandling:
 
 
 class TestNanobotWorkerSessionBuddy:
-
     @pytest.mark.asyncio
     async def test_store_result_called_on_success(self) -> None:
         provider = _make_provider()
@@ -511,7 +516,9 @@ class TestNanobotWorkerSessionBuddy:
         await worker.start()
 
         with patch("mahavishnu.workers.nanobot_worker.logger") as mock_logger:
-            with patch.object(worker, "_execute_runner", new_callable=AsyncMock, return_value="output"):
+            with patch.object(
+                worker, "_execute_runner", new_callable=AsyncMock, return_value="output"
+            ):
                 result = await worker.execute({"prompt": "hello"})
 
         assert result.status == WorkerStatus.COMPLETED
@@ -561,7 +568,6 @@ class TestNanobotWorkerSessionBuddy:
 
 
 class TestNanobotWorkerHealthCheck:
-
     @pytest.mark.asyncio
     async def test_health_check_running(self) -> None:
         provider = _make_provider()
@@ -587,7 +593,6 @@ class TestNanobotWorkerHealthCheck:
 
 
 class TestNanobotWorkerExecuteRunnerDirect:
-
     @pytest.mark.asyncio
     async def test_execute_runner_imports_and_calls(self) -> None:
         provider = _make_provider()
@@ -599,7 +604,9 @@ class TestNanobotWorkerExecuteRunnerDirect:
 
         modules = _install_nanobot_mock(runner_cls=MagicMock(return_value=mock_runner_instance))
         with patch.dict(sys.modules, modules, clear=False):
-            output = await worker._execute_runner("do something", system="Be helpful", tools=[{"name": "tool1"}])
+            output = await worker._execute_runner(
+                "do something", system="Be helpful", tools=[{"name": "tool1"}]
+            )
 
         assert output == "direct runner result"
         mock_runner_instance.run.assert_called_once_with("do something")
@@ -652,9 +659,7 @@ class TestNanobotWorkerExecuteRunnerDirect:
         worker = NanobotWorker(nanobot_provider=provider)
         await worker.start()
 
-        modules = _install_nanobot_mock(
-            runner_cls=MagicMock(side_effect=ImportError("no module"))
-        )
+        modules = _install_nanobot_mock(runner_cls=MagicMock(side_effect=ImportError("no module")))
         with patch.dict(sys.modules, modules, clear=False):
             with pytest.raises(ImportError, match="no module"):
                 await worker._execute_runner("prompt")

@@ -1,13 +1,13 @@
 """Comprehensive tests for mahavishnu.shell.formatters module."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from mahavishnu.core.workflow_state import WorkflowStatus
 from mahavishnu.shell.formatters import (
-    LogFormatter,
     RICH_AVAILABLE,
+    LogFormatter,
     RepoFormatter,
     WorkflowFormatter,
 )
@@ -52,17 +52,46 @@ SAMPLE_WORKFLOWS = [
 ]
 
 SAMPLE_LOGS = [
-    {"timestamp": "2025-01-15T08:00:00.000Z", "level": "INFO", "message": "Starting workflow", "workflow_id": "wf-001"},
-    {"timestamp": "2025-01-15T08:00:01.000Z", "level": "ERROR", "message": "Task failed", "workflow_id": "wf-001"},
-    {"timestamp": "2025-01-15T08:00:02.000Z", "level": "WARNING", "message": "Retrying", "workflow_id": "wf-002"},
-    {"timestamp": "2025-01-15T08:00:03.000Z", "level": "DEBUG", "message": "Entering step", "workflow_id": "wf-002"},
-    {"timestamp": "2025-01-15T08:00:04.000Z", "level": "INFO", "message": "Completed", "workflow_id": "wf-003"},
+    {
+        "timestamp": "2025-01-15T08:00:00.000Z",
+        "level": "INFO",
+        "message": "Starting workflow",
+        "workflow_id": "wf-001",
+    },
+    {
+        "timestamp": "2025-01-15T08:00:01.000Z",
+        "level": "ERROR",
+        "message": "Task failed",
+        "workflow_id": "wf-001",
+    },
+    {
+        "timestamp": "2025-01-15T08:00:02.000Z",
+        "level": "WARNING",
+        "message": "Retrying",
+        "workflow_id": "wf-002",
+    },
+    {
+        "timestamp": "2025-01-15T08:00:03.000Z",
+        "level": "DEBUG",
+        "message": "Entering step",
+        "workflow_id": "wf-002",
+    },
+    {
+        "timestamp": "2025-01-15T08:00:04.000Z",
+        "level": "INFO",
+        "message": "Completed",
+        "workflow_id": "wf-003",
+    },
 ]
 
 SAMPLE_REPOS = [
     {"path": "/path/to/repo1", "description": "First repository", "tags": ["python", "backend"]},
     {"path": "/path/to/repo2", "description": "Second repository", "tags": ["go", "microservice"]},
-    {"path": "/path/to/repo3", "description": "Third repository with a very long description that should be truncated", "tags": ["rust"]},
+    {
+        "path": "/path/to/repo3",
+        "description": "Third repository with a very long description that should be truncated",
+        "tags": ["rust"],
+    },
 ]
 
 
@@ -252,7 +281,12 @@ class TestWorkflowFormatter:
     def test_workflows_with_all_status_types(self, capsys):
         """All four status types (RUNNING, COMPLETED, FAILED, PENDING) are rendered."""
         formatter = WorkflowFormatter()
-        statuses = [WorkflowStatus.RUNNING, WorkflowStatus.COMPLETED, WorkflowStatus.FAILED, WorkflowStatus.PENDING]
+        statuses = [
+            WorkflowStatus.RUNNING,
+            WorkflowStatus.COMPLETED,
+            WorkflowStatus.FAILED,
+            WorkflowStatus.PENDING,
+        ]
         wfs = [{"id": f"wf-{s.value}", "status": s, "progress": 10} for s in statuses]
         formatter.format_workflows(wfs)
         output = capsys.readouterr().out
@@ -524,7 +558,9 @@ class TestRepoFormatter:
     def test_unicode_repo_fields(self, capsys):
         """Unicode characters in repo fields are handled."""
         formatter = RepoFormatter()
-        repos = [{"path": "/path/repo", "description": "Description with unicode: éèê", "tags": ["tést"]}]
+        repos = [
+            {"path": "/path/repo", "description": "Description with unicode: éèê", "tags": ["tést"]}
+        ]
         formatter.format_repos(repos, show_tags=True)
         output = capsys.readouterr().out
         assert "é" in output

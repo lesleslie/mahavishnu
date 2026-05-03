@@ -13,9 +13,9 @@ Schema: orchestration.tasks
 
 from __future__ import annotations
 
-import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
+import logging
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -237,7 +237,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
         Raises:
             RepositoryError: If creation fails
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         task_id = uuid4()
 
         query = f"""
@@ -359,16 +359,20 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
         Raises:
             RepositoryError: If update fails
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Auto-set timestamps based on status
         if status == TaskStatus.IN_PROGRESS and started_at is None:
             started_at = now
-        elif status in (
-            TaskStatus.COMPLETED,
-            TaskStatus.FAILED,
-            TaskStatus.CANCELLED,
-        ) and completed_at is None:
+        elif (
+            status
+            in (
+                TaskStatus.COMPLETED,
+                TaskStatus.FAILED,
+                TaskStatus.CANCELLED,
+            )
+            and completed_at is None
+        ):
             completed_at = now
 
         query = f"""
@@ -452,13 +456,13 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
             # No updates provided, just return current task
             return await self.get_task(task_id)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         updates.append(f"updated_at = ${param_idx}")
         params.append(now)
 
         query = f"""
             UPDATE {self._table}
-            SET {', '.join(updates)}
+            SET {", ".join(updates)}
             WHERE id = $1
             RETURNING *
         """
@@ -562,7 +566,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
         Raises:
             RepositoryError: If creation fails (e.g., cycle detection)
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         query = """
             INSERT INTO orchestration.task_dependencies (

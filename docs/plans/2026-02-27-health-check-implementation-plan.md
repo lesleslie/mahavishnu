@@ -11,11 +11,12 @@
 
 **Tech Stack:** Python 3.13+, Pydantic v2, httpx for async HTTP, asyncio for concurrency
 
----
+______________________________________________________________________
 
 ## Task 1: Create Health Schemas Module
 
 **Files:**
+
 - Create: `mahavishnu/core/health_schemas.py`
 - Test: `tests/unit/core/test_health_schemas.py`
 
@@ -257,11 +258,12 @@ EOF
 )"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Add Dependency Configuration
 
 **Files:**
+
 - Modify: `mahavishnu/core/config.py`
 - Test: `tests/unit/core/test_config.py`
 
@@ -460,11 +462,12 @@ EOF
 )"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Implement Health Checker Module
 
 **Files:**
+
 - Create: `mahavishnu/core/health.py`
 - Test: `tests/unit/core/test_health.py`
 
@@ -1002,11 +1005,12 @@ EOF
 )"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Add MCP Health Tools
 
 **Files:**
+
 - Create: `mahavishnu/mcp/tools/health_tools.py`
 - Modify: `mahavishnu/mcp/tools/__init__.py`
 - Test: `tests/unit/mcp/tools/test_health_tools.py`
@@ -1305,11 +1309,12 @@ EOF
 )"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: Integrate Dependency Waiting into App Startup
 
 **Files:**
+
 - Modify: `mahavishnu/core/app.py`
 - Test: `tests/unit/core/test_app.py`
 
@@ -1430,11 +1435,12 @@ EOF
 )"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: Update Configuration File
 
 **Files:**
+
 - Modify: `settings/mahavishnu.yaml`
 
 **Step 1: Add health configuration section**
@@ -1491,7 +1497,7 @@ EOF
 )"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: Run Full Test Suite
 
@@ -1525,7 +1531,7 @@ EOF
 )"
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Checklist
 
@@ -1537,7 +1543,7 @@ EOF
 - [x] Task 6: Update configuration file
 - [x] Task 7: Run full test suite
 
----
+______________________________________________________________________
 
 ## Files Summary
 
@@ -1555,7 +1561,7 @@ EOF
 | `tests/unit/core/test_config.py` | Modify | Tests for new config |
 | `tests/unit/mcp/tools/test_health_tools.py` | Create | Tests for MCP tools |
 
----
+______________________________________________________________________
 
 ## Estimated Time
 

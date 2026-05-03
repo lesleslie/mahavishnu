@@ -9,19 +9,20 @@ Tests cover:
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, UTC
 
 from mahavishnu.core.task_store import (
-    TaskStore,
     Task,
     TaskCreate,
-    TaskUpdate,
-    TaskStatus,
-    TaskPriority,
-    TaskListFilter,
     TaskDependency,
+    TaskListFilter,
+    TaskPriority,
+    TaskStatus,
+    TaskStore,
+    TaskUpdate,
 )
 
 

@@ -7,7 +7,6 @@ to avoid filesystem access and external dependencies.
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -233,9 +232,12 @@ class TestCreateTeam:
             [
                 "team",
                 "create",
-                "--goal", "Analyze performance",
-                "--name", "perf_team",
-                "--mode", "route",
+                "--goal",
+                "Analyze performance",
+                "--name",
+                "perf_team",
+                "--mode",
+                "route",
             ],
         )
         assert result.exit_code == 0
@@ -323,9 +325,11 @@ class TestCreateTeam:
             [
                 "team",
                 "create",
-                "--goal", "Review code",
+                "--goal",
+                "Review code",
                 "--run",
-                "--task", "Fix the login bug",
+                "--task",
+                "Fix the login bug",
             ],
         )
         assert result.exit_code == 0

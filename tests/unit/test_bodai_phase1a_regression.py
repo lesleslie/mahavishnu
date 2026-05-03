@@ -29,14 +29,17 @@ from mahavishnu.core.skill_security import (
     validate_draft_isolation,
 )
 
-
 # ── A1: Artifact schemas pass validation ─────────────────────────────
 
 
 def test_learning_evidence_schema_validation():
     ev = LearningEvidence(
-        session_id="s1", goal="test", outcome="pass",
-        repo_paths=["r1"], tool_calls=["t1"], observations=["o1"],
+        session_id="s1",
+        goal="test",
+        outcome="pass",
+        repo_paths=["r1"],
+        tool_calls=["t1"],
+        observations=["o1"],
     )
     assert ev.evidence_id.startswith("le_")
     assert ev.session_id == "s1"
@@ -44,8 +47,11 @@ def test_learning_evidence_schema_validation():
 
 def test_skill_draft_schema_validation():
     d = SkillDraft(
-        name="test-skill", version="1.0.0", description="A test skill",
-        trigger_conditions=["test"], body="do the thing",
+        name="test-skill",
+        version="1.0.0",
+        description="A test skill",
+        trigger_conditions=["test"],
+        body="do the thing",
     )
     assert d.skill_id.startswith("skill_")
     assert d.state == SkillPromotionState.DRAFT
@@ -53,8 +59,11 @@ def test_skill_draft_schema_validation():
 
 def test_skill_review_schema_validation():
     r = SkillReview(
-        skill_id="sk", reviewer="bot", decision=SkillReviewDecision.REJECT,
-        rationale="bad", required_changes=["fix X"],
+        skill_id="sk",
+        reviewer="bot",
+        decision=SkillReviewDecision.REJECT,
+        rationale="bad",
+        required_changes=["fix X"],
     )
     assert r.decision == SkillReviewDecision.REJECT
     assert r.required_changes == ["fix X"]
@@ -66,7 +75,8 @@ def test_skill_review_schema_validation():
 def test_review_gate_accepts_well_formed_draft():
     gate = ReviewGate()
     draft = SkillDraft(
-        name="code-review-assistant", version="1.0.0",
+        name="code-review-assistant",
+        version="1.0.0",
         description="Reviews code for quality issues",
         trigger_conditions=["code-review", "quality"],
         body="def review_code(code): return analysis(code)",
@@ -79,8 +89,11 @@ def test_review_gate_accepts_well_formed_draft():
 def test_review_gate_rejects_short_body():
     gate = ReviewGate()
     draft = SkillDraft(
-        name="x", version="1.0.0", description="Tool",
-        trigger_conditions=["x"], body="short",
+        name="x",
+        version="1.0.0",
+        description="Tool",
+        trigger_conditions=["x"],
+        body="short",
     )
     result = gate.validate_for_promotion(draft)
     assert result.passed is False
@@ -89,7 +102,8 @@ def test_review_gate_rejects_short_body():
 def test_review_gate_result_has_summary():
     gate = ReviewGate()
     draft = SkillDraft(
-        name="code-review-assistant", version="1.0.0",
+        name="code-review-assistant",
+        version="1.0.0",
         description="Reviews code for quality issues",
         trigger_conditions=["code-review", "quality"],
         body="def review_code(code): return analysis(code)",
@@ -104,17 +118,25 @@ def test_review_gate_result_has_summary():
 
 def _make_approved_review(skill_id: str, reviewer: str = "reviewer") -> SkillReview:
     return SkillReview(
-        skill_id=skill_id, reviewer=reviewer,
-        decision=SkillReviewDecision.APPROVE, rationale="good",
+        skill_id=skill_id,
+        reviewer=reviewer,
+        decision=SkillReviewDecision.APPROVE,
+        rationale="good",
     )
 
 
 def _make_reviewable_draft(
-    name: str, version: str, body: str, skill_id: str | None = None,
+    name: str,
+    version: str,
+    body: str,
+    skill_id: str | None = None,
 ) -> SkillDraft:
     d = SkillDraft(
-        name=name, version=version, description=f"{name} v{version}",
-        trigger_conditions=[name], body=body,
+        name=name,
+        version=version,
+        description=f"{name} v{version}",
+        trigger_conditions=[name],
+        body=body,
         **({"skill_id": skill_id} if skill_id else {}),
     )
     d.state = SkillPromotionState.REVIEW
@@ -154,18 +176,14 @@ def test_rollback_preserves_evidence_history():
     reg.register(d2, r2, activated_by="mahavishnu")
 
     history_before = reg.list_history(shared_id)
-    evidence_ids_before = {
-        r.review.review_id for r in history_before if r.review is not None
-    }
+    evidence_ids_before = {r.review.review_id for r in history_before if r.review is not None}
 
     reg.execute_rollback(shared_id, "1.0.0", "mahavishnu", "regression")
 
     assert reg.evidence_history_preserved(shared_id)
 
     history_after = reg.list_history(shared_id)
-    evidence_ids_after = {
-        r.review.review_id for r in history_after if r.review is not None
-    }
+    evidence_ids_after = {r.review.review_id for r in history_after if r.review is not None}
     assert evidence_ids_before == evidence_ids_after
 
 
@@ -210,8 +228,10 @@ def test_promote_draft_with_rejected_review_raises():
     policy = SkillPromotionPolicy()
     draft = _make_reviewable_draft("skill-a", "1.0.0", "body content here")
     review = SkillReview(
-        skill_id=draft.skill_id, reviewer="r",
-        decision=SkillReviewDecision.REJECT, rationale="bad",
+        skill_id=draft.skill_id,
+        reviewer="r",
+        decision=SkillReviewDecision.REJECT,
+        rationale="bad",
         required_changes=["fix"],
     )
     with pytest.raises(ValueError, match="requires an approved review"):
@@ -222,8 +242,10 @@ def test_promote_draft_skill_id_mismatch_raises():
     policy = SkillPromotionPolicy()
     draft = _make_reviewable_draft("skill-a", "1.0.0", "body content here")
     review = SkillReview(
-        skill_id="wrong-id", reviewer="r",
-        decision=SkillReviewDecision.APPROVE, rationale="good",
+        skill_id="wrong-id",
+        reviewer="r",
+        decision=SkillReviewDecision.APPROVE,
+        rationale="good",
     )
     with pytest.raises(ValueError, match="does not match"):
         policy.promote_draft(draft, review, "mahavishnu")
@@ -241,8 +263,11 @@ def test_draft_namespace_detection():
 
 def test_draft_name_with_path_separator_rejected():
     draft = SkillDraft(
-        name="../escape", version="1.0.0", description="bad",
-        trigger_conditions=["x"], body="body",
+        name="../escape",
+        version="1.0.0",
+        description="bad",
+        trigger_conditions=["x"],
+        body="body",
     )
     issues = validate_draft_isolation(draft)
     assert any("path separator" in i.lower() for i in issues)
@@ -250,8 +275,11 @@ def test_draft_name_with_path_separator_rejected():
 
 def test_draft_name_with_underscore_prefix_rejected():
     draft = SkillDraft(
-        name="_internal", version="1.0.0", description="bad",
-        trigger_conditions=["x"], body="body",
+        name="_internal",
+        version="1.0.0",
+        description="bad",
+        trigger_conditions=["x"],
+        body="body",
     )
     issues = validate_draft_isolation(draft)
     assert any("underscore" in i.lower() for i in issues)
@@ -259,8 +287,11 @@ def test_draft_name_with_underscore_prefix_rejected():
 
 def test_clean_draft_passes_isolation():
     draft = SkillDraft(
-        name="code-review", version="1.0.0", description="Clean skill",
-        trigger_conditions=["review"], body="def analyze(code): pass",
+        name="code-review",
+        version="1.0.0",
+        description="Clean skill",
+        trigger_conditions=["review"],
+        body="def analyze(code): pass",
     )
     issues = validate_draft_isolation(draft)
     assert issues == []

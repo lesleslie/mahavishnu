@@ -17,11 +17,9 @@ Completes: PLAN_INDEX.md Item 7
 from __future__ import annotations
 
 import asyncio
-import logging
-import time
-from collections import defaultdict
-from datetime import UTC, datetime, date
+from datetime import UTC, datetime
 from decimal import Decimal
+import logging
 from typing import Any
 
 try:
@@ -29,14 +27,16 @@ try:
 except ImportError:
     asyncpg = None  # type: ignore
 
+import contextlib
+
 from mahavishnu.core.metrics_schema import (
-    ExecutionRecord,
     AdapterStats,
     AdapterType,
-    TaskType,
-    ExecutionStatus,
     CostTracking,
+    ExecutionRecord,
+    ExecutionStatus,
     RoutingDecision,
+    TaskType,
 )
 
 logger = logging.getLogger(__name__)
@@ -104,10 +104,8 @@ class RoutingMetricsPersistence:
         if self._flush_task and not self._flush_task.done():
             self._shutdown_event.set()
             self._flush_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._flush_task
-            except asyncio.CancelledError:
-                pass
 
         # Flush pending writes
         async with self._write_lock:
@@ -203,7 +201,9 @@ class RoutingMetricsPersistence:
                             r.adapter.value,
                             r.task_type.value,
                             datetime.fromtimestamp(r.start_timestamp, UTC),
-                            datetime.fromtimestamp(r.end_timestamp, UTC) if r.end_timestamp else None,
+                            datetime.fromtimestamp(r.end_timestamp, UTC)
+                            if r.end_timestamp
+                            else None,
                             r.status.value,
                             r.latency_ms,
                             r.error_type,
@@ -347,7 +347,9 @@ class RoutingMetricsPersistence:
                         updated_at = NOW()
                     """,
                     stats.adapter.value,
-                    datetime.strptime(stats.date, "%Y-%m-%d").date() if isinstance(stats.date, str) else stats.date,
+                    datetime.strptime(stats.date, "%Y-%m-%d").date()
+                    if isinstance(stats.date, str)
+                    else stats.date,
                     Decimal(str(stats.success_rate)),
                     stats.total_executions,
                     Decimal(str(stats.avg_latency_ms)) if stats.avg_latency_ms else None,
@@ -386,12 +388,12 @@ class RoutingMetricsPersistence:
         try:
             async with self._pool.acquire() as conn:
                 rows = await conn.fetch(
-                    """
+                    f"""
                     SELECT * FROM metrics.adapter_stats
                     WHERE adapter = $1
-                    AND stat_date >= CURRENT_DATE - INTERVAL '%s days'
+                    AND stat_date >= CURRENT_DATE - INTERVAL '{days} days'
                     ORDER BY stat_date DESC
-                    """ % days,
+                    """,
                     adapter.value,
                 )
 
@@ -416,7 +418,9 @@ class RoutingMetricsPersistence:
             cost_total_usd=float(row["cost_total_usd"]) if row["cost_total_usd"] else None,
             uptime_percentage=float(row["uptime_percentage"]) if row["uptime_percentage"] else None,
             sample_size=row["sample_size"],
-            confidence_interval=float(row["confidence_interval"]) if row["confidence_interval"] else None,
+            confidence_interval=float(row["confidence_interval"])
+            if row["confidence_interval"]
+            else None,
         )
 
     # =========================================================================
@@ -460,7 +464,7 @@ class RoutingMetricsPersistence:
                             d.selected_adapter.value,
                             [a.value for a in d.alternative_adapters],
                             d.reasoning,
-                            {k: v for k, v in d.adapter_scores.items()},
+                            dict(d.adapter_scores.items()),
                             d.constraints,
                             datetime.fromtimestamp(d.timestamp, UTC),
                         )
@@ -547,7 +551,7 @@ class RoutingMetricsPersistence:
 
         try:
             async with self._pool.acquire() as conn:
-                result = await conn.fetchval("SELECT 1")
+                await conn.fetchval("SELECT 1")
 
                 return {
                     "status": "healthy",

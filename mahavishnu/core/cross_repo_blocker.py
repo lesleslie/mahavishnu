@@ -23,24 +23,24 @@ Usage:
 
 from __future__ import annotations
 
-import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, UTC
-from enum import Enum
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum
+import logging
 from typing import Any
 
 from mahavishnu.core.cross_repo_dependency import (
-    CrossRepoDependencyLinker,
     CrossRepoDependency,
-    DependencyType,
+    CrossRepoDependencyLinker,
     DependencyStatus,
+    DependencyType,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class BlockingStatus(str, Enum):
+class BlockingStatus(StrEnum):
     """Status of a blocking relationship."""
 
     ACTIVE = "active"  # Blocker is actively blocking
@@ -353,7 +353,7 @@ class CrossRepoBlockerTracker:
 
         # Clear chain cache for affected tasks
         impact = self.get_blocker_impact(blocker_task_id)
-        for repo in impact.affected_repositories:
+        for _repo in impact.affected_repositories:
             # Clear any cached chains that might involve this blocker
             keys_to_remove = [
                 k for k in self._chain_cache if blocker_task_id in self._chain_cache[k].chain_path

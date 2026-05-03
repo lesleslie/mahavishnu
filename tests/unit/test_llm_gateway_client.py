@@ -23,10 +23,13 @@ def test_gateway_api_base_matches_protocol() -> None:
     assert gateway_api_base(ProtocolFamily.OPENAI, base_url="http://127.0.0.1:8471") == (
         "http://127.0.0.1:8471/v1"
     )
-    assert gateway_api_base(
-        ProtocolFamily.ANTHROPIC,
-        base_url="http://127.0.0.1:8471/",
-    ) == "http://127.0.0.1:8471/anthropic"
+    assert (
+        gateway_api_base(
+            ProtocolFamily.ANTHROPIC,
+            base_url="http://127.0.0.1:8471/",
+        )
+        == "http://127.0.0.1:8471/anthropic"
+    )
 
 
 def test_qualify_model_is_idempotent() -> None:

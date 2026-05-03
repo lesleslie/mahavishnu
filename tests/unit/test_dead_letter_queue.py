@@ -9,8 +9,8 @@ Tests DLQ functionality including:
 """
 
 import asyncio
-import importlib
 from datetime import UTC, datetime
+import importlib
 import sys
 import types
 from types import SimpleNamespace
@@ -580,7 +580,9 @@ class TestPersistence:
         monkeypatch.setattr(dlq_module, "OPENSEARCH_AVAILABLE", True)
         mock_obs = AsyncMock()
 
-        dlq = DeadLetterQueue(max_size=100, opensearch_client=mock_client, observability_manager=mock_obs)
+        dlq = DeadLetterQueue(
+            max_size=100, opensearch_client=mock_client, observability_manager=mock_obs
+        )
 
         # Enqueue a task
         try:

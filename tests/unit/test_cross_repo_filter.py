@@ -1,17 +1,17 @@
 """Tests for CrossRepoFilter - Multi-repository task filtering."""
 
-import pytest
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
-from typing import Any
+
+import pytest
 
 from mahavishnu.core.cross_repo_filter import (
     CrossRepoFilter,
+    DateRangeFilter,
     FilterCriteria,
     FilterResult,
-    DateRangeFilter,
 )
-from mahavishnu.core.task_store import Task, TaskStatus, TaskPriority
+from mahavishnu.core.task_store import Task, TaskPriority, TaskStatus
 
 
 @pytest.fixture
@@ -34,21 +34,35 @@ def mock_repo_manager() -> MagicMock:
         repo.role = role
         return repo
 
-    manager.get_repos_by_tag = MagicMock(side_effect=lambda tag: [
-        make_mock_repo("mahavishnu", ["orchestrator", "python"], "orchestrator"),
-        make_mock_repo("crackerjack", ["qc", "testing", "python"], "inspector"),
-    ] if tag in ["python", "orchestrator"] else [])
+    manager.get_repos_by_tag = MagicMock(
+        side_effect=lambda tag: (
+            [
+                make_mock_repo("mahavishnu", ["orchestrator", "python"], "orchestrator"),
+                make_mock_repo("crackerjack", ["qc", "testing", "python"], "inspector"),
+            ]
+            if tag in ["python", "orchestrator"]
+            else []
+        )
+    )
 
-    manager.get_repos_by_role = MagicMock(side_effect=lambda role: [
-        make_mock_repo("session-buddy", ["session", "memory"], "manager"),
-        make_mock_repo("akosha", ["vector", "search"], "soothsayer"),
-    ] if role in ["manager", "soothsayer"] else [])
+    manager.get_repos_by_role = MagicMock(
+        side_effect=lambda role: (
+            [
+                make_mock_repo("session-buddy", ["session", "memory"], "manager"),
+                make_mock_repo("akosha", ["vector", "search"], "soothsayer"),
+            ]
+            if role in ["manager", "soothsayer"]
+            else []
+        )
+    )
 
-    manager.list_repos = MagicMock(return_value=[
-        make_mock_repo("mahavishnu", ["orchestrator", "python"], "orchestrator"),
-        make_mock_repo("crackerjack", ["qc", "testing"], "inspector"),
-        make_mock_repo("session-buddy", ["session", "memory"], "manager"),
-    ])
+    manager.list_repos = MagicMock(
+        return_value=[
+            make_mock_repo("mahavishnu", ["orchestrator", "python"], "orchestrator"),
+            make_mock_repo("crackerjack", ["qc", "testing"], "inspector"),
+            make_mock_repo("session-buddy", ["session", "memory"], "manager"),
+        ]
+    )
     return manager
 
 
@@ -473,9 +487,7 @@ class TestCrossRepoFilter:
         mock_task_store.list.return_value = tasks
 
         filter = CrossRepoFilter(mock_task_store, mock_repo_manager)
-        criteria = FilterCriteria(
-            date_range=DateRangeFilter(last_n_days=7)
-        )
+        criteria = FilterCriteria(date_range=DateRangeFilter(last_n_days=7))
         result = await filter.filter(criteria)
 
         # Should filter to only recent tasks (task-2 is within 7 days)

@@ -12,13 +12,12 @@ Usage:
     uv run scripts/tool_frontmatter_validator.py add-categories
 """
 
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
 import re
 import sys
 import time
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Optional
 
 try:
     import yaml
@@ -31,7 +30,6 @@ def generate_ulid() -> str:
     """Generate a ULID (Universally Unique Lexicographically Sortable Identifier)"""
     # ULID format: 10 chars timestamp + 16 chars randomness
     import random
-    import string
 
     timestamp = int(time.time() * 1000)  # milliseconds since epoch
 
@@ -55,7 +53,7 @@ class ValidationIssue:
     severity: str  # critical, warning, info
     field: str
     message: str
-    suggestion: Optional[str] = None
+    suggestion: str | None = None
 
 
 @dataclass
@@ -105,7 +103,7 @@ class ToolFrontmatterValidator:
     def __init__(self, tools_dir: Path):
         self.tools_dir = tools_dir
 
-    def parse_frontmatter(self, file_path: Path) -> tuple[Optional[dict], str]:
+    def parse_frontmatter(self, file_path: Path) -> tuple[dict | None, str]:
         """Parse YAML frontmatter from a markdown file"""
         content = file_path.read_text()
 
@@ -129,9 +127,7 @@ class ToolFrontmatterValidator:
             print(f"YAML parse error in {file_path}: {e}")
             return None, body
 
-    def validate_required_fields(
-        self, frontmatter: dict, issues: list[ValidationIssue]
-    ):
+    def validate_required_fields(self, frontmatter: dict, issues: list[ValidationIssue]):
         """Validate all required fields are present"""
         for field in self.REQUIRED_FIELDS:
             if field not in frontmatter or frontmatter[field] is None:
@@ -307,9 +303,7 @@ class ToolFrontmatterValidator:
                     )
                 )
 
-    def validate_deprecated(
-        self, frontmatter: dict, body: str, issues: list[ValidationIssue]
-    ):
+    def validate_deprecated(self, frontmatter: dict, body: str, issues: list[ValidationIssue]):
         """Validate deprecated tools have migration guides"""
         if frontmatter.get("status") != "deprecated":
             return
@@ -338,9 +332,7 @@ class ToolFrontmatterValidator:
                     suggestion="Add frontmatter block between --- delimiters",
                 )
             )
-            return ValidationResult(
-                file_path=file_path, valid=False, issues=issues, frontmatter={}
-            )
+            return ValidationResult(file_path=file_path, valid=False, issues=issues, frontmatter={})
 
         # Run all validations
         self.validate_required_fields(frontmatter, issues)
@@ -378,7 +370,7 @@ class ToolFrontmatterValidator:
     def report_results(self, results: list[ValidationResult]):
         """Print validation results"""
         print(f"\n{'=' * 80}")
-        print(f"Tool Frontmatter Validation Report")
+        print("Tool Frontmatter Validation Report")
         print(f"{'=' * 80}\n")
 
         # Summary stats
@@ -387,16 +379,12 @@ class ToolFrontmatterValidator:
         critical_count = sum(
             len([i for i in r.issues if i.severity == "critical"]) for r in results
         )
-        warning_count = sum(
-            len([i for i in r.issues if i.severity == "warning"]) for r in results
-        )
-        info_count = sum(
-            len([i for i in r.issues if i.severity == "info"]) for r in results
-        )
+        warning_count = sum(len([i for i in r.issues if i.severity == "warning"]) for r in results)
+        info_count = sum(len([i for i in r.issues if i.severity == "info"]) for r in results)
 
         print(f"Total Tools: {total}")
-        print(f"Valid: {valid} ({valid/total*100:.1f}%)")
-        print(f"Invalid: {total - valid} ({(total-valid)/total*100:.1f}%)\n")
+        print(f"Valid: {valid} ({valid / total * 100:.1f}%)")
+        print(f"Invalid: {total - valid} ({(total - valid) / total * 100:.1f}%)\n")
         print(f"Issues: {critical_count} critical, {warning_count} warnings, {info_count} info\n")
 
         # Details for invalid tools
@@ -417,7 +405,9 @@ class ToolFrontmatterValidator:
                 print()
 
         # Warnings
-        warning_results = [r for r in results if r.valid and any(i.severity == "warning" for i in r.issues)]
+        warning_results = [
+            r for r in results if r.valid and any(i.severity == "warning" for i in r.issues)
+        ]
         if warning_results:
             print(f"\n{'-' * 80}")
             print(f"WARNINGS ({len(warning_results)} tools)")
@@ -454,9 +444,7 @@ class ToolFrontmatterValidator:
 
             # Check if ID is missing or invalid
             needs_fix = False
-            if "id" not in frontmatter:
-                needs_fix = True
-            elif not self.ULID_PATTERN.match(str(frontmatter["id"])):
+            if "id" not in frontmatter or not self.ULID_PATTERN.match(str(frontmatter["id"])):
                 needs_fix = True
 
             if needs_fix:
@@ -496,9 +484,7 @@ class ToolFrontmatterValidator:
                 age_days = (today - review_date).days
 
                 if age_days > 180:
-                    stale_tools.append(
-                        (md_file, age_days, frontmatter.get("status", "unknown"))
-                    )
+                    stale_tools.append((md_file, age_days, frontmatter.get("status", "unknown")))
             except (ValueError, TypeError):
                 continue
 

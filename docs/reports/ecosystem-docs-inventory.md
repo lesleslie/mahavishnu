@@ -33,10 +33,10 @@ The active ecosystem repos have substantial documentation drift. Most repos alre
 ## Recommended First Pass
 
 1. Finish Mahavishnu plan indexing and archive policy.
-2. Generate detailed per-file classifications for `mahavishnu`, `session-buddy`, and `akosha`.
-3. Add or update `docs/README.md` in each active repo.
-4. Add `docs/plans/PLAN_INDEX.md` where a repo has multiple active or historical plans.
-5. Remove or ignore generated/backup artifacts only after repo-local review.
+1. Generate detailed per-file classifications for `mahavishnu`, `session-buddy`, and `akosha`.
+1. Add or update `docs/README.md` in each active repo.
+1. Add `docs/plans/PLAN_INDEX.md` where a repo has multiple active or historical plans.
+1. Remove or ignore generated/backup artifacts only after repo-local review.
 
 ## Mahavishnu Cleanup Outcome
 
@@ -125,13 +125,13 @@ The latest audit reports no immediate structural recommendations for Crackerjack
 ## Proposed Repo Order
 
 1. `mahavishnu`
-2. `session-buddy`
-3. `akosha`
-4. `oneiric`
-5. `dhara`
-6. `mcp-common`
-7. `crackerjack`
-8. `mdinject`
+1. `session-buddy`
+1. `akosha`
+1. `oneiric`
+1. `dhara`
+1. `mcp-common`
+1. `crackerjack`
+1. `mdinject`
 
 Rationale:
 

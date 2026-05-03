@@ -28,7 +28,10 @@
           "type": "string"
         }
       },
-      "required": ["phrases", "type"],
+      "required": [
+        "phrases",
+        "type"
+      ],
       "type": "object"
     },
     "BulletsParagraphSpec": {
@@ -57,7 +60,11 @@
           "type": "string"
         }
       },
-      "required": ["bullets", "isOrder", "type"],
+      "required": [
+        "bullets",
+        "isOrder",
+        "type"
+      ],
       "type": "object"
     },
     "CustomBlockElement": {
@@ -76,7 +83,9 @@
           "type": "object"
         }
       },
-      "required": ["customType"],
+      "required": [
+        "customType"
+      ],
       "type": "object"
     },
     "CustomMetaData": {
@@ -87,7 +96,9 @@
           "type": "string"
         }
       },
-      "required": ["customType"],
+      "required": [
+        "customType"
+      ],
       "type": "object"
     },
     "CustomPhraseSpec<CustomMetaData>": {
@@ -113,7 +124,9 @@
           "type": "string"
         }
       },
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "type": "object"
     },
     "EntityMetaData": {
@@ -139,7 +152,9 @@
           "type": "string"
         }
       },
-      "required": ["entityType"],
+      "required": [
+        "entityType"
+      ],
       "type": "object"
     },
     "EntityPhraseSpec": {
@@ -165,7 +180,9 @@
           "type": "string"
         }
       },
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "type": "object"
     },
     "EntityType": {
@@ -202,11 +219,21 @@
           "type": "object"
         },
         "type": {
-          "enum": ["heading1", "heading2", "heading3", "heading4", "heading5", "heading6"],
+          "enum": [
+            "heading1",
+            "heading2",
+            "heading3",
+            "heading4",
+            "heading5",
+            "heading6"
+          ],
           "type": "string"
         }
       },
-      "required": ["phrases", "type"],
+      "required": [
+        "phrases",
+        "type"
+      ],
       "type": "object"
     },
     "HeadlineSpec": {
@@ -232,7 +259,10 @@
           "type": "string"
         }
       },
-      "required": ["phrases", "type"],
+      "required": [
+        "phrases",
+        "type"
+      ],
       "type": "object"
     },
     "NarrativeTextSpec": {
@@ -326,7 +356,9 @@
               "type": "object"
             }
           },
-          "required": ["customType"],
+          "required": [
+            "customType"
+          ],
           "type": "object"
         }
       ]
@@ -354,7 +386,10 @@
           "type": "string"
         }
       },
-      "required": ["phrases", "type"],
+      "required": [
+        "phrases",
+        "type"
+      ],
       "type": "object"
     },
     "TextPhraseSpec": {
@@ -389,11 +424,18 @@
           "type": "string"
         }
       },
-      "required": ["type", "value"],
+      "required": [
+        "type",
+        "value"
+      ],
       "type": "object"
     },
     "ValueAssessment": {
-      "enum": ["positive", "negative", "equal"],
+      "enum": [
+        "positive",
+        "negative",
+        "equal"
+      ],
       "type": "string"
     }
   }

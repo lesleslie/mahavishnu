@@ -17,24 +17,27 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+from enum import StrEnum
 import logging
 import os
 import time
-from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, AsyncIterator
+from typing import TYPE_CHECKING, Any
 
 import asyncpg
-from asyncpg import Pool, Connection
+from asyncpg import Connection, Pool
 from asyncpg.exceptions import PostgresError
 
-from mahavishnu.core.errors import DatabaseError, MahavishnuError
+from mahavishnu.core.errors import DatabaseError
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 logger = logging.getLogger(__name__)
 
 
-class DatabaseStatus(str, Enum):
+class DatabaseStatus(StrEnum):
     """Database connection status."""
 
     DISCONNECTED = "disconnected"
@@ -65,7 +68,7 @@ class DatabaseConfig:
     ssl_mode: str = "prefer"  # disable, prefer, require
 
     @classmethod
-    def from_env(cls) -> "DatabaseConfig":
+    def from_env(cls) -> DatabaseConfig:
         """Create configuration from environment variables."""
         return cls(
             host=os.getenv("MAHAVISHNU_DB_HOST", "localhost"),
@@ -209,7 +212,7 @@ class Database:
                     f"Database connected with pool size {self.config.min_pool_size}-{self.config.max_pool_size}"
                 )
 
-            except asyncio.TimeoutError as e:
+            except TimeoutError as e:
                 self._status = DatabaseStatus.ERROR
                 raise DatabaseError(
                     "Database connection timeout",
@@ -333,9 +336,8 @@ class Database:
         Raises:
             DatabaseError: If transaction fails
         """
-        async with self.connection() as conn:
-            async with conn.transaction():
-                yield conn
+        async with self.connection() as conn, conn.transaction():
+            yield conn
 
     async def execute(
         self,

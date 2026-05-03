@@ -16,22 +16,22 @@ Run with:
 
 from __future__ import annotations
 
-import asyncio
 import argparse
+import asyncio
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import StrEnum
 import json
 import logging
+from pathlib import Path
 import statistics
 import time
-from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
 from typing import Any
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
-class LoadTestPhase(str, Enum):
+class LoadTestPhase(StrEnum):
     """Load test phases."""
 
     WARMUP = "warmup"
@@ -448,20 +448,20 @@ def print_report(report: dict[str, Any]) -> None:
     print("LOAD TEST REPORT")
     print("=" * 60)
 
-    print(f"\n📊 Configuration:")
+    print("\n📊 Configuration:")
     config = report["config"]
     print(f"   Concurrent Users: {config['concurrent_users']}")
     print(f"   Duration: {config['duration_seconds']}s")
     print(f"   Requests/User/Second: {config['requests_per_user_per_second']}")
 
-    print(f"\n📈 Summary:")
+    print("\n📈 Summary:")
     summary = report["summary"]
     print(f"   Total Requests: {summary['total_requests']}")
     print(f"   Successful: {summary['successful_requests']}")
     print(f"   Failed: {summary['failed_requests']}")
     print(f"   Throughput: {summary['requests_per_second']} req/s")
 
-    print(f"\n⏱️  Latency by Operation:")
+    print("\n⏱️  Latency by Operation:")
     for op, metrics in report["operations"].items():
         print(f"   {op}:")
         print(f"      P50: {metrics['p50_ms']:.2f}ms")
@@ -470,7 +470,7 @@ def print_report(report: dict[str, Any]) -> None:
         print(f"      Avg: {metrics['avg_ms']:.2f}ms")
         print(f"      Success Rate: {metrics['success_rate']:.2f}%")
 
-    print(f"\n✅ SLO Validation:")
+    print("\n✅ SLO Validation:")
     slo = report["slo_validation"]
     status = "PASSED" if slo["passed"] else "FAILED"
     print(f"   Overall: {status}")

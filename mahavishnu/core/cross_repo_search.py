@@ -26,18 +26,18 @@ Usage:
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from enum import StrEnum
 import logging
 import re
-from dataclasses import dataclass, field
-from enum import Enum
 from typing import Any
 
-from mahavishnu.core.task_store import Task, TaskStatus, TaskPriority, TaskStore, TaskListFilter
+from mahavishnu.core.task_store import Task, TaskListFilter, TaskPriority, TaskStatus, TaskStore
 
 logger = logging.getLogger(__name__)
 
 
-class SearchType(str, Enum):
+class SearchType(StrEnum):
     """Type of search to perform."""
 
     TEXT = "text"
@@ -341,7 +341,7 @@ class CrossRepoSearch:
         terms: list[str],
     ) -> SearchMatch | None:
         """Find matching terms in a field value."""
-        value_lower = value.lower()
+        value.lower()
         matches_positions: list[tuple[int, int]] = []
         matched_terms: set[str] = set()
 
@@ -398,7 +398,6 @@ class CrossRepoSearch:
 
         # Highlight matches (adjust positions for snippet start)
         highlighted = snippet
-        offset = start if start > 0 else 0
 
         # Collect terms to highlight
         terms_to_highlight = set()

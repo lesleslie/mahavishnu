@@ -4,14 +4,10 @@ import pytest
 
 from mahavishnu.core.ecosystem_status import (
     CanonicalStatus,
-    DegradationTrend,
     aggregate_statuses,
     aggregate_with_optional,
     is_valid_transition,
     normalize_status,
-    ADAPTER_STATUS_MAP,
-    STATUS_SEVERITY,
-    VALID_TRANSITIONS,
 )
 
 
@@ -47,10 +43,16 @@ class TestAggregateStatuses:
         assert aggregate_statuses([CanonicalStatus.OK, CanonicalStatus.OK]) == CanonicalStatus.OK
 
     def test_one_degraded(self):
-        assert aggregate_statuses([CanonicalStatus.OK, CanonicalStatus.DEGRADED]) == CanonicalStatus.DEGRADED
+        assert (
+            aggregate_statuses([CanonicalStatus.OK, CanonicalStatus.DEGRADED])
+            == CanonicalStatus.DEGRADED
+        )
 
     def test_one_unhealthy(self):
-        assert aggregate_statuses([CanonicalStatus.OK, CanonicalStatus.UNHEALTHY, CanonicalStatus.OK]) == CanonicalStatus.UNHEALTHY
+        assert (
+            aggregate_statuses([CanonicalStatus.OK, CanonicalStatus.UNHEALTHY, CanonicalStatus.OK])
+            == CanonicalStatus.UNHEALTHY
+        )
 
     def test_empty_list(self):
         assert aggregate_statuses([]) == CanonicalStatus.UNKNOWN
@@ -67,7 +69,9 @@ class TestAggregateStatuses:
         assert result == CanonicalStatus.OK
 
     def test_disabled_is_lowest_severity(self):
-        assert aggregate_statuses([CanonicalStatus.DISABLED, CanonicalStatus.OK]) == CanonicalStatus.OK
+        assert (
+            aggregate_statuses([CanonicalStatus.DISABLED, CanonicalStatus.OK]) == CanonicalStatus.OK
+        )
 
 
 class TestAggregateWithOptional:
@@ -129,12 +133,8 @@ from datetime import datetime, timedelta
 from mahavishnu.core.ecosystem_status import (
     AdapterStatus,
     AlertSummary,
-    CapabilityStatus,
-    CanonicalStatus,
-    DegradationTrend,
     EcosystemStatusReport,
     EcosystemStatusService,
-    OperationalRecommendation,
     SectionError,
     ServiceStatus,
     WorkflowSummary,
@@ -301,7 +301,7 @@ async def test_collect_adapters_with_no_adapters():
 @pytest.mark.asyncio
 async def test_collect_workflows_with_no_provider():
     """No workflow provider returns zeroed summary."""
-    from mahavishnu.core.ecosystem_status import EcosystemStatusService, WorkflowSummary
+    from mahavishnu.core.ecosystem_status import EcosystemStatusService
 
     svc = EcosystemStatusService()
     result = await svc._collect_workflows()
@@ -311,7 +311,7 @@ async def test_collect_workflows_with_no_provider():
 @pytest.mark.asyncio
 async def test_collect_alerts_with_no_provider():
     """No alert provider returns empty summary."""
-    from mahavishnu.core.ecosystem_status import EcosystemStatusService, AlertSummary
+    from mahavishnu.core.ecosystem_status import EcosystemStatusService
 
     svc = EcosystemStatusService()
     result = await svc._collect_alerts()
@@ -350,8 +350,9 @@ class TestRoutingDecision:
         assert d.fallback_used is False
 
     def test_confidence_bounds(self):
-        from mahavishnu.core.ecosystem_status import RoutingDecision
         import pytest
+
+        from mahavishnu.core.ecosystem_status import RoutingDecision
 
         with pytest.raises(Exception):
             RoutingDecision(
@@ -362,7 +363,11 @@ class TestRoutingDecision:
             )
 
     def test_rejected_adapters_with_enum(self):
-        from mahavishnu.core.ecosystem_status import RoutingDecision, RejectedAdapter, RejectionReason
+        from mahavishnu.core.ecosystem_status import (
+            RejectedAdapter,
+            RejectionReason,
+            RoutingDecision,
+        )
 
         d = RoutingDecision(
             task_id="t3",
@@ -410,7 +415,7 @@ class TestRoutingDecisionBuffer:
         assert set(buf.all_task_classes()) == {"T1", "T2"}
 
     def test_get_routing_buffer_singleton(self):
-        from mahavishnu.core.ecosystem_status import get_routing_buffer, RoutingDecisionBuffer
+        from mahavishnu.core.ecosystem_status import RoutingDecisionBuffer, get_routing_buffer
 
         buf = get_routing_buffer()
         assert isinstance(buf, RoutingDecisionBuffer)
@@ -431,7 +436,7 @@ async def test_collect_capabilities_no_adapters():
 
 @pytest.mark.asyncio
 async def test_collect_capabilities_with_adapter():
-    from mahavishnu.core.ecosystem_status import EcosystemStatusService, CanonicalStatus
+    from mahavishnu.core.ecosystem_status import CanonicalStatus, EcosystemStatusService
 
     class FakeAdapter:
         capabilities = ["rag", "vector_search"]
@@ -453,37 +458,34 @@ async def test_collect_capabilities_with_adapter():
 class TestGenerateRecommendations:
     def test_unhealthy_required_service_gets_recommendation(self):
         from mahavishnu.core.ecosystem_status import (
-            EcosystemStatusService, ServiceStatus, AdapterStatus, AlertSummary, CanonicalStatus,
+            CanonicalStatus,
+            EcosystemStatusService,
+            ServiceStatus,
         )
 
         svc = EcosystemStatusService()
-        services = {
-            "session_buddy": ServiceStatus(
-                status=CanonicalStatus.UNHEALTHY, required=True
-            )
-        }
+        services = {"session_buddy": ServiceStatus(status=CanonicalStatus.UNHEALTHY, required=True)}
         adapters = {"prefect": AdapterStatus(status=CanonicalStatus.OK)}
         recs = svc._generate_recommendations(services, adapters, AlertSummary())
         assert any(
-            r.severity == CanonicalStatus.UNHEALTHY and "session_buddy" in r.component
-            for r in recs
+            r.severity == CanonicalStatus.UNHEALTHY and "session_buddy" in r.component for r in recs
         )
 
     def test_optional_degraded_service_still_gets_recommendation(self):
         from mahavishnu.core.ecosystem_status import (
-            EcosystemStatusService, ServiceStatus, AlertSummary, CanonicalStatus,
+            CanonicalStatus,
+            EcosystemStatusService,
+            ServiceStatus,
         )
 
         svc = EcosystemStatusService()
-        services = {
-            "akosha": ServiceStatus(status=CanonicalStatus.DEGRADED, required=False)
-        }
+        services = {"akosha": ServiceStatus(status=CanonicalStatus.DEGRADED, required=False)}
         recs = svc._generate_recommendations(services, {}, AlertSummary())
         assert len(recs) >= 1
         assert any("akosha" in r.component for r in recs)
 
     def test_no_adapters_recommendation(self):
-        from mahavishnu.core.ecosystem_status import EcosystemStatusService, AlertSummary
+        from mahavishnu.core.ecosystem_status import EcosystemStatusService
 
         svc = EcosystemStatusService()
         recs = svc._generate_recommendations({}, {}, AlertSummary())
@@ -491,7 +493,8 @@ class TestGenerateRecommendations:
 
     def test_high_alert_count_recommendation(self):
         from mahavishnu.core.ecosystem_status import (
-            EcosystemStatusService, AlertSummary, CanonicalStatus, AdapterStatus,
+            CanonicalStatus,
+            EcosystemStatusService,
         )
 
         svc = EcosystemStatusService()
@@ -505,7 +508,9 @@ class TestGenerateRecommendations:
 
     def test_healthy_system_no_critical_recommendations(self):
         from mahavishnu.core.ecosystem_status import (
-            EcosystemStatusService, ServiceStatus, AdapterStatus, AlertSummary, CanonicalStatus,
+            CanonicalStatus,
+            EcosystemStatusService,
+            ServiceStatus,
         )
 
         svc = EcosystemStatusService()

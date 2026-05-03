@@ -1,8 +1,6 @@
 """Tests for core/routing_alerts.py — Alert dataclass, handlers, RoutingAlertManager."""
 
-import asyncio
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -14,11 +12,8 @@ from mahavishnu.core.routing_alerts import (
     AlertType,
     LoggingAlertHandler,
     RoutingAlertManager,
-    WebhookAlertHandler,
     get_alert_manager,
-    initialize_alert_manager,
 )
-
 
 # =========================================================================
 # Alert dataclass
@@ -94,13 +89,21 @@ class TestAlertHandler:
 class TestLoggingAlertHandler:
     async def test_send_alert_info(self):
         handler = LoggingAlertHandler()
-        alert = Alert(alert_type=AlertType.ADAPTER_DEGRADATION, severity=AlertSeverity.INFO, message="info msg")
+        alert = Alert(
+            alert_type=AlertType.ADAPTER_DEGRADATION,
+            severity=AlertSeverity.INFO,
+            message="info msg",
+        )
         # Should not raise
         await handler.send_alert(alert)
 
     async def test_send_alert_critical(self):
         handler = LoggingAlertHandler()
-        alert = Alert(alert_type=AlertType.BUDGET_EXCEEDED, severity=AlertSeverity.CRITICAL, message="budget exceeded")
+        alert = Alert(
+            alert_type=AlertType.BUDGET_EXCEEDED,
+            severity=AlertSeverity.CRITICAL,
+            message="budget exceeded",
+        )
         await handler.send_alert(alert)
 
 
@@ -295,6 +298,7 @@ class TestGlobalAlertManager:
     @pytest.fixture(autouse=True)
     def _reset_singleton(self):
         import mahavishnu.core.routing_alerts as mod
+
         original = mod._manager
         mod._manager = None
         yield

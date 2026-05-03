@@ -69,8 +69,14 @@ async def test_execute_batch_runs_concurrently(pool):
     async def fake_execute(task):
         nonlocal call_count
         call_count += 1
-        return {"status": "completed", "pool_id": pool.pool_id, "worker_id": "ep",
-                "output": "ok", "error": None, "duration": 0.0}
+        return {
+            "status": "completed",
+            "pool_id": pool.pool_id,
+            "worker_id": "ep",
+            "output": "ok",
+            "error": None,
+            "duration": 0.0,
+        }
 
     pool.execute_task = fake_execute
     tasks = [{"prompt": f"task {i}"} for i in range(3)]
@@ -111,9 +117,16 @@ async def test_scale_is_noop(pool):
 @pytest.mark.asyncio
 async def test_collect_memory_returns_items(pool):
     import collections
+
     pool._task_results = collections.deque(
-        [{"worker_id": "ep-1", "output": "result A", "status": "completed",
-          "timestamp": time.time()}],
+        [
+            {
+                "worker_id": "ep-1",
+                "output": "result A",
+                "status": "completed",
+                "timestamp": time.time(),
+            }
+        ],
         maxlen=1000,
     )
     items = await pool.collect_memory()

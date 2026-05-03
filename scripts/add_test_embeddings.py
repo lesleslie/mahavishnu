@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Add test embeddings to learning database for HNSW benchmarking."""
 
+from datetime import datetime, timedelta
 import hashlib
 import time
 import uuid
-from datetime import datetime, timedelta
 
 import duckdb
 import numpy as np

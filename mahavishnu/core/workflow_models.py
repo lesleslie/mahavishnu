@@ -5,7 +5,7 @@ with globally unique ULID identifiers for cross-system correlation.
 """
 
 from datetime import datetime
-from typing import Optional
+
 from pydantic import BaseModel, Field, field_validator
 
 try:
@@ -23,8 +23,8 @@ except ImportError:
             return is_ulid(value)
     except ImportError:
         # Last resort: timestamp-based ULID generation
-        import time
         import os
+        import time
 
         def generate_config_id() -> str:
             # Generate ULID-compatible timestamp-based ID
@@ -39,7 +39,9 @@ except ImportError:
 
             # Encode to Crockford Base32 (Dhara's alphabet)
             alphabet = "0123456789abcdefghjkmnpqrstvwxyz"
-            b32_encode = lambda data: "".join([alphabet[(b >> 35) & 31] for b in data])
+
+            def b32_encode(data):
+                return "".join([alphabet[(b >> 35) & 31] for b in data])
 
             return b32_encode(ulid_bytes)
 
@@ -65,7 +67,7 @@ class WorkflowExecution(BaseModel):
     start_time: datetime = Field(
         default_factory=datetime.utcnow, description="Execution start timestamp"
     )
-    end_time: Optional[datetime] = Field(None, description="Execution end timestamp")
+    end_time: datetime | None = Field(None, description="Execution end timestamp")
     iterations: int = Field(default=1, ge=1, description="Number of iterations performed")
     metadata: dict = Field(default_factory=dict, description="Additional execution metadata")
 
@@ -81,7 +83,7 @@ class WorkflowExecution(BaseModel):
         """Check if workflow execution is complete."""
         return self.status in ("completed", "failed", "cancelled")
 
-    def duration_seconds(self) -> Optional[float]:
+    def duration_seconds(self) -> float | None:
         """Calculate execution duration in seconds."""
         if self.end_time and self.start_time:
             delta = self.end_time - self.start_time
@@ -105,13 +107,13 @@ class PoolExecution(BaseModel):
         max_length=100,
         description="Pool identifier (e.g., 'local', 'session_buddy_pool_1')",
     )
-    worker_id: Optional[str] = Field(None, description="Worker identifier (if applicable)")
+    worker_id: str | None = Field(None, description="Worker identifier (if applicable)")
     operation: str = Field(..., description="Operation type (spawn, execute, scale, close)")
     status: str = Field(..., description="Execution status (running, completed, failed)")
     start_time: datetime = Field(
         default_factory=datetime.utcnow, description="Execution start timestamp"
     )
-    end_time: Optional[datetime] = Field(None, description="Execution end timestamp")
+    end_time: datetime | None = Field(None, description="Execution end timestamp")
     metadata: dict = Field(default_factory=dict, description="Additional execution metadata")
 
     @field_validator("execution_id")
@@ -122,7 +124,7 @@ class PoolExecution(BaseModel):
             raise ValueError(f"Invalid ULID format for execution_id: {v}")
         return v
 
-    def duration_seconds(self) -> Optional[float]:
+    def duration_seconds(self) -> float | None:
         """Calculate execution duration in seconds."""
         if self.end_time and self.start_time:
             delta = self.end_time - self.start_time
@@ -147,7 +149,7 @@ class WorkflowCheckpoint(BaseModel):
     )
     result_data: dict = Field(default_factory=dict, description="Stage result data")
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Checkpoint timestamp")
-    error_message: Optional[str] = Field(None, description="Error message if stage failed")
+    error_message: str | None = Field(None, description="Error message if stage failed")
 
     @field_validator("checkpoint_id")
     @classmethod

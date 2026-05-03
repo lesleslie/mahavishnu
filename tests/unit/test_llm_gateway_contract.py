@@ -108,4 +108,3 @@ def test_cache_scope_key_is_namespaced_by_client_and_route() -> None:
 
     assert base.cache_scope_key != other_client.cache_scope_key
     assert base.cache_scope_key != other_route.cache_scope_key
-

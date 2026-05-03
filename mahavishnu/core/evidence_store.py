@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol, runtime_checkable
 from uuid import uuid4
 
@@ -87,7 +86,7 @@ class EvidenceStore:
         stored = 0
         failed = 0
         errors: list[str] = []
-        for ev, result in zip(evidences, results):
+        for ev, result in zip(evidences, results, strict=False):
             if result is True:
                 stored += 1
             else:
@@ -96,9 +95,7 @@ class EvidenceStore:
                 errors.append(f"{ev.evidence_id}: {msg}")
         return StoreBatchResult(stored_count=stored, failed_count=failed, errors=errors)
 
-    async def query_evidence(
-        self, query: str, limit: int = 20
-    ) -> list[LearningEvidence]:
+    async def query_evidence(self, query: str, limit: int = 20) -> list[LearningEvidence]:
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
                 resp = await client.post(

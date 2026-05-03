@@ -1,136 +1,140 @@
 # mahavishnu/core/skill_mcp_validator.py
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
-from pathlib import Path
+import re
+from typing import TYPE_CHECKING
 
 import yaml
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # Canonical MCP tool registry: tool names must match exactly what the running MCP server exposes.
 # Triple-underscore tools arise when FastMCP converts Python names from servers with hyphens.
-KNOWN_TOOLS: frozenset[str] = frozenset({
-    # crackerjack (port 8676)
-    "mcp__crackerjack__crackerjack_run",
-    "mcp__crackerjack__search_code",
-    "mcp__crackerjack__smart_error_analysis",
-    "mcp__crackerjack__get_skills_for_issue",
-    "mcp__crackerjack__get_comprehensive_status",
-    "mcp__crackerjack__execute_crackerjack",
-    "mcp__crackerjack__get_stage_status",
-    "mcp__crackerjack__analyze_crackerjack",
-    # akosha (port 8682)
-    "mcp__akosha__search_all_systems",
-    "mcp__akosha__search_code_patterns",
-    "mcp__akosha__find_function_usage",
-    "mcp__akosha__find_path",
-    "mcp__akosha__detect_anomalies",
-    "mcp__akosha__correlate_systems",
-    "mcp__akosha__analyze_trends",
-    "mcp__akosha__store_memory",
-    "mcp__akosha__query_knowledge_graph",
-    "mcp__akosha__get_graph_statistics",
-    # session-buddy (port 8678)
-    "mcp__session-buddy__checkpoint",
-    "mcp__session-buddy__search_conversations",
-    "mcp__session-buddy__store_reflection",
-    "mcp__session-buddy__search_entities",
-    "mcp__session-buddy__get_activity_summary",
-    "mcp__session-buddy__code_call_chain",
-    "mcp__session-buddy__code_impact_analysis",
-    "mcp__session-buddy___code_ingest_file_impl",
-    "mcp__session-buddy___code_ingest_directory_impl",
-    "mcp__session-buddy___code_search_symbols_impl",
-    "mcp__session-buddy___code_get_symbol_graph_impl",
-    "mcp__session-buddy___code_list_projects_impl",
-    # mahavishnu (port 8680)
-    "mcp__mahavishnu__pool_spawn",
-    "mcp__mahavishnu__pool_route_execute",
-    "mcp__mahavishnu__pool_health",
-    "mcp__mahavishnu__trigger_workflow",
-    "mcp__mahavishnu__get_health",
-    "mcp__mahavishnu__list_repos",
-    "mcp__mahavishnu__list_workflows",
-    "mcp__mahavishnu__get_workflow_status",
-    "mcp__mahavishnu__index_code_graph",
-    "mcp__mahavishnu__search_documentation",
-    # dhara (port 8683)
-    "mcp__dhara__put",
-    "mcp__dhara__get",
-    "mcp__dhara__list_adapters",
-    "mcp__dhara__upsert_service",
-    "mcp__dhara__record_event",
-    "mcp__dhara__get_adapter",
-    "mcp__dhara__store_adapter",
-    "mcp__dhara__aggregate_patterns",
-    # context7 (plugin)
-    "mcp__plugin_context7_context7__query-docs",
-    "mcp__plugin_context7_context7__resolve-library-id",
-    # akosha (port 8682) — additional live tools
-    "mcp__akosha__get_liveness",
-    "mcp__akosha__get_readiness",
-    "mcp__akosha__get_system_metrics",
-    "mcp__akosha__health_check_all",
-    "mcp__akosha__wait_for_dependency",
-    # session-buddy (port 8678) — additional live tools
-    "mcp__session-buddy__quick_search",
-    "mcp__session-buddy__search_by_concept",
-    "mcp__session-buddy__search_temporal",
-    "mcp__session-buddy__extract_and_store_memory_tool",
-    "mcp__session-buddy__reflection_stats",
-    "mcp__session-buddy__create_entity",
-    "mcp__session-buddy__create_relation",
-    "mcp__session-buddy__find_duplicates",
-    "mcp__session-buddy__add_observation",
-    "mcp__session-buddy__record_fix_success",
-    "mcp__session-buddy__crackerjack_patterns",
-    "mcp__session-buddy__query_similar_errors",
-    "mcp__session-buddy__get_crackerjack_quality_metrics",
-    "mcp__session-buddy__health_check_all",
-    "mcp__session-buddy__get_liveness",
-    "mcp__session-buddy__get_readiness",
-    "mcp__session-buddy__start",
-    "mcp__session-buddy__end",
-    "mcp__session-buddy__status",
-    # dhara (port 8683) — additional live tools
-    "mcp__dhara__get_adapter_health",
-    "mcp__dhara__record_time_series",
-    "mcp__dhara__query_time_series",
-    "mcp__dhara__validate_adapter",
-    "mcp__dhara__list_adapter_versions",
-    "mcp__dhara__list_services",
-    "mcp__dhara__get_service",
-    "mcp__dhara__list_events",
-    "mcp__dhara__health_check_all",
-    "mcp__dhara__get_liveness",
-    "mcp__dhara__get_readiness",
-    "mcp__dhara__get_contract_info",
-    # mahavishnu (port 8680) — additional live tools
-    "mcp__mahavishnu__pool_scale",
-    "mcp__mahavishnu__pool_close",
-    "mcp__mahavishnu__pool_close_all",
-    "mcp__mahavishnu__pool_execute",
-    "mcp__mahavishnu__pool_monitor",
-    "mcp__mahavishnu__pool_search_memory",
-    "mcp__mahavishnu__pool_list",
-    "mcp__mahavishnu__get_workflow_statistics",
-    "mcp__mahavishnu__search_workflows",
-    "mcp__mahavishnu__cancel_workflow",
-    "mcp__mahavishnu__heal_workflows",
-    "mcp__mahavishnu__get_observability_metrics",
-    "mcp__mahavishnu__health_check_all",
-    "mcp__mahavishnu__get_liveness",
-    "mcp__mahavishnu__get_readiness",
-    # crackerjack (port 8676) — additional live tools
-    "mcp__crackerjack__execute_skill",
-    "mcp__crackerjack__list_skills",
-    "mcp__crackerjack__search_skills",
-    "mcp__crackerjack__find_workflow_patterns",
-    "mcp__crackerjack__health_check_all",
-    "mcp__crackerjack__get_liveness",
-    "mcp__crackerjack__get_readiness",
-})
+KNOWN_TOOLS: frozenset[str] = frozenset(
+    {
+        # crackerjack (port 8676)
+        "mcp__crackerjack__crackerjack_run",
+        "mcp__crackerjack__search_code",
+        "mcp__crackerjack__smart_error_analysis",
+        "mcp__crackerjack__get_skills_for_issue",
+        "mcp__crackerjack__get_comprehensive_status",
+        "mcp__crackerjack__execute_crackerjack",
+        "mcp__crackerjack__get_stage_status",
+        "mcp__crackerjack__analyze_crackerjack",
+        # akosha (port 8682)
+        "mcp__akosha__search_all_systems",
+        "mcp__akosha__search_code_patterns",
+        "mcp__akosha__find_function_usage",
+        "mcp__akosha__find_path",
+        "mcp__akosha__detect_anomalies",
+        "mcp__akosha__correlate_systems",
+        "mcp__akosha__analyze_trends",
+        "mcp__akosha__store_memory",
+        "mcp__akosha__query_knowledge_graph",
+        "mcp__akosha__get_graph_statistics",
+        # session-buddy (port 8678)
+        "mcp__session-buddy__checkpoint",
+        "mcp__session-buddy__search_conversations",
+        "mcp__session-buddy__store_reflection",
+        "mcp__session-buddy__search_entities",
+        "mcp__session-buddy__get_activity_summary",
+        "mcp__session-buddy__code_call_chain",
+        "mcp__session-buddy__code_impact_analysis",
+        "mcp__session-buddy___code_ingest_file_impl",
+        "mcp__session-buddy___code_ingest_directory_impl",
+        "mcp__session-buddy___code_search_symbols_impl",
+        "mcp__session-buddy___code_get_symbol_graph_impl",
+        "mcp__session-buddy___code_list_projects_impl",
+        # mahavishnu (port 8680)
+        "mcp__mahavishnu__pool_spawn",
+        "mcp__mahavishnu__pool_route_execute",
+        "mcp__mahavishnu__pool_health",
+        "mcp__mahavishnu__trigger_workflow",
+        "mcp__mahavishnu__get_health",
+        "mcp__mahavishnu__list_repos",
+        "mcp__mahavishnu__list_workflows",
+        "mcp__mahavishnu__get_workflow_status",
+        "mcp__mahavishnu__index_code_graph",
+        "mcp__mahavishnu__search_documentation",
+        # dhara (port 8683)
+        "mcp__dhara__put",
+        "mcp__dhara__get",
+        "mcp__dhara__list_adapters",
+        "mcp__dhara__upsert_service",
+        "mcp__dhara__record_event",
+        "mcp__dhara__get_adapter",
+        "mcp__dhara__store_adapter",
+        "mcp__dhara__aggregate_patterns",
+        # context7 (plugin)
+        "mcp__plugin_context7_context7__query-docs",
+        "mcp__plugin_context7_context7__resolve-library-id",
+        # akosha (port 8682) — additional live tools
+        "mcp__akosha__get_liveness",
+        "mcp__akosha__get_readiness",
+        "mcp__akosha__get_system_metrics",
+        "mcp__akosha__health_check_all",
+        "mcp__akosha__wait_for_dependency",
+        # session-buddy (port 8678) — additional live tools
+        "mcp__session-buddy__quick_search",
+        "mcp__session-buddy__search_by_concept",
+        "mcp__session-buddy__search_temporal",
+        "mcp__session-buddy__extract_and_store_memory_tool",
+        "mcp__session-buddy__reflection_stats",
+        "mcp__session-buddy__create_entity",
+        "mcp__session-buddy__create_relation",
+        "mcp__session-buddy__find_duplicates",
+        "mcp__session-buddy__add_observation",
+        "mcp__session-buddy__record_fix_success",
+        "mcp__session-buddy__crackerjack_patterns",
+        "mcp__session-buddy__query_similar_errors",
+        "mcp__session-buddy__get_crackerjack_quality_metrics",
+        "mcp__session-buddy__health_check_all",
+        "mcp__session-buddy__get_liveness",
+        "mcp__session-buddy__get_readiness",
+        "mcp__session-buddy__start",
+        "mcp__session-buddy__end",
+        "mcp__session-buddy__status",
+        # dhara (port 8683) — additional live tools
+        "mcp__dhara__get_adapter_health",
+        "mcp__dhara__record_time_series",
+        "mcp__dhara__query_time_series",
+        "mcp__dhara__validate_adapter",
+        "mcp__dhara__list_adapter_versions",
+        "mcp__dhara__list_services",
+        "mcp__dhara__get_service",
+        "mcp__dhara__list_events",
+        "mcp__dhara__health_check_all",
+        "mcp__dhara__get_liveness",
+        "mcp__dhara__get_readiness",
+        "mcp__dhara__get_contract_info",
+        # mahavishnu (port 8680) — additional live tools
+        "mcp__mahavishnu__pool_scale",
+        "mcp__mahavishnu__pool_close",
+        "mcp__mahavishnu__pool_close_all",
+        "mcp__mahavishnu__pool_execute",
+        "mcp__mahavishnu__pool_monitor",
+        "mcp__mahavishnu__pool_search_memory",
+        "mcp__mahavishnu__pool_list",
+        "mcp__mahavishnu__get_workflow_statistics",
+        "mcp__mahavishnu__search_workflows",
+        "mcp__mahavishnu__cancel_workflow",
+        "mcp__mahavishnu__heal_workflows",
+        "mcp__mahavishnu__get_observability_metrics",
+        "mcp__mahavishnu__health_check_all",
+        "mcp__mahavishnu__get_liveness",
+        "mcp__mahavishnu__get_readiness",
+        # crackerjack (port 8676) — additional live tools
+        "mcp__crackerjack__execute_skill",
+        "mcp__crackerjack__list_skills",
+        "mcp__crackerjack__search_skills",
+        "mcp__crackerjack__find_workflow_patterns",
+        "mcp__crackerjack__health_check_all",
+        "mcp__crackerjack__get_liveness",
+        "mcp__crackerjack__get_readiness",
+    }
+)
 
 # Canonical port map: server name (as it appears in skill docs) -> correct port
 KNOWN_PORTS: dict[str, int] = {
@@ -143,7 +147,10 @@ KNOWN_PORTS: dict[str, int] = {
 }
 
 _MCP_REF_RE = re.compile(r"mcp__[a-zA-Z\d](?:[a-zA-Z\d-]*[a-zA-Z\d])?___?[\w]+(?:__[\w]+)*")
-_PORT_RE = re.compile(r"\b(crackerjack|session[_-]buddy|mahavishnu|akosha|dhara)\b[^.\n]*?\bport\s+(\d{4,5})", re.IGNORECASE)
+_PORT_RE = re.compile(
+    r"\b(crackerjack|session[_-]buddy|mahavishnu|akosha|dhara)\b[^.\n]*?\bport\s+(\d{4,5})",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -214,10 +221,7 @@ def validate_skill_file(path: Path) -> SkillValidationReport:
 
 def validate_agent_dir(directory: Path) -> dict[str, AgentValidationReport]:
     """Validate all *.md files in an agents directory."""
-    return {
-        path.name: validate_agent_file(path)
-        for path in sorted(directory.glob("*.md"))
-    }
+    return {path.name: validate_agent_file(path) for path in sorted(directory.glob("*.md"))}
 
 
 def validate_skill_dir(

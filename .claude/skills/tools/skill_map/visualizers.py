@@ -1,12 +1,9 @@
 """Analysis and visualization of skill graph properties."""
 
-from typing import Dict, List, Set, Tuple
-from collections import Counter
-
 from .graph import SkillGraph
 
 
-def analyze_connectivity(graph: SkillGraph) -> Dict[str, any]:
+def analyze_connectivity(graph: SkillGraph) -> dict[str, any]:
     """
     Analyze overall graph connectivity.
 
@@ -26,7 +23,7 @@ def analyze_connectivity(graph: SkillGraph) -> Dict[str, any]:
     }
 
 
-def find_bridge_skills(graph: SkillGraph) -> List[Tuple[str, str]]:
+def find_bridge_skills(graph: SkillGraph) -> list[tuple[str, str]]:
     """
     Find bridge edges (critical connections between skill groups).
 
@@ -40,7 +37,7 @@ def find_bridge_skills(graph: SkillGraph) -> List[Tuple[str, str]]:
     return bridges
 
 
-def find_central_topics(graph: SkillGraph, top_n: int = 10) -> List[Tuple[str, float]]:
+def find_central_topics(graph: SkillGraph, top_n: int = 10) -> list[tuple[str, float]]:
     """
     Find most central skills using betweenness centrality.
 
@@ -56,7 +53,7 @@ def find_central_topics(graph: SkillGraph, top_n: int = 10) -> List[Tuple[str, f
     return sorted_centrality[:top_n]
 
 
-def analyze_system_connections(graph: SkillGraph) -> Dict[str, Dict[str, int]]:
+def analyze_system_connections(graph: SkillGraph) -> dict[str, dict[str, int]]:
     """
     Analyze inter-system connections.
 
@@ -66,7 +63,7 @@ def analyze_system_connections(graph: SkillGraph) -> Dict[str, Dict[str, int]]:
     Returns:
         Nested dict: {source_system: {target_system: edge_count}}
     """
-    connections: Dict[str, Dict[str, int]] = {}
+    connections: dict[str, dict[str, int]] = {}
 
     for source, target in graph.graph.edges():
         source_system = graph.skills[source].system
@@ -83,7 +80,7 @@ def analyze_system_connections(graph: SkillGraph) -> Dict[str, Dict[str, int]]:
     return connections
 
 
-def find_skill_clusters_by_keywords(graph: SkillGraph) -> Dict[str, List[str]]:
+def find_skill_clusters_by_keywords(graph: SkillGraph) -> dict[str, list[str]]:
     """
     Cluster skills by keyword similarity.
 
@@ -93,7 +90,7 @@ def find_skill_clusters_by_keywords(graph: SkillGraph) -> Dict[str, List[str]]:
     Returns:
         Dictionary mapping keywords to lists of related skills
     """
-    keyword_clusters: Dict[str, List[str]] = {}
+    keyword_clusters: dict[str, list[str]] = {}
 
     for skill_name, skill in graph.skills.items():
         for keyword in skill.keywords:
@@ -105,7 +102,7 @@ def find_skill_clusters_by_keywords(graph: SkillGraph) -> Dict[str, List[str]]:
     return {k: v for k, v in keyword_clusters.items() if len(v) > 1}
 
 
-def detect_cycles(graph: SkillGraph) -> List[List[str]]:
+def detect_cycles(graph: SkillGraph) -> list[list[str]]:
     """
     Detect circular dependencies in skill relationships.
 
@@ -151,12 +148,14 @@ def get_statistics_summary(graph: SkillGraph) -> str:
     for system, skills in sorted(clusters.items()):
         lines.append(f"  {system}: {len(skills)} skills")
 
-    lines.extend([
-        "",
-        f"Orphan Skills: {len(orphans)}",
-        "",
-        "Top 5 Most Central Skills (PageRank):",
-    ])
+    lines.extend(
+        [
+            "",
+            f"Orphan Skills: {len(orphans)}",
+            "",
+            "Top 5 Most Central Skills (PageRank):",
+        ]
+    )
 
     # Convert to list of tuples for slicing
     centrality_list = list(centrality.items())
@@ -165,24 +164,26 @@ def get_statistics_summary(graph: SkillGraph) -> str:
 
     cycles = detect_cycles(graph)
     if cycles:
-        lines.extend([
-            "",
-            f"Circular Dependencies: {len(cycles)}",
-        ])
+        lines.extend(
+            [
+                "",
+                f"Circular Dependencies: {len(cycles)}",
+            ]
+        )
     else:
-        lines.extend([
-            "",
-            "No circular dependencies detected",
-        ])
+        lines.extend(
+            [
+                "",
+                "No circular dependencies detected",
+            ]
+        )
 
     return "\n".join(lines)
 
 
 def find_related_skills_by_similarity(
-    graph: SkillGraph,
-    skill_name: str,
-    limit: int = 5
-) -> List[Tuple[str, float]]:
+    graph: SkillGraph, skill_name: str, limit: int = 5
+) -> list[tuple[str, float]]:
     """
     Find skills similar to a given skill based on keyword overlap.
 
@@ -222,7 +223,7 @@ def find_related_skills_by_similarity(
     return similarities[:limit]
 
 
-def get_skill_system_graph(graph: SkillGraph) -> Dict[str, Dict[str, int]]:
+def get_skill_system_graph(graph: SkillGraph) -> dict[str, dict[str, int]]:
     """
     Build system-level graph showing connections between systems.
 
@@ -246,9 +247,9 @@ def export_system_matrix(graph: SkillGraph) -> str:
         Formatted matrix string
     """
     connections = get_skill_system_graph(graph)
-    systems = sorted(set(connections.keys()) | set(
-        sys for subs in connections.values() for sys in subs.keys()
-    ))
+    systems = sorted(
+        set(connections.keys()) | set(sys for subs in connections.values() for sys in subs.keys())
+    )
 
     # Build matrix
     lines = ["System Connection Matrix"]
@@ -267,4 +268,5 @@ def export_system_matrix(graph: SkillGraph) -> str:
 
 # Import at module level for use in functions
 import networkx as nx
-from .graph import find_orphan_skills, detect_clusters, analyze_centrality
+
+from .graph import analyze_centrality, detect_clusters, find_orphan_skills

@@ -5,20 +5,20 @@
 **Owner:** Mahavishnu Platform Team
 **Severity:** P2 (High Priority)
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Overview](#1-overview)
-2. [Monitoring & Observability](#2-monitoring--observability)
-3. [Common Operations](#3-common-operations)
-4. [Troubleshooting](#4-troubleshooting)
-5. [Incident Response](#5-incident-response)
-6. [Configuration Reference](#6-configuration-reference)
-7. [Health Checks](#7-health-checks)
-8. [Appendices](#8-appendices)
+1. [Monitoring & Observability](#2-monitoring--observability)
+1. [Common Operations](#3-common-operations)
+1. [Troubleshooting](#4-troubleshooting)
+1. [Incident Response](#5-incident-response)
+1. [Configuration Reference](#6-configuration-reference)
+1. [Health Checks](#7-health-checks)
+1. [Appendices](#8-appendices)
 
----
+______________________________________________________________________
 
 ## 1. Overview
 
@@ -27,6 +27,7 @@
 Goal-Driven Teams is a Mahavishnu feature that converts natural language goals into fully-configured multi-agent teams. Instead of manually defining agents, roles, and collaboration modes, users describe what they want to accomplish, and Mahavishnu automatically generates the optimal team configuration.
 
 **Key Capabilities:**
+
 - Natural language goal parsing
 - Automatic skill detection from goal content
 - Intelligent collaboration mode selection
@@ -115,7 +116,7 @@ Goal-Driven Teams is a Mahavishnu feature that converts natural language goals i
 | WebSocket Server | 8690 | WebSocket | Real-time team event broadcasts |
 | Grafana Dashboard | 3000 | HTTP | Visualization (import dashboard) |
 
----
+______________________________________________________________________
 
 ## 2. Monitoring & Observability
 
@@ -168,6 +169,7 @@ WebSocket server runs on port **8690**. Subscribe to team events for real-time m
 #### Event Types and Payloads
 
 **Team Parsed Event** (`team_parsed`)
+
 ```json
 {
   "event": "team_parsed",
@@ -181,6 +183,7 @@ WebSocket server runs on port **8690**. Subscribe to team events for real-time m
 ```
 
 **Team Created Event** (`team_created`)
+
 ```json
 {
   "event": "team_created",
@@ -194,6 +197,7 @@ WebSocket server runs on port **8690**. Subscribe to team events for real-time m
 ```
 
 **Team Execution Started** (`team_execution_started`)
+
 ```json
 {
   "event": "team_execution_started",
@@ -205,6 +209,7 @@ WebSocket server runs on port **8690**. Subscribe to team events for real-time m
 ```
 
 **Team Execution Completed** (`team_execution_completed`)
+
 ```json
 {
   "event": "team_execution_completed",
@@ -217,6 +222,7 @@ WebSocket server runs on port **8690**. Subscribe to team events for real-time m
 ```
 
 **Team Error Event** (`team_error`)
+
 ```json
 {
   "event": "team_error",
@@ -280,15 +286,15 @@ wscat -c ws://localhost:8690 -x '{"action":"subscribe","channel":"team_events"}'
 #### Dashboard Panels
 
 1. **Teams Created Over Time** - Time series of team creation rate
-2. **Team Creation by Mode** - Pie chart (coordinate, route, broadcast, collaborate)
-3. **Goal Parsing Confidence** - Histogram with p50, p90, p99
-4. **Skill Usage Distribution** - Bar chart of skill popularity
-5. **Error Rate by Code** - Time series of errors by MHV-XXX code
-6. **Active Teams Gauge** - Current active team count
-7. **Team Creation Latency** - Duration histogram
-8. **Parsing Method Distribution** - Pattern vs LLM fallback
-9. **Intent Distribution** - Goals by intent type
-10. **Domain Distribution** - Goals by domain
+1. **Team Creation by Mode** - Pie chart (coordinate, route, broadcast, collaborate)
+1. **Goal Parsing Confidence** - Histogram with p50, p90, p99
+1. **Skill Usage Distribution** - Bar chart of skill popularity
+1. **Error Rate by Code** - Time series of errors by MHV-XXX code
+1. **Active Teams Gauge** - Current active team count
+1. **Team Creation Latency** - Duration histogram
+1. **Parsing Method Distribution** - Pattern vs LLM fallback
+1. **Intent Distribution** - Goals by intent type
+1. **Domain Distribution** - Goals by domain
 
 #### Key Visualizations to Set Up
 
@@ -316,7 +322,7 @@ topk(5, sum by (skill_name) (
 ))
 ```
 
----
+______________________________________________________________________
 
 ## 3. Common Operations
 
@@ -468,7 +474,7 @@ mahavishnu team list
 mahavishnu team list --verbose
 ```
 
----
+______________________________________________________________________
 
 ## 4. Troubleshooting
 
@@ -491,17 +497,20 @@ mahavishnu team list --verbose
 #### "Goal parsing failed" (MHV-465)
 
 **Symptoms:**
+
 - Error message: "Goal parsing failed: insufficient context"
 - Confidence score below 0.3
 - Team created with wrong skills
 
 **Root Causes:**
+
 1. Goal is too vague ("Make this better")
-2. No recognizable intent keywords
-3. Domain keywords not matched
-4. LLM fallback not available or disabled
+1. No recognizable intent keywords
+1. Domain keywords not matched
+1. LLM fallback not available or disabled
 
 **Resolution:**
+
 ```bash
 # Step 1: Test goal parsing
 mahavishnu team parse "your goal here" --verbose
@@ -521,6 +530,7 @@ mahavishnu team flags | grep llm_fallback
 ```
 
 **Good Goal Examples:**
+
 ```bash
 # Specific and actionable
 "Review the authentication module for SQL injection vulnerabilities"
@@ -532,16 +542,19 @@ mahavishnu team flags | grep llm_fallback
 #### "Feature disabled" (MHV-468)
 
 **Symptoms:**
+
 - Error message: "Feature 'X' is disabled"
 - MCP tools return error with code MHV-468
 - CLI commands exit with code 1
 
 **Root Causes:**
+
 1. Master switch `goal_teams.enabled` is false
-2. Specific feature flag is disabled
-3. Config not loaded correctly
+1. Specific feature flag is disabled
+1. Config not loaded correctly
 
 **Resolution:**
+
 ```bash
 # Step 1: Check all feature flags
 mahavishnu team flags
@@ -564,16 +577,19 @@ mahavishnu mcp restart
 #### "Context not initialized" (MHV-011)
 
 **Symptoms:**
+
 - Error message: "Application context not initialized"
 - LLM fallback fails even when enabled
 - Tools fail to access Agno adapter
 
 **Root Causes:**
+
 1. MahavishnuApp not created before tool call
-2. `set_app_context()` not called during init
-3. Context variable cleared unexpectedly
+1. `set_app_context()` not called during init
+1. Context variable cleared unexpectedly
 
 **Resolution:**
+
 ```bash
 # Step 1: Verify Mahavishnu MCP server is running
 mahavishnu mcp status
@@ -596,29 +612,34 @@ tail -f logs/mahavishnu.log | grep -i "context\|adapter\|init"
 #### Low Confidence Parsing
 
 **Symptoms:**
+
 - Confidence score < 0.7
 - LLM fallback triggered frequently
 - Wrong skills selected for team
 
 **When It Happens:**
+
 - Ambiguous goals with no clear intent
 - Goals with mixed domains
 - New domain keywords not in patterns
 - Very long or complex goals
 
 **How LLM Fallback Works:**
+
 1. Pattern matching attempts first (fast, free)
-2. If confidence < 0.7 and LLM fallback enabled
-3. Goal sent to configured LLM (Ollama/OpenAI/Anthropic)
-4. LLM extracts intent, domain, skills
-5. LLM result used if higher confidence
+1. If confidence < 0.7 and LLM fallback enabled
+1. Goal sent to configured LLM (Ollama/OpenAI/Anthropic)
+1. LLM extracts intent, domain, skills
+1. LLM result used if higher confidence
 
 **When to Investigate:**
+
 - Confidence median drops below 0.7 (check Grafana)
 - LLM fallback rate exceeds 30% of goals
 - User complaints about wrong team composition
 
 **Resolution:**
+
 ```bash
 # Step 1: Check parsing confidence metrics
 curl -s http://localhost:9092/metrics | grep parsing_confidence
@@ -689,7 +710,7 @@ tail -f logs/mahavishnu.log | grep -i "error\|exception\|failed"
 MAHAVISHNU_LOG_LEVEL=DEBUG mahavishnu mcp start
 ```
 
----
+______________________________________________________________________
 
 ## 5. Incident Response
 
@@ -701,6 +722,7 @@ MAHAVISHNU_LOG_LEVEL=DEBUG mahavishnu mcp start
 **Runbook Steps:**
 
 1. **Assess Impact**
+
    ```bash
    # Check error rate
    curl -s http://localhost:9092/metrics | grep "errors_total.*MHV-460"
@@ -709,7 +731,8 @@ MAHAVISHNU_LOG_LEVEL=DEBUG mahavishnu mcp start
    grep "MHV-460" logs/mahavishnu.log | tail -20
    ```
 
-2. **Identify Root Cause**
+1. **Identify Root Cause**
+
    ```bash
    # Check feature flags
    mahavishnu team flags
@@ -721,12 +744,14 @@ MAHAVISHNU_LOG_LEVEL=DEBUG mahavishnu mcp start
    mahavishnu team parse "Review code for bugs"
    ```
 
-3. **Common Fixes**
+1. **Common Fixes**
+
    - If feature disabled: Enable `goal_teams.enabled`
    - If context not initialized: Restart MCP server
    - If Agno adapter down: Check Agno configuration
 
-4. **Verify Resolution**
+1. **Verify Resolution**
+
    ```bash
    # Test team creation
    mahavishnu team create -g "Test goal" --dry-run
@@ -735,7 +760,8 @@ MAHAVISHNU_LOG_LEVEL=DEBUG mahavishnu mcp start
    watch 'curl -s http://localhost:9092/metrics | grep errors_total'
    ```
 
-5. **Escalation Path**
+1. **Escalation Path**
+
    - If unresolved in 15 min: Escalate to Platform Team
    - If Agno-related: Include Agno adapter logs
    - Provide: Error rate, sample goals failing, config dump
@@ -748,6 +774,7 @@ MAHAVISHNU_LOG_LEVEL=DEBUG mahavishnu mcp start
 **Investigation Steps:**
 
 1. **Identify Error Type**
+
    ```bash
    # Breakdown by error code
    curl -s http://localhost:9092/metrics | grep "errors_total" | grep -v "#"
@@ -756,7 +783,8 @@ MAHAVISHNU_LOG_LEVEL=DEBUG mahavishnu mcp start
    # Group by error_code in Grafana
    ```
 
-2. **Check Dependencies**
+1. **Check Dependencies**
+
    ```bash
    # LLM provider (Ollama)
    curl http://localhost:11434/api/tags
@@ -768,7 +796,8 @@ MAHAVISHNU_LOG_LEVEL=DEBUG mahavishnu mcp start
    grep -i "database\|sqlite\|postgres" logs/mahavishnu.log
    ```
 
-3. **Check Resource Constraints**
+1. **Check Resource Constraints**
+
    ```bash
    # Memory usage
    ps aux | grep mahavishnu
@@ -780,7 +809,8 @@ MAHAVISHNU_LOG_LEVEL=DEBUG mahavishnu mcp start
    df -h data/
    ```
 
-4. **Mitigation**
+1. **Mitigation**
+
    - If LLM down: Switch to pattern-only parsing (disable LLM fallback)
    - If resource exhaustion: Scale horizontally or reduce limits
    - If config error: Revert to last known good config
@@ -806,14 +836,17 @@ rate(mahavishnu_goal_teams_created_total[1m])
 **Common Bottlenecks:**
 
 1. **LLM Fallback Latency**
+
    - LLM calls add 1-5 seconds
    - Mitigation: Increase pattern matching coverage
 
-2. **Agno Adapter Initialization**
+1. **Agno Adapter Initialization**
+
    - First team creation slower due to lazy init
    - Mitigation: Warmup during startup
 
-3. **WebSocket Broadcast Overhead**
+1. **WebSocket Broadcast Overhead**
+
    - Many clients = slower broadcasts
    - Mitigation: Batch events or disable broadcasts
 
@@ -840,7 +873,7 @@ rate(mahavishnu_goal_teams_created_total[1m])
 #     max_concurrent_executions: 3
 ```
 
----
+______________________________________________________________________
 
 ## 6. Configuration Reference
 
@@ -961,7 +994,7 @@ export MAHAVISHNU_GOAL_TEAMS__FEATURE_FLAGS__WEBSOCKET_BROADCASTS_ENABLED=true
 export MAHAVISHNU_GOAL_TEAMS__FEATURE_FLAGS__PROMETHEUS_METRICS_ENABLED=true
 ```
 
----
+______________________________________________________________________
 
 ## 7. Health Checks
 
@@ -1062,7 +1095,7 @@ groups:
           description: "{{ $value | humanizePercentage }} of goals have confidence < 0.7"
 ```
 
----
+______________________________________________________________________
 
 ## 8. Appendices
 
@@ -1240,7 +1273,7 @@ METRICS: http://localhost:9092/metrics
 WEBSOCKET: ws://localhost:8690
 ```
 
----
+______________________________________________________________________
 
 ## Document History
 
@@ -1248,7 +1281,7 @@ WEBSOCKET: ws://localhost:8690
 |---------|------|--------|---------|
 | 1.0 | 2026-02-21 | Platform Team | Initial runbook creation |
 
----
+______________________________________________________________________
 
 ## Related Documentation
 

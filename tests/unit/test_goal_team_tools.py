@@ -16,13 +16,12 @@ from dataclasses import dataclass, field
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from fastmcp import FastMCP
+import pytest
 
 from mahavishnu.core.errors import ErrorCode, GoalParsingError, GoalTeamError
 from mahavishnu.core.goal_team_metrics import reset_goal_team_metrics
 from mahavishnu.engines.agno_teams.config import TeamMode
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -263,6 +262,7 @@ class TestListTeamSkills:
     @pytest.mark.asyncio
     async def test_generic_exception_caught(self):
         """Unexpected exceptions return internal error with skills stub."""
+
         # Create a dict-like object whose .items() raises
         class BrokenDict(dict):
             def items(self):
@@ -388,7 +388,8 @@ class TestParseGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "parse_goal",
+                mcp,
+                "parse_goal",
                 {"goal": "Review the authentication module for security vulnerabilities"},
             )
 
@@ -426,7 +427,8 @@ class TestParseGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "parse_goal",
+                mcp,
+                "parse_goal",
                 {"goal": "Review the authentication module for security vulnerabilities"},
             )
 
@@ -457,8 +459,13 @@ class TestParseGoal:
         with (
             patch(
                 "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
-                side_effect=lambda name: name in (
-                    "enabled", "mcp_tools_enabled", "learning_system_enabled",
+                side_effect=lambda name: (
+                    name
+                    in (
+                        "enabled",
+                        "mcp_tools_enabled",
+                        "learning_system_enabled",
+                    )
                 ),
             ),
             patch(
@@ -471,7 +478,8 @@ class TestParseGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "parse_goal",
+                mcp,
+                "parse_goal",
                 {"goal": "Review the authentication module for security issues"},
             )
 
@@ -496,8 +504,13 @@ class TestParseGoal:
         with (
             patch(
                 "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
-                side_effect=lambda name: name in (
-                    "enabled", "mcp_tools_enabled", "learning_system_enabled",
+                side_effect=lambda name: (
+                    name
+                    in (
+                        "enabled",
+                        "mcp_tools_enabled",
+                        "learning_system_enabled",
+                    )
                 ),
             ),
             patch(
@@ -510,7 +523,8 @@ class TestParseGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "parse_goal",
+                mcp,
+                "parse_goal",
                 {"goal": "Review the authentication module for security issues"},
             )
 
@@ -531,8 +545,13 @@ class TestParseGoal:
         with (
             patch(
                 "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
-                side_effect=lambda name: name in (
-                    "enabled", "mcp_tools_enabled", "learning_system_enabled",
+                side_effect=lambda name: (
+                    name
+                    in (
+                        "enabled",
+                        "mcp_tools_enabled",
+                        "learning_system_enabled",
+                    )
                 ),
             ),
             patch(
@@ -545,7 +564,8 @@ class TestParseGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "parse_goal",
+                mcp,
+                "parse_goal",
                 {"goal": "Review the authentication module for security issues"},
             )
 
@@ -568,8 +588,13 @@ class TestParseGoal:
         with (
             patch(
                 "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
-                side_effect=lambda name: name in (
-                    "enabled", "mcp_tools_enabled", "prometheus_metrics_enabled",
+                side_effect=lambda name: (
+                    name
+                    in (
+                        "enabled",
+                        "mcp_tools_enabled",
+                        "prometheus_metrics_enabled",
+                    )
                 ),
             ),
             patch(
@@ -582,7 +607,8 @@ class TestParseGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "parse_goal",
+                mcp,
+                "parse_goal",
                 {"goal": "Review the authentication module for security issues"},
             )
 
@@ -610,8 +636,13 @@ class TestParseGoal:
         with (
             patch(
                 "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
-                side_effect=lambda name: name in (
-                    "enabled", "mcp_tools_enabled", "websocket_broadcasts_enabled",
+                side_effect=lambda name: (
+                    name
+                    in (
+                        "enabled",
+                        "mcp_tools_enabled",
+                        "websocket_broadcasts_enabled",
+                    )
                 ),
             ),
             patch(
@@ -624,7 +655,8 @@ class TestParseGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "parse_goal",
+                mcp,
+                "parse_goal",
                 {
                     "goal": "Review the authentication module for security issues",
                     "user_id": "user42",
@@ -659,7 +691,8 @@ class TestParseGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "parse_goal",
+                mcp,
+                "parse_goal",
                 {"goal": "Review the authentication module for security issues"},
             )
 
@@ -684,7 +717,8 @@ class TestParseGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "parse_goal",
+                mcp,
+                "parse_goal",
                 {"goal": "Review the authentication module for security issues"},
             )
 
@@ -710,7 +744,8 @@ class TestTeamFromGoal:
             side_effect=lambda name: name != "enabled",
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
         assert result["success"] is False
@@ -725,7 +760,8 @@ class TestTeamFromGoal:
             side_effect=lambda name: name == "enabled",
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
         assert result["success"] is False
@@ -797,7 +833,8 @@ class TestTeamFromGoal:
             return_value=True,
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -836,7 +873,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": False,
@@ -878,7 +916,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "name": "my_team",
@@ -924,7 +963,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -940,7 +980,8 @@ class TestTeamFromGoal:
             return_value=True,
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "mode": "invalid_mode",
@@ -980,7 +1021,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "mode": mode,
@@ -1018,7 +1060,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "mode": "COORDINATE",
@@ -1063,7 +1106,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -1114,7 +1158,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -1158,7 +1203,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -1190,8 +1236,13 @@ class TestTeamFromGoal:
         with (
             patch(
                 "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
-                side_effect=lambda name: name in (
-                    "enabled", "mcp_tools_enabled", "prometheus_metrics_enabled",
+                side_effect=lambda name: (
+                    name
+                    in (
+                        "enabled",
+                        "mcp_tools_enabled",
+                        "prometheus_metrics_enabled",
+                    )
                 ),
             ),
             patch(
@@ -1208,7 +1259,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1216,7 +1268,8 @@ class TestTeamFromGoal:
         mock_metrics.record_goal_parsed.assert_called_once()
         mock_metrics.record_skills_usage.assert_called_once_with(["security", "quality"])
         mock_metrics.record_team_created.assert_called_once_with(
-            mode="coordinate", skill_count=2,
+            mode="coordinate",
+            skill_count=2,
         )
         mock_metrics.increment_active_teams.assert_called_once()
         mock_metrics.set_team_info.assert_called_once()
@@ -1243,8 +1296,13 @@ class TestTeamFromGoal:
         with (
             patch(
                 "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
-                side_effect=lambda name: name in (
-                    "enabled", "mcp_tools_enabled", "learning_system_enabled",
+                side_effect=lambda name: (
+                    name
+                    in (
+                        "enabled",
+                        "mcp_tools_enabled",
+                        "learning_system_enabled",
+                    )
                 ),
             ),
             patch(
@@ -1265,7 +1323,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -1298,8 +1357,13 @@ class TestTeamFromGoal:
         with (
             patch(
                 "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
-                side_effect=lambda name: name in (
-                    "enabled", "mcp_tools_enabled", "learning_system_enabled",
+                side_effect=lambda name: (
+                    name
+                    in (
+                        "enabled",
+                        "mcp_tools_enabled",
+                        "learning_system_enabled",
+                    )
                 ),
             ),
             patch(
@@ -1320,7 +1384,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -1349,8 +1414,13 @@ class TestTeamFromGoal:
         with (
             patch(
                 "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
-                side_effect=lambda name: name in (
-                    "enabled", "mcp_tools_enabled", "websocket_broadcasts_enabled",
+                side_effect=lambda name: (
+                    name
+                    in (
+                        "enabled",
+                        "mcp_tools_enabled",
+                        "websocket_broadcasts_enabled",
+                    )
                 ),
             ),
             patch(
@@ -1367,7 +1437,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "user_id": "user1",
@@ -1401,8 +1472,13 @@ class TestTeamFromGoal:
         with (
             patch(
                 "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
-                side_effect=lambda name: name in (
-                    "enabled", "mcp_tools_enabled", "websocket_broadcasts_enabled",
+                side_effect=lambda name: (
+                    name
+                    in (
+                        "enabled",
+                        "mcp_tools_enabled",
+                        "websocket_broadcasts_enabled",
+                    )
                 ),
             ),
             patch(
@@ -1419,7 +1495,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -1454,7 +1531,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": "short"},
             )
 
@@ -1487,7 +1565,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": long_goal},
             )
 
@@ -1514,7 +1593,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -1543,7 +1623,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "mode": "bad_mode",
@@ -1581,7 +1662,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1606,7 +1688,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1637,7 +1720,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1663,8 +1747,12 @@ class TestTeamFromGoal:
         with (
             patch(
                 "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
-                side_effect=lambda name: name in (
-                    "enabled", "mcp_tools_enabled",
+                side_effect=lambda name: (
+                    name
+                    in (
+                        "enabled",
+                        "mcp_tools_enabled",
+                    )
                 ),
             ),
             patch(
@@ -1677,7 +1765,8 @@ class TestTeamFromGoal:
             ) as mock_factory_cls,
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1703,8 +1792,13 @@ class TestTeamFromGoal:
         with (
             patch(
                 "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
-                side_effect=lambda name: name in (
-                    "enabled", "mcp_tools_enabled", "llm_fallback_enabled",
+                side_effect=lambda name: (
+                    name
+                    in (
+                        "enabled",
+                        "mcp_tools_enabled",
+                        "llm_fallback_enabled",
+                    )
                 ),
             ),
             patch(
@@ -1725,7 +1819,8 @@ class TestTeamFromGoal:
             ) as mock_factory_cls,
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1770,7 +1865,8 @@ class TestTeamFromGoal:
         ):
             # Should not raise despite LLM factory failure
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1805,7 +1901,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "name": "custom_name",
@@ -1834,7 +1931,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": "short", "user_id": "alice"},
             )
 
@@ -1878,7 +1976,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1904,7 +2003,8 @@ class TestTeamFromGoal:
             ),
         ):
             result = await _call_tool(
-                mcp, "team_from_goal",
+                mcp,
+                "team_from_goal",
                 {"goal": "short"},
             )
 

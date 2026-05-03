@@ -9,19 +9,22 @@ Provides dependency graph data structures and operations including:
 
 from __future__ import annotations
 
-import logging
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
-from typing import Any, Iterator
+from enum import StrEnum
+import logging
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 logger = logging.getLogger(__name__)
 
 
-class DependencyType(str, Enum):
+class DependencyType(StrEnum):
     """Type of dependency relationship."""
 
     BLOCKS = "blocks"  # This task blocks the dependent
@@ -30,7 +33,7 @@ class DependencyType(str, Enum):
     SUBTASK = "subtask"  # Is a subtask of
 
 
-class DependencyStatus(str, Enum):
+class DependencyStatus(StrEnum):
     """Status of a dependency relationship."""
 
     PENDING = "pending"  # Dependency not yet satisfied
@@ -481,9 +484,8 @@ class DependencyGraph:
                 return True
 
             for dep_id in self._dependents.get(current, set()):
-                if dep_id not in visited:
-                    if dfs(dep_id):
-                        return True
+                if dep_id not in visited and dfs(dep_id):
+                    return True
 
             path.pop()
             return False

@@ -16,12 +16,12 @@ import pytest
 
 from mahavishnu.core.config import PrefectConfig
 from mahavishnu.core.errors import ErrorCode, PrefectError
-from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
 from mahavishnu.engines.prefect_adapter_impl import (
+    PrefectAdapter,
     _deployment_to_response,
     _flow_run_to_response,
-    _work_pool_to_response,
     _map_prefect_exception,
+    _work_pool_to_response,
 )
 from mahavishnu.engines.prefect_models import (
     DeploymentResponse,
@@ -34,7 +34,6 @@ from mahavishnu.engines.prefect_schedules import (
     RRuleSchedule,
     schedule_to_prefect_dict,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -387,7 +386,9 @@ class TestCreateDeployment:
         mock_prefect_client.create_deployment.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_create_deployment_with_schedule(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_create_deployment_with_schedule(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test deployment creation with cron schedule."""
         mock_flow = MagicMock()
         mock_flow.id = "flow-456"
@@ -411,7 +412,9 @@ class TestCreateDeployment:
         assert "schedule" in call_kwargs
 
     @pytest.mark.asyncio
-    async def test_create_deployment_auto_initializes(self, prefect_config, mock_prefect_client, mock_deployment):
+    async def test_create_deployment_auto_initializes(
+        self, prefect_config, mock_prefect_client, mock_deployment
+    ):
         """Test that create_deployment auto-initializes if needed."""
         adapter = PrefectAdapter(prefect_config)
         adapter._initialized = False
@@ -529,7 +532,9 @@ class TestGetDeployment:
             result = await adapter.get_deployment_by_name("test-flow", "test-deployment")
 
         assert result.name == "test-deployment"
-        mock_prefect_client.read_deployment_by_name.assert_called_once_with("test-flow/test-deployment")
+        mock_prefect_client.read_deployment_by_name.assert_called_once_with(
+            "test-flow/test-deployment"
+        )
 
 
 class TestListDeployments:
@@ -553,7 +558,9 @@ class TestListDeployments:
         assert all(isinstance(r, DeploymentResponse) for r in results)
 
     @pytest.mark.asyncio
-    async def test_list_deployments_with_filter(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_list_deployments_with_filter(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test listing deployments with filters."""
         mock_prefect_client.read_deployments = AsyncMock(return_value=[mock_deployment])
 
@@ -586,9 +593,7 @@ class TestTriggerFlowRun:
     @pytest.mark.asyncio
     async def test_trigger_flow_run_success(self, adapter, mock_prefect_client, mock_flow_run):
         """Test triggering a flow run."""
-        mock_prefect_client.create_flow_run_from_deployment = AsyncMock(
-            return_value=mock_flow_run
-        )
+        mock_prefect_client.create_flow_run_from_deployment = AsyncMock(return_value=mock_flow_run)
 
         context_manager = AsyncMock()
         context_manager.__aenter__ = AsyncMock(return_value=mock_prefect_client)
@@ -604,11 +609,11 @@ class TestTriggerFlowRun:
         assert result.state_type == "COMPLETED"
 
     @pytest.mark.asyncio
-    async def test_trigger_flow_run_with_idempotency(self, adapter, mock_prefect_client, mock_flow_run):
+    async def test_trigger_flow_run_with_idempotency(
+        self, adapter, mock_prefect_client, mock_flow_run
+    ):
         """Test triggering flow run with idempotency key."""
-        mock_prefect_client.create_flow_run_from_deployment = AsyncMock(
-            return_value=mock_flow_run
-        )
+        mock_prefect_client.create_flow_run_from_deployment = AsyncMock(return_value=mock_flow_run)
 
         context_manager = AsyncMock()
         context_manager.__aenter__ = AsyncMock(return_value=mock_prefect_client)
@@ -649,9 +654,7 @@ class TestListFlowRuns:
     @pytest.mark.asyncio
     async def test_list_flow_runs(self, adapter, mock_prefect_client, mock_flow_run):
         """Test listing flow runs."""
-        mock_prefect_client.read_flow_runs = AsyncMock(
-            return_value=[mock_flow_run]
-        )
+        mock_prefect_client.read_flow_runs = AsyncMock(return_value=[mock_flow_run])
 
         context_manager = AsyncMock()
         context_manager.__aenter__ = AsyncMock(return_value=mock_prefect_client)
@@ -702,9 +705,7 @@ class TestListWorkPools:
     @pytest.mark.asyncio
     async def test_list_work_pools(self, adapter, mock_prefect_client, mock_work_pool):
         """Test listing work pools."""
-        mock_prefect_client.read_work_pools = AsyncMock(
-            return_value=[mock_work_pool]
-        )
+        mock_prefect_client.read_work_pools = AsyncMock(return_value=[mock_work_pool])
 
         context_manager = AsyncMock()
         context_manager.__aenter__ = AsyncMock(return_value=mock_prefect_client)

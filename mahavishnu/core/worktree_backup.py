@@ -1,8 +1,7 @@
 """Worktree backup manager for automatic backup creation (SECURITY-001 fix)."""
 
-import asyncio
-import logging
 from datetime import UTC, datetime
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -85,7 +84,7 @@ class WorktreeBackupManager:
             IOError: If backup creation fails
         """
         if not worktree_path.exists():
-            raise IOError(f"Worktree does not exist: {worktree_path}")
+            raise OSError(f"Worktree does not exist: {worktree_path}")
 
         # Generate timestamped backup path
         timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
@@ -125,7 +124,7 @@ class WorktreeBackupManager:
 
         except Exception as e:
             logger.error(f"Failed to create backup: {e}", exc_info=True)
-            raise IOError(f"Backup creation failed: {e}") from e
+            raise OSError(f"Backup creation failed: {e}") from e
 
     async def _copy_directory_async(
         self,
@@ -264,7 +263,7 @@ class WorktreeBackupManager:
             IOError: If restoration fails
         """
         if not backup_path.exists():
-            raise IOError(f"Backup does not exist: {backup_path}")
+            raise OSError(f"Backup does not exist: {backup_path}")
 
         logger.info(f"Restoring from backup: {backup_path} -> {restore_location}")
 
@@ -285,7 +284,7 @@ class WorktreeBackupManager:
 
         except Exception as e:
             logger.error(f"Failed to restore from backup: {e}", exc_info=True)
-            raise IOError(f"Backup restoration failed: {e}") from e
+            raise OSError(f"Backup restoration failed: {e}") from e
 
     async def cleanup_old_backups(self) -> int:
         """Clean up old backups based on retention policy.
@@ -314,7 +313,7 @@ class WorktreeBackupManager:
                     # No metadata, skip (don't delete unknown directories)
                     continue
 
-                async with aiofiles.open(metadata_file, "r") as f:
+                async with aiofiles.open(metadata_file) as f:
                     import json
 
                     metadata = json.loads(await f.read())
@@ -365,7 +364,7 @@ class WorktreeBackupManager:
                 if not metadata_file.exists():
                     continue
 
-                async with aiofiles.open(metadata_file, "r") as f:
+                async with aiofiles.open(metadata_file) as f:
                     import json
 
                     metadata = json.loads(await f.read())

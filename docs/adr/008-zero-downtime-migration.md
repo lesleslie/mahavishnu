@@ -5,7 +5,7 @@
 **Context**: Task Orchestration Master Plan v3.0
 **Related**: ADR-006 (Storage Simplification), ADR-007 (Saga Coordinator)
 
----
+______________________________________________________________________
 
 ## Context
 
@@ -46,7 +46,7 @@ During the 5-agent review council, the Architecture Reviewer identified **weak r
 
 > "Migration rollback triggers are incomplete. What if PostgreSQL performance degrades? What if data validation fails? You need clear rollback criteria and automated rollback triggers."
 
----
+______________________________________________________________________
 
 ## Decision
 
@@ -387,10 +387,10 @@ async def execute_cutover() -> CutoverResult:
 **Automated Rollback Conditions**:
 
 1. **Data Validation Failure**: Row count mismatch or hash mismatch
-2. **Performance Regression**: PostgreSQL latency p95 > 2x SQLite latency
-3. **High Error Rate**: > 5% dual-write error rate or > 1% dual-read fallback rate
-4. **Critical Errors**: Database connection failures, timeout spikes
-5. **Manual Trigger**: Ops team can trigger rollback via command
+1. **Performance Regression**: PostgreSQL latency p95 > 2x SQLite latency
+1. **High Error Rate**: > 5% dual-write error rate or > 1% dual-read fallback rate
+1. **Critical Errors**: Database connection failures, timeout spikes
+1. **Manual Trigger**: Ops team can trigger rollback via command
 
 **Rollback Process**:
 
@@ -427,17 +427,19 @@ async def execute_rollback() -> RollbackResult:
     return RollbackResult(status="failed", reason="Unknown phase")
 ```
 
----
+______________________________________________________________________
 
 ## Alternatives Considered
 
 ### Alternative 1: Big Bang Cutover (REJECTED)
 
 **Pros**:
+
 - Simpler implementation
 - Faster migration (no dual-write period)
 
 **Cons**:
+
 - **Downtime required** (hours for large datasets)
 - **No validation** before cutover
 - **Risky rollback** (complex and error-prone)
@@ -448,10 +450,12 @@ async def execute_rollback() -> RollbackResult:
 ### Alternative 2: Maintenance Window (REJECTED)
 
 **Pros**:
+
 - Safer than big bang cutover (have time to fix issues)
 - Less pressure on ops team
 
 **Cons**:
+
 - **Still causes downtime** (users expect 24/7 availability)
 - **Scheduling complexity** (global users, different timezones)
 - **Extended downtime** if issues found
@@ -461,6 +465,7 @@ async def execute_rollback() -> RollbackResult:
 ### Alternative 3: Dual-Write Migration (ACCEPTED)
 
 **Pros**:
+
 - **Zero downtime** (application always available)
 - **Safe rollback** (can rollback to previous phase)
 - **Validation** (verify data integrity before cutover)
@@ -468,54 +473,59 @@ async def execute_rollback() -> RollbackResult:
 - **Gradual transition** (2 weeks per phase = 4 weeks total)
 
 **Cons**:
+
 - More complex implementation
 - Longer migration timeline (4 weeks vs 1 day)
 - Dual-write doubles database I/O during Phase 1-2
 
 **Decision**: Required for production system with 24/7 availability expectations.
 
----
+______________________________________________________________________
 
 ## Consequences
 
 ### Positive Impacts
 
 1. **Zero Downtime**: Users experience no interruption during migration
-2. **Safe Rollback**: Can rollback to previous phase if issues found
-3. **Data Validation**: Verify data integrity at each phase
-4. **Performance Testing**: Test PostgreSQL under real load before cutover
-5. **Gradual Transition**: 4 weeks to identify and fix issues
+1. **Safe Rollback**: Can rollback to previous phase if issues found
+1. **Data Validation**: Verify data integrity at each phase
+1. **Performance Testing**: Test PostgreSQL under real load before cutover
+1. **Gradual Transition**: 4 weeks to identify and fix issues
 
 ### Negative Impacts
 
 1. **Complexity**: More complex than big bang cutover
-2. **Timeline**: 4 weeks migration timeline (vs 1 day for big bang)
-3. **Dual-Write Overhead**: Doubles database I/O during Phase 1-2
-4. **Code Complexity**: Need to maintain multiple database adapters
+1. **Timeline**: 4 weeks migration timeline (vs 1 day for big bang)
+1. **Dual-Write Overhead**: Doubles database I/O during Phase 1-2
+1. **Code Complexity**: Need to maintain multiple database adapters
 
 ### Risks
 
 1. **Dual-Write Failures**: What if PostgreSQL write fails during Phase 1?
+
    - **Severity**: Medium
    - **Mitigation**: Log errors but don't fail operation (best-effort)
    - **Mitigation**: Alert on high error rate (> 5%)
 
-2. **Data Inconsistency**: What if databases diverge during Phase 1-2?
+1. **Data Inconsistency**: What if databases diverge during Phase 1-2?
+
    - **Severity**: High
    - **Mitigation**: Hash comparison validation checks
    - **Mitigation**: Automated rollback on data mismatch
 
-3. **Performance Degradation**: What if dual-write doubles latency?
+1. **Performance Degradation**: What if dual-write doubles latency?
+
    - **Severity**: Medium
    - **Mitigation**: Connection pooling optimization
    - **Mitigation**: Async writes (fire-and-forget for non-critical data)
 
-4. **Rollback Failures**: What if rollback itself fails?
+1. **Rollback Failures**: What if rollback itself fails?
+
    - **Severity**: Critical
    - **Mitigation**: Test rollback procedures in staging
    - **Mitigation**: Ops team manual override
 
----
+______________________________________________________________________
 
 ## Implementation Timeline
 
@@ -547,7 +557,7 @@ async def execute_rollback() -> RollbackResult:
 - **Day 4-5**: Remove dual-write code
 - **Day 6-7**: Update documentation and runbooks
 
----
+______________________________________________________________________
 
 ## Monitoring
 
@@ -613,14 +623,14 @@ sqlite_write_duration_seconds = Histogram(
 - **Data Integrity**: Row count comparison, hash comparison
 - **Error Rate**: Error rate by phase and operation
 
----
+______________________________________________________________________
 
 ## Related Decisions
 
 - **ADR-006: Storage Simplification**: PostgreSQL as primary storage
 - **ADR-007: Saga Coordinator**: Saga coordinator uses PostgreSQL for saga log
 
----
+______________________________________________________________________
 
 ## References
 
@@ -629,6 +639,6 @@ sqlite_write_duration_seconds = Histogram(
 - SRE Engineer Report (2026-02-18): Score 6.5/10, required rollback triggers
 - Master Plan v3.0: `/docs/TASK_ORCHESTRATION_MASTER_PLAN_V3.md`
 
----
+______________________________________________________________________
 
 **END OF ADR-003**

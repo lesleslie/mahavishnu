@@ -14,20 +14,20 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import StrEnum
 import json
 import logging
+from pathlib import Path
 import random
 import time
-from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
 from typing import Any
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
-class IncidentSeverity(str, Enum):
+class IncidentSeverity(StrEnum):
     """Incident severity levels."""
 
     T0 = "t0"  # Emergency - complete outage
@@ -37,7 +37,7 @@ class IncidentSeverity(str, Enum):
     T4 = "t4"  # Low - cosmetic issue
 
 
-class IncidentPhase(str, Enum):
+class IncidentPhase(StrEnum):
     """Incident response phases."""
 
     DETECTION = "detection"
@@ -376,7 +376,7 @@ class IncidentSimulator:
         print(f"{'=' * 60}")
         print(f"\n📋 Severity: {scenario.severity.value.upper()}")
         print(f"📝 Description: {scenario.description}")
-        print(f"\n⚠️  Symptoms:")
+        print("\n⚠️  Symptoms:")
         for symptom in scenario.symptoms:
             print(f"   • {symptom}")
         print(f"\n🔗 Runbook: {scenario.runbook_reference}")
@@ -503,14 +503,14 @@ def print_report(report: SimulationReport) -> None:
 
     status = "✅ PASSED" if report.passed else "❌ FAILED"
     print(f"\n{status}")
-    print(f"\n📊 Summary:")
+    print("\n📊 Summary:")
     print(f"   Scenario: {report.scenario_name}")
     print(f"   Severity: {report.severity.upper()}")
     print(f"   Duration: {report.total_duration_seconds:.1f}s")
     print(f"   Steps: {report.steps_completed}/{report.steps_total} completed")
 
     if report.recommendations:
-        print(f"\n💡 Recommendations:")
+        print("\n💡 Recommendations:")
         for rec in report.recommendations:
             print(f"   • {rec}")
 

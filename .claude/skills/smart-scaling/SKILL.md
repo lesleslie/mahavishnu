@@ -1,7 +1,6 @@
----
-name: smart-scaling
-description: Use when Claude spawns multiple individual workers or makes repeated pool_execute calls without a pool. Detects ad-hoc worker patterns and suggests pool-based batching for efficiency. Triggers reactively after 3+ sequential worker/pool calls.
----
+______________________________________________________________________
+
+## name: smart-scaling description: Use when Claude spawns multiple individual workers or makes repeated pool_execute calls without a pool. Detects ad-hoc worker patterns and suggests pool-based batching for efficiency. Triggers reactively after 3+ sequential worker/pool calls.
 
 # Smart Scaling
 
@@ -11,7 +10,7 @@ description: Use when Claude spawns multiple individual workers or makes repeate
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| mahavishnu | 8680 | grep | mcp__mahavishnu__pool_spawn, mcp__mahavishnu__pool_health | 60s |
+| mahavishnu | 8680 | grep | mcp\_\_mahavishnu\_\_pool_spawn, mcp\_\_mahavishnu\_\_pool_health | 60s |
 
 This skill detects when Claude is spawning individual workers for parallel tasks (an ad-hoc pattern) and suggests switching to a pool-based approach for better resource efficiency. Pools provide routing strategies, health monitoring, memory aggregation, and automatic cleanup — features that individual workers lack.
 
@@ -57,12 +56,14 @@ digraph activation {
 ## When to Use
 
 **Use when:**
+
 - Claude has called `worker_spawn` 3+ times in a session without a pool
 - Claude is manually selecting pools for each task instead of using auto-routing
 - Claude is executing tasks on individual workers that could be batched
 - User asks to "run this across multiple repos", "test in parallel", "sweep and execute"
 
 **Don't use when:**
+
 - Pool already exists and healthy (use `manage-pools` for configuration)
 - Single worker task (no benefit from pooling)
 - User explicitly requested individual worker execution
@@ -162,6 +163,7 @@ pool_id = pool_result["pool_id"]
 ```
 
 **Pool type selection guide:**
+
 - Local development → `mahavishnu`
 - Cross-server execution → `session_buddy`
 - Production workloads → `kubernetes`
@@ -212,18 +214,21 @@ print(f"Pool {pool_id}: {tasks_completed} tasks completed, avg {avg_duration}s")
 ## Validation Checklist
 
 Before suggesting pool:
+
 - [ ] 3+ consecutive worker/pool calls detected (threshold met)
 - [ ] No existing pool is active (or existing pool is unhealthy)
 - [ ] Tasks are independent (no inter-task dependencies)
 - [ ] Sufficient system resources for pool workers
 
 After creating pool:
+
 - [ ] Pool status is "healthy" via `pool_health()`
 - [ ] Worker count matches min_workers target
 - [ ] Tasks routing successfully via `pool_route_execute`
 - [ ] No worker initialization errors
 
 After tasks complete:
+
 - [ ] Pool closed via `pool_close()` (no resource leaks)
 - [ ] Metrics reported (tasks completed, avg duration)
 - [ ] No orphaned workers remaining
@@ -242,11 +247,13 @@ After tasks complete:
 ## Real-World Impact
 
 **Before this skill:**
+
 - Claude spawned 5-8 individual workers for multi-repo sweeps (no pooling)
 - Manual pool selection led to unbalanced load distribution
 - Pools left open after tasks — resource leaks
 
 **After this skill:**
+
 - 3+ worker pattern detected → pool auto-suggested (85% adoption rate)
 - `least_loaded` routing distributes work evenly
 - Pool cleanup is automatic — zero resource leaks

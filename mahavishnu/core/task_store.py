@@ -34,21 +34,23 @@ Usage:
 
 from __future__ import annotations
 
-import logging
-import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
-from typing import Any
+from datetime import UTC, datetime
+from enum import StrEnum
+import logging
+from typing import TYPE_CHECKING, Any
+import uuid
 
-from mahavishnu.core.database import Database
-from mahavishnu.core.errors import DatabaseError, MahavishnuError, ValidationError
+from mahavishnu.core.errors import DatabaseError, ValidationError
 from mahavishnu.core.event_store import EventStore, TaskEventType
+
+if TYPE_CHECKING:
+    from mahavishnu.core.database import Database
 
 logger = logging.getLogger(__name__)
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     """Task status values."""
 
     PENDING = "pending"
@@ -59,7 +61,7 @@ class TaskStatus(str, Enum):
     BLOCKED = "blocked"
 
 
-class TaskPriority(str, Enum):
+class TaskPriority(StrEnum):
     """Task priority values."""
 
     LOW = "low"
@@ -170,7 +172,7 @@ class Task:
     created_by: str = "system"
 
     @classmethod
-    def from_row(cls, row: Any) -> "Task":
+    def from_row(cls, row: Any) -> Task:
         """Create Task from database row."""
         return cls(
             id=str(row["id"]),
@@ -238,7 +240,7 @@ class TaskDependency:
     created_at: datetime | None = None
 
     @classmethod
-    def from_row(cls, row: Any) -> "TaskDependency":
+    def from_row(cls, row: Any) -> TaskDependency:
         """Create from database row."""
         return cls(
             task_id=str(row["task_id"]),

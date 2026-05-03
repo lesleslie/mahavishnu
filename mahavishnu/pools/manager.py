@@ -12,8 +12,8 @@ from monitoring.metrics import pool_workers_active
 from ..mcp.protocols.message_bus import MessageBus
 from .base import BasePool, PoolConfig
 from .kubernetes_pool import KubernetesPool
-from .runpod_pool import RunPodPool
 from .mahavishnu_pool import MahavishnuPool
+from .runpod_pool import RunPodPool
 from .session_buddy_pool import SessionBuddyPool
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,9 @@ class PoolManager:
             if pool is not None:
                 worker_counts.setdefault(pool.config.pool_type, 0)
 
-        known_types = {"mahavishnu", "session-buddy", "kubernetes", "runpod"} | set(worker_counts.keys())
+        known_types = {"mahavishnu", "session-buddy", "kubernetes", "runpod"} | set(
+            worker_counts.keys()
+        )
         for pool_type in known_types:
             pool_workers_active.labels(pool_type=pool_type).set(worker_counts.get(pool_type, 0))
 

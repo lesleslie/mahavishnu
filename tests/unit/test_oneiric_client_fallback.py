@@ -129,8 +129,12 @@ async def test_dhara_registry_client_happy_path_and_disabled(
     client = oc.OneiricMCPClient(oc.OneiricMCPConfig(enabled=True, cache_ttl_sec=120))
     assert client._make_cache_key("p", "d", "c", True) == "p:d:c:healthy"
 
-    adapters_1 = await client.list_adapters(project="mahavishnu", domain="adapter", category="workflow")
-    adapters_2 = await client.list_adapters(project="mahavishnu", domain="adapter", category="workflow")
+    adapters_1 = await client.list_adapters(
+        project="mahavishnu", domain="adapter", category="workflow"
+    )
+    adapters_2 = await client.list_adapters(
+        project="mahavishnu", domain="adapter", category="workflow"
+    )
     assert len(adapters_1) == 1
     assert adapters_1 == adapters_2
     assert fake.calls.count(("list_adapters", {"domain": "adapter", "category": "workflow"})) == 1

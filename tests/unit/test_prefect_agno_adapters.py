@@ -3,24 +3,20 @@
 These tests are skipped if prefect is not installed (optional dependency).
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 # Skip all Prefect tests if prefect is not installed
 prefect = pytest.importorskip("prefect", reason="prefect not installed")
 
 # Import PrefectAdapter from engines module (canonical implementation)
-from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
 from mahavishnu.core.config import PrefectConfig
 
 # Agno adapter is always available
 # Import AgnoAdapter from engines module (canonical implementation using Agno SDK)
 from mahavishnu.engines.agno_adapter_impl import AgnoAdapter
-from mahavishnu.core.adapters.base import (
-    OrchestratorAdapter,
-    AdapterType,
-    AdapterCapabilities,
-)
+from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
 
 
 @pytest.fixture
@@ -208,10 +204,7 @@ async def test_agno_execute_task_batch():
     adapter = AgnoAdapter(api_url="http://localhost:8000")
     await adapter.initialize()
 
-    tasks = [
-        {"prompt": f"Task {i}"}
-        for i in range(5)
-    ]
+    tasks = [{"prompt": f"Task {i}"} for i in range(5)]
 
     with patch("httpx.AsyncClient.post") as mock_post:
         mock_post.return_value = MagicMock(

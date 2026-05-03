@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import pytest
 import yaml
 
-from mahavishnu.scaffolding.models import Pattern
 from mahavishnu.scaffolding.library import PatternLibrary
+from mahavishnu.scaffolding.models import Pattern
 from mahavishnu.scaffolding.validation import validate_pattern
 
 

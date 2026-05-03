@@ -14,9 +14,9 @@ import yaml
 
 from ..core.config import MahavishnuSettings
 from ..core.config_validator import ConfigValidationReport, ValidationResult, validate_config
-from ..core.skill_mcp_validator import validate_agent_dir, validate_skill_dir
 from ..core.health import HealthChecker
 from ..core.health_schemas import HealthStatus
+from ..core.skill_mcp_validator import validate_agent_dir, validate_skill_dir
 
 
 @dataclass(slots=True)
@@ -137,7 +137,9 @@ def _validate_adapter_config(settings: MahavishnuSettings) -> list[ValidationRes
         results.append(_ensure_http_url(settings.prefect.api_url, "prefect.api_url"))
 
     if settings.adapters.agno_enabled:
-        results.append(_ensure_http_url(settings.agno.tools.mcp_server_url, "agno.tools.mcp_server_url"))
+        results.append(
+            _ensure_http_url(settings.agno.tools.mcp_server_url, "agno.tools.mcp_server_url")
+        )
 
     if settings.adapters.llamaindex_enabled:
         results.append(_ensure_http_url(settings.llm.ollama_base_url, "llm.ollama_base_url"))
@@ -193,7 +195,9 @@ def _mcp_health_url(endpoint: str) -> str:
     return parsed._replace(path=path, params="", query="", fragment="").geturl()
 
 
-async def _validate_runtime_connectivity(settings: MahavishnuSettings) -> list[RuntimeValidationCheck]:
+async def _validate_runtime_connectivity(
+    settings: MahavishnuSettings,
+) -> list[RuntimeValidationCheck]:
     """Validate runtime connectivity for configured dependencies and MCP endpoints."""
     checks: list[RuntimeValidationCheck] = []
     checker = HealthChecker(config=settings.health)
@@ -239,7 +243,9 @@ async def _validate_runtime_connectivity(settings: MahavishnuSettings) -> list[R
     if not dependency_tasks:
         return checks
 
-    gathered = await asyncio.gather(*(task for _, _, _, task in dependency_tasks), return_exceptions=True)
+    gathered = await asyncio.gather(
+        *(task for _, _, _, task in dependency_tasks), return_exceptions=True
+    )
     for (name, url, required, _), result in zip(dependency_tasks, gathered, strict=True):
         if isinstance(result, Exception):
             checks.append(
@@ -478,20 +484,14 @@ def check_skill_agent_drift(
     if agents_dir.exists():
         for name, agent_report in validate_agent_dir(agents_dir).items():
             for ref in agent_report.stale_refs:
-                report.errors.append(
-                    f"Agent {name}: stale MCP ref {ref!r} not in KNOWN_TOOLS"
-                )
+                report.errors.append(f"Agent {name}: stale MCP ref {ref!r} not in KNOWN_TOOLS")
             if agent_report.description_too_long:
-                report.warnings.append(
-                    f"Agent {name}: description exceeds 300 characters"
-                )
+                report.warnings.append(f"Agent {name}: description exceeds 300 characters")
 
     if skills_dir.exists():
         for rel_path, skill_report in validate_skill_dir(skills_dir).items():
             for ref in skill_report.stale_refs:
-                report.errors.append(
-                    f"Skill {rel_path}: stale MCP ref {ref!r} not in KNOWN_TOOLS"
-                )
+                report.errors.append(f"Skill {rel_path}: stale MCP ref {ref!r} not in KNOWN_TOOLS")
             for wrong in skill_report.wrong_ports:
                 report.errors.append(f"Skill {rel_path}: wrong port — {wrong}")
 
@@ -504,6 +504,7 @@ _PROJECT_ROOT = Path(__file__).parents[2]
 def _get_project_root() -> Path:
     """Return project root, overridable via MAHAVISHNU_PROJECT_ROOT for tests."""
     import os
+
     override = os.environ.get("MAHAVISHNU_PROJECT_ROOT")
     return Path(override) if override else _PROJECT_ROOT
 
@@ -557,8 +558,10 @@ def add_config_inventory_commands(app: typer.Typer) -> None:
     ) -> None:
         """Re-import agents/skills added to ~/.claude/ since last migration."""
         import sys
+
         sys.path.insert(0, str(_PROJECT_ROOT / "scripts"))
         from migrate_config_to_project import MigrationRunner  # noqa: PLC0415
+
         home = Path.home()
         runner = MigrationRunner(
             source_claude=home / ".claude",
@@ -575,8 +578,10 @@ def add_config_inventory_commands(app: typer.Typer) -> None:
     ) -> None:
         """Restore ~/.claude.json, settings.local.json, and agents/skills from backup."""
         import sys
+
         sys.path.insert(0, str(_PROJECT_ROOT / "scripts"))
         from migrate_config_to_project import rollback  # noqa: PLC0415
+
         rollback(_get_project_root(), timestamp)
 
 

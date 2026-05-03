@@ -11,12 +11,12 @@ Version: 3.4
 Related: 4-Agent Opus Review P0 issue - error code system
 """
 
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import ClassVar
-from datetime import datetime, timezone
 
 
-class ErrorCode(str, Enum):
+class ErrorCode(StrEnum):
     """
     Error code system for Mahavishnu Task Orchestration.
 
@@ -484,7 +484,7 @@ class MahavishnuError(Exception):
         ErrorCode.GOAL_TOO_SHORT: [
             "Goal is too short to be meaningful",
             "Provide more context and detail",
-            f"Minimum goal length is configured in settings",
+            "Minimum goal length is configured in settings",
             "Aim for at least 10 characters",
         ],
         ErrorCode.GOAL_TOO_LONG: [
@@ -527,7 +527,7 @@ class MahavishnuError(Exception):
             error_code.value, ["Contact support for assistance"]
         )
         self.details = details or {}
-        self.timestamp = datetime.now(timezone.utc)
+        self.timestamp = datetime.now(UTC)
         super().__init__(f"[{error_code.value}] {message}")
 
     def to_dict(self) -> dict:
@@ -1029,7 +1029,7 @@ def get_contextual_help(error_code: ErrorCode, context: dict | None = None) -> s
         help_text += f"  {i}. {step}\n"
 
     if context:
-        help_text += f"\nContext:\n"
+        help_text += "\nContext:\n"
         for key, value in context.items():
             help_text += f"  - {key}: {value}\n"
 

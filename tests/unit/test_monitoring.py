@@ -1,23 +1,20 @@
 """Tests for Monitoring and Alerting Infrastructure - Metrics and alerts."""
 
 import pytest
-from datetime import datetime, UTC
-from unittest.mock import MagicMock, AsyncMock, patch
-from typing import Any
 
 from mahavishnu.core.monitoring_infra import (
-    MetricsExporter,
+    Alert,
     AlertManager,
     AlertRule,
-    Alert,
     AlertSeverity,
-    HealthChecker,
-    HealthStatus,
-    HealthCheckResult,
-    Metric,
-    MetricType,
     DashboardConfig,
     DashboardPanel,
+    HealthChecker,
+    HealthCheckResult,
+    HealthStatus,
+    Metric,
+    MetricsExporter,
+    MetricType,
 )
 
 
@@ -469,11 +466,14 @@ class TestHealthChecker:
         """Register a health check."""
         checker = HealthChecker()
 
-        checker.register_check("database", lambda: HealthCheckResult(
-            component="database",
-            status=HealthStatus.HEALTHY,
-            message="OK",
-        ))
+        checker.register_check(
+            "database",
+            lambda: HealthCheckResult(
+                component="database",
+                status=HealthStatus.HEALTHY,
+                message="OK",
+            ),
+        )
 
         assert "database" in checker.checks
 
@@ -500,16 +500,22 @@ class TestHealthChecker:
         """Run all health checks."""
         checker = HealthChecker()
 
-        checker.register_check("db", lambda: HealthCheckResult(
-            component="db",
-            status=HealthStatus.HEALTHY,
-            message="OK",
-        ))
-        checker.register_check("cache", lambda: HealthCheckResult(
-            component="cache",
-            status=HealthStatus.HEALTHY,
-            message="OK",
-        ))
+        checker.register_check(
+            "db",
+            lambda: HealthCheckResult(
+                component="db",
+                status=HealthStatus.HEALTHY,
+                message="OK",
+            ),
+        )
+        checker.register_check(
+            "cache",
+            lambda: HealthCheckResult(
+                component="cache",
+                status=HealthStatus.HEALTHY,
+                message="OK",
+            ),
+        )
 
         results = await checker.run_all_checks()
 
@@ -520,11 +526,14 @@ class TestHealthChecker:
         """Get overall healthy status."""
         checker = HealthChecker()
 
-        checker.register_check("db", lambda: HealthCheckResult(
-            component="db",
-            status=HealthStatus.HEALTHY,
-            message="OK",
-        ))
+        checker.register_check(
+            "db",
+            lambda: HealthCheckResult(
+                component="db",
+                status=HealthStatus.HEALTHY,
+                message="OK",
+            ),
+        )
 
         status = await checker.get_overall_status()
 
@@ -535,16 +544,22 @@ class TestHealthChecker:
         """Get overall unhealthy status."""
         checker = HealthChecker()
 
-        checker.register_check("db", lambda: HealthCheckResult(
-            component="db",
-            status=HealthStatus.HEALTHY,
-            message="OK",
-        ))
-        checker.register_check("cache", lambda: HealthCheckResult(
-            component="cache",
-            status=HealthStatus.UNHEALTHY,
-            message="Failed",
-        ))
+        checker.register_check(
+            "db",
+            lambda: HealthCheckResult(
+                component="db",
+                status=HealthStatus.HEALTHY,
+                message="OK",
+            ),
+        )
+        checker.register_check(
+            "cache",
+            lambda: HealthCheckResult(
+                component="cache",
+                status=HealthStatus.UNHEALTHY,
+                message="Failed",
+            ),
+        )
 
         status = await checker.get_overall_status()
 
@@ -555,16 +570,22 @@ class TestHealthChecker:
         """Get overall degraded status."""
         checker = HealthChecker()
 
-        checker.register_check("db", lambda: HealthCheckResult(
-            component="db",
-            status=HealthStatus.HEALTHY,
-            message="OK",
-        ))
-        checker.register_check("cache", lambda: HealthCheckResult(
-            component="cache",
-            status=HealthStatus.DEGRADED,
-            message="Slow",
-        ))
+        checker.register_check(
+            "db",
+            lambda: HealthCheckResult(
+                component="db",
+                status=HealthStatus.HEALTHY,
+                message="OK",
+            ),
+        )
+        checker.register_check(
+            "cache",
+            lambda: HealthCheckResult(
+                component="cache",
+                status=HealthStatus.DEGRADED,
+                message="Slow",
+            ),
+        )
 
         status = await checker.get_overall_status()
 

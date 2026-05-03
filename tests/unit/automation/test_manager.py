@@ -1,17 +1,16 @@
 """Unit tests for AutomationManager."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
 
 from mahavishnu.automation import AutomationManager
 from mahavishnu.automation.backends.base import DesktopAutomationBackend
 from mahavishnu.automation.errors import (
-    AutomationError,
     BlockedAppError,
     BlockedTextError,
-    NoBackendAvailableError,
 )
-from mahavishnu.automation.models import AutomationConfig, AutomationResult
+from mahavishnu.automation.models import AutomationConfig
 from mahavishnu.automation.security import AutomationSecurity
 
 
@@ -36,7 +35,9 @@ def mock_backend():
     backend = MagicMock(spec=DesktopAutomationBackend)
     backend.backend_name = "mock"
     backend.is_available = MagicMock(return_value=True)
-    backend.launch_application = AsyncMock(return_value=MagicMock(bundle_id="com.apple.finder", name="Finder"))
+    backend.launch_application = AsyncMock(
+        return_value=MagicMock(bundle_id="com.apple.finder", name="Finder")
+    )
     backend.type_text = AsyncMock(return_value=True)
     backend.screenshot = AsyncMock(return_value=b"fake_image_data")
     backend.close = AsyncMock()
@@ -66,7 +67,7 @@ class TestAutomationManagerBackend:
     async def test_initialize_with_mock_backend(self, manager: AutomationManager, mock_backend):
         """Test that initialization works with a mock backend."""
         # Patch the backend selection to use our mock
-        with patch.object(manager, '_select_backend'):
+        with patch.object(manager, "_select_backend"):
             manager._backend = mock_backend
             manager._security = AutomationSecurity(manager.config)
             manager._initialized = True
@@ -100,7 +101,9 @@ class TestAutomationManagerOperations:
         mock_backend.launch_application.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_launch_application_validates_security(self, manager: AutomationManager, mock_backend):
+    async def test_launch_application_validates_security(
+        self, manager: AutomationManager, mock_backend
+    ):
         """Test that launch validates security (blocks blocked apps)."""
         manager._backend = mock_backend
         manager._security = AutomationSecurity(manager.config)
@@ -192,7 +195,9 @@ class TestAutomationManagerDryRun:
 class TestAutomationManagerSecurity:
     """Tests for security integration."""
 
-    def test_security_instance_created_on_initialize(self, manager: AutomationManager, mock_backend):
+    def test_security_instance_created_on_initialize(
+        self, manager: AutomationManager, mock_backend
+    ):
         """Test that security instance is created during initialization."""
         manager._backend = mock_backend
         manager._security = AutomationSecurity(manager.config)

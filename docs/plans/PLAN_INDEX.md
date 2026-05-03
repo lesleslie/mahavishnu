@@ -18,16 +18,19 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 ## Review Entry Points
 
 1. **Current plan map**
+
    - File: [PLAN_INDEX.md](./PLAN_INDEX.md)
    - Status: `canonical`
    - Use for: deciding which plan to review or implement next.
 
-2. **Repository plan overview**
+1. **Repository plan overview**
+
    - File: [README.md](./README.md)
    - Status: `canonical`
    - Use for: quick orientation to plan categories.
 
-3. **External review packet**
+1. **External review packet**
+
    - File: [REVIEW_PACKET_2026-04-02.md](./REVIEW_PACKET_2026-04-02.md)
    - Status: `historical`
    - Use for: third-party review workflow and older required reading order.
@@ -157,23 +160,28 @@ Important reconciliation notes:
 *Last verified: 2026-05-01. Items below are confirmed unfinished against codebase and plan checkboxes.*
 
 1. **Config Consolidation** — shipped 2026-04-30
+
    - Plan: [../superpowers/plans/2026-04-26-config-consolidation.md](../superpowers/plans/2026-04-26-config-consolidation.md)
    - Delivered: migration script, drift detection, inventory CLI commands, `.claude/` committed to project.
 
-2. **Ecosystem Docs** — shipped 2026-04-30
+1. **Ecosystem Docs** — shipped 2026-04-30
+
    - Plan: [2026-04-25-ecosystem-docs-canonicalization-plan.md](./2026-04-25-ecosystem-docs-canonicalization-plan.md)
    - Delivered: `mahavishnu docs audit` CLI command wrapping `scripts/audit_ecosystem_docs.py`.
 
-3. **Agent & Skill Modernization** — shipped 2026-05-01
+1. **Agent & Skill Modernization** — shipped 2026-05-01
+
    - Plan: [../superpowers/plans/2026-04-26-agent-skill-modernization.md](../superpowers/plans/2026-04-26-agent-skill-modernization.md)
    - Delivered: validator, DriftReport wired into `config validate`, 15 agents enriched, 28 skills with MCP sections, `akosha-specialist` rename.
 
-4. **Nanobot Worker Phase B completion** — `shipped` 2026-05-02
+1. **Nanobot Worker Phase B completion** — `shipped` 2026-05-02
+
    - Plan: [2026-04-05-nanobot-worker-integration.md](./2026-04-05-nanobot-worker-integration.md)
    - Delivered: `nanobot-ai>=0.1.4` dep (corrected from wrong `nanobot` robotics package), `_init_nanobot_provider()` fixed to use `ZAI_API_KEY` + `https://api.z.ai/api/coding/paas/v4`, `tests/unit/workers/test_nanobot_worker.py` (6 tests). `gpt4all` dep removed (ollama is the local inference backend).
    - Use for: reference only.
 
-5. **Bodai Agent Platform I4 Optional Extensions** — gate: written product justification required per extension
+1. **Bodai Agent Platform I4 Optional Extensions** — gate: written product justification required per extension
+
    - Plans: [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md), [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
    - Extensions: browser automation, plugin/hook system, public API-server mode, additional routing/fallback layers.
    - Do not start any I4 extension without first writing a product justification document.

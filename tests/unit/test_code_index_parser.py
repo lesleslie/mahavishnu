@@ -1,12 +1,10 @@
 """Tests for file parser."""
 
-from pathlib import Path
-
 import pytest
 
 from mahavishnu.core.code_index.parser import (
-    SKIP_DIRS,
     PARSABLE_EXTENSIONS,
+    SKIP_DIRS,
     filter_changed_files,
     parse_file,
 )

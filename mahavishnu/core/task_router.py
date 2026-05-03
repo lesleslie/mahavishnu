@@ -37,22 +37,19 @@ Architecture:
 
 from __future__ import annotations
 
-import json
-import logging
 from dataclasses import dataclass, field
 from enum import StrEnum
+import json
+import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from mahavishnu.core.adapters.base import (
     AdapterType,
-    AdapterCapabilities,
     OrchestratorAdapter,
 )
-from typing import TYPE_CHECKING
-
-from mahavishnu.core.routing_metrics import RoutingMetrics, get_routing_metrics
 from mahavishnu.core.resilience import RetryExhaustedError, RetryPolicy, retry_async
+from mahavishnu.core.routing_metrics import RoutingMetrics, get_routing_metrics
 
 if TYPE_CHECKING:
     from mahavishnu.core.cost_optimizer import CostOptimizer
@@ -61,10 +58,10 @@ if TYPE_CHECKING:
 # Import capability routing types (optional - for hybrid registry)
 try:
     from mahavishnu.core.task_requirements import (
-        AdapterResolutionResult,
-        TaskRequirements,
-        ResolutionCache,
         TASK_CAPABILITY_REQUIREMENTS,
+        AdapterResolutionResult,
+        ResolutionCache,
+        TaskRequirements,
     )
 
     CAPABILITY_ROUTING_AVAILABLE = True
@@ -126,7 +123,9 @@ class AdapterManager:
         self.adapters: dict[AdapterType, OrchestratorAdapter] = {}
         self._stats: dict[str, AdapterExecutionStats] = {}
 
-    async def register_adapter(self, adapter_type: AdapterType, adapter: OrchestratorAdapter) -> None:
+    async def register_adapter(
+        self, adapter_type: AdapterType, adapter: OrchestratorAdapter
+    ) -> None:
         self.adapters[adapter_type] = adapter
         self._stats.setdefault(adapter_type.value, AdapterExecutionStats())
 
@@ -236,7 +235,9 @@ class StateManager:
         adapter_type: str | AdapterType,
         state: dict[str, Any],
     ) -> WorkflowState:
-        workflow_state = self._workflows.setdefault(workflow_id, WorkflowState(workflow_id=workflow_id))
+        workflow_state = self._workflows.setdefault(
+            workflow_id, WorkflowState(workflow_id=workflow_id)
+        )
         workflow_state.adapter_states[self._adapter_key(adapter_type)] = dict(state)
         self._persist()
         return workflow_state
@@ -582,7 +583,9 @@ class TaskRouter:
     ) -> dict[str, Any]:
         """Route task to optimal adapter with metrics tracking."""
         task_type = self._normalize_task_type(task.get("task_type"))
-        candidates = self._normalize_preference_order(preference_order or task.get("preference_order"))
+        candidates = self._normalize_preference_order(
+            preference_order or task.get("preference_order")
+        )
         if not candidates:
             analysis = await self.analyze_task(task)
             candidates = [analysis["recommended_adapter"]]
@@ -639,7 +642,9 @@ class TaskRouter:
             "repos": repos,
         }
 
-        candidates = self._normalize_preference_order(preference_order or task.get("preference_order"))
+        candidates = self._normalize_preference_order(
+            preference_order or task.get("preference_order")
+        )
         if not candidates:
             candidates = self._default_preference_order(task_type)
 
@@ -673,7 +678,9 @@ class TaskRouter:
                 total_attempts += attempts
 
                 if isinstance(result, dict) and result.get("success") is False:
-                    raise RuntimeError(result.get("error") or "Adapter returned unsuccessful result")
+                    raise RuntimeError(
+                        result.get("error") or "Adapter returned unsuccessful result"
+                    )
 
                 normalized_result = (
                     result.get("execution_id")

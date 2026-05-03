@@ -6,14 +6,14 @@ Defines data models for pattern detection, analysis, and prediction.
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
 
-class PatternType(str, Enum):
+class PatternType(StrEnum):
     """Types of detectable patterns."""
 
     TASK_DURATION = "task_duration"
@@ -24,7 +24,7 @@ class PatternType(str, Enum):
     TAG_CORRELATION = "tag_correlation"
 
 
-class PatternSeverity(str, Enum):
+class PatternSeverity(StrEnum):
     """Pattern severity levels."""
 
     LOW = "low"
@@ -33,7 +33,7 @@ class PatternSeverity(str, Enum):
     CRITICAL = "critical"
 
 
-class PatternFrequency(str, Enum):
+class PatternFrequency(StrEnum):
     """How often a pattern occurs."""
 
     RARE = "rare"  # < 5%

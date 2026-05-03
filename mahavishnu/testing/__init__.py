@@ -12,8 +12,8 @@ Modules:
 from mahavishnu.testing.load_test import (
     LoadTestConfig,
     LoadTestMetrics,
-    LoadTestRunner,
     LoadTestPhase,
+    LoadTestRunner,
     MockTaskClient,
     RequestResult,
 )

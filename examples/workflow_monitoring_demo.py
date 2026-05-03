@@ -19,13 +19,14 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
+from datetime import UTC, datetime
 import json
 import logging
-from datetime import datetime, UTC
-from typing import Any, Callable
+from typing import Any
 
 import websockets
-from websockets.exceptions import ConnectionClosed, ConnectionClosedError
+from websockets.exceptions import ConnectionClosed
 
 # Configure logging
 logging.basicConfig(
@@ -123,14 +124,18 @@ class WorkflowMonitorClient:
             return True
 
         except ConnectionRefusedError:
-            logger.error(f"❌ Connection refused - is Mahavishnu WebSocket server running at {self.uri}?")
+            logger.error(
+                f"❌ Connection refused - is Mahavishnu WebSocket server running at {self.uri}?"
+            )
             return False
         except Exception as e:
             logger.error(f"❌ Failed to connect: {e}")
             if self.auto_reconnect and self._reconnect_attempts < self.max_reconnect_attempts:
                 self._reconnect_attempts += 1
                 wait_time = min(2**self._reconnect_attempts, 30)
-                logger.info(f"⏳ Reconnecting in {wait_time}s (attempt {self._reconnect_attempts})...")
+                logger.info(
+                    f"⏳ Reconnecting in {wait_time}s (attempt {self._reconnect_attempts})..."
+                )
                 await asyncio.sleep(wait_time)
                 return await self.connect()
             return False
@@ -164,11 +169,13 @@ class WorkflowMonitorClient:
             ... async def handle_started(data):
             ...     print(f"Started: {data}")
         """
+
         def decorator(func: Callable) -> Callable:
             if event_type not in self._event_handlers:
                 self._event_handlers[event_type] = []
             self._event_handlers[event_type].append(func)
             return func
+
         return decorator
 
     async def _handle_event(self, event_type: str, data: dict[str, Any]) -> None:
@@ -259,10 +266,7 @@ class WorkflowMonitorClient:
             logger.info(f"📡 Subscribing to channel: {channel}")
 
             # Wait for subscription confirmation
-            response = await asyncio.wait_for(
-                self.websocket.recv(),
-                timeout=5.0
-            )
+            response = await asyncio.wait_for(self.websocket.recv(), timeout=5.0)
             data = json.loads(response)
 
             if data.get("status") == "subscribed":
@@ -272,8 +276,8 @@ class WorkflowMonitorClient:
                 logger.warning(f"⚠️  Subscription failed: {data}")
                 return False
 
-        except asyncio.TimeoutError:
-            logger.error(f"❌ Timeout waiting for subscription confirmation")
+        except TimeoutError:
+            logger.error("❌ Timeout waiting for subscription confirmation")
             return False
         except Exception as e:
             logger.error(f"❌ Subscription error: {e}")
@@ -342,10 +346,7 @@ class WorkflowMonitorClient:
             await self.websocket.send(json.dumps(message))
 
             # Wait for response
-            response = await asyncio.wait_for(
-                self.websocket.recv(),
-                timeout=5.0
-            )
+            response = await asyncio.wait_for(self.websocket.recv(), timeout=5.0)
             data = json.loads(response)
 
             if data.get("type") == "response":
@@ -357,8 +358,8 @@ class WorkflowMonitorClient:
                 logger.warning(f"⚠️  Unexpected response: {data}")
                 return {}
 
-        except asyncio.TimeoutError:
-            logger.error(f"❌ Timeout querying workflow status")
+        except TimeoutError:
+            logger.error("❌ Timeout querying workflow status")
             return {}
         except Exception as e:
             logger.error(f"❌ Error querying workflow status: {e}")
@@ -394,7 +395,7 @@ class WorkflowMonitorClient:
                     data = json.loads(message)
                     await self._process_message(data)
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Send periodic ping
                     if self.connected:
                         await self._send_ping()
@@ -463,18 +464,12 @@ class WorkflowMonitorClient:
             wf_id = data.get("workflow_id", "unknown")
             stage = data.get("stage_name", "unknown")
             progress = data.get("progress", 0)
-            logger.info(
-                f"✅ [{timestamp}] Stage completed: {stage} "
-                f"({progress:.0f}%)"
-            )
+            logger.info(f"✅ [{timestamp}] Stage completed: {stage} ({progress:.0f}%)")
 
         elif event == "workflow.completed":
             wf_id = data.get("workflow_id", "unknown")
             duration = data.get("duration_seconds", 0)
-            logger.info(
-                f"🎉 [{timestamp}] Workflow completed: {wf_id} "
-                f"in {duration:.1f}s"
-            )
+            logger.info(f"🎉 [{timestamp}] Workflow completed: {wf_id} in {duration:.1f}s")
 
         elif event == "workflow.failed":
             wf_id = data.get("workflow_id", "unknown")
@@ -512,11 +507,12 @@ class WorkflowMonitorClient:
 
 # Demo functions
 
+
 async def demo_basic_monitoring():
     """Demo: Basic workflow monitoring with event handlers."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🎯 Demo: Basic Workflow Monitoring")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     monitor = WorkflowMonitorClient()
 
@@ -569,9 +565,9 @@ async def demo_basic_monitoring():
 
 async def demo_multi_workflow_monitoring():
     """Demo: Monitor multiple workflows simultaneously."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🎯 Demo: Multi-Workflow Monitoring")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     monitor = WorkflowMonitorClient()
 
@@ -616,9 +612,9 @@ async def demo_multi_workflow_monitoring():
 
 async def demo_query_workflow_status():
     """Demo: Query workflow status on demand."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🎯 Demo: Query Workflow Status")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     monitor = WorkflowMonitorClient()
 
@@ -634,9 +630,9 @@ async def demo_query_workflow_status():
         status = await monitor.get_workflow_status(workflow_id)
 
         if status:
-            print("\n" + "-"*70)
+            print("\n" + "-" * 70)
             print("Workflow Status:")
-            print("-"*70)
+            print("-" * 70)
             print(f"  ID:         {status.get('workflow_id', 'N/A')}")
             print(f"  Status:     {status.get('status', 'N/A')}")
             print(f"  Stage:      {status.get('current_stage', 'N/A')}")
@@ -645,9 +641,9 @@ async def demo_query_workflow_status():
             print(f"  Remaining:  {status.get('stages_remaining', [])}")
             print(f"  Started:    {status.get('started_at', 'N/A')}")
             print(f"  Completed:  {status.get('completed_at', 'N/A')}")
-            if status.get('error'):
+            if status.get("error"):
                 print(f"  Error:      {status.get('error')}")
-            print("-"*70 + "\n")
+            print("-" * 70 + "\n")
         else:
             logger.warning("⚠️  No status data received")
 
@@ -659,9 +655,9 @@ async def demo_query_workflow_status():
 
 async def demo_all_workflow_events():
     """Demo: Monitor all workflow events with detailed logging."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🎯 Demo: All Workflow Events Monitor")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     monitor = WorkflowMonitorClient()
 
@@ -677,40 +673,40 @@ async def demo_all_workflow_events():
         # Comprehensive event handlers
         @monitor.on("workflow.started")
         async def on_started(data: dict):
-            print(f"\n🚀 WORKFLOW STARTED")
+            print("\n🚀 WORKFLOW STARTED")
             print(f"   ID: {data.get('workflow_id')}")
             print(f"   Stages: {', '.join(data.get('stages', []))}")
 
         @monitor.on("workflow.stage_started")
         async def on_stage_started(data: dict):
-            print(f"\n▶️  STAGE STARTED")
+            print("\n▶️  STAGE STARTED")
             print(f"   Stage: {data.get('stage_name')}")
             print(f"   Workflow: {data.get('workflow_id')}")
 
         @monitor.on("workflow.stage_completed")
         async def on_stage_completed(data: dict):
-            print(f"\n✅ STAGE COMPLETED")
+            print("\n✅ STAGE COMPLETED")
             print(f"   Stage: {data.get('stage_name')}")
             print(f"   Progress: {data.get('progress', 0):.1f}%")
             print(f"   Duration: {data.get('duration_seconds', 0):.2f}s")
 
         @monitor.on("workflow.completed")
         async def on_completed(data: dict):
-            print(f"\n🎉 WORKFLOW COMPLETED")
+            print("\n🎉 WORKFLOW COMPLETED")
             print(f"   ID: {data.get('workflow_id')}")
             print(f"   Duration: {data.get('duration_seconds', 0):.2f}s")
             print(f"   Stages: {len(data.get('stages_completed', []))}")
 
         @monitor.on("workflow.failed")
         async def on_failed(data: dict):
-            print(f"\n❌ WORKFLOW FAILED")
+            print("\n❌ WORKFLOW FAILED")
             print(f"   ID: {data.get('workflow_id')}")
             print(f"   Stage: {data.get('failed_stage', 'unknown')}")
             print(f"   Error: {data.get('error', 'Unknown error')}")
 
         @monitor.on("worker.status_changed")
         async def on_worker_status(data: dict):
-            status = data.get('status', 'unknown')
+            status = data.get("status", "unknown")
             emoji = {"idle": "💤", "busy": "⚙️", "error": "🔥"}.get(status, "📊")
             print(f"{emoji} Worker {data.get('worker_id')}: {status}")
 
@@ -726,6 +722,7 @@ async def demo_all_workflow_events():
 
 
 # Main entry point
+
 
 async def main():
     """Run workflow monitoring demo."""

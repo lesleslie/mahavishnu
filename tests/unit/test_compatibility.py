@@ -1,23 +1,21 @@
 """Tests for core/compatibility.py — contract check helpers and report generation."""
+
 import json
-from pathlib import Path
-from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from mahavishnu.core.compatibility import (
     CONTRACT_MATRIX,
     ContractCheck,
-    build_contract_app,
-    build_contract_report,
     _check_adapter_lifecycle_contract,
     _check_adapter_metadata_contract,
     _check_tool_versions,
+    build_contract_app,
+    build_contract_report,
     is_concrete_adapter_contract,
     render_contract_report,
     write_contract_report,
 )
-
 
 # ---------------------------------------------------------------------------
 # ContractCheck
@@ -244,8 +242,20 @@ class TestRenderContractReport:
                 "pass_rate": 100.0,
             },
             "checks": [
-                {"name": "check_a", "component": "c1", "passed": True, "required": True, "details": {}},
-                {"name": "check_b", "component": "c2", "passed": True, "required": True, "details": {"x": 1}},
+                {
+                    "name": "check_a",
+                    "component": "c1",
+                    "passed": True,
+                    "required": True,
+                    "details": {},
+                },
+                {
+                    "name": "check_b",
+                    "component": "c2",
+                    "passed": True,
+                    "required": True,
+                    "details": {"x": 1},
+                },
             ],
         }
         md = render_contract_report(report)

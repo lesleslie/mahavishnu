@@ -6,6 +6,6 @@ This package provides:
 - Progress displays
 """
 
-from mahavishnu.tui.command_palette import CommandPalette, Command, CommandCategory
+from mahavishnu.tui.command_palette import Command, CommandCategory, CommandPalette
 
 __all__ = ["CommandPalette", "Command", "CommandCategory"]

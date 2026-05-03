@@ -134,10 +134,10 @@ Planned piece:
 The recommended path is to add that as a bounded ecosystem feature:
 
 1. capture successful sessions and outcomes
-2. retrieve similar prior work
-3. draft or update a skill
-4. require review before activation
-5. surface the review queue in the TUI
+1. retrieve similar prior work
+1. draft or update a skill
+1. require review before activation
+1. surface the review queue in the TUI
 
 That gets the benefit of Hermes-style self-improvement without making the runtime self-modifying.
 
@@ -458,6 +458,7 @@ Important: these extras are profile flags only. You must install the actual CLI 
 (`openclaw`, `deepagents-cli`, `clai`) so they are available on your `PATH`.
 
 Structured output note:
+
 - `terminal-openclaw` is JSON-native and completes on valid JSON output.
 - `terminal-codex` uses `codex exec --json` and completes on an explicit sentinel marker.
 - `terminal-deepagents` uses `deepagents-cli --non-interactive --quiet --no-stream` and completes on an explicit sentinel marker because the verified task-run path is plain text.
@@ -798,7 +799,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **mcp-common** - Shared MCP types and contracts
 - **Crackerjack** - Quality control and testing
 
----
+______________________________________________________________________
 
 **Made with** :heart: **by the Mahavishnu team**
 

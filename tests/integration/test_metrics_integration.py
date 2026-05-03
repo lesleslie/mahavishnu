@@ -6,21 +6,25 @@ Tests that RoutingMetrics properly integrates with:
 - TaskRouter (comprehensive routing)
 """
 
-import pytest
 import asyncio
-from types import SimpleNamespace
 from datetime import UTC, datetime
+from types import SimpleNamespace
+
+import pytest
 
 from mahavishnu.core.adapters.base import AdapterType
-from mahavishnu.core.routing_metrics import RoutingMetrics, get_routing_metrics, reset_routing_metrics
+from mahavishnu.core.cost_optimizer import CostOptimizer
+from mahavishnu.core.metrics_schema import TaskType
+from mahavishnu.core.routing_metrics import (
+    RoutingMetrics,
+    get_routing_metrics,
+    reset_routing_metrics,
+)
 from mahavishnu.core.statistical_router import (
     ConfidenceLevel,
     StatisticalRouter,
-    get_statistical_router,
 )
 from mahavishnu.core.task_router import TaskRouter
-from mahavishnu.core.metrics_schema import TaskType
-from mahavishnu.core.cost_optimizer import CostOptimizer, get_cost_optimizer
 
 
 @pytest.fixture
@@ -45,16 +49,19 @@ class TestStatisticalRouterMetrics:
         task_type = TaskType.RAG_QUERY
 
         # Get adapter stats (mock)
-        from mahavishnu.core.metrics_collector import ExecutionTracker
         class MockTracker:
             async def get_adapter_stats(self, adapter_type):
                 return {
                     "success_rate": 0.95,
                     "total_executions": 150,
                 }
+
             async def get_recent_executions(self, limit=100):
                 # Return mock executions with latency data
-                return [SimpleNamespace(adapter=adapter, task_type=task_type, latency_ms=100) for _ in range(50)]
+                return [
+                    SimpleNamespace(adapter=adapter, task_type=task_type, latency_ms=100)
+                    for _ in range(50)
+                ]
 
         tracker = MockTracker()
 
@@ -82,6 +89,7 @@ class TestStatisticalRouterMetrics:
                     "success_rate": 0.92,
                     "total_executions": 200,
                 }
+
             async def get_recent_executions(self, limit=100):
                 return []
 
@@ -92,7 +100,9 @@ class TestStatisticalRouterMetrics:
 
         # Verify router was initialized with metrics
         assert router.metrics is not None, "Router should have metrics"
-        assert isinstance(router.metrics, RoutingMetrics), "Metrics should be RoutingMetrics instance"
+        assert isinstance(router.metrics, RoutingMetrics), (
+            "Metrics should be RoutingMetrics instance"
+        )
 
     @pytest.mark.asyncio
     async def test_start_ab_test_records_event(self, reset_metrics):
@@ -101,6 +111,7 @@ class TestStatisticalRouterMetrics:
 
         # Create test preference orders
         from mahavishnu.core.statistical_router import PreferenceOrder
+
         pref_a = PreferenceOrder(
             task_type=TaskType.WORKFLOW,
             adapters=[AdapterType.PREFECT, AdapterType.AGNO],
@@ -174,6 +185,7 @@ class TestCostOptimizerMetrics:
                     "success_rate": 0.88,
                     "total_executions": 120,
                 }
+
             async def get_recent_executions(self, limit=100):
                 return []
 
@@ -205,7 +217,9 @@ class TestCostOptimizerMetrics:
         assert router_health["metrics_enabled"] is True, "Router metrics should be enabled"
 
         # Verify optimizer health
-        assert "metrics_enabled" in optimizer_health, "Optimizer health should include metrics_enabled"
+        assert "metrics_enabled" in optimizer_health, (
+            "Optimizer health should include metrics_enabled"
+        )
         assert optimizer_health["metrics_enabled"] is True, "Optimizer metrics should be enabled"
 
 
@@ -226,13 +240,13 @@ class TestTaskRouterMetrics:
 
             async def get_health(self):
                 return {"status": "healthy"}
+
         await router.adapter_registry.register_adapter(adapter_type, MockAdapter())
 
     @pytest.mark.asyncio
     async def test_route_records_routing_decision(self, reset_metrics):
         """Test that route() records routing decisions."""
-        from mahavishnu.core.task_router import TaskRouter, get_task_router
-        from mahavishnu.core.metrics_collector import ExecutionTracker
+        from mahavishnu.core.task_router import TaskRouter
 
         router = TaskRouter(metrics=get_routing_metrics("test_router"))
         await self._register_adapter(router, AdapterType.PREFECT)
@@ -259,7 +273,7 @@ class TestTaskRouterMetrics:
     @pytest.mark.asyncio
     async def test_execute_with_fallback_records_execution_and_fallback(self, reset_metrics):
         """Test that execute_with_fallback() records executions and fallbacks."""
-        from mahavishnu.core.task_router import TaskRouter, get_task_router
+        from mahavishnu.core.task_router import TaskRouter
 
         router = TaskRouter(metrics=get_routing_metrics("test_router"))
         await self._register_adapter(router, AdapterType.PREFECT)
@@ -313,7 +327,7 @@ class TestTaskRouterMetrics:
     @pytest.mark.asyncio
     async def test_route_with_preference_uses_metrics(self, reset_metrics):
         """Test that providing preference_order uses metrics."""
-        from mahavishnu.core.task_router import TaskRouter, get_task_router
+        from mahavishnu.core.task_router import TaskRouter
 
         router = TaskRouter(metrics=get_routing_metrics("test_router"))
 

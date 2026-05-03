@@ -4,9 +4,6 @@ Pure-Python modules with no I/O — tested with simple assertions.
 """
 
 import re
-from datetime import datetime
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -47,8 +44,8 @@ from mahavishnu.core.status import (
     CoordinationStatus,
     DatabaseStatus,
     DeadLetterStatus,
-    DeploymentStatus,
     DependencyStatus,
+    DeploymentStatus,
     ExecutionStatus,
     HealthStatus,
     IssueStatus,
@@ -63,7 +60,6 @@ from mahavishnu.core.status import (
     WorkerStatus,
     WorkflowStatus,
 )
-
 
 # =========================================================================
 # ErrorCode enum
@@ -418,7 +414,8 @@ class TestConvenienceErrors:
 
     def test_goal_parsing_error_custom_code(self):
         err = GoalParsingError(
-            "x", "short",
+            "x",
+            "short",
             error_code=ErrorCode.GOAL_TOO_SHORT,
         )
         assert err.error_code == ErrorCode.GOAL_TOO_SHORT
@@ -515,7 +512,9 @@ class TestErrorTemplates:
 
     def test_task_create_validation(self):
         err = ErrorTemplates.task_create_validation(
-            "my task", "mahavishnu", ["Title too short", "Repository invalid"],
+            "my task",
+            "mahavishnu",
+            ["Title too short", "Repository invalid"],
         )
         assert isinstance(err, ValidationError)
         assert "Title too short" in err.message
@@ -525,7 +524,9 @@ class TestErrorTemplates:
 
     def test_database_connection_failed(self):
         err = ErrorTemplates.database_connection_failed(
-            "localhost", 5432, "Connection refused",
+            "localhost",
+            5432,
+            "Connection refused",
         )
         assert isinstance(err, DatabaseError)
         assert "localhost:5432" in err.message
@@ -561,7 +562,8 @@ class TestErrorTemplates:
 
     def test_prefect_connection_failed(self):
         err = ErrorTemplates.prefect_connection_failed(
-            "http://localhost:4200", "ECONNREFUSED",
+            "http://localhost:4200",
+            "ECONNREFUSED",
         )
         assert err.error_code == ErrorCode.PREFECT_CONNECTION_ERROR
         assert err.details["api_url"] == "http://localhost:4200"
@@ -579,7 +581,8 @@ class TestErrorTemplates:
 
     def test_adapter_init_failed(self):
         err = ErrorTemplates.adapter_init_failed(
-            "prefect", "missing prefect package",
+            "prefect",
+            "missing prefect package",
             missing_deps=["prefect"],
         )
         assert isinstance(err, AdapterInitializationError)
@@ -587,14 +590,17 @@ class TestErrorTemplates:
 
     def test_adapter_init_failed_with_config_issues(self):
         err = ErrorTemplates.adapter_init_failed(
-            "agno", "bad config",
+            "agno",
+            "bad config",
             config_issues=["api_key missing"],
         )
         assert err.details["config_issues"] == ["api_key missing"]
 
     def test_workflow_step_failed(self):
         err = ErrorTemplates.workflow_step_failed(
-            "wf-1", "deploy", "k8s rejected",
+            "wf-1",
+            "deploy",
+            "k8s rejected",
             adapter_name="prefect",
             retry_count=3,
         )
@@ -604,7 +610,8 @@ class TestErrorTemplates:
 
     def test_goal_team_creation_failed(self):
         err = ErrorTemplates.goal_team_creation_failed(
-            "Build a REST API", "no agents available",
+            "Build a REST API",
+            "no agents available",
         )
         assert isinstance(err, GoalTeamError)
         assert err.details["goal"] == "Build a REST API"
@@ -624,7 +631,9 @@ class TestErrorTemplates:
 
     def test_learning_feedback_failed(self):
         err = ErrorTemplates.learning_feedback_failed(
-            "team-1", "positive", "db down",
+            "team-1",
+            "positive",
+            "db down",
         )
         assert isinstance(err, LearningSystemError)
         assert err.details["team_id"] == "team-1"
@@ -722,11 +731,25 @@ class TestStatusEnums:
     def test_all_status_values_are_strings(self):
         """Every value in every status enum must be a lowercase string."""
         for enum_cls in [
-            TaskStatus, IssueStatus, TodoStatus, CoordinationStatus,
-            MigrationStatus, WorkerStatus, WorkflowStatus, ExecutionStatus,
-            PlanStatus, PoolStatus, DeploymentStatus, DatabaseStatus,
-            HealthStatus, ReadinessStatus, DependencyStatus,
-            DeadLetterStatus, BlockingStatus, SyncStatus, OnboardingStatus,
+            TaskStatus,
+            IssueStatus,
+            TodoStatus,
+            CoordinationStatus,
+            MigrationStatus,
+            WorkerStatus,
+            WorkflowStatus,
+            ExecutionStatus,
+            PlanStatus,
+            PoolStatus,
+            DeploymentStatus,
+            DatabaseStatus,
+            HealthStatus,
+            ReadinessStatus,
+            DependencyStatus,
+            DeadLetterStatus,
+            BlockingStatus,
+            SyncStatus,
+            OnboardingStatus,
         ]:
             for v in enum_cls:
                 assert isinstance(v, str), f"{enum_cls.__name__}.{v} is not a str"

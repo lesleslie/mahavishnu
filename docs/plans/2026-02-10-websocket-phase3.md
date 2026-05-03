@@ -8,13 +8,14 @@
 
 **Tech Stack:** mcp-common.websocket, FastMCP, Python 3.11+, async/await, Pydantic validation
 
----
+______________________________________________________________________
 
 ## Task 1: Dhara WebSocket Server (Port 8693)
 
 **Purpose:** Real-time adapter distribution events for Dhara storage service
 
 **Files:**
+
 - Create: `/Users/les/Projects/dhara/dhara/websocket/__init__.py`
 - Create: `/Users/les/Projects/dhara/dhara/websocket/server.py`
 - Create: `/Users/les/Projects/dhara/dhara/mcp/websocket_tools.py`
@@ -771,13 +772,14 @@ git add dhara/websocket/ dhara/mcp/websocket_tools.py examples/websocket_client_
 git commit -m "feat: add WebSocket server for adapter distribution events"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Excalidraw WebSocket Server (Port 3042)
 
 **Purpose:** Real-time diagram collaboration for Excalidraw MCP
 
 **Files:**
+
 - Create: `/Users/les/Projects/excalidraw-mcp/excalidraw_mcp/websocket/__init__.py`
 - Create: `/Users/les/Projects/excalidraw-mcp/excalidraw_mcp/websocket/server.py`
 - Create: `/Users/les/Projects/excalidraw-mcp/excalidraw_mcp/mcp/websocket_tools.py`
@@ -964,6 +966,7 @@ class ExcalidrawWebSocketServer(WebSocketServer):
 **Step 3: Create MCP tools and tests**
 
 Similar structure to Dhara, create:
+
 - `/Users/les/Projects/excalidraw-mcp/excalidraw_mcp/mcp/websocket_tools.py`
 - `/Users/les/Projects/excalidraw-mcp/examples/websocket_client_examples.py`
 - `/Users/les/Projects/excalidraw-mcp/tests/test_websocket_server.py`
@@ -980,13 +983,14 @@ git add excalidraw_mcp/websocket/ excalidraw_mcp/mcp/websocket_tools.py examples
 git commit -m "feat: add WebSocket server for diagram collaboration"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Fastblocks WebSocket Server (Port TBD)
 
 **Purpose:** Real-time UI update streams for Fastblocks framework
 
 **Files:**
+
 - Create: `/Users/les/Projects/fastblocks/fastblocks/websocket/__init__.py`
 - Create: `/Users/les/Projects/fastblocks/fastblocks/websocket/server.py`
 - Create: `/Users/les/Projects/fastblocks/fastblocks/mcp/websocket_tools.py`
@@ -994,17 +998,19 @@ git commit -m "feat: add WebSocket server for diagram collaboration"
 - Create: `/Users/les/Projects/fastblocks/tests/test_websocket_server.py`
 
 **Step 1-5:** Similar pattern to Dhara and Excalidraw, with Fastblocks-specific broadcast methods:
+
 - `broadcast_ui_updated()` - UI component updates
 - `broadcast_component_rendered()` - Component render events
 - `broadcast_state_changed()` - State management events
 
 **Port:** Use 8684 (following pattern: HTTP port 8674 + 10)
 
----
+______________________________________________________________________
 
 ## Task 4: Update Implementation Summary
 
 **Files:**
+
 - Modify: `/Users/les/.claude/skills/IMPLEMENTATION_SUMMARY.md`
 
 **Step 1: Update Phase 3 status**
@@ -1032,16 +1038,18 @@ git add IMPLEMENTATION_SUMMARY.md
 git commit -m "docs: update WebSocket Phase 3 completion status"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: Create Comprehensive Documentation
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/docs/WEBSOCKET_PHASE3_COMPLETE.md`
 
 **Step 1: Write completion report**
 
 Create comprehensive report documenting:
+
 - All 7 WebSocket servers across ecosystem
 - Port allocation and purpose
 - Event catalogs for each service
@@ -1057,23 +1065,27 @@ git add docs/WEBSOCKET_PHASE3_COMPLETE.md
 git commit -m "docs: add WebSocket Phase 3 completion report"
 ```
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
 ### Unit Tests
+
 Each service should have:
+
 - Server initialization tests
 - Broadcast method tests
 - Connection handling tests
 - Room subscription tests
 
 ### Integration Tests
+
 - Real WebSocket connections
 - Multi-client scenarios
 - Event propagation verification
 
 ### Test Commands
+
 ```bash
 # Dhara
 cd /Users/les/Projects/dhara && pytest tests/test_websocket_server.py -v
@@ -1085,11 +1097,12 @@ cd /Users/les/Projects/excalidraw-mcp && pytest tests/test_websocket_server.py -
 cd /Users/les/Projects/fastblocks && pytest tests/test_websocket_server.py -v
 ```
 
----
+______________________________________________________________________
 
 ## Deployment Checklist
 
 For each service:
+
 - [ ] WebSocket server implemented
 - [ ] MCP tools registered
 - [ ] Integration helpers created
@@ -1099,7 +1112,7 @@ For each service:
 - [ ] Port allocated and documented
 - [ ] Event catalog published
 
----
+______________________________________________________________________
 
 ## Success Criteria
 
@@ -1110,6 +1123,6 @@ For each service:
 - ✅ Client examples for each service
 - ✅ Ecosystem-wide event catalog
 
----
+______________________________________________________________________
 
 **Total Implementation:** 7 WebSocket servers across ecosystem with full MCP integration and comprehensive testing.

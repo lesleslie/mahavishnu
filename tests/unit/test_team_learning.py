@@ -65,10 +65,16 @@ def test_models_to_dict_and_properties() -> None:
 
 def test_record_outcome_and_basic_stats() -> None:
     engine = tl.TeamLearningEngine(max_recent_outcomes=3)
-    engine.record_outcome(_outcome(mode="coordinate", success=True, quality=90, feedback="positive"))
-    engine.record_outcome(_outcome(mode="coordinate", success=False, quality=50, feedback="negative"))
+    engine.record_outcome(
+        _outcome(mode="coordinate", success=True, quality=90, feedback="positive")
+    )
+    engine.record_outcome(
+        _outcome(mode="coordinate", success=False, quality=50, feedback="negative")
+    )
     engine.record_outcome(_outcome(mode="route", success=True, quality=None))
-    engine.record_outcome(_outcome(mode="route", success=True))  # pushes out oldest due to max_recent=3
+    engine.record_outcome(
+        _outcome(mode="route", success=True)
+    )  # pushes out oldest due to max_recent=3
 
     assert len(engine.get_recent_outcomes(limit=10)) == 3
     assert engine.get_skill_success_rate(["security"]) > 0.0

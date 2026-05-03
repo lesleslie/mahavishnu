@@ -5,16 +5,16 @@
 **Context**: Task Orchestration Master Plan v3.0
 **Related**: ADR-007 (Saga Coordinator), ADR-008 (Zero-Downtime Migration)
 
----
+______________________________________________________________________
 
 ## Context
 
 The Task Orchestration Master Plan v2.0 proposed a 4-system storage architecture:
 
 1. **PostgreSQL** - Primary task data, events, projections
-2. **Akosha** - Semantic search, pattern detection, knowledge graph
-3. **Session-Buddy** - Task context, conversation history, session tracking
-4. **Redis** - Caching layer for frequent queries
+1. **Akosha** - Semantic search, pattern detection, knowledge graph
+1. **Session-Buddy** - Task context, conversation history, session tracking
+1. **Redis** - Caching layer for frequent queries
 
 ### Problems with 4-System Architecture
 
@@ -32,7 +32,7 @@ During the 5-agent review council, the Architecture Reviewer identified this as 
 
 > "The 4-system storage architecture is over-engineered for v1.0. PostgreSQL + pgvector can handle both structured data and semantic search. Session-Buddy integration should be best-effort (fire-and-forget), not synchronous. Redis should be deferred until proven necessary (Premature Optimization)."
 
----
+______________________________________________________________________
 
 ## Decision
 
@@ -43,6 +43,7 @@ Simplify to **2-system storage architecture**:
 **Technology**: PostgreSQL 15+ with pgvector extension
 
 **Responsibilities**:
+
 - Core task data (tasks, dependencies, events)
 - Semantic search (vector embeddings via pgvector)
 - Event sourcing log (append-only)
@@ -50,6 +51,7 @@ Simplify to **2-system storage architecture**:
 - All ACID transactions
 
 **Why PostgreSQL + pgvector is Sufficient**:
+
 - pgvector provides HNSW indexing for O(log n) vector search
 - JSONB columns for flexible metadata storage
 - Full-text search with tsvector for hybrid queries
@@ -61,11 +63,13 @@ Simplify to **2-system storage architecture**:
 **Technology**: Session-Buddy MCP server
 
 **Responsibilities**:
+
 - Task creation context (fire-and-forget write)
 - Conversation history (optional, for AI assistance)
 - Session tracking
 
 **Integration Pattern**:
+
 ```python
 # Create task in PostgreSQL (synchronous)
 task = await create_task_in_postgreSQL(...)
@@ -81,25 +85,29 @@ asyncio.create_task(store_context_in_session_buddy(task.id))
 **Technology**: Redis cache
 
 **Responsibilities**:
+
 - Frequent query caching
 - Session data caching
 
 **When to Add**:
+
 - Only after demonstrating performance bottleneck in production
 - Add monitoring first to prove Redis is needed
 - Premature Optimization: Don't add until proven necessary
 
----
+______________________________________________________________________
 
 ## Alternatives Considered
 
 ### Alternative 1: Keep 4-System Architecture (REJECTED)
 
 **Pros**:
+
 - Separation of concerns
 - Individual scaling
 
 **Cons**:
+
 - **60% more operational complexity**
 - **4x potential failure points**
 - Consistency issues between systems
@@ -111,10 +119,12 @@ asyncio.create_task(store_context_in_session_buddy(task.id))
 ### Alternative 2: 3-System Architecture (PostgreSQL + Akosha + Redis) (REJECTED)
 
 **Pros**:
+
 - Remove Session-Buddy from critical path
 - Still have Redis caching
 
 **Cons**:
+
 - Akosha is already PostgreSQL + pgvector (redundant)
 - Redis is premature optimization
 - Still 3 systems to manage
@@ -124,6 +134,7 @@ asyncio.create_task(store_context_in_session_buddy(task.id))
 ### Alternative 3: 2-System Architecture (PostgreSQL + Session-Buddy) (ACCEPTED)
 
 **Pros**:
+
 - **Single source of truth** (PostgreSQL)
 - **60% reduction in operational complexity**
 - Eliminates 2 critical failure modes
@@ -132,56 +143,63 @@ asyncio.create_task(store_context_in_session_buddy(task.id))
 - Session-Buddy best-effort (no blocking)
 
 **Cons**:
+
 - Session-Buddy integration becomes async (task succeeds even if Session-Buddy is down)
 
 **Decision**: Right balance of simplicity and capability for v1.0.
 
----
+______________________________________________________________________
 
 ## Consequences
 
 ### Positive Impacts
 
 1. **Reduced Complexity**: 60% reduction in operational complexity
-2. **Eliminated Failure Modes**: 4 systems → 2 systems = 50% fewer potential failure points
-3. **Simpler Transactions**: Saga coordinator only needs 2 steps instead of 4
-4. **Easier Testing**: Integration tests mock 2 systems instead of 4
-5. **Faster Development**: Phase 1 timeline reduced by 2 weeks
-6. **Better Performance**: PostgreSQL pgvector is faster than cross-system calls
-7. **Consistent Data**: Single source of truth eliminates synchronization issues
+1. **Eliminated Failure Modes**: 4 systems → 2 systems = 50% fewer potential failure points
+1. **Simpler Transactions**: Saga coordinator only needs 2 steps instead of 4
+1. **Easier Testing**: Integration tests mock 2 systems instead of 4
+1. **Faster Development**: Phase 1 timeline reduced by 2 weeks
+1. **Better Performance**: PostgreSQL pgvector is faster than cross-system calls
+1. **Consistent Data**: Single source of truth eliminates synchronization issues
 
 ### Negative Impacts
 
 1. **Session-Buddy Best-Effort**: Context write failures are silently ignored
+
    - **Mitigation**: Monitor Session-Buddy health and alert on high error rates
 
-2. **No Caching Layer**: All queries hit PostgreSQL
+1. **No Caching Layer**: All queries hit PostgreSQL
+
    - **Mitigation**: PostgreSQL connection pooling + query optimization
    - **Future**: Add Redis in Phase 7 if performance monitoring shows bottleneck
 
-3. **Single Database Scaling**: Must scale PostgreSQL instead of scaling systems independently
+1. **Single Database Scaling**: Must scale PostgreSQL instead of scaling systems independently
+
    - **Mitigation**: PostgreSQL scales horizontally with read replicas
    - **Mitigation**: Connection pooling reduces connection overhead
 
 ### Risks
 
 1. **Session-Buddy Context Loss**: If Session-Buddy is down, context is lost
+
    - **Severity**: Medium
    - **Mitigation**: Fire-and-forget pattern means task succeeds anyway
    - **Mitigation**: Monitor Session-Buddy uptime and alert on downtime
 
-2. **PostgreSQL Becomes Bottleneck**: Single database for all operations
+1. **PostgreSQL Becomes Bottleneck**: Single database for all operations
+
    - **Severity**: Low
    - **Mitigation**: PostgreSQL scales to 10K+ concurrent connections
    - **Mitigation**: Read replicas for read-heavy operations
    - **Mitigation**: Add Redis cache in Phase 7 if monitoring proves necessity
 
-3. **No Semantic Search Separation**: pgvector shares resources with OLTP queries
+1. **No Semantic Search Separation**: pgvector shares resources with OLTP queries
+
    - **Severity**: Low
    - **Mitigation**: HNSW indexing is O(log n), very fast
    - **Mitigation**: Separate pgvector indexes on separate tablespace if needed
 
----
+______________________________________________________________________
 
 ## Implementation
 
@@ -294,30 +312,34 @@ class TaskCreationService:
 ### Migration from v2.0 4-System Architecture
 
 **Phase 1: Migrate Akosha → PostgreSQL (Week 1-2)**
+
 - Export embeddings from Akosha
 - Import into PostgreSQL tasks table
 - Update semantic search queries to use pgvector
 - Test search accuracy
 
 **Phase 2: Change Session-Buddy to Fire-and-Forget (Week 2)**
+
 - Remove synchronous Session-Buddy writes
 - Add asyncio.create_task for async writes
 - Add error handling for Session-Buddy failures
 - Add Prometheus monitoring for Session-Buddy errors
 
 **Phase 3: Remove Redis References (Week 2)**
+
 - Remove Redis cache layer
 - Update all queries to hit PostgreSQL directly
 - Add connection pooling optimization
 - Benchmark performance
 
 **Phase 4: Update Saga Coordinator (Week 3)**
+
 - Simplify saga from 4 steps to 2 steps
 - Remove compensating transactions for Akosha and Redis
 - Update crash recovery logic
 - Test saga failures
 
----
+______________________________________________________________________
 
 ## Timeline Impact
 
@@ -327,18 +349,19 @@ class TaskCreationService:
 **Net Change**: -2 weeks from storage simplification, +1-2 weeks from UX polish = **-1 to 0 weeks net change**
 
 **Breakdown**:
+
 - Storage simplification: **-2 weeks** (less integration work)
 - UX timeline extension: **+1-2 weeks** (better user experience)
 - **Net: -1 to 0 weeks** (simpler architecture offsets UX work)
 
----
+______________________________________________________________________
 
 ## Related Decisions
 
 - **ADR-007: Saga Coordinator Pattern**: Simplified from 4-step to 2-step saga
 - **ADR-008: Zero-Downtime Migration**: Migration strategy for SQLite → PostgreSQL
 
----
+______________________________________________________________________
 
 ## References
 
@@ -346,6 +369,6 @@ class TaskCreationService:
 - PostgreSQL pgvector Documentation: https://github.com/pgvector/pgvector
 - Master Plan v3.0: `/docs/TASK_ORCHESTRATION_MASTER_PLAN_V3.md`
 
----
+______________________________________________________________________
 
 **END OF ADR-001**

@@ -203,7 +203,9 @@ def test_init_with_config_branch_uses_terminal_and_context(monkeypatch: pytest.M
     )
     import mahavishnu.core.context as ctx
 
-    monkeypatch.setattr(ctx, "get_app_context", lambda: {"nanobot_provider": "ctx-provider"}, raising=False)
+    monkeypatch.setattr(
+        ctx, "get_app_context", lambda: {"nanobot_provider": "ctx-provider"}, raising=False
+    )
 
     cfg = SimpleNamespace(workers=SimpleNamespace(max_concurrent=7))
     adapter = wa.WorkerOrchestratorAdapter(config=cfg)

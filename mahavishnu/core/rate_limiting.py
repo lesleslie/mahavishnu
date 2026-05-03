@@ -9,10 +9,10 @@ Version: 3.1
 Related: 4-Agent Opus Review P0 issue - rate limiting middleware
 """
 
+from collections.abc import Callable
 import logging
-from typing import Callable
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
@@ -44,8 +44,8 @@ RATE_LIMITS = {
 # Try to import slowapi, but provide fallback if not available
 try:
     from slowapi import Limiter, _rate_limit_exceeded_handler
-    from slowapi.util import get_remote_address
     from slowapi.errors import RateLimitExceeded
+    from slowapi.util import get_remote_address
 
     HAS_SLOWAPI = True
 except ImportError:
@@ -79,10 +79,7 @@ def get_client_ip(request: Request) -> str:
 
 
 # Create limiter instance (or None if slowapi not available)
-if HAS_SLOWAPI:
-    limiter = Limiter(key_func=get_client_ip)
-else:
-    limiter = None
+limiter = Limiter(key_func=get_client_ip) if HAS_SLOWAPI else None
 
 
 def setup_rate_limiting(app: FastAPI) -> None:

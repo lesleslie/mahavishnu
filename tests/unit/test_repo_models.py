@@ -8,15 +8,15 @@ Tests cover:
 - RepositoryManifest uniqueness constraints
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from mahavishnu.core.repo_models import (
     Repository,
     RepositoryManifest,
     RepositoryMetadata,
 )
-
 
 # ============================================================================
 # RepositoryMetadata Tests
@@ -311,10 +311,12 @@ def _make_repo(name: str, package: str | None = None, path: str | None = None) -
 
 class TestRepositoryManifest:
     def test_valid_manifest(self):
-        manifest = RepositoryManifest(repos=[
-            _make_repo("repo-a"),
-            _make_repo("repo-b"),
-        ])
+        manifest = RepositoryManifest(
+            repos=[
+                _make_repo("repo-a"),
+                _make_repo("repo-b"),
+            ]
+        )
         assert len(manifest.repos) == 2
         assert manifest.version == "1.0"
 
@@ -324,21 +326,27 @@ class TestRepositoryManifest:
 
     def test_rejects_duplicate_paths(self):
         with pytest.raises(Exception, match="Duplicate repository path"):
-            RepositoryManifest(repos=[
-                _make_repo("repo-a", path="/tmp/same"),
-                _make_repo("repo-b", path="/tmp/same"),
-            ])
+            RepositoryManifest(
+                repos=[
+                    _make_repo("repo-a", path="/tmp/same"),
+                    _make_repo("repo-b", path="/tmp/same"),
+                ]
+            )
 
     def test_rejects_duplicate_names(self):
         with pytest.raises(Exception, match="Duplicate repository name"):
-            RepositoryManifest(repos=[
-                _make_repo("same-name", package="pkg_a", path="/tmp/a"),
-                _make_repo("same-name", package="pkg_b", path="/tmp/b"),
-            ])
+            RepositoryManifest(
+                repos=[
+                    _make_repo("same-name", package="pkg_a", path="/tmp/a"),
+                    _make_repo("same-name", package="pkg_b", path="/tmp/b"),
+                ]
+            )
 
     def test_rejects_duplicate_packages(self):
         with pytest.raises(Exception, match="Duplicate package name"):
-            RepositoryManifest(repos=[
-                _make_repo("repo-a", package="same_pkg", path="/tmp/a"),
-                _make_repo("repo-b", package="same_pkg", path="/tmp/b"),
-            ])
+            RepositoryManifest(
+                repos=[
+                    _make_repo("repo-a", package="same_pkg", path="/tmp/a"),
+                    _make_repo("repo-b", package="same_pkg", path="/tmp/b"),
+                ]
+            )

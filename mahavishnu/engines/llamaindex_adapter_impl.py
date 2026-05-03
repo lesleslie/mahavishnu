@@ -12,9 +12,9 @@ This adapter provides:
 
 from pathlib import Path
 import time
-import uuid
 from types import SimpleNamespace
 from typing import Any
+import uuid
 
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -317,7 +317,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 metrics_enabled=False,
             )
         elif api_url is not None:
-            setattr(config, "ollama_base_url", api_url)
+            config.ollama_base_url = api_url
 
         self.config = config
         self.api_url = getattr(self.config, "ollama_base_url", api_url or "http://localhost:11434")

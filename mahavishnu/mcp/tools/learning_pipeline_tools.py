@@ -7,9 +7,10 @@ operations are exposed via MCP.  Human review is mandatory.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from fastmcp import FastMCP
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 
@@ -125,4 +126,10 @@ def register_learning_tools(
             }
         except Exception as exc:
             logger.warning("get_promotion_history_failed", exc_info=True)
-            return {"available": True, "error": str(exc), "skill_id": skill_id, "count": 0, "history": []}
+            return {
+                "available": True,
+                "error": str(exc),
+                "skill_id": skill_id,
+                "count": 0,
+                "history": [],
+            }

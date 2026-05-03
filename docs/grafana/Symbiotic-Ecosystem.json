@@ -1,24 +1,10 @@
 {
   "dashboard": {
-    "title": "Symbiotic Ecosystem Dashboard",
     "description": "Cross-project AI-powered workflow optimization dashboard aggregating git metrics, fix strategies, skill effectiveness, and learning patterns",
-    "tags": ["symbiotic", "ecosystem", "ai-workflow", "crackerjack", "mahavishnu"],
-    "timezone": "UTC",
-    "schemaVersion": 36,
-    "version": "1.0.0",
-    "refresh": "30s",
     "panels": [
       {
-        "id": "ecosystem-overview",
-        "title": "Ecosystem Overview",
-        "gridPos": { "h": 0, "w": 0, "x": 0, "y": 0 },
-        "type": "stat",
-        "options": {
-          "colorMode": "background",
-          "graphMode": "area",
-          "reduceOptions": false,
-          "calculation": "lastNotNull"
-        },
+        "datasource": "MahavishnuMetrics",
+        "description": "High-level ecosystem health metrics",
         "fieldConfig": {
           "defaults": {
             "color": "green",
@@ -27,24 +13,37 @@
             }
           }
         },
+        "gridPos": {
+          "h": 0,
+          "w": 0,
+          "x": 0,
+          "y": 0
+        },
+        "id": "ecosystem-overview",
+        "options": {
+          "calculation": "lastNotNull",
+          "colorMode": "background",
+          "graphMode": "area",
+          "reduceOptions": false
+        },
         "targets": [
           {
             "expr": "git_velocity_dashboard_data{repo=\"*\"}[[\"aggregated\", \"average_velocity\"]] || 0",
+            "hide": false,
             "legendFormat": "{{repo}}: Avg {{value}} commits/day",
-            "refId": "gitVelocity",
-            "hide": false
+            "refId": "gitVelocity"
           },
           {
             "expr": "sum(repository_health_data{repo=\"*\"}[[\"health_score\"]]) or vector(0) / count(repository_health_data{repo=\"*\"})",
+            "hide": false,
             "legendFormat": "Avg Health Score",
-            "refId": "healthScore",
-            "hide": false
+            "refId": "healthScore"
           },
           {
             "expr": "count(skill_effectiveness_data{repo=\"*\"}) > 0",
+            "hide": false,
             "legendFormat": "Active Skills",
-            "refId": "activeSkills",
-            "hide": false
+            "refId": "activeSkills"
           },
           {
             "expr": "avg(learning_metrics{success=\"true\"}) or vector(0)",
@@ -52,22 +51,27 @@
             "refId": "learningRate"
           }
         ],
-        "datasource": "MahavishnuMetrics",
-        "description": "High-level ecosystem health metrics"
+        "title": "Ecosystem Overview",
+        "type": "stat"
       },
       {
-        "id": "git-velocity-trends",
-        "title": "Git Velocity by Repository",
-        "gridPos": { "h": 0, "w": 8, "x": 0, "y": 4 },
-        "type": "timeseries",
+        "datasource": "MahavishnuMetrics",
+        "description": "Commit velocity trends across all repositories",
         "fieldConfig": {
           "defaults": {
             "custom": {
-              "lineWidth": 2,
-              "fillOpacity": 0.1
+              "fillOpacity": 0.1,
+              "lineWidth": 2
             }
           }
         },
+        "gridPos": {
+          "h": 0,
+          "w": 8,
+          "x": 0,
+          "y": 4
+        },
+        "id": "git-velocity-trends",
         "targets": [
           {
             "expr": "git_velocity_dashboard_data{repo=\"$repo\"}[[\"aggregated\", \"average_velocity\"]]",
@@ -75,22 +79,27 @@
             "refId": "gitVelocity"
           }
         ],
-        "datasource": "MahavishnuMetrics",
-        "description": "Commit velocity trends across all repositories"
+        "title": "Git Velocity by Repository",
+        "type": "timeseries"
       },
       {
-        "id": "fix-strategy-effectiveness",
-        "title": "Fix Strategy Success Rate",
-        "gridPos": { "h": 1, "w": 0, "x": 6, "y": 0 },
-        "type": "timeseries",
+        "datasource": "MahavishnuMetrics",
+        "description": "Track effectiveness of recommended fix strategies over time",
         "fieldConfig": {
           "defaults": {
             "custom": {
-              "lineWidth": 2,
-              "fillOpacity": 0.1
+              "fillOpacity": 0.1,
+              "lineWidth": 2
             }
           }
         },
+        "gridPos": {
+          "h": 1,
+          "w": 0,
+          "x": 6,
+          "y": 0
+        },
+        "id": "fix-strategy-effectiveness",
         "targets": [
           {
             "expr": "avg(strategy_recommender_data{success=\"true\"}) or vector(0)",
@@ -103,40 +112,39 @@
             "refId": "highConfidence"
           }
         ],
-        "datasource": "MahavishnuMetrics",
-        "description": "Track effectiveness of recommended fix strategies over time"
+        "title": "Fix Strategy Success Rate",
+        "type": "timeseries"
       },
       {
-        "id": "skill-performance-ranking",
-        "title": "Skill Effectiveness Ranking",
-        "gridPos": { "h": 2, "w": 0, "x": 8, "y": 0 },
-        "type": "table",
-        "options": {
-          "showHeader": true,
-          "frameIndex": 0
-        },
-        "transform": "table",
         "datasource": "MahavishnuMetrics",
+        "description": "Top performing skills ranked by success rate across all repositories",
+        "gridPos": {
+          "h": 2,
+          "w": 0,
+          "x": 8,
+          "y": 0
+        },
+        "id": "skill-performance-ranking",
+        "options": {
+          "frameIndex": 0,
+          "showHeader": true
+        },
         "queryType": "annotation",
         "targets": [
           {
             "expr": "topk(10, skill_effectiveness_data{repo=\"*\"}) by (success_rate)",
-            "refId": "skillEffectiveness",
             "formatAs": "table",
-            "instant": false
+            "instant": false,
+            "refId": "skillEffectiveness"
           }
         ],
-        "description": "Top performing skills ranked by success rate across all repositories"
+        "title": "Skill Effectiveness Ranking",
+        "transform": "table",
+        "type": "table"
       },
       {
-        "id": "learning-metrics",
-        "title": "Continuous Learning Metrics",
-        "gridPos": { "h": 3, "w": 0, "x": 6, "y": 4 },
-        "type": "stat",
-        "options": {
-          "colorMode": "background",
-          "graphMode": "area"
-        },
+        "datasource": "MahavishnuMetrics",
+        "description": "Track continuous learning outcomes and model improvements",
         "fieldConfig": {
           "defaults": {
             "color": {
@@ -148,75 +156,94 @@
             }
           }
         },
+        "gridPos": {
+          "h": 3,
+          "w": 0,
+          "x": 6,
+          "y": 4
+        },
+        "id": "learning-metrics",
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area"
+        },
         "targets": [
           {
+            "colorMode": "green",
             "expr": "sum(learning_patterns_strengthened) or vector(0)",
             "legendFormat": "Patterns Strengthened",
-            "refId": "patternsStrengthened",
-            "colorMode": "green"
+            "refId": "patternsStrengthened"
           },
           {
+            "colorMode": "yellow",
             "expr": "sum(learning_patterns_weakened) or vector(0)",
             "legendFormat": "Patterns Weakened",
-            "refId": "patternsWeakened",
-            "colorMode": "yellow"
+            "refId": "patternsWeakened"
           },
           {
+            "colorMode": "blue",
             "expr": "sum(learning_retrains) or vector(0)",
             "legendFormat": "Model Retrains",
-            "refId": "modelRetrains",
-            "colorMode": "blue"
+            "refId": "modelRetrains"
           },
           {
             "expr": "avg(learning_confidence_score) or vector(0)",
+            "hide": false,
             "legendFormat": "Avg Confidence Score: {{value}}",
-            "refId": "confidenceScore",
-            "hide": false
+            "refId": "confidenceScore"
           }
         ],
-        "datasource": "MahavishnuMetrics",
-        "description": "Track continuous learning outcomes and model improvements"
+        "title": "Continuous Learning Metrics",
+        "type": "stat"
       },
       {
+        "datasource": "MahavishnuMetrics",
+        "description": "Latest insights from cross-project pattern analysis (velocity-quality correlations, workflow failures)",
+        "gridPos": {
+          "h": 4,
+          "w": 0,
+          "x": 0,
+          "y": 8
+        },
         "id": "cross-project-patterns",
-        "title": "Cross-Project Pattern Detection",
-        "gridPos": { "h": 4, "w": 0, "x": 0, "y": 8 },
-        "type": "news",
         "targets": [
           {
             "expr": "cross_project_patterns_data",
             "refId": "crossProjectPatterns"
           }
         ],
-        "datasource": "MahavishnuMetrics",
-        "description": "Latest insights from cross-project pattern analysis (velocity-quality correlations, workflow failures)"
+        "title": "Cross-Project Pattern Detection",
+        "type": "news"
       },
       {
+        "datasource": "MahavishnuMetrics",
+        "description": "Detailed health status for all monitored repositories",
+        "gridPos": {
+          "h": 5,
+          "w": 8,
+          "x": 6,
+          "y": 4
+        },
         "id": "repository-health-table",
-        "title": "Repository Health Status",
-        "gridPos": { "h": 5, "w": 8, "x": 6, "y": 4 },
-        "type": "table",
         "options": {
           "showHeader": true
         },
-        "transform": "table",
-        "datasource": "MahavishnuMetrics",
         "queryType": "annotation",
         "targets": [
           {
             "expr": "list({repo=\"*\", health_score=$health, pull_requests=$open_prs, branches=$stale_branches, workflow=$workflow_status, status=$health_status})",
-            "refId": "repoHealthTable",
             "formatAs": "table",
-            "instant": false
+            "instant": false,
+            "refId": "repoHealthTable"
           }
         ],
-        "description": "Detailed health status for all monitored repositories"
+        "title": "Repository Health Status",
+        "transform": "table",
+        "type": "table"
       },
       {
-        "id": "quality-vs-velocity-scatter",
-        "title": "Quality vs Velocity Correlation",
-        "gridPos": { "h": 6, "w": 6, "x": 9, "y": 4 },
-        "type": "scatterplot",
+        "datasource": "MahavishnuMetrics",
+        "description": "Correlation analysis between code quality and development velocity",
         "fieldConfig": {
           "defaults": {
             "custom": {
@@ -224,6 +251,13 @@
             }
           }
         },
+        "gridPos": {
+          "h": 6,
+          "w": 6,
+          "x": 9,
+          "y": 4
+        },
+        "id": "quality-vs-velocity-scatter",
         "targets": [
           {
             "expr": "repository_health_data{repo=\"*\"}[[\"health_score\"]]",
@@ -236,24 +270,36 @@
             "refId": "velocityScatterX"
           }
         ],
-        "datasource": "MahavishnuMetrics",
-        "description": "Correlation analysis between code quality and development velocity"
+        "title": "Quality vs Velocity Correlation",
+        "type": "scatterplot"
       }
-    ]
+    ],
+    "refresh": "30s",
+    "schemaVersion": 36,
+    "tags": [
+      "symbiotic",
+      "ecosystem",
+      "ai-workflow",
+      "crackerjack",
+      "mahavishnu"
+    ],
+    "timezone": "UTC",
+    "title": "Symbiotic Ecosystem Dashboard",
+    "version": "1.0.0"
   },
   "templating": {
     "list": {
-      "type": "dataset",
       "datasource": "MahavishnuMetrics",
       "filters": [
         {
-          "type": "include",
           "name": "TimeSeries",
           "params": [
             "$repo"
-          ]
+          ],
+          "type": "include"
         }
-      ]
+      ],
+      "type": "dataset"
     }
   }
 }

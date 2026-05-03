@@ -162,7 +162,9 @@ async def test_register_failure_and_resolve_no_match(monkeypatch: pytest.MonkeyP
     assert ok is False
 
     # Import failure branch
-    monkeypatch.setattr(ar.importlib, "import_module", lambda _p: (_ for _ in ()).throw(RuntimeError("x")))
+    monkeypatch.setattr(
+        ar.importlib, "import_module", lambda _p: (_ for _ in ()).throw(RuntimeError("x"))
+    )
     bad2 = _Meta(
         adapter_id="bad2",
         domain="orchestration",
@@ -188,7 +190,10 @@ async def test_register_failure_and_resolve_no_match(monkeypatch: pytest.MonkeyP
     assert ok3 is True
     assert registry.get_adapter("module-only") is not None
 
-    assert await registry.resolve(domain="orchestration", key="workflow", capabilities=["none"]) is None
+    assert (
+        await registry.resolve(domain="orchestration", key="workflow", capabilities=["none"])
+        is None
+    )
 
 
 @pytest.mark.asyncio
@@ -230,7 +235,9 @@ async def test_health_checks_enable_disable_and_close(monkeypatch: pytest.Monkey
 
 
 @pytest.mark.asyncio
-async def test_discover_register_handles_registration_exception(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_discover_register_handles_registration_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _patch_registry_deps(monkeypatch)
     registry = ar.HybridAdapterRegistry(SimpleNamespace())
     await registry.initialize()
@@ -282,7 +289,9 @@ async def test_discover_register_records_false_returns(monkeypatch: pytest.Monke
 
 
 @pytest.mark.asyncio
-async def test_resolve_and_list_filters_and_enable_state_update(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_resolve_and_list_filters_and_enable_state_update(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _patch_registry_deps(monkeypatch)
     registry = ar.HybridAdapterRegistry(SimpleNamespace())
     await registry.initialize()

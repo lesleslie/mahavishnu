@@ -3,12 +3,12 @@
 import pytest
 
 from mahavishnu.core.code_index.models import (
+    CallChainRequest,
     CallChainResult,
     CodeGraphUnavailable,
     DegradationTier,
     ImpactAnalysisRequest,
     ImpactAnalysisResult,
-    CallChainRequest,
 )
 
 

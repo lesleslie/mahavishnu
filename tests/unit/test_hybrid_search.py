@@ -7,17 +7,17 @@ This module tests the HybridSearchEngine implementation:
 - Error handling and edge cases
 """
 
-import pytest
-from datetime import datetime, UTC
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+
+import pytest
 
 from mahavishnu.core.search import (
     HybridSearchConfig,
     HybridSearchEngine,
     HybridSearchResult,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -168,9 +168,7 @@ class TestHybridSearchEngine:
             await engine.search("")
 
     @pytest.mark.asyncio
-    async def test_search_with_embedding(
-        self, mock_pool, mock_embedding_service, search_config
-    ):
+    async def test_search_with_embedding(self, mock_pool, mock_embedding_service, search_config):
         """Test hybrid search with embedding."""
         # Mock embedding service
         mock_embedding_service.embed.return_value = MagicMock(
@@ -198,9 +196,7 @@ class TestHybridSearchEngine:
         assert len(results) == 0
 
     @pytest.mark.asyncio
-    async def test_lexical_fallback(
-        self, mock_pool, mock_embedding_service, search_config
-    ):
+    async def test_lexical_fallback(self, mock_pool, mock_embedding_service, search_config):
         """Test lexical-only fallback when embedding fails."""
         # Mock embedding failure
         mock_embedding_service.embed.side_effect = Exception("Embedding failed")

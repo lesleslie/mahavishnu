@@ -4,124 +4,158 @@
     "drop_excess_requests": false
   },
   "config_store": {
-    "enabled": true,
-    "type": "sqlite",
     "config": {
       "path": "./config.db"
-    }
-  },
-  "vector_store": {
+    },
     "enabled": true,
-    "type": "redis",
-    "config": {
-      "addr": "localhost:6380"
-    }
+    "type": "sqlite"
   },
   "governance": {
     "routing_rules": [
       {
-        "id": "route-think",
-        "name": "Think Tasks",
+        "cel_expression": "headers[\"x-bf-task\"] == \"think\" || headers[\"x-bf-route\"] == \"think\"",
         "description": "Route high-reasoning tasks to ZAI's strongest coding plan model.",
         "enabled": true,
-        "cel_expression": "headers[\"x-bf-task\"] == \"think\" || headers[\"x-bf-route\"] == \"think\"",
+        "fallbacks": [
+          "zai-openai/glm-4.7"
+        ],
+        "id": "route-think",
+        "name": "Think Tasks",
+        "priority": 10,
+        "scope": "global",
         "targets": [
           {
-            "provider": "zai-openai",
             "model": "glm-5.1",
+            "provider": "zai-openai",
             "weight": 1
           }
-        ],
-        "fallbacks": ["zai-openai/glm-4.7"],
-        "scope": "global",
-        "priority": 10
+        ]
       },
       {
-        "id": "route-long-context",
-        "name": "Long Context Tasks",
+        "cel_expression": "headers[\"x-bf-task\"] == \"long_context\" || headers[\"x-bf-route\"] == \"long_context\" || headers[\"x-bf-task\"] == \"longContext\" || headers[\"x-bf-route\"] == \"longContext\"",
         "description": "Prefer the strongest long-context model for explicitly labeled long-context work.",
         "enabled": true,
-        "cel_expression": "headers[\"x-bf-task\"] == \"long_context\" || headers[\"x-bf-route\"] == \"long_context\" || headers[\"x-bf-task\"] == \"longContext\" || headers[\"x-bf-route\"] == \"longContext\"",
+        "fallbacks": [
+          "zai-openai/glm-4.7"
+        ],
+        "id": "route-long-context",
+        "name": "Long Context Tasks",
+        "priority": 20,
+        "scope": "global",
         "targets": [
           {
-            "provider": "zai-openai",
             "model": "glm-5-turbo",
+            "provider": "zai-openai",
             "weight": 1
           }
-        ],
-        "fallbacks": ["zai-openai/glm-4.7"],
-        "scope": "global",
-        "priority": 20
+        ]
       },
       {
-        "id": "route-web-search",
-        "name": "Web Search Tasks",
+        "cel_expression": "headers[\"x-bf-task\"] == \"web_search\" || headers[\"x-bf-route\"] == \"web_search\" || headers[\"x-bf-task\"] == \"webSearch\" || headers[\"x-bf-route\"] == \"webSearch\"",
         "description": "Prefer the stronger model when the caller marks a browsing or search-heavy request.",
         "enabled": true,
-        "cel_expression": "headers[\"x-bf-task\"] == \"web_search\" || headers[\"x-bf-route\"] == \"web_search\" || headers[\"x-bf-task\"] == \"webSearch\" || headers[\"x-bf-route\"] == \"webSearch\"",
+        "fallbacks": [
+          "zai-openai/glm-4.7"
+        ],
+        "id": "route-web-search",
+        "name": "Web Search Tasks",
+        "priority": 30,
+        "scope": "global",
         "targets": [
           {
-            "provider": "zai-openai",
             "model": "glm-5-turbo",
+            "provider": "zai-openai",
             "weight": 1
           }
-        ],
-        "fallbacks": ["zai-openai/glm-4.7"],
-        "scope": "global",
-        "priority": 30
+        ]
       },
       {
-        "id": "route-image",
-        "name": "Vision Tasks",
+        "cel_expression": "headers[\"x-bf-task\"] == \"image\" || headers[\"x-bf-route\"] == \"image\"",
         "description": "Route explicitly labeled multimodal or vision chat requests to ZAI vision models.",
         "enabled": true,
-        "cel_expression": "headers[\"x-bf-task\"] == \"image\" || headers[\"x-bf-route\"] == \"image\"",
+        "fallbacks": [
+          "zai-openai/glm-4.5-air"
+        ],
+        "id": "route-image",
+        "name": "Vision Tasks",
+        "priority": 40,
+        "scope": "global",
         "targets": [
           {
-            "provider": "zai-openai",
             "model": "GLM-4.5V",
+            "provider": "zai-openai",
             "weight": 0.6
           },
           {
-            "provider": "zai-openai",
             "model": "GLM-4.6V",
+            "provider": "zai-openai",
             "weight": 0.4
           }
-        ],
-        "fallbacks": ["zai-openai/glm-4.5-air"],
-        "scope": "global",
-        "priority": 40
+        ]
       },
       {
-        "id": "route-background",
-        "name": "Background Tasks",
+        "cel_expression": "headers[\"x-bf-task\"] == \"background\" || headers[\"x-bf-route\"] == \"background\" || headers[\"x-bf-task\"] == \"cheap\" || headers[\"x-bf-route\"] == \"cheap\" || headers[\"x-bf-task\"] == \"high_throughput\" || headers[\"x-bf-route\"] == \"high_throughput\"",
         "description": "Keep low-priority background work on the cheaper ZAI model.",
         "enabled": true,
-        "cel_expression": "headers[\"x-bf-task\"] == \"background\" || headers[\"x-bf-route\"] == \"background\" || headers[\"x-bf-task\"] == \"cheap\" || headers[\"x-bf-route\"] == \"cheap\" || headers[\"x-bf-task\"] == \"high_throughput\" || headers[\"x-bf-route\"] == \"high_throughput\"",
+        "fallbacks": [
+          "zai-openai/glm-4.5-air"
+        ],
+        "id": "route-background",
+        "name": "Background Tasks",
+        "priority": 50,
+        "scope": "global",
         "targets": [
           {
-            "provider": "zai-openai",
             "model": "glm-4.7-flashx",
+            "provider": "zai-openai",
             "weight": 1
           }
-        ],
-        "fallbacks": ["zai-openai/glm-4.5-air"],
-        "scope": "global",
-        "priority": 50
+        ]
       }
     ]
   },
+  "plugins": [
+    {
+      "config": {
+        "cache_by_model": true,
+        "cache_by_provider": true,
+        "cleanup_on_shutdown": false,
+        "dimension": 1,
+        "ttl": "5m"
+      },
+      "enabled": true,
+      "name": "semantic_cache"
+    }
+  ],
   "providers": {
+    "anthropic": {
+      "keys": [
+        {
+          "models": [
+            "GLM-4.7",
+            "GLM-4.5-Air",
+            "GLM-4.5V",
+            "GLM-4.6V"
+          ],
+          "name": "zai-anthropic-primary",
+          "value": "env.ZAI_API_KEY",
+          "weight": 1.0
+        }
+      ],
+      "network_config": {
+        "base_url": "https://api.z.ai/api/anthropic"
+      }
+    },
     "openai": {
       "keys": [
         {
-          "name": "openai-primary",
-          "value": "env.OPENAI_API_KEY",
           "models": [
             "gpt-5.4",
             "gpt-5.4-mini",
             "gpt-5.3-codex"
           ],
+          "name": "openai-primary",
+          "value": "env.OPENAI_API_KEY",
           "weight": 1.0
         }
       ],
@@ -130,64 +164,40 @@
       }
     },
     "zai-openai": {
+      "custom_provider_config": {
+        "allowed_requests": {
+          "chat_completion": true,
+          "chat_completion_stream": true
+        },
+        "base_provider_type": "openai",
+        "request_path_overrides": {
+          "chat_completion": "/api/coding/paas/v4/chat/completions",
+          "chat_completion_stream": "/api/coding/paas/v4/chat/completions"
+        }
+      },
       "keys": [
         {
-          "name": "zai-openai-primary",
-          "value": "env.ZAI_API_KEY",
           "models": [
             "GLM-5.1",
             "GLM-5-Turbo",
             "GLM-4.7",
             "GLM-4.5-Air"
           ],
+          "name": "zai-openai-primary",
+          "value": "env.ZAI_API_KEY",
           "weight": 1.0
         }
       ],
       "network_config": {
         "base_url": "https://api.z.ai"
-      },
-      "custom_provider_config": {
-        "base_provider_type": "openai",
-        "allowed_requests": {
-          "chat_completion": true,
-          "chat_completion_stream": true
-        },
-        "request_path_overrides": {
-          "chat_completion": "/api/coding/paas/v4/chat/completions",
-          "chat_completion_stream": "/api/coding/paas/v4/chat/completions"
-        }
-      }
-    },
-    "anthropic": {
-      "keys": [
-        {
-          "name": "zai-anthropic-primary",
-          "value": "env.ZAI_API_KEY",
-          "models": [
-            "GLM-4.7",
-            "GLM-4.5-Air",
-            "GLM-4.5V",
-            "GLM-4.6V"
-          ],
-          "weight": 1.0
-        }
-      ],
-      "network_config": {
-        "base_url": "https://api.z.ai/api/anthropic"
       }
     }
   },
-  "plugins": [
-    {
-      "enabled": true,
-      "name": "semantic_cache",
-      "config": {
-        "dimension": 1,
-        "ttl": "5m",
-        "cleanup_on_shutdown": false,
-        "cache_by_model": true,
-        "cache_by_provider": true
-      }
-    }
-  ]
+  "vector_store": {
+    "config": {
+      "addr": "localhost:6380"
+    },
+    "enabled": true,
+    "type": "redis"
+  }
 }

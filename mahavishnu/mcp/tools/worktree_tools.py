@@ -10,8 +10,8 @@ Provides standardized worktree management across the entire ecosystem,
 with safety mechanisms to prevent data loss.
 """
 
-import warnings
 from typing import Any
+import warnings
 
 warnings.warn(
     "worktree_tools is deprecated since v0.5.0. Individual tools will be replaced "

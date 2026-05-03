@@ -236,10 +236,10 @@ Goal: clean the active service docs in priority order.
 Order:
 
 1. `session-buddy`
-2. `akosha`
-3. `oneiric`
-4. `dhara`
-5. `mcp-common`
+1. `akosha`
+1. `oneiric`
+1. `dhara`
+1. `mcp-common`
 
 Tasks per repo:
 
@@ -266,7 +266,7 @@ Goal: clean smaller repos after the core docs contract is proven.
 Order:
 
 1. `crackerjack`
-2. `mdinject`
+1. `mdinject`
 
 Tasks:
 
@@ -338,10 +338,10 @@ canonical_replacement
 ## 10. Review Questions
 
 1. Should phase 1 clean only Mahavishnu first, or should it also clean `session-buddy` and `akosha` as the most important dependent services?
-2. Should generated artifacts under `docs/archive/test-artifacts` be deleted immediately, or moved to ignored local artifact storage first?
-3. Should archived docs keep their original paths via stub redirect files, or is updating links enough?
-4. Should each repo use the same exact docs structure, or only the same classification rules?
-5. Should Mahavishnu own the cross-repo docs audit command?
+1. Should generated artifacts under `docs/archive/test-artifacts` be deleted immediately, or moved to ignored local artifact storage first?
+1. Should archived docs keep their original paths via stub redirect files, or is updating links enough?
+1. Should each repo use the same exact docs structure, or only the same classification rules?
+1. Should Mahavishnu own the cross-repo docs audit command?
 
 ## 11. Definition Of Done
 

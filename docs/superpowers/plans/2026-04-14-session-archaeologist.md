@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-04-14-session-archaeologist-design.md`
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -21,15 +21,17 @@
 No other files are created or modified. This is a pure prompt file.
 
 **Pattern reference** (read-only, for consistency):
+
 - `~/.claude/skills/code-archaeologist/SKILL.md` — Cross-repo code discovery skill (same backend, same fallback pattern)
 - `~/.claude/skills/quality-pulse/SKILL.md` — Adapter execution trend analysis skill (same backend, same fallback pattern)
 - `~/.claude/skills/search-insights/SKILL.md` — Generic Akosha search skill (same backend, but returns raw results, not narratives)
 
----
+______________________________________________________________________
 
 ### Task 1: Create Session Archaeologist SKILL.md
 
 **Files:**
+
 - Create: `~/.claude/skills/session-archaeologist/SKILL.md`
 
 - [x] **Step 1: Create the directory**
@@ -97,7 +99,9 @@ Session data flows through this pipeline:
 Verify Akosha MCP tools are accessible:
 
 ```
-mcp__akosha__get_liveness()
+
+mcp\_\_akosha\_\_get_liveness()
+
 ```
 
 If Akosha is unavailable, proceed to **Fallback** (Step 6).
@@ -121,7 +125,9 @@ Determine which sub-mode the user's question maps to, then reformulate for archa
 Call `mcp__akosha__search_all_systems` with the reformulated query:
 
 ```
-mcp__akosha__search_all_systems(query="<reformulated query>", limit=10)
+
+mcp\_\_akosha\_\_search_all_systems(query="<reformulated query>", limit=10)
+
 ```
 
 If the user specified a project or repo, filter by `system_id`.
@@ -134,8 +140,10 @@ If the user specified a project or repo, filter by `system_id`.
 For decision archaeology and context recovery modes, enrich findings:
 
 ```
-mcp__akosha__query_knowledge_graph(entity_id="<topic entity>", limit=20)
-```
+
+mcp\_\_akosha\_\_query_knowledge_graph(entity_id="<topic entity>", limit=20)
+
+````
 
 This finds related entities, decisions, and implementations that may not have appeared in the conversation search.
 
@@ -160,7 +168,7 @@ Deduplicate across conversation fragments, order chronologically, and present in
 
 **Source sessions:**
 - [session-id] ([date]) — [relevant excerpt]
-```
+````
 
 **Error archaeology output:**
 
@@ -201,13 +209,13 @@ Deduplicate across conversation fragments, order chronologically, and present in
 If Akosha MCP tools are not available, fall back to Session-Buddy MCP tools directly:
 
 1. Try `mcp__session-buddy__search_conversations(query="<topic>", limit=10)`
-2. Try `mcp__session-buddy__search_by_concept(concept="<topic>", limit=10)` (reflections and knowledge graph entities)
-3. Try `mcp__session-buddy__search_entities(query="<topic>", limit=10)`
+1. Try `mcp__session-buddy__search_by_concept(concept="<topic>", limit=10)` (reflections and knowledge graph entities)
+1. Try `mcp__session-buddy__search_entities(query="<topic>", limit=10)`
 
 If Session-Buddy MCP is also unavailable, fall back to direct filesystem search:
 
 1. Search across Session-Buddy data directories (typically `~/.session-buddy/` or project-local `.session-buddy/`)
-2. Use Grep to search for topic keywords in conversation/reflection files
+1. Use Grep to search for topic keywords in conversation/reflection files
 
 Inform the user: "Akosha is not available. Falling back to [Session-Buddy MCP / direct filesystem search]. [Limitation: no cross-system search / no semantic understanding]. For richer results, ensure Akosha is running."
 
@@ -235,7 +243,8 @@ Inform the user: "Akosha is not available. Falling back to [Session-Buddy MCP / 
 - **RELATED:** `code-archaeologist` - Cross-repo code discovery (searches code graphs, not conversations)
 - **RELATED:** `quality-pulse` - Adapter execution trend analysis (searches metrics, not conversations)
 - **RELATED:** `run-quality-checks` - Trigger quality checks (use before archaeology to generate fresh data)
-```
+
+````
 
 - [x] **Step 3: Verify the file**
 
@@ -248,25 +257,30 @@ Run:
 ```bash
 git add ~/.claude/skills/session-archaeologist/SKILL.md
 git commit -m "feat: add session-archaeologist skill for past decision and context recovery"
-```
+````
 
----
+______________________________________________________________________
 
 ### Task 2: Validate the Skill
 
 **Files:**
+
 - Read: `~/.claude/skills/session-archaeologist/SKILL.md`
+
 - Read: `~/.claude/skills/search-insights/SKILL.md`
+
 - Read: `~/.claude/skills/code-archaeologist/SKILL.md`
 
 - [x] **Step 1: Verify frontmatter consistency**
 
 Check the file has:
+
 - `name` field matching directory name (`session-archaeologist`)
 - `description` field contains specific trigger phrases for auto-detection
 - `description` field mentions the skill name explicitly
 
 Run:
+
 ```bash
 head -5 ~/.claude/skills/session-archaeologist/SKILL.md
 ```
@@ -274,29 +288,38 @@ head -5 ~/.claude/skills/session-archaeologist/SKILL.md
 - [x] **Step 2: Verify no overlap with search-insights**
 
 Read `~/.claude/skills/search-insights/SKILL.md` and confirm:
+
 - Session Archaeologist focuses on narrative synthesis of decisions/solutions (not in search-insights)
+
 - search-insights returns ranked results; session-archaeologist returns structured narratives
+
 - Both reference `search_all_systems` as a tool but with different workflows
 
 - [x] **Step 3: Verify no overlap with code-archaeologist**
 
 Read `~/.claude/skills/code-archaeologist/SKILL.md` and confirm:
+
 - code-archaeologist searches code graphs and function usage (conversations are secondary enrichment)
+
 - session-archaeologist searches conversations primarily (code is not in scope)
+
 - Neither skill duplicates the other's sub-modes
 
 - [x] **Step 4: Verify cross-references are correct**
 
 - Session Archaeologist references `search-insights`, `code-archaeologist`, `quality-pulse`, `run-quality-checks`, and `ecosystem-awareness`
+
 - All referenced skills exist in `~/.claude/skills/`
+
 - No references to non-existent skills
 
 - [x] **Step 5: Verify fallback chain is consistent**
 
 Session Archaeologist uses a three-tier fallback:
+
 1. Akosha MCP tools (primary)
-2. Session-Buddy MCP tools (secondary)
-3. Direct filesystem (last resort)
+1. Session-Buddy MCP tools (secondary)
+1. Direct filesystem (last resort)
 
 This differs from code-archaeologist/quality-pulse (which fall back to Mahavishnu config + filesystem) because session-archaeologist searches **conversation data**, not code or metrics. Session-Buddy is the correct fallback, not Mahavishnu.
 

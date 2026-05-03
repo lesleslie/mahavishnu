@@ -1,7 +1,6 @@
----
-name: infographic-creator
-description: Create beautiful infographics based on given text content. Use when users request to create infographics.
----
+______________________________________________________________________
+
+## name: infographic-creator description: Create beautiful infographics based on given text content. Use when users request to create infographics.
 
 Infographics convert data, information, and knowledge into perceptible visual language. They combine visual design with data visualization, compressing complex information with intuitive symbols to help audiences quickly understand and remember key points.
 
@@ -15,7 +14,7 @@ Before starting the task, you need to understand the AntV Infographic syntax spe
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| akosha | 8682 | grep | mcp__akosha__search_all_systems | 60s |
+| akosha | 8682 | grep | mcp\_\_akosha\_\_search_all_systems | 60s |
 
 ## Specifications
 
@@ -24,8 +23,8 @@ Before starting the task, you need to understand the AntV Infographic syntax spe
 AntV Infographic syntax is a custom DSL used to describe infographic rendering configurations. It uses indentation to describe information, has strong robustness, and is convenient for AI streaming output and infographic rendering. It mainly contains the following information:
 
 1. template: Use templates to express the text information structure.
-2. data: Infographic data, including title, desc, data items, etc. Data items typically contain fields such as label, desc, icon, etc.
-3. theme: Theme contains style configurations such as palette, font, etc.
+1. data: Infographic data, including title, desc, data items, etc. Data items typically contain fields such as label, desc, icon, etc.
+1. theme: Theme contains style configurations such as palette, font, etc.
 
 For example:
 
@@ -46,11 +45,17 @@ theme
 ### Syntax Specifications
 
 - The first line must be `infographic <template-name>`, template selected from the list below (see "Available Templates" section).
+
 - Use `data` / `theme` blocks, with two-space indentation within blocks.
+
 - Key-value pairs use "key space value"; arrays use `-` as entry prefix.
+
 - icon uses icon keywords (e.g., `star fill`).
+
 - `data` should contain title/desc + template-specific main data field (not necessarily `items`).
+
 - Main data field selection (use only one, avoid mixing):
+
   - `list-*` → `lists`
   - `sequence-*` → `sequences` (optional `order asc|desc`)
   - `compare-*` → `compares` (supports `children` for grouped comparisons), can contain multiple comparison items
@@ -59,10 +64,14 @@ theme
   - `relation-*` → `nodes` + `relations`; simple relation diagrams can omit `nodes`, using arrow syntax in relations
   - `chart-*` → `values` (numeric statistics, optional `category`)
   - Use `items` as fallback when uncertain
+
 - `compare-binary-*` / `compare-hierarchy-left-right-*` binary templates: must have two root nodes, all comparison items hang under these two root nodes' children
+
 - `hierarchy-*`: use single `root`, nested through `children` (do not repeat `root`)
+
 - `theme` is used to customize themes (palette, font, etc.)
   For example: dark theme + custom color scheme
+
   ```plain
   infographic list-row-horizontal-icon-arrow
   theme dark
@@ -71,9 +80,12 @@ theme
       - #F6BD16
       - #F08BB4
   ```
+
 - Use `theme.base.text.font-family` to specify font, such as handwriting style `851tegakizatsu`
+
 - Use `theme.stylize` to select built-in styles and pass parameters
   Common styles:
+
   - `rough`: hand-drawn effect
   - `pattern`: pattern fill
   - `linear-gradient` / `radial-gradient`: linear/radial gradient
@@ -374,7 +386,8 @@ Reference HTML template:
 
 2. Use the Write tool to generate HTML file, named as `<title>-infographic.html`
 
-3. Show to user:
+1. Show to user:
+
    - Generate file path and prompt: "Open directly with a browser to view and save as SVG"
    - Output syntax and prompt: "Tell me if you need to adjust template/colors/content"
 

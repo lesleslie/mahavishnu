@@ -1,8 +1,8 @@
 """Tests for config inventory CLI commands added by add_config_inventory_commands."""
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 import typer
@@ -60,12 +60,14 @@ def test_list_skills_shows_skills(config_app):
 def test_list_mcp_servers_shows_servers(config_app):
     app, root = config_app
     (root / ".mcp.json").write_text(
-        json.dumps({
-            "mcpServers": {
-                "crackerjack": {"url": "http://localhost:8676"},
-                "akosha": {"url": "http://localhost:8682"},
+        json.dumps(
+            {
+                "mcpServers": {
+                    "crackerjack": {"url": "http://localhost:8676"},
+                    "akosha": {"url": "http://localhost:8682"},
+                }
             }
-        })
+        )
     )
 
     result = runner.invoke(app, ["list-mcp-servers"])

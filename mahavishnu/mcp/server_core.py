@@ -335,11 +335,13 @@ class FastMCPServer:
         @self.server.custom_route("/health", methods=["GET"])
         async def health_check(request: Request) -> JSONResponse:
             """HTTP health check endpoint for Claude Code compatibility."""
-            return JSONResponse({
-                "status": "ok",
-                "service": "mahavishnu",
-                "version": __version__,
-            })
+            return JSONResponse(
+                {
+                    "status": "ok",
+                    "service": "mahavishnu",
+                    "version": __version__,
+                }
+            )
 
         @self.server.custom_route("/healthz", methods=["GET"])
         async def healthz_check(request: Request) -> JSONResponse:
@@ -715,7 +717,11 @@ class FastMCPServer:
                     "has_permission": has_permission,
                 }
             except Exception as e:
-                return {"status": "error", "error": f"Failed to check permission: {e}", "has_permission": False}
+                return {
+                    "status": "error",
+                    "error": f"Failed to check permission: {e}",
+                    "has_permission": False,
+                }
 
         @server.tool()
         async def get_observability_metrics() -> dict[str, Any]:

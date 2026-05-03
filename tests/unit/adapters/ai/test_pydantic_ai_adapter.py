@@ -229,9 +229,7 @@ class TestHealthCheck:
         assert "not installed" in health["details"]["reason"]
 
     @pytest.mark.asyncio
-    async def test_health_degraded_when_not_initialized(
-        self, settings: PydanticAISettings
-    ) -> None:
+    async def test_health_degraded_when_not_initialized(self, settings: PydanticAISettings) -> None:
         """Test health returns degraded when not initialized."""
         adapter = PydanticAIAdapter(settings)
         adapter._pydantic_ai_available = True
@@ -312,9 +310,7 @@ class TestRateLimiting:
     """Tests for rate limiting."""
 
     @pytest.mark.asyncio
-    async def test_create_agent_rate_limit(
-        self, initialized_adapter: PydanticAIAdapter
-    ) -> None:
+    async def test_create_agent_rate_limit(self, initialized_adapter: PydanticAIAdapter) -> None:
         """Test that agent creation is rate-limited."""
         # Populate agents up to the limit directly
         for i in range(MAX_AGENTS):
@@ -368,9 +364,7 @@ class TestErrorHandling:
         assert "not initialized" in str(exc).lower()
 
     @pytest.mark.asyncio
-    async def test_execute_agent_not_found(
-        self, initialized_adapter: PydanticAIAdapter
-    ) -> None:
+    async def test_execute_agent_not_found(self, initialized_adapter: PydanticAIAdapter) -> None:
         """Test execute_agent raises error for non-existent agent."""
         with pytest.raises(PydanticAIAdapterError) as exc:
             await initialized_adapter.execute_agent(
@@ -418,12 +412,12 @@ class TestFallbackStrategy:
         assert "claude" in fallback_model.model_name.lower()
 
     @pytest.mark.asyncio
-    async def test_fallback_all_models_fail(
-        self, initialized_adapter: PydanticAIAdapter
-    ) -> None:
+    async def test_fallback_all_models_fail(self, initialized_adapter: PydanticAIAdapter) -> None:
         """Test fallback model list is configured correctly."""
         # Verify we have a proper fallback chain
-        all_models = [initialized_adapter.settings.primary_model] + initialized_adapter.settings.fallback_models
+        all_models = [
+            initialized_adapter.settings.primary_model
+        ] + initialized_adapter.settings.fallback_models
         all_models = [m for m in all_models if m is not None]
         assert len(all_models) >= 2, "Should have primary + at least one fallback"
         # Verify different providers for resilience
@@ -440,9 +434,7 @@ class TestShutdown:
     """Tests for adapter shutdown."""
 
     @pytest.mark.asyncio
-    async def test_shutdown_clears_resources(
-        self, initialized_adapter: PydanticAIAdapter
-    ) -> None:
+    async def test_shutdown_clears_resources(self, initialized_adapter: PydanticAIAdapter) -> None:
         """Test that shutdown clears all resources."""
         # Add a mock MCP server
         mock_server = MagicMock()

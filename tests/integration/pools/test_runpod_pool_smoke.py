@@ -39,7 +39,9 @@ async def live_pool():
 
 @pytest.mark.asyncio
 async def test_live_execute_task(live_pool):
-    result = await live_pool.execute_task({"prompt": "hello from smoke test", "category": "general"})
+    result = await live_pool.execute_task(
+        {"prompt": "hello from smoke test", "category": "general"}
+    )
     assert result["status"] == "completed"
     assert result["output"] is not None
     assert live_pool._status == PoolStatus.RUNNING

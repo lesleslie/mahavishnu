@@ -6,9 +6,9 @@ import builtins
 from datetime import UTC, datetime, timedelta
 import importlib
 import runpy
-from types import SimpleNamespace
 import sys
 import types
+from types import SimpleNamespace
 
 import pytest
 
@@ -191,7 +191,9 @@ def test_module_import_success_branch_sets_otel_available(monkeypatch: pytest.Mo
         "opentelemetry.exporter.otlp.proto.grpc.trace_exporter",
         trace_exporter_mod,
     )
-    monkeypatch.setitem(sys.modules, "opentelemetry.instrumentation.system_metrics", system_metrics_mod)
+    monkeypatch.setitem(
+        sys.modules, "opentelemetry.instrumentation.system_metrics", system_metrics_mod
+    )
     monkeypatch.setitem(sys.modules, "opentelemetry.sdk.metrics", sdk_metrics_mod)
     monkeypatch.setitem(sys.modules, "opentelemetry.sdk.metrics.export", sdk_metrics_export_mod)
     monkeypatch.setitem(sys.modules, "opentelemetry.sdk.resources", sdk_resources_mod)
@@ -200,6 +202,7 @@ def test_module_import_success_branch_sets_otel_available(monkeypatch: pytest.Mo
 
     reloaded = importlib.reload(obs)
     assert reloaded.OTEL_AVAILABLE is True
+
 
 def test_init_uses_fallback_components() -> None:
     manager = obs.ObservabilityManager(_config(metrics_enabled=False))
@@ -325,7 +328,9 @@ def test_init_otel_components_success_path(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setattr(obs, "OTLPSpanExporter", _Exporter, raising=False)
     monkeypatch.setattr(obs, "PeriodicExportingMetricReader", _MetricReader, raising=False)
     monkeypatch.setattr(obs, "OTLPMetricExporter", _Exporter, raising=False)
-    monkeypatch.setattr(obs, "MeterProvider", lambda **kwargs: SimpleNamespace(**kwargs), raising=False)
+    monkeypatch.setattr(
+        obs, "MeterProvider", lambda **kwargs: SimpleNamespace(**kwargs), raising=False
+    )
     monkeypatch.setattr(obs, "SystemMetricsInstrumentor", _SystemMetricsInstrumentor, raising=False)
     monkeypatch.setattr(obs, "metrics", metrics_api, raising=False)
     monkeypatch.setattr(obs, "trace", trace_api, raising=False)
@@ -422,9 +427,13 @@ def test_import_error_branch_defines_fallback_classes(monkeypatch: pytest.Monkey
         return original_import(name, globals, locals, fromlist, level)
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
-    for module_name in [name for name in sys.modules if name == "opentelemetry" or name.startswith("opentelemetry.")]:
+    for module_name in [
+        name for name in sys.modules if name == "opentelemetry" or name.startswith("opentelemetry.")
+    ]:
         monkeypatch.delitem(sys.modules, module_name, raising=False)
-    namespace = runpy.run_module("mahavishnu.core.observability", run_name="__observability_fallback__")
+    namespace = runpy.run_module(
+        "mahavishnu.core.observability", run_name="__observability_fallback__"
+    )
 
     assert namespace["OTEL_AVAILABLE"] is False
     counter = namespace["MockCounter"]()

@@ -1,12 +1,6 @@
----
-name: learn-from-errors
-description: >
-  Proactive error learning skill. Use automatically after fixing a bug, resolving an error,
-  or debugging an issue. Queries Session-Buddy for similar past errors, records the fix for
-  future reference, enriches the knowledge graph with error-solution links, and checks
-  Crackerjack for recurring patterns. NOT user-invoked — Claude activates this autonomously
-  after completing a fix.
----
+______________________________________________________________________
+
+## name: learn-from-errors description: > Proactive error learning skill. Use automatically after fixing a bug, resolving an error, or debugging an issue. Queries Session-Buddy for similar past errors, records the fix for future reference, enriches the knowledge graph with error-solution links, and checks Crackerjack for recurring patterns. NOT user-invoked — Claude activates this autonomously after completing a fix.
 
 # Learn From Errors
 
@@ -16,8 +10,8 @@ description: >
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| session-buddy | 8678 | full | mcp__session-buddy__search_conversations, mcp__session-buddy__store_reflection, mcp__session-buddy__search_entities | 30s |
-| crackerjack | 8676 | grep | mcp__crackerjack__smart_error_analysis | 120s |
+| session-buddy | 8678 | full | mcp\_\_session-buddy\_\_search_conversations, mcp\_\_session-buddy\_\_store_reflection, mcp\_\_session-buddy\_\_search_entities | 30s |
+| crackerjack | 8676 | grep | mcp\_\_crackerjack\_\_smart_error_analysis | 120s |
 
 Every error fixed is a learning opportunity. This skill teaches Claude to check whether an error has been seen before, record the fix for future sessions, and detect recurring patterns that may indicate systemic issues.
 
@@ -26,6 +20,7 @@ Every error fixed is a learning opportunity. This skill teaches Claude to check 
 ## Activation
 
 **Reactive** — triggers automatically when Claude has just:
+
 - Fixed a failing test
 - Resolved a runtime error, exception, or traceback
 - Applied a fix suggested by Crackerjack, Ruff, Mypy, or another quality tool
@@ -64,12 +59,14 @@ Call mcp__session-buddy__query_similar_errors with:
 ```
 
 **If similar errors found:**
+
 - Tell the user: "This error pattern was seen before. Here's what worked last time: [excerpt]"
 - Assess whether the past fix still applies to the current situation
 - If the past fix is still applicable, apply it and skip to Step 4
 - If the past fix is NOT applicable (different context), proceed to Step 2 with both the old and new fix recorded
 
 **If no similar errors found:**
+
 - Proceed to Step 2
 
 ### Step 2: Record the Fix
@@ -100,6 +97,7 @@ Call mcp__session-buddy__record_fix_success with:
 Create two linked entities — one for the error pattern, one for the solution.
 
 **Create error entity:**
+
 ```
 Call mcp__session-buddy__create_entity with:
   - name: "error:<short_descriptive_name>"  (e.g., "error:none adapters access")
@@ -112,6 +110,7 @@ Call mcp__session-buddy__create_entity with:
 ```
 
 **Create solution entity:**
+
 ```
 Call mcp__session-buddy__create_entity with:
   - name: "fix:<short_descriptive_name>"  (e.g., "fix:null guard before adapters")
@@ -124,6 +123,7 @@ Call mcp__session-buddy__create_entity with:
 ```
 
 **Link them:**
+
 ```
 Call mcp__session-buddy__create_relation with:
   - from_entity: "error:<name>"
@@ -140,11 +140,13 @@ Call mcp__session-buddy__crackerjack_patterns with:
 ```
 
 **If recurring patterns found:**
+
 - Tell the user: "Crackerjack detected [N] recurring failure patterns in the last 30 days. This error may be part of a systemic issue."
 - Include the top pattern description and frequency
 - Suggest investigating the root cause if frequency > 3
 
 **If no patterns found:**
+
 - Silent — no need to mention this to the user
 
 ## Entity Naming Convention

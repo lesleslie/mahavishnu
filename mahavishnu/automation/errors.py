@@ -4,11 +4,11 @@ Provides structured error handling with error codes and recovery guidance.
 Follows the same pattern as mahavishnu.core.errors.
 """
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class AutomationErrorCode(str, Enum):
+class AutomationErrorCode(StrEnum):
     """Error codes for desktop automation.
 
     Error codes follow format: AUT-XXX
@@ -247,8 +247,7 @@ class WindowNotFoundError(AutomationError):
             code=AutomationErrorCode.WINDOW_NOT_FOUND,
             details={"window_id": window_id, "bundle_id": bundle_id},
             recovery_hint=(
-                "The window may have been closed. "
-                "Use list_windows() to get current window IDs."
+                "The window may have been closed. Use list_windows() to get current window IDs."
             ),
         )
 

@@ -422,10 +422,11 @@ performance_tests:
 - run integration and smoke tests locally or in the deployment environment
 - build and publish artifacts from the deployment tooling in use
 - promote to staging and production from the deploy system, not from `.github/workflows`
-          kubectl apply -f k8s/production/
-          # Wait for health checks
-          kubectl rollout status deployment/mahavishnu -n mahavishnu-prod
-```
+  kubectl apply -f k8s/production/
+  \# Wait for health checks
+  kubectl rollout status deployment/mahavishnu -n mahavishnu-prod
+
+````
 
 **Required Components:**
 
@@ -468,7 +469,7 @@ opensearch:
   ssl: true
   verify_certs: true
   log_level: WARNING
-```
+````
 
 **Required Sections:**
 

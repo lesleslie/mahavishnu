@@ -5,9 +5,8 @@ Ensures SOC 2, ISO 27001, and PCI DSS compliance by logging all worktree
 operations with complete context for forensic analysis.
 """
 
-import logging
 from datetime import UTC, datetime
-from pathlib import Path
+import logging
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -117,21 +116,12 @@ class WorktreeAuditLogger:
             result: Result of operation (success/failure/denied)
             error: Error message if applicable
         """
-        timestamp = datetime.now(tz=UTC).isoformat()
+        datetime.now(tz=UTC).isoformat()
 
         # Redact sensitive parameters
         safe_params = self._redact_secrets(params)
 
         # Create log entry
-        log_entry = {
-            "timestamp": timestamp,
-            "event_type": event_type,
-            "user_id": user_id,
-            "tool_name": tool_name,
-            "params": safe_params,
-            "result": result,
-            "error": error,
-        }
 
         # Log to application logger (for immediate visibility)
         log_message = f"[AUDIT] {event_type}: user={user_id}, tool={tool_name}, result={result}"

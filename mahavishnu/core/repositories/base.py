@@ -16,15 +16,18 @@ Usage:
 
 from __future__ import annotations
 
-import logging
-from abc import ABC, abstractmethod
+from abc import ABC
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Generic, TypeVar
-
-from asyncpg import Connection, Pool
+import logging
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from mahavishnu.core.database import Database, get_database
-from mahavishnu.core.errors import DatabaseError, ErrorCode, MahavishnuError
+from mahavishnu.core.errors import ErrorCode, MahavishnuError
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from asyncpg import Connection, Pool
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +69,7 @@ class RepositoryError(MahavishnuError):
         self.operation = operation
 
 
-class BaseRepository(ABC, Generic[CreateModel, ReadModel, UpdateModel]):
+class BaseRepository[CreateModel, ReadModel, UpdateModel](ABC):
     """Abstract base repository with async context manager pattern.
 
     Provides:

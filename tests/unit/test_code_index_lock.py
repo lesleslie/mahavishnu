@@ -5,9 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import pytest
-
-from mahavishnu.core.code_index.lock import LOCK_TTL_SECONDS, RepoIndexLock
+from mahavishnu.core.code_index.lock import RepoIndexLock
 
 
 def test_acquire_and_release(tmp_path: Path) -> None:

@@ -15,15 +15,14 @@ Design:
 from __future__ import annotations
 
 import asyncio
-import logging
-from collections import defaultdict
+import contextlib
 from dataclasses import dataclass, field
-from datetime import datetime, UTC, timedelta
-from typing import Any, Awaitable, Callable
-from enum import Enum
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum
+import logging
+from typing import Any
 
 import numpy as np
-from scipy import stats
 
 from mahavishnu.core.metrics_collector import (
     ExecutionTracker,
@@ -32,11 +31,7 @@ from mahavishnu.core.metrics_collector import (
 from mahavishnu.core.metrics_schema import (
     AdapterType,
     TaskType,
-    AdapterStats,
-    ExecutionRecord,
 )
-
-
 from mahavishnu.core.routing_metrics import RoutingMetrics, get_routing_metrics
 
 logger = logging.getLogger(__name__)
@@ -54,7 +49,7 @@ class ScoringWeights:
     CRITICAL = {"success": 0.8, "speed": 0.2}  # Reliability over speed
 
 
-class ConfidenceLevel(str, Enum):
+class ConfidenceLevel(StrEnum):
     """Statistical confidence levels for decision making."""
 
     HIGH = "high"  # 95% confidence, requires 100+ samples
@@ -647,10 +642,8 @@ class StatisticalRouter:
 
         if self._recalc_task and not self._recalc_task.done():
             self._recalc_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._recalc_task
-            except asyncio.CancelledError:
-                pass
 
         self._shutdown_event.set()
         logger.info("StatisticalRouter stopped")

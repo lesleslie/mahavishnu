@@ -1,20 +1,19 @@
 """Comprehensive unit tests for mahavishnu/websocket/server.py."""
+
 from __future__ import annotations
 
 import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from mcp_common.websocket import MessageType, WebSocketMessage
 from mcp_common.websocket.protocol import WebSocketProtocol
+import pytest
 
 from mahavishnu.websocket.rate_limiter import RateLimitResult
 from mahavishnu.websocket.server import (
     MahavishnuWebSocketServer,
     _get_explicit_attribute,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -1052,9 +1051,7 @@ class TestLeaveAllRooms:
         }
         server.room_connections = {}
 
-        with patch.object(
-            type(server).__mro__[1], "leave_all_rooms", new_callable=AsyncMock
-        ):
+        with patch.object(type(server).__mro__[1], "leave_all_rooms", new_callable=AsyncMock):
             await server.leave_all_rooms("conn-1")
 
         assert "conn-1" not in server.connection_rooms["room-1"]
@@ -1068,9 +1065,7 @@ class TestLeaveAllRooms:
         }
         server.room_connections = {}
 
-        with patch.object(
-            type(server).__mro__[1], "leave_all_rooms", new_callable=AsyncMock
-        ):
+        with patch.object(type(server).__mro__[1], "leave_all_rooms", new_callable=AsyncMock):
             await server.leave_all_rooms("conn-1")
 
         assert "room-1" in server.connection_rooms
@@ -1452,9 +1447,7 @@ class TestBroadcastTeamExecutionStarted:
         server = _make_server()
         server.broadcast_to_room = AsyncMock()
 
-        await server.broadcast_team_execution_started(
-            team_id="t1", task="build", user_id="u1"
-        )
+        await server.broadcast_team_execution_started(team_id="t1", task="build", user_id="u1")
         assert server.broadcast_to_room.call_count == 2
 
 

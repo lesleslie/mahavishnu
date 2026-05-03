@@ -17,9 +17,9 @@ Environment:
 """
 
 import argparse
+from pathlib import Path
 import sqlite3
 import sys
-from pathlib import Path
 
 
 def generate_migration_map(db_path: str, limit: int = 1000) -> dict[str, str]:
@@ -39,10 +39,7 @@ def generate_migration_map(db_path: str, limit: int = 1000) -> dict[str, str]:
 
     try:
         # Get existing jobs with UUID job_ids
-        cursor.execute(
-            "SELECT job_id, id FROM jobs WHERE job_id IS NOT NULL LIMIT ?",
-            (limit,)
-        )
+        cursor.execute("SELECT job_id, id FROM jobs WHERE job_id IS NOT NULL LIMIT ?", (limit,))
 
         rows = cursor.fetchall()
 
@@ -52,7 +49,7 @@ def generate_migration_map(db_path: str, limit: int = 1000) -> dict[str, str]:
             # For each existing job, we'd generate a new ULID
             # In practice, this would use Dhara's generate()
             # For this script, we'll just note it needs migration
-            migration_map[job_id] = f"[NEEDS_ULID_GENERATION]"
+            migration_map[job_id] = "[NEEDS_ULID_GENERATION]"
 
     finally:
         conn.close()
@@ -82,23 +79,27 @@ def validate_job_ids(db_path: str) -> list[dict]:
 
         invalid = cursor.fetchall()
         if invalid:
-            issues.append({
-                "issue": "invalid_format",
-                "count": len(invalid),
-                "sample": invalid[0] if invalid else None,
-                "recommendation": "Job IDs should be 26-char alphanumeric (ULID format)"
-            })
+            issues.append(
+                {
+                    "issue": "invalid_format",
+                    "count": len(invalid),
+                    "sample": invalid[0] if invalid else None,
+                    "recommendation": "Job IDs should be 26-char alphanumeric (ULID format)",
+                }
+            )
 
         # Check for NULL job_ids
         cursor.execute("SELECT COUNT(*) FROM jobs WHERE job_id IS NULL LIMIT 100")
         null_count = cursor.fetchone()[0]
 
         if null_count > 0:
-            issues.append({
-                "issue": "null_job_ids",
-                "count": null_count,
-                "recommendation": "All jobs should have valid job_id"
-            })
+            issues.append(
+                {
+                    "issue": "null_job_ids",
+                    "count": null_count,
+                    "recommendation": "All jobs should have valid job_id",
+                }
+            )
 
     finally:
         conn.close()
@@ -112,15 +113,11 @@ def main():
     )
 
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Validate and show changes without executing"
+        "--dry-run", action="store_true", help="Validate and show changes without executing"
     )
 
     parser.add_argument(
-        "--db",
-        default=str(Path.cwd() / "crackerjack.db"),
-        help="Path to crackerjack.db"
+        "--db", default=str(Path.cwd() / "crackerjack.db"), help="Path to crackerjack.db"
     )
 
     args = parser.parse_args()
@@ -140,7 +137,7 @@ def main():
         print(f"❌ Found {len(validation_issues)} validation issues:")
         for issue in validation_issues:
             print(f"  • {issue['issue']}: {issue['count']} affected")
-            if issue['sample']:
+            if issue["sample"]:
                 print(f"   Sample: {issue['sample']}")
             print(f"   Recommendation: {issue['recommendation']}")
         print()

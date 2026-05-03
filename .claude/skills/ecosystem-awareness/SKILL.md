@@ -1,7 +1,6 @@
----
-name: ecosystem-awareness
-description: Use when starting a Mahavishnu session to discover available repositories, roles, and capabilities. Auto-activates on session start or first Mahavishnu MCP contact. Caches ecosystem state in memory for cross-session persistence.
----
+______________________________________________________________________
+
+## name: ecosystem-awareness description: Use when starting a Mahavishnu session to discover available repositories, roles, and capabilities. Auto-activates on session start or first Mahavishnu MCP contact. Caches ecosystem state in memory for cross-session persistence.
 
 # Ecosystem Awareness
 
@@ -11,8 +10,8 @@ description: Use when starting a Mahavishnu session to discover available reposi
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| mahavishnu | 8680 | summary | mcp__mahavishnu__get_health, mcp__mahavishnu__list_repos, mcp__mahavishnu__list_workflows | 60s |
-| akosha | 8682 | summary | mcp__akosha__search_all_systems, mcp__akosha__correlate_systems | 60s |
+| mahavishnu | 8680 | summary | mcp\_\_mahavishnu\_\_get_health, mcp\_\_mahavishnu\_\_list_repos, mcp\_\_mahavishnu\_\_list_workflows | 60s |
+| akosha | 8682 | summary | mcp\_\_akosha\_\_search_all_systems, mcp\_\_akosha\_\_correlate_systems | 60s |
 
 This skill gives Claude persistent knowledge of the Mahavishnu repository ecosystem. On session start (or first Mahavishnu MCP tool call), it discovers all available repositories, builds a capability map, and caches it to Claude Code memory. Subsequent sessions use the cached map — no re-discovery needed.
 
@@ -23,8 +22,8 @@ This skill gives Claude persistent knowledge of the Mahavishnu repository ecosys
 **Session lifecycle** — triggers on:
 
 1. Session start when Mahavishnu MCP tools are available
-2. First Mahavishnu MCP tool call in a session (`mcp__mahavishnu__*`)
-3. User explicitly asks "what repos are available", "show me the ecosystem"
+1. First Mahavishnu MCP tool call in a session (`mcp__mahavishnu__*`)
+1. User explicitly asks "what repos are available", "show me the ecosystem"
 
 ```dot
 digraph activation {
@@ -53,6 +52,7 @@ digraph activation {
 ## When to Use
 
 **Use when:**
+
 - Starting a new Claude Code session with Mahavishnu MCP connected
 - First Mahavishnu MCP tool call in a session
 - User asks about available repositories, roles, or capabilities
@@ -60,6 +60,7 @@ digraph activation {
 - Standalone Mahavishnu users who need to discover their repo catalog
 
 **Don't use when:**
+
 - Deep capability queries (use `find-capability` skill)
 - Executing workflows across repos (use `orchestrate-workflow` skill)
 - Repo already known and targeted (proceed directly)
@@ -119,8 +120,8 @@ repos = await mcp.call_tool("mcp__mahavishnu__list_repos", {})
 Build three indexes:
 
 1. **role_index**: Group repos by their assigned role
-2. **tag_index**: Group repos by their tags
-3. **repo_index**: Map each repo name to full metadata
+1. **tag_index**: Group repos by their tags
+1. **repo_index**: Map each repo name to full metadata
 
 ### Step 3: Validate Cache Freshness
 
@@ -183,6 +184,7 @@ Once cached, Claude can use the map to:
 ## Validation Checklist
 
 After discovery:
+
 - [ ] All repos from `list_repos` appear in the cache
 - [ ] Role index covers all 12 defined roles (or roles present in config)
 - [ ] Tag index includes all unique tags across repos
@@ -191,6 +193,7 @@ After discovery:
 - [ ] Discovery timestamp recorded for staleness tracking
 
 After cache validation:
+
 - [ ] Fresh `list_repos` repo count matches cached count
 - [ ] No new repos missing from cache
 - [ ] No deleted repos still in cache
@@ -208,11 +211,13 @@ After cache validation:
 ## Real-World Impact
 
 **Before this skill:**
+
 - Claude called `list_repos` on every Mahavishnu operation (latency)
 - Standalone users couldn't discover their repo catalog
 - No cross-session memory of ecosystem layout
 
 **After this skill:**
+
 - One discovery call per session, cached for lifetime
 - Standalone users auto-discover repos via `repos.yaml` fallback
 - Claude knows the ecosystem without being asked

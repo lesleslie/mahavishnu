@@ -311,8 +311,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
 
         if not result.success and required:
             response["message"] = (
-                f"Required dependency '{service_name}' did not become healthy"
-                f" within {timeout}s"
+                f"Required dependency '{service_name}' did not become healthy within {timeout}s"
             )
 
         return response
@@ -357,8 +356,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
 
         if not result.success:
             response["message"] = (
-                f"Failed to connect to required dependencies: "
-                f"{', '.join(result.failed_required)}"
+                f"Failed to connect to required dependencies: {', '.join(result.failed_required)}"
             )
 
         return response

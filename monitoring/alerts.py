@@ -373,4 +373,3 @@ inhibit_rules:
       - severity: warning
     equal: ['alertname', 'service']
 """
-

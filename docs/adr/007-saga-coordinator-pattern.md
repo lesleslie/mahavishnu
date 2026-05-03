@@ -5,7 +5,7 @@
 **Context**: Task Orchestration Master Plan v3.0
 **Related**: ADR-006 (Storage Simplification), ADR-008 (Zero-Downtime Migration)
 
----
+______________________________________________________________________
 
 ## Context
 
@@ -49,7 +49,7 @@ During the 5-agent review council, the Architecture Reviewer identified **missin
 
 > "The saga pattern is mentioned but not fully specified. You need a persistent saga coordinator with crash recovery, retry logic with exponential backoff, circuit breakers, and idempotent step execution. Without these, distributed transactions will fail in production."
 
----
+______________________________________________________________________
 
 ## Decision
 
@@ -425,17 +425,19 @@ Step 2: Store context in Session-Buddy (best-effort)
 
 **Key Change**: Session-Buddy is best-effort, so no compensation needed if it fails.
 
----
+______________________________________________________________________
 
 ## Alternatives Considered
 
 ### Alternative 1: No Saga Coordinator (REJECTED)
 
 **Pros**:
+
 - Simpler implementation
 - Less code
 
 **Cons**:
+
 - **No crash recovery** (process crash = lost transactions)
 - **No retry logic** (transient failures cause immediate rollback)
 - **No idempotency** (retries cause duplicate operations)
@@ -446,10 +448,12 @@ Step 2: Store context in Session-Buddy (best-effort)
 ### Alternative 2: In-Memory Saga State (REJECTED)
 
 **Pros**:
+
 - Faster (no database I/O)
 - Simpler implementation
 
 **Cons**:
+
 - **Lost on crash** (no persistence)
 - **No horizontal scaling** (state tied to single process)
 - **No observability** (can't query saga history)
@@ -459,6 +463,7 @@ Step 2: Store context in Session-Buddy (best-effort)
 ### Alternative 3: Persistent Saga Coordinator (ACCEPTED)
 
 **Pros**:
+
 - **Crash recovery** (resume from where we left off)
 - **Retry logic** (handle transient failures)
 - **Idempotency** (safe to retry)
@@ -466,50 +471,54 @@ Step 2: Store context in Session-Buddy (best-effort)
 - **Circuit breaker** (prevent cascade failures)
 
 **Cons**:
+
 - More complex implementation
 - Additional database I/O overhead
 - Adds 1 week to Phase 1 timeline
 
 **Decision**: Required for production reliability.
 
----
+______________________________________________________________________
 
 ## Consequences
 
 ### Positive Impacts
 
 1. **Crash Recovery**: Process crashes don't lose transaction progress
-2. **Retry Logic**: Transient failures (network blips, DB locks) are retried automatically
-3. **Idempotency**: Safe to retry saga steps without duplicate operations
-4. **Observability**: Can query saga history for debugging
-5. **Circuit Breaker**: Failing steps don't cause infinite retry loops
-6. **Production Ready**: Handles real-world failure scenarios
+1. **Retry Logic**: Transient failures (network blips, DB locks) are retried automatically
+1. **Idempotency**: Safe to retry saga steps without duplicate operations
+1. **Observability**: Can query saga history for debugging
+1. **Circuit Breaker**: Failing steps don't cause infinite retry loops
+1. **Production Ready**: Handles real-world failure scenarios
 
 ### Negative Impacts
 
 1. **Complexity**: More complex than simple transaction
-2. **Timeline**: Adds 1 week to Phase 1 implementation
-3. **Database Overhead**: Additional saga log table and queries
-4. **Debugging**: Saga failures can be harder to debug than simple errors
+1. **Timeline**: Adds 1 week to Phase 1 implementation
+1. **Database Overhead**: Additional saga log table and queries
+1. **Debugging**: Saga failures can be harder to debug than simple errors
 
 ### Risks
 
 1. **Saga Log Becomes Bottleneck**: High saga volume could slow down system
+
    - **Severity**: Low
    - **Mitigation**: Partition saga_log by created_at
    - **Mitigation**: Archive old saga records
 
-2. **Compensation Failures**: What if compensation itself fails?
+1. **Compensation Failures**: What if compensation itself fails?
+
    - **Severity**: Medium
    - **Mitigation**: Retry compensation with exponential backoff
    - **Mitigation**: Alert on compensation failures (manual intervention)
 
-3. **Orphaned Sagas**: Sagas stuck in COMPENSATING state
+1. **Orphaned Sagas**: Sagas stuck in COMPENSATING state
+
    - **Severity**: Medium
    - **Mitigation**: Background job to detect and clean up orphaned sagas
    - **Mitigation**: Alert on sagas > 1 hour in COMPENSATING state
 
----
+______________________________________________________________________
 
 ## Implementation Timeline
 
@@ -521,7 +530,7 @@ Step 2: Store context in Session-Buddy (best-effort)
 - **Day 6**: Compensation logic and error handling
 - **Day 7**: Testing (unit tests, integration tests, crash recovery tests)
 
----
+______________________________________________________________________
 
 ## Monitoring
 
@@ -571,14 +580,14 @@ active_sagas = Gauge(
 - **Compensation Rate**: Percentage of sagas that require compensation
 - **Active Sagas**: Current active sagas by status
 
----
+______________________________________________________________________
 
 ## Related Decisions
 
 - **ADR-006: Storage Simplification**: Simplified saga from 4 steps to 2 steps
 - **ADR-008: Zero-Downtime Migration**: Migration strategy uses saga pattern
 
----
+______________________________________________________________________
 
 ## References
 
@@ -586,6 +595,6 @@ active_sagas = Gauge(
 - Architecture Reviewer Report (2026-02-18): Score 4.2/5.0, identified missing saga coordinator as P0
 - Master Plan v3.0: `/docs/TASK_ORCHESTRATION_MASTER_PLAN_V3.md`
 
----
+______________________________________________________________________
 
 **END OF ADR-002**

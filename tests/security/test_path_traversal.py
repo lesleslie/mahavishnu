@@ -100,7 +100,9 @@ class TestRepositoryPathTraversal:
     def test_unicode_parent_directory_rejected(self):
         """Test that unicode .. variants are rejected."""
         with pytest.raises(Exception):
-            TaskCreateRequest(title="Test", repository="\uFF0E\uFF0E\u2215")  # Fullwidth . and slash
+            TaskCreateRequest(
+                title="Test", repository="\uff0e\uff0e\u2215"
+            )  # Fullwidth . and slash
 
     # Valid names that should pass
     def test_valid_simple_name_accepted(self):

@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-import yaml
 import pytest
+import yaml
 
 from mahavishnu.core.app import MahavishnuApp
 from mahavishnu.core.errors import ValidationError

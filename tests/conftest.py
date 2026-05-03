@@ -12,15 +12,15 @@ import pytest
 try:
     from tests.fixtures.workflow_fixtures import (
         WorkflowFixtures,
-        sample_workflow,
         completed_workflow,
         failed_workflow,
+        mock_workflow_state_manager,
+        multiple_workflows,
         partial_workflow,
         pending_workflow,
-        multiple_workflows,
-        mock_workflow_state_manager,
-        sample_task,
         sample_repos,
+        sample_task,
+        sample_workflow,
         workflow_fixtures,
     )
 except ImportError:
@@ -29,20 +29,20 @@ except ImportError:
 try:
     from tests.fixtures.shell_fixtures import (
         ShellFixtures,
-        mock_shell_output,
-        mock_repos_list,
-        mock_workflow_status,
         mock_error_output,
-        mock_terminal_output,
-        mock_shell_commands,
-        mock_role_output,
-        mock_opensearch_logs,
         mock_health_check_output,
-        shell_fixtures,
-        mock_rich_console,
-        mock_workflow_formatter,
         mock_log_formatter,
+        mock_opensearch_logs,
         mock_repo_formatter,
+        mock_repos_list,
+        mock_rich_console,
+        mock_role_output,
+        mock_shell_commands,
+        mock_shell_output,
+        mock_terminal_output,
+        mock_workflow_formatter,
+        mock_workflow_status,
+        shell_fixtures,
     )
 except ImportError:
     pass
@@ -50,25 +50,25 @@ except ImportError:
 try:
     from tests.fixtures.conftest import (
         IntegrationFixtures,
+        async_mock_app,
+        clean_env,
         integration_fixtures,
-        mock_config,
-        mock_app,
         mock_adapter,
-        temp_dir,
-        temp_git_repo,
-        temp_config_file,
-        temp_repos_file,
+        mock_app,
+        mock_config,
         mock_event_loop,
+        mock_filesystem,
+        mock_logger,
+        mock_performance_tracker,
+        sample_timestamp,
         sample_user_id,
         sample_workflow_id,
-        sample_timestamp,
-        clean_env,
-        test_env_vars,
-        async_mock_app,
-        mock_performance_tracker,
-        mock_logger,
-        mock_filesystem,
         suppress_prefect_console_shutdown_noise,
+        temp_config_file,
+        temp_dir,
+        temp_git_repo,
+        temp_repos_file,
+        test_env_vars,
     )
 except ImportError:
     pass
@@ -77,8 +77,9 @@ except ImportError:
 def pytest_collection_modifyitems(items, config):
     """Automatically mark all tests in tests/unit/ as unit tests."""
     # Add Oneiric to path for ULID resolution imports
-    import sys
     import os
+    import sys
+
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(current_dir)  # mahavishnu/
     oneiric_path = os.path.join(project_root, "../oneiric")

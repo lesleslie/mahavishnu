@@ -7,7 +7,6 @@ with the Mahavishnu WebSocket server.
 import asyncio
 import json
 import logging
-from typing import Any
 
 import websockets
 from websockets.exceptions import ConnectionClosed
@@ -164,7 +163,7 @@ class MahavishnuWebSocketClient:
                     if callback:
                         await callback(data)
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.debug("No events received within timeout")
                     continue
                 except ConnectionClosed:
@@ -178,6 +177,7 @@ class MahavishnuWebSocketClient:
 
 
 # Example usage functions
+
 
 async def example_workflow_monitoring():
     """Example: Monitor workflow execution in real-time."""
@@ -196,17 +196,11 @@ async def example_workflow_monitoring():
             if event_type == "workflow.started":
                 logger.info(f"🚀 Workflow started: {data['data']['workflow_id']}")
             elif event_type == "workflow.stage_completed":
-                logger.info(
-                    f"✓ Stage completed: {data['data']['stage_name']}"
-                )
+                logger.info(f"✓ Stage completed: {data['data']['stage_name']}")
             elif event_type == "workflow.completed":
-                logger.info(
-                    f"✅ Workflow completed: {data['data']['workflow_id']}"
-                )
+                logger.info(f"✅ Workflow completed: {data['data']['workflow_id']}")
             elif event_type == "workflow.failed":
-                logger.error(
-                    f"❌ Workflow failed: {data['data']['error']}"
-                )
+                logger.error(f"❌ Workflow failed: {data['data']['error']}")
 
         # Listen for events
         await client.listen_to_events(callback=handle_event, timeout=120)
@@ -231,15 +225,10 @@ async def example_pool_monitoring():
             event_type = data.get("event")
             if event_type == "worker.status_changed":
                 worker_data = data["data"]
-                logger.info(
-                    f"Worker {worker_data['worker_id']} status: "
-                    f"{worker_data['status']}"
-                )
+                logger.info(f"Worker {worker_data['worker_id']} status: {worker_data['status']}")
             elif event_type == "pool.status_changed":
                 pool_data = data["data"]
-                logger.info(
-                    f"Pool {pool_data['pool_id']} status updated"
-                )
+                logger.info(f"Pool {pool_data['pool_id']} status updated")
 
         await client.listen_to_events(callback=handle_pool_event, timeout=120)
 
@@ -285,6 +274,7 @@ async def example_query_status():
 
 
 # Main entry point
+
 
 async def main():
     """Run example client."""

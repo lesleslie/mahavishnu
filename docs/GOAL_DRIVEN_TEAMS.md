@@ -70,17 +70,17 @@ The `GoalDrivenTeamFactory` uses a two-phase approach:
 ### Phase 1: Pattern Matching (Fast, Free)
 
 1. **Intent Detection**: Matches goal against regex patterns to identify intent (review, build, test, fix, refactor, document)
-2. **Skill Extraction**: Identifies required skills from domain keywords
-3. **Domain Classification**: Categorizes the goal area (security, performance, quality, etc.)
-4. **Confidence Calculation**: Scores how well patterns matched
+1. **Skill Extraction**: Identifies required skills from domain keywords
+1. **Domain Classification**: Categorizes the goal area (security, performance, quality, etc.)
+1. **Confidence Calculation**: Scores how well patterns matched
 
 ### Phase 2: LLM Fallback (Slower, More Accurate)
 
 If pattern matching confidence is below 70% and an LLM factory is configured:
 
 1. Sends goal to LLM for semantic analysis
-2. Extracts structured intent, domain, and skills
-3. Uses LLM result if confidence is higher
+1. Extracts structured intent, domain, and skills
+1. Uses LLM result if confidence is higher
 
 ## Writing Effective Goals
 
@@ -193,9 +193,11 @@ Team Structure:
 Parse a natural language goal into structured components.
 
 **Parameters:**
+
 - `goal` (string, required): Natural language goal to parse
 
 **Returns:**
+
 ```json
 {
   "intent": "review",
@@ -212,11 +214,13 @@ Parse a natural language goal into structured components.
 Create a team configuration from a natural language goal.
 
 **Parameters:**
+
 - `goal` (string, required): Natural language goal
 - `name` (string, optional): Team name (auto-generated if not provided)
 - `mode` (string, optional): Override collaboration mode
 
 **Returns:**
+
 ```json
 {
   "name": "security_review_team",
@@ -232,11 +236,13 @@ Create a team configuration from a natural language goal.
 Create and execute a team from a goal in one step.
 
 **Parameters:**
+
 - `goal` (string, required): Natural language goal
 - `task` (string, required): Specific task for the team
 - `repo` (string, optional): Repository path for context
 
 **Returns:**
+
 ```json
 {
   "team_id": "team_security_review_abc123",

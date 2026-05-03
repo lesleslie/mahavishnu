@@ -6,13 +6,14 @@ with main Mahavishnu application and MCP server.
 
 from __future__ import annotations
 
-import asyncio
 import logging
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from ..core.config import MahavishnuSettings
 from .server import MahavishnuWebSocketServer
-from .tls_config import get_websocket_tls_config, load_ssl_context
+from .tls_config import get_websocket_tls_config
+
+if TYPE_CHECKING:
+    from ..core.config import MahavishnuSettings
 
 logger = logging.getLogger(__name__)
 
@@ -130,8 +131,6 @@ def get_websocket_status(server: MahavishnuWebSocketServer | None) -> dict:
             "port": 8690,
             "secure": False,
         }
-
-    scheme = "wss" if server.ssl_context else "ws"
 
     return {
         "enabled": True,

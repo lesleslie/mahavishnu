@@ -18,6 +18,7 @@ Mahavishnu is part of the **Bodai Ecosystem** - a collection of interconnected c
 | [Oneiric](https://github.com/lesleslie/oneiric) | Foundation | N/A | Component resolution, lifecycle management, adapter system, action kits, domain bridges, runtime orchestration, remote delivery |
 
 **Key Interactions:**
+
 - Routes tasks to **Akosha** for intelligence operations
 - Persists state to **Dhara** for recovery
 - Tracks context in **Session-Buddy**
@@ -55,6 +56,7 @@ It currently provides:
 1. Environment variables `MAHAVISHNU_{FIELD}`
 
 **Key environment variables:**
+
 - `MAHAVISHNU_AUTH_SECRET` — JWT secret (minimum 32 chars)
 - `RUNPOD_API_KEY` — required for RunPodPool; set before spawning `pool_type="runpod"` pools
 
@@ -146,6 +148,7 @@ mahavishnu mcp stop
 ### CLI Commands
 
 **Repository Management:**
+
 ```bash
 # List all repositories
 mahavishnu list-repos
@@ -167,6 +170,7 @@ mahavishnu list-nicknames
 ```
 
 **Content Ingestion:**
+
 ```bash
 # Ingest a webpage
 mahavishnu ingest web --url "https://example.com"
@@ -182,6 +186,7 @@ mahavishnu quality evaluate --content-id <id>
 ```
 
 **WebSocket & Monitoring:**
+
 ```bash
 # Start WebSocket server for real-time updates
 mahavishnu websocket start --port 8690
@@ -198,11 +203,12 @@ mahavishnu monitor workflows
 Mahavishnu implements intelligent adaptive routing with statistical learning and cost optimization:
 
 **Routing CLI Commands** (`routing_cli.py`):
-   - View adapter statistics and performance
-   - Recalculate preference order based on latest data
-   - Configure cost budgets with alerts
-   - Set optimization strategies by task type
-   - Manage A/B tests for routing preferences
+
+- View adapter statistics and performance
+- Recalculate preference order based on latest data
+- Configure cost budgets with alerts
+- Set optimization strategies by task type
+- Manage A/B tests for routing preferences
 
 ```bash
 # View routing statistics
@@ -225,29 +231,31 @@ mahavishnu routing delete-budget --type daily
 ```
 
 **Monitoring & Alerting**:
-   - **Routing Metrics** (`mahavishnu/core/routing_metrics.py`):
-     - Prometheus metrics for routing decisions, adapter executions, fallbacks, costs, A/B tests
-     - Counter metrics: decisions, executions, fallbacks, costs, budget alerts, A/B test events
-     - Histogram metrics: routing latency, adapter latency, fallback chain length, cost distribution
-     - Gauge metrics: current costs, active experiments
-     - Summary: Metrics server on port 9091
-     - **Alerting System** (`mahavishnu/core/routing_alerts.py`):
-     - Adapter degradation detection (success rate < 95%)
-     - Cost spike detection (2x multiplier triggers alert)
-     - Excessive fallback detection (> 10% rate)
-     - Alert handlers: Logging, Webhook (Slack/PagerDuty/etc.)
-     - Background evaluation loop (60s intervals)
-   - **Grafana Dashboard** (`docs/grafana/Routing_Monitoring.json`):
-     - 12 panels: routing decisions, success rates, latency percentiles, fallbacks, costs, budgets, A/B tests
-     - Dashboard UID: `mahavishnu-routing-monitoring`
-     - Import: Dashboards → Import → Upload `Routing_Monitoring.json`
-     - Configure Prometheus datasource: `http://localhost:9091`
+
+- **Routing Metrics** (`mahavishnu/core/routing_metrics.py`):
+  - Prometheus metrics for routing decisions, adapter executions, fallbacks, costs, A/B tests
+  - Counter metrics: decisions, executions, fallbacks, costs, budget alerts, A/B test events
+  - Histogram metrics: routing latency, adapter latency, fallback chain length, cost distribution
+  - Gauge metrics: current costs, active experiments
+  - Summary: Metrics server on port 9091
+  - **Alerting System** (`mahavishnu/core/routing_alerts.py`):
+  - Adapter degradation detection (success rate < 95%)
+  - Cost spike detection (2x multiplier triggers alert)
+  - Excessive fallback detection (> 10% rate)
+  - Alert handlers: Logging, Webhook (Slack/PagerDuty/etc.)
+  - Background evaluation loop (60s intervals)
+- **Grafana Dashboard** (`docs/grafana/Routing_Monitoring.json`):
+  - 12 panels: routing decisions, success rates, latency percentiles, fallbacks, costs, budgets, A/B tests
+  - Dashboard UID: `mahavishnu-routing-monitoring`
+  - Import: Dashboards → Import → Upload `Routing_Monitoring.json`
+  - Configure Prometheus datasource: `http://localhost:9091`
 
 **Routing Metrics Setup**
 
 The routing metrics system is automatically initialized when MahavishnuApp starts. The Prometheus metrics server runs on port 9091 (configurable via `monitoring.routing_metrics_port`).
 
 **Metrics Initialization:**
+
 ```python
 from mahavishnu.core.routing_metrics import get_routing_metrics
 
@@ -260,6 +268,7 @@ metrics = RoutingMetrics()
 ```
 
 **Starting Metrics Server:**
+
 ```bash
 # Metrics server starts automatically with MahavishnuApp
 python -m mahavishnu.core.routing_metrics
@@ -270,28 +279,32 @@ python -m mahavishnu.core.routing_metrics
 ```
 
 **Grafana Dashboard Setup:**
+
 1. Start Prometheus metrics server (if not already running)
-2. Open Grafana: http://localhost:3000
-3. Go to Dashboards → Import
-4. Upload `docs/grafana/Routing_Monitoring.json`
-5. Import dashboard and select Prometheus datasource: `http://localhost:9091`
-6. View real-time routing metrics and alerts
+1. Open Grafana: http://localhost:3000
+1. Go to Dashboards → Import
+1. Upload `docs/grafana/Routing_Monitoring.json`
+1. Import dashboard and select Prometheus datasource: `http://localhost:9091`
+1. View real-time routing metrics and alerts
 
 **Key Architecture Insights:**
-   - **StatisticalRouter**: Analyzes adapter performance and generates preference orders
-   - **CostOptimizer**: Pareto frontier analysis for cost-aware routing
-   - **TaskRouter**: Coordinates adapters with fallback chains and graceful degradation
-   - **ExecutionTracker**: Storage-agnostic metrics collection with batch writes
-   - **Lazy metric initialization**: Prevents duplicate Prometheus registration errors
+
+- **StatisticalRouter**: Analyzes adapter performance and generates preference orders
+- **CostOptimizer**: Pareto frontier analysis for cost-aware routing
+- **TaskRouter**: Coordinates adapters with fallback chains and graceful degradation
+- **ExecutionTracker**: Storage-agnostic metrics collection with batch writes
+- **Lazy metric initialization**: Prevents duplicate Prometheus registration errors
 
 **Key Architecture Insights**:
-   - **StatisticalRouter**: Analyzes adapter performance and dynamically updates preference order
-   - **CostOptimizer**: Pareto frontier analysis for multi-objective optimization (cost vs latency vs success)
-   - **TaskRouter**: Coordinates adapters with fallback chains and graceful degradation
-   - **ExecutionTracker**: Storage-agnostic metrics with batch writes and TTL cleanup
-   - **Lazy metric initialization**: Prevents duplicate Prometheus registration errors
+
+- **StatisticalRouter**: Analyzes adapter performance and dynamically updates preference order
+- **CostOptimizer**: Pareto frontier analysis for multi-objective optimization (cost vs latency vs success)
+- **TaskRouter**: Coordinates adapters with fallback chains and graceful degradation
+- **ExecutionTracker**: Storage-agnostic metrics with batch writes and TTL cleanup
+- **Lazy metric initialization**: Prevents duplicate Prometheus registration errors
 
 **Workflow Sweep:**
+
 ```bash
 # Trigger workflow sweep
 mahavishnu sweep --tag python --adapter prefect
@@ -554,6 +567,7 @@ Mahavishnu uses ZAI GLM models as the primary cloud LLM provider:
 | VISION | GLM-4.5V | N/A |
 
 **Key files**:
+
 - `mahavishnu/workers/cloud_worker.py` - OpenAI-compatible worker for ZAI
 - `mahavishnu/workers/task_router.py` - TaskCategory enum, model routing
 - `settings/models.yaml` - YAML-driven provider and model configuration
@@ -599,10 +613,11 @@ See `SECURITY_CHECKLIST.md` for comprehensive security guidelines. Key points:
 Mahavishnu supports multiple authentication providers through `MultiAuthHandler`:
 
 1. **Claude Code subscription** - Automatic detection via subscription check
-2. **Qwen free service** - Fallback authentication
-3. **Custom JWT** - Manual JWT token authentication
+1. **Qwen free service** - Fallback authentication
+1. **Custom JWT** - Manual JWT token authentication
 
 Configuration in `settings/mahavishnu.yaml`:
+
 ```yaml
 auth:
   enabled: true
@@ -611,6 +626,7 @@ auth:
 ```
 
 Environment variable for JWT secret:
+
 ```bash
 export MAHAVISHNU_AUTH_SECRET="your-secret-minimum-32-characters"
 ```
@@ -622,12 +638,14 @@ Mahavishnu implements a WebSocket broadcasting system for real-time updates:
 **Server**: `mahavishnu/websocket/server.py` (port 8690)
 
 **Channels**:
+
 - `workflow:{workflow_id}` - Workflow-specific updates
 - `pool:{pool_id}` - Pool status updates
 - `worker:{worker_id}` - Worker-specific events
 - `global` - System-wide orchestration events
 
 **Broadcast Methods**:
+
 ```python
 await server.broadcast_workflow_started(workflow_id, metadata)
 await server.broadcast_workflow_stage_completed(workflow_id, stage_name, result)
@@ -644,16 +662,19 @@ Mahavishnu can ingest web content, blogs, and books into the knowledge ecosystem
 **Ingester Class**: `mahavishnu/ingesters/content_ingester.py`
 
 **Supported Content Types**:
+
 - Webpages (via BeautifulSoup HTTP fetching)
 - Blogs (RSS/Atom feeds)
 - Books (PDF via pypdf, EPUB via ebooklib)
 
 **Quality Evaluation**: `mahavishnu/ingesters/quality_evaluator.py`
+
 - Evaluates content quality before ingestion
 - Scores for readability, technical depth, completeness
 - Configurable quality thresholds
 
 **Usage**:
+
 ```bash
 # Ingest a webpage
 mahavishnu ingest web --url "https://example.com"
@@ -672,12 +693,14 @@ Mahavishnu can ingest and semantically search OpenTelemetry traces:
 **Ingester Class**: `mahavishnu/ingesters/otel_ingester.py`
 
 **Storage Options**:
+
 1. **DuckDB** (zero-dependency, in-memory or file-based)
-2. **PostgreSQL + pgvector** (production, persistent, vector similarity)
+1. **PostgreSQL + pgvector** (production, persistent, vector similarity)
 
 **Semantic Search**: Embeds trace spans with fastembed for semantic search
 
 **Usage**:
+
 ```python
 from mahavishnu.ingesters import OtelIngester
 
@@ -709,22 +732,29 @@ The `examples/` directory contains runnable examples for key features:
 ## Important Implementation Notes
 
 1. **All adapters are production-ready** - Prefect, LlamaIndex (0.14.x), and Agno are fully implemented
-2. **WebSocket servers run on separate ports**:
+
+1. **WebSocket servers run on separate ports**:
+
    - Mahavishnu: 8690 (orchestration events)
    - Pool events: 8691 (pool status updates)
    - Session-Buddy: 8765 (already deployed)
    - Akosha: 8692 (pattern detection)
    - Crackerjack: 8686 (test execution)
 
-3. **MCP tools are organized by domain** - Each file in `mcp/tools/` serves a specific domain
-4. **All CLI sub-commands are modular** - Each has its own file in `cli/` or matching module
-5. **Authentication is multi-provider** - Claude Code, Qwen, or custom JWT
-6. **Configuration is layered** - Oneiric loads from defaults → YAML → env vars
-7. **iTerm2 adapter limitation** - The iTerm2 Python API is designed for standalone scripts, not embedding in existing async apps. Use mcpretentious or mock adapters for pool management.
+1. **MCP tools are organized by domain** - Each file in `mcp/tools/` serves a specific domain
+
+1. **All CLI sub-commands are modular** - Each has its own file in `cli/` or matching module
+
+1. **Authentication is multi-provider** - Claude Code, Qwen, or custom JWT
+
+1. **Configuration is layered** - Oneiric loads from defaults → YAML → env vars
+
+1. **iTerm2 adapter limitation** - The iTerm2 Python API is designed for standalone scripts, not embedding in existing async apps. Use mcpretentious or mock adapters for pool management.
 
 ## Key File Locations
 
 ### Core Application
+
 - **Core application**: `mahavishnu/core/app.py` - MahavishnuApp class
 - **Configuration**: `mahavishnu/core/config.py` - MahavishnuSettings (Oneiric-based)
 - **Base adapter**: `mahavishnu/core/adapters/base.py` - OrchestratorAdapter interface
@@ -732,6 +762,7 @@ The `examples/` directory contains runnable examples for key features:
 - **Repo models**: `mahavishnu/core/repo_models.py` - Repository metadata structures
 
 ### MCP & WebSocket
+
 - **MCP server**: `mahavishnu/mcp/server.py` - FastMCP server
 - **WebSocket server**: `mahavishnu/websocket/server.py` - Real-time updates
 - **MCP tools**: `mahavishnu/mcp/tools/` - Tool implementations
@@ -743,6 +774,7 @@ The `examples/` directory contains runnable examples for key features:
   - `session_buddy_tools.py` - Session-Buddy integration (7 tools)
 
 ### Pool Management
+
 - **Pool manager**: `mahavishnu/pools/manager.py` - Multi-pool orchestration
 - **Pool implementations**:
   - `mahavishnu/pools/mahavishnu_pool.py` - Direct worker management
@@ -752,6 +784,7 @@ The `examples/` directory contains runnable examples for key features:
 - **WebSocket broadcasting**: `mahavishnu/pools/websocket/` - Real-time pool events
 
 ### Workers & Terminal
+
 - **Worker manager**: `mahavishnu/workers/manager.py` - Worker lifecycle
 - **Worker base**: `mahavishnu/workers/base.py` - Abstract worker interface
 - **Container worker**: `mahavishnu/workers/container.py` - Containerized execution
@@ -763,11 +796,13 @@ The `examples/` directory contains runnable examples for key features:
   - `mcpretentious.py` - MCP-retentious terminal
 
 ### Data Ingestion
+
 - **OTel ingester**: `mahavishnu/ingesters/otel_ingester.py` - Trace ingestion with pgvector
 - **Content ingester**: `mahavishnu/ingesters/content_ingester.py` - Web/book/blog ingestion
 - **Quality evaluator**: `mahavishnu/ingesters/quality_evaluator.py` - Content quality scoring
 
 ### CLI Sub-commands
+
 - **Backup CLI**: `mahavishnu/cli/backup_cli.py` - Backup/recovery commands
 - **Coordination CLI**: `mahavishnu/coordination_cli.py` - Issues/todos/dependencies
 - **Ecosystem CLI**: `mahavishnu/ecosystem_cli.py` - Repository management

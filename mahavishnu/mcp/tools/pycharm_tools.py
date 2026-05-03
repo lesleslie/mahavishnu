@@ -14,7 +14,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import subprocess
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -42,14 +41,16 @@ def _fallback_diagnostics(file_path: str, errors_only: bool = False) -> list[dic
                 return [{"message": result.stdout, "severity": "error"}]
             diagnostics = []
             for error in ruff_output:
-                diagnostics.append({
-                    "message": error.get("message", ""),
-                    "severity": error.get("severity", "error").lower(),
-                    "file": error.get("filename", file_path),
-                    "line": error.get("line", None),
-                    "column": error.get("column", None),
-                    "code": error.get("code", ""),
-                })
+                diagnostics.append(
+                    {
+                        "message": error.get("message", ""),
+                        "severity": error.get("severity", "error").lower(),
+                        "file": error.get("filename", file_path),
+                        "line": error.get("line", None),
+                        "column": error.get("column", None),
+                        "code": error.get("code", ""),
+                    }
+                )
             return diagnostics
         return []
     except FileNotFoundError:
@@ -71,12 +72,14 @@ def _fallback_search(pattern: str, file_pattern: str | None = None) -> list[dict
             if ":" in line:
                 parts = line.split(":", 2)
                 if len(parts) >= 3:
-                    results.append({
-                        "file_path": parts[0],
-                        "line_number": int(parts[1]),
-                        "column": 0,
-                        "match_text": parts[2],
-                    })
+                    results.append(
+                        {
+                            "file_path": parts[0],
+                            "line_number": int(parts[1]),
+                            "column": 0,
+                            "match_text": parts[2],
+                        }
+                    )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
     return results
@@ -150,10 +153,13 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
                 mcp_client = getattr(app.worker_manager, "mcp_client", None)
                 if mcp_client:
                     result = await asyncio.wait_for(
-                        mcp_client.call_tool("jetbrains__get_file_problems", {
-                            "file_path": file_path,
-                            "errors_only": errors_only,
-                        }),
+                        mcp_client.call_tool(
+                            "jetbrains__get_file_problems",
+                            {
+                                "file_path": file_path,
+                                "errors_only": errors_only,
+                            },
+                        ),
                         timeout=30,
                     )
                     return {
@@ -183,7 +189,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
                     args: dict[str, Any] = {"file_path": file_path}
                     if line:
                         args["line"] = line
-                    result = await asyncio.wait_for(
+                    await asyncio.wait_for(
                         mcp_client.call_tool("jetbrains__open_file", args),
                         timeout=15,
                     )

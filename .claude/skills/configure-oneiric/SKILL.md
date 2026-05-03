@@ -1,7 +1,6 @@
----
-name: configure-oneiric
-description: Use when configuring Oneiric applications or setting up layered configuration. Use when user asks to configure Oneiric, set up environment variables, or understand configuration precedence. Use for config validation and troubleshooting.
----
+______________________________________________________________________
+
+## name: configure-oneiric description: Use when configuring Oneiric applications or setting up layered configuration. Use when user asks to configure Oneiric, set up environment variables, or understand configuration precedence. Use for config validation and troubleshooting.
 
 # Configure Oneiric
 
@@ -11,7 +10,7 @@ description: Use when configuring Oneiric applications or setting up layered con
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| dhara | 8683 | grep | mcp__dhara__list_adapters, mcp__dhara__get_adapter, mcp__dhara__store_adapter | 30s |
+| dhara | 8683 | grep | mcp\_\_dhara\_\_list_adapters, mcp\_\_dhara\_\_get_adapter, mcp\_\_dhara\_\_store_adapter | 30s |
 
 Oneiric uses a **4-layer configuration system** with deterministic precedence. This skill guides you through setting up, validating, and troubleshooting Oneiric configuration.
 
@@ -20,6 +19,7 @@ Oneiric uses a **4-layer configuration system** with deterministic precedence. T
 ## When to Use
 
 **Use when:**
+
 - Setting up Oneiric for the first time
 - Configuring adapters, services, tasks, events, or workflows
 - Troubleshooting configuration issues
@@ -27,6 +27,7 @@ Oneiric uses a **4-layer configuration system** with deterministic precedence. T
 - Setting environment-specific overrides
 
 **Don't use when:**
+
 - Managing component lifecycle (use `manage-lifecycle`)
 - Resolving components (use `resolve-components`)
 - Remote manifest distribution (use `remote-manifests`)
@@ -95,6 +96,7 @@ workflows:
 ```
 
 **Domain structure:**
+
 - `adapters` - External system integrations
 - `services` - Long-running services
 - `tasks` - Scheduled jobs
@@ -105,11 +107,13 @@ workflows:
 ### Step 2: Create Base Configuration
 
 **Generate template:**
+
 ```bash
 oneiric config init > oneiric.yaml
 ```
 
 **Or create manually:**
+
 ```yaml
 # oneiric.yaml
 adapters:
@@ -137,6 +141,7 @@ tasks:
 ### Step 3: Add Local Overrides
 
 **Create local overrides (gitignored):**
+
 ```yaml
 # local.yaml
 adapters:
@@ -154,6 +159,7 @@ services:
 ```
 
 **Local file location:**
+
 - Project root: `local.yaml`
 - Config directory: `config/local.yaml`
 - XDG config: `~/.config/oneiric/local.yaml`
@@ -161,6 +167,7 @@ services:
 ### Step 4: Set Environment Variables
 
 **Environment variable format:**
+
 ```bash
 # Format: ONEIRIC_{DOMAIN}__{FIELD}
 # Example: adapters.database.url → ONEIRIC_ADAPTERS__DATABASE__URL
@@ -171,6 +178,7 @@ export ONEIRIC_SERVICES__API__PORT="9000"
 ```
 
 **Naming rules:**
+
 - Prefix: `ONEIRIC_`
 - Domain: Uppercase domain name (`ADAPTERS`, `SERVICES`, `TASKS`)
 - Double underscore: `__` between domain and subdomain
@@ -178,6 +186,7 @@ export ONEIRIC_SERVICES__API__PORT="9000"
 - Nested: Use `__` for each level (e.g., `ADAPTERS__DATABASE__POOL_SIZE`)
 
 **Via MCP:**
+
 ```python
 import os
 os.environ["ONEIRIC_ADAPTERS__DATABASE__URL"] = "postgresql://..."
@@ -190,11 +199,13 @@ settings = OneiricSettings.load()  # Uses env var
 ### Step 5: Validate Configuration
 
 **Check configuration validity:**
+
 ```bash
 oneiric config validate
 ```
 
 **Validation checks:**
+
 - ✅ YAML syntax is valid
 - ✅ Required fields present
 - ✅ Field types match Pydantic models
@@ -203,6 +214,7 @@ oneiric config validate
 - ✅ Enum values are valid
 
 **Via MCP:**
+
 ```python
 result = await mcp.call_tool("mcp__mahavishnu__get_health", {})
 
@@ -217,16 +229,19 @@ result = await mcp.call_tool("mcp__mahavishnu__get_health", {})
 ### Step 6: Debug Configuration Issues
 
 **View effective configuration (all layers merged):**
+
 ```bash
 oneiric config effective
 ```
 
 **Understand why a value is set:**
+
 ```bash
 oneiric config explain --field adapters.database.url
 ```
 
 **Output:**
+
 ```
 Field: adapters.database.url
 Value: "postgresql://prod-db:5432/app"
@@ -296,11 +311,13 @@ export ONEIRIC_LOGGING__LEVEL="WARNING"
 ## Real-World Impact
 
 **Before this skill:**
+
 - Users confused by config precedence → 30 minutes debugging
 - Wrong env var format → changes not applied
 - Committed local.yaml → production used dev settings
 
 **After this skill:**
+
 - Clear layer understanding → instant troubleshooting
 - Correct env var format → changes work first time
 - Proper .gitignore → production stays secure
@@ -308,6 +325,7 @@ export ONEIRIC_LOGGING__LEVEL="WARNING"
 ## Example Workflows
 
 **New Project Setup:**
+
 ```bash
 # 1. Generate config
 oneiric config init > oneiric.yaml
@@ -330,6 +348,7 @@ echo "local.yaml" >> .gitignore
 ```
 
 **Debugging Config:**
+
 ```bash
 # User: "Why is database pool_size 5 instead of 10?"
 
@@ -345,6 +364,7 @@ oneiric config explain --field adapters.database.pool_size
 ```
 
 **Production Deployment:**
+
 ```bash
 # 1. No local.yaml in production
 rm local.yaml

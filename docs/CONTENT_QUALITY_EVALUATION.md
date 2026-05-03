@@ -7,10 +7,10 @@ This guide explains how to evaluate whether specific articles, blogs, or books w
 Not all content is equally valuable. Before ingesting large amounts of content, you should evaluate:
 
 1. **Relevance**: Does it match your domain/use-cases?
-2. **Uniqueness**: Does it duplicate existing knowledge?
-3. **Quality**: Is it accurate, comprehensive, well-written?
-4. **Freshness**: Is it current or outdated?
-5. **Retrievability**: Can it be found when needed?
+1. **Uniqueness**: Does it duplicate existing knowledge?
+1. **Quality**: Is it accurate, comprehensive, well-written?
+1. **Freshness**: Is it current or outdated?
+1. **Retrievability**: Can it be found when needed?
 
 ## Quick Evaluation Methods
 
@@ -49,6 +49,7 @@ mahavishnu quality test-retrieval --queries "$(join , test_queries)"
 ```
 
 **Evaluation Criteria:**
+
 - **Relevance ≥ 0.7**: Content answers the query well
 - **Coverage ≥ 3/5**: Article covers most test queries
 - **Ranking**: Relevant content appears in top 5 results
@@ -198,6 +199,7 @@ mahavishnu quality coverage-report
 ### High-Value Indicators (Ingest)
 
 ✅ **Relevance**: Content directly addresses your domain
+
 ```bash
 # Example: You're building RAG systems
 article_topics="vector databases, embeddings, semantic search"
@@ -209,6 +211,7 @@ your_queries="RAG, vector search, embedding models"
 ```
 
 ✅ **Uniqueness**: Low similarity to existing content
+
 ```bash
 # Test before ingesting
 mahavishnu quality analyze-similar <candidate_url> --threshold 0.85
@@ -217,12 +220,14 @@ mahavishnu quality analyze-similar <candidate_url> --threshold 0.85
 ```
 
 ✅ **Quality**: Authoritative, comprehensive, accurate
+
 - Official documentation (API docs, language specs)
 - Peer-reviewed papers
 - Reputable technical blogs (companies you respect)
 - Well-structured with examples
 
 ✅ **Retrievability**: Contains search-friendly keywords
+
 - Technical terms in title/content
 - Standard terminology
 - Problem/solution format
@@ -230,6 +235,7 @@ mahavishnu quality analyze-similar <candidate_url> --threshold 0.85
 ### Low-Value Indicators (Skip/Review)
 
 ❌ **Irrelevance**: Outside your domain/use-cases
+
 ```python
 # You're doing backend development
 # Article: "CSS Animation Techniques"
@@ -237,6 +243,7 @@ mahavishnu quality analyze-similar <candidate_url> --threshold 0.85
 ```
 
 ❌ **Duplication**: High similarity to existing content
+
 ```bash
 # Check shows >0.90 similarity
 mahavishnu quality analyze-similar <candidate_url>
@@ -245,12 +252,14 @@ mahavishnu quality analyze-similar <candidate_url>
 ```
 
 ❌ **Poor Quality**: Outdated, inaccurate, superficial
+
 - Marketing fluff without substance
 - Outdated versions/tutorials
 - Content without examples
 - Superficial coverage (mentions but doesn't explain)
 
 ❌ **Low Retrievability**: Hard to find via search
+
 - Generic titles ("Introduction to Python")
 - Missing keywords
 - Poor structure
@@ -379,23 +388,23 @@ Based on Shannon entropy of category distribution (higher = more diverse)
 ### DO ✅
 
 1. **Evaluate before ingesting**: Use quality checklists to assess value
-2. **Start small**: Ingest 10-20 items, evaluate, then scale
-3. **Focus on gaps**: Target underrepresented domains
-4. **Check freshness**: Prioritize recent content (<1 year)
-5. **Verify quality**: Prefer authoritative sources
-6. **Test retrieval**: Validate search actually works
-7. **Monitor redundancy**: Regular deduplication checks
-8. **Iterate**: Use evaluation metrics to guide future ingestion
+1. **Start small**: Ingest 10-20 items, evaluate, then scale
+1. **Focus on gaps**: Target underrepresented domains
+1. **Check freshness**: Prioritize recent content (\<1 year)
+1. **Verify quality**: Prefer authoritative sources
+1. **Test retrieval**: Validate search actually works
+1. **Monitor redundancy**: Regular deduplication checks
+1. **Iterate**: Use evaluation metrics to guide future ingestion
 
 ### DON'T ❌
 
 1. **Bulk ingest without evaluation**: Large batches may fill KB with low-quality content
-2. **Ignore relevance**: Content outside your domain wastes resources
-3. **Skip freshness checks**: Old content may be outdated or misleading
-4. **Neglect uniqueness**: Duplicates waste storage and confuse search
-5. **Assume quality**: Without testing, you can't measure effectiveness
-6. **Forget retrievability**: If it can't be found, it's useless
-7. **Static strategy**: Regular evaluation and adjustment is essential
+1. **Ignore relevance**: Content outside your domain wastes resources
+1. **Skip freshness checks**: Old content may be outdated or misleading
+1. **Neglect uniqueness**: Duplicates waste storage and confuse search
+1. **Assume quality**: Without testing, you can't measure effectiveness
+1. **Forget retrievability**: If it can't be found, it's useless
+1. **Static strategy**: Regular evaluation and adjustment is essential
 
 ## Tools Reference
 

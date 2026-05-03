@@ -1,19 +1,20 @@
 """Tests for WebhookHandler - Handle GitHub/GitLab webhooks."""
 
-import pytest
+from datetime import UTC, datetime
 import hashlib
 import hmac
 import json
-from datetime import datetime, UTC
-from unittest.mock import AsyncMock, MagicMock
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from mahavishnu.core.webhook_handler import (
-    WebhookHandler,
+    EventType,
     WebhookEvent,
+    WebhookHandler,
     WebhookResult,
     WebhookSource,
-    EventType,
 )
 
 
@@ -207,9 +208,7 @@ class TestWebhookHandler:
         handler = WebhookHandler(mock_task_store, github_secret=secret)
 
         payload = b'{"test": "data"}'
-        signature = "sha256=" + hmac.new(
-            secret.encode(), payload, hashlib.sha256
-        ).hexdigest()
+        signature = "sha256=" + hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
 
         assert handler.verify_github_signature(payload, signature) is True
         assert handler.verify_github_signature(payload, "sha256=invalid") is False
@@ -334,8 +333,12 @@ class TestWebhookHandler:
 
         # GitHub event types
         assert handler.classify_github_event("push", {}) == EventType.PUSH
-        assert handler.classify_github_event("issues", {"action": "opened"}) == EventType.ISSUE_OPENED
-        assert handler.classify_github_event("issues", {"action": "closed"}) == EventType.ISSUE_CLOSED
+        assert (
+            handler.classify_github_event("issues", {"action": "opened"}) == EventType.ISSUE_OPENED
+        )
+        assert (
+            handler.classify_github_event("issues", {"action": "closed"}) == EventType.ISSUE_CLOSED
+        )
         assert handler.classify_github_event("pull_request", {}) == EventType.PULL_REQUEST
 
     @pytest.mark.asyncio

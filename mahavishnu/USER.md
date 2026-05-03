@@ -36,14 +36,14 @@ Information about the user to help personalize interactions.
 
 ## Topics of Interest
 
-- 
-- 
-- 
+-
+-
+-
 
 ## Special Instructions
 
 (Any specific instructions for how the assistant should behave)
 
----
+______________________________________________________________________
 
 *Edit this file to customize nanobot's behavior for your needs.*

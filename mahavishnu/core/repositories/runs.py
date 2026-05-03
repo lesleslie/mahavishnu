@@ -11,16 +11,15 @@ Schema: orchestration.task_runs
 
 from __future__ import annotations
 
-import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
+import logging
 from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
-from mahavishnu.core.status import TaskStatus
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +194,7 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
             RepositoryError: If creation fails
         """
         run_id = uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         query = f"""
             INSERT INTO {self._table} (
@@ -314,7 +313,7 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
 
         query = f"""
             UPDATE {self._table}
-            SET {', '.join(updates)}
+            SET {", ".join(updates)}
             WHERE id = $1
             RETURNING *
         """

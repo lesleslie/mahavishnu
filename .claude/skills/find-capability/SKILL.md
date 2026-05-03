@@ -1,7 +1,6 @@
----
-name: find-capability
-description: Use when discovering which repository has the capability needed for a task. Use when user asks "which repo does X", "where is the Y feature", or needs to find the right repository by capability, role, or tag.
----
+______________________________________________________________________
+
+## name: find-capability description: Use when discovering which repository has the capability needed for a task. Use when user asks "which repo does X", "where is the Y feature", or needs to find the right repository by capability, role, or tag.
 
 # Find Capability
 
@@ -11,8 +10,8 @@ description: Use when discovering which repository has the capability needed for
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| mahavishnu | 8680 | summary | mcp__mahavishnu__list_repos, mcp__mahavishnu__get_health | 60s |
-| akosha | 8682 | summary | mcp__akosha__search_all_systems, mcp__akosha__search_code_patterns | 60s |
+| mahavishnu | 8680 | summary | mcp\_\_mahavishnu\_\_list_repos, mcp\_\_mahavishnu\_\_get_health | 60s |
+| akosha | 8682 | summary | mcp\_\_akosha\_\_search_all_systems, mcp\_\_akosha\_\_search_code_patterns | 60s |
 
 Mahavishnu organizes repositories by role, tag, and capability. This skill guides you through discovering the right repository for a given task using role-based taxonomy and metadata queries.
 
@@ -21,12 +20,14 @@ Mahavishnu organizes repositories by role, tag, and capability. This skill guide
 ## When to Use
 
 **Use when:**
+
 - User asks "which repo handles X", "where is the Y feature"
 - User needs to find repository with specific capability
 - User doesn't know which repository to use for a task
 - Discovering repositories by domain/technology
 
 **Don't use when:**
+
 - Repository already known (use `orchestrate-workflow`)
 - Executing workflows (use appropriate workflow skill)
 
@@ -97,6 +98,7 @@ mahavishnu list-repos --role app          # End-user apps
 ```
 
 **Via MCP:**
+
 ```python
 repos = await mcp.call_tool("mcp__mahavishnu__list_repos", {
     "role": "tool"
@@ -115,6 +117,7 @@ mahavishnu list-repos --tag backend --tag api
 ```
 
 **Via MCP:**
+
 ```python
 repos = await mcp.call_tool("mcp__mahavishnu__list_repos", {
     "role": "tool",
@@ -138,6 +141,7 @@ mahavishnu show-repo <repo-name>
 ```
 
 **Via MCP:**
+
 ```python
 # Get repo metadata from repos.yaml
 repo_info = await mcp.call_tool("mcp__mahavishnu__list_repos", {
@@ -164,6 +168,7 @@ mahavishnu show-role tool
 ## Discovery Patterns
 
 ### Pattern 1: Capability-First Discovery
+
 ```bash
 # User: "I need to send emails"
 # 1. Identify capability: email sending
@@ -173,6 +178,7 @@ mahavishnu list-repos --role tool --tag mailgun
 ```
 
 ### Pattern 2: Technology-First Discovery
+
 ```bash
 # User: "Find all Python repositories"
 # 1. Query by tag: python
@@ -183,6 +189,7 @@ mahavishnu list-repos --tag python --role backend
 ```
 
 ### Pattern 3: Domain-First Discovery
+
 ```bash
 # User: "Which repos handle ML/AI?"
 # 1. Query by tag: ml
@@ -252,6 +259,7 @@ repos:
 ## Validation Checklist
 
 After discovering repository:
+
 - [ ] Role matches expected capability
 - [ ] Tags confirm technology/stack
 - [ ] Description confirms purpose
@@ -271,11 +279,13 @@ After discovering repository:
 ## Real-World Impact
 
 **Before this skill:**
+
 - Users searched by repo name only → missed relevant repos
 - No role understanding → confusion about repo purpose
 - Manual grep across repos.yaml → slow discovery
 
 **After this skill:**
+
 - Role-based discovery → 100% coverage of relevant repos
 - Clear capability mapping → instant understanding
 - Combining filters → precise targeting

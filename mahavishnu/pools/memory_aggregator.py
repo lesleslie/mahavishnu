@@ -11,8 +11,8 @@ Circuit breaker states:
 """
 
 import asyncio
-import contextlib
 from collections import deque
+import contextlib
 from datetime import datetime, timedelta
 import logging
 import time
@@ -69,8 +69,7 @@ class _CircuitBreaker:
         if self._failure_count >= self._failure_threshold and not self._is_open:
             self._is_open = True
             logger.warning(
-                f"circuit_breaker_opened: service={self._name}, "
-                f"failures={self._failure_count}"
+                f"circuit_breaker_opened: service={self._name}, failures={self._failure_count}"
             )
 
     @property
@@ -135,7 +134,9 @@ class MemoryAggregator:
         self._shutdown_event = asyncio.Event()
 
         # Circuit breakers for external services
-        self._sb_breaker = _CircuitBreaker("session-buddy", failure_threshold=5, recovery_timeout=60.0)
+        self._sb_breaker = _CircuitBreaker(
+            "session-buddy", failure_threshold=5, recovery_timeout=60.0
+        )
         self._akosha_breaker = _CircuitBreaker("akosha", failure_threshold=5, recovery_timeout=60.0)
 
         # Local fallback buffer: stores items when external services are down
@@ -184,7 +185,9 @@ class MemoryAggregator:
             self._local_buffer.append(item)
 
         if items:
-            logger.debug(f"Buffered {len(items)} items locally (buffer: {len(self._local_buffer)}/{self.LOCAL_BUFFER_MAX})")
+            logger.debug(
+                f"Buffered {len(items)} items locally (buffer: {len(self._local_buffer)}/{self.LOCAL_BUFFER_MAX})"
+            )
 
     async def flush_local_buffer(self) -> dict[str, int]:
         """Flush locally buffered items to external services.
@@ -317,7 +320,7 @@ class MemoryAggregator:
         # Buffer failed items for later retry
         if failures > 0:
             failed_items = [
-                item for item, result in zip(batch, results) if result is not True
+                item for item, result in zip(batch, results, strict=False) if result is not True
             ]
             self._buffer_items(failed_items)
 
@@ -349,7 +352,7 @@ class MemoryAggregator:
                 try:
                     await asyncio.wait_for(self._shutdown_event.wait(), timeout=self.sync_interval)
                     break  # Shutdown signaled
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     pass  # Normal timeout, continue loop
 
         self._sync_task = asyncio.create_task(sync_loop())
@@ -370,7 +373,7 @@ class MemoryAggregator:
             # Give the task a moment to complete gracefully
             try:
                 await asyncio.wait_for(self._sync_task, timeout=5.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Force cancel if it doesn't stop gracefully
                 self._sync_task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):

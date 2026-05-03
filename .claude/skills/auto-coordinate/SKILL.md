@@ -1,7 +1,6 @@
----
-name: auto-coordinate
-description: Use after creating issues or todos via Mahavishnu coordination tools. Automatically links coordination state to git branches for cross-session persistence. Triggers reactively when Claude calls coord_create_issue, coord_create_todo, or coord_close_issue MCP tools.
----
+______________________________________________________________________
+
+## name: auto-coordinate description: Use after creating issues or todos via Mahavishnu coordination tools. Automatically links coordination state to git branches for cross-session persistence. Triggers reactively when Claude calls coord_create_issue, coord_create_todo, or coord_close_issue MCP tools.
 
 # Auto-Coordinate
 
@@ -11,8 +10,8 @@ description: Use after creating issues or todos via Mahavishnu coordination tool
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| mahavishnu | 8680 | summary | mcp__mahavishnu__trigger_workflow, mcp__mahavishnu__pool_route_execute, mcp__mahavishnu__get_workflow_status | 60s |
-| session-buddy | 8678 | grep | mcp__session-buddy__get_activity_summary | 30s |
+| mahavishnu | 8680 | summary | mcp\_\_mahavishnu\_\_trigger_workflow, mcp\_\_mahavishnu\_\_pool_route_execute, mcp\_\_mahavishnu\_\_get_workflow_status | 60s |
+| session-buddy | 8678 | grep | mcp\_\_session-buddy\_\_get_activity_summary | 30s |
 
 This skill ensures that coordination state (issues, todos, dependencies) created through Mahavishnu's coordination tools is linked to git state so it survives across sessions. When Claude creates an issue, this skill checks for an active git branch and suggests linking them. When Claude closes an issue, it reminds about committing and branch cleanup.
 
@@ -59,6 +58,7 @@ digraph activation {
 ## When to Use
 
 **Use when:**
+
 - Claude just called `coord_create_issue` — link issue to a git branch
 - Claude just called `coord_close_issue` — wrap up git state
 - Claude just called `coord_create_todo` — check for blockers
@@ -66,6 +66,7 @@ digraph activation {
 - User asks to "create an issue", "track a todo", "close an issue"
 
 **Don't use when:**
+
 - Executing workflows (use `orchestrate-workflow` skill)
 - Managing pools/workers (use `manage-pools` or `smart-scaling` skill)
 - Reading/listing issues without creating new ones (no action needed)
@@ -100,16 +101,16 @@ mcp__mahavishnu__list_repos(repo="mahavishnu")
 When Claude calls `coord_create_issue`:
 
 1. **Check active git branch**: Run `git branch --show-current`
-2. **If on `main`/`master`**: Suggest creating a feature branch:
+1. **If on `main`/`master`**: Suggest creating a feature branch:
    ```
    Issue MHV-042 created: "Fix auth middleware"
    Suggested branch: git checkout -b MHV-042-fix-auth-middleware
    ```
-3. **If on a feature branch**: Note the branch in the issue context:
+1. **If on a feature branch**: Note the branch in the issue context:
    ```
    Issue MHV-042 linked to branch: feature/auth-refactor
    ```
-4. **Branch naming convention**: `{ISSUE_ID}-{slug-of-title}`
+1. **Branch naming convention**: `{ISSUE_ID}-{slug-of-title}`
    - Slug: lowercase, hyphens, max 50 chars, no special chars
    - Example: `MHV-042-fix-auth-middleware`
 
@@ -118,14 +119,14 @@ When Claude calls `coord_create_issue`:
 When Claude calls `coord_close_issue`:
 
 1. **Check for uncommitted changes**: Run `git status --short`
-2. **If changes exist**: Remind Claude to commit and push:
+1. **If changes exist**: Remind Claude to commit and push:
    ```
    Issue MHV-042 closed. You have uncommitted changes:
    - M mahavishnu/core/app.py
    - M mahavishnu/core/errors.py
    Consider committing before merging the branch.
    ```
-3. **Suggest branch cleanup** (if on a feature branch):
+1. **Suggest branch cleanup** (if on a feature branch):
    ```
    Issue resolved. Consider:
    - Merge branch into main
@@ -137,21 +138,21 @@ When Claude calls `coord_close_issue`:
 When Claude calls `coord_create_todo`:
 
 1. **Check for blocking issues**: Call `coord_get_blocking_issues` for the repo
-2. **If blockers exist**: Suggest linking them:
+1. **If blockers exist**: Suggest linking them:
    ```
    Todo created: "Add tests for auth fix"
    Blocking issues found:
    - MHV-042: Fix auth middleware (open)
    Consider adding a dependency via coord_check_dependencies.
    ```
-3. **If no blockers**: Proceed normally (no action needed)
+1. **If no blockers**: Proceed normally (no action needed)
 
 ### Step 4: After Completing a Todo
 
 When Claude calls `coord_complete_todo`:
 
 1. **Check for dependent todos**: Review the todo list for items that might be unblocked
-2. **If dependents exist**: Suggest next action:
+1. **If dependents exist**: Suggest next action:
    ```
    Todo completed: "Add tests for auth fix"
    This may unblock:
@@ -170,16 +171,19 @@ When Claude calls `coord_complete_todo`:
 ## Validation Checklist
 
 After creating issue:
+
 - [ ] Git branch linked to issue (or suggestion made)
 - [ ] Branch name follows `{ISSUE_ID}-{slug}` convention
 - [ ] Issue ID recorded in branch name for traceability
 
 After closing issue:
+
 - [ ] Uncommitted changes committed (or user acknowledged)
 - [ ] Branch cleanup suggested (if on feature branch)
 - [ ] No orphaned work left on the branch
 
 After creating todo:
+
 - [ ] Blocking issues checked via `coord_get_blocking_issues`
 - [ ] Dependencies suggested if blockers found
 
@@ -196,11 +200,13 @@ After creating todo:
 ## Real-World Impact
 
 **Before this skill:**
+
 - Issues created without branch linkage — 60% of issues had no associated branch
 - Closed issues left uncommitted work on feature branches
 - Todos created without checking blockers — 30% were immediately blocked
 
 **After this skill:**
+
 - 100% of issues linked to feature branches
 - Zero orphaned branches after issue closure
 - Todos pre-checked for blockers before creation

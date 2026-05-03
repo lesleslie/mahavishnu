@@ -11,30 +11,27 @@ def generate_plugin_manifest(plugin_id: str, data: dict, plugins_dir: Path):
     # Plugin metadata
     manifest = {
         "id": plugin_id,
-        "name": plugin_id.replace('-', ' ').title(),
+        "name": plugin_id.replace("-", " ").title(),
         "version": "1.0.0",
-        "description": data['description'],
+        "description": data["description"],
         "author": "lesleslie",
         "homepage": "https://lesleslie.gitlab.io/dot-claude",
         "repository": "https://gitlab.com/lesleslie/dot-claude",
         "license": "MIT",
-        "agents": sorted(data['agents']),
+        "agents": sorted(data["agents"]),
         "tags": determine_tags(plugin_id),
         "channels": ["stable"],
-        "statistics": {
-            "downloads": 0,
-            "installations": 0
-        },
+        "statistics": {"downloads": 0, "installations": 0},
         "created_at": "2025-10-26T00:00:00Z",
-        "updated_at": "2025-10-26T00:00:00Z"
+        "updated_at": "2025-10-26T00:00:00Z",
     }
 
     # Write plugin.json
-    plugin_dir = plugins_dir / plugin_id / '.claude-plugin'
+    plugin_dir = plugins_dir / plugin_id / ".claude-plugin"
     plugin_dir.mkdir(parents=True, exist_ok=True)
 
-    manifest_file = plugin_dir / 'plugin.json'
-    with open(manifest_file, 'w') as f:
+    manifest_file = plugin_dir / "plugin.json"
+    with open(manifest_file, "w") as f:
         json.dump(manifest, f, indent=2)
 
     return manifest_file
@@ -44,33 +41,33 @@ def determine_tags(plugin_id: str) -> list[str]:
     """Determine appropriate tags for a plugin."""
 
     tag_mapping = {
-        'essentials': ['core', 'popular', 'recommended'],
-        'programming-languages-advanced': ['languages', 'programming', 'advanced'],
-        'database-specialists': ['database', 'storage', 'data'],
-        'frontend-specialists': ['frontend', 'ui', 'design'],
-        'backend-specialists': ['backend', 'api', 'server'],
-        'devops-infrastructure': ['devops', 'deployment', 'infrastructure'],
-        'ai-ml-specialists': ['ai', 'ml', 'data-science'],
-        'security-testing': ['security', 'testing', 'qa', 'compliance'],
-        'project-frameworks': ['frameworks', 'project-specific'],
-        'leadership-management': ['leadership', 'management', 'product']
+        "essentials": ["core", "popular", "recommended"],
+        "programming-languages-advanced": ["languages", "programming", "advanced"],
+        "database-specialists": ["database", "storage", "data"],
+        "frontend-specialists": ["frontend", "ui", "design"],
+        "backend-specialists": ["backend", "api", "server"],
+        "devops-infrastructure": ["devops", "deployment", "infrastructure"],
+        "ai-ml-specialists": ["ai", "ml", "data-science"],
+        "security-testing": ["security", "testing", "qa", "compliance"],
+        "project-frameworks": ["frameworks", "project-specific"],
+        "leadership-management": ["leadership", "management", "product"],
     }
 
-    return tag_mapping.get(plugin_id, ['misc'])
+    return tag_mapping.get(plugin_id, ["misc"])
 
 
 def generate_readme(plugin_id: str, data: dict, plugins_dir: Path):
     """Generate README.md for a plugin."""
 
-    readme_content = f"""# {plugin_id.replace('-', ' ').title()}
+    readme_content = f"""# {plugin_id.replace("-", " ").title()}
 
-{data['description']}
+{data["description"]}
 
-## Included Agents ({len(data['agents'])})
+## Included Agents ({len(data["agents"])})
 
 """
 
-    for agent in sorted(data['agents']):
+    for agent in sorted(data["agents"]):
         readme_content += f"- **{agent}**\n"
 
     readme_content += f"""
@@ -101,8 +98,8 @@ https://gitlab.com/lesleslie/dot-claude
 MIT
 """
 
-    readme_file = plugins_dir / plugin_id / 'README.md'
-    with open(readme_file, 'w') as f:
+    readme_file = plugins_dir / plugin_id / "README.md"
+    with open(readme_file, "w") as f:
         f.write(readme_content)
 
     return readme_file
@@ -110,9 +107,9 @@ MIT
 
 def main():
     """Main entry point."""
-    base_dir = Path('/Users/les/.claude')
-    categorization_file = base_dir / 'scripts/marketplace/agent-categorization.json'
-    plugins_dir = base_dir / 'plugins'
+    base_dir = Path("/Users/les/.claude")
+    categorization_file = base_dir / "scripts/marketplace/agent-categorization.json"
+    plugins_dir = base_dir / "plugins"
 
     if not categorization_file.exists():
         print(f"❌ Categorization file not found: {categorization_file}")
@@ -134,8 +131,8 @@ def main():
         readme_file = generate_readme(plugin_id, data, plugins_dir)
         print(f"    - README: {readme_file}")
 
-    print(f"\n✅ All plugin manifests generated!")
+    print("\n✅ All plugin manifests generated!")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

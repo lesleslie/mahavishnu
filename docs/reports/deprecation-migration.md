@@ -1,7 +1,7 @@
 # Deprecation & Migration Guide
 
-**Date**: 2026-04-05  
-**Scope**: Bottom-quintile tool modules identified by I10-1 ranking  
+**Date**: 2026-04-05
+**Scope**: Bottom-quintile tool modules identified by I10-1 ranking
 **Source**: `docs/reports/tool-ranking-report.md`
 
 ## Overview
@@ -13,7 +13,7 @@ decision.
 **Key principle**: No tools will be removed without a migration path. Deprecation warnings
 appear at runtime for at least one minor release before removal.
 
----
+______________________________________________________________________
 
 ## Module 1: `content_ingestion_tools.py`
 
@@ -39,10 +39,10 @@ appear at runtime for at least one minor release before removal.
 ### Deprecation Timeline
 
 1. **v0.5.0** (current): Mark module with `warnings.warn(DeprecationWarning)` on import
-2. **v0.6.0**: Remove module file; clean up `tool_versions.py` entries
-3. No action needed in `server_core.py` (already not registered)
+1. **v0.6.0**: Remove module file; clean up `tool_versions.py` entries
+1. No action needed in `server_core.py` (already not registered)
 
----
+______________________________________________________________________
 
 ## Module 2: `worktree_tools.py`
 
@@ -63,9 +63,9 @@ exposing 6 separate MCP tools, the recommendation is:
 1. **Consolidate** into a single `worktree_manage` tool that accepts a subcommand
    parameter (`create`, `remove`, `list`, `prune`, `safety_status`, `provider_health`),
    reducing surface area from 6 tools to 1.
-2. **Add error handling** — wrap all `coordinator.*` calls in try/except with
+1. **Add error handling** — wrap all `coordinator.*` calls in try/except with
    structured error responses.
-3. **Alternative**: If worktree management moves to git CLI tooling or Crackerjack,
+1. **Alternative**: If worktree management moves to git CLI tooling or Crackerjack,
    remove the MCP layer entirely and use `git worktree` commands directly.
 
 | Current Tool | Merged Into |
@@ -80,11 +80,11 @@ exposing 6 separate MCP tools, the recommendation is:
 ### Deprecation Timeline
 
 1. **v0.5.0** (current): Add `DeprecationWarning` to each tool's docstring and runtime log
-2. **v0.5.0**: Add consolidated `worktree_manage` tool alongside existing tools
-3. **v0.6.0**: Remove individual tools, keep consolidated version
-4. **v0.7.0** (conditional): Remove entirely if worktree management migrates to CLI tools
+1. **v0.5.0**: Add consolidated `worktree_manage` tool alongside existing tools
+1. **v0.6.0**: Remove individual tools, keep consolidated version
+1. **v0.7.0** (conditional): Remove entirely if worktree management migrates to CLI tools
 
----
+______________________________________________________________________
 
 ## Module 3: `oneiric_tools.py`
 
@@ -117,10 +117,10 @@ scored 0.858 vs 0.600.
 ### Deprecation Timeline
 
 1. **v0.5.0** (current): Add `DeprecationWarning` at module import; log warning on each tool call directing to adapter_registry equivalent
-2. **v0.6.0**: Remove module; update `__init__.py` comment
-3. Clean up `tool_versions.py` entries for oneiric tools
+1. **v0.6.0**: Remove module; update `__init__.py` comment
+1. Clean up `tool_versions.py` entries for oneiric tools
 
----
+______________________________________________________________________
 
 ## Implementation Checklist
 

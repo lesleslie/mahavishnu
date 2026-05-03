@@ -1,20 +1,19 @@
----
-name: task-orchestration-review
-description: Use when reviewing Task Orchestration components at phase boundaries. Coordinates pooled multi-agent reviews for security, database, and API quality. Use at end of each phase or before deployment.
----
+______________________________________________________________________
+
+## name: task-orchestration-review description: Use when reviewing Task Orchestration components at phase boundaries. Coordinates pooled multi-agent reviews for security, database, and API quality. Use at end of each phase or before deployment.
 
 # Task Orchestration Multi-Agent Review Skill
 
 **Purpose**: Coordinate pooled multi-agent reviews for Task Orchestration components, ensuring code quality, security, and architectural consistency.
 
----
+______________________________________________________________________
 
 ## Available MCP Servers
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| mahavishnu | 8680 | summary | mcp__mahavishnu__pool_route_execute, mcp__mahavishnu__get_health, mcp__mahavishnu__get_workflow_status | 60s |
-| crackerjack | 8676 | summary | mcp__crackerjack__crackerjack_run, mcp__crackerjack__get_comprehensive_status, mcp__crackerjack__smart_error_analysis | 120s |
+| mahavishnu | 8680 | summary | mcp\_\_mahavishnu\_\_pool_route_execute, mcp\_\_mahavishnu\_\_get_health, mcp\_\_mahavishnu\_\_get_workflow_status | 60s |
+| crackerjack | 8676 | summary | mcp\_\_crackerjack\_\_crackerjack_run, mcp\_\_crackerjack\_\_get_comprehensive_status, mcp\_\_crackerjack\_\_smart_error_analysis | 120s |
 
 ## When to Use
 
@@ -34,13 +33,14 @@ digraph review_decision {
 ```
 
 **Use when:**
+
 - End of phase completion (before sync points)
 - Security-critical code review
 - Database schema changes
 - API design validation
 - Pre-deployment review
 
----
+______________________________________________________________________
 
 ## Review Pool Configuration
 
@@ -53,7 +53,7 @@ digraph review_decision {
 | **API Design Review** | Backend Dev + UX Researcher | mahavishnu | 30 min |
 | **Full Review** | All relevant specialists | multi-pool | 60 min |
 
----
+______________________________________________________________________
 
 ## Pooled Review Pattern
 
@@ -78,13 +78,14 @@ digraph review_decision {
 └─────────────────────────────────────────────────────────────────┘
 ```
 
----
+______________________________________________________________________
 
 ## Review Checklist by Type
 
 ### Security Review Pool
 
 **Agent A: Security Auditor**
+
 - [ ] Input validation (all user inputs sanitized)
 - [ ] SQL injection prevention (parameterized queries)
 - [ ] Path traversal prevention (validated paths)
@@ -93,6 +94,7 @@ digraph review_decision {
 - [ ] Audit logging (sensitive operations logged)
 
 **Agent B: Python Pro**
+
 - [ ] Type hints complete and accurate
 - [ ] Pydantic v2 validation (field_validator usage)
 - [ ] Exception handling (specific exceptions, chaining)
@@ -101,18 +103,20 @@ digraph review_decision {
 ### Database Review Pool
 
 **Agent A: Postgres Pro**
+
 - [ ] Normalization (appropriate level)
 - [ ] Index strategy (covering indexes, partial indexes)
 - [ ] Foreign key constraints (ON DELETE/UPDATE behavior)
 - [ ] pgvector setup (HNSW indexes for vectors)
 
 **Agent B: SRE Engineer**
+
 - [ ] Migration rollback plan
 - [ ] Connection pooling configuration
 - [ ] Backup/restore testing
 - [ ] Monitoring queries (slow query log)
 
----
+______________________________________________________________________
 
 ## Mahavishnu Pool Commands
 
@@ -130,7 +134,7 @@ mahavishnu pool execute security-review --agent python-pro \
 mahavishnu pool aggregate security-review --output review-report.md
 ```
 
----
+______________________________________________________________________
 
 ## Review Schedule by Phase
 
@@ -145,7 +149,7 @@ mahavishnu pool aggregate security-review --output review-report.md
 | Phase 7 | Performance | SRE + DBA | ✅ Yes |
 | Phase 8 | Deployment | DevOps + Security + SRE | ✅ Yes |
 
----
+______________________________________________________________________
 
 ## Success Metrics
 
@@ -156,7 +160,7 @@ mahavishnu pool aggregate security-review --output review-report.md
 | False positive rate | < 10% |
 | Coverage (files reviewed) | 100% of critical paths |
 
----
+______________________________________________________________________
 
 ## Related Documentation
 

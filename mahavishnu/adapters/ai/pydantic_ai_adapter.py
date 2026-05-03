@@ -11,10 +11,10 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 import logging
 import re
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -53,7 +53,7 @@ MAX_PROMPT_LENGTH = 100000
 MCP_SHUTDOWN_TIMEOUT = 10
 
 
-class AgentStatus(str, Enum):
+class AgentStatus(StrEnum):
     """Agent execution status."""
 
     IDLE = "idle"
@@ -63,7 +63,7 @@ class AgentStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class FallbackStrategy(str, Enum):
+class FallbackStrategy(StrEnum):
     """Fallback model strategy."""
 
     DISABLED = "disabled"  # No fallback
@@ -153,9 +153,7 @@ class AgentResult(BaseModel):
     tokens_used: int | None = Field(default=None, description="Total tokens consumed")
     latency_ms: int = Field(default=0, description="Execution latency in milliseconds")
     error: str | None = Field(default=None, description="Error message if failed")
-    fallback_triggered: bool = Field(
-        default=False, description="Whether fallback model was used"
-    )
+    fallback_triggered: bool = Field(default=False, description="Whether fallback model was used")
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         description="Execution timestamp",
@@ -222,7 +220,7 @@ class PydanticAIAdapterError(MahavishnuError):
         return self.error_code
 
 
-class PydanticAIAdapter(OrchestratorAdapter, Generic[OutputT]):
+class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
     """Pydantic-AI orchestration adapter.
 
     Provides type-safe agent execution with:
@@ -309,15 +307,11 @@ class PydanticAIAdapter(OrchestratorAdapter, Generic[OutputT]):
 
             self._pydantic_ai_available = True
         except ImportError:
-            logger.warning(
-                "pydantic-ai not installed. Install with: pip install pydantic-ai"
-            )
+            logger.warning("pydantic-ai not installed. Install with: pip install pydantic-ai")
             self._pydantic_ai_available = False
 
         primary_model_str = (
-            self.settings.primary_model.safe_string()
-            if self.settings.primary_model
-            else "None"
+            self.settings.primary_model.safe_string() if self.settings.primary_model else "None"
         )
         logger.info(
             "PydanticAIAdapter created (available=%s, primary_model=%s)",
@@ -507,9 +501,7 @@ class PydanticAIAdapter(OrchestratorAdapter, Generic[OutputT]):
                     repos=repos,
                 )
 
-                latency_ms = int(
-                    (datetime.now(UTC) - start_time).total_seconds() * 1000
-                )
+                latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
                 result.latency_ms = latency_ms
 
                 return result.model_dump()
@@ -570,10 +562,7 @@ class PydanticAIAdapter(OrchestratorAdapter, Generic[OutputT]):
         model_healthy = self.settings.primary_model is not None
 
         # Determine overall status
-        if not model_healthy or self._failed_mcp_servers:
-            status = "degraded"
-        else:
-            status = "healthy"
+        status = "degraded" if not model_healthy or self._failed_mcp_servers else "healthy"
 
         return {
             "status": status,
@@ -701,9 +690,7 @@ class PydanticAIAdapter(OrchestratorAdapter, Generic[OutputT]):
                 # Execute agent
                 result = await agent.run(prompt)
 
-                latency_ms = int(
-                    (datetime.now(UTC) - start_time).total_seconds() * 1000
-                )
+                latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
 
                 # Extract output
                 output = result.output
@@ -994,9 +981,7 @@ class PydanticAIAdapter(OrchestratorAdapter, Generic[OutputT]):
                     structured_output=structured_output,
                     model_used=model_config.safe_string(),
                     fallback_triggered=i > 0,
-                    tokens_used=getattr(result, "usage", {}).get(
-                        "total_tokens"
-                    ),
+                    tokens_used=getattr(result, "usage", {}).get("total_tokens"),
                 )
 
             except Exception as e:

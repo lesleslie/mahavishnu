@@ -15,22 +15,21 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
+from enum import Enum
 import json
 import signal
 import sys
-from datetime import datetime, UTC
-from enum import Enum
 from typing import Any
 
-import websockets
-from websockets.exceptions import ConnectionClosed
 from rich.console import Console, Group
+from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from rich.layout import Layout
-from rich.columns import Columns
+import websockets
+from websockets.exceptions import ConnectionClosed
 
 
 class ConnectionStatus(Enum):
@@ -100,7 +99,7 @@ class ServiceClient:
 
             return True
 
-        except Exception as e:
+        except Exception:
             self.connection_status = ConnectionStatus.ERROR
             self.connected = False
             return False
@@ -162,7 +161,7 @@ class ServiceClient:
             if data.get("type") == "event":
                 self.handle_event(data)
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
         except ConnectionClosed:
             self.connected = False

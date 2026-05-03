@@ -72,4 +72,3 @@ class RepositoryMessage(BaseModel):
 
 
 MessagePriority = Priority
-

@@ -36,7 +36,7 @@ from pydantic import BaseModel, Field
 
 from mahavishnu.core.app import MahavishnuApp
 from mahavishnu.core.config import MahavishnuSettings
-from mahavishnu.core.metrics_schema import AdapterType, TaskType
+from mahavishnu.core.metrics_schema import TaskType
 from mahavishnu.core.routing import RoutingStrategy, TaskRouter
 
 logger = logging.getLogger(__name__)
@@ -271,8 +271,9 @@ class MahavishnuAgent:
             )
 
             fallback_chain = self._router.generate_fallback_chain(task_type, adapter)
-            scores = await self._router.get_adapter_scores(
-                task_type, request.context,
+            await self._router.get_adapter_scores(
+                task_type,
+                request.context,
             )
 
             repos = self._app.get_repos()
@@ -332,10 +333,12 @@ class MahavishnuAgent:
             if isinstance(status, dict):
                 for pool_id, pool_info in status.items():
                     if isinstance(pool_info, dict):
-                        pools_list.append({
-                            "pool_id": pool_id,
-                            **pool_info,
-                        })
+                        pools_list.append(
+                            {
+                                "pool_id": pool_id,
+                                **pool_info,
+                            }
+                        )
                         active_workers += pool_info.get("active_workers", 0)
 
             return PoolStatusResult(
@@ -370,7 +373,7 @@ class MahavishnuAgent:
             tt = TaskType(task_type)
             rs = RoutingStrategy(strategy)
 
-            chain = self._router.generate_fallback_chain(tt)
+            self._router.generate_fallback_chain(tt)
             scores = await self._router.get_adapter_scores(tt)
             info = self._router.get_routing_info(tt, rs)
 

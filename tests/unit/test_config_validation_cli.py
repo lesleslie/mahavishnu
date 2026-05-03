@@ -117,12 +117,15 @@ class TestValidationHelper:
             response_data={"status": "ok"},
         )
 
-        with patch(
-            "mahavishnu.cli.config_validator.HealthChecker.check",
-            new=AsyncMock(return_value=fake_result),
-        ), patch(
-            "mahavishnu.cli.config_validator.check_skill_agent_drift",
-            return_value=DriftReport(),
+        with (
+            patch(
+                "mahavishnu.cli.config_validator.HealthChecker.check",
+                new=AsyncMock(return_value=fake_result),
+            ),
+            patch(
+                "mahavishnu.cli.config_validator.check_skill_agent_drift",
+                return_value=DriftReport(),
+            ),
         ):
             report = await run_validation(config_dir=config_dir, full=True)
 
@@ -166,6 +169,4 @@ pools:
 
         assert report["valid"] is False
         assert report["summary"]["error_count"] >= 1
-        assert any(
-            "min_workers" in item["path"] for item in report["runtime_validations"]
-        )
+        assert any("min_workers" in item["path"] for item in report["runtime_validations"])

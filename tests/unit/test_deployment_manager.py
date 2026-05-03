@@ -1,18 +1,18 @@
 """Tests for Deployment Manager - Blue-green deployment support."""
 
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from datetime import datetime, UTC
-from unittest.mock import MagicMock, AsyncMock, patch
-from typing import Any
 
 from mahavishnu.core.deployment_manager import (
-    DeploymentManager,
-    DeploymentConfig,
-    DeploymentStatus,
-    DeploymentResult,
-    HealthCheckResult,
     BlueGreenStrategy,
+    DeploymentConfig,
+    DeploymentManager,
+    DeploymentResult,
+    DeploymentStatus,
     DeploymentVersion,
+    HealthCheckResult,
 )
 
 
@@ -259,12 +259,14 @@ class TestDeploymentManager:
         assert manager.get_current_version() is None
 
         # Add a version
-        manager.versions.append(DeploymentVersion(
-            version="v1.0.0",
-            image="test:v1",
-            deployed_at=datetime.now(UTC),
-            status=DeploymentStatus.ACTIVE,
-        ))
+        manager.versions.append(
+            DeploymentVersion(
+                version="v1.0.0",
+                image="test:v1",
+                deployed_at=datetime.now(UTC),
+                status=DeploymentStatus.ACTIVE,
+            )
+        )
 
         current = manager.get_current_version()
         assert current is not None
@@ -275,18 +277,22 @@ class TestDeploymentManager:
         manager = DeploymentManager()
 
         # Add two versions
-        manager.versions.append(DeploymentVersion(
-            version="v1.0.0",
-            image="test:v1",
-            deployed_at=datetime.now(UTC),
-            status=DeploymentStatus.INACTIVE,
-        ))
-        manager.versions.append(DeploymentVersion(
-            version="v2.0.0",
-            image="test:v2",
-            deployed_at=datetime.now(UTC),
-            status=DeploymentStatus.ACTIVE,
-        ))
+        manager.versions.append(
+            DeploymentVersion(
+                version="v1.0.0",
+                image="test:v1",
+                deployed_at=datetime.now(UTC),
+                status=DeploymentStatus.INACTIVE,
+            )
+        )
+        manager.versions.append(
+            DeploymentVersion(
+                version="v2.0.0",
+                image="test:v2",
+                deployed_at=datetime.now(UTC),
+                status=DeploymentStatus.ACTIVE,
+            )
+        )
 
         prev = manager.get_previous_version()
         assert prev is not None
@@ -301,9 +307,11 @@ class TestDeploymentManager:
         manager = DeploymentManager(config=sample_deployment_config)
 
         # Mock the deployment steps
-        with patch.object(manager, '_deploy_to_inactive', new_callable=AsyncMock) as mock_deploy:
-            with patch.object(manager, '_run_health_checks', new_callable=AsyncMock) as mock_health:
-                with patch.object(manager, '_switch_traffic', new_callable=AsyncMock) as mock_switch:
+        with patch.object(manager, "_deploy_to_inactive", new_callable=AsyncMock) as mock_deploy:
+            with patch.object(manager, "_run_health_checks", new_callable=AsyncMock) as mock_health:
+                with patch.object(
+                    manager, "_switch_traffic", new_callable=AsyncMock
+                ) as mock_switch:
                     mock_deploy.return_value = True
                     mock_health.return_value = HealthCheckResult(healthy=True)
                     mock_switch.return_value = True
@@ -321,7 +329,7 @@ class TestDeploymentManager:
         """Deploy with failure."""
         manager = DeploymentManager(config=sample_deployment_config)
 
-        with patch.object(manager, '_deploy_to_inactive', new_callable=AsyncMock) as mock_deploy:
+        with patch.object(manager, "_deploy_to_inactive", new_callable=AsyncMock) as mock_deploy:
             mock_deploy.return_value = False
 
             result = await manager.deploy("v2.0.0", "mahavishnu:v2.0.0")
@@ -335,20 +343,24 @@ class TestDeploymentManager:
         manager = DeploymentManager()
 
         # Add versions
-        manager.versions.append(DeploymentVersion(
-            version="v1.0.0",
-            image="test:v1",
-            deployed_at=datetime.now(UTC),
-            status=DeploymentStatus.INACTIVE,
-        ))
-        manager.versions.append(DeploymentVersion(
-            version="v2.0.0",
-            image="test:v2",
-            deployed_at=datetime.now(UTC),
-            status=DeploymentStatus.ACTIVE,
-        ))
+        manager.versions.append(
+            DeploymentVersion(
+                version="v1.0.0",
+                image="test:v1",
+                deployed_at=datetime.now(UTC),
+                status=DeploymentStatus.INACTIVE,
+            )
+        )
+        manager.versions.append(
+            DeploymentVersion(
+                version="v2.0.0",
+                image="test:v2",
+                deployed_at=datetime.now(UTC),
+                status=DeploymentStatus.ACTIVE,
+            )
+        )
 
-        with patch.object(manager, '_switch_traffic', new_callable=AsyncMock) as mock_switch:
+        with patch.object(manager, "_switch_traffic", new_callable=AsyncMock) as mock_switch:
             mock_switch.return_value = True
 
             result = await manager.rollback()
@@ -362,12 +374,14 @@ class TestDeploymentManager:
         manager = DeploymentManager()
 
         # Only one version
-        manager.versions.append(DeploymentVersion(
-            version="v1.0.0",
-            image="test:v1",
-            deployed_at=datetime.now(UTC),
-            status=DeploymentStatus.ACTIVE,
-        ))
+        manager.versions.append(
+            DeploymentVersion(
+                version="v1.0.0",
+                image="test:v1",
+                deployed_at=datetime.now(UTC),
+                status=DeploymentStatus.ACTIVE,
+            )
+        )
 
         result = await manager.rollback()
 
@@ -382,7 +396,7 @@ class TestDeploymentManager:
         """Run health check."""
         manager = DeploymentManager(config=sample_deployment_config)
 
-        with patch.object(manager, '_make_health_request', new_callable=AsyncMock) as mock_req:
+        with patch.object(manager, "_make_health_request", new_callable=AsyncMock) as mock_req:
             mock_req.return_value = HealthCheckResult(
                 healthy=True,
                 status_code=200,
@@ -442,18 +456,22 @@ class TestDeploymentManager:
         """Get version history."""
         manager = DeploymentManager()
 
-        manager.versions.append(DeploymentVersion(
-            version="v1.0.0",
-            image="test:v1",
-            deployed_at=datetime.now(UTC),
-            status=DeploymentStatus.INACTIVE,
-        ))
-        manager.versions.append(DeploymentVersion(
-            version="v2.0.0",
-            image="test:v2",
-            deployed_at=datetime.now(UTC),
-            status=DeploymentStatus.ACTIVE,
-        ))
+        manager.versions.append(
+            DeploymentVersion(
+                version="v1.0.0",
+                image="test:v1",
+                deployed_at=datetime.now(UTC),
+                status=DeploymentStatus.INACTIVE,
+            )
+        )
+        manager.versions.append(
+            DeploymentVersion(
+                version="v2.0.0",
+                image="test:v2",
+                deployed_at=datetime.now(UTC),
+                status=DeploymentStatus.ACTIVE,
+            )
+        )
 
         history = manager.get_version_history()
 
@@ -477,8 +495,8 @@ class TestDeploymentManager:
             active_color="green",
         )
 
-        with patch.object(manager, '_run_health_checks', new_callable=AsyncMock) as mock_health:
-            with patch.object(manager, '_switch_traffic', new_callable=AsyncMock) as mock_switch:
+        with patch.object(manager, "_run_health_checks", new_callable=AsyncMock) as mock_health:
+            with patch.object(manager, "_switch_traffic", new_callable=AsyncMock) as mock_switch:
                 mock_health.return_value = HealthCheckResult(healthy=True)
                 mock_switch.return_value = True
 
@@ -495,7 +513,7 @@ class TestDeploymentManager:
         """Scale deployment replicas."""
         manager = DeploymentManager(config=sample_deployment_config)
 
-        with patch.object(manager, '_scale_replicas', new_callable=AsyncMock) as mock_scale:
+        with patch.object(manager, "_scale_replicas", new_callable=AsyncMock) as mock_scale:
             mock_scale.return_value = True
 
             result = await manager.scale(replicas=5)

@@ -4,7 +4,7 @@
 **Created:** 2026-04-02
 **Related:** Legacy integration roadmap removed on 2026-04-04 (OpenCode/OMO/Sisyphus support abandoned)
 
----
+______________________________________________________________________
 
 ## Purpose
 
@@ -12,7 +12,7 @@ This checklist contains all items that MUST be completed before starting the Int
 
 **⚠️ Do not start Phase 1 until all P0 items are complete.**
 
----
+______________________________________________________________________
 
 ## Summary
 
@@ -23,13 +23,14 @@ This checklist contains all items that MUST be completed before starting the Int
 | **P2 - Recommended** | 3 | ⬜ Not Started |
 
 **P0 Progress:**
+
 - ✅ P0-1: Routing Module Infrastructure (`mahavishnu/core/routing.py`)
 - ✅ P0-2: Factory Functions for Singletons (`mahavishnu/factories.py`)
 - ✅ P0-3: Pydantic Models for Webhook Validation (`mahavishnu/webhooks/models.py`)
 - ✅ P0-4: Rate Limiting Infrastructure (`pyproject.toml` + `mahavishnu/webhooks/router.py`)
 - ✅ P0-5: Auth Pattern Correction (`mahavishnu/webhooks/router.py`)
 
----
+______________________________________________________________________
 
 ## P0 - Must Complete Before Starting
 
@@ -38,15 +39,18 @@ This checklist contains all items that MUST be completed before starting the Int
 **Why:** Phase 2 code references `mahavishnu/core/routing.py` which does not exist. This blocks all OMO integration work.
 
 **Files Created:**
+
 - [x] `mahavishnu/core/routing.py` ✓ (2026-04-02)
 
 **Components Implemented:**
+
 - [x] `TaskRouter` class with `classify_intent()` method
 - [x] `RoutingStrategy` enum (COST, LATENCY, SUCCESS_RATE, BALANCED)
 - [x] Intent classification patterns for task types
 - [x] `generate_fallback_chain()` method
 
 **Validation:**
+
 ```python
 # This must work after completion:
 from mahavishnu.core.routing import TaskRouter, RoutingStrategy
@@ -61,16 +65,18 @@ chain = router.generate_fallback_chain(TaskType.AI_TASK)
 
 **Estimated Effort:** 6-8 hours
 
----
+______________________________________________________________________
 
 ### 2. Factory Functions for Singletons ✅ COMPLETE
 
 **Why:** Plan code creates new `MahavishnuApp()` and `PoolManager()` instances in every function call. This is expensive and causes resource exhaustion.
 
 **Files Created:**
+
 - [x] `mahavishnu/factories.py` ✓ (2026-04-02)
 
 **Functions Implemented:**
+
 - [x] `get_pool_manager() -> PoolManager`
 - [x] `get_websocket_server() -> MahavishnuWebSocketServer`
 - [x] `get_terminal_manager() -> TerminalManager`
@@ -78,6 +84,7 @@ chain = router.generate_fallback_chain(TaskType.AI_TASK)
 - [x] `reset_all_factories()` (for testing)
 
 **Validation:**
+
 ```python
 # This must work after completion:
 from mahavishnu.factories import get_pool_manager, get_websocket_server
@@ -89,22 +96,25 @@ assert pool_mgr is pool_mgr2
 
 **Estimated Effort:** 3-4 hours
 
----
+______________________________________________________________________
 
 ### 3. Pydantic Models for Webhook Validation
 
 **Why:** Current webhook code accepts raw string parameters without validation, creating injection vulnerability.
 
 **Files Created:**
+
 - [x] `mahavishnu/webhooks/models.py` ✓ (2026-04-02)
 
 **Models Implemented:**
+
 - [x] `OpenClawSweepRequest` with tag validation (regex: `^[a-zA-Z0-9_-]+$`)
 - [x] `OpenClawWorkflowRequest` with repo list validation (path traversal prevention)
 - [x] `WebhookResponse` with typed fields
 - [x] `WebhookErrorResponse`
 
 **Validation:**
+
 ```python
 # This must work after completion:
 from mahavishnu.webhooks.models import OpenClawSweepRequest
@@ -123,13 +133,14 @@ except ValueError:
 
 **Estimated Effort:** 2-3 hours
 
----
+______________________________________________________________________
 
 ### 4. Rate Limiting Infrastructure ✅ COMPLETE
 
 **Why:** External platforms can DoS webhook endpoints with unlimited requests.
 
 **Implementation Completed:**
+
 - [x] Add `slowapi` dependency to `pyproject.toml` ✓ (2026-04-02)
 - [x] Configure limiter in webhook router ✓ (`mahavishnu/webhooks/router.py`)
 - [x] Add `@rate_limit("10/minute")` to sweep endpoint ✓
@@ -138,16 +149,18 @@ except ValueError:
 
 **Estimated Effort:** 2-3 hours (Actual: ~1 hour)
 
----
+______________________________________________________________________
 
 ### 5. Auth Pattern Correction ✅ COMPLETE
 
 **Why:** Plan code references non-existent `validate_jwt()` function. Actual implementation uses `MultiAuthHandler.authenticate_request()`.
 
 **Files Updated:**
+
 - [x] `mahavishnu/webhooks/router.py` - Uses correct auth pattern ✓ (2026-04-02)
 
 **Correct Pattern (Documented in router.py):**
+
 ```python
 # CORRECT:
 from mahavishnu.core.subscription_auth import MultiAuthHandler, AuthenticationError
@@ -171,7 +184,7 @@ async def validate_auth(
 
 **Estimated Effort:** 1-2 hours (Actual: ~30 min)
 
----
+______________________________________________________________________
 
 ## P1 - Required Before Phase 2
 
@@ -180,23 +193,26 @@ async def validate_auth(
 **Why:** Phase 2 calls methods that don't exist: `execute_workflow_with_fallback()`, `execute_workflow_with_routing()`.
 
 **Methods Implemented:**
+
 - [x] `execute_workflow_with_fallback(task, repos, adapter_preference, ...)` ✓ (2026-04-02)
 - [x] `execute_workflow_with_routing(task, repos, routing_strategy, ...)` ✓ (2026-04-02)
 
 **Files Modified:**
+
 - [x] `mahavishnu/core/app.py` - Added routing methods with TaskRouter integration ✓
 
 **Depends On:** Item #1 (Routing Module) - ✅ Complete
 
 **Estimated Effort:** 4-6 hours (Actual: ~1 hour)
 
----
+______________________________________________________________________
 
 ### 7. Method Signature Validation ✅ COMPLETE
 
 **Why:** Plan code calls methods with incorrect parameters.
 
 **Validation Results:**
+
 - [x] `pool_mgr.route_task(task, pool_selector, pool_affinity)` - VERIFIED ✓
   - Parameters match: `task: dict`, `pool_selector: PoolSelector | None`, `pool_affinity: str | None`
 - [x] `app.get_repos(tag, role, user_id)` - VERIFIED ✓
@@ -211,30 +227,33 @@ async def validate_auth(
 
 **Estimated Effort:** 2-3 hours (Actual: ~20 min)
 
----
+______________________________________________________________________
 
 ### 8. Feature Flags for Integrations ✅ COMPLETE
 
 **Why:** Need ability to disable integrations without code changes.
 
 **Flags Implemented:**
+
 - [x] `INTEGRATION_PYDANTIC_AI_ENABLED` → `integrations.pydantic_ai_enabled` ✓
 - [x] `INTEGRATION_OPENCLAW_WEBHOOKS_ENABLED` → `integrations.openclaw_webhooks_enabled` ✓
 - [x] `INTEGRATION_OMO_ENABLED` → `integrations.omo_enabled` ✓
 - [x] `INTEGRATION_CROSS_PLATFORM_MEMORY_ENABLED` → `integrations.cross_platform_memory_enabled` ✓
 
 **Files Modified:**
+
 - [x] `mahavishnu/core/config.py` - Added `IntegrationConfig` class ✓ (2026-04-02)
 
 **Estimated Effort:** 1-2 hours (Actual: ~30 min)
 
----
+______________________________________________________________________
 
 ### 9. Circuit Breakers for External Services ✅ COMPLETE
 
 **Why:** External service failures shouldn't cascade.
 
 **Components Implemented:**
+
 - [x] Circuit breaker for Session-Buddy calls ✓ (`mahavishnu/pools/memory_aggregator.py`)
 - [x] Circuit breaker for Akosha calls ✓ (`mahavishnu/pools/memory_aggregator.py`)
 - [x] Fallback to local storage when external services unavailable ✓ (bounded deque buffer)
@@ -244,9 +263,11 @@ async def validate_auth(
 - [x] `get_circuit_breaker_stats()` for monitoring ✓
 
 **Files Modified:**
+
 - [x] `mahavishnu/pools/memory_aggregator.py` - Full circuit breaker integration ✓ (2026-04-03)
 
 **Architecture:**
+
 ```
 Session-Buddy Sync → circuit breaker check
   ├─ CLOSED → normal batch insert
@@ -263,7 +284,7 @@ Periodic Sync → flush_local_buffer() on each cycle
 
 **Estimated Effort:** 3-4 hours (Actual: ~2 hours)
 
----
+______________________________________________________________________
 
 ## P2 - Recommended Before Starting
 
@@ -272,6 +293,7 @@ Periodic Sync → flush_local_buffer() on each cycle
 **Why:** Integration developers need clear method contracts.
 
 **Documentation to Create:**
+
 - [ ] `docs/integrations/method-contracts.md`
 - [ ] Document all `MahavishnuApp` public methods
 - [ ] Document all `PoolManager` public methods
@@ -279,80 +301,88 @@ Periodic Sync → flush_local_buffer() on each cycle
 
 **Estimated Effort:** 3-4 hours
 
----
+______________________________________________________________________
 
 ### 11. Integration Test Prerequisites
 
 **Why:** Each phase should have explicit test prerequisites.
 
 **Tests to Create:**
+
 - [ ] `tests/integration/test_routing.py` (for Phase 1.5)
 - [ ] `tests/integration/test_pydantic_ai.py` (for Phase 1)
 - [ ] `tests/integration/test_openclaw_webhooks.py` (for Phase 1)
 
 **Estimated Effort:** 4-6 hours
 
----
+______________________________________________________________________
 
 ### 12. Secret Rotation Documentation
 
 **Why:** Production deployments need rotation procedures.
 
 **Documentation to Create:**
+
 - [ ] JWT secret rotation procedure
 - [ ] Webhook secret rotation procedure
 - [ ] Cross-platform secret sync procedure
 
 **Estimated Effort:** 1-2 hours
 
----
+______________________________________________________________________
 
 ## Verification Checklist
 
 After completing all P0 items, verify:
 
 ### Routing Module
+
 - [x] `from mahavishnu.core.routing import TaskRouter, RoutingStrategy` works ✓
 - [x] `TaskRouter().classify_intent("test")` returns valid TaskType ✓
 - [x] `TaskRouter().generate_fallback_chain(TaskType.AI_TASK)` returns list ✓
 
 ### Factory Functions
+
 - [x] `from mahavishnu.factories import get_pool_manager` works ✓
 - [x] Multiple calls return same instance ✓
 - [x] `reset_all_factories()` clears singletons ✓
 
 ### Pydantic Models
+
 - [x] `from mahavishnu.webhooks.models import OpenClawSweepRequest` works ✓
 - [x] Invalid input raises ValidationError ✓
 - [x] Valid input creates model instance ✓
 
 ### Rate Limiting
+
 - [x] `slowapi>=0.1.9` added to `pyproject.toml` ✓
 - [x] `@rate_limit("10/minute")` decorator applied to sweep endpoint ✓
 - [x] `@rate_limit("5/minute")` decorator applied to workflow endpoint ✓
 - [x] Graceful fallback when slowapi not installed ✓
 
 ### Auth Pattern
+
 - [x] `from mahavishnu.core.subscription_auth import MultiAuthHandler` works ✓
 - [x] `MultiAuthHandler().authenticate_request()` pattern documented in router.py ✓
 - [x] `validate_auth()` dependency implemented with correct error handling ✓
 
----
+______________________________________________________________________
 
 ## ✅ All P0 Items Complete
 
 **Date Completed:** 2026-04-02
 
 All 5 P0 blocking items have been successfully implemented:
+
 1. ✅ Routing Module Infrastructure (`mahavishnu/core/routing.py`)
-2. ✅ Factory Functions for Singletons (`mahavishnu/factories.py`)
-3. ✅ Pydantic Models for Webhook Validation (`mahavishnu/webhooks/models.py`)
-4. ✅ Rate Limiting Infrastructure (`pyproject.toml` + `mahavishnu/webhooks/router.py`)
-5. ✅ Auth Pattern Correction (`mahavishnu/webhooks/router.py`)
+1. ✅ Factory Functions for Singletons (`mahavishnu/factories.py`)
+1. ✅ Pydantic Models for Webhook Validation (`mahavishnu/webhooks/models.py`)
+1. ✅ Rate Limiting Infrastructure (`pyproject.toml` + `mahavishnu/webhooks/router.py`)
+1. ✅ Auth Pattern Correction (`mahavishnu/webhooks/router.py`)
 
 **Ready to proceed with Integration Implementation Roadmap Phase 1.**
 
----
+______________________________________________________________________
 
 ## Timeline Impact
 
@@ -362,7 +392,7 @@ All 5 P0 blocking items have been successfully implemented:
 | P0 incomplete | **BLOCKED** | **BLOCKED** | **BLOCKED** |
 | P1 incomplete | Day 1 | **BLOCKED** | Extended |
 
----
+______________________________________________________________________
 
 ## Sign-Off
 
@@ -373,7 +403,7 @@ Before proceeding with implementation:
 - [ ] Timeline adjusted if needed
 - [ ] Resources allocated
 
----
+______________________________________________________________________
 
 ## Document History
 

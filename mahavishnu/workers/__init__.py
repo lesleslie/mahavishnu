@@ -37,9 +37,9 @@ from mahavishnu.workers.openclaw_gateway import (
     OpenClawTaskRequest,
 )
 from mahavishnu.workers.registry import (
+    WORKER_REGISTRY,
     WorkerCategory,
     WorkerConfig,
-    WORKER_REGISTRY,
     get_worker_config,
     get_workers_by_category,
     list_worker_types,

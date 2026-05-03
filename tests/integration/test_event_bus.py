@@ -8,14 +8,13 @@ This test demonstrates:
 """
 
 import asyncio
-import tempfile
 from pathlib import Path
+import tempfile
 
 from mahavishnu.core.event_bus import (
+    Event,
     EventBus,
     EventType,
-    Event,
-    init_event_bus,
 )
 
 
@@ -184,7 +183,7 @@ async def test_multiple_subscribers():
         # Verify both received it
         assert len(session_buddy_events) == 1
         assert len(akosha_events) == 1
-        print(f"\n  ✅ Both subscribers received event")
+        print("\n  ✅ Both subscribers received event")
 
         # Check stats
         stats = bus.get_stats()

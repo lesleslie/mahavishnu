@@ -1,19 +1,18 @@
 """Tests for Load Testing Framework - k6 integration and benchmarks."""
 
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, patch
+
 import pytest
-import asyncio
-from datetime import datetime, UTC
-from unittest.mock import MagicMock, AsyncMock, patch
-from typing import Any
 
 from mahavishnu.core.load_testing import (
-    LoadTestRunner,
+    BenchmarkResult,
+    BenchmarkSuite,
     LoadTestConfig,
     LoadTestResult,
-    BenchmarkSuite,
-    BenchmarkResult,
-    PerformanceMetric,
+    LoadTestRunner,
     MetricType,
+    PerformanceMetric,
 )
 
 
@@ -333,7 +332,7 @@ class TestLoadTestRunner:
         runner = LoadTestRunner(config=sample_config)
 
         # Mock the k6 execution
-        with patch.object(runner, '_execute_k6', new_callable=AsyncMock) as mock_exec:
+        with patch.object(runner, "_execute_k6", new_callable=AsyncMock) as mock_exec:
             mock_exec.return_value = {
                 "http_reqs": {"count": 1000, "rate": 100.0},
                 "http_req_duration": {"avg": 50.0, "p(95)": 150.0, "p(99)": 200.0},
@@ -353,7 +352,7 @@ class TestLoadTestRunner:
         """Run test that fails."""
         runner = LoadTestRunner(config=sample_config)
 
-        with patch.object(runner, '_execute_k6', new_callable=AsyncMock) as mock_exec:
+        with patch.object(runner, "_execute_k6", new_callable=AsyncMock) as mock_exec:
             mock_exec.side_effect = Exception("k6 not found")
 
             result = await runner.run()
@@ -368,16 +367,18 @@ class TestLoadTestRunner:
         runner = LoadTestRunner(config=sample_config)
 
         # Add mock result
-        runner.results.append(LoadTestResult(
-            test_name="test1",
-            passed=True,
-            total_requests=100,
-            failed_requests=0,
-            avg_latency_ms=50.0,
-            p95_latency_ms=100.0,
-            p99_latency_ms=150.0,
-            requests_per_second=100.0,
-        ))
+        runner.results.append(
+            LoadTestResult(
+                test_name="test1",
+                passed=True,
+                total_requests=100,
+                failed_requests=0,
+                avg_latency_ms=50.0,
+                p95_latency_ms=100.0,
+                p99_latency_ms=150.0,
+                requests_per_second=100.0,
+            )
+        )
 
         result = runner.get_last_result()
 
@@ -491,7 +492,9 @@ class TestBenchmarkSuite:
         """Load benchmark results."""
         suite = BenchmarkSuite(name="api_benchmarks")
 
-        results_json = '{"name": "loaded", "baseline_value": 100.0, "current_value": 80.0, "unit": "ms"}'
+        results_json = (
+            '{"name": "loaded", "baseline_value": 100.0, "current_value": 80.0, "unit": "ms"}'
+        )
         suite.add_benchmark_from_json(results_json)
 
         assert len(suite.benchmarks) == 1

@@ -8,7 +8,7 @@
 
 **Tech Stack:** `runpod-flash` (≥0.1.0), `runpod` API key via env var `RUNPOD_API_KEY`, Python 3.10+, async/await, `TaskCategory` from `mahavishnu/workers/task_router.py`
 
----
+______________________________________________________________________
 
 ## File Map
 
@@ -20,11 +20,12 @@
 | Modify | `settings/mahavishnu.yaml` | Add `runpod_pool` config stanza |
 | Create | `tests/unit/pools/test_runpod_pool.py` | Unit tests (mocked Flash SDK) |
 
----
+______________________________________________________________________
 
 ### Task 1: Add `runpod-flash` dependency
 
 **Files:**
+
 - Modify: `pyproject.toml`
 
 - [ ] **Step 1: Add dependency**
@@ -62,11 +63,12 @@ git add pyproject.toml uv.lock
 git commit -m "feat(deps): add runpod-flash SDK"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Write failing tests for `RunPodPool`
 
 **Files:**
+
 - Create: `tests/unit/pools/test_runpod_pool.py`
 
 - [ ] **Step 1: Write tests**
@@ -218,11 +220,12 @@ git add tests/unit/pools/test_runpod_pool.py
 git commit -m "test(pools): add failing tests for RunPodPool"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Implement `RunPodPool`
 
 **Files:**
+
 - Create: `mahavishnu/pools/runpod_pool.py`
 
 - [ ] **Step 1: Write the implementation**
@@ -537,11 +540,12 @@ git add mahavishnu/pools/runpod_pool.py
 git commit -m "feat(pools): implement RunPodPool via runpod-flash SDK"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Register `RunPodPool` in the pool factory
 
 **Files:**
+
 - Modify: `mahavishnu/pools/manager.py:14` (import) and `:166-174` (factory)
 
 - [ ] **Step 1: Add import**
@@ -602,11 +606,12 @@ git add mahavishnu/pools/manager.py
 git commit -m "feat(pools): register RunPodPool in PoolManager factory"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Export `RunPodPool` from the pools package
 
 **Files:**
+
 - Modify: `mahavishnu/pools/__init__.py:32-55`
 
 - [ ] **Step 1: Add to `__all__`**
@@ -649,11 +654,12 @@ git add mahavishnu/pools/__init__.py
 git commit -m "feat(pools): export RunPodPool from pools package"
 ```
 
----
+______________________________________________________________________
 
 ### Task 6: Add RunPod config stanza to settings
 
 **Files:**
+
 - Modify: `settings/mahavishnu.yaml`
 
 - [ ] **Step 1: Add stanza**
@@ -688,11 +694,12 @@ git add settings/mahavishnu.yaml CLAUDE.md
 git commit -m "feat(config): add runpod_pool config stanza to mahavishnu.yaml"
 ```
 
----
+______________________________________________________________________
 
 ### Task 7: Write an integration smoke test
 
 **Files:**
+
 - Create: `tests/integration/pools/test_runpod_pool_smoke.py`
 
 This test is **skipped by default** (requires a real RunPod API key). It verifies the full round-trip against the real Flash API when opted in.
@@ -769,7 +776,7 @@ git add tests/integration/pools/test_runpod_pool_smoke.py
 git commit -m "test(pools): add RunPodPool integration smoke test (opt-in via RUNPOD_API_KEY)"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 
@@ -795,7 +802,7 @@ None — all code blocks are complete implementations.
 - `execute_task()` return shape (`pool_id`, `worker_id`, `status`, `output`, `error`, `duration`) matches `BasePool` docstring contract ✓
 - `collect_memory()` metadata shape matches `KubernetesPool` and `SessionBuddyPool` conventions ✓
 
----
+______________________________________________________________________
 
 ## Future Work
 

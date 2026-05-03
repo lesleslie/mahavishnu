@@ -1,15 +1,10 @@
 """Unit tests for terminal adapters."""
 
-from datetime import datetime
-from unittest.mock import AsyncMock
-
 import pytest
 
-from mahavishnu.terminal.adapters.iterm2 import ITerm2Adapter
 from mahavishnu.terminal.adapters.mcpretentious import (
     McpretentiousAdapter,
     SessionNotFoundError,
-    TerminalError,
 )
 from mahavishnu.terminal.adapters.mock import MockTerminalAdapter
 

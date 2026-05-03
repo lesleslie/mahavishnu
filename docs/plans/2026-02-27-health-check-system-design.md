@@ -9,28 +9,30 @@
 **Authors:** Claude + User collaboration
 **Related:** Expert audit of mDNS/Zeroconf and Device Discovery features
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
 This document defines a lightweight health check system for the Bodai ecosystem that replaces the proposed (and rejected) Device Discovery feature. The system uses on-demand health queries instead of continuous heartbeats, and leverages platform-native service discovery for production deployments.
 
 **Key Decisions:**
+
 - ❌ mDNS/Zeroconf: Rejected by 5/5 experts
 - ❌ Device Discovery (announce/heartbeat/poll): Rejected by 5/5 experts
 - ✅ Health Check Endpoints: Recommended by 5/5 experts
 - ✅ Platform-native discovery: Recommended for production
 
----
+______________________________________________________________________
 
 ## Problem Statement
 
 Services in the Bodai ecosystem need to:
-1. Know if their dependencies are healthy before accepting work
-2. Expose health status for monitoring and orchestration
-3. Work seamlessly in both localhost development and cloud production
 
----
+1. Know if their dependencies are healthy before accepting work
+1. Expose health status for monitoring and orchestration
+1. Work seamlessly in both localhost development and cloud production
+
+______________________________________________________________________
 
 ## Goals
 
@@ -40,7 +42,7 @@ Services in the Bodai ecosystem need to:
 - No custom registry, no heartbeats, no background tasks
 - Minimal implementation complexity (~4-6 hours)
 
----
+______________________________________________________________________
 
 ## Architecture Overview
 
@@ -77,7 +79,7 @@ Services in the Bodai ecosystem need to:
 
 **Key principle:** On-demand health queries, not continuous heartbeats.
 
----
+______________________________________________________________________
 
 ## Health Endpoint Specification
 
@@ -127,7 +129,7 @@ Services in the Bodai ecosystem need to:
 | **Frequency** | On-demand (startup, before routing traffic) |
 | **Returns** | 200 if all dependencies reachable, 503 if not ready |
 
----
+______________________________________________________________________
 
 ## Dependency Waiting Logic
 
@@ -186,7 +188,7 @@ Mahavishnu starts
 | **Parallel checks** | All dependencies checked concurrently |
 | **Exponential backoff** | 1s → 2s → 4s → 8s → 16s (max 16s between retries) |
 
----
+______________________________________________________________________
 
 ## Implementation Components
 
@@ -314,7 +316,7 @@ async def wait_for_dependency(
     pass
 ```
 
----
+______________________________________________________________________
 
 ## Production Configuration
 
@@ -367,7 +369,7 @@ dependencies:
 
 **No code changes needed between environments** - only configuration.
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -405,7 +407,7 @@ class CircularDependencyError(HealthCheckError):
 | **Optional dependency fails** | Log warning at WARNING level, continue startup |
 | **Health check timeout** | 5 second timeout per request, then retry |
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
@@ -511,7 +513,7 @@ async def test_wait_for_dependencies_timeout(unhealthy_service):
         await waiter.wait_for_all(dependencies)
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Checklist
 
@@ -526,7 +528,7 @@ async def test_wait_for_dependencies_timeout(unhealthy_service):
 - [ ] Write integration tests for startup sequence
 - [ ] Update documentation
 
----
+______________________________________________________________________
 
 ## Estimated Effort
 
@@ -539,7 +541,7 @@ async def test_wait_for_dependencies_timeout(unhealthy_service):
 | Testing | 2 |
 | **Total** | **6 hours** |
 
----
+______________________________________________________________________
 
 ## Expert Panel Summary
 
@@ -568,12 +570,13 @@ The following features were evaluated by 5 domain experts:
 ### Health Check System - ✅ Approved (5/5 for)
 
 All experts recommended this simpler approach using:
+
 - `/health` and `/ready` endpoints
 - `wait_for_dependencies()` on startup
 - Platform-native discovery for production
 - No heartbeats, no registry, no background tasks
 
----
+______________________________________________________________________
 
 ## References
 

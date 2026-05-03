@@ -6,15 +6,15 @@ This directory contains active and historical planning documents for Mahavishnu 
 
 1. Current plan map, implementation priority, and supersession notes:
    - [PLAN_INDEX.md](./PLAN_INDEX.md)
-2. Current Agno/Textual TUI and Bodai platform architecture:
+1. Current Agno/Textual TUI and Bodai platform architecture:
    - [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
-3. Current Agno/Textual TUI and Bodai platform implementation plan:
+1. Current Agno/Textual TUI and Bodai platform implementation plan:
    - [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
-4. Current ecosystem-health/control-plane implementation plan:
+1. Current ecosystem-health/control-plane implementation plan:
    - [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
-5. Current ecosystem docs cleanup plan:
+1. Current ecosystem docs cleanup plan:
    - [2026-04-25-ecosystem-docs-canonicalization-plan.md](./2026-04-25-ecosystem-docs-canonicalization-plan.md)
-6. Current type adapter migration plan:
+1. Current type adapter migration plan:
    - [2026-04-25-type-adapter-migration-plan.md](./2026-04-25-type-adapter-migration-plan.md)
 
 ## Plan Categories

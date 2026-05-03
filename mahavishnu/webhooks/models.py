@@ -25,15 +25,14 @@ Usage:
 
 from __future__ import annotations
 
-import re
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
+import re
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
 from mahavishnu.core.metrics_schema import AdapterType
-
 
 # Valid tag pattern: alphanumeric, underscores, hyphens only
 TAG_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
@@ -42,7 +41,7 @@ TAG_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 REPO_PATH_PATTERN = re.compile(r"^[a-zA-Z0-9_/.-]+$")
 
 
-class WebhookStatus(str, Enum):
+class WebhookStatus(StrEnum):
     """Status of webhook processing."""
 
     SUCCESS = "success"
@@ -211,9 +210,7 @@ class OpenClawWorkflowRequest(BaseModel):
                 )
             # Check for absolute path attempts
             if repo.startswith("/") or repo.startswith("~"):
-                raise ValueError(
-                    f"Invalid repository path '{repo}'. Absolute paths not allowed"
-                )
+                raise ValueError(f"Invalid repository path '{repo}'. Absolute paths not allowed")
         return v
 
     @field_validator("metadata")

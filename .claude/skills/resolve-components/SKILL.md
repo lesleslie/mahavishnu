@@ -1,7 +1,6 @@
----
-name: resolve-components
-description: Use when understanding Oneiric resolver decisions or debugging component resolution. Use when user asks why a specific component was selected, needs to debug shadowed candidates, or wants to understand resolver precedence.
----
+______________________________________________________________________
+
+## name: resolve-components description: Use when understanding Oneiric resolver decisions or debugging component resolution. Use when user asks why a specific component was selected, needs to debug shadowed candidates, or wants to understand resolver precedence.
 
 # Resolve Components
 
@@ -11,8 +10,8 @@ description: Use when understanding Oneiric resolver decisions or debugging comp
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| dhara | 8683 | grep | mcp__dhara__get_adapter, mcp__dhara__list_adapters, mcp__dhara__store_adapter | 30s |
-| mahavishnu | 8680 | grep | mcp__mahavishnu__list_repos | 60s |
+| dhara | 8683 | grep | mcp\_\_dhara\_\_get_adapter, mcp\_\_dhara\_\_list_adapters, mcp\_\_dhara\_\_store_adapter | 30s |
+| mahavishnu | 8680 | grep | mcp\_\_mahavishnu\_\_list_repos | 60s |
 
 Oneiric's **deterministic resolver** selects components using 4-tier precedence: explicit selections → stack order → priorities → registration order. This skill guides you through understanding, debugging, and controlling component resolution.
 
@@ -21,6 +20,7 @@ Oneiric's **deterministic resolver** selects components using 4-tier precedence:
 ## When to Use
 
 **Use when:**
+
 - Debugging why a component was selected over another
 - Understanding shadowed candidates
 - Explaining resolver decisions to team members
@@ -28,6 +28,7 @@ Oneiric's **deterministic resolver** selects components using 4-tier precedence:
 - Customizing component selection behavior
 
 **Don't use when:**
+
 - Setting up configuration (use `configure-oneiric`)
 - Managing component lifecycle (use `manage-lifecycle`)
 - Deploying remote manifests (use `remote-manifests`)
@@ -69,6 +70,7 @@ resolver.conflicts(domain="services")
 ### Step 1: Understand Resolution Flow
 
 **How resolution works:**
+
 ```python
 from oneiric.core.resolver import Resolver
 
@@ -90,6 +92,7 @@ db = resolver.resolve("adapters.database")
 ```
 
 **Resolution flowchart:**
+
 ```dot
 digraph resolution {
     "Resolve request" [shape=diamond];
@@ -114,6 +117,7 @@ digraph resolution {
 ### Step 2: Explain Resolution Decisions
 
 **Get detailed explanation:**
+
 ```python
 explanation = resolver.explain("adapters.database")
 
@@ -121,6 +125,7 @@ print(explanation)
 ```
 
 **Output:**
+
 ```
 Component: adapters.database
 Selected: postgres_adapter
@@ -136,11 +141,13 @@ Shadowed candidates: None
 ```
 
 **Via CLI:**
+
 ```bash
 oneiric explain --component adapters.database
 ```
 
 **Via MCP:**
+
 ```python
 result = await mcp.call_tool("mcp__dhara__get_adapter", {
     "component": "adapters.database"
@@ -150,6 +157,7 @@ result = await mcp.call_tool("mcp__dhara__get_adapter", {
 ### Step 3: Identify Shadowed Candidates
 
 **View all candidates:**
+
 ```python
 candidates = resolver.candidates("adapters")
 
@@ -159,6 +167,7 @@ for candidate in candidates:
 ```
 
 **Output:**
+
 ```
 postgres: priority=10, shadowed=False
 mysql: priority=5, shadowed=True (by postgres)
@@ -166,6 +175,7 @@ sqlite: priority=1, shadowed=True (by postgres)
 ```
 
 **Understanding shadowing:**
+
 - Higher-priority components shadow lower-priority ones
 - Shadowed components are never selected unless higher tiers intervene
 - Explicit selection ignores priority and shadowing
@@ -173,6 +183,7 @@ sqlite: priority=1, shadowed=True (by postgres)
 ### Step 4: Debug Resolution Conflicts
 
 **Check for conflicts:**
+
 ```python
 conflicts = resolver.conflicts("services")
 
@@ -194,6 +205,7 @@ if conflicts:
 ### Step 5: Control Resolution Behavior
 
 **Explicit selection (highest precedence):**
+
 ```python
 # Select specific component
 resolver.select("postgres", domain="adapters")
@@ -206,6 +218,7 @@ resolver.clear_selection(domain="adapters")
 ```
 
 **Priority-based selection:**
+
 ```python
 from oneiric.core.priority import priority
 
@@ -221,6 +234,7 @@ class TestDatabase:
 ```
 
 **Stack-aware resolution:**
+
 ```python
 # Component from caller's stack gets preference
 def service_handler():
@@ -276,11 +290,13 @@ candidates = resolver.candidates_with_capability("transactions")
 ## Real-World Impact
 
 **Before this skill:**
+
 - Confusion about component selection → 20 minutes debugging
 - Shadowed components not understood → wasted development time
 - Non-deterministic conflicts → production bugs
 
 **After this skill:**
+
 - Clear resolution logic → instant understanding
 - Explicit shadowing visibility → informed decisions
 - Deterministic selection → zero conflicts
@@ -288,6 +304,7 @@ candidates = resolver.candidates_with_capability("transactions")
 ## Example Workflows
 
 **Debugging Unexpected Selection:**
+
 ```python
 # User: "Why is it using sqlite instead of postgres?"
 
@@ -309,6 +326,7 @@ db = resolver.resolve("adapters.database")
 ```
 
 **Viewing All Candidates:**
+
 ```python
 # User: "What database adapters are available?"
 
@@ -321,6 +339,7 @@ for candidate in candidates:
 ```
 
 **Fixing Priority Conflicts:**
+
 ```python
 # User: "I'm getting non-deterministic behavior"
 

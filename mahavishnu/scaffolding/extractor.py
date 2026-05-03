@@ -72,11 +72,7 @@ class PatternExtractor:
 
         include_re = [re.compile(p) for p in (include_patterns or [r".*"])]
         exclude_re = [
-            re.compile(p)
-            for p in (
-                exclude_patterns
-                or [r"^__pycache__$", r"^\.git$", r"^\.venv$"]
-            )
+            re.compile(p) for p in (exclude_patterns or [r"^__pycache__$", r"^\.git$", r"^\.venv$"])
         ]
 
         dirs: list[dict] = []
@@ -90,9 +86,7 @@ class PatternExtractor:
                 continue
 
             if item.is_dir():
-                dirs.append(
-                    {"path": rel + "/", "required": False, "description": ""}
-                )
+                dirs.append({"path": rel + "/", "required": False, "description": ""})
             elif item.is_file() and item.suffix in {
                 ".py",
                 ".yaml",
@@ -102,9 +96,7 @@ class PatternExtractor:
                 ".css",
                 ".js",
             }:
-                files.append(
-                    {"path": rel, "required": False, "description": ""}
-                )
+                files.append({"path": rel, "required": False, "description": ""})
 
         return PatternDraft(
             category=category,
@@ -131,9 +123,7 @@ class PatternExtractor:
 
         drafts: list[PatternDraft] = []
         for dir_path, prevalence in shared_dirs.items():
-            shared_files = _find_common_files(
-                repo_structures, dir_path, min_prevalence
-            )
+            shared_files = _find_common_files(repo_structures, dir_path, min_prevalence)
             category = _infer_category(dir_path)
             name = dir_path.rstrip("/").replace("/", "-")
             drafts.append(
@@ -157,9 +147,7 @@ class PatternExtractor:
                     ],
                     confidence=prevalence,
                     source_repos=[
-                        n
-                        for n in repo_structures
-                        if _dir_in_repo(dir_path, repo_structures[n])
+                        n for n in repo_structures if _dir_in_repo(dir_path, repo_structures[n])
                     ],
                 )
             )
@@ -199,9 +187,7 @@ def _find_common_subtrees(
         dir_path = file_path.rsplit("/", 1)[0] if "/" in file_path else ""
         if not dir_path:
             continue
-        count = sum(
-            1 for files in repo_structures.values() if _dir_in_repo(dir_path, files)
-        )
+        count = sum(1 for files in repo_structures.values() if _dir_in_repo(dir_path, files))
         prevalence = count / n_repos
         if prevalence >= min_prevalence:
             result[dir_path] = max(result.get(dir_path, 0), prevalence)
@@ -215,9 +201,7 @@ def _find_common_files(
     file_counts: dict[str, int] = {}
     n_repos = len(repo_structures)
     for files in repo_structures.values():
-        matching = [
-            f.split("/")[-1] for f in files if f.startswith(dir_path + "/")
-        ]
+        matching = [f.split("/")[-1] for f in files if f.startswith(dir_path + "/")]
         for f in matching:
             file_counts[f] = file_counts.get(f, 0) + 1
     return sorted(f for f, c in file_counts.items() if c / n_repos >= min_prevalence)

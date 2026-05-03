@@ -77,8 +77,7 @@ async def test_resource_exhaustion_backs_pressure_into_local_buffer() -> None:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator
 
     memory_items = [
-        {"content": f"payload-{index}", "metadata": {"index": index}}
-        for index in range(505)
+        {"content": f"payload-{index}", "metadata": {"index": index}} for index in range(505)
     ]
     pool_manager = build_failing_pool_manager("pool-chaos", memory_items)
 

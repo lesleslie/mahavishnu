@@ -1,27 +1,27 @@
 """Unit tests for skill map."""
 
-import pytest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import pytest
 from skill_map import (
     SkillGraph,
-    build_graph,
-    find_orphan_skills,
-    detect_clusters,
     analyze_centrality,
-    find_learning_path,
-    find_all_paths,
-    get_prerequisite_skills,
-    suggest_learning_order,
-    export_mermaid,
+    analyze_connectivity,
+    build_graph,
+    detect_clusters,
     export_graphviz,
     export_json,
-    analyze_connectivity,
+    export_mermaid,
+    find_all_paths,
     find_bridge_skills,
+    find_learning_path,
+    find_orphan_skills,
+    get_prerequisite_skills,
     get_statistics_summary,
+    suggest_learning_order,
 )
-from skill_parser import parse_all_skills, build_reverse_references
+from skill_parser import build_reverse_references, parse_all_skills
 
 
 @pytest.fixture
@@ -91,10 +91,10 @@ No related skills.
 
             skill_file = skill_dir / "SKILL.md"
             content = f"""---
-name: {skill_data['name']}
-description: {skill_data['description']}
+name: {skill_data["name"]}
+description: {skill_data["description"]}
 ---
-{skill_data['content']}
+{skill_data["content"]}
 """
             skill_file.write_text(content)
 
@@ -272,6 +272,7 @@ class TestExporters:
         """Test JSON export."""
         json_str = export_json(sample_graph)
         import json
+
         data = json.loads(json_str)
 
         assert "nodes" in data
@@ -348,6 +349,7 @@ class TestRealSkillsData:
         """Test exporting real graph as JSON."""
         json_str = export_json(real_graph)
         import json
+
         data = json.loads(json_str)
 
         assert len(data["nodes"]) == 23

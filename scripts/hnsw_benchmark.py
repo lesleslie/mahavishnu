@@ -4,10 +4,10 @@
 This script benchmarks semantic search performance with and without HNSW index.
 """
 
+from datetime import datetime, timedelta
 import hashlib
 import time
 import uuid
-from datetime import datetime, timedelta
 
 import duckdb
 import numpy as np
@@ -114,7 +114,7 @@ def main():
                 print(f"  Inserted {i + 1}/1000")
 
         elapsed = time.time() - start
-        print(f"Generated records in {elapsed:.2f}s ({1000/elapsed:.1f} records/s)")
+        print(f"Generated records in {elapsed:.2f}s ({1000 / elapsed:.1f} records/s)")
 
     # Check final count
     result = conn.execute("SELECT COUNT(*) FROM executions WHERE embedding IS NOT NULL").fetchone()
@@ -161,10 +161,10 @@ def main():
         ).fetchall()
         elapsed = time.time() - start
         exact_times.append(elapsed)
-        print(f"  Run {run + 1}: {elapsed*1000:.2f}ms")
+        print(f"  Run {run + 1}: {elapsed * 1000:.2f}ms")
 
     avg_exact = sum(exact_times) / len(exact_times)
-    print(f"\nAverage: {avg_exact*1000:.2f}ms")
+    print(f"\nAverage: {avg_exact * 1000:.2f}ms")
     print(f"Results found: {len(results)}")
     print(f"Top result: {results[0][0]} (distance: {results[0][2]:.4f})")
 
@@ -198,10 +198,10 @@ def main():
         ).fetchall()
         elapsed = time.time() - start
         approx_times.append(elapsed)
-        print(f"  Run {run + 1}: {elapsed*1000:.2f}ms")
+        print(f"  Run {run + 1}: {elapsed * 1000:.2f}ms")
 
     avg_approx = sum(approx_times) / len(approx_times)
-    print(f"\nAverage: {avg_approx*1000:.2f}ms")
+    print(f"\nAverage: {avg_approx * 1000:.2f}ms")
     print(f"Results found: {len(results)}")
     print(f"Top result: {results[0][0]} (distance: {results[0][2]:.4f})")
 
@@ -213,16 +213,16 @@ def main():
     print("=" * 60)
     print(f"Database: {db_path}")
     print(f"Records: {result[0]}")
-    print(f"Embedding dimension: 384")
-    print(f"\nExact search (no index):  {avg_exact*1000:.2f}ms")
-    print(f"Approx search (HNSW):     {avg_approx*1000:.2f}ms")
+    print("Embedding dimension: 384")
+    print(f"\nExact search (no index):  {avg_exact * 1000:.2f}ms")
+    print(f"Approx search (HNSW):     {avg_approx * 1000:.2f}ms")
     print(f"\nSpeedup: {speedup:.2f}x")
-    print(f"Improvement: {(1-avg_approx/avg_exact)*100:.1f}% faster")
+    print(f"Improvement: {(1 - avg_approx / avg_exact) * 100:.1f}% faster")
 
     if speedup > 1:
         print(f"\n✓ HNSW index provides {speedup:.2f}x performance improvement")
     else:
-        print(f"\n✗ HNSW index slower (expected for small datasets)")
+        print("\n✗ HNSW index slower (expected for small datasets)")
 
     print("=" * 60)
 

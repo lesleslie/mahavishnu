@@ -11,24 +11,24 @@ Design: docs/plans/2026-02-27-health-check-system-design.md
 from __future__ import annotations
 
 import asyncio
-import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
+import time
 from typing import TYPE_CHECKING, Any
 
 import httpx
-from monitoring.metrics import (
-    mahavishnu_dependency_health_status,
-    mahavishnu_dependency_request_duration_seconds,
-    mahavishnu_dependency_requests_total,
-)
-from oneiric.actions.http import HttpFetchAction, HttpActionSettings
+from oneiric.actions.http import HttpActionSettings, HttpFetchAction
 from oneiric.adapters.httpx_base import HTTPXClientMixin
 from oneiric.core.logging import get_logger
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
+from monitoring.metrics import (
+    mahavishnu_dependency_health_status,
+    mahavishnu_dependency_request_duration_seconds,
+    mahavishnu_dependency_requests_total,
+)
 
 if TYPE_CHECKING:
     from mahavishnu.core.config import DependencyConfig, HealthConfig
@@ -41,7 +41,7 @@ logger = get_logger("mahavishnu.health")
 # ---------------------------------------------------------------------------
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """Health status values for liveness probes."""
 
     OK = "ok"
@@ -57,9 +57,7 @@ class DependencyStatus(BaseModel):
         default=None, description="Latency of health check in milliseconds"
     )
     error: str | None = Field(default=None, description="Error message if unhealthy")
-    last_check: datetime | None = Field(
-        default=None, description="Timestamp of last health check"
-    )
+    last_check: datetime | None = Field(default=None, description="Timestamp of last health check")
 
 
 class HealthResponse(BaseModel):
@@ -106,9 +104,7 @@ class ReadyResponse(BaseModel):
     dependencies: dict[str, DependencyStatus] = Field(
         default_factory=dict, description="Status of each dependency"
     )
-    checks: dict[str, str] = Field(
-        default_factory=dict, description="Status of internal checks"
-    )
+    checks: dict[str, str] = Field(default_factory=dict, description="Status of internal checks")
 
     model_config = {
         "json_schema_extra": {
@@ -295,7 +291,7 @@ class HealthChecker(HTTPXClientMixin):
             self._record_metrics(health_result)
             return health_result
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             latency_ms = (time.time() - start_time) * 1000
             self._logger.warning(
                 "health-check-timeout",
@@ -421,14 +417,11 @@ class DependencyWaiter:
         skipped_optional: list[str] = []
 
         # Check all dependencies concurrently
-        tasks = {
-            name: self._wait_for_single(name, config)
-            for name, config in dependencies.items()
-        }
+        tasks = {name: self._wait_for_single(name, config) for name, config in dependencies.items()}
 
         if tasks:
             gathered = await asyncio.gather(*tasks.values(), return_exceptions=True)
-            for (name, _), result in zip(tasks.items(), gathered):
+            for (name, _), result in zip(tasks.items(), gathered, strict=False):
                 if isinstance(result, Exception):
                     results[name] = HealthCheckResult(
                         service_name=name,
@@ -616,9 +609,7 @@ class HealthEndpoint(HTTPXClientMixin):
         checks["uptime"] = "ok"
 
         # Check dependencies if configured
-        deps_to_check = dependencies or (
-            self._config.dependencies if self._config else {}
-        )
+        deps_to_check = dependencies or (self._config.dependencies if self._config else {})
 
         if deps_to_check:
             check_tasks = {
@@ -630,10 +621,8 @@ class HealthEndpoint(HTTPXClientMixin):
             }
 
             if check_tasks:
-                results = await asyncio.gather(
-                    *check_tasks.values(), return_exceptions=True
-                )
-                for (name, _), result in zip(check_tasks.items(), results):
+                results = await asyncio.gather(*check_tasks.values(), return_exceptions=True)
+                for (name, _), result in zip(check_tasks.items(), results, strict=False):
                     if isinstance(result, Exception):
                         dep_status[name] = DependencyStatus(
                             status=HealthStatus.UNHEALTHY,
@@ -648,8 +637,7 @@ class HealthEndpoint(HTTPXClientMixin):
 
         # Determine overall readiness
         all_healthy = all(
-            ds.status in (HealthStatus.OK, HealthStatus.DEGRADED)
-            for ds in dep_status.values()
+            ds.status in (HealthStatus.OK, HealthStatus.DEGRADED) for ds in dep_status.values()
         )
 
         # Consider required dependencies specifically

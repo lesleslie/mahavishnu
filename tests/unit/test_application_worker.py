@@ -12,8 +12,7 @@ import pytest
 from mahavishnu.core.status import WorkerStatus
 from mahavishnu.workers.application import ApplicationWorker
 from mahavishnu.workers.base import WorkerResult
-from mahavishnu.workers.registry import WorkerConfig, WorkerCategory
-
+from mahavishnu.workers.registry import WorkerCategory, WorkerConfig
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -61,7 +60,6 @@ def _make_worker(
 
 
 class TestApplicationWorkerInit:
-
     def test_basic_init(self) -> None:
         worker = _make_worker()
         assert worker.worker_type == "application-mdinject"
@@ -108,27 +106,23 @@ class TestApplicationWorkerInit:
             ApplicationWorker(worker_type="terminal-shell", config=cfg)
 
     def test_init_with_unknown_worker_type_raises(self) -> None:
-        with patch(
-            "mahavishnu.workers.application.get_worker_config", return_value=None
+        with (
+            patch("mahavishnu.workers.application.get_worker_config", return_value=None),
+            pytest.raises(ValueError, match="Unknown worker type"),
         ):
-            with pytest.raises(ValueError, match="Unknown worker type"):
-                ApplicationWorker(worker_type="nonexistent")
+            ApplicationWorker(worker_type="nonexistent")
 
     def test_init_loads_config_from_registry_when_not_provided(self) -> None:
         """When config=None, get_worker_config is called."""
         cfg = _make_config()
-        with patch(
-            "mahavishnu.workers.application.get_worker_config", return_value=cfg
-        ):
+        with patch("mahavishnu.workers.application.get_worker_config", return_value=cfg):
             worker = ApplicationWorker(worker_type="application-mdinject")
         assert worker.config is cfg
         assert worker._mcp_server_name == "mdinject"
 
     def test_init_mcp_client_defaults_to_none(self) -> None:
         cfg = _make_config()
-        worker = ApplicationWorker(
-            worker_type="application-mdinject", config=cfg
-        )
+        worker = ApplicationWorker(worker_type="application-mdinject", config=cfg)
         assert worker.mcp_client is None
 
     def test_init_various_application_types(self) -> None:
@@ -152,7 +146,6 @@ class TestApplicationWorkerInit:
 
 
 class TestApplicationWorkerStart:
-
     @pytest.mark.asyncio
     async def test_start_returns_worker_id(self) -> None:
         worker = _make_worker()
@@ -176,18 +169,14 @@ class TestApplicationWorkerStart:
     @pytest.mark.asyncio
     async def test_start_raises_without_mcp_client(self) -> None:
         cfg = _make_config()
-        worker = ApplicationWorker(
-            worker_type="application-mdinject", mcp_client=None, config=cfg
-        )
+        worker = ApplicationWorker(worker_type="application-mdinject", mcp_client=None, config=cfg)
         with pytest.raises(RuntimeError, match="MCP client not provided"):
             await worker.start()
 
     @pytest.mark.asyncio
     async def test_start_error_message_includes_server_name(self) -> None:
         cfg = _make_config(mcp_server="blender-mcp")
-        worker = ApplicationWorker(
-            worker_type="application-blender", mcp_client=None, config=cfg
-        )
+        worker = ApplicationWorker(worker_type="application-blender", mcp_client=None, config=cfg)
         with pytest.raises(RuntimeError, match="blender-mcp"):
             await worker.start()
 
@@ -208,7 +197,6 @@ class TestApplicationWorkerStart:
 
 
 class TestApplicationWorkerStop:
-
     @pytest.mark.asyncio
     async def test_stop_sets_completed_status(self) -> None:
         worker = _make_worker()
@@ -238,7 +226,6 @@ class TestApplicationWorkerStop:
 
 
 class TestApplicationWorkerStatus:
-
     @pytest.mark.asyncio
     async def test_status_returns_pending_initially(self) -> None:
         worker = _make_worker()
@@ -267,7 +254,6 @@ class TestApplicationWorkerStatus:
 
 
 class TestApplicationWorkerGetProgress:
-
     @pytest.mark.asyncio
     async def test_progress_before_start(self) -> None:
         worker = _make_worker()
@@ -308,7 +294,6 @@ class TestApplicationWorkerGetProgress:
 
 
 class TestApplicationWorkerExecute:
-
     @pytest.mark.asyncio
     async def test_execute_auto_starts_if_not_running(self) -> None:
         worker = _make_worker()
@@ -395,9 +380,7 @@ class TestApplicationWorkerExecute:
     async def test_execute_catches_generic_exception(self) -> None:
         worker = _make_worker()
         await worker.start()
-        worker.mcp_client.call_tool = AsyncMock(
-            side_effect=ValueError("bad argument")
-        )
+        worker.mcp_client.call_tool = AsyncMock(side_effect=ValueError("bad argument"))
         result = await worker.execute({"tool": "test_tool"})
         assert result.status == WorkerStatus.FAILED
         assert "bad argument" in result.error
@@ -407,9 +390,7 @@ class TestApplicationWorkerExecute:
     async def test_execute_catches_runtime_error(self) -> None:
         worker = _make_worker()
         await worker.start()
-        worker.mcp_client.call_tool = AsyncMock(
-            side_effect=RuntimeError("connection refused")
-        )
+        worker.mcp_client.call_tool = AsyncMock(side_effect=RuntimeError("connection refused"))
         result = await worker.execute({"tool": "test_tool"})
         assert result.status == WorkerStatus.FAILED
         assert "connection refused" in result.error
@@ -443,9 +424,7 @@ class TestApplicationWorkerExecute:
     async def test_execute_error_logs_error(self) -> None:
         worker = _make_worker()
         await worker.start()
-        worker.mcp_client.call_tool = AsyncMock(
-            side_effect=RuntimeError("server error")
-        )
+        worker.mcp_client.call_tool = AsyncMock(side_effect=RuntimeError("server error"))
         with patch("mahavishnu.workers.application.logger") as mock_logger:
             await worker.execute({"tool": "test_tool"})
             mock_logger.error.assert_called_once()
@@ -468,7 +447,6 @@ class TestApplicationWorkerExecute:
 
 
 class TestApplicationWorkerCallMcpTool:
-
     @pytest.mark.asyncio
     async def test_call_uses_prefixed_name_first(self) -> None:
         worker = _make_worker()
@@ -505,9 +483,7 @@ class TestApplicationWorkerCallMcpTool:
     async def test_call_propagates_error_when_both_fail(self) -> None:
         worker = _make_worker()
         await worker.start()
-        worker.mcp_client.call_tool = AsyncMock(
-            side_effect=RuntimeError("tool not found")
-        )
+        worker.mcp_client.call_tool = AsyncMock(side_effect=RuntimeError("tool not found"))
         with pytest.raises(RuntimeError, match="tool not found"):
             await worker._call_mcp_tool("nonexistent", {})
 
@@ -518,7 +494,6 @@ class TestApplicationWorkerCallMcpTool:
 
 
 class TestApplicationWorkerExtractOutput:
-
     def test_none_returns_empty_string(self) -> None:
         worker = _make_worker()
         assert worker._extract_output(None) == ""
@@ -607,7 +582,6 @@ class TestApplicationWorkerExtractOutput:
 
 
 class TestApplicationWorkerStoreResultInSessionBuddy:
-
     @pytest.mark.asyncio
     async def test_store_called_on_success_with_client(self) -> None:
         sb = AsyncMock()
@@ -687,9 +661,7 @@ class TestApplicationWorkerStoreResultInSessionBuddy:
         with patch("mahavishnu.workers.application.logger") as mock_logger:
             await worker.execute({"tool": "create_prompt"})
 
-        mock_logger.info.assert_any_call(
-            f"Stored result for {worker.worker_id} in Session-Buddy"
-        )
+        mock_logger.info.assert_any_call(f"Stored result for {worker.worker_id} in Session-Buddy")
 
     @pytest.mark.asyncio
     async def test_store_not_called_on_timeout(self) -> None:
@@ -715,7 +687,6 @@ class TestApplicationWorkerStoreResultInSessionBuddy:
 
 
 class TestApplicationWorkerHealthCheck:
-
     @pytest.mark.asyncio
     async def test_health_check_running(self) -> None:
         worker = _make_worker()
@@ -756,7 +727,6 @@ class TestApplicationWorkerHealthCheck:
 
 
 class TestApplicationWorkerExecuteIntegration:
-
     @pytest.mark.asyncio
     async def test_full_lifecycle(self) -> None:
         """Test start -> execute -> stop lifecycle."""

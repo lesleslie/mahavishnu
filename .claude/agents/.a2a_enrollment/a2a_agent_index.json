@@ -1,1073 +1,1073 @@
 {
   "agents": {
-    "websocket-specialist": {
-      "name": "websocket-specialist",
-      "file": "/Users/les/.claude/agents/websocket-specialist.md",
+    "accessibility-auditor": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/accessibility-auditor.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "accessibility-auditor",
+      "priority": 1
     },
-    "reference-builder": {
-      "name": "reference-builder",
-      "file": "/Users/les/.claude/agents/reference-builder.md",
+    "accessibility-specialist": {
       "capabilities": [
+        "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/accessibility-specialist.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "accessibility-specialist",
+      "priority": 1
+    },
+    "agent-creation-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/agent-creation-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "agent-creation-specialist",
+      "priority": 1
+    },
+    "ai-engineer": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/ai-engineer.md",
+      "max_concurrent_tasks": 3,
+      "name": "ai-engineer",
+      "priority": 1
+    },
+    "akosha-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/akosha-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "akosha-specialist",
+      "priority": 1
+    },
+    "anthropic-claude-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/anthropic-claude-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "anthropic-claude-specialist",
+      "priority": 1
+    },
+    "api-security-specialist": {
+      "capabilities": [
+        "security_audit"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/api-security-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "api-security-specialist",
+      "priority": 1
+    },
+    "architecture-council": {
+      "capabilities": [
+        "code_analysis"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/architecture-council.md",
+      "max_concurrent_tasks": 5,
+      "name": "architecture-council",
+      "priority": 2
+    },
+    "authentication-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/authentication-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "authentication-specialist",
+      "priority": 1
+    },
+    "c-pro": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/c-pro.md",
+      "max_concurrent_tasks": 3,
+      "name": "c-pro",
+      "priority": 1
+    },
+    "claude-environment-auditor": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/claude-environment-auditor.md",
+      "max_concurrent_tasks": 3,
+      "name": "claude-environment-auditor",
+      "priority": 1
     },
     "code-reviewer": {
-      "name": "code-reviewer",
-      "file": "/Users/les/.claude/agents/code-reviewer.md",
       "capabilities": [
         "code_analysis",
         "code_refactoring"
       ],
-      "priority": 2,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/code-reviewer.md",
       "max_concurrent_tasks": 5,
-      "discovery": true
-    },
-    "rabbitmq-specialist": {
-      "name": "rabbitmq-specialist",
-      "file": "/Users/les/.claude/agents/rabbitmq-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "code-reviewer",
+      "priority": 2
     },
     "content-designer": {
-      "name": "content-designer",
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
       "file": "/Users/les/.claude/agents/content-designer.md",
+      "max_concurrent_tasks": 3,
+      "name": "content-designer",
+      "priority": 1
+    },
+    "context-manager": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/context-manager.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "context-manager",
+      "priority": 1
     },
-    "pyo3-specialist": {
-      "name": "pyo3-specialist",
-      "file": "/Users/les/.claude/agents/pyo3-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "accessibility-auditor": {
-      "name": "accessibility-auditor",
-      "file": "/Users/les/.claude/agents/accessibility-auditor.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "terraform-specialist": {
-      "name": "terraform-specialist",
-      "file": "/Users/les/.claude/agents/terraform-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "java-pro": {
-      "name": "java-pro",
-      "file": "/Users/les/.claude/agents/java-pro.md",
+    "cpp-pro": {
       "capabilities": [
         "code_generation"
       ],
-      "priority": 2,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/cpp-pro.md",
       "max_concurrent_tasks": 5,
-      "discovery": true
-    },
-    "prompt-engineer": {
-      "name": "prompt-engineer",
-      "file": "/Users/les/.claude/agents/prompt-engineer.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "ml-engineer": {
-      "name": "ml-engineer",
-      "file": "/Users/les/.claude/agents/ml-engineer.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "golang-pro": {
-      "name": "golang-pro",
-      "file": "/Users/les/.claude/agents/golang-pro.md",
-      "capabilities": [
-        "code_generation"
-      ],
-      "priority": 2,
-      "max_concurrent_tasks": 5,
-      "discovery": true
-    },
-    "orchestration-specialist": {
-      "name": "orchestration-specialist",
-      "file": "/Users/les/.claude/agents/orchestration-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "helm-specialist": {
-      "name": "helm-specialist",
-      "file": "/Users/les/.claude/agents/helm-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "starlette-specialist": {
-      "name": "starlette-specialist",
-      "file": "/Users/les/.claude/agents/starlette-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "cpp-pro",
+      "priority": 2
     },
     "critical-audit-specialist": {
-      "name": "critical-audit-specialist",
-      "file": "/Users/les/.claude/agents/critical-audit-specialist.md",
       "capabilities": [
         "security_audit"
       ],
-      "priority": 3,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/critical-audit-specialist.md",
       "max_concurrent_tasks": 5,
-      "discovery": true
+      "name": "critical-audit-specialist",
+      "priority": 3
     },
-    "support-analytics-specialist": {
-      "name": "support-analytics-specialist",
-      "file": "/Users/les/.claude/agents/support-analytics-specialist.md",
+    "css-architect": {
       "capabilities": [
-        "data_analysis"
+        "code_analysis",
+        "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/css-architect.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "css-architect",
+      "priority": 1
+    },
+    "customer-success-lead": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/customer-success-lead.md",
+      "max_concurrent_tasks": 3,
+      "name": "customer-success-lead",
+      "priority": 1
+    },
+    "data-engineer": {
+      "capabilities": [
+        "data_pipeline"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/data-engineer.md",
+      "max_concurrent_tasks": 3,
+      "name": "data-engineer",
+      "priority": 1
+    },
+    "data-pipeline-engineer": {
+      "capabilities": [
+        "data_pipeline"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/data-pipeline-engineer.md",
+      "max_concurrent_tasks": 3,
+      "name": "data-pipeline-engineer",
+      "priority": 1
+    },
+    "data-retention-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/data-retention-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "data-retention-specialist",
+      "priority": 1
+    },
+    "data-scientist": {
+      "capabilities": [
+        "data_analysis",
+        "data_visualization"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/data-scientist.md",
+      "max_concurrent_tasks": 3,
+      "name": "data-scientist",
+      "priority": 1
+    },
+    "database-operations-specialist": {
+      "capabilities": [
+        "performance_tuning"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/database-operations-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "database-operations-specialist",
+      "priority": 1
+    },
+    "delivery-lead": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/delivery-lead.md",
+      "max_concurrent_tasks": 3,
+      "name": "delivery-lead",
+      "priority": 1
+    },
+    "deployment-engineer": {
+      "capabilities": [
+        "deployment"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/deployment-engineer.md",
+      "max_concurrent_tasks": 3,
+      "name": "deployment-engineer",
+      "priority": 1
+    },
+    "developer-enablement-lead": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/developer-enablement-lead.md",
+      "max_concurrent_tasks": 3,
+      "name": "developer-enablement-lead",
+      "priority": 1
+    },
+    "devops-troubleshooter": {
+      "capabilities": [
+        "system_diagnostics"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/devops-troubleshooter.md",
+      "max_concurrent_tasks": 3,
+      "name": "devops-troubleshooter",
+      "priority": 1
+    },
+    "docker-specialist": {
+      "capabilities": [
+        "deployment"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/docker-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "docker-specialist",
+      "priority": 1
+    },
+    "documentation-review-specialist": {
+      "capabilities": [
+        "doc_review"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/documentation-review-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "documentation-review-specialist",
+      "priority": 1
+    },
+    "documentation-specialist": {
+      "capabilities": [
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/documentation-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "documentation-specialist",
+      "priority": 1
+    },
+    "elasticsearch-specialist": {
+      "capabilities": [
+        "performance_tuning",
+        "logging_analysis"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/elasticsearch-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "elasticsearch-specialist",
+      "priority": 1
+    },
+    "fastblocks-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/fastblocks-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "fastblocks-specialist",
+      "priority": 1
+    },
+    "finops-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/finops-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "finops-specialist",
+      "priority": 1
+    },
+    "flutter-expert": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/flutter-expert.md",
+      "max_concurrent_tasks": 3,
+      "name": "flutter-expert",
+      "priority": 1
+    },
+    "frontend-developer": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/frontend-developer.md",
+      "max_concurrent_tasks": 3,
+      "name": "frontend-developer",
+      "priority": 1
+    },
+    "gemini-consultant": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/gemini-consultant.md",
+      "max_concurrent_tasks": 3,
+      "name": "gemini-consultant",
+      "priority": 1
+    },
+    "general-assistant": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/general-assistant.md",
+      "max_concurrent_tasks": 3,
+      "name": "general-assistant",
+      "priority": 1
+    },
+    "golang-pro": {
+      "capabilities": [
+        "code_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/golang-pro.md",
+      "max_concurrent_tasks": 5,
+      "name": "golang-pro",
+      "priority": 2
+    },
+    "graphql-architect": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/graphql-architect.md",
+      "max_concurrent_tasks": 3,
+      "name": "graphql-architect",
+      "priority": 1
+    },
+    "grpc-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/grpc-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "grpc-specialist",
+      "priority": 1
+    },
+    "helm-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/helm-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "helm-specialist",
+      "priority": 1
+    },
+    "htmx-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/htmx-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "htmx-specialist",
+      "priority": 1
+    },
+    "htmy-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/htmy-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "htmy-specialist",
+      "priority": 1
+    },
+    "incident-responder": {
+      "capabilities": [
+        "system_diagnostics"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/incident-responder.md",
+      "max_concurrent_tasks": 5,
+      "name": "incident-responder",
+      "priority": 3
+    },
+    "java-pro": {
+      "capabilities": [
+        "code_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/java-pro.md",
+      "max_concurrent_tasks": 5,
+      "name": "java-pro",
+      "priority": 2
+    },
+    "javascript-pro": {
+      "capabilities": [
+        "code_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/javascript-pro.md",
+      "max_concurrent_tasks": 5,
+      "name": "javascript-pro",
+      "priority": 2
+    },
+    "jinja2-template-designer": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/jinja2-template-designer.md",
+      "max_concurrent_tasks": 3,
+      "name": "jinja2-template-designer",
+      "priority": 1
+    },
+    "kotlin-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/kotlin-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "kotlin-specialist",
+      "priority": 1
+    },
+    "kubernetes-specialist": {
+      "capabilities": [
+        "deployment"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/kubernetes-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "kubernetes-specialist",
+      "priority": 1
+    },
+    "langchain-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/langchain-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "langchain-specialist",
+      "priority": 1
+    },
+    "legal-advisor": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/legal-advisor.md",
+      "max_concurrent_tasks": 3,
+      "name": "legal-advisor",
+      "priority": 1
+    },
+    "liquid-ai-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/liquid-ai-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "liquid-ai-specialist",
+      "priority": 1
+    },
+    "mahavishnu-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/mahavishnu-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "mahavishnu-specialist",
+      "priority": 1
+    },
+    "mcp-integration-expert": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/mcp-integration-expert.md",
+      "max_concurrent_tasks": 3,
+      "name": "mcp-integration-expert",
+      "priority": 1
+    },
+    "mermaid-expert": {
+      "capabilities": [
+        "data_visualization"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/mermaid-expert.md",
+      "max_concurrent_tasks": 3,
+      "name": "mermaid-expert",
+      "priority": 1
+    },
+    "ml-engineer": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/ml-engineer.md",
+      "max_concurrent_tasks": 3,
+      "name": "ml-engineer",
+      "priority": 1
+    },
+    "mlops-engineer": {
+      "capabilities": [
+        "data_pipeline"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/mlops-engineer.md",
+      "max_concurrent_tasks": 3,
+      "name": "mlops-engineer",
+      "priority": 1
+    },
+    "mobile-developer": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/mobile-developer.md",
+      "max_concurrent_tasks": 3,
+      "name": "mobile-developer",
+      "priority": 1
+    },
+    "mysql-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/mysql-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "mysql-specialist",
+      "priority": 1
     },
     "observability-incident-lead": {
-      "name": "observability-incident-lead",
-      "file": "/Users/les/.claude/agents/observability-incident-lead.md",
       "capabilities": [
         "system_diagnostics",
         "monitoring",
         "logging_analysis"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/observability-incident-lead.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "agent-creation-specialist": {
-      "name": "agent-creation-specialist",
-      "file": "/Users/les/.claude/agents/agent-creation-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "cpp-pro": {
-      "name": "cpp-pro",
-      "file": "/Users/les/.claude/agents/cpp-pro.md",
-      "capabilities": [
-        "code_generation"
-      ],
-      "priority": 2,
-      "max_concurrent_tasks": 5,
-      "discovery": true
-    },
-    "release-manager": {
-      "name": "release-manager",
-      "file": "/Users/les/.claude/agents/release-manager.md",
-      "capabilities": [
-        "deployment"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "redis-specialist": {
-      "name": "redis-specialist",
-      "file": "/Users/les/.claude/agents/redis-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "customer-success-lead": {
-      "name": "customer-success-lead",
-      "file": "/Users/les/.claude/agents/customer-success-lead.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "claude-environment-auditor": {
-      "name": "claude-environment-auditor",
-      "file": "/Users/les/.claude/agents/claude-environment-auditor.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "grpc-specialist": {
-      "name": "grpc-specialist",
-      "file": "/Users/les/.claude/agents/grpc-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "responsive-design-specialist": {
-      "name": "responsive-design-specialist",
-      "file": "/Users/les/.claude/agents/responsive-design-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "vector-database-specialist": {
-      "name": "vector-database-specialist",
-      "file": "/Users/les/.claude/agents/vector-database-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "pwa-specialist": {
-      "name": "pwa-specialist",
-      "file": "/Users/les/.claude/agents/pwa-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "rust-pro": {
-      "name": "rust-pro",
-      "file": "/Users/les/.claude/agents/rust-pro.md",
-      "capabilities": [
-        "code_generation"
-      ],
-      "priority": 2,
-      "max_concurrent_tasks": 5,
-      "discovery": true
-    },
-    "openai-specialist": {
-      "name": "openai-specialist",
-      "file": "/Users/les/.claude/agents/openai-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "mlops-engineer": {
-      "name": "mlops-engineer",
-      "file": "/Users/les/.claude/agents/mlops-engineer.md",
-      "capabilities": [
-        "data_pipeline"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "swift-specialist": {
-      "name": "swift-specialist",
-      "file": "/Users/les/.claude/agents/swift-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "kotlin-specialist": {
-      "name": "kotlin-specialist",
-      "file": "/Users/les/.claude/agents/kotlin-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "observability-incident-lead",
+      "priority": 1
     },
     "oneiric-specialist": {
-      "name": "oneiric-specialist",
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
       "file": "/Users/les/.claude/agents/oneiric-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "oneiric-specialist",
+      "priority": 1
+    },
+    "openai-specialist": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/openai-specialist.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "openai-specialist",
+      "priority": 1
     },
-    "tutorial-engineer": {
-      "name": "tutorial-engineer",
-      "file": "/Users/les/.claude/agents/tutorial-engineer.md",
-      "capabilities": [
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "data-retention-specialist": {
-      "name": "data-retention-specialist",
-      "file": "/Users/les/.claude/agents/data-retention-specialist.md",
+    "orchestration-specialist": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/orchestration-specialist.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "orchestration-specialist",
+      "priority": 1
     },
-    "playwright-specialist": {
-      "name": "playwright-specialist",
-      "file": "/Users/les/.claude/agents/playwright-specialist.md",
-      "capabilities": [
-        "test_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "search-specialist": {
-      "name": "search-specialist",
-      "file": "/Users/les/.claude/agents/search-specialist.md",
+    "payment-integration": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/payment-integration.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "payment-integration",
+      "priority": 1
     },
-    "ux-researcher": {
-      "name": "ux-researcher",
-      "file": "/Users/les/.claude/agents/ux-researcher.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "legal-advisor": {
-      "name": "legal-advisor",
-      "file": "/Users/les/.claude/agents/legal-advisor.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "fastblocks-specialist": {
-      "name": "fastblocks-specialist",
-      "file": "/Users/les/.claude/agents/fastblocks-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "flutter-expert": {
-      "name": "flutter-expert",
-      "file": "/Users/les/.claude/agents/flutter-expert.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "docker-specialist": {
-      "name": "docker-specialist",
-      "file": "/Users/les/.claude/agents/docker-specialist.md",
-      "capabilities": [
-        "deployment"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "htmy-specialist": {
-      "name": "htmy-specialist",
-      "file": "/Users/les/.claude/agents/htmy-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "ai-engineer": {
-      "name": "ai-engineer",
-      "file": "/Users/les/.claude/agents/ai-engineer.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "css-architect": {
-      "name": "css-architect",
-      "file": "/Users/les/.claude/agents/css-architect.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "mcp-integration-expert": {
-      "name": "mcp-integration-expert",
-      "file": "/Users/les/.claude/agents/mcp-integration-expert.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "database-operations-specialist": {
-      "name": "database-operations-specialist",
-      "file": "/Users/les/.claude/agents/database-operations-specialist.md",
+    "performance-review-specialist": {
       "capabilities": [
         "performance_tuning"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/performance-review-specialist.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "performance-review-specialist",
+      "priority": 1
     },
-    "context-manager": {
-      "name": "context-manager",
-      "file": "/Users/les/.claude/agents/context-manager.md",
+    "playwright-specialist": {
+      "capabilities": [
+        "test_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/playwright-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "playwright-specialist",
+      "priority": 1
+    },
+    "postgresql-specialist": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/postgresql-specialist.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "postgresql-specialist",
+      "priority": 1
+    },
+    "privacy-officer": {
+      "capabilities": [
+        "security_audit"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/privacy-officer.md",
+      "max_concurrent_tasks": 3,
+      "name": "privacy-officer",
+      "priority": 1
+    },
+    "product-manager": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/product-manager.md",
+      "max_concurrent_tasks": 3,
+      "name": "product-manager",
+      "priority": 1
+    },
+    "prompt-engineer": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/prompt-engineer.md",
+      "max_concurrent_tasks": 3,
+      "name": "prompt-engineer",
+      "priority": 1
+    },
+    "pwa-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/pwa-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "pwa-specialist",
+      "priority": 1
+    },
+    "pycharm-plugin-creator": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/pycharm-plugin-creator.md",
+      "max_concurrent_tasks": 3,
+      "name": "pycharm-plugin-creator",
+      "priority": 1
+    },
+    "pyo3-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/pyo3-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "pyo3-specialist",
+      "priority": 1
+    },
+    "pytest-hypothesis-specialist": {
+      "capabilities": [
+        "test_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/pytest-hypothesis-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "pytest-hypothesis-specialist",
+      "priority": 1
+    },
+    "python-pro": {
+      "capabilities": [
+        "code_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/python-pro.md",
+      "max_concurrent_tasks": 5,
+      "name": "python-pro",
+      "priority": 2
+    },
+    "qa-strategist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/qa-strategist.md",
+      "max_concurrent_tasks": 3,
+      "name": "qa-strategist",
+      "priority": 1
+    },
+    "rabbitmq-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/rabbitmq-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "rabbitmq-specialist",
+      "priority": 1
+    },
+    "redis-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/redis-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "redis-specialist",
+      "priority": 1
     },
     "refactoring-specialist": {
-      "name": "refactoring-specialist",
-      "file": "/Users/les/.claude/agents/refactoring-specialist.md",
       "capabilities": [
         "code_analysis",
         "code_refactoring"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/refactoring-specialist.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "refactoring-specialist",
+      "priority": 1
     },
-    "performance-review-specialist": {
-      "name": "performance-review-specialist",
-      "file": "/Users/les/.claude/agents/performance-review-specialist.md",
+    "reference-builder": {
       "capabilities": [
-        "performance_tuning"
+        "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/reference-builder.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "reference-builder",
+      "priority": 1
     },
-    "product-manager": {
-      "name": "product-manager",
-      "file": "/Users/les/.claude/agents/product-manager.md",
+    "release-manager": {
+      "capabilities": [
+        "deployment"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/release-manager.md",
+      "max_concurrent_tasks": 3,
+      "name": "release-manager",
+      "priority": 1
+    },
+    "responsive-design-specialist": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/responsive-design-specialist.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "responsive-design-specialist",
+      "priority": 1
     },
-    "data-scientist": {
-      "name": "data-scientist",
-      "file": "/Users/les/.claude/agents/data-scientist.md",
+    "rust-pro": {
       "capabilities": [
-        "data_analysis",
-        "data_visualization"
+        "code_generation"
       ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/rust-pro.md",
+      "max_concurrent_tasks": 5,
+      "name": "rust-pro",
+      "priority": 2
     },
-    "qa-strategist": {
-      "name": "qa-strategist",
-      "file": "/Users/les/.claude/agents/qa-strategist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "sql-pro": {
-      "name": "sql-pro",
-      "file": "/Users/les/.claude/agents/sql-pro.md",
+    "search-specialist": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/search-specialist.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "search-specialist",
+      "priority": 1
     },
     "security-auditor": {
-      "name": "security-auditor",
-      "file": "/Users/les/.claude/agents/security-auditor.md",
       "capabilities": [
         "security_audit"
       ],
-      "priority": 3,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/security-auditor.md",
       "max_concurrent_tasks": 5,
-      "discovery": true
+      "name": "security-auditor",
+      "priority": 3
     },
-    "elasticsearch-specialist": {
-      "name": "elasticsearch-specialist",
-      "file": "/Users/les/.claude/agents/elasticsearch-specialist.md",
-      "capabilities": [
-        "performance_tuning",
-        "logging_analysis"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "htmx-specialist": {
-      "name": "htmx-specialist",
-      "file": "/Users/les/.claude/agents/htmx-specialist.md",
+    "sql-pro": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/sql-pro.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "web-components-specialist": {
-      "name": "web-components-specialist",
-      "file": "/Users/les/.claude/agents/web-components-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "data-pipeline-engineer": {
-      "name": "data-pipeline-engineer",
-      "file": "/Users/les/.claude/agents/data-pipeline-engineer.md",
-      "capabilities": [
-        "data_pipeline"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "liquid-ai-specialist": {
-      "name": "liquid-ai-specialist",
-      "file": "/Users/les/.claude/agents/liquid-ai-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "incident-responder": {
-      "name": "incident-responder",
-      "file": "/Users/les/.claude/agents/incident-responder.md",
-      "capabilities": [
-        "system_diagnostics"
-      ],
-      "priority": 3,
-      "max_concurrent_tasks": 5,
-      "discovery": true
-    },
-    "accessibility-specialist": {
-      "name": "accessibility-specialist",
-      "file": "/Users/les/.claude/agents/accessibility-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "vitest-specialist": {
-      "name": "vitest-specialist",
-      "file": "/Users/les/.claude/agents/vitest-specialist.md",
-      "capabilities": [
-        "test_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "authentication-specialist": {
-      "name": "authentication-specialist",
-      "file": "/Users/les/.claude/agents/authentication-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "deployment-engineer": {
-      "name": "deployment-engineer",
-      "file": "/Users/les/.claude/agents/deployment-engineer.md",
-      "capabilities": [
-        "deployment"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "postgresql-specialist": {
-      "name": "postgresql-specialist",
-      "file": "/Users/les/.claude/agents/postgresql-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "tui-designer": {
-      "name": "tui-designer",
-      "file": "/Users/les/.claude/agents/tui-designer.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "sql-pro",
+      "priority": 1
     },
     "sqlite-specialist": {
-      "name": "sqlite-specialist",
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
       "file": "/Users/les/.claude/agents/sqlite-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "sqlite-specialist",
+      "priority": 1
+    },
+    "starlette-specialist": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/starlette-specialist.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "starlette-specialist",
+      "priority": 1
     },
-    "jinja2-template-designer": {
-      "name": "jinja2-template-designer",
-      "file": "/Users/les/.claude/agents/jinja2-template-designer.md",
+    "support-analytics-specialist": {
+      "capabilities": [
+        "data_analysis"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/support-analytics-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "support-analytics-specialist",
+      "priority": 1
+    },
+    "swift-specialist": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/swift-specialist.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "swift-specialist",
+      "priority": 1
     },
-    "mahavishnu-specialist": {
-      "name": "mahavishnu-specialist",
-      "file": "/Users/les/.claude/agents/mahavishnu-specialist.md",
+    "terraform-specialist": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/terraform-specialist.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "privacy-officer": {
-      "name": "privacy-officer",
-      "file": "/Users/les/.claude/agents/privacy-officer.md",
-      "capabilities": [
-        "security_audit"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "javascript-pro": {
-      "name": "javascript-pro",
-      "file": "/Users/les/.claude/agents/javascript-pro.md",
-      "capabilities": [
-        "code_generation"
-      ],
-      "priority": 2,
-      "max_concurrent_tasks": 5,
-      "discovery": true
-    },
-    "general-assistant": {
-      "name": "general-assistant",
-      "file": "/Users/les/.claude/agents/general-assistant.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "terraform-specialist",
+      "priority": 1
     },
     "test-coverage-review-specialist": {
-      "name": "test-coverage-review-specialist",
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
       "file": "/Users/les/.claude/agents/test-coverage-review-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "test-coverage-review-specialist",
+      "priority": 1
+    },
+    "tui-designer": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/tui-designer.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "tui-designer",
+      "priority": 1
     },
-    "python-pro": {
-      "name": "python-pro",
-      "file": "/Users/les/.claude/agents/python-pro.md",
-      "capabilities": [
-        "code_generation"
-      ],
-      "priority": 2,
-      "max_concurrent_tasks": 5,
-      "discovery": true
-    },
-    "finops-specialist": {
-      "name": "finops-specialist",
-      "file": "/Users/les/.claude/agents/finops-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "mysql-specialist": {
-      "name": "mysql-specialist",
-      "file": "/Users/les/.claude/agents/mysql-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "developer-enablement-lead": {
-      "name": "developer-enablement-lead",
-      "file": "/Users/les/.claude/agents/developer-enablement-lead.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "payment-integration": {
-      "name": "payment-integration",
-      "file": "/Users/les/.claude/agents/payment-integration.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "mermaid-expert": {
-      "name": "mermaid-expert",
-      "file": "/Users/les/.claude/agents/mermaid-expert.md",
-      "capabilities": [
-        "data_visualization"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "data-engineer": {
-      "name": "data-engineer",
-      "file": "/Users/les/.claude/agents/data-engineer.md",
-      "capabilities": [
-        "data_pipeline"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "anthropic-claude-specialist": {
-      "name": "anthropic-claude-specialist",
-      "file": "/Users/les/.claude/agents/anthropic-claude-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "kubernetes-specialist": {
-      "name": "kubernetes-specialist",
-      "file": "/Users/les/.claude/agents/kubernetes-specialist.md",
-      "capabilities": [
-        "deployment"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "langchain-specialist": {
-      "name": "langchain-specialist",
-      "file": "/Users/les/.claude/agents/langchain-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "documentation-specialist": {
-      "name": "documentation-specialist",
-      "file": "/Users/les/.claude/agents/documentation-specialist.md",
+    "tutorial-engineer": {
       "capabilities": [
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/tutorial-engineer.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "c-pro": {
-      "name": "c-pro",
-      "file": "/Users/les/.claude/agents/c-pro.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "akosha-specialist": {
-      "name": "akosha-specialist",
-      "file": "/Users/les/.claude/agents/akosha-specialist.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "tutorial-engineer",
+      "priority": 1
     },
     "typescript-pro": {
-      "name": "typescript-pro",
-      "file": "/Users/les/.claude/agents/typescript-pro.md",
       "capabilities": [
         "code_generation"
       ],
-      "priority": 2,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/typescript-pro.md",
       "max_concurrent_tasks": 5,
-      "discovery": true
+      "name": "typescript-pro",
+      "priority": 2
     },
-    "api-security-specialist": {
-      "name": "api-security-specialist",
-      "file": "/Users/les/.claude/agents/api-security-specialist.md",
-      "capabilities": [
-        "security_audit"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "graphql-architect": {
-      "name": "graphql-architect",
-      "file": "/Users/les/.claude/agents/graphql-architect.md",
+    "ux-researcher": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/ux-researcher.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "ux-researcher",
+      "priority": 1
     },
-    "pytest-hypothesis-specialist": {
-      "name": "pytest-hypothesis-specialist",
-      "file": "/Users/les/.claude/agents/pytest-hypothesis-specialist.md",
+    "vector-database-specialist": {
+      "capabilities": [
+        "code_analysis",
+        "doc_generation"
+      ],
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/vector-database-specialist.md",
+      "max_concurrent_tasks": 3,
+      "name": "vector-database-specialist",
+      "priority": 1
+    },
+    "vitest-specialist": {
       "capabilities": [
         "test_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/vitest-specialist.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "vitest-specialist",
+      "priority": 1
     },
-    "documentation-review-specialist": {
-      "name": "documentation-review-specialist",
-      "file": "/Users/les/.claude/agents/documentation-review-specialist.md",
-      "capabilities": [
-        "doc_review"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "pycharm-plugin-creator": {
-      "name": "pycharm-plugin-creator",
-      "file": "/Users/les/.claude/agents/pycharm-plugin-creator.md",
+    "web-components-specialist": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/web-components-specialist.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "web-components-specialist",
+      "priority": 1
     },
-    "mobile-developer": {
-      "name": "mobile-developer",
-      "file": "/Users/les/.claude/agents/mobile-developer.md",
+    "websocket-specialist": {
       "capabilities": [
         "code_analysis",
         "doc_generation"
       ],
-      "priority": 1,
+      "discovery": true,
+      "file": "/Users/les/.claude/agents/websocket-specialist.md",
       "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "delivery-lead": {
-      "name": "delivery-lead",
-      "file": "/Users/les/.claude/agents/delivery-lead.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "architecture-council": {
-      "name": "architecture-council",
-      "file": "/Users/les/.claude/agents/architecture-council.md",
-      "capabilities": [
-        "code_analysis"
-      ],
-      "priority": 2,
-      "max_concurrent_tasks": 5,
-      "discovery": true
-    },
-    "frontend-developer": {
-      "name": "frontend-developer",
-      "file": "/Users/les/.claude/agents/frontend-developer.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "gemini-consultant": {
-      "name": "gemini-consultant",
-      "file": "/Users/les/.claude/agents/gemini-consultant.md",
-      "capabilities": [
-        "code_analysis",
-        "doc_generation"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
-    },
-    "devops-troubleshooter": {
-      "name": "devops-troubleshooter",
-      "file": "/Users/les/.claude/agents/devops-troubleshooter.md",
-      "capabilities": [
-        "system_diagnostics"
-      ],
-      "priority": 1,
-      "max_concurrent_tasks": 3,
-      "discovery": true
+      "name": "websocket-specialist",
+      "priority": 1
     }
   },
   "capability_index": {
@@ -1139,6 +1139,38 @@
       "frontend-developer",
       "gemini-consultant"
     ],
+    "code_generation": [
+      "java-pro",
+      "golang-pro",
+      "cpp-pro",
+      "rust-pro",
+      "javascript-pro",
+      "python-pro",
+      "typescript-pro"
+    ],
+    "code_refactoring": [
+      "code-reviewer",
+      "refactoring-specialist"
+    ],
+    "data_analysis": [
+      "support-analytics-specialist",
+      "data-scientist"
+    ],
+    "data_pipeline": [
+      "mlops-engineer",
+      "data-pipeline-engineer",
+      "data-engineer"
+    ],
+    "data_visualization": [
+      "data-scientist",
+      "mermaid-expert"
+    ],
+    "deployment": [
+      "release-manager",
+      "docker-specialist",
+      "deployment-engineer",
+      "kubernetes-specialist"
+    ],
     "doc_generation": [
       "websocket-specialist",
       "reference-builder",
@@ -1207,18 +1239,20 @@
       "frontend-developer",
       "gemini-consultant"
     ],
-    "code_refactoring": [
-      "code-reviewer",
-      "refactoring-specialist"
+    "doc_review": [
+      "documentation-review-specialist"
     ],
-    "code_generation": [
-      "java-pro",
-      "golang-pro",
-      "cpp-pro",
-      "rust-pro",
-      "javascript-pro",
-      "python-pro",
-      "typescript-pro"
+    "logging_analysis": [
+      "observability-incident-lead",
+      "elasticsearch-specialist"
+    ],
+    "monitoring": [
+      "observability-incident-lead"
+    ],
+    "performance_tuning": [
+      "database-operations-specialist",
+      "performance-review-specialist",
+      "elasticsearch-specialist"
     ],
     "security_audit": [
       "critical-audit-specialist",
@@ -1226,49 +1260,15 @@
       "privacy-officer",
       "api-security-specialist"
     ],
-    "data_analysis": [
-      "support-analytics-specialist",
-      "data-scientist"
-    ],
     "system_diagnostics": [
       "observability-incident-lead",
       "incident-responder",
       "devops-troubleshooter"
     ],
-    "monitoring": [
-      "observability-incident-lead"
-    ],
-    "logging_analysis": [
-      "observability-incident-lead",
-      "elasticsearch-specialist"
-    ],
-    "deployment": [
-      "release-manager",
-      "docker-specialist",
-      "deployment-engineer",
-      "kubernetes-specialist"
-    ],
-    "data_pipeline": [
-      "mlops-engineer",
-      "data-pipeline-engineer",
-      "data-engineer"
-    ],
     "test_generation": [
       "playwright-specialist",
       "vitest-specialist",
       "pytest-hypothesis-specialist"
-    ],
-    "performance_tuning": [
-      "database-operations-specialist",
-      "performance-review-specialist",
-      "elasticsearch-specialist"
-    ],
-    "data_visualization": [
-      "data-scientist",
-      "mermaid-expert"
-    ],
-    "doc_review": [
-      "documentation-review-specialist"
     ]
   },
   "last_updated": "2026-02-05T13:04:31.537222+00:00"

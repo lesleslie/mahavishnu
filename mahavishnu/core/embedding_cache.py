@@ -38,14 +38,15 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable, Coroutine
+from dataclasses import dataclass
+from enum import Enum
 import hashlib
 import json
 import logging
 import random
 import time
-from dataclasses import dataclass
-from enum import Enum
-from typing import Any, Callable, Coroutine
+from typing import Any
 
 from mahavishnu.core.cache_manager import LRUCache
 
@@ -550,7 +551,9 @@ class EmbeddingCache:
             latency_ms = (time.perf_counter() - start_time) * 1000
 
             # Fill in results and cache
-            for idx, text, embedding in zip(uncached_indices, uncached_texts, computed):
+            for idx, text, embedding in zip(
+                uncached_indices, uncached_texts, computed, strict=False
+            ):
                 results[idx] = embedding
                 await self.set(text, embedding)
 

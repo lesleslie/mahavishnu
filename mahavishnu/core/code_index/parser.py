@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import logging
-import subprocess
-from datetime import datetime, timezone
 from pathlib import Path
+import subprocess
 
 from mahavishnu.core.code_index.models import CodeGraphEdge, CodeGraphNode
 from mahavishnu.core.code_index.signature_redaction import redact_signature
@@ -64,7 +64,7 @@ def parse_file(
     nodes: list[CodeGraphNode] = []
     edges: list[CodeGraphEdge] = []
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     for node in result.nodes:
         if node.node_type not in _ALLOWED_NODE_TYPES:
@@ -161,8 +161,4 @@ def filter_changed_files(
         text=True,
     )
     changed = result.stdout.strip().split("\n") if result.stdout.strip() else []
-    return sorted(
-        str(repo / f)
-        for f in changed
-        if Path(f).suffix in PARSABLE_EXTENSIONS
-    )
+    return sorted(str(repo / f) for f in changed if Path(f).suffix in PARSABLE_EXTENSIONS)

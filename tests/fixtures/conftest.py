@@ -11,15 +11,15 @@ Fixtures are organized into:
 """
 
 import os
+from pathlib import Path
 import sys
 import tempfile
-from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock
 import uuid
+
 import pytest
 import yaml
-
 
 # =============================================================================
 # PROMETHEUS METRICS CLEANUP
@@ -28,6 +28,7 @@ import yaml
 # parallel (xdist) or modules are reloaded, this causes "Duplicated timeseries"
 # errors. This fixture cleans up the registry before each test.
 # =============================================================================
+
 
 @pytest.fixture(scope="function", autouse=True)
 def clean_prometheus_registry():
@@ -82,12 +83,14 @@ def suppress_prefect_console_shutdown_noise():
     PrefectConsoleHandler.handleError = _handle_error
     yield
 
+
 # Try importing Mahavishnu modules for type hints
 try:
+    from mahavishnu.core.adapters.base import OrchestratorAdapter
     from mahavishnu.core.app import MahavishnuApp
     from mahavishnu.core.config import MahavishnuSettings
     from mahavishnu.core.workflow_state import WorkflowState
-    from mahavishnu.core.adapters.base import OrchestratorAdapter
+
     MAHAVISHNU_AVAILABLE = True
 except ImportError:
     MAHAVISHNU_AVAILABLE = False
@@ -184,7 +187,7 @@ class IntegrationFixtures:
         # Auth
         auth = MagicMock()
         auth.enabled = overrides.get("auth_enabled", False)
-        auth.secret = overrides.get("auth_secret", None)
+        auth.secret = overrides.get("auth_secret")
         config.auth = auth
 
         return config
@@ -216,7 +219,9 @@ class IntegrationFixtures:
         app.workflow_state_manager.create = AsyncMock(
             return_value={"id": "wf_test", "status": "pending"}
         )
-        app.workflow_state_manager.get = AsyncMock(return_value={"id": "wf_test", "status": "running"})
+        app.workflow_state_manager.get = AsyncMock(
+            return_value={"id": "wf_test", "status": "running"}
+        )
         app.workflow_state_manager.update = AsyncMock()
         app.workflow_state_manager.list_workflows = AsyncMock(return_value=[])
         app.workflow_state_manager.delete = AsyncMock()
@@ -249,7 +254,9 @@ class IntegrationFixtures:
         app.opensearch_integration.log_workflow_completion = AsyncMock()
         app.opensearch_integration.log_error = AsyncMock()
         app.opensearch_integration.health_check = AsyncMock(return_value={"status": "healthy"})
-        app.opensearch_integration.get_workflow_stats = AsyncMock(return_value={"total_workflows": 0})
+        app.opensearch_integration.get_workflow_stats = AsyncMock(
+            return_value={"total_workflows": 0}
+        )
 
         # Mock RBAC manager
         app.rbac_manager = MagicMock()
@@ -365,6 +372,7 @@ class IntegrationFixtures:
 
 
 # Pytest integration fixtures
+
 
 @pytest.fixture
 def integration_fixtures():
@@ -596,6 +604,7 @@ def sample_timestamp():
 
 # Environment variable fixtures
 
+
 @pytest.fixture
 def clean_env():
     """Provide clean environment without Mahavishnu variables.
@@ -645,6 +654,7 @@ def test_env_vars():
 
 # Async context manager fixtures
 
+
 @pytest.fixture
 async def async_mock_app():
     """Provide an async mock app context.
@@ -674,6 +684,7 @@ async def async_mock_app():
 
 # Performance monitoring fixtures
 
+
 @pytest.fixture
 def mock_performance_tracker():
     """Create a mock performance tracker.
@@ -692,6 +703,7 @@ def mock_performance_tracker():
 
 
 # Logging fixtures
+
 
 @pytest.fixture
 def mock_logger():
@@ -712,6 +724,7 @@ def mock_logger():
 
 
 # File system fixtures
+
 
 @pytest.fixture
 def mock_filesystem():

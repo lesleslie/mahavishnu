@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import importlib
 import sys
-from types import SimpleNamespace
 import types
+from types import SimpleNamespace
 
 import pytest
 
@@ -88,7 +88,9 @@ async def test_adapter_manager_and_state_manager_basics() -> None:
 @pytest.mark.asyncio
 async def test_task_router_analyze_route_and_health_paths() -> None:
     manager = tr.AdapterManager()
-    await manager.register_adapter(AdapterType.PREFECT, _AvailableAdapter(AdapterType.PREFECT, True))
+    await manager.register_adapter(
+        AdapterType.PREFECT, _AvailableAdapter(AdapterType.PREFECT, True)
+    )
     await manager.register_adapter(AdapterType.AGNO, _AvailableAdapter(AdapterType.AGNO, True))
     await manager.register_adapter(
         AdapterType.LLAMAINDEX, _AvailableAdapter(AdapterType.LLAMAINDEX, True)
@@ -112,7 +114,9 @@ async def test_task_router_analyze_route_and_health_paths() -> None:
     assert rag_routed["success"] is True
     assert rag_routed["adapter"] == AdapterType.LLAMAINDEX
 
-    custom_router = tr.TaskRouter(adapter_registry=tr.AdapterManager(), state_manager=tr.StateManager())
+    custom_router = tr.TaskRouter(
+        adapter_registry=tr.AdapterManager(), state_manager=tr.StateManager()
+    )
     failed = await custom_router.route({"task_type": "workflow"}, preference_order=["agno"])
     assert failed["success"] is False
     assert "No adapter available" in failed["error"]
@@ -274,7 +278,9 @@ async def test_task_router_normalization_and_analysis_branches() -> None:
     manager = tr.AdapterManager()
     await manager.register_adapter(AdapterType.PREFECT, _AvailableAdapter(AdapterType.PREFECT))
     await manager.register_adapter(AdapterType.AGNO, _AvailableAdapter(AdapterType.AGNO))
-    await manager.register_adapter(AdapterType.LLAMAINDEX, _AvailableAdapter(AdapterType.LLAMAINDEX))
+    await manager.register_adapter(
+        AdapterType.LLAMAINDEX, _AvailableAdapter(AdapterType.LLAMAINDEX)
+    )
     router = tr.TaskRouter(adapter_registry=manager, state_manager=tr.StateManager())
 
     assert router._normalize_task_type(tr.TaskType.AI_TASK) == tr.TaskType.AI_TASK
@@ -411,7 +417,9 @@ def test_capability_routing_import_success_branch(monkeypatch: pytest.MonkeyPatc
 
 
 @pytest.mark.asyncio
-async def test_execute_with_fallback_success_retry_exhausted_and_stats(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_execute_with_fallback_success_retry_exhausted_and_stats(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     class _ExecAdapter(_AvailableAdapter):
         async def execute(self, task: dict[str, object], repos: list[str]) -> dict[str, object]:
             return {"execution_id": "exec-1", "latency_ms": 12, "success": True}

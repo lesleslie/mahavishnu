@@ -92,9 +92,13 @@ def render_docs_readme(
         "- Use current root docs for maintained operator and developer guidance.",
     ]
     if has_or_will_have_plan_index:
-        lines.append("- Use [plans/PLAN_INDEX.md](plans/PLAN_INDEX.md) for active and historical plans.")
+        lines.append(
+            "- Use [plans/PLAN_INDEX.md](plans/PLAN_INDEX.md) for active and historical plans."
+        )
     if archive_exists:
-        lines.append("- Use [archive/README.md](archive/README.md) for historical, non-authoritative material.")
+        lines.append(
+            "- Use [archive/README.md](archive/README.md) for historical, non-authoritative material."
+        )
 
     lines.extend(
         [
@@ -190,8 +194,7 @@ def collect_writes(
             has_or_will_have_plan_index=will_have_plan_index,
         )
         if not docs_readme.exists() or (
-            refresh_generated
-            and has_marker(docs_readme, "- Status: active ecosystem repository")
+            refresh_generated and has_marker(docs_readme, "- Status: active ecosystem repository")
         ):
             writes.append(
                 PendingWrite(

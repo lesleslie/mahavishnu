@@ -11,15 +11,14 @@ Architecture:
 
 from __future__ import annotations
 
-import asyncio
-import structlog
 from datetime import UTC, datetime
 from typing import Any
 
+import structlog
+
 logger = structlog.get_logger()
 
-from mahavishnu.core.task_router import TaskRouter, AdapterManager, StateManager
-from mahavishnu.core.adapters.base import AdapterType
+from mahavishnu.core.task_router import TaskRouter
 
 try:
     from oneiric.core.ulid import generate_config_id
@@ -97,7 +96,7 @@ class UnifiedOrchestrator:
             # Execute tasks with graceful fallback across adapters
             results = []
 
-            for task in (tasks or []):
+            for task in tasks or []:
                 # Execute with automatic fallback
                 execution_result = await self.task_router.execute_with_fallback(
                     task=task,

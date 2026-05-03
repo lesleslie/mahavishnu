@@ -10,8 +10,9 @@ Tests cover:
 
 from __future__ import annotations
 
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 
 from mahavishnu.core.pattern_detection import (
     PatternDetectionConfig,
@@ -89,13 +90,19 @@ class TestPatternDetector:
                 task["description"] = "blocked waiting for dependency"
                 task["status_history"] = [
                     {"status": "pending", "timestamp": created.isoformat()},
-                    {"status": "in_progress", "timestamp": (created + timedelta(hours=1)).isoformat()},
+                    {
+                        "status": "in_progress",
+                        "timestamp": (created + timedelta(hours=1)).isoformat(),
+                    },
                     {"status": "blocked", "timestamp": (created + timedelta(hours=2)).isoformat()},
                 ]
             else:
                 task["status_history"] = [
                     {"status": "pending", "timestamp": created.isoformat()},
-                    {"status": "in_progress", "timestamp": (created + timedelta(hours=1)).isoformat()},
+                    {
+                        "status": "in_progress",
+                        "timestamp": (created + timedelta(hours=1)).isoformat(),
+                    },
                     {"status": "completed", "timestamp": completed.isoformat()},
                 ]
 

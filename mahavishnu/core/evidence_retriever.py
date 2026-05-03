@@ -41,8 +41,12 @@ class RetrievalContext(BaseModel):
 
 @runtime_checkable
 class EvidenceRetrieval(Protocol):
-    async def find_similar(self, evidence: LearningEvidence, limit: int) -> list[RetrievedEvidence]: ...
-    async def cluster_by_pattern(self, evidences: list[LearningEvidence]) -> list[EvidenceCluster]: ...
+    async def find_similar(
+        self, evidence: LearningEvidence, limit: int
+    ) -> list[RetrievedEvidence]: ...
+    async def cluster_by_pattern(
+        self, evidences: list[LearningEvidence]
+    ) -> list[EvidenceCluster]: ...
 
 
 class EvidenceRetriever:
@@ -88,9 +92,7 @@ class EvidenceRetriever:
 
         return self._build_clusters(evidences, min_cluster_size)
 
-    async def get_retrieval_context(
-        self, goal: str, repo_paths: list[str]
-    ) -> RetrievalContext:
+    async def get_retrieval_context(self, goal: str, repo_paths: list[str]) -> RetrievalContext:
         synthetic_evidence = LearningEvidence(
             session_id="retrieval_query",
             goal=goal,
@@ -117,9 +119,7 @@ class EvidenceRetriever:
             query=goal,
         )
 
-    async def _search_akosha(
-        self, query: str, limit: int
-    ) -> list[RetrievedEvidence]:
+    async def _search_akosha(self, query: str, limit: int) -> list[RetrievedEvidence]:
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             resp = await client.post(
                 f"{self._akosha_url}/tools/call",
@@ -149,19 +149,23 @@ class EvidenceRetriever:
                 if isinstance(item, dict):
                     results.append(
                         RetrievedEvidence(
-                            evidence_id=item.get("id", item.get("evidence_id", f"re_{uuid4().hex}")),
+                            evidence_id=item.get(
+                                "id", item.get("evidence_id", f"re_{uuid4().hex}")
+                            ),
                             similarity=float(item.get("score", item.get("similarity", 0.0))),
                             goal=item.get("text", item.get("goal", "")),
-                            outcome=item.get("outcome", item.get("metadata", {}).get("outcome", "")),
-                            observations=item.get("observations", item.get("metadata", {}).get("observations", [])),
+                            outcome=item.get(
+                                "outcome", item.get("metadata", {}).get("outcome", "")
+                            ),
+                            observations=item.get(
+                                "observations", item.get("metadata", {}).get("observations", [])
+                            ),
                             source="akosha",
                         )
                     )
             return results
 
-    async def _search_session_buddy(
-        self, query: str, limit: int
-    ) -> list[RetrievedEvidence]:
+    async def _search_session_buddy(self, query: str, limit: int) -> list[RetrievedEvidence]:
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
                 resp = await client.post(
@@ -189,7 +193,9 @@ class EvidenceRetriever:
                         continue
                     results.append(
                         RetrievedEvidence(
-                            evidence_id=item.get("id", item.get("evidence_id", f"re_{uuid4().hex}")),
+                            evidence_id=item.get(
+                                "id", item.get("evidence_id", f"re_{uuid4().hex}")
+                            ),
                             similarity=float(item.get("score", 0.5)),
                             goal=item.get("summary", item.get("goal", "")),
                             outcome=meta.get("outcome", ""),
@@ -233,7 +239,9 @@ class EvidenceRetriever:
                 success_count = sum(1 for e in kw_members if "success" in e.outcome.lower())
                 success_rate = success_count / len(kw_members) if kw_members else 0.0
 
-                cluster_id = f"cl_{abs(hash(repo_key)) % (10**12):012x}_{abs(hash(kw_tuple)) % (10**8):08x}"
+                cluster_id = (
+                    f"cl_{abs(hash(repo_key)) % (10**12):012x}_{abs(hash(kw_tuple)) % (10**8):08x}"
+                )
                 clusters.append(
                     EvidenceCluster(
                         cluster_id=cluster_id,
@@ -249,15 +257,83 @@ class EvidenceRetriever:
 
 
 _STOP_WORDS = frozenset(
-    ["a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should", "may", "might", "can", "this", "that", "these", "those", "it", "its", "from", "into", "about", "as", "if", "then", "than", "so", "no", "not", "when", "where", "how", "what", "which", "who", "whom", "up", "out", "off", "over", "under", "between", "after", "before", "during", "without", "through", "against"]
+    [
+        "a",
+        "an",
+        "the",
+        "and",
+        "or",
+        "but",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "of",
+        "with",
+        "by",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "can",
+        "this",
+        "that",
+        "these",
+        "those",
+        "it",
+        "its",
+        "from",
+        "into",
+        "about",
+        "as",
+        "if",
+        "then",
+        "than",
+        "so",
+        "no",
+        "not",
+        "when",
+        "where",
+        "how",
+        "what",
+        "which",
+        "who",
+        "whom",
+        "up",
+        "out",
+        "off",
+        "over",
+        "under",
+        "between",
+        "after",
+        "before",
+        "during",
+        "without",
+        "through",
+        "against",
+    ]
 )
 
 
 def _extract_keywords(text: str) -> set[str]:
     return {
-        word.lower()
-        for word in text.split()
-        if len(word) > 2 and word.lower() not in _STOP_WORDS
+        word.lower() for word in text.split() if len(word) > 2 and word.lower() not in _STOP_WORDS
     }
 
 

@@ -1,17 +1,12 @@
 """CLI for skill parser tool."""
 
-import typer
 from pathlib import Path
-from typing import Optional
-from rich.table import Table
+
 from rich.console import Console
 from rich.panel import Panel
-
-from skill_parser import (
-    parse_all_skills,
-    build_reverse_references,
-    SkillMetadata
-)
+from rich.table import Table
+from skill_parser import build_reverse_references, parse_all_skills
+import typer
 
 console = Console()
 
@@ -21,22 +16,19 @@ app = typer.Typer(help="Skill Parser - Extract metadata from ecosystem skills")
 @app.command()
 def parse(
     skills_dir: Path = typer.Option(
-        Path('/Users/les/.claude/skills'),
-        '--skills-dir', '-s',
-        help='Directory containing skill files',
+        Path("/Users/les/.claude/skills"),
+        "--skills-dir",
+        "-s",
+        help="Directory containing skill files",
         exists=True,
-        dir_okay=True
+        dir_okay=True,
     ),
-    output: Optional[Path] = typer.Option(
-        None,
-        '--output', '-o',
-        help='Output JSON file for parsed metadata'
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="Output JSON file for parsed metadata"
     ),
     verbose: bool = typer.Option(
-        False,
-        '--verbose', '-v',
-        help='Show detailed parsing information'
-    )
+        False, "--verbose", "-v", help="Show detailed parsing information"
+    ),
 ):
     """Parse all skills and display summary statistics."""
     if verbose:
@@ -68,7 +60,7 @@ def parse(
             skill.system,
             str(len(skill.related_skills)),
             str(len(skill.referenced_by)),
-            str(skill.word_count)
+            str(skill.word_count),
         )
 
     console.print(table)
@@ -89,6 +81,7 @@ def parse(
     # Export to JSON if requested
     if output:
         import json
+
         data = [s.to_dict() for s in skills]
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(data, indent=2))
@@ -97,14 +90,15 @@ def parse(
 
 @app.command()
 def show(
-    skill_name: str = typer.Argument(..., help='Name of skill to show'),
+    skill_name: str = typer.Argument(..., help="Name of skill to show"),
     skills_dir: Path = typer.Option(
-        Path('/Users/les/.claude/skills'),
-        '--skills-dir', '-s',
-        help='Directory containing skill files',
+        Path("/Users/les/.claude/skills"),
+        "--skills-dir",
+        "-s",
+        help="Directory containing skill files",
         exists=True,
-        dir_okay=True
-    )
+        dir_okay=True,
+    ),
 ):
     """Show detailed information about a specific skill."""
     skills = parse_all_skills(skills_dir)
@@ -121,12 +115,13 @@ def show(
         raise typer.Exit(1)
 
     # Display skill details
-    console.print(Panel(
-        f"[bold cyan]{skill.name}[/]\n\n"
-        f"[dim]{skill.description}[/]",
-        title="Skill Details",
-        border_style="blue"
-    ))
+    console.print(
+        Panel(
+            f"[bold cyan]{skill.name}[/]\n\n[dim]{skill.description}[/]",
+            title="Skill Details",
+            border_style="blue",
+        )
+    )
 
     # Metadata
     console.print(f"\n[bold]File:[/] {skill.file_path}")
@@ -138,18 +133,18 @@ def show(
 
     # Related skills
     if skill.related_skills:
-        console.print(f"\n[bold]Related Skills:[/]")
+        console.print("\n[bold]Related Skills:[/]")
         for related in skill.related_skills:
             console.print(f"  - {related.name} ({related.relationship_type})")
 
     # Referenced by
     if skill.referenced_by:
-        console.print(f"\n[bold]Referenced By:[/]")
+        console.print("\n[bold]Referenced By:[/]")
         for ref in skill.referenced_by:
             console.print(f"  - {ref}")
 
     # Statistics
-    console.print(f"\n[bold]Statistics:[/]")
+    console.print("\n[bold]Statistics:[/]")
     console.print(f"  Words: {skill.word_count}")
     console.print(f"  Lines: {skill.line_count}")
     console.print(f"  Has Examples: {'Yes' if skill.has_examples else 'No'}")
@@ -159,12 +154,13 @@ def show(
 @app.command()
 def validate(
     skills_dir: Path = typer.Option(
-        Path('/Users/les/.claude/skills'),
-        '--skills-dir', '-s',
-        help='Directory containing skill files',
+        Path("/Users/les/.claude/skills"),
+        "--skills-dir",
+        "-s",
+        help="Directory containing skill files",
         exists=True,
-        dir_okay=True
-    )
+        dir_okay=True,
+    ),
 ):
     """Validate all skills and report issues."""
     skills = parse_all_skills(skills_dir)
@@ -172,12 +168,18 @@ def validate(
     issues_found = False
 
     # Check for orphaned skills (no references)
-    orphans = [s for s in skills if not s.referenced_by and s.name not in {
-        'error-handling',  # Core skills may not be referenced
-        'mcp-integration',
-        'observability',
-        'testing-strategies'
-    }]
+    orphans = [
+        s
+        for s in skills
+        if not s.referenced_by
+        and s.name
+        not in {
+            "error-handling",  # Core skills may not be referenced
+            "mcp-integration",
+            "observability",
+            "testing-strategies",
+        }
+    ]
 
     if orphans:
         issues_found = True
@@ -205,5 +207,5 @@ def validate(
         raise typer.Exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app()

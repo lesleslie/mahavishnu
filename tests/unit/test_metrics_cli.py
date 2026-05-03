@@ -22,10 +22,10 @@ from mahavishnu.metrics_cli import (
     metrics_app,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _prometheus_text(lines: list[str]) -> str:
     """Build a Prometheus exposition-format body from *lines*."""
@@ -51,27 +51,39 @@ class TestResolvePostgresDsn:
 
     def test_explicit_dsn_takes_priority(self) -> None:
         """An explicitly provided DSN wins over every other source."""
-        with patch.dict(os.environ, {
-            "MAHAVISHNU_PERSISTENCE__POSTGRES_URL": "postgres://env:5432/x",
-            "MAHAVISHNU_POSTGRES_DSN": "postgres://env2:5432/x",
-        }, clear=False):
+        with patch.dict(
+            os.environ,
+            {
+                "MAHAVISHNU_PERSISTENCE__POSTGRES_URL": "postgres://env:5432/x",
+                "MAHAVISHNU_POSTGRES_DSN": "postgres://env2:5432/x",
+            },
+            clear=False,
+        ):
             result = _resolve_postgres_dsn("postgres://explicit:5432/db")
         assert result == "postgres://explicit:5432/db"
 
     def test_env_var_persistence_postgres_url(self) -> None:
         """MAHAVISHNU_PERSISTENCE__POSTGRES_URL is preferred over MAHAVISHNU_POSTGRES_DSN."""
-        with patch.dict(os.environ, {
-            "MAHAVISHNU_PERSISTENCE__POSTGRES_URL": "postgres://persist:5432/db",
-            "MAHAVISHNU_POSTGRES_DSN": "postgres://dsn:5432/db",
-        }, clear=False):
+        with patch.dict(
+            os.environ,
+            {
+                "MAHAVISHNU_PERSISTENCE__POSTGRES_URL": "postgres://persist:5432/db",
+                "MAHAVISHNU_POSTGRES_DSN": "postgres://dsn:5432/db",
+            },
+            clear=False,
+        ):
             result = _resolve_postgres_dsn(None)
         assert result == "postgres://persist:5432/db"
 
     def test_env_var_postgres_dsn_fallback(self) -> None:
         """MAHAVISHNU_POSTGRES_DSN is used when PERSISTENCE variant is absent."""
-        with patch.dict(os.environ, {
-            "MAHAVISHNU_POSTGRES_DSN": "postgres://dsn:5432/db",
-        }, clear=False):
+        with patch.dict(
+            os.environ,
+            {
+                "MAHAVISHNU_POSTGRES_DSN": "postgres://dsn:5432/db",
+            },
+            clear=False,
+        ):
             # Ensure the higher-priority var is NOT set
             os.environ.pop("MAHAVISHNU_PERSISTENCE__POSTGRES_URL", None)
             result = _resolve_postgres_dsn(None)
@@ -82,9 +94,7 @@ class TestResolvePostgresDsn:
         settings_dir = tmp_path / "settings"
         settings_dir.mkdir()
         settings_file = settings_dir / "mahavishnu.yaml"
-        settings_file.write_text(
-            "persistence:\n  postgres_url: postgres://yaml:5432/mydb\n"
-        )
+        settings_file.write_text("persistence:\n  postgres_url: postgres://yaml:5432/mydb\n")
 
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("MAHAVISHNU_PERSISTENCE__POSTGRES_URL", None)
@@ -108,9 +118,7 @@ class TestResolvePostgresDsn:
         settings_dir = tmp_path / "settings"
         settings_dir.mkdir()
         settings_file = settings_dir / "mahavishnu.yaml"
-        settings_file.write_text(
-            "persistence:\n  postgres_url: '  postgres://yaml:5432/db  '\n"
-        )
+        settings_file.write_text("persistence:\n  postgres_url: '  postgres://yaml:5432/db  '\n")
 
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("MAHAVISHNU_PERSISTENCE__POSTGRES_URL", None)
@@ -226,10 +234,12 @@ class TestLoadEngineMetricsFromPrometheus:
 
     def test_valid_routing_decisions_total(self) -> None:
         """Routing decision counters are mapped to 'selected'."""
-        body = _prometheus_text([
-            "mahavishnu_routing_decisions_total{adapter=\"prefect\"} 10",
-            "mahavishnu_routing_decisions_total{adapter=\"agno\"} 5",
-        ])
+        body = _prometheus_text(
+            [
+                'mahavishnu_routing_decisions_total{adapter="prefect"} 10',
+                'mahavishnu_routing_decisions_total{adapter="agno"} 5',
+            ]
+        )
         mock = _mock_urlopen(body)
 
         with patch("mahavishnu.metrics_cli.urllib_request.urlopen", return_value=mock):
@@ -240,10 +250,12 @@ class TestLoadEngineMetricsFromPrometheus:
 
     def test_valid_adapter_executions_total_success(self) -> None:
         """Adapter execution counters with status=success increment 'success'."""
-        body = _prometheus_text([
-            'mahavishnu_adapter_executions_total{adapter="prefect",status="success"} 8',
-            'mahavishnu_adapter_executions_total{adapter="agno",status="completed"} 4',
-        ])
+        body = _prometheus_text(
+            [
+                'mahavishnu_adapter_executions_total{adapter="prefect",status="success"} 8',
+                'mahavishnu_adapter_executions_total{adapter="agno",status="completed"} 4',
+            ]
+        )
         mock = _mock_urlopen(body)
 
         with patch("mahavishnu.metrics_cli.urllib_request.urlopen", return_value=mock):
@@ -258,12 +270,14 @@ class TestLoadEngineMetricsFromPrometheus:
 
     def test_valid_adapter_executions_total_failure(self) -> None:
         """Adapter execution counters with failure/failed/timeout/cancelled map to 'failure'."""
-        body = _prometheus_text([
-            'mahavishnu_adapter_executions_total{adapter="prefect",status="failure"} 3',
-            'mahavishnu_adapter_executions_total{adapter="agno",status="failed"} 2',
-            'mahavishnu_adapter_executions_total{adapter="llamaindex",status="timeout"} 1',
-            'mahavishnu_adapter_executions_total{adapter="llamaindex",status="cancelled"} 1',
-        ])
+        body = _prometheus_text(
+            [
+                'mahavishnu_adapter_executions_total{adapter="prefect",status="failure"} 3',
+                'mahavishnu_adapter_executions_total{adapter="agno",status="failed"} 2',
+                'mahavishnu_adapter_executions_total{adapter="llamaindex",status="timeout"} 1',
+                'mahavishnu_adapter_executions_total{adapter="llamaindex",status="cancelled"} 1',
+            ]
+        )
         mock = _mock_urlopen(body)
 
         with patch("mahavishnu.metrics_cli.urllib_request.urlopen", return_value=mock):
@@ -281,10 +295,12 @@ class TestLoadEngineMetricsFromPrometheus:
 
     def test_valid_workflows_total_fallback(self) -> None:
         """mahavishnu_workflows_total acts as a fallback execution counter."""
-        body = _prometheus_text([
-            'mahavishnu_workflows_total{adapter="prefect",status="success"} 7',
-            'mahavishnu_workflows_total{adapter="prefect",status="failed"} 2',
-        ])
+        body = _prometheus_text(
+            [
+                'mahavishnu_workflows_total{adapter="prefect",status="success"} 7',
+                'mahavishnu_workflows_total{adapter="prefect",status="failed"} 2',
+            ]
+        )
         mock = _mock_urlopen(body)
 
         with patch("mahavishnu.metrics_cli.urllib_request.urlopen", return_value=mock):
@@ -296,9 +312,11 @@ class TestLoadEngineMetricsFromPrometheus:
 
     def test_unknown_status_not_counted_as_success_or_failure(self) -> None:
         """An execution with an unknown status increments executions but not success/failure."""
-        body = _prometheus_text([
-            'mahavishnu_adapter_executions_total{adapter="prefect",status="pending"} 6',
-        ])
+        body = _prometheus_text(
+            [
+                'mahavishnu_adapter_executions_total{adapter="prefect",status="pending"} 6',
+            ]
+        )
         mock = _mock_urlopen(body)
 
         with patch("mahavishnu.metrics_cli.urllib_request.urlopen", return_value=mock):
@@ -321,12 +339,14 @@ class TestLoadEngineMetricsFromPrometheus:
 
     def test_only_comments_and_blank_lines(self) -> None:
         """Comments and blank lines are skipped; defaults still present."""
-        body = _prometheus_text([
-            "# HELP mahavishnu_routing_decisions_total Total routing decisions",
-            "# TYPE mahavishnu_routing_decisions_total counter",
-            "",
-            "   ",
-        ])
+        body = _prometheus_text(
+            [
+                "# HELP mahavishnu_routing_decisions_total Total routing decisions",
+                "# TYPE mahavishnu_routing_decisions_total counter",
+                "",
+                "   ",
+            ]
+        )
         mock = _mock_urlopen(body)
 
         with patch("mahavishnu.metrics_cli.urllib_request.urlopen", return_value=mock):
@@ -340,18 +360,22 @@ class TestLoadEngineMetricsFromPrometheus:
         """A URLError from urlopen is wrapped in a RuntimeError."""
         from urllib import error as urllib_error
 
-        with patch(
-            "mahavishnu.metrics_cli.urllib_request.urlopen",
-            side_effect=urllib_error.URLError("connection refused"),
+        with (
+            patch(
+                "mahavishnu.metrics_cli.urllib_request.urlopen",
+                side_effect=urllib_error.URLError("connection refused"),
+            ),
+            pytest.raises(RuntimeError, match="failed to fetch Prometheus metrics"),
         ):
-            with pytest.raises(RuntimeError, match="failed to fetch Prometheus metrics"):
-                _load_engine_metrics_from_prometheus("http://localhost:9091")
+            _load_engine_metrics_from_prometheus("http://localhost:9091")
 
     def test_default_adapters_always_present(self) -> None:
         """prefect, agno, llamaindex are always in the result dict."""
-        body = _prometheus_text([
-            'mahavishnu_routing_decisions_total{adapter="custom_engine"} 1',
-        ])
+        body = _prometheus_text(
+            [
+                'mahavishnu_routing_decisions_total{adapter="custom_engine"} 1',
+            ]
+        )
         mock = _mock_urlopen(body)
 
         with patch("mahavishnu.metrics_cli.urllib_request.urlopen", return_value=mock):
@@ -368,10 +392,12 @@ class TestLoadEngineMetricsFromPrometheus:
 
     def test_metrics_without_adapter_label_skipped(self) -> None:
         """Lines with no 'adapter' label are ignored."""
-        body = _prometheus_text([
-            'mahavishnu_routing_decisions_total{region="us"} 99',
-            'mahavishnu_adapter_executions_total{status="success"} 42',
-        ])
+        body = _prometheus_text(
+            [
+                'mahavishnu_routing_decisions_total{region="us"} 99',
+                'mahavishnu_adapter_executions_total{status="success"} 42',
+            ]
+        )
         mock = _mock_urlopen(body)
 
         with patch("mahavishnu.metrics_cli.urllib_request.urlopen", return_value=mock):
@@ -385,9 +411,11 @@ class TestLoadEngineMetricsFromPrometheus:
 
     def test_scientific_notation_value(self) -> None:
         """Values in scientific notation (e.g., 1e3) are parsed correctly."""
-        body = _prometheus_text([
-            'mahavishnu_routing_decisions_total{adapter="prefect"} 1e3',
-        ])
+        body = _prometheus_text(
+            [
+                'mahavishnu_routing_decisions_total{adapter="prefect"} 1e3',
+            ]
+        )
         mock = _mock_urlopen(body)
 
         with patch("mahavishnu.metrics_cli.urllib_request.urlopen", return_value=mock):
@@ -400,9 +428,11 @@ class TestLoadEngineMetricsFromPrometheus:
         # float("-1") -> int -> -1.  Prometheus counters should never be negative,
         # but the code does `int(float(raw_value))` which succeeds for negative numbers.
         # This test verifies the behaviour is still consistent: the value is added.
-        body = _prometheus_text([
-            'mahavishnu_routing_decisions_total{adapter="prefect"} -1',
-        ])
+        body = _prometheus_text(
+            [
+                'mahavishnu_routing_decisions_total{adapter="prefect"} -1',
+            ]
+        )
         mock = _mock_urlopen(body)
 
         with patch("mahavishnu.metrics_cli.urllib_request.urlopen", return_value=mock):
@@ -412,9 +442,11 @@ class TestLoadEngineMetricsFromPrometheus:
 
     def test_non_numeric_value_skipped(self) -> None:
         """A value that cannot be converted to int(float(...)) is skipped."""
-        body = _prometheus_text([
-            'mahavishnu_routing_decisions_total{adapter="prefect"} NaN',
-        ])
+        body = _prometheus_text(
+            [
+                'mahavishnu_routing_decisions_total{adapter="prefect"} NaN',
+            ]
+        )
         mock = _mock_urlopen(body)
 
         with patch("mahavishnu.metrics_cli.urllib_request.urlopen", return_value=mock):
@@ -424,12 +456,14 @@ class TestLoadEngineMetricsFromPrometheus:
 
     def test_multiple_lines_same_adapter_accumulate(self) -> None:
         """Multiple metric lines for the same adapter accumulate correctly."""
-        body = _prometheus_text([
-            'mahavishnu_routing_decisions_total{adapter="prefect"} 5',
-            'mahavishnu_routing_decisions_total{adapter="prefect"} 3',
-            'mahavishnu_adapter_executions_total{adapter="prefect",status="success"} 4',
-            'mahavishnu_adapter_executions_total{adapter="prefect",status="failure"} 2',
-        ])
+        body = _prometheus_text(
+            [
+                'mahavishnu_routing_decisions_total{adapter="prefect"} 5',
+                'mahavishnu_routing_decisions_total{adapter="prefect"} 3',
+                'mahavishnu_adapter_executions_total{adapter="prefect",status="success"} 4',
+                'mahavishnu_adapter_executions_total{adapter="prefect",status="failure"} 2',
+            ]
+        )
         mock = _mock_urlopen(body)
 
         with patch("mahavishnu.metrics_cli.urllib_request.urlopen", return_value=mock):
@@ -442,9 +476,11 @@ class TestLoadEngineMetricsFromPrometheus:
 
     def test_unknown_metric_name_ignored(self) -> None:
         """Metric names that are not one of the three expected ones are ignored."""
-        body = _prometheus_text([
-            'mahavishnu_unknown_metric{adapter="prefect"} 100',
-        ])
+        body = _prometheus_text(
+            [
+                'mahavishnu_unknown_metric{adapter="prefect"} 100',
+            ]
+        )
         mock = _mock_urlopen(body)
 
         with patch("mahavishnu.metrics_cli.urllib_request.urlopen", return_value=mock):

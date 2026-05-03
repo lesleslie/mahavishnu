@@ -1,16 +1,17 @@
 """Tests for ProgressTracker - Operation progress tracking."""
 
-import pytest
-from datetime import datetime, UTC
-from unittest.mock import MagicMock, patch, AsyncMock
+from datetime import UTC, datetime
 from typing import Any
+from unittest.mock import MagicMock
+
+import pytest
 
 from mahavishnu.core.progress_tracker import (
-    ProgressTracker,
+    ProgressBar,
+    ProgressSpinner,
     ProgressState,
     ProgressTask,
-    ProgressSpinner,
-    ProgressBar,
+    ProgressTracker,
 )
 
 

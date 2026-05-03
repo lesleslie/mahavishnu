@@ -19,13 +19,14 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
+from datetime import UTC, datetime
 import json
 import logging
-from datetime import datetime, UTC
-from typing import Any, Callable
+from typing import Any
 
 import websockets
-from websockets.exceptions import ConnectionClosed, ConnectionClosedError
+from websockets.exceptions import ConnectionClosed
 
 # Configure logging
 logging.basicConfig(
@@ -130,8 +131,7 @@ class PoolMonitorClient:
 
         except ConnectionRefusedError:
             logger.error(
-                f"❌ Connection refused - is Mahavishnu WebSocket server "
-                f"running at {self.uri}?"
+                f"❌ Connection refused - is Mahavishnu WebSocket server running at {self.uri}?"
             )
             return False
         except Exception as e:
@@ -140,8 +140,7 @@ class PoolMonitorClient:
                 self._reconnect_attempts += 1
                 wait_time = min(2**self._reconnect_attempts, 30)
                 logger.info(
-                    f"⏳ Reconnecting in {wait_time}s "
-                    f"(attempt {self._reconnect_attempts})..."
+                    f"⏳ Reconnecting in {wait_time}s (attempt {self._reconnect_attempts})..."
                 )
                 await asyncio.sleep(wait_time)
                 return await self.connect()
@@ -176,11 +175,13 @@ class PoolMonitorClient:
             ... async def handle_spawned(data):
             ...     print(f"Pool spawned: {data['pool_id']}")
         """
+
         def decorator(func: Callable) -> Callable:
             if event_type not in self._event_handlers:
                 self._event_handlers[event_type] = []
             self._event_handlers[event_type].append(func)
             return func
+
         return decorator
 
     async def _handle_event(self, event_type: str, data: dict[str, Any]) -> None:
@@ -271,10 +272,7 @@ class PoolMonitorClient:
             logger.info(f"📡 Subscribing to channel: {channel}")
 
             # Wait for subscription confirmation
-            response = await asyncio.wait_for(
-                self.websocket.recv(),
-                timeout=5.0
-            )
+            response = await asyncio.wait_for(self.websocket.recv(), timeout=5.0)
             data = json.loads(response)
 
             if data.get("status") == "subscribed":
@@ -284,8 +282,8 @@ class PoolMonitorClient:
                 logger.warning(f"⚠️  Subscription failed: {data}")
                 return False
 
-        except asyncio.TimeoutError:
-            logger.error(f"❌ Timeout waiting for subscription confirmation")
+        except TimeoutError:
+            logger.error("❌ Timeout waiting for subscription confirmation")
             return False
         except Exception as e:
             logger.error(f"❌ Subscription error: {e}")
@@ -356,10 +354,7 @@ class PoolMonitorClient:
             await self.websocket.send(json.dumps(message))
 
             # Wait for response
-            response = await asyncio.wait_for(
-                self.websocket.recv(),
-                timeout=5.0
-            )
+            response = await asyncio.wait_for(self.websocket.recv(), timeout=5.0)
             data = json.loads(response)
 
             if data.get("type") == "response":
@@ -371,8 +366,8 @@ class PoolMonitorClient:
                 logger.warning(f"⚠️  Unexpected response: {data}")
                 return {}
 
-        except asyncio.TimeoutError:
-            logger.error(f"❌ Timeout querying pool status")
+        except TimeoutError:
+            logger.error("❌ Timeout querying pool status")
             return {}
         except Exception as e:
             logger.error(f"❌ Error querying pool status: {e}")
@@ -403,10 +398,7 @@ class PoolMonitorClient:
 
             await self.websocket.send(json.dumps(message))
 
-            response = await asyncio.wait_for(
-                self.websocket.recv(),
-                timeout=5.0
-            )
+            response = await asyncio.wait_for(self.websocket.recv(), timeout=5.0)
             data = json.loads(response)
 
             if data.get("type") == "response":
@@ -456,7 +448,7 @@ class PoolMonitorClient:
                     data = json.loads(message)
                     await self._process_message(data)
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Send periodic ping
                     if self.connected:
                         await self._send_ping()
@@ -562,7 +554,7 @@ class PoolMonitorClient:
                 "busy": "⚙️",
                 "error": "🔥",
                 "initializing": "🔄",
-                "stopping": "🛑"
+                "stopping": "🛑",
             }.get(status, "📊")
             logger.info(f"{emoji} [{timestamp}] Worker {worker_id}: {status}")
 
@@ -600,11 +592,12 @@ class PoolMonitorClient:
 
 # Demo functions
 
+
 async def demo_basic_pool_monitoring():
     """Demo: Basic pool monitoring with event handlers."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🎯 Demo: Basic Pool Monitoring")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     monitor = PoolMonitorClient()
 
@@ -674,9 +667,9 @@ async def demo_basic_pool_monitoring():
 
 async def demo_multi_pool_monitoring():
     """Demo: Monitor multiple pools simultaneously."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🎯 Demo: Multi-Pool Monitoring")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     monitor = PoolMonitorClient()
 
@@ -719,14 +712,14 @@ async def demo_multi_pool_monitoring():
             while True:
                 await asyncio.sleep(30)
                 if pool_stats:
-                    print("\n" + "="*70)
+                    print("\n" + "=" * 70)
                     print("📊 Pool Statistics")
-                    print("="*70)
+                    print("=" * 70)
                     for pool_id, stats in pool_stats.items():
                         print(f"\nPool: {pool_id}")
                         print(f"  Workers Added:    {stats['workers_added']}")
                         print(f"  Tasks Completed:  {stats['tasks_completed']}")
-                    print("="*70 + "\n")
+                    print("=" * 70 + "\n")
 
         # Start stats printer
         stats_task = asyncio.create_task(print_stats())
@@ -747,9 +740,9 @@ async def demo_multi_pool_monitoring():
 
 async def demo_query_pool_status():
     """Demo: Query pool and worker status on demand."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🎯 Demo: Query Pool Status")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     monitor = PoolMonitorClient()
 
@@ -765,9 +758,9 @@ async def demo_query_pool_status():
         status = await monitor.get_pool_status(pool_id)
 
         if status:
-            print("\n" + "-"*70)
+            print("\n" + "-" * 70)
             print("Pool Status:")
-            print("-"*70)
+            print("-" * 70)
             print(f"  ID:              {status.get('pool_id', 'N/A')}")
             print(f"  Status:          {status.get('status', 'N/A')}")
             print(f"  Type:            {status.get('pool_type', 'N/A')}")
@@ -775,24 +768,26 @@ async def demo_query_pool_status():
             print(f"    Active:        {status.get('active_workers', 0)}")
             print(f"    Idle:          {status.get('idle_workers', 0)}")
             print(f"    Error:         {status.get('error_workers', 0)}")
-            print(f"  Range:           {status.get('min_workers', 0)} - "
-                  f"{status.get('max_workers', 0)} workers")
+            print(
+                f"  Range:           {status.get('min_workers', 0)} - "
+                f"{status.get('max_workers', 0)} workers"
+            )
             print(f"  Tasks Completed: {status.get('total_tasks_completed', 0)}")
             print(f"  Avg Duration:    {status.get('average_task_duration', 0):.2f}s")
-            print("-"*70 + "\n")
+            print("-" * 70 + "\n")
 
             # Show individual worker status
-            if status.get('workers'):
+            if status.get("workers"):
                 print("Worker Details:")
-                print("-"*70)
-                for worker in status['workers']:
-                    worker_id = worker.get('worker_id', 'N/A')
-                    worker_status = worker.get('status', 'N/A')
-                    tasks_completed = worker.get('tasks_completed', 0)
+                print("-" * 70)
+                for worker in status["workers"]:
+                    worker_id = worker.get("worker_id", "N/A")
+                    worker_status = worker.get("status", "N/A")
+                    tasks_completed = worker.get("tasks_completed", 0)
                     print(f"  {worker_id}:")
                     print(f"    Status:     {worker_status}")
                     print(f"    Completed:  {tasks_completed} tasks")
-                print("-"*70 + "\n")
+                print("-" * 70 + "\n")
         else:
             logger.warning("⚠️  No status data received")
 
@@ -804,9 +799,9 @@ async def demo_query_pool_status():
 
 async def demo_worker_lifecycle_tracking():
     """Demo: Track worker lifecycle in detail."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🎯 Demo: Worker Lifecycle Tracking")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     monitor = PoolMonitorClient()
 
@@ -824,7 +819,7 @@ async def demo_worker_lifecycle_tracking():
         async def on_worker_added(data: dict):
             worker_id = data.get("worker_id", "unknown")
             pool_id = data.get("pool_id", "unknown")
-            print(f"\n➕ WORKER ADDED")
+            print("\n➕ WORKER ADDED")
             print(f"   Worker: {worker_id}")
             print(f"   Pool:   {pool_id}")
             print(f"   Time:   {datetime.now(UTC).strftime('%H:%M:%S')}")
@@ -848,7 +843,7 @@ async def demo_worker_lifecycle_tracking():
         async def on_worker_removed(data: dict):
             worker_id = data.get("worker_id", "unknown")
             pool_id = data.get("pool_id", "unknown")
-            print(f"\n➖ WORKER REMOVED")
+            print("\n➖ WORKER REMOVED")
             print(f"   Worker: {worker_id}")
             print(f"   Pool:   {pool_id}")
 
@@ -887,9 +882,9 @@ async def demo_worker_lifecycle_tracking():
 
 async def demo_pool_scaling_events():
     """Demo: Monitor pool scaling events."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🎯 Demo: Pool Scaling Events")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     monitor = PoolMonitorClient()
 
@@ -912,13 +907,15 @@ async def demo_pool_scaling_events():
             min_workers = config.get("min_workers", 0)
             max_workers = config.get("max_workers", 0)
 
-            scaling_history.append({
-                "event": "spawned",
-                "pool_id": pool_id,
-                "timestamp": datetime.now(UTC),
-            })
+            scaling_history.append(
+                {
+                    "event": "spawned",
+                    "pool_id": pool_id,
+                    "timestamp": datetime.now(UTC),
+                }
+            )
 
-            print(f"\n🏊 POOL SPAWNED")
+            print("\n🏊 POOL SPAWNED")
             print(f"   Pool:      {pool_id}")
             print(f"   Range:     {min_workers} - {max_workers} workers")
             print(f"   Type:      {config.get('pool_type', 'unknown')}")
@@ -928,14 +925,16 @@ async def demo_pool_scaling_events():
             pool_id = data.get("pool_id", "unknown")
             worker_count = data.get("worker_count", 0)
 
-            scaling_history.append({
-                "event": "scaled",
-                "pool_id": pool_id,
-                "worker_count": worker_count,
-                "timestamp": datetime.now(UTC),
-            })
+            scaling_history.append(
+                {
+                    "event": "scaled",
+                    "pool_id": pool_id,
+                    "worker_count": worker_count,
+                    "timestamp": datetime.now(UTC),
+                }
+            )
 
-            print(f"\n📈 POOL SCALED")
+            print("\n📈 POOL SCALED")
             print(f"   Pool:         {pool_id}")
             print(f"   Worker Count: {worker_count}")
             print(f"   Time:         {datetime.now(UTC).strftime('%H:%M:%S')}")
@@ -946,7 +945,7 @@ async def demo_pool_scaling_events():
             status = data.get("status", {})
             state = status.get("state", "unknown")
 
-            print(f"\n🔄 POOL STATUS CHANGED")
+            print("\n🔄 POOL STATUS CHANGED")
             print(f"   Pool:   {pool_id}")
             print(f"   Status: {state}")
 
@@ -954,13 +953,15 @@ async def demo_pool_scaling_events():
         async def on_pool_closed(data: dict):
             pool_id = data.get("pool_id", "unknown")
 
-            scaling_history.append({
-                "event": "closed",
-                "pool_id": pool_id,
-                "timestamp": datetime.now(UTC),
-            })
+            scaling_history.append(
+                {
+                    "event": "closed",
+                    "pool_id": pool_id,
+                    "timestamp": datetime.now(UTC),
+                }
+            )
 
-            print(f"\n🚪 POOL CLOSED")
+            print("\n🚪 POOL CLOSED")
             print(f"   Pool: {pool_id}")
 
         logger.info("\n🎧 Monitoring pool scaling events (Ctrl+C to stop)...\n")
@@ -971,13 +972,13 @@ async def demo_pool_scaling_events():
 
         # Print scaling summary
         if scaling_history:
-            print("\n" + "="*70)
+            print("\n" + "=" * 70)
             print("📊 Scaling History Summary")
-            print("="*70)
+            print("=" * 70)
             for event in scaling_history:
                 ts = event["timestamp"].strftime("%H:%M:%S")
                 print(f"  [{ts}] {event['event'].upper()}: {event['pool_id']}")
-            print("="*70 + "\n")
+            print("=" * 70 + "\n")
 
     except Exception as e:
         logger.error(f"❌ Demo error: {e}")
@@ -986,6 +987,7 @@ async def demo_pool_scaling_events():
 
 
 # Main entry point
+
 
 async def main():
     """Run pool monitoring demo."""

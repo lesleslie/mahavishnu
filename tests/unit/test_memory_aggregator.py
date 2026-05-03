@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-import time
 from collections import deque
 from datetime import datetime, timedelta
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -13,10 +13,9 @@ import pytest
 
 from mahavishnu.pools.memory_aggregator import (
     MemoryAggregator,
-    _CircuitBreaker,
     _await_if_needed,
+    _CircuitBreaker,
 )
-
 
 # ---------------------------------------------------------------------------
 # _await_if_needed
@@ -28,6 +27,7 @@ class TestAwaitIfNeeded:
     async def test_returns_awaitable(self):
         async def coro():
             return 42
+
         result = await _await_if_needed(coro())
         assert result == 42
 
@@ -250,7 +250,9 @@ class TestFlushLocalBuffer:
     @pytest.mark.asyncio
     async def test_flushes_all_items(self, aggregator: MemoryAggregator):
         aggregator._buffer_items([{"a": 1}, {"b": 2}])
-        with patch.object(aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock) as mock:
+        with patch.object(
+            aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock
+        ) as mock:
             mock.return_value = 2
             result = await aggregator.flush_local_buffer()
         assert result["flushed"] == 2
@@ -486,9 +488,18 @@ class TestCollectAndSync:
     async def test_empty_pools(self, aggregator: MemoryAggregator):
         mock_pm = MagicMock()
         mock_pm.list_pools = AsyncMock(return_value=[])
-        with patch.object(aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=0), \
-             patch.object(aggregator, "flush_local_buffer", new_callable=AsyncMock, return_value={"flushed": 0, "remaining": 0}), \
-             patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock):
+        with (
+            patch.object(
+                aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=0
+            ),
+            patch.object(
+                aggregator,
+                "flush_local_buffer",
+                new_callable=AsyncMock,
+                return_value={"flushed": 0, "remaining": 0},
+            ),
+            patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock),
+        ):
             result = await aggregator.collect_and_sync(mock_pm)
         assert result["pools_synced"] == 0
         assert result["memory_items_synced"] == 0
@@ -503,9 +514,18 @@ class TestCollectAndSync:
         mock_pm.list_pools = AsyncMock(return_value=[{"pool_id": "p1"}])
         mock_pm._pools = {"p1": pool}
 
-        with patch.object(aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=2), \
-             patch.object(aggregator, "flush_local_buffer", new_callable=AsyncMock, return_value={"flushed": 0, "remaining": 0}), \
-             patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock):
+        with (
+            patch.object(
+                aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=2
+            ),
+            patch.object(
+                aggregator,
+                "flush_local_buffer",
+                new_callable=AsyncMock,
+                return_value={"flushed": 0, "remaining": 0},
+            ),
+            patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock),
+        ):
             result = await aggregator.collect_and_sync(mock_pm)
         assert result["pools_synced"] == 1
         assert result["memory_items_synced"] == 2
@@ -516,8 +536,12 @@ class TestCollectAndSync:
         mock_pm.list_pools = AsyncMock(return_value=[{"pool_id": "missing"}])
         mock_pm._pools = {}
 
-        with patch.object(aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=0), \
-             patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock):
+        with (
+            patch.object(
+                aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=0
+            ),
+            patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock),
+        ):
             result = await aggregator.collect_and_sync(mock_pm)
         assert result["pools_synced"] == 1
         assert result["memory_items_synced"] == 0
@@ -531,8 +555,12 @@ class TestCollectAndSync:
         mock_pm.list_pools = AsyncMock(return_value=[{"pool_id": "p1"}])
         mock_pm._pools = {"p1": pool}
 
-        with patch.object(aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=0), \
-             patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock):
+        with (
+            patch.object(
+                aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=0
+            ),
+            patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock),
+        ):
             result = await aggregator.collect_and_sync(mock_pm)
         assert result["memory_items_synced"] == 0
 
@@ -547,9 +575,18 @@ class TestCollectAndSync:
 
         aggregator._buffer_items([{"text": "buffered"}])
 
-        with patch.object(aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=0), \
-             patch.object(aggregator, "flush_local_buffer", new_callable=AsyncMock, return_value={"flushed": 1, "remaining": 0}), \
-             patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock):
+        with (
+            patch.object(
+                aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=0
+            ),
+            patch.object(
+                aggregator,
+                "flush_local_buffer",
+                new_callable=AsyncMock,
+                return_value={"flushed": 1, "remaining": 0},
+            ),
+            patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock),
+        ):
             result = await aggregator.collect_and_sync(mock_pm)
         assert result["pools_synced"] == 1
 

@@ -422,6 +422,7 @@ def run_automated_scoring(samples: list[dict]) -> None:
     """
     try:
         from mahavishnu.ingesters.quality_scorer import ContentQualityScorer
+
         scorer = ContentQualityScorer()
         use_scorer = True
     except ImportError:

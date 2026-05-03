@@ -6,8 +6,8 @@ enabling automation of tools like GIMP, Inkscape, Blender, and mdinject.
 
 import asyncio
 import logging
-import uuid
 from typing import Any
+import uuid
 
 from .base import BaseWorker, WorkerResult, WorkerStatus
 from .registry import WorkerConfig, get_worker_config
@@ -157,7 +157,7 @@ class ApplicationWorker(BaseWorker):
 
             return worker_result
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error(f"MCP tool {tool_name} timed out after {timeout}s")
             return WorkerResult(
                 worker_id=self.worker_id,

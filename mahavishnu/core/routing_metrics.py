@@ -13,14 +13,14 @@ Design:
 from __future__ import annotations
 
 import logging
-import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from mahavishnu.core.metrics_schema import AdapterType, TaskType
+if TYPE_CHECKING:
+    from mahavishnu.core.metrics_schema import AdapterType, TaskType
 
 # Lazy import - only import if actually used
 try:
-    from prometheus_client import Counter, Gauge, Histogram, Summary, start_http_server, REGISTRY
+    from prometheus_client import REGISTRY, Counter, Gauge, Histogram, Summary, start_http_server
 
     PROMETHEUS_AVAILABLE = True
 except ImportError:

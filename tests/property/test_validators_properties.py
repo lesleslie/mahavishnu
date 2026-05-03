@@ -11,9 +11,10 @@ Tests mahavishnu/core/validators.py for:
 
 from pathlib import Path
 import tempfile
-import pytest
-from hypothesis import given, settings, assume
+
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
+import pytest
 
 # NOTE: Property tests disabled - validators module not yet implemented
 pytest.skip("Validators module not yet implemented", allow_module_level=True)
@@ -30,6 +31,7 @@ pytest.skip("Validators module not yet implemented", allow_module_level=True)
 # =============================================================================
 # Directory Traversal Prevention Tests (5 tests)
 # =============================================================================
+
 
 class TestDirectoryTraversalPrevention:
     """Property-based tests for directory traversal attack prevention."""
@@ -79,6 +81,7 @@ class TestDirectoryTraversalPrevention:
 # Absolute Path Resolution Tests (4 tests)
 # =============================================================================
 
+
 class TestAbsolutePathResolution:
     """Property-based tests for absolute path resolution."""
 
@@ -86,7 +89,7 @@ class TestAbsolutePathResolution:
     @settings(max_examples=50)
     def test_absolute_paths_are_absolute(self, path_component):
         """Validated absolute paths should be absolute."""
-        assume(not ".." in path_component)
+        assume(".." not in path_component)
         with tempfile.TemporaryDirectory() as tmpdir:
             base = Path(tmpdir)
             test_path = base / path_component
@@ -108,7 +111,7 @@ class TestAbsolutePathResolution:
     @settings(max_examples=50)
     def test_relative_paths_become_absolute(self, path_component):
         """Validated relative paths should become absolute."""
-        assume(not ".." in path_component)
+        assume(".." not in path_component)
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create test file
             test_file = Path(tmpdir) / path_component
@@ -122,7 +125,7 @@ class TestAbsolutePathResolution:
             )
             assert result.is_absolute()
 
-    @given(st.from_regex(r'^/tmp/test_[a-z]{5,20}$'))
+    @given(st.from_regex(r"^/tmp/test_[a-z]{5,20}$"))
     @settings(max_examples=50)
     def test_tempfile_paths_validated(self, path_str):
         """Tempfile paths should validate correctly."""
@@ -143,7 +146,7 @@ class TestAbsolutePathResolution:
     def test_tilde_expansion(self, path_input):
         """Tilde (~) should be expanded to home directory."""
         assume(path_input.startswith("~"))
-        assume(not ".." in path_input)
+        assume(".." not in path_input)
 
         try:
             result = validate_path(
@@ -161,6 +164,7 @@ class TestAbsolutePathResolution:
 # =============================================================================
 # Base Directory Enforcement Tests (3 tests)
 # ============================================================================
+
 
 class TestBaseDirectoryEnforcement:
     """Property-based tests for base directory enforcement."""
@@ -208,10 +212,11 @@ class TestBaseDirectoryEnforcement:
     @settings(max_examples=50)
     def test_default_to_cwd_if_no_base(self, path_component):
         """If no base dirs specified, should default to current directory."""
-        assume(not ".." in path_component)
+        assume(".." not in path_component)
         with tempfile.TemporaryDirectory() as tmpdir:
             # Change to temp directory
             import os
+
             original_cwd = os.getcwd()
             try:
                 os.chdir(tmpdir)
@@ -234,6 +239,7 @@ class TestBaseDirectoryEnforcement:
 # Filename Sanitization Tests (4 tests)
 # =============================================================================
 
+
 class TestFilenameSanitization:
     """Property-based tests for filename sanitization."""
 
@@ -241,22 +247,22 @@ class TestFilenameSanitization:
     @settings(max_examples=100)
     def test_removes_path_separators(self, filename):
         """Sanitized filename should not contain path separators."""
-        assume(any(sep in filename for sep in ['/', '\\', '..']))
+        assume(any(sep in filename for sep in ["/", "\\", ".."]))
         result = sanitize_filename(filename)
-        assert '/' not in result
-        assert '\\' not in result
-        assert '..' not in result
+        assert "/" not in result
+        assert "\\" not in result
+        assert ".." not in result
 
     @given(st.text(min_size=1, max_size=100))
     @settings(max_examples=100)
     def test_removes_null_bytes_and_control_chars(self, filename):
         """Sanitized filename should not contain null bytes or control characters."""
-        assume(any(c in filename for c in ['\x00', '\n', '\r', '\t']))
+        assume(any(c in filename for c in ["\x00", "\n", "\r", "\t"]))
         result = sanitize_filename(filename)
-        assert '\x00' not in result
-        assert '\n' not in result
-        assert '\r' not in result
-        assert '\t' not in result
+        assert "\x00" not in result
+        assert "\n" not in result
+        assert "\r" not in result
+        assert "\t" not in result
 
     @given(st.text(min_size=1, max_size=100))
     @settings(max_examples=100)
@@ -266,12 +272,7 @@ class TestFilenameSanitization:
         # Should not be empty
         assert len(result) > 0
         # Should only contain safe characters
-        allowed_chars = set(
-            "abcdefghijklmnopqrstuvwxyz"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            "0123456789"
-            "-_."
-        )
+        allowed_chars = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
         assert all(c in allowed_chars for c in result)
 
     @given(st.text(min_size=200, max_size=500))
@@ -286,6 +287,7 @@ class TestFilenameSanitization:
 # =============================================================================
 # File Operation Validation Tests (3 tests)
 # =============================================================================
+
 
 class TestFileOperationValidation:
     """Property-based tests for file operation validation."""
@@ -339,6 +341,7 @@ class TestFileOperationValidation:
 # Repository Path Validation Tests (3 tests)
 # =============================================================================
 
+
 class TestRepositoryPathValidation:
     """Property-based tests for repository path validation."""
 
@@ -363,7 +366,7 @@ class TestRepositoryPathValidation:
     @settings(max_examples=50)
     def test_repo_path_within_base(self, path_component):
         """Repository path should be within base directory."""
-        assume(not ".." in path_component)
+        assume(".." not in path_component)
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create subdirectory
             test_dir = Path(tmpdir) / path_component
@@ -399,6 +402,7 @@ class TestRepositoryPathValidation:
 # =============================================================================
 # TOCTOU Prevention Tests (2 tests)
 # =============================================================================
+
 
 class TestTOCTOUPrevention:
     """Property-based tests for Time-of-Check-Time-of-Use prevention."""
@@ -453,6 +457,7 @@ class TestTOCTOUPrevention:
 # Edge Case Tests (3 tests)
 # =============================================================================
 
+
 class TestEdgeCases:
     """Property-based tests for edge cases."""
 
@@ -460,7 +465,7 @@ class TestEdgeCases:
     @settings(max_examples=100)
     def test_empty_filename_rejected(self, filename):
         """Empty filenames should be rejected by sanitize_filename."""
-        assume(filename == "" or all(c in ['\x00', '\n', '\r', '\t', ' '] for c in filename))
+        assume(filename == "" or all(c in ["\x00", "\n", "\r", "\t", " "] for c in filename))
         with pytest.raises(PathValidationError):
             sanitize_filename(filename)
 

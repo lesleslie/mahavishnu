@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
 import yaml
 
-from mahavishnu.scaffolding.models import Pattern
-from mahavishnu.scaffolding.library import PatternLibrary
 from mahavishnu.scaffolding.engine import ScaffoldingEngine
+from mahavishnu.scaffolding.library import PatternLibrary
 
 
 @pytest.fixture
@@ -87,22 +85,26 @@ class TestEngineScaffold:
         lib.root.joinpath("a").mkdir()
         lib.root.joinpath("b").mkdir()
         lib.root.joinpath("a", "a.yaml").write_text(
-            yaml.dump({
-                "id": "a/x",
-                "name": "X",
-                "depends": [{"id": "b/y"}],
-                "structure": {"dirs": [], "files": []},
-                "schema_version": 1,
-            })
+            yaml.dump(
+                {
+                    "id": "a/x",
+                    "name": "X",
+                    "depends": [{"id": "b/y"}],
+                    "structure": {"dirs": [], "files": []},
+                    "schema_version": 1,
+                }
+            )
         )
         lib.root.joinpath("b", "b.yaml").write_text(
-            yaml.dump({
-                "id": "b/y",
-                "name": "Y",
-                "depends": [{"id": "a/x"}],
-                "structure": {"dirs": [], "files": []},
-                "schema_version": 1,
-            })
+            yaml.dump(
+                {
+                    "id": "b/y",
+                    "name": "Y",
+                    "depends": [{"id": "a/x"}],
+                    "structure": {"dirs": [], "files": []},
+                    "schema_version": 1,
+                }
+            )
         )
         lib.load_all()
         eng = ScaffoldingEngine(library=lib)

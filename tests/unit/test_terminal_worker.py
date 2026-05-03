@@ -51,7 +51,6 @@ def worker_with_session(mock_terminal_manager):
 
 
 class TestInitialization:
-
     def test_default_state_is_pending(self, qwen_worker):
         assert qwen_worker._status == WorkerStatus.PENDING
         assert qwen_worker._start_time is None
@@ -76,7 +75,6 @@ class TestInitialization:
 
 
 class TestStart:
-
     @pytest.mark.asyncio
     async def test_start_qwen_launches_correct_command(self, qwen_worker, mock_terminal_manager):
         await qwen_worker.start()
@@ -89,7 +87,9 @@ class TestStart:
         assert qwen_worker._start_time is not None
 
     @pytest.mark.asyncio
-    async def test_start_claude_launches_correct_command(self, claude_worker, mock_terminal_manager):
+    async def test_start_claude_launches_correct_command(
+        self, claude_worker, mock_terminal_manager
+    ):
         await claude_worker.start()
         mock_terminal_manager.launch_sessions.assert_called_once_with(
             command="claude --output-format stream-json --permission-mode acceptEdits",
@@ -118,44 +118,55 @@ class TestStart:
 
 
 class TestExecute:
-
     @pytest.mark.asyncio
     async def test_execute_auto_starts_when_no_session(self, qwen_worker, mock_terminal_manager):
-        qwen_worker._monitor_completion = AsyncMock(return_value=WorkerResult(
-            worker_id="session_abc",
-            status=WorkerStatus.COMPLETED,
-            output="done",
-        ))
+        qwen_worker._monitor_completion = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="session_abc",
+                status=WorkerStatus.COMPLETED,
+                output="done",
+            )
+        )
         await qwen_worker.execute({"prompt": "hello"})
         mock_terminal_manager.launch_sessions.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_execute_skips_start_with_existing_session(self, worker_with_session, mock_terminal_manager):
-        worker_with_session._monitor_completion = AsyncMock(return_value=WorkerResult(
-            worker_id="existing_session",
-            status=WorkerStatus.COMPLETED,
-            output="done",
-        ))
+    async def test_execute_skips_start_with_existing_session(
+        self, worker_with_session, mock_terminal_manager
+    ):
+        worker_with_session._monitor_completion = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="existing_session",
+                status=WorkerStatus.COMPLETED,
+                output="done",
+            )
+        )
         await worker_with_session.execute({"prompt": "hello"})
         mock_terminal_manager.launch_sessions.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_execute_sends_prompt(self, worker_with_session, mock_terminal_manager):
-        worker_with_session._monitor_completion = AsyncMock(return_value=WorkerResult(
-            worker_id="existing_session",
-            status=WorkerStatus.COMPLETED,
-            output="done",
-        ))
+        worker_with_session._monitor_completion = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="existing_session",
+                status=WorkerStatus.COMPLETED,
+                output="done",
+            )
+        )
         await worker_with_session.execute({"prompt": "write tests"})
-        mock_terminal_manager.send_command.assert_called_once_with("existing_session", "write tests")
+        mock_terminal_manager.send_command.assert_called_once_with(
+            "existing_session", "write tests"
+        )
 
     @pytest.mark.asyncio
     async def test_execute_prepends_repo_path(self, worker_with_session, mock_terminal_manager):
-        worker_with_session._monitor_completion = AsyncMock(return_value=WorkerResult(
-            worker_id="existing_session",
-            status=WorkerStatus.COMPLETED,
-            output="done",
-        ))
+        worker_with_session._monitor_completion = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="existing_session",
+                status=WorkerStatus.COMPLETED,
+                output="done",
+            )
+        )
         await worker_with_session.execute({"prompt": "fix bug", "repo": "/path/to/repo"})
         mock_terminal_manager.send_command.assert_called_once_with(
             "existing_session",
@@ -164,11 +175,13 @@ class TestExecute:
 
     @pytest.mark.asyncio
     async def test_execute_with_empty_prompt(self, worker_with_session, mock_terminal_manager):
-        worker_with_session._monitor_completion = AsyncMock(return_value=WorkerResult(
-            worker_id="existing_session",
-            status=WorkerStatus.COMPLETED,
-            output="done",
-        ))
+        worker_with_session._monitor_completion = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="existing_session",
+                status=WorkerStatus.COMPLETED,
+                output="done",
+            )
+        )
         await worker_with_session.execute({})
         mock_terminal_manager.send_command.assert_called_once_with("existing_session", "")
 
@@ -176,13 +189,15 @@ class TestExecute:
     async def test_execute_stores_in_session_buddy(self, worker_with_session):
         mock_client = AsyncMock()
         worker_with_session.session_buddy_client = mock_client
-        worker_with_session._monitor_completion = AsyncMock(return_value=WorkerResult(
-            worker_id="existing_session",
-            status=WorkerStatus.COMPLETED,
-            output="result text",
-            duration_seconds=5.0,
-            exit_code=0,
-        ))
+        worker_with_session._monitor_completion = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="existing_session",
+                status=WorkerStatus.COMPLETED,
+                output="result text",
+                duration_seconds=5.0,
+                exit_code=0,
+            )
+        )
         result = await worker_with_session.execute({"prompt": "do work"})
         mock_client.call_tool.assert_called_once_with(
             "store_memory",
@@ -205,11 +220,13 @@ class TestExecute:
     @pytest.mark.asyncio
     async def test_execute_skips_session_buddy_when_no_client(self, worker_with_session):
         worker_with_session.session_buddy_client = None
-        worker_with_session._monitor_completion = AsyncMock(return_value=WorkerResult(
-            worker_id="existing_session",
-            status=WorkerStatus.COMPLETED,
-            output="done",
-        ))
+        worker_with_session._monitor_completion = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="existing_session",
+                status=WorkerStatus.COMPLETED,
+                output="done",
+            )
+        )
         await worker_with_session.execute({"prompt": "do work"})
 
     @pytest.mark.asyncio
@@ -217,17 +234,18 @@ class TestExecute:
         mock_client = AsyncMock()
         mock_client.call_tool.side_effect = RuntimeError("SB down")
         worker_with_session.session_buddy_client = mock_client
-        worker_with_session._monitor_completion = AsyncMock(return_value=WorkerResult(
-            worker_id="existing_session",
-            status=WorkerStatus.COMPLETED,
-            output="done",
-        ))
+        worker_with_session._monitor_completion = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="existing_session",
+                status=WorkerStatus.COMPLETED,
+                output="done",
+            )
+        )
         result = await worker_with_session.execute({"prompt": "do work"})
         assert result.status == WorkerStatus.COMPLETED
 
 
 class TestStoreResultInSessionBuddy:
-
     @pytest.mark.asyncio
     async def test_noop_when_no_client(self, worker_with_session):
         worker_with_session.session_buddy_client = None
@@ -265,7 +283,6 @@ class TestStoreResultInSessionBuddy:
 
 
 class TestMonitorCompletion:
-
     @pytest.mark.asyncio
     async def test_returns_on_finish_reason(self, worker_with_session, mock_terminal_manager):
         completion_line = json.dumps({"finish_reason": "stop"})
@@ -305,7 +322,9 @@ class TestMonitorCompletion:
         assert result.status == WorkerStatus.COMPLETED
 
     @pytest.mark.asyncio
-    async def test_extracts_string_content_before_completion(self, worker_with_session, mock_terminal_manager):
+    async def test_extracts_string_content_before_completion(
+        self, worker_with_session, mock_terminal_manager
+    ):
         content_line = json.dumps({"content": "hello world"})
         done_line = json.dumps({"type": "done"})
         mock_terminal_manager.capture_output.return_value = f"{content_line}\n{done_line}"
@@ -314,7 +333,9 @@ class TestMonitorCompletion:
         assert "hello world" in result.output
 
     @pytest.mark.asyncio
-    async def test_extracts_multimodal_content_before_completion(self, worker_with_session, mock_terminal_manager):
+    async def test_extracts_multimodal_content_before_completion(
+        self, worker_with_session, mock_terminal_manager
+    ):
         content_line = json.dumps({"content": [{"type": "text", "text": "multi-modal output"}]})
         done_line = json.dumps({"type": "done"})
         mock_terminal_manager.capture_output.return_value = f"{content_line}\n{done_line}"
@@ -323,18 +344,24 @@ class TestMonitorCompletion:
         assert "multi-modal output" in result.output
 
     @pytest.mark.asyncio
-    async def test_content_on_completion_line_is_not_captured(self, worker_with_session, mock_terminal_manager):
-        mock_terminal_manager.capture_output.return_value = json.dumps({
-            "content": "lost content",
-            "type": "done",
-        })
+    async def test_content_on_completion_line_is_not_captured(
+        self, worker_with_session, mock_terminal_manager
+    ):
+        mock_terminal_manager.capture_output.return_value = json.dumps(
+            {
+                "content": "lost content",
+                "type": "done",
+            }
+        )
         with patch("asyncio.sleep", new_callable=AsyncMock):
             result = await worker_with_session._monitor_completion({"timeout": 5})
         assert "lost content" not in result.output
 
     @pytest.mark.asyncio
     async def test_handles_non_json_lines(self, worker_with_session, mock_terminal_manager):
-        mock_terminal_manager.capture_output.return_value = "plain text line\n" + json.dumps({"type": "done"})
+        mock_terminal_manager.capture_output.return_value = "plain text line\n" + json.dumps(
+            {"type": "done"}
+        )
         with patch("asyncio.sleep", new_callable=AsyncMock):
             result = await worker_with_session._monitor_completion({"timeout": 5})
         assert "plain text line" in result.output
@@ -359,7 +386,9 @@ class TestMonitorCompletion:
         assert result.metadata["timeout"] == 5
 
     @pytest.mark.asyncio
-    async def test_capture_output_exception_handled(self, worker_with_session, mock_terminal_manager):
+    async def test_capture_output_exception_handled(
+        self, worker_with_session, mock_terminal_manager
+    ):
         mock_terminal_manager.capture_output.side_effect = RuntimeError("capture failed")
         call_count = 0
         original_time = asyncio.get_event_loop().time()
@@ -376,7 +405,9 @@ class TestMonitorCompletion:
         assert result.status == WorkerStatus.TIMEOUT
 
     @pytest.mark.asyncio
-    async def test_multiple_content_chunks_accumulated(self, worker_with_session, mock_terminal_manager):
+    async def test_multiple_content_chunks_accumulated(
+        self, worker_with_session, mock_terminal_manager
+    ):
         chunk1 = json.dumps({"content": "chunk1"})
         chunk2 = json.dumps({"content": "chunk2"})
         chunk3 = json.dumps({"type": "done"})
@@ -387,11 +418,15 @@ class TestMonitorCompletion:
         assert "chunk2" in result.output
 
     @pytest.mark.asyncio
-    async def test_multimodal_list_without_text_key_ignored(self, worker_with_session, mock_terminal_manager):
-        mock_terminal_manager.capture_output.return_value = json.dumps({
-            "content": [{"type": "image", "url": "http://example.com/img.png"}],
-            "type": "done",
-        })
+    async def test_multimodal_list_without_text_key_ignored(
+        self, worker_with_session, mock_terminal_manager
+    ):
+        mock_terminal_manager.capture_output.return_value = json.dumps(
+            {
+                "content": [{"type": "image", "url": "http://example.com/img.png"}],
+                "type": "done",
+            }
+        )
         with patch("asyncio.sleep", new_callable=AsyncMock):
             result = await worker_with_session._monitor_completion({"timeout": 5})
         assert result.output == ""
@@ -415,7 +450,6 @@ class TestMonitorCompletion:
 
 
 class TestIsComplete:
-
     def test_finish_reason_key(self, qwen_worker):
         assert qwen_worker._is_complete({"finish_reason": "stop"}) is True
 
@@ -442,7 +476,6 @@ class TestIsComplete:
 
 
 class TestExtractContent:
-
     def test_delta_content_format(self, qwen_worker):
         result = qwen_worker._extract_content({"delta": {"content": "delta text"}})
         assert result == "delta text"
@@ -484,22 +517,25 @@ class TestExtractContent:
         assert result is None
 
     def test_priority_delta_over_content(self, qwen_worker):
-        result = qwen_worker._extract_content({
-            "delta": {"content": "delta"},
-            "content": "content",
-        })
+        result = qwen_worker._extract_content(
+            {
+                "delta": {"content": "delta"},
+                "content": "content",
+            }
+        )
         assert result == "delta"
 
     def test_priority_text_over_content(self, qwen_worker):
-        result = qwen_worker._extract_content({
-            "text": "text_val",
-            "content": "content_val",
-        })
+        result = qwen_worker._extract_content(
+            {
+                "text": "text_val",
+                "content": "content_val",
+            }
+        )
         assert result == "text_val"
 
 
 class TestBuildResult:
-
     def test_build_result_with_start_time(self, worker_with_session):
         result = worker_with_session._build_result(["line1", "line2"], "last")
         assert result.status == WorkerStatus.COMPLETED
@@ -524,7 +560,6 @@ class TestBuildResult:
 
 
 class TestGetCommandTemplate:
-
     def test_qwen_template(self, qwen_worker):
         template = qwen_worker._get_command_template()
         assert template == "qwen -o stream-json --approval-mode yolo"
@@ -541,7 +576,6 @@ class TestGetCommandTemplate:
 
 
 class TestStop:
-
     @pytest.mark.asyncio
     async def test_stop_closes_session(self, worker_with_session, mock_terminal_manager):
         await worker_with_session.stop()
@@ -562,9 +596,10 @@ class TestStop:
 
 
 class TestStatus:
-
     @pytest.mark.asyncio
-    async def test_status_running_when_session_found(self, worker_with_session, mock_terminal_manager):
+    async def test_status_running_when_session_found(
+        self, worker_with_session, mock_terminal_manager
+    ):
         mock_terminal_manager.list_sessions.return_value = [
             {"id": "existing_session", "state": "active"},
         ]
@@ -572,14 +607,18 @@ class TestStatus:
         assert status == WorkerStatus.RUNNING
 
     @pytest.mark.asyncio
-    async def test_status_transitions_to_completed_when_session_missing(self, worker_with_session, mock_terminal_manager):
+    async def test_status_transitions_to_completed_when_session_missing(
+        self, worker_with_session, mock_terminal_manager
+    ):
         mock_terminal_manager.list_sessions.return_value = []
         worker_with_session._status = WorkerStatus.RUNNING
         status = await worker_with_session.status()
         assert status == WorkerStatus.COMPLETED
 
     @pytest.mark.asyncio
-    async def test_status_keeps_completed_when_not_running(self, worker_with_session, mock_terminal_manager):
+    async def test_status_keeps_completed_when_not_running(
+        self, worker_with_session, mock_terminal_manager
+    ):
         worker_with_session._status = WorkerStatus.COMPLETED
         mock_terminal_manager.list_sessions.return_value = []
         status = await worker_with_session.status()
@@ -610,7 +649,6 @@ class TestStatus:
 
 
 class TestGetProgress:
-
     @pytest.mark.asyncio
     async def test_progress_without_session(self, qwen_worker):
         progress = await qwen_worker.get_progress()
@@ -635,7 +673,9 @@ class TestGetProgress:
         assert len(progress["output_preview"]) == 200
 
     @pytest.mark.asyncio
-    async def test_progress_handles_capture_exception(self, worker_with_session, mock_terminal_manager):
+    async def test_progress_handles_capture_exception(
+        self, worker_with_session, mock_terminal_manager
+    ):
         mock_terminal_manager.capture_output.side_effect = RuntimeError("fail")
         progress = await worker_with_session.get_progress()
         assert progress["output_preview"] == ""

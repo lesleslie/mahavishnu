@@ -24,12 +24,15 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
+from dataclasses import dataclass
+from enum import Enum
 import json
 import logging
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable, Coroutine
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import asyncio
+    from collections.abc import Callable, Coroutine
 
 logger = logging.getLogger(__name__)
 

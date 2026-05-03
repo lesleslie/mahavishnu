@@ -15,13 +15,14 @@ Design:
 from __future__ import annotations
 
 import asyncio
-import logging
 from collections import defaultdict
+import contextlib
 from dataclasses import dataclass, field
-from datetime import datetime, UTC, timedelta
-from typing import Any, Awaitable, Callable
-from enum import Enum
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from enum import StrEnum
+import logging
+from typing import Any
 
 import numpy as np
 
@@ -32,12 +33,8 @@ from mahavishnu.core.metrics_collector import (
 from mahavishnu.core.metrics_schema import (
     AdapterType,
     TaskType,
-    CostTracking,
-    ExecutionRecord,
-    AdapterStats,
 )
 from mahavishnu.core.routing_metrics import get_routing_metrics
-
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +47,7 @@ ADAPTER_COSTS = {
 }
 
 
-class BudgetType(str, Enum):
+class BudgetType(StrEnum):
     """Budget aggregation types."""
 
     DAILY = "daily"
@@ -59,7 +56,7 @@ class BudgetType(str, Enum):
     PER_TASK_TYPE = "per_task_type"
 
 
-class TaskStrategy(str, Enum):
+class TaskStrategy(StrEnum):
     """Optimization strategies for task types."""
 
     INTERACTIVE = "interactive"  # Minimize latency (user-facing)
@@ -325,7 +322,9 @@ class CostOptimizer:
 
             actual_latency_ms = 0
             if adapter_executions:
-                latencies = [execution.latency_ms for execution in adapter_executions if execution.latency_ms]
+                latencies = [
+                    execution.latency_ms for execution in adapter_executions if execution.latency_ms
+                ]
                 if latencies:
                     actual_latency_ms = int(np.mean(latencies))
             else:
@@ -341,7 +340,8 @@ class CostOptimizer:
                 "min_success_rate": min_success_rate,
                 "actual_latency_ms": actual_latency_ms,
                 "actual_success_rate": success_rate,
-                "satisfied": actual_latency_ms <= max_latency_ms and success_rate >= min_success_rate,
+                "satisfied": actual_latency_ms <= max_latency_ms
+                and success_rate >= min_success_rate,
             }
 
             if not sla_result["satisfied"]:
@@ -499,10 +499,7 @@ class CostOptimizer:
             Best adapter choice with reasoning
         """
         # Use provided strategy or default
-        if strategy is None:
-            strategy = self.default_strategy
-        else:
-            strategy = strategy
+        strategy = self.default_strategy if strategy is None else strategy
 
         tracker = metrics_tracker or get_execution_tracker()
 
@@ -590,7 +587,6 @@ class CostOptimizer:
             )
 
         # Check budget constraints if provided
-        constraint_check = {}
         if constraints:
             for choice in choices:
                 check = await self.check_budget_constraints(
@@ -604,7 +600,7 @@ class CostOptimizer:
                 if not choice.constraints_satisfied:
                     choice.score = 0.0  # Zero score if violates constraints
 
-            constraint_check = {
+            {
                 "constraints_applied": constraints is not None,
                 "budget_violations": sum(1 for c in choices if not c.constraints_satisfied),
             }
@@ -706,12 +702,16 @@ class CostOptimizer:
             if budget_type is None or limit_usd is None:
                 raise TypeError("budget or budget_type/limit_usd must be provided")
 
-            effective_days = period_days if period_days is not None else {
-                BudgetType.DAILY: 1,
-                BudgetType.WEEKLY: 7,
-                BudgetType.MONTHLY: 30,
-                BudgetType.PER_TASK_TYPE: 30,
-            }[budget_type]
+            effective_days = (
+                period_days
+                if period_days is not None
+                else {
+                    BudgetType.DAILY: 1,
+                    BudgetType.WEEKLY: 7,
+                    BudgetType.MONTHLY: 30,
+                    BudgetType.PER_TASK_TYPE: 30,
+                }[budget_type]
+            )
 
             budget_to_add = Budget(
                 budget_type=budget_type,
@@ -725,7 +725,9 @@ class CostOptimizer:
 
         self.budgets.append(budget_to_add)
 
-        logger.info(f"Added budget: {budget_to_add.budget_type.value} ${budget_to_add.limit_usd:.2f}")
+        logger.info(
+            f"Added budget: {budget_to_add.budget_type.value} ${budget_to_add.limit_usd:.2f}"
+        )
 
         return budget_to_add
 
@@ -784,10 +786,8 @@ class CostOptimizer:
 
         if self._recalc_task and not self._recalc_task.done():
             self._recalc_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._recalc_task
-            except asyncio.CancelledError:
-                pass
 
         self._shutdown_event.set()
         logger.info("CostOptimizer stopped")

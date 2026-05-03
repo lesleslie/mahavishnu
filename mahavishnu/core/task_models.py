@@ -27,8 +27,8 @@ Usage:
     search = FTSSearchQuery(query="authentication issues")
 """
 
+from datetime import UTC, datetime
 import re
-from datetime import datetime, timezone
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -260,10 +260,10 @@ class TaskCreateRequest(BaseModel):
 
             # Ensure timezone-aware (assume UTC if naive)
             if deadline.tzinfo is None:
-                deadline = deadline.replace(tzinfo=timezone.utc)
+                deadline = deadline.replace(tzinfo=UTC)
 
             # Check if deadline is in the future
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             if deadline <= now:
                 raise ValueError(
                     f"Deadline must be in the future. Got: {deadline.isoformat()}, "

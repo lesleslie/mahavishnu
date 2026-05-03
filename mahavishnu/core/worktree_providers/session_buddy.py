@@ -100,7 +100,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
             )
 
             # Call Session-Buddy's create_worktree tool
-            result = await client.call_tool(
+            await client.call_tool(
                 "create_worktree",
                 arguments={
                     "repository_path": str(repository_path),
@@ -158,7 +158,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
             )
 
             # Call Session-Buddy's remove_worktree tool
-            result = await client.call_tool(
+            await client.call_tool(
                 "remove_worktree",
                 arguments={
                     "repository_path": str(repository_path),
@@ -236,7 +236,6 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
             True if Session-Buddy MCP server is reachable
         """
         try:
-            import asyncio
             import socket
 
             # Parse URL to get host and port

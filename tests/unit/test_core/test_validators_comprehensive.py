@@ -11,8 +11,9 @@ This module provides extensive test coverage for:
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
+import tempfile
+
 import pytest
 
 # Skip until validators module is implemented
@@ -35,6 +36,7 @@ class TestValidatePath:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Change to tmpdir to test relative paths
             import os
+
             original_cwd = os.getcwd()
             try:
                 os.chdir(tmpdir)
@@ -265,6 +267,7 @@ class TestValidatePath:
         """Test that allowed_base_dirs defaults to current directory."""
         # Create a file in current directory
         import os
+
         cwd = os.getcwd()
 
         test_file = Path(cwd) / "test_temp.txt"
@@ -362,7 +365,6 @@ class TestValidateRepositoryPath:
 
     async def test_validate_repository_path_warns_on_no_vcs(self):
         """Test that warning is issued for directory without VCS metadata."""
-        import logging
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_path = Path(tmpdir) / "myrepo"
             repo_path.mkdir()
@@ -582,6 +584,7 @@ class TestEdgeCases:
     async def test_validate_none_allowed_base_dirs(self):
         """Test that None allowed_base_dirs uses current directory."""
         import os
+
         cwd = os.getcwd()
 
         test_file = Path(cwd) / "test_temp.txt"

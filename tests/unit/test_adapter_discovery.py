@@ -172,7 +172,9 @@ async def test_discover_all_merges_sources_and_handles_failures() -> None:
 
     engine.invalidate_cache_for_source("discover_all")
     with (
-        patch.object(engine, "discover_from_entry_points", AsyncMock(side_effect=RuntimeError("x"))),
+        patch.object(
+            engine, "discover_from_entry_points", AsyncMock(side_effect=RuntimeError("x"))
+        ),
         patch.object(engine, "discover_from_dhara", AsyncMock(side_effect=RuntimeError("y"))),
     ):
         result = await engine.discover_all()
@@ -192,7 +194,9 @@ async def test_get_dhara_client_disabled_and_failure() -> None:
         assert engine._get_dhara_client() is None
 
     fake_client = object()
-    with patch("mahavishnu.core.adapter_discovery.DharaAdapterRegistryClient", return_value=fake_client):
+    with patch(
+        "mahavishnu.core.adapter_discovery.DharaAdapterRegistryClient", return_value=fake_client
+    ):
         assert engine._get_dhara_client() is fake_client
         assert engine._get_dhara_client() is fake_client
 

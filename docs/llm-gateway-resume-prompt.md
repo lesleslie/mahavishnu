@@ -2,7 +2,7 @@
 
 > Paste this into Claude Code, Codex, or any coding agent to continue the work.
 
----
+______________________________________________________________________
 
 ## Context
 
@@ -11,6 +11,7 @@ I'm building an LLM gateway/proxy on macOS (Intel x86_64) to unify multiple AI c
 ### The Problem
 
 I have 5+ LLM clients that all hit z.ai (GLM models from Zhipu AI) independently:
+
 - **Claude Code** (via CCR — Claude Code Router, installed at `/usr/local/bin/ccr`)
 - **Codex CLI** (OpenAI-compatible)
 - **Qwen CLI** (OpenAI-compatible)
@@ -18,6 +19,7 @@ I have 5+ LLM clients that all hit z.ai (GLM models from Zhipu AI) independently
 - **Vish Workers** (OpenAI-compatible)
 
 z.ai has two API formats:
+
 - **OpenAI-compatible**: `https://api.z.ai/api/paas/v4/chat/completions` (glm-5, glm-5-turbo, glm-4.7, glm-4.5, etc.)
 - **Anthropic Messages**: `https://api.z.ai/api/anthropic/v1/messages` (GLM-4.7, GLM-4.5-Air, GLM-4.5V, GLM-4.6V)
 - **Coding Plan** (cheaper, rate-limited): `https://api.z.ai/api/coding/paas/v4/chat/completions`
@@ -27,19 +29,20 @@ Auth: `Authorization: Bearer $Z_AI_API_KEY`
 ### What We've Done
 
 1. **Evaluated TensorZero** as the gateway — wrote a 1047-line implementation plan at `docs/plans/tensorzero-gateway-plan.md` (v3.0, Postgres auth + Tempo tracing)
-2. **Got stuck trying to install it** — the TensorZero Rust binary wouldn't build on macOS, Docker on OrbStack had issues, Python embedded gateway was unclear
-3. **Explored alternatives** — Bifrost, Helicone, BricksLLM, Portkey, LunarGate, any-llm-gateway, llms.py — all either SaaS/cloud-only, unmaintained, or over-engineered for this use case
+1. **Got stuck trying to install it** — the TensorZero Rust binary wouldn't build on macOS, Docker on OrbStack had issues, Python embedded gateway was unclear
+1. **Explored alternatives** — Bifrost, Helicone, BricksLLM, Portkey, LunarGate, any-llm-gateway, llms.py — all either SaaS/cloud-only, unmaintained, or over-engineered for this use case
 
 ### What I Actually Need
 
 A **simple, self-hosted LLM proxy** that:
+
 1. Listens on localhost:8471
-2. Exposes OpenAI-compatible `/v1/chat/completions` endpoint
-3. Routes requests to z.ai's OpenAI-compatible endpoint with the API key injected
-4. Has basic rate limiting (per-minute or per-model)
-5. Optionally caches identical requests
-6. Logs requests/responses for observability (structured JSON logs are fine)
-7. Can be run as a macOS LaunchAgent (survives reboots)
+1. Exposes OpenAI-compatible `/v1/chat/completions` endpoint
+1. Routes requests to z.ai's OpenAI-compatible endpoint with the API key injected
+1. Has basic rate limiting (per-minute or per-model)
+1. Optionally caches identical requests
+1. Logs requests/responses for observability (structured JSON logs are fine)
+1. Can be run as a macOS LaunchAgent (survives reboots)
 
 **CCR (Claude Code Router)** already handles the Anthropic-format translation for Claude Code, so the gateway only needs to speak OpenAI format.
 
@@ -78,15 +81,15 @@ A **simple, self-hosted LLM proxy** that:
 Evaluate the simplest path to get a working LLM gateway running on this machine. Options include but aren't limited to:
 
 1. **Build a minimal FastAPI proxy** (~200-300 lines Python) with rate limiting via Redis
-2. **Get TensorZero working** (the plan exists, just needs installation troubleshooting)
-3. **Use any-llm-gateway or llms.py** if they're viable
-4. **Something else entirely** that I haven't considered
+1. **Get TensorZero working** (the plan exists, just needs installation troubleshooting)
+1. **Use any-llm-gateway or llms.py** if they're viable
+1. **Something else entirely** that I haven't considered
 
 Then implement whichever option is simplest and most reliable. Create a LaunchAgent plist so it survives reboots. Verify it works by sending a test request with `curl`.
 
 After the gateway is running, the next step would be reconfiguring CCR and the other clients to point at it — but get the gateway running first.
 
----
+______________________________________________________________________
 
 ## Environment Notes
 

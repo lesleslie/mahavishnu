@@ -10,11 +10,7 @@ Validates boundary hardening items from the Bodai I0 checklist:
 
 from __future__ import annotations
 
-import importlib
-import sys
 from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import patch
 
 import pytest
 
@@ -34,14 +30,25 @@ class _StubAdapter(OrchestratorAdapter):
 
     async def initialize(self) -> None: ...
     @property
-    def adapter_type(self) -> AdapterType: return self._adapter_type
+    def adapter_type(self) -> AdapterType:
+        return self._adapter_type
+
     @property
-    def name(self) -> str: return self._adapter_type.value
+    def name(self) -> str:
+        return self._adapter_type.value
+
     @property
-    def capabilities(self) -> AdapterCapabilities: return self._caps
-    async def execute(self, task: dict, repos: list) -> dict: return {}
-    async def get_health(self) -> dict: return {"status": "healthy"}
-    async def is_available(self) -> bool: return True
+    def capabilities(self) -> AdapterCapabilities:
+        return self._caps
+
+    async def execute(self, task: dict, repos: list) -> dict:
+        return {}
+
+    async def get_health(self) -> dict:
+        return {"status": "healthy"}
+
+    async def is_available(self) -> bool:
+        return True
 
 
 @pytest.fixture
@@ -182,7 +189,7 @@ def test_tui_modules_have_no_persistence_writes() -> None:
             f"{f.relative_to(tui_dir)}: unexpected .write() call"
         )
         # No open-for-write patterns
-        assert 'open(' not in src or '"w"' not in src, (
+        assert "open(" not in src or '"w"' not in src, (
             f"{f.relative_to(tui_dir)}: unexpected file open for write"
         )
 

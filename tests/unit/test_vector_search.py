@@ -9,19 +9,19 @@ Tests cover:
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, UTC
 
 from mahavishnu.core.vector_search import (
-    VectorStore,
-    VectorSearch,
-    VectorIndex,
-    TaskSimilarity,
     SearchQuery,
     SearchResult,
     SearchType,
+    TaskSimilarity,
+    VectorIndex,
+    VectorSearch,
     VectorSearchError,
+    VectorStore,
 )
 
 
@@ -143,7 +143,9 @@ class TestVectorIndex:
         assert "embedding" in call_args
 
     @pytest.mark.asyncio
-    async def test_create_hnsw_index_custom_params(self, index: VectorIndex, mock_db: MagicMock) -> None:
+    async def test_create_hnsw_index_custom_params(
+        self, index: VectorIndex, mock_db: MagicMock
+    ) -> None:
         """Test creating HNSW index with custom params."""
         await index.create_hnsw_index(m=32, ef_construction=128)
 
@@ -274,9 +276,7 @@ class TestVectorStore:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_batch_store(
-        self, mock_db: MagicMock, mock_embedding_service: MagicMock
-    ) -> None:
+    async def test_batch_store(self, mock_db: MagicMock, mock_embedding_service: MagicMock) -> None:
         """Test batch storing embeddings."""
         mock_db.fetchrow = AsyncMock(return_value={"id": "emb-123"})
         store = VectorStore(mock_db, mock_embedding_service)
@@ -409,7 +409,9 @@ class TestVectorSearch:
         assert results[0].similarity == 0.9
 
     @pytest.mark.asyncio
-    async def test_hybrid_search_fallback_fts(self, search: VectorSearch, mock_db: MagicMock) -> None:
+    async def test_hybrid_search_fallback_fts(
+        self, search: VectorSearch, mock_db: MagicMock
+    ) -> None:
         """Test hybrid search falls back to FTS without embedding service."""
         mock_db.fetch = AsyncMock(
             return_value=[
@@ -458,7 +460,9 @@ class TestVectorSearch:
         assert results[0].task_id == "task-2"
 
     @pytest.mark.asyncio
-    async def test_find_similar_no_embedding(self, search: VectorSearch, mock_db: MagicMock) -> None:
+    async def test_find_similar_no_embedding(
+        self, search: VectorSearch, mock_db: MagicMock
+    ) -> None:
         """Test finding similar when task has no embedding."""
         mock_db.fetchrow = AsyncMock(return_value=None)
 
@@ -483,7 +487,9 @@ class TestTaskSimilarity:
         return TaskSimilarity(mock_db)
 
     @pytest.mark.asyncio
-    async def test_compute_similarity_matrix(self, similarity: TaskSimilarity, mock_db: MagicMock) -> None:
+    async def test_compute_similarity_matrix(
+        self, similarity: TaskSimilarity, mock_db: MagicMock
+    ) -> None:
         """Test computing similarity matrix."""
         mock_db.fetch = AsyncMock(
             return_value=[

@@ -5,7 +5,7 @@
 **Document**: `/docs/TASK_ORCHESTRATION_MASTER_PLAN.md`
 **Status**: **APPROVE WITH CHANGES**
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
@@ -14,13 +14,14 @@ The Task Orchestration Master Plan presents a comprehensive multi-repository tas
 **Overall Security Rating**: **6.5/10**
 
 **Key Findings**:
+
 - ✅ **Strong**: Existing security infrastructure (validators, secrets scanner)
 - ⚠️ **Moderate**: Webhook security and approval workflow
 - ❌ **Critical**: Missing input validation for NLP parser, insufficient SQL injection protections
 - ❌ **Critical**: No comprehensive audit logging system defined
 - ⚠️ **Moderate**: Access control model incomplete
 
----
+______________________________________________________________________
 
 ## 1. One-Way Sync & Approval Workflow
 
@@ -37,6 +38,7 @@ The one-way sync approach (GitHub/GitLab → Mahavishnu) with manual approval is
 #### ❌ **Gap 1.1: Webhook Authentication Not Specified**
 
 **Current State** (lines 1498-1518):
+
 ```yaml
 # GitHub webhook settings
 URL: https://mahavishnu.example.com/api/webhooks/github
@@ -44,11 +46,13 @@ Secret: ${GITHUB_WEBHOOK_SECRET}  # ⚠️ Not validated in document
 ```
 
 **Risk**: Webhook endpoints without proper authentication are vulnerable to:
+
 - Spoofed webhooks from malicious actors
 - Replay attacks
 - Denial of service via webhook spam
 
 **Required Fix**:
+
 ```python
 # MISSING: Webhook signature validation
 class WebhookValidator:
@@ -111,16 +115,18 @@ class WebhookValidator:
 ```
 
 **Implementation Requirements**:
-1. Reject webhooks with invalid signatures (HTTP 401)
-2. Log all webhook validation failures
-3. Rate limit webhook endpoints (prevent DoS)
-4. Add replay attack protection (timestamp validation)
 
----
+1. Reject webhooks with invalid signatures (HTTP 401)
+1. Log all webhook validation failures
+1. Rate limit webhook endpoints (prevent DoS)
+1. Add replay attack protection (timestamp validation)
+
+______________________________________________________________________
 
 #### ❌ **Gap 1.2: No Approval Authority/Authorization Model**
 
 **Current State** (lines 1290-1365):
+
 ```python
 async def approve_task_proposal(self, proposal_id: str) -> Task:
     """User approves - convert proposal to real task."""
@@ -130,6 +136,7 @@ async def approve_task_proposal(self, proposal_id: str) -> Task:
 **Risk**: Unauthorized users can approve malicious task proposals.
 
 **Required Fix**:
+
 ```python
 class ApprovalAuthority:
     """Manage who can approve task proposals."""
@@ -164,18 +171,20 @@ async def approve_task_proposal(
 ```
 
 **Authorization Model Requirements**:
-1. Define approver roles (admin, maintainer, trusted-developer)
-2. Store approval decisions with approver identity
-3. Require approval reason for audit trail
-4. Implement approval revocation capability
 
----
+1. Define approver roles (admin, maintainer, trusted-developer)
+1. Store approval decisions with approver identity
+1. Require approval reason for audit trail
+1. Implement approval revocation capability
+
+______________________________________________________________________
 
 #### ⚠️ **Gap 1.3: No Approval Quorum/Review Process**
 
 **Risk**: Single compromised approver can approve malicious tasks.
 
 **Recommendation** (optional for MVP):
+
 ```yaml
 # Optional: Multi-approval workflow
 approval:
@@ -186,7 +195,7 @@ approval:
     trusted_users: ["les", "senior-dev"]
 ```
 
----
+______________________________________________________________________
 
 ## 2. Injection Attack Vulnerabilities
 
@@ -204,6 +213,7 @@ The NLP task parser is a **high-value attack surface** that could allow:
 #### ❌ **Vulnerability 2.1: No Input Sanitization for NLP Parser**
 
 **Current State** (lines 436-491):
+
 ```python
 # 1. NLP Parser extracts:
 {
@@ -220,6 +230,7 @@ task = await task_orchestrator.create_task(**extracted_data)
 ```
 
 **Attack Vector 1: Repository Name Injection**
+
 ```bash
 # Malicious input
 mhv task add "Fix bug in '../../../etc/passwd' by Friday"
@@ -230,6 +241,7 @@ mhv task add "Fix bug in '../../../etc/passwd' by Friday"
 ```
 
 **Attack Vector 2: Command Injection via Task Title**
+
 ```bash
 # Malicious input
 mhv task add "Fix bug; rm -rf ~/worktrees"  # Semicolon injection
@@ -238,6 +250,7 @@ mhv task add "Fix bug; rm -rf ~/worktrees"  # Semicolon injection
 ```
 
 **Required Fix: Input Sanitization Layer**
+
 ```python
 from mahavishnu.core.validators import PathValidator
 import re
@@ -437,17 +450,19 @@ class TaskOrchestrator:
         return await self.task_store.create(**sanitized_input)
 ```
 
----
+______________________________________________________________________
 
 #### ❌ **Vulnerability 2.2: SQL Injection via Task Search**
 
 **Current State** (lines 500-527):
+
 ```python
 # ⚠️ User query directly used in FTS search
 results = await self.sqlite.fulltext_search(query)  # NO SANITIZATION
 ```
 
 **Attack Vector**:
+
 ```bash
 # Malicious search query
 mhv task find "'; DROP TABLE tasks; --"
@@ -456,6 +471,7 @@ mhv task find "'; DROP TABLE tasks; --"
 ```
 
 **Required Fix: Parameterized Queries**
+
 ```python
 class TaskStore:
     async def fulltext_search(self, query: str) -> list[Task]:
@@ -499,7 +515,7 @@ class TaskStore:
         return query.strip()
 ```
 
----
+______________________________________________________________________
 
 ## 3. Data Privacy & Credential Redaction
 
@@ -508,6 +524,7 @@ class TaskStore:
 ### Positive Finding: Secrets Scanner Already Exists ✅
 
 **Existing Capability** (`mahavishnu/core/secrets_scanner.py`):
+
 - ✅ Detects API keys, passwords, tokens
 - ✅ Integrates with detect-secrets library
 - ✅ Supports credential redaction
@@ -517,6 +534,7 @@ class TaskStore:
 **Risk**: Users may accidentally paste credentials into task descriptions.
 
 **Required Fix**:
+
 ```python
 class TaskOrchestrator:
     def __init__(self):
@@ -574,7 +592,7 @@ class TaskOrchestrator:
         )
 ```
 
----
+______________________________________________________________________
 
 ## 4. Access Control Model
 
@@ -583,11 +601,13 @@ class TaskOrchestrator:
 ### ❌ **Gap 4.1: No Authentication/Authorization Defined**
 
 **Current State**: The document assumes "User" but doesn't define:
+
 - How users authenticate
 - Authorization model (RBAC, ABAC)
 - Permission checks for task operations
 
 **Required Fix: Define Access Control Model**
+
 ```python
 from enum import Enum
 from typing import Set
@@ -708,7 +728,7 @@ class TaskOrchestrator:
         return task
 ```
 
----
+______________________________________________________________________
 
 ## 5. SQL Injection Protection
 
@@ -717,6 +737,7 @@ class TaskOrchestrator:
 ### ✅ **Positive: SQLite Schema Uses Parameterized Queries** (Assumed)
 
 **Schema** (lines 338-419):
+
 ```sql
 -- ✅ Schema uses proper types and constraints
 CREATE TABLE tasks (
@@ -732,6 +753,7 @@ CREATE TABLE tasks (
 **Required Fix**: All database operations must use parameterized queries.
 
 **Document Should Specify**:
+
 ```python
 # ✅ CORRECT: Parameterized query
 async def create_task(self, **kwargs):
@@ -756,11 +778,12 @@ async def create_task_wrong(self, **kwargs):
 ```
 
 **Requirement**: Update master plan to include:
-1. Mandate parameterized queries for all DB operations
-2. Use SQLAlchemy or similar ORM (not raw SQL)
-3. Add unit tests for SQL injection attempts
 
----
+1. Mandate parameterized queries for all DB operations
+1. Use SQLAlchemy or similar ORM (not raw SQL)
+1. Add unit tests for SQL injection attempts
+
+______________________________________________________________________
 
 ## 6. Path Traversal Protection
 
@@ -769,6 +792,7 @@ async def create_task_wrong(self, **kwargs):
 ### ✅ **Positive: PathValidator Already Exists**
 
 **Existing Capability** (`mahavishnu/core/validators.py`):
+
 - ✅ Prevents directory traversal (`..` sequences)
 - ✅ Validates paths against allowed base directories
 - ✅ Sanitizes filenames
@@ -776,6 +800,7 @@ async def create_task_wrong(self, **kwargs):
 ### ⚠️ **Gap 6.1: PathValidator Not Used in Task Plan**
 
 **Required Fix**: Document should explicitly state:
+
 ```python
 # In worktree creation
 from mahavishnu.core.validators import PathValidator
@@ -810,7 +835,7 @@ class TaskOrchestrator:
         return worktree_path
 ```
 
----
+______________________________________________________________________
 
 ## 7. Audit Logging
 
@@ -819,12 +844,14 @@ class TaskOrchestrator:
 ### ❌ **Gap 7.1: No Comprehensive Audit Trail Defined**
 
 **Current State**: Document mentions "audit logging" in existing security.md but doesn't define:
+
 - What events to log
 - Log format/structure
 - Log retention policy
 - Log protection (integrity, access control)
 
 **Required Fix: Comprehensive Audit Logging System**
+
 ```python
 from enum import Enum
 from datetime import datetime
@@ -970,26 +997,29 @@ class TaskOrchestrator:
 ```
 
 **Audit Logging Requirements**:
-1. **Immutable logs**: Append-only file storage
-2. **Comprehensive coverage**: Log all task state changes
-3. **Structured format**: JSON for easy querying
-4. **Retention policy**: 1-7 years (compliance)
-5. **Access control**: Only admins can view logs
-6. **Tamper detection**: Cryptographic hashing/log signing
-7. **Regular backup**: Separate from main database
 
----
+1. **Immutable logs**: Append-only file storage
+1. **Comprehensive coverage**: Log all task state changes
+1. **Structured format**: JSON for easy querying
+1. **Retention policy**: 1-7 years (compliance)
+1. **Access control**: Only admins can view logs
+1. **Tamper detection**: Cryptographic hashing/log signing
+1. **Regular backup**: Separate from main database
+
+______________________________________________________________________
 
 ## 8. Additional Security Recommendations
 
 ### 8.1 Rate Limiting ⚠️
 
 **Gap**: No rate limiting defined for:
+
 - Task creation API
 - Webhook endpoints
 - Search queries
 
 **Recommendation**:
+
 ```python
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -1013,15 +1043,17 @@ async def github_webhook(request: Request):
 **Gap**: Webhook URLs shown as HTTPS but TLS configuration not specified.
 
 **Requirement**:
+
 1. Enforce TLS 1.2+ for all webhook endpoints
-2. Certificate pinning for GitHub/GitLab webhooks
-3. Document TLS setup in deployment guide
+1. Certificate pinning for GitHub/GitLab webhooks
+1. Document TLS setup in deployment guide
 
 ### 8.3 Secret Rotation ⚠️
 
 **Gap**: Webhook secrets and database keys have no rotation mechanism.
 
 **Recommendation**:
+
 ```yaml
 # Add to deployment guide
 security:
@@ -1036,6 +1068,7 @@ security:
 **Positive**: Document mentions `pip-audit` in security.md.
 
 **Recommendation**: Add to CI/CD pipeline:
+
 ```yaml
 # .github/workflows/security.yml
 name: Security Scan
@@ -1052,7 +1085,7 @@ steps:
     run: safety check
 ```
 
----
+______________________________________________________________________
 
 ## 9. Critical Security Fixes Summary
 
@@ -1082,7 +1115,7 @@ steps:
 
 **Total Effort**: ~7 developer days
 
----
+______________________________________________________________________
 
 ## 10. Security Testing Requirements
 
@@ -1147,7 +1180,7 @@ class TestTaskSecurity:
         assert response.status_code == 401
 ```
 
----
+______________________________________________________________________
 
 ## 11. Compliance Considerations
 
@@ -1164,25 +1197,28 @@ class TestTaskSecurity:
 - ⚠️ Change management process not documented
 - ⚠️ Incident response procedure not referenced
 
----
+______________________________________________________________________
 
 ## 12. Final Recommendations
 
 ### Immediate Actions (Before Phase 1)
 
 1. **Create Security Module** (`mahavishnu/core/task_security.py`):
+
    - InputSanitizer class
    - TaskAccessControl class
    - TaskAuditLogger class
    - WebhookValidator class
 
-2. **Update Master Plan**:
+1. **Update Master Plan**:
+
    - Add "Security Implementation" section
    - Define authentication/authorization model
    - Specify audit logging requirements
    - Add security testing to Phase 1 deliverables
 
-3. **Security Hardening**:
+1. **Security Hardening**:
+
    - Enable webhook signature validation
    - Implement rate limiting
    - Add comprehensive audit logging
@@ -1212,7 +1248,7 @@ Add to Phase 1 (lines 1524-1551):
 - [ ] Security review with Power Trio
 ```
 
----
+______________________________________________________________________
 
 ## Conclusion
 
@@ -1221,12 +1257,13 @@ The Task Orchestration Master Plan has **solid architectural foundations** but r
 ### Decision: **APPROVE WITH CHANGES** ✅⚠️
 
 **Required Changes**:
+
 1. Add comprehensive input sanitization (CRITICAL)
-2. Implement access control model (CRITICAL)
-3. Add audit logging system (CRITICAL)
-4. Validate webhook signatures (CRITICAL)
-5. Integrate secrets scanner in task creation (HIGH)
-6. Add security test suite (HIGH)
+1. Implement access control model (CRITICAL)
+1. Add audit logging system (CRITICAL)
+1. Validate webhook signatures (CRITICAL)
+1. Integrate secrets scanner in task creation (HIGH)
+1. Add security test suite (HIGH)
 
 **Estimated Effort**: 14-21 developer days
 
@@ -1234,11 +1271,12 @@ The Task Orchestration Master Plan has **solid architectural foundations** but r
 
 **Recommendation**: Complete P0 security fixes before Phase 2 (semantic search integration). Security fundamentals must be in place before adding advanced features.
 
----
+______________________________________________________________________
 
 ## Appendix: Security Checklist
 
 ### Webhook Security
+
 - [ ] Signature validation (GitHub/GitLab)
 - [ ] Replay attack prevention
 - [ ] Rate limiting
@@ -1246,6 +1284,7 @@ The Task Orchestration Master Plan has **solid architectural foundations** but r
 - [ ] TLS enforcement
 
 ### Input Validation
+
 - [ ] Task title sanitization
 - [ ] Description sanitization (HTML/XSS)
 - [ ] Repository name whitelist validation
@@ -1253,18 +1292,21 @@ The Task Orchestration Master Plan has **solid architectural foundations** but r
 - [ ] Priority enum validation
 
 ### SQL Injection Protection
+
 - [ ] All queries parameterized
 - [ ] ORM/SQLAlchemy usage
 - [ ] FTS query sanitization
 - [ ] Unit tests for injection attempts
 
 ### Access Control
+
 - [ ] User authentication mechanism
 - [ ] Role-based permissions (RBAC)
 - [ ] Permission checks on all operations
 - [ ] Audit trail for permission denials
 
 ### Audit Logging
+
 - [ ] Log all task state changes
 - [ ] Log all approval decisions
 - [ ] Log authentication failures
@@ -1273,18 +1315,20 @@ The Task Orchestration Master Plan has **solid architectural foundations** but r
 - [ ] Log backup strategy
 
 ### Data Privacy
+
 - [ ] Secrets scanning on task creation
 - [ ] Credential redaction
 - [ ] Data retention policy
 - [ ] Right-to-deletion implementation
 
 ### Compliance
+
 - [ ] GDPR data subject access requests
 - [ ] SOC 2 access control documentation
 - [ ] Incident response procedures
 - [ ] Security training for developers
 
----
+______________________________________________________________________
 
 **Review Complete**
 **Reviewer**: Claude Sonnet 4.5 (Security Architecture Specialist)

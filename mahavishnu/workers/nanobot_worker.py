@@ -18,8 +18,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-import uuid
 from typing import Any
+import uuid
 
 from mahavishnu.core.status import WorkerStatus
 
@@ -158,7 +158,7 @@ class NanobotWorker(BaseWorker):
 
             return result
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             duration = time.time() - start_time
             logger.warning(f"Nanobot task timed out after {duration:.1f}s")
             return WorkerResult(
@@ -197,9 +197,7 @@ class NanobotWorker(BaseWorker):
             "worker_type": self.worker_type,
             "mode": "loop" if self._is_loop_mode else "runner",
             "duration_seconds": duration,
-            "provider": type(self._nanobot_provider).__name__
-            if self._nanobot_provider
-            else None,
+            "provider": type(self._nanobot_provider).__name__ if self._nanobot_provider else None,
         }
 
     # ── Private helpers ──────────────────────────────────────────────

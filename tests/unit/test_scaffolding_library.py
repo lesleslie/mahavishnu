@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from mahavishnu.scaffolding.models import Pattern
 from mahavishnu.scaffolding.library import PatternLibrary
+from mahavishnu.scaffolding.models import Pattern
 
 
 @pytest.fixture
@@ -42,9 +42,7 @@ def sample_pattern() -> dict:
 class TestPatternLibraryLoad:
     def test_load_single_pattern(self, lib: PatternLibrary, sample_pattern: dict):
         lib.root.joinpath("scaffolding").mkdir(parents=True)
-        lib.root.joinpath("scaffolding", "project.yaml").write_text(
-            yaml.dump(sample_pattern)
-        )
+        lib.root.joinpath("scaffolding", "project.yaml").write_text(yaml.dump(sample_pattern))
         patterns = lib.load_all()
         assert len(patterns) == 1
         assert patterns[0].id == "scaffolding/project"
@@ -72,9 +70,7 @@ class TestPatternLibraryLoad:
 class TestPatternLibraryQuery:
     def test_get_by_id(self, lib: PatternLibrary, sample_pattern: dict):
         lib.root.joinpath("scaffolding").mkdir(parents=True)
-        lib.root.joinpath("scaffolding", "project.yaml").write_text(
-            yaml.dump(sample_pattern)
-        )
+        lib.root.joinpath("scaffolding", "project.yaml").write_text(yaml.dump(sample_pattern))
         lib.load_all()
         p = lib.get("scaffolding/project")
         assert p is not None
@@ -97,27 +93,21 @@ class TestPatternLibraryQuery:
 
     def test_search_by_tag(self, lib: PatternLibrary, sample_pattern: dict):
         lib.root.joinpath("scaffolding").mkdir(parents=True)
-        lib.root.joinpath("scaffolding", "project.yaml").write_text(
-            yaml.dump(sample_pattern)
-        )
+        lib.root.joinpath("scaffolding", "project.yaml").write_text(yaml.dump(sample_pattern))
         lib.load_all()
         results = lib.search("fastblocks")
         assert len(results) == 1
 
     def test_search_by_name(self, lib: PatternLibrary, sample_pattern: dict):
         lib.root.joinpath("scaffolding").mkdir(parents=True)
-        lib.root.joinpath("scaffolding", "project.yaml").write_text(
-            yaml.dump(sample_pattern)
-        )
+        lib.root.joinpath("scaffolding", "project.yaml").write_text(yaml.dump(sample_pattern))
         lib.load_all()
         results = lib.search("Skeleton")
         assert len(results) == 1
 
     def test_has(self, lib: PatternLibrary, sample_pattern: dict):
         lib.root.joinpath("scaffolding").mkdir(parents=True)
-        lib.root.joinpath("scaffolding", "project.yaml").write_text(
-            yaml.dump(sample_pattern)
-        )
+        lib.root.joinpath("scaffolding", "project.yaml").write_text(yaml.dump(sample_pattern))
         lib.load_all()
         assert lib.has("scaffolding/project") is True
         assert lib.has("nonexistent") is False
@@ -128,9 +118,7 @@ class TestPatternLibrarySave:
         p = Pattern(id="scaffolding/test", name="Test")
         lib.save(p)
         assert lib.root.joinpath("scaffolding", "test.yaml").exists()
-        loaded = yaml.safe_load(
-            lib.root.joinpath("scaffolding", "test.yaml").read_text()
-        )
+        loaded = yaml.safe_load(lib.root.joinpath("scaffolding", "test.yaml").read_text())
         assert loaded["id"] == "scaffolding/test"
 
     def test_save_creates_category_dir(self, lib: PatternLibrary):

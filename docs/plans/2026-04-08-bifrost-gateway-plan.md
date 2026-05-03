@@ -179,20 +179,23 @@ This is sufficient to replace the useful parts of CCR's image routing.
 Use three caching layers, in this order:
 
 1. provider-native prompt caching where available
-2. Bifrost exact-match response cache
-3. Bifrost semantic cache
+1. Bifrost exact-match response cache
+1. Bifrost semantic cache
 
 ### What Each Layer Does
 
 - provider-native prompt caching
+
   - best for stable system prompts and repeated long prefixes
   - especially useful for Anthropic-compatible traffic
 
 - exact-match response cache
+
   - best for repeated identical prompts and deterministic jobs
   - lowest risk and easiest to reason about
 
 - semantic cache
+
   - best for near-duplicate prompts and repeated coding questions
   - good for token reduction at scale
 

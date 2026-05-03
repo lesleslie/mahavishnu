@@ -3,15 +3,14 @@
 Tests ULID generation functionality without cross-system dependencies.
 """
 
-import sys
 from pathlib import Path
+import sys
 
 # Add project paths to Python path
 sys.path.insert(0, str(Path("/Users/les/Projects/crackerjack")))
 sys.path.insert(0, str(Path("/Users/les/Projects/session-buddy")))
 
 import pytest
-
 
 _ULID_CHARS = "0123456789abcdefghjkmnpqrstvwxyz"
 
@@ -37,8 +36,12 @@ def _patch_ulid_generators(monkeypatch: pytest.MonkeyPatch):
     def is_valid(value: str) -> bool:
         return len(value) == 26 and all(c in _ULID_CHARS for c in value)
 
-    monkeypatch.setattr("crackerjack.services.ulid_generator.generate_ulid", generate, raising=False)
-    monkeypatch.setattr("crackerjack.services.ulid_generator.is_valid_ulid", is_valid, raising=False)
+    monkeypatch.setattr(
+        "crackerjack.services.ulid_generator.generate_ulid", generate, raising=False
+    )
+    monkeypatch.setattr(
+        "crackerjack.services.ulid_generator.is_valid_ulid", is_valid, raising=False
+    )
     monkeypatch.setattr("session_buddy.core.ulid_generator.generate_ulid", generate, raising=False)
     monkeypatch.setattr("session_buddy.core.ulid_generator.is_valid_ulid", is_valid, raising=False)
 
@@ -97,8 +100,9 @@ def test_ulid_uniqueness():
 def test_ulid_time_ordering():
     """ULIDs should be time-ordered (lexicographically sortable)."""
 
-    from crackerjack.services.ulid_generator import generate_ulid
     import time
+
+    from crackerjack.services.ulid_generator import generate_ulid
 
     ulids = []
     for _ in range(10):
@@ -107,7 +111,7 @@ def test_ulid_time_ordering():
 
     # Check monotonic ordering
     for i in range(1, len(ulids)):
-        assert ulids[i-1] < ulids[i], f"ULID {i-1} should be < ULID {i}"
+        assert ulids[i - 1] < ulids[i], f"ULID {i - 1} should be < ULID {i}"
 
 
 def test_ulid_format_consistency():
@@ -115,6 +119,7 @@ def test_ulid_format_consistency():
 
     from crackerjack.services.ulid_generator import generate_ulid as cj_generate
     from session_buddy.core.ulid_generator import generate_ulid as sb_generate
+
     from mahavishnu.core.workflow_models import WorkflowExecution
 
     # Generate ULIDs from all systems

@@ -361,9 +361,10 @@ Result: from ...core.permissions import Permission
 └── uv.lock                   # Dependency lock file
 ```
 
----
+______________________________________________________________________
 
 **Document Version:** 1.0.0
 **Companion Documents:**
+
 - [MCP_SERVER_ARCHITECTURE.md](./MCP_SERVER_ARCHITECTURE.md) - Full documentation
 - [MCP_QUICKREF.md](./MCP_QUICKREF.md) - Quick reference card

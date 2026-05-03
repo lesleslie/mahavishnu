@@ -119,7 +119,9 @@ async def test_run_full_check_with_monkeypatched_checks(monkeypatch: pytest.Monk
 
 
 @pytest.mark.asyncio
-async def test_filesystem_based_checks_cover_pass_and_warn(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_filesystem_based_checks_cover_pass_and_warn(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     checker = ProductionReadinessChecker(tmp_path)
 
     # security audit warn -> pass
@@ -291,7 +293,9 @@ async def test_unit_test_check_branches(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
 
 @pytest.mark.asyncio
-async def test_remaining_warn_fail_and_main_branches(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+async def test_remaining_warn_fail_and_main_branches(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     checker = ProductionReadinessChecker(tmp_path)
 
     # Metrics collection warn branch
@@ -371,7 +375,9 @@ async def test_remaining_warn_fail_and_main_branches(monkeypatch: pytest.MonkeyP
     async def fake_ok(self):  # noqa: ANN001
         return report_ok
 
-    monkeypatch.setattr(ProductionReadinessChecker, "generate_report", lambda self, report: "x", raising=True)
+    monkeypatch.setattr(
+        ProductionReadinessChecker, "generate_report", lambda self, report: "x", raising=True
+    )
 
     monkeypatch.setattr(ProductionReadinessChecker, "run_full_check", fake_fail, raising=True)
     with pytest.raises(SystemExit) as exc:

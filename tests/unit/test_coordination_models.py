@@ -11,10 +11,8 @@ Tests cover:
 - Module-level example constants are valid instances
 """
 
-from datetime import datetime
-
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from mahavishnu.core.coordination.models import (
     EXAMPLE_DEPENDENCY,
@@ -35,7 +33,6 @@ from mahavishnu.core.status import (
     PlanStatus,
     TodoStatus,
 )
-
 
 # ============================================================================
 # Priority Enum
@@ -243,9 +240,7 @@ class TestCrossRepoPlan:
         assert plan.milestones == []
 
     def test_creation_with_all_fields(self):
-        milestone = Milestone(
-            id="M-1", name="M1", description="D", due="2026-02-01T00:00:00"
-        )
+        milestone = Milestone(id="M-1", name="M1", description="D", due="2026-02-01T00:00:00")
         plan = CrossRepoPlan(
             id="PLAN-002",
             title="Full plan",
@@ -439,9 +434,7 @@ class TestDependency:
         assert dep.validation is None
 
     def test_creation_with_all_fields(self):
-        validation = DependencyValidation(
-            command="pip show lib", expected_pattern="^Version: 1\\."
-        )
+        validation = DependencyValidation(command="pip show lib", expected_pattern="^Version: 1\\.")
         dep = Dependency(
             id="DEP-002",
             consumer="fastblocks",

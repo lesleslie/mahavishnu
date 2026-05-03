@@ -1,16 +1,16 @@
 """Tests for WorktreeManager - Git worktree lifecycle management."""
 
-import pytest
-from datetime import datetime, UTC
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Any
+from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from mahavishnu.core.worktree_manager import (
-    WorktreeManager,
-    WorktreeInfo,
-    WorktreeState,
     WorktreeError,
+    WorktreeInfo,
+    WorktreeManager,
+    WorktreeState,
 )
 
 
@@ -110,7 +110,9 @@ class TestWorktreeManager:
     """Tests for WorktreeManager class."""
 
     @pytest.mark.asyncio
-    async def test_git_runner_and_default_worktree_path_generation(self, mock_task_store: AsyncMock) -> None:
+    async def test_git_runner_and_default_worktree_path_generation(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         """Cover git runner success/failure and default path generation branches."""
 
         class _Process:
@@ -122,7 +124,7 @@ class TestWorktreeManager:
             async def communicate(self) -> tuple[bytes, bytes]:
                 return self._stdout, self._stderr
 
-        runner = WorktreeManager(task_store=mock_task_store, git_runner=None). _git
+        runner = WorktreeManager(task_store=mock_task_store, git_runner=None)._git
         assert runner.__class__.__name__ == "GitRunner"
 
         async def _create_ok(*args, **kwargs):  # noqa: ANN001,ANN003
@@ -131,18 +133,29 @@ class TestWorktreeManager:
         async def _create_fail(*args, **kwargs):  # noqa: ANN001,ANN003
             return _Process(1, stderr=b"boom")
 
-        with patch("mahavishnu.core.worktree_manager.asyncio.create_subprocess_exec", side_effect=_create_ok):
+        with patch(
+            "mahavishnu.core.worktree_manager.asyncio.create_subprocess_exec",
+            side_effect=_create_ok,
+        ):
             assert await runner.run("status", cwd="/tmp") == "ok"
 
-        with patch("mahavishnu.core.worktree_manager.asyncio.create_subprocess_exec", side_effect=_create_fail):
+        with patch(
+            "mahavishnu.core.worktree_manager.asyncio.create_subprocess_exec",
+            side_effect=_create_fail,
+        ):
             with pytest.raises(Exception, match="boom"):
                 await runner.run("status", cwd="/tmp")
 
-        manager = WorktreeManager(task_store=mock_task_store, git_runner=MagicMock(), base_path="/repos")
+        manager = WorktreeManager(
+            task_store=mock_task_store, git_runner=MagicMock(), base_path="/repos"
+        )
         assert manager._get_worktree_path("/repos/mahavishnu", "task-1") == "/repos/worktree-task-1"
 
         default_manager = WorktreeManager(task_store=mock_task_store, git_runner=MagicMock())
-        assert default_manager._get_worktree_path("/repos/mahavishnu", "task-1") == "/repos/mahavishnu-worktree-task-1"
+        assert (
+            default_manager._get_worktree_path("/repos/mahavishnu", "task-1")
+            == "/repos/mahavishnu-worktree-task-1"
+        )
 
     @pytest.mark.asyncio
     async def test_create_worktree(
@@ -152,8 +165,7 @@ class TestWorktreeManager:
     ) -> None:
         """Create a new worktree for a task."""
         mock_git_runner.run.return_value = (
-            "Preparing worktree (new branch 'feature/task-1')\n"
-            "HEAD is now at abc123 Initial commit"
+            "Preparing worktree (new branch 'feature/task-1')\nHEAD is now at abc123 Initial commit"
         )
 
         manager = WorktreeManager(
@@ -303,9 +315,7 @@ class TestWorktreeManager:
             created_at=datetime.now(UTC),
         )
 
-        result = await manager.complete_worktree(
-            "wt-1", merge=True, repo_path="/repos/mahavishnu"
-        )
+        result = await manager.complete_worktree("wt-1", merge=True, repo_path="/repos/mahavishnu")
 
         assert result is True
         assert manager._worktrees["wt-1"].state == WorktreeState.MERGED
@@ -558,7 +568,9 @@ class TestWorktreeManager:
             created_at=datetime.now(UTC),
         )
 
-        monkeypatch.setattr("mahavishnu.core.worktree_manager.os.path.exists", lambda path: path == str(existing))
+        monkeypatch.setattr(
+            "mahavishnu.core.worktree_manager.os.path.exists", lambda path: path == str(existing)
+        )
         assert await manager.prune_stale() == 1
         assert "wt-3" not in manager._worktrees
         assert "wt-4" in manager._worktrees

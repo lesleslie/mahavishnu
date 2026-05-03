@@ -1,11 +1,20 @@
 {
-  "timestamp": "2026-02-05T13:04:31.607861+00:00",
-  "statistics": {
-    "total_agents": 100,
-    "enrolled_agents": 100,
-    "skipped_agents": 0,
-    "errors": 0,
-    "enrollment_rate": 100.0
+  "agents_by_capability": {
+    "code_analysis": 66,
+    "code_generation": 7,
+    "code_refactoring": 2,
+    "data_analysis": 2,
+    "data_pipeline": 3,
+    "data_visualization": 2,
+    "deployment": 4,
+    "doc_generation": 66,
+    "doc_review": 1,
+    "logging_analysis": 2,
+    "monitoring": 1,
+    "performance_tuning": 3,
+    "security_audit": 4,
+    "system_diagnostics": 3,
+    "test_generation": 3
   },
   "capabilities_discovered": [
     "code_analysis",
@@ -24,21 +33,12 @@
     "system_diagnostics",
     "test_generation"
   ],
-  "agents_by_capability": {
-    "code_analysis": 66,
-    "doc_generation": 66,
-    "code_refactoring": 2,
-    "code_generation": 7,
-    "security_audit": 4,
-    "data_analysis": 2,
-    "system_diagnostics": 3,
-    "monitoring": 1,
-    "logging_analysis": 2,
-    "deployment": 4,
-    "data_pipeline": 3,
-    "test_generation": 3,
-    "performance_tuning": 3,
-    "data_visualization": 2,
-    "doc_review": 1
-  }
+  "statistics": {
+    "enrolled_agents": 100,
+    "enrollment_rate": 100.0,
+    "errors": 0,
+    "skipped_agents": 0,
+    "total_agents": 100
+  },
+  "timestamp": "2026-02-05T13:04:31.607861+00:00"
 }

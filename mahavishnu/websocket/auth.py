@@ -6,8 +6,8 @@ WebSocket server, using environment variables for secure credential management.
 
 from __future__ import annotations
 
-import os
 import logging
+import os
 
 from mcp_common.websocket.auth import WebSocketAuthenticator
 
@@ -21,6 +21,7 @@ JWT_SECRET = os.getenv("MAHAVISHNU_JWT_SECRET", _DEFAULT_DEV_SECRET)
 
 # Get token expiry from environment (default: 1 hour)
 TOKEN_EXPIRY = int(os.getenv("MAHAVISHNU_TOKEN_EXPIRY", "3600"))
+
 
 def _auth_enabled() -> bool:
     return os.getenv("MAHAVISHNU_AUTH_ENABLED", "true").lower() == "true"

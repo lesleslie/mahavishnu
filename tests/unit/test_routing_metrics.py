@@ -1,17 +1,11 @@
 """Tests for routing metrics and alerting system."""
 
 import builtins
-import pytest
-import asyncio
 import runpy
-from datetime import datetime, UTC
 
-import mahavishnu.core.routing_metrics as repo_module
-from mahavishnu.core.routing_metrics import (
-    RoutingMetrics,
-    get_routing_metrics,
-    reset_routing_metrics,
-)
+import pytest
+
+from mahavishnu.core.metrics_schema import AdapterType, TaskType
 from mahavishnu.core.routing_alerts import (
     Alert,
     AlertSeverity,
@@ -20,7 +14,12 @@ from mahavishnu.core.routing_alerts import (
     RoutingAlertManager,
     get_alert_manager,
 )
-from mahavishnu.core.metrics_schema import AdapterType, TaskType
+import mahavishnu.core.routing_metrics as repo_module
+from mahavishnu.core.routing_metrics import (
+    RoutingMetrics,
+    get_routing_metrics,
+    reset_routing_metrics,
+)
 
 
 @pytest.fixture
@@ -137,7 +136,9 @@ class TestRoutingMetrics:
         summary = metrics.get_metrics_summary()
         assert summary["ab_test_tracking"]
 
-    def test_fallback_chain_and_runtime_error_path(self, reset_metrics, monkeypatch: pytest.MonkeyPatch):
+    def test_fallback_chain_and_runtime_error_path(
+        self, reset_metrics, monkeypatch: pytest.MonkeyPatch
+    ):
         metrics = get_routing_metrics()
         metrics.record_fallback_chain_length(4)
         summary = metrics.get_metrics_summary()
@@ -148,7 +149,9 @@ class TestRoutingMetrics:
         with pytest.raises(RuntimeError, match="Adapter latency histogram not initialized"):
             metrics._get_adapter_latency_histogram()
 
-    def test_initialize_metrics_value_error_branches(self, reset_metrics, monkeypatch: pytest.MonkeyPatch):
+    def test_initialize_metrics_value_error_branches(
+        self, reset_metrics, monkeypatch: pytest.MonkeyPatch
+    ):
         class _BoomMetric:
             def __init__(self, *args, **kwargs):  # noqa: ANN002,ANN003
                 raise ValueError("dup")
@@ -166,7 +169,12 @@ class TestRoutingMetrics:
         assert summary["adapter_execution_tracking"] is False
 
     def test_start_server_oserror_branch(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(repo_module, "start_http_server", lambda port: (_ for _ in ()).throw(OSError("busy")), raising=True)
+        monkeypatch.setattr(
+            repo_module,
+            "start_http_server",
+            lambda port: (_ for _ in ()).throw(OSError("busy")),
+            raising=True,
+        )
         assert repo_module.start_routing_metrics_server(9191) is None
 
     def test_prometheus_fallback_import_and_dummy_classes(self, monkeypatch: pytest.MonkeyPatch):
@@ -178,7 +186,9 @@ class TestRoutingMetrics:
             return real_import(name, globals, locals, fromlist, level)
 
         monkeypatch.setattr(builtins, "__import__", fake_import, raising=True)
-        namespace = runpy.run_module("mahavishnu.core.routing_metrics", run_name="__routing_metrics_fallback__")
+        namespace = runpy.run_module(
+            "mahavishnu.core.routing_metrics", run_name="__routing_metrics_fallback__"
+        )
 
         assert namespace["PROMETHEUS_AVAILABLE"] is False
         metrics = namespace["RoutingMetrics"]("fallback")

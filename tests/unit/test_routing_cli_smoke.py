@@ -1,7 +1,5 @@
 """Minimal smoke tests for routing CLI - structure only."""
 
-import pytest
-
 
 def test_routing_module_imports():
     """Routing module should be importable."""
@@ -14,6 +12,7 @@ def test_routing_module_imports():
 def test_routing_app_is_typer():
     """Routing app should be a Typer instance."""
     import typer
+
     from mahavishnu import routing_cli
 
     assert isinstance(routing_cli.routing_app, typer.Typer)

@@ -1,24 +1,24 @@
 """Tests for health check system."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-import asyncio
+from unittest.mock import AsyncMock, patch
 
-from monitoring.metrics import expose_metrics
-from mahavishnu.core.health_schemas import (
-    HealthStatus,
-    HealthCheckResult,
-)
+import pytest
+
+from mahavishnu.core.config import DependencyConfig, HealthConfig
 from mahavishnu.core.health import (
-    HealthCheckError,
     DependencyTimeoutError,
     DependencyUnavailableError,
-    ServiceInfo,
-    HealthChecker,
     DependencyWaiter,
+    HealthChecker,
+    HealthCheckError,
     HealthEndpoint,
+    ServiceInfo,
 )
-from mahavishnu.core.config import DependencyConfig, HealthConfig
+from mahavishnu.core.health_schemas import (
+    HealthCheckResult,
+    HealthStatus,
+)
+from monitoring.metrics import expose_metrics
 
 
 class TestServiceInfo:
@@ -135,7 +135,7 @@ class TestHealthChecker:
             checker._http_action,
             "execute",
             new_callable=AsyncMock,
-            side_effect=asyncio.TimeoutError(),
+            side_effect=TimeoutError(),
         ):
             result = await checker.check("http://localhost:9999/health")
 

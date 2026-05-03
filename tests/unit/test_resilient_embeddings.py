@@ -5,11 +5,11 @@ from __future__ import annotations
 import pytest
 
 from mahavishnu.core.resilient_embeddings import (
+    STANDARD_EMBEDDING_DIMENSION,
     CircuitBreaker,
     EmbeddingSource,
     ResilientEmbeddingClient,
     ResilientEmbeddingResult,
-    STANDARD_EMBEDDING_DIMENSION,
     create_resilient_client,
 )
 

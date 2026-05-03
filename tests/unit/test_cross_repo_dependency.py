@@ -1,18 +1,18 @@
 """Tests for CrossRepoDependencyLinker - Cross-repository task dependencies."""
 
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock
+
 import pytest
-from datetime import datetime, UTC
-from unittest.mock import AsyncMock, MagicMock
-from typing import Any
 
 from mahavishnu.core.cross_repo_dependency import (
-    CrossRepoDependencyLinker,
     CrossRepoDependency,
-    DependencyType,
-    DependencyStatus,
     CrossRepoDependencyError,
+    CrossRepoDependencyLinker,
+    DependencyStatus,
+    DependencyType,
 )
-from mahavishnu.core.task_store import Task, TaskStatus, TaskPriority
+from mahavishnu.core.task_store import Task, TaskPriority, TaskStatus
 
 
 @pytest.fixture
@@ -315,30 +315,36 @@ class TestCrossRepoDependencyLinker:
             linker._task_dependencies[dep.source_task_id].append(dep.id)
             linker._task_dependents[dep.target_task_id].append(dep.id)
 
-        add_dep(CrossRepoDependency(
-            id="dep-1",
-            source_task_id="task-1",
-            source_repo="mahavishnu",
-            target_task_id="task-2",
-            target_repo="crackerjack",
-            dependency_type=DependencyType.BLOCKS,
-        ))
-        add_dep(CrossRepoDependency(
-            id="dep-2",
-            source_task_id="task-3",
-            source_repo="mahavishnu",
-            target_task_id="task-4",
-            target_repo="session-buddy",
-            dependency_type=DependencyType.REQUIRES,
-        ))
-        add_dep(CrossRepoDependency(
-            id="dep-3",
-            source_task_id="task-5",
-            source_repo="mahavishnu",
-            target_task_id="task-6",
-            target_repo="mahavishnu",  # Same repo
-            dependency_type=DependencyType.RELATED,
-        ))
+        add_dep(
+            CrossRepoDependency(
+                id="dep-1",
+                source_task_id="task-1",
+                source_repo="mahavishnu",
+                target_task_id="task-2",
+                target_repo="crackerjack",
+                dependency_type=DependencyType.BLOCKS,
+            )
+        )
+        add_dep(
+            CrossRepoDependency(
+                id="dep-2",
+                source_task_id="task-3",
+                source_repo="mahavishnu",
+                target_task_id="task-4",
+                target_repo="session-buddy",
+                dependency_type=DependencyType.REQUIRES,
+            )
+        )
+        add_dep(
+            CrossRepoDependency(
+                id="dep-3",
+                source_task_id="task-5",
+                source_repo="mahavishnu",
+                target_task_id="task-6",
+                target_repo="mahavishnu",  # Same repo
+                dependency_type=DependencyType.RELATED,
+            )
+        )
 
         cross_repo = linker.get_cross_repo_dependencies()
         assert len(cross_repo) == 2  # Only cross-repo deps
@@ -387,22 +393,26 @@ class TestCrossRepoDependencyLinker:
             linker._task_dependents[dep.target_task_id].append(dep.id)
 
         # Create a chain: task-1 blocks task-2 blocks task-3
-        add_dep(CrossRepoDependency(
-            id="dep-1",
-            source_task_id="task-1",
-            source_repo="mahavishnu",
-            target_task_id="task-2",
-            target_repo="crackerjack",
-            dependency_type=DependencyType.BLOCKS,
-        ))
-        add_dep(CrossRepoDependency(
-            id="dep-2",
-            source_task_id="task-2",
-            source_repo="crackerjack",
-            target_task_id="task-3",
-            target_repo="session-buddy",
-            dependency_type=DependencyType.BLOCKS,
-        ))
+        add_dep(
+            CrossRepoDependency(
+                id="dep-1",
+                source_task_id="task-1",
+                source_repo="mahavishnu",
+                target_task_id="task-2",
+                target_repo="crackerjack",
+                dependency_type=DependencyType.BLOCKS,
+            )
+        )
+        add_dep(
+            CrossRepoDependency(
+                id="dep-2",
+                source_task_id="task-2",
+                source_repo="crackerjack",
+                target_task_id="task-3",
+                target_repo="session-buddy",
+                dependency_type=DependencyType.BLOCKS,
+            )
+        )
 
         chain = linker.get_blocking_chain("task-3")
         assert len(chain) == 2
@@ -424,22 +434,26 @@ class TestCrossRepoDependencyLinker:
             linker._task_dependencies[dep.source_task_id].append(dep.id)
             linker._task_dependents[dep.target_task_id].append(dep.id)
 
-        add_dep(CrossRepoDependency(
-            id="dep-1",
-            source_task_id="task-1",
-            source_repo="mahavishnu",
-            target_task_id="task-2",
-            target_repo="crackerjack",
-            dependency_type=DependencyType.BLOCKS,
-        ))
-        add_dep(CrossRepoDependency(
-            id="dep-2",
-            source_task_id="task-3",
-            source_repo="session-buddy",
-            target_task_id="task-4",
-            target_repo="akosha",
-            dependency_type=DependencyType.REQUIRES,
-        ))
+        add_dep(
+            CrossRepoDependency(
+                id="dep-1",
+                source_task_id="task-1",
+                source_repo="mahavishnu",
+                target_task_id="task-2",
+                target_repo="crackerjack",
+                dependency_type=DependencyType.BLOCKS,
+            )
+        )
+        add_dep(
+            CrossRepoDependency(
+                id="dep-2",
+                source_task_id="task-3",
+                source_repo="session-buddy",
+                target_task_id="task-4",
+                target_repo="akosha",
+                dependency_type=DependencyType.REQUIRES,
+            )
+        )
 
         mahavishnu_deps = linker.get_dependencies_by_repo("mahavishnu")
         assert len(mahavishnu_deps) == 1
@@ -603,12 +617,20 @@ class TestUpdateAllStatuses:
         linker = CrossRepoDependencyLinker(AsyncMock())
 
         d1 = CrossRepoDependency(
-            id="d1", source_task_id="t1", source_repo="a",
-            target_task_id="t2", target_repo="b", dependency_type=DependencyType.BLOCKS,
+            id="d1",
+            source_task_id="t1",
+            source_repo="a",
+            target_task_id="t2",
+            target_repo="b",
+            dependency_type=DependencyType.BLOCKS,
         )
         d2 = CrossRepoDependency(
-            id="d2", source_task_id="t1", source_repo="a",
-            target_task_id="t3", target_repo="c", dependency_type=DependencyType.BLOCKS,
+            id="d2",
+            source_task_id="t1",
+            source_repo="a",
+            target_task_id="t3",
+            target_repo="c",
+            dependency_type=DependencyType.BLOCKS,
         )
         for d in [d1, d2]:
             linker._dependencies[d.id] = d
@@ -635,13 +657,31 @@ class TestGetDependencyCount:
         linker = CrossRepoDependencyLinker(AsyncMock())
 
         deps = [
-            CrossRepoDependency(id="d1", source_task_id="t1", source_repo="a",
-                                target_task_id="t2", target_repo="b", dependency_type=DependencyType.BLOCKS),
-            CrossRepoDependency(id="d2", source_task_id="t3", source_repo="a",
-                                target_task_id="t4", target_repo="a", dependency_type=DependencyType.REQUIRES),
-            CrossRepoDependency(id="d3", source_task_id="t5", source_repo="c",
-                                target_task_id="t6", target_repo="d", dependency_type=DependencyType.RELATED,
-                status=DependencyStatus.SATISFIED),
+            CrossRepoDependency(
+                id="d1",
+                source_task_id="t1",
+                source_repo="a",
+                target_task_id="t2",
+                target_repo="b",
+                dependency_type=DependencyType.BLOCKS,
+            ),
+            CrossRepoDependency(
+                id="d2",
+                source_task_id="t3",
+                source_repo="a",
+                target_task_id="t4",
+                target_repo="a",
+                dependency_type=DependencyType.REQUIRES,
+            ),
+            CrossRepoDependency(
+                id="d3",
+                source_task_id="t5",
+                source_repo="c",
+                target_task_id="t6",
+                target_repo="d",
+                dependency_type=DependencyType.RELATED,
+                status=DependencyStatus.SATISFIED,
+            ),
         ]
         for d in deps:
             linker._dependencies[d.id] = d
@@ -666,10 +706,22 @@ class TestGetAllDependencies:
     async def test_returns_all(self) -> None:
         linker = CrossRepoDependencyLinker(AsyncMock())
 
-        d1 = CrossRepoDependency(id="d1", source_task_id="t1", source_repo="a",
-                                  target_task_id="t2", target_repo="b", dependency_type=DependencyType.BLOCKS)
-        d2 = CrossRepoDependency(id="d2", source_task_id="t3", source_repo="c",
-                                  target_task_id="t4", target_repo="d", dependency_type=DependencyType.REQUIRES)
+        d1 = CrossRepoDependency(
+            id="d1",
+            source_task_id="t1",
+            source_repo="a",
+            target_task_id="t2",
+            target_repo="b",
+            dependency_type=DependencyType.BLOCKS,
+        )
+        d2 = CrossRepoDependency(
+            id="d2",
+            source_task_id="t3",
+            source_repo="c",
+            target_task_id="t4",
+            target_repo="d",
+            dependency_type=DependencyType.REQUIRES,
+        )
         for d in [d1, d2]:
             linker._dependencies[d.id] = d
             linker._task_dependencies[d.source_task_id].append(d.id)
@@ -735,8 +787,12 @@ class TestMissingTaskHandling:
         linker = CrossRepoDependencyLinker(AsyncMock())
 
         dep = CrossRepoDependency(
-            id="d1", source_task_id="t1", source_repo="a",
-            target_task_id="t2", target_repo="b", dependency_type=DependencyType.REQUIRES,
+            id="d1",
+            source_task_id="t1",
+            source_repo="a",
+            target_task_id="t2",
+            target_repo="b",
+            dependency_type=DependencyType.REQUIRES,
         )
         linker._dependencies["d1"] = dep
         linker._task_dependencies["t1"].append("d1")
@@ -775,8 +831,12 @@ class TestMissingTaskHandling:
         linker = CrossRepoDependencyLinker(AsyncMock())
 
         dep = CrossRepoDependency(
-            id="d1", source_task_id="t1", source_repo="a",
-            target_task_id="t2", target_repo="b", dependency_type=DependencyType.RELATED,
+            id="d1",
+            source_task_id="t1",
+            source_repo="a",
+            target_task_id="t2",
+            target_repo="b",
+            dependency_type=DependencyType.RELATED,
         )
         linker._dependencies["d1"] = dep
         linker._task_dependencies["t1"].append("d1")

@@ -94,7 +94,9 @@ class AdapterEntry:
             factory_path=str(adapter.get("factory_path") or ""),
             health_check_url=adapter.get("health_check_url"),
             metadata=metadata,
-            registered_at=_parse_datetime(adapter.get("created_at") or adapter.get("registered_at")),
+            registered_at=_parse_datetime(
+                adapter.get("created_at") or adapter.get("registered_at")
+            ),
             last_heartbeat=_parse_datetime(
                 adapter.get("last_health_check") or adapter.get("last_heartbeat")
             ),
@@ -196,7 +198,9 @@ class DharaAdapterRegistryClient:
         self._circuit_breaker = AdapterCircuitBreaker()
         self._cache: dict[str, tuple[list[AdapterEntry], datetime]] = {}
         self._connected = False
-        logger.info("Dhara adapter registry client initialized (base_url=%s)", self._client.base_url)
+        logger.info(
+            "Dhara adapter registry client initialized (base_url=%s)", self._client.base_url
+        )
 
     async def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
         if not self.config.enabled:

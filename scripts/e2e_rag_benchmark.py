@@ -17,12 +17,11 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from dataclasses import dataclass, field
 import json
 import logging
-import random
 import statistics
 import time
-from dataclasses import dataclass, field
 from typing import Any
 
 # Configure logging
@@ -390,28 +389,30 @@ def print_e2e_report(result: E2EBenchmarkResult, targets: dict[str, float]) -> N
     print(" E2E RAG Pipeline Benchmark Results")
     print("=" * 70)
 
-    print(f"\nOverall Metrics:")
+    print("\nOverall Metrics:")
     print(f"  Iterations:       {result.iterations}")
     print(f"  Total time:       {result.total_time_s:.3f}s")
     print(f"  QPS:              {result.queries_per_second:.2f} queries/s")
     print(f"  Success rate:     {result.success_rate * 100:.1f}%")
 
-    print(f"\nLatency Distribution:")
+    print("\nLatency Distribution:")
     print(f"  Average:          {result.avg_latency_ms:.3f}ms")
     print(f"  P50:              {result.p50_latency_ms:.3f}ms")
     print(f"  P95:              {result.p95_latency_ms:.3f}ms")
     print(f"  P99:              {result.p99_latency_ms:.3f}ms")
 
-    print(f"\nStrategy Distribution:")
+    print("\nStrategy Distribution:")
     for strategy, count in sorted(result.strategy_distribution.items()):
         pct = count / result.iterations * 100
         bar = "█" * int(pct / 5)
         print(f"  {strategy:12}  {count:4} ({pct:5.1f}%) {bar}")
 
-    print(f"\nStage Latencies:")
+    print("\nStage Latencies:")
     for stage_name, stats in result.to_dict().get("stage_latencies", {}).items():
         print(f"  {stage_name}:")
-        print(f"    Avg: {stats['avg_ms']:.3f}ms, P50: {stats['p50_ms']:.3f}ms, P95: {stats['p95_ms']:.3f}ms")
+        print(
+            f"    Avg: {stats['avg_ms']:.3f}ms, P50: {stats['p50_ms']:.3f}ms, P95: {stats['p95_ms']:.3f}ms"
+        )
 
     # Check against targets
     print("\n" + "-" * 70)

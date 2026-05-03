@@ -8,8 +8,6 @@ Tests cover:
 
 import json
 
-import pytest
-
 from mahavishnu.core.dashboard_config import DashboardConfig, DashboardPanel
 
 
@@ -144,9 +142,7 @@ class TestDashboardConfigGrafanaJson:
 
     def test_panel_grid_positioning(self):
         config = DashboardConfig(title="Test")
-        config.add_panel(
-            DashboardPanel(title="P1", query="q1", width=6, height=4)
-        )
+        config.add_panel(DashboardPanel(title="P1", query="q1", width=6, height=4))
         grafana = self._parse_grafana(config)
         panel = grafana["dashboard"]["panels"][0]
         assert panel["gridPos"]["x"] == 0

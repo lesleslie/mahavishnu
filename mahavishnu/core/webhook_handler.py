@@ -21,30 +21,31 @@ Usage:
 
 from __future__ import annotations
 
+from collections import OrderedDict
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import StrEnum
 import hashlib
 import hmac
 import json
 import logging
+from typing import TYPE_CHECKING, Any
 import uuid
-from collections import OrderedDict
-from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
-from typing import Any
 
-from mahavishnu.core.task_store import Task, TaskStatus, TaskPriority, TaskStore
+if TYPE_CHECKING:
+    from mahavishnu.core.task_store import TaskStore
 
 logger = logging.getLogger(__name__)
 
 
-class WebhookSource(str, Enum):
+class WebhookSource(StrEnum):
     """Source of webhook events."""
 
     GITHUB = "github"
     GITLAB = "gitlab"
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     """Types of webhook events."""
 
     PUSH = "push"
@@ -376,7 +377,7 @@ class WebhookHandler:
 
             return WebhookResult(
                 success=True,
-                message=f"Event processed successfully",
+                message="Event processed successfully",
                 actions_taken=actions,
                 event_id=event.event_id,
             )

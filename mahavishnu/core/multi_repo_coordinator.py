@@ -23,26 +23,25 @@ Usage:
 
 from __future__ import annotations
 
-import logging
-import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
+import logging
 from typing import Any
+import uuid
 
 from mahavishnu.core.cross_repo_dependency import (
     CrossRepoDependencyLinker,
-    CrossRepoDependency,
-    DependencyType,
     DependencyStatus,
+    DependencyType,
 )
-from mahavishnu.core.task_store import Task, TaskStatus, TaskStore
+from mahavishnu.core.task_store import TaskStatus, TaskStore
 
 logger = logging.getLogger(__name__)
 
 
-class CoordinationStatus(str, Enum):
+class CoordinationStatus(StrEnum):
     """Status of a coordination step or plan."""
 
     PENDING = "pending"
@@ -294,7 +293,7 @@ class MultiRepoCoordinator:
         # Build dependency graph
         all_deps = self.dependency_linker.get_all_dependencies()
         dep_map: dict[str, list[str]] = defaultdict(list)
-        in_degree: dict[str, int] = {tid: 0 for tid in task_ids}
+        in_degree: dict[str, int] = dict.fromkeys(task_ids, 0)
 
         for dep in all_deps:
             if dep.dependency_type == DependencyType.BLOCKS:

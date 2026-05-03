@@ -13,9 +13,6 @@ Security Checks:
 
 import logging
 from pathlib import Path
-from typing import Any
-
-from ..core.errors import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +136,7 @@ class WorktreePathValidator:
             # Check 5: Path normalization (detect escape attempts)
             normalized = str(resolved_path)
             if "../" in normalized or "~/" in normalized:
-                error = f"Path contains escape sequences after resolution (CWE-22)"
+                error = "Path contains escape sequences after resolution (CWE-22)"
                 self._log_security_rejection("escape_sequence", worktree_path, user_id, error)
                 return False, error
 

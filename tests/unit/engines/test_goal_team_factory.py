@@ -22,14 +22,11 @@ from mahavishnu.engines.agno_teams.config import (
     TeamMode,
 )
 from mahavishnu.engines.goal_team_factory import (
-    DOMAIN_PATTERNS,
-    INTENT_PATTERNS,
     SKILL_MAPPING,
     GoalDrivenTeamFactory,
     ParsedGoal,
     SkillConfig,
 )
-
 
 # ============================================================================
 # Fixtures

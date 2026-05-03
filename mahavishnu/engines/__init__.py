@@ -39,8 +39,8 @@ def __getattr__(name: str):
         module = import_module(entry[0], __name__)
         return getattr(module, entry[1])
     if name in _LAZY_MODULES:
-        import sys
         from importlib import import_module
+        import sys
 
         module_name = f"{__name__}.{name}"
         if module_name in sys.modules:

@@ -33,12 +33,12 @@ Usage:
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import Enum
 import logging
 import math
 import random
-from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
 from typing import Any
 
 logger = logging.getLogger(__name__)

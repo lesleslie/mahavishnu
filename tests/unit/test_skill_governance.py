@@ -7,12 +7,12 @@ import pytest
 from mahavishnu.core import (
     LearningArtifactType,
     LearningEvidence,
+    SkillDraft,
     SkillPromotionPolicy,
     SkillPromotionState,
-    SkillDraft,
-    SkillRollback,
     SkillReview,
     SkillReviewDecision,
+    SkillRollback,
 )
 
 
@@ -105,4 +105,3 @@ def test_policy_rejects_invalid_transitions_and_rollback_versions() -> None:
     assert rollback.from_version == "2.0.0"
     assert rollback.to_version == "1.0.0"
     assert rollback.rollback_id.startswith("rb_")
-

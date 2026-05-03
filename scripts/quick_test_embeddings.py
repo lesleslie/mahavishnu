@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Quick test to add embeddings and benchmark HNSW."""
 
+from datetime import datetime, timedelta
 import hashlib
 import time
 import uuid
-from datetime import datetime, timedelta
 
 import duckdb
 import numpy as np
@@ -117,7 +117,7 @@ for record in records:
             cost_estimate, actual_cost, embedding, metadata
         ) VALUES (
             '{task_id}'::UUID,
-            '{timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')}'::TIMESTAMP,
+            '{timestamp.strftime("%Y-%m-%d %H:%M:%S.%f")}'::TIMESTAMP,
             '{task_type}',
             '{desc}',
             '{repo}',
@@ -170,7 +170,7 @@ for _ in range(5):
     times.append(time.time() - start)
 
 avg_exact = sum(times) / len(times)
-print(f"Average: {avg_exact*1000:.2f}ms")
+print(f"Average: {avg_exact * 1000:.2f}ms")
 
 # Create HNSW index
 print("\nCreating HNSW index...")
@@ -196,17 +196,17 @@ for _ in range(5):
     times.append(time.time() - start)
 
 avg_approx = sum(times) / len(times)
-print(f"Average: {avg_approx*1000:.2f}ms")
+print(f"Average: {avg_approx * 1000:.2f}ms")
 
 # Results
 speedup = avg_exact / avg_approx if avg_approx > 0 else 0
-print(f"\n{'='*60}")
-print(f"BENCHMARK RESULTS")
-print(f"{'='*60}")
+print(f"\n{'=' * 60}")
+print("BENCHMARK RESULTS")
+print(f"{'=' * 60}")
 print(f"Records: {result[0]}")
-print(f"Exact search:   {avg_exact*1000:.2f}ms")
-print(f"Approx search:  {avg_approx*1000:.2f}ms")
+print(f"Exact search:   {avg_exact * 1000:.2f}ms")
+print(f"Approx search:  {avg_approx * 1000:.2f}ms")
 print(f"Speedup:        {speedup:.2f}x")
-print(f"{'='*60}")
+print(f"{'=' * 60}")
 
 conn.close()

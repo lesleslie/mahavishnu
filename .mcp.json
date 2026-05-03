@@ -1,99 +1,79 @@
 {
   "mcpServers": {
-    "crackerjack": {
-      "type": "http",
-      "url": "http://localhost:8676/mcp"
-    },
-    "session-buddy": {
-      "type": "http",
-      "url": "http://localhost:8678/mcp"
-    },
     "akosha": {
       "type": "http",
       "url": "http://localhost:8682/mcp"
-    },
-    "excalidraw": {
-      "type": "http",
-      "url": "http://localhost:3032/mcp"
-    },
-    "mermaid": {
-      "type": "http",
-      "url": "http://localhost:3033/mcp"
     },
     "chart-antv": {
       "type": "http",
       "url": "http://localhost:3036/mcp"
     },
+    "codex": {
+      "args": [
+        "mcp-server"
+      ],
+      "command": "/usr/local/bin/codex",
+      "type": "stdio"
+    },
+    "crackerjack": {
+      "type": "http",
+      "url": "http://localhost:8676/mcp"
+    },
+    "css": {
+      "type": "http",
+      "url": "http://localhost:3050/mcp"
+    },
+    "dhara": {
+      "type": "http",
+      "url": "http://localhost:8683/mcp"
+    },
+    "excalidraw": {
+      "type": "http",
+      "url": "http://localhost:3032/mcp"
+    },
+    "gitlab": {
+      "args": [],
+      "command": "/usr/local/bin/mcp-server-gitlab",
+      "type": "stdio"
+    },
     "grafana": {
       "type": "http",
       "url": "http://localhost:3035/mcp"
-    },
-    "raindropio": {
-      "type": "http",
-      "url": "http://localhost:3034/mcp"
-    },
-    "unifi": {
-      "type": "http",
-      "url": "http://localhost:3038/mcp"
-    },
-    "mailgun": {
-      "type": "http",
-      "url": "http://localhost:3039/mcp"
-    },
-    "homebrew": {
-      "type": "stdio",
-      "command": "brew",
-      "args": [
-        "mcp-server"
-      ]
-    },
-    "codex": {
-      "type": "stdio",
-      "command": "/usr/local/bin/codex",
-      "args": [
-        "mcp-server"
-      ]
-    },
-    "pycharm": {
-      "type": "http",
-      "url": "http://127.0.0.1:64342/stream"
-    },
-    "mahavishnu": {
-      "type": "http",
-      "url": "http://localhost:8680/mcp"
-    },
-    "gitlab": {
-      "type": "stdio",
-      "command": "/usr/local/bin/mcp-server-gitlab",
-      "args": []
-    },
-    "macos_automator": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@steipete/macos-automator-mcp"
-      ]
-    },
-    "peekaboo": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@steipete/peekaboo-mcp"
-      ]
     },
     "graphics": {
       "type": "http",
       "url": "http://localhost:3040/mcp"
     },
-    "porkbun-dns": {
-      "type": "http",
-      "url": "http://localhost:3042/mcp"
+    "homebrew": {
+      "args": [
+        "mcp-server"
+      ],
+      "command": "brew",
+      "type": "stdio"
     },
-    "porkbun-domain": {
+    "langsmith": {
       "type": "http",
-      "url": "http://localhost:3043/mcp"
+      "url": "http://localhost:3048/mcp"
+    },
+    "macos_automator": {
+      "args": [
+        "-y",
+        "@steipete/macos-automator-mcp"
+      ],
+      "command": "npx",
+      "type": "stdio"
+    },
+    "mahavishnu": {
+      "type": "http",
+      "url": "http://localhost:8680/mcp"
+    },
+    "mailgun": {
+      "type": "http",
+      "url": "http://localhost:3039/mcp"
+    },
+    "mermaid": {
+      "type": "http",
+      "url": "http://localhost:3033/mcp"
     },
     "n8n": {
       "type": "http",
@@ -103,6 +83,42 @@
       "type": "http",
       "url": "http://localhost:3045/mcp"
     },
+    "opera-cloud": {
+      "type": "http",
+      "url": "http://localhost:3037/mcp"
+    },
+    "penpot": {
+      "args": [
+        "-y",
+        "@penpot/mcp"
+      ],
+      "command": "npx",
+      "type": "stdio"
+    },
+    "porkbun-dns": {
+      "type": "http",
+      "url": "http://localhost:3042/mcp"
+    },
+    "porkbun-domain": {
+      "type": "http",
+      "url": "http://localhost:3043/mcp"
+    },
+    "postman": {
+      "type": "http",
+      "url": "https://mcp.postman.com/minimal"
+    },
+    "pycharm": {
+      "type": "http",
+      "url": "http://127.0.0.1:64342/stream"
+    },
+    "raindropio": {
+      "type": "http",
+      "url": "http://localhost:3034/mcp"
+    },
+    "session-buddy": {
+      "type": "http",
+      "url": "http://localhost:8678/mcp"
+    },
     "synxis-crs": {
       "type": "http",
       "url": "http://localhost:3046/mcp"
@@ -111,55 +127,9 @@
       "type": "http",
       "url": "http://localhost:3047/mcp"
     },
-    "opera-cloud": {
+    "unifi": {
       "type": "http",
-      "url": "http://localhost:3037/mcp"
-    },
-    "penpot": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@penpot/mcp"
-      ]
-    },
-    "langsmith": {
-      "type": "http",
-      "url": "http://localhost:3048/mcp"
-    },
-    "css": {
-      "type": "http",
-      "url": "http://localhost:3050/mcp"
-    },
-    "postman": {
-      "type": "http",
-      "url": "https://mcp.postman.com/minimal"
-    },
-    "zai-mcp-server": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@z_ai/mcp-server"
-      ]
-    },
-    "web-search-prime": {
-      "type": "http",
-      "url": "https://api.z.ai/api/mcp/web_search_prime/mcp",
-      "headers": {
-        "Authorization": "Bearer REDACTED"
-      }
-    },
-    "web-reader": {
-      "type": "http",
-      "url": "https://api.z.ai/api/mcp/web_reader/mcp",
-      "headers": {
-        "Authorization": "Bearer REDACTED"
-      }
-    },
-    "dhara": {
-      "type": "http",
-      "url": "http://localhost:8683/mcp"
+      "url": "http://localhost:3038/mcp"
     }
   }
 }

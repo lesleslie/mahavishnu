@@ -4,7 +4,7 @@
 **Status:** Approved
 **Author:** Claude + Les
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -13,10 +13,10 @@ This design defines how Mahavishnu leverages its own capabilities to systematica
 ## Goals
 
 1. **Phase 1:** Fix all P0/P1 issues from the Power Trios review using parallel agent pools
-2. **Phase 2:** Establish dual-tracking system (ecosystem.yaml + Session-Buddy) for all findings
-3. **Phase 3:** Build triggered workflow for continuous review-and-fix automation
+1. **Phase 2:** Establish dual-tracking system (ecosystem.yaml + Session-Buddy) for all findings
+1. **Phase 3:** Build triggered workflow for continuous review-and-fix automation
 
----
+______________________________________________________________________
 
 ## Architecture
 
@@ -34,7 +34,7 @@ This design defines how Mahavishnu leverages its own capabilities to systematica
 +-------------------------------------------------------------------------+
 ```
 
----
+______________________________________________________________________
 
 ## Phase 1: Fix P0/P1 Issues (Parallel Agents)
 
@@ -172,23 +172,26 @@ async def execute_fix_with_gates(
 ### Quality Gate Stages
 
 **Stage 1: Fast Hooks (~5s)**
+
 - Ruff format + lint
 - Import sorting
 - Trailing whitespace, EOF fixes
 - Retry once on failure
 
 **Stage 2: Tests**
+
 - Parallel execution (pytest-xdist)
 - Collect ALL failures (don't stop on first)
 - Coverage reporting
 
 **Stage 3: Comprehensive Hooks (~30s)**
+
 - Type checking (Zuban/mypy via LSP)
 - Security scanning (Bandit)
 - Complexity analysis
 - Dead code detection (Skylos)
 
----
+______________________________________________________________________
 
 ## Phase 2: Triage & Track (Dual Tracking)
 
@@ -264,7 +267,7 @@ async def capture_fix_reflection(
     )
 ```
 
----
+______________________________________________________________________
 
 ## Phase 3: Continuous Pipeline (Triggered)
 
@@ -349,7 +352,7 @@ async def review_and_fix(
 +-------------------------------------------------------------------------+
 ```
 
----
+______________________________________________________________________
 
 ## Manual Approval System
 
@@ -410,7 +413,7 @@ async def request_manual_approval(
     return result
 ```
 
----
+______________________________________________________________________
 
 ## WebSocket Events
 
@@ -430,7 +433,7 @@ async def request_manual_approval(
 "approvals:approval_granted"  -> {"type": "version_bump"}
 ```
 
----
+______________________________________________________________________
 
 ## Files to Create/Modify
 
@@ -441,28 +444,31 @@ async def request_manual_approval(
 | `mahavishnu/core/fix_orchestrator.py` | Orchestrates fix pools with quality gates |
 | `settings/ecosystem.yaml` | Issue/plan/todo tracking |
 
----
+______________________________________________________________________
 
 ## Success Criteria
 
 ### Phase 1
+
 - [ ] All P0 issues fixed and verified through quality gates
 - [ ] All P1 issues fixed or triaged
 - [ ] Zero regression in test coverage
 - [ ] All changes pass fast hooks, tests, and comprehensive hooks
 
 ### Phase 2
+
 - [ ] All 17 review findings tracked in ecosystem.yaml
 - [ ] Reflections stored in Session-Buddy for each fix
 - [ ] Dependency graph established between issues
 
 ### Phase 3
+
 - [ ] `review_and_fix` MCP tool implemented
 - [ ] Manual approval gates working for version bump and publish
 - [ ] WebSocket broadcasting for real-time monitoring
 - [ ] End-to-end workflow tested
 
----
+______________________________________________________________________
 
 ## Risks and Mitigations
 
@@ -474,12 +480,12 @@ async def request_manual_approval(
 | Pool worker failure | Retry logic; fallback to sequential execution |
 | Session-Buddy unavailable | Continue without reflections; log warning |
 
----
+______________________________________________________________________
 
 ## Future Enhancements
 
 1. **Scheduled Reviews**: Automatic periodic reviews (daily/weekly)
-2. **Git Hook Integration**: Pre-commit triggers review on critical paths
-3. **Slack/Teams Notifications**: Approval requests via chat
-4. **Metrics Dashboard**: Grafana dashboard for review/fix metrics
-5. **Learning from Fixes**: Use Session-Buddy reflections to prevent similar issues
+1. **Git Hook Integration**: Pre-commit triggers review on critical paths
+1. **Slack/Teams Notifications**: Approval requests via chat
+1. **Metrics Dashboard**: Grafana dashboard for review/fix metrics
+1. **Learning from Fixes**: Use Session-Buddy reflections to prevent similar issues

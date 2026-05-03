@@ -1,17 +1,17 @@
 """Tests for CrossRepoAggregator - Multi-repository task aggregation."""
 
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from datetime import datetime, UTC
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Any
 
 from mahavishnu.core.cross_repo_aggregator import (
-    CrossRepoAggregator,
     AggregatedTasks,
-    RepoTaskStats,
     AggregationFilter,
+    CrossRepoAggregator,
+    RepoTaskStats,
 )
-from mahavishnu.core.task_store import Task, TaskStatus, TaskPriority
+from mahavishnu.core.task_store import Task, TaskPriority, TaskStatus
 
 
 @pytest.fixture
@@ -25,19 +25,25 @@ def mock_task_store() -> AsyncMock:
 def mock_repo_manager() -> MagicMock:
     """Create a mock RepositoryManager."""
     manager = MagicMock()
-    manager.get_repos_by_tag = MagicMock(return_value=[
-        MagicMock(name="mahavishnu", tags=["orchestrator", "python"]),
-        MagicMock(name="crackerjack", tags=["qc", "testing", "python"]),
-    ])
-    manager.get_repos_by_role = MagicMock(return_value=[
-        MagicMock(name="session-buddy", role="manager"),
-        MagicMock(name="akosha", role="soothsayer"),
-    ])
-    manager.list_repos = MagicMock(return_value=[
-        MagicMock(name="mahavishnu", tags=["orchestrator", "python"], role="orchestrator"),
-        MagicMock(name="crackerjack", tags=["qc", "testing"], role="inspector"),
-        MagicMock(name="session-buddy", tags=["session", "memory"], role="manager"),
-    ])
+    manager.get_repos_by_tag = MagicMock(
+        return_value=[
+            MagicMock(name="mahavishnu", tags=["orchestrator", "python"]),
+            MagicMock(name="crackerjack", tags=["qc", "testing", "python"]),
+        ]
+    )
+    manager.get_repos_by_role = MagicMock(
+        return_value=[
+            MagicMock(name="session-buddy", role="manager"),
+            MagicMock(name="akosha", role="soothsayer"),
+        ]
+    )
+    manager.list_repos = MagicMock(
+        return_value=[
+            MagicMock(name="mahavishnu", tags=["orchestrator", "python"], role="orchestrator"),
+            MagicMock(name="crackerjack", tags=["qc", "testing"], role="inspector"),
+            MagicMock(name="session-buddy", tags=["session", "memory"], role="manager"),
+        ]
+    )
     return manager
 
 

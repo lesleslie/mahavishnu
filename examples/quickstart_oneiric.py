@@ -57,7 +57,7 @@ async def main():
         print("Step 3: Checking connection...")
         health = await client.health_check()
 
-        if health['status'] != 'healthy':
+        if health["status"] != "healthy":
             print(f"  ✗ Connection failed: {health.get('error', 'Unknown error')}")
             print()
             print("Troubleshooting:")
@@ -121,7 +121,9 @@ async def main():
             is_healthy = await client.check_adapter_health(first_adapter.adapter_id)
 
             status_icon = "✓" if is_healthy else "✗"
-            print(f"  {status_icon} {first_adapter.adapter_id}: {'healthy' if is_healthy else 'unhealthy'}")
+            print(
+                f"  {status_icon} {first_adapter.adapter_id}: {'healthy' if is_healthy else 'unhealthy'}"
+            )
             print()
 
         # Step 7: Cache demonstration
@@ -139,9 +141,9 @@ async def main():
         await client.list_adapters()
         duration2 = time.time() - start
 
-        print(f"  First query: {duration1*1000:.1f}ms (cache miss)")
-        print(f"  Second query: {duration2*1000:.1f}ms (cache hit)")
-        print(f"  Speedup: {duration1/duration2:.1f}x faster with cache")
+        print(f"  First query: {duration1 * 1000:.1f}ms (cache miss)")
+        print(f"  Second query: {duration2 * 1000:.1f}ms (cache hit)")
+        print(f"  Speedup: {duration1 / duration2:.1f}x faster with cache")
         print()
 
         # Success!

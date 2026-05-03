@@ -5,7 +5,7 @@
 **Last Updated**: 2026-02-18
 **Owner**: SRE Team
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -13,7 +13,7 @@ This document defines the error budget enforcement policy for MTOS. Error budget
 
 **Key Principle**: When error budget is exhausted, reliability work takes absolute priority over new features.
 
----
+______________________________________________________________________
 
 ## Error Budget Allocation
 
@@ -50,7 +50,7 @@ def calculate_error_budget():
     }
 ```
 
----
+______________________________________________________________________
 
 ## Enforcement Thresholds
 
@@ -111,7 +111,7 @@ groups:
           description: "Error budget exhausted, all feature work must stop"
 ```
 
----
+______________________________________________________________________
 
 ## Feature Freeze Policy
 
@@ -120,9 +120,9 @@ groups:
 Feature freeze is **mandatory** when ANY of the following conditions are met:
 
 1. **Availability budget < 10%** (4.3 minutes remaining)
-2. **Error rate budget < 10%** remaining
-3. **P0 incident active** and consuming budget
-4. **Two consecutive P1 incidents** in 7 days
+1. **Error rate budget < 10%** remaining
+1. **P0 incident active** and consuming budget
+1. **Two consecutive P1 incidents** in 7 days
 
 ### Feature Freeze Actions
 
@@ -153,11 +153,11 @@ Feature freeze is **mandatory** when ANY of the following conditions are met:
 Feature freeze can only be lifted when:
 
 1. **Budget recovered to > 20%** (8.6 minutes buffer)
-2. **No active P0/P1 incidents**
-3. **SRE team approval**
-4. **Postmortem completed** for triggering incident
+1. **No active P0/P1 incidents**
+1. **SRE team approval**
+1. **Postmortem completed** for triggering incident
 
----
+______________________________________________________________________
 
 ## Budget Recovery Mechanisms
 
@@ -176,10 +176,10 @@ daily_budget_allowance = 43.2 / 30  # ~1.44 minutes/day
 For severe incidents, consider:
 
 1. **Rolling window adjustment**: Temporarily use 14-day window to accelerate recovery
-2. **SLO target adjustment**: If incident revealed unrealistic target, adjust SLO
-3. **Risk acceptance**: Leadership can accept higher risk for specific period
+1. **SLO target adjustment**: If incident revealed unrealistic target, adjust SLO
+1. **Risk acceptance**: Leadership can accept higher risk for specific period
 
----
+______________________________________________________________________
 
 ## Burn Rate Alerts
 
@@ -208,7 +208,7 @@ For severe incidents, consider:
 # Time to exhaust = 43.2 minutes / 50 = ~52 seconds at current rate
 ```
 
----
+______________________________________________________________________
 
 ## Enforcement Workflow
 
@@ -236,7 +236,7 @@ graph TD
     M --> L
 ```
 
----
+______________________________________________________________________
 
 ## Metrics and Reporting
 
@@ -268,11 +268,12 @@ mahavishnu sre error-budget report --daily
 5. Reliability improvements progress
 ```
 
----
+______________________________________________________________________
 
 ## Appendix: Error Budget Dashboard
 
 The error budget dashboard is available at:
+
 - **URL**: https://grafana.example.com/d/error-budget
 - **Refresh**: Every 30 seconds
 - **Panels**:
@@ -281,7 +282,7 @@ The error budget dashboard is available at:
   - Burn rate over time (graph)
   - Incident impact (table)
 
----
+______________________________________________________________________
 
 ## Change Log
 

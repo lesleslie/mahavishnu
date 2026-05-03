@@ -37,7 +37,9 @@ def test_default_config_values():
     assert config.repos_path == "settings/ecosystem.yaml"
     assert config.max_concurrent_workflows == 10
     assert config.adapters.prefect_enabled is True
-    assert config.adapters.llamaindex_enabled is True  # Re-enabled 2026-02-23 with llama-index 0.14.x
+    assert (
+        config.adapters.llamaindex_enabled is True
+    )  # Re-enabled 2026-02-23 with llama-index 0.14.x
     assert config.adapters.agno_enabled is True  # Enabled in settings/mahavishnu.yaml
     assert config.qc.enabled is True
     assert config.qc.min_score == 80
@@ -444,10 +446,12 @@ class TestHealthConfigValidation:
         assert cfg.dependencies == {}
 
     def test_with_dependencies(self):
-        cfg = HealthConfig(dependencies={
-            "session_buddy": DependencyConfig(port=8678),
-            "akosha": DependencyConfig(port=8682, required=False),
-        })
+        cfg = HealthConfig(
+            dependencies={
+                "session_buddy": DependencyConfig(port=8678),
+                "akosha": DependencyConfig(port=8682, required=False),
+            }
+        )
         assert "session_buddy" in cfg.dependencies
         assert cfg.dependencies["akosha"].required is False
 

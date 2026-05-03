@@ -10,13 +10,12 @@ Tests cover:
 from __future__ import annotations
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from mahavishnu.tui.command_palette import (
-    CommandPalette,
     Command,
     CommandCategory,
     CommandMatch,
+    CommandPalette,
     FuzzyMatcher,
     create_default_palette,
     get_command_palette,

@@ -3,6 +3,7 @@
 These files are the executable plan set for `docs/plans/2026-04-04-ecosystem-execution-board.md`.
 
 ## Checklist Usage
+
 - Update each checkbox as work completes.
 - Keep status values in sync with the master plan status/checklist.
 - Add dated progress notes in each file's `Progress Log` section.
@@ -14,6 +15,7 @@ These files are the executable plan set for `docs/plans/2026-04-04-ecosystem-exe
 - All work packages checked off. No remaining open items.
 
 ## Initiative Documents
+
 - [00-phase0-cleanup.md](./00-phase0-cleanup.md)
 - [01-health-contract-and-command.md](./01-health-contract-and-command.md)
 - [02-config-unification-validation-cli.md](./02-config-unification-validation-cli.md)

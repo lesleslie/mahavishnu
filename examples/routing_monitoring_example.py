@@ -12,26 +12,20 @@ Usage:
 
 import asyncio
 import logging
-from datetime import datetime, UTC
 
 from mahavishnu.core import (
-    StatisticalRouter,
-    CostOptimizer,
-    TaskRouter,
     AdapterManager,
+    CostOptimizer,
     StateManager,
+    StatisticalRouter,
+    TaskRouter,
 )
-from mahavishnu.core.metrics_schema import AdapterType, TaskType, TaskStrategy
-from mahavishnu.core.routing_metrics import get_routing_metrics, start_routing_metrics_server
+from mahavishnu.core.metrics_schema import AdapterType, TaskType
 from mahavishnu.core.routing_alerts import (
     LoggingAlertHandler,
-    WebhookAlertHandler,
     RoutingAlertManager,
-    get_alert_manager,
-    initialize_alert_manager,
-    AlertSeverity,
 )
-
+from mahavishnu.core.routing_metrics import get_routing_metrics
 
 logging.basicConfig(
     level=logging.INFO,
@@ -135,7 +129,6 @@ async def simulate_routing_operations(
     }
 
     # Record routing decision in metrics
-    from mahavishnu.core.routing_metrics import get_routing_metrics
     metrics.record_routing_decision(
         adapter=AdapterType.LLAMAINDEX,
         task_type=TaskType.WORKFLOW,
@@ -177,7 +170,7 @@ async def simulate_routing_operations(
             original_adapter=AdapterType.PREFECT,
             fallback_adapter=AdapterType.AGNO,
         )
-        logger.info(f"   ✗ Attempt {i+1}: Prefect failed (fallback to Agno)")
+        logger.info(f"   ✗ Attempt {i + 1}: Prefect failed (fallback to Agno)")
         await asyncio.sleep(0.3)
 
     # Record successful fallback to Agno
@@ -235,7 +228,7 @@ async def simulate_routing_operations(
             original_adapter=AdapterType.PREFECT,
             fallback_adapter=AdapterType.LLAMAINDEX,
         )
-    logger.info(f"   Fallback {i+1}/15: Prefect → LlamaIndex")
+    logger.info(f"   Fallback {i + 1}/15: Prefect → LlamaIndex")
     await asyncio.sleep(0.1)
 
     logger.warning("   ⚠ 100% fallback rate - would trigger EXCESSIVE_FALLBACKS alert!")

@@ -137,7 +137,9 @@ async def test_persistence_context_manager(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_global_get_and_close_persistence(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+async def test_global_get_and_close_persistence(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     ap._persistence_instance = None
     real_cls = ap.AdapterPersistenceLayer
     db_path = tmp_path / "global.db"
@@ -156,7 +158,9 @@ async def test_global_get_and_close_persistence(monkeypatch: pytest.MonkeyPatch,
     assert ap._persistence_instance is None
 
 
-def test_error_classes_and_default_storage_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_error_classes_and_default_storage_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     calls: list[str] = []
 
     monkeypatch.setattr(ap, "ensure_directories", lambda: calls.append("ensure"), raising=True)
@@ -182,7 +186,9 @@ def test_error_classes_and_default_storage_path(monkeypatch: pytest.MonkeyPatch,
 
 
 @pytest.mark.asyncio
-async def test_persistence_error_paths_and_cleanup_branch(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+async def test_persistence_error_paths_and_cleanup_branch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     class _MixedDB:
         async def execute(self, query, params=None):  # noqa: ANN001,ANN201
             if "DELETE FROM health_history" in query:

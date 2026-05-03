@@ -4,7 +4,6 @@ import logging
 from typing import Any
 
 from fastmcp import FastMCP
-from mahavishnu.core.workflow_models import PoolExecution
 
 try:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator

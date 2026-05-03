@@ -1,25 +1,25 @@
 """Tests for metrics schema and data structures."""
 
 import json
+
 import pytest
-from datetime import UTC, datetime, timedelta
 
 from mahavishnu.core.metrics_schema import (
     ABTest,
-    ExecutionRecord,
     AdapterStats,
-    TaskTypeStats,
-    CostTracking,
-    RoutingDecision,
     AdapterType,
-    TaskType,
+    CostTracking,
+    ExecutionRecord,
     ExecutionStatus,
-    calculate_percentiles,
+    RoutingDecision,
+    TaskType,
+    TaskTypeStats,
     calculate_confidence_interval,
+    calculate_percentiles,
+    generate_cost_key,
     generate_execution_key,
     generate_stats_key,
     generate_task_stats_key,
-    generate_cost_key,
 )
 
 
@@ -199,10 +199,12 @@ def test_key_generation():
     exec_id = "01ARZ3NDEKTSVQRRF"
 
     assert generate_execution_key(exec_id) == f"exec:{exec_id}"
-    assert generate_stats_key(AdapterType.PREFECT, "2025-02-11") == \
-        f"stats:adapter:prefect:2025-02-11"
-    assert generate_task_stats_key(TaskType.AI_TASK, "2025-02-11") == \
-        f"stats:task:ai_task:2025-02-11"
+    assert (
+        generate_stats_key(AdapterType.PREFECT, "2025-02-11") == "stats:adapter:prefect:2025-02-11"
+    )
+    assert (
+        generate_task_stats_key(TaskType.AI_TASK, "2025-02-11") == "stats:task:ai_task:2025-02-11"
+    )
     assert generate_cost_key(exec_id) == f"cost:{exec_id}"
 
 
@@ -275,6 +277,7 @@ class TestGenerateConfigIdFallback:
 
     def test_fallback_returns_string(self):
         from mahavishnu.core import metrics_schema as ms
+
         original = ms.generate_config_id
         try:
             ms.generate_config_id = lambda: "test-fallback-id"

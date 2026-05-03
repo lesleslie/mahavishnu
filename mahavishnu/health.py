@@ -14,7 +14,8 @@ from datetime import UTC, datetime
 from fastapi import FastAPI, Response
 
 from .core.config import HealthConfig
-from .core.health_schemas import HealthResponse, HealthStatus, ReadyResponse as ReadinessResponse
+from .core.health_schemas import HealthResponse, HealthStatus
+from .core.health_schemas import ReadyResponse as ReadinessResponse
 
 logger = __import__("logging").getLogger(__name__)
 

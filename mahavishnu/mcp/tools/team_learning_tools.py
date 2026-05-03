@@ -17,18 +17,18 @@ Related: Goal-Driven Teams Phase 3 - Learning System MCP tools
 
 from __future__ import annotations
 
-import logging
 from datetime import UTC, datetime
-from typing import Any
-
-from fastmcp import FastMCP
+import logging
+from typing import TYPE_CHECKING, Any
 
 from mahavishnu.core.feature_flags import is_feature_enabled
 from mahavishnu.core.team_learning import (
-    ModeRecommendation,
     TeamExecutionOutcome,
     get_learning_engine,
 )
+
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 

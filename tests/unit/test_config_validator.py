@@ -9,17 +9,16 @@ Tests cover:
 
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import tempfile
+
+import pytest
 import yaml
 
 from mahavishnu.core.config_validator import (
-    ConfigValidator,
-    ConfigValidationReport,
-    ValidationResult,
     ConfigurationWizard,
+    ConfigValidationReport,
+    ConfigValidator,
+    ValidationResult,
     validate_config,
 )
 
@@ -187,7 +186,9 @@ repos:
         # Valid structure, though path may not exist (warning)
         assert report.valid is True
 
-    def test_validate_missing_required_field(self, validator: ConfigValidator, temp_dir: Path) -> None:
+    def test_validate_missing_required_field(
+        self, validator: ConfigValidator, temp_dir: Path
+    ) -> None:
         """Test validating missing required field."""
         yaml_path = temp_dir / "repos.yaml"
         yaml_path.write_text("""

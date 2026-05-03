@@ -52,12 +52,13 @@ Example:
 """
 
 import asyncio
-import inspect
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
+import inspect
 import logging
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 from unittest.mock import Mock
 
 import httpx
@@ -227,9 +228,7 @@ async def process_repositories_flow(
         List of results from each repository processing task
     """
     # Process all repositories in parallel using Prefect's task scheduling
-    results = await asyncio.gather(
-        *[process_repository.fn(repo, task_spec) for repo in repos]
-    )
+    results = await asyncio.gather(*[process_repository.fn(repo, task_spec) for repo in repos])
 
     return results
 
@@ -851,6 +850,7 @@ class PrefectAdapter(OrchestratorAdapter):
         """
         try:
             import time
+
             import prefect
 
             start_time = time.monotonic()

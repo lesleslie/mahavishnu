@@ -6,7 +6,8 @@ responses for testing the admin shell interface.
 """
 
 from typing import Any
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
+
 import pytest
 
 
@@ -148,10 +149,12 @@ class ShellFixtures:
             return workflows[0]
 
         # Default: table format
-        return "ID                   Status        Progress  Adapter      Created             \n" \
-               "wf_a1b2c3d4_code...  running       45%       llamaindex  2026-02-09T22:25:00 \n" \
-               "wf_e5f6g7h8_test_...  completed     100%      agno        2026-02-09T22:15:00 \n" \
-               "wf_i9j0k1l2_refa...  failed        50%       prefect     2026-02-09T22:20:00"
+        return (
+            "ID                   Status        Progress  Adapter      Created             \n"
+            "wf_a1b2c3d4_code...  running       45%       llamaindex  2026-02-09T22:25:00 \n"
+            "wf_e5f6g7h8_test_...  completed     100%      agno        2026-02-09T22:15:00 \n"
+            "wf_i9j0k1l2_refa...  failed        50%       prefect     2026-02-09T22:20:00"
+        )
 
     @staticmethod
     def mock_error_output() -> list[dict[str, Any]]:
@@ -257,7 +260,11 @@ class ShellFixtures:
                     "name": "orchestrator",
                     "description": "Coordinates workflows and manages cross-repository operations",
                     "capabilities": ["sweep", "schedule", "monitor", "route", "coordinate"],
-                    "duties": ["Execute workflows across repos", "Manage task queues", "Coordinate adapters"],
+                    "duties": [
+                        "Execute workflows across repos",
+                        "Manage task queues",
+                        "Coordinate adapters",
+                    ],
                     "tags": ["backend", "python", "orchestration"],
                     "example_repos": ["mahavishnu"],
                 },

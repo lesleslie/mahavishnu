@@ -13,9 +13,10 @@ Related: Hybrid Adapter Integration Plan Phase 5
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from fastmcp import FastMCP
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
             if decision is None:
                 return {
                     "success": False,
-                    "error": f"No adapter found matching requirements",
+                    "error": "No adapter found matching requirements",
                     "task_type": task_type,
                     "required_capabilities": required_capabilities,
                 }

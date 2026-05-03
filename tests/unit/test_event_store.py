@@ -9,9 +9,10 @@ Tests cover:
 
 from __future__ import annotations
 
-import pytest
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
-from datetime import datetime, UTC
+
+import pytest
 
 from mahavishnu.core.event_store import (
     EventStore,

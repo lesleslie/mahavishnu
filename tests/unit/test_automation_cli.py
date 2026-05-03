@@ -14,7 +14,6 @@ All manager I/O and external operations are mocked.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -22,7 +21,7 @@ import pytest
 from typer.testing import CliRunner
 
 from mahavishnu.automation.cli import app
-from mahavishnu.automation.errors import AutomationError, AutomationErrorCode
+from mahavishnu.automation.errors import AutomationError
 
 runner = CliRunner()
 
@@ -207,9 +206,7 @@ class TestLaunchApp:
     def test_success_with_empty_data(self) -> None:
         """Successful launch with None data falls back to bundle_id."""
         mgr = _make_mock_manager()
-        mgr.launch_application = AsyncMock(
-            return_value=_make_result(status="success", data=None)
-        )
+        mgr.launch_application = AsyncMock(return_value=_make_result(status="success", data=None))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["launch-app", "com.apple.finder"])
         assert result.exit_code == 0
@@ -244,9 +241,7 @@ class TestLaunchApp:
     def test_automation_error(self) -> None:
         """AutomationError during launch prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.launch_application = AsyncMock(
-            side_effect=AutomationError("Permission denied")
-        )
+        mgr.launch_application = AsyncMock(side_effect=AutomationError("Permission denied"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["launch-app", "com.apple.finder"])
         assert result.exit_code == 1
@@ -295,9 +290,7 @@ class TestListApps:
     def test_success_data_without_result_key(self) -> None:
         """When data is None, renders empty table."""
         mgr = _make_mock_manager()
-        mgr.list_applications = AsyncMock(
-            return_value=_make_result(status="success", data=None)
-        )
+        mgr.list_applications = AsyncMock(return_value=_make_result(status="success", data=None))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-apps"])
         assert result.exit_code == 0
@@ -342,9 +335,7 @@ class TestListApps:
     def test_automation_error(self) -> None:
         """AutomationError during list prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.list_applications = AsyncMock(
-            side_effect=AutomationError("Not available")
-        )
+        mgr.list_applications = AsyncMock(side_effect=AutomationError("Not available"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-apps"])
         assert result.exit_code == 1
@@ -375,9 +366,7 @@ class TestQuitApp:
     def test_success(self) -> None:
         """Successful quit prints confirmation."""
         mgr = _make_mock_manager()
-        mgr.quit_application = AsyncMock(
-            return_value=_make_result(status="success")
-        )
+        mgr.quit_application = AsyncMock(return_value=_make_result(status="success"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["quit-app", "com.apple.finder"])
         assert result.exit_code == 0
@@ -387,9 +376,7 @@ class TestQuitApp:
     def test_force_flag(self) -> None:
         """--force passes force=True to quit_application."""
         mgr = _make_mock_manager()
-        mgr.quit_application = AsyncMock(
-            return_value=_make_result(status="success")
-        )
+        mgr.quit_application = AsyncMock(return_value=_make_result(status="success"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["quit-app", "com.apple.finder", "--force"])
         assert result.exit_code == 0
@@ -411,9 +398,7 @@ class TestQuitApp:
     def test_automation_error(self) -> None:
         """AutomationError during quit prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.quit_application = AsyncMock(
-            side_effect=AutomationError("Permission denied")
-        )
+        mgr.quit_application = AsyncMock(side_effect=AutomationError("Permission denied"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["quit-app", "com.apple.finder"])
         assert result.exit_code == 1
@@ -422,9 +407,7 @@ class TestQuitApp:
     def test_dry_run_flag(self) -> None:
         """--dry-run passes dry_run=True to get_manager."""
         mgr = _make_mock_manager()
-        mgr.quit_application = AsyncMock(
-            return_value=_make_result(status="success")
-        )
+        mgr.quit_application = AsyncMock(return_value=_make_result(status="success"))
         with patch(
             "mahavishnu.automation.cli.get_manager",
             return_value=mgr,
@@ -445,9 +428,7 @@ class TestActivateApp:
     def test_success(self) -> None:
         """Successful activation prints confirmation."""
         mgr = _make_mock_manager()
-        mgr.activate_application = AsyncMock(
-            return_value=_make_result(status="success")
-        )
+        mgr.activate_application = AsyncMock(return_value=_make_result(status="success"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["activate-app", "com.apple.finder"])
         assert result.exit_code == 0
@@ -468,9 +449,7 @@ class TestActivateApp:
     def test_automation_error(self) -> None:
         """AutomationError during activation prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.activate_application = AsyncMock(
-            side_effect=AutomationError("Blocked app")
-        )
+        mgr.activate_application = AsyncMock(side_effect=AutomationError("Blocked app"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["activate-app", "com.apple.finder"])
         assert result.exit_code == 1
@@ -529,9 +508,7 @@ class TestListWindows:
     def test_error_result(self) -> None:
         """Non-success status prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.get_windows = AsyncMock(
-            return_value=_make_result(status="failed", error="Not running")
-        )
+        mgr.get_windows = AsyncMock(return_value=_make_result(status="failed", error="Not running"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-windows", "com.apple.finder"])
         assert result.exit_code == 1
@@ -540,9 +517,7 @@ class TestListWindows:
     def test_automation_error(self) -> None:
         """AutomationError prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.get_windows = AsyncMock(
-            side_effect=AutomationError("Backend error")
-        )
+        mgr.get_windows = AsyncMock(side_effect=AutomationError("Backend error"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-windows", "com.apple.finder"])
         assert result.exit_code == 1
@@ -551,9 +526,7 @@ class TestListWindows:
     def test_data_without_result_key(self) -> None:
         """When data is None, renders empty table."""
         mgr = _make_mock_manager()
-        mgr.get_windows = AsyncMock(
-            return_value=_make_result(status="success", data=None)
-        )
+        mgr.get_windows = AsyncMock(return_value=_make_result(status="success", data=None))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-windows", "com.apple.finder"])
         assert result.exit_code == 0
@@ -635,9 +608,7 @@ class TestTypeText:
     def test_error_result(self) -> None:
         """Non-success status prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.type_text = AsyncMock(
-            return_value=_make_result(status="failed", error="Blocked text")
-        )
+        mgr.type_text = AsyncMock(return_value=_make_result(status="failed", error="Blocked text"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["type", "secret"])
         assert result.exit_code == 1
@@ -646,9 +617,7 @@ class TestTypeText:
     def test_automation_error(self) -> None:
         """AutomationError during type prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.type_text = AsyncMock(
-            side_effect=AutomationError("Security violation")
-        )
+        mgr.type_text = AsyncMock(side_effect=AutomationError("Security violation"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["type", "password123"])
         assert result.exit_code == 1
@@ -721,9 +690,7 @@ class TestPressKey:
     def test_error_result(self) -> None:
         """Non-success status prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.press_key = AsyncMock(
-            return_value=_make_result(status="failed", error="Invalid key")
-        )
+        mgr.press_key = AsyncMock(return_value=_make_result(status="failed", error="Invalid key"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["press-key", "nonexistent"])
         assert result.exit_code == 1
@@ -732,9 +699,7 @@ class TestPressKey:
     def test_automation_error(self) -> None:
         """AutomationError during press prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.press_key = AsyncMock(
-            side_effect=AutomationError("Input error")
-        )
+        mgr.press_key = AsyncMock(side_effect=AutomationError("Input error"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["press-key", "return"])
         assert result.exit_code == 1
@@ -818,9 +783,7 @@ class TestClick:
     def test_automation_error(self) -> None:
         """AutomationError during click prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.click = AsyncMock(
-            side_effect=AutomationError("Input error")
-        )
+        mgr.click = AsyncMock(side_effect=AutomationError("Input error"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["click", "100", "200"])
         assert result.exit_code == 1
@@ -853,9 +816,7 @@ class TestClickMenu:
         mgr = _make_mock_manager()
         mgr.click_menu_item = AsyncMock(return_value=_make_result(status="success"))
         with _patch_get_manager(mgr):
-            result = runner.invoke(
-                app, ["click-menu", "com.apple.finder", "File , Edit , View"]
-            )
+            result = runner.invoke(app, ["click-menu", "com.apple.finder", "File , Edit , View"])
         assert result.exit_code == 0
         mgr.click_menu_item.assert_called_once()
         call_args = mgr.click_menu_item.call_args
@@ -867,9 +828,7 @@ class TestClickMenu:
         mgr = _make_mock_manager()
         mgr.click_menu_item = AsyncMock(return_value=_make_result(status="success"))
         with _patch_get_manager(mgr):
-            result = runner.invoke(
-                app, ["click-menu", "com.apple.finder", "About"]
-            )
+            result = runner.invoke(app, ["click-menu", "com.apple.finder", "About"])
         assert result.exit_code == 0
         call_args = mgr.click_menu_item.call_args
         assert call_args[0][1] == ["About"]
@@ -881,22 +840,16 @@ class TestClickMenu:
             return_value=_make_result(status="failed", error="Menu not found")
         )
         with _patch_get_manager(mgr):
-            result = runner.invoke(
-                app, ["click-menu", "com.apple.finder", "Nonexistent"]
-            )
+            result = runner.invoke(app, ["click-menu", "com.apple.finder", "Nonexistent"])
         assert result.exit_code == 1
         assert "Menu not found" in result.output
 
     def test_automation_error(self) -> None:
         """AutomationError during menu click prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.click_menu_item = AsyncMock(
-            side_effect=AutomationError("App not running")
-        )
+        mgr.click_menu_item = AsyncMock(side_effect=AutomationError("App not running"))
         with _patch_get_manager(mgr):
-            result = runner.invoke(
-                app, ["click-menu", "com.apple.finder", "File,Open"]
-            )
+            result = runner.invoke(app, ["click-menu", "com.apple.finder", "File,Open"])
         assert result.exit_code == 1
         assert "App not running" in result.output
 
@@ -913,9 +866,7 @@ class TestScreenshot:
         """Without --output, writes binary to stdout."""
         mgr = _make_mock_manager()
         fake_bytes = b"\x89PNG\r\n\x1a\nfake"
-        mgr.screenshot = AsyncMock(
-            return_value=_make_result(status="success", data=fake_bytes)
-        )
+        mgr.screenshot = AsyncMock(return_value=_make_result(status="success", data=fake_bytes))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["screenshot"])
         assert result.exit_code == 0
@@ -924,9 +875,7 @@ class TestScreenshot:
         """With --output, writes to file and prints confirmation."""
         mgr = _make_mock_manager()
         fake_bytes = b"\x89PNG\r\n\x1a\nfake"
-        mgr.screenshot = AsyncMock(
-            return_value=_make_result(status="success", data=fake_bytes)
-        )
+        mgr.screenshot = AsyncMock(return_value=_make_result(status="success", data=fake_bytes))
         out_file = tmp_path / "test.png"
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["screenshot", "--output", str(out_file)])
@@ -938,9 +887,7 @@ class TestScreenshot:
         """--region parses x,y,width,height and passes tuple to manager."""
         mgr = _make_mock_manager()
         fake_bytes = b"pngdata"
-        mgr.screenshot = AsyncMock(
-            return_value=_make_result(status="success", data=fake_bytes)
-        )
+        mgr.screenshot = AsyncMock(return_value=_make_result(status="success", data=fake_bytes))
         with _patch_get_manager(mgr), patch("sys.stdout.buffer.write"):
             result = runner.invoke(app, ["screenshot", "--region", "100,200,800,600"])
         assert result.exit_code == 0
@@ -952,14 +899,10 @@ class TestScreenshot:
         """Both --region and --output work together."""
         mgr = _make_mock_manager()
         fake_bytes = b"pngdata"
-        mgr.screenshot = AsyncMock(
-            return_value=_make_result(status="success", data=fake_bytes)
-        )
+        mgr.screenshot = AsyncMock(return_value=_make_result(status="success", data=fake_bytes))
         out_file = tmp_path / "out.png"
         with _patch_get_manager(mgr):
-            result = runner.invoke(
-                app, ["screenshot", "-r", "0,0,1920,1080", "-o", str(out_file)]
-            )
+            result = runner.invoke(app, ["screenshot", "-r", "0,0,1920,1080", "-o", str(out_file)])
         assert result.exit_code == 0
         assert out_file.read_bytes() == fake_bytes
 
@@ -1037,9 +980,7 @@ class TestScreenshot:
     def test_automation_error(self) -> None:
         """AutomationError during screenshot prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.screenshot = AsyncMock(
-            side_effect=AutomationError("Permission denied")
-        )
+        mgr.screenshot = AsyncMock(side_effect=AutomationError("Permission denied"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["screenshot"])
         assert result.exit_code == 1
@@ -1118,9 +1059,7 @@ class TestCheckPermissions:
     def test_automation_error(self) -> None:
         """AutomationError during check prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.check_permissions = AsyncMock(
-            side_effect=AutomationError("Backend not available")
-        )
+        mgr.check_permissions = AsyncMock(side_effect=AutomationError("Backend not available"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["check-permissions"])
         assert result.exit_code == 1
@@ -1142,9 +1081,7 @@ class TestCheckPermissions:
     def test_none_data(self) -> None:
         """None data falls back to empty dict."""
         mgr = _make_mock_manager()
-        mgr.check_permissions = AsyncMock(
-            return_value=_make_result(status="success", data=None)
-        )
+        mgr.check_permissions = AsyncMock(return_value=_make_result(status="success", data=None))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["check-permissions"])
         assert result.exit_code == 0
@@ -1198,9 +1135,7 @@ class TestStatus:
     def test_automation_error(self) -> None:
         """AutomationError during status prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.initialize = AsyncMock(
-            side_effect=AutomationError("No backend")
-        )
+        mgr.initialize = AsyncMock(side_effect=AutomationError("No backend"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["status"])
         assert result.exit_code == 1
@@ -1275,9 +1210,7 @@ class TestListScreens:
     def test_error_result(self) -> None:
         """Non-success status prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.list_screens = AsyncMock(
-            return_value=_make_result(status="failed", error="Failed")
-        )
+        mgr.list_screens = AsyncMock(return_value=_make_result(status="failed", error="Failed"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-screens"])
         assert result.exit_code == 1
@@ -1286,9 +1219,7 @@ class TestListScreens:
     def test_automation_error(self) -> None:
         """AutomationError during list prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.list_screens = AsyncMock(
-            side_effect=AutomationError("Backend error")
-        )
+        mgr.list_screens = AsyncMock(side_effect=AutomationError("Backend error"))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-screens"])
         assert result.exit_code == 1
@@ -1297,9 +1228,7 @@ class TestListScreens:
     def test_data_without_result_key(self) -> None:
         """When data is None, renders empty table."""
         mgr = _make_mock_manager()
-        mgr.list_screens = AsyncMock(
-            return_value=_make_result(status="success", data=None)
-        )
+        mgr.list_screens = AsyncMock(return_value=_make_result(status="success", data=None))
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-screens"])
         assert result.exit_code == 0
@@ -1439,9 +1368,7 @@ class TestEdgeCases:
     def test_screenshot_region_with_negative_values(self) -> None:
         """Region with negative values is accepted (parsing allows it)."""
         mgr = _make_mock_manager()
-        mgr.screenshot = AsyncMock(
-            return_value=_make_result(status="success", data=b"png")
-        )
+        mgr.screenshot = AsyncMock(return_value=_make_result(status="success", data=b"png"))
         with _patch_get_manager(mgr), patch("sys.stdout.buffer.write"):
             result = runner.invoke(app, ["screenshot", "--region", "-10,-20,100,100"])
         assert result.exit_code == 0
@@ -1484,9 +1411,7 @@ class TestEdgeCases:
         """-o and -r short options work for screenshot."""
         mgr = _make_mock_manager()
         fake_bytes = b"pngdata"
-        mgr.screenshot = AsyncMock(
-            return_value=_make_result(status="success", data=fake_bytes)
-        )
+        mgr.screenshot = AsyncMock(return_value=_make_result(status="success", data=fake_bytes))
         out_file = tmp_path / "s.png"
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["screenshot", "-r", "0,0,800,600", "-o", str(out_file)])

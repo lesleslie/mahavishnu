@@ -11,17 +11,14 @@ Note: repos.yaml is legacy. Use ecosystem.yaml as the single source of truth.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import json
 import logging
-import os
-import re
-from dataclasses import dataclass, field
 from pathlib import Path
+import re
 from typing import Any
 
 import yaml
-
-from mahavishnu.core.errors import ConfigurationError, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -298,18 +295,18 @@ class ConfigValidator:
 
         # Validate nickname aliases
         nicknames = repo.get("nicknames")
-        if nicknames is not None:
-            if not isinstance(nicknames, list) or not all(
-                isinstance(nickname, str) and nickname.strip() for nickname in nicknames
-            ):
-                self.report.add_result(
-                    ValidationResult(
-                        valid=False,
-                        message="'nicknames' must be a list of non-empty strings",
-                        path=f"{path}:nicknames",
-                        suggestions=["Use YAML list syntax, e.g. nicknames: [primary, alias]"],
-                    )
+        if nicknames is not None and (
+            not isinstance(nicknames, list)
+            or not all(isinstance(nickname, str) and nickname.strip() for nickname in nicknames)
+        ):
+            self.report.add_result(
+                ValidationResult(
+                    valid=False,
+                    message="'nicknames' must be a list of non-empty strings",
+                    path=f"{path}:nicknames",
+                    suggestions=["Use YAML list syntax, e.g. nicknames: [primary, alias]"],
                 )
+            )
 
         # Validate tags
         tags = repo.get("tags", [])
@@ -389,10 +386,7 @@ def validate_config(config_dir: str | Path | None = None) -> ConfigValidationRep
     Returns:
         Combined validation report
     """
-    if config_dir is None:
-        config_dir = Path("settings")
-    else:
-        config_dir = Path(config_dir)
+    config_dir = Path("settings") if config_dir is None else Path(config_dir)
 
     validator = ConfigValidator()
     combined_report = ConfigValidationReport(valid=True)

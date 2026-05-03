@@ -1,7 +1,6 @@
----
-name: session-archaeologist
-description: Use when recovering past decisions, solutions, or session context across the Bodai ecosystem. Use when user asks "what did we decide about X?", "has anyone solved X before?", "what's the history of X?", "what happened in the session about X?", "why did we choose X?", "when did we change X?", "show me the conversation about X", or "what was the outcome of X?". Also use when user wants to recover lost context from past development sessions.
----
+______________________________________________________________________
+
+## name: session-archaeologist description: Use when recovering past decisions, solutions, or session context across the Bodai ecosystem. Use when user asks "what did we decide about X?", "has anyone solved X before?", "what's the history of X?", "what happened in the session about X?", "why did we choose X?", "when did we change X?", "show me the conversation about X", or "what was the outcome of X?". Also use when user wants to recover lost context from past development sessions.
 
 # Session Archaeologist
 
@@ -11,8 +10,8 @@ description: Use when recovering past decisions, solutions, or session context a
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| akosha | 8682 | summary | mcp__akosha__search_all_systems, mcp__akosha__find_function_usage | 60s |
-| session-buddy | 8678 | full | mcp__session-buddy__search_conversations, mcp__session-buddy__search_entities | 30s |
+| akosha | 8682 | summary | mcp\_\_akosha\_\_search_all_systems, mcp\_\_akosha\_\_find_function_usage | 60s |
+| session-buddy | 8678 | full | mcp\_\_session-buddy\_\_search_conversations, mcp\_\_session-buddy\_\_search_entities | 30s |
 
 Recovers past decisions, solutions, and conversation history from across all Session-Buddy instances via Akosha. Unlike generic search, this skill **synthesizes raw conversation fragments into coherent narratives** — telling the story of what happened, what was decided, and why.
 
@@ -21,6 +20,7 @@ Recovers past decisions, solutions, and conversation history from across all Ses
 ## When to Use
 
 **Use when:**
+
 - Recovering a past decision and its rationale ("what did we decide about the adapter migration?")
 - Finding how someone solved a problem before ("has anyone debugged this exact error before?")
 - Reconstructing session history ("what happened in the session about pool scaling?")
@@ -28,6 +28,7 @@ Recovers past decisions, solutions, and conversation history from across all Ses
 - Tracing the evolution of a decision over time ("what's the history of X?")
 
 **Don't use when:**
+
 - Searching within current session only (use Session-Buddy's quick search)
 - Searching for code patterns across repos (use `code-archaeologist`)
 - Analyzing quality metrics and trends (use `quality-pulse`)
@@ -38,11 +39,12 @@ Recovers past decisions, solutions, and conversation history from across all Ses
 ## Data Source
 
 Session data flows through this pipeline:
+
 1. Claude Code sessions create conversations in Session-Buddy
-2. Session-Buddy stores conversations, reflections, and entity knowledge graphs
-3. Session-Buddy syncs memories to Akosha (cloud or HTTP)
-4. Akosha indexes with vector embeddings for semantic search
-5. This skill queries Akosha's `search_all_systems` and `query_knowledge_graph`
+1. Session-Buddy stores conversations, reflections, and entity knowledge graphs
+1. Session-Buddy syncs memories to Akosha (cloud or HTTP)
+1. Akosha indexes with vector embeddings for semantic search
+1. This skill queries Akosha's `search_all_systems` and `query_knowledge_graph`
 
 **Note:** The richness of results depends on how many sessions have been synced to Akosha. If data is sparse, the skill will note this and suggest running more sessions.
 
@@ -91,6 +93,7 @@ mcp__akosha__search_all_systems(query="<reformulated query>", limit=10)
 If the user specified a project or repo, filter by `system_id`.
 
 **For completeness**, run a second broader query if the first returns fewer than 3 results:
+
 - Add related terms (e.g., if searching for "adapter migration", also search for "adapter refactor adapter rewrite")
 
 ### Step 4: Enrich with Knowledge Graph
@@ -165,13 +168,13 @@ Deduplicate across conversation fragments, order chronologically, and present in
 If Akosha MCP tools are not available, fall back to Session-Buddy MCP tools directly:
 
 1. Try `mcp__session-buddy__search_conversations(query="<topic>", limit=10)`
-2. Try `mcp__session-buddy__search_by_concept(query="<topic>", limit=10)`
-3. Try `mcp__session-buddy__search_entities(query="<topic>", limit=10)`
+1. Try `mcp__session-buddy__search_by_concept(query="<topic>", limit=10)`
+1. Try `mcp__session-buddy__search_entities(query="<topic>", limit=10)`
 
 If Session-Buddy MCP is also unavailable, fall back to direct filesystem search:
 
 1. Search across Session-Buddy data directories (typically `~/.session-buddy/` or project-local `.session-buddy/`)
-2. Use Grep to search for topic keywords in conversation/reflection files
+1. Use Grep to search for topic keywords in conversation/reflection files
 
 Inform the user: "Akosha is not available. Falling back to [Session-Buddy MCP / direct filesystem search]. [Limitation: no cross-system search / no semantic understanding]. For richer results, ensure Akosha is running."
 

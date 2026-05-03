@@ -17,9 +17,9 @@ Schema: migrations/versions/V202604021300__routing_metrics_schema.sql
 
 from __future__ import annotations
 
+from enum import StrEnum
 import logging
 import re
-from enum import Enum
 from typing import Any
 
 from mahavishnu.core.metrics_schema import AdapterType, TaskType
@@ -27,7 +27,7 @@ from mahavishnu.core.metrics_schema import AdapterType, TaskType
 logger = logging.getLogger(__name__)
 
 
-class RoutingStrategy(str, Enum):
+class RoutingStrategy(StrEnum):
     """Routing strategies for adapter selection.
 
     Each strategy optimizes for a different objective:
@@ -272,7 +272,9 @@ class TaskRouter:
 
         # If no preferred adapter, return default chain
         if preferred_adapter is None:
-            logger.debug(f"Fallback chain for {task_type.value}: {[a.value for a in default_chain]}")
+            logger.debug(
+                f"Fallback chain for {task_type.value}: {[a.value for a in default_chain]}"
+            )
             return default_chain.copy()
 
         # Reorder chain to put preferred adapter first

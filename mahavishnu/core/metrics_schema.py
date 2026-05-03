@@ -12,13 +12,12 @@ Key Design:
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from enum import StrEnum
 import math
-from datetime import UTC, datetime, timedelta
-from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
-from pydantic import field_validator
 
 from mahavishnu.core.status import ExecutionStatus
 
@@ -32,7 +31,7 @@ except ImportError:
         return uuid.uuid4().hex
 
 
-class AdapterType(str, Enum):
+class AdapterType(StrEnum):
     """Adapter types for metrics tracking."""
 
     PREFECT = "prefect"
@@ -40,7 +39,7 @@ class AdapterType(str, Enum):
     LLAMAINDEX = "llamaindex"
 
 
-class TaskType(str, Enum):
+class TaskType(StrEnum):
     """Task type classifications for routing analytics."""
 
     WORKFLOW = "workflow"
@@ -291,7 +290,7 @@ def generate_cost_key(execution_id: str) -> str:
 
 def calculate_percentiles(
     latencies: list[int],
-    percentiles: list[float] = [50.0, 95.0, 99.0],
+    percentiles: list[float] = None,
 ) -> dict[str, float | None]:
     """Calculate percentile values from latency data.
 
@@ -302,10 +301,10 @@ def calculate_percentiles(
     Returns:
         Dictionary with percentile keys
     """
+    if percentiles is None:
+        percentiles = [50.0, 95.0, 99.0]
     if not latencies:
         return {}
-
-    import math
 
     sorted_latencies = sorted(latencies)
     result = {}
@@ -357,10 +356,7 @@ def calculate_confidence_interval(
     center = (success_rate + (z**2) / (2 * sample_size)) / denominator
     margin = (
         z
-        * math.sqrt(
-            (success_rate * (1 - success_rate) + (z**2) / (4 * sample_size))
-            / sample_size
-        )
+        * math.sqrt((success_rate * (1 - success_rate) + (z**2) / (4 * sample_size)) / sample_size)
         / denominator
     )
 

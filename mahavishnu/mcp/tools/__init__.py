@@ -19,11 +19,12 @@
 
 from .adapter_registry_tools import register_adapter_registry_tools
 from .goal_team_tools import register_goal_team_tools
+from .search_tools import register_search_tools
+
 # team_learning_tools de-authorized from MCP registration (Bodai I0.4).
 # skill_governance.py is the canonical learning authority.
 # Module still importable for CLI use via team_cli.py.
 from .treesitter_tools import register_treesitter_tools
-from .search_tools import register_search_tools
 
 __all__ = [
     "register_adapter_registry_tools",

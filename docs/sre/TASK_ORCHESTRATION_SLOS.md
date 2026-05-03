@@ -5,19 +5,20 @@
 **Last Updated**: 2026-02-18
 **Next Review**: 2026-03-18
 
----
+______________________________________________________________________
 
 ## Overview
 
 This document defines the Service Level Indicators (SLIs) and Service Level Objectives (SLOs) for the Mahavishnu Task Orchestration System. These targets are based on industry best practices and aligned with business requirements for developer productivity and workflow reliability.
 
 **Key Principles**:
+
 - SLOs are **targets**, not guarantees
 - Error budgets enable **risk-aware innovation**
 - SLIs are **measured**, not guessed
 - SLO breaches trigger **incident response**
 
----
+______________________________________________________________________
 
 ## Service Level Indicators (SLIs)
 
@@ -26,6 +27,7 @@ This document defines the Service Level Indicators (SLIs) and Service Level Obje
 **Description**: Time from receiving task creation request to successful database commit.
 
 **Measurement**:
+
 ```python
 # Client-side timing
 start_time = time.time()
@@ -42,6 +44,7 @@ labels = {
 ```
 
 **Data Sources**:
+
 - Prometheus histogram metric: `task_creation_duration_seconds`
 - OpenTelemetry span: `task_orchestrator.create_task`
 - Query: `histogram_quantile(0.99, sum(rate(task_creation_duration_seconds_bucket[5m])) by (le))`
@@ -50,17 +53,18 @@ labels = {
 
 | Percentile | Target | Rationale |
 |-----------|--------|-----------|
-| **p50** | <50ms | Median user experience |
-| **p95** | <100ms | 95% of users see this performance |
-| **p99** | <500ms | Nearly all users, allows for occasional complex NLP parsing |
+| **p50** | \<50ms | Median user experience |
+| **p95** | \<100ms | 95% of users see this performance |
+| **p99** | \<500ms | Nearly all users, allows for occasional complex NLP parsing |
 
----
+______________________________________________________________________
 
 ### 2. Task Query Latency
 
 **Description**: Time from receiving task query request to returning results.
 
 **Measurement**:
+
 ```python
 # Query methods
 await task_store.list_tasks(filters)      # List operations
@@ -69,6 +73,7 @@ await akosha.semantic_search(query)       # Semantic search
 ```
 
 **Data Sources**:
+
 - Prometheus histogram metric: `task_query_duration_seconds`
 - OpenTelemetry span: `task_store.{list,get,search}`
 - Query by method: `sum(rate(task_query_duration_seconds_bucket{method="semantic"}[5m])) by (le)`
@@ -77,17 +82,18 @@ await akosha.semantic_search(query)       # Semantic search
 
 | Percentile | Target | Rationale |
 |-----------|--------|-----------|
-| **p50** | <20ms | Fast queries for single task retrieval |
-| **p95** | <100ms | Acceptable for complex filtered queries |
-| **p99** | <200ms | Semantic search with embedding similarity |
+| **p50** | \<20ms | Fast queries for single task retrieval |
+| **p95** | \<100ms | Acceptable for complex filtered queries |
+| **p99** | \<200ms | Semantic search with embedding similarity |
 
----
+______________________________________________________________________
 
 ### 3. Task Service Availability
 
 **Description**: Percentage of successful task operations (create, read, update, delete).
 
 **Measurement**:
+
 ```python
 # Success rate calculation
 success_count = task_operations_total{status="success"}
@@ -100,6 +106,7 @@ availability = success_count / total_count * 100
 ```
 
 **Data Sources**:
+
 - Prometheus counter metric: `task_operations_total{status, operation}`
 - OpenTelemetry span status
 - Health check endpoint: `/health` (200 OK)
@@ -113,19 +120,21 @@ availability = success_count / total_count * 100
 | **Daily** | 99.98% | 1.7 minutes/day | Very high daily reliability |
 
 **Error Budget**:
+
 - Monthly budget: **43 minutes**
 - Burn rate alerting:
   - **Warning** at 2x burn rate (86 minutes/month used)
   - **Critical** at 5x burn rate (215 minutes/month used)
-- **Feature freeze** when budget <10% (4.3 minutes remaining)
+- **Feature freeze** when budget \<10% (4.3 minutes remaining)
 
----
+______________________________________________________________________
 
 ### 4. Data Durability
 
 **Description**: Probability of permanently losing task data.
 
 **Measurement**:
+
 ```python
 # Measured via backup/restore testing
 - Backup success rate: 100% (all backups complete successfully)
@@ -136,6 +145,7 @@ availability = success_count / total_count * 100
 ```
 
 **Data Sources**:
+
 - Backup system logs
 - Automated restore test results
 - Database integrity checks
@@ -148,13 +158,14 @@ availability = success_count / total_count * 100
 | **Backup success** | 100% | All backups must complete |
 | **Restore testing** | 100% | Weekly tests must pass |
 
----
+______________________________________________________________________
 
 ### 5. Task Workflow Success Rate
 
 **Description**: Percentage of task workflows that complete successfully (from "start" to "complete").
 
 **Measurement**:
+
 ```python
 # Workflow lifecycle tracking
 started_tasks = task_workflow_stage_total{stage="started"}
@@ -165,6 +176,7 @@ success_rate = completed_tasks / started_tasks * 100
 ```
 
 **Data Sources**:
+
 - Task status transitions in SQLite
 - Workflow state machine events
 - Quality gate results
@@ -176,13 +188,14 @@ success_rate = completed_tasks / started_tasks * 100
 | **Workflow completion** | 95% | Allow for cancellations and failures |
 | **Quality gate pass** | 90% | Crackerjack gates may fail legitimately |
 
----
+______________________________________________________________________
 
 ### 6. External Sync Availability
 
 **Description**: Availability of GitHub/GitLab webhook processing and approval queue.
 
 **Measurement**:
+
 ```python
 # Webhook processing
 webhooks_received = webhooks_received_total{source="github"}
@@ -195,6 +208,7 @@ queue_processing_time = task_approval_queue_duration_seconds
 ```
 
 **Data Sources**:
+
 - Webhook endpoint metrics
 - Approval queue depth gauge
 - Processing time histograms
@@ -204,16 +218,17 @@ queue_processing_time = task_approval_queue_duration_seconds
 | Metric | Target | Rationale |
 |--------|--------|-----------|
 | **Webhook processing** | 99.5% | Allow for transient failures (retries) |
-| **Queue depth** | <100 | Prevent overwhelming approval workflow |
-| **Queue processing time** | <1 hour | Process approvals within business day |
+| **Queue depth** | \<100 | Prevent overwhelming approval workflow |
+| **Queue processing time** | \<1 hour | Process approvals within business day |
 
----
+______________________________________________________________________
 
 ### 7. Semantic Search Accuracy
 
 **Description**: Relevance of semantic search results (user satisfaction proxy).
 
 **Measurement**:
+
 ```python
 # User feedback on search results
 search_total = semantic_search_total
@@ -226,6 +241,7 @@ ctr = search_clicked / search_total * 100
 ```
 
 **Data Sources**:
+
 - Search result counts
 - User interaction telemetry (clicks on results)
 - Search refinement rate (users searching again immediately)
@@ -237,31 +253,33 @@ ctr = search_clicked / search_total * 100
 | **Results returned** | 95% | Most searches should find relevant tasks |
 | **Click-through rate** | 50% | Half of searches result in user interaction |
 
----
+______________________________________________________________________
 
 ## Service Level Objectives (SLOs) Summary
 
 | SLI | Time Window | SLO | Error Budget | Burn Rate Alert |
 |-----|-------------|-----|--------------|-----------------|
-| **Task creation latency (p99)** | Rolling 28 days | <500ms | N/A (latency) | 10% of requests >500ms |
-| **Task query latency (p95)** | Rolling 28 days | <100ms | N/A (latency) | 10% of requests >100ms |
+| **Task creation latency (p99)** | Rolling 28 days | \<500ms | N/A (latency) | 10% of requests >500ms |
+| **Task query latency (p95)** | Rolling 28 days | \<100ms | N/A (latency) | 10% of requests >100ms |
 | **Task availability** | Calendar month | 99.9% | 43 min/month | Warning: 2x, Critical: 5x |
 | **Data durability** | Calendar year | 99.999% | 5 min/year | Any data loss = P0 incident |
-| **Workflow success rate** | Rolling 28 days | 95% | 5% failure rate | <90% = investigate |
+| **Workflow success rate** | Rolling 28 days | 95% | 5% failure rate | \<90% = investigate |
 | **Webhook availability** | Calendar month | 99.5% | 3.6 hours/month | Warning: 2x, Critical: 5x |
 
----
+______________________________________________________________________
 
 ## Error Budget Policy
 
 ### Error Budget Calculation
 
 **Monthly Availability Budget**:
+
 - Target: 99.9% availability
 - Allowable downtime: 43 minutes/month
 - Budget calculation: `43 minutes - (actual_downtime_in_minutes)`
 
 **Example**:
+
 ```
 Month: February 2026 (28 days)
 Total minutes: 40,320 minutes
@@ -286,10 +304,10 @@ Status: ✓ Within budget
 |------------------|--------|--------|
 | **>50%** (21+ min) | ✓ Healthy | Proceed with all feature work |
 | **10-50%** (4-21 min) | ⚠ Warning | Prioritize reliability over features |
-| **<10%** (<4 min) | 🛑 Critical | **Feature freeze**, reliability-only work |
+| **\<10%** (\<4 min) | 🛑 Critical | **Feature freeze**, reliability-only work |
 | **0%** (0 min) | ❌ Breach | Incident response, postmortem required |
 
----
+______________________________________________________________________
 
 ## Monitoring & Alerting
 
@@ -481,7 +499,7 @@ groups:
           description: "Automated restore test failed - data at risk"
 ```
 
----
+______________________________________________________________________
 
 ## Dashboards
 
@@ -490,40 +508,47 @@ groups:
 **Panels**:
 
 1. **Task Availability (30d)**
+
    - Gauge: Current availability % vs 99.9% target
    - Time series: Availability over 30 days
    - Error budget: Remaining minutes
 
-2. **Task Creation Latency (24h)**
+1. **Task Creation Latency (24h)**
+
    - Heatmap: Latency distribution
    - Percentiles: p50, p95, p99 lines
-   - SLO indicator: P99 <500ms
+   - SLO indicator: P99 \<500ms
 
-3. **Task Query Latency (24h)**
+1. **Task Query Latency (24h)**
+
    - Heatmap: Latency distribution by method
    - Percentiles: p50, p95, p99 lines
-   - SLO indicator: P95 <100ms
+   - SLO indicator: P95 \<100ms
 
-4. **Workflow Success Rate (7d)**
+1. **Workflow Success Rate (7d)**
+
    - Time series: Success rate % vs 95% target
    - Breakdown: By repository, by priority
 
-5. **Error Budget Burn Rate**
+1. **Error Budget Burn Rate**
+
    - Gauge: Current burn rate (1x, 2x, 5x)
    - Time series: Burn rate over 30 days
    - Status: Healthy/Warning/Critical
 
-6. **Data Durability**
+1. **Data Durability**
+
    - Backup success rate (30d)
    - Last backup timestamp
    - Restore test status
 
-7. **External Sync**
+1. **External Sync**
+
    - Webhook processing rate
    - Approval queue depth
    - Queue processing time
 
----
+______________________________________________________________________
 
 ## SLO Review Process
 
@@ -534,26 +559,31 @@ groups:
 **Agenda**:
 
 1. **SLO Performance** (15 minutes)
+
    - Review each SLO performance vs target
    - Analyze trends (improving, degrading)
    - Identify outliers and root causes
 
-2. **Error Budget Status** (10 minutes)
+1. **Error Budget Status** (10 minutes)
+
    - Current budget remaining
    - Burn rate analysis
    - Feature work impact
 
-3. **Incidents & Breaches** (15 minutes)
+1. **Incidents & Breaches** (15 minutes)
+
    - Review SLO breaches
    - Discuss incidents and MTTR
    - Review postmortems and action items
 
-4. **Adjustments** (10 minutes)
+1. **Adjustments** (10 minutes)
+
    - Consider SLO target changes
    - Adjust error budget policy
    - Update monitoring/alerting
 
-5. **Action Items** (10 minutes)
+1. **Action Items** (10 minutes)
+
    - Assign improvement tasks
    - Schedule follow-ups
    - Document decisions
@@ -565,50 +595,58 @@ groups:
 **Agenda**:
 
 1. **Business Requirements Review**
+
    - Has user base changed?
    - Have usage patterns shifted?
    - Are SLOs still aligned with business needs?
 
-2. **Technical Capabilities Assessment**
+1. **Technical Capabilities Assessment**
+
    - Can we improve SLOs with architecture changes?
    - Are SLOs too aggressive (too many breaches)?
    - Are SLOs too loose (not driving quality)?
 
-3. **Competitive Analysis**
+1. **Competitive Analysis**
+
    - How do our SLOs compare to industry?
    - Are we meeting user expectations?
 
-4. **SLO Adjustments**
+1. **SLO Adjustments**
+
    - Adjust targets based on findings
    - Add/remove SLIs as needed
    - Update error budget policy
 
----
+______________________________________________________________________
 
 ## Runbook: SLO Breach Response
 
 ### Immediate Actions (0-15 minutes)
 
 1. **Verify breach**
+
    ```bash
    # Check current SLO status
    curl http://localhost:8680/metrics | grep task_availability
    ```
 
-2. **Declare incident**
+1. **Declare incident**
+
    - Create incident ticket (Linear/Jira)
    - Severity based on breach type:
-     - Availability <99%: **P1**
+     - Availability \<99%: **P1**
      - Latency >2x SLO: **P2**
      - Error budget exhausted: **P0**
 
-3. **Assess impact**
+1. **Assess impact**
+
    ```bash
    # Check affected operations
    mahavishnu task stats --last 1h
    ```
 
-4. **Notify stakeholders**
+1. **Notify stakeholders**
+
    - Slack: #sre-incidents
    - Email: eng-manager@example.com
    - Pager: if P0 incident
@@ -616,16 +654,19 @@ groups:
 ### Investigation (15-60 minutes)
 
 1. **Identify root cause**
+
    - Check logs: `tail -f /var/log/mahavishnu/tasks.log`
    - Check metrics: `task_operations_total{status="error"}`
    - Check dependencies: SQLite, Akosha, Session-Buddy health
 
-2. **Mitigate impact**
+1. **Mitigate impact**
+
    - Restart failing services
    - Scale resources if needed
    - Disable problematic features
 
-3. **Implement fix**
+1. **Implement fix**
+
    - Deploy hotfix if needed
    - Roll back recent changes
    - Update runbooks
@@ -633,29 +674,33 @@ groups:
 ### Post-Incident (1-7 days)
 
 1. **Calculate error budget consumed**
+
    ```python
    downtime_minutes = incident_duration_minutes / 60
    error_budget_consumed = downtime_minutes
    remaining_budget = 43 - error_budget_consumed
    ```
 
-2. **Determine feature freeze**
+1. **Determine feature freeze**
+
    - If remaining_budget < 10%: **Feature freeze**
    - Notify engineering team
    - Cancel non-urgent feature work
 
-3. **Write postmortem**
+1. **Write postmortem**
+
    - Document timeline
    - Root cause analysis
    - Action items
    - Prevention measures
 
-4. **Update SLOs if needed**
+1. **Update SLOs if needed**
+
    - Are targets realistic?
    - Do we need different metrics?
    - Should we adjust error budget?
 
----
+______________________________________________________________________
 
 ## Appendix: SLO Calculation Examples
 
@@ -716,7 +761,7 @@ SLO target: <100ms
 Status: Within SLO ✓
 ```
 
----
+______________________________________________________________________
 
 ## Change Log
 
@@ -724,7 +769,7 @@ Status: Within SLO ✓
 |------|---------|---------|--------|
 | 2026-02-18 | 1.0 | Initial SLO definitions | SRE Team |
 
----
+______________________________________________________________________
 
 **Next Review**: 2026-03-18
 **SLO Owner**: SRE Team

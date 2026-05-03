@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import builtins
 import importlib
-from types import SimpleNamespace
 
 import pytest
 
-import mahavishnu.core.unified_orchestrator as uo
 from mahavishnu.core.errors import MahavishnuError
+import mahavishnu.core.unified_orchestrator as uo
 
 
 class _FakeStateManager:
@@ -50,7 +49,9 @@ class _FakeStateManager:
 
 
 class _Adapter:
-    def __init__(self, *, cancel_error: Exception | None = None, health_error: Exception | None = None):
+    def __init__(
+        self, *, cancel_error: Exception | None = None, health_error: Exception | None = None
+    ):
         self.cancel_calls: list[str] = []
         self.cancel_error = cancel_error
         self.health_error = health_error
@@ -86,7 +87,13 @@ class _FakeTaskRouter:
         self.execute_calls.append(kwargs)
         if self._execution_results:
             return self._execution_results.pop(0)
-        return {"success": True, "adapter": uo.AdapterType.PREFECT, "result": "exec", "fallback_chain": [uo.AdapterType.PREFECT], "total_attempts": 1}
+        return {
+            "success": True,
+            "adapter": uo.AdapterType.PREFECT,
+            "result": "exec",
+            "fallback_chain": [uo.AdapterType.PREFECT],
+            "total_attempts": 1,
+        }
 
     async def get_health(self) -> dict:
         return {"status": "healthy", "routing_mode": "statistical"}
@@ -149,7 +156,9 @@ async def test_execute_workflow_success(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 @pytest.mark.asyncio
-async def test_execute_workflow_failure_marks_failed_and_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_execute_workflow_failure_marks_failed_and_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(uo, "generate_config_id", lambda: "wf-fail-id")
     router = _FakeTaskRouter(
         execution_results=[

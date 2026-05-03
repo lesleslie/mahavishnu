@@ -1,15 +1,11 @@
 """Tests for LlamaIndex adapter stub."""
 
 import pytest
-from unittest.mock import AsyncMock, patch
 
-from mahavishnu.engines.llamaindex_adapter_impl import LlamaIndexAdapter
 from mahavishnu.core.adapters.base import (
     OrchestratorAdapter,
-    AdapterType,
-    AdapterCapabilities,
 )
-from mahavishnu.core.errors import WorkflowError
+from mahavishnu.engines.llamaindex_adapter_impl import LlamaIndexAdapter
 
 
 @pytest.mark.asyncio
@@ -28,12 +24,12 @@ async def test_llamaindex_adapter_capabilities():
     adapter = LlamaIndexAdapter()
 
     caps = adapter.capabilities
-    assert caps.can_deploy_flows is True          # RAG pipelines
-    assert caps.can_monitor_execution is True        # Query tracking
-    assert caps.can_cancel_workflows is True         # Can cancel queries
-    assert caps.supports_batch_execution is True   # Multiple queries
-    assert caps.supports_multi_agent is False        # Single query engine
-    assert caps.has_cloud_ui is False             # Local engine
+    assert caps.can_deploy_flows is True  # RAG pipelines
+    assert caps.can_monitor_execution is True  # Query tracking
+    assert caps.can_cancel_workflows is True  # Can cancel queries
+    assert caps.supports_batch_execution is True  # Multiple queries
+    assert caps.supports_multi_agent is False  # Single query engine
+    assert caps.has_cloud_ui is False  # Local engine
 
 
 @pytest.mark.asyncio

@@ -9,21 +9,20 @@ Tests cover:
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
 import sqlite3
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from mahavishnu.core.database import DatabaseConfig
+from mahavishnu.core.errors import DatabaseError
 from mahavishnu.core.migrator import (
     DatabaseMigrator,
     MigrationConfig,
     MigrationMetrics,
     MigrationPhase,
-    MigrationStatus,
     run_migration,
 )
-from mahavishnu.core.database import DatabaseConfig
-from mahavishnu.core.errors import DatabaseError
 
 
 class TestMigrationConfig:
@@ -167,7 +166,9 @@ class TestMigratorCoverageBoost:
 
     @pytest.mark.asyncio
     async def test_migrate_full_success_and_phase_completed(self) -> None:
-        migrator = DatabaseMigrator(MigrationConfig(enable_dual_write=False, enable_validation=False))
+        migrator = DatabaseMigrator(
+            MigrationConfig(enable_dual_write=False, enable_validation=False)
+        )
         migrator._run_phase = AsyncMock()
         migrator._cleanup_connections = AsyncMock()
 
@@ -179,7 +180,9 @@ class TestMigratorCoverageBoost:
 
     @pytest.mark.asyncio
     async def test_migrate_failure_triggers_rollback_and_database_error(self) -> None:
-        migrator = DatabaseMigrator(MigrationConfig(enable_dual_write=True, enable_validation=False))
+        migrator = DatabaseMigrator(
+            MigrationConfig(enable_dual_write=True, enable_validation=False)
+        )
         migrator._run_phase = AsyncMock(side_effect=RuntimeError("boom"))
         migrator._rollback = AsyncMock()
         migrator._cleanup_connections = AsyncMock()
@@ -203,7 +206,9 @@ class TestMigratorCoverageBoost:
         assert migrator.current_phase == MigrationPhase.DUAL_WRITE
 
         with pytest.raises(ValueError):
-            await migrator._run_phase(MigrationPhase.CUTOVER, AsyncMock(side_effect=ValueError("x")))
+            await migrator._run_phase(
+                MigrationPhase.CUTOVER, AsyncMock(side_effect=ValueError("x"))
+            )
 
     @pytest.mark.asyncio
     async def test_connect_postgres_caches_connection(self) -> None:
@@ -379,7 +384,9 @@ class TestMigratorCoverageBoost:
 
     @pytest.mark.asyncio
     async def test_migrate_with_validation_enabled_and_validate_success_path(self) -> None:
-        migrator = DatabaseMigrator(MigrationConfig(enable_dual_write=False, enable_validation=True))
+        migrator = DatabaseMigrator(
+            MigrationConfig(enable_dual_write=False, enable_validation=True)
+        )
         migrator._run_phase = AsyncMock()
         migrator._validate_migration = AsyncMock()
         migrator._cleanup_connections = AsyncMock()

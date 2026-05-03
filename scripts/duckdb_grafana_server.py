@@ -13,11 +13,10 @@ Then add a JSON datasource in Grafana pointing to http://localhost:8080
 from __future__ import annotations
 
 import argparse
-import json
-import logging
-import sys
 from datetime import datetime
+import logging
 from pathlib import Path
+import sys
 from typing import Any
 
 import duckdb
@@ -205,17 +204,21 @@ def health() -> dict[str, Any]:
     try:
         # Test database connection
         result = db_connection.execute("SELECT 1").fetchone()
-        return jsonify({
-            "status": "ok",
-            "database": "connected",
-            "timestamp": datetime.now().isoformat(),
-        })
+        return jsonify(
+            {
+                "status": "ok",
+                "database": "connected",
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
     except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e),
-            "timestamp": datetime.now().isoformat(),
-        }), 503
+        return jsonify(
+            {
+                "status": "error",
+                "message": str(e),
+                "timestamp": datetime.now().isoformat(),
+            }
+        ), 503
 
 
 @app.route("/query", methods=["POST"])
@@ -256,11 +259,13 @@ def query() -> dict[str, Any]:
                 row_dict[col] = row[i]
             rows.append(row_dict)
 
-        return jsonify({
-            "data": rows,
-            "columns": columns,
-            "rowCount": len(rows),
-        })
+        return jsonify(
+            {
+                "data": rows,
+                "columns": columns,
+                "rowCount": len(rows),
+            }
+        )
 
     except Exception as e:
         logger.error(f"Query failed: {e}")
@@ -270,10 +275,12 @@ def query() -> dict[str, Any]:
 @app.route("/queries")
 def list_queries() -> dict[str, Any]:
     """List available queries."""
-    return jsonify({
-        "queries": list(QUERY_TEMPLATES.keys()),
-        "count": len(QUERY_TEMPLATES),
-    })
+    return jsonify(
+        {
+            "queries": list(QUERY_TEMPLATES.keys()),
+            "count": len(QUERY_TEMPLATES),
+        }
+    )
 
 
 @app.route("/search")
@@ -308,9 +315,7 @@ def columns() -> dict[str, Any]:
 
 def main() -> int:
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="DuckDB to Grafana Bridge Server"
-    )
+    parser = argparse.ArgumentParser(description="DuckDB to Grafana Bridge Server")
     parser.add_argument(
         "--port",
         type=int,
@@ -328,7 +333,8 @@ def main() -> int:
         help="Host to bind to (default: 127.0.0.1)",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable verbose logging",
     )
@@ -361,12 +367,12 @@ def main() -> int:
 
     # Start server
     logger.info(f"Starting server on http://{args.host}:{args.port}")
-    logger.info(f"Available endpoints:")
-    logger.info(f"  - GET  /health          - Health check")
-    logger.info(f"  - GET  /queries         - List available queries")
-    logger.info(f"  - POST /query           - Execute query")
-    logger.info(f"  - GET  /search          - Search queries (Grafana)")
-    logger.info(f"  - GET  /columns         - Get table columns")
+    logger.info("Available endpoints:")
+    logger.info("  - GET  /health          - Health check")
+    logger.info("  - GET  /queries         - List available queries")
+    logger.info("  - POST /query           - Execute query")
+    logger.info("  - GET  /search          - Search queries (Grafana)")
+    logger.info("  - GET  /columns         - Get table columns")
 
     try:
         app.run(host=args.host, port=args.port, debug=False)

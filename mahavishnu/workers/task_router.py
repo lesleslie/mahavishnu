@@ -12,15 +12,15 @@ Each provider (Ollama, ZAI, etc.) has its own model routing config.
 
 from __future__ import annotations
 
+from enum import StrEnum
 import logging
 import re
-from enum import Enum
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class TaskCategory(str, Enum):
+class TaskCategory(StrEnum):
     """Categories for task classification."""
 
     CODE_GENERATION = "code_generation"
@@ -189,7 +189,7 @@ def classify_task(prompt: str, context: dict[str, Any] | None = None) -> TaskCat
             return TaskCategory.EMBEDDING
 
     # Score each category based on pattern matches
-    scores: dict[TaskCategory, int] = {cat: 0 for cat in TaskCategory}
+    scores: dict[TaskCategory, int] = dict.fromkeys(TaskCategory, 0)
 
     for category, patterns in TASK_PATTERNS.items():
         for pattern in patterns:

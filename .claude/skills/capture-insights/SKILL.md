@@ -1,7 +1,6 @@
----
-name: capture-insights
-description: Use when capturing knowledge from conversations with Session-Buddy's automatic insight extraction. Use when user wants to build a personal knowledge base, document learning, or share insights across projects automatically.
----
+______________________________________________________________________
+
+## name: capture-insights description: Use when capturing knowledge from conversations with Session-Buddy's automatic insight extraction. Use when user wants to build a personal knowledge base, document learning, or share insights across projects automatically.
 
 # Capture Insights
 
@@ -11,8 +10,8 @@ description: Use when capturing knowledge from conversations with Session-Buddy'
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| session-buddy | 8678 | full | mcp__session-buddy__store_reflection, mcp__session-buddy__search_conversations | 30s |
-| akosha | 8682 | summary | mcp__akosha__store_memory, mcp__akosha__query_knowledge_graph | 60s |
+| session-buddy | 8678 | full | mcp\_\_session-buddy\_\_store_reflection, mcp\_\_session-buddy\_\_search_conversations | 30s |
+| akosha | 8682 | summary | mcp\_\_akosha\_\_store_memory, mcp\_\_akosha\_\_query_knowledge_graph | 60s |
 
 Session-Buddy automatically extracts and stores educational insights from your conversations using deterministic pattern matching and semantic embeddings. This skill guides you through writing insights in the correct format for automatic capture.
 
@@ -21,6 +20,7 @@ Session-Buddy automatically extracts and stores educational insights from your c
 ## When to Use
 
 **Use when:**
+
 - Explaining a technical concept or pattern
 - Documenting a lesson learned or debugging discovery
 - Sharing a best practice or design decision
@@ -28,6 +28,7 @@ Session-Buddy automatically extracts and stores educational insights from your c
 - Creating reusable knowledge for future sessions
 
 **Don't use when:**
+
 - Quick status updates or progress reports
 - Simple factual statements (not insights)
 - Temporary notes or throwaway comments
@@ -43,6 +44,7 @@ Session-Buddy automatically extracts and stores educational insights from your c
 ```
 
 **Rules:**
+
 - Must start with exact header: `★ Insight ─────────────────────────────────────`
 - Must end with exact footer: `─────────────────────────────────────────────────`
 - Content between header and footer is extracted
@@ -50,6 +52,7 @@ Session-Buddy automatically extracts and stores educational insights from your c
 - Semantic embeddings generated automatically (local ONNX, no API calls)
 
 **Example (Correct):**
+
 ```markdown
 ★ Insight ─────────────────────────────────────
 Use Arc<T> instead of Rc<T> when sharing state across async tasks in Rust. Rc is not Send-safe, but Arc is. This prevents compiler errors E0277 when passing shared references to spawned tasks.
@@ -83,6 +86,7 @@ stats = await mcp.call_tool("mcp__session-buddy__reflection_stats", {})
 ### Step 1: Write Insight
 
 **Good insights:**
+
 - Explain WHY something works, not just WHAT
 - Include context and reasoning
 - Share lessons learned from debugging
@@ -90,6 +94,7 @@ stats = await mcp.call_tool("mcp__session-buddy__reflection_stats", {})
 - Connect concepts to real examples
 
 **Bad insights:**
+
 - Simple facts ("Rust has ownership")
 - Opinions without reasoning ("I like Python")
 - Temporary status ("Fixed the bug")
@@ -98,6 +103,7 @@ stats = await mcp.call_tool("mcp__session-buddy__reflection_stats", {})
 ### Step 2: Verify Format
 
 **Checklist:**
+
 - [ ] Exact header: `★ Insight ─────────────────────────────────────`
 - [ ] Exact footer: `─────────────────────────────────────────────────`
 - [ ] Educational content between header and footer
@@ -105,6 +111,7 @@ stats = await mcp.call_tool("mcp__session-buddy__reflection_stats", {})
 - [ ] Includes context or examples
 
 **Common format mistakes:**
+
 ```markdown
 # ❌ BAD: Wrong header
 ## Insight
@@ -130,16 +137,17 @@ Content here...
 **What happens automatically:**
 
 1. **Pattern matching**: Session-Buddy detects insight format
-2. **SHA-256 hashing**: Creates unique hash to prevent duplicates
-3. **Semantic embedding**: Generates vector embedding using local ONNX models
-4. **Storage**: Stores in Session-Buddy database with metadata
-5. **Indexing**: Makes searchable across all future sessions
+1. **SHA-256 hashing**: Creates unique hash to prevent duplicates
+1. **Semantic embedding**: Generates vector embedding using local ONNX models
+1. **Storage**: Stores in Session-Buddy database with metadata
+1. **Indexing**: Makes searchable across all future sessions
 
 **Performance:**
-- Extraction: <50ms
-- Embedding generation: <100ms
-- Duplicate check: <10ms
-- Total: <150ms per insight
+
+- Extraction: \<50ms
+- Embedding generation: \<100ms
+- Duplicate check: \<10ms
+- Total: \<150ms per insight
 
 ### Step 4: Cross-Project Sharing
 
@@ -148,11 +156,13 @@ Content here...
 Session-Buddy automatically shares insights across related projects based on dependency graphs.
 
 **Example:**
+
 - Fix authentication issue in `auth-service`
 - Later work on `user-service` (which depends on `auth-service`)
 - Session-Buddy surfaces the authentication solution automatically
 
 **Via MCP:**
+
 ```python
 # Search with dependency awareness
 results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
@@ -164,6 +174,7 @@ results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
 ### Step 5: Search Insights
 
 **Semantic search:**
+
 ```python
 results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
     "query": "async Rust shared state"
@@ -173,6 +184,7 @@ results = await mcp.call_tool("mcp__session-buddy__search_by_concept", {
 ```
 
 **Temporal search:**
+
 ```python
 results = await mcp.call_tool("mcp__session-buddy__search_temporal", {
     "query": "debugging memory leaks",
@@ -181,6 +193,7 @@ results = await mcp.call_tool("mcp__session-buddy__search_temporal", {
 ```
 
 **Quick search:**
+
 ```python
 results = await mcp.call_tool("mcp__session-buddy__quick_search", {
     "query": "Arc vs Rc"
@@ -190,6 +203,7 @@ results = await mcp.call_tool("mcp__session-buddy__quick_search", {
 ## Privacy Guarantees
 
 **100% Local Processing:**
+
 - ✅ No external API calls
 - ✅ Local ONNX embeddings (all-MiniLM-L6-v2)
 - ✅ No data leaves your machine
@@ -197,8 +211,9 @@ results = await mcp.call_tool("mcp__session-buddy__quick_search", {
 - ✅ Open source, auditable code
 
 **Performance:**
-- Extraction: <50ms
-- Search: <20ms
+
+- Extraction: \<50ms
+- Search: \<20ms
 - Storage: SQLite database (`.session_buddy/data.db`)
 
 ## Quality Guidelines
@@ -235,16 +250,18 @@ Use Arc<T> instead of Rc<T> when sharing state across async tasks in Rust. Rc us
 | **Writing facts instead of insights** | Low search relevance | Explain WHY, not just WHAT |
 | **Missing context** | Hard to apply later | Include examples and reasoning |
 | **Forgetting format** | Manual note-taking required | Use insight format consistently |
-| **Assuming sync is instant** | Can't find insight immediately | Search takes <20ms, be patient |
+| **Assuming sync is instant** | Can't find insight immediately | Search takes \<20ms, be patient |
 
 ## Real-World Impact
 
 **Before this skill:**
+
 - Manual note-taking in separate files → 80% forgotten
 - No cross-project sharing → repeated learning
 - Full-text search only → poor relevance
 
 **After this skill:**
+
 - Automatic capture → zero overhead
 - Dependency-aware sharing → learn once, apply everywhere
 - Semantic search → relevant results every time
@@ -252,6 +269,7 @@ Use Arc<T> instead of Rc<T> when sharing state across async tasks in Rust. Rc us
 ## Example Workflows
 
 **Debugging Session:**
+
 ```markdown
 # While debugging...
 Hmm, getting E0277 error about Send not implemented...
@@ -266,6 +284,7 @@ Compiler error E0277 "trait Send is not implemented for Rc<T>" means you're tryi
 ```
 
 **Architecture Discussion:**
+
 ```markdown
 ★ Insight ─────────────────────────────────────
 When designing microservices, use async messaging for inter-service communication instead of synchronous REST calls. This prevents cascading failures, improves resilience, and allows services to scale independently. Message queues (RabbitMQ, Kafka) provide durability and retry logic that synchronous calls lack.
@@ -273,6 +292,7 @@ When designing microservices, use async messaging for inter-service communicatio
 ```
 
 **Best Practice Discovery:**
+
 ```markdown
 ★ Insight ─────────────────────────────────────
 Always use type hints in Python function signatures, even for private methods. While Python doesn't enforce them at runtime, tools like mypy can catch type errors during development. This prevents entire classes of bugs related to type mismatches and improves code documentation. Combined with strict mode in mypy, it catches ~40% of bugs before runtime.

@@ -2,8 +2,8 @@
 """Toggle Claude CLI verbose/debug mode programmatically."""
 
 import json
-import sys
 from pathlib import Path
+import sys
 from typing import Literal
 
 

@@ -7,16 +7,14 @@ Tests cross-system ULID correlation and traceability between:
 - Akosha entities
 """
 
-import pytest
-import asyncio
-from datetime import datetime, UTC
 import sys
 
 from oneiric.core.ulid_resolution import (
+    get_cross_system_trace,
     register_reference,
     resolve_ulid,
-    get_cross_system_trace,
 )
+import pytest
 
 # Import ULID generation from Dhara-era ULID utilities (fallback to timestamp-based)
 try:
@@ -30,16 +28,16 @@ try:
         return is_ulid(value)
 except ImportError:
     # Fallback ULID generation
-    import time
     import os
+    import time
 
     def generate_config_id() -> str:
         timestamp_ms = int(time.time() * 1000)
-        timestamp_bytes = timestamp_ms.to_bytes(6, byteorder='big')
+        timestamp_bytes = timestamp_ms.to_bytes(6, byteorder="big")
         randomness = os.urandom(10)
         ulid_bytes = timestamp_bytes + randomness
         alphabet = "0123456789abcdefghjkmnpqrstvwxyz"
-        b32_encode = lambda data: ''.join([alphabet[(b >> 35) & 31] for b in data])
+        b32_encode = lambda data: "".join([alphabet[(b >> 35) & 31] for b in data])
         return b32_encode(ulid_bytes)
 
     def is_config_ulid(value: str) -> bool:
@@ -68,8 +66,12 @@ def _patch_ulid_generators(monkeypatch: pytest.MonkeyPatch):
     def is_valid(value: str) -> bool:
         return len(value) == 26 and all(c in _ULID_CHARS for c in value)
 
-    monkeypatch.setattr("crackerjack.services.ulid_generator.generate_ulid", generate, raising=False)
-    monkeypatch.setattr("crackerjack.services.ulid_generator.is_valid_ulid", is_valid, raising=False)
+    monkeypatch.setattr(
+        "crackerjack.services.ulid_generator.generate_ulid", generate, raising=False
+    )
+    monkeypatch.setattr(
+        "crackerjack.services.ulid_generator.is_valid_ulid", is_valid, raising=False
+    )
     monkeypatch.setattr("session_buddy.core.ulid_generator.generate_ulid", generate, raising=False)
     monkeypatch.setattr("session_buddy.core.ulid_generator.is_valid_ulid", is_valid, raising=False)
     monkeypatch.setattr("oneiric.core.ulid.generate", generate, raising=False)
@@ -174,6 +176,7 @@ async def test_cross_system_workflow_to_test_trace():
 
     # Simulate test execution ULID (Crackerjack)
     from crackerjack.services.ulid_generator import generate_ulid
+
     test_ulid = generate_ulid()
     register_reference(
         test_ulid,
@@ -205,7 +208,7 @@ async def test_ulid_time_ordering():
 
     # ULIDs should be monotonically increasing (lexicographically sortable)
     for i in range(1, len(ulids)):
-        assert ulids[i-1] < ulids[i], f"ULID {i-1} should be < ULID {i}"
+        assert ulids[i - 1] < ulids[i], f"ULID {i - 1} should be < ULID {i}"
 
 
 @pytest.mark.integration

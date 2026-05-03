@@ -6,8 +6,7 @@ Executes rollbacks without mutating evidence chains.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 from mahavishnu.core.skill_governance import (
     SkillActivation,
@@ -130,9 +129,7 @@ class SkillRegistry:
 
     def evidence_history_preserved(self, skill_id: str) -> bool:
         evidence_ids = {
-            r.review.review_id
-            for r in self.list_history(skill_id)
-            if r.review is not None
+            r.review.review_id for r in self.list_history(skill_id) if r.review is not None
         }
         if not evidence_ids:
             return True

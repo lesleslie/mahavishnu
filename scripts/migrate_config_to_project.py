@@ -7,13 +7,14 @@ Usage:
     python scripts/migrate_config_to_project.py --rollback <TIMESTAMP>
     python scripts/migrate_config_to_project.py  # full migration
 """
+
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import json
+from pathlib import Path
 import shutil
 import sys
-from datetime import UTC, datetime
-from pathlib import Path
 
 
 class MigrationRunner:
@@ -138,7 +139,9 @@ class MigrationRunner:
             self._backup_file(settings_path)
             settings = json.loads(settings_path.read_text())
             dirs = settings.get("additionalDirectories", [])
-            dirs = [d for d in dirs if str(self.source_claude) not in d and d != str(self.source_claude)]
+            dirs = [
+                d for d in dirs if str(self.source_claude) not in d and d != str(self.source_claude)
+            ]
             settings["additionalDirectories"] = dirs
             self._log(f"  Updated additionalDirectories: {dirs}")
             if not self.dry_run:

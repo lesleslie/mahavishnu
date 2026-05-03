@@ -9,9 +9,8 @@ Provides visualization utilities for dependency graphs:
 
 from __future__ import annotations
 
+from enum import StrEnum
 import logging
-from enum import Enum
-from typing import Any
 
 from mahavishnu.core.dependency_graph import (
     DependencyGraph,
@@ -22,7 +21,7 @@ from mahavishnu.core.dependency_graph import (
 logger = logging.getLogger(__name__)
 
 
-class ColorCode(str, Enum):
+class ColorCode(StrEnum):
     """ANSI color codes for terminal output."""
 
     RESET = "\033[0m"
@@ -162,12 +161,11 @@ class DependencyVisualizer:
                     if show_type:
                         edge = graph.get_edge(dep_id, tid)
                         if edge:
-                            type_icon = self.TYPE_ICONS.get(edge.dependency_type, "")
-                            dep_prefix = f"{new_prefix}{type_icon} "
+                            self.TYPE_ICONS.get(edge.dependency_type, "")
                         else:
-                            dep_prefix = new_prefix
+                            pass
                     else:
-                        dep_prefix = new_prefix
+                        pass
 
                     render_node(dep_id, new_prefix, is_last_dep, depth + 1)
 

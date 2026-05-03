@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -15,21 +15,18 @@ from mahavishnu.core.evidence_collector import EvidenceCollector, EvidenceSource
 from mahavishnu.core.evidence_retriever import (
     EvidenceCluster,
     EvidenceRetriever,
-    RetrievedEvidence,
     RetrievalContext,
 )
 from mahavishnu.core.evidence_store import EvidenceStore, StoreBatchResult
 from mahavishnu.core.learning_pipeline import LearningPipelineService, PipelineCycleResult
-from mahavishnu.core.review_gate import ReviewGate, ReviewGateResult
+from mahavishnu.core.review_gate import ReviewGate
 from mahavishnu.core.skill_governance import (
     LearningEvidence,
     SkillDraft,
     SkillPromotionState,
 )
-from mahavishnu.core.skill_registry import SkillRegistry
 from mahavishnu.core.skill_security import sanitize_skill_body
 from mahavishnu.core.skill_synthesizer import SkillSynthesizer
-
 
 DANGEROUS_CALL = "__import__('os').system('rm -rf /')"
 
@@ -139,9 +136,7 @@ class TestEvidenceRetriever:
             akosha_url="http://localhost:8682/mcp",
             session_buddy_url="http://localhost:8678/mcp",
         )
-        result = asyncio.get_event_loop().run_until_complete(
-            retriever.cluster_by_pattern([])
-        )
+        result = asyncio.get_event_loop().run_until_complete(retriever.cluster_by_pattern([]))
         assert result == []
 
     def test_cluster_by_pattern_groups_by_repo(self):
@@ -437,9 +432,7 @@ class TestLearningPipelineService:
     async def test_run_once_graceful_degradation_on_collect_failure(self):
         config = LearningConfig(enabled=True)
         svc = LearningPipelineService(config=config)
-        svc._collector.collect_recent_outcomes = AsyncMock(
-            side_effect=RuntimeError("DB down")
-        )
+        svc._collector.collect_recent_outcomes = AsyncMock(side_effect=RuntimeError("DB down"))
         result = await svc.run_once()
         assert result.evidence_collected == 0
         assert result.cycle_completed_at is not None
@@ -461,9 +454,7 @@ class TestLearningPipelineService:
             ]
         )
         svc._store.store_batch = AsyncMock(return_value=StoreBatchResult(stored_count=1))
-        svc._retriever.get_retrieval_context = AsyncMock(
-            side_effect=RuntimeError("Akosha down")
-        )
+        svc._retriever.get_retrieval_context = AsyncMock(side_effect=RuntimeError("Akosha down"))
 
         result = await svc.run_once()
         assert result.evidence_stored == 1
@@ -496,11 +487,13 @@ class TestLearningConfig:
 
     def test_extra_forbid(self):
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             LearningConfig(nonexistent_field=True)
 
     def test_bounds_enforced(self):
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             LearningConfig(collection_interval_seconds=10)
         with pytest.raises(ValidationError):

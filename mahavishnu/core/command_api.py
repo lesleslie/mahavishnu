@@ -21,17 +21,19 @@ Usage:
 
 from __future__ import annotations
 
-import logging
-import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
-from typing import Any, Callable, Coroutine
+from datetime import UTC, datetime
+from enum import StrEnum
+import logging
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Coroutine
 
 logger = logging.getLogger(__name__)
 
 
-class ErrorCode(str, Enum):
+class ErrorCode(StrEnum):
     """Error codes for command results."""
 
     TASK_NOT_FOUND = "TASK_NOT_FOUND"

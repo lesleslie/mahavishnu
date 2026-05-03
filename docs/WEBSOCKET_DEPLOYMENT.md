@@ -4,7 +4,7 @@
 **Status:** Production Ready
 **Version:** 1.0.0
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
@@ -22,36 +22,38 @@ This guide provides comprehensive instructions for deploying and maintaining Web
 | **excalidraw-mcp** | 3042 | 3032 | Diagram collaboration | Production Ready |
 | **fastblocks** | 8684 | - | UI updates | Production Ready |
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Prerequisites](#prerequisites)
-2. [Environment Setup](#environment-setup)
-3. [Certificate Management](#certificate-management)
-4. [Service Configuration](#service-configuration)
-5. [Security Hardening](#security-hardening)
-6. [Deployment Steps](#deployment-steps)
-7. [Docker Deployment](#docker-deployment)
-8. [Kubernetes Deployment](#kubernetes-deployment)
-9. [Performance Tuning](#performance-tuning)
-10. [High Availability](#high-availability)
-11. [Monitoring & Alerting](#monitoring--alerting)
-12. [Backup & Recovery](#backup--recovery)
-13. [Troubleshooting](#troubleshooting)
+1. [Environment Setup](#environment-setup)
+1. [Certificate Management](#certificate-management)
+1. [Service Configuration](#service-configuration)
+1. [Security Hardening](#security-hardening)
+1. [Deployment Steps](#deployment-steps)
+1. [Docker Deployment](#docker-deployment)
+1. [Kubernetes Deployment](#kubernetes-deployment)
+1. [Performance Tuning](#performance-tuning)
+1. [High Availability](#high-availability)
+1. [Monitoring & Alerting](#monitoring--alerting)
+1. [Backup & Recovery](#backup--recovery)
+1. [Troubleshooting](#troubleshooting)
 
----
+______________________________________________________________________
 
 ## Prerequisites
 
 ### System Requirements
 
 **Hardware:**
+
 - CPU: 4+ cores recommended
 - RAM: 8GB minimum, 16GB recommended for production
 - Storage: 50GB+ for logs and metrics
 
 **Software:**
+
 ```bash
 # Python version
 Python 3.11+   # Required for all services
@@ -77,11 +79,13 @@ brew install python@3.11 openssl redis nginx
 ### Network Requirements
 
 **Port Allocation:**
+
 - WebSocket ports: 8600-8800 range (8684, 8686, 8690, 8692, 8693, 8765, 3042)
 - HTTP ports: 8600-8800 range (8678, 8680, 8682, 8683, 8676, 3032)
 - Metrics ports: 9090-9099 (Prometheus metrics)
 
 **Firewall Configuration:**
+
 ```bash
 # Allow WebSocket ports (adjust for your security requirements)
 sudo ufw allow 8684/tcp  # fastblocks
@@ -115,7 +119,7 @@ ws-excalidraw.example.com.       A    192.0.2.10
 ws-fastblocks.example.com.       A    192.0.2.10
 ```
 
----
+______________________________________________________________________
 
 ## Environment Setup
 
@@ -200,11 +204,12 @@ export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus"
 ```
 
 Load environment variables:
+
 ```bash
 source /opt/bodhisattva/config/env
 ```
 
----
+______________________________________________________________________
 
 ## Certificate Management
 
@@ -299,6 +304,7 @@ echo "All services reloaded successfully"
 ```
 
 Add to Certbot renewal hook:
+
 ```bash
 echo "/opt/bodhisattva/scripts/reload-after-renewal.sh" | sudo tee -a /etc/letsencrypt/renewal-hooks/post/reload-services.sh
 sudo chmod +x /etc/letsencrypt/renewal-hooks/post/reload-services.sh
@@ -332,7 +338,7 @@ for cert in /opt/bodhisattva/certificates/*/cert.pem; do
 done
 ```
 
----
+______________________________________________________________________
 
 ## Service Configuration
 
@@ -578,7 +584,7 @@ logging:
   file: "/opt/bodhisattva/logs/fastblocks/websocket.log"
 ```
 
----
+______________________________________________________________________
 
 ## Security Hardening
 
@@ -638,7 +644,7 @@ logging:
 - [ ] Regular security audits are scheduled
 - [ ] Intrusion detection is enabled
 
----
+______________________________________________________________________
 
 ## Deployment Steps
 
@@ -844,7 +850,7 @@ source /opt/bodhisattnu/venv/bin/activate
 python -m mahavishnu.websocket.health_check
 ```
 
----
+______________________________________________________________________
 
 ## Docker Deployment
 
@@ -1149,7 +1155,7 @@ docker-compose down
 docker-compose up -d --scale mahavishnu-ws=3
 ```
 
----
+______________________________________________________________________
 
 ## Kubernetes Deployment
 
@@ -1436,7 +1442,7 @@ kubectl logs -f deployment/mahavishnu-websocket -n bodhisattva
 kubectl scale deployment mahavishnu-websocket --replicas=5 -n bodhisattva
 ```
 
----
+______________________________________________________________________
 
 ## Performance Tuning
 
@@ -1556,7 +1562,7 @@ loop.set_default_executor(
 )
 ```
 
----
+______________________________________________________________________
 
 ## High Availability
 
@@ -1715,7 +1721,7 @@ class HealthChecker:
         return random.choice(instances)
 ```
 
----
+______________________________________________________________________
 
 ## Monitoring & Alerting
 
@@ -1779,23 +1785,27 @@ websocket_errors = Counter(
 **Key dashboard panels:**
 
 1. **Connections Overview**
+
    - Current connections (by service)
    - Connection rate (connections/sec)
    - Disconnection rate
    - Average connection duration
 
-2. **Message Throughput**
+1. **Message Throughput**
+
    - Messages sent per second
    - Messages received per second
    - Message size distribution
    - Broadcast queue size
 
-3. **Performance Metrics**
+1. **Performance Metrics**
+
    - Message processing latency (P50, P95, P99)
    - Broadcast duration
    - Room join/leave latency
 
-4. **Error Tracking**
+1. **Error Tracking**
+
    - Connection errors by type
    - Authentication failures
    - Message decode errors
@@ -1851,7 +1861,7 @@ groups:
       description: "Service has been down for more than 2 minutes"
 ```
 
----
+______________________________________________________________________
 
 ## Backup & Recovery
 
@@ -1899,24 +1909,27 @@ rsync -av /opt/bodhisattnu/data/dhara/ /backup/dhara/
 **Recovery procedure:**
 
 1. **Restore configurations:**
+
    ```bash
    tar -xzf /backup/websocket/20260210.tar.gz -C /
    ```
 
-2. **Restore data:**
+1. **Restore data:**
+
    ```bash
    rsync -av /backup/sessions/ /opt/bodhisattnu/data/sessions/
    cp /backup/akosha/hotstore.duckdb /opt/bodhisattnu/data/akosha/
    ```
 
-3. **Restart services:**
+1. **Restart services:**
+
    ```bash
    for service in mahavishnu session-buddy crackerjack akosha dhara excalidraw fastblocks; do
        sudo systemctl restart ${service}-websocket
    done
    ```
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
@@ -1925,10 +1938,12 @@ rsync -av /opt/bodhisattnu/data/dhara/ /backup/dhara/
 #### Issue: Cannot connect to WebSocket server
 
 **Symptoms:**
+
 - Client connection timeouts
 - "Connection refused" errors
 
 **Diagnosis:**
+
 ```bash
 # Check if service is running
 sudo systemctl status mahavishnu-websocket
@@ -1944,6 +1959,7 @@ sudo journalctl -u mahavishnu-websocket -n 50
 ```
 
 **Solutions:**
+
 - Start service: `sudo systemctl start mahavishnu-websocket`
 - Open firewall: `sudo ufw allow 8690/tcp`
 - Check configuration for errors
@@ -1952,10 +1968,12 @@ sudo journalctl -u mahavishnu-websocket -n 50
 #### Issue: TLS/WSS handshake fails
 
 **Symptoms:**
+
 - "SSL handshake failed" errors
 - Certificate validation errors
 
 **Diagnosis:**
+
 ```bash
 # Test TLS connection
 openssl s_client -connect localhost:8690 -showcerts
@@ -1968,6 +1986,7 @@ openssl s_client -connect ws-mahavishnu.example.com:8690 -verify_return_error
 ```
 
 **Solutions:**
+
 - Renew certificate: `sudo certbot renew`
 - Restart service after certificate update
 - Verify certificate paths in config
@@ -1976,10 +1995,12 @@ openssl s_client -connect ws-mahavishnu.example.com:8690 -verify_return_error
 #### Issue: High memory usage
 
 **Symptoms:**
+
 - Service OOM killed
 - Memory usage constantly growing
 
 **Diagnosis:**
+
 ```bash
 # Check memory usage
 ps aux | grep websocket
@@ -1992,6 +2013,7 @@ valgrind --leak-check=full python -m mahavishnu.websocket
 ```
 
 **Solutions:**
+
 - Reduce max_connections limit
 - Implement connection recycling
 - Clear old message history
@@ -2001,11 +2023,13 @@ valgrind --leak-check=full python -m mahavishnu.websocket
 #### Issue: No events received after subscription
 
 **Symptoms:**
+
 - Client connects successfully
 - Subscribes to channel
 - No events received
 
 **Diagnosis:**
+
 ```bash
 # Check room subscriptions
 curl http://localhost:8680/metrics | grep room_subscriptions
@@ -2018,6 +2042,7 @@ sudo journalctl -u mahavishnu-websocket -f
 ```
 
 **Solutions:**
+
 - Verify subscribed to correct channel
 - Check events are being generated
 - Verify broadcast methods are called
@@ -2061,7 +2086,7 @@ stats.sort_stats('cumulative')
 stats.print_stats(20)  # Top 20 functions
 ```
 
----
+______________________________________________________________________
 
 ## Appendices
 
@@ -2111,7 +2136,7 @@ for cert in /opt/bodhisattnu/certificates/*/cert.pem; do
 done
 ```
 
----
+______________________________________________________________________
 
 **Document Version:** 1.0.0
 **Last Updated:** 2026-02-11

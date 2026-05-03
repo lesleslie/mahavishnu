@@ -72,9 +72,7 @@ class PatternDependencyGraph:
                     heapq.heappush(heap, dependent)
 
         if len(order) != len(self._nodes):
-            raise CircularDependencyError(
-                sorted(self._nodes - set(order))
-            )
+            raise CircularDependencyError(sorted(self._nodes - set(order)))
 
         return order
 

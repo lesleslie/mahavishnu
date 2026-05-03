@@ -102,9 +102,15 @@ def test_adapter_metadata_contract_shape() -> None:
 
     payload = metadata.to_dict()
     assert DiscoveryAdapterMetadata is AdapterMetadata
-    assert {"adapter_id", "domain", "category", "provider", "capabilities", "factory_path", "source"}.issubset(
-        payload
-    )
+    assert {
+        "adapter_id",
+        "domain",
+        "category",
+        "provider",
+        "capabilities",
+        "factory_path",
+        "source",
+    }.issubset(payload)
 
 
 @pytest.mark.asyncio

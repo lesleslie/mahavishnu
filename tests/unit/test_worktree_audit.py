@@ -9,9 +9,6 @@ Tests comprehensive audit logging for SOC 2, ISO 27001, and PCI DSS compliance:
 - Sensitive data redaction
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
-
 from mahavishnu.core.worktree_audit import WorktreeAuditLogger
 
 
@@ -405,9 +402,7 @@ class TestWorktreeAuditLogger:
 
     def test_log_to_audit_trail_success(self, mocker):
         """Test successful audit trail logging."""
-        mock_audit_logger = mocker.patch(
-            "mahavishnu.mcp.auth.get_audit_logger"
-        )
+        mock_audit_logger = mocker.patch("mahavishnu.mcp.auth.get_audit_logger")
         mock_audit = mocker.patch.object(
             WorktreeAuditLogger, "_log_to_audit_trail", return_value=None
         )
@@ -450,32 +445,59 @@ class TestWorktreeAuditLogger:
 
         # Test all event types
         events_to_test = [
-            ("creation_attempt", lambda: logger.log_creation_attempt(
-                user_id="user-123", repo_nickname="test", branch="main",
-                worktree_path="/worktrees/test/main"
-            )),
-            ("creation_success", lambda: logger.log_creation_success(
-                user_id="user-123", repo_nickname="test", branch="main",
-                worktree_path="/worktrees/test/main"
-            )),
-            ("creation_failure", lambda: logger.log_creation_failure(
-                user_id="user-123", repo_nickname="test", branch="main",
-                worktree_path="/worktrees/test/main", error="failed"
-            )),
-            ("removal_attempt", lambda: logger.log_removal_attempt(
-                user_id="user-123", repo_nickname="test",
-                worktree_path="/worktrees/test/main", force=False
-            )),
-            ("removal_success", lambda: logger.log_removal_success(
-                user_id="user-123", repo_nickname="test",
-                worktree_path="/worktrees/test/main", force=False
-            )),
-            ("prune", lambda: logger.log_prune_operation(
-                user_id="user-123", repo_nickname="test", pruned_count=1
-            )),
-            ("list", lambda: logger.log_list_operation(
-                user_id="user-123", repo_nickname="test"
-            )),
+            (
+                "creation_attempt",
+                lambda: logger.log_creation_attempt(
+                    user_id="user-123",
+                    repo_nickname="test",
+                    branch="main",
+                    worktree_path="/worktrees/test/main",
+                ),
+            ),
+            (
+                "creation_success",
+                lambda: logger.log_creation_success(
+                    user_id="user-123",
+                    repo_nickname="test",
+                    branch="main",
+                    worktree_path="/worktrees/test/main",
+                ),
+            ),
+            (
+                "creation_failure",
+                lambda: logger.log_creation_failure(
+                    user_id="user-123",
+                    repo_nickname="test",
+                    branch="main",
+                    worktree_path="/worktrees/test/main",
+                    error="failed",
+                ),
+            ),
+            (
+                "removal_attempt",
+                lambda: logger.log_removal_attempt(
+                    user_id="user-123",
+                    repo_nickname="test",
+                    worktree_path="/worktrees/test/main",
+                    force=False,
+                ),
+            ),
+            (
+                "removal_success",
+                lambda: logger.log_removal_success(
+                    user_id="user-123",
+                    repo_nickname="test",
+                    worktree_path="/worktrees/test/main",
+                    force=False,
+                ),
+            ),
+            (
+                "prune",
+                lambda: logger.log_prune_operation(
+                    user_id="user-123", repo_nickname="test", pruned_count=1
+                ),
+            ),
+            ("list", lambda: logger.log_list_operation(user_id="user-123", repo_nickname="test")),
         ]
 
         for event_name, event_func in events_to_test:

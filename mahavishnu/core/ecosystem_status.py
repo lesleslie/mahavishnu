@@ -4,19 +4,19 @@ from __future__ import annotations
 
 import asyncio
 import collections
+from datetime import UTC, datetime
+from enum import StrEnum
 import logging
 import time
+from typing import Any, Protocol, runtime_checkable
 import uuid
-from datetime import UTC, datetime
-from enum import Enum
-from typing import Any, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
 
-class CanonicalStatus(str, Enum):
+class CanonicalStatus(StrEnum):
     """Single canonical status vocabulary for all operator-facing surfaces."""
 
     OK = "ok"
@@ -26,7 +26,7 @@ class CanonicalStatus(str, Enum):
     DISABLED = "disabled"
 
 
-class DegradationTrend(str, Enum):
+class DegradationTrend(StrEnum):
     """Trend direction for a degrading component."""
 
     IMPROVING = "improving"
@@ -34,7 +34,7 @@ class DegradationTrend(str, Enum):
     WORSENING = "worsening"
 
 
-class RejectionReason(str, Enum):
+class RejectionReason(StrEnum):
     """Reason an adapter was not selected during routing."""
 
     HEALTH_FAILED = "health_failed"
@@ -186,10 +186,28 @@ STATUS_SEVERITY: dict[CanonicalStatus, int] = {
 
 # Valid status transitions. Any transition not in this set is logged as suspicious.
 VALID_TRANSITIONS: dict[CanonicalStatus, set[CanonicalStatus]] = {
-    CanonicalStatus.OK: {CanonicalStatus.DEGRADED, CanonicalStatus.UNKNOWN, CanonicalStatus.DISABLED},
-    CanonicalStatus.DEGRADED: {CanonicalStatus.OK, CanonicalStatus.UNHEALTHY, CanonicalStatus.UNKNOWN, CanonicalStatus.DISABLED},
-    CanonicalStatus.UNHEALTHY: {CanonicalStatus.DEGRADED, CanonicalStatus.UNKNOWN, CanonicalStatus.DISABLED},
-    CanonicalStatus.UNKNOWN: {CanonicalStatus.OK, CanonicalStatus.DEGRADED, CanonicalStatus.UNHEALTHY, CanonicalStatus.DISABLED},
+    CanonicalStatus.OK: {
+        CanonicalStatus.DEGRADED,
+        CanonicalStatus.UNKNOWN,
+        CanonicalStatus.DISABLED,
+    },
+    CanonicalStatus.DEGRADED: {
+        CanonicalStatus.OK,
+        CanonicalStatus.UNHEALTHY,
+        CanonicalStatus.UNKNOWN,
+        CanonicalStatus.DISABLED,
+    },
+    CanonicalStatus.UNHEALTHY: {
+        CanonicalStatus.DEGRADED,
+        CanonicalStatus.UNKNOWN,
+        CanonicalStatus.DISABLED,
+    },
+    CanonicalStatus.UNKNOWN: {
+        CanonicalStatus.OK,
+        CanonicalStatus.DEGRADED,
+        CanonicalStatus.UNHEALTHY,
+        CanonicalStatus.DISABLED,
+    },
     CanonicalStatus.DISABLED: {CanonicalStatus.OK, CanonicalStatus.UNKNOWN},
 }
 
@@ -431,13 +449,15 @@ class EcosystemStatusService:
         errors: list[SectionError] = []
 
         section_names = ["services", "adapters", "workflows", "alerts", "capabilities"]
-        for name, result in zip(section_names, section_results):
+        for name, result in zip(section_names, section_results, strict=False):
             if isinstance(result, BaseException):
-                errors.append(SectionError(
-                    section=name,
-                    message=str(result),
-                    original_exception=type(result).__name__,
-                ))
+                errors.append(
+                    SectionError(
+                        section=name,
+                        message=str(result),
+                        original_exception=type(result).__name__,
+                    )
+                )
             elif name == "services":
                 services = result
             elif name == "adapters":
@@ -494,7 +514,8 @@ class EcosystemStatusService:
             required = cfg.get("required", False)
             if not url:
                 services[name] = ServiceStatus(
-                    status=CanonicalStatus.DISABLED, required=required,
+                    status=CanonicalStatus.DISABLED,
+                    required=required,
                 )
                 continue
             try:
@@ -565,12 +586,14 @@ class EcosystemStatusService:
             for a in alerts[:20]:
                 sev = a.severity.value if hasattr(a.severity, "value") else str(a.severity)
                 by_severity[sev] = by_severity.get(sev, 0) + 1
-                top.append(AlertRef(
-                    severity=sev,
-                    source=getattr(a, "type", "unknown"),
-                    message=getattr(a, "description", "") or getattr(a, "title", ""),
-                    created_at=getattr(a, "timestamp", datetime.now(UTC)),
-                ))
+                top.append(
+                    AlertRef(
+                        severity=sev,
+                        source=getattr(a, "type", "unknown"),
+                        message=getattr(a, "description", "") or getattr(a, "title", ""),
+                        created_at=getattr(a, "timestamp", datetime.now(UTC)),
+                    )
+                )
             return AlertSummary(
                 total_active=len(alerts),
                 by_severity=by_severity,
@@ -666,56 +689,69 @@ class EcosystemStatusService:
 
         for name, svc in services.items():
             if svc.required and svc.status == CanonicalStatus.UNHEALTHY:
-                recs.append(OperationalRecommendation(
-                    severity=CanonicalStatus.UNHEALTHY,
-                    component=name,
-                    message=f"Required service '{name}' is unhealthy. Check that it is running.",
-                    suggested_command=f"mahavishnu health --service {name}",
-                ))
+                recs.append(
+                    OperationalRecommendation(
+                        severity=CanonicalStatus.UNHEALTHY,
+                        component=name,
+                        message=f"Required service '{name}' is unhealthy. Check that it is running.",
+                        suggested_command=f"mahavishnu health --service {name}",
+                    )
+                )
             elif svc.required and svc.status == CanonicalStatus.UNKNOWN:
-                recs.append(OperationalRecommendation(
-                    severity=CanonicalStatus.DEGRADED,
-                    component=name,
-                    message=f"Required service '{name}' is unreachable or health check timed out.",
-                    suggested_command=f"mahavishnu health --service {name}",
-                ))
+                recs.append(
+                    OperationalRecommendation(
+                        severity=CanonicalStatus.DEGRADED,
+                        component=name,
+                        message=f"Required service '{name}' is unreachable or health check timed out.",
+                        suggested_command=f"mahavishnu health --service {name}",
+                    )
+                )
             elif not svc.required and svc.status in (
-                CanonicalStatus.UNHEALTHY, CanonicalStatus.DEGRADED
+                CanonicalStatus.UNHEALTHY,
+                CanonicalStatus.DEGRADED,
             ):
-                recs.append(OperationalRecommendation(
-                    severity=CanonicalStatus.DEGRADED,
-                    component=name,
-                    message=(
-                        f"Optional service '{name}' is {svc.status.value}. "
-                        "Some features may be degraded."
-                    ),
-                    suggested_command=f"mahavishnu health --service {name}",
-                ))
+                recs.append(
+                    OperationalRecommendation(
+                        severity=CanonicalStatus.DEGRADED,
+                        component=name,
+                        message=(
+                            f"Optional service '{name}' is {svc.status.value}. "
+                            "Some features may be degraded."
+                        ),
+                        suggested_command=f"mahavishnu health --service {name}",
+                    )
+                )
 
         if not adapters:
-            recs.append(OperationalRecommendation(
-                severity=CanonicalStatus.DEGRADED,
-                component="adapters",
-                message="No adapters registered. Run adapter discovery.",
-                suggested_command="mahavishnu adapter list",
-            ))
+            recs.append(
+                OperationalRecommendation(
+                    severity=CanonicalStatus.DEGRADED,
+                    component="adapters",
+                    message="No adapters registered. Run adapter discovery.",
+                    suggested_command="mahavishnu adapter list",
+                )
+            )
         else:
             for name, adp in adapters.items():
                 if adp.status == CanonicalStatus.UNHEALTHY:
-                    recs.append(OperationalRecommendation(
-                        severity=CanonicalStatus.UNHEALTHY,
-                        component=name,
-                        message=f"Adapter '{name}' is unhealthy. Inspect recent failures.",
-                        suggested_command=f"mahavishnu adapter health --name {name}",
-                    ))
+                    recs.append(
+                        OperationalRecommendation(
+                            severity=CanonicalStatus.UNHEALTHY,
+                            component=name,
+                            message=f"Adapter '{name}' is unhealthy. Inspect recent failures.",
+                            suggested_command=f"mahavishnu adapter health --name {name}",
+                        )
+                    )
 
         if alerts.total_active > 10:
-            recs.append(OperationalRecommendation(
-                severity=CanonicalStatus.DEGRADED,
-                component="alerts",
-                message=f"High alert count ({alerts.total_active} active). Check monitoring dashboard.",
-                suggested_command="mahavishnu ecosystem status --sections alerts",
-            ))
+            recs.append(
+                OperationalRecommendation(
+                    severity=CanonicalStatus.DEGRADED,
+                    component="alerts",
+                    message=f"High alert count ({alerts.total_active} active). Check monitoring dashboard.",
+                    suggested_command="mahavishnu ecosystem status --sections alerts",
+                )
+            )
 
         return recs
 
@@ -728,10 +764,7 @@ class EcosystemStatusService:
         threshold = self.staleness_threshold_seconds
         updated: dict[str, ServiceStatus | AdapterStatus] = {}
         for key, item in items.items():
-            if (
-                item.last_check
-                and (now - item.last_check).total_seconds() > threshold
-            ):
+            if item.last_check and (now - item.last_check).total_seconds() > threshold:
                 item = item.model_copy(update={"status": CanonicalStatus.UNKNOWN})
             updated[key] = item
         return updated

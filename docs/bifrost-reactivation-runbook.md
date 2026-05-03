@@ -46,11 +46,11 @@ Optional later:
 Bring the stack back in this order:
 
 1. verify secrets
-2. install and start Redis Stack cache backend
-3. install and start Bifrost
-4. rebootstrap config if needed
-5. validate direct cache and routing
-6. only then repoint clients
+1. install and start Redis Stack cache backend
+1. install and start Bifrost
+1. rebootstrap config if needed
+1. validate direct cache and routing
+1. only then repoint clients
 
 ## 1. Verify Secrets
 
@@ -197,9 +197,9 @@ Only after the previous checks pass.
 Suggested order:
 
 1. Claude Code
-2. one OpenAI-compatible client
-3. one internal service
-4. the rest of the fleet
+1. one OpenAI-compatible client
+1. one internal service
+1. the rest of the fleet
 
 Recommended first cutover:
 
@@ -225,10 +225,10 @@ Recommended first cutover:
 When the gateway becomes active again, enable semantic mode in a second phase:
 
 1. keep exact-match cache on
-2. keep Redis Stack as the vector backend
-3. add an embedding-capable provider for semantic cache
-4. start with a conservative similarity threshold
-5. evaluate hit quality before widening scope
+1. keep Redis Stack as the vector backend
+1. add an embedding-capable provider for semantic cache
+1. start with a conservative similarity threshold
+1. evaluate hit quality before widening scope
 
 Recommended first-pass settings:
 

@@ -239,10 +239,7 @@ class PyXABackend(DesktopAutomationBackend):
             focused = win.focused() if hasattr(win, "focused") else False
 
             # Determine window state
-            if minimized:
-                state = WindowState.MINIMIZED
-            else:
-                state = WindowState.NORMAL
+            state = WindowState.MINIMIZED if minimized else WindowState.NORMAL
 
             return WindowInfo(
                 id=win_id,
@@ -499,7 +496,7 @@ class PyXABackend(DesktopAutomationBackend):
 
     async def click(self, x: int, y: int, button: str = "left", clicks: int = 1) -> bool:
         """Click at coordinates."""
-        PyXA = self._get_pyxa()
+        self._get_pyxa()
 
         def _click() -> bool:
             try:
@@ -524,7 +521,7 @@ class PyXABackend(DesktopAutomationBackend):
         button: str = "left",
     ) -> bool:
         """Drag from one point to another."""
-        PyXA = self._get_pyxa()
+        self._get_pyxa()
 
         def _drag() -> bool:
             try:
@@ -541,7 +538,7 @@ class PyXABackend(DesktopAutomationBackend):
 
     async def scroll(self, x: int, y: int, dx: int, dy: int) -> bool:
         """Scroll at coordinates."""
-        PyXA = self._get_pyxa()
+        self._get_pyxa()
 
         def _scroll() -> bool:
             try:

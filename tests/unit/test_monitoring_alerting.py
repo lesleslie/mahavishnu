@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
-import json
-from datetime import datetime, timedelta, UTC
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from datetime import UTC, datetime
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -25,10 +21,10 @@ from mahavishnu.core.monitoring import (
     SlackNotificationChannel,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_alert(**overrides):
     """Build an Alert with sensible defaults."""
@@ -375,9 +371,13 @@ class TestAlertManagerHandlers:
 
     def test_default_handlers_registered(self):
         mgr = AlertManager()
-        expected = {AlertType.WORKFLOW_FAILURE, AlertType.SYSTEM_HEALTH,
-                    AlertType.RESOURCE_EXHAUSTION, AlertType.PERFORMANCE_DEGRADATION,
-                    AlertType.BACKUP_FAILURE}
+        expected = {
+            AlertType.WORKFLOW_FAILURE,
+            AlertType.SYSTEM_HEALTH,
+            AlertType.RESOURCE_EXHAUSTION,
+            AlertType.PERFORMANCE_DEGRADATION,
+            AlertType.BACKUP_FAILURE,
+        }
         for t in expected:
             assert t in mgr.alert_handlers
 
@@ -403,9 +403,7 @@ class TestAlertManagerTrigger:
         mgr = AlertManager()
         handler = AsyncMock()
         mgr.register_handler(AlertType.WORKFLOW_FAILURE, handler)
-        await mgr.trigger_alert(
-            AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "fail", "desc"
-        )
+        await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "fail", "desc")
         handler.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -423,9 +421,7 @@ class TestAlertManagerTrigger:
         mgr = AlertManager()
         ch = AsyncMock()
         mgr.register_notification_channel(ch)
-        await mgr.trigger_alert(
-            AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "fail", "desc"
-        )
+        await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "fail", "desc")
         ch.send_notification.assert_awaited_once()
 
 
@@ -448,9 +444,7 @@ class TestAlertManagerAcknowledge:
     @pytest.mark.asyncio
     async def test_acknowledge_by_rule_name(self):
         mgr = AlertManager()
-        await mgr.trigger_alert(
-            AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "fail", "desc"
-        )
+        await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "fail", "desc")
         # The alert has no rule_name, so acknowledge by id should work
         alert = await mgr.trigger_alert(
             AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "fail2", "desc2"
@@ -473,12 +467,8 @@ class TestAlertManagerGetActive:
     @pytest.mark.asyncio
     async def test_active_excludes_acknowledged(self):
         mgr = AlertManager()
-        a1 = await mgr.trigger_alert(
-            AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a1", "d1"
-        )
-        a2 = await mgr.trigger_alert(
-            AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a2", "d2"
-        )
+        a1 = await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a1", "d1")
+        a2 = await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a2", "d2")
         await mgr.acknowledge_alert(a1.id, "alice")
         active = await mgr.get_active_alerts()
         assert len(active) == 1
@@ -487,12 +477,8 @@ class TestAlertManagerGetActive:
     @pytest.mark.asyncio
     async def test_active_excludes_resolved(self):
         mgr = AlertManager()
-        a1 = await mgr.trigger_alert(
-            AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a1", "d1"
-        )
-        await mgr.trigger_alert(
-            AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a2", "d2"
-        )
+        a1 = await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a1", "d1")
+        await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a2", "d2")
         mgr.resolve_alert(a1.id)  # sync method, not async
         active = await mgr.get_active_alerts()
         assert len(active) == 1  # a1 resolved (firing=False), only a2 active
@@ -544,13 +530,16 @@ class TestEmailNotificationChannel:
     @pytest.mark.asyncio
     async def test_send_notification_builds_correct_email(self):
         ch = EmailNotificationChannel(
-            smtp_server="smtp.test.com", smtp_port=587,
-            username="from@test.com", password="secret",
+            smtp_server="smtp.test.com",
+            smtp_port=587,
+            username="from@test.com",
+            password="secret",
             recipients=["to@test.com"],
         )
         ch.logger = MagicMock()  # production code uses self.logger.info
         alert = _make_alert(
-            severity=AlertSeverity.CRITICAL, title="Server Down",
+            severity=AlertSeverity.CRITICAL,
+            title="Server Down",
             description="The server is down",
         )
 
@@ -573,8 +562,10 @@ class TestEmailNotificationChannel:
     @pytest.mark.asyncio
     async def test_send_notification_smtp_error_handled(self):
         ch = EmailNotificationChannel(
-            smtp_server="smtp.test.com", smtp_port=587,
-            username="from@test.com", password="secret",
+            smtp_server="smtp.test.com",
+            smtp_port=587,
+            username="from@test.com",
+            password="secret",
             recipients=["to@test.com"],
         )
         ch.logger = MagicMock()
@@ -592,12 +583,12 @@ class TestEmailNotificationChannel:
 class TestSlackNotificationChannel:
     @pytest.mark.asyncio
     async def test_send_notification_posts_webhook(self):
-        ch = SlackNotificationChannel(
-            webhook_url="https://hooks.slack.com/xxx", channel="#alerts"
-        )
+        ch = SlackNotificationChannel(webhook_url="https://hooks.slack.com/xxx", channel="#alerts")
         ch.logger = MagicMock()
         alert = _make_alert(
-            severity=AlertSeverity.HIGH, title="Alert!", type=AlertType.SECURITY_ISSUE,
+            severity=AlertSeverity.HIGH,
+            title="Alert!",
+            type=AlertType.SECURITY_ISSUE,
         )
 
         with patch("mahavishnu.core.monitoring.requests.post") as mock_post:
@@ -812,10 +803,12 @@ class TestMonitoringService:
 
         svc = MonitoringService(app)
 
-        with patch("psutil.cpu_percent", return_value=10.0), \
-             patch("psutil.virtual_memory") as mock_mem_cls, \
-             patch("psutil.disk_usage") as mock_disk_fn, \
-             patch("mahavishnu.core.monitoring.time", return_value=1000.0):
+        with (
+            patch("psutil.cpu_percent", return_value=10.0),
+            patch("psutil.virtual_memory") as mock_mem_cls,
+            patch("psutil.disk_usage") as mock_disk_fn,
+            patch("mahavishnu.core.monitoring.time", return_value=1000.0),
+        ):
             mem_info = MagicMock()
             mem_info.percent = 50
             mem_info.available = 8 * 1024**3

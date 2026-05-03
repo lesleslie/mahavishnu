@@ -13,7 +13,7 @@ All screens are read-only (no mutations).
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from textual.app import App, ComposeResult
@@ -44,11 +44,10 @@ __all__ = ["MahavishnuDashboard", "DashboardApp"]
 async def _get_report() -> EcosystemStatusReport | None:
     """Fetch canonical ecosystem status report. Returns None on error."""
     try:
-        from mahavishnu.core.ecosystem_status import EcosystemStatusService
         from mahavishnu.core.config import MahavishnuSettings
+        from mahavishnu.core.ecosystem_status import EcosystemStatusService
 
         settings = MahavishnuSettings()
-        base_url = settings.mcp_base_url or "http://localhost:8680"
 
         # Build service configs from known ecosystem dependencies
         service_configs: dict[str, dict[str, Any]] = {}
@@ -64,12 +63,12 @@ async def _get_report() -> EcosystemStatusReport | None:
         try:
             oneiric = getattr(settings, "oneiric_mcp", None)
             if oneiric:
-                dhara_url = getattr(oneiric, "url", None) or getattr(
-                    oneiric, "base_url", None
-                )
+                dhara_url = getattr(oneiric, "url", None) or getattr(oneiric, "base_url", None)
                 if dhara_url:
                     service_configs["dhara"] = {
-                        "url": dhara_url, "required": False, "timeout_s": 3,
+                        "url": dhara_url,
+                        "required": False,
+                        "timeout_s": 3,
                     }
         except Exception:
             pass
@@ -95,18 +94,14 @@ async def fetch_system_overview() -> dict[str, Any]:
     adapters = report.adapters or {}
     workflows = report.workflows
     alerts = report.alerts
-    healthy_adapters = sum(
-        1 for a in adapters.values() if a.status.value == "ok"
-    )
+    healthy_adapters = sum(1 for a in adapters.values() if a.status.value == "ok")
     return {
         "status": report.status.value,
         "active_workflows": workflows.active_count if workflows else 0,
         "total_adapters": len(adapters),
         "healthy_adapters": healthy_adapters,
         "recent_alerts": alerts.total_active if alerts else 0,
-        "generated_at": (
-            report.generated_at.isoformat() if report.generated_at else None
-        ),
+        "generated_at": (report.generated_at.isoformat() if report.generated_at else None),
     }
 
 
@@ -165,9 +160,7 @@ async def fetch_active_alerts() -> list[dict[str, Any]]:
                 "severity": a.severity,
                 "title": f"{a.source}: {a.message}",
                 "description": a.message,
-                "time": (
-                    a.created_at.isoformat() if a.created_at else ""
-                ),
+                "time": (a.created_at.isoformat() if a.created_at else ""),
             }
             for i, a in enumerate(alerts.top_alerts)
         ]
@@ -352,9 +345,7 @@ class AlertsScreen(VerticalScroll):
             count = self.query_one("#alerts-count", Static)
             total = len(alerts)
             color = "red" if total > 0 else "green"
-            count.update(
-                f"[bold {color}]{total} active alert{'s' if total != 1 else ''}[/]"
-            )
+            count.update(f"[bold {color}]{total} active alert{'s' if total != 1 else ''}[/]")
             table = self.query_one("#alerts-table", DataTable)
             table.clear()
             if alerts:
@@ -395,9 +386,7 @@ class ReviewsScreen(VerticalScroll):
             drafts = await fetch_skill_drafts()
             count = self.query_one("#reviews-count", Static)
             total = len(drafts)
-            review_count = sum(
-                1 for d in drafts if str(d.get("state", "")).lower() == "review"
-            )
+            review_count = sum(1 for d in drafts if str(d.get("state", "")).lower() == "review")
             color = "cyan" if review_count > 0 else "green"
             count.update(
                 f"[bold {color}]{total} draft{'s' if total != 1 else ''}[/]"

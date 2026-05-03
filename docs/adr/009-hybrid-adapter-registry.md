@@ -9,10 +9,10 @@
 Mahavishnu's adapter architecture was hardcoded with direct imports and manual initialization, limiting extensibility and plugin support. The system needed:
 
 1. **Dynamic Discovery** - Adapters discovered at runtime via Python entry points
-2. **Capability-Based Routing** - Task routing based on adapter capabilities, not hardcoded mappings
-3. **State Persistence** - Adapter state and health tracked across restarts
-4. **Plugin Architecture** - Third-party adapters supported without core modifications
-5. **Health Integration** - Adapter health integrated with monitoring and alerting
+1. **Capability-Based Routing** - Task routing based on adapter capabilities, not hardcoded mappings
+1. **State Persistence** - Adapter state and health tracked across restarts
+1. **Plugin Architecture** - Third-party adapters supported without core modifications
+1. **Health Integration** - Adapter health integrated with monitoring and alerting
 
 ### Options Considered
 

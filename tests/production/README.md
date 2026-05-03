@@ -5,6 +5,7 @@ This directory contains production-ready integration tests for WebSocket deploym
 ## Test Categories
 
 ### 1. Authentication Tests (`TestJWTAuthentication`)
+
 - Valid token authentication
 - Expired token rejection
 - Invalid token rejection
@@ -12,35 +13,41 @@ This directory contains production-ready integration tests for WebSocket deploym
 - Token refresh functionality
 
 ### 2. TLS/WSS Tests (`TestTLSConnections`)
+
 - WSS connections with valid certificates
 - Certificate validation
 - TLS cipher suite verification
 - Certificate expiry checking
 
 ### 3. Service Lifecycle Tests (`TestServiceLifecycle`)
+
 - Service start/stop
 - Graceful shutdown
 - Multiple concurrent connections
 - Connection tracking
 
 ### 4. Cross-Service Communication Tests (`TestCrossServiceCommunication`)
+
 - Service-to-service authenticated communication
 - Cross-service subscriptions
 - Permission-based routing
 
 ### 5. Graceful Degradation Tests (`TestGracefulDegradation`)
+
 - Connection failure handling
 - Server restart scenarios
 - Partial connection failures
 - Service recovery
 
 ### 6. Performance Tests (`TestPerformance`)
+
 - 100+ concurrent connections
 - Broadcast performance
 - Message throughput
 - Latency under load
 
 ### 7. Upgrade Scenarios (`TestUpgradeScenarios`)
+
 - Clean deployment
 - Data preservation across restarts
 - Migration testing
@@ -48,6 +55,7 @@ This directory contains production-ready integration tests for WebSocket deploym
 ## Running Tests
 
 ### Quick Start
+
 ```bash
 # Run all production tests (except slow)
 pytest tests/production/ -v -m "production"
@@ -57,6 +65,7 @@ pytest tests/production/ -v -m "production" --cov=mahavishnu --cov-report=html
 ```
 
 ### Specific Test Categories
+
 ```bash
 # Authentication tests only
 pytest tests/production/test_websocket_deployment.py::TestJWTAuthentication -v
@@ -69,6 +78,7 @@ pytest tests/production/test_websocket_deployment.py::TestPerformance -v --runsl
 ```
 
 ### With Docker
+
 ```bash
 # Build test container
 docker build -t websocket-tests -f Dockerfile.test .
@@ -96,11 +106,13 @@ pip install websockets cryptography aiohttp
 ## CI/CD Integration
 
 Tests are automatically run on:
+
 - Push to `main` or `develop` branches
 - Pull requests targeting `main` or `develop`
 - Manual trigger via workflow_dispatch
 
 ### Manual Workflow Trigger
+
 ```bash
 # Trigger via GitHub CLI
 gh workflow run websocket-production-tests.yml \
@@ -116,20 +128,23 @@ gh workflow run websocket-production-tests.yml \
 ## Success Criteria
 
 All tests must pass:
+
 - 100% of non-slow tests pass
-- >= 95% of slow tests pass
+- > = 95% of slow tests pass
 - No security vulnerabilities detected
 - Coverage >= 90%
 
 ## Troubleshooting
 
 ### Port already in use
+
 ```bash
 # Kill existing WebSocket processes
 lsof -ti:8690 | xargs kill -9
 ```
 
 ### Certificate errors
+
 ```bash
 # Regenerate test certificates
 openssl req -x509 -newkey rsa:2048 -nodes \
@@ -140,6 +155,7 @@ openssl req -x509 -newkey rsa:2048 -nodes \
 ```
 
 ### Timeout errors
+
 ```bash
 # Increase timeout
 pytest tests/production/ -v --timeout=600
@@ -148,11 +164,12 @@ pytest tests/production/ -v --timeout=600
 ## Contributing
 
 When adding new tests:
+
 1. Use appropriate test markers (`@pytest.mark.production`)
-2. Follow async/await patterns
-3. Clean up resources in fixtures
-4. Add docstrings explaining test scenarios
-5. Update this README with new test categories
+1. Follow async/await patterns
+1. Clean up resources in fixtures
+1. Add docstrings explaining test scenarios
+1. Update this README with new test categories
 
 ## References
 

@@ -9,8 +9,9 @@ Tests cover:
 
 from __future__ import annotations
 
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 
 from mahavishnu.core.predictions import (
     BlockerPrediction,
@@ -18,8 +19,8 @@ from mahavishnu.core.predictions import (
     DurationEstimator,
     DurationPrediction,
     PredictionConfig,
-    predict_blockers,
     estimate_duration,
+    predict_blockers,
 )
 from mahavishnu.models.pattern import (
     BlockerPattern,
@@ -151,11 +152,13 @@ class TestBlockerPredictor:
         """Create sample historical tasks."""
         tasks = []
         for i in range(20):
-            tasks.append({
-                "id": f"hist-{i}",
-                "repository": "test-repo" if i < 15 else "other-repo",
-                "status": "completed" if i < 15 else "blocked",
-            })
+            tasks.append(
+                {
+                    "id": f"hist-{i}",
+                    "repository": "test-repo" if i < 15 else "other-repo",
+                    "status": "completed" if i < 15 else "blocked",
+                }
+            )
         return tasks
 
     def test_predict_blockers_basic(
@@ -172,9 +175,7 @@ class TestBlockerPredictor:
             "priority": "high",
         }
 
-        prediction = predictor.predict_blockers(
-            task, blocker_patterns, historical_tasks
-        )
+        prediction = predictor.predict_blockers(task, blocker_patterns, historical_tasks)
 
         assert prediction.task_id == "new-task"
         assert prediction.blocker_probability >= 0.0
@@ -195,9 +196,7 @@ class TestBlockerPredictor:
             "priority": "critical",
         }
 
-        prediction = predictor.predict_blockers(
-            task, blocker_patterns, historical_tasks
-        )
+        prediction = predictor.predict_blockers(task, blocker_patterns, historical_tasks)
 
         # Should have identified risk factors
         assert len(prediction.risk_factors) > 0
@@ -216,9 +215,7 @@ class TestBlockerPredictor:
         assert risk_score > 0
         assert len(risk_factors) > 0
 
-    def test_calculate_confidence_interval(
-        self, predictor: BlockerPredictor
-    ) -> None:
+    def test_calculate_confidence_interval(self, predictor: BlockerPredictor) -> None:
         """Test confidence interval calculation."""
         # High sample size = narrow interval
         interval_high = predictor._calculate_confidence_interval(0.5, 100)
@@ -244,9 +241,7 @@ class TestBlockerPredictor:
 
         assert "dependency" in potential
 
-    def test_generate_mitigation_suggestions(
-        self, predictor: BlockerPredictor
-    ) -> None:
+    def test_generate_mitigation_suggestions(self, predictor: BlockerPredictor) -> None:
         """Test generating mitigation suggestions."""
         suggestions = predictor._generate_mitigation_suggestions(
             ["dependency", "external_api"],
@@ -301,15 +296,17 @@ class TestDurationEstimator:
             created = now - timedelta(days=10 - i, hours=4)
             completed = created + timedelta(hours=5 + (i % 5))
 
-            tasks.append({
-                "id": f"hist-{i}",
-                "repository": "test-repo",
-                "tags": ["bug"] if i % 2 == 0 else ["feature"],
-                "priority": "high" if i < 10 else "medium",
-                "status": "completed",
-                "created_at": created.isoformat(),
-                "completed_at": completed.isoformat(),
-            })
+            tasks.append(
+                {
+                    "id": f"hist-{i}",
+                    "repository": "test-repo",
+                    "tags": ["bug"] if i % 2 == 0 else ["feature"],
+                    "priority": "high" if i < 10 else "medium",
+                    "status": "completed",
+                    "created_at": created.isoformat(),
+                    "completed_at": completed.isoformat(),
+                }
+            )
 
         return tasks
 
@@ -328,9 +325,7 @@ class TestDurationEstimator:
             "priority": "high",
         }
 
-        prediction = estimator.estimate_duration(
-            task, duration_patterns, historical_tasks
-        )
+        prediction = estimator.estimate_duration(task, duration_patterns, historical_tasks)
 
         assert prediction.task_id == "new-task"
         assert prediction.estimated_hours > 0
@@ -356,7 +351,8 @@ class TestDurationEstimator:
         assert prediction.confidence < 0.5  # Lower confidence
 
     def test_calculate_pattern_match(
-        self, estimator: DurationEstimator,
+        self,
+        estimator: DurationEstimator,
         duration_patterns: list[TaskDurationPattern],
     ) -> None:
         """Test pattern matching calculation."""
@@ -401,9 +397,7 @@ class TestDurationEstimator:
         # Estimate should be between min and max
         assert 4.0 <= estimate <= 6.5
 
-    def test_calculate_duration_interval(
-        self, estimator: DurationEstimator
-    ) -> None:
+    def test_calculate_duration_interval(self, estimator: DurationEstimator) -> None:
         """Test duration confidence interval."""
         durations = [4.0, 5.0, 6.0, 5.5, 4.5]
 

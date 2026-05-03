@@ -14,21 +14,20 @@ Architecture (Phase 0 enhancements):
 
 import asyncio
 import logging
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from mahavishnu.core.repo_manager import RepositoryManager
 from mahavishnu.core.coordination.manager import CoordinationManager
 from mahavishnu.core.errors import ConfigurationError
+from mahavishnu.core.repo_manager import RepositoryManager
 
-from .worktree_providers.base import WorktreeProvider
-from .worktree_providers.registry import WorktreeProviderRegistry
-from .worktree_providers.session_buddy import SessionBuddyWorktreeProvider
-from .worktree_providers.direct_git import DirectGitWorktreeProvider
-from .worktree_validation import WorktreePathValidator
 from .worktree_audit import WorktreeAuditLogger
 from .worktree_backup import WorktreeBackupManager
+from .worktree_providers.base import WorktreeProvider
+from .worktree_providers.direct_git import DirectGitWorktreeProvider
+from .worktree_providers.registry import WorktreeProviderRegistry
+from .worktree_providers.session_buddy import SessionBuddyWorktreeProvider
+from .worktree_validation import WorktreePathValidator
 
 logger = logging.getLogger(__name__)
 

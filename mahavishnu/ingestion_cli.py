@@ -11,13 +11,12 @@ Example:
 
 import asyncio
 from pathlib import Path
-from typing import NoReturn
 
-import typer
 import structlog
+import typer
 
-from .ingesters.content_ingester import ContentIngester, create_content_ingester
 from .core.embeddings import EmbeddingProvider
+from .ingesters.content_ingester import create_content_ingester
 
 logger = structlog.get_logger()
 ingestion_app = typer.Typer(help="Content ingestion commands")
@@ -223,7 +222,7 @@ def ingest_batch(
     success_count = sum(1 for r in results if r["success"])
     fail_count = len(results) - success_count
 
-    typer.echo(f"\n📊 Batch ingestion complete:", fg=typer.colors.BLUE)
+    typer.echo("\n📊 Batch ingestion complete:", fg=typer.colors.BLUE)
     typer.echo(f"   Total: {len(results)}", fg=typer.colors.BLUE)
     typer.echo(f"   Success: {success_count}", fg=typer.colors.GREEN)
     typer.echo(
@@ -296,7 +295,7 @@ def ingestion_stats(
         file_count = len(list(output_path.glob("*")))
         typer.echo(f"   Ingested files: {file_count}", fg=typer.colors.GREEN)
     else:
-        typer.echo(f"   Output directory: does not exist", fg=typer.colors.YELLOW)
+        typer.echo("   Output directory: does not exist", fg=typer.colors.YELLOW)
 
 
 def add_ingestion_commands() -> None:

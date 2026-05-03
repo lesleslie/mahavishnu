@@ -1,19 +1,15 @@
 """Learning path discovery for skill relationships."""
 
-from typing import List, Dict, Set, Optional
 from collections import deque
+
 import networkx as nx
 
-from skill_parser import SkillMetadata, RelatedSkill
 from .graph import SkillGraph
 
 
 def find_learning_path(
-    graph: SkillGraph,
-    start_skill: str,
-    end_skill: str,
-    max_depth: int = 10
-) -> Optional[List[str]]:
+    graph: SkillGraph, start_skill: str, end_skill: str, max_depth: int = 10
+) -> list[str] | None:
     """
     Find shortest path between two skills using BFS.
 
@@ -57,12 +53,8 @@ def find_learning_path(
 
 
 def find_all_paths(
-    graph: SkillGraph,
-    start_skill: str,
-    end_skill: str,
-    max_paths: int = 10,
-    max_depth: int = 10
-) -> List[List[str]]:
+    graph: SkillGraph, start_skill: str, end_skill: str, max_paths: int = 10, max_depth: int = 10
+) -> list[list[str]]:
     """
     Find all paths between two skills (up to max_paths).
 
@@ -85,7 +77,7 @@ def find_all_paths(
     paths = []
     visited_global = set()
 
-    def dfs(current: str, path: List[str], visited: Set[str]):
+    def dfs(current: str, path: list[str], visited: set[str]):
         nonlocal paths
 
         if len(paths) >= max_paths:
@@ -108,10 +100,7 @@ def find_all_paths(
     return paths
 
 
-def get_prerequisite_skills(
-    graph: SkillGraph,
-    skill_name: str
-) -> Dict[str, List[str]]:
+def get_prerequisite_skills(graph: SkillGraph, skill_name: str) -> dict[str, list[str]]:
     """
     Get all prerequisites for a skill (transitive REQUIRED skills).
 
@@ -127,8 +116,7 @@ def get_prerequisite_skills(
 
     skill = graph.skills[skill_name]
     direct_reqs = [
-        r.name for r in skill.related_skills
-        if r.relationship_type.upper() == "REQUIRED"
+        r.name for r in skill.related_skills if r.relationship_type.upper() == "REQUIRED"
     ]
 
     # Find transitive prerequisites
@@ -153,16 +141,10 @@ def get_prerequisite_skills(
     # Remove direct prerequisites from transitive
     transitive -= set(direct_reqs)
 
-    return {
-        "direct": direct_reqs,
-        "transitive": sorted(list(transitive))
-    }
+    return {"direct": direct_reqs, "transitive": sorted(list(transitive))}
 
 
-def suggest_learning_order(
-    graph: SkillGraph,
-    skill_names: List[str]
-) -> List[str]:
+def suggest_learning_order(graph: SkillGraph, skill_names: list[str]) -> list[str]:
     """
     Suggest optimal learning order using topological sort.
 
@@ -183,7 +165,7 @@ def suggest_learning_order(
     subgraph = graph.graph.subgraph(valid_skills)
 
     # Topological sort using Kahn's algorithm
-    in_degree = {node: 0 for node in valid_skills}
+    in_degree = dict.fromkeys(valid_skills, 0)
     for node in valid_skills:
         in_degree[node] = subgraph.in_degree(node)
 
@@ -208,10 +190,7 @@ def suggest_learning_order(
     return result
 
 
-def find_dependencies(
-    graph: SkillGraph,
-    skill_name: str
-) -> Dict[str, List[str]]:
+def find_dependencies(graph: SkillGraph, skill_name: str) -> dict[str, list[str]]:
     """
     Find all skills that depend on the given skill.
 
@@ -242,7 +221,4 @@ def find_dependencies(
                 except nx.NetworkXError:
                     pass
 
-    return {
-        "direct": direct_dependents,
-        "transitive": sorted(list(transitive))
-    }
+    return {"direct": direct_dependents, "transitive": sorted(list(transitive))}

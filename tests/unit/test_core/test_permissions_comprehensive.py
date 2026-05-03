@@ -11,16 +11,15 @@ This module provides extensive test coverage for:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytest
-from pydantic import ValidationError
 
 from mahavishnu.core.permissions import (
     Permission,
+    RBACManager,
     Role,
     User,
-    RBACManager,
 )
 
 
@@ -59,20 +58,14 @@ class TestRole:
     def test_role_with_allowed_repos(self):
         """Test role creation with allowed repos."""
         role = Role(
-            name="test_role",
-            permissions=[Permission.READ_REPO],
-            allowed_repos=["repo1", "repo2"]
+            name="test_role", permissions=[Permission.READ_REPO], allowed_repos=["repo1", "repo2"]
         )
 
         assert role.allowed_repos == ["repo1", "repo2"]
 
     def test_role_with_empty_allowed_repos(self):
         """Test role with empty allowed repos list."""
-        role = Role(
-            name="test_role",
-            permissions=[Permission.READ_REPO],
-            allowed_repos=[]
-        )
+        role = Role(name="test_role", permissions=[Permission.READ_REPO], allowed_repos=[])
 
         assert role.allowed_repos == []
 
@@ -84,7 +77,7 @@ class TestRole:
                 Permission.READ_REPO,
                 Permission.WRITE_REPO,
                 Permission.EXECUTE_WORKFLOW,
-            ]
+            ],
         )
 
         assert len(role.permissions) == 3
@@ -94,11 +87,7 @@ class TestRole:
 
     def test_role_copy(self):
         """Test that role can be copied."""
-        role = Role(
-            name="original",
-            permissions=[Permission.READ_REPO],
-            allowed_repos=["repo1"]
-        )
+        role = Role(name="original", permissions=[Permission.READ_REPO], allowed_repos=["repo1"])
 
         copied = role.copy()
         assert copied.name == "original"
@@ -123,12 +112,7 @@ class TestUser:
         """Test user creation with all fields."""
         role = Role(name="admin", permissions=[Permission.READ_REPO])
 
-        user = User(
-            user_id="user123",
-            roles=[role],
-            email="user@example.com",
-            name="Test User"
-        )
+        user = User(user_id="user123", roles=[role], email="user@example.com", name="Test User")
 
         assert user.email == "user@example.com"
         assert user.name == "Test User"
@@ -148,10 +132,7 @@ class TestUser:
         admin_role = Role(name="admin", permissions=[Permission.READ_REPO])
         dev_role = Role(name="developer", permissions=[Permission.WRITE_REPO])
 
-        user = User(
-            user_id="user123",
-            roles=[admin_role, dev_role]
-        )
+        user = User(user_id="user123", roles=[admin_role, dev_role])
 
         assert len(user.roles) == 2
 
@@ -163,6 +144,7 @@ class TestRBACManager:
     def mock_config(self):
         """Create mock configuration."""
         from unittest.mock import MagicMock
+
         config = MagicMock()
         return config
 
@@ -223,9 +205,7 @@ class TestRBACManager:
     async def test_create_user_with_single_role(self, rbac_manager):
         """Test creating user with single role."""
         user = await rbac_manager.create_user(
-            user_id="user123",
-            roles=["viewer"],
-            allowed_repos=["repo1", "repo2"]
+            user_id="user123", roles=["viewer"], allowed_repos=["repo1", "repo2"]
         )
 
         assert user.user_id == "user123"
@@ -238,9 +218,7 @@ class TestRBACManager:
     async def test_create_user_with_multiple_roles(self, rbac_manager):
         """Test creating user with multiple roles."""
         user = await rbac_manager.create_user(
-            user_id="user123",
-            roles=["viewer", "developer"],
-            allowed_repos=["repo1"]
+            user_id="user123", roles=["viewer", "developer"], allowed_repos=["repo1"]
         )
 
         assert len(user.roles) == 2
@@ -252,9 +230,7 @@ class TestRBACManager:
     async def test_create_user_with_nonexistent_role(self, rbac_manager):
         """Test creating user with nonexistent role."""
         user = await rbac_manager.create_user(
-            user_id="user123",
-            roles=["nonexistent_role"],
-            allowed_repos=None
+            user_id="user123", roles=["nonexistent_role"], allowed_repos=None
         )
 
         # Should create user with no roles
@@ -265,9 +241,7 @@ class TestRBACManager:
     async def test_create_user_without_allowed_repos(self, rbac_manager):
         """Test creating user without specifying allowed repos."""
         user = await rbac_manager.create_user(
-            user_id="user123",
-            roles=["admin"],
-            allowed_repos=None
+            user_id="user123", roles=["admin"], allowed_repos=None
         )
 
         # Admin role should have None (all repos)
@@ -277,9 +251,7 @@ class TestRBACManager:
     async def test_create_user_with_mixed_roles(self, rbac_manager):
         """Test creating user with mix of existing and non-existing roles."""
         user = await rbac_manager.create_user(
-            user_id="user123",
-            roles=["viewer", "nonexistent", "developer"],
-            allowed_repos=["repo1"]
+            user_id="user123", roles=["viewer", "nonexistent", "developer"], allowed_repos=["repo1"]
         )
 
         # Should only have the 2 valid roles
@@ -297,6 +269,7 @@ class TestRBACManagerPermissionChecking:
     def mock_config(self):
         """Create mock configuration."""
         from unittest.mock import MagicMock
+
         config = MagicMock()
         return config
 
@@ -346,38 +319,28 @@ class TestRBACManagerPermissionChecking:
     @pytest.mark.asyncio
     async def test_check_permission_admin_has_all(self, rbac_manager):
         """Test check_permission for admin user."""
-        has_perm = await rbac_manager.check_permission(
-            "admin_user", "repo1", Permission.WRITE_REPO
-        )
+        has_perm = await rbac_manager.check_permission("admin_user", "repo1", Permission.WRITE_REPO)
         assert has_perm is True
 
     @pytest.mark.asyncio
     async def test_check_permission_developer_restricted(self, rbac_manager):
         """Test check_permission for developer user."""
         # Developer should have read on repo1
-        has_perm = await rbac_manager.check_permission(
-            "dev_user", "repo1", Permission.READ_REPO
-        )
+        has_perm = await rbac_manager.check_permission("dev_user", "repo1", Permission.READ_REPO)
         assert has_perm is True
 
         # But not write
-        has_perm = await rbac_manager.check_permission(
-            "dev_user", "repo1", Permission.WRITE_REPO
-        )
+        has_perm = await rbac_manager.check_permission("dev_user", "repo1", Permission.WRITE_REPO)
         assert has_perm is False
 
         # And not on repo3 (not in allowed_repos)
-        has_perm = await rbac_manager.check_permission(
-            "dev_user", "repo3", Permission.READ_REPO
-        )
+        has_perm = await rbac_manager.check_permission("dev_user", "repo3", Permission.READ_REPO)
         assert has_perm is False
 
     @pytest.mark.asyncio
     async def test_check_permission_nonexistent_user(self, rbac_manager):
         """Test check_permission for nonexistent user."""
-        has_perm = await rbac_manager.check_permission(
-            "nonexistent", "repo1", Permission.READ_REPO
-        )
+        has_perm = await rbac_manager.check_permission("nonexistent", "repo1", Permission.READ_REPO)
         assert has_perm is False
 
     @pytest.mark.asyncio
@@ -398,9 +361,7 @@ class TestRBACManagerPermissionChecking:
     @pytest.mark.asyncio
     async def test_filter_repos_by_permission(self, rbac_manager):
         """Test filter_repos_by_permission method."""
-        repos = await rbac_manager.filter_repos_by_permission(
-            "dev_user", Permission.READ_REPO
-        )
+        repos = await rbac_manager.filter_repos_by_permission("dev_user", Permission.READ_REPO)
 
         assert "repo1" in repos
         assert "repo2" in repos
@@ -408,9 +369,7 @@ class TestRBACManagerPermissionChecking:
     @pytest.mark.asyncio
     async def test_filter_repos_nonexistent_user(self, rbac_manager):
         """Test filter_repos_by_permission for nonexistent user."""
-        repos = await rbac_manager.filter_repos_by_permission(
-            "nonexistent", Permission.READ_REPO
-        )
+        repos = await rbac_manager.filter_repos_by_permission("nonexistent", Permission.READ_REPO)
         assert repos == []
 
 
@@ -421,6 +380,7 @@ class TestRBACManagerAdvanced:
     def mock_config(self):
         """Create mock configuration."""
         from unittest.mock import MagicMock
+
         config = MagicMock()
         return config
 
@@ -434,7 +394,7 @@ class TestRBACManagerAdvanced:
         custom_role = Role(
             name="custom",
             permissions=[Permission.READ_REPO, Permission.LIST_WORKFLOWS],
-            allowed_repos=["repo1"]
+            allowed_repos=["repo1"],
         )
 
         rbac_manager.roles["custom"] = custom_role
@@ -445,9 +405,7 @@ class TestRBACManagerAdvanced:
     def test_update_existing_role(self, rbac_manager):
         """Test updating an existing role."""
         # Modify the developer role
-        rbac_manager.roles["developer"].permissions.append(
-            Permission.WRITE_REPO
-        )
+        rbac_manager.roles["developer"].permissions.append(Permission.WRITE_REPO)
 
         assert Permission.WRITE_REPO in rbac_manager.roles["developer"].permissions
 
@@ -489,6 +447,7 @@ class TestEdgeCases:
     def test_user_with_no_roles(self):
         """Test user with no roles."""
         from unittest.mock import MagicMock
+
         config = MagicMock()
         manager = RBACManager(config)
 
@@ -500,6 +459,7 @@ class TestEdgeCases:
     async def test_user_very_long_id(self):
         """Test user with very long ID."""
         from unittest.mock import MagicMock
+
         config = MagicMock()
         manager = RBACManager(config)
 
@@ -511,10 +471,7 @@ class TestEdgeCases:
     def test_role_with_special_characters(self):
         """Test role name with special characters."""
         # Pydantic should handle special characters
-        role = Role(
-            name="role-with_special.chars",
-            permissions=[Permission.READ_REPO]
-        )
+        role = Role(name="role-with_special.chars", permissions=[Permission.READ_REPO])
 
         assert role.name == "role-with_special.chars"
 
@@ -528,6 +485,7 @@ class TestEdgeCases:
     async def test_multiple_users_same_role(self):
         """Test multiple users with same role."""
         from unittest.mock import MagicMock
+
         config = MagicMock()
         manager = RBACManager(config)
 
@@ -541,6 +499,7 @@ class TestEdgeCases:
     async def test_user_roles_are_independent(self):
         """Test that user roles are independent copies."""
         from unittest.mock import MagicMock
+
         config = MagicMock()
         manager = RBACManager(config)
 

@@ -5,6 +5,116 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] - 2026-05-03
+
+### Added
+
+- Add canonical status normalization for ecosystem control plane
+- Add CLI commands for pattern management and scaffolding
+- Add ecosystem status aggregator with concurrent collection and staleness detection
+- Add ecosystem status and capabilities CLI commands
+- Add file parser wrapping mcp-common CodeGraphAnalyzer
+- Add git hook installation and index CLI commands
+- Add indexer module with MCP upsert and filesystem fallback
+- Add MCP error envelope and ecosystem tool validation tests
+- Add PID-based locking for concurrent indexing safety
+- Add Pydantic models for code graph indexing
+- Add repo path validation against repos.yaml
+- Add repo skill generation (--skills) to code indexing design
+- Add runpod_pool config stanza and RUNPOD_API_KEY env var note
+- Add Scaffolding Engine with template rendering and slot injection
+- Add signature redaction for code graph storage
+- Add skill/agent MCP stale-reference validator
+- agents,skills: Complete Agent & Skill Modernization — rename akasha→akosha, add MCP sections to 6 skills, skip archive in validator
+- agents: Add crackerjack compliance standards to python-pro, refactoring-specialist, code-reviewer
+- Commit canonical Claude Code configuration into project
+- config: Add migration script, drift detection, and inventory CLI commands
+- Delegate MCP audit to mcp_common.auth, keep require_mcp_auth and CredentialManager
+- deps: Add nanobot dependency for in-process workers
+- deps: Add runpod-flash SDK
+- Export RunPodPool from pools package
+- Integrate MCP stale-reference drift check into config validate
+- patterns: Add 15 initial pattern YAML files
+- pools: Implement RunPodPool via runpod-flash SDK
+- pools: Register RunPodPool in PoolManager factory
+- Register index CLI commands in main CLI
+- scaffolding: Add dual Jinja2 environment factory
+- scaffolding: Add pattern dependency graph with topological sort
+- scaffolding: Add Pattern Extractor with manual curation and AI suggestion
+- scaffolding: Add Pattern Library with YAML storage and query
+- scaffolding: Add pattern validation with Jinja2 syntax checking
+- scaffolding: Add Pydantic models for pattern format
+- validator: Expand KNOWN_TOOLS with live MCP server tools
+- Wire mahavishnu docs audit CLI command; ship Ecosystem Docs Phase 4
+- Wire TUI screens to live EcosystemStatusService data
+
+### Changed
+
+- Mahavishnu (quality: 61/100) - 2026-04-21 06:00:10
+- Mahavishnu (quality: 63/100) - 2026-04-26 00:24:22
+- Mahavishnu (quality: 72/100) - 2026-05-01 04:33:21
+- Mahavishnu (quality: 73/100) - 2026-04-26 14:33:47
+- Mahavishnu (quality: 73/100) - 2026-04-26 19:39:29
+- Mahavishnu (quality: 73/100) - 2026-04-29 02:03:54
+- Mahavishnu (quality: 73/100) - 2026-04-29 06:54:45
+- Mahavishnu (quality: 73/100) - 2026-04-30 16:25:03
+- Mahavishnu (quality: 73/100) - 2026-04-30 23:20:07
+- Mahavishnu (quality: 73/100) - 2026-05-01 23:26:54
+- Mahavishnu (quality: 73/100) - 2026-05-02 04:12:25
+
+### Fixed
+
+- Add missing pyproject dependencies and validate tests to e2e
+- Apply multi-agent review fixes to all three design specs
+- Apply multi-agent review fixes to pattern learning spec
+- deps,workers: Use nanobot-ai package and ZAI_API_KEY for provider init
+- Multi-agent review fixes across all 3 design specs
+- pools: Align test deque type, add stub warning log and SDK contract comment
+- pools: Replace stub handler with NotImplementedError, cap task_results buffer
+- Review and clean up test files from checkpoint commit
+- scaffolding: Add path traversal guard, validate exits non-zero on failure
+- scaffolding: Only add managed header to comment-compatible files, handle git init failures
+- scaffolding: Use prefix matching for subtree detection in extractor
+- scaffolding: Wire engine to use jinjava_env factory, escape TOML quotes
+- validator: Tighten MCP ref and port regexes, add regression tests
+- workers: Use ZAI_API_KEY for nanobot provider init
+
+### Documentation
+
+- Add agent & skill modernization design spec
+- Add Bodai inter-service authentication standardization design spec
+- Add code knowledge graph integration design spec
+- Add config consolidation design spec
+- Add pattern learning and scaffolding design spec
+- Add Splashstand ACB→Oneiric migration design spec (5th spec)
+- Apply Round 3 multi-agent review findings to code indexing design
+- auth: Mark all 14 tasks complete, update plan index to shipped
+- Integrate external research findings into design specs
+- plan-index: Reconcile all plan statuses against verified codebase state
+- plans: Add Future Work section to RunPod Flash Pool plan
+- plans: Mark Agent & Skill Modernization as shipped in PLAN_INDEX
+- plans: Mark Nanobot Worker Phase B as shipped in PLAN_INDEX
+- plans: Mark RunPod Flash Pool as shipped in PLAN_INDEX
+- plans: Remove Phase A from nanobot plan, scope to Phase B completion only
+- proposals: Annotate shipped phases in ecosystem roadmap and builder overlap docs
+- Reconcile plan state - mark dashboard partial, deprecate redundant health tools
+
+### Testing
+
+- Add degradation tier and validation tests
+- pools: Add failing tests for RunPodPool
+- pools: Add RunPodPool integration smoke test (opt-in via RUNPOD_API_KEY)
+- pools: Fix async mock patterns and add scale assertion
+- scaffolding: Add end-to-end integration test for scaffold CLI
+- workers: Add nanobot.agent.loop to sys.modules mock patch
+- workers: Add NanobotWorker unit tests for Phase B
+
+### Internal
+
+- Add .worktrees/ to .gitignore
+- deps: Remove gpt4all in favour of ollama for local inference
+- Ruff lint cleanup across all scaffolding modules
+
 ## [0.6.3] - 2026-04-16
 
 ### Added
@@ -39,7 +149,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mahavishnu (quality: 68/100) - 2026-04-07 17:26:42
 - Merge monitoring/health modules (phase 3)
 - Merge quality evaluator into scorer, assess Phase 4 targets (phase 4)
-- Retire adapter wrappers, migrate consumers to *_impl (phase 5)
+- Retire adapter wrappers, migrate consumers to \*\_impl (phase 5)
 - tui-design: revise spec with 6-expert review findings
 - tui: Add skills system and subagents sections, fix numbering
 
@@ -93,7 +203,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Retire adapter wrappers, migrate consumers to *_impl (phase 5)
+- Retire adapter wrappers, migrate consumers to \*\_impl (phase 5)
 
 ## [0.5.1] - 2026-04-14
 

@@ -7,6 +7,7 @@ A unified graphics manipulation MCP server that provides a common API for multip
 ## Problem Statement
 
 Current graphics MCP servers have limitations:
+
 - **gimp-mcp**: Requires plugin running inside GIMP, stdio-only, no HTTP support
 - **Inkscape**: Only shell-mode automation, no MCP integration
 - **Blender**: No existing MCP server in our stack
@@ -17,10 +18,11 @@ Current graphics MCP servers have limitations:
 ### `graphics-mcp` - Unified Graphics Manipulation Server
 
 A FastMCP-based server that:
+
 1. Supports multiple graphics backends (GIMP, Inkscape, Blender, ImageMagick)
-2. Provides both stdio and HTTP transport
-3. Uses Oneiric for configuration
-4. Follows mcp-common patterns for consistency
+1. Provides both stdio and HTTP transport
+1. Uses Oneiric for configuration
+1. Follows mcp-common patterns for consistency
 
 ## Architecture
 
@@ -351,6 +353,7 @@ dev = [
 ## Implementation Phases
 
 ### Phase 1: Foundation (Week 1)
+
 - [ ] Project structure setup
 - [ ] Oneiric configuration
 - [ ] Base backend interface
@@ -359,18 +362,21 @@ dev = [
 - [ ] Basic HTTP transport
 
 ### Phase 2: CLI Backends (Week 2)
+
 - [ ] ImageMagick backend
 - [ ] Inkscape CLI backend
 - [ ] Raster and vector tools
 - [ ] Format detection and conversion
 
 ### Phase 3: Advanced Backends (Week 3)
+
 - [ ] GIMP D-Bus backend
 - [ ] GIMP HTTP fallback (plugin-based)
 - [ ] Blender background mode
 - [ ] 3D tools implementation
 
 ### Phase 4: Polish (Week 4)
+
 - [ ] WebSocket transport
 - [ ] Comprehensive error handling
 - [ ] Full test coverage
@@ -409,17 +415,17 @@ class ApplicationWorker(BaseWorker):
 ## Security Considerations
 
 1. **Path Validation**: All file paths validated against allowed directories
-2. **File Size Limits**: Configurable max file size to prevent DoS
-3. **Sandbox Mode**: Optional container execution for untrusted operations
-4. **Rate Limiting**: Prevent abuse via operation rate limits
+1. **File Size Limits**: Configurable max file size to prevent DoS
+1. **Sandbox Mode**: Optional container execution for untrusted operations
+1. **Rate Limiting**: Prevent abuse via operation rate limits
 
 ## Next Steps
 
 1. Create repository: `graphics-mcp`
-2. Set up project structure with mcp-common patterns
-3. Implement Pillow backend as proof of concept
-4. Add ImageMagick backend for CLI operations
-5. Integrate with Mahavishnu worker system
+1. Set up project structure with mcp-common patterns
+1. Implement Pillow backend as proof of concept
+1. Add ImageMagick backend for CLI operations
+1. Integrate with Mahavishnu worker system
 
 ## References
 

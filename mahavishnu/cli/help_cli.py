@@ -15,9 +15,7 @@ from typing import Any
 
 import click
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
-from rich.markdown import Markdown
 
 console = Console()
 
@@ -382,16 +380,16 @@ def show_command_help(command: str) -> None:
             if "shorthand" in cmd_info:
                 console.print(f"\n[bold]Shorthand:[/] {cmd_info['shorthand']}")
 
-            console.print(f"\n[bold]Usage:[/]")
+            console.print("\n[bold]Usage:[/]")
             console.print(f"  {cmd_info['usage']}")
 
             if "options" in cmd_info:
-                console.print(f"\n[bold]Options:[/]")
+                console.print("\n[bold]Options:[/]")
                 for opt, desc in cmd_info["options"].items():
                     console.print(f"  [yellow]{opt}[/]  {desc}")
 
             if "examples" in cmd_info:
-                console.print(f"\n[bold]Examples:[/]")
+                console.print("\n[bold]Examples:[/]")
                 for example in cmd_info["examples"]:
                     console.print(f"  [green]{example}[/]")
 
@@ -512,11 +510,11 @@ def _show_category_help(category: str) -> None:
         console.print(f"  [yellow]Usage:[/] {cmd_info['usage']}")
 
         if "options" in cmd_info:
-            console.print(f"  [bold]Options:[/]")
+            console.print("  [bold]Options:[/]")
             for opt, desc in cmd_info["options"].items():
                 console.print(f"    [yellow]{opt}[/]  {desc}")
 
         if "examples" in cmd_info:
-            console.print(f"  [bold]Examples:[/]")
+            console.print("  [bold]Examples:[/]")
             for example in cmd_info["examples"]:
                 console.print(f"    [green]{example}[/]")

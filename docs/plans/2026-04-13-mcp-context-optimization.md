@@ -35,11 +35,11 @@ TOTAL                393     ~70,000
 Two complementary approaches, executed in order:
 
 1. **Phase 1 - Description Trimming**: Reduce per-tool token cost by ~60%
-2. **Phase 2 - Tool Registration Profiles**: Reduce tool count by ~50-70% per profile
+1. **Phase 2 - Tool Registration Profiles**: Reduce tool count by ~50-70% per profile
 
 Combined target: ~20-25k tokens (from ~70k), a 65-70% reduction.
 
----
+______________________________________________________________________
 
 ## Phase 1: Description Trimming
 
@@ -155,12 +155,15 @@ doesn't shrink. More realistic:
 ### Files to Modify
 
 #### mcp-common (shared utility)
+
 - `mcp_common/tools/__init__.py` — new module
 - `mcp_common/tools/descriptions.py` — `trim_description()` function
 - `mcp_common/tools/budget.py` — `DescriptionBudget` enum/config
 
 #### session-buddy (171 tools)
+
 43 tool files, targeting these first (largest descriptions):
+
 - `mcp/tools/session/crackerjack_tools.py` — 51K chars, ~12 tools
 - `mcp/tools/session/session_tools.py` — 40K chars, ~15 tools
 - `mcp/tools/memory/search_tools.py` — 39K chars, 15 tools
@@ -172,7 +175,9 @@ doesn't shrink. More realistic:
 - All remaining tool files (35 files)
 
 #### mahavishnu (109 tools)
+
 All 18 tool files:
+
 - `mcp/tools/desktop_automation_tools.py` — 17K chars, 23 tools
 - `mcp/tools/goal_team_tools.py` — 31K chars, 3 tools
 - `mcp/tools/terminal_tools.py` — 13K chars, 12 tools
@@ -180,9 +185,10 @@ All 18 tool files:
 - All remaining tool files (14 files)
 
 #### crackerjack, akosha, dhara (93 tools combined)
+
 - All tool registration files in each repo
 
----
+______________________________________________________________________
 
 ## Phase 2: Tool Registration Profiles
 
@@ -231,16 +237,19 @@ TOOL_PROFILES = {
 ### Configuration
 
 Profile is selected via (in precedence order):
+
 1. Environment variable: `{SERVER_NAME}_TOOL_PROFILE=standard`
-2. settings/local.yaml: `tool_profile: standard`
-3. settings/{server}.yaml: `tool_profile: full` (default for safety)
+1. settings/local.yaml: `tool_profile: standard`
+1. settings/{server}.yaml: `tool_profile: full` (default for safety)
 
 Example `settings/session-buddy.yaml`:
+
 ```yaml
 tool_profile: full  # Override in local.yaml for daily dev
 ```
 
 Example `settings/local.yaml` (gitignored):
+
 ```yaml
 tool_profile: standard  # Developer's daily driver
 ```
@@ -256,6 +265,7 @@ tool_profile: standard  # Developer's daily driver
 | full | 171 | ~14,000 | (post-trim) Full analytics, admin |
 
 **Minimal toolset (12):**
+
 - `ping`, `health_check`, `server_info`
 - `start`, `end`, `status`, `checkpoint`
 - `quick_search`, `store_reflection`
@@ -264,6 +274,7 @@ tool_profile: standard  # Developer's daily driver
 - `pre_compact_sync`
 
 **Standard adds (23 more = 35 total):**
+
 - `search_conversations`, `search_summary`, `progressive_search`
 - `store_conversation`, `store_conversation_checkpoint`
 - `store_memory` (entity), `search_entities`, `create_entity`
@@ -285,6 +296,7 @@ tool_profile: standard  # Developer's daily driver
 | full | 109 | ~8,000 | (post-trim) All tools |
 
 **Minimal toolset (10):**
+
 - `get_liveness`, `get_readiness`, `get_health`
 - `health_check_all`
 - `get_monitoring_dashboard`, `get_observability_metrics`
@@ -292,6 +304,7 @@ tool_profile: standard  # Developer's daily driver
 - `mcp_test_connection`, `get_workflow_status`
 
 **Standard adds (20 more = 30 total):**
+
 - `trigger_workflow`, `cancel_workflow`
 - `pool_spawn`, `pool_execute`, `pool_list`, `pool_health`, `pool_close`
 - `worker_spawn`, `worker_execute`, `worker_list`, `worker_health`
@@ -327,6 +340,7 @@ tool_profile: standard  # Developer's daily driver
 ### Combined Token Estimates (Phase 1 + Phase 2)
 
 **Standard profile (daily development):**
+
 ```
 session-buddy:   ~7,000 tokens (35 tools)
 mahavishnu:      ~6,000 tokens (30 tools)
@@ -338,15 +352,17 @@ Total:          ~19,000 tokens (from ~70k = 73% reduction)
 ```
 
 **Minimal profile (CI/health checks):**
+
 ```
 Total:           ~6,700 tokens (from ~70k = 90% reduction)
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Plan
 
 ### Prerequisites
+
 - mcp-common is the shared dependency for all servers
 - All servers use `register_*()` pattern for tool registration
 - FastMCP tool descriptions come from function docstrings
@@ -354,9 +370,11 @@ Total:           ~6,700 tokens (from ~70k = 90% reduction)
 ### Step-by-Step Execution
 
 #### Step 1: mcp-common shared utilities [sequential]
+
 **Repo**: mcp-common
 **Model**: Sonnet (straightforward utility code)
 **Files**:
+
 - Create `mcp_common/tools/__init__.py`
 - Create `mcp_common/tools/descriptions.py` (trim_description utility)
 - Create `mcp_common/tools/profiles.py` (ToolProfile enum, profile registry)
@@ -365,6 +383,7 @@ Total:           ~6,700 tokens (from ~70k = 90% reduction)
 **Verification**: Unit tests for trim_description with various docstring formats
 
 #### Step 2: Description trimming [parallel across repos]
+
 **Model**: Haiku (meanical find-and-trim) with Sonnet review
 **Parallel groups**:
 
@@ -379,30 +398,36 @@ Groups C and D can be a single agent.
 Groups A and B should each be a dedicated agent due to file count.
 
 **Process per tool file**:
+
 1. Open file
-2. For each `@mcp.tool()` decorated function:
+1. For each `@mcp.tool()` decorated function:
    a. Read current docstring
    b. Apply `trim_description()` logic by hand
    c. Replace docstring with trimmed version (max 200 chars)
-3. Keep `_impl` function docstrings unchanged (they're not sent to Claude)
+1. Keep `_impl` function docstrings unchanged (they're not sent to Claude)
 
 **Do NOT change**:
+
 - Parameter names, types, or defaults (these define the schema)
 - Implementation logic
 - `_impl` function docstrings
 - Error handling
 
 #### Step 3: Profile registration system [sequential, depends on Step 1]
+
 **Repo**: mcp-common (core), then each server
 **Model**: Sonnet (architectural)
 **Files per server**:
+
 - Create `mcp/tools/profiles.py` — server-specific profile → register mapping
 - Modify `mcp/server.py` — conditional registration based on profile
 - Add `tool_profile` to settings model
 - Add `TOOL_PROFILE` env var support
 
 #### Step 4: Testing & validation [parallel]
+
 **Model**: Sonnet
+
 - Verify tool counts per profile
 - Verify description lengths
 - Test each profile loads correctly
@@ -410,7 +435,9 @@ Groups A and B should each be a dedicated agent due to file count.
 - Verify no tools are broken (schemas unchanged)
 
 #### Step 5: Documentation [quick]
+
 **Model**: Haiku
+
 - Update each server's CLAUDE.md with profile options
 - Update mcp-common README
 - Add env var documentation
@@ -434,13 +461,14 @@ Step 5:                  [=docs=]                  (quick)
 ```
 
 **Agent dispatch plan:**
+
 1. **Agent 1** (Sonnet): mcp-common shared utilities (Step 1)
-2. **Agent 2** (Haiku): Session-buddy description trimming (Step 2A)
-3. **Agent 3** (Haiku): Mahavishnu description trimming (Step 2B)
-4. **Agent 4** (Haiku): Crackerjack + Akosha + Dhara trimming (Step 2C+D)
-5. **Agent 5** (Sonnet): Profile system implementation (Step 3, after 1+2)
-6. **Agent 6** (Sonnet): Cross-repo validation (Step 4)
-7. **Agent 7** (Haiku): Documentation (Step 5)
+1. **Agent 2** (Haiku): Session-buddy description trimming (Step 2A)
+1. **Agent 3** (Haiku): Mahavishnu description trimming (Step 2B)
+1. **Agent 4** (Haiku): Crackerjack + Akosha + Dhara trimming (Step 2C+D)
+1. **Agent 5** (Sonnet): Profile system implementation (Step 3, after 1+2)
+1. **Agent 6** (Sonnet): Cross-repo validation (Step 4)
+1. **Agent 7** (Haiku): Documentation (Step 5)
 
 Agents 2, 3, 4 run in parallel after Agent 1 completes.
 Agent 5 runs after all of 1-4 complete.
@@ -462,11 +490,11 @@ Agent 7 runs after 6 passes.
 
 1. **Description too short → tool unusable**: Keep a 100-char minimum. If
    trimming makes a tool ambiguous, keep it longer.
-2. **Missing profile tool at runtime**: Always include a `list_available_tools`
+1. **Missing profile tool at runtime**: Always include a `list_available_tools`
    tool that tells Claude what's available but not loaded.
-3. **Breaking existing sessions**: Profile selection is opt-in via config.
+1. **Breaking existing sessions**: Profile selection is opt-in via config.
    Default is `full` (current behavior). No one is forced to change.
-4. **Schema parameter descriptions lost**: These come from type hints and
+1. **Schema parameter descriptions lost**: These come from type hints and
    FastMCP's extraction, NOT from the docstring. Trimming docstrings
    doesn't affect parameter schemas.
 
@@ -485,13 +513,13 @@ Agent 7 runs after 6 passes.
 
 1. Should `list_available_tools` be a meta-tool that shows unloaded tools?
    Or should profiles be opaque to Claude?
-2. Should we implement dynamic tool loading (load tools mid-session)?
+1. Should we implement dynamic tool loading (load tools mid-session)?
    Or is static profile selection sufficient?
-3. What should the default profile be for daily development — `standard` or `full`?
-4. Should the CLAUDE.md project instructions specify which profile to use per-repo?
-5. Is 200 chars the right description budget, or should it be lower (150)?
+1. What should the default profile be for daily development — `standard` or `full`?
+1. Should the CLAUDE.md project instructions specify which profile to use per-repo?
+1. Is 200 chars the right description budget, or should it be lower (150)?
 
----
+______________________________________________________________________
 
 ## Review Section
 
@@ -514,20 +542,20 @@ session-buddy/server.py, and mahavishnu/mcp/server.py.
    (for shared type), but put profile→register mappings in each server's
    `mcp/tools/profiles.py`.
 
-2. **The `trim_description()` utility is correct but should be a
+1. **The `trim_description()` utility is correct but should be a
    post-processing step, not a decorator.** FastMCP reads the function's
    `__doc__` attribute at registration time. The cleanest approach: modify
    docstrings *before* `@mcp.tool()` decoration, or patch `__doc__` in the
    register functions. **Recommendation**: Apply trimming in `register_*()`
    functions by patching `func.__doc__` before passing to `mcp.tool()`.
 
-3. **The parallel execution strategy is realistic** but Step 3 (profiles)
+1. **The parallel execution strategy is realistic** but Step 3 (profiles)
    doesn't strictly depend on Step 2 (trimming). Profiles can be developed
    independently since they just gate which `register_*()` calls run. Trimming
    can proceed in parallel. **Recommendation**: Make Steps 2 and 3 fully
    parallel, with only Step 1 as a prerequisite.
 
-4. **Missing consideration: migration path.** The plan doesn't address how
+1. **Missing consideration: migration path.** The plan doesn't address how
    existing Claude Code sessions will react when a server restarts with fewer
    tools. Claude may attempt to call tools that no longer exist.
    **Recommendation**: Add a `list_available_tools` meta-tool to every profile,
@@ -544,29 +572,30 @@ guidelines and MCP tool authentication patterns.
    don't contain authz/authn instructions — that's handled by decorators like
    `@require_mcp_auth` in the implementation. Trimming docstrings is safe.
 
-2. **Profile selection must protect monitoring tools.** The minimal profiles
+1. **Profile selection must protect monitoring tools.** The minimal profiles
    must ALWAYS include health/liveness/readiness endpoints regardless of
    config. These are used by infrastructure (Kubernetes probes, load
    balancers). **Recommendation**: Define a `MANDATORY_TOOLS` constant in
    mcp-common that each server's profile system must always register. At
    minimum: `get_liveness`, `get_readiness`, `health_check`.
 
-3. **Environment variable injection is low risk.** The `TOOL_PROFILE` env var
+1. **Environment variable injection is low risk.** The `TOOL_PROFILE` env var
    just selects a Python enum value. Invalid values should fall back to
    `full` (current behavior). No code execution risk. **Recommendation**:
    Add explicit validation with fallback:
+
    ```python
    profile = ToolProfile(os.getenv("TOOL_PROFILE", "full"))
    # Invalid value → ToolProfile.FULL
    ```
 
-4. **Health alert tools should survive profile downgrades.** Session-buddy's
+1. **Health alert tools should survive profile downgrades.** Session-buddy's
    `quality_monitor` and mahavishnu's `get_active_alerts` / `trigger_test_alert`
    are in the `full` profile only. If running `standard`, these monitoring
    capabilities are lost. **Recommendation**: Move `get_active_alerts` and
    `get_health` into `standard` for both servers.
 
-5. **Auth tools are already outside the tool registration pattern** (handled
+1. **Auth tools are already outside the tool registration pattern** (handled
    by MCP middleware), so profile changes don't affect authentication.
 
 ### Review 3: UX / Developer Experience
@@ -583,7 +612,7 @@ invocation patterns and the current 393-tool system prompt.
    budget is correct.** Consider 250 for tools with complex parameter
    interactions.
 
-2. **Missing tools will be jarring.** When a user says "analyze my
+1. **Missing tools will be jarring.** When a user says "analyze my
    productivity" and `get_productivity_insights` isn't loaded (it's in
    `full` only), Claude has no way to know it exists. **Critical
    recommendation**: Add a `discover_tools(query: str)` meta-tool to every
@@ -592,20 +621,20 @@ invocation patterns and the current 393-tool system prompt.
    temporal patterns in session activity. Restart with TOOL_PROFILE=full to
    enable."
 
-3. **Profile naming is intuitive.** minimal/standard/full maps to the
+1. **Profile naming is intuitive.** minimal/standard/full maps to the
    well-known pattern (e.g., nginx, PostgreSQL). No change needed.
 
-4. **Per-repo profile in CLAUDE.md is the right call.** A mahavishnu
+1. **Per-repo profile in CLAUDE.md is the right call.** A mahavishnu
    session needs different tools than a session-buddy session. **Answer to
    Open Question #4**: Yes, add `TOOL_PROFILE: standard` to each project's
    CLAUDE.md or `.claude/settings.local.json`.
 
-5. **Dynamic tool loading would be ideal but isn't feasible.** Claude Code
+1. **Dynamic tool loading would be ideal but isn't feasible.** Claude Code
    loads tools once at session start and doesn't support mid-session tool
    registration. **Answer to Open Question #2**: Static profiles only. The
    `discover_tools` meta-tool is the best we can do.
 
-6. **Default should be `standard` for development, `full` for CI/CD.**
+1. **Default should be `standard` for development, `full` for CI/CD.**
    Daily development benefits most from reduced context. CI pipelines want
    all tools available. **Answer to Open Question #3**: Default to
    `standard` in `local.yaml`, keep `full` in committed config.
@@ -626,38 +655,41 @@ verification.**
    not from the docstring. The docstring becomes only the top-level
    description. **Verified: trimming docstrings is safe.**
 
-2. **The `register_*()` pattern makes profile gating clean.** Session-buddy
+1. **The `register_*()` pattern makes profile gating clean.** Session-buddy
    calls 28 `register_*()` functions in `server.py`. Mahavishnu has similar
    patterns. Gating is a simple if-check before each call:
+
    ```python
    if profile >= ToolProfile.STANDARD:
        register_bottleneck_tools(mcp)
    if profile >= ToolProfile.FULL:
        register_phase4_tools(mcp)
    ```
+
    **This is clean and backward-compatible.**
 
-3. **Implementation order correction**: Step 1 (mcp-common) is correct as
+1. **Implementation order correction**: Step 1 (mcp-common) is correct as
    prerequisite. But Step 3 (profiles) should come BEFORE Step 2 (trimming).
    Reason: Profiles give us a safety net — if trimming breaks something,
    we can fall back to `full` profile. Also, profiles are smaller changes
    (server.py only) vs trimming (43+ files). **Recommendation**: Swap
    Steps 2 and 3. Do profiles first, then trim with the safety net in place.
 
-4. **The minimal toolsets look reasonable** with two exceptions:
+1. **The minimal toolsets look reasonable** with two exceptions:
+
    - Session-buddy minimal is missing `store_conversation_checkpoint` — this
      is used by the pre-compact hook and should always be available.
    - Mahavishnu minimal should include `get_workflow_statistics` for basic
      monitoring.
 
-5. **Missing: integration test strategy.** The plan mentions validation but
+1. **Missing: integration test strategy.** The plan mentions validation but
    doesn't specify how to test that trimmed descriptions are still useful.
    **Recommendation**: After implementation, run a test where Claude is given
    a task that requires 5 specific tools. Measure selection accuracy with
    trimmed vs untrimmed descriptions. If accuracy drops below 95%, increase
    the description budget.
 
----
+______________________________________________________________________
 
 ## Review Synthesis & Plan Revisions
 
@@ -682,8 +714,8 @@ execution:
 ### Answers to Open Questions
 
 1. **Discovery tool**: Yes, `discover_tools(query)` in every profile.
-2. **Dynamic loading**: Not feasible. Static profiles + discovery tool.
-3. **Default profile**: `standard` for dev (local.yaml), `full` for CI.
-4. **Per-repo profile**: Yes, in CLAUDE.md or settings.local.json.
-5. **Description budget**: 200 chars confirmed. Increase to 250 if accuracy
+1. **Dynamic loading**: Not feasible. Static profiles + discovery tool.
+1. **Default profile**: `standard` for dev (local.yaml), `full` for CI.
+1. **Per-repo profile**: Yes, in CLAUDE.md or settings.local.json.
+1. **Description budget**: 200 chars confirmed. Increase to 250 if accuracy
    tests show degradation.

@@ -516,4 +516,3 @@ class TestSingleflight:
         sf = Singleflight()
         with pytest.raises(ValueError, match="test error"):
             await sf.do("key1", failing_fn)
-

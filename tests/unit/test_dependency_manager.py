@@ -9,10 +9,11 @@ Tests cover:
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock
 
-from mahavishnu.core.dependency_graph import DependencyStatus, DependencyType
+import pytest
+
+from mahavishnu.core.dependency_graph import DependencyStatus
 from mahavishnu.core.dependency_manager import (
     DependencyEvent,
     DependencyEventData,
@@ -504,7 +505,7 @@ class TestComplexScenarios:
         for i in range(1, 5):
             manager.add_task(f"task-{i}")
             if i > 1:
-                manager.add_dependency(f"task-{i-1}", f"task-{i}")
+                manager.add_dependency(f"task-{i - 1}", f"task-{i}")
 
         # Complete in order
         for i in range(1, 5):

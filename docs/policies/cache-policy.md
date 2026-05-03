@@ -1,7 +1,7 @@
 # Cache Policy
 
-**Version**: 1.0.0  
-**Last Updated**: 2026-04-05  
+**Version**: 1.0.0
+**Last Updated**: 2026-04-05
 **Scope**: All caching in the Mahavishnu codebase
 
 ## Overview
@@ -83,10 +83,10 @@ Optional backend. Only active when Redis is configured. Falls back to L1 when un
 
 ### Missing Invalidation (Known Gaps)
 
-1. **CrossRepoBlocker** (`core/cross_repo_blocker.py:157-158`): ~~_chain_cache and _blocker_cache have no TTL or size limit~~ **FIXED (I11-2)** — 1-hour TTL added via `(value, timestamp)` tuples
-2. **OTel embedding cache** (`ingesters/otel_ingester.py:460`): Uses FIFO eviction but no TTL — stale embeddings served indefinitely until capacity pressure
-3. **Content ingester** (`ingesters/content_ingester.py:917`): ~~`@lru_cache` with no maxsize~~ **FIXED (I11-2)** — `maxsize=512` applied
-4. **Pool search cache** (`pools/memory_aggregator.py:146`): ~~No TTL, entries cached indefinitely~~ **ALREADY HAD TTL** — 5-minute `CACHE_TTL` enforced on read (verified I11-2)
+1. **CrossRepoBlocker** (`core/cross_repo_blocker.py:157-158`): ~~\_chain_cache and \_blocker_cache have no TTL or size limit~~ **FIXED (I11-2)** — 1-hour TTL added via `(value, timestamp)` tuples
+1. **OTel embedding cache** (`ingesters/otel_ingester.py:460`): Uses FIFO eviction but no TTL — stale embeddings served indefinitely until capacity pressure
+1. **Content ingester** (`ingesters/content_ingester.py:917`): ~~`@lru_cache` with no maxsize~~ **FIXED (I11-2)** — `maxsize=512` applied
+1. **Pool search cache** (`pools/memory_aggregator.py:146`): ~~No TTL, entries cached indefinitely~~ **ALREADY HAD TTL** — 5-minute `CACHE_TTL` enforced on read (verified I11-2)
 
 ## Cache Key Construction
 
@@ -145,16 +145,16 @@ stats = await treesitter_cache_stats()
 ### Immediate (I11-2)
 
 1. **Add maxsize to content ingester cache** — change `@lru_cache` to `@lru_cache(maxsize=512)`
-2. **Add TTL to CrossRepoBlocker caches** — entries older than 1 hour should be evicted
-3. **Add TTL to pool search cache** — 5-minute TTL would prevent stale aggregation results
+1. **Add TTL to CrossRepoBlocker caches** — entries older than 1 hour should be evicted
+1. **Add TTL to pool search cache** — 5-minute TTL would prevent stale aggregation results
 
 ### Medium-term (I11-3)
 
 4. **Unify cache stats reporting** — all caches should expose hit/miss/eviction via the same interface
-5. **Add Prometheus metrics** for caches that only have debug logging (adapter resolution)
-6. **Add cache health check** to the monitoring dashboard
+1. **Add Prometheus metrics** for caches that only have debug logging (adapter resolution)
+1. **Add cache health check** to the monitoring dashboard
 
 ### Long-term
 
 7. **Consider a unified cache abstraction** — `CacheManager` already provides this; migrate ad-hoc caches to use it
-8. **Evaluate Redis for adapter metadata** — currently in-memory only, lost on restart
+1. **Evaluate Redis for adapter metadata** — currently in-memory only, lost on restart

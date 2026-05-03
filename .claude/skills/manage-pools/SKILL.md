@@ -1,7 +1,6 @@
----
-name: manage-pools
-description: Use when managing Mahavishnu worker pools for horizontal scaling. Use when user asks to spawn, scale, monitor, or route tasks to pools. Use when workflow execution requires pool capacity planning or pool health checks.
----
+______________________________________________________________________
+
+## name: manage-pools description: Use when managing Mahavishnu worker pools for horizontal scaling. Use when user asks to spawn, scale, monitor, or route tasks to pools. Use when workflow execution requires pool capacity planning or pool health checks.
 
 # Manage Pools
 
@@ -11,8 +10,8 @@ description: Use when managing Mahavishnu worker pools for horizontal scaling. U
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| mahavishnu | 8680 | summary | mcp__mahavishnu__pool_spawn, mcp__mahavishnu__pool_route_execute, mcp__mahavishnu__pool_health | 60s |
-| session-buddy | 8678 | grep | mcp__session-buddy__get_activity_summary | 30s |
+| mahavishnu | 8680 | summary | mcp\_\_mahavishnu\_\_pool_spawn, mcp\_\_mahavishnu\_\_pool_route_execute, mcp\_\_mahavishnu\_\_pool_health | 60s |
+| session-buddy | 8678 | grep | mcp\_\_session-buddy\_\_get_activity_summary | 30s |
 
 Mahavishnu supports three pool types for different deployment scenarios. This skill guides you through selecting the right pool type, scaling appropriately, and monitoring pool health.
 
@@ -35,12 +34,14 @@ digraph pool_decision {
 ```
 
 **Use when:**
+
 - User mentions "pools", "workers", "scaling", "horizontal scaling"
 - Workflow execution fails due to capacity issues
 - User wants to distribute workloads across multiple workers
 - User needs cloud-native or distributed execution
 
 **Don't use when:**
+
 - Simple single-worker workflows (use direct workflow execution)
 - Pool already exists and healthy (use `orchestrate-workflow`)
 
@@ -53,6 +54,7 @@ digraph pool_decision {
 | **KubernetesPool** | Production, auto-scaling | HPA-based | High | Cloud-native |
 
 **Selection guidance:**
+
 - Local development/debugging → MahavishnuPool
 - Distributed across servers → SessionBuddyPool
 - Production with auto-scaling → KubernetesPool
@@ -90,6 +92,7 @@ mahavishnu pool close-all
 ### Step 1: Choose Pool Type
 
 **MahavishnuPool (Local)**
+
 ```python
 from mahavishnu.pools import PoolManager, PoolConfig, PoolType
 
@@ -102,6 +105,7 @@ config = PoolConfig(
 ```
 
 **SessionBuddyPool (Delegated)**
+
 ```python
 config = PoolConfig(
     name="distributed",
@@ -113,6 +117,7 @@ config = PoolConfig(
 ```
 
 **KubernetesPool (Cloud)**
+
 ```python
 config = PoolConfig(
     name="production",
@@ -142,6 +147,7 @@ print(f"Pool spawned: {pool_id}")
 ```
 
 **Via MCP:**
+
 ```python
 pool_id = await mcp.call_tool("mcp__mahavishnu__pool_spawn", {
     "pool_type": "mahavishnu",
@@ -154,6 +160,7 @@ pool_id = await mcp.call_tool("mcp__mahavishnu__pool_spawn", {
 ### Step 3: Route Tasks
 
 **Option A: Execute on Specific Pool**
+
 ```python
 result = await pool_mgr.execute_on_pool(
     pool_id="pool_abc",
@@ -162,6 +169,7 @@ result = await pool_mgr.execute_on_pool(
 ```
 
 **Option B: Auto-Route (Recommended)**
+
 ```python
 from mahavishnu.pools import PoolSelector
 
@@ -172,6 +180,7 @@ result = await pool_mgr.route_task(
 ```
 
 **Routing strategies:**
+
 - `ROUND_ROBIN` - Distribute evenly
 - `LEAST_LOADED` - Send to pool with most capacity
 - `RANDOM` - Random selection
@@ -188,6 +197,7 @@ await pool_mgr.scale_pool(pool_id="pool_abc", target=3)
 ```
 
 **Via CLI:**
+
 ```bash
 mahavishnu pool scale pool_abc --target 10
 ```
@@ -205,6 +215,7 @@ status = await pool_mgr.get_pool_status(pool_id="pool_abc")
 ```
 
 **Via MCP:**
+
 ```python
 health = await mcp.call_tool("mcp__mahavishnu__pool_health", {})
 ```
@@ -248,6 +259,7 @@ results = await aggregator.cross_pool_search(
 ## Validation Checklist
 
 Before spawning pool:
+
 - [ ] Pool type matches deployment scenario
 - [ ] Min/max workers appropriate for workload
 - [ ] Sufficient system resources (CPU, memory)
@@ -255,6 +267,7 @@ Before spawning pool:
 - [ ] Configuration loaded (Oneiric patterns)
 
 After spawning pool:
+
 - [ ] Pool status is "healthy"
 - [ ] Worker count matches target
 - [ ] No worker initialization errors
@@ -274,11 +287,13 @@ After spawning pool:
 ## Real-World Impact
 
 **Before this skill:**
+
 - Users spawned MahavishnuPool in production (poor scaling)
 - Manual pool selection led to 40% task failure rate
 - No monitoring caused cascading failures
 
 **After this skill:**
+
 - Correct pool type selection 100% of the time
 - Auto-routing reduces task failures by 85%
 - Health monitoring catches issues before cascade

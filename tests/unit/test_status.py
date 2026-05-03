@@ -8,8 +8,6 @@ Tests cover:
 - __all__ exports completeness
 """
 
-import pytest
-
 from mahavishnu.core.status import (
     BlockingStatus,
     CoordinationStatus,
@@ -32,7 +30,6 @@ from mahavishnu.core.status import (
     WorkflowStatus,
     __all__,
 )
-
 
 # ============================================================================
 # Task Status Family
@@ -283,11 +280,25 @@ class TestEnumBehavior:
     def test_all_enums_are_strings(self):
         """Every member value should be a string."""
         enums = [
-            TaskStatus, IssueStatus, TodoStatus, CoordinationStatus,
-            MigrationStatus, WorkerStatus, WorkflowStatus, ExecutionStatus,
-            PlanStatus, PoolStatus, DeploymentStatus, DatabaseStatus,
-            HealthStatus, ReadinessStatus, DependencyStatus, DeadLetterStatus,
-            BlockingStatus, SyncStatus, OnboardingStatus,
+            TaskStatus,
+            IssueStatus,
+            TodoStatus,
+            CoordinationStatus,
+            MigrationStatus,
+            WorkerStatus,
+            WorkflowStatus,
+            ExecutionStatus,
+            PlanStatus,
+            PoolStatus,
+            DeploymentStatus,
+            DatabaseStatus,
+            HealthStatus,
+            ReadinessStatus,
+            DependencyStatus,
+            DeadLetterStatus,
+            BlockingStatus,
+            SyncStatus,
+            OnboardingStatus,
         ]
         for enum_cls in enums:
             for member in enum_cls:
@@ -302,6 +313,7 @@ class TestEnumBehavior:
         """All enum values should be lowercase."""
         enums = __all__
         import mahavishnu.core.status as mod
+
         for name in enums:
             enum_cls = getattr(mod, name)
             for member in enum_cls:
@@ -333,19 +345,20 @@ class TestAllExports:
 
     def test_all_exports_importable(self):
         import mahavishnu.core.status as mod
+
         for name in __all__:
             assert hasattr(mod, name), f"{name} in __all__ but not importable"
-            assert hasattr(getattr(mod, name), "__members__"), (
-                f"{name} is not an enum"
-            )
+            assert hasattr(getattr(mod, name), "__members__"), f"{name} is not an enum"
 
     def test_total_enum_count(self):
         """Should have exactly 19 enum classes (18 in __all__)."""
-        import mahavishnu.core.status as mod
         from enum import StrEnum
 
+        import mahavishnu.core.status as mod
+
         enum_count = sum(
-            1 for name in dir(mod)
+            1
+            for name in dir(mod)
             if isinstance(getattr(mod, name, None), type)
             and issubclass(getattr(mod, name), StrEnum)
             and getattr(mod, name) is not StrEnum

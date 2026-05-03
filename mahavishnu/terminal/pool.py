@@ -17,11 +17,11 @@ For pool management in production:
 
 import asyncio
 import contextlib
-import shutil
-import uuid
 from datetime import datetime, timedelta
 from logging import getLogger
+import shutil
 from typing import Any
+import uuid
 
 logger = getLogger(__name__)
 
@@ -62,9 +62,7 @@ class ITerm2SessionPool:
             health_check_interval: Check session health every N seconds
         """
         if not OSASCRIPT_AVAILABLE:
-            raise ImportError(
-                "osascript not available. iTerm2 pool requires macOS with osascript."
-            )
+            raise ImportError("osascript not available. iTerm2 pool requires macOS with osascript.")
 
         self.max_size = max_size
         self.idle_timeout = timedelta(seconds=idle_timeout)
@@ -76,8 +74,7 @@ class ITerm2SessionPool:
         self._shutdown_event = asyncio.Event()
 
         logger.info(
-            f"Initialized iTerm2 session pool (max_size={max_size}, "
-            f"idle_timeout={idle_timeout}s)"
+            f"Initialized iTerm2 session pool (max_size={max_size}, idle_timeout={idle_timeout}s)"
         )
 
     async def acquire_session(
@@ -218,7 +215,7 @@ class ITerm2SessionPool:
             return
 
         try:
-            script = '''
+            script = """
             tell application "iTerm2"
                 tell current window
                     tell current session
@@ -226,7 +223,7 @@ class ITerm2SessionPool:
                     end tell
                 end tell
             end tell
-            '''
+            """
             await self._run_applescript(script)
         except Exception as e:
             logger.warning(f"Error closing iTerm2 session {session_id}: {e}")
@@ -246,7 +243,7 @@ class ITerm2SessionPool:
             if self._health_check_task:
                 try:
                     await asyncio.wait_for(self._health_check_task, timeout=5.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     self._health_check_task.cancel()
                     with contextlib.suppress(asyncio.CancelledError):
                         await self._health_check_task
@@ -359,11 +356,11 @@ class ITerm2SessionPool:
             True if session is healthy
         """
         try:
-            script = '''
+            script = """
             tell application "iTerm2"
                 return "true"
             end tell
-            '''
+            """
             await self._run_applescript(script)
             return True
         except Exception:
@@ -386,7 +383,7 @@ class ITerm2SessionPool:
                         self._shutdown_event.wait(), timeout=self.health_check_interval
                     )
                     break
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     pass
 
                 await self._remove_stale_sessions()

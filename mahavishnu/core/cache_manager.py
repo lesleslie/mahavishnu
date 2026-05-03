@@ -23,21 +23,22 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
+from collections import OrderedDict
+from dataclasses import dataclass
+from enum import StrEnum
 import fnmatch
 import json
 import logging
 import time
-from collections import OrderedDict
-from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
-from typing import Any, Callable, Coroutine
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
 
-class CacheBackend(str, Enum):
+class CacheBackend(StrEnum):
     """Cache backend types."""
 
     MEMORY = "memory"
@@ -469,7 +470,7 @@ class CacheManager:
             Number of keys cleared
         """
         prefix = f"{namespace}:"
-        keys_to_delete = [key for key in self._cache.keys() if key.startswith(prefix)]
+        keys_to_delete = [key for key in self._cache if key.startswith(prefix)]
 
         for key in keys_to_delete:
             self._cache.delete(key)
@@ -489,7 +490,7 @@ class CacheManager:
         prefix = f"{namespace}:"
         keys_to_delete = []
 
-        for key in self._cache.keys():
+        for key in self._cache:
             if key.startswith(prefix):
                 # Extract identifier part
                 identifier = key[len(prefix) :]

@@ -1,7 +1,6 @@
----
-name: search-insights
-description: Use when querying Akosha for semantic search, time-series analytics, or knowledge graph queries. Use when user asks to search across sessions, find patterns, analyze trends, or query entity relationships.
----
+______________________________________________________________________
+
+## name: search-insights description: Use when querying Akosha for semantic search, time-series analytics, or knowledge graph queries. Use when user asks to search across sessions, find patterns, analyze trends, or query entity relationships.
 
 # Search Insights
 
@@ -11,8 +10,8 @@ description: Use when querying Akosha for semantic search, time-series analytics
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| akosha | 8682 | summary | mcp__akosha__search_all_systems, mcp__akosha__correlate_systems, mcp__akosha__detect_anomalies | 60s |
-| session-buddy | 8678 | grep | mcp__session-buddy__search_conversations, mcp__session-buddy__store_reflection | 30s |
+| akosha | 8682 | summary | mcp\_\_akosha\_\_search_all_systems, mcp\_\_akosha\_\_correlate_systems, mcp\_\_akosha\_\_detect_anomalies | 60s |
+| session-buddy | 8678 | grep | mcp\_\_session-buddy\_\_search_conversations, mcp\_\_session-buddy\_\_store_reflection | 30s |
 
 Akosha aggregates memories from 100-100,000 Session-Buddy instances and provides three powerful query modes: semantic search (vector embeddings), time-series analytics (trends/anomalies), and knowledge graph queries (entity relationships).
 
@@ -21,6 +20,7 @@ Akosha aggregates memories from 100-100,000 Session-Buddy instances and provides
 ## When to Use
 
 **Use when:**
+
 - Searching for past solutions or patterns
 - Analyzing trends across sessions over time
 - Finding entity relationships and connections
@@ -29,6 +29,7 @@ Akosha aggregates memories from 100-100,000 Session-Buddy instances and provides
 - Finding conversations by semantic similarity
 
 **Don't use when:**
+
 - Capturing new insights (use `capture-insights`)
 - Managing Session-Buddy sessions (use `manage-sessions`)
 - Simple text search (use Session-Buddy's quick search)
@@ -39,9 +40,9 @@ Akosha aggregates memories from 100-100,000 Session-Buddy instances and provides
 
 | Mode | Purpose | Latency | Best For |
 |------|---------|---------|----------|
-| **Semantic Search** | Find by meaning, not keywords | <100ms | "How do I..." queries |
-| **Time-Series Analytics** | Trends, anomalies, correlations | <500ms | Pattern analysis |
-| **Knowledge Graph** | Entity relationships, paths | <200ms | Connected concepts |
+| **Semantic Search** | Find by meaning, not keywords | \<100ms | "How do I..." queries |
+| **Time-Series Analytics** | Trends, anomalies, correlations | \<500ms | Pattern analysis |
+| **Knowledge Graph** | Entity relationships, paths | \<200ms | Connected concepts |
 
 ## Quick Reference
 
@@ -77,6 +78,7 @@ anomalies = await mcp.call_tool("mcp__akosha__detect_anomalies", {
 ### Step 1: Semantic Search
 
 **Search by meaning:**
+
 ```python
 results = await mcp.call_tool("mcp__akosha__search_all_systems", {
     "query": "How do I fix async Rust borrowing errors?",
@@ -86,12 +88,14 @@ results = await mcp.call_tool("mcp__akosha__search_all_systems", {
 ```
 
 **How it works:**
+
 1. Query is converted to vector embedding (local ONNX, no API calls)
-2. Compared against all stored conversation embeddings
-3. Returns ranked results by semantic similarity
-4. Each result includes: session_id, timestamp, similarity score, excerpt
+1. Compared against all stored conversation embeddings
+1. Returns ranked results by semantic similarity
+1. Each result includes: session_id, timestamp, similarity score, excerpt
 
 **Result format:**
+
 ```json
 {
     "results": [
@@ -110,6 +114,7 @@ results = await mcp.call_tool("mcp__akosha__search_all_systems", {
 ```
 
 **Search strategies:**
+
 ```python
 # Broad search
 results = await mcp.call_tool("mcp__akosha__search_all_systems", {
@@ -134,6 +139,7 @@ results = await mcp.call_tool("mcp__akosha__search_all_systems", {
 ### Step 2: Time-Series Analytics
 
 **Trend analysis:**
+
 ```python
 trends = await mcp.call_tool("mcp__akosha__analyze_trends", {
     "metric": "workflow_completion_rate",
@@ -143,6 +149,7 @@ trends = await mcp.call_tool("mcp__akosha__analyze_trends", {
 ```
 
 **Available metrics:**
+
 - `workflow_completion_rate` - % of workflows that succeed
 - `workflow_duration` - Average execution time
 - `error_rate` - Frequency of errors per session
@@ -150,6 +157,7 @@ trends = await mcp.call_tool("mcp__akosha__analyze_trends", {
 - `session_length` - Average session duration
 
 **Trend operations:**
+
 ```python
 # Moving average
 trends = await mcp.call_tool("mcp__akosha__analyze_trends", {
@@ -173,6 +181,7 @@ correlations = await mcp.call_tool("mcp__akosha__analyze_trends", {
 ```
 
 **Example anomaly detection:**
+
 ```python
 # Detect unusual error spikes
 anomalies = await mcp.call_tool("mcp__akosha__detect_anomalies", {
@@ -197,6 +206,7 @@ anomalies = await mcp.call_tool("mcp__akosha__detect_anomalies", {
 ### Step 3: Knowledge Graph Queries
 
 **Entity relationships:**
+
 ```python
 # Find connected entities
 graph = await mcp.call_tool("mcp__akosha__query_knowledge_graph", {
@@ -207,6 +217,7 @@ graph = await mcp.call_tool("mcp__akosha__query_knowledge_graph", {
 ```
 
 **Query types:**
+
 ```python
 # Direct connections
 graph = await mcp.call_tool("mcp__akosha__query_knowledge_graph", {
@@ -228,6 +239,7 @@ neighbors = await mcp.call_tool("mcp__akosha__query_knowledge_graph", {
 ```
 
 **Graph visualization:**
+
 ```python
 # Get subgraph for visualization
 subgraph = await mcp.call_tool("mcp__akosha__query_knowledge_graph", {
@@ -239,6 +251,7 @@ subgraph = await mcp.call_tool("mcp__akosha__query_knowledge_graph", {
 ```
 
 **Example knowledge graph query:**
+
 ```python
 # User: "What's related to authentication?"
 
@@ -257,11 +270,12 @@ graph = await mcp.call_tool("mcp__akosha__query_knowledge_graph", {
 **Storage tiers:**
 | Tier | Storage | Access Latency | Retention | Use For |
 |------|---------|----------------|----------|---------|
-| **Hot** | In-memory | <10ms | Current session | Active work |
-| **Warm** | On-disk (SQLite) | <50ms | Last 30 days | Recent history |
-| **Cold** | Cloud R2 | <500ms | Forever | Archive |
+| **Hot** | In-memory | \<10ms | Current session | Active work |
+| **Warm** | On-disk (SQLite) | \<50ms | Last 30 days | Recent history |
+| **Cold** | Cloud R2 | \<500ms | Forever | Archive |
 
 **Query across tiers:**
+
 ```python
 # Automatic tier selection
 results = await mcp.call_tool("mcp__akosha__search_all_systems", {
@@ -277,9 +291,10 @@ results = await mcp.call_tool("mcp__akosha__search_all_systems", {
 ```
 
 **Data lifecycle:**
+
 1. **Hot** → Active in current Session-Buddy instance
-2. **Warm** → Automatically synced to Akosha every 5 minutes
-3. **Cold** → Archived to Cloud R2 after 30 days
+1. **Warm** → Automatically synced to Akosha every 5 minutes
+1. **Cold** → Archived to Cloud R2 after 30 days
 
 ## Advanced Analytics
 
@@ -332,18 +347,21 @@ comparison = await mcp.call_tool("mcp__akosha__correlate_systems", {
 ## Real-World Impact
 
 **Before this skill:**
+
 - Manual grep across repos → 30+ minutes per search
 - No cross-project knowledge sharing → repeated solutions
 - No trend visibility → recurring issues undetected
 
 **After this skill:**
-- Semantic search → <100ms across all sessions
+
+- Semantic search → \<100ms across all sessions
 - Dependency-aware search → insights flow to related projects
 - Anomaly detection → proactive issue identification
 
 ## Example Workflows
 
 **Finding Past Solutions:**
+
 ```python
 # User: "We're seeing database pool exhaustion again"
 
@@ -361,6 +379,7 @@ for result in solutions["results"]:
 ```
 
 **Trend Analysis:**
+
 ```python
 # User: "Are our workflows getting slower?"
 
@@ -376,6 +395,7 @@ if trends["trend"] == "increasing":
 ```
 
 **Knowledge Graph Exploration:**
+
 ```python
 # User: "What systems are affected by authentication changes?"
 
@@ -393,11 +413,13 @@ for entity in graph["connected_entities"]:
 ## Performance
 
 **Query latency:**
-- Semantic search: <100ms (100K sessions)
-- Time-series query: <500ms (aggregated)
-- Knowledge graph: <200ms (local graph traversal)
+
+- Semantic search: \<100ms (100K sessions)
+- Time-series query: \<500ms (aggregated)
+- Knowledge graph: \<200ms (local graph traversal)
 
 **Scalability:**
+
 - Tested up to 100K Session-Buddy instances
 - Linear performance scaling
 - Sub-100ms semantic search at full scale

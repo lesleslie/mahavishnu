@@ -17,10 +17,12 @@ from mahavishnu.core.config import MahavishnuSettings
 from mahavishnu.mcp.server_core import (
     FastMCPServer,
     McpretentiousMCPClient,
-    __version__ as mcp_server_version,
     run_server,
 )
-from monitoring.metrics import mcp_tool_calls_total, mcp_tools_registered
+from mahavishnu.mcp.server_core import (
+    __version__ as mcp_server_version,
+)
+from monitoring.metrics import mcp_tool_calls_total
 
 # =============================================================================
 # Fixtures
@@ -573,7 +575,9 @@ class TestToolExecutionSuccess:
             {"user_id": "test_user", "repo": "test_repo", "permission": "NOT_A_PERMISSION"},
         )
 
-        after = mcp_tool_calls_total.labels(tool_name="check_permission", status="error")._value.get()
+        after = mcp_tool_calls_total.labels(
+            tool_name="check_permission", status="error"
+        )._value.get()
         assert after == before + 1
 
     @pytest.mark.asyncio

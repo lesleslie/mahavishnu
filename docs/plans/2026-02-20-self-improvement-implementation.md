@@ -12,13 +12,14 @@
 
 **Tech Stack:** FastMCP, asyncio pools, Pydantic models, Crackerjack quality gates, WebSocket broadcasting
 
----
+______________________________________________________________________
 
 ## Phase 1: Core Infrastructure
 
 ### Task 1: Approval Manager
 
 **Files:**
+
 - Create: `mahavishnu/core/approval_manager.py`
 - Test: `tests/unit/test_approval_manager.py`
 
@@ -451,11 +452,12 @@ git add mahavishnu/core/approval_manager.py tests/unit/test_approval_manager.py
 git commit -m "feat: add approval manager for version bump and publish gates"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Fix Orchestrator
 
 **Files:**
+
 - Create: `mahavishnu/core/fix_orchestrator.py`
 - Test: `tests/unit/test_fix_orchestrator.py`
 
@@ -921,13 +923,14 @@ git add mahavishnu/core/fix_orchestrator.py tests/unit/test_fix_orchestrator.py
 git commit -m "feat: add fix orchestrator with quality gates"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 2: MCP Tools
 
 ### Task 3: Self-Improvement MCP Tools
 
 **Files:**
+
 - Create: `mahavishnu/mcp/tools/self_improvement_tools.py`
 - Test: `tests/unit/test_self_improvement_tools.py`
 
@@ -1319,13 +1322,14 @@ git add mahavishnu/mcp/tools/self_improvement_tools.py tests/unit/test_self_impr
 git commit -m "feat: add self-improvement MCP tools"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 3: Initialize ecosystem.yaml
 
 ### Task 4: Create Initial Issues in ecosystem.yaml
 
 **Files:**
+
 - Modify: `settings/ecosystem.yaml`
 - Test: Manual verification
 
@@ -1519,13 +1523,14 @@ git add settings/ecosystem.yaml
 git commit -m "feat: initialize ecosystem.yaml with review findings"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 4: Integration
 
 ### Task 5: Register MCP Tools
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/server.py`
 
 **Step 1: Add self-improvement tools to server**
@@ -1627,7 +1632,7 @@ git add mahavishnu/mcp/server.py
 git commit -m "feat: register self-improvement MCP tools"
 ```
 
----
+______________________________________________________________________
 
 ## Summary
 
@@ -1640,7 +1645,7 @@ git commit -m "feat: register self-improvement MCP tools"
 | 5. Server Registration | 0 | 1 | 0 |
 | **Total** | **3** | **2** | **3** |
 
----
+______________________________________________________________________
 
 ## Verification Checklist
 
@@ -1653,11 +1658,11 @@ After completing all tasks:
 - [ ] `mahavishnu mcp start` runs without errors
 - [ ] MCP tools registered and callable
 
----
+______________________________________________________________________
 
 ## Next Steps (Post-Implementation)
 
 1. **Phase 1 Execution:** Use the system to fix MHV-001, MHV-002, MHV-003
-2. **WebSocket Integration:** Add real-time approval notifications
-3. **Crackerjack Integration:** Connect `_run_quality_gates` to actual API
-4. **Session-Buddy:** Add reflection capture after each fix
+1. **WebSocket Integration:** Add real-time approval notifications
+1. **Crackerjack Integration:** Connect `_run_quality_gates` to actual API
+1. **Session-Buddy:** Add reflection capture after each fix

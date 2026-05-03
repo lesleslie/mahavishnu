@@ -8,18 +8,18 @@ Provides predictive insights including:
 
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 import math
-from collections import defaultdict
-from datetime import datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
-from mahavishnu.models.pattern import (
-    BlockerPattern,
-    TaskDurationPattern,
-)
+if TYPE_CHECKING:
+    from mahavishnu.models.pattern import (
+        BlockerPattern,
+        TaskDurationPattern,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -394,9 +394,8 @@ class DurationEstimator:
 
         # Priority match
         task_priority = task.get("priority", "").lower()
-        if pattern.priority_range:
-            if task_priority in pattern.priority_range:
-                weight += self.config.priority_weight
+        if pattern.priority_range and task_priority in pattern.priority_range:
+            weight += self.config.priority_weight
 
         return weight
 

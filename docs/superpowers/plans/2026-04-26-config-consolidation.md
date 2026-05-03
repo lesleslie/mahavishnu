@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python stdlib (`pathlib`, `json`, `shutil`, `yaml`), Typer (existing in Mahavishnu CLI), pytest.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -27,12 +27,14 @@
 | `mahavishnu/core/config_validator.py` | **Modify** — add `check_skill_mcp_drift()` anti-drift function (wired into `validate_config()`) |
 | `mahavishnu/tests/unit/test_migration_script.py` | **Create** — unit tests for migration logic |
 
----
+______________________________________________________________________
 
 ## Task 1: Write the migration script
 
 **Files:**
+
 - Create: `scripts/migrate_config_to_project.py`
+
 - Test: `tests/unit/test_migration_script.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -457,12 +459,14 @@ if __name__ == "__main__":
 - [ ] **Step 4: Add `scripts/` to Python path for tests**
 
 Add to `pyproject.toml` under `[tool.pytest.ini_options]`:
+
 ```toml
 [tool.pytest.ini_options]
 pythonpath = [".", "scripts"]
 ```
 
 Or create `conftest.py` in `tests/`:
+
 ```python
 # tests/conftest.py  (add to existing if it exists)
 import sys
@@ -485,7 +489,7 @@ git add scripts/migrate_config_to_project.py tests/unit/test_migration_script.py
 git commit -m "feat(config): add migration script to consolidate ~/.claude into project directory"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Run migration dry-run + verify
 
@@ -514,7 +518,7 @@ test ! -f /Users/les/Projects/mahavishnu/.mcp.json && echo "OK — not yet creat
 
 Expected: `OK — not yet created`
 
----
+______________________________________________________________________
 
 ## Task 3: Run full migration
 
@@ -596,11 +600,12 @@ claude  # Open a session from mahavishnu directory
 
 > **Note:** The migrated files are untracked at this point. They will be staged and committed in Task 5 after `.gitignore` is updated. Do not commit them here.
 
----
+______________________________________________________________________
 
 ## Task 4: Add `mahavishnu config` CLI commands
 
 **Files:**
+
 - Modify: `mahavishnu/cli/config_validator.py` (add new subcommands)
 
 - [ ] **Step 1: Write the tests**
@@ -755,7 +760,7 @@ git add mahavishnu/cli/config_validator.py tests/unit/test_config_cli.py
 git commit -m "feat(config): add list-agents, list-skills, list-mcp-servers, sync-from-global, rollback CLI commands"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: Update `.gitignore`
 
@@ -800,12 +805,14 @@ If any matches found, un-stage and check: these should only be variable names, n
 git commit -m "feat(config): commit canonical Claude Code configuration into project (agents, skills, commands, MCP servers)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: Add anti-drift validation
 
 **Files:**
+
 - Modify: `mahavishnu/core/config_validator.py` — add `check_skill_mcp_drift()` function and wire into `validate_config()`. Note: this is the **core** validator (business logic), distinct from `mahavishnu/cli/config_validator.py` (CLI commands) modified in Task 4.
+
 - Test: `tests/unit/test_config_drift.py`
 
 - [ ] **Step 1: Write failing tests**
@@ -949,7 +956,7 @@ git add mahavishnu/core/config_validator.py tests/unit/test_config_drift.py
 git commit -m "feat(config): add MCP port drift detection to config validate"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: Final verification
 

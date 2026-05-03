@@ -1,5 +1,6 @@
 """Tests for core/rate_limiting.py — rate limiting configuration and helpers."""
-from unittest.mock import MagicMock, AsyncMock
+
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -7,17 +8,16 @@ from mahavishnu.core.rate_limiting import (
     HAS_SLOWAPI,
     RATE_LIMITS,
     get_client_ip,
-    rate_limit_exceeded_handler,
-    rate_limit,
-    limit_task_create,
-    limit_task_search,
-    limit_webhook,
     limit_api_general,
     limit_embedding,
     limit_nlp,
+    limit_task_create,
+    limit_task_search,
+    limit_webhook,
+    rate_limit,
+    rate_limit_exceeded_handler,
     setup_rate_limiting,
 )
-
 
 # ---------------------------------------------------------------------------
 # RATE_LIMITS dict
@@ -27,11 +27,19 @@ from mahavishnu.core.rate_limiting import (
 class TestRateLimits:
     def test_all_expected_keys(self):
         expected = [
-            "task_create", "task_update", "task_delete", "task_search",
-            "repo_list", "repo_sync",
-            "webhook_github", "webhook_gitlab",
-            "api_general", "api_read", "api_write",
-            "embedding", "nlp_parse",
+            "task_create",
+            "task_update",
+            "task_delete",
+            "task_search",
+            "repo_list",
+            "repo_sync",
+            "webhook_github",
+            "webhook_gitlab",
+            "api_general",
+            "api_read",
+            "api_write",
+            "embedding",
+            "nlp_parse",
             "websocket",
         ]
         for key in expected:
@@ -93,9 +101,13 @@ class TestRateLimitExceededHandler:
         body = response.body
         if isinstance(body, bytes):
             import json
+
             body = json.loads(body)
         assert "MHV-006" in str(body)
-        assert response.headers.get("Retry-After") == "60" or response.headers.get("retry-after") == "60"
+        assert (
+            response.headers.get("Retry-After") == "60"
+            or response.headers.get("retry-after") == "60"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -108,14 +120,22 @@ class TestRateLimitDecorator:
         # slowapi requires a "request" parameter in the function signature
         async def dummy(request=None):
             pass
+
         decorated = rate_limit("10/minute")(dummy)
         assert callable(decorated)
 
     def test_convenience_decorators(self):
         async def dummy(request=None):
             return "ok"
-        for decorator in [limit_task_create, limit_task_search, limit_webhook,
-                          limit_api_general, limit_embedding, limit_nlp]:
+
+        for decorator in [
+            limit_task_create,
+            limit_task_search,
+            limit_webhook,
+            limit_api_general,
+            limit_embedding,
+            limit_nlp,
+        ]:
             result = decorator(dummy)
             assert callable(result)
             if not HAS_SLOWAPI:

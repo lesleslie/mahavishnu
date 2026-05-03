@@ -11,18 +11,19 @@ Usage:
     uv run agent_versioning.py validate-all
 """
 
-import re
-import yaml
-from pathlib import Path
-from typing import Optional
-from datetime import datetime
 from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+import re
+
 import click
+import yaml
 
 
 @dataclass
 class VersionChange:
     """Single version change entry"""
+
     version: str
     date: str
     changes: list[str]
@@ -32,6 +33,7 @@ class VersionChange:
 @dataclass
 class AgentVersion:
     """Agent version metadata"""
+
     name: str
     current_version: str
     changelog: list[VersionChange] = field(default_factory=list)
@@ -48,7 +50,7 @@ class AgentVersionManager:
         content = agent_file.read_text()
 
         # Extract YAML frontmatter
-        match = re.match(r'^---\n(.*?)\n---\n(.*)', content, re.DOTALL)
+        match = re.match(r"^---\n(.*?)\n---\n(.*)", content, re.DOTALL)
         if not match:
             raise ValueError(f"Invalid agent file format: {agent_file}")
 
@@ -65,11 +67,7 @@ class AgentVersionManager:
         agent_file.write_text(content)
 
     def add_version(
-        self,
-        agent_file: Path,
-        version: str,
-        changes: list[str],
-        breaking: bool = False
+        self, agent_file: Path, version: str, changes: list[str], breaking: bool = False
     ) -> None:
         """Add a version entry to an agent file"""
         frontmatter, body = self.parse_agent_file(agent_file)
@@ -85,7 +83,7 @@ class AgentVersionManager:
         new_entry = {
             "version": version,
             "date": datetime.now().strftime("%Y-%m-%d"),
-            "changes": changes
+            "changes": changes,
         }
 
         if breaking:
@@ -99,7 +97,7 @@ class AgentVersionManager:
 
         self.write_agent_file(agent_file, frontmatter, body)
 
-    def get_version_info(self, agent_file: Path) -> Optional[AgentVersion]:
+    def get_version_info(self, agent_file: Path) -> AgentVersion | None:
         """Get version information for an agent"""
         try:
             frontmatter, _ = self.parse_agent_file(agent_file)
@@ -112,7 +110,7 @@ class AgentVersionManager:
                     version=entry.get("version", "unknown"),
                     date=entry.get("date", "unknown"),
                     changes=entry.get("changes", []),
-                    breaking=entry.get("breaking", False)
+                    breaking=entry.get("breaking", False),
                 )
                 for entry in frontmatter.get("changelog", [])
             ]
@@ -120,7 +118,7 @@ class AgentVersionManager:
             return AgentVersion(
                 name=frontmatter.get("name", "unknown"),
                 current_version=frontmatter.get("version", "0.0.0"),
-                changelog=changelog
+                changelog=changelog,
             )
 
         except Exception as e:
@@ -129,7 +127,7 @@ class AgentVersionManager:
 
     def validate_version_format(self, version: str) -> bool:
         """Validate semantic version format (X.Y.Z)"""
-        pattern = r'^\d+\.\d+\.\d+$'
+        pattern = r"^\d+\.\d+\.\d+$"
         return bool(re.match(pattern, version))
 
     def validate_all_agents(self) -> dict:
@@ -139,7 +137,7 @@ class AgentVersionManager:
             "versioned": 0,
             "unversioned": 0,
             "invalid_format": [],
-            "missing_changelog": []
+            "missing_changelog": [],
         }
 
         for agent_file in self.agents_dir.glob("*.md"):
@@ -154,10 +152,9 @@ class AgentVersionManager:
                     # Validate version format
                     version = frontmatter["version"]
                     if not self.validate_version_format(version):
-                        results["invalid_format"].append({
-                            "file": agent_file.name,
-                            "version": version
-                        })
+                        results["invalid_format"].append(
+                            {"file": agent_file.name, "version": version}
+                        )
 
                     # Check for changelog
                     if "changelog" not in frontmatter or not frontmatter["changelog"]:
@@ -171,18 +168,14 @@ class AgentVersionManager:
 
         return results
 
-    def suggest_next_version(
-        self,
-        agent_file: Path,
-        change_type: str = "patch"
-    ) -> str:
+    def suggest_next_version(self, agent_file: Path, change_type: str = "patch") -> str:
         """Suggest next version based on semantic versioning"""
         version_info = self.get_version_info(agent_file)
 
         if not version_info or version_info.current_version == "0.0.0":
             return "1.0.0" if change_type == "major" else "0.1.0"
 
-        major, minor, patch = map(int, version_info.current_version.split('.'))
+        major, minor, patch = map(int, version_info.current_version.split("."))
 
         if change_type == "major":
             return f"{major + 1}.0.0"
@@ -279,17 +272,17 @@ def validate_all_cmd():
     click.echo(f"Versioned: {results['versioned']}")
     click.echo(f"Unversioned: {results['unversioned']}")
 
-    if results['invalid_format']:
+    if results["invalid_format"]:
         click.echo("\n⚠️  Invalid Version Formats:")
-        for item in results['invalid_format']:
+        for item in results["invalid_format"]:
             click.echo(f"  - {item['file']}: {item['version']}")
 
-    if results['missing_changelog']:
+    if results["missing_changelog"]:
         click.echo("\n⚠️  Missing Changelogs:")
-        for file in results['missing_changelog']:
+        for file in results["missing_changelog"]:
             click.echo(f"  - {file}")
 
-    coverage = (results['versioned'] / results['total'] * 100) if results['total'] > 0 else 0
+    coverage = (results["versioned"] / results["total"] * 100) if results["total"] > 0 else 0
     click.echo(f"\nVersion Coverage: {coverage:.1f}%")
 
 
@@ -300,7 +293,7 @@ def validate_all_cmd():
     "change_type",
     type=click.Choice(["major", "minor", "patch"]),
     default="patch",
-    help="Type of version bump"
+    help="Type of version bump",
 )
 def suggest_version_cmd(agent_file: Path, change_type: str):
     """Suggest next version number"""
@@ -322,11 +315,7 @@ def init_version_cmd(agent_file: Path, version: str):
         click.echo(f"Agent already versioned at {version_info.current_version}")
         return
 
-    manager.add_version(
-        agent_file,
-        version,
-        ["Initial version with comprehensive capabilities"]
-    )
+    manager.add_version(agent_file, version, ["Initial version with comprehensive capabilities"])
 
     click.echo(f"✓ Initialized {agent_file.name} at version {version}")
 

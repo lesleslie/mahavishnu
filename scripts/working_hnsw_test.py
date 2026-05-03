@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Working HNSW test using DuckDB Python API correctly."""
 
+from datetime import datetime, timedelta
 import hashlib
 import struct
 import time
 import uuid
-from datetime import datetime, timedelta
 
 import duckdb
 import numpy as np
@@ -16,9 +16,9 @@ conn.execute("INSTALL vss")
 conn.execute("LOAD vss")
 conn.execute("SET hnsw_enable_experimental_persistence=true")
 
-print("="*60)
+print("=" * 60)
 print("HNSW Vector Search Benchmark")
-print("="*60)
+print("=" * 60)
 
 # Check current data
 result = conn.execute("SELECT COUNT(*) FROM executions WHERE embedding IS NOT NULL").fetchone()
@@ -56,7 +56,7 @@ if count < 1000:
         # Convert bytes to floats properly
         # Each 4 bytes becomes one float32
         float_count = 384
-        floats = struct.unpack(f'{float_count}f', random_bytes[:float_count * 4])
+        floats = struct.unpack(f"{float_count}f", random_bytes[: float_count * 4])
 
         values = np.array(floats, dtype=np.float32)
         values = (values - 128.0) / 128.0
@@ -66,7 +66,7 @@ if count < 1000:
 
         embedding_array = values
 
-        timestamp = now - timedelta(days=i/10.0)
+        timestamp = now - timedelta(days=i / 10.0)
         task_id = str(uuid.uuid4())
 
         # Use individual parameters instead of a list
@@ -79,10 +79,23 @@ if count < 1000:
                 cost_estimate, actual_cost, embedding, metadata
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-            task_id, timestamp, task_type, desc, "mahavishnu",
-            i % 50 + 1, i * 10 + 100, "sonnet-4.5", "mahavishnu",
-            0.9, i % 10 + 1, True, i + 10.5, 0.1, 0.15,
-            embedding_array, '{"test": true}'
+            task_id,
+            timestamp,
+            task_type,
+            desc,
+            "mahavishnu",
+            i % 50 + 1,
+            i * 10 + 100,
+            "sonnet-4.5",
+            "mahavishnu",
+            0.9,
+            i % 10 + 1,
+            True,
+            i + 10.5,
+            0.1,
+            0.15,
+            embedding_array,
+            '{"test": true}',
         )
 
         if (i + 1) % 100 == 0:
@@ -104,9 +117,9 @@ query_id, query_embedding = query_result
 print(f"\nQuery task ID: {query_id}")
 
 # Benchmark without HNSW
-print("\n" + "-"*60)
+print("\n" + "-" * 60)
 print("Benchmark 1: Exact Search (No HNSW)")
-print("-"*60)
+print("-" * 60)
 
 # Drop index if exists
 try:
@@ -126,19 +139,19 @@ for run in range(10):
         ORDER BY distance
         LIMIT 10
         """,
-        query_embedding
+        query_embedding,
     ).fetchall()
     elapsed = time.time() - start
     times.append(elapsed)
-    print(f"  Run {run+1}: {elapsed*1000:.2f}ms")
+    print(f"  Run {run + 1}: {elapsed * 1000:.2f}ms")
 
 avg_exact = sum(times) / len(times)
-print(f"\nAverage: {avg_exact*1000:.2f}ms")
+print(f"\nAverage: {avg_exact * 1000:.2f}ms")
 
 # Create HNSW index
-print("\n" + "-"*60)
+print("\n" + "-" * 60)
 print("Creating HNSW Index")
-print("-"*60)
+print("-" * 60)
 
 start = time.time()
 conn.execute("CREATE INDEX hnsw_embeddings ON executions USING HNSW (embedding)")
@@ -146,9 +159,9 @@ index_time = time.time() - start
 print(f"Index created in {index_time:.2f}s")
 
 # Benchmark with HNSW
-print("\n" + "-"*60)
+print("\n" + "-" * 60)
 print("Benchmark 2: Approximate Search (With HNSW)")
-print("-"*60)
+print("-" * 60)
 
 times = []
 for run in range(10):
@@ -161,30 +174,30 @@ for run in range(10):
         ORDER BY distance
         LIMIT 10
         """,
-        query_embedding
+        query_embedding,
     ).fetchall()
     elapsed = time.time() - start
     times.append(elapsed)
-    print(f"  Run {run+1}: {elapsed*1000:.2f}ms")
+    print(f"  Run {run + 1}: {elapsed * 1000:.2f}ms")
 
 avg_approx = sum(times) / len(times)
-print(f"\nAverage: {avg_approx*1000:.2f}ms")
+print(f"\nAverage: {avg_approx * 1000:.2f}ms")
 
 # Calculate results
 speedup = avg_exact / avg_approx if avg_approx > 0 else 0
 
-print("\n" + "="*60)
+print("\n" + "=" * 60)
 print("FINAL RESULTS")
-print("="*60)
+print("=" * 60)
 print(f"Database records:     {result[0]}")
-print(f"Embedding dimension:  384")
-print(f"\nExact search (no index):   {avg_exact*1000:.2f}ms")
-print(f"Approx search (HNSW):      {avg_approx*1000:.2f}ms")
+print("Embedding dimension:  384")
+print(f"\nExact search (no index):   {avg_exact * 1000:.2f}ms")
+print(f"Approx search (HNSW):      {avg_approx * 1000:.2f}ms")
 print(f"\nSpeedup:                  {speedup:.2f}x")
 if speedup > 1:
-    print(f"Performance:               {(1-avg_approx/avg_exact)*100:.1f}% faster")
+    print(f"Performance:               {(1 - avg_approx / avg_exact) * 100:.1f}% faster")
 else:
-    print(f"Performance:               {(avg_approx/avg_exact-1)*100:.1f}% slower")
-print("="*60)
+    print(f"Performance:               {(avg_approx / avg_exact - 1) * 100:.1f}% slower")
+print("=" * 60)
 
 conn.close()

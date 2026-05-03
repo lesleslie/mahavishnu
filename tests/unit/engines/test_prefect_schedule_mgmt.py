@@ -14,7 +14,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from mahavishnu.core.config import PrefectConfig
-from mahavishnu.core.errors import PrefectError
 from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
 from mahavishnu.engines.prefect_registry import (
     FlowRegistry,
@@ -29,9 +28,7 @@ from mahavishnu.engines.prefect_schedules import (
     create_hourly_schedule,
     create_monthly_schedule,
     create_weekly_schedule,
-    schedule_to_prefect_dict,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -546,7 +543,9 @@ class TestSetDeploymentSchedule:
     """Tests for set_deployment_schedule method."""
 
     @pytest.mark.asyncio
-    async def test_set_deployment_schedule_cron(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_set_deployment_schedule_cron(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test setting a cron schedule on a deployment."""
         mock_deployment.schedule = {"cron": "30 14 * * *", "timezone": "UTC", "day_or": True}
         mock_prefect_client.update_deployment = AsyncMock(return_value=mock_deployment)
@@ -564,7 +563,9 @@ class TestSetDeploymentSchedule:
         assert "schedule" in call_kwargs
 
     @pytest.mark.asyncio
-    async def test_set_deployment_schedule_interval(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_set_deployment_schedule_interval(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test setting an interval schedule on a deployment."""
         mock_prefect_client.update_deployment = AsyncMock(return_value=mock_deployment)
 
@@ -579,7 +580,9 @@ class TestSetDeploymentSchedule:
         assert result is not None
 
     @pytest.mark.asyncio
-    async def test_set_deployment_schedule_with_helper(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_set_deployment_schedule_with_helper(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test setting schedule using helper function."""
         mock_prefect_client.update_deployment = AsyncMock(return_value=mock_deployment)
 
@@ -617,7 +620,9 @@ class TestClearDeploymentSchedule:
         assert call_kwargs["schedule"] is None
 
     @pytest.mark.asyncio
-    async def test_clear_deployment_schedule_auto_initializes(self, prefect_config, mock_prefect_client, mock_deployment):
+    async def test_clear_deployment_schedule_auto_initializes(
+        self, prefect_config, mock_prefect_client, mock_deployment
+    ):
         """Test that clear_deployment_schedule auto-initializes."""
         adapter = PrefectAdapter(prefect_config)
         adapter._initialized = False
@@ -640,7 +645,9 @@ class TestGetDeploymentSchedule:
     """Tests for get_deployment_schedule method."""
 
     @pytest.mark.asyncio
-    async def test_get_deployment_schedule_cron(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_get_deployment_schedule_cron(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test getting a cron schedule from a deployment."""
         mock_deployment.schedule = {"cron": "0 9 * * *", "timezone": "UTC", "day_or": True}
         mock_prefect_client.read_deployment = AsyncMock(return_value=mock_deployment)
@@ -658,7 +665,9 @@ class TestGetDeploymentSchedule:
         assert schedule.timezone == "UTC"
 
     @pytest.mark.asyncio
-    async def test_get_deployment_schedule_interval(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_get_deployment_schedule_interval(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test getting an interval schedule from a deployment."""
         mock_deployment.schedule = {"interval": 3600}
         mock_prefect_client.read_deployment = AsyncMock(return_value=mock_deployment)
@@ -675,7 +684,9 @@ class TestGetDeploymentSchedule:
         assert schedule.interval_seconds == 3600
 
     @pytest.mark.asyncio
-    async def test_get_deployment_schedule_with_anchor(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_get_deployment_schedule_with_anchor(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test getting interval schedule with anchor date."""
         mock_deployment.schedule = {
             "interval": 1800,
@@ -696,7 +707,9 @@ class TestGetDeploymentSchedule:
         assert schedule.anchor_date.minute == 30
 
     @pytest.mark.asyncio
-    async def test_get_deployment_schedule_rrule(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_get_deployment_schedule_rrule(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test getting an RRULE schedule from a deployment."""
         mock_deployment.schedule = {"rrule": "FREQ=DAILY;BYDAY=MO,WE,FR", "timezone": "UTC"}
         mock_prefect_client.read_deployment = AsyncMock(return_value=mock_deployment)
@@ -713,7 +726,9 @@ class TestGetDeploymentSchedule:
         assert schedule.rrule == "FREQ=DAILY;BYDAY=MO,WE,FR"
 
     @pytest.mark.asyncio
-    async def test_get_deployment_schedule_none(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_get_deployment_schedule_none(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test getting schedule from deployment with no schedule."""
         mock_deployment.schedule = None
         mock_prefect_client.read_deployment = AsyncMock(return_value=mock_deployment)
@@ -738,6 +753,7 @@ class TestAdapterRegisterFlow:
 
     def test_register_flow(self, adapter):
         """Test registering a flow through the adapter."""
+
         def my_flow():
             return "result"
 
@@ -752,6 +768,7 @@ class TestAdapterRegisterFlow:
 
     def test_register_flow_no_tags(self, adapter):
         """Test registering a flow without tags."""
+
         def my_flow():
             pass
 
@@ -763,6 +780,7 @@ class TestAdapterRegisterFlow:
 
     def test_list_registered_flows_all(self, adapter):
         """Test listing all registered flows through adapter."""
+
         def flow1():
             pass
 
@@ -777,6 +795,7 @@ class TestAdapterRegisterFlow:
 
     def test_list_registered_flows_filter_tags(self, adapter):
         """Test listing flows filtered by tags through adapter."""
+
         def flow1():
             pass
 
@@ -792,6 +811,7 @@ class TestAdapterRegisterFlow:
 
     def test_get_registered_flow(self, adapter):
         """Test getting a registered flow through adapter."""
+
         def my_flow():
             return "executed"
 
@@ -808,6 +828,7 @@ class TestAdapterRegisterFlow:
 
     def test_unregister_flow(self, adapter):
         """Test unregistering a flow through adapter."""
+
         def my_flow():
             pass
 
@@ -845,7 +866,9 @@ class TestScheduleHelpersWithAdapter:
     """Integration tests using schedule helpers with adapter methods."""
 
     @pytest.mark.asyncio
-    async def test_create_deployment_with_daily_schedule_helper(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_create_deployment_with_daily_schedule_helper(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test creating deployment with create_daily_schedule helper."""
         mock_flow = MagicMock()
         mock_flow.id = "flow-456"
@@ -870,7 +893,9 @@ class TestScheduleHelpersWithAdapter:
         assert call_kwargs["schedule"]["timezone"] == "America/New_York"
 
     @pytest.mark.asyncio
-    async def test_create_deployment_with_hourly_schedule_helper(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_create_deployment_with_hourly_schedule_helper(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test creating deployment with create_hourly_schedule helper."""
         mock_flow = MagicMock()
         mock_flow.id = "flow-456"
@@ -894,7 +919,9 @@ class TestScheduleHelpersWithAdapter:
         assert call_kwargs["schedule"]["interval"] == 3600
 
     @pytest.mark.asyncio
-    async def test_update_deployment_with_weekly_schedule_helper(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_update_deployment_with_weekly_schedule_helper(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test updating deployment with create_weekly_schedule helper."""
         mock_prefect_client.update_deployment = AsyncMock(return_value=mock_deployment)
 

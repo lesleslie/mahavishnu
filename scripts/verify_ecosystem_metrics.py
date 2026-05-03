@@ -7,8 +7,8 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 import yaml
@@ -75,7 +75,9 @@ def probe_service(service: dict[str, Any], timeout: float) -> dict[str, Any]:
                 result["status_code"] = response.status
                 result["content_type"] = content_type
                 if response.status != 200:
-                    failure_reasons.append(f"{probe_url} -> unexpected HTTP status {response.status}")
+                    failure_reasons.append(
+                        f"{probe_url} -> unexpected HTTP status {response.status}"
+                    )
                     continue
                 if not is_prometheus_text(content_type, body):
                     failure_reasons.append(
@@ -102,7 +104,9 @@ def probe_service(service: dict[str, Any], timeout: float) -> dict[str, Any]:
         except Exception as exc:  # pragma: no cover - defensive guard
             failure_reasons.append(f"{probe_url} -> error: {exc}")
 
-    result["reason"] = "; ".join(failure_reasons) if failure_reasons else "no probe attempts executed"
+    result["reason"] = (
+        "; ".join(failure_reasons) if failure_reasons else "no probe attempts executed"
+    )
 
     return result
 

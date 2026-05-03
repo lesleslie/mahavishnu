@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import json
 import logging
-import os
-import subprocess
-from datetime import datetime, timezone
 from pathlib import Path
+import subprocess
 
 from mahavishnu.core.code_index.lock import RepoIndexLock
 from mahavishnu.core.code_index.models import IndexWorkItem
@@ -70,13 +69,10 @@ def index_repo(
             trigger=trigger,
             files_changed=[],
             status="parsing",
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
         )
 
-        if full:
-            last_commit = None
-        else:
-            last_commit = get_last_indexed_commit(repo_path)
+        last_commit = None if full else get_last_indexed_commit(repo_path)
 
         current_commit = get_current_commit(repo_path)
         changed_files = filter_changed_files(repo_path, last_commit)
@@ -85,7 +81,7 @@ def index_repo(
 
         if not changed_files:
             work_item.status = "complete"
-            work_item.completed_at = datetime.now(timezone.utc)
+            work_item.completed_at = datetime.now(UTC)
             logger.info("No changes detected for %s", repo_path)
             return work_item
 
@@ -125,7 +121,7 @@ def index_repo(
             _queue_locally(repo_path, current_commit, all_nodes, all_edges)
 
         work_item.status = "complete"
-        work_item.completed_at = datetime.now(timezone.utc)
+        work_item.completed_at = datetime.now(UTC)
 
         set_last_indexed_commit(repo_path, current_commit)
 
@@ -162,7 +158,7 @@ def _upsert_to_session_buddy(
                     "arguments": {
                         "repo_path": repo_path,
                         "commit_hash": get_current_commit(repo_path),
-                        "indexed_at": datetime.now(timezone.utc).isoformat(),
+                        "indexed_at": datetime.now(UTC).isoformat(),
                         "nodes_count": len(nodes),
                         "graph_data": {
                             "nodes": [n.model_dump() for n in nodes],
@@ -187,7 +183,7 @@ def _queue_locally(
 ) -> None:
     """Fallback: write parsed data to local filesystem queue."""
     QUEUE_DIR.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     repo_name = Path(repo_path).name
     queue_file = QUEUE_DIR / f"{repo_name}_{timestamp}.json"
     queue_file.write_text(

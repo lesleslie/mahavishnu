@@ -6,13 +6,11 @@ and estimate task durations using statistical analysis and similarity search.
 
 from __future__ import annotations
 
+from collections import Counter, defaultdict
+from datetime import datetime
 import logging
 import math
-import re
-from collections import Counter, defaultdict
-from datetime import datetime, timedelta
 from typing import Any
-from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
@@ -288,7 +286,6 @@ class PatternDetector:
         Returns:
             List of pattern matches with predictions
         """
-        from mahavishnu.models.pattern import PatternMatch
 
         matches: list[dict[str, Any]] = []
 
@@ -391,15 +388,12 @@ class PatternDetector:
 
     def _get_task_duration_hours(self, task: dict[str, Any]) -> float | None:
         """Get task duration in hours."""
-        if created := task.get("created_at"):
-            if completed := task.get("completed_at"):
-                created_dt = (
-                    datetime.fromisoformat(created) if isinstance(created, str) else created
-                )
-                completed_dt = (
-                    datetime.fromisoformat(completed) if isinstance(completed, str) else completed
-                )
-                return (completed_dt - created_dt).total_seconds() / 3600
+        if (created := task.get("created_at")) and (completed := task.get("completed_at")):
+            created_dt = datetime.fromisoformat(created) if isinstance(created, str) else created
+            completed_dt = (
+                datetime.fromisoformat(completed) if isinstance(completed, str) else completed
+            )
+            return (completed_dt - created_dt).total_seconds() / 3600
         return None
 
     def _create_duration_pattern(

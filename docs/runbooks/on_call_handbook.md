@@ -5,13 +5,13 @@ This handbook provides guidance for on-call engineers supporting the Mahavishnu 
 ## Table of Contents
 
 1. [On-Call Overview](#on-call-overview)
-2. [Rotation Schedule](#rotation-schedule)
-3. [Escalation Paths](#escalation-paths)
-4. [Common Alerts and Responses](#common-alerts-and-responses)
-5. [Handoff Procedures](#handoff-procedures)
-6. [On-Call Best Practices](#on-call-best-practices)
+1. [Rotation Schedule](#rotation-schedule)
+1. [Escalation Paths](#escalation-paths)
+1. [Common Alerts and Responses](#common-alerts-and-responses)
+1. [Handoff Procedures](#handoff-procedures)
+1. [On-Call Best Practices](#on-call-best-practices)
 
----
+______________________________________________________________________
 
 ## On-Call Overview
 
@@ -20,9 +20,9 @@ This handbook provides guidance for on-call engineers supporting the Mahavishnu 
 As an on-call engineer for Mahavishnu, you are responsible for:
 
 1. **Monitoring**: Responding to alerts within SLA
-2. **Incident Response**: Triaging and resolving incidents
-3. **Communication**: Keeping stakeholders informed
-4. **Documentation**: Recording actions and learnings
+1. **Incident Response**: Triaging and resolving incidents
+1. **Communication**: Keeping stakeholders informed
+1. **Documentation**: Recording actions and learnings
 
 ### Expected Response Times
 
@@ -41,9 +41,9 @@ As an on-call engineer for Mahavishnu, you are responsible for:
 | Grafana | Dashboards | grafana.example.com |
 | Prometheus | Metrics | prometheus.example.com |
 | Kubectl | Kubernetes management | CLI |
-| Incident Channel | Communication | Slack #incident-* |
+| Incident Channel | Communication | Slack #incident-\* |
 
----
+______________________________________________________________________
 
 ## Rotation Schedule
 
@@ -60,9 +60,9 @@ Week of        Primary        Shadow
 ### Schedule Rules
 
 1. **Primary**: First responder to all alerts
-2. **Shadow**: Backup for primary, learning role
-3. **Rotation**: Weekly, starting Monday 00:00 UTC
-4. **Handoff**: Sunday 23:00 UTC (1 hour before transition)
+1. **Shadow**: Backup for primary, learning role
+1. **Rotation**: Weekly, starting Monday 00:00 UTC
+1. **Handoff**: Sunday 23:00 UTC (1 hour before transition)
 
 ### Time Zone Considerations
 
@@ -70,7 +70,7 @@ Week of        Primary        Shadow
 - Primary and shadow should be in different time zones when possible
 - If both are unavailable, escalate to secondary on-call
 
----
+______________________________________________________________________
 
 ## Escalation Paths
 
@@ -87,9 +87,9 @@ T0: Primary On-Call (5 min response)
 ### When to Escalate
 
 1. **Immediate**: If you cannot access systems
-2. **15 minutes**: If you cannot diagnose the issue
-3. **30 minutes**: If issue is not resolved
-4. **1 hour**: If business impact is significant
+1. **15 minutes**: If you cannot diagnose the issue
+1. **30 minutes**: If issue is not resolved
+1. **1 hour**: If business impact is significant
 
 ### Escalation Contacts
 
@@ -101,7 +101,7 @@ T0: Primary On-Call (5 min response)
 | T3 | Engineering Manager | @eng-manager |
 | T4 | VP Engineering | @vp-eng |
 
----
+______________________________________________________________________
 
 ## Common Alerts and Responses
 
@@ -112,6 +112,7 @@ T0: Primary On-Call (5 min response)
 **Threshold**: Error rate > 5% for 5 minutes
 
 **Response**:
+
 ```bash
 # 1. Check error details
 curl -s "http://prometheus.example.com/api/v1/query?query=rate(mahavishnu_task_errors_total[5m])" | jq
@@ -133,6 +134,7 @@ kubectl rollout undo deployment/mahavishnu -n mahavishnu
 **Threshold**: Active connections > 90% of max
 
 **Response**:
+
 ```bash
 # 1. Check current connections
 psql -h $DB_HOST -U $DB_USER -d mahavishnu -c "SELECT COUNT(*) FROM pg_stat_activity;"
@@ -158,6 +160,7 @@ kubectl rollout restart deployment/mahavishnu -n mahavishnu
 **Threshold**: Failure rate > 10% for 5 minutes
 
 **Response**:
+
 ```bash
 # 1. Check failure types
 curl -s "http://prometheus.example.com/api/v1/query?query=sum by (result) (rate(mahavishnu_webhook_operations_total{result!=\"success\"}[5m]))" | jq
@@ -179,6 +182,7 @@ grep "replay_attack" /var/log/mahavishnu/audit.log | tail -20
 **Threshold**: Memory > 85% for 10 minutes
 
 **Response**:
+
 ```bash
 # 1. Check pod memory
 kubectl top pods -n mahavishnu
@@ -202,6 +206,7 @@ kubectl set resources deployment/mahavishnu \
 **Threshold**: Pending tasks > 100 for 15 minutes
 
 **Response**:
+
 ```bash
 # 1. Check task distribution
 curl -s "http://prometheus.example.com/api/v1/query?query=mahavishnu_active_tasks" | jq
@@ -216,7 +221,7 @@ kubectl get pods -n mahavishnu -l role=worker
 kubectl scale deployment mahavishnu-worker --replicas=5 -n mahavishnu
 ```
 
----
+______________________________________________________________________
 
 ## Handoff Procedures
 
@@ -225,10 +230,12 @@ kubectl scale deployment mahavishnu-worker --replicas=5 -n mahavishnu
 Before your shift ends, complete these tasks:
 
 1. **Document Open Issues**:
+
    - Create tickets for unresolved issues
    - Update incident tickets with current status
 
-2. **Prepare Handoff Notes**:
+1. **Prepare Handoff Notes**:
+
    ```
    ## On-Call Handoff: YYYY-MM-DD
 
@@ -250,7 +257,8 @@ Before your shift ends, complete these tasks:
    - Upcoming maintenance: Any scheduled changes
    ```
 
-3. **Sync with Incoming On-Call**:
+1. **Sync with Incoming On-Call**:
+
    - Schedule 15-minute sync call
    - Walk through open items
    - Answer questions
@@ -260,40 +268,40 @@ Before your shift ends, complete these tasks:
 When starting your shift:
 
 1. **Review Handoff Notes**: Read through previous on-call's notes
-2. **Check System Health**: Verify all systems are operational
-3. **Review Open Incidents**: Understand current issues
-4. **Verify Access**: Ensure you have access to all systems
-5. **Update Status**: Mark yourself as on-call in team channels
+1. **Check System Health**: Verify all systems are operational
+1. **Review Open Incidents**: Understand current issues
+1. **Verify Access**: Ensure you have access to all systems
+1. **Update Status**: Mark yourself as on-call in team channels
 
----
+______________________________________________________________________
 
 ## On-Call Best Practices
 
 ### Do's
 
 1. **Acknowledge alerts quickly** - Even if you need time to investigate
-2. **Communicate early and often** - Keep stakeholders informed
-3. **Document everything** - Future you will thank present you
-4. **Ask for help** - Escalate if unsure
-5. **Take breaks** - Avoid burnout during extended incidents
+1. **Communicate early and often** - Keep stakeholders informed
+1. **Document everything** - Future you will thank present you
+1. **Ask for help** - Escalate if unsure
+1. **Take breaks** - Avoid burnout during extended incidents
 
 ### Don'ts
 
 1. **Don't ignore alerts** - They don't go away
-2. **Don't make changes without rollback plan** - Always have an escape route
-3. **Don't work alone on P0s** - Get help immediately
-4. **Don't skip handoff** - Incoming on-call needs context
-5. **Don't blame** - Focus on resolution, not fault
+1. **Don't make changes without rollback plan** - Always have an escape route
+1. **Don't work alone on P0s** - Get help immediately
+1. **Don't skip handoff** - Incoming on-call needs context
+1. **Don't blame** - Focus on resolution, not fault
 
 ### Managing On-Call Burden
 
 1. **Limit shift length**: Maximum 1 week primary
-2. **Comp time**: Take time off after difficult shifts
-3. **Automate**: Convert manual responses to runbooks/scripts
-4. **Improve alerting**: Tune noisy alerts during business hours
-5. **Post-mortems**: Address systemic issues to reduce alerts
+1. **Comp time**: Take time off after difficult shifts
+1. **Automate**: Convert manual responses to runbooks/scripts
+1. **Improve alerting**: Tune noisy alerts during business hours
+1. **Post-mortems**: Address systemic issues to reduce alerts
 
----
+______________________________________________________________________
 
 ## Quick Reference
 
@@ -343,7 +351,7 @@ sum by (status) (mahavishnu_active_tasks)
 histogram_quantile(0.99, rate(mahavishnu_task_duration_seconds_bucket[5m]))
 
 # Webhook success rate
-sum(rate(mahavishnu_webhook_operations_total{result="success"}[5m])) 
-/ 
+sum(rate(mahavishnu_webhook_operations_total{result="success"}[5m]))
+/
 sum(rate(mahavishnu_webhook_operations_total[5m]))
 ```

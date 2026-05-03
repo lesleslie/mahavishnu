@@ -6,10 +6,7 @@ Tests cover:
 - Edge cases: whitespace, empty strings, duplicates, order preservation
 """
 
-import pytest
-
 from mahavishnu.core.repo_nicknames import get_repo_nicknames, normalize_nicknames
-
 
 # ============================================================================
 # normalize_nicknames Tests
@@ -137,10 +134,12 @@ class TestGetRepoNicknames:
         assert result == ["a", "b"]
 
     def test_with_both(self):
-        result = get_repo_nicknames({
-            "nickname": "primary",
-            "nicknames": ["alt1", "alt2"],
-        })
+        result = get_repo_nicknames(
+            {
+                "nickname": "primary",
+                "nicknames": ["alt1", "alt2"],
+            }
+        )
         assert result == ["primary", "alt1", "alt2"]
 
     def test_with_none_values(self):
@@ -148,16 +147,20 @@ class TestGetRepoNicknames:
         assert result == []
 
     def test_deduplicates_from_config(self):
-        result = get_repo_nicknames({
-            "nickname": "repo",
-            "nicknames": ["repo", "other"],
-        })
+        result = get_repo_nicknames(
+            {
+                "nickname": "repo",
+                "nicknames": ["repo", "other"],
+            }
+        )
         assert result == ["repo", "other"]
 
     def test_extra_keys_ignored(self):
-        result = get_repo_nicknames({
-            "name": "mahavishnu",
-            "path": "/some/path",
-            "nickname": "vishnu",
-        })
+        result = get_repo_nicknames(
+            {
+                "name": "mahavishnu",
+                "path": "/some/path",
+                "nickname": "vishnu",
+            }
+        )
         assert result == ["vishnu"]

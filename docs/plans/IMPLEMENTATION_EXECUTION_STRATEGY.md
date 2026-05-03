@@ -47,10 +47,11 @@ This strategy **dogfoods Mahavishnu's pool orchestration** to implement the Stor
 
 | Worker | Task | Description |
 |--------|------|-------------|
-| `schema-1` | Create migration baseline | V202604021200__initial_schemas.sql |
+| `schema-1` | Create migration baseline | V202604021200\_\_initial_schemas.sql |
 | `schema-2` | Add CHECK constraints | Status/priority enum enforcement |
 
 **Deliverables**:
+
 - `migrations/versions/V202604021200__initial_schemas.sql`
 - `migrations/versions/V202604021300__enum_constraints.sql`
 - Schema validation tests
@@ -70,6 +71,7 @@ This strategy **dogfoods Mahavishnu's pool orchestration** to implement the Stor
 | `repo-2` | Feature flag infrastructure | `PERSISTENCE_WRITE_MODE`, `PERSISTENCE_READ_SOURCE` |
 
 **Deliverables**:
+
 - `mahavishnu/persistence/repositories/` (interfaces)
 - `mahavishnu/core/feature_flags.py` (cutover flags)
 - Integration tests
@@ -89,6 +91,7 @@ This strategy **dogfoods Mahavishnu's pool orchestration** to implement the Stor
 | `decouple-2` | Complete enum consolidation | Migrate remaining local enums |
 
 **Deliverables**:
+
 - Updated `settings/mahavishnu.yaml` (Akosha optional)
 - Updated health check configuration
 - Enum migration complete
@@ -210,18 +213,18 @@ class PersistenceFeatureFlags:
 ## Rollback Procedure
 
 1. **Immediate rollback**: Set `PERSISTENCE_READ_SOURCE=legacy`, restart services
-2. **Data reconciliation**: Run consistency validator
-3. **Recovery**: Replay event backlog if needed
+1. **Data reconciliation**: Run consistency validator
+1. **Recovery**: Replay event backlog if needed
 
 ## Monitoring & Observability
 
 ### Grafana Dashboard Panels
 
 1. Pool worker utilization per workstream
-2. Migration execution progress
-3. Feature flag state
-4. WebSocket event throughput
-5. Cross-pool message latency
+1. Migration execution progress
+1. Feature flag state
+1. WebSocket event throughput
+1. Cross-pool message latency
 
 ### Alerts
 
@@ -269,5 +272,5 @@ mahavishnu cutover execute --mode dual --rollback-timeout 300
 ## Next Steps
 
 1. **Create migration baseline** (`pool-schema/worker-1`)
-2. **Remove Akosha from critical deps** (`pool-decouple/worker-1`)
-3. **Define repository interfaces** (`pool-repo/worker-1`)
+1. **Remove Akosha from critical deps** (`pool-decouple/worker-1`)
+1. **Define repository interfaces** (`pool-repo/worker-1`)

@@ -1,20 +1,21 @@
 """Tests for metrics collector and ExecutionTracker."""
 
-import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from mahavishnu.core.metrics_collector import (
-    ExecutionTracker,
     ExecutionMetrics,
+    ExecutionTracker,
     SamplingStrategy,
     get_execution_tracker,
     initialize_execution_tracker,
 )
 from mahavishnu.core.metrics_schema import (
     AdapterType,
-    TaskType,
     ExecutionStatus,
+    TaskType,
 )
 
 
@@ -447,6 +448,7 @@ class TestSingleton:
         """Should return same instance on multiple calls."""
         # Reset global singleton
         import mahavishnu.core.metrics_collector as mc
+
         mc._tracker = None
 
         tracker1 = get_execution_tracker()
@@ -458,6 +460,7 @@ class TestSingleton:
     async def test_initialize_execution_tracker(self):
         """Should initialize and start tracker."""
         import mahavishnu.core.metrics_collector as mc
+
         mc._tracker = None
 
         tracker = await initialize_execution_tracker(

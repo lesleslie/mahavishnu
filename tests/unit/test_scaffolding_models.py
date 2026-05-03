@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from mahavishnu.scaffolding.models import (
     DirSpec,
@@ -91,7 +91,13 @@ class TestPattern:
                 "files": [{"path": "adapters/auth.py", "required": True}],
             },
             templates={"auth-module": "from starlette.middleware import Middleware"},
-            slots={"middleware": {"path": "main.py", "type": "file-merge", "merge_strategy": "marker-injection"}},
+            slots={
+                "middleware": {
+                    "path": "main.py",
+                    "type": "file-merge",
+                    "merge_strategy": "marker-injection",
+                }
+            },
         )
         assert len(p.structure["dirs"]) == 1
         assert p.templates["auth-module"] == "from starlette.middleware import Middleware"

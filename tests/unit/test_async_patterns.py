@@ -11,15 +11,13 @@ Tests cover:
 """
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mahavishnu.core.errors import ErrorCode, MahavishnuError, TimeoutError as MahavTimeoutError
-from mahavishnu.core.resilience import RetryExhaustedError, RetryPolicy, retry_async
 from mahavishnu.core.async_patterns import (
-    AsyncTaskManager,
     DEFAULT_TIMEOUTS,
+    AsyncTaskManager,
     SagaLock,
     db_connection,
     db_transaction,
@@ -27,7 +25,8 @@ from mahavishnu.core.async_patterns import (
     timeout_context,
     with_retry,
 )
-
+from mahavishnu.core.errors import ErrorCode, MahavishnuError
+from mahavishnu.core.errors import TimeoutError as MahavTimeoutError
 
 # ============================================================================
 # DEFAULT_TIMEOUTS Tests
@@ -70,6 +69,7 @@ class TestTimeoutContext:
     @pytest.mark.asyncio
     async def test_raises_on_timeout(self):
         from mahavishnu.core.errors import TimeoutError as TO
+
         with pytest.raises(TO, match="slow_op timed out"):
             async with timeout_context(0.05, "slow_op"):
                 await asyncio.sleep(1.0)
@@ -83,6 +83,7 @@ class TestTimeoutContext:
     @pytest.mark.asyncio
     async def test_error_includes_details(self):
         from mahavishnu.core.errors import TimeoutError as TO
+
         with pytest.raises(TO) as exc_info:
             async with timeout_context(0.01, "detail_op"):
                 await asyncio.sleep(1.0)
@@ -100,6 +101,7 @@ class TestRunWithTimeout:
     async def test_returns_coroutine_result(self):
         async def compute():
             return 42
+
         result = await run_with_timeout(compute(), timeout_seconds=5.0)
         assert result == 42
 
@@ -107,6 +109,7 @@ class TestRunWithTimeout:
     async def test_raises_on_timeout(self):
         async def slow():
             await asyncio.sleep(10)
+
         with pytest.raises(MahavTimeoutError, match="slow_task timed out"):
             await run_with_timeout(slow(), timeout_seconds=0.01, operation="slow_task")
 
@@ -114,6 +117,7 @@ class TestRunWithTimeout:
     async def test_propagates_other_errors(self):
         async def failing():
             raise ValueError("boom")
+
         with pytest.raises(ValueError, match="boom"):
             await run_with_timeout(failing(), timeout_seconds=5.0)
 

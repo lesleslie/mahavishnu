@@ -29,10 +29,10 @@ Usage:
 
 from __future__ import annotations
 
-import logging
-import re
 from dataclasses import dataclass, field
 from enum import Enum
+import logging
+import re
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -355,9 +355,7 @@ class AdaptiveRAGRouter:
         self._embedding_cache = embedding_cache
 
         # Strategy statistics
-        self._strategy_counts: dict[RAGStrategyType, int] = {
-            strategy: 0 for strategy in RAGStrategyType
-        }
+        self._strategy_counts: dict[RAGStrategyType, int] = dict.fromkeys(RAGStrategyType, 0)
 
     def select_strategy(self, complexity: ComplexityScore) -> tuple[RAGStrategyType, str]:
         """Select RAG strategy based on complexity score.

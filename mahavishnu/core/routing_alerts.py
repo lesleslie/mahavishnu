@@ -13,17 +13,18 @@ Design:
 from __future__ import annotations
 
 import asyncio
-import logging
+import contextlib
 from dataclasses import dataclass, field
-from datetime import datetime, UTC, timedelta
-from enum import Enum
-from typing import Any, Awaitable, Callable
+from datetime import UTC, datetime
+from enum import StrEnum
+import logging
+from typing import Any
 
-from mahavishnu.core.metrics_schema import AdapterType, TaskType
 from mahavishnu.core.metrics_collector import get_execution_tracker
+from mahavishnu.core.metrics_schema import AdapterType
 
 
-class AlertSeverity(str, Enum):
+class AlertSeverity(StrEnum):
     """Alert severity levels."""
 
     INFO = "info"
@@ -31,7 +32,7 @@ class AlertSeverity(str, Enum):
     CRITICAL = "critical"
 
 
-class AlertType(str, Enum):
+class AlertType(StrEnum):
     """Types of routing alerts."""
 
     ADAPTER_DEGRADATION = "adapter_degradation"
@@ -164,16 +165,18 @@ class WebhookAlertHandler(AlertHandler):
         payload = alert.to_dict()
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
+            async with (
+                aiohttp.ClientSession() as session,
+                session.post(
                     self.webhook_url,
                     json=payload,
                     timeout=aiohttp.ClientTimeout(total=self.timeout_seconds),
-                ) as response:
-                    if response.status >= 200 and response.status < 300:
-                        self.logger.info(f"Alert sent successfully: {alert.alert_type.value}")
-                    else:
-                        self.logger.error(f"Failed to send alert: HTTP {response.status}")
+                ) as response,
+            ):
+                if response.status >= 200 and response.status < 300:
+                    self.logger.info(f"Alert sent successfully: {alert.alert_type.value}")
+                else:
+                    self.logger.error(f"Failed to send alert: HTTP {response.status}")
         except Exception as e:
             self.logger.error(f"Webhook alert failed: {e}")
 
@@ -454,10 +457,8 @@ class RoutingAlertManager:
         # Cancel evaluation loop
         if self._alert_task and not self._alert_task.done():
             self._alert_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._alert_task
-            except asyncio.CancelledError:
-                pass
 
         # Shutdown event
         self._shutdown_event.set()

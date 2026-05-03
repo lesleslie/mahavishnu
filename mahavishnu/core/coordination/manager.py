@@ -305,7 +305,9 @@ class CoordinationManager:
         issues_data = self._coordination.get("issues", [])
 
         try:
-            issues = [CrossRepoIssue(**self._normalize_issue_record(issue)) for issue in issues_data]
+            issues = [
+                CrossRepoIssue(**self._normalize_issue_record(issue)) for issue in issues_data
+            ]
         except ValidationError as e:
             raise ConfigurationError(
                 f"Invalid issue data in ecosystem.yaml: {e}",

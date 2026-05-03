@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import contextlib
 import errno
 import os
-import time
 from pathlib import Path
+import time
 
 LOCK_TTL_SECONDS = 600  # 10 minutes
 
@@ -73,10 +74,8 @@ class RepoIndexLock:
             return False
 
     def _remove_lock(self) -> None:
-        try:
+        with contextlib.suppress(FileNotFoundError):
             self.lock_file.unlink()
-        except FileNotFoundError:
-            pass
 
     @staticmethod
     def _is_process_alive(pid: int) -> bool:

@@ -1,10 +1,10 @@
 # Session-Buddy Multi-Channel Tracking — Concrete Spec
 
-**Status**: Draft v0.2  
-**Date**: 2026-04-07  
+**Status**: Draft v0.2
+**Date**: 2026-04-07
 **Based on**: nanobot v0.1.4.post6 (installed) + v0.1.5 (latest, not yet installed)
 
----
+______________________________________________________________________
 
 ## 1. Context & Research Findings
 
@@ -37,9 +37,10 @@ def discover_plugins() -> dict[str, type[BaseChannel]]:
 ```
 
 This means we **cannot** fork nanobot. We can:
+
 1. Write a **channel plugin** (separate pip package, registered via `entry_points`)
-2. Use the **skill system** (SKILL.md — what we already do)
-3. Wait for v0.1.5 and use **extra hooks** (inject `AgentHook` subclass)
+1. Use the **skill system** (SKILL.md — what we already do)
+1. Wait for v0.1.5 and use **extra hooks** (inject `AgentHook` subclass)
 
 ### 1.3 Session-Buddy Current State
 
@@ -48,7 +49,7 @@ This means we **cannot** fork nanobot. We can:
 - Auth via JWT (`@require_auth()`)
 - **Gap**: No concept of channel_type, thread_id, or idle-timeout sessions
 
----
+______________________________________________________________________
 
 ## 2. Design Decision: Recommended Approach
 
@@ -67,7 +68,7 @@ Phase 1 (skill-based)  → Phase 2 (event bus)  → Phase 3 (nanobot plugin)
 
 **No nanobot fork required at any phase.**
 
----
+______________________________________________________________________
 
 ## 3. Phase 1: Session-Buddy Channel Adapter + Skill Update
 
@@ -85,35 +86,35 @@ class ChannelSessionEvent(BaseModel):
         "channel_session_end",
         "channel_heartbeat",
     ]
-    
+
     # Channel identity
     channel_type: str                      # "slack", "signal", "terminal", "discord"
     channel_id: str                        # chat_id / conversation_id
     sender_id: str                         # user identifier
-    
+
     # Session scoping
     session_scope: str = "conversation"    # "conversation", "thread", "day"
     thread_id: str | None = None           # for thread-scoped sessions
-    
+
     # Component
     component_name: str = "nanobot"
-    
+
     # Timing
     timestamp: str                         # ISO 8601 UTC
-    
+
     # Context (optional, channel-specific)
     workspace: str | None = None
     platform: str | None = None            # "slack-api", "signal-cli", "terminal"
-    
+
     # Terminal-specific (only for terminal sessions)
     pid: int | None = None
     hostname: str | None = None
     environment: dict[str, str] | None = None
-    
+
     # Message context
     message_preview: str | None = None     # first 200 chars of triggering message
     message_count: int = 1
-    
+
     metadata: dict[str, Any] = {}
 ```
 
@@ -147,6 +148,7 @@ On "end session" / "goodbye":
 ```
 
 **Channel detection**: The nanobot skill has access to `channel` and `chat_id` via the agent loop context. It can determine:
+
 - `channel = "slack"` → we're in Slack
 - `channel = "cli"` → we're in terminal
 - `metadata.slack.thread_ts` → we're in a thread
@@ -167,14 +169,14 @@ New fields on session records:
 -- new fields added (nullable for backward compat)
 channel_type     TEXT,    -- "slack", "signal", "terminal"
 channel_id       TEXT,    -- chat_id / conversation_id
-sender_id        TEXT,    -- user identifier  
+sender_id        TEXT,    -- user identifier
 session_scope    TEXT,    -- "conversation", "thread", "day"
 thread_id        TEXT,    -- for thread-scoped sessions
 message_count    INTEGER DEFAULT 1,
 idle_timeout_s   INTEGER DEFAULT 1800,
 ```
 
----
+______________________________________________________________________
 
 ## 4. Phase 2: Event Bus (Dhara-backed)
 
@@ -205,7 +207,7 @@ await dhara.record_time_series(
 - **Tempo/OTEL**: Future — correlate traces with session events
 - **Grafana**: Dashboard queries against Dhara time-series
 
----
+______________________________________________________________________
 
 ## 5. Phase 3: Nanobot Plugin (Optional)
 
@@ -217,17 +219,18 @@ v0.1.5's `_LoopHookChain` + `CompositeHook` allows injecting custom hooks into t
 # A future nanobot-channel-sessionbuddy plugin package
 class SessionTrackingHook(AgentHook):
     """Automatically track sessions via Session-Buddy."""
-    
+
     async def before_iteration(self, context: AgentHookContext) -> None:
         # Detect session boundary, emit event
         ...
-    
+
     async def after_iteration(self, context: AgentHookContext) -> None:
         # Send heartbeat, update message count
         ...
 ```
 
 This plugin would be registered via:
+
 ```toml
 # pyproject.toml
 [project.entry-points."nanobot.channels"]
@@ -235,6 +238,7 @@ session-buddy = "nanobot_channel_sessionbuddy:SessionBuddyChannel"
 ```
 
 Or via extra hooks config (v0.1.5):
+
 ```yaml
 # nanobot config (hypothetical, depends on v0.1.5 hook config)
 hooks:
@@ -244,7 +248,7 @@ hooks:
 
 **This is optional** — Phase 1's skill-based approach works without it. Phase 3 just makes it automatic.
 
----
+______________________________________________________________________
 
 ## 6. What We DON'T Need
 
@@ -258,11 +262,11 @@ hooks:
 
 1. **Signal integration**: Signal doesn't have a nanobot channel yet. When it does, this spec handles it naturally. Do we want to build the Signal channel adapter too, or wait?
 
-2. **Cross-channel session linking**: Should a Slack thread and a terminal session on the same project be linked? The current design keeps them independent.
+1. **Cross-channel session linking**: Should a Slack thread and a terminal session on the same project be linked? The current design keeps them independent.
 
-3. **Quality scoring for non-terminal sessions**: Current SB quality score is based on test coverage, commits, etc. What should Slack/Signal sessions be scored on? Message count? Resolution rate?
+1. **Quality scoring for non-terminal sessions**: Current SB quality score is based on test coverage, commits, etc. What should Slack/Signal sessions be scored on? Message count? Resolution rate?
 
-4. **v0.1.5 upgrade timing**: Should we upgrade nanobot to v0.1.5 before starting Phase 1? The `CompositeHook` feature would simplify Phase 3 but isn't needed for Phase 1.
+1. **v0.1.5 upgrade timing**: Should we upgrade nanobot to v0.1.5 before starting Phase 1? The `CompositeHook` feature would simplify Phase 3 but isn't needed for Phase 1.
 
 ## 8. Effort Estimates
 

@@ -3,8 +3,6 @@
 Tests all 6 MCP tools by starting Mahavishnu MCP server and calling tools via client.
 """
 
-import asyncio
-import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -13,7 +11,6 @@ import pytest
 from mahavishnu.core.app import MahavishnuApp
 from mahavishnu.core.worktree_coordination import WorktreeCoordinator
 from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
-from mahavishnu.mcp.server_core import FastMCPServer
 
 
 def _make_worktree_coordinator(tmp_path: Path) -> WorktreeCoordinator:
@@ -99,9 +96,7 @@ class TestWorktreeMCPTools:
         mock_repo.path = str(tmp_path / "repos" / "test")
         app.worktree_coordinator.repo_manager.get_by_name = MagicMock(return_value=mock_repo)
         app.worktree_coordinator.repo_manager.get_by_package = MagicMock(return_value=None)
-        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(
-            return_value=[]
-        )
+        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(return_value=[])
 
         app.worktree_coordinator.path_validator.validate_worktree_path = MagicMock(
             return_value=(True, None)
@@ -203,9 +198,7 @@ class TestWorktreeMCPTools:
         app.worktree_coordinator.path_validator.validate_worktree_path = MagicMock(
             return_value=(True, None)
         )
-        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(
-            return_value=[]
-        )
+        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(return_value=[])
 
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):
             from mahavishnu.mcp.tools.worktree_tools import get_worktree_safety_status
@@ -254,9 +247,7 @@ class TestWorktreeMCPTools:
         mock_repo.path = str(tmp_path / "repos" / "test")
         app.worktree_coordinator.repo_manager.get_by_name = MagicMock(return_value=mock_repo)
         app.worktree_coordinator.repo_manager.get_by_package = MagicMock(return_value=None)
-        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(
-            return_value=[]
-        )
+        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(return_value=[])
 
         app.worktree_coordinator.path_validator.validate_worktree_path = MagicMock(
             return_value=(True, None)
@@ -295,9 +286,7 @@ class TestWorktreeMCPTools:
         mock_repo.path = str(tmp_path / "repos" / "test")
         app.worktree_coordinator.repo_manager.get_by_name = MagicMock(return_value=mock_repo)
         app.worktree_coordinator.repo_manager.get_by_package = MagicMock(return_value=None)
-        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(
-            return_value=[]
-        )
+        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(return_value=[])
 
         app.worktree_coordinator.path_validator.validate_worktree_path = MagicMock(
             return_value=(True, None)
@@ -327,11 +316,11 @@ class TestWorktreeMCPTools:
         """Test that all MCP tools have authentication decorators."""
         from mahavishnu.mcp.tools.worktree_tools import (
             create_ecosystem_worktree,
-            remove_ecosystem_worktree,
+            get_worktree_provider_health,
+            get_worktree_safety_status,
             list_ecosystem_worktrees,
             prune_ecosystem_worktrees,
-            get_worktree_safety_status,
-            get_worktree_provider_health,
+            remove_ecosystem_worktree,
         )
 
         # Verify all tools have require_mcp_auth decorator

@@ -10,6 +10,7 @@
 After consolidating all Claude Code configuration into the Mahavishnu project directory, the content of agents and skills needs to be modernized to take full advantage of the ecosystem's MCP servers and tools.
 
 **Current state:**
+
 - **101 agents**: Only 5 (5%) reference any ecosystem component. The remaining 97 are generic stubs with no awareness of Mahavishnu, Akosha, Session-Buddy, Crackerjack, or Dhara.
 - **27 skills** (22 native + 5 symlinked from `~/.agents/`): Of the 22 native skills, 18 (82%) already reference ecosystem tools, but many have stale references (wrong tool names, outdated ports, missing new tools).
 
@@ -40,6 +41,7 @@ After consolidating all Claude Code configuration into the Mahavishnu project di
 | No ecosystem references | 96 | 95% |
 
 **Ecosystem-aware agents (5):**
+
 - `mahavishnu-specialist.md` — references Mahavishnu
 - `akasha-specialist.md` — references "Akasha" (misspelled — should be "Akosha", grep misses it)
 - `mcp-integration-expert.md` — references Crackerjack, MCP, WebSocket
@@ -57,9 +59,10 @@ Auditing the 22 native skills (the 5 symlinked from `~/.agents/` are not in scop
 | Have stale references (estimated) | ~10 | ~45% |
 
 **Most-used skills (by usage count):**
+
 1. `session-buddy:checkpoint` — 323 invocations
-2. `session-buddy:crackerjack-run` — 24 invocations
-3. `crackerjack:init` / `crackerjack:run` — 14 invocations each
+1. `session-buddy:crackerjack-run` — 24 invocations
+1. `crackerjack:init` / `crackerjack:run` — 14 invocations each
 
 ### 4.3 Available MCP Servers (33 total)
 
@@ -80,11 +83,12 @@ Auditing the 22 native skills (the 5 symlinked from `~/.agents/` are not in scop
 ### 5.1 Target Agents
 
 **5 ecosystem agents** (refresh existing references):
+
 1. `mahavishnu-specialist` — update with current Mahavishnu MCP tools
-2. `akasha-specialist` — rename reference to "Akosha", update tool names
-3. `oneiric-specialist` — update with current Oneiric/Dhara MCP tools
-4. `mcp-integration-expert` — update with full MCP tool inventory
-5. `refactoring-specialist` — update with Akosha pattern search tools
+1. `akasha-specialist` — rename reference to "Akosha", update tool names
+1. `oneiric-specialist` — update with current Oneiric/Dhara MCP tools
+1. `mcp-integration-expert` — update with full MCP tool inventory
+1. `refactoring-specialist` — update with Akosha pattern search tools
 
 **10 generic agents** (add ecosystem awareness):
 
@@ -104,6 +108,7 @@ Auditing the 22 native skills (the 5 symlinked from `~/.agents/` are not in scop
 ### 5.2 Enrichment Format
 
 **Before (5 lines):**
+
 ```yaml
 ---
 name: python-pro
@@ -113,6 +118,7 @@ model: sonnet
 ```
 
 **After (8-10 lines):**
+
 ```yaml
 ---
 name: python-pro
@@ -129,12 +135,12 @@ model: sonnet
 ### 5.3 Enrichment Rules
 
 1. **Keep descriptions under 300 characters** — agents are persona stubs, not instruction documents
-2. **Use exact `mcp__<server>__<tool>` names** — match the Claude Code tool registry. Note: some FastMCP-derived tools use triple underscores (e.g., `mcp__session-buddy___code_ingest_file_impl`) due to Python function naming conventions with hyphens in server names. Verify exact tool names from `.mcp.json` or the running MCP server's tool list before writing references.
-3. **Only reference tools the agent would realistically use** — don't add irrelevant tools
-4. **Don't reference tools requiring secrets** — agents don't have auth context
-5. **Ecosystem line is a routing hint** — it helps Claude decide when to dispatch to this agent
-6. **Fix existing misspellings** — e.g., "Akasha" → "Akosha" in akasha-specialist.md
-7. **Preserve existing description content** — the enrichment appends, doesn't replace
+1. **Use exact `mcp__<server>__<tool>` names** — match the Claude Code tool registry. Note: some FastMCP-derived tools use triple underscores (e.g., `mcp__session-buddy___code_ingest_file_impl`) due to Python function naming conventions with hyphens in server names. Verify exact tool names from `.mcp.json` or the running MCP server's tool list before writing references.
+1. **Only reference tools the agent would realistically use** — don't add irrelevant tools
+1. **Don't reference tools requiring secrets** — agents don't have auth context
+1. **Ecosystem line is a routing hint** — it helps Claude decide when to dispatch to this agent
+1. **Fix existing misspellings** — e.g., "Akasha" → "Akosha" in akasha-specialist.md
+1. **Preserve existing description content** — the enrichment appends, doesn't replace
 
 ## 6. Design: Skills MCP Reference Table
 
@@ -143,6 +149,7 @@ model: sonnet
 Add an "Available MCP Servers" section to each skill's SKILL.md, positioned after "Overview" and before "Implementation."
 
 **Full table format** (for skills using 3+ servers):
+
 ```markdown
 ## Available MCP Servers
 
@@ -154,6 +161,7 @@ Add an "Available MCP Servers" section to each skill's SKILL.md, positioned afte
 ```
 
 **Inline format** (for skills using 1-2 servers):
+
 ```markdown
 ## Available MCP Servers
 
@@ -189,11 +197,11 @@ Secondary: **akosha** (8682) — search_all_systems (for cross-repo context)
 ### 6.3 Table Rules
 
 1. **Only include servers the skill actually uses** — not all 33
-2. **Port numbers included** for quick reference
-3. **"Use When" column** provides guidance on when each server is relevant
-4. **Position after Overview** — visible early in the skill document
-5. **List relevant tools only** — don't dump every tool from a server
-6. **Order by relevance** — primary server first
+1. **Port numbers included** for quick reference
+1. **"Use When" column** provides guidance on when each server is relevant
+1. **Position after Overview** — visible early in the skill document
+1. **List relevant tools only** — don't dump every tool from a server
+1. **Order by relevance** — primary server first
 
 ## 7. Design: Stale Reference Cleanup
 
@@ -223,6 +231,7 @@ for skill_file in all_skills:
 ```
 
 This validation runs as part of `mahavishnu config validate` and reports:
+
 - Unknown MCP tool references
 - References to servers not in `.mcp.json`
 - Tool name format violations (missing `mcp__` prefix)
@@ -236,6 +245,7 @@ Analysis of 5+ multi-agent orchestration projects (Claude Code Agent Farm, Ruflo
 Each spawned sub-agent can enable specific MCP servers. Agent descriptions should declare which MCP servers they require, enabling per-task routing in Mahavushnu pools:
 
 **Future enhancement — `requires_mcp` field:**
+
 ```yaml
 ---
 name: security-auditor
@@ -272,6 +282,7 @@ MCP Orchestrator uses `full`, `summary`, and `grep` modes for passing file conte
 MCP Task Orchestrator achieves 90% token reduction by replacing 5k+ token conversation history with 200-token structured notes. Apply to Session-Buddy checkpoint skills:
 
 **Enhanced checkpoint format:**
+
 ```markdown
 ## Checkpoint Notes (instead of full conversation replay)
 
@@ -315,6 +326,7 @@ Different MCP servers have different latency profiles. Skills should specify exp
 When MCP servers are unavailable, skills should fall back to filesystem-based coordination:
 
 **Fallback pattern (add to skill degradation sections):**
+
 ```markdown
 ## Degradation: MCP Unavailable
 
@@ -358,19 +370,19 @@ def validate_skill_drift():
 ## 10. Acceptance Criteria
 
 1. All 15 enriched agents include at least one `mcp__` tool reference in their description
-2. All 22 native skills have an "Available MCP Servers" section (5 symlinked skills are out of scope)
-3. `mahavishnu config validate` passes with zero stale reference warnings
-4. No agent description exceeds 300 characters
-5. All `mcp__` references in skills use exact tool names from the registry
-6. No port number references are outdated (all match `.mcp.json`)
-7. "Akasha" misspelling is corrected to "Akosha" in all files
-8. `swiftui-ipc-client` skill references at least one ecosystem MCP server
-9. `testing-strategies` skill references Crackerjack tools
-10. A fresh Claude Code session from Mahavishnu correctly routes to enriched agents
-11. All skill MCP reference tables include a "Context Mode" column (full/summary/grep)
-12. All skill MCP reference tables include a "Default Timeout" row
-13. `mahavishnu config validate` reports zero skill-specific drift (stale tool references, port mismatches, description length violations)
-14. Notes-as-memory format is documented in at least the checkpoint skill
+1. All 22 native skills have an "Available MCP Servers" section (5 symlinked skills are out of scope)
+1. `mahavishnu config validate` passes with zero stale reference warnings
+1. No agent description exceeds 300 characters
+1. All `mcp__` references in skills use exact tool names from the registry
+1. No port number references are outdated (all match `.mcp.json`)
+1. "Akasha" misspelling is corrected to "Akosha" in all files
+1. `swiftui-ipc-client` skill references at least one ecosystem MCP server
+1. `testing-strategies` skill references Crackerjack tools
+1. A fresh Claude Code session from Mahavishnu correctly routes to enriched agents
+1. All skill MCP reference tables include a "Context Mode" column (full/summary/grep)
+1. All skill MCP reference tables include a "Default Timeout" row
+1. `mahavishnu config validate` reports zero skill-specific drift (stale tool references, port mismatches, description length violations)
+1. Notes-as-memory format is documented in at least the checkpoint skill
 
 ## 11. ADR Reference
 

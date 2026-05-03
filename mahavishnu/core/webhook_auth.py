@@ -11,13 +11,13 @@ Version: 3.1
 Related: Security Auditor P0-1 - replay attack prevention
 """
 
+from datetime import UTC, datetime, timedelta
 import hashlib
 import hmac
 import logging
-from datetime import datetime, timezone, timedelta
 from typing import Any
 
-from mahavishnu.core.errors import WebhookAuthError, ErrorCode
+from mahavishnu.core.errors import ErrorCode, WebhookAuthError
 
 logger = logging.getLogger(__name__)
 
@@ -206,10 +206,10 @@ class WebhookAuthenticator:
 
         # Ensure timestamp has timezone
         if webhook_time.tzinfo is None:
-            webhook_time = webhook_time.replace(tzinfo=timezone.utc)
+            webhook_time = webhook_time.replace(tzinfo=UTC)
 
         # Check age
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         age = now - webhook_time
 
         if age > self.max_age:
@@ -262,7 +262,7 @@ class WebhookAuthenticator:
             "VALUES ($1, $2, $3) "
             "ON CONFLICT (webhook_id) DO NOTHING",
             webhook_id,
-            datetime.now(timezone.utc),
+            datetime.now(UTC),
             timestamp,
         )
 
@@ -279,7 +279,7 @@ class WebhookAuthenticator:
         Returns:
             Number of records deleted
         """
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         result = await self.db.execute(
             "DELETE FROM processed_webhooks WHERE processed_at < $1",
             cutoff,

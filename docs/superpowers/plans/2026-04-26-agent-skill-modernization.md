@@ -10,11 +10,12 @@
 
 **Tech Stack:** Python 3.13, `re` (stdlib), `pathlib`, `yaml` (PyYAML), `typer`, pytest, `mahavishnu/cli/config_validator.py` (existing).
 
----
+______________________________________________________________________
 
 ### Task 1: Write the stale-reference validator
 
 **Files:**
+
 - Create: `mahavishnu/core/skill_mcp_validator.py`
 - Create: `tests/unit/test_skill_mcp_validator.py`
 
@@ -402,12 +403,14 @@ git add mahavishnu/core/skill_mcp_validator.py tests/unit/test_skill_mcp_validat
 git commit -m "feat(validator): add skill/agent MCP stale-reference validator"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Integrate validator into `mahavishnu config validate`
 
 **Files:**
+
 - Modify: `mahavishnu/cli/config_validator.py`
+
 - Create: `tests/unit/test_config_validator_mcp.py`
 
 - [ ] **Step 1: Write the failing tests**
@@ -624,11 +627,12 @@ git add mahavishnu/cli/config_validator.py tests/unit/test_config_validator_mcp.
 git commit -m "feat(validate): integrate MCP stale-reference drift check into config validate"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Enrich 5 ecosystem agent descriptions
 
 **Files:**
+
 - Modify: `mahavishnu/.claude/agents/mahavishnu-specialist.md`
 - Modify: `mahavishnu/.claude/agents/akasha-specialist.md`
 - Modify: `mahavishnu/.claude/agents/oneiric-specialist.md`
@@ -640,6 +644,7 @@ git commit -m "feat(validate): integrate MCP stale-reference drift check into co
 - [ ] **Step 1: Update `mahavishnu-specialist.md`**
 
 Replace the `description` field:
+
 ```yaml
 description: >-
   Expert in Mahavishnu orchestration platform. Routes tasks, manages workflows and
@@ -652,6 +657,7 @@ description: >-
 - [ ] **Step 2: Update `akasha-specialist.md` (fix spelling Akasha → Akosha)**
 
 Replace the `description` field:
+
 ```yaml
 description: >-
   Expert in Akosha cross-system intelligence and vector embeddings. Runs semantic
@@ -666,6 +672,7 @@ Also fix any remaining "Akasha" spellings in the body of the file to "Akosha".
 - [ ] **Step 3: Update `oneiric-specialist.md`**
 
 Replace the `description` field:
+
 ```yaml
 description: >-
   Expert in Oneiric component resolution, adapter lifecycle, and runtime orchestration.
@@ -678,6 +685,7 @@ description: >-
 - [ ] **Step 4: Update `mcp-integration-expert.md`**
 
 Replace the `description` field:
+
 ```yaml
 description: >-
   Expert in Model Context Protocol integration, FastMCP server design, and MCP
@@ -690,6 +698,7 @@ description: >-
 - [ ] **Step 5: Update `refactoring-specialist.md`**
 
 Replace the `description` field:
+
 ```yaml
 description: >-
   Expert refactoring specialist for safe code transformation, pattern application,
@@ -725,20 +734,30 @@ git add mahavishnu/.claude/agents/mahavishnu-specialist.md \
 git commit -m "feat(agents): enrich 5 ecosystem agent descriptions with MCP tool references"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Enrich 10 generic agent descriptions
 
 **Files:**
+
 - Modify: `mahavishnu/.claude/agents/code-reviewer.md`
+
 - Modify: `mahavishnu/.claude/agents/security-auditor.md`
+
 - Modify: `mahavishnu/.claude/agents/python-pro.md`
+
 - Modify: `mahavishnu/.claude/agents/architecture-council.md`
+
 - Modify: `mahavishnu/.claude/agents/devops-troubleshooter.md`
+
 - Modify: `mahavishnu/.claude/agents/pytest-hypothesis-specialist.md`
+
 - Modify: `mahavishnu/.claude/agents/database-operations-specialist.md`
+
 - Modify: `mahavishnu/.claude/agents/frontend-developer.md`
+
 - Modify: `mahavishnu/.claude/agents/documentation-specialist.md`
+
 - Modify: `mahavishnu/.claude/agents/incident-responder.md`
 
 - [ ] **Step 1: Add ecosystem line to each agent**
@@ -746,18 +765,21 @@ git commit -m "feat(agents): enrich 5 ecosystem agent descriptions with MCP tool
 For each agent, append an "Ecosystem:" line to the `description` field. The existing description content must be preserved. Use `>-` block scalar to keep it under 300 chars total.
 
 **`code-reviewer.md`** — append:
+
 ```
 Ecosystem: mcp__crackerjack__crackerjack_run (quality gates),
 mcp__akosha__search_code_patterns (cross-repo pattern context).
 ```
 
 **`security-auditor.md`** — append:
+
 ```
 Ecosystem: mcp__crackerjack__crackerjack_run (security scans),
 mcp__session-buddy__search_conversations (error log context).
 ```
 
 **`python-pro.md`** — append:
+
 ```
 Ecosystem: mcp__crackerjack__crackerjack_run (pytest quality gates),
 mcp__akosha__search_code_patterns (cross-repo Python patterns),
@@ -765,12 +787,14 @@ mcp__mahavishnu__pool_route_execute (distributed test execution).
 ```
 
 **`architecture-council.md`** — append:
+
 ```
 Ecosystem: mcp__akosha__search_code_patterns (cross-repo patterns),
 mcp__dhara__aggregate_patterns (adapter pattern history).
 ```
 
 **`devops-troubleshooter.md`** — append:
+
 ```
 Ecosystem: mcp__mahavishnu__get_health (service health),
 mcp__akosha__detect_anomalies (metrics anomalies),
@@ -778,30 +802,35 @@ mcp__session-buddy__get_activity_summary (session logs).
 ```
 
 **`pytest-hypothesis-specialist.md`** — append:
+
 ```
 Ecosystem: mcp__crackerjack__crackerjack_run (test execution),
 mcp__akosha__search_code_patterns (error pattern discovery).
 ```
 
 **`database-operations-specialist.md`** — append:
+
 ```
 Ecosystem: mcp__dhara__put (persistence layer),
 mcp__akosha__analyze_trends (query trend analysis).
 ```
 
 **`frontend-developer.md`** — append:
+
 ```
 Ecosystem: mcp__mahavishnu__trigger_workflow (pipeline trigger),
 mcp__session-buddy___code_search_symbols_impl (component symbol search).
 ```
 
 **`documentation-specialist.md`** — append:
+
 ```
 Ecosystem: mcp__akosha__search_all_systems (semantic doc search),
 mcp__session-buddy__search_conversations (conversation context).
 ```
 
 **`incident-responder.md`** — append:
+
 ```
 Ecosystem: mcp__akosha__detect_anomalies (anomaly detection),
 mcp__mahavishnu__get_workflow_status (workflow status),
@@ -851,11 +880,12 @@ git add mahavishnu/.claude/agents/code-reviewer.md \
 git commit -m "feat(agents): add ecosystem MCP references to 10 generic agents"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Add MCP reference tables to 18 existing skills
 
 **Files:**
+
 - Modify: 18 `SKILL.md` files under `mahavishnu/.claude/skills/`
 
 The "Available MCP Servers" section goes immediately after the `## Overview` section heading (before its body). Each table has columns: Server | Port | Context Mode | Relevant Tools | Default Timeout.
@@ -867,6 +897,7 @@ Context Mode values: `full` (complete file content), `summary` (summarized conte
 Insert the following block into each skill file. **Do not change any other content.**
 
 **`manage-pools/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -877,6 +908,7 @@ Insert the following block into each skill file. **Do not change any other conte
 ```
 
 **`code-archaeologist/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -887,6 +919,7 @@ Insert the following block into each skill file. **Do not change any other conte
 ```
 
 **`orchestrate-workflow/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -897,6 +930,7 @@ Insert the following block into each skill file. **Do not change any other conte
 ```
 
 **`run-quality-checks/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -907,6 +941,7 @@ Insert the following block into each skill file. **Do not change any other conte
 ```
 
 **`search-insights/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -917,6 +952,7 @@ Insert the following block into each skill file. **Do not change any other conte
 ```
 
 **`persistent-state/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -927,6 +963,7 @@ Insert the following block into each skill file. **Do not change any other conte
 ```
 
 **`learn-from-errors/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -937,6 +974,7 @@ Insert the following block into each skill file. **Do not change any other conte
 ```
 
 **`ecosystem-awareness/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -947,6 +985,7 @@ Insert the following block into each skill file. **Do not change any other conte
 ```
 
 **`quality-pulse/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -957,6 +996,7 @@ Insert the following block into each skill file. **Do not change any other conte
 ```
 
 **`session-archaeologist/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -967,6 +1007,7 @@ Insert the following block into each skill file. **Do not change any other conte
 ```
 
 **`bodai-radar/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -978,6 +1019,7 @@ Insert the following block into each skill file. **Do not change any other conte
 ```
 
 **`auto-coordinate/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -988,6 +1030,7 @@ Insert the following block into each skill file. **Do not change any other conte
 ```
 
 **`smart-scaling/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -995,6 +1038,7 @@ Primary: **mahavishnu** (8680) — mcp__mahavishnu__pool_spawn, mcp__mahavishnu_
 ```
 
 **`capture-insights/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -1005,6 +1049,7 @@ Primary: **mahavishnu** (8680) — mcp__mahavishnu__pool_spawn, mcp__mahavishnu_
 ```
 
 **`search-sessions/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -1012,6 +1057,7 @@ Primary: **session-buddy** (8678) — mcp__session-buddy__search_conversations, 
 ```
 
 **`sweep-repositories/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -1019,6 +1065,7 @@ Primary: **mahavishnu** (8680) — mcp__mahavishnu__list_repos, mcp__mahavishnu_
 ```
 
 **`resolve-components/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -1029,6 +1076,7 @@ Primary: **mahavishnu** (8680) — mcp__mahavishnu__list_repos, mcp__mahavishnu_
 ```
 
 **`configure-oneiric/SKILL.md`** — after `## Overview`:
+
 ```markdown
 ## Available MCP Servers
 
@@ -1059,12 +1107,14 @@ git add mahavishnu/.claude/skills/
 git commit -m "feat(skills): add Available MCP Servers sections to 18 existing skills"
 ```
 
----
+______________________________________________________________________
 
 ### Task 6: Add MCP reference tables to 2 missing skills
 
 **Files:**
+
 - Modify: `mahavishnu/.claude/skills/swiftui-ipc-client/SKILL.md`
+
 - Modify: `mahavishnu/.claude/skills/testing-strategies/SKILL.md`
 
 - [ ] **Step 1: Update `swiftui-ipc-client/SKILL.md`** — add after `## Overview`:
@@ -1113,11 +1163,12 @@ git add mahavishnu/.claude/skills/swiftui-ipc-client/SKILL.md \
 git commit -m "feat(skills): add MCP reference tables to swiftui-ipc-client and testing-strategies skills"
 ```
 
----
+______________________________________________________________________
 
 ### Task 7: Fix stale references and wrong ports across all skills
 
 **Files:**
+
 - Modify: whichever skill SKILL.md files the validator reports as having stale refs or wrong ports
 
 - [ ] **Step 1: Run the full validator to find all issues**
@@ -1144,6 +1195,7 @@ for p, r in validate_agent_dir(Path('mahavishnu/.claude/agents')).items():
 For each file listed, make only the targeted substitution. Representative examples:
 
 **Wrong triple-underscore (session-buddy FastMCP names):**
+
 ```
 # Before:
 mcp__session-buddy__code_ingest_file
@@ -1157,12 +1209,14 @@ mcp__session-buddy___code_search_symbols_impl
 ```
 
 **Wrong port for session-buddy:**
+
 ```
 # Before:  session-buddy on port 8765
 # After:   session-buddy on port 8678
 ```
 
 **Misspelling:**
+
 ```
 # Before:  Akasha
 # After:   Akosha
@@ -1199,11 +1253,12 @@ git add mahavishnu/.claude/skills/ mahavishnu/.claude/agents/
 git commit -m "fix(agents,skills): resolve all stale MCP references and wrong port numbers"
 ```
 
----
+______________________________________________________________________
 
 ### Task 8: Add notes-as-memory format to checkpoint skill
 
 **Files:**
+
 - Modify: `mahavishnu/.claude/skills/session-buddy/checkpoint/SKILL.md` (or wherever the checkpoint skill lives)
 
 This implements the Notes-as-Memory pattern from the spec (section 8.3) — replacing full conversation replay with 200-token structured notes.
@@ -1213,6 +1268,7 @@ This implements the Notes-as-Memory pattern from the spec (section 8.3) — repl
 Expected path (post-consolidation): `mahavishnu/.claude/skills/session-buddy/checkpoint/SKILL.md`
 
 If that path doesn't exist, discover it:
+
 ```bash
 find mahavishnu/.claude/skills -name "SKILL.md" | xargs grep -l "checkpoint" 2>/dev/null
 ```
@@ -1221,7 +1277,7 @@ find mahavishnu/.claude/skills -name "SKILL.md" | xargs grep -l "checkpoint" 2>/
 
 After the existing checkpoint summary template (or after the first `## Implementation` section), add:
 
-```markdown
+````markdown
 ## Notes-as-Memory Format
 
 When creating checkpoint summaries, use structured notes instead of full conversation replay. This reduces token usage by ~90% while preserving essential context:
@@ -1234,10 +1290,11 @@ When creating checkpoint summaries, use structured notes instead of full convers
 - **Files changed**: [exact/path/to/file.py (created|modified), ...]
 - **Next step**: [The single next action after this checkpoint]
 - **Blockers**: [None | description of what is blocking progress]
-```
+````
 
 Do not replay the full conversation. Do not summarize what was discussed. Only record decisions, reasons, files, and next steps.
-```
+
+````
 
 - [ ] **Step 3: Verify the skill file still has no stale refs**
 
@@ -1259,7 +1316,7 @@ for path_str in result.stdout.strip().split():
         sys.exit(1)
 print('OK')
 "
-```
+````
 
 Expected: `OK`
 
@@ -1270,7 +1327,7 @@ git add mahavishnu/.claude/skills/
 git commit -m "docs(skills): add notes-as-memory format to checkpoint skill"
 ```
 
----
+______________________________________________________________________
 
 ### Task 9: Final verification — run full validation suite
 
@@ -1368,7 +1425,7 @@ git add -A
 git commit -m "chore: agent & skill modernization complete — all acceptance criteria met"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 
@@ -1384,6 +1441,7 @@ git commit -m "chore: agent & skill modernization complete — all acceptance cr
 | §10 Acceptance criteria verification | Task 9 |
 
 Spec items intentionally deferred:
+
 - `requires_mcp` frontmatter field (§8.1) — deferred to future phase (not a standard Claude Code field)
 - §8.4 Adaptive Health Monitoring — adds stagger/idle timeout guidance to skills; deferred because it requires runtime metrics that don't yet exist in the ecosystem
 - §8.6 Filesystem Coordination Fallback — adds MCP-unavailable degradation sections to skills; deferred because filesystem coordination infrastructure is not yet established

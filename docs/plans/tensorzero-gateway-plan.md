@@ -1,9 +1,9 @@
 # TensorZero Gateway — Final Implementation Plan
 
-**Status**: Ready for implementation  
-**Version**: 3.0 (with Postgres auth)  
-**Created**: 2026-04-06  
-**Updated**: 2026-04-06 06:27  
+**Status**: Ready for implementation
+**Version**: 3.0 (with Postgres auth)
+**Created**: 2026-04-06
+**Updated**: 2026-04-06 06:27
 **Port**: 8471
 
 ## Research Findings — z.ai API Endpoints
@@ -21,22 +21,26 @@
 z.ai's GLM Coding Plan has a **dedicated endpoint**: `https://api.z.ai/api/coding/paas/v4/chat/completions` — separate from the general endpoint. Both use OpenAI format. The Coding endpoint is cheaper but rate-limited per cycle.
 
 ### Authentication
+
 - `Authorization: Bearer YOUR_API_KEY` (standard Bearer token)
 - Also supports JWT token authentication (PyJWT-based, for higher security)
 - API keys created at https://z.ai/manage-apikey/apikey-list
 
 ### Streaming
+
 - Fully supported via `"stream": true` parameter
 - SSE format, identical to OpenAI streaming
 
 ### Tool/Function Calling
+
 - Supported natively (documented at https://docs.z.ai/guides/capabilities/function-calling)
 
 ### Model Names
+
 - Standard: `glm-5`, `glm-5-turbo`, `glm-4.7`, `glm-4.6`, `glm-4.5`, `glm-4.5-air`
 - Vision: `glm-5v-turbo`, `glm-4.6v`, `glm-4.5v`, `glm-ocr`
 
----
+______________________________________________________________________
 
 ## Architecture
 
@@ -50,6 +54,7 @@ OpenClaw (OpenAI format, if supported) ─────→ TensorZero :8471 ─�
 ```
 
 TensorZero exposes **two endpoints**:
+
 - `/openai/v1/chat/completions` — for OpenAI-format clients (Codex, Qwen, Nanobot, Vish)
 - Anthropic Messages API — via TensorZero's Anthropic provider type (for CCR/Claude Code)
 
@@ -58,12 +63,14 @@ TensorZero exposes **two endpoints**:
 CCR currently sends Anthropic Messages format to `https://api.z.ai/api/anthropic/v1/messages`. Two options:
 
 **Option A (simpler): CCR → TensorZero OpenAI endpoint**
+
 - Change CCR zai provider to use `enhancetool` transformer (OpenAI format) instead of `Anthropic`
 - Point CCR zai `api_base_url` to `http://127.0.0.1:8471/openai/v1/chat/completions`
 - Pro: Single TensorZero endpoint, simpler config
 - Con: CCR changes transformer format for zai (may have subtle differences)
 
 **Option B (preserves current behavior): CCR → TensorZero Anthropic endpoint**
+
 - Keep CCR's Anthropic transformer for zai
 - Point CCR zai `api_base_url` to `http://127.0.0.1:8471/anthropic/v1/messages`
 - TensorZero routes Anthropic-format requests to z.ai's Anthropic endpoint
@@ -72,7 +79,7 @@ CCR currently sends Anthropic Messages format to `https://api.z.ai/api/anthropic
 
 **Recommendation: Option B** — preserves existing CCR behavior, minimal risk.
 
----
+______________________________________________________________________
 
 ## Postgres: Auth + Observability
 
@@ -91,15 +98,17 @@ CCR currently sends Anthropic Messages format to `https://api.z.ai/api/anthropic
 ### Why Postgres Now
 
 TensorZero uses Postgres for two things:
+
 1. **API key storage** — `auth.enabled = true` requires Postgres to store/manage gateway API keys
-2. **Observability** — inference logs, feedback, metrics (optional but useful)
-3. **Rate limiting state** — persistent rate limit counters (alternative to Redis)
+1. **Observability** — inference logs, feedback, metrics (optional but useful)
+1. **Rate limiting state** — persistent rate limit counters (alternative to Redis)
 
 **With auth enabled**: Clients authenticate to TensorZero with a TensorZero API key. TensorZero then forwards requests to z.ai using the z.ai API key stored in the gateway's env vars. Clients never see the z.ai key.
 
 ### Required Postgres Extensions
 
 TensorZero needs 3 extensions:
+
 - `pg_cron` — scheduled cleanup jobs ⚠️ **not available via Homebrew** — may need install from source or skip (TensorZero should work without it, just no auto-cleanup)
 - `pg_trgm` — trigram text search for observability queries ✅ available (1.6)
 - `pgvector` — vector similarity search (for inference caching) ✅ available (0.8.2)
@@ -139,19 +148,21 @@ No password needed — Postgres trusts local connections.
 ### API Key Management
 
 After Postgres + auth is configured:
+
 1. Start gateway with `auth.enabled = true`
-2. Create API keys via TensorZero UI or API
-3. Distribute API key to clients via env var `TENSORZERO_API_KEY`
-4. Clients send `Authorization: Bearer <TENSORZERO_API_KEY>` to gateway
-5. Gateway validates key against Postgres, then forwards request to z.ai with `ZAI_API_KEY`
+1. Create API keys via TensorZero UI or API
+1. Distribute API key to clients via env var `TENSORZERO_API_KEY`
+1. Clients send `Authorization: Bearer <TENSORZERO_API_KEY>` to gateway
+1. Gateway validates key against Postgres, then forwards request to z.ai with `ZAI_API_KEY`
 
 This decouples clients from provider credentials — a client compromise doesn't expose the z.ai key.
 
----
+______________________________________________________________________
 
 ## Deployment: Native Binary (NOT Docker)
 
 ### Why not Docker
+
 - Docker Desktop on macOS adds ~2GB RAM overhead for the VM
 - Fights with LaunchAgent lifecycle model
 - Unnecessary for a single-user local gateway
@@ -260,7 +271,7 @@ EOF
 
 This rotates at 2MB, keeps 7 compressed copies, and signals the process to reopen (J flag). Logs may contain partial prompts or error messages with API key fragments — rotation limits exposure.
 
----
+______________________________________________________________________
 
 ## Configuration — tensorzero.toml
 
@@ -382,7 +393,7 @@ tokens_per_second = 4000
 # debug = true  # Enable for verbose error logging during development
 ```
 
----
+______________________________________________________________________
 
 ## Client Configuration Changes
 
@@ -437,13 +448,14 @@ Update nanobot provider env vars or config to use `http://127.0.0.1:8471/openai/
 - If it supports `OPENAI_BASE_URL`: set to `http://127.0.0.1:8471/openai/v1/`
 - Otherwise: no change
 
----
+______________________________________________________________________
 
 ## Deployment Steps
 
 ### Phase 0: Postgres Setup
 
 0. **Audit Postgres auth config**
+
    ```bash
    PG=/usr/local/opt/postgresql@18/bin/psql
    $PG -h localhost -U les -d postgres -c "SELECT * FROM pg_hba_file_rules;"
@@ -453,6 +465,7 @@ Update nanobot provider env vars or config to use `http://127.0.0.1:8471/openai/
    ```
 
 1. **Create TensorZero database and extensions**
+
    ```bash
    PG=/usr/local/opt/postgresql@18/bin/psql
    $PG -h localhost -U les -d postgres -c "CREATE DATABASE tensorzero;"
@@ -464,29 +477,34 @@ Update nanobot provider env vars or config to use `http://127.0.0.1:8471/openai/
 ### Phase 1: Install & Verify
 
 2. **Install TensorZero gateway**
+
    ```bash
    mkdir -p ~/.local/share/tensorzero
    python3 -m venv ~/.local/share/tensorzero/.venv
    ~/.local/share/tensorzero/.venv/bin/pip install tensorzero
    ```
 
-3. **Create config directory and file**
+1. **Create config directory and file**
+
    ```bash
    mkdir -p ~/.config/tensorzero
    mkdir -p ~/.local/state/tensorzero/logs
    # Copy tensorzero.toml from this plan
    ```
 
-4. **Run TensorZero Postgres migrations**
+1. **Run TensorZero Postgres migrations**
+
    ```bash
    TENSORZERO_POSTGRES_URL="postgres://les@localhost:5432/tensorzero" \
      ~/.local/share/tensorzero/.venv/bin/tensorzero-gateway \
        --run-postgres-migrations \
        --config-file ~/.config/tensorzero/tensorzero.toml
    ```
+
    This creates the auth tables, observability schema, and rate limit tables.
 
-5. **Verify gateway starts**
+1. **Verify gateway starts**
+
    ```bash
    TENSORZERO_POSTGRES_URL="postgres://les@localhost:5432/tensorzero" \
    ZAI_API_KEY="$ZAI_API_KEY" \
@@ -495,7 +513,8 @@ Update nanobot provider env vars or config to use `http://127.0.0.1:8471/openai/
    # Should bind to 127.0.0.1:8471
    ```
 
-6. **Smoke test — health (no auth required)**
+1. **Smoke test — health (no auth required)**
+
    ```bash
    curl -s http://127.0.0.1:8471/status
    # Expected: {"status":"ok"}
@@ -504,14 +523,16 @@ Update nanobot provider env vars or config to use `http://127.0.0.1:8471/openai/
    # Expected: {"gateway":"ok","postgres":"ok"}
    ```
 
-7. **Create a TensorZero API key** (via TensorZero UI or API)
+1. **Create a TensorZero API key** (via TensorZero UI or API)
+
    ```bash
    # Option A: Via TensorZero UI (http://127.0.0.1:4000 after deploying UI)
    # Option B: Via API (requires initial key creation through UI first)
    # Store the generated key as TENSORZERO_API_KEY env var
    ```
 
-8. **Smoke test — actual inference (with auth)**
+1. **Smoke test — actual inference (with auth)**
+
    ```bash
    curl -s http://127.0.0.1:8471/openai/v1/chat/completions \
      -H "Content-Type: application/json" \
@@ -519,7 +540,8 @@ Update nanobot provider env vars or config to use `http://127.0.0.1:8471/openai/
      -d '{"model":"glm-4.7","messages":[{"role":"user","content":"Say hello"}]}'
    ```
 
-9. **Smoke test — streaming (with auth)**
+1. **Smoke test — streaming (with auth)**
+
    ```bash
    curl -sN http://127.0.0.1:8471/openai/v1/chat/completions \
      -H "Content-Type: application/json" \
@@ -532,6 +554,7 @@ Update nanobot provider env vars or config to use `http://127.0.0.1:8471/openai/
 These are config-only changes — no extra services to install.
 
 1. **Prometheus metrics** — TensorZero exposes metrics at `/metrics` on the gateway port (8471)
+
    ```toml
    [gateway.export.prometheus]
    enabled = true
@@ -539,13 +562,15 @@ These are config-only changes — no extra services to install.
 
    Available metrics include: `tensorzero_inferences_total`, `tensorzero_requests_total`, `tensorzero_inference_latency_overhead_seconds`.
 
-2. **OTEL traces** — exported to Tempo via OTLP HTTP
+1. **OTEL traces** — exported to Tempo via OTLP HTTP
+
    ```toml
    [gateway.export.otlp.traces]
    endpoint = "http://127.0.0.1:4318"
    ```
 
-3. **Grafana scraping** — add TensorZero to Grafana's prometheus.yml scrape targets:
+1. **Grafana scraping** — add TensorZero to Grafana's prometheus.yml scrape targets:
+
    ```yaml
    - job_name: 'tensorzero'
      static_configs:
@@ -553,9 +578,10 @@ These are config-only changes — no extra services to install.
      metrics_path: '/metrics'
    ```
 
-4. **Claude Code OTEL** — Claude Code has native OTEL support (metrics + logs + traces beta). Configure via environment variables — see Phase 1.6 Step 7 for details.
+1. **Claude Code OTEL** — Claude Code has native OTEL support (metrics + logs + traces beta). Configure via environment variables — see Phase 1.6 Step 7 for details.
 
-5. **Verify** — after gateway starts:
+1. **Verify** — after gateway starts:
+
    ```bash
    curl -s http://127.0.0.1:8471/metrics | head -20
    ```
@@ -628,6 +654,7 @@ mkdir -p ~/.local/state/tempo/{data,logs}
 ```
 
 `~/.config/tempo/tempo.yaml`:
+
 ```yaml
 # === Tempo — Local single-user config (v2.10.x) ===
 # All endpoints bind to localhost only. No authentication (dev-only).
@@ -694,6 +721,7 @@ overrides:
 #### Step 3: LaunchAgent (Tempo)
 
 **`~/Library/LaunchAgents/com.grafana.tempo.plist`**:
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -729,10 +757,12 @@ overrides:
 ```
 
 > **Log rotation**: Tempo logs grow unbounded via LaunchAgent stdout. Add `newsyslog` config to rotate logs:
+>
 > ```
 > # /etc/newsyslog.d/com.grafana.tempo.conf
 > /Users/les/.local/state/tempo/logs/tempo.log   les:staff  644  7  *  $M2000000 JCN
 > ```
+>
 > This rotates at 2MB, keeps 7 compressed copies. Logs may contain partial prompts or error messages with API key fragments — rotation limits exposure.
 
 #### Step 4: Install and verify
@@ -758,6 +788,7 @@ curl -s http://127.0.0.1:4318
 #### Step 5: Configure TensorZero → Tempo (OTEL)
 
 Update `tensorzero.toml` from Phase 1.5:
+
 ```toml
 [gateway.export.otlp.traces]
 endpoint = "http://127.0.0.1:4318"  # Tempo's OTLP HTTP receiver
@@ -766,6 +797,7 @@ endpoint = "http://127.0.0.1:4318"  # Tempo's OTLP HTTP receiver
 #### Step 6: Configure Mahavishnu → Tempo
 
 Update `OTelStorageAdapter` (or create a new `TempoStorageAdapter`) to:
+
 - Export traces via OTLP to `http://127.0.0.1:4318`
 - Query traces via Tempo's HTTP API: `GET http://127.0.0.1:3200/api/traces/{traceID}`
 - Query traces via TraceQL: `GET http://127.0.0.1:3200/api/search?q={service.name="mahavishnu"}`
@@ -775,6 +807,7 @@ Update `OTelStorageAdapter` (or create a new `TempoStorageAdapter`) to:
 #### Step 7: Configure Claude Code → Tempo (OTEL)
 
 Claude Code has **native OpenTelemetry support** — no wrapper or sidecar needed. It exports:
+
 - **Metrics**: token usage (input/output/cache), cost (USD), active session time, commits, LoC, tool decisions
 - **Logs/Events**: user prompts, tool results, API requests, errors
 - **Traces** (beta): distributed traces for Claude Code operations
@@ -840,6 +873,7 @@ brew services restart grafana
 #### Step 9: MCP integration
 
 **Recommended: `mcp-grafana` proxied tools** (Option A)
+
 - `mcp-grafana` installed via Homebrew at `/usr/local/bin/mcp-grafana`
 - Grafana running on port **3035**
 - Auto-discovers Tempo's MCP tools through the Grafana datasource
@@ -847,6 +881,7 @@ brew services restart grafana
 - Lower maintenance than direct Tempo MCP
 
 Configure in Mahavishnu's MCP settings:
+
 ```json
 {
   "mcpServers": {
@@ -861,6 +896,7 @@ Configure in Mahavishnu's MCP settings:
 ```
 
 **Alternative: Direct Tempo MCP** (Option B)
+
 - Tempo's embedded MCP server at `http://127.0.0.1:3200/api/mcp`
 - Lower latency, but no Grafana auth layer
 - Only use if `mcp-grafana` doesn't expose the Tempo tools you need
@@ -880,12 +916,14 @@ Total: **~2GB max** with 7-day retention.
 ### Phase 2: LaunchAgent
 
 10. **Install LaunchAgent plist**
+
     ```bash
     cp com.tensorzero.gateway.plist ~/Library/LaunchAgents/
     launchctl load ~/Library/LaunchAgents/com.tensorzero.gateway.plist
     ```
 
-11. **Verify LaunchAgent**
+01. **Verify LaunchAgent**
+
     ```bash
     launchctl list | grep tensorzero
     curl -s http://127.0.0.1:8471/health
@@ -898,41 +936,44 @@ Total: **~2GB max** with 7-day retention.
     ```bash
     export TENSORZERO_API_KEY="<key from step 7>"
     ```
-13. **Migrate Nanobot** — update provider `base_url` + API key, verify response
-14. **Migrate Qwen** — set `OPENAI_BASE_URL` + `OPENAI_API_KEY=$TENSORZERO_API_KEY`, verify response
-15. **Migrate Codex** — update config, verify response
-16. **Migrate Vish Workers** — update provider config, verify response
-17. **Migrate CCR** — update zai provider `api_base_url` + `api_key=$TENSORZERO_API_KEY`, restart CCR, verify Claude Code works
-18. **Migrate OpenClaw** — if supported
+01. **Migrate Nanobot** — update provider `base_url` + API key, verify response
+01. **Migrate Qwen** — set `OPENAI_BASE_URL` + `OPENAI_API_KEY=$TENSORZERO_API_KEY`, verify response
+01. **Migrate Codex** — update config, verify response
+01. **Migrate Vish Workers** — update provider config, verify response
+01. **Migrate CCR** — update zai provider `api_base_url` + `api_key=$TENSORZERO_API_KEY`, restart CCR, verify Claude Code works
+01. **Migrate OpenClaw** — if supported
 
 ### Phase 4: TensorZero UI
 
 The TensorZero UI is a web dashboard for browsing inference history, managing API keys, and inspecting functions/variants. It connects to the same Postgres database as the gateway.
 
 19. **Install TensorZero UI** (Node.js app)
+
     ```bash
     # Install via npx (no global install needed)
     npx @tensorzero/ui
     # or clone and run locally — check latest docs
     ```
 
-20. **Configure UI** — point to same Postgres database
+01. **Configure UI** — point to same Postgres database
+
     ```bash
     DATABASE_URL="postgres://les@localhost:5432/tensorzero" \
       npx @tensorzero/ui --port 4000
     ```
 
-21. **Create API key via UI** — browse to `http://127.0.0.1:4000`, create a gateway API key
+01. **Create API key via UI** — browse to `http://127.0.0.1:4000`, create a gateway API key
 
     > **Audit trail**: When the TensorZero UI creates API keys, there's no built-in audit logging. Consider adding a Postgres trigger on the auth tables to log key creation/rotation events, or manually record key metadata (created_at, purpose, client) in a separate table.
 
-22. **Optional: LaunchAgent for UI**
+01. **Optional: LaunchAgent for UI**
+
     ```xml
     <!-- ~/Library/LaunchAgents/com.tensorzero.ui.plist -->
     <!-- Similar pattern to gateway plist -->
     ```
 
-23. **Verify** — browse to `http://127.0.0.1:4000`, should show inference history after gateway is serving traffic
+01. **Verify** — browse to `http://127.0.0.1:4000`, should show inference history after gateway is serving traffic
 
 ### Phase 5: Rate Limiting (optional)
 
@@ -943,7 +984,7 @@ The TensorZero UI is a web dashboard for browsing inference history, managing AP
     ```
     Add `TENSORZERO_VALKEY_URL` to LaunchAgent EnvironmentVariables.
 
----
+______________________________________________________________________
 
 ## Security Checklist (from review)
 
@@ -958,7 +999,7 @@ The TensorZero UI is a web dashboard for browsing inference history, managing AP
 | Cache TTL | ✅ Configured | 300s (5 min) — short for dev |
 | Log rotation | ✅ Configured | `newsyslog` configs provided for gateway and Tempo logs (2MB rotate, 7 copies) |
 
----
+______________________________________________________________________
 
 ## Failure Modes & Recovery
 
@@ -975,15 +1016,17 @@ The TensorZero UI is a web dashboard for browsing inference history, managing AP
 ### Client-Side Resilience
 
 Each client should have its own timeout and retry:
+
 - **Nanobot**: Already has `_CHAT_RETRY_DELAYS = (1, 2, 4)` — 3 attempts, 7s total
 - **Claude Code/CCR**: Has its own timeout (900s). CCR has fallback routing (zai → anthropic)
 - **Codex/Qwen**: SDK-level defaults. Should verify.
 
----
+______________________________________________________________________
 
 ## Reviewer Feedback Addressed
 
 ### Security Review
+
 - ✅ C1 (auth): Deferred — requires Postgres. Localhost-only binding is sufficient for single-user dev.
 - ✅ C2 (bind address): Fixed — `127.0.0.1:8471`
 - ✅ C3 (Redis AUTH): Documented — use dedicated DB index + AUTH if using shared Redis
@@ -991,6 +1034,7 @@ Each client should have its own timeout and retry:
 - ✅ W7 (cache TTL): Reduced to 300s
 
 ### Ops Review
+
 - ✅ Docker replaced with native Python package + LaunchAgent
 - ✅ Port 8471 approved
 - ✅ Redis namespace: Use DB index 15 (`redis://localhost:6379/15`)
@@ -999,6 +1043,7 @@ Each client should have its own timeout and retry:
 - ⏭️ Startup ordering: Clients have own retry logic. PathState not needed for dev.
 
 ### Config Review
+
 - ✅ C1 (model routing): Added `[models.*]` definitions for all model names
 - ✅ C2 (z.ai provider type): Fixed — OpenAI models use `openai-compatible` type with `/api/paas/v4/`, Anthropic models use `anthropic` type with `/api/anthropic/v1/messages`
 - ✅ C3 (CCR compatibility): Option B preserves CCR's Anthropic format, routes to TensorZero Anthropic endpoint
@@ -1006,7 +1051,7 @@ Each client should have its own timeout and retry:
 - ⚠️ W2 (streaming): Smoke test in deployment steps
 - ⚠️ W5 (caching config): Fixed — using `[gateway.cache.valkey]` per TensorZero docs (Redis backend)
 
----
+______________________________________________________________________
 
 ## Decisions
 
@@ -1019,16 +1064,16 @@ Each client should have its own timeout and retry:
 | Tempo for traces | **Phase 1.6 — yes** | Replaces pgvector for trace storage. Embedded MCP + TraceQL. |
 | Alloy as collector | **Skipped** | Direct OTLP to Tempo is sufficient for single-user dev. Add Alloy later if trace enrichment is needed. |
 
----
+______________________________________________________________________
 
 ## Open Questions
 
 1. **TensorZero auth without Postgres**: Is there a simpler auth mechanism? If not, localhost-only binding is the pragmatic choice for now.
-2. **z.ai Coding Plan endpoint**: Should we use `/api/coding/paas/v4/` instead of `/api/paas/v4/`? Need to check if Coding Plan API key works with the general endpoint.
-3. **CCR `enhancetool` transformer**: What does it do? May need investigation if Option A is preferred over Option B.
-4. **OpenClaw compatibility**: Does OpenClaw support `OPENAI_BASE_URL`? Need to check.
+1. **z.ai Coding Plan endpoint**: Should we use `/api/coding/paas/v4/` instead of `/api/paas/v4/`? Need to check if Coding Plan API key works with the general endpoint.
+1. **CCR `enhancetool` transformer**: What does it do? May need investigation if Option A is preferred over Option B.
+1. **OpenClaw compatibility**: Does OpenClaw support `OPENAI_BASE_URL`? Need to check.
 
----
+______________________________________________________________________
 
 ## Files
 

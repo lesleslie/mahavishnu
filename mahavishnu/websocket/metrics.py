@@ -22,7 +22,7 @@ from typing import Any
 
 # Lazy import - only import if actually used
 try:
-    from prometheus_client import Counter, Gauge, Histogram, start_http_server, REGISTRY
+    from prometheus_client import REGISTRY, Counter, Gauge, Histogram, start_http_server
 
     PROMETHEUS_AVAILABLE = True
 except ImportError:
@@ -214,9 +214,7 @@ class WebSocketMetrics:
                 self._broadcast_histogram = self._get_existing_collector(
                     "websocket_broadcast_duration_seconds"
                 )
-                logger.debug(
-                    f"Reusing existing broadcast histogram: {self.server_name}/{channel}"
-                )
+                logger.debug(f"Reusing existing broadcast histogram: {self.server_name}/{channel}")
 
         return self._broadcast_histogram
 
@@ -263,9 +261,9 @@ class WebSocketMetrics:
         self._ensure_enabled()
         counter = self._get_message_counter()
         try:
-            self._select_metric_child(counter, server=self.server_name, message_type=message_type).inc(
-                amount
-            )
+            self._select_metric_child(
+                counter, server=self.server_name, message_type=message_type
+            ).inc(amount)
         except Exception as e:
             logger.debug(f"Skipping message metric update for {self.server_name}: {e}")
         logger.debug(f"Incremented {message_type} messages by {amount} for {self.server_name}")

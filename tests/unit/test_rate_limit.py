@@ -848,6 +848,7 @@ class TestRateLimitDecoratorError:
     @pytest.mark.asyncio
     async def test_decorator_no_request_skips_limiting(self):
         """Decorator should skip rate limiting when no Request arg."""
+
         @rate_limit(requests_per_minute=1)
         async def my_func(data: str):
             return f"ok: {data}"

@@ -1,8 +1,6 @@
----
-title: Multi-Stage Code Review
-category: workflow/
-status: active
----
+______________________________________________________________________
+
+## title: Multi-Stage Code Review category: workflow/ status: active
 
 # Multi-Stage Code Review Workflow
 
@@ -13,13 +11,14 @@ This workflow implements **AI-Assisted Multi-Stage Code Review** using four spec
 Traditional code review often focuses on functionality and style. This workflow extends review to four critical dimensions:
 
 1. **Security**: Vulnerabilities, injection attacks, authentication issues
-2. **Performance**: Algorithmic complexity, bottlenecks, resource usage
-3. **Test Coverage**: Untested code paths, edge cases, coverage gaps
-4. **Documentation**: Docstrings, comments, API completeness
+1. **Performance**: Algorithmic complexity, bottlenecks, resource usage
+1. **Test Coverage**: Untested code paths, edge cases, coverage gaps
+1. **Documentation**: Docstrings, comments, API completeness
 
 ## When to Use
 
 Use this workflow when:
+
 - Reviewing pull requests before merge
 - Performing deep-dive code quality assessment
 - Reviewing critical security or performance-sensitive code
@@ -28,90 +27,105 @@ Use this workflow when:
 ## Workflow Phases
 
 ### Phase 1: Security Review
+
 **Agent**: `security-review-specialist` (Sonnet)
 
 **Purpose**: Identify security vulnerabilities and compliance issues
 
 **Actions**:
+
 1. Review code changes for OWASP Top 10 vulnerabilities
-2. Check for injection attacks (SQL, XSS, command injection)
-3. Verify authentication and authorization logic
-4. Examine data handling and encryption
-5. Review dependencies for known vulnerabilities
+1. Check for injection attacks (SQL, XSS, command injection)
+1. Verify authentication and authorization logic
+1. Examine data handling and encryption
+1. Review dependencies for known vulnerabilities
 
 **Output**: Security review report with:
+
 - Critical issues (fix immediately)
 - High/moderate/low priority findings
 - Positive security practices
 - Security score (1-10)
 
 ### Phase 2: Performance Review
+
 **Agent**: `performance-review-specialist` (Sonnet)
 
 **Purpose**: Identify performance bottlenecks and optimization opportunities
 
 **Actions**:
+
 1. Analyze algorithmic complexity
-2. Check database queries for N+1 problems
-3. Review memory management and potential leaks
-4. Examine I/O operations for blocking calls
-5. Identify caching opportunities
+1. Check database queries for N+1 problems
+1. Review memory management and potential leaks
+1. Examine I/O operations for blocking calls
+1. Identify caching opportunities
 
 **Output**: Performance review report with:
+
 - Critical performance issues
 - Optimization opportunities
 - Resource usage concerns
 - Performance score (1-10)
 
 ### Phase 3: Test Coverage Review
+
 **Agent**: `test-coverage-review-specialist` (Sonnet)
 
 **Purpose**: Ensure comprehensive test coverage and quality
 
 **Actions**:
+
 1. Verify new code is covered by tests (target 80%+)
-2. Check for untested edge cases and error paths
-3. Review test assertion quality
-4. Identify test duplication and brittleness
-5. Verify integration tests for critical flows
+1. Check for untested edge cases and error paths
+1. Review test assertion quality
+1. Identify test duplication and brittleness
+1. Verify integration tests for critical flows
 
 **Output**: Test coverage review report with:
+
 - Critical coverage gaps
 - Test quality issues
 - Missing edge cases
 - Test score (1-10)
 
 ### Phase 4: Documentation Review
+
 **Agent**: `documentation-review-specialist` (Haiku)
 
 **Purpose**: Ensure complete, clear documentation
 
 **Actions**:
+
 1. Verify all public APIs have docstrings
-2. Check docstrings follow standards (Google, JSDoc, etc.)
-3. Review comments for "why" not "what"
-4. Verify type hints are present and accurate
-5. Check README and examples are updated
+1. Check docstrings follow standards (Google, JSDoc, etc.)
+1. Review comments for "why" not "what"
+1. Verify type hints are present and accurate
+1. Check README and examples are updated
 
 **Output**: Documentation review report with:
+
 - Critical documentation gaps
 - Quality issues
 - Examples and improvements
 - Documentation score (1-10)
 
 ### Phase 5: Aggregate Report
+
 **Agent**: `code-reviewer` (Sonnet)
 
 **Purpose**: Compile findings into prioritized action plan
 
 **Actions**:
+
 1. Collect all four review reports
-2. Remove duplicates and consolidate findings
-3. Prioritize by severity and impact
-4. Create unified action plan
-5. Provide overall quality assessment
+1. Remove duplicates and consolidate findings
+1. Prioritize by severity and impact
+1. Create unified action plan
+1. Provide overall quality assessment
 
 **Output**: Comprehensive review report with:
+
 - **Executive Summary**: Overall assessment and key metrics
 - **Critical Findings**: Must-fix before merge
 - **High Priority**: Should fix soon
@@ -131,6 +145,7 @@ Trigger this workflow when reviewing a PR:
 ```
 
 Then provide:
+
 - Pull request number or commit range
 - Any specific concerns or focus areas
 
@@ -176,7 +191,7 @@ Configure hooks in `settings.json` to automatically trigger this workflow on PR 
 
 Each phase produces a structured report. Here's an example of the final aggregated report:
 
-```markdown
+````markdown
 # Code Review Report: PR #123 - Add user authentication
 
 ## Executive Summary
@@ -204,9 +219,10 @@ This PR implements user authentication with OAuth2. The implementation is solid 
   - query = f"SELECT * FROM users WHERE username = '{username}'"
   + query = "SELECT * FROM users WHERE username = ?"
   + db.execute(query, [username])
-  ```
+````
 
 ### 2. Missing Rate Limiting on Login Endpoint
+
 - **Location**: `src/auth/login.py:23`
 - **Severity**: CRITICAL
 - **Agent**: security-review-specialist
@@ -214,6 +230,7 @@ This PR implements user authentication with OAuth2. The implementation is solid 
 - **Fix**: Implement rate limiting using `@limiter` decorator
 
 ### 3. N+1 Database Query in User Profile
+
 - **Location**: `src/api/users.py:78`
 - **Severity**: HIGH
 - **Agent**: performance-review-specialist
@@ -234,9 +251,9 @@ This PR implements user authentication with OAuth2. The implementation is solid 
 ## Recommendations
 
 1. **Immediately**: Fix SQL injection and add rate limiting
-2. **This week**: Resolve N+1 query issue
-3. **Next sprint**: Add integration tests for OAuth flow
-4. **Technical debt**: Consider adding request caching for profile lookups
+1. **This week**: Resolve N+1 query issue
+1. **Next sprint**: Add integration tests for OAuth flow
+1. **Technical debt**: Consider adding request caching for profile lookups
 
 ## Files Reviewed
 
@@ -244,6 +261,7 @@ This PR implements user authentication with OAuth2. The implementation is solid 
 - `src/auth/oauth.py` (+200 lines)
 - `src/api/users.py` (+50 lines)
 - `tests/test_auth.py` (+180 lines)
+
 ```
 
 ## Integration with Crackerjack
@@ -279,3 +297,4 @@ A successful multi-stage review should:
 - **Agentic Pattern**: https://github.com/nibzard/awesome-agentic-patterns/tree/main/patterns/feedback-loops
 - **Related Workflow**: `/workflows:quality-feedback-loops`
 - **Crackerjack Integration**: `/Users/les/Projects/crackerjack/`
+```

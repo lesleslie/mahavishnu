@@ -8,10 +8,10 @@ This module tests the Pydantic models for task operations to ensure:
 5. Edge cases are handled correctly
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from mahavishnu.core.task_models import (
     FTSSearchQuery,
@@ -43,7 +43,7 @@ class TestTaskCreateRequest:
             description="Users cannot login after password reset",
             repository="session-buddy",
             priority="high",
-            deadline=(datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+            deadline=(datetime.now(UTC) + timedelta(days=7)).isoformat(),
             tags=["authentication", "bug", "urgent"],
         )
         assert request.title == "Fix authentication bug"
@@ -153,7 +153,7 @@ class TestTaskCreateRequest:
     # Deadline validation
     def test_valid_future_deadline(self):
         """Test that valid future deadline is accepted."""
-        future = datetime.now(timezone.utc) + timedelta(days=7)
+        future = datetime.now(UTC) + timedelta(days=7)
         request = TaskCreateRequest(
             title="Test",
             repository="test-repo",
@@ -163,7 +163,7 @@ class TestTaskCreateRequest:
 
     def test_past_deadline_rejected(self):
         """Test that past deadline is rejected."""
-        past = datetime.now(timezone.utc) - timedelta(days=1)
+        past = datetime.now(UTC) - timedelta(days=1)
         with pytest.raises(ValidationError) as exc_info:
             TaskCreateRequest(
                 title="Test",

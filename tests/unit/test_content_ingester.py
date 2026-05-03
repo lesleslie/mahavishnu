@@ -21,10 +21,9 @@ Covers:
 
 from __future__ import annotations
 
-import asyncio
 import ipaddress
-import socket
 from pathlib import Path
+import socket
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -39,10 +38,10 @@ from mahavishnu.ingesters.content_ingester import (
     create_content_ingester,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_web_reader_response(
     text: str = "Sample article content.",
@@ -84,6 +83,7 @@ def _make_mcp_response(status_code: int = 200, body: dict | None = None) -> Magi
 # ContentType
 # ---------------------------------------------------------------------------
 
+
 class TestContentType:
     """Tests for the ContentType enum."""
 
@@ -101,6 +101,7 @@ class TestContentType:
 # ---------------------------------------------------------------------------
 # IngestionResult
 # ---------------------------------------------------------------------------
+
 
 class TestIngestionResult:
     """Tests for the IngestionResult dataclass."""
@@ -169,6 +170,7 @@ class TestIngestionResult:
 # ContentIngester -- Initialization
 # ---------------------------------------------------------------------------
 
+
 class TestContentIngesterInit:
     """Tests for ContentIngester constructor."""
 
@@ -220,6 +222,7 @@ class TestContentIngesterInit:
 # ContentIngester -- Initialize / Close
 # ---------------------------------------------------------------------------
 
+
 class TestContentIngesterInitialize:
     """Tests for initialize and close methods."""
 
@@ -256,10 +259,13 @@ class TestContentIngesterInitialize:
     @pytest.mark.asyncio
     async def test_initialize_failure_raises_runtime_error(self, tmp_path: Path):
         ingester = ContentIngester(output_dir=str(tmp_path))
-        with patch(
-            "mahavishnu.ingesters.content_ingester.get_embedding_service",
-            side_effect=RuntimeError("embedding service unavailable"),
-        ), pytest.raises(RuntimeError, match="Failed to initialize ContentIngester"):
+        with (
+            patch(
+                "mahavishnu.ingesters.content_ingester.get_embedding_service",
+                side_effect=RuntimeError("embedding service unavailable"),
+            ),
+            pytest.raises(RuntimeError, match="Failed to initialize ContentIngester"),
+        ):
             await ingester.initialize()
 
     @pytest.mark.asyncio
@@ -321,6 +327,7 @@ class TestContentIngesterInitialize:
 # ---------------------------------------------------------------------------
 # ContentIngester -- detect_content_type
 # ---------------------------------------------------------------------------
+
 
 class TestDetectContentType:
     """Tests for _detect_content_type."""
@@ -397,6 +404,7 @@ class TestDetectContentType:
 # ContentIngester -- _chunk_text
 # ---------------------------------------------------------------------------
 
+
 class TestChunkText:
     """Tests for _chunk_text."""
 
@@ -465,6 +473,7 @@ class TestChunkText:
 # ---------------------------------------------------------------------------
 # ContentIngester -- _validate_url (SSRF protection)
 # ---------------------------------------------------------------------------
+
 
 class TestValidateUrl:
     """Tests for _validate_url SSRF protection."""
@@ -542,9 +551,7 @@ class TestValidateUrl:
     def test_blocked_ip_private_class_a(self):
         ing = self._make_ingester()
         with patch("mahavishnu.ingesters.content_ingester.socket.getaddrinfo") as mock_dns:
-            mock_dns.return_value = [
-                (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.1", 443))
-            ]
+            mock_dns.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.1", 443))]
             with pytest.raises(ValueError, match="Blocked IP range"):
                 ing._validate_url("https://evil.com")
 
@@ -578,9 +585,7 @@ class TestValidateUrl:
     def test_blocked_ip_multicast(self):
         ing = self._make_ingester()
         with patch("mahavishnu.ingesters.content_ingester.socket.getaddrinfo") as mock_dns:
-            mock_dns.return_value = [
-                (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("224.0.0.1", 80))
-            ]
+            mock_dns.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("224.0.0.1", 80))]
             with pytest.raises(ValueError, match="Blocked IP range"):
                 ing._validate_url("http://evil.com")
 
@@ -595,10 +600,13 @@ class TestValidateUrl:
 
     def test_dns_resolution_failure(self):
         ing = self._make_ingester()
-        with patch(
-            "mahavishnu.ingesters.content_ingester.socket.getaddrinfo",
-            side_effect=socket.gaierror("DNS failed"),
-        ), pytest.raises(ValueError, match="DNS resolution failed"):
+        with (
+            patch(
+                "mahavishnu.ingesters.content_ingester.socket.getaddrinfo",
+                side_effect=socket.gaierror("DNS failed"),
+            ),
+            pytest.raises(ValueError, match="DNS resolution failed"),
+        ):
             ing._validate_url("https://nonexistent.invalid")
 
     def test_multiple_dns_results_blocked_ip(self):
@@ -616,6 +624,7 @@ class TestValidateUrl:
 # ---------------------------------------------------------------------------
 # ContentIngester -- _fetch_url
 # ---------------------------------------------------------------------------
+
 
 class TestFetchUrl:
     """Tests for _fetch_url."""
@@ -695,7 +704,10 @@ class TestFetchUrl:
 
         ingester._web_reader_client.post.return_value = _make_mcp_response(500, {})
 
-        with patch.object(ingester, "_validate_url"), pytest.raises(RuntimeError, match="web_reader error: 500"):
+        with (
+            patch.object(ingester, "_validate_url"),
+            pytest.raises(RuntimeError, match="web_reader error: 500"),
+        ):
             await ingester._fetch_url("https://example.com")
 
     @pytest.mark.asyncio
@@ -707,7 +719,10 @@ class TestFetchUrl:
         response_data = _make_web_reader_response(error={"code": -1, "message": "tool not found"})
         ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
 
-        with patch.object(ingester, "_validate_url"), pytest.raises(RuntimeError, match="web_reader error"):
+        with (
+            patch.object(ingester, "_validate_url"),
+            pytest.raises(RuntimeError, match="web_reader error"),
+        ):
             await ingester._fetch_url("https://example.com")
 
     @pytest.mark.asyncio
@@ -720,14 +735,20 @@ class TestFetchUrl:
             200, {"jsonrpc": "2.0", "id": 1, "result": []}
         )
 
-        with patch.object(ingester, "_validate_url"), pytest.raises(RuntimeError, match="No content returned"):
+        with (
+            patch.object(ingester, "_validate_url"),
+            pytest.raises(RuntimeError, match="No content returned"),
+        ):
             await ingester._fetch_url("https://example.com")
 
     @pytest.mark.asyncio
     async def test_fetch_not_initialized(self, tmp_path: Path):
         ingester = ContentIngester(output_dir=str(tmp_path))
         ingester._web_reader_client = None
-        with patch.object(ingester, "_validate_url"), pytest.raises(RuntimeError, match="not initialized"):
+        with (
+            patch.object(ingester, "_validate_url"),
+            pytest.raises(RuntimeError, match="not initialized"),
+        ):
             await ingester._fetch_url("https://example.com")
 
     @pytest.mark.asyncio
@@ -744,7 +765,10 @@ class TestFetchUrl:
         ingester._web_reader_client = AsyncMock(spec=httpx.AsyncClient)
         ingester._web_reader_client.post.side_effect = httpx.ConnectError("connection refused")
 
-        with patch.object(ingester, "_validate_url"), pytest.raises(RuntimeError, match="Failed to fetch URL"):
+        with (
+            patch.object(ingester, "_validate_url"),
+            pytest.raises(RuntimeError, match="Failed to fetch URL"),
+        ):
             await ingester._fetch_url("https://example.com")
 
     @pytest.mark.asyncio
@@ -768,6 +792,7 @@ class TestFetchUrl:
 # ContentIngester -- _generate_embeddings
 # ---------------------------------------------------------------------------
 
+
 class TestGenerateEmbeddings:
     """Tests for _generate_embeddings."""
 
@@ -775,9 +800,7 @@ class TestGenerateEmbeddings:
     async def test_generate_success(self, tmp_path: Path):
         ingester = ContentIngester(output_dir=str(tmp_path))
         mock_service = AsyncMock()
-        mock_service.embed.return_value = MagicMock(
-            embeddings=[[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
-        )
+        mock_service.embed.return_value = MagicMock(embeddings=[[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
         ingester._embedding_service = mock_service
 
         result = await ingester._generate_embeddings(["hello", "world"])
@@ -795,6 +818,7 @@ class TestGenerateEmbeddings:
 # ---------------------------------------------------------------------------
 # ContentIngester -- _store_in_akosha
 # ---------------------------------------------------------------------------
+
 
 class TestStoreInAkosha:
     """Tests for _store_in_akosha."""
@@ -853,6 +877,7 @@ class TestStoreInAkosha:
 # ContentIngester -- _index_in_crackerjack
 # ---------------------------------------------------------------------------
 
+
 class TestIndexInCrackerjack:
     """Tests for _index_in_crackerjack."""
 
@@ -899,6 +924,7 @@ class TestIndexInCrackerjack:
 # ---------------------------------------------------------------------------
 # ContentIngester -- _track_in_session_buddy
 # ---------------------------------------------------------------------------
+
 
 class TestTrackInSessionBuddy:
     """Tests for _track_in_session_buddy."""
@@ -955,6 +981,7 @@ class TestTrackInSessionBuddy:
 # ---------------------------------------------------------------------------
 # ContentIngester -- ingest_url
 # ---------------------------------------------------------------------------
+
 
 class TestIngestUrl:
     """Tests for ingest_url."""
@@ -1060,10 +1087,13 @@ class TestIngestUrl:
         mock_service.embed.return_value = MagicMock(embeddings=[[0.1] * 10])
         ingester._embedding_service = mock_service
 
-        with patch(
-            "mahavishnu.ingesters.content_ingester.get_embedding_service",
-            return_value=mock_service,
-        ), patch.object(ingester, "_validate_url"):
+        with (
+            patch(
+                "mahavishnu.ingesters.content_ingester.get_embedding_service",
+                return_value=mock_service,
+            ),
+            patch.object(ingester, "_validate_url"),
+        ):
             result = await ingester.ingest_url("https://example.com")
 
         assert result.success is True
@@ -1123,7 +1153,7 @@ class TestIngestUrl:
 
         response_data = _make_web_reader_response(
             text="Sanitize test.",
-            title='Test<script>alert(1)</script>',
+            title="Test<script>alert(1)</script>",
         )
         ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
         ingester._akosha_client.post.return_value = _make_mcp_response(200)
@@ -1147,6 +1177,7 @@ class TestIngestUrl:
 # ---------------------------------------------------------------------------
 # ContentIngester -- ingest_file
 # ---------------------------------------------------------------------------
+
 
 class TestIngestFile:
     """Tests for ingest_file."""
@@ -1303,6 +1334,7 @@ class TestIngestFile:
 # ContentIngester -- _read_pdf
 # ---------------------------------------------------------------------------
 
+
 class TestReadPdf:
     """Tests for _read_pdf."""
 
@@ -1317,7 +1349,9 @@ class TestReadPdf:
         mock_reader = MagicMock()
         mock_reader.pages = [mock_page1, mock_page2]
 
-        with patch.dict("sys.modules", {"pypdf": MagicMock(PdfReader=MagicMock(return_value=mock_reader))}):
+        with patch.dict(
+            "sys.modules", {"pypdf": MagicMock(PdfReader=MagicMock(return_value=mock_reader))}
+        ):
             text = await ingester._read_pdf(tmp_path / "test.pdf")
         assert "Page one content" in text
         assert "Page two content" in text
@@ -1344,6 +1378,7 @@ class TestReadPdf:
 # ---------------------------------------------------------------------------
 # ContentIngester -- _read_epub
 # ---------------------------------------------------------------------------
+
 
 class TestReadEpub:
     """Tests for _read_epub."""
@@ -1386,6 +1421,7 @@ class TestReadEpub:
 # ContentIngester -- ingest_file with PDF and EPUB
 # ---------------------------------------------------------------------------
 
+
 class TestIngestFileBookFormats:
     """Tests for ingest_file with PDF and EPUB formats."""
 
@@ -1414,7 +1450,9 @@ class TestIngestFileBookFormats:
         mock_reader = MagicMock()
         mock_reader.pages = [mock_page]
 
-        with patch.dict("sys.modules", {"pypdf": MagicMock(PdfReader=MagicMock(return_value=mock_reader))}):
+        with patch.dict(
+            "sys.modules", {"pypdf": MagicMock(PdfReader=MagicMock(return_value=mock_reader))}
+        ):
             result = await ingester.ingest_file(pdf_file)
 
         assert result.success is True
@@ -1477,6 +1515,7 @@ class TestIngestFileBookFormats:
 # ---------------------------------------------------------------------------
 # ContentIngester -- batch_ingest_urls
 # ---------------------------------------------------------------------------
+
 
 class TestBatchIngestUrls:
     """Tests for batch_ingest_urls."""
@@ -1576,6 +1615,7 @@ class TestBatchIngestUrls:
 # Factory function -- create_content_ingester
 # ---------------------------------------------------------------------------
 
+
 class TestCreateContentIngester:
     """Tests for the create_content_ingester factory function."""
 
@@ -1608,6 +1648,7 @@ class TestCreateContentIngester:
 # ---------------------------------------------------------------------------
 # SSRF constants
 # ---------------------------------------------------------------------------
+
 
 class TestSsrfConstants:
     """Validate SSRF protection constants are comprehensive."""
@@ -1650,6 +1691,7 @@ class TestSsrfConstants:
 # ---------------------------------------------------------------------------
 # Edge cases and integration-level scenarios
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     """Edge case tests for content ingestion."""
@@ -1768,6 +1810,7 @@ class TestEdgeCases:
 # Content type detection edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestDetectContentTypeEdgeCases:
     """Additional edge cases for content type detection."""
 
@@ -1780,7 +1823,10 @@ class TestDetectContentTypeEdgeCases:
 
     def test_blog_with_query_params(self):
         ing = self._make_ingester()
-        assert ing._detect_content_type("https://example.com/blog/post?id=123&lang=en") == ContentType.BLOG
+        assert (
+            ing._detect_content_type("https://example.com/blog/post?id=123&lang=en")
+            == ContentType.BLOG
+        )
 
     def test_non_url_no_extension(self):
         ing = self._make_ingester()
@@ -1802,6 +1848,7 @@ class TestDetectContentTypeEdgeCases:
 # ---------------------------------------------------------------------------
 # Integration: ingest_file stores correct metadata in Akosha
 # ---------------------------------------------------------------------------
+
 
 class TestIngestFileMetadata:
     """Verify metadata passed to Akosha during file ingestion."""

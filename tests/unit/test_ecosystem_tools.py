@@ -1,6 +1,5 @@
 """Tests for MCP error envelope and ecosystem tool validation."""
 
-import pytest
 from datetime import datetime
 
 from mahavishnu.mcp.error_envelope import McpErrorEnvelope, wrap_error
@@ -63,7 +62,7 @@ class TestCanonicalStatus:
         assert values == {"ok", "degraded", "unhealthy", "unknown", "disabled"}
 
     def test_severity_ordering(self):
-        from mahavishnu.core.ecosystem_status import CanonicalStatus, STATUS_SEVERITY
+        from mahavishnu.core.ecosystem_status import STATUS_SEVERITY, CanonicalStatus
 
         order = [
             CanonicalStatus.DISABLED,

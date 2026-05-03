@@ -1,10 +1,8 @@
 """Unit tests for path validation security functions."""
 
 import os
-import stat
-import tempfile
 from pathlib import Path
-from unittest.mock import patch
+import tempfile
 
 import pytest
 
@@ -267,7 +265,10 @@ class TestValidateRepositoryPath:
 
         # The error message could be "does not exist" or "does not appear to be a repository"
         # depending on whether the path check happens first
-        assert "does not exist" in str(exc_info.value).lower() or "repository" in str(exc_info.value).lower()
+        assert (
+            "does not exist" in str(exc_info.value).lower()
+            or "repository" in str(exc_info.value).lower()
+        )
 
 
 class TestSanitizeFilename:
@@ -454,7 +455,10 @@ class TestValidateFileOperation:
                 # Skip this test
                 pytest.skip("Cannot set read-only permissions")
             except PathValidationError as exc:
-                assert "permission denied" in str(exc.message).lower() or "validation failed" in str(exc.message).lower()
+                assert (
+                    "permission denied" in str(exc.message).lower()
+                    or "validation failed" in str(exc.message).lower()
+                )
         except PermissionError:
             # Skip if we can't change permissions
             pytest.skip("Cannot change directory permissions")

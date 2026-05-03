@@ -1,15 +1,15 @@
 """Code knowledge graph indexing infrastructure."""
 
 from .models import (
+    CallChain,
     CallChainRequest,
     CallChainResult,
-    CallChain,
-    ImpactAnalysisRequest,
-    ImpactAnalysisResult,
-    SymbolImpact,
-    CodeGraphNode,
     CodeGraphEdge,
-    IndexWorkItem,
+    CodeGraphNode,
     CodeGraphUnavailable,
     DegradationTier,
+    ImpactAnalysisRequest,
+    ImpactAnalysisResult,
+    IndexWorkItem,
+    SymbolImpact,
 )

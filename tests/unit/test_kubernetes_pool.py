@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -125,9 +124,7 @@ class TestEnsureK8sClient:
             await pool._ensure_k8s_client()
             # Source uses: from kubernetes import config as k8s_config
             # So mock_k8s.config is the config module
-            mock_k8s.config.load_kube_config.assert_called_once_with(
-                config_file="/custom/config"
-            )
+            mock_k8s.config.load_kube_config.assert_called_once_with(config_file="/custom/config")
 
     @pytest.mark.asyncio
     async def test_no_kubeconfig_uses_incluster(self):
@@ -301,11 +298,13 @@ class TestKubernetesPoolExecuteBatch:
     async def test_execute_batch(self):
         cfg = _make_pool_config()
         pool = KubernetesPool(config=cfg)
-        pool.execute_task = AsyncMock(side_effect=[
-            {"status": "completed", "output": "r1"},
-            {"status": "completed", "output": "r2"},
-            {"status": "failed", "error": "err"},
-        ])
+        pool.execute_task = AsyncMock(
+            side_effect=[
+                {"status": "completed", "output": "r1"},
+                {"status": "completed", "output": "r2"},
+                {"status": "failed", "error": "err"},
+            ]
+        )
 
         results = await pool.execute_batch([{}, {}, {}])
         assert len(results) == 3
@@ -390,7 +389,9 @@ class TestKubernetesPoolGetMetrics:
 
         mock_k8s, mock_core_api, _ = _make_k8s_mock()
         mock_core_api.read_namespace.return_value = MagicMock()
-        mock_k8s.client.BatchV1Api.return_value.list_namespaced_job.return_value = MagicMock(items=[])
+        mock_k8s.client.BatchV1Api.return_value.list_namespaced_job.return_value = MagicMock(
+            items=[]
+        )
 
         with patch.dict("sys.modules", {"kubernetes": mock_k8s}):
             metrics = await pool.get_metrics()
@@ -465,9 +466,7 @@ class TestCreateJobSpec:
             mock_k8s.client.V1Container.assert_called()
             call_args = mock_k8s.client.V1Container.call_args
             # image should be in the keyword args
-            assert "image" in call_args.kwargs or any(
-                "myapp:v2" in str(v) for v in call_args.args
-            )
+            assert "image" in call_args.kwargs or any("myapp:v2" in str(v) for v in call_args.args)
 
 
 class TestGetJobLogs:

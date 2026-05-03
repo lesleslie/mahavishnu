@@ -26,20 +26,21 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import StrEnum
 import logging
 import os
+from typing import TYPE_CHECKING, Any
 import uuid
-from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
-from typing import Any
 
-from mahavishnu.core.task_store import TaskStore
+if TYPE_CHECKING:
+    from mahavishnu.core.task_store import TaskStore
 
 logger = logging.getLogger(__name__)
 
 
-class WorktreeState(str, Enum):
+class WorktreeState(StrEnum):
     """State of a worktree."""
 
     ACTIVE = "active"  # Currently being worked on

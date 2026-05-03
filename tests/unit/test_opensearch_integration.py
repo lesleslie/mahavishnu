@@ -111,7 +111,9 @@ async def test_create_indices_handles_exceptions(caplog: pytest.LogCaptureFixtur
     assert "Failed to create workflow index" in caplog.text
 
 
-def test_init_with_opensearch_available_success_and_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_init_with_opensearch_available_success_and_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(osi, "OPENSEARCH_AVAILABLE", True)
 
     class _CtorClient:
@@ -131,7 +133,9 @@ def test_init_with_opensearch_available_success_and_fallback(monkeypatch: pytest
     assert isinstance(analytics_fail.client, osi.MockAsyncOpenSearch)
 
 
-def test_import_success_branch_uses_real_async_client_symbol(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_import_success_branch_uses_real_async_client_symbol(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import importlib.util
     import sys
     from types import ModuleType
@@ -189,9 +193,7 @@ async def test_log_event_returns_when_client_none() -> None:
     analytics = osi.OpenSearchLogAnalytics(_config())
     analytics.client = None
     await analytics.log_event(level="INFO", message="x")
-    await analytics.log_workflow_event(
-        workflow_id="w", adapter="a", task_type="t", status="s"
-    )
+    await analytics.log_workflow_event(workflow_id="w", adapter="a", task_type="t", status="s")
 
 
 @pytest.mark.asyncio

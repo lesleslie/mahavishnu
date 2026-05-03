@@ -1,18 +1,16 @@
 """Tests for QualityGateManager - Crackerjack integration for quality gates."""
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from datetime import datetime, UTC
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Any
 
 from mahavishnu.core.quality_gate_manager import (
-    QualityGateManager,
-    QualityGateRule,
-    QualityGateResult,
-    QualityCheckResult,
     CheckSeverity,
     CheckType,
-    QualityGateError,
+    QualityCheckResult,
+    QualityGateManager,
+    QualityGateResult,
+    QualityGateRule,
 )
 
 

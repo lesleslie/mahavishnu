@@ -6,6 +6,7 @@
 **Scope:** Consolidated plan for Hermes-inspired TUI work, Mahavishnu adapter strategy, and Bodai ecosystem integration
 
 **Companion documents:**
+
 - Implementation plan: [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
 - Control plane update: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
 
@@ -40,8 +41,8 @@ The goal is to define a clean boundary for:
 Bodai should be a layered system, not a single monolith:
 
 1. **TUI layer** - local interactive developer surface
-2. **Mahavishnu layer** - orchestration, routing, policy, and adapter mediation
-3. **Ecosystem layer** - persistent knowledge, storage, quality, session lifecycle, and remote delivery
+1. **Mahavishnu layer** - orchestration, routing, policy, and adapter mediation
+1. **Ecosystem layer** - persistent knowledge, storage, quality, session lifecycle, and remote delivery
 
 This keeps the TUI lightweight, preserves Mahavishnu as the control plane, and avoids duplicating Hermes-style runtime features in multiple places.
 
@@ -225,20 +226,25 @@ The practical division is:
 ### 6.1 Highest Priority
 
 1. **Context-file and reference semantics**
+
    - auto-load project context files
    - `@file`, `@diff`, `@url`
    - this belongs in the TUI and should be reflected in agent prompt construction
 
-2. **Checkpoint / rollback workflow**
+1. **Checkpoint / rollback workflow**
+
    - belongs in the TUI and Mahavishnu worktree safety path
 
-3. **Skills system**
+1. **Skills system**
+
    - belongs in the TUI and Agno integration path
 
-4. **Provider routing / fallback / credential pools**
+1. **Provider routing / fallback / credential pools**
+
    - belongs in Mahavishnu core and the LLM gateway layer
 
-5. **Messaging gateway adapters** (deferred to Impl Phase 3)
+1. **Messaging gateway adapters** (deferred to Impl Phase 3)
+
    - Telegram
    - Discord
    - Slack
@@ -249,13 +255,16 @@ The practical division is:
 ### 6.2 Conditional Priority
 
 6. **Plugin / hook model**
+
    - only if it reduces coupling
    - otherwise, prefer explicit adapters and well-typed extension points
 
-7. **Browser automation**
+1. **Browser automation**
+
    - only if the Bodai roadmap includes real external task execution
 
-8. **ACP / editor integration**
+1. **ACP / editor integration**
+
    - valuable if it complements PyCharm and the TUI without duplicating the same workflow surface
 
 ### 6.3 TUI Operating Model
@@ -465,17 +474,17 @@ Do not treat learning as one feature. Split it into a pipeline:
 
 1. Observe
    - record successful sessions, tool usage, and outcomes
-2. Store
+1. Store
    - persist evidence in Session-Buddy / Akosha / Dhara as appropriate
-3. Retrieve
+1. Retrieve
    - look up prior successes and similar failures
-4. Synthesize
+1. Synthesize
    - draft a skill or recommendation
-5. Review
+1. Review
    - require human approval
-6. Activate
+1. Activate
    - publish to the active skill set
-7. Rollback
+1. Rollback
    - support downgrade to the previous version
 
 Only observation and retrieval should run automatically. Synthesis and activation should be review-gated.

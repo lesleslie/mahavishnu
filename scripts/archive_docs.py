@@ -8,12 +8,11 @@ Consolidates duplicate documentation files.
 Target: Reduce from ~615 docs to ~400 docs by archiving ~215 files.
 """
 
-import os
-import shutil
-import re
-from pathlib import Path
-from datetime import datetime
 from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
+import re
+import shutil
 
 # Configuration
 PROJECT_ROOT = Path("/Users/les/Projects/mahavishnu")
@@ -110,7 +109,6 @@ KEEP_FILES = {
     "CLAUDE.md",
     "ARCHITECTURE.md",
     "SECURITY_CHECKLIST.md",
-
     # Docs files (keep current/active)
     "ADVANCED_FEATURES.md",
     "API_REFERENCE.md",
@@ -161,7 +159,15 @@ def find_duplicates():
         if not should_keep_file(md_file):
             # Extract base name
             base = md_file.stem
-            for suffix in ["_COMPLETE", "_SUMMARY", "_FINAL", "_PLAN", "_REPORT", "_QUICKSTART", "_QUICKREF"]:
+            for suffix in [
+                "_COMPLETE",
+                "_SUMMARY",
+                "_FINAL",
+                "_PLAN",
+                "_REPORT",
+                "_QUICKSTART",
+                "_QUICKREF",
+            ]:
                 base = base.replace(suffix, "")
             file_groups[base].append(md_file)
 
@@ -169,7 +175,15 @@ def find_duplicates():
     for md_file in (PROJECT_ROOT / "docs").glob("*.md"):
         if not should_keep_file(md_file):
             base = md_file.stem
-            for suffix in ["_COMPLETE", "_SUMMARY", "_FINAL", "_PLAN", "_REPORT", "_QUICKSTART", "_QUICKREF"]:
+            for suffix in [
+                "_COMPLETE",
+                "_SUMMARY",
+                "_FINAL",
+                "_PLAN",
+                "_REPORT",
+                "_QUICKSTART",
+                "_QUICKREF",
+            ]:
                 base = base.replace(suffix, "")
             file_groups[base].append(md_file)
 

@@ -519,12 +519,15 @@ class TestHybridAdapterRegistry:
         registry = HybridAdapterRegistry(mock_config)
 
         # Add something to cache
-        registry.resolution_cache.set("test", RoutingDecision(
-            adapter_name="test",
-            adapter=None,
-            matched_capabilities=[],
-            resolution_time_ms=10.0,
-        ))
+        registry.resolution_cache.set(
+            "test",
+            RoutingDecision(
+                adapter_name="test",
+                adapter=None,
+                matched_capabilities=[],
+                resolution_time_ms=10.0,
+            ),
+        )
 
         assert registry.resolution_cache.size == 1
 
@@ -588,6 +591,7 @@ class TestModuleFunctions:
         """Test getting registry when not initialized raises error."""
         # Reset the global registry
         import mahavishnu.core.adapter_registry as reg_module
+
         reg_module._registry = None
 
         with pytest.raises(RuntimeError, match="not initialized"):
@@ -598,6 +602,7 @@ class TestModuleFunctions:
         """Test initializing the global registry."""
         # Reset the global registry
         import mahavishnu.core.adapter_registry as reg_module
+
         reg_module._registry = None
 
         registry = await initialize_registry(mock_config)

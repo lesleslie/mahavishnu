@@ -59,6 +59,7 @@ result = await task_router.execute_with_fallback(
 ```
 
 **Returns:**
+
 - `success`: True if any adapter succeeded
 - `adapter`: Which adapter succeeded
 - `result`: Execution result
@@ -134,17 +135,20 @@ This reduces false positives from transient network issues, temporary resource c
 ### Files Modified
 
 1. **`mahavishnu/core/task_router.py`**
+
    - Added `execute_with_fallback()` method (150+ lines)
    - Added `_record_success()` and `_record_failure()` methods
    - Added `get_adapter_statistics()` method
    - Updated `AdapterManager` to track success/failure counts
 
-2. **`mahavishnu/core/unified_orchestrator.py`**
+1. **`mahavishnu/core/unified_orchestrator.py`**
+
    - Modified `execute_workflow()` to use `execute_with_fallback()`
    - Tracks fallback chain in workflow state
    - Reports total attempts including retries
 
-3. **`tests/unit/test_task_router_fallback.py`**
+1. **`tests/unit/test_task_router_fallback.py`**
+
    - 6 comprehensive tests covering:
      - Primary adapter success
      - Fallback to secondary
@@ -247,21 +251,25 @@ INFO  mahavishnu.core.task_router: Task succeeded on agno (attempt 1/3)
 ## Benefits
 
 ### 1. **Resilience**
+
 - No single point of failure
 - Tasks complete even when primary adapter is down
 - Automatic recovery from transient failures
 
 ### 2. **Performance**
+
 - Retry mechanism handles temporary issues
 - Exponential backoff prevents overwhelming failing services
 - Adapter health tracking optimizes routing over time
 
 ### 3. **Observability**
+
 - Complete audit trail of fallback decisions
 - Success/failure metrics per adapter
 - Fallback chain visible in workflow state
 
 ### 4. **Flexibility**
+
 - Customizable preference order per task type
 - Easy to add new adapters to the system
 - No code changes needed to adjust routing
@@ -271,16 +279,19 @@ INFO  mahavishnu.core.task_router: Task succeeded on agno (attempt 1/3)
 ### Planned
 
 1. **Circuit Breaker Pattern**
+
    - Temporarily disable adapters after N consecutive failures
    - Automatic re-enable after cooldown period
    - Prevents cascading failures to unhealthy adapters
 
-2. **Adaptive Routing**
+1. **Adaptive Routing**
+
    - Machine learning to predict best adapter for task type
    - Dynamic preference order based on historical performance
    - Real-time load balancing across adapters
 
-3. **Health Check Integration**
+1. **Health Check Integration**
+
    - Proactive health checks before task execution
    - Skip unhealthy adapters in fallback chain
    - Faster fallback (no retry delay on known-down adapters)
@@ -311,7 +322,7 @@ pytest tests/unit/test_task_router_fallback.py --cov=mahavishnu.core.task_router
 - ✅ Configurable preference order
 - ✅ Detailed logging for observability
 
----
+______________________________________________________________________
 
 **Implementation Date**: 2025-02-11
 **Status**: ✅ Complete and Production Ready

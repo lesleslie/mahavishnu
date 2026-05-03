@@ -1,12 +1,10 @@
 """Test content ingestion pipeline."""
 
-import asyncio
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
+from hypothesis import given
+from hypothesis import strategies as st
 import pytest
-
-from hypothesis import given, strategies as st
 
 from mahavishnu.ingesters import ContentIngester, ContentType
 
@@ -109,10 +107,12 @@ async def test_ingest_url_mocked():
         method_name = payload.get("params", {}).get("name")
         if method_name == "mcp__web_reader__webReader":
             response.json.return_value = {
-                "result": [{
-                    "text": "Test blog content",
-                    "metadata": {"title": "Test Blog Post"},
-                }]
+                "result": [
+                    {
+                        "text": "Test blog content",
+                        "metadata": {"title": "Test Blog Post"},
+                    }
+                ]
             }
         else:
             response.json.return_value = {}
@@ -136,7 +136,13 @@ async def test_ingest_url_mocked():
 
 
 @pytest.mark.property
-@given(st.text(alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?-_", min_size=0, max_size=5000))
+@given(
+    st.text(
+        alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?-_",
+        min_size=0,
+        max_size=5000,
+    )
+)
 def test_chunking_property(text):
     """Property-based test for chunking correctness."""
     ingester = ContentIngester(

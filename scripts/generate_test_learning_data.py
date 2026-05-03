@@ -15,14 +15,14 @@ Usage:
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timedelta
 import hashlib
 import logging
+from pathlib import Path
 import random
 import sys
 import time
 import uuid
-from datetime import datetime, timedelta
-from pathlib import Path
 
 import numpy as np
 
@@ -251,16 +251,14 @@ def generate_test_data(
             logger.debug(f"Inserted {i + 1}/{count} records")
 
     elapsed = time.time() - start_time
-    logger.info(f"Generated {count} records in {elapsed:.2f}s ({count/elapsed:.1f} records/s)")
+    logger.info(f"Generated {count} records in {elapsed:.2f}s ({count / elapsed:.1f} records/s)")
 
     return count
 
 
 def main() -> int:
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Generate test data for learning database"
-    )
+    parser = argparse.ArgumentParser(description="Generate test data for learning database")
     parser.add_argument(
         "--count",
         type=int,
@@ -276,9 +274,7 @@ def main() -> int:
         "--task-types",
         help="Comma-separated list of task types (default: all)",
     )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable verbose logging"
-    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
 

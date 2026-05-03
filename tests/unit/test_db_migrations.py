@@ -1,17 +1,17 @@
 """Tests for Database Migration Utilities - Migration management."""
 
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from datetime import datetime, UTC
-from unittest.mock import MagicMock, AsyncMock, patch
-from typing import Any
 
 from mahavishnu.core.db_migrations import (
-    MigrationManager,
     Migration,
-    MigrationStatus,
+    MigrationManager,
+    MigrationPlan,
     MigrationResult,
     MigrationScript,
-    MigrationPlan,
+    MigrationStatus,
 )
 
 
@@ -257,22 +257,26 @@ class TestMigrationManager:
         manager = MigrationManager()
 
         # Register migrations
-        manager.register(Migration(
-            id="001",
-            name="first",
-            version="1.0.0",
-            up_sql="SELECT 1;",
-            down_sql="SELECT 1;",
-            status=MigrationStatus.COMPLETED,
-        ))
-        manager.register(Migration(
-            id="002",
-            name="second",
-            version="1.1.0",
-            up_sql="SELECT 2;",
-            down_sql="SELECT 2;",
-            status=MigrationStatus.PENDING,
-        ))
+        manager.register(
+            Migration(
+                id="001",
+                name="first",
+                version="1.0.0",
+                up_sql="SELECT 1;",
+                down_sql="SELECT 1;",
+                status=MigrationStatus.COMPLETED,
+            )
+        )
+        manager.register(
+            Migration(
+                id="002",
+                name="second",
+                version="1.1.0",
+                up_sql="SELECT 2;",
+                down_sql="SELECT 2;",
+                status=MigrationStatus.PENDING,
+            )
+        )
 
         pending = manager.get_pending_migrations()
 
@@ -283,22 +287,26 @@ class TestMigrationManager:
         """Get completed migrations."""
         manager = MigrationManager()
 
-        manager.register(Migration(
-            id="001",
-            name="first",
-            version="1.0.0",
-            up_sql="SELECT 1;",
-            down_sql="SELECT 1;",
-            status=MigrationStatus.COMPLETED,
-        ))
-        manager.register(Migration(
-            id="002",
-            name="second",
-            version="1.1.0",
-            up_sql="SELECT 2;",
-            down_sql="SELECT 2;",
-            status=MigrationStatus.PENDING,
-        ))
+        manager.register(
+            Migration(
+                id="001",
+                name="first",
+                version="1.0.0",
+                up_sql="SELECT 1;",
+                down_sql="SELECT 1;",
+                status=MigrationStatus.COMPLETED,
+            )
+        )
+        manager.register(
+            Migration(
+                id="002",
+                name="second",
+                version="1.1.0",
+                up_sql="SELECT 2;",
+                down_sql="SELECT 2;",
+                status=MigrationStatus.PENDING,
+            )
+        )
 
         completed = manager.get_completed_migrations()
 
@@ -309,22 +317,26 @@ class TestMigrationManager:
         """Get current database version."""
         manager = MigrationManager()
 
-        manager.register(Migration(
-            id="001",
-            name="first",
-            version="1.0.0",
-            up_sql="SELECT 1;",
-            down_sql="SELECT 1;",
-            status=MigrationStatus.COMPLETED,
-        ))
-        manager.register(Migration(
-            id="002",
-            name="second",
-            version="1.1.0",
-            up_sql="SELECT 2;",
-            down_sql="SELECT 2;",
-            status=MigrationStatus.COMPLETED,
-        ))
+        manager.register(
+            Migration(
+                id="001",
+                name="first",
+                version="1.0.0",
+                up_sql="SELECT 1;",
+                down_sql="SELECT 1;",
+                status=MigrationStatus.COMPLETED,
+            )
+        )
+        manager.register(
+            Migration(
+                id="002",
+                name="second",
+                version="1.1.0",
+                up_sql="SELECT 2;",
+                down_sql="SELECT 2;",
+                status=MigrationStatus.COMPLETED,
+            )
+        )
 
         version = manager.get_current_version()
 
@@ -347,7 +359,7 @@ class TestMigrationManager:
         manager = MigrationManager()
         manager.register(sample_migration)
 
-        with patch.object(manager, '_execute_sql', new_callable=AsyncMock) as mock_exec:
+        with patch.object(manager, "_execute_sql", new_callable=AsyncMock) as mock_exec:
             mock_exec.return_value = True
 
             result = await manager.run_migration("001")
@@ -375,7 +387,7 @@ class TestMigrationManager:
         sample_migration.status = MigrationStatus.COMPLETED
         manager.register(sample_migration)
 
-        with patch.object(manager, '_execute_sql', new_callable=AsyncMock) as mock_exec:
+        with patch.object(manager, "_execute_sql", new_callable=AsyncMock) as mock_exec:
             mock_exec.return_value = True
 
             result = await manager.rollback_migration("001")
@@ -388,22 +400,26 @@ class TestMigrationManager:
         """Run all pending migrations."""
         manager = MigrationManager()
 
-        manager.register(Migration(
-            id="001",
-            name="first",
-            version="1.0.0",
-            up_sql="SELECT 1;",
-            down_sql="SELECT 1;",
-        ))
-        manager.register(Migration(
-            id="002",
-            name="second",
-            version="1.1.0",
-            up_sql="SELECT 2;",
-            down_sql="SELECT 2;",
-        ))
+        manager.register(
+            Migration(
+                id="001",
+                name="first",
+                version="1.0.0",
+                up_sql="SELECT 1;",
+                down_sql="SELECT 1;",
+            )
+        )
+        manager.register(
+            Migration(
+                id="002",
+                name="second",
+                version="1.1.0",
+                up_sql="SELECT 2;",
+                down_sql="SELECT 2;",
+            )
+        )
 
-        with patch.object(manager, '_execute_sql', new_callable=AsyncMock) as mock_exec:
+        with patch.object(manager, "_execute_sql", new_callable=AsyncMock) as mock_exec:
             mock_exec.return_value = True
 
             results = await manager.run_all_pending()
@@ -416,22 +432,26 @@ class TestMigrationManager:
         """Create migration plan."""
         manager = MigrationManager()
 
-        manager.register(Migration(
-            id="001",
-            name="first",
-            version="1.0.0",
-            up_sql="SELECT 1;",
-            down_sql="SELECT 1;",
-            status=MigrationStatus.COMPLETED,
-        ))
-        manager.register(Migration(
-            id="002",
-            name="second",
-            version="1.1.0",
-            up_sql="SELECT 2;",
-            down_sql="SELECT 2;",
-            status=MigrationStatus.PENDING,
-        ))
+        manager.register(
+            Migration(
+                id="001",
+                name="first",
+                version="1.0.0",
+                up_sql="SELECT 1;",
+                down_sql="SELECT 1;",
+                status=MigrationStatus.COMPLETED,
+            )
+        )
+        manager.register(
+            Migration(
+                id="002",
+                name="second",
+                version="1.1.0",
+                up_sql="SELECT 2;",
+                down_sql="SELECT 2;",
+                status=MigrationStatus.PENDING,
+            )
+        )
 
         plan = await manager.create_plan(target_version="1.1.0")
 
@@ -441,21 +461,25 @@ class TestMigrationManager:
         """Validate migration dependencies."""
         manager = MigrationManager()
 
-        manager.register(Migration(
-            id="001",
-            name="first",
-            version="1.0.0",
-            up_sql="SELECT 1;",
-            down_sql="SELECT 1;",
-        ))
-        manager.register(Migration(
-            id="002",
-            name="second",
-            version="1.1.0",
-            up_sql="SELECT 2;",
-            down_sql="SELECT 2;",
-            dependencies=["001"],
-        ))
+        manager.register(
+            Migration(
+                id="001",
+                name="first",
+                version="1.0.0",
+                up_sql="SELECT 1;",
+                down_sql="SELECT 1;",
+            )
+        )
+        manager.register(
+            Migration(
+                id="002",
+                name="second",
+                version="1.1.0",
+                up_sql="SELECT 2;",
+                down_sql="SELECT 2;",
+                dependencies=["001"],
+            )
+        )
 
         is_valid = manager.validate_dependencies()
 
@@ -465,14 +489,16 @@ class TestMigrationManager:
         """Validate with missing dependencies."""
         manager = MigrationManager()
 
-        manager.register(Migration(
-            id="002",
-            name="second",
-            version="1.1.0",
-            up_sql="SELECT 2;",
-            down_sql="SELECT 2;",
-            dependencies=["001"],  # 001 doesn't exist
-        ))
+        manager.register(
+            Migration(
+                id="002",
+                name="second",
+                version="1.1.0",
+                up_sql="SELECT 2;",
+                down_sql="SELECT 2;",
+                dependencies=["001"],  # 001 doesn't exist
+            )
+        )
 
         is_valid = manager.validate_dependencies()
 
@@ -483,22 +509,26 @@ class TestMigrationManager:
         """Migrate to specific version."""
         manager = MigrationManager()
 
-        manager.register(Migration(
-            id="001",
-            name="first",
-            version="1.0.0",
-            up_sql="SELECT 1;",
-            down_sql="SELECT 1;",
-        ))
-        manager.register(Migration(
-            id="002",
-            name="second",
-            version="1.1.0",
-            up_sql="SELECT 2;",
-            down_sql="SELECT 2;",
-        ))
+        manager.register(
+            Migration(
+                id="001",
+                name="first",
+                version="1.0.0",
+                up_sql="SELECT 1;",
+                down_sql="SELECT 1;",
+            )
+        )
+        manager.register(
+            Migration(
+                id="002",
+                name="second",
+                version="1.1.0",
+                up_sql="SELECT 2;",
+                down_sql="SELECT 2;",
+            )
+        )
 
-        with patch.object(manager, '_execute_sql', new_callable=AsyncMock) as mock_exec:
+        with patch.object(manager, "_execute_sql", new_callable=AsyncMock) as mock_exec:
             mock_exec.return_value = True
 
             results = await manager.migrate_to_version("1.1.0")
@@ -509,15 +539,17 @@ class TestMigrationManager:
         """Get migration history."""
         manager = MigrationManager()
 
-        manager.register(Migration(
-            id="001",
-            name="first",
-            version="1.0.0",
-            up_sql="SELECT 1;",
-            down_sql="SELECT 1;",
-            status=MigrationStatus.COMPLETED,
-            applied_at=datetime.now(UTC),
-        ))
+        manager.register(
+            Migration(
+                id="001",
+                name="first",
+                version="1.0.0",
+                up_sql="SELECT 1;",
+                down_sql="SELECT 1;",
+                status=MigrationStatus.COMPLETED,
+                applied_at=datetime.now(UTC),
+            )
+        )
 
         history = manager.get_migration_history()
 

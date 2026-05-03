@@ -5,22 +5,22 @@
 **Status:** Production Ready
 **Applies To:** mahavishnu, session-buddy, crackerjack
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Core Architecture Patterns](#core-architecture-patterns)
-3. [Version Management](#version-management)
-4. [Import Path Discipline](#import-path-discipline)
-5. [Tool Registration Patterns](#tool-registration-patterns)
-6. [Authorization & Security](#authorization--security)
-7. [Testing Strategies](#testing-strategies)
-8. [Deployment Patterns](#deployment-patterns)
-9. [Troubleshooting Guide](#troubleshooting-guide)
-10. [Best Practices Checklist](#best-practices-checklist)
+1. [Core Architecture Patterns](#core-architecture-patterns)
+1. [Version Management](#version-management)
+1. [Import Path Discipline](#import-path-discipline)
+1. [Tool Registration Patterns](#tool-registration-patterns)
+1. [Authorization & Security](#authorization--security)
+1. [Testing Strategies](#testing-strategies)
+1. [Deployment Patterns](#deployment-patterns)
+1. [Troubleshooting Guide](#troubleshooting-guide)
+1. [Best Practices Checklist](#best-practices-checklist)
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -33,12 +33,12 @@ This document captures the architectural patterns and best practices for Model C
 ### Philosophy
 
 1. **Single Source of Truth** - Version numbers come from `pyproject.toml`
-2. **Import Discipline** - Relative imports follow strict conventions
-3. **Security First** - All tools require authentication and authorization
-4. **Testability** - Mock FastMCP for unit testing
-5. **Observability** - Comprehensive logging and error tracking
+1. **Import Discipline** - Relative imports follow strict conventions
+1. **Security First** - All tools require authentication and authorization
+1. **Testability** - Mock FastMCP for unit testing
+1. **Observability** - Comprehensive logging and error tracking
 
----
+______________________________________________________________________
 
 ## Core Architecture Patterns
 
@@ -70,17 +70,19 @@ mcp_server = FastMCP(
 ```
 
 **Benefits:**
+
 - ✅ Version always matches `pyproject.toml`
 - ✅ No manual updates needed when releasing
 - ✅ Consistent across all MCP servers in ecosystem
 - ✅ Fallback for development environments
 
 **Implementation Locations:**
+
 - `mahavishnu/mcp/server_core.py:112`
 - `session-buddy/server_optimized.py:132`
 - `crackerjack/mcp/server_core.py:139`
 
----
+______________________________________________________________________
 
 ### Pattern 2: Server Core Class Pattern
 
@@ -137,12 +139,13 @@ class FastMCPServer:
 ```
 
 **Benefits:**
+
 - ✅ Clear separation of concerns
 - ✅ Easy to test (mock app, config)
 - ✅ Lifecycle management centralized
 - ✅ Tool registration organized
 
----
+______________________________________________________________________
 
 ### Pattern 3: Tool Module Registration Pattern
 
@@ -209,12 +212,13 @@ def _register_session_buddy_tools(self):
 ```
 
 **Benefits:**
+
 - ✅ Tools organized by domain
 - ✅ Clear dependency injection
 - ✅ Easy to add/remove tool sets
 - ✅ Authorization centralized per module
 
----
+______________________________________________________________________
 
 ## Version Management
 
@@ -244,32 +248,36 @@ server = FastMCP("name", version="1.0.0")  # Becomes stale!
 When releasing a new version:
 
 1. **Update `pyproject.toml`:**
+
    ```toml
    [project]
    name = "mahavishnu"
    version = "0.3.0"  # Bump version
    ```
 
-2. **Commit and tag:**
+1. **Commit and tag:**
+
    ```bash
    git add pyproject.toml
    git commit -m "bump: v0.3.0"
    git tag v0.3.0
    ```
 
-3. **Build and publish:**
+1. **Build and publish:**
+
    ```bash
    uv build
    uv publish
    ```
 
-4. **Verify MCP server reports correct version:**
+1. **Verify MCP server reports correct version:**
+
    ```bash
    python -m mahavishnu mcp start
    # Should show: Mahavishnu Orchestrator, 0.3.0
    ```
 
----
+______________________________________________________________________
 
 ## Import Path Discipline
 
@@ -317,19 +325,22 @@ Then descend: ...core.auth (down to core, then auth)
 ### Import Style Guidelines
 
 1. **Standard Library First:**
+
    ```python
    import asyncio
    from pathlib import Path
    from typing import Any
    ```
 
-2. **Third-Party Packages:**
+1. **Third-Party Packages:**
+
    ```python
    from fastmcp import FastMCP
    from pydantic import BaseModel
    ```
 
-3. **Local Imports (sorted by depth):**
+1. **Local Imports (sorted by depth):**
+
    ```python
    # Deep imports first (more dots)
    from ...core.permissions import Permission
@@ -367,7 +378,7 @@ def test_import_paths():
     assert True
 ```
 
----
+______________________________________________________________________
 
 ## Tool Registration Patterns
 
@@ -397,15 +408,18 @@ async def sensitive_operation(
 **Authorization Flow:**
 
 1. **Authentication Check:**
+
    - Decorator verifies `user_id` parameter exists
    - Returns error if missing: `"Authentication required"`
 
-2. **Authorization Check:**
+1. **Authorization Check:**
+
    - Extracts repo path from `require_repo_param`
    - Calls `rbac_manager.check_permission()`
    - Returns error if denied: `"Authorization denied"`
 
-3. **Audit Logging:**
+1. **Audit Logging:**
+
    - All access attempts logged to `data/audit.log`
    - Sensitive parameters redacted automatically
 
@@ -499,7 +513,7 @@ async def analyze_repository(
         }
 ```
 
----
+______________________________________________________________________
 
 ## Authorization & Security
 
@@ -628,7 +642,7 @@ SENSITIVE_KEYS = {
 {"password": "***REDACTED***"}
 ```
 
----
+______________________________________________________________________
 
 ## Testing Strategies
 
@@ -764,7 +778,7 @@ def test_relative_import_depth():
     assert Permission.READ_REPO is not None
 ```
 
----
+______________________________________________________________________
 
 ## Deployment Patterns
 
@@ -840,13 +854,14 @@ RestartSec=10
 WantedBy=multi-user.target
 ```
 
----
+______________________________________________________________________
 
 ## Troubleshooting Guide
 
 ### Issue 1: "ModuleNotFoundError: No module named 'package.mcp.core'"
 
 **Symptom:**
+
 ```
 ModuleNotFoundError: No module named 'mahavishnu.mcp.core'
 ```
@@ -854,6 +869,7 @@ ModuleNotFoundError: No module named 'mahavishnu.mcp.core'
 **Cause:** Incorrect number of dots in relative import.
 
 **Solution:**
+
 ```python
 # ❌ WRONG (2 dots from package/mcp/tools/)
 from ..core.permissions import Permission
@@ -863,6 +879,7 @@ from ...core.permissions import Permission
 ```
 
 **Verification:**
+
 ```bash
 # Check current directory
 pwd
@@ -874,11 +891,12 @@ pwd
 # package/ = level 3 ← Need to go up 3 levels
 ```
 
----
+______________________________________________________________________
 
 ### Issue 2: Version mismatch between server and pyproject.toml
 
 **Symptom:**
+
 ```
 MCP Server: Mahavishnu Orchestrator, 1.0.0  # But pyproject.toml says 0.2.0
 ```
@@ -886,6 +904,7 @@ MCP Server: Mahavishnu Orchestrator, 1.0.0  # But pyproject.toml says 0.2.0
 **Cause:** Hardcoded version in FastMCP initialization.
 
 **Solution:**
+
 ```python
 # ❌ WRONG
 server = FastMCP("name", version="1.0.0")
@@ -900,11 +919,12 @@ except Exception:
 server = FastMCP("name", version=__version__)
 ```
 
----
+______________________________________________________________________
 
 ### Issue 3: "ImportError: cannot import name 'require_mcp_auth'"
 
 **Symptom:**
+
 ```
 ImportError: cannot import name 'require_mcp_auth' from 'mahavishnu.core.auth'
 ```
@@ -912,6 +932,7 @@ ImportError: cannot import name 'require_mcp_auth' from 'mahavishnu.core.auth'
 **Cause:** Importing from wrong module - `require_mcp_auth` is in `mcp/auth.py`, not `core/auth.py`.
 
 **Solution:**
+
 ```python
 # ❌ WRONG
 from ...core.auth import require_mcp_auth
@@ -921,10 +942,11 @@ from ...mcp.auth import require_mcp_auth
 ```
 
 **Module Locations:**
+
 - `core/auth.py` - Application authentication (MultiAuthHandler, AuthenticationError)
 - `mcp/auth.py` - MCP tool authorization (require_mcp_auth decorator, AuditLogger)
 
----
+______________________________________________________________________
 
 ### Issue 4: Tools not accessible after server start
 
@@ -933,6 +955,7 @@ from ...mcp.auth import require_mcp_auth
 **Cause:** Tool registration not called or failed silently.
 
 **Solution:**
+
 ```python
 # Add debug logging to tool registration
 def _register_tools(self):
@@ -951,6 +974,7 @@ def _register_tools(self):
 ```
 
 **Verification:**
+
 ```bash
 # Start server with verbose logging
 RUST_LOG=debug python -m mahavishnu mcp start
@@ -959,11 +983,12 @@ RUST_LOG=debug python -m mahavishnu mcp start
 grep "tools registered" /tmp/mcp-mahavishnu.log
 ```
 
----
+______________________________________________________________________
 
 ### Issue 5: Port already in use
 
 **Symptom:**
+
 ```
 OSError: [Errno 48] Address already in use
 ```
@@ -971,6 +996,7 @@ OSError: [Errno 48] Address already in use
 **Cause:** Another process using the port.
 
 **Solution:**
+
 ```bash
 # Find process using port 8680
 lsof -i :8680
@@ -982,7 +1008,7 @@ kill <PID>
 python -m mahavishnu mcp start --port 8681
 ```
 
----
+______________________________________________________________________
 
 ## Best Practices Checklist
 
@@ -1022,7 +1048,7 @@ python -m mahavishnu mcp start --port 8681
 - [ ] **Changelog** - Version history and changes
 - [ ] **Contributing** - Development workflow guide
 
----
+______________________________________________________________________
 
 ## Quick Reference
 
@@ -1086,7 +1112,7 @@ async def your_tool(
         return {"status": "error", "error": str(e)}
 ```
 
----
+______________________________________________________________________
 
 **Document Version:** 1.0.0
 **Last Reviewed:** 2026-02-17

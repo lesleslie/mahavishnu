@@ -6,10 +6,9 @@ frequency metrics, and generate alerts for common blocking patterns.
 
 from __future__ import annotations
 
-import logging
-import re
-from collections import Counter, defaultdict
+from collections import defaultdict
 from datetime import UTC, datetime, timedelta
+import logging
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -233,7 +232,7 @@ class BlockerDetector:
         detected = []
         text_lower = text.lower()
 
-        for category, keywords in self.BLOCKER_CATEGORIES.items():
+        for _category, keywords in self.BLOCKER_CATEGORIES.items():
             for keyword in keywords:
                 if keyword in text_lower:
                     detected.append(keyword)

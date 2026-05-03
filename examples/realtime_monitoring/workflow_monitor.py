@@ -15,22 +15,22 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
+from enum import Enum
 import json
 import signal
 import sys
-from datetime import datetime, UTC
-from enum import Enum
 from typing import Any
 
-import websockets
-from websockets.exceptions import ConnectionClosed
 from rich.console import Console
+from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
+from rich.progress import BarColumn, Progress, TextColumn, TimeRemainingColumn
 from rich.table import Table
 from rich.text import Text
-from rich.layout import Layout
-from rich.progress import Progress, BarColumn, TaskID, TextColumn, TimeRemainingColumn
+import websockets
+from websockets.exceptions import ConnectionClosed
 
 
 class ConnectionStatus(Enum):
@@ -283,13 +283,9 @@ class WorkflowMonitor:
 
             # Color-code event types
             type_color = "white"
-            if "started" in event_type.lower():
+            if "started" in event_type.lower() or "completed" in event_type.lower():
                 type_color = "green"
-            elif "completed" in event_type.lower():
-                type_color = "green"
-            elif "failed" in event_type.lower():
-                type_color = "red"
-            elif "error" in event_type.lower():
+            elif "failed" in event_type.lower() or "error" in event_type.lower():
                 type_color = "red"
             elif "stage" in event_type.lower():
                 type_color = "yellow"
@@ -370,10 +366,10 @@ class WorkflowMonitor:
             response = await asyncio.wait_for(self.websocket.recv(), timeout=5.0)
             data = json.loads(response)
             if data.get("status") == "subscribed":
-                self.console.print(f"[green]Subscription confirmed[/green]")
+                self.console.print("[green]Subscription confirmed[/green]")
             else:
                 self.console.print(f"[yellow]Subscription response: {data}[/yellow]")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self.console.print("[yellow]No subscription confirmation received[/yellow]")
 
     def _add_event(self, event_type: str, details: str) -> None:
@@ -393,7 +389,7 @@ class WorkflowMonitor:
 
         # Trim old events
         if len(self.recent_events) > self.max_events:
-            self.recent_events = self.recent_events[-self.max_events:]
+            self.recent_events = self.recent_events[-self.max_events :]
 
     async def _handle_message(self, message: str) -> None:
         """Handle incoming WebSocket message.
@@ -464,12 +460,14 @@ class WorkflowMonitor:
         result = data.get("result", {})
 
         # Add stage to history
-        self.stages.append({
-            "name": stage_name,
-            "status": "completed",
-            "timestamp": datetime.now(UTC).isoformat(),
-            **result,
-        })
+        self.stages.append(
+            {
+                "name": stage_name,
+                "status": "completed",
+                "timestamp": datetime.now(UTC).isoformat(),
+                **result,
+            }
+        )
 
         self.completed_stages += 1
         self.current_stage = stage_name
@@ -530,7 +528,7 @@ class WorkflowMonitor:
                         await self._handle_message(message)
                         self._update_layout()
 
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         # Update layout periodically
                         self._update_layout()
                         continue

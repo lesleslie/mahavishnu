@@ -13,8 +13,6 @@ Tests cover:
 - Singleton functions (get_health_monitor, initialize_health_monitor)
 """
 
-import asyncio
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -26,7 +24,6 @@ from mahavishnu.core.health_integration import (
     get_health_monitor,
     initialize_health_monitor,
 )
-
 
 # ---------------------------------------------------------------------------
 # HealthIntegrationConfig
@@ -327,17 +324,23 @@ class TestHandleHealthStateChange:
     async def test_broadcasts_when_configured(self):
         ws = MagicMock()
         ws.broadcast_to_room = AsyncMock()
-        cfg = HealthIntegrationConfig(broadcast_changes=True, persist_to_storage=False, update_router_preferences=False)
+        cfg = HealthIntegrationConfig(
+            broadcast_changes=True, persist_to_storage=False, update_router_preferences=False
+        )
         monitor = AdapterHealthMonitor(registry={}, websocket_server=ws, config=cfg)
         state = AdapterHealthState(adapter_name="a")
         state.update({"status": "unhealthy"}, cfg)
-        with patch("mahavishnu.core.health_integration.WebSocketProtocol", create=True) as mock_proto:
+        with patch(
+            "mahavishnu.core.health_integration.WebSocketProtocol", create=True
+        ) as mock_proto:
             mock_proto.create_event = MagicMock(return_value={"event": "data"})
             await monitor._handle_health_state_change("a", True, state)
             ws.broadcast_to_room.assert_called_once()
 
     async def test_no_broadcast_when_disabled(self):
-        cfg = HealthIntegrationConfig(broadcast_changes=False, persist_to_storage=False, update_router_preferences=False)
+        cfg = HealthIntegrationConfig(
+            broadcast_changes=False, persist_to_storage=False, update_router_preferences=False
+        )
         monitor = AdapterHealthMonitor(registry={}, config=cfg)
         state = AdapterHealthState(adapter_name="a")
         # Should not raise even with no websocket
@@ -349,9 +352,11 @@ class TestHandleHealthStateChange:
         cfg = HealthIntegrationConfig(persist_to_storage=False, update_router_preferences=False)
         monitor = AdapterHealthMonitor(registry={}, alert_manager=alert_mgr, config=cfg)
         state = AdapterHealthState(adapter_name="a", is_healthy=False)
-        with patch("mahavishnu.core.health_integration.Alert", create=True), \
-             patch("mahavishnu.core.health_integration.AlertSeverity", create=True), \
-             patch("mahavishnu.core.health_integration.AlertType", create=True):
+        with (
+            patch("mahavishnu.core.health_integration.Alert", create=True),
+            patch("mahavishnu.core.health_integration.AlertSeverity", create=True),
+            patch("mahavishnu.core.health_integration.AlertType", create=True),
+        ):
             await monitor._handle_health_state_change("a", True, state)
 
     async def test_no_alert_on_recovery(self):
@@ -430,6 +435,7 @@ class TestPeriodicChecks:
 
     async def test_start_twice_warns(self, caplog):
         import logging
+
         monitor = AdapterHealthMonitor(
             registry={},
             config=HealthIntegrationConfig(check_interval_seconds=600),
@@ -467,6 +473,7 @@ class TestPeriodicChecks:
 class TestSingleton:
     def test_get_raises_when_not_initialized(self):
         import mahavishnu.core.health_integration as mod
+
         original = mod._health_monitor
         mod._health_monitor = None
         try:
@@ -477,6 +484,7 @@ class TestSingleton:
 
     def test_get_returns_instance(self):
         import mahavishnu.core.health_integration as mod
+
         mock_instance = MagicMock(spec=AdapterHealthMonitor)
         original = mod._health_monitor
         mod._health_monitor = mock_instance
@@ -489,6 +497,7 @@ class TestSingleton:
     @pytest.mark.asyncio
     async def test_initialize_creates_and_starts(self):
         import mahavishnu.core.health_integration as mod
+
         original = mod._health_monitor
         mod._health_monitor = None
         try:
@@ -506,6 +515,7 @@ class TestSingleton:
     @pytest.mark.asyncio
     async def test_initialize_without_auto_start(self):
         import mahavishnu.core.health_integration as mod
+
         original = mod._health_monitor
         mod._health_monitor = None
         try:

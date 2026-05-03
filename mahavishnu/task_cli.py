@@ -26,18 +26,15 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import json
+from datetime import datetime
 import logging
 import os
 import re
-from datetime import datetime
-from pathlib import Path
-from typing import Any
 
 import click
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.table import Table
 
 # Note: These imports would work in production but may need mocking in tests
 # from mahavishnu.core.task_store import TaskStore, TaskCreate, TaskUpdate, TaskStatus, TaskPriority, TaskListFilter
@@ -189,9 +186,8 @@ def task_create(
     Example:
         mahavishnu task create "Fix login bug" -r session-buddy -p high -t bug -t urgent
     """
-    from mahavishnu.core.task_store import TaskCreate, TaskPriority, TaskStatus
     from mahavishnu.core.database import get_database
-    from mahavishnu.core.task_store import TaskStore
+    from mahavishnu.core.task_store import TaskCreate, TaskPriority, TaskStatus, TaskStore
 
     async def _create() -> None:
         db = await get_database()
@@ -299,9 +295,8 @@ def task_list(
     Example:
         mahavishnu task list -r mahavishnu -s in_progress -p high
     """
-    from mahavishnu.core.task_store import TaskListFilter, TaskStatus, TaskPriority
     from mahavishnu.core.database import get_database
-    from mahavishnu.core.task_store import TaskStore
+    from mahavishnu.core.task_store import TaskListFilter, TaskPriority, TaskStatus, TaskStore
 
     async def _list() -> None:
         db = await get_database()
@@ -415,9 +410,8 @@ def task_update(
     Example:
         mahavishnu task update task-123 -s completed -p high
     """
-    from mahavishnu.core.task_store import TaskUpdate, TaskStatus, TaskPriority
     from mahavishnu.core.database import get_database
-    from mahavishnu.core.task_store import TaskStore
+    from mahavishnu.core.task_store import TaskPriority, TaskStatus, TaskStore, TaskUpdate
 
     async def _update() -> None:
         db = await get_database()
@@ -472,10 +466,9 @@ def task_delete(task_id: str, force: bool) -> None:
         db = await get_database()
         store = TaskStore(db)
 
-        if not force:
-            if not click.confirm(f"Delete task {task_id}?"):
-                console.print("[yellow]Cancelled[/]")
-                return
+        if not force and not click.confirm(f"Delete task {task_id}?"):
+            console.print("[yellow]Cancelled[/]")
+            return
 
         await store.delete(task_id)
         console.print(f"[green]Deleted task:[/] {task_id}")
@@ -497,9 +490,8 @@ def task_status(task_id: str, status: str) -> None:
     Example:
         mahavishnu task status task-123 completed
     """
-    from mahavishnu.core.task_store import TaskUpdate, TaskStatus
     from mahavishnu.core.database import get_database
-    from mahavishnu.core.task_store import TaskStore
+    from mahavishnu.core.task_store import TaskStatus, TaskStore, TaskUpdate
 
     async def _status() -> None:
         db = await get_database()

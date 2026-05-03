@@ -12,19 +12,20 @@ This module provides extensive test coverage for:
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 import json
+from pathlib import Path
 import tarfile
 import tempfile
-from pathlib import Path
-from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from mahavishnu.core.backup_recovery import (
+    BackupAndRecoveryCLI,
     BackupInfo,
     BackupManager,
     DisasterRecoveryManager,
-    BackupAndRecoveryCLI,
 )
 
 
@@ -287,7 +288,7 @@ class TestBackupManager:
     @pytest.mark.asyncio
     async def test_list_backups_empty(self, backup_manager):
         """Test list_backups when no backups exist."""
-        with patch.object(backup_manager, 'backup_dir', Path(tempfile.mkdtemp())):
+        with patch.object(backup_manager, "backup_dir", Path(tempfile.mkdtemp())):
             backups = await backup_manager.list_backups()
             assert backups == []
 
@@ -317,10 +318,13 @@ class TestBackupManager:
         """Test that cleanup respects retention policy."""
         # This is a difficult test to implement without creating actual old backups
         # We'll just verify the method is called
-        with patch.object(backup_manager, '_cleanup_old_backups', new_callable=AsyncMock) as mock_cleanup:
+        with patch.object(
+            backup_manager, "_cleanup_old_backups", new_callable=AsyncMock
+        ) as mock_cleanup:
             await backup_manager.create_backup()
             # Give some time for async cleanup
             import asyncio
+
             await asyncio.sleep(0.1)
 
             # Cleanup should have been called
@@ -378,42 +382,41 @@ class TestDisasterRecoveryManager:
     async def test_run_disaster_recovery_check_healthy(self, recovery_manager):
         """Test disaster recovery check with healthy system."""
         # Mock backups
-        with patch.object(
-            recovery_manager.backup_manager,
-            'list_backups',
-            new_callable=AsyncMock,
-            return_value=[
-                BackupInfo(
-                    backup_id="backup_recent",
-                    timestamp=datetime.now(),
-                    size_bytes=1024,
-                    location="/backups/backup.tar.gz",
-                    status="available",
-                    files_backed_up=10,
-                    checksum="abc123",
-                )
-            ]
-        ):
-            with patch.object(
+        with (
+            patch.object(
                 recovery_manager.backup_manager,
-                'get_backup_info',
+                "list_backups",
                 new_callable=AsyncMock,
-                return_value=MagicMock()
-            ):
-                results = await recovery_manager.run_disaster_recovery_check()
+                return_value=[
+                    BackupInfo(
+                        backup_id="backup_recent",
+                        timestamp=datetime.now(),
+                        size_bytes=1024,
+                        location="/backups/backup.tar.gz",
+                        status="available",
+                        files_backed_up=10,
+                        checksum="abc123",
+                    )
+                ],
+            ),
+            patch.object(
+                recovery_manager.backup_manager,
+                "get_backup_info",
+                new_callable=AsyncMock,
+                return_value=MagicMock(),
+            ),
+        ):
+            results = await recovery_manager.run_disaster_recovery_check()
 
-                assert results["status"] == "healthy"
-                assert "checks" in results
-                assert "backups_available" in results["checks"]
+            assert results["status"] == "healthy"
+            assert "checks" in results
+            assert "backups_available" in results["checks"]
 
     @pytest.mark.asyncio
     async def test_run_disaster_recovery_check_no_backups(self, recovery_manager):
         """Test disaster recovery check with no backups."""
         with patch.object(
-            recovery_manager.backup_manager,
-            'list_backups',
-            new_callable=AsyncMock,
-            return_value=[]
+            recovery_manager.backup_manager, "list_backups", new_callable=AsyncMock, return_value=[]
         ):
             results = await recovery_manager.run_disaster_recovery_check()
 
@@ -428,7 +431,7 @@ class TestDisasterRecoveryManager:
 
         with patch.object(
             recovery_manager.backup_manager,
-            'list_backups',
+            "list_backups",
             new_callable=AsyncMock,
             return_value=[
                 BackupInfo(
@@ -440,7 +443,7 @@ class TestDisasterRecoveryManager:
                     files_backed_up=10,
                     checksum="abc123",
                 )
-            ]
+            ],
         ):
             results = await recovery_manager.run_disaster_recovery_check()
 
@@ -450,19 +453,21 @@ class TestDisasterRecoveryManager:
     @pytest.mark.asyncio
     async def test_initiate_disaster_recovery_with_backup_id(self, recovery_manager):
         """Test disaster recovery with specific backup ID."""
-        with patch.object(
-            recovery_manager.backup_manager,
-            'restore_backup',
-            new_callable=AsyncMock,
-            return_value=True
+        with (
+            patch.object(
+                recovery_manager.backup_manager,
+                "restore_backup",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
+            patch.object(recovery_manager, "_restart_services", new_callable=AsyncMock),
         ):
-            with patch.object(recovery_manager, '_restart_services', new_callable=AsyncMock):
-                result = await recovery_manager.initiate_disaster_recovery(
-                    backup_id="backup_20250101_120000"
-                )
+            result = await recovery_manager.initiate_disaster_recovery(
+                backup_id="backup_20250101_120000"
+            )
 
-                assert result["status"] == "success"
-                assert "backup_20250101_120000" in result["backup_used"]
+            assert result["status"] == "success"
+            assert "backup_20250101_120000" in result["backup_used"]
 
     @pytest.mark.asyncio
     async def test_initiate_disaster_recovery_without_backup_id(self, recovery_manager):
@@ -477,32 +482,31 @@ class TestDisasterRecoveryManager:
             checksum="abc123",
         )
 
-        with patch.object(
-            recovery_manager.backup_manager,
-            'list_backups',
-            new_callable=AsyncMock,
-            return_value=[latest_backup]
-        ):
-            with patch.object(
+        with (
+            patch.object(
                 recovery_manager.backup_manager,
-                'restore_backup',
+                "list_backups",
                 new_callable=AsyncMock,
-                return_value=True
-            ):
-                with patch.object(recovery_manager, '_restart_services', new_callable=AsyncMock):
-                    result = await recovery_manager.initiate_disaster_recovery()
+                return_value=[latest_backup],
+            ),
+            patch.object(
+                recovery_manager.backup_manager,
+                "restore_backup",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
+            patch.object(recovery_manager, "_restart_services", new_callable=AsyncMock),
+        ):
+            result = await recovery_manager.initiate_disaster_recovery()
 
-                    assert result["status"] == "success"
-                    assert result["backup_used"] == "backup_latest"
+            assert result["status"] == "success"
+            assert result["backup_used"] == "backup_latest"
 
     @pytest.mark.asyncio
     async def test_initiate_disaster_recovery_no_backups_available(self, recovery_manager):
         """Test disaster recovery fails when no backups available."""
         with patch.object(
-            recovery_manager.backup_manager,
-            'list_backups',
-            new_callable=AsyncMock,
-            return_value=[]
+            recovery_manager.backup_manager, "list_backups", new_callable=AsyncMock, return_value=[]
         ):
             result = await recovery_manager.initiate_disaster_recovery()
 
@@ -512,31 +516,33 @@ class TestDisasterRecoveryManager:
     @pytest.mark.asyncio
     async def test_initiate_disaster_recovery_restore_fails(self, recovery_manager):
         """Test disaster recovery when restore fails."""
-        with patch.object(
-            recovery_manager.backup_manager,
-            'list_backups',
-            new_callable=AsyncMock,
-            return_value=[
-                BackupInfo(
-                    backup_id="backup_test",
-                    timestamp=datetime.now(),
-                    size_bytes=1024,
-                    location="/backups/test.tar.gz",
-                    status="available",
-                    files_backed_up=10,
-                    checksum="abc123",
-                )
-            ]
-        ):
-            with patch.object(
+        with (
+            patch.object(
                 recovery_manager.backup_manager,
-                'restore_backup',
+                "list_backups",
                 new_callable=AsyncMock,
-                return_value=False
-            ):
-                result = await recovery_manager.initiate_disaster_recovery()
+                return_value=[
+                    BackupInfo(
+                        backup_id="backup_test",
+                        timestamp=datetime.now(),
+                        size_bytes=1024,
+                        location="/backups/test.tar.gz",
+                        status="available",
+                        files_backed_up=10,
+                        checksum="abc123",
+                    )
+                ],
+            ),
+            patch.object(
+                recovery_manager.backup_manager,
+                "restore_backup",
+                new_callable=AsyncMock,
+                return_value=False,
+            ),
+        ):
+            result = await recovery_manager.initiate_disaster_recovery()
 
-                assert result["status"] == "fail"
+            assert result["status"] == "fail"
 
     @pytest.mark.asyncio
     async def test_get_recovery_procedures(self, recovery_manager):
@@ -603,10 +609,7 @@ class TestBackupAndRecoveryCLI:
         )
 
         with patch.object(
-            cli.backup_manager,
-            'create_backup',
-            new_callable=AsyncMock,
-            return_value=backup_info
+            cli.backup_manager, "create_backup", new_callable=AsyncMock, return_value=backup_info
         ):
             result = await cli.create_backup()
 
@@ -620,9 +623,9 @@ class TestBackupAndRecoveryCLI:
         """Test backup creation error handling via CLI."""
         with patch.object(
             cli.backup_manager,
-            'create_backup',
+            "create_backup",
             new_callable=AsyncMock,
-            side_effect=Exception("Backup failed")
+            side_effect=Exception("Backup failed"),
         ):
             result = await cli.create_backup()
 
@@ -654,10 +657,7 @@ class TestBackupAndRecoveryCLI:
         ]
 
         with patch.object(
-            cli.backup_manager,
-            'list_backups',
-            new_callable=AsyncMock,
-            return_value=backups
+            cli.backup_manager, "list_backups", new_callable=AsyncMock, return_value=backups
         ):
             result = await cli.list_backups()
 
@@ -669,10 +669,7 @@ class TestBackupAndRecoveryCLI:
     async def test_restore_backup_success(self, cli):
         """Test successful backup restore via CLI."""
         with patch.object(
-            cli.backup_manager,
-            'restore_backup',
-            new_callable=AsyncMock,
-            return_value=True
+            cli.backup_manager, "restore_backup", new_callable=AsyncMock, return_value=True
         ):
             result = await cli.restore_backup("backup_test")
 
@@ -683,10 +680,7 @@ class TestBackupAndRecoveryCLI:
     async def test_restore_backup_failure(self, cli):
         """Test backup restore failure via CLI."""
         with patch.object(
-            cli.backup_manager,
-            'restore_backup',
-            new_callable=AsyncMock,
-            return_value=False
+            cli.backup_manager, "restore_backup", new_callable=AsyncMock, return_value=False
         ):
             result = await cli.restore_backup("backup_test")
 
@@ -695,17 +689,13 @@ class TestBackupAndRecoveryCLI:
     @pytest.mark.asyncio
     async def test_run_disaster_recovery_check(self, cli):
         """Test disaster recovery check via CLI."""
-        check_results = {
-            "timestamp": datetime.now().isoformat(),
-            "checks": {},
-            "status": "healthy"
-        }
+        check_results = {"timestamp": datetime.now().isoformat(), "checks": {}, "status": "healthy"}
 
         with patch.object(
             cli.recovery_manager,
-            'run_disaster_recovery_check',
+            "run_disaster_recovery_check",
             new_callable=AsyncMock,
-            return_value=check_results
+            return_value=check_results,
         ):
             result = await cli.run_disaster_recovery_check()
 
@@ -715,17 +705,13 @@ class TestBackupAndRecoveryCLI:
     @pytest.mark.asyncio
     async def test_get_recovery_procedures(self, cli):
         """Test getting recovery procedures via CLI."""
-        procedures = {
-            "procedures": {
-                "recovery_steps": ["step1", "step2"]
-            }
-        }
+        procedures = {"procedures": {"recovery_steps": ["step1", "step2"]}}
 
         with patch.object(
             cli.recovery_manager,
-            'get_recovery_procedures',
+            "get_recovery_procedures",
             new_callable=AsyncMock,
-            return_value=procedures
+            return_value=procedures,
         ):
             result = await cli.get_recovery_procedures()
 

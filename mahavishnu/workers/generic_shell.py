@@ -8,13 +8,12 @@ import asyncio
 import contextlib
 import json
 import logging
-import re
 import shlex
 from typing import Any
 
 from ..terminal.manager import TerminalManager
 from .base import BaseWorker, WorkerResult, WorkerStatus
-from .registry import WorkerCategory, WorkerConfig, get_worker_config
+from .registry import WorkerConfig, get_worker_config
 
 logger = logging.getLogger(__name__)
 

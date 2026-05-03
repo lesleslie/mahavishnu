@@ -9,20 +9,35 @@ import typer
 # Import backup and recovery CLI
 from .backup_cli import add_backup_commands
 
+# Import configuration validation CLI
+from .cli.config_validator import add_config_inventory_commands, add_config_validation_commands
+
+# Import docs audit CLI
+from .cli.docs_cli import add_docs_commands
+
+# Import events CLI
+from .cli.events import add_events_commands
+
+# Import code indexing CLI
+from .cli.index_cli import add_index_commands
+
+# Import scaffold CLI
+from .cli.scaffold_cli import app as scaffold_app
+
+# Import team CLI
+from .cli.team_cli import add_team_commands
+
 # Import coordination CLI
 from .coordination_cli import add_coordination_commands
-from .core.health_schemas import HealthStatus
 from .core.app import MahavishnuApp
+from .core.health_schemas import HealthStatus
 from .core.subscription_auth import MultiAuthHandler
 
 # Import ecosystem management CLI
 from .ecosystem_cli import add_ecosystem_commands
 
-# Import configuration validation CLI
-from .cli.config_validator import add_config_validation_commands, add_config_inventory_commands
-
-# Import docs audit CLI
-from .cli.docs_cli import add_docs_commands
+# Import content ingestion CLI
+from .ingestion_cli import add_ingestion_commands
 
 # Import metrics CLI
 from .metrics_cli import add_metrics_commands
@@ -33,25 +48,11 @@ from .monitoring_cli import add_monitoring_commands
 # Import production readiness CLI
 from .production_cli import add_production_commands
 
-
-# Import content ingestion CLI
-from .ingestion_cli import add_ingestion_commands
-
 # Import adaptive routing CLI
 from .routing_cli import add_routing_commands
 
 # Import worktree management CLI
 from .worktree_cli import worktree_app
-
-# Import team CLI
-from .cli.team_cli import add_team_commands
-
-# Import events CLI
-from .cli.events import add_events_commands
-# Import code indexing CLI
-from .cli.index_cli import add_index_commands
-# Import scaffold CLI
-from .cli.scaffold_cli import app as scaffold_app
 
 # Import comprehensive help system
 # NOTE: help_cli uses Click which is incompatible with Typer's add_typer()
@@ -97,7 +98,9 @@ def workflow_sweep(
 def workflow_quality_check(
     tag: str = typer.Option(..., "--tag", "-t", help="Tag to filter repositories"),
     adapter: str = typer.Option("langgraph", "--adapter", "-a", help="Orchestrator adapter"),
-    repos: list[str] | None = typer.Option(None, "--repo", "-r", help="Explicit repo list (overrides tag)"),
+    repos: list[str] | None = typer.Option(
+        None, "--repo", "-r", help="Explicit repo list (overrides tag)"
+    ),
 ):
     """Run quality assurance evaluation across repositories."""
     result = asyncio.run(
@@ -123,7 +126,9 @@ def workflow_fix(
     pool_id: str = typer.Option(..., "--pool", "-p", help="Worker pool ID to use"),
     issue_id: str = typer.Option(..., "--issue", "-i", help="Coordination issue ID to fix"),
     description: str = typer.Option("", "--desc", "-d", help="Issue description for the AI worker"),
-    files: list[str] | None = typer.Option(None, "--file", "-f", help="Files to include in context"),
+    files: list[str] | None = typer.Option(
+        None, "--file", "-f", help="Files to include in context"
+    ),
 ):
     """Execute a fix via worker pool with quality gate validation."""
     result = asyncio.run(
@@ -139,9 +144,16 @@ def workflow_fix(
 
 @workflows_app.command("review")
 def workflow_review(
-    scope: str = typer.Option("critical", "--scope", "-s", help="Review scope: critical, security, performance, quality, all"),
+    scope: str = typer.Option(
+        "critical",
+        "--scope",
+        "-s",
+        help="Review scope: critical, security, performance, quality, all",
+    ),
     auto_fix: bool = typer.Option(False, "--fix", help="Auto-fix safe, deterministic issues"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Preview findings without applying fixes"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Preview findings without applying fixes"
+    ),
 ):
     """Run automated code review with optional auto-fix."""
     result = asyncio.run(_async_review_and_fix(scope, auto_fix, dry_run))
@@ -273,7 +285,9 @@ async def _async_review_and_fix(scope: str, auto_fix: bool, dry_run: bool) -> di
 
     maha_app = MahavishnuApp()
     tools = SelfImprovementTools(maha_app)
-    typer.echo(f"Running {'dry-run ' if dry_run else ''}review (scope={scope}, auto_fix={auto_fix})...")
+    typer.echo(
+        f"Running {'dry-run ' if dry_run else ''}review (scope={scope}, auto_fix={auto_fix})..."
+    )
     result = await tools.review_and_fix(
         scope=ReviewScope(scope),
         auto_fix=auto_fix,
@@ -302,9 +316,7 @@ async def _async_adapter_list(domain: str | None, healthy_only: bool) -> dict:
     }
 
 
-async def _async_adapter_resolve(
-    task_type: str, capabilities: list[str], domain: str
-) -> dict:
+async def _async_adapter_resolve(task_type: str, capabilities: list[str], domain: str) -> dict:
     """Resolve adapter via the canonical routing path."""
     from .core.task_router import TaskRouter, TaskType
 
@@ -312,7 +324,10 @@ async def _async_adapter_resolve(
     try:
         task = TaskType(task_type)
     except ValueError:
-        typer.echo(f"Unknown task type: {task_type}. Valid: {', '.join(t.value for t in TaskType)}", err=True)
+        typer.echo(
+            f"Unknown task type: {task_type}. Valid: {', '.join(t.value for t in TaskType)}",
+            err=True,
+        )
         raise typer.Exit(code=1)
 
     result = await router.route(task_type=task, additional_capabilities=capabilities, domain=domain)

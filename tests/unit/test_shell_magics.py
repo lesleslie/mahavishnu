@@ -1,7 +1,7 @@
 """Unit tests for Mahavishnu IPython magic commands."""
 
 import asyncio
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -27,11 +27,13 @@ def magics(mock_shell):
 @pytest.fixture
 def app():
     app = MagicMock()
-    app.get_all_repos = MagicMock(return_value=[
-        {"path": "/tmp/repo1", "tags": ["python", "backend"], "description": "Repo 1"},
-        {"path": "/tmp/repo2", "tags": ["go", "backend"], "description": "Repo 2"},
-        {"path": "/tmp/repo3", "tags": ["python", "frontend"], "description": "Repo 3"},
-    ])
+    app.get_all_repos = MagicMock(
+        return_value=[
+            {"path": "/tmp/repo1", "tags": ["python", "backend"], "description": "Repo 1"},
+            {"path": "/tmp/repo2", "tags": ["go", "backend"], "description": "Repo 2"},
+            {"path": "/tmp/repo3", "tags": ["python", "frontend"], "description": "Repo 3"},
+        ]
+    )
     return app
 
 
@@ -168,9 +170,11 @@ class TestReposMagic:
 
     def test_repos_repo_missing_tags_key(self, magics, app):
         """Test that repos handles repos without tags key gracefully."""
-        app.get_all_repos = MagicMock(return_value=[
-            {"path": "/tmp/repo1", "description": "Repo 1"},
-        ])
+        app.get_all_repos = MagicMock(
+            return_value=[
+                {"path": "/tmp/repo1", "description": "Repo 1"},
+            ]
+        )
         magics.set_app(app)
         magics.repos("python")
         repos_arg = magics.repo_formatter.format_repos.call_args[0][0]
@@ -248,14 +252,13 @@ class TestMagicRegistration:
     def test_repos_is_line_magic(self):
         """Test that repos is registered as a line magic."""
         assert hasattr(MahavishnuMagics, "repos")
-        assert callable(getattr(MahavishnuMagics, "repos"))
+        assert callable(MahavishnuMagics.repos)
 
     def test_workflow_is_line_magic(self):
         """Test that workflow is registered as a line magic."""
         assert hasattr(MahavishnuMagics, "workflow")
-        assert callable(getattr(MahavishnuMagics, "workflow"))
+        assert callable(MahavishnuMagics.workflow)
 
     def test_magics_class_decorator(self):
         """Test that MahavishnuMagics is decorated with magics_class."""
-        from IPython.core.magic import magics_class
         assert hasattr(MahavishnuMagics, "__wrapped__") or issubclass(MahavishnuMagics, object)

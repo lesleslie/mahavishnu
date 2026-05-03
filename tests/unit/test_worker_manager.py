@@ -7,7 +7,6 @@ debug monitor launching, and health checks.
 
 import asyncio
 import logging
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -152,9 +151,10 @@ class TestCreateWorker:
             category=WorkerCategory.CONTAINER,
         )
 
-        with patch(
-            "mahavishnu.workers.registry.get_worker_config", return_value=config
-        ), patch("mahavishnu.workers.manager.ContainerWorker") as MockCW:
+        with (
+            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
+            patch("mahavishnu.workers.manager.ContainerWorker") as MockCW,
+        ):
             worker = mgr._create_worker("container")
             MockCW.assert_called_once_with(
                 runtime="docker",
@@ -174,9 +174,10 @@ class TestCreateWorker:
             category=WorkerCategory.CONTAINER,
         )
 
-        with patch(
-            "mahavishnu.workers.registry.get_worker_config", return_value=config
-        ), patch("mahavishnu.workers.manager.ContainerWorker") as MockCW:
+        with (
+            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
+            patch("mahavishnu.workers.manager.ContainerWorker") as MockCW,
+        ):
             mgr._create_worker("container-executor", runtime="podman", image="alpine")
             MockCW.assert_called_once_with(
                 runtime="podman",
@@ -195,11 +196,10 @@ class TestCreateWorker:
             category=WorkerCategory.SHELL,
         )
 
-        with patch(
-            "mahavishnu.workers.registry.get_worker_config", return_value=config
-        ), patch(
-            "mahavishnu.workers.generic_shell.GenericShellWorker"
-        ) as MockGSH:
+        with (
+            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
+            patch("mahavishnu.workers.generic_shell.GenericShellWorker") as MockGSH,
+        ):
             worker = mgr._create_worker("terminal-shell")
             MockGSH.assert_called_once()
             call_kwargs = MockGSH.call_args[1]
@@ -219,11 +219,10 @@ class TestCreateWorker:
             category=WorkerCategory.AI_ASSISTANT,
         )
 
-        with patch(
-            "mahavishnu.workers.registry.get_worker_config", return_value=config
-        ), patch(
-            "mahavishnu.workers.generic_shell.GenericShellWorker"
-        ) as MockGSH:
+        with (
+            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
+            patch("mahavishnu.workers.generic_shell.GenericShellWorker") as MockGSH,
+        ):
             worker = mgr._create_worker("terminal-qwen")
             MockGSH.assert_called_once()
             assert worker is not None
@@ -239,11 +238,10 @@ class TestCreateWorker:
             category=WorkerCategory.REMOTE,
         )
 
-        with patch(
-            "mahavishnu.workers.registry.get_worker_config", return_value=config
-        ), patch(
-            "mahavishnu.workers.generic_shell.GenericShellWorker"
-        ) as MockGSH:
+        with (
+            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
+            patch("mahavishnu.workers.generic_shell.GenericShellWorker") as MockGSH,
+        ):
             worker = mgr._create_worker("terminal-ssh", host="remotehost")
             MockGSH.assert_called_once()
             call_kwargs = MockGSH.call_args[1]
@@ -261,9 +259,10 @@ class TestCreateWorker:
             category=WorkerCategory.APPLICATION,
         )
 
-        with patch(
-            "mahavishnu.workers.registry.get_worker_config", return_value=config
-        ), pytest.raises(ValueError, match="requires MCP client"):
+        with (
+            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
+            pytest.raises(ValueError, match="requires MCP client"),
+        ):
             mgr._create_worker("application-gimp")
 
     def test_application_worker_created_with_mcp_client(self):
@@ -278,11 +277,10 @@ class TestCreateWorker:
             category=WorkerCategory.APPLICATION,
         )
 
-        with patch(
-            "mahavishnu.workers.registry.get_worker_config", return_value=config
-        ), patch(
-            "mahavishnu.workers.application.ApplicationWorker"
-        ) as MockAW:
+        with (
+            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
+            patch("mahavishnu.workers.application.ApplicationWorker") as MockAW,
+        ):
             worker = mgr._create_worker("application-gimp")
             MockAW.assert_called_once()
             call_kwargs = MockAW.call_args[1]
@@ -302,15 +300,18 @@ class TestCreateWorker:
             default_timeout=300,
         )
 
-        with patch(
-            "mahavishnu.workers.registry.get_worker_config", return_value=config
-        ), patch(
-            "mahavishnu.workers.openclaw_gateway.HTTPOpenClawGatewayClient", create=True
-        ) as MockClient, patch(
-            "mahavishnu.workers.openclaw_gateway.OpenClawGatewayConfig", create=True
-        ) as MockConfig, patch(
-            "mahavishnu.workers.openclaw_gateway.OpenClawGatewayWorker", create=True
-        ) as MockWorker:
+        with (
+            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
+            patch(
+                "mahavishnu.workers.openclaw_gateway.HTTPOpenClawGatewayClient", create=True
+            ) as MockClient,
+            patch(
+                "mahavishnu.workers.openclaw_gateway.OpenClawGatewayConfig", create=True
+            ) as MockConfig,
+            patch(
+                "mahavishnu.workers.openclaw_gateway.OpenClawGatewayWorker", create=True
+            ) as MockWorker,
+        ):
             worker = mgr._create_worker("gateway-openclaw")
             MockClient.assert_called_once()
             MockConfig.assert_called_once()
@@ -328,9 +329,10 @@ class TestCreateWorker:
             category=WorkerCategory.GATEWAY,
         )
 
-        with patch(
-            "mahavishnu.workers.registry.get_worker_config", return_value=config
-        ), pytest.raises(ValueError, match="Unknown gateway worker type"):
+        with (
+            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
+            pytest.raises(ValueError, match="Unknown gateway worker type"),
+        ):
             mgr._create_worker("gateway-unknown")
 
     def test_in_process_nanobot_worker_created(self):
@@ -345,11 +347,10 @@ class TestCreateWorker:
             category=WorkerCategory.IN_PROCESS,
         )
 
-        with patch(
-            "mahavishnu.workers.registry.get_worker_config", return_value=config
-        ), patch(
-            "mahavishnu.workers.nanobot_worker.NanobotWorker", create=True
-        ) as MockNW:
+        with (
+            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
+            patch("mahavishnu.workers.nanobot_worker.NanobotWorker", create=True) as MockNW,
+        ):
             worker = mgr._create_worker("in-process-nanobot")
             MockNW.assert_called_once()
             call_kwargs = MockNW.call_args[1]
@@ -367,9 +368,10 @@ class TestCreateWorker:
             category=WorkerCategory.IN_PROCESS,
         )
 
-        with patch(
-            "mahavishnu.workers.registry.get_worker_config", return_value=config
-        ), pytest.raises(ValueError, match="Unknown in-process worker"):
+        with (
+            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
+            pytest.raises(ValueError, match="Unknown in-process worker"),
+        ):
             mgr._create_worker("in-process-unknown")
 
     def test_fallback_creates_generic_shell_worker(self):
@@ -384,11 +386,10 @@ class TestCreateWorker:
             category=WorkerCategory.SHELL,
         )
 
-        with patch(
-            "mahavishnu.workers.registry.get_worker_config", return_value=custom_config
-        ), patch(
-            "mahavishnu.workers.generic_shell.GenericShellWorker"
-        ) as MockGSH:
+        with (
+            patch("mahavishnu.workers.registry.get_worker_config", return_value=custom_config),
+            patch("mahavishnu.workers.generic_shell.GenericShellWorker") as MockGSH,
+        ):
             worker = mgr._create_worker("custom-type")
             MockGSH.assert_called_once()
             assert worker is not None
@@ -416,9 +417,10 @@ class TestSpawnWorkers:
         mgr = WorkerManager(terminal_manager=tm)
         workers = [_make_worker(worker_id=f"w-{i}") for i in range(3)]
 
-        with patch.object(
-            mgr, "_create_worker", side_effect=workers
-        ), patch.object(mgr, "_launch_debug_monitor", new_callable=AsyncMock):
+        with (
+            patch.object(mgr, "_create_worker", side_effect=workers),
+            patch.object(mgr, "_launch_debug_monitor", new_callable=AsyncMock),
+        ):
             ids = await mgr.spawn_workers("terminal-qwen", 3)
             assert ids == ["w-0", "w-1", "w-2"]
             assert len(mgr._workers) == 3
@@ -430,11 +432,10 @@ class TestSpawnWorkers:
         mgr = WorkerManager(terminal_manager=tm, debug_mode=True)
         worker = _make_worker()
 
-        with patch.object(
-            mgr, "_create_worker", return_value=worker
-        ), patch.object(
-            mgr, "_launch_debug_monitor", new_callable=AsyncMock
-        ) as mock_debug:
+        with (
+            patch.object(mgr, "_create_worker", return_value=worker),
+            patch.object(mgr, "_launch_debug_monitor", new_callable=AsyncMock) as mock_debug,
+        ):
             await mgr.spawn_workers("terminal-qwen", 1)
             mock_debug.assert_called_once()
 
@@ -445,11 +446,10 @@ class TestSpawnWorkers:
         mgr = WorkerManager(terminal_manager=tm, debug_mode=False)
         worker = _make_worker()
 
-        with patch.object(
-            mgr, "_create_worker", return_value=worker
-        ), patch.object(
-            mgr, "_launch_debug_monitor", new_callable=AsyncMock
-        ) as mock_debug:
+        with (
+            patch.object(mgr, "_create_worker", return_value=worker),
+            patch.object(mgr, "_launch_debug_monitor", new_callable=AsyncMock) as mock_debug,
+        ):
             await mgr.spawn_workers("terminal-qwen", 1)
             mock_debug.assert_not_called()
 
@@ -570,9 +570,7 @@ class TestExecuteBatch:
             [{"prompt": "a"}, {"prompt": "b"}, {"prompt": "c"}],
         )
         assert len(results) == 3
-        assert all(
-            results[f"w-{i}"].output == f"result-{i}" for i in range(3)
-        )
+        assert all(results[f"w-{i}"].output == f"result-{i}" for i in range(3))
 
     @pytest.mark.asyncio
     async def test_execute_batch_length_mismatch_raises(self):
@@ -626,9 +624,7 @@ class TestMonitorWorkers:
         tm = _make_terminal_manager()
         mgr = WorkerManager(terminal_manager=tm)
 
-        statuses = await mgr.monitor_workers(
-            worker_ids=["nonexistent"], interval=0
-        )
+        statuses = await mgr.monitor_workers(worker_ids=["nonexistent"], interval=0)
         assert statuses == {}
 
     @pytest.mark.asyncio

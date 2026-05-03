@@ -37,14 +37,12 @@ async def main():
         metadata={
             "prompt": "Write a Python function",
             "adapter": "llamaindex",
-        }
+        },
     )
 
     # Example: Broadcast worker status
     await websocket_server.broadcast_worker_status_changed(
-        worker_id="worker_001",
-        status="busy",
-        pool_id="pool_local"
+        worker_id="worker_001", status="busy", pool_id="pool_local"
     )
 
     # Run forever

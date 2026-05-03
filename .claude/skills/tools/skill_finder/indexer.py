@@ -1,20 +1,20 @@
 """Search index builder and manager for skill discovery."""
 
+from dataclasses import dataclass, field
 import json
 from pathlib import Path
-from typing import Dict, List
-from dataclasses import dataclass, field, asdict
 
-from skill_parser import parse_all_skills, build_reverse_references, SkillMetadata
+from skill_parser import SkillMetadata, build_reverse_references, parse_all_skills
 
 
 @dataclass
 class SearchIndex:
     """Search index for fast skill discovery."""
-    skills: Dict[str, SkillMetadata] = field(default_factory=dict)
-    keyword_index: Dict[str, List[str]] = field(default_factory=dict)  # keyword -> skill names
-    system_index: Dict[str, List[str]] = field(default_factory=dict)   # system -> skill names
-    symptom_index: Dict[str, List[str]] = field(default_factory=dict)  # symptom -> skill names
+
+    skills: dict[str, SkillMetadata] = field(default_factory=dict)
+    keyword_index: dict[str, list[str]] = field(default_factory=dict)  # keyword -> skill names
+    system_index: dict[str, list[str]] = field(default_factory=dict)  # system -> skill names
+    symptom_index: dict[str, list[str]] = field(default_factory=dict)  # symptom -> skill names
 
     def to_dict(self) -> dict:
         """Serialize to dictionary for JSON export."""
@@ -29,7 +29,7 @@ class SearchIndex:
     def from_dict(cls, data: dict) -> "SearchIndex":
         """Deserialize from dictionary."""
         # Recreate SkillMetadata objects
-        from skill_parser import SkillMetadata, RelatedSkill
+        from skill_parser import RelatedSkill, SkillMetadata
 
         skills = {}
         for name, skill_dict in data["skills"].items():

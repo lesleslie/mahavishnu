@@ -34,19 +34,18 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
+from dataclasses import dataclass
+from enum import Enum
 import hashlib
 import logging
 import time
-from dataclasses import dataclass
-from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 import httpx
 
 if TYPE_CHECKING:
     from mahavishnu.core.embedding_cache import EmbeddingCache
-    from mahavishnu.core.embeddings import EmbeddingService, EmbeddingProvider
+    from mahavishnu.core.embeddings import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +189,7 @@ class ResilientEmbeddingClient:
         )
 
         # Statistics
-        self._source_counts: dict[EmbeddingSource, int] = {source: 0 for source in EmbeddingSource}
+        self._source_counts: dict[EmbeddingSource, int] = dict.fromkeys(EmbeddingSource, 0)
         self._dimension_mismatches = 0
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -419,7 +418,7 @@ class ResilientEmbeddingClient:
         latency_ms = (time.perf_counter() - start_time) * 1000
         self._source_counts[EmbeddingSource.MOCK] += 1
 
-        logger.warning(f"using_mock_embedding: no other sources available for text")
+        logger.warning("using_mock_embedding: no other sources available for text")
 
         return ResilientEmbeddingResult(
             embedding=embedding,

@@ -5,8 +5,8 @@ data from Crackerjack (git metrics), Session-Buddy (workflow performance),
 and providing cross-project intelligence.
 """
 
-from typing import Any, Dict, List
 from datetime import datetime, timedelta
+from typing import Any
 
 from ...core.permissions import Permission, RBACManager
 from ...mcp.auth import require_mcp_auth
@@ -28,7 +28,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
         require_repo_param="repo_path",
     )
     async def get_git_velocity_dashboard(
-        repo_paths: List[str],
+        repo_paths: list[str],
         days_back: int = 30,
         user_id: str | None = None,
     ) -> dict[str, Any]:
@@ -215,7 +215,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
         except Exception as e:
             return {"status": "error", "error": f"Failed to get cross-project patterns: {str(e)}"}
 
-    async def _query_session_buddy_metrics(app, repo_path: str) -> Dict[str, Any]:
+    async def _query_session_buddy_metrics(app, repo_path: str) -> dict[str, Any]:
         """Query Session-Buddy for workflow performance metrics.
 
         Args:
@@ -234,7 +234,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             # Session-Buddy might not be available or configured
             return {"status": "unavailable", "metrics": {}}
 
-    async def _query_session_buddy_patterns(app, days_back: int) -> List[Dict]:
+    async def _query_session_buddy_patterns(app, days_back: int) -> list[dict]:
         """Query Session-Buddy for workflow patterns.
 
         Args:
@@ -252,7 +252,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
         except Exception:
             return []
 
-    async def _query_quality_patterns(app, days_back: int) -> List[Dict]:
+    async def _query_quality_patterns(app, days_back: int) -> list[dict]:
         """Query Session-Buddy for quality patterns.
 
         Args:
@@ -270,7 +270,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
         except Exception:
             return []
 
-    def _calculate_health_score(stale_prs: int, stale_branches: int, workflow_health: Dict) -> int:
+    def _calculate_health_score(stale_prs: int, stale_branches: int, workflow_health: dict) -> int:
         """Calculate overall repository health score.
 
         Score components:
@@ -322,10 +322,10 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             return "critical"
 
     def _analyze_correlations(
-        git_patterns: List[Dict],
-        workflow_patterns: List[Dict],
-        quality_patterns: List[Dict],
-    ) -> Dict[str, Any]:
+        git_patterns: list[dict],
+        workflow_patterns: list[dict],
+        quality_patterns: list[dict],
+    ) -> dict[str, Any]:
         """Analyze correlations between different pattern types.
 
         Args:
@@ -375,10 +375,10 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
         return correlations
 
     def _generate_insights(
-        git_patterns: List[Dict],
-        workflow_patterns: List[Dict],
-        correlations: List[Dict],
-    ) -> List[str]:
+        git_patterns: list[dict],
+        workflow_patterns: list[dict],
+        correlations: list[dict],
+    ) -> list[str]:
         """Generate actionable insights from pattern analysis.
 
         Args:

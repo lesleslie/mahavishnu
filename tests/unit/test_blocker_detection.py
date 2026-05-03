@@ -9,8 +9,9 @@ Tests cover:
 
 from __future__ import annotations
 
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 
 from mahavishnu.core.blocker_detection import (
     BlockerAlert,
@@ -107,7 +108,9 @@ class TestBlockerDetector:
             task = {
                 "id": f"task-{i}",
                 "title": f"Task blocked by dependency issue {i}",
-                "description": "Waiting for API to be ready" if i < 4 else "Cannot proceed due to error",
+                "description": "Waiting for API to be ready"
+                if i < 4
+                else "Cannot proceed due to error",
                 "status": "blocked",
                 "repository": "test-repo" if i < 5 else "other-repo",
                 "tags": ["backend"] if i % 2 == 0 else ["frontend"],
@@ -116,20 +119,20 @@ class TestBlockerDetector:
 
             # Some tasks have resolution times
             if i < 3:
-                task["blocked_resolved_at"] = (
-                    blocked_at + timedelta(hours=4 + i)
-                ).isoformat()
+                task["blocked_resolved_at"] = (blocked_at + timedelta(hours=4 + i)).isoformat()
 
             tasks.append(task)
 
         # Add some non-blocked tasks
         for i in range(10):
-            tasks.append({
-                "id": f"completed-{i}",
-                "title": f"Completed task {i}",
-                "status": "completed",
-                "repository": "test-repo",
-            })
+            tasks.append(
+                {
+                    "id": f"completed-{i}",
+                    "title": f"Completed task {i}",
+                    "status": "completed",
+                    "repository": "test-repo",
+                }
+            )
 
         return tasks
 
@@ -167,9 +170,7 @@ class TestBlockerDetector:
         assert detector._categorize_keyword("stuck") == "technical"
         assert detector._categorize_keyword("unknown_keyword") == "unknown"
 
-    def test_calculate_metrics(
-        self, detector: BlockerDetector, sample_tasks: list[dict]
-    ) -> None:
+    def test_calculate_metrics(self, detector: BlockerDetector, sample_tasks: list[dict]) -> None:
         """Test metrics calculation."""
         blocked_tasks = [t for t in sample_tasks if t.get("status") == "blocked"]
         patterns, _ = detector.analyze_blockers(sample_tasks)
@@ -187,9 +188,7 @@ class TestBlockerDetector:
         suggestions = detector._get_suggestions("stuck")
         assert len(suggestions) > 0
 
-    def test_generate_alerts(
-        self, detector: BlockerDetector, sample_tasks: list[dict]
-    ) -> None:
+    def test_generate_alerts(self, detector: BlockerDetector, sample_tasks: list[dict]) -> None:
         """Test alert generation."""
         detector.analyze_blockers(sample_tasks)
         alerts = detector.get_alerts()
@@ -228,9 +227,7 @@ class TestBlockerPatterns:
         """Create blocker detector."""
         return BlockerDetector(min_occurrences=2)
 
-    def test_pattern_properties(
-        self, detector: BlockerDetector
-    ) -> None:
+    def test_pattern_properties(self, detector: BlockerDetector) -> None:
         """Test blocker pattern properties."""
         tasks = [
             {
@@ -298,12 +295,14 @@ class TestTrendCalculation:
         for i in range(7):
             blocked_at = now - timedelta(days=i)
             for j in range(i + 1):  # More recent = fewer blockers
-                tasks.append({
-                    "id": f"task-{i}-{j}",
-                    "title": f"Blocked task",
-                    "status": "blocked",
-                    "blocked_at": blocked_at.isoformat(),
-                })
+                tasks.append(
+                    {
+                        "id": f"task-{i}-{j}",
+                        "title": "Blocked task",
+                        "status": "blocked",
+                        "blocked_at": blocked_at.isoformat(),
+                    }
+                )
 
         blocked_tasks = [t for t in tasks if t.get("status") == "blocked"]
         trend = detector._calculate_trend(blocked_tasks)

@@ -16,12 +16,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
-import logging
-import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
+import json
+import logging
+import sys
 from typing import Any
 
 try:
@@ -164,8 +164,7 @@ class CutoverReadinessValidator:
         conn = await self.connect()
         try:
             rows = await conn.fetch(
-                "SELECT schema_name FROM information_schema.schemata "
-                "WHERE schema_name = ANY($1)",
+                "SELECT schema_name FROM information_schema.schemata WHERE schema_name = ANY($1)",
                 self.EXPECTED_SCHEMAS,
             )
             found = {r["schema_name"] for r in rows}
@@ -366,7 +365,6 @@ class CutoverReadinessValidator:
 
     async def check_feature_flags(self) -> CheckResult:
         """Check if feature flags are configured in settings."""
-        import yaml
         from pathlib import Path
 
         settings_path = Path("settings/mahavishnu.yaml")
@@ -528,12 +526,14 @@ Examples:
         help="PostgreSQL connection string",
     )
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Enable verbose output",
     )
     parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["json", "text"],
         default="text",
         help="Output format (default: text)",

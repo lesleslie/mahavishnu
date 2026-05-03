@@ -47,8 +47,8 @@ Keep an integration **external reference only** when the integration:
 Before adding a new worker type, check:
 
 1. Is there a real CLI or service surface?
-2. Does Mahavishnu need to own execution, or just coordinate it?
-3. Would the integration become a duplicate assistant/runtime if embedded?
-4. Can the worker complete deterministically enough for registry-driven orchestration?
+1. Does Mahavishnu need to own execution, or just coordinate it?
+1. Would the integration become a duplicate assistant/runtime if embedded?
+1. Can the worker complete deterministically enough for registry-driven orchestration?
 
 If the answer to #3 is yes, keep it external.

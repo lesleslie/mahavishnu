@@ -171,7 +171,9 @@ async def test_agno_adapter_handles_errors_gracefully():
     adapter = AgnoAdapter(config)
 
     # Mock a repository that raises an error
-    with patch("mahavishnu.engines.agno_adapter_impl.AgnoAdapter._process_single_repo") as mock_process:
+    with patch(
+        "mahavishnu.engines.agno_adapter_impl.AgnoAdapter._process_single_repo"
+    ) as mock_process:
 
         async def side_effect(repo, task):
             return {"repo": repo, "status": "failed", "error": "Test error", "task_id": "test"}

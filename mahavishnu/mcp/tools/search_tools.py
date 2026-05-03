@@ -12,13 +12,14 @@ patterns established in the mahavishnu.mcp.tools module.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from fastmcp import FastMCP
-
-from mahavishnu.core.search import HybridSearchEngine, HybridSearchConfig, HybridSearchResult
 from mahavishnu.core.database import get_database
+from mahavishnu.core.search import HybridSearchConfig, HybridSearchEngine
+
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 

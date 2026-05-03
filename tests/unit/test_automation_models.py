@@ -1,38 +1,29 @@
 """Tests for automation Pydantic models."""
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
+from mahavishnu.automation.base import KeyModifier, MouseButton
 from mahavishnu.automation.models import (
-    OperationType,
-    OperationStatus,
-    AutomationOperation,
     ApplicationOperation,
-    LaunchAppOperation,
-    QuitAppOperation,
-    ActivateAppOperation,
-    ListAppsOperation,
-    WindowOperation,
-    ListWindowsOperation,
-    ActivateWindowOperation,
-    ResizeWindowOperation,
-    MoveWindowOperation,
-    CloseWindowOperation,
-    MenuClickOperation,
-    ListMenusOperation,
-    TypeTextOperation,
-    KeyPressOperation,
+    AutomationConfig,
+    AutomationOperation,
+    AutomationResult,
     ClickOperation,
     DragOperation,
-    ScrollOperation,
+    KeyPressOperation,
+    LaunchAppOperation,
+    MenuClickOperation,
+    MoveWindowOperation,
+    OperationStatus,
+    OperationType,
+    QuitAppOperation,
+    ResizeWindowOperation,
     ScreenshotOperation,
     ScreenshotRegionOperation,
-    GetActiveAppOperation,
-    CheckPermissionsOperation,
-    AutomationResult,
-    AutomationConfig,
+    TypeTextOperation,
+    WindowOperation,
 )
-from mahavishnu.automation.base import KeyModifier, MouseButton
 
 
 class TestOperationType:
@@ -73,7 +64,9 @@ class TestAutomationOperation:
 
 class TestApplicationOperation:
     def test_valid_bundle_id(self):
-        op = ApplicationOperation(operation_type=OperationType.LAUNCH_APP, bundle_id="com.apple.finder")
+        op = ApplicationOperation(
+            operation_type=OperationType.LAUNCH_APP, bundle_id="com.apple.finder"
+        )
         assert op.bundle_id == "com.apple.finder"
 
     def test_wildcard_bundle_id(self):
@@ -89,7 +82,9 @@ class TestApplicationOperation:
             ApplicationOperation(operation_type=OperationType.LAUNCH_APP, bundle_id="finder")
 
     def test_whitespace_stripped(self):
-        op = ApplicationOperation(operation_type=OperationType.LAUNCH_APP, bundle_id="  com.apple.finder  ")
+        op = ApplicationOperation(
+            operation_type=OperationType.LAUNCH_APP, bundle_id="  com.apple.finder  "
+        )
         assert op.bundle_id == "com.apple.finder"
 
 
@@ -121,7 +116,11 @@ class TestWindowOperation:
         assert op.bundle_id is None
 
     def test_with_bundle_id(self):
-        op = WindowOperation(operation_type=OperationType.ACTIVATE_WINDOW, window_id="123", bundle_id="com.apple.finder")
+        op = WindowOperation(
+            operation_type=OperationType.ACTIVATE_WINDOW,
+            window_id="123",
+            bundle_id="com.apple.finder",
+        )
         assert op.bundle_id == "com.apple.finder"
 
     def test_empty_window_id(self):

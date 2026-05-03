@@ -112,20 +112,20 @@ pytest tests/accessibility/ --cov=mahavishnu
 #### Color Blindness Testing
 
 1. Set `NO_COLOR=1` and verify output is still clear
-2. Test with terminal color schemes (light/dark)
-3. Verify success/error states identifiable without color
+1. Test with terminal color schemes (light/dark)
+1. Verify success/error states identifiable without color
 
 #### Screen Reader Testing
 
 1. Use VoiceOver (macOS) or NVDA (Windows) with terminal
-2. Navigate through command output
-3. Verify error messages are clear when read aloud
+1. Navigate through command output
+1. Verify error messages are clear when read aloud
 
 #### Keyboard Testing
 
 1. Complete common workflows using only keyboard
-2. Test Ctrl+C cancellation in various contexts
-3. Verify interactive prompts are navigable
+1. Test Ctrl+C cancellation in various contexts
+1. Verify interactive prompts are navigable
 
 ## WCAG 2.1 Compliance Summary
 
@@ -149,13 +149,13 @@ pytest tests/accessibility/ --cov=mahavishnu
 ### Known Issues
 
 1. Help text examples could be more comprehensive (AAA)
-2. Technical jargon could be better defined (AAA)
+1. Technical jargon could be better defined (AAA)
 
 ### Future Enhancements
 
 1. Add audio feedback option for long-running operations
-2. Implement configurable output verbosity
-3. Add braille-friendly output mode
+1. Implement configurable output verbosity
+1. Add braille-friendly output mode
 
 ## References
 

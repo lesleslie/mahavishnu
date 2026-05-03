@@ -2,16 +2,17 @@
 
 import asyncio
 import contextlib
-import pytest
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from mahavishnu.terminal.pool import ITerm2SessionPool
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def pool():
@@ -35,6 +36,7 @@ def pool_small():
 # =========================================================================
 # Initialization
 # =========================================================================
+
 
 class TestITerm2SessionPoolInitialization:
     """Test pool initialization and configuration."""
@@ -75,6 +77,7 @@ class TestITerm2SessionPoolInitialization:
 # =========================================================================
 # Session acquisition / release
 # =========================================================================
+
 
 class TestITerm2SessionPoolAcquireRelease:
     """Test session acquisition and release."""
@@ -144,6 +147,7 @@ class TestITerm2SessionPoolAcquireRelease:
 # Commands & output capture
 # =========================================================================
 
+
 class TestITerm2SessionPoolCommands:
     """Test sending commands and capturing output."""
 
@@ -170,6 +174,7 @@ class TestITerm2SessionPoolCommands:
 # =========================================================================
 # Session & pool closing
 # =========================================================================
+
 
 class TestITerm2SessionPoolClose:
     """Test session and pool closing."""
@@ -223,6 +228,7 @@ class TestITerm2SessionPoolClose:
 # Health checks
 # =========================================================================
 
+
 class TestITerm2SessionPoolHealth:
     """Test health check functionality."""
 
@@ -260,12 +266,13 @@ class TestITerm2SessionPoolHealth:
         await pool._remove_stale_sessions()
 
         assert s1 not in pool._pool  # stale
-        assert s2 in pool._pool      # not stale yet
+        assert s2 in pool._pool  # not stale yet
 
 
 # =========================================================================
 # Pool statistics
 # =========================================================================
+
 
 class TestITerm2SessionPoolStats:
     """Test pool statistics."""
@@ -305,12 +312,14 @@ class TestITerm2SessionPoolStats:
 # Global pool singleton
 # =========================================================================
 
+
 class TestGlobalPool:
     """Test global pool singleton."""
 
     async def test_get_global_pool(self):
         with patch("mahavishnu.terminal.pool.OSASCRIPT_AVAILABLE", True):
             import mahavishnu.terminal.pool as pool_mod
+
             old = pool_mod._global_pool
             pool_mod._global_pool = None
 
@@ -331,6 +340,7 @@ class TestGlobalPool:
     async def test_close_global_pool(self):
         with patch("mahavishnu.terminal.pool.OSASCRIPT_AVAILABLE", True):
             import mahavishnu.terminal.pool as pool_mod
+
             old = pool_mod._global_pool
             pool_mod._global_pool = None
 
@@ -343,6 +353,7 @@ class TestGlobalPool:
 
     async def test_close_global_pool_none(self):
         import mahavishnu.terminal.pool as pool_mod
+
         old = pool_mod._global_pool
         pool_mod._global_pool = None
 
@@ -355,6 +366,7 @@ class TestGlobalPool:
 # =========================================================================
 # AppleScript execution (subprocess layer)
 # =========================================================================
+
 
 class TestAppleScriptExecution:
     """Test AppleScript execution via subprocess."""
@@ -375,7 +387,9 @@ class TestAppleScriptExecution:
 
             assert result == "output"
             mock_create.assert_called_once_with(
-                "osascript", "-e", script,
+                "osascript",
+                "-e",
+                script,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -407,6 +421,7 @@ class TestAppleScriptExecution:
 # =========================================================================
 # Integration scenarios
 # =========================================================================
+
 
 class TestIntegrationScenarios:
     """End-to-end scenarios using the fully-mocked pool."""

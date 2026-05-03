@@ -84,11 +84,7 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
         caps = report.capabilities
 
         if capability:
-            caps = {
-                k: v
-                for k, v in caps.items()
-                if capability.lower() in k.lower()
-            }
+            caps = {k: v for k, v in caps.items() if capability.lower() in k.lower()}
 
         return {k: v.model_dump(mode="json") for k, v in caps.items()}
 
@@ -117,19 +113,13 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
                 "status": adapter.status.value,
                 "capabilities": adapter.capabilities,
                 "degradation_trend": (
-                    adapter.degradation_trend.value
-                    if adapter.degradation_trend
-                    else None
+                    adapter.degradation_trend.value if adapter.degradation_trend else None
                 ),
                 "preference_score": adapter.preference_score,
             }
 
-        healthy = [
-            n for n, a in available_adapters.items() if a["status"] == "ok"
-        ]
-        degraded = [
-            n for n, a in available_adapters.items() if a["status"] == "degraded"
-        ]
+        healthy = [n for n, a in available_adapters.items() if a["status"] == "ok"]
+        degraded = [n for n, a in available_adapters.items() if a["status"] == "degraded"]
 
         return {
             "task_class": task_class,
@@ -138,9 +128,7 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
             "healthy_count": len(healthy),
             "degraded_count": len(degraded),
             "recommendation": (
-                f"Use {healthy[0]}"
-                if healthy
-                else f"No healthy adapters for {task_class}"
+                f"Use {healthy[0]}" if healthy else f"No healthy adapters for {task_class}"
             ),
         }
 

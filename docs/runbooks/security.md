@@ -5,13 +5,13 @@ This runbook provides operational procedures for security-related incidents and 
 ## Table of Contents
 
 1. [Security Incident Response](#security-incident-response)
-2. [Webhook Security Operations](#webhook-security-operations)
-3. [Input Validation Failures](#input-validation-failures)
-4. [Audit Log Investigation](#audit-log-investigation)
-5. [Access Control Issues](#access-control-issues)
-6. [Security Maintenance Tasks](#security-maintenance-tasks)
+1. [Webhook Security Operations](#webhook-security-operations)
+1. [Input Validation Failures](#input-validation-failures)
+1. [Audit Log Investigation](#audit-log-investigation)
+1. [Access Control Issues](#access-control-issues)
+1. [Security Maintenance Tasks](#security-maintenance-tasks)
 
----
+______________________________________________________________________
 
 ## Security Incident Response
 
@@ -27,6 +27,7 @@ This runbook provides operational procedures for security-related incidents and 
 ### Incident Response Playbook
 
 #### Step 1: Detect (0-5 minutes)
+
 ```bash
 # Check recent authentication failures
 grep "task_access_denied" /var/log/mahavishnu/audit.log | tail -50
@@ -39,6 +40,7 @@ grep "task_validation_failure" /var/log/mahavishnu/audit.log | tail -50
 ```
 
 #### Step 2: Contain (5-15 minutes)
+
 ```bash
 # Block suspicious IP addresses (if applicable)
 # Note: This would be done at the infrastructure level
@@ -53,24 +55,27 @@ export MAHAVISHNU_WEBHOOK_SECRET="$(openssl rand -hex 32)"
 ```
 
 #### Step 3: Eradicate (15-60 minutes)
+
 1. Identify attack vector from audit logs
-2. Patch vulnerability if in application code
-3. Update security rules/patterns if needed
-4. Deploy fix
+1. Patch vulnerability if in application code
+1. Update security rules/patterns if needed
+1. Deploy fix
 
 #### Step 4: Recover (1-4 hours)
+
 1. Verify fix is deployed
-2. Re-enable services
-3. Monitor for recurrence
-4. Update runbook if needed
+1. Re-enable services
+1. Monitor for recurrence
+1. Update runbook if needed
 
 #### Step 5: Post-Incident (24-48 hours)
-1. Write incident report
-2. Schedule post-mortem
-3. Implement preventive measures
-4. Update security tests
 
----
+1. Write incident report
+1. Schedule post-mortem
+1. Implement preventive measures
+1. Update security tests
+
+______________________________________________________________________
 
 ## Webhook Security Operations
 
@@ -98,13 +103,15 @@ curl -s http://localhost:8680/api/webhooks/failures?limit=20 | jq
 #### Signature Mismatch
 
 **Symptoms:**
+
 - High `signature_failures` count
 - 401 responses to webhook calls
 
 **Troubleshooting:**
+
 1. Verify webhook secret is correct
-2. Check timestamp format (ISO 8601)
-3. Ensure payload is not modified
+1. Check timestamp format (ISO 8601)
+1. Ensure payload is not modified
 
 ```bash
 # Test webhook signature locally
@@ -125,13 +132,15 @@ print(f'Signature: {signature}')
 #### Replay Attack Detection
 
 **Symptoms:**
+
 - `replay_attacks_blocked` > 0
 - Same webhook_id seen multiple times
 
 **Action:**
+
 1. Identify source of duplicate webhooks
-2. Check for network retry storms
-3. Verify webhook client idempotency
+1. Check for network retry storms
+1. Verify webhook client idempotency
 
 ### Cleaning Up Old Webhook Records
 
@@ -140,7 +149,7 @@ print(f'Signature: {signature}')
 curl -X POST http://localhost:8680/api/webhooks/cleanup?retention_days=30
 ```
 
----
+______________________________________________________________________
 
 ## Input Validation Failures
 
@@ -180,7 +189,7 @@ dangerous_patterns = [
 ]
 ```
 
----
+______________________________________________________________________
 
 ## Audit Log Investigation
 
@@ -231,7 +240,7 @@ The following fields are automatically redacted in audit logs:
 - `tags` - Sensitive categorization
 - Keys containing: `api_key`, `password`, `secret`, `token`, `credential`
 
----
+______________________________________________________________________
 
 ## Access Control Issues
 
@@ -240,13 +249,15 @@ The following fields are automatically redacted in audit logs:
 #### User Cannot Access Their Own Tasks
 
 **Troubleshooting:**
+
 1. Verify user_id in request matches task owner
-2. Check task status (completed tasks may have different permissions)
-3. Verify repository access permissions
+1. Check task status (completed tasks may have different permissions)
+1. Verify repository access permissions
 
 #### Unauthorized Cross-Repository Access
 
 **Prevention:**
+
 - Always filter by repository in queries
 - Verify user has access to repository before returning tasks
 
@@ -258,7 +269,7 @@ grep "user-123" /var/log/mahavishnu/audit.json | \
   jq "select(.event_type == \"task_access_denied\")"
 ```
 
----
+______________________________________________________________________
 
 ## Security Maintenance Tasks
 
@@ -307,7 +318,7 @@ pytest tests/security/test_webhooks.py -v
 pytest tests/security/ --cov=mahavishnu.core --cov-report=html
 ```
 
----
+______________________________________________________________________
 
 ## Emergency Contacts
 

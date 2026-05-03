@@ -1,24 +1,22 @@
 """Unit tests for skill finder."""
 
-import pytest
-import json
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
+import pytest
 from skill_finder import (
     SearchIndex,
-    fuzzy_search,
-    exact_search,
-    search_by_system,
-    search_by_keyword,
     build_index,
-    save_index,
+    exact_search,
+    fuzzy_search,
     load_index,
+    save_index,
+    search_by_keyword,
+    search_by_system,
 )
 from skill_parser import (
-    parse_all_skills,
-    build_reverse_references,
     SkillMetadata,
+    build_reverse_references,
+    parse_all_skills,
 )
 
 
@@ -82,10 +80,10 @@ def test_example():
 
         skill_file = skill_dir / "SKILL.md"
         content = f"""---
-name: {skill_data['name']}
-description: {skill_data['description']}
+name: {skill_data["name"]}
+description: {skill_data["description"]}
 ---
-{skill_data['content']}
+{skill_data["content"]}
 """
         skill_file.write_text(content)
 
@@ -174,7 +172,8 @@ class TestFuzzySearch:
         results = fuzzy_search("orchestrating", sample_index)
 
         orchestrating_results = [
-            r for r in results
+            r
+            for r in results
             if "orchestrating" in sample_index.skills[r.skill_name].description.lower()
         ]
         assert len(orchestrating_results) > 0

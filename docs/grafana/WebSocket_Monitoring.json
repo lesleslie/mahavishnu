@@ -1,41 +1,53 @@
 {
   "dashboard": {
-    "title": "WebSocket Ecosystem Monitoring",
     "description": "Real-time monitoring for all WebSocket servers in the Mahavishnu ecosystem",
-    "tags": ["websocket", "mahavishnu", "monitoring", "real-time"],
-    "timezone": "UTC",
-    "schemaVersion": 36,
-    "version": "1.0.0",
-    "refresh": "10s",
     "panels": [
       {
-        "id": 1,
-        "title": "WebSocket Server Overview",
-        "type": "stat",
-        "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
-        "options": {
-          "colorMode": "background",
-          "graphMode": "area",
-          "reduceOptions": false,
-          "calculation": "lastNotNull"
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
         },
         "fieldConfig": {
           "defaults": {
-            "color": {"mode": "thresholds"},
+            "color": {
+              "mode": "thresholds"
+            },
             "mappings": {
-              "value": 0,
-              "result": { "text": "Down", "color": "red" },
-              "value": 1,
-              "result": { "text": "Up", "color": "green" }
+              "result": {
+                "color": "green",
+                "text": "Up"
+              },
+              "value": 1
             },
             "thresholds": {
               "mode": "absolute",
               "steps": [
-                { "value": 0, "color": "red", "text": "Down" },
-                { "value": 1, "color": "green", "text": "Up" }
+                {
+                  "color": "red",
+                  "text": "Down",
+                  "value": 0
+                },
+                {
+                  "color": "green",
+                  "text": "Up",
+                  "value": 1
+                }
               ]
             }
           }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        },
+        "id": 1,
+        "options": {
+          "calculation": "lastNotNull",
+          "colorMode": "background",
+          "graphMode": "area",
+          "reduceOptions": false
         },
         "targets": [
           {
@@ -44,22 +56,27 @@
             "refId": "A"
           }
         ],
+        "title": "WebSocket Server Overview",
+        "type": "stat"
+      },
+      {
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
-        }
-      },
-      {
-        "id": 2,
-        "title": "Active Connections",
-        "type": "graph",
-        "gridPos": { "h": 8, "w": 12, "x": 6, "y": 0 },
+        },
         "fieldConfig": {
           "defaults": {
-            "lineWidth": 2,
-            "fillOpacity": 0.1
+            "fillOpacity": 0.1,
+            "lineWidth": 2
           }
         },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 6,
+          "y": 0
+        },
+        "id": 2,
         "targets": [
           {
             "expr": "websocket_connections{server=~\"$mahavishnu|dhara|akosha|crackerjack|excalidraw|fastblocks\"}",
@@ -67,22 +84,27 @@
             "refId": "B"
           }
         ],
+        "title": "Active Connections",
+        "type": "graph"
+      },
+      {
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
-        }
-      },
-      {
-        "id": 3,
-        "title": "Message Rate",
-        "type": "graph",
-        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        },
         "fieldConfig": {
           "defaults": {
-            "lineWidth": 2,
-            "fillOpacity": 0.1
+            "fillOpacity": 0.1,
+            "lineWidth": 2
           }
         },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "id": 3,
         "targets": [
           {
             "expr": "rate(websocket_messages_total{server=~\"$mahavishnu|dhara|akosha|crackerjack|excalidraw|fastblocks\"}[5m])",
@@ -90,23 +112,28 @@
             "refId": "C"
           }
         ],
+        "title": "Message Rate",
+        "type": "graph"
+      },
+      {
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
-        }
-      },
-      {
-        "id": 4,
-        "title": "Broadcast Duration (p99)",
-        "type": "graph",
-        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+        },
         "fieldConfig": {
           "defaults": {
-            "lineWidth": 2,
             "fillOpacity": 0.1,
+            "lineWidth": 2,
             "unit": "s"
           }
         },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "id": 4,
         "targets": [
           {
             "expr": "histogram_quantile(0.99, websocket_broadcast_duration_seconds{server=~\"$mahavishnu|dhara|akosha|crackerjack|excalidraw|fastblocks\"})",
@@ -114,22 +141,27 @@
             "refId": "D"
           }
         ],
+        "title": "Broadcast Duration (p99)",
+        "type": "graph"
+      },
+      {
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
-        }
-      },
-      {
-        "id": 5,
-        "title": "Error Rate",
-        "type": "graph",
-        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+        },
         "fieldConfig": {
           "defaults": {
-            "lineWidth": 2,
-            "fillOpacity": 0.1
+            "fillOpacity": 0.1,
+            "lineWidth": 2
           }
         },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "id": 5,
         "targets": [
           {
             "expr": "rate(websocket_errors_total{server=~\"$mahavishnu|dhara|akosha|crackerjack|excalidraw|fastblocks\"}[5m])",
@@ -137,26 +169,33 @@
             "refId": "E"
           }
         ],
+        "title": "Error Rate",
+        "type": "graph"
+      },
+      {
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
-        }
-      },
-      {
-        "id": 6,
-        "title": "Mahavishnu Details",
-        "type": "stat",
-        "gridPos": { "h": 8, "w": 6, "x": 0, "y": 9 },
-        "options": {
-          "colorMode": "value",
-          "graphMode": "none"
         },
         "fieldConfig": {
           "defaults": {
-            "color": {"mode": "continuous-GrYl"},
+            "color": {
+              "mode": "continuous-GrYl"
+            },
             "max": 10,
             "min": 0
           }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 9
+        },
+        "id": 6,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none"
         },
         "targets": [
           {
@@ -170,37 +209,51 @@
             "refId": "mahavishnu-rate"
           }
         ],
+        "title": "Mahavishnu Details",
+        "type": "stat"
+      },
+      {
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
-        }
-      },
-      {
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 9
+        },
         "id": 7,
-        "title": "Server Health Matrix",
-        "type": "table",
-        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
         "options": {
           "showHeader": true
         },
+        "targets": [
+          {
+            "expr": "websocket_health{server=~\"$mahavishnu|dhara|akosha|crackerjack|excalidraw|fastblocks\"}",
+            "formatAs": "table",
+            "legendFormat": "{{server}}",
+            "refId": "health-matrix"
+          }
+        ],
+        "title": "Server Health Matrix",
         "transformations": [
           {
             "id": "table-cell-color-background-transperancy"
           }
         ],
-        "targets": [
-          {
-            "expr": "websocket_health{server=~\"$mahavishnu|dhara|akosha|crackerjack|excalidraw|fastblocks\"}",
-            "legendFormat": "{{server}}",
-            "formatAs": "table",
-            "refId": "health-matrix"
-          }
-        ],
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        }
+        "type": "table"
       }
-    ]
+    ],
+    "refresh": "10s",
+    "schemaVersion": 36,
+    "tags": [
+      "websocket",
+      "mahavishnu",
+      "monitoring",
+      "real-time"
+    ],
+    "timezone": "UTC",
+    "title": "WebSocket Ecosystem Monitoring",
+    "version": "1.0.0"
   }
 }

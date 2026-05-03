@@ -28,21 +28,25 @@ Usage:
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import StrEnum
 import json
 import logging
+from typing import TYPE_CHECKING, Any
 import uuid
-from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
-from typing import Any, AsyncIterator
 
-from mahavishnu.core.database import Database
-from mahavishnu.core.errors import DatabaseError, MahavishnuError
+from mahavishnu.core.errors import DatabaseError
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from mahavishnu.core.database import Database
 
 logger = logging.getLogger(__name__)
 
 
-class TaskEventType(str, Enum):
+class TaskEventType(StrEnum):
     """Types of task events."""
 
     # Lifecycle events
@@ -100,7 +104,7 @@ class TaskEvent:
         actor: str,
         correlation_id: str | None = None,
         idempotency_key: str | None = None,
-    ) -> "TaskEvent":
+    ) -> TaskEvent:
         """Create a new event.
 
         Args:
@@ -140,7 +144,7 @@ class TaskEvent:
         }
 
     @classmethod
-    def from_row(cls, row: Any) -> "TaskEvent":
+    def from_row(cls, row: Any) -> TaskEvent:
         """Create from database row."""
         return cls(
             id=str(row["id"]),

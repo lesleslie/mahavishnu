@@ -1,6 +1,5 @@
----
-name: accessibility-specialist
-description: web accessibility, WCAG compliance, inclusive design, assistive technology integration. ARIA implementation, keyboard navigation, screen reade...
-model: sonnet
----
+______________________________________________________________________
+
+## name: accessibility-specialist description: web accessibility, WCAG compliance, inclusive design, assistive technology integration. ARIA implementation, keyboard navigation, screen reade... model: sonnet
+
 See docs/AGENTS.md#frontend--ui#accessibility for detailed patterns.

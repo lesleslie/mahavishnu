@@ -2,7 +2,7 @@
 
 from typer.testing import CliRunner
 
-from mahavishnu.routing_cli import routing_app, add_routing_commands
+from mahavishnu.routing_cli import add_routing_commands, routing_app
 
 runner = CliRunner()
 
@@ -13,6 +13,7 @@ class TestRoutingApp:
     def test_routing_app_is_typer_instance(self):
         """Test that routing_app is a Typer application."""
         import typer
+
         assert isinstance(routing_app, typer.Typer)
 
     def test_routing_app_has_help_text(self):
@@ -27,16 +28,22 @@ class TestAddRoutingCommands:
     def test_add_routing_commands_attaches_typer(self):
         """Test that add_routing_commands attaches routing_app to parent."""
         import typer
+
         parent = typer.Typer()
         add_routing_commands(parent)
-        assert "routing" in parent.registered_commands or any(
-            getattr(g, "name", None) == "routing"
-            for g in (parent._groups if hasattr(parent, "_groups") else [])
-        ) or True
+        assert (
+            "routing" in parent.registered_commands
+            or any(
+                getattr(g, "name", None) == "routing"
+                for g in (parent._groups if hasattr(parent, "_groups") else [])
+            )
+            or True
+        )
 
     def test_add_routing_commands_parent_is_typer_instance(self):
         """Test that add_routing_commands can be called on a fresh Typer app."""
         import typer
+
         parent = typer.Typer()
         add_routing_commands(parent)
         assert isinstance(parent, typer.Typer)

@@ -1,7 +1,5 @@
 """Tests for signature redaction."""
 
-import pytest
-
 from mahavishnu.core.code_index.signature_redaction import (
     has_secrets,
     redact_signature,
@@ -9,7 +7,9 @@ from mahavishnu.core.code_index.signature_redaction import (
 
 
 def test_redact_api_key():
-    assert redact_signature('def connect(api_key="sk-abc123")') == 'def connect(api_key="<REDACTED>")'
+    assert (
+        redact_signature('def connect(api_key="sk-abc123")') == 'def connect(api_key="<REDACTED>")'
+    )
 
 
 def test_redact_password():

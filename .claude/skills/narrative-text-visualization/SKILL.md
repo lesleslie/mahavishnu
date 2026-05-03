@@ -1,7 +1,6 @@
----
-name: narrative-text-visualization
-description: Generate structured narrative text visualizations from data using T8 (Text) schema. Use when users want to create data interpretation reports, summaries, or structured articles with entity labeling and semantic markup.
----
+______________________________________________________________________
+
+## name: narrative-text-visualization description: Generate structured narrative text visualizations from data using T8 (Text) schema. Use when users want to create data interpretation reports, summaries, or structured articles with entity labeling and semantic markup.
 
 # Narrative Text Visualization Skill
 
@@ -11,11 +10,12 @@ This skill provides a workflow for transforming data into structured narrative t
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| akosha | 8682 | grep | mcp__akosha__search_all_systems | 60s |
+| akosha | 8682 | grep | mcp\_\_akosha\_\_search_all_systems | 60s |
 
 ## Overview
 
 `T8` is a declarative JSON Schema syntax used to describe data interpretation reports with semantic entity labeling. It's designed to be:
+
 - **LLM-friendly**: Easy to generate with AI prompts
 - **Technology stack agnostic**: Works with React, Vue, and other frameworks
 - **Extensible**: Supports custom entity phrases
@@ -28,6 +28,7 @@ To generate narrative text visualizations, follow these steps:
 ### 1. Understand the Requirements
 
 Analyze the user's request to determine:
+
 - The topic or data to be analyzed
 - The type of narrative needed (report, summary, article)
 - The key insights to highlight
@@ -36,6 +37,7 @@ Analyze the user's request to determine:
 ### 2. Review the JSON Schema
 
 Consult the `references/schema.json` file to understand the T8 structure:
+
 - **Top Structure**: Contains `headline` and `sections` array
 - **Sections**: Main chapters containing `paragraphs`
 - **Paragraphs**: Text blocks containing `phrases`, can be:
@@ -50,22 +52,23 @@ Consult the `references/schema.json` file to understand the T8 structure:
 
 Use entity types to mark key information (see `references/prompt.md` for details):
 
-| Entity Type          | Description             | Example                              |
+| Entity Type | Description | Example |
 | -------------------- | ----------------------- | ------------------------------------ |
-| `metric_name`        | Indicator name          | "Shipment", "Growth Rate"            |
-| `metric_value`       | Main indicator value    | "146 million units", "120 factories" |
-| `other_metric_value` | Other metric values     | "$19.2 billion"                      |
-| `delta_value`        | Difference              | "+120"                               |
-| `ratio_value`        | Rate                    | "+8.4%", "9%"                        |
-| `contribute_ratio`   | Contribution            | "40%"                                |
-| `trend_desc`         | Trend Description       | "Continuously Rising", "Stable"      |
-| `dim_value`          | Dimensional identifier  | "India", "Jiangsu", "Overseas"       |
-| `time_desc`          | Time stamp              | "Q3 2024", "all year"                |
-| `proportion`         | Proportion description  | "30%"                                |
+| `metric_name` | Indicator name | "Shipment", "Growth Rate" |
+| `metric_value` | Main indicator value | "146 million units", "120 factories" |
+| `other_metric_value` | Other metric values | "$19.2 billion" |
+| `delta_value` | Difference | "+120" |
+| `ratio_value` | Rate | "+8.4%", "9%" |
+| `contribute_ratio` | Contribution | "40%" |
+| `trend_desc` | Trend Description | "Continuously Rising", "Stable" |
+| `dim_value` | Dimensional identifier | "India", "Jiangsu", "Overseas" |
+| `time_desc` | Time stamp | "Q3 2024", "all year" |
+| `proportion` | Proportion description | "30%" |
 
 ### 4. Data Requirements
 
 **Critical**: All data must be from publicly authentic sources:
+
 - Official announcements/financial reports
 - Authoritative media (Reuters, Bloomberg, TechCrunch, etc.)
 - Industry research institutions (IDC, Canalys, Counterpoint Research, etc.)
@@ -198,24 +201,28 @@ Once you have the JSON schema, create an HTML file that uses the T8 library to r
 ## Best Practices
 
 1. **Entity Metadata**: Always add these optional fields when possible:
+
    - `origin`: The exact numerical value (e.g., for "146 million units", origin is `146000000`)
    - `assessment`: Growth trend (`'positive'` | `'negative'` | `'equal'`)
    - `detail`: Supplementary data array for trends (e.g., `[2,3,4,1,7]`)
 
-2. **Entity Usage**: Maximize entity labeling for:
+1. **Entity Usage**: Maximize entity labeling for:
+
    - Metrics and values
    - Time references
    - Dimensional identifiers
    - Trends and changes
    - Proportions and ratios
 
-3. **Structure**:
+1. **Structure**:
+
    - Use headings to organize content
    - Group related information in sections
    - Use bullets for lists and key points
    - Maintain logical flow between paragraphs
 
-4. **Data Quality**:
+1. **Data Quality**:
+
    - Always cite authentic sources
    - Use specific, verifiable numbers
    - Provide context for metrics
@@ -225,6 +232,7 @@ Once you have the JSON schema, create an HTML file that uses the T8 library to r
 ## Example Output
 
 A complete example of T8 schema can be found in the T8 repository. The rendered output provides:
+
 - Rich semantic markup for data entities
 - Interactive entity highlighting
 - Clear visual hierarchy
@@ -234,6 +242,7 @@ A complete example of T8 schema can be found in the T8 repository. The rendered 
 ## Reference Material
 
 Detailed specifications are located in the `references/` directory:
+
 - `prompt.md`: Complete prompt template for LLM generation
 - `schema.json`: Full JSON Schema definition with all types
 

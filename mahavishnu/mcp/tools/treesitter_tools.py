@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from fastmcp import FastMCP
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +110,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
         symbol_kinds: list[str] | None = None,
     ) -> dict[str, Any]:
         """Extract symbols from a parsed file."""
-        from mcp_common.parsing.tree_sitter import SupportedLanguage, SymbolKind
+        from mcp_common.parsing.tree_sitter import SupportedLanguage
 
         try:
             parser = _get_parser()
@@ -179,10 +180,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
             path = Path(file_path)
 
             # Determine search directory
-            if search_directory:
-                search_dir = Path(search_directory)
-            else:
-                search_dir = path.parent
+            search_dir = Path(search_directory) if search_directory else path.parent
 
             # Parse the definition file first
             result = await parser.parse_file(path)

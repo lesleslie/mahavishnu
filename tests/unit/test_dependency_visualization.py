@@ -64,7 +64,9 @@ class TestDependencyVisualizer:
         assert "task-2" in result
         assert "task-1" in result
 
-    def test_render_tree_max_depth(self, visualizer: DependencyVisualizer, graph: DependencyGraph) -> None:
+    def test_render_tree_max_depth(
+        self, visualizer: DependencyVisualizer, graph: DependencyGraph
+    ) -> None:
         """Test tree rendering with depth limit."""
         result = visualizer.render_tree(graph, "task-3", max_depth=1)
 
@@ -72,14 +74,18 @@ class TestDependencyVisualizer:
         assert "task-3" in result
         assert "task-2" in result
 
-    def test_render_tree_shows_titles(self, visualizer: DependencyVisualizer, graph: DependencyGraph) -> None:
+    def test_render_tree_shows_titles(
+        self, visualizer: DependencyVisualizer, graph: DependencyGraph
+    ) -> None:
         """Test that tree shows task titles."""
         result = visualizer.render_tree(graph, "task-3")
 
         assert "First task" in result
         assert "Second task" in result
 
-    def test_render_tree_no_colors(self, plain_visualizer: DependencyVisualizer, graph: DependencyGraph) -> None:
+    def test_render_tree_no_colors(
+        self, plain_visualizer: DependencyVisualizer, graph: DependencyGraph
+    ) -> None:
         """Test tree rendering without colors."""
         result = plain_visualizer.render_tree(graph, "task-3")
 
@@ -87,7 +93,9 @@ class TestDependencyVisualizer:
         assert "\033[" not in result
         assert "task-3" in result
 
-    def test_render_chain_dependencies(self, visualizer: DependencyVisualizer, graph: DependencyGraph) -> None:
+    def test_render_chain_dependencies(
+        self, visualizer: DependencyVisualizer, graph: DependencyGraph
+    ) -> None:
         """Test chain rendering for dependencies."""
         result = visualizer.render_chain(graph, "task-3", direction="dependencies")
 
@@ -95,7 +103,9 @@ class TestDependencyVisualizer:
         assert "task-2" in result
         assert "task-1" in result
 
-    def test_render_chain_dependents(self, visualizer: DependencyVisualizer, graph: DependencyGraph) -> None:
+    def test_render_chain_dependents(
+        self, visualizer: DependencyVisualizer, graph: DependencyGraph
+    ) -> None:
         """Test chain rendering for dependents."""
         result = visualizer.render_chain(graph, "task-1", direction="dependents")
 
@@ -110,7 +120,7 @@ class TestDependencyVisualizer:
         for i in range(10):
             graph.add_task(f"task-{i}")
             if i > 0:
-                graph.add_dependency(f"task-{i-1}", f"task-{i}")
+                graph.add_dependency(f"task-{i - 1}", f"task-{i}")
 
         result = visualizer.render_chain(graph, "task-9", max_length=5)
 
@@ -126,19 +136,25 @@ class TestDependencyVisualizer:
         assert "Total Tasks: 3" in result
         assert "Total Dependencies: 2" in result
 
-    def test_render_summary_blocked(self, visualizer: DependencyVisualizer, graph: DependencyGraph) -> None:
+    def test_render_summary_blocked(
+        self, visualizer: DependencyVisualizer, graph: DependencyGraph
+    ) -> None:
         """Test summary with blocked tasks."""
         result = visualizer.render_summary(graph)
 
         assert "Blocked Tasks:" in result or "blocked" in result.lower()
 
-    def test_render_summary_ready(self, visualizer: DependencyVisualizer, graph: DependencyGraph) -> None:
+    def test_render_summary_ready(
+        self, visualizer: DependencyVisualizer, graph: DependencyGraph
+    ) -> None:
         """Test summary with ready tasks."""
         result = visualizer.render_summary(graph)
 
         assert "Ready Tasks:" in result or "ready" in result.lower()
 
-    def test_render_blocked_tree(self, visualizer: DependencyVisualizer, graph: DependencyGraph) -> None:
+    def test_render_blocked_tree(
+        self, visualizer: DependencyVisualizer, graph: DependencyGraph
+    ) -> None:
         """Test blocked task tree rendering."""
         result = visualizer.render_blocked_tree(graph)
 
@@ -154,7 +170,9 @@ class TestDependencyVisualizer:
 
         assert "No blocked tasks" in result
 
-    def test_render_dependency_matrix(self, visualizer: DependencyVisualizer, graph: DependencyGraph) -> None:
+    def test_render_dependency_matrix(
+        self, visualizer: DependencyVisualizer, graph: DependencyGraph
+    ) -> None:
         """Test matrix rendering."""
         result = visualizer.render_dependency_matrix(graph)
 
@@ -346,7 +364,7 @@ class TestDepthCalculation:
         for i in range(5):
             graph.add_task(f"task-{i}")
             if i > 0:
-                graph.add_dependency(f"task-{i-1}", f"task-{i}")
+                graph.add_dependency(f"task-{i - 1}", f"task-{i}")
 
         viz = DependencyVisualizer(use_colors=False)
         result = viz.render_summary(graph)
@@ -363,7 +381,7 @@ class TestDepthCalculation:
         for i in range(4):
             graph.add_task(f"task-{i}")
             if i > 0:
-                graph.add_dependency(f"task-{i-1}", f"task-{i}")
+                graph.add_dependency(f"task-{i - 1}", f"task-{i}")
 
         # Add shorter chain
         graph.add_task("task-a")

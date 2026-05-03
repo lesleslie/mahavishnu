@@ -1,19 +1,15 @@
 """Unit tests for MCP tool authorization decorators."""
 
-import asyncio
+from mcp_common.auth.audit import AuditLogger
 import pytest
 
-from mcp_common.auth.audit import AuditLogger
-from mcp_common.auth.permissions import Permission
-
+from mahavishnu.core.auth import AuthenticationError
 from mahavishnu.mcp.auth import (
     CredentialManager,
     extract_auth_from_request,
     get_audit_logger,
     require_mcp_auth,
 )
-from mahavishnu.core.auth import AuthenticationError
-
 
 # =============================================================================
 # AUDIT LOGGING TESTS
@@ -108,11 +104,9 @@ def test_credential_manager_custom_sensitive_keys():
         "public_field": "public_value",
     }
 
-    redacted = CredentialManager.redact_from_dict(
-        data, sensitive_keys=["custom_secret"]
-    )
+    redacted = CredentialManager.redact_from_dict(data, sensitive_keys=["custom_secret"])
 
-    assert redacted["custom_secret"] == "valu***"
+    assert redacted["custom_secret"] == "value***"
     assert redacted["public_field"] == "public_value"
 
 
@@ -157,9 +151,7 @@ async def test_extract_auth_from_request_direct_user_id():
 @pytest.mark.asyncio
 async def test_extract_auth_from_request_bearer_token():
     """Test extracting user_id from bearer token."""
-    request = {
-        "headers": {"Authorization": "Bearer test_user_token"}
-    }
+    request = {"headers": {"Authorization": "Bearer test_user_token"}}
 
     auth_context = await extract_auth_from_request(request)
 

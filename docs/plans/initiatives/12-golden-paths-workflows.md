@@ -1,29 +1,36 @@
 # Initiative 12: Golden Paths for Top Workflows
 
 ## Metadata
+
 - Status: `complete`
 - Owner Role: `Platform + DX`
 - Target Window: `2026-06-01` to `2026-06-26`
 
 ## Outcome
+
 Define and enforce canonical high-value orchestration workflows.
 
 ## Work Package Checklist
+
 - [x] `I12-1` Select top 10 workflows + baseline metrics
 - [x] `I12-2` Implement canonical CLI/MCP pathways
 - [x] `I12-3` Add non-canonical warnings and docs
 
 ## Dependencies
+
 - `I5-3`, `I9-3`
 
 ## Exit Criteria
+
 - Ad hoc workflow variance reduced by `>=30%`
 
 ## Risks
+
 - Over-constraining valid advanced use cases
 - Incomplete coverage of high-frequency workflows
 
 ## Progress Log
+
 - 2026-04-04: Plan file created.
 - 2026-04-05: I12-1 complete — top 10 workflows cataloged with baseline metrics. Report: `docs/reports/top-10-workflows-baseline.md`. Key gap: no end-to-end latency or success rate tracking for most workflows.
 - 2026-04-05: I12-2 complete — added canonical CLI pathways for all 10 top workflows:

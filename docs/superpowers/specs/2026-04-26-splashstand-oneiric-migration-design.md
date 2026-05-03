@@ -109,49 +109,49 @@ In `main.py`, replace `from acb.depends import depends` with `from splashstand.d
 ### Phase 0: Restore pyproject.toml
 
 1. Commit the staged `pyproject.toml` fix (restores the `[project]` table).
-2. Add `oneiric` to dependencies (replace or supplement `acb`).
-3. Verify `pip install -e ".[dev]"` succeeds.
+1. Add `oneiric` to dependencies (replace or supplement `acb`).
+1. Verify `pip install -e ".[dev]"` succeeds.
 
 ### Phase 1: Core Infrastructure
 
 1. Create `splashstand/deps.py` with the `resolve_dep()` helper (no side effects — importable by all modules).
-2. Replace `from acb import register_pkg` → `from oneiric import register_pkg`.
-3. Replace `from acb.depends import depends` → `from oneiric.core.resolution import Resolver`.
-4. Update any direct `depends.resolve(...)` calls to use `resolve_dep(key)`.
+1. Replace `from acb import register_pkg` → `from oneiric import register_pkg`.
+1. Replace `from acb.depends import depends` → `from oneiric.core.resolution import Resolver`.
+1. Update any direct `depends.resolve(...)` calls to use `resolve_dep(key)`.
 
 ### Phase 2: Adapter Migration
 
 Migrate all 8 adapter files in dependency order:
 
 1. `adapters/schemas/_models/__init__.py` (1 import — leaf dependency)
-2. `adapters/schemas/_base.py` (3 imports)
-3. `adapters/auth/_base.py` (4 imports)
-4. `adapters/auth/firebase.py` (3 imports)
-5. `adapters/app/_base.py` (2 imports)
-6. `adapters/app/demo.py` (5 imports)
-7. `adapters/app/default.py` (4 imports)
-8. `adapters/admin/sqladmin.py` (5 imports — includes `load` which needs JSON migration)
+1. `adapters/schemas/_base.py` (3 imports)
+1. `adapters/auth/_base.py` (4 imports)
+1. `adapters/auth/firebase.py` (3 imports)
+1. `adapters/app/_base.py` (2 imports)
+1. `adapters/app/demo.py` (5 imports)
+1. `adapters/app/default.py` (4 imports)
+1. `adapters/admin/sqladmin.py` (5 imports — includes `load` which needs JSON migration)
 
 Each file gets a mechanical `acb` → `oneiric` import rename. Files using `dump`/`load` from `acb.actions.encode` need the additional JSON migration.
 
 ### Phase 3: CLI Migration
 
 1. `cli.py` — Replace all 8 ACB imports with Oneiric equivalents.
-2. Replace `from acb.actions.encode import dump, load` → `import yaml` (add `from pathlib import Path` if not already imported).
-3. Replace `load.yaml(debug_file)` → `yaml.safe_load(Path(debug_file).read_text())`.
-4. Replace `dump.yaml(debug_settings, debug_file)` → `Path(debug_file).write_text(yaml.dump(debug_settings))`.
-5. Verify CLI commands still work (`dev`, `run`, etc.).
+1. Replace `from acb.actions.encode import dump, load` → `import yaml` (add `from pathlib import Path` if not already imported).
+1. Replace `load.yaml(debug_file)` → `yaml.safe_load(Path(debug_file).read_text())`.
+1. Replace `dump.yaml(debug_settings, debug_file)` → `Path(debug_file).write_text(yaml.dump(debug_settings))`.
+1. Verify CLI commands still work (`dev`, `run`, etc.).
 
 **Note:** `adapters/admin/sqladmin.py` also uses `from acb.actions.encode import load` with `load.json(...)`. This file is migrated in Phase 2. Replace `load.json(path)` → `json.loads(Path(path).read_text())` and add `import json`.
 
 ### Phase 4: Cleanup and Validation
 
 1. Remove `acb` from `pyproject.toml` dependencies (if still present).
-2. Run `grep -r "from acb" splashstand/` — expect zero results.
-3. Run `grep -r "import acb" splashstand/` — expect zero results.
-4. Run full test suite.
-5. Run Crackerjack quality checks.
-6. Update `MIGRATION-3.1.0.md` to reflect completed migration.
+1. Run `grep -r "from acb" splashstand/` — expect zero results.
+1. Run `grep -r "import acb" splashstand/` — expect zero results.
+1. Run full test suite.
+1. Run Crackerjack quality checks.
+1. Update `MIGRATION-3.1.0.md` to reflect completed migration.
 
 ## 7. Risk Mitigation
 
@@ -166,21 +166,21 @@ Each file gets a mechanical `acb` → `oneiric` import rename. Files using `dump
 ## 8. Acceptance Criteria
 
 1. `grep -r "from acb" splashstand/` returns zero results.
-2. `grep -r "import acb" splashstand/` returns zero results.
-3. `acb` is not listed in `pyproject.toml` dependencies.
-4. `oneiric` is listed in `pyproject.toml` dependencies.
-5. `resolve_dep()` helper exists in `splashstand/deps.py`.
-6. `main.py` uses `from oneiric import register_pkg`.
-7. `main.py` uses `from oneiric.core.resolution import Resolver`.
-8. All adapter files use `from oneiric.*` imports exclusively.
-9. `cli.py` uses `import yaml` instead of `from acb.actions.encode import dump, load`.
-10. All `dump.yaml()`/`load.yaml()` call sites use direct `yaml.dump()`/`yaml.safe_load()`.
-11. `sqladmin.py` uses `import json` and `json.loads()` instead of `load.json()`.
-12. `pytest` passes with zero failures.
-13. Crackerjack quality score meets minimum threshold.
-14. `MIGRATION-3.1.0.md` updated to reflect completed migration.
-15. No functionality regressions — all CLI commands, routes, and adapters work as before.
-16. `pyproject.toml` has a valid `[project]` table committed to git.
+1. `grep -r "import acb" splashstand/` returns zero results.
+1. `acb` is not listed in `pyproject.toml` dependencies.
+1. `oneiric` is listed in `pyproject.toml` dependencies.
+1. `resolve_dep()` helper exists in `splashstand/deps.py`.
+1. `main.py` uses `from oneiric import register_pkg`.
+1. `main.py` uses `from oneiric.core.resolution import Resolver`.
+1. All adapter files use `from oneiric.*` imports exclusively.
+1. `cli.py` uses `import yaml` instead of `from acb.actions.encode import dump, load`.
+1. All `dump.yaml()`/`load.yaml()` call sites use direct `yaml.dump()`/`yaml.safe_load()`.
+1. `sqladmin.py` uses `import json` and `json.loads()` instead of `load.json()`.
+1. `pytest` passes with zero failures.
+1. Crackerjack quality score meets minimum threshold.
+1. `MIGRATION-3.1.0.md` updated to reflect completed migration.
+1. No functionality regressions — all CLI commands, routes, and adapters work as before.
+1. `pyproject.toml` has a valid `[project]` table committed to git.
 
 ## 9. ADR Reference
 

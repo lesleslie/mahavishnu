@@ -17,8 +17,8 @@ Environment:
 """
 
 import argparse
-import sys
 from pathlib import Path
+import sys
 
 
 def analyze_entity_id_usage(akosha_path: str) -> dict:
@@ -34,7 +34,7 @@ def analyze_entity_id_usage(akosha_path: str) -> dict:
         "files_checked": 0,
         "custom_id_patterns": [],
         "uses_dhara": False,
-        "recommendations": []
+        "recommendations": [],
     }
 
     # Check key files for entity ID generation
@@ -54,14 +54,15 @@ def analyze_entity_id_usage(akosha_path: str) -> dict:
 
         # Check for custom ID patterns
         if 'f"system:{' in content or 'f"user:{' in content:
-            results["custom_id_patterns"].append({
-                "file": file_path,
-                "pattern": "f\"system:{id}\" or f\"user:{id}\""
-            })
-            results["recommendations"].append({
-                "file": file_path,
-                "change": f"Replace custom ID generation with: from dhara import generate; entity_id = generate()"
-            })
+            results["custom_id_patterns"].append(
+                {"file": file_path, "pattern": 'f"system:{id}" or f"user:{id}"'}
+            )
+            results["recommendations"].append(
+                {
+                    "file": file_path,
+                    "change": "Replace custom ID generation with: from dhara import generate; entity_id = generate()",
+                }
+            )
 
         # Check if already using Dhara
         if "from dhara import" in content or "import dhara" in content:
@@ -76,15 +77,13 @@ def main():
     )
 
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Validate and show changes without executing"
+        "--dry-run", action="store_true", help="Validate and show changes without executing"
     )
 
     parser.add_argument(
         "--akosha-path",
         default=str(Path(__file__).parent.parent / "akosha"),
-        help="Path to akosha project"
+        help="Path to akosha project",
     )
 
     args = parser.parse_args()
@@ -130,7 +129,7 @@ def main():
         print("To complete Akosha ULID migration:")
         print()
         print("1. Update akosha/processing/knowledge_graph.py:")
-        print("   - Replace: entity_id = f\"system:{system_id}\"")
+        print('   - Replace: entity_id = f"system:{system_id}"')
         print("   - With: from dhara import generate; entity_id = generate()")
         print()
         print("2. Update akosha/mcp/tools/akosha_tools.py:")

@@ -4,7 +4,7 @@
 > **Purpose**: Define the structure, collection strategy, and management of labeled
 > content quality samples for training and evaluating automated quality scorers.
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -17,9 +17,9 @@ The dataset serves two purposes:
 
 1. **Training**: Supervise an automated quality scorer that replaces the current
    stub in `mahavishnu/ingesters/quality_evaluator.py`.
-2. **Evaluation**: Benchmark automated scoring against human judgment.
+1. **Evaluation**: Benchmark automated scoring against human judgment.
 
----
+______________________________________________________________________
 
 ## Schema
 
@@ -97,7 +97,7 @@ following fields:
 }
 ```
 
----
+______________________________________________________________________
 
 ## Storage Format
 
@@ -125,7 +125,7 @@ data/ml/content-quality-samples.jsonl
 
 JSONL is the best fit for a growing, human-inspectable dataset with nested fields.
 
----
+______________________________________________________________________
 
 ## Sampling Strategy
 
@@ -135,12 +135,12 @@ Samples should be drawn from content that the ingestion pipeline actually proces
 Prioritize:
 
 1. **Official documentation** (docs.python.org, developer.mozilla.org, etc.)
-2. **Technical blog posts** (realpython.com, martinfowler.com, engineering blogs)
-3. **Research papers / preprints** (arxiv.org, ACL anthology)
-4. **Stack Overflow answers** (high-score answers on relevant topics)
-5. **Tutorial / how-to content** (medium.com/dev.to technical articles)
-6. **PDFs and EPUBs** (technical books, O'Reilly chapters)
-7. **Edge cases**: error pages, paywalled content, non-English, SEO spam, listicles
+1. **Technical blog posts** (realpython.com, martinfowler.com, engineering blogs)
+1. **Research papers / preprints** (arxiv.org, ACL anthology)
+1. **Stack Overflow answers** (high-score answers on relevant topics)
+1. **Tutorial / how-to content** (medium.com/dev.to technical articles)
+1. **PDFs and EPUBs** (technical books, O'Reilly chapters)
+1. **Edge cases**: error pages, paywalled content, non-English, SEO spam, listicles
 
 ### Distribution Targets (v0.1)
 
@@ -177,7 +177,7 @@ Ensure the dataset contains examples that stress each dimension:
 **Recommendation**: Start with 40–50 samples (v0.1), validate the rubric makes sense,
 then scale to 150–200 (v0.2) for initial model training.
 
----
+______________________________________________________________________
 
 ## Versioning
 
@@ -211,17 +211,17 @@ Maintain `data/ml/CHANGELOG.md`:
 - Files > 1 MB use Git LFS or are stored externally with a pointer file
 - Every version change gets a commit with the version tag
 
----
+______________________________________________________________________
 
 ## Quality Assurance
 
 ### Annotation Guidelines
 
 1. **Read the rubric** before labeling (`docs/ml/content-quality-eval-rubric.md`)
-2. **Read the full content** before scoring — don't skim
-3. **Score independently** — don't look at other annotators' scores
-4. **Justify in notes** — every score needs a brief explanation
-5. **Use edge case guidance** — code-heavy, mixed media, truncated content have specific rules
+1. **Read the full content** before scoring — don't skim
+1. **Score independently** — don't look at other annotators' scores
+1. **Justify in notes** — every score needs a brief explanation
+1. **Use edge case guidance** — code-heavy, mixed media, truncated content have specific rules
 
 ### Inter-Annotator Agreement
 
@@ -240,7 +240,7 @@ Use `scripts/eval-content-quality.py` to:
 - Flag samples where dimension scores don't match the aggregate label
 - Detect potential annotation errors (e.g., all-5s without justification)
 
----
+______________________________________________________________________
 
 ## Relationships
 

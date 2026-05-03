@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import stat
 from pathlib import Path
+import stat
 
 HOOK_CONTENT = """#!/bin/sh
 # Managed by mahavishnu index --install-hooks

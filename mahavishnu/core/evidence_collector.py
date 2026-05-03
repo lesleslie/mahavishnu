@@ -7,8 +7,8 @@ Graceful degradation is mandatory: a failed fetch never blocks orchestration.
 
 from __future__ import annotations
 
-import logging
 from datetime import UTC, datetime
+import logging
 from typing import Any, Protocol, runtime_checkable
 from uuid import uuid4
 
@@ -67,9 +67,7 @@ class EvidenceCollector:
         *,
         source: EvidenceSource | None = None,
     ) -> None:
-        self._source = source or _SessionBuddyEvidenceSource(
-            session_buddy_url, store_timeout
-        )
+        self._source = source or _SessionBuddyEvidenceSource(session_buddy_url, store_timeout)
         self._max_per_cycle = max_per_cycle
 
     async def collect_recent_outcomes(self) -> list[LearningEvidence]:

@@ -51,14 +51,14 @@ The repo already contains roadmap items that point in this direction, especially
 
 0. Delete dead files with zero importers (`.bak` files, unused `cli/` variants).
 1. Add deprecation warnings to adapter re-export wrappers.
-2. Make `settings/ecosystem.yaml` the only editable inventory source and treat `settings/repos.yaml` as legacy or generated output.
-3. Collapse the CLI tree into one canonical surface and leave compatibility shims only where needed.
-4. Merge monitoring, dashboard, and health check code into fewer module paths.
-5. Choose one primary storage and search path, with PostgreSQL + pgvector as the default.
-6. Unify quality evaluation into one canonical module.
-7. Assess routing metrics persistence against Dhara's time-series storage.
-8. Freeze Akosha, Session-Buddy, Oneiric, and Dhara integration layers as thin adapters unless they are on the critical path.
-9. Remove deprecated wrappers and low-value tools after canonical paths are stable.
+1. Make `settings/ecosystem.yaml` the only editable inventory source and treat `settings/repos.yaml` as legacy or generated output.
+1. Collapse the CLI tree into one canonical surface and leave compatibility shims only where needed.
+1. Merge monitoring, dashboard, and health check code into fewer module paths.
+1. Choose one primary storage and search path, with PostgreSQL + pgvector as the default.
+1. Unify quality evaluation into one canonical module.
+1. Assess routing metrics persistence against Dhara's time-series storage.
+1. Freeze Akosha, Session-Buddy, Oneiric, and Dhara integration layers as thin adapters unless they are on the critical path.
+1. Remove deprecated wrappers and low-value tools after canonical paths are stable.
 
 ## Risk Ratings
 
@@ -73,57 +73,69 @@ The repo already contains roadmap items that point in this direction, especially
 ### Delete Immediately (Low Risk)
 
 - `mahavishnu/mcp/tools/session_buddy_tools.py.bak4`
+
   - Accumulated backup snapshot. Git history preserves all prior versions.
   - **Acceptance**: `grep -r session_buddy_tools.py.bak mahavishnu/` returns zero results; tests pass.
 
 - `mahavishnu/mcp/tools/session_buddy_tools.py.bak5`
+
   - Same as above.
   - **Acceptance**: Same as above.
 
 - `mahavishnu/mcp/tools/session_buddy_tools.py.bak6`
+
   - Same as above.
   - **Acceptance**: Same as above.
 
 - `mahavishnu/cli/backup_cli.py`
+
   - Zero importers confirmed. `_main_cli.py` imports from root-level `backup_cli.py` only.
   - **Acceptance**: `grep -r "cli\.backup_cli\|cli/backup_cli" mahavishnu/` returns zero results; tests pass.
 
 - `mahavishnu/cli/production_cli.py`
+
   - Zero importers confirmed. `_main_cli.py` imports from root-level `production_cli.py` only.
   - **Acceptance**: `grep -r "cli\.production_cli\|cli/production_cli" mahavishnu/` returns zero results; tests pass.
 
 ### Canonicalize
 
 - `settings/ecosystem.yaml`
+
   - Make this the editable source of truth for repo inventory, roles, and component topology.
   - Do not keep a separate user-editable inventory file unless there is a proven external consumer.
   - **Acceptance**: All inventory tools read from `ecosystem.yaml`; `repos.yaml` emits deprecation warning on access.
 
 - `core/ecosystem.py`
+
   - Keep this as the parser and validator for `ecosystem.yaml`.
   - Avoid turning it into a second configuration system.
   - **Acceptance**: No new configuration keys added outside `ecosystem.yaml`.
 
 - `core/monitoring.py`
+
   - Keep the main monitoring model here if Mahavishnu retains local monitoring.
   - This should be the canonical location for alerting and dashboard logic.
   - **Acceptance**: All monitoring queries route through this module.
 
 - `core/search/hybrid_search.py`
+
   - Keep this as the canonical search path.
   - Treat it as the main implementation for hybrid lexical plus vector search.
   - **Acceptance**: All search surfaces delegate to this module.
 
 - `README.md`
+
   - Update the documentation to match the canonical config and component story.
   - **Acceptance**: No references to `repos.yaml` as primary; all paths point to `ecosystem.yaml`.
 
 - `docs/ECOSYSTEM.md`
+
   - Keep this aligned with the canonical inventory story. Currently describes `repos.yaml` as "legacy, being migrated" which is correct but incomplete.
   - Complete the migration checklist items marked with in-progress markers.
   - **Acceptance**: All migration checklist items resolved; `repos.yaml` references removed or marked deprecated.
 
 - `ingesters/quality_scorer.py`
+
   - Make this the canonical quality evaluation module. It already contains the real implementation (469 lines vs the 84-line stub evaluator).
   - Merge the type definitions from `quality_evaluator.py` into this module.
   - **Acceptance**: `quality_scorer.py` is the sole import target; `quality_evaluator.py` only re-exports with deprecation warning.
@@ -131,46 +143,55 @@ The repo already contains roadmap items that point in this direction, especially
 ### Merge Or Dedupe
 
 - `_main_cli.py` (1,673 lines)
+
   - This is the biggest overlap surface.
   - Normalize duplicate command families and reduce command fan-in.
   - **Acceptance**: Each command family appears once; no duplicate registrations.
   - **Risk**: Medium -- many consumers import from this file.
 
 - `mahavishnu/backup_cli.py` (152 lines)
+
   - Keep as canonical after `cli/backup_cli.py` is deleted.
   - **Acceptance**: All backup commands work; tests pass.
 
 - `mahavishnu/production_cli.py` (97 lines)
+
   - Keep as canonical after `cli/production_cli.py` is deleted.
   - **Acceptance**: All production readiness commands work; tests pass.
 
 - `core/monitoring_infra.py` (233 lines)
+
   - Provides MetricsExporter and AlertManager. Merge into `core/monitoring.py`.
   - Preserve the alerting rule logic -- it is complementary, not redundant.
   - **Acceptance**: `monitoring.py` exports all symbols from both modules; no import breakage.
   - **Risk**: Medium -- verify all importers of `monitoring_infra` are updated.
 
 - `core/dashboard_config.py` (77 lines)
+
   - Pure data model for Grafana JSON generation. Fold into `core/monitoring.py` directly.
   - **Acceptance**: `DashboardPanel` and `DashboardConfig` importable from `monitoring.py`.
   - **Risk**: Low -- small dataclass module with few consumers.
 
 - `core/health_schemas.py` (128 lines)
+
   - Pydantic models for health checking. Fold into `core/health.py`.
   - **Acceptance**: All health schema types importable from `health.py`.
   - **Risk**: Low -- pure data models.
 
 - `core/opensearch_integration.py` (515 lines)
+
   - Narrow to a distinct workload or retire if pgvector covers the use case.
   - **Acceptance**: If retired, all search paths route through `hybrid_search.py`; if kept, it has a clear separate responsibility documented in module docstring.
   - **Risk**: Medium -- verify LlamaIndex adapter does not depend on this directly.
 
 - `core/embeddings_oneiric.py` (366 lines)
+
   - Fold into `core/config.py` if it is only another configuration layer.
   - **Acceptance**: Embedding configuration is part of main config; no separate module needed.
   - **Risk**: Medium -- check for Oneiric-specific consumers.
 
 - `ingesters/quality_evaluator.py` (84 lines)
+
   - Stub module. `quality_scorer.py` already imports types from it and provides the real implementation.
   - After merging types into `quality_scorer.py`, convert to a thin deprecation re-export.
   - **Acceptance**: `quality_scorer.py` is self-contained; `quality_evaluator.py` emits `DeprecationWarning`.
@@ -178,46 +199,55 @@ The repo already contains roadmap items that point in this direction, especially
 ### Add Deprecation Warnings (Medium Risk)
 
 - `mahavishnu/engines/agno_adapter.py` (7 lines)
+
   - Re-export wrapper using wildcard imports (`from .agno_adapter_impl import *`).
   - Add deprecation warning directing consumers to `engines.agno_adapter_impl`.
   - **Acceptance**: Import from this path still works but emits warning.
 
 - `mahavishnu/engines/prefect_adapter.py` (7 lines)
+
   - Same pattern as above.
   - **Acceptance**: Same as above.
 
 - `mahavishnu/engines/llamaindex_adapter.py` (7 lines)
+
   - Same pattern as above.
   - **Acceptance**: Same as above.
 
 - `mahavishnu/adapters/rag/llamaindex_adapter.py` (34 lines)
+
   - Silent re-export wrapper without deprecation warning (unlike the Prefect one).
   - Add deprecation warning matching the pattern in `adapters/workflow/prefect_adapter.py`.
   - **Acceptance**: Import from this path still works but emits warning.
 
 - `mahavishnu/adapters/workflow/prefect_adapter.py` (66 lines)
+
   - Already has deprecation warning. No action needed beyond eventual removal.
   - **Acceptance**: N/A -- already deprecated.
 
 ### Assess For Overlap
 
 - `core/routing_metrics_persistence.py` (628 lines)
+
   - Nearly as large as the core routing logic (`routing.py` at 524 lines).
   - May duplicate Dhara's time-series storage capability.
   - **Action**: Compare storage operations against `mcp__dhara__record_time_series` and `mcp__dhara__query_time_series`. If Dhara covers the use case, make persistence a thin Dhara delegate.
   - **Acceptance**: Documented decision on whether to keep, replace, or delegate.
 
 - `core/routing_alerts.py` (538 lines) vs `core/monitoring_infra.py` (233 lines)
+
   - Both define alerting systems. `routing_alerts.py` handles adapter degradation and cost spikes. `monitoring_infra.py` provides a general AlertManager.
   - **Action**: Determine if these can share a common alert rule engine, or if their responsibilities are genuinely distinct.
   - **Acceptance**: Documented decision with rationale.
 
 - `health.py` (root, 208 lines) vs `core/health.py` (549 lines) vs `core/health_integration.py` (759 lines)
+
   - Three files for health checking plus schemas (128 lines) and MCP tools (518 lines).
   - **Action**: Map importers for the root-level `health.py` and `health_integration.py`. Determine if they duplicate what `health_tools.py` provides via MCP.
   - **Acceptance**: Clear ownership of each health check path documented.
 
 - `terminal/pool.py` (480 lines) vs `pools/` directory
+
   - Two pool abstractions. Terminal pool is iTerm2-specific (AppleScript-based). Pools directory handles multi-pool orchestration.
   - **Action**: Document which abstraction handles which use case. Assess whether `core/process_pool_executor.py` (240 lines) is related or independent.
   - **Acceptance**: Clear ownership documented; no conceptual overlap in pool lifecycle management.
@@ -225,47 +255,59 @@ The repo already contains roadmap items that point in this direction, especially
 ### Freeze As Optional
 
 - `integrations/session_buddy_poller.py`
+
   - Keep only if OTel bridging is still needed.
   - Otherwise this is likely optional infrastructure.
 
 - `session_buddy/integration.py`
+
   - Keep as a narrow bridge, not a separate product surface.
 
 - `pools/session_buddy_pool.py`
+
   - Keep only for delegation.
   - Do not let it become a second orchestration model.
 
 - `core/oneiric_client.py`
+
   - Keep library-shaped.
   - Do not expand it into a service-like subsystem.
 
 - `core/dhara_adapter.py`
+
   - Keep as a thin adapter unless Dhara becomes first-class storage.
 
 - `mcp/tools/git_analytics.py`
+
   - Keep secondary to orchestration and quality gating.
 
 ### Retire
 
 - `.bak` files in `mahavishnu/mcp/tools/`
+
   - `session_buddy_tools.py.bak4`, `.bak5`, `.bak6` -- accumulated incremental backups.
   - Remove once no code path depends on them (confirmed: zero importers).
 
 - Dead `cli/` variants
+
   - `mahavishnu/cli/backup_cli.py` and `mahavishnu/cli/production_cli.py` -- zero importers.
   - Remove immediately.
 
 - Deprecated adapter re-export wrappers (removed in Phase 5)
+
   - `engines/agno_adapter.py`, `engines/prefect_adapter.py`, `engines/llamaindex_adapter.py` -- deleted, consumers migrated to `*_impl`.
   - `adapters/rag/llamaindex_adapter.py`, `adapters/workflow/prefect_adapter.py` -- deleted.
 
 - Low-value MCP tools identified in the retirement initiative
+
   - Remove or hide behind explicit opt-in.
 
 - Legacy docs and commands that still present `repos.yaml` as the main path
+
   - Update after `ecosystem.yaml` becomes canonical.
 
 - Wrapper commands that only preserve historical names
+
   - Remove after a compatibility window.
 
 ## Component Consolidation Matrix
@@ -412,13 +454,13 @@ This is an inference based on structure and roadmap, not on usage metrics.
 ## Suggested Review Questions For A Third Party Agent
 
 1. Which modules are genuinely canonical versus compatibility shims?
-2. Which overlaps are required for compatibility and which are pure duplication?
-3. Which optional ecosystem components should remain explicit dependencies versus passive integrations?
-4. Which wrappers can be removed without breaking the main operator workflow?
-5. Which low-value tools have no measurable value and can be retired first?
-6. Does `routing_metrics_persistence.py` duplicate what Dhara already provides?
-7. Can `routing_alerts.py` and `monitoring_infra.py` share a common alert engine?
-8. What is the real responsibility split between `health.py` (root), `core/health.py`, and `health_integration.py`?
+1. Which overlaps are required for compatibility and which are pure duplication?
+1. Which optional ecosystem components should remain explicit dependencies versus passive integrations?
+1. Which wrappers can be removed without breaking the main operator workflow?
+1. Which low-value tools have no measurable value and can be retired first?
+1. Does `routing_metrics_persistence.py` duplicate what Dhara already provides?
+1. Can `routing_alerts.py` and `monitoring_infra.py` share a common alert engine?
+1. What is the real responsibility split between `health.py` (root), `core/health.py`, and `health_integration.py`?
 
 ## Proposed Backlog Shape
 
@@ -449,6 +491,7 @@ Validation: Full test suite passes after deletion.
 - [x] Update component matrix to reflect full implementation status of Prefect, LlamaIndex, Agno.
 
 **Import graph summary** (consumers of wrapper modules):
+
 - `engines/agno_adapter.py`: 15+ consumers (tests, adapters/__init__.py, examples, docs)
 - `engines/prefect_adapter.py`: 12+ consumers (tests, adapters/__init__.py, docs)
 - `engines/llamaindex_adapter.py`: 5 consumers (tests, adapters/rag/llamaindex_adapter.py)
@@ -479,9 +522,10 @@ All wrappers now emit `DeprecationWarning` at import time directing to the `*_im
 - `routing_alerts.py` (538 lines) has its own `Alert`, `AlertSeverity`, `AlertType` classes focused on routing-specific concerns (adapter degradation, cost spikes, fallback patterns). `monitoring.py` has general-purpose `AlertManager` for system health, backup failures, and resource exhaustion. Both define independent alert types with shared names but different domains. **Decision: Keep separate.** A future cleanup could rename routing variants to `RoutingAlert`/`RoutingAlertSeverity` to disambiguate.
 
 **Import graph summary** (consumers of merged modules):
+
 - `dashboard_config.py`: 1 consumer (monitoring_infra.py) + 1 test file
 - `monitoring_infra.py`: 2 test files + monitoring_cli.py docstring reference
-- `health_schemas.py`: 12+ consumers (_main_cli.py, health.py root, health_tools.py, config_validator.py, core/health.py, 5+ test files)
+- `health_schemas.py`: 12+ consumers (\_main_cli.py, health.py root, health_tools.py, config_validator.py, core/health.py, 5+ test files)
 
 All wrappers pass through imports correctly with deprecation warnings. 148 tests pass across affected modules.
 
@@ -543,10 +587,10 @@ All wrappers pass through imports correctly with deprecation warnings. 148 tests
 Before any phase beyond Phase 0 begins:
 
 1. **Import graph**: Run a complete import graph for each file targeted for merge or deletion. Confirm all downstream consumers are identified.
-2. **Test mapping**: Identify test files associated with each target module. Ensure tests are updated or merged alongside the modules they test.
-3. **Rollback plan**: Each phase should be a separate commit (or PR) so it can be reverted independently if it introduces regressions.
-4. **Compatibility window**: Phases that change public import paths must include deprecation warnings for at least one release cycle before the import path is removed.
-5. **Validation gate**: After each phase, run the full test suite plus `ruff check` plus `mypy` to confirm no regressions.
+1. **Test mapping**: Identify test files associated with each target module. Ensure tests are updated or merged alongside the modules they test.
+1. **Rollback plan**: Each phase should be a separate commit (or PR) so it can be reverted independently if it introduces regressions.
+1. **Compatibility window**: Phases that change public import paths must include deprecation warnings for at least one release cycle before the import path is removed.
+1. **Validation gate**: After each phase, run the full test suite plus `ruff check` plus `mypy` to confirm no regressions.
 
 ## Final Recommendation
 

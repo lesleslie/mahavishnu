@@ -1,21 +1,18 @@
 """Tests for cost optimizer and multi-objective routing."""
 
-import pytest
-import asyncio
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from mahavishnu.core.cost_optimizer import (
-    CostOptimizer,
     ADAPTER_COSTS,
-    BudgetType,
-    TaskStrategy,
-    ParetoFrontier,
-    CostAwareChoice,
     Budget,
+    BudgetType,
+    CostAwareChoice,
+    CostOptimizer,
+    TaskStrategy,
     get_cost_optimizer,
-    initialize_cost_optimizer,
 )
 from mahavishnu.core.metrics_collector import ExecutionTracker, SamplingStrategy
 from mahavishnu.core.metrics_schema import AdapterType, TaskType
@@ -206,8 +203,12 @@ class TestCostTracking:
 
         # Check cost tracking
         today = datetime.now(UTC).strftime("%Y-%m-%d")
-        total_prefect = optimizer._cost_tracking[today][AdapterType.PREFECT.value][TaskType.WORKFLOW.value]
-        total_agno = optimizer._cost_tracking[today][AdapterType.AGNO.value][TaskType.WORKFLOW.value]
+        total_prefect = optimizer._cost_tracking[today][AdapterType.PREFECT.value][
+            TaskType.WORKFLOW.value
+        ]
+        total_agno = optimizer._cost_tracking[today][AdapterType.AGNO.value][
+            TaskType.WORKFLOW.value
+        ]
 
         assert total_prefect > 0
         assert total_agno > 0
@@ -295,18 +296,20 @@ class TestParetoFrontier:
                     latency_ms=1000 if adapter == AdapterType.PREFECT else 2000,
                 )
 
-                choices.append(CostAwareChoice(
-                    adapter=adapter,
-                    task_type=TaskType.WORKFLOW,
-                    strategy=TaskStrategy.BATCH,
-                    cost_usd=cost,
-                    success_rate=stats["success_rate"],
-                    latency_ms=1000 if adapter == AdapterType.PREFECT else 2000,
-                    score=0.0,
-                    reasoning="",
-                    pareto_dominated=False,
-                    constraints_satisfied=True,
-                ))
+                choices.append(
+                    CostAwareChoice(
+                        adapter=adapter,
+                        task_type=TaskType.WORKFLOW,
+                        strategy=TaskStrategy.BATCH,
+                        cost_usd=cost,
+                        success_rate=stats["success_rate"],
+                        latency_ms=1000 if adapter == AdapterType.PREFECT else 2000,
+                        score=0.0,
+                        reasoning="",
+                        pareto_dominated=False,
+                        constraints_satisfied=True,
+                    )
+                )
 
         frontier = optimizer.calculate_pareto_frontier(choices)
 
@@ -348,18 +351,20 @@ class TestParetoFrontier:
                     latency_ms=1000 if adapter == AdapterType.PREFECT else 3000,
                 )
 
-                choices.append(CostAwareChoice(
-                    adapter=adapter,
-                    task_type=TaskType.WORKFLOW,
-                    strategy=TaskStrategy.BATCH,
-                    cost_usd=cost,
-                    success_rate=stats["success_rate"],
-                    latency_ms=1000 if adapter == AdapterType.PREFECT else 3000,
-                    score=0.0,
-                    reasoning="",
-                    pareto_dominated=False,
-                    constraints_satisfied=True,
-                ))
+                choices.append(
+                    CostAwareChoice(
+                        adapter=adapter,
+                        task_type=TaskType.WORKFLOW,
+                        strategy=TaskStrategy.BATCH,
+                        cost_usd=cost,
+                        success_rate=stats["success_rate"],
+                        latency_ms=1000 if adapter == AdapterType.PREFECT else 3000,
+                        score=0.0,
+                        reasoning="",
+                        pareto_dominated=False,
+                        constraints_satisfied=True,
+                    )
+                )
 
         frontier = optimizer.calculate_pareto_frontier(choices)
 
@@ -573,15 +578,17 @@ class TestConstraintChecking:
         )
 
         # Create valid choice
-        choices = [CostAwareChoice(
-            adapter=AdapterType.PREFECT,
-            task_type=TaskType.WORKFLOW,
-            strategy=TaskStrategy.BATCH,
-            cost_usd=cost,
-            success_rate=stats["success_rate"],
-            latency_ms=3000,
-            score=0.0,
-        )]
+        choices = [
+            CostAwareChoice(
+                adapter=AdapterType.PREFECT,
+                task_type=TaskType.WORKFLOW,
+                strategy=TaskStrategy.BATCH,
+                cost_usd=cost,
+                success_rate=stats["success_rate"],
+                latency_ms=3000,
+                score=0.0,
+            )
+        ]
 
         result = await optimizer.check_budget_constraints(
             adapter=AdapterType.PREFECT,
@@ -610,15 +617,17 @@ class TestConstraintChecking:
             latency_ms=8000,  # Over SLA
         )
 
-        choices = [CostAwareChoice(
-            adapter=AdapterType.AGNO,
-            task_type=TaskType.WORKFLOW,
-            strategy=TaskStrategy.BATCH,
-            cost_usd=cost,
-            success_rate=stats["success_rate"],
-            latency_ms=8000,
-            score=0.0,
-        )]
+        choices = [
+            CostAwareChoice(
+                adapter=AdapterType.AGNO,
+                task_type=TaskType.WORKFLOW,
+                strategy=TaskStrategy.BATCH,
+                cost_usd=cost,
+                success_rate=stats["success_rate"],
+                latency_ms=8000,
+                score=0.0,
+            )
+        ]
 
         result = await optimizer.check_budget_constraints(
             adapter=AdapterType.AGNO,
@@ -657,15 +666,17 @@ class TestConstraintChecking:
             task_type=TaskType.WORKFLOW,
         )
 
-        choices = [CostAwareChoice(
-            adapter=AdapterType.LLAMAINDEX,
-            task_type=TaskType.WORKFLOW,
-            strategy=TaskStrategy.BATCH,
-            cost_usd=cost,
-            success_rate=stats["success_rate"],
-            latency_ms=10000,
-            score=0.0,
-        )]
+        choices = [
+            CostAwareChoice(
+                adapter=AdapterType.LLAMAINDEX,
+                task_type=TaskType.WORKFLOW,
+                strategy=TaskStrategy.BATCH,
+                cost_usd=cost,
+                success_rate=stats["success_rate"],
+                latency_ms=10000,
+                score=0.0,
+            )
+        ]
 
         result = await optimizer.check_budget_constraints(
             adapter=AdapterType.LLAMAINDEX,
@@ -834,6 +845,7 @@ class TestOptimizerLifecycle:
     async def test_singleton(self):
         """Should return same instance on multiple calls."""
         import mahavishnu.core.cost_optimizer as co
+
         co._optimizer = None
 
         optimizer1 = get_cost_optimizer()

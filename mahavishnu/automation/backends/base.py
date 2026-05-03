@@ -7,9 +7,16 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
-from typing import ParamSpec, TypeVar
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
-from mahavishnu.automation.base import ApplicationInfo, MenuInfo, ScreenInfo, UIElement, WindowInfo
+if TYPE_CHECKING:
+    from mahavishnu.automation.base import (
+        ApplicationInfo,
+        MenuInfo,
+        ScreenInfo,
+        UIElement,
+        WindowInfo,
+    )
 
 P = ParamSpec("P")
 R = TypeVar("R")

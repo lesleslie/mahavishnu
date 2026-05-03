@@ -16,23 +16,20 @@ Schema: migrations/versions/V202604021300__routing_metrics_schema.sql
 from __future__ import annotations
 
 import asyncio
-import time
-import logging
 from collections import defaultdict
+import contextlib
 from dataclasses import dataclass, field
-from datetime import datetime, UTC, timedelta
-from typing import Any, Awaitable, Callable
-from enum import Enum
-
-from pydantic import ValidationError
+from datetime import UTC, datetime
+from enum import StrEnum
+import logging
+import time
+from typing import Any
 
 from mahavishnu.core.metrics_schema import (
-    ExecutionRecord,
-    AdapterStats,
     AdapterType,
-    TaskType,
+    ExecutionRecord,
     ExecutionStatus,
-    CostTracking,
+    TaskType,
 )
 
 try:
@@ -48,7 +45,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class SamplingStrategy(str, Enum):
+class SamplingStrategy(StrEnum):
     """Sampling strategies for metrics collection."""
 
     FULL = "full"  # 100% sampling
@@ -302,7 +299,6 @@ class ExecutionTracker:
         """
         # This is called by AdapterManager for fallback attempts
         # We'll track these separately from execution records
-        key = f"{adapter.value}:attempt_{attempt_number}"
         # Store in metrics for statistical analysis
         logger.debug(f"Adapter attempt: {adapter.value} #{attempt_number} -> {outcome}")
 
@@ -322,7 +318,7 @@ class ExecutionTracker:
         if self.storage_client is not None:
             try:
                 # Use batch_write interface from RoutingMetricsPersistence
-                if hasattr(self.storage_client, 'batch_write'):
+                if hasattr(self.storage_client, "batch_write"):
                     result = await self.storage_client.batch_write(records)
                     written = result.get("written", len(records))
                 else:
@@ -360,9 +356,10 @@ class ExecutionTracker:
                 # Write aggregates to PostgreSQL storage
                 if self.storage_client is not None:
                     # Write adapter stats to PostgreSQL
-                    if hasattr(self.storage_client, 'write_adapter_stats'):
+                    if hasattr(self.storage_client, "write_adapter_stats"):
                         for adapter_name, stats in aggregates["adapter_stats"].items():
                             from mahavishnu.core.metrics_schema import AdapterStats
+
                             adapter_stats = AdapterStats(
                                 adapter=AdapterType(adapter_name),
                                 date=stats.get("date", datetime.now(UTC).strftime("%Y-%m-%d")),
@@ -493,10 +490,8 @@ class ExecutionTracker:
         # Cancel aggregation loop
         if self._aggregate_task and not self._aggregate_task.done():
             self._aggregate_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._aggregate_task
-            except asyncio.CancelledError:
-                pass
 
         # Shutdown event
         self._shutdown_event.set()

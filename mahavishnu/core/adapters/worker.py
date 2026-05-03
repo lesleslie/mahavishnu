@@ -54,8 +54,6 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         if config is None:
             raise ValueError("Either config or worker_manager must be provided")
 
-        from ...terminal.manager import TerminalManager
-
         try:
             running_loop = asyncio.get_running_loop()
         except RuntimeError:
@@ -135,7 +133,6 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             has_cloud_ui=False,
             supports_multi_agent=False,
         )
-
 
     async def initialize(self) -> None:
         """Initialize the worker adapter."""
@@ -318,14 +315,10 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             gateway_base_url = os.environ.get("BIFROST_BASE_URL") or os.environ.get(
                 "MAHAVISHNU_LLM_GATEWAY_BASE_URL"
             )
-            base_url = os.environ.get(
-                "ANTHROPIC_BASE_URL", "https://api.anthropic.com"
-            )
+            base_url = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
 
             if not auth_token:
-                logger.debug(
-                    "ANTHROPIC_AUTH_TOKEN not set; nanobot in-process workers unavailable"
-                )
+                logger.debug("ANTHROPIC_AUTH_TOKEN not set; nanobot in-process workers unavailable")
                 return None
 
             from nanobot.providers import OpenAICompatProvider

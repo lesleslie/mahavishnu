@@ -9,15 +9,14 @@ Tests cover:
 from __future__ import annotations
 
 import pytest
-from datetime import datetime, UTC
 
 from mahavishnu.core.onboarding import (
+    TUTORIAL_STEPS,
     OnboardingManager,
     OnboardingProgress,
-    OnboardingStep,
     OnboardingStatus,
+    OnboardingStep,
     TutorialStep,
-    TUTORIAL_STEPS,
     format_step_output,
     format_welcome_message,
     get_onboarding_manager,

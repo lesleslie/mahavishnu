@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 
 from mahavishnu.core.code_index.git_hooks import (
+    _HOOK_NAMES,
     HOOK_CONTENT,
     MAHAVISHNU_HEADER,
-    _HOOK_NAMES,
     install_hooks,
     uninstall_hooks,
 )

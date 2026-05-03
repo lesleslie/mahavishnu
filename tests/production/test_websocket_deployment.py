@@ -11,26 +11,24 @@ These tests verify production-ready WebSocket server functionality including:
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime, timedelta
 import json
-import ssl
-import socket
-import time
-import uuid
 from pathlib import Path
-from datetime import datetime, timedelta, timezone
+import socket
+import ssl
+import time
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+import uuid
 
-import pytest
-import websockets
+from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography import x509
 from cryptography.x509.oid import NameOID
-
 from mcp_common.websocket import MessageType, WebSocketMessage, WebSocketProtocol, WebSocketServer
 from mcp_common.websocket.auth import WebSocketAuthenticator
+import pytest
+import websockets
 
 
 def _can_bind_localhost() -> bool:
@@ -105,19 +103,19 @@ def temp_certificate(tmp_path: Path) -> tuple[str, str]:
     """
     # Generate private key
     private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-        backend=default_backend()
+        public_exponent=65537, key_size=2048, backend=default_backend()
     )
 
     # Generate certificate
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"CA"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Test Org"),
-        x509.NameAttribute(NameOID.COMMON_NAME, u"localhost"),
-    ])
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+            x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "CA"),
+            x509.NameAttribute(NameOID.LOCALITY_NAME, "San Francisco"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test Org"),
+            x509.NameAttribute(NameOID.COMMON_NAME, "localhost"),
+        ]
+    )
 
     cert = (
         x509.CertificateBuilder()
@@ -125,10 +123,10 @@ def temp_certificate(tmp_path: Path) -> tuple[str, str]:
         .issuer_name(issuer)
         .public_key(private_key.public_key())
         .serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.now(timezone.utc) - timedelta(hours=1))
-        .not_valid_after(datetime.now(timezone.utc) + timedelta(hours=1))
+        .not_valid_before(datetime.now(UTC) - timedelta(hours=1))
+        .not_valid_after(datetime.now(UTC) + timedelta(hours=1))
         .add_extension(
-            x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
+            x509.SubjectAlternativeName([x509.DNSName("localhost")]),
             critical=False,
         )
         .sign(private_key, hashes.SHA256(), default_backend())
@@ -166,10 +164,12 @@ def jwt_authenticator() -> WebSocketAuthenticator:
 @pytest.fixture
 def valid_jwt_token(jwt_authenticator: WebSocketAuthenticator) -> str:
     """Generate valid JWT token for testing."""
-    return jwt_authenticator.create_token({
-        "user_id": "test_user_123",
-        "permissions": ["read", "write", "admin"],
-    })
+    return jwt_authenticator.create_token(
+        {
+            "user_id": "test_user_123",
+            "permissions": ["read", "write", "admin"],
+        }
+    )
 
 
 @pytest.fixture
@@ -177,6 +177,7 @@ def expired_jwt_token(jwt_authenticator: WebSocketAuthenticator) -> str:
     """Generate expired JWT token for testing."""
     # Create token that's already expired
     import jwt
+
     payload = {
         "user_id": "test_user_123",
         "permissions": ["read", "write"],
@@ -373,6 +374,7 @@ async def simple_websocket_server(temp_certificate: tuple[str, str]) -> WebSocke
 # JWT Authentication Tests
 # =============================================================================
 
+
 @pytest.mark.production
 @pytest.mark.asyncio
 class TestJWTAuthentication:
@@ -480,10 +482,12 @@ class TestJWTAuthentication:
     ):
         """Test that token with insufficient permissions is rejected from protected channels."""
         # Create token with limited permissions
-        limited_token = jwt_authenticator.create_token({
-            "user_id": "limited_user",
-            "permissions": ["read"],  # Only read permission
-        })
+        limited_token = jwt_authenticator.create_token(
+            {
+                "user_id": "limited_user",
+                "permissions": ["read"],  # Only read permission
+            }
+        )
 
         uri = f"wss://localhost:{auth_websocket_server.port}"
 
@@ -523,6 +527,7 @@ class TestJWTAuthentication:
         """Test token refresh functionality."""
         # Create expiring token (expires in 10 seconds)
         import jwt
+
         payload = {
             "user_id": "test_user_123",
             "permissions": ["read", "write"],
@@ -530,9 +535,7 @@ class TestJWTAuthentication:
             "iat": int(time.time()),
         }
         expiring_token = jwt.encode(
-            payload,
-            jwt_authenticator.secret,
-            algorithm=jwt_authenticator.algorithm
+            payload, jwt_authenticator.secret, algorithm=jwt_authenticator.algorithm
         )
 
         uri = f"wss://localhost:{auth_websocket_server.port}"
@@ -549,10 +552,12 @@ class TestJWTAuthentication:
             await asyncio.wait_for(ws.recv(), timeout=1.0)  # Welcome
 
             # Create new token
-            new_token = jwt_authenticator.create_token({
-                "user_id": "test_user_123",
-                "permissions": ["read", "write", "admin"],
-            })
+            new_token = jwt_authenticator.create_token(
+                {
+                    "user_id": "test_user_123",
+                    "permissions": ["read", "write", "admin"],
+                }
+            )
 
             # Send token refresh
             refresh_msg = WebSocketProtocol.create_request(
@@ -573,6 +578,7 @@ class TestJWTAuthentication:
 # =============================================================================
 # TLS/WSS Connection Tests
 # =============================================================================
+
 
 @pytest.mark.production
 @pytest.mark.asyncio
@@ -626,7 +632,7 @@ class TestTLSConnections:
             cert = x509.load_pem_x509_certificate(cert_data, default_backend())
 
         # Check certificate is not expired
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         assert cert.not_valid_after_utc > now
         assert cert.not_valid_before_utc < now
 
@@ -643,7 +649,7 @@ class TestTLSConnections:
 
         # Create SSL context with only secure ciphers
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ssl_context.set_ciphers('ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256')
+        ssl_context.set_ciphers("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256")
         ssl_context.check_hostname = False
         ssl_context.verify_mode = ssl.CERT_NONE
 
@@ -655,6 +661,7 @@ class TestTLSConnections:
 # =============================================================================
 # Service Lifecycle Tests
 # =============================================================================
+
 
 @pytest.mark.production
 @pytest.mark.asyncio
@@ -671,6 +678,7 @@ class TestServiceLifecycle:
 
         # Verify port is actually listening
         import socket
+
         with socket.create_connection(
             ("localhost", simple_websocket_server.port),
             timeout=1.0,
@@ -765,6 +773,7 @@ class TestServiceLifecycle:
 # Cross-Service Communication Tests
 # =============================================================================
 
+
 @pytest.mark.production
 @pytest.mark.asyncio
 class TestCrossServiceCommunication:
@@ -810,10 +819,12 @@ class TestCrossServiceCommunication:
 
         try:
             # Server 1 connects to Server 2
-            service_token = jwt_authenticator.create_token({
-                "user_id": "service_1",
-                "permissions": ["service:communicate"],
-            })
+            service_token = jwt_authenticator.create_token(
+                {
+                    "user_id": "service_1",
+                    "permissions": ["service:communicate"],
+                }
+            )
 
             uri = f"wss://localhost:{servers[1].port}"
             ssl_context = ssl.create_default_context()
@@ -854,6 +865,7 @@ class TestCrossServiceCommunication:
         jwt_authenticator: WebSocketAuthenticator,
     ):
         """Test cross-service subscriptions with authentication."""
+
         # Create publisher and subscriber servers
         class TestServer(WebSocketServer):
             def __init__(self, *args, **kwargs):
@@ -935,6 +947,7 @@ class TestCrossServiceCommunication:
 # =============================================================================
 # Graceful Degradation Tests
 # =============================================================================
+
 
 @pytest.mark.production
 @pytest.mark.asyncio
@@ -1068,6 +1081,7 @@ class TestGracefulDegradation:
 # =============================================================================
 # Performance Tests
 # =============================================================================
+
 
 @pytest.mark.production
 @pytest.mark.slow
@@ -1239,6 +1253,7 @@ class TestPerformance:
 # Upgrade/Deployment Tests
 # =============================================================================
 
+
 @pytest.mark.production
 @pytest.mark.asyncio
 class TestUpgradeScenarios:
@@ -1249,13 +1264,14 @@ class TestUpgradeScenarios:
         temp_certificate: tuple[str, str],
     ):
         """Test deployment to clean environment (no existing data)."""
-        import tempfile
         import shutil
+        import tempfile
 
         # Create temporary data directory
         data_dir = tempfile.mkdtemp()
 
         try:
+
             class TestServer(WebSocketServer):
                 async def on_connect(self, ws, conn_id):
                     pass

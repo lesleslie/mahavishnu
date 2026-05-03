@@ -1,11 +1,8 @@
 """Tests for mahavishnu/_main_cli.py — CLI app structure and command registration."""
 
-import pytest
-from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 
 import mahavishnu._main_cli as cli_module
-
 
 runner = CliRunner()
 
@@ -15,6 +12,7 @@ class TestAppStructure:
 
     def test_app_is_typer_instance(self):
         import typer
+
         assert isinstance(cli_module.app, typer.Typer)
 
     def test_app_name(self):

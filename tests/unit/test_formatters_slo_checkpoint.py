@@ -23,7 +23,6 @@ from mahavishnu.core.slo import (
 )
 from mahavishnu.session.checkpoint import SessionBuddy
 
-
 # =========================================================================
 # shell/formatters.py — WorkflowFormatter
 # =========================================================================
@@ -32,6 +31,7 @@ from mahavishnu.session.checkpoint import SessionBuddy
 def _make_formatter(**kwargs):
     """Create a WorkflowFormatter with console=None to force fallback path."""
     from mahavishnu.shell.formatters import WorkflowFormatter
+
     return WorkflowFormatter(console=None, **kwargs)
 
 
@@ -43,9 +43,17 @@ class TestWorkflowFormatter:
 
     def test_fallback_format_workflows(self, capsys):
         fmt = _make_formatter()
-        fmt.format_workflows([
-            {"id": "wf-1", "status": "running", "progress": 50, "adapter": "prefect", "created_at": "2026-01-01T00:00:00"},
-        ])
+        fmt.format_workflows(
+            [
+                {
+                    "id": "wf-1",
+                    "status": "running",
+                    "progress": 50,
+                    "adapter": "prefect",
+                    "created_at": "2026-01-01T00:00:00",
+                },
+            ]
+        )
         output = capsys.readouterr().out
         assert "wf-1" in output
         assert "running" in output
@@ -53,36 +61,52 @@ class TestWorkflowFormatter:
 
     def test_fallback_format_with_details(self, capsys):
         fmt = _make_formatter()
-        fmt.format_workflows([
-            {
-                "id": "wf-2", "status": "failed", "progress": 80,
-                "adapter": "agno", "repos": ["a", "b", "c"],
-                "errors": [{"message": "timeout"}],
-                "created_at": "2026-01-01T00:00:00",
-            },
-        ], show_details=True)
+        fmt.format_workflows(
+            [
+                {
+                    "id": "wf-2",
+                    "status": "failed",
+                    "progress": 80,
+                    "adapter": "agno",
+                    "repos": ["a", "b", "c"],
+                    "errors": [{"message": "timeout"}],
+                    "created_at": "2026-01-01T00:00:00",
+                },
+            ],
+            show_details=True,
+        )
         output = capsys.readouterr().out
         assert "Repos: 3" in output
         assert "Errors: 1" in output
 
     def test_fallback_detail(self, capsys):
         fmt = _make_formatter()
-        fmt.format_workflow_detail({
-            "id": "wf-d", "status": "completed", "progress": 100,
-            "adapter": "prefect", "repos": ["repo-x"],
-            "errors": [],
-        })
+        fmt.format_workflow_detail(
+            {
+                "id": "wf-d",
+                "status": "completed",
+                "progress": 100,
+                "adapter": "prefect",
+                "repos": ["repo-x"],
+                "errors": [],
+            }
+        )
         output = capsys.readouterr().out
         assert "wf-d" in output
         assert "completed" in output
 
     def test_fallback_detail_with_errors(self, capsys):
         fmt = _make_formatter()
-        fmt.format_workflow_detail({
-            "id": "wf-e", "status": "failed", "progress": 60,
-            "adapter": "agno", "repos": [],
-            "errors": [{"message": "OOM"}, {"message": "timeout"}],
-        })
+        fmt.format_workflow_detail(
+            {
+                "id": "wf-e",
+                "status": "failed",
+                "progress": 60,
+                "adapter": "agno",
+                "repos": [],
+                "errors": [{"message": "OOM"}, {"message": "timeout"}],
+            }
+        )
         output = capsys.readouterr().out
         assert "OOM" in output
         assert "timeout" in output
@@ -90,9 +114,17 @@ class TestWorkflowFormatter:
     def test_status_style_map(self, capsys):
         fmt = _make_formatter()
         # Status styles are applied in Rich path; fallback just prints status
-        fmt.format_workflows([
-            {"id": "wf-ok", "status": "completed", "progress": 100, "adapter": "x", "created_at": "t"},
-        ])
+        fmt.format_workflows(
+            [
+                {
+                    "id": "wf-ok",
+                    "status": "completed",
+                    "progress": 100,
+                    "adapter": "x",
+                    "created_at": "t",
+                },
+            ]
+        )
         output = capsys.readouterr().out
         assert "completed" in output
 
@@ -113,6 +145,7 @@ class TestWorkflowFormatter:
 
 def _make_log_formatter(**kwargs):
     from mahavishnu.shell.formatters import LogFormatter
+
     return LogFormatter(console=None, **kwargs)
 
 
@@ -124,9 +157,11 @@ class TestLogFormatter:
 
     def test_fallback_format(self, capsys):
         fmt = _make_log_formatter()
-        fmt.format_logs([
-            {"timestamp": "2026-01-01T12:00:00", "level": "ERROR", "message": "DB down"},
-        ])
+        fmt.format_logs(
+            [
+                {"timestamp": "2026-01-01T12:00:00", "level": "ERROR", "message": "DB down"},
+            ]
+        )
         output = capsys.readouterr().out
         assert "ERROR" in output
         assert "DB down" in output
@@ -178,6 +213,7 @@ class TestLogFormatter:
 
 def _make_repo_formatter(**kwargs):
     from mahavishnu.shell.formatters import RepoFormatter
+
     return RepoFormatter(console=None, **kwargs)
 
 
@@ -189,18 +225,23 @@ class TestRepoFormatter:
 
     def test_fallback_format(self, capsys):
         fmt = _make_repo_formatter()
-        fmt.format_repos([
-            {"path": "/tmp/repo-a", "description": "Test repo A", "tags": ["python"]},
-        ])
+        fmt.format_repos(
+            [
+                {"path": "/tmp/repo-a", "description": "Test repo A", "tags": ["python"]},
+            ]
+        )
         output = capsys.readouterr().out
         assert "/tmp/repo-a" in output
         assert "Test repo A" in output
 
     def test_fallback_with_tags(self, capsys):
         fmt = _make_repo_formatter()
-        fmt.format_repos([
-            {"path": "/tmp/b", "description": "B", "tags": ["python", "backend"]},
-        ], show_tags=True)
+        fmt.format_repos(
+            [
+                {"path": "/tmp/b", "description": "B", "tags": ["python", "backend"]},
+            ],
+            show_tags=True,
+        )
         output = capsys.readouterr().out
         # Rich Table renders tags in the Tags column
         assert "python, backend" in output
@@ -279,7 +320,10 @@ class TestSLOCalculator:
         assert vr["age_minutes"] == 15.0
 
     def test_polling_all_success(self):
-        results = {"repo-a": {"success": 100, "failure": 1}, "repo-b": {"success": 50, "failure": 0}}
+        results = {
+            "repo-a": {"success": 100, "failure": 1},
+            "repo-b": {"success": 50, "failure": 0},
+        }
         result = SLOCalculator.polling_success_slo(results)
         assert result["success_rate_pct"] == round(150 / 151 * 100, 2)
         assert result["total_success"] == 150
@@ -443,8 +487,10 @@ class TestGenerateSLOReport:
         poll = SLOCalculator.polling_success_slo({"repo-b": {"success": 90, "failure": 10}})
         # Create availability violation
         avail = SLOCalculator.availability_slo(
-            [{"timestamp": NOW - timedelta(minutes=10), "up": False},
-             {"timestamp": NOW - timedelta(minutes=1), "up": True}],
+            [
+                {"timestamp": NOW - timedelta(minutes=10), "up": False},
+                {"timestamp": NOW - timedelta(minutes=1), "up": True},
+            ],
             window_hours=1,
         )
         report = generate_slo_report(fresh, poll, avail)

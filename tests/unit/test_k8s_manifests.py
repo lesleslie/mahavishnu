@@ -1,19 +1,17 @@
 """Tests for Kubernetes Manifest Generator - K8s deployment manifests."""
 
 import pytest
-import yaml
-from typing import Any
 
 from mahavishnu.core.k8s_manifests import (
-    K8sManifestGenerator,
-    DeploymentConfig,
-    ServiceConfig,
     ConfigMapConfig,
-    IngressConfig,
+    DeploymentConfig,
     HPAConfig,
-    ResourceRequirements,
-    ProbeConfig,
+    IngressConfig,
+    K8sManifestGenerator,
     ManifestType,
+    ProbeConfig,
+    ResourceRequirements,
+    ServiceConfig,
 )
 
 

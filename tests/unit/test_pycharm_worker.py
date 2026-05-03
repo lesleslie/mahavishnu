@@ -1,11 +1,8 @@
 """Unit tests for PyCharm application worker and tools."""
 
-import pytest
-
 from mahavishnu.workers.registry import (
-    WorkerCategory,
-    WorkerConfig,
     WORKER_REGISTRY,
+    WorkerCategory,
     get_worker_config,
     validate_worker_dependencies,
 )

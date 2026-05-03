@@ -1,9 +1,9 @@
 """Tests for TaskRouter graceful fallback mechanism."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from mahavishnu.core.task_router import TaskRouter, AdapterManager, StateManager
-from mahavishnu.core.adapters.base import AdapterType, AdapterCapabilities, OrchestratorAdapter
+
+from mahavishnu.core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
+from mahavishnu.core.task_router import AdapterManager, StateManager, TaskRouter
 
 
 class MockAdapter(OrchestratorAdapter):

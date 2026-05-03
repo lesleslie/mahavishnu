@@ -1,22 +1,21 @@
 """Tests for statistical router and adaptive scoring."""
 
-import pytest
-import asyncio
-from datetime import datetime, UTC, timedelta
-from unittest.mock import AsyncMock, patch, MagicMock
+from datetime import UTC, datetime
 
+import pytest
+
+from mahavishnu.core.metrics_collector import ExecutionTracker, SamplingStrategy
+from mahavishnu.core.metrics_schema import AdapterType, TaskType
 from mahavishnu.core.statistical_router import (
-    StatisticalRouter,
-    ScoringWeights,
-    ConfidenceLevel,
-    AdapterScore,
-    PreferenceOrder,
     ABTest,
+    AdapterScore,
+    ConfidenceLevel,
+    PreferenceOrder,
+    ScoringWeights,
+    StatisticalRouter,
     get_statistical_router,
     initialize_statistical_router,
 )
-from mahavishnu.core.metrics_collector import ExecutionTracker, SamplingStrategy
-from mahavishnu.core.metrics_schema import AdapterType, TaskType
 
 
 @pytest.fixture
@@ -136,8 +135,8 @@ class TestConfidenceIntervals:
         lower_small, upper_small = router.get_confidence_interval_width(0.85, 20)
 
         # Interval should be wider than with 100 samples
-        assert (lower_small < lower)  # Lower bound is lower
-        assert (upper_small > upper)  # Upper bound is higher
+        assert lower_small < lower  # Lower bound is lower
+        assert upper_small > upper  # Upper bound is higher
 
     @pytest.mark.asyncio
     async def test_confidence_interval_zero_samples(self, router):
@@ -252,7 +251,11 @@ class TestPreferenceOrderGeneration:
 
         assert pref.task_type == TaskType.WORKFLOW
         assert len(pref.adapters) == 2  # Only Prefect and Agno have data
-        assert pref.confidence in (ConfidenceLevel.HIGH, ConfidenceLevel.MEDIUM, ConfidenceLevel.LOW)
+        assert pref.confidence in (
+            ConfidenceLevel.HIGH,
+            ConfidenceLevel.MEDIUM,
+            ConfidenceLevel.LOW,
+        )
         assert pref.generated_at < datetime.now(UTC)
 
     @pytest.mark.asyncio
@@ -321,8 +324,10 @@ class TestPreferenceOrderGeneration:
         # Workflow (batch) should have lower speed component, RAG higher
         # Success rate should be weighted differently
         # We can't directly verify weights but can check scores are different
-        assert score_rag.latency_score != score_workflow.latency_score or \
-               score_rag.combined_score != score_workflow.combined_score
+        assert (
+            score_rag.latency_score != score_workflow.latency_score
+            or score_rag.combined_score != score_workflow.combined_score
+        )
 
     @pytest.mark.asyncio
     async def test_preference_cache(self, router, tracker):
@@ -511,8 +516,10 @@ class TestRecalculationLoop:
         preferences = await router.recalculate_all_preferences(tracker)
 
         assert len(preferences) > 0
-        assert any(p.task_type in (TaskType.WORKFLOW, TaskType.AI_TASK, TaskType.RAG_QUERY)
-                 for p in preferences.values())
+        assert any(
+            p.task_type in (TaskType.WORKFLOW, TaskType.AI_TASK, TaskType.RAG_QUERY)
+            for p in preferences.values()
+        )
 
     @pytest.mark.asyncio
     async def test_recalculation_clears_cache(self, router, tracker):
@@ -529,8 +536,9 @@ class TestRecalculationLoop:
         await router.recalculate_all_preferences(tracker)
 
         # Cache should be cleared
-        assert cache_key not in router._preferences or \
-               router._preferences.get(cache_key) is not pref1
+        assert (
+            cache_key not in router._preferences or router._preferences.get(cache_key) is not pref1
+        )
 
 
 class TestRouterLifecycle:
@@ -606,6 +614,7 @@ class TestSingleton:
     async def test_get_statistical_router_singleton(self):
         """Should return same instance on multiple calls."""
         import mahavishnu.core.statistical_router as sr
+
         sr._router = None
 
         router1 = get_statistical_router()
@@ -617,6 +626,7 @@ class TestSingleton:
     async def test_initialize_statistical_router(self):
         """Should initialize and start router."""
         import mahavishnu.core.statistical_router as sr
+
         sr._router = None
 
         router = await initialize_statistical_router(min_samples=50)

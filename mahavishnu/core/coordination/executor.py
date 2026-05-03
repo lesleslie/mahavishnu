@@ -12,7 +12,6 @@ from typing import Any
 from mahavishnu.core.coordination.manager import CoordinationManager
 from mahavishnu.core.coordination.models import CrossRepoTodo
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -137,7 +136,9 @@ class CoordinationExecutor:
                             )
                         except Exception:
                             logger.debug(
-                                "Skipping todo completion memory event for %s", todo_id, exc_info=True
+                                "Skipping todo completion memory event for %s",
+                                todo_id,
+                                exc_info=True,
                             )
 
             return {

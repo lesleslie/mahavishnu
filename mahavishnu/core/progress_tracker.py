@@ -23,17 +23,20 @@ Usage:
 
 from __future__ import annotations
 
-import logging
-import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, UTC, timedelta
-from enum import Enum
-from typing import Any, Callable, Coroutine
+from datetime import UTC, datetime
+from enum import StrEnum
+import logging
+from typing import TYPE_CHECKING, Any
+import uuid
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Coroutine
 
 logger = logging.getLogger(__name__)
 
 
-class ProgressState(str, Enum):
+class ProgressState(StrEnum):
     """State of a progress task."""
 
     PENDING = "pending"
@@ -204,10 +207,7 @@ class ProgressBar:
         Returns:
             Rendered progress bar string
         """
-        if self.total == 0:
-            percentage = 100
-        else:
-            percentage = min(100, (completed / self.total) * 100)
+        percentage = 100 if self.total == 0 else min(100, completed / self.total * 100)
 
         filled_width = int(self.width * percentage / 100)
         empty_width = self.width - filled_width

@@ -6,6 +6,7 @@
 **Source:** [Bodai Agent Platform Master Spec](./2026-04-16-bodai-agent-platform-master-spec.md)
 
 **Companion documents:**
+
 - Master spec: [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
 - Control plane update: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
 
@@ -37,13 +38,13 @@ This plan is intentionally conservative:
 ## 2. Implementation Principles
 
 1. One owner per concern.
-2. Cache is not authority.
-3. UI is presentation, not orchestration.
-4. Review-gated learning only.
-5. Reuse mature external systems before building custom ones.
-6. Security boundaries are explicit at every MCP protocol crossing.
-7. Adapter interfaces use typed contracts (Pydantic models), not untyped dicts.
-8. Every dependency has a documented degradation mode.
+1. Cache is not authority.
+1. UI is presentation, not orchestration.
+1. Review-gated learning only.
+1. Reuse mature external systems before building custom ones.
+1. Security boundaries are explicit at every MCP protocol crossing.
+1. Adapter interfaces use typed contracts (Pydantic models), not untyped dicts.
+1. Every dependency has a documented degradation mode.
 
 ## 3. Non-Goals
 
@@ -285,12 +286,12 @@ uv run pytest tests/unit/test_skill_governance.py tests/unit/test_learning_pipel
 ### 5.3 Pipeline stages
 
 1. Observe
-2. Store
-3. Retrieve
-4. Synthesize
-5. Review
-6. Activate
-7. Rollback
+1. Store
+1. Retrieve
+1. Synthesize
+1. Review
+1. Activate
+1. Rollback
 
 ### 5.4 Ownership
 
@@ -496,8 +497,8 @@ Work:
 - implement `index-code-graph` Prefect workflow in Mahavishnu
 - trigger mechanisms (priority order):
   1. Git hook (`post-commit`, `post-merge`, `post-rewrite`) calls `mahavishnu index --trigger git-event --repo <path>`
-  2. Scheduled sweep (default: every 15 minutes) calls `mahavishnu index --all-repos`
-  3. Manual CLI: `mahavishnu index --repo <path>` for on-demand full re-index
+  1. Scheduled sweep (default: every 15 minutes) calls `mahavishnu index --all-repos`
+  1. Manual CLI: `mahavishnu index --repo <path>` for on-demand full re-index
 - git event handling:
   - merge conflict: use `git merge-base HEAD MERGE_HEAD` for correct diff
   - force push: full re-index fallback when last-indexed commit hash is not an ancestor of HEAD
@@ -670,40 +671,45 @@ uv run pytest tests/integration/test_extension_contracts.py tests/unit/test_plug
 ## 9. Immediate Next Steps
 
 1. Fix routing to match task-class ownership.
-2. Collapse workflow-state authority.
-3. Disable local memory as the default Agno authority.
-4. Mark `team_learning.py` as transitional.
-5. Keep the TUI read-only around stateful surfaces.
-6. Define the learning pipeline schemas and promotion policy.
+1. Collapse workflow-state authority.
+1. Disable local memory as the default Agno authority.
+1. Mark `team_learning.py` as transitional.
+1. Keep the TUI read-only around stateful surfaces.
+1. Define the learning pipeline schemas and promotion policy.
 
 ## 10. Success Criteria
 
 The implementation plan is successful when all of the following are verified by tests or inspection:
 
 **Ownership and authority:**
+
 - grep for `team_learning.py` imports in live modules returns zero results
 - `TaskRouter` routing tests show correct first-choice adapter per task class (no global Prefect-first default)
 - `workflow_state.py` has no competing authority in the steady state (delegates to `StateManager`)
 - TUI module grep for persistence writes returns zero results
 
 **Learning pipeline:**
+
 - skill promotion has a traceable record chain: evidence -> draft -> review -> activation
 - promotion state machine rejects invalid transitions (e.g., `draft -> active` without `review`)
 - rollback restores the previous active version without mutating evidence history
 
 **Operational readiness:**
+
 - every dependency has a documented degradation mode
 - `ecosystem_status` returns a structurally valid `EcosystemStatusReport` (schema validation test)
 - health checks distinguish liveness from readiness (integration test)
 - routing telemetry uses bounded labels only (no unbounded `task_id` or `workflow_id` in Prometheus)
 
 **Ecosystem coherence:**
+
 - Hermes/OpenClaw-style surfaces route through Mahavishnu, not around it
 - adapter interface contracts use typed Pydantic models, not `dict[str, Any]`
 - no duplicate MCP tool names exist in the `standard` tool profile
 - Agno adapter has zero persistence authority (verified by integration test)
 
 **Cross-plan alignment:**
+
 - Impl Phase 0 completion is verified against its checklist (Section 4.0)
 - CP Phase 0 completion is verified against its checklist
 - I0 and CP0 are confirmed as parallel workstreams with independent completion criteria

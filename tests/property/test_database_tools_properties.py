@@ -8,14 +8,9 @@ Tests mahavishnu/mcp/tools/database_tools.py for:
 - Path security validation
 """
 
-import asyncio
-from datetime import UTC, datetime
-from pathlib import Path
-from uuid import uuid4
-
-import pytest
-from hypothesis import given, settings, assume
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
+import pytest
 
 # NOTE: Property tests disabled until learning models are implemented
 pytest.skip("Learning models not yet implemented", allow_module_level=True)
@@ -34,6 +29,7 @@ pytest.skip("Learning models not yet implemented", allow_module_level=True)
 # =============================================================================
 # Time Range Validation Tests (5 tests)
 # ============================================================================
+
 
 class TestTimeRangeValidation:
     """Property-based tests for time range validation."""
@@ -73,7 +69,10 @@ class TestTimeRangeValidation:
             "7d' OR '1'='1' --",
         ]
 
-        assume(time_range in injection_patterns or any(c in time_range for c in ["'", ";", "--", "union", "select", "drop", "delete"]))
+        assume(
+            time_range in injection_patterns
+            or any(c in time_range for c in ["'", ";", "--", "union", "select", "drop", "delete"])
+        )
 
         with pytest.raises(ValueError, match="Invalid time_range"):
             validate_time_range(time_range)
@@ -109,6 +108,7 @@ class TestTimeRangeValidation:
 # =============================================================================
 # Path Security Tests (4 tests)
 # ============================================================================
+
 
 class TestPathSecurity:
     """Property-based tests for path security validation."""
@@ -162,6 +162,7 @@ class TestPathSecurity:
 # SQL Injection Prevention Tests (3 tests)
 # ============================================================================
 
+
 class TestSQLInjectionPrevention:
     """Property-based tests for SQL injection prevention."""
 
@@ -209,6 +210,7 @@ class TestSQLInjectionPrevention:
 # =============================================================================
 # Statistics Calculation Tests (4 tests)
 # ============================================================================
+
 
 class TestStatisticsCalculation:
     """Property-based tests for statistics calculation accuracy."""
@@ -259,7 +261,9 @@ class TestStatisticsCalculation:
 
             # Calculate expected success rate
             successful = sum(1 for r in execution_records if r.success)
-            expected_rate = (successful / len(execution_records) * 100) if execution_records else 0.0
+            expected_rate = (
+                (successful / len(execution_records) * 100) if execution_records else 0.0
+            )
 
             from mahavishnu.mcp.tools.database_tools import get_database_status
 
@@ -340,6 +344,7 @@ class TestStatisticsCalculation:
 # =============================================================================
 # Result Aggregation Tests (3 tests)
 # ============================================================================
+
 
 class TestResultAggregation:
     """Property-based tests for result aggregation consistency."""
@@ -445,6 +450,7 @@ class TestResultAggregation:
 # Edge Case Tests (3 tests)
 # ============================================================================
 
+
 class TestEdgeCases:
     """Property-based tests for edge cases."""
 
@@ -466,8 +472,7 @@ class TestEdgeCases:
 
         # Test case sensitivity, extra characters, etc.
         similar_to_valid = any(
-            time_range.lower() == valid_range.lower()
-            for valid_range in valid_ranges
+            time_range.lower() == valid_range.lower() for valid_range in valid_ranges
         )
 
         # Even if similar, if not exact match, should be rejected

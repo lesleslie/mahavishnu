@@ -3,7 +3,7 @@
 **Updated**: 2026-04-04
 **Previous Version**: 2026-02-12 (archived)
 
----
+______________________________________________________________________
 
 ## Completed Work (since last roadmap)
 
@@ -43,6 +43,7 @@ Adapters were reorganized into a clear facade + implementation pattern:
 | PgvectorAdapter | `adapters/pgvector_adapter.py` | 636 | Complete |
 
 Support modules in `engines/`:
+
 - `prefect_models.py` (314 lines), `prefect_schedules.py` (510 lines), `prefect_registry.py` (363 lines)
 - `goal_team_factory.py` (716 lines)
 
@@ -56,6 +57,7 @@ Support modules in `engines/`:
 ### Additional Dashboards (COMPLETE)
 
 4 Grafana dashboards in `docs/grafana/`:
+
 - `Pool_Monitoring.json` — Pool health and worker distribution
 - `Routing_Monitoring.json` — Routing metrics and decisions
 - `WebSocket_Monitoring.json` — WebSocket performance
@@ -70,7 +72,7 @@ Support modules in `engines/`:
 - **Getting Started guide** (`docs/GETTING_STARTED.md`, 15K)
 - **Troubleshooting guide** (`docs/src/troubleshooting.md`)
 
----
+______________________________________________________________________
 
 ## Current Architecture
 
@@ -101,7 +103,7 @@ mahavishnu/
       worker.py               # Worker adapter
 ```
 
----
+______________________________________________________________________
 
 ## Remaining Work
 
@@ -111,6 +113,7 @@ mahavishnu/
 **Current State**: Basic stub (84 lines, returns hardcoded `1.0` scores)
 
 **Tasks**:
+
 - [ ] Add ML-based quality scoring (train model on labeled data)
 - [ ] Implement readability metrics (Flesch-Kincaid grade level)
 - [ ] Add technical depth analysis (code complexity, API usage)
@@ -124,6 +127,7 @@ mahavishnu/
 **Rationale**: All 6 ecosystem components already have IPython AdminShells (via Oneiric), Typer CLIs, and MCP health endpoints. Building per-component interactive CLIs would create N UI layers for N components with inconsistent UX. A single unified dashboard — hosted in Mahavishnu as the orchestration hub — provides cross-component visibility that per-component dashboards cannot achieve.
 
 **Existing Infrastructure** (already 60% built):
+
 - `tui/command_palette.py` — Fuzzy search command palette
 - `core/task_dashboard.py` — Themes, key bindings, panel abstractions (525 lines)
 - `core/repo_dashboard.py` — Repository health dashboard (509 lines)
@@ -134,11 +138,13 @@ mahavishnu/
 - 5 Grafana dashboards in `docs/grafana/`
 
 **Pre-requisite Cleanup** (Phase 0):
+
 - [ ] Delete 78 `.bak` files in source tree
 - [ ] Consolidate duplicate `AlertManager` classes (`monitoring.py` vs `monitoring_infra.py`)
 - [ ] Resolve `MonitoringDashboard` / `DashboardConfig` split
 
 **Phase 1: Unified Health Command** (2-3 days):
+
 - [ ] Define standardized `health()` response schema in `mcp-common`
 - [ ] Ensure all 6 components expose consistent health endpoint via MCP
 - [ ] Build `mahavishnu health` Typer command — Rich table showing all 6 component statuses
@@ -147,6 +153,7 @@ mahavishnu/
 - **Go/No-Go Gate**: If < 3 developers use `mahavishnu health` regularly after 2 weeks, stop and reassess.
 
 **Phase 2: Interactive Textual Dashboard** (3-5 days, conditional on Phase 1 adoption):
+
 - [ ] Add `textual>=0.50.0` as optional `[tui]` dependency
 - [ ] Build `mahavishnu dashboard` command with Textual app
 - [ ] Ecosystem Overview screen — component cards with health/uptime/metrics
@@ -156,11 +163,13 @@ mahavishnu/
 - [ ] Auto-discover admin shell helpers from each component
 
 **Phase 3: Grafana Alignment** (1-2 days):
+
 - [ ] Wire Grafana and TUI to same Prometheus metrics
 - [ ] Add Sweep History Grafana dashboard (TUI = live, Grafana = historical)
 - [ ] Delete empty/corrupted `Symbiotic-Ecosystem.json` (0 panels)
 
 **Not in scope**:
+
 - Replacing Grafana (complementary: TUI = live diagnostics, Grafana = time-series + alerting)
 - Mobile/web dashboard
 - Admin actions beyond alert acknowledgment (keep TUI read-only for safety)
@@ -172,6 +181,7 @@ mahavishnu/
 **File**: `mahavishnu/cli/config_validator.py` (new)
 
 **Tasks**:
+
 - [ ] Pre-flight checks before Mahavishnu starts
 - [ ] Validate repository paths exist
 - [ ] Validate adapter configs (Prefect URL, Agno settings)
@@ -184,6 +194,7 @@ mahavishnu/
 **Current State**: Property-based and load tests exist, No chaos tests.
 
 **Tasks**:
+
 - [ ] Add failure injection tests (kill workers mid-execution)
 - [ ] Add network partition tests
 - [ ] Add resource exhaustion tests
@@ -192,6 +203,7 @@ mahavishnu/
 ### Priority 5: MCP Utility Tools (Quick Wins)
 
 **Tasks**:
+
 - [ ] Add `mcp_list_tools()` tool (enumerate all available tools)
 - [ ] Add `mcp_test_connection()` tool(ping specific server)
 - [ ] Add `mcp_get_metrics()` tool (query server health)
@@ -201,6 +213,7 @@ mahavishnu/
 **Current State**: Engine files are large (1,000-1,800 lines each).
 
 **Tasks**:
+
 - [ ] Split `engines/prefect_adapter.py` into `prefect_client.py`, + `prefect_deployments.py` + `prefect_executor.py`
 - [ ] Split `engines/agno_adapter.py` into `agno_config.py` + `agno_adapter.py` + `agno_agent_factory.py`
 - [ ] Split `engines/llamaindex_adapter.py` into `llamaindex_config.py` + `llamaindex_ingestion.py` + `llamaindex_query.py`
@@ -210,37 +223,40 @@ mahavishnu/
 **Current State**: Adapters informally follow `initialize()`/`get_health()`/`shutdown()` but but codified in base class.
 
 **Tasks**:
+
 - [ ] Add `initialize()`, `get_health()`, `cleanup()` as abstract methods on `OrchestratorAdapter`
 - [ ] Add `AdapterMetadata` class property (Oneiric pattern)
 - [ ] Update all engine adapters to implement the new abstract methods
 
----
+______________________________________________________________________
 
 ## Recommended Execution Order
 
 **Week 1** (Quick Wins + Prerequisite Cleanup):
+
 1. Phase 0: Delete `.bak` files, consolidate `AlertManager` (1-2 days)
-2. MCP Utility Tools (1 day)
-3. Configuration Validation CLI (1 day)
+1. MCP Utility Tools (1 day)
+1. Configuration Validation CLI (1 day)
 
 **Week 2-3** (Core Features):
-4. Unified Dashboard Phase 1: `mahavishnu health` command (2-3 days)
-5. Content Quality ML (2-3 days)
-6. Chaos Engineering Tests (2 days)
+4\. Unified Dashboard Phase 1: `mahavishnu health` command (2-3 days)
+5\. Content Quality ML (2-3 days)
+6\. Chaos Engineering Tests (2 days)
 
 **Week 4-5** (Conditional on Adoption):
-7. Unified Dashboard Phase 2: Textual TUI (3-5 days, only if Phase 1 gets adoption)
-8. Engine Adapter Decomposition (2-3 days)
+7\. Unified Dashboard Phase 2: Textual TUI (3-5 days, only if Phase 1 gets adoption)
+8\. Engine Adapter Decomposition (2-3 days)
 
 **Week 6+** (Polish):
-9. Unified Dashboard Phase 3: Grafana alignment (1-2 days)
-10. Lifecycle Formalization (1 day)
+9\. Unified Dashboard Phase 3: Grafana alignment (1-2 days)
+10\. Lifecycle Formalization (1 day)
 
 **Go/No-Go Gates**:
+
 - Phase 2 dashboard proceeds only if `mahavishnu health` gets regular use (3+ developers)
 - Each phase gated on previous phase delivering measurable value
 
----
+______________________________________________________________________
 
 ## Infrastructure Status
 

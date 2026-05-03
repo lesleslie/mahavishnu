@@ -1,9 +1,10 @@
 """End-to-end test: scaffold a project, verify structure and content."""
+
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
+import tempfile
 
 import pytest
 from typer.testing import CliRunner
@@ -61,10 +62,8 @@ class TestBasicScaffold:
         assert "scaffolding/project" in pattern_ids
 
     def test_lockfile_content(self, scaffolded_project: Path):
-        lock_content = (
-            scaffolded_project / ".mahavishnu" / "patterns.lock"
-        ).read_text()
-        assert "scaffolding/project==1.0.0\n" == lock_content
+        lock_content = (scaffolded_project / ".mahavishnu" / "patterns.lock").read_text()
+        assert lock_content == "scaffolding/project==1.0.0\n"
 
     def test_git_initialized(self, scaffolded_project: Path):
         assert (scaffolded_project / ".git").is_dir()
@@ -91,9 +90,7 @@ class TestBasicScaffold:
         assert "name = " in content
 
     def test_validate_passes(self, scaffolded_project: Path):
-        result = runner.invoke(
-            app, ["scaffold-validate", "--project", str(scaffolded_project)]
-        )
+        result = runner.invoke(app, ["scaffold-validate", "--project", str(scaffolded_project)])
         assert result.exit_code == 0, f"Validate failed: {result.output}"
 
 
@@ -151,9 +148,7 @@ class TestCompositeScaffold:
             )
             assert result.exit_code == 0, result.output
 
-            manifest = json.loads(
-                (project_dir / ".mahavishnu" / "manifest.json").read_text()
-            )
+            manifest = json.loads((project_dir / ".mahavishnu" / "manifest.json").read_text())
             pattern_ids = {p["id"] for p in manifest["patterns"]}
             assert pattern_ids == {
                 "composite/pwa-app",
@@ -172,9 +167,7 @@ class TestCLIPatternCommands:
         assert "scaffolding/project" in result.output
 
     def test_patterns_show(self):
-        result = runner.invoke(
-            app, ["patterns", "show", "scaffolding/project"]
-        )
+        result = runner.invoke(app, ["patterns", "show", "scaffolding/project"])
         assert result.exit_code == 0
         assert "Fastblocks Project Skeleton" in result.output
 

@@ -15,6 +15,7 @@ replacing them.
 **Priority**: First (smallest surface area, immediate value)
 
 ### Problem
+
 Workflows execute tasks but don't validate results. If a code change fails tests,
 the failure is reported but not automatically fed back for repair. This forces
 human intervention on every test failure.
@@ -63,6 +64,7 @@ class VerificationResult:
 ```
 
 **Integration points**:
+
 - `trigger_workflow` gains optional `verification: VerificationConfig`
 - Existing `get_workflow_status` shows cycle count and current gate results
 - Crackerjack integration: quality gates can delegate to `crackerjack_run(command="test")` or `crackerjack_run(command="check")` instead of raw shell commands
@@ -87,25 +89,29 @@ class VerificationResult:
 ```
 
 ### What exists today
+
 - `trigger_workflow` — task execution
 - `get_workflow_status` — status tracking
 - `worker_execute` — single worker execution
 - `crackerjack_run` — test/lint/check with AI auto-fix
 
 ### What's new
+
 - The feedback loop (test fail → format failures → re-execute with feedback)
 - Quality gates as configurable, composable objects
 - Cycle tracking and exhaustion handling
 
----
+______________________________________________________________________
 
 ## 2. Event Router Service
 
 **Priority**: Second (solves Slack hang, helps Session-Buddy)
 
 ### Problem
+
 Events (worker completions, heartbeats, cost alerts, system health) currently flow
 through the agent's context window or ad-hoc `send_repository_message` calls. This:
+
 - Bloats context windows with monitoring noise
 - Causes hangs when slow event handlers block parallel tool calls (Slack hang bug)
 - Makes it hard to route the right events to the right consumers
@@ -155,6 +161,7 @@ class EventRouter:
 ```
 
 **Built-in consumers**:
+
 - `SessionBuddyConsumer` — forwards relevant events to SB MCP tools
 - `NotificationConsumer` — queues user-facing notifications (Slack, terminal)
 - `LogConsumer` — writes to structured log (JSONL, optional Loki push)
@@ -187,28 +194,32 @@ event_router:
 ```
 
 ### What exists today
+
 - `send_repository_message` — point-to-point message passing between repos
 - `worker_monitor` — polling-based status checks
 - OTel metrics/tracing (partially configured)
 
 ### What's new
+
 - Decoupled pub/sub instead of point-to-point
 - Events never enter the agent context window unless explicitly routed there
 - Priority-based routing with filtering
 - Pluggable consumers (not hardcoded to SB or Slack)
 
 ### Relation to Slack hang bug
+
 Events currently flow through the agent context → parallel tool calls → slow
 handlers block everything. With the router, events bypass the context window
 entirely and go directly to consumers.
 
----
+______________________________________________________________________
 
 ## 3. Role-Based Multi-Agent Coordination
 
 **Priority**: Third (most complex, builds on 1 + 2)
 
 ### Problem
+
 Workers are flat — every worker is a generic `terminal-*` executor. There's no
 structured way to say "plan this, then implement it, then verify it." Complex
 tasks require manual orchestration.
@@ -266,11 +277,12 @@ class Coordinator:
 | Reviewer | crackerjack | Validate output, run quality gates | crackerjack_run, pycharm diagnostics |
 
 **Handoff flow**:
+
 1. **Architect** receives task → produces `spec.md` (approach, files to change, tests to write)
-2. **Executor** receives spec → implements changes → saves diff
-3. **Reviewer** receives spec + diff → runs verification loop (#1) → passes or requests fixes
-4. If reviewer requests fixes → back to Executor with feedback (counts as new round)
-5. After `max_rounds` or pass → Coordinator reports final result
+1. **Executor** receives spec → implements changes → saves diff
+1. **Reviewer** receives spec + diff → runs verification loop (#1) → passes or requests fixes
+1. If reviewer requests fixes → back to Executor with feedback (counts as new round)
+1. After `max_rounds` or pass → Coordinator reports final result
 
 ### Integration with existing workers
 
@@ -292,21 +304,24 @@ plan = CoordinationPlan(
 ```
 
 ### What exists today
+
 - `worker_spawn` / `worker_execute` — spawn and run workers
 - `tool_pool.py` — assemble filtered tool sets (claw-code, could adapt concept)
 - `permissions.py` — deny-list for tools (claw-code, concept applies here)
 
 ### What's new
+
 - Sequential/fan-out/iterative handoff strategies
 - Role-scoped tool restrictions (architect can't edit files, reviewer can't write)
 - Spec-based coordination (output of one role is structured input to next)
 - Round counting and exhaustion handling
 
----
+______________________________________________________________________
 
 ## Implementation Roadmap
 
 ### Phase 1: Verification Loops (~1 week)
+
 - [ ] `mahavishnu/core/verification.py` — `VerificationLoop`, `QualityGate`, `GateParser`
 - [ ] Wire into `trigger_workflow` as optional param
 - [ ] Update `get_workflow_status` to show verification state
@@ -314,6 +329,7 @@ plan = CoordinationPlan(
 - [ ] Tests: unit for gate parsing, integration for full retry loop
 
 ### Phase 2: Event Router (~1-2 weeks)
+
 - [ ] `mahavishnu/core/events.py` — `EventRouter`, `Event`, `RoutingRule`
 - [ ] Built-in consumers: log, notification
 - [ ] YAML config under `event_router` in settings
@@ -321,6 +337,7 @@ plan = CoordinationPlan(
 - [ ] Tests: routing rules, consumer dispatch, config loading
 
 ### Phase 3: Multi-Agent Coordination (~2 weeks)
+
 - [ ] `mahavishnu/core/coordinator.py` — `Coordinator`, `CoordinationPlan`, `Role`
 - [ ] Role-to-worker mapping using existing spawn/execute API
 - [ ] Sequential handoff strategy
@@ -328,16 +345,17 @@ plan = CoordinationPlan(
 - [ ] Tests: role handoff, iterative rounds, tool scoping
 
 ### Dependencies
+
 - Phase 1 is standalone
 - Phase 2 is standalone
 - Phase 3 depends on Phase 1 (reviewer uses verification loops)
 - Phase 3 benefits from Phase 2 (events for coordination lifecycle)
 
----
+______________________________________________________________________
 
 ## Open Questions
 
 1. **Verification feedback format** — How much test output should go back to the executor? Full stdout, filtered failures only, or AI-summarized?
-2. **Event persistence** — Should the event router persist events to Postgres/Dhara, or is in-memory + log sufficient for single-user dev?
-3. **Coordinator isolation** — Should coordinated tasks run in a dedicated workspace/copy to avoid conflicts with the main workspace?
-4. **Role system prompts** — Ship built-in prompts or require user configuration?
+1. **Event persistence** — Should the event router persist events to Postgres/Dhara, or is in-memory + log sufficient for single-user dev?
+1. **Coordinator isolation** — Should coordinated tasks run in a dedicated workspace/copy to avoid conflicts with the main workspace?
+1. **Role system prompts** — Ship built-in prompts or require user configuration?

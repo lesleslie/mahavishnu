@@ -117,6 +117,6 @@ grep "user@example.com" data/audit.log
 grep "auth_denied" data/audit.log
 ```
 
----
+______________________________________________________________________
 
 **Full Documentation:** See [MCP_SERVER_ARCHITECTURE.md](./MCP_SERVER_ARCHITECTURE.md)

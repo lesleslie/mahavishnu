@@ -10,12 +10,12 @@ from mahavishnu.automation.errors import (
     PermissionDeniedError,
     ScreenshotError,
 )
+from mahavishnu.automation.permissions import PermissionChecker
 from mahavishnu.automation.security import (
-    AutomationSecurity,
     DEFAULT_BLOCKED_APPS,
     DEFAULT_BLOCKED_PATTERNS,
+    AutomationSecurity,
 )
-from mahavishnu.automation.permissions import PermissionChecker
 
 
 @pytest.fixture

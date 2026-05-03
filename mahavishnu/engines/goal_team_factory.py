@@ -28,10 +28,11 @@ See: docs/analysis/HIVE_INTEGRATION_TRIO_SYNTHESIS.md
 
 from __future__ import annotations
 
+import contextlib
+from dataclasses import dataclass, field
 import logging
 import re
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -40,9 +41,6 @@ from mahavishnu.engines.agno_teams.config import (
     TeamConfig,
     TeamMode,
 )
-
-if TYPE_CHECKING:
-    pass  # LLM factory type is Any to avoid circular imports
 
 logger = logging.getLogger(__name__)
 
@@ -693,10 +691,8 @@ CONFIDENCE: <0.0-1.0>"""
                 skills_str = line.split(":", 1)[1].strip()
                 skills = [s.strip().lower() for s in skills_str.split(",")]
             elif line.startswith("CONFIDENCE:"):
-                try:
+                with contextlib.suppress(ValueError):
                     confidence = float(line.split(":", 1)[1].strip())
-                except ValueError:
-                    pass
 
         return ParsedGoal(
             intent=intent,

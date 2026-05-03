@@ -7,7 +7,6 @@ import pytest
 from mahavishnu.core.adaptive_rag import (
     AdaptiveRAGRouter,
     ComplexityScore,
-    QueryAnalysis,
     QueryComplexityAnalyzer,
     RAGStrategyType,
     create_adaptive_router,
@@ -174,7 +173,5 @@ class TestCreateAdaptiveRouter:
 
     def test_custom_domain_patterns(self) -> None:
         """Test that custom domain patterns are accepted."""
-        router = create_adaptive_router(
-            domain_patterns=[r"\b(custom_term)\b"]
-        )
+        router = create_adaptive_router(domain_patterns=[r"\b(custom_term)\b"])
         assert isinstance(router, AdaptiveRAGRouter)

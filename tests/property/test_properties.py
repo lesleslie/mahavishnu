@@ -36,6 +36,7 @@ def _run(coro):
             asyncio.set_event_loop(None)
     raise RuntimeError("Cannot run_until_complete inside a running loop")
 
+
 from hypothesis import (
     HealthCheck,
     assume,
@@ -288,9 +289,7 @@ class TestRateLimitingProperties:
 
         # Property: Exempt IPs should always be allowed
         for _ in range(20):  # Try multiple requests
-            allowed, info = _run(
-                limiter.is_allowed(test_ip, config)
-            )
+            allowed, info = _run(limiter.is_allowed(test_ip, config))
 
             if test_ip in exempt_ips:
                 assert allowed is True, f"Exempt IP {test_ip} was rate limited"
@@ -474,12 +473,8 @@ class TestRBACProperties:
 
         # Property: Permission checks should be idempotent
         for permission in permissions:
-            result1 = _run(
-                rbac.check_permission(user_id, repo, permission)
-            )
-            result2 = _run(
-                rbac.check_permission(user_id, repo, permission)
-            )
+            result1 = _run(rbac.check_permission(user_id, repo, permission))
+            result2 = _run(rbac.check_permission(user_id, repo, permission))
 
             assert result1 == result2, f"Permission check for {permission} is not idempotent"
             assert result1 is True, f"User should have permission {permission}"
@@ -507,16 +502,12 @@ class TestRBACProperties:
 
         # Property: User should have permission for allowed repos
         for repo in repos:
-            has_permission = _run(
-                rbac.check_permission(user_id, repo, Permission.READ_REPO)
-            )
+            has_permission = _run(rbac.check_permission(user_id, repo, Permission.READ_REPO))
             assert has_permission is True, f"User should have READ_REPO permission for {repo}"
 
         # Property: User should not have permission for non-allowed repos
         forbidden_repo = "forbidden_repo_unique_name"
-        has_permission = _run(
-            rbac.check_permission(user_id, forbidden_repo, Permission.READ_REPO)
-        )
+        has_permission = _run(rbac.check_permission(user_id, forbidden_repo, Permission.READ_REPO))
         assert has_permission is False, (
             f"User should not have READ_REPO permission for {forbidden_repo}"
         )
@@ -532,9 +523,7 @@ class TestRBACProperties:
         rbac = RBACManager(config)
 
         # Property: Nonexistent users should have no permissions
-        has_permission = _run(
-            rbac.check_permission(user_id, repo, Permission.READ_REPO)
-        )
+        has_permission = _run(rbac.check_permission(user_id, repo, Permission.READ_REPO))
 
         assert has_permission is False, "Nonexistent user should have no permissions"
 
@@ -558,9 +547,7 @@ class TestRBACProperties:
         rbac.users[user_id] = user
 
         # Property: Filtered repos should be subset of allowed repos
-        filtered = _run(
-            rbac.filter_repos_by_permission(user_id, Permission.READ_REPO)
-        )
+        filtered = _run(rbac.filter_repos_by_permission(user_id, Permission.READ_REPO))
 
         assert set(filtered).issubset(set(repos)), (
             "Filtered repos should be subset of allowed repos"
@@ -667,9 +654,7 @@ class TestWorkflowStateProperties:
         task = {"name": task_name, "description": "test task"}
 
         # Property: Created workflow should have all required fields
-        workflow = _run(
-            state.create(workflow_id, task, repos)
-        )
+        workflow = _run(state.create(workflow_id, task, repos))
 
         assert workflow["id"] == workflow_id
         assert workflow["status"] == WorkflowStatus.PENDING
@@ -692,15 +677,11 @@ class TestWorkflowStateProperties:
         state = WorkflowState()
 
         # Create workflow
-        workflow = _run(
-            state.create(workflow_id, {"task": "test"}, ["repo1"])
-        )
+        workflow = _run(state.create(workflow_id, {"task": "test"}, ["repo1"]))
         original_created_at = workflow["created_at"]
 
         # Update workflow
-        _run(
-            state.update(workflow_id, status=status, progress=progress)
-        )
+        _run(state.update(workflow_id, status=status, progress=progress))
 
         # Property: created_at should never change
         updated_workflow = _run(state.get(workflow_id))
@@ -721,14 +702,10 @@ class TestWorkflowStateProperties:
         state = WorkflowState()
 
         # Create workflow
-        _run(
-            state.create(workflow_id, {"task": "test"}, ["repo1"])
-        )
+        _run(state.create(workflow_id, {"task": "test"}, ["repo1"]))
 
         # Update progress
-        _run(
-            state.update_progress(workflow_id, completed, total)
-        )
+        _run(state.update_progress(workflow_id, completed, total))
 
         # Property: Progress should be accurate percentage
         workflow = _run(state.get(workflow_id))
@@ -758,17 +735,13 @@ class TestWorkflowStateProperties:
 
         for i in range(num_workflows):
             workflow_id = f"workflow_{i}"
-            _run(
-                state.create(workflow_id, {"task": f"test_{i}"}, ["repo1"])
-            )
+            _run(state.create(workflow_id, {"task": f"test_{i}"}, ["repo1"]))
             # Update to random status
             status = statuses[i % len(statuses)]
             _run(state.update(workflow_id, status=status))
 
         # List workflows
-        workflows = _run(
-            state.list_workflows(status=status_filter, limit=100)
-        )
+        workflows = _run(state.list_workflows(status=status_filter, limit=100))
 
         # Property: Filtered list should only contain workflows with specified status
         if status_filter:

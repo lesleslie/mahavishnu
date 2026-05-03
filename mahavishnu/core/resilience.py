@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 import logging
 import random
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..core.workflow_state import WorkflowStatus
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 try:
     from prometheus_client import Counter, Gauge
@@ -148,7 +150,9 @@ class ResilienceMetrics:
             outcome=outcome,
         ).inc(attempts)
 
-    def record_retry_amplification(self, dependency: str, attempts: int, successes: int = 1) -> None:
+    def record_retry_amplification(
+        self, dependency: str, attempts: int, successes: int = 1
+    ) -> None:
         if not self._enabled:
             return
         self._initialize()
@@ -215,9 +219,7 @@ class CircuitBreaker:
         if self.state == CircuitState.HALF_OPEN:
             self.failure_count = max(self.failure_count, self.threshold)
             self._transition(CircuitState.OPEN)
-            self.logger.warning(
-                f"Circuit breaker reopened after failure while half-open"
-            )
+            self.logger.warning("Circuit breaker reopened after failure while half-open")
             return
 
         if self.failure_count >= self.threshold and self.state != CircuitState.OPEN:
@@ -337,6 +339,7 @@ async def retry_async(
 
     metrics_collector.record_retry_attempt(dependency, operation, "exhausted")
     raise RetryExhaustedError(last_exception, attempts)
+
 
 class RecoveryStrategy(Enum):
     """Different strategies for error recovery."""
@@ -1036,7 +1039,7 @@ class ResiliencePatterns:
                     try:
                         await asyncio.wait_for(self._shutdown_event.wait(), timeout=300)
                         break  # Shutdown signaled
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         pass  # Normal timeout, continue loop
                 except Exception as e:
                     self.app.logger.error(f"Error in monitoring loop: {e}")
@@ -1044,7 +1047,7 @@ class ResiliencePatterns:
                     try:
                         await asyncio.wait_for(self._shutdown_event.wait(), timeout=60)
                         break  # Shutdown signaled
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         pass  # Normal timeout, continue loop
 
         # Run the monitoring loop in the background

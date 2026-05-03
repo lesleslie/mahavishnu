@@ -29,11 +29,12 @@ Author: python-pro specialist
 Date: 2025-11-20
 Version: 6.0 (reverted to billable-only, tuned budget)
 """
-import sys
-import json
-import subprocess
+
 from datetime import datetime, timedelta
+import json
 from pathlib import Path
+import subprocess
+import sys
 
 # Cache file location
 CACHE_FILE = Path("/tmp/claude_statusline_cache.json")
@@ -54,7 +55,7 @@ def format_time(dt: datetime) -> str:
     else:
         rounded_dt = local_dt
 
-    return rounded_dt.strftime("%I%p").lstrip('0').lower()
+    return rounded_dt.strftime("%I%p").lstrip("0").lower()
 
 
 def create_progress_bar(percentage: float, width: int = 15) -> str:
@@ -94,32 +95,29 @@ def load_cache() -> tuple[dict | None, float]:
     """
     try:
         if not CACHE_FILE.exists():
-            return None, float('inf')
+            return None, float("inf")
 
-        with open(CACHE_FILE, 'r') as f:
+        with open(CACHE_FILE) as f:
             cache = json.load(f)
 
-        cached_at = cache.get('timestamp', 0)
-        block = cache.get('block')
+        cached_at = cache.get("timestamp", 0)
+        block = cache.get("block")
 
         if not block:
-            return None, float('inf')
+            return None, float("inf")
 
         age = datetime.now().timestamp() - cached_at
         return block, age
 
     except (json.JSONDecodeError, OSError, KeyError):
-        return None, float('inf')
+        return None, float("inf")
 
 
 def save_cache(block: dict) -> None:
     """Save block data to cache with current timestamp."""
     try:
-        cache = {
-            'timestamp': datetime.now().timestamp(),
-            'block': block
-        }
-        with open(CACHE_FILE, 'w') as f:
+        cache = {"timestamp": datetime.now().timestamp(), "block": block}
+        with open(CACHE_FILE, "w") as f:
             json.dump(cache, f)
     except OSError:
         pass  # Cache write failure is non-fatal
@@ -140,10 +138,10 @@ def get_ccusage_data() -> dict | None:
     # Cache miss or stale - fetch fresh data
     try:
         result = subprocess.run(
-            ['ccusage', 'blocks', '-a', '-j'],
+            ["ccusage", "blocks", "-a", "-j"],
             capture_output=True,
             text=True,
-            timeout=30  # ccusage can take 10-15 seconds on large sessions
+            timeout=30,  # ccusage can take 10-15 seconds on large sessions
         )
 
         if result.returncode != 0:
@@ -151,18 +149,22 @@ def get_ccusage_data() -> dict | None:
             return cached_block
 
         data = json.loads(result.stdout)
-        blocks = data.get('blocks', [])
+        blocks = data.get("blocks", [])
 
         # Find the active block
         for block in blocks:
-            if block.get('isActive'):
+            if block.get("isActive"):
                 save_cache(block)
                 return block
 
         return None
 
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError,
-            json.JSONDecodeError, FileNotFoundError):
+    except (
+        subprocess.TimeoutExpired,
+        subprocess.CalledProcessError,
+        json.JSONDecodeError,
+        FileNotFoundError,
+    ):
         # Fall back to stale cache if available
         return cached_block
 
@@ -178,22 +180,22 @@ def main():
             return
 
         # Extract data from ccusage block
-        token_counts = block.get('tokenCounts', {})
-        end_time_str = block.get('endTime')
+        token_counts = block.get("tokenCounts", {})
+        end_time_str = block.get("endTime")
 
         if not end_time_str:
             print("Session active")
             return
 
         # Parse reset time (endTime is the 5-hour block boundary)
-        reset_time = datetime.fromisoformat(end_time_str.replace('Z', '+00:00'))
+        reset_time = datetime.fromisoformat(end_time_str.replace("Z", "+00:00"))
 
         # Calculate billable tokens (what actually counts toward your limit)
         # Cache reads are NOT counted - they're handled separately by Claude
         billable_tokens = (
-            token_counts.get('inputTokens', 0) +
-            token_counts.get('outputTokens', 0) +
-            token_counts.get('cacheCreationInputTokens', 0)
+            token_counts.get("inputTokens", 0)
+            + token_counts.get("outputTokens", 0)
+            + token_counts.get("cacheCreationInputTokens", 0)
         )
 
         # Budget is empirically tuned to match /usage command
@@ -226,7 +228,9 @@ def main():
         reset_ansi = "\033[0m"
 
         # Output: STATUS │ [BAR] PERCENT% │ Resets TIME
-        output = f"{bold_white}{status} │ {bar} {percentage:.0f}% │ Resets {reset_display}{reset_ansi}"
+        output = (
+            f"{bold_white}{status} │ {bar} {percentage:.0f}% │ Resets {reset_display}{reset_ansi}"
+        )
         print(output)
 
     except Exception as e:

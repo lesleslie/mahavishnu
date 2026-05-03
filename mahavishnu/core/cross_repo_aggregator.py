@@ -23,13 +23,15 @@ Usage:
 
 from __future__ import annotations
 
-import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from typing import Any
+import logging
+from typing import TYPE_CHECKING, Any
 
-from mahavishnu.core.task_store import Task, TaskStatus, TaskPriority, TaskStore, TaskListFilter
+from mahavishnu.core.task_store import Task, TaskListFilter, TaskPriority, TaskStatus, TaskStore
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 logger = logging.getLogger(__name__)
 

@@ -1,24 +1,24 @@
 """Tests for MultiRepoCoordinator - Coordinating task completion across repos."""
 
-import pytest
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
-from typing import Any
 
+import pytest
+
+from mahavishnu.core.cross_repo_dependency import (
+    CrossRepoDependency,
+    CrossRepoDependencyLinker,
+    DependencyStatus,
+    DependencyType,
+)
 from mahavishnu.core.multi_repo_coordinator import (
-    MultiRepoCoordinator,
     CoordinationPlan,
-    CoordinationStep,
     CoordinationStatus,
+    CoordinationStep,
+    MultiRepoCoordinator,
     RepoSyncState,
 )
-from mahavishnu.core.cross_repo_dependency import (
-    CrossRepoDependencyLinker,
-    CrossRepoDependency,
-    DependencyType,
-    DependencyStatus,
-)
-from mahavishnu.core.task_store import Task, TaskStatus, TaskPriority, TaskStore
+from mahavishnu.core.task_store import Task, TaskPriority, TaskStatus, TaskStore
 
 
 @pytest.fixture
@@ -375,7 +375,6 @@ class TestMultiRepoCoordinator:
         mock_dependency_linker: MagicMock,
     ) -> None:
         """Get sync states for all involved repositories."""
-        from mahavishnu.core.task_store import TaskListFilter
 
         mah_tasks = [
             Task(

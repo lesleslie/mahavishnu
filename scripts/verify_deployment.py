@@ -17,11 +17,10 @@ import argparse
 import asyncio
 import json
 import os
+from pathlib import Path
 import ssl
 import sys
 import time
-from pathlib import Path
-from typing import Any
 
 import httpx
 import websockets
@@ -96,11 +95,13 @@ class DeploymentVerifier:
             passed: Whether check passed
             message: Result message
         """
-        self.results.append({
-            "check": check,
-            "passed": passed,
-            "message": message,
-        })
+        self.results.append(
+            {
+                "check": check,
+                "passed": passed,
+                "message": message,
+            }
+        )
 
     async def check_health_endpoint(self) -> bool:
         """Check health endpoint is accessible."""
@@ -112,7 +113,7 @@ class DeploymentVerifier:
 
                 if response.status_code == 200:
                     data = response.json()
-                    print_success(f"Health endpoint returned 200 OK")
+                    print_success("Health endpoint returned 200 OK")
 
                     if "status" in data:
                         print_success(f"Server status: {data['status']}")
@@ -125,7 +126,9 @@ class DeploymentVerifier:
                             print(f"  {status_icon} {check_name}: {check_status}")
 
                     if "metrics" in data:
-                        print_info(f"Active connections: {data['metrics'].get('active_connections', 'N/A')}")
+                        print_info(
+                            f"Active connections: {data['metrics'].get('active_connections', 'N/A')}"
+                        )
 
                     self.record_result("health_endpoint", True, "Health endpoint accessible")
                     return True
@@ -204,8 +207,10 @@ class DeploymentVerifier:
                 try:
                     welcome_msg = await asyncio.wait_for(ws.recv(), timeout=2.0)
                     welcome_data = json.loads(welcome_msg)
-                    print_success(f"Received welcome message: {welcome_data.get('event', 'unknown')}")
-                except asyncio.TimeoutError:
+                    print_success(
+                        f"Received welcome message: {welcome_data.get('event', 'unknown')}"
+                    )
+                except TimeoutError:
                     print_warning("No welcome message received")
 
                 self.record_result("websocket_connection", True, "WebSocket connection successful")
@@ -242,19 +247,21 @@ class DeploymentVerifier:
                     print_success("TLS certificate retrieved")
 
                     # Check expiration
-                    if 'notAfter' in cert:
+                    if "notAfter" in cert:
                         print_info(f"Certificate expires: {cert['notAfter']}")
 
                     # Check protocol version
                     version = ssock.version()
                     print_success(f"TLS version: {version}")
 
-                    if version in ['TLSv1.2', 'TLSv1.3']:
+                    if version in ["TLSv1.2", "TLSv1.3"]:
                         self.record_result("tls_configuration", True, f"TLS {version}")
                         return True
                     else:
                         print_error(f"Insecure TLS version: {version}")
-                        self.record_result("tls_configuration", False, f"Insecure version: {version}")
+                        self.record_result(
+                            "tls_configuration", False, f"Insecure version: {version}"
+                        )
                         return False
 
         except Exception as e:
@@ -332,7 +339,7 @@ class DeploymentVerifier:
             print_info(f"Key file: {key_file} (mode {mode})")
 
             # Key file should be 600 or 400
-            if mode in ('0o600', '0o400'):
+            if mode in ("0o600", "0o400"):
                 print_success("Key file permissions are secure")
             else:
                 print_warning(f"Key file should be 0600 or 0400, currently {mode}")
@@ -378,13 +385,17 @@ class DeploymentVerifier:
 
             if days_remaining < 30:
                 print_warning(f"Certificate expires in {days_remaining:.0f} days")
-                self.record_result("certificate_validity", False, f"Expires in {days_remaining:.0f} days")
+                self.record_result(
+                    "certificate_validity", False, f"Expires in {days_remaining:.0f} days"
+                )
                 return False
             else:
                 print_success(f"Certificate valid for {days_remaining:.0f} more days")
                 print_info(f"Valid from: {cert.not_valid_before.isoformat()}")
                 print_info(f"Valid until: {cert.not_valid_after.isoformat()}")
-                self.record_result("certificate_validity", True, f"{days_remaining:.0f} days remaining")
+                self.record_result(
+                    "certificate_validity", True, f"{days_remaining:.0f} days remaining"
+                )
                 return True
 
         except Exception as e:

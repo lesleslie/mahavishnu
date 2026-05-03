@@ -2,15 +2,14 @@
 from __future__ import annotations
 
 import textwrap
-from pathlib import Path
 
 import pytest
 
-from mahavishnu.core.skill_mcp_validator import KNOWN_TOOLS
 from mahavishnu.cli.config_validator import (
-    check_skill_agent_drift,
     DriftReport,
+    check_skill_agent_drift,
 )
+from mahavishnu.core.skill_mcp_validator import KNOWN_TOOLS
 
 
 @pytest.fixture()
@@ -18,13 +17,15 @@ def clean_agent(tmp_path):
     agents = tmp_path / "agents"
     agents.mkdir()
     valid_tool = list(KNOWN_TOOLS)[0]
-    (agents / "good-agent.md").write_text(textwrap.dedent(f"""\
+    (agents / "good-agent.md").write_text(
+        textwrap.dedent(f"""\
         ---
         name: good-agent
         description: Short desc. Ecosystem: use {valid_tool}.
         model: sonnet
         ---
-        """))
+        """)
+    )
     return agents
 
 
@@ -32,13 +33,15 @@ def clean_agent(tmp_path):
 def stale_agent(tmp_path):
     agents = tmp_path / "agents"
     agents.mkdir()
-    (agents / "bad-agent.md").write_text(textwrap.dedent("""\
+    (agents / "bad-agent.md").write_text(
+        textwrap.dedent("""\
         ---
         name: bad-agent
         description: Ecosystem: use mcp__crackerjack__gone_forever.
         model: sonnet
         ---
-        """))
+        """)
+    )
     return agents
 
 
@@ -47,7 +50,8 @@ def clean_skill(tmp_path):
     skills = tmp_path / "skills" / "my-skill"
     skills.mkdir(parents=True)
     valid_tool = list(KNOWN_TOOLS)[0]
-    (skills / "SKILL.md").write_text(textwrap.dedent(f"""\
+    (skills / "SKILL.md").write_text(
+        textwrap.dedent(f"""\
         # My Skill
 
         ## Available MCP Servers
@@ -55,7 +59,8 @@ def clean_skill(tmp_path):
         | Server | Port | Context Mode | Relevant Tools | Default Timeout |
         |--------|------|-------------|---------------|----------------|
         | crackerjack | 8676 | summary | {valid_tool} | 120s |
-        """))
+        """)
+    )
     return tmp_path / "skills"
 
 

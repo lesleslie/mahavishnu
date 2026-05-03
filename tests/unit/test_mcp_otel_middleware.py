@@ -108,7 +108,9 @@ def test_fastmcp_server_registers_otel_middleware(monkeypatch: pytest.MonkeyPatc
     config = SimpleNamespace(
         server_name="Test Server",
         observability=SimpleNamespace(tracing_enabled=True),
-        terminal=SimpleNamespace(enabled=False, adapter_preference="auto", max_concurrent_sessions=1),
+        terminal=SimpleNamespace(
+            enabled=False, adapter_preference="auto", max_concurrent_sessions=1
+        ),
     )
     app = SimpleNamespace(
         config=config,
@@ -139,7 +141,9 @@ def test_fastmcp_server_skips_otel_middleware_when_disabled(
     config = SimpleNamespace(
         server_name="Test Server",
         observability=SimpleNamespace(tracing_enabled=False),
-        terminal=SimpleNamespace(enabled=False, adapter_preference="auto", max_concurrent_sessions=1),
+        terminal=SimpleNamespace(
+            enabled=False, adapter_preference="auto", max_concurrent_sessions=1
+        ),
     )
     app = SimpleNamespace(
         config=config,

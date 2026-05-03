@@ -1,6 +1,5 @@
 """Test embeddings functionality."""
 
-
 import pytest
 
 from mahavishnu.core.embeddings import EmbeddingProvider

@@ -20,9 +20,9 @@ The next improvement phase should focus on operational maturity rather than inve
 This roadmap proposes four priorities:
 
 1. Replace stubbed or simulated control-plane integrations with real service-backed implementations.
-2. Standardize ecosystem-wide auth, telemetry, and event contracts.
-3. Promote cross-repo coordination and dependency tracking into a live operating system for the ecosystem.
-4. Add code-index-backed reasoning so agents and workflows can act safely across repositories.
+1. Standardize ecosystem-wide auth, telemetry, and event contracts.
+1. Promote cross-repo coordination and dependency tracking into a live operating system for the ecosystem.
+1. Add code-index-backed reasoning so agents and workflows can act safely across repositories.
 
 ## Current Assessment
 
@@ -291,8 +291,8 @@ Do not broaden the Bodai ecosystem by adding more major top-level services right
 The practical order is:
 
 1. Harden real integrations.
-2. Standardize trust and telemetry.
-3. Operationalize cross-repo coordination.
-4. Add code-aware automation.
+1. Standardize trust and telemetry.
+1. Operationalize cross-repo coordination.
+1. Add code-aware automation.
 
 That sequence increases reliability first, then leverage, then safe autonomy.

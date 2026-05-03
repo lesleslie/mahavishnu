@@ -8,7 +8,7 @@
 
 **Tech Stack:** Claude Code skills (SKILL.md), Akosha MCP tools, Mahavishnu ecosystem.yaml/repos.yaml
 
----
+______________________________________________________________________
 
 ## Skill 1: Code Archaeologist
 
@@ -53,6 +53,7 @@ User asks cross-repo code question
 ### Output Format
 
 Structured markdown:
+
 - Ranked results with similarity scores
 - File locations with line numbers
 - Relevant conversation excerpts (decisions, reasoning)
@@ -63,8 +64,8 @@ Structured markdown:
 - **No code graphs ingested**: Prompt user to run `code_ingest_directory` on target repos via Session-Buddy
 - **Akosha unavailable**: Fall back to direct Grep/Glob across repo paths resolved from Mahavishnu's config chain:
   1. `settings/ecosystem.yaml` (canonical, has roles + coordination)
-  2. `settings/repos.yaml` (legacy, repos-only)
-  3. Mahavishnu MCP `list_repos` tool (if Mahavishnu available)
+  1. `settings/repos.yaml` (legacy, repos-only)
+  1. Mahavishnu MCP `list_repos` tool (if Mahavishnu available)
 - **No matches**: Suggest broadening query or checking ingestion status via `list_ingested_code_graphs`
 
 ### Relationship to Existing Skills
@@ -72,7 +73,7 @@ Structured markdown:
 - **Does NOT overlap** `search-insights`: that skill covers generic Akosha queries. This skill is narrowly focused on cross-repo code discovery.
 - **Complements** `ecosystem-awareness`: that skill discovers which repos exist; this skill finds what's inside them.
 
----
+______________________________________________________________________
 
 ## Skill 2: Quality Pulse
 
@@ -116,6 +117,7 @@ User asks quality metrics question
 ### Output Format
 
 Structured markdown:
+
 - Traffic-light status per system (green/yellow/red)
 - Trend arrows with confidence (increasing/stable/decreasing + R-squared)
 - Anomaly table: severity, timestamp, expected vs actual
@@ -131,11 +133,12 @@ Structured markdown:
 ### Relationship to Code Archaeologist
 
 Complementary but independent:
+
 - Code Archaeologist answers "how did someone solve this?"
 - Quality Pulse answers "is something getting worse?"
 - Can be chained: Quality Pulse surfaces a degradation -> Code Archaeologist finds how another repo solved it
 
----
+______________________________________________________________________
 
 ## Shared Design Decisions
 
@@ -146,11 +149,13 @@ Both skills auto-detect relevant questions via the SKILL.md frontmatter `descrip
 ### Fallback Strategy
 
 Both skills follow the same three-tier fallback:
+
 1. **Akosha MCP tools** (primary -- semantic intelligence)
-2. **Mahavishnu MCP tools** (secondary -- repo discovery + orchestration)
-3. **Direct filesystem** (last resort -- grep across resolved repo paths)
+1. **Mahavishnu MCP tools** (secondary -- repo discovery + orchestration)
+1. **Direct filesystem** (last resort -- grep across resolved repo paths)
 
 Repo path resolution for fallback follows Mahavishnu's `_load_repos()` chain:
+
 - Primary: `settings/ecosystem.yaml`
 - Fallback: `settings/repos.yaml` (legacy)
 - Validation: `MahavishnuApp._load_repos()` at `mahavishnu/core/app.py:615`

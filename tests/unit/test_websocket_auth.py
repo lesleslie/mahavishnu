@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import pytest
-import asyncio
 import os
 
+import pytest
+
 from mahavishnu.websocket.auth import (
-    get_authenticator,
     generate_token,
+    get_authenticator,
     verify_token,
 )
 from mahavishnu.websocket.server import MahavishnuWebSocketServer
-from mcp_common.websocket import WebSocketProtocol
 
 
 @pytest.mark.unit
@@ -114,7 +113,9 @@ class TestMahavishnuWebSocketServer:
 
 
 @pytest.mark.integration
-@pytest.mark.skip(reason="WebSocket integration requires local socket bind support unavailable in this environment")
+@pytest.mark.skip(
+    reason="WebSocket integration requires local socket bind support unavailable in this environment"
+)
 class TestWebSocketAuthenticationIntegration:
     """Integration tests for WebSocket authentication."""
 
@@ -177,6 +178,7 @@ class TestWebSocketAuthenticationIntegration:
             token = generate_token("test_user", ["read", "admin"])
 
             from mcp_common.websocket import WebSocketClient
+
             client = WebSocketClient(
                 uri=f"ws://127.0.0.1:{unused_tcp_port}",
                 token=token,
@@ -212,6 +214,7 @@ class TestWebSocketAuthenticationIntegration:
 
             # Create client with invalid token
             from mcp_common.websocket import WebSocketClient
+
             client = WebSocketClient(
                 uri=f"ws://127.0.0.1:{unused_tcp_port}",
                 token="invalid-token",

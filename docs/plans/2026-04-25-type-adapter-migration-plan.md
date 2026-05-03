@@ -1,7 +1,7 @@
 # Type Adapter Migration Plan
 
-**Date**: 2026-04-25  
-**Status**: active, Phase 3 (canary/promotion)  
+**Date**: 2026-04-25
+**Status**: active, Phase 3 (canary/promotion)
 **Scope**: Crackerjack `ty`, `pyrefly`, and `zuban` adapters plus AI-fix routing
 
 ## Summary
@@ -17,16 +17,16 @@ This plan refreshes all three adapters to current upstream contracts, then updat
 ## Goals
 
 1. Keep `zuban` as the baseline comprehensive type checker until the newer tools are validated on real repos.
-2. Bring `ty` and `pyrefly` adapters up to date with current CLI and output contracts.
-3. Make native tool capabilities explicit in the adapter layer rather than inferred from tool names.
-4. Make AI-fix use native type-checker fixes as a pre-pass when supported, then hand remaining issues to the AI loop.
-5. Reduce parser fragility by covering current real outputs in tests.
+1. Bring `ty` and `pyrefly` adapters up to date with current CLI and output contracts.
+1. Make native tool capabilities explicit in the adapter layer rather than inferred from tool names.
+1. Make AI-fix use native type-checker fixes as a pre-pass when supported, then hand remaining issues to the AI loop.
+1. Reduce parser fragility by covering current real outputs in tests.
 
 ## Non-Goals
 
 1. Do not replace `zuban` as the default comprehensive checker in the first pass.
-2. Do not make suppression workflows the default AI-fix path.
-3. Do not depend on undocumented output formats from the upstream tools.
+1. Do not make suppression workflows the default AI-fix path.
+1. Do not depend on undocumented output formats from the upstream tools.
 
 ## Current Findings
 
@@ -114,10 +114,10 @@ Add adapter capability metadata:
 Then update AI-fix routing to:
 
 1. Run the checker.
-2. Apply the tool's own fix path if `supports_fix` is true.
-3. Re-run the checker.
-4. Pass remaining issues to the AI fixer.
-5. Re-run the checker after AI edits.
+1. Apply the tool's own fix path if `supports_fix` is true.
+1. Re-run the checker.
+1. Pass remaining issues to the AI fixer.
+1. Re-run the checker after AI edits.
 
 Rules:
 
@@ -135,10 +135,10 @@ Exit criteria:
 Roll out in this order:
 
 1. Refresh adapters and tests.
-2. Enable `ty` as an opt-in canary.
-3. Enable `pyrefly` as an opt-in experimental lane.
-4. Compare output fidelity, fix success rate, and false-positive rate against `zuban`.
-5. Promote only if the newer checker is stable on representative repos.
+1. Enable `ty` as an opt-in canary.
+1. Enable `pyrefly` as an opt-in experimental lane.
+1. Compare output fidelity, fix success rate, and false-positive rate against `zuban`.
+1. Promote only if the newer checker is stable on representative repos.
 
 Exit criteria:
 

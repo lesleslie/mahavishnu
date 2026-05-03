@@ -8,13 +8,14 @@
 
 **Tech Stack:** mcp-common.websocket, FastMCP, PyJWT, python-socketio, Prometheus client, Grafana, Python 3.11+
 
----
+______________________________________________________________________
 
 ## Week 1: Integration Testing & Pool WebSocket Broadcasting
 
 ### Task 1: Create WebSocket Integration Tests
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/tests/integration/test_websocket_integration.py`
 - Create: `/Users/les/Projects/mahavishnu/tests/integration/__init__.py`
 
@@ -96,11 +97,12 @@ git add tests/integration/
 git commit -m "test: add WebSocket integration tests"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Create Pool WebSocket Integration Layer
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/mahavishnu/pools/websocket_integration.py`
 - Modify: `/Users/les/Projects/mahavishnu/mahavishnu/pools/__init__.py`
 
@@ -375,11 +377,12 @@ git add tests/test_pool_websocket_integration.py
 git commit -m "feat: add pool WebSocket integration layer"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Create Real-Time Workflow Monitoring Demo
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/examples/workflow_monitoring_demo.py`
 
 **Step 1: Write workflow monitoring demo**
@@ -588,11 +591,13 @@ if __name__ == "__main__":
 **Step 3: Run demos (manual verification)**
 
 Run workflow monitor:
+
 ```bash
 python examples/workflow_monitoring_demo.py
 ```
 
 Run pool monitor:
+
 ```bash
 python examples/pool_monitoring_demo.py
 ```
@@ -604,13 +609,14 @@ git add examples/workflow_monitoring_demo.py examples/pool_monitoring_demo.py
 git commit -m "feat: add real-time monitoring demos"
 ```
 
----
+______________________________________________________________________
 
 ## Week 2: Multi-Service WebSocket Testing
 
 ### Task 4: Create Cross-Service WebSocket Test Suite
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/tests/integration/test_multi_service_websocket.py`
 
 **Step 1: Write multi-service integration test**
@@ -688,11 +694,12 @@ git add tests/integration/test_multi_service_websocket.py
 git commit -m "test: add multi-service WebSocket integration tests"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Create WebSocket Health Check Script
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/scripts/check_all_websocket_servers.sh`
 
 **Step 1: Write health check script**
@@ -756,13 +763,14 @@ git add scripts/check_all_websocket_servers.sh
 git commit -m "feat: add WebSocket server health check script"
 ```
 
----
+______________________________________________________________________
 
 ## Week 3: Production Hardening - Authentication
 
 ### Task 6: Add JWT Authentication to WebSocket Servers
 
 **Files:**
+
 - Create: `/Users/les/Projects/mcp-common/mcp_common/websocket/auth.py`
 - Modify: `/Users/les/Projects/mcp-common/mcp_common/websocket/server.py`
 - Create: `/Users/les/Projects/mahavishnu/mahavishnu/websocket/auth.py`
@@ -986,11 +994,12 @@ git add mahavishnu/websocket/auth.py tests/test_websocket_auth.py
 git commit -m "feat: add JWT authentication to WebSocket servers"
 ```
 
----
+______________________________________________________________________
 
 ### Task 7: Add Token-Based Subscription Authorization
 
 **Files:**
+
 - Modify: `/Users/les/Projects/mahavishnu/mahavishnu/websocket/server.py`
 
 **Step 1: Add authorization to subscription handler**
@@ -1073,13 +1082,14 @@ git add mahavishnu/websocket/server.py
 git commit -m "feat: add token-based subscription authorization"
 ```
 
----
+______________________________________________________________________
 
 ## Week 4: Production Hardening - TLS & Monitoring
 
 ### Task 8: Add TLS/WSS Support
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/mahavishnu/websocket/tls_config.py`
 - Modify: `/Users/les/Projects/mcp-common/mcp_common/websocket/server.py`
 
@@ -1177,11 +1187,12 @@ git add mcp_common/websocket/server.py mahavishnu/websocket/tls_config.py
 git commit -m "feat: add TLS/WSS support to WebSocket servers"
 ```
 
----
+______________________________________________________________________
 
 ### Task 9: Add Prometheus Metrics Export
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/mahavishnu/websocket/metrics.py`
 - Modify: `/Users/les/Projects/mahavishnu/mahavishnu/websocket/server.py`
 
@@ -1299,11 +1310,12 @@ git add mahavishnu/websocket/metrics.py mahavishnu/websocket/server.py
 git commit -m "feat: add Prometheus metrics to WebSocket server"
 ```
 
----
+______________________________________________________________________
 
 ### Task 10: Create Grafana Dashboard Configuration
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/deploy/grafana/websocket-dashboard.json`
 
 **Step 1: Create Grafana dashboard JSON**
@@ -1360,18 +1372,19 @@ git add deploy/grafana/websocket-dashboard.json
 git commit -m "feat: add Grafana dashboard for WebSocket monitoring"
 ```
 
----
+______________________________________________________________________
 
 ## Task 11: Create Production Deployment Guide
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/docs/WEBSOCKET_PRODUCTION_DEPLOYMENT.md`
 
 **Step 1: Write deployment guide**
 
 Create: `/Users/les/Projects/mahavishnu/docs/WEBSOCKET_PRODUCTION_DEPLOYMENT.md`
 
-```markdown
+````markdown
 # WebSocket Production Deployment Guide
 
 **Date:** 2026-02-10
@@ -1404,9 +1417,9 @@ export WEBSOCKET_CA_FILE="/path/to/ca.pem"
 # Monitoring
 export PROMETHEUS_PORT=9090
 export GRAFANA_ADMIN_PASSWORD="your-admin-password"
-```
+````
 
----
+______________________________________________________________________
 
 ## Deployment Architecture
 
@@ -1431,7 +1444,7 @@ export GRAFANA_ADMIN_PASSWORD="your-admin-password"
                     └─────────────┘
 ```
 
----
+______________________________________________________________________
 
 ## Nginx Configuration
 
@@ -1473,7 +1486,7 @@ server {
 }
 ```
 
----
+______________________________________________________________________
 
 ## Health Checks
 
@@ -1485,19 +1498,21 @@ server {
 curl http://localhost:9090/metrics
 ```
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
 ### Issue: Connections dropped frequently
 
 **Diagnosis:**
+
 ```bash
 # Check WebSocket logs
 tail -f /var/log/mahavishnu/websocket.log
 ```
 
 **Solution:**
+
 - Verify JWT token expiry
 - Check rate limits
 - Ensure stable network connection
@@ -1505,17 +1520,19 @@ tail -f /var/log/mahavishnu/websocket.log
 ### Issue: High memory usage
 
 **Diagnosis:**
+
 ```bash
 # Monitor connection counts
 curl http://localhost:9090/metrics | grep websocket_connections
 ```
 
 **Solution:**
+
 - Implement connection limits
 - Add periodic cleanup
 - Monitor room subscriptions
 
----
+______________________________________________________________________
 
 ## Rollback Procedure
 
@@ -1531,20 +1548,22 @@ git revert HEAD
 # 3. Restart with old version
 systemctl start mahavishnu-websocket
 ```
-```
+
+````
 
 **Step 2: Commit**
 
 ```bash
 git add docs/WEBSOCKET_PRODUCTION_DEPLOYMENT.md
 git commit -m "docs: add WebSocket production deployment guide"
-```
+````
 
----
+______________________________________________________________________
 
 ## Task 12: Create Comprehensive Integration Tests
 
 **Files:**
+
 - Create: `/Users/les/Projects/mahavishnu/tests/integration/test_production_features.py`
 
 **Step 1: Write production feature tests**
@@ -1630,33 +1649,37 @@ git add tests/integration/test_production_features.py
 git commit -m "test: add production feature integration tests"
 ```
 
----
+______________________________________________________________________
 
 ## Success Criteria
 
 ### Week 1: Integration & Pool WebSocket
+
 - ✅ All 7 WebSocket servers tested together
 - ✅ Pool events broadcast via WebSocket
 - ✅ Real-time monitoring demos working
 - ✅ Integration tests passing
 
 ### Week 2: Multi-Service Testing
+
 - ✅ Cross-service integration tests
 - ✅ Health check script operational
 - ✅ Port conflict detection working
 
 ### Week 3: Authentication
+
 - ✅ JWT authentication implemented
 - ✅ Token-based subscription authorization
 - ✅ Auth tests passing
 
 ### Week 4: Production Hardening
+
 - ✅ TLS/WSS support added
 - ✅ Prometheus metrics exported
 - ✅ Grafana dashboard configured
 - ✅ Deployment documentation complete
 
----
+______________________________________________________________________
 
 ## Total Deliverables
 
@@ -1667,6 +1690,6 @@ git commit -m "test: add production feature integration tests"
 
 **Estimated Timeline:** 4 weeks
 
----
+______________________________________________________________________
 
 **Ready for production deployment with enterprise-grade security, monitoring, and reliability!**

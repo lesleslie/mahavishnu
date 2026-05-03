@@ -7,9 +7,8 @@ to avoid network calls and filesystem access.
 
 from __future__ import annotations
 
-import asyncio
-import json
 from datetime import UTC, datetime
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -94,12 +93,16 @@ class TestAppStructure:
         assert cli_module.app.info.name == "mahavishnu"
 
     def test_all_subapps_registered(self):
-        registered_names = [
-            g.name for g in cli_module.app.registered_groups if g.typer_instance
-        ]
+        registered_names = [g.name for g in cli_module.app.registered_groups if g.typer_instance]
         expected = [
-            "worktree", "workflow", "adapter", "mcp", "ecosystem",
-            "terminal", "pool", "workers",
+            "worktree",
+            "workflow",
+            "adapter",
+            "mcp",
+            "ecosystem",
+            "terminal",
+            "pool",
+            "workers",
         ]
         for name in expected:
             assert name in registered_names, f"Missing sub-app: {name}"
@@ -243,9 +246,7 @@ class TestWorkflowQualityCheck:
         mock_app.execute_workflow_parallel = AsyncMock(return_value={"status": "done"})
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["workflow", "quality-check", "-t", "python"]
-        )
+        result = runner.invoke(cli_module.app, ["workflow", "quality-check", "-t", "python"])
         assert result.exit_code == 0
         assert "Quality check completed" in result.output
 
@@ -267,9 +268,7 @@ class TestWorkflowQualityCheck:
         mock_app.get_repos.return_value = []
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["workflow", "quality-check", "-t", "python"]
-        )
+        result = runner.invoke(cli_module.app, ["workflow", "quality-check", "-t", "python"])
         assert result.exit_code == 1
         assert "No repositories found" in result.output
 
@@ -351,9 +350,18 @@ class TestWorkflowFix:
         result = runner.invoke(
             cli_module.app,
             [
-                "workflow", "fix",
-                "-p", "pool1", "-i", "issue1",
-                "-d", "Fix the bug", "-f", "file1.py", "-f", "file2.py",
+                "workflow",
+                "fix",
+                "-p",
+                "pool1",
+                "-i",
+                "issue1",
+                "-d",
+                "Fix the bug",
+                "-f",
+                "file1.py",
+                "-f",
+                "file2.py",
             ],
         )
         assert result.exit_code == 0
@@ -378,9 +386,7 @@ class TestWorkflowReview:
         mock_tools.review_and_fix = AsyncMock(return_value={"findings": []})
         mock_tools_cls.return_value = mock_tools
 
-        result = runner.invoke(
-            cli_module.app, ["workflow", "review", "-s", "critical"]
-        )
+        result = runner.invoke(cli_module.app, ["workflow", "review", "-s", "critical"])
         assert result.exit_code == 0
         assert "review" in result.output.lower()
 
@@ -394,9 +400,7 @@ class TestWorkflowReview:
         mock_tools.review_and_fix = AsyncMock(return_value={"findings": []})
         mock_tools_cls.return_value = mock_tools
 
-        result = runner.invoke(
-            cli_module.app, ["workflow", "review", "-s", "all", "--fix"]
-        )
+        result = runner.invoke(cli_module.app, ["workflow", "review", "-s", "all", "--fix"])
         assert result.exit_code == 0
 
     @patch("mahavishnu.mcp.tools.self_improvement_tools.ReviewScope")
@@ -409,9 +413,7 @@ class TestWorkflowReview:
         mock_tools.review_and_fix = AsyncMock(return_value={"findings": []})
         mock_tools_cls.return_value = mock_tools
 
-        result = runner.invoke(
-            cli_module.app, ["workflow", "review", "--dry-run"]
-        )
+        result = runner.invoke(cli_module.app, ["workflow", "review", "--dry-run"])
         assert result.exit_code == 0
         assert "dry-run" in result.output
 
@@ -446,9 +448,7 @@ class TestAdapterList:
         mock_reg.list_adapters = MagicMock(return_value=[])
         mock_reg_cls.return_value = mock_reg
 
-        result = runner.invoke(
-            cli_module.app, ["adapter", "list", "-d", "orchestration"]
-        )
+        result = runner.invoke(cli_module.app, ["adapter", "list", "-d", "orchestration"])
         assert result.exit_code == 0
 
     @patch("mahavishnu.core.adapter_registry.HybridAdapterRegistry")
@@ -467,9 +467,7 @@ class TestAdapterResolve:
     @patch("mahavishnu.core.task_router.TaskRouter")
     def test_adapter_resolve_basic(self, mock_router_cls):
         mock_router = MagicMock()
-        mock_router.route = AsyncMock(
-            return_value={"adapter": "prefect", "confidence": 0.9}
-        )
+        mock_router.route = AsyncMock(return_value={"adapter": "prefect", "confidence": 0.9})
         mock_router_cls.return_value = mock_router
 
         result = runner.invoke(
@@ -500,9 +498,7 @@ class TestAdapterHealth:
     @patch("mahavishnu.core.adapter_registry.HybridAdapterRegistry")
     def test_adapter_health_all(self, mock_reg_cls):
         mock_reg = MagicMock()
-        mock_reg.check_all_health = AsyncMock(
-            return_value={"prefect": {"status": "healthy"}}
-        )
+        mock_reg.check_all_health = AsyncMock(return_value={"prefect": {"status": "healthy"}})
         mock_reg_cls.return_value = mock_reg
 
         result = runner.invoke(cli_module.app, ["adapter", "health"])
@@ -726,7 +722,9 @@ class TestHealthCommand:
         mock_liveness.version = "0.6.0"
         mock_liveness.uptime_seconds = 120.5
         mock_liveness.model_dump.return_value = {
-            "status": "ok", "version": "0.6.0", "uptime_seconds": 120.5,
+            "status": "ok",
+            "version": "0.6.0",
+            "uptime_seconds": 120.5,
         }
 
         mock_readiness = MagicMock()
@@ -734,7 +732,9 @@ class TestHealthCommand:
         mock_readiness.ready = True
         mock_readiness.dependencies = {}
         mock_readiness.model_dump.return_value = {
-            "service": "mahavishnu", "ready": True, "dependencies": {},
+            "service": "mahavishnu",
+            "ready": True,
+            "dependencies": {},
         }
 
         mock_endpoint.liveness = AsyncMock(return_value=mock_liveness)
@@ -769,7 +769,9 @@ class TestHealthCommand:
         mock_readiness.ready = False
         mock_readiness.dependencies = {"redis": mock_dep}
         mock_readiness.model_dump.return_value = {
-            "service": "mahavishnu", "ready": False, "dependencies": {"redis": mock_dep},
+            "service": "mahavishnu",
+            "ready": False,
+            "dependencies": {"redis": mock_dep},
         }
 
         mock_endpoint.liveness = AsyncMock(return_value=mock_liveness)
@@ -804,7 +806,9 @@ class TestHealthCommand:
         mock_readiness.ready = True
         mock_readiness.dependencies = {"db": mock_dep}
         mock_readiness.model_dump.return_value = {
-            "service": "mahavishnu", "ready": True, "dependencies": {"db": mock_dep},
+            "service": "mahavishnu",
+            "ready": True,
+            "dependencies": {"db": mock_dep},
         }
 
         mock_endpoint.liveness = AsyncMock(return_value=mock_liveness)
@@ -879,9 +883,7 @@ class TestListRepos:
         mock_auth.is_claude_subscribed.return_value = False
         mock_auth_cls.return_value = mock_auth
 
-        result = runner.invoke(
-            cli_module.app, ["list-repos", "-t", "python", "-r", "orchestrator"]
-        )
+        result = runner.invoke(cli_module.app, ["list-repos", "-t", "python", "-r", "orchestrator"])
         assert result.exit_code == 1
         assert "Cannot specify both" in result.output
 
@@ -912,7 +914,12 @@ class TestListRoles:
     def test_list_roles_basic(self, mock_app_cls):
         mock_app = _make_mock_app()
         mock_app.get_roles.return_value = [
-            {"name": "orchestrator", "description": "Coordinates workflows", "tags": ["core"], "capabilities": ["sweep"]},
+            {
+                "name": "orchestrator",
+                "description": "Coordinates workflows",
+                "tags": ["core"],
+                "capabilities": ["sweep"],
+            },
         ]
         mock_app_cls.return_value = mock_app
 
@@ -1060,9 +1067,7 @@ class TestGenerateClaudeToken:
         mock_auth.create_claude_subscription_token.return_value = "test_token_123"
         mock_auth_cls.return_value = mock_auth
 
-        result = runner.invoke(
-            cli_module.app, ["generate-claude-token", "user1"]
-        )
+        result = runner.invoke(cli_module.app, ["generate-claude-token", "user1"])
         assert result.exit_code == 0
         assert "test_token_123" in result.output
 
@@ -1075,9 +1080,7 @@ class TestGenerateClaudeToken:
         mock_auth.is_claude_subscribed.return_value = False
         mock_auth_cls.return_value = mock_auth
 
-        result = runner.invoke(
-            cli_module.app, ["generate-claude-token", "user1"]
-        )
+        result = runner.invoke(cli_module.app, ["generate-claude-token", "user1"])
         assert result.exit_code == 1
         assert "not configured" in result.output
 
@@ -1104,9 +1107,7 @@ class TestGenerateCodexToken:
         mock_auth.create_codex_subscription_token.return_value = "codex_token_456"
         mock_auth_cls.return_value = mock_auth
 
-        result = runner.invoke(
-            cli_module.app, ["generate-codex-token", "user2"]
-        )
+        result = runner.invoke(cli_module.app, ["generate-codex-token", "user2"])
         assert result.exit_code == 0
         assert "codex_token_456" in result.output
 
@@ -1119,9 +1120,7 @@ class TestGenerateCodexToken:
         mock_auth.is_codex_subscribed.return_value = False
         mock_auth_cls.return_value = mock_auth
 
-        result = runner.invoke(
-            cli_module.app, ["generate-codex-token", "user2"]
-        )
+        result = runner.invoke(cli_module.app, ["generate-codex-token", "user2"])
         assert result.exit_code == 1
         assert "not configured" in result.output
 
@@ -1143,9 +1142,7 @@ class TestTerminalLaunch:
         mock_app = _make_mock_app()
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["terminal", "launch", "echo hello"]
-        )
+        result = runner.invoke(cli_module.app, ["terminal", "launch", "echo hello"])
         assert result.exit_code == 1
         assert "not enabled" in result.output
 
@@ -1158,9 +1155,7 @@ class TestTerminalLaunch:
         maha.terminal_manager = None
         mock_app_cls.return_value = maha
 
-        result = runner.invoke(
-            cli_module.app, ["terminal", "launch", "echo hello"]
-        )
+        result = runner.invoke(cli_module.app, ["terminal", "launch", "echo hello"])
         assert result.exit_code == 1
         assert "not initialized" in result.output
 
@@ -1174,9 +1169,7 @@ class TestTerminalLaunch:
         maha.terminal_manager.launch_sessions = AsyncMock(return_value=["sess_1", "sess_2"])
         mock_app_cls.return_value = maha
 
-        result = runner.invoke(
-            cli_module.app, ["terminal", "launch", "echo hello", "-c", "2"]
-        )
+        result = runner.invoke(cli_module.app, ["terminal", "launch", "echo hello", "-c", "2"])
         assert result.exit_code == 0
         assert "sess_1" in result.output
         assert "sess_2" in result.output
@@ -1188,14 +1181,10 @@ class TestTerminalLaunch:
         maha = _make_mock_app()
         maha.config = config
         maha.terminal_manager = MagicMock()
-        maha.terminal_manager.launch_sessions = AsyncMock(
-            side_effect=Exception("launch failed")
-        )
+        maha.terminal_manager.launch_sessions = AsyncMock(side_effect=Exception("launch failed"))
         mock_app_cls.return_value = maha
 
-        result = runner.invoke(
-            cli_module.app, ["terminal", "launch", "echo hello"]
-        )
+        result = runner.invoke(cli_module.app, ["terminal", "launch", "echo hello"])
         assert result.exit_code == 1
         assert "launch failed" in result.output
 
@@ -1247,9 +1236,7 @@ class TestTerminalSend:
         mock_app = _make_mock_app()
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["terminal", "send", "sess_1", "ls"]
-        )
+        result = runner.invoke(cli_module.app, ["terminal", "send", "sess_1", "ls"])
         assert result.exit_code == 1
 
     @patch("mahavishnu._main_cli.MahavishnuApp")
@@ -1262,9 +1249,7 @@ class TestTerminalSend:
         maha.terminal_manager.send_command = AsyncMock()
         mock_app_cls.return_value = maha
 
-        result = runner.invoke(
-            cli_module.app, ["terminal", "send", "sess_1", "ls -la"]
-        )
+        result = runner.invoke(cli_module.app, ["terminal", "send", "sess_1", "ls -la"])
         assert result.exit_code == 0
         assert "Sent command" in result.output
 
@@ -1275,14 +1260,10 @@ class TestTerminalSend:
         maha = _make_mock_app()
         maha.config = config
         maha.terminal_manager = MagicMock()
-        maha.terminal_manager.send_command = AsyncMock(
-            side_effect=Exception("send error")
-        )
+        maha.terminal_manager.send_command = AsyncMock(side_effect=Exception("send error"))
         mock_app_cls.return_value = maha
 
-        result = runner.invoke(
-            cli_module.app, ["terminal", "send", "sess_1", "ls"]
-        )
+        result = runner.invoke(cli_module.app, ["terminal", "send", "sess_1", "ls"])
         assert result.exit_code == 1
 
 
@@ -1294,9 +1275,7 @@ class TestTerminalCapture:
         mock_app = _make_mock_app()
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["terminal", "capture", "sess_1"]
-        )
+        result = runner.invoke(cli_module.app, ["terminal", "capture", "sess_1"])
         assert result.exit_code == 1
 
     @patch("mahavishnu._main_cli.MahavishnuApp")
@@ -1306,12 +1285,12 @@ class TestTerminalCapture:
         maha = _make_mock_app()
         maha.config = config
         maha.terminal_manager = MagicMock()
-        maha.terminal_manager.capture_output = AsyncMock(return_value="output line 1\noutput line 2")
+        maha.terminal_manager.capture_output = AsyncMock(
+            return_value="output line 1\noutput line 2"
+        )
         mock_app_cls.return_value = maha
 
-        result = runner.invoke(
-            cli_module.app, ["terminal", "capture", "sess_1", "-l", "50"]
-        )
+        result = runner.invoke(cli_module.app, ["terminal", "capture", "sess_1", "-l", "50"])
         assert result.exit_code == 0
         assert "output line 1" in result.output
 
@@ -1322,14 +1301,10 @@ class TestTerminalCapture:
         maha = _make_mock_app()
         maha.config = config
         maha.terminal_manager = MagicMock()
-        maha.terminal_manager.capture_output = AsyncMock(
-            side_effect=Exception("capture error")
-        )
+        maha.terminal_manager.capture_output = AsyncMock(side_effect=Exception("capture error"))
         mock_app_cls.return_value = maha
 
-        result = runner.invoke(
-            cli_module.app, ["terminal", "capture", "sess_1"]
-        )
+        result = runner.invoke(cli_module.app, ["terminal", "capture", "sess_1"])
         assert result.exit_code == 1
 
 
@@ -1341,9 +1316,7 @@ class TestTerminalClose:
         mock_app = _make_mock_app()
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["terminal", "close", "sess_1"]
-        )
+        result = runner.invoke(cli_module.app, ["terminal", "close", "sess_1"])
         assert result.exit_code == 1
 
     @patch("mahavishnu._main_cli.MahavishnuApp")
@@ -1356,9 +1329,7 @@ class TestTerminalClose:
         maha.terminal_manager.close_session = AsyncMock()
         mock_app_cls.return_value = maha
 
-        result = runner.invoke(
-            cli_module.app, ["terminal", "close", "sess_1"]
-        )
+        result = runner.invoke(cli_module.app, ["terminal", "close", "sess_1"])
         assert result.exit_code == 0
         assert "Closed session" in result.output
 
@@ -1369,15 +1340,11 @@ class TestTerminalClose:
         maha = _make_mock_app()
         maha.config = config
         maha.terminal_manager = MagicMock()
-        maha.terminal_manager.list_sessions = AsyncMock(
-            return_value=[{"id": "s1"}, {"id": "s2"}]
-        )
+        maha.terminal_manager.list_sessions = AsyncMock(return_value=[{"id": "s1"}, {"id": "s2"}])
         maha.terminal_manager.close_all = AsyncMock()
         mock_app_cls.return_value = maha
 
-        result = runner.invoke(
-            cli_module.app, ["terminal", "close", "all"]
-        )
+        result = runner.invoke(cli_module.app, ["terminal", "close", "all"])
         assert result.exit_code == 0
         assert "2 session" in result.output
 
@@ -1391,9 +1358,7 @@ class TestTerminalClose:
         maha.terminal_manager.list_sessions = AsyncMock(return_value=[])
         mock_app_cls.return_value = maha
 
-        result = runner.invoke(
-            cli_module.app, ["terminal", "close", "all"]
-        )
+        result = runner.invoke(cli_module.app, ["terminal", "close", "all"])
         assert result.exit_code == 0
         assert "No active sessions" in result.output
 
@@ -1433,9 +1398,7 @@ class TestWorkersSpawn:
         maha.config = config
         mock_app_cls.return_value = maha
 
-        result = runner.invoke(
-            cli_module.app, ["workers", "spawn", "-t", "terminal-qwen"]
-        )
+        result = runner.invoke(cli_module.app, ["workers", "spawn", "-t", "terminal-qwen"])
         assert result.exit_code == 1
         assert "disabled" in result.output
 
@@ -1451,9 +1414,7 @@ class TestWorkersSpawn:
         mock_wm.spawn_workers = AsyncMock(side_effect=Exception("spawn failed"))
         mock_wm_cls.return_value = mock_wm
 
-        result = runner.invoke(
-            cli_module.app, ["workers", "spawn", "-t", "terminal-qwen"]
-        )
+        result = runner.invoke(cli_module.app, ["workers", "spawn", "-t", "terminal-qwen"])
         assert result.exit_code == 1
         assert "spawn failed" in result.output
 
@@ -1487,9 +1448,7 @@ class TestWorkersListTypes:
         mock_get_workers.return_value = {}
         mock_validate.return_value = {}
 
-        result = runner.invoke(
-            cli_module.app, ["workers", "list-types", "-c", "invalid_cat"]
-        )
+        result = runner.invoke(cli_module.app, ["workers", "list-types", "-c", "invalid_cat"])
         assert result.exit_code == 1
         assert "Invalid category" in result.output
 
@@ -1508,9 +1467,7 @@ class TestWorkersListTypes:
             WorkerCategory.AI_ASSISTANT: [mock_config],
         }
 
-        result = runner.invoke(
-            cli_module.app, ["workers", "list-types", "--no-check"]
-        )
+        result = runner.invoke(cli_module.app, ["workers", "list-types", "--no-check"])
         assert result.exit_code == 0
 
     @patch("mahavishnu.workers.registry.get_worker_config")
@@ -1627,17 +1584,19 @@ class TestPoolList:
     def test_pool_list_with_pools(self, mock_app_cls):
         mock_app = _make_mock_app()
         mock_pm = MagicMock()
-        mock_pm.list_pools = AsyncMock(return_value=[
-            {
-                "pool_id": "pool_1",
-                "pool_type": "mahavishnu",
-                "name": "local",
-                "status": "running",
-                "workers": 3,
-                "min_workers": 1,
-                "max_workers": 5,
-            }
-        ])
+        mock_pm.list_pools = AsyncMock(
+            return_value=[
+                {
+                    "pool_id": "pool_1",
+                    "pool_type": "mahavishnu",
+                    "name": "local",
+                    "status": "running",
+                    "workers": 3,
+                    "min_workers": 1,
+                    "max_workers": 5,
+                }
+            ]
+        )
         mock_app.pool_manager = mock_pm
         mock_app_cls.return_value = mock_app
 
@@ -1665,9 +1624,7 @@ class TestPoolExecute:
         mock_app = _make_mock_app()
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"]
-        )
+        result = runner.invoke(cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"])
         assert result.exit_code == 1
 
     @patch("mahavishnu._main_cli.MahavishnuApp")
@@ -1680,9 +1637,7 @@ class TestPoolExecute:
         mock_app.pool_manager = mock_pm
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"]
-        )
+        result = runner.invoke(cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"])
         assert result.exit_code == 0
         assert "completed" in result.output
 
@@ -1696,9 +1651,7 @@ class TestPoolExecute:
         mock_app.pool_manager = mock_pm
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"]
-        )
+        result = runner.invoke(cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"])
         assert result.exit_code == 0
         assert "something went wrong" in result.output
 
@@ -1710,9 +1663,7 @@ class TestPoolExecute:
         mock_app.pool_manager = mock_pm
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"]
-        )
+        result = runner.invoke(cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"])
         assert result.exit_code == 1
 
     def test_pool_execute_missing_args(self):
@@ -1728,9 +1679,7 @@ class TestPoolRoute:
         mock_app = _make_mock_app()
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["pool", "route", "-p", "do something"]
-        )
+        result = runner.invoke(cli_module.app, ["pool", "route", "-p", "do something"])
         assert result.exit_code == 1
 
     @patch("mahavishnu.pools.PoolSelector")
@@ -1745,9 +1694,7 @@ class TestPoolRoute:
         mock_app_cls.return_value = mock_app
         mock_selector_cls.return_value = MagicMock()
 
-        result = runner.invoke(
-            cli_module.app, ["pool", "route", "-p", "do something"]
-        )
+        result = runner.invoke(cli_module.app, ["pool", "route", "-p", "do something"])
         assert result.exit_code == 0
         assert "pool_1" in result.output
 
@@ -1779,9 +1726,7 @@ class TestPoolScale:
         mock_app = _make_mock_app()
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["pool", "scale", "pool_1", "-t", "10"]
-        )
+        result = runner.invoke(cli_module.app, ["pool", "scale", "pool_1", "-t", "10"])
         assert result.exit_code == 1
 
     @patch("mahavishnu._main_cli.MahavishnuApp")
@@ -1792,9 +1737,7 @@ class TestPoolScale:
         mock_app.pool_manager = mock_pm
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["pool", "scale", "pool_1", "-t", "10"]
-        )
+        result = runner.invoke(cli_module.app, ["pool", "scale", "pool_1", "-t", "10"])
         assert result.exit_code == 1
         assert "not found" in result.output
 
@@ -1809,9 +1752,7 @@ class TestPoolScale:
         mock_app.pool_manager = mock_pm
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["pool", "scale", "pool_1", "-t", "10"]
-        )
+        result = runner.invoke(cli_module.app, ["pool", "scale", "pool_1", "-t", "10"])
         assert result.exit_code == 0
         assert "Scaled" in result.output
 
@@ -1825,9 +1766,7 @@ class TestPoolScale:
         mock_app.pool_manager = mock_pm
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(
-            cli_module.app, ["pool", "scale", "pool_1", "-t", "10"]
-        )
+        result = runner.invoke(cli_module.app, ["pool", "scale", "pool_1", "-t", "10"])
         assert result.exit_code == 1
 
     def test_pool_scale_missing_args(self):
@@ -1920,13 +1859,20 @@ class TestPoolHealth:
     def test_pool_health_success(self, mock_app_cls):
         mock_app = _make_mock_app()
         mock_pm = MagicMock()
-        mock_pm.health_check = AsyncMock(return_value={
-            "status": "healthy",
-            "pools_active": 1,
-            "pools": [
-                {"pool_id": "pool_1", "pool_type": "mahavishnu", "status": "running", "workers": 3}
-            ],
-        })
+        mock_pm.health_check = AsyncMock(
+            return_value={
+                "status": "healthy",
+                "pools_active": 1,
+                "pools": [
+                    {
+                        "pool_id": "pool_1",
+                        "pool_type": "mahavishnu",
+                        "status": "running",
+                        "workers": 3,
+                    }
+                ],
+            }
+        )
         mock_app.pool_manager = mock_pm
         mock_app_cls.return_value = mock_app
 

@@ -13,11 +13,13 @@ Related: 4-Agent Opus Review P0 issue - async timeout handling
 """
 
 import asyncio
-import logging
+import builtins
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
-from typing import TypeVar, Callable, Any, AsyncGenerator, ParamSpec
+import logging
+from typing import Any, ParamSpec, TypeVar
 
-from mahavishnu.core.errors import MahavishnuError, ErrorCode, TimeoutError
+from mahavishnu.core.errors import ErrorCode, MahavishnuError, TimeoutError
 from mahavishnu.core.resilience import RetryExhaustedError, RetryPolicy, retry_async
 
 logger = logging.getLogger(__name__)
@@ -42,7 +44,7 @@ DEFAULT_TIMEOUTS = {
 async def timeout_context(
     seconds: float,
     operation: str = "operation",
-) -> AsyncGenerator[None, None]:
+) -> AsyncGenerator[None]:
     """
     Async context manager with timeout handling.
 
@@ -63,7 +65,7 @@ async def timeout_context(
     try:
         async with asyncio.timeout(seconds):
             yield
-    except asyncio.TimeoutError:
+    except builtins.TimeoutError:
         logger.error(f"{operation} timed out after {seconds}s")
         raise TimeoutError(
             f"{operation} timed out after {seconds}s",
@@ -78,7 +80,7 @@ async def timeout_context(
 async def db_connection(
     pool: Any,
     timeout_seconds: float = DEFAULT_TIMEOUTS["database_query"],
-) -> AsyncGenerator[Any, None]:
+) -> AsyncGenerator[Any]:
     """
     Async context manager for database connections with timeout.
 
@@ -97,27 +99,26 @@ async def db_connection(
         TimeoutError: If connection acquisition times out
         MahavishnuError: If database error occurs
     """
-    async with timeout_context(timeout_seconds, "database_connection"):
-        async with pool.acquire() as conn:
+    async with timeout_context(timeout_seconds, "database_connection"), pool.acquire() as conn:
+        try:
+            yield conn
+        except asyncio.CancelledError:
+            # Rollback on cancellation
             try:
-                yield conn
-            except asyncio.CancelledError:
-                # Rollback on cancellation
-                try:
-                    await conn.execute("ROLLBACK")
-                except Exception:
-                    pass  # Ignore rollback errors during cancellation
-                raise
-            except Exception as e:
-                logger.error(f"Database error: {e}")
-                raise
+                await conn.execute("ROLLBACK")
+            except Exception:
+                pass  # Ignore rollback errors during cancellation
+            raise
+        except Exception as e:
+            logger.error(f"Database error: {e}")
+            raise
 
 
 @asynccontextmanager
 async def db_transaction(
     pool: Any,
     timeout_seconds: float = DEFAULT_TIMEOUTS["database_transaction"],
-) -> AsyncGenerator[Any, None]:
+) -> AsyncGenerator[Any]:
     """
     Async context manager for database transactions with automatic commit/rollback.
 
@@ -206,7 +207,7 @@ class SagaLock:
         return self._locked
 
 
-async def with_retry(
+async def with_retry[**P, T](
     func: Callable[P, T],
     max_retries: int = 3,
     base_delay: float = 1.0,

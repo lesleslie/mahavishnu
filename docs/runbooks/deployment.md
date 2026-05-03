@@ -5,12 +5,12 @@ This runbook provides step-by-step procedures for deploying the Mahavishnu Task 
 ## Table of Contents
 
 1. [Pre-Deployment Checklist](#pre-deployment-checklist)
-2. [Deployment Procedures](#deployment-procedures)
-3. [Post-Deployment Verification](#post-deployment-verification)
-4. [Rollback Procedures](#rollback-procedures)
-5. [Common Issues](#common-issues)
+1. [Deployment Procedures](#deployment-procedures)
+1. [Post-Deployment Verification](#post-deployment-verification)
+1. [Rollback Procedures](#rollback-procedures)
+1. [Common Issues](#common-issues)
 
----
+______________________________________________________________________
 
 ## Pre-Deployment Checklist
 
@@ -69,7 +69,7 @@ asyncio.run(check())
 "
 ```
 
----
+______________________________________________________________________
 
 ## Deployment Procedures
 
@@ -169,7 +169,7 @@ kubectl rollout status deployment/mahavishnu \
 kubectl get pods -n mahavishnu -w
 ```
 
----
+______________________________________________________________________
 
 ## Post-Deployment Verification
 
@@ -222,7 +222,7 @@ curl -s "http://prometheus.example.com/api/v1/targets" | jq '.data.activeTargets
 curl -s "http://prometheus.example.com/api/v1/query?query=rate(mahavishnu_task_errors_total[5m])" | jq
 ```
 
----
+______________________________________________________________________
 
 ## Rollback Procedures
 
@@ -347,17 +347,19 @@ Is data integrity at risk?
     └── NO → Continue monitoring, document for postmortem
 ```
 
----
+______________________________________________________________________
 
 ## Common Issues
 
 ### Issue: Database Migration Fails
 
 **Symptoms:**
+
 - Deployment fails during migration step
 - Application won't start
 
 **Resolution:**
+
 ```bash
 # Check migration status
 alembic current
@@ -373,10 +375,12 @@ alembic downgrade -1
 ### Issue: Health Check Failing After Deploy
 
 **Symptoms:**
+
 - `/health` endpoint returns 503
 - Load balancer removes instance
 
 **Troubleshooting:**
+
 ```bash
 # Check application logs
 kubectl logs -n mahavishnu deployment/mahavishnu --tail=100
@@ -395,10 +399,12 @@ curl -s http://localhost:8680/mcp/health
 ### Issue: High Memory Usage After Deploy
 
 **Symptoms:**
+
 - OOM kills
 - Slow response times
 
 **Resolution:**
+
 ```bash
 # Check memory usage
 kubectl top pods -n mahavishnu
@@ -414,10 +420,12 @@ kubectl edit deployment mahavishnu -n mahavishnu
 ### Issue: Webhook Signature Failures After Deploy
 
 **Symptoms:**
+
 - High `signature_mismatch` count in logs
 - External integrations failing
 
 **Resolution:**
+
 ```bash
 # Check webhook secret configuration
 env | grep MAHAVISHNU_WEBHOOK_SECRET
@@ -435,7 +443,7 @@ print(f'Signature: sha256={mac.hexdigest()}')
 "
 ```
 
----
+______________________________________________________________________
 
 ## Deployment Windows
 

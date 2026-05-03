@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-from pathlib import Path
 import asyncio
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -19,7 +19,9 @@ from mahavishnu.core.production_readiness import (
 
 
 class _FakeAdapter:
-    def __init__(self, health: dict[str, object] | None = None, error: Exception | None = None) -> None:
+    def __init__(
+        self, health: dict[str, object] | None = None, error: Exception | None = None
+    ) -> None:
         self.health = health or {"status": "healthy"}
         self.error = error
 
@@ -109,6 +111,7 @@ def _make_app(
         state_manager = SimpleNamespace(create=_create, get=_get, delete=_delete)
 
     if observability is None:
+
         class _Counter:
             def __init__(self) -> None:
                 self.calls: list[tuple[int, dict[str, str] | None]] = []
@@ -199,7 +202,9 @@ def _raising_suite_test():
     return _test
 
 
-def test_config_resource_security_and_adapter_checks(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_config_resource_security_and_adapter_checks(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     config = _make_config(repos_path=str(tmp_path / "repos.txt"))
     checker = ProductionReadinessChecker(_make_app(config=config))
 
@@ -216,7 +221,10 @@ def test_config_resource_security_and_adapter_checks(monkeypatch: pytest.MonkeyP
         max_concurrent_workflows=8,
         ollama_base_url="http://localhost:11434",
     )
-    assert ProductionReadinessChecker(_make_app(config=missing_field_config))._check_config_validity() is False
+    assert (
+        ProductionReadinessChecker(_make_app(config=missing_field_config))._check_config_validity()
+        is False
+    )
 
     class _BrokenApp:
         @property
@@ -388,12 +396,20 @@ async def test_workflow_execution_and_integration_suite_paths(tmp_path: Path) ->
     bad_state_suite.app.workflow_state_manager = _BadStateManager()
     assert await bad_state_suite._test_workflow_state_management() is False
 
-    assert await IntegrationTestSuite(
-        _make_app(config=_make_config(), adapters={"adapter": object()}, repos=["repo"])
-    )._test_observation_logging() is True
+    assert (
+        await IntegrationTestSuite(
+            _make_app(config=_make_config(), adapters={"adapter": object()}, repos=["repo"])
+        )._test_observation_logging()
+        is True
+    )
 
     no_obs_suite = IntegrationTestSuite(
-        _make_app(config=_make_config(), adapters={"adapter": object()}, repos=["repo"], observability=False)
+        _make_app(
+            config=_make_config(),
+            adapters={"adapter": object()},
+            repos=["repo"],
+            observability=False,
+        )
     )
     assert await no_obs_suite._test_observation_logging() is True
 
@@ -415,14 +431,48 @@ async def test_workflow_execution_and_integration_suite_paths(tmp_path: Path) ->
 
 
 @pytest.mark.asyncio
-async def test_suite_runners_and_benchmarks(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    checker = ProductionReadinessChecker(_make_app(config=_make_config(repos_path=str(tmp_path / "repos.txt"))))
-    monkeypatch.setattr(pr.ProductionReadinessChecker, "_check_config_validity", _sync_check("_check_config_validity", True), raising=True)
-    monkeypatch.setattr(pr.ProductionReadinessChecker, "_check_adapter_health", _sync_check("_check_adapter_health", False), raising=True)
-    monkeypatch.setattr(pr.ProductionReadinessChecker, "_check_repo_accessibility", _raising_check("_check_repo_accessibility"), raising=True)
-    monkeypatch.setattr(pr.ProductionReadinessChecker, "_check_workflow_execution", _async_check("_check_workflow_execution", True), raising=True)
-    monkeypatch.setattr(pr.ProductionReadinessChecker, "_check_resource_limits", _sync_check("_check_resource_limits", True), raising=True)
-    monkeypatch.setattr(pr.ProductionReadinessChecker, "_check_security_settings", _sync_check("_check_security_settings", False), raising=True)
+async def test_suite_runners_and_benchmarks(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    checker = ProductionReadinessChecker(
+        _make_app(config=_make_config(repos_path=str(tmp_path / "repos.txt")))
+    )
+    monkeypatch.setattr(
+        pr.ProductionReadinessChecker,
+        "_check_config_validity",
+        _sync_check("_check_config_validity", True),
+        raising=True,
+    )
+    monkeypatch.setattr(
+        pr.ProductionReadinessChecker,
+        "_check_adapter_health",
+        _sync_check("_check_adapter_health", False),
+        raising=True,
+    )
+    monkeypatch.setattr(
+        pr.ProductionReadinessChecker,
+        "_check_repo_accessibility",
+        _raising_check("_check_repo_accessibility"),
+        raising=True,
+    )
+    monkeypatch.setattr(
+        pr.ProductionReadinessChecker,
+        "_check_workflow_execution",
+        _async_check("_check_workflow_execution", True),
+        raising=True,
+    )
+    monkeypatch.setattr(
+        pr.ProductionReadinessChecker,
+        "_check_resource_limits",
+        _sync_check("_check_resource_limits", True),
+        raising=True,
+    )
+    monkeypatch.setattr(
+        pr.ProductionReadinessChecker,
+        "_check_security_settings",
+        _sync_check("_check_security_settings", False),
+        raising=True,
+    )
 
     summary = await checker.run_all_checks()
     assert summary["summary"]["total_checks"] == 6
@@ -430,11 +480,27 @@ async def test_suite_runners_and_benchmarks(monkeypatch: pytest.MonkeyPatch, tmp
     assert summary["summary"]["status"] == "FAIL"
     assert "config_validity" in summary["details"]
 
-    suite = IntegrationTestSuite(_make_app(config=_make_config(), adapters={"adapter": object()}, repos=["repo"]))
-    monkeypatch.setattr(pr.IntegrationTestSuite, "_test_basic_workflow_execution", _async_suite_test(True), raising=True)
-    monkeypatch.setattr(pr.IntegrationTestSuite, "_test_rbac_permissions", _async_suite_test(False), raising=True)
-    monkeypatch.setattr(pr.IntegrationTestSuite, "_test_workflow_state_management", _raising_suite_test(), raising=True)
-    monkeypatch.setattr(pr.IntegrationTestSuite, "_test_observation_logging", _async_suite_test(True), raising=True)
+    suite = IntegrationTestSuite(
+        _make_app(config=_make_config(), adapters={"adapter": object()}, repos=["repo"])
+    )
+    monkeypatch.setattr(
+        pr.IntegrationTestSuite,
+        "_test_basic_workflow_execution",
+        _async_suite_test(True),
+        raising=True,
+    )
+    monkeypatch.setattr(
+        pr.IntegrationTestSuite, "_test_rbac_permissions", _async_suite_test(False), raising=True
+    )
+    monkeypatch.setattr(
+        pr.IntegrationTestSuite,
+        "_test_workflow_state_management",
+        _raising_suite_test(),
+        raising=True,
+    )
+    monkeypatch.setattr(
+        pr.IntegrationTestSuite, "_test_observation_logging", _async_suite_test(True), raising=True
+    )
 
     test_summary = await suite.run_all_tests()
     assert test_summary["summary"]["total_tests"] == 4
@@ -470,9 +536,13 @@ async def test_suite_runners_and_benchmarks(monkeypatch: pytest.MonkeyPatch, tmp
     async def _fake_run_benchmarks(self):  # noqa: ANN001
         return {"summary": {"performance_score": 92}, "benchmarks": {}}
 
-    monkeypatch.setattr(pr.ProductionReadinessChecker, "run_all_checks", _fake_run_all_checks, raising=True)
+    monkeypatch.setattr(
+        pr.ProductionReadinessChecker, "run_all_checks", _fake_run_all_checks, raising=True
+    )
     monkeypatch.setattr(pr.IntegrationTestSuite, "run_all_tests", _fake_run_all_tests, raising=True)
-    monkeypatch.setattr(pr.PerformanceBenchmark, "run_benchmarks", _fake_run_benchmarks, raising=True)
+    monkeypatch.setattr(
+        pr.PerformanceBenchmark, "run_benchmarks", _fake_run_benchmarks, raising=True
+    )
 
     first = await run_production_readiness_suite(app)
     assert "production_readiness" in first
@@ -480,7 +550,9 @@ async def test_suite_runners_and_benchmarks(monkeypatch: pytest.MonkeyPatch, tmp
 
 
 @pytest.mark.asyncio
-async def test_remaining_readiness_branches(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+async def test_remaining_readiness_branches(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     class _RepoErrorApp:
         def __init__(self, repos: list[str] | None = None) -> None:
             self._repos = repos or []
@@ -509,7 +581,9 @@ async def test_remaining_readiness_branches(monkeypatch: pytest.MonkeyPatch, tmp
 
     empty_repo_checker = ProductionReadinessChecker(_RepoErrorApp([]))
     assert empty_repo_checker._check_repo_accessibility() is True
-    assert empty_repo_checker.results["repo_accessibility"]["message"] == "No repositories configured"
+    assert (
+        empty_repo_checker.results["repo_accessibility"]["message"] == "No repositories configured"
+    )
 
     original_exists = pr.Path.exists
 
@@ -521,7 +595,10 @@ async def test_remaining_readiness_branches(monkeypatch: pytest.MonkeyPatch, tmp
     monkeypatch.setattr(pr.Path, "exists", fake_exists, raising=True)
     boom_repo = repo_root / "boom"
     boom_repo.mkdir(parents=True, exist_ok=True)
-    assert ProductionReadinessChecker(_RepoErrorApp([str(boom_repo)]))._check_repo_accessibility() is False
+    assert (
+        ProductionReadinessChecker(_RepoErrorApp([str(boom_repo)]))._check_repo_accessibility()
+        is False
+    )
 
     class _BrokenReposApp:
         config = _make_config(repos_path=str(tmp_path / "repos.txt"))
@@ -554,7 +631,9 @@ async def test_remaining_readiness_branches(monkeypatch: pytest.MonkeyPatch, tmp
         adapters={"adapter": _FakeAdapter()},
         repos=[str(repo_a)],
     )
-    workflow_raise.execute_workflow = lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("workflow"))
+    workflow_raise.execute_workflow = lambda *args, **kwargs: (_ for _ in ()).throw(
+        RuntimeError("workflow")
+    )
     assert await IntegrationTestSuite(workflow_raise)._test_basic_workflow_execution() is False
 
     bench_error = _make_app(
@@ -600,7 +679,9 @@ async def test_remaining_readiness_branches(monkeypatch: pytest.MonkeyPatch, tmp
         def get_repos(self):
             raise RuntimeError("repos")
 
-    assert await PerformanceBenchmark(_RaisingRepoBenchApp())._benchmark_concurrent_workflows() is None
+    assert (
+        await PerformanceBenchmark(_RaisingRepoBenchApp())._benchmark_concurrent_workflows() is None
+    )
     assert await PerformanceBenchmark(_RaisingRepoBenchApp())._benchmark_repo_operations() is None
 
 
@@ -608,7 +689,9 @@ def test_overall_assessment_thresholds() -> None:
     readiness = {"summary": {"score_percentage": 95}}
     tests = {"summary": {"score_percentage": 95}}
     benchmarks = {"summary": {"performance_score": 95}}
-    assert _calculate_overall_assessment(readiness, tests, benchmarks)["status"] == "PRODUCTION READY"
+    assert (
+        _calculate_overall_assessment(readiness, tests, benchmarks)["status"] == "PRODUCTION READY"
+    )
 
     readiness["summary"]["score_percentage"] = 80
     tests["summary"]["score_percentage"] = 80
@@ -618,7 +701,9 @@ def test_overall_assessment_thresholds() -> None:
     readiness["summary"]["score_percentage"] = 60
     tests["summary"]["score_percentage"] = 60
     benchmarks["summary"]["performance_score"] = 60
-    assert _calculate_overall_assessment(readiness, tests, benchmarks)["status"] == "NEEDS IMPROVEMENT"
+    assert (
+        _calculate_overall_assessment(readiness, tests, benchmarks)["status"] == "NEEDS IMPROVEMENT"
+    )
 
     readiness["summary"]["score_percentage"] = 40
     tests["summary"]["score_percentage"] = 40

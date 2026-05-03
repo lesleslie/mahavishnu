@@ -3,11 +3,13 @@
 import builtins
 import importlib
 from types import ModuleType
+
 import pytest
+
 from mahavishnu.core.workflow_models import (
-    WorkflowExecution,
     PoolExecution,
     WorkflowCheckpoint,
+    WorkflowExecution,
 )
 
 
@@ -111,6 +113,7 @@ def test_workflow_execution_is_complete():
     """Should correctly identify completed workflows."""
     # Generate valid ULID from Dhara-era utilities to ensure format compliance
     from oneiric.core.ulid import ULID
+
     valid_ulid = str(ULID())
 
     execution = WorkflowExecution(
@@ -127,6 +130,7 @@ def test_workflow_execution_is_not_complete():
     """Should correctly identify incomplete workflows."""
     # Generate valid ULID from Dhara-era utilities to ensure format compliance
     from oneiric.core.ulid import ULID
+
     valid_ulid = str(ULID())
 
     execution = WorkflowExecution(
@@ -141,6 +145,7 @@ def test_workflow_execution_is_not_complete():
 def test_workflow_execution_duration():
     """Should calculate execution duration correctly."""
     from datetime import datetime
+
     from oneiric.core.ulid import ULID
 
     start = datetime(2026, 2, 11, 12, 0, 0)
@@ -162,6 +167,7 @@ def test_workflow_execution_duration():
 def test_workflow_execution_no_end_time():
     """Should return None when end_time is missing."""
     from oneiric.core.ulid import ULID
+
     valid_ulid = str(ULID())
 
     execution = WorkflowExecution(
@@ -176,6 +182,7 @@ def test_workflow_execution_no_end_time():
 def test_pool_execution_duration():
     """Should calculate pool execution duration correctly."""
     from datetime import datetime
+
     from oneiric.core.ulid import ULID
 
     start = datetime(2026, 2, 11, 12, 0, 0)
@@ -198,6 +205,7 @@ def test_pool_execution_duration():
 def test_pool_execution_no_duration():
     """Should return None when end_time is missing."""
     from oneiric.core.ulid import ULID
+
     valid_ulid = str(ULID())
 
     execution = PoolExecution(

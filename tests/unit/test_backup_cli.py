@@ -13,10 +13,9 @@ All file I/O and external operations are mocked.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 import typer
 from typer.testing import CliRunner
 
@@ -38,7 +37,7 @@ def _make_backup_info(
     """Create a mock BackupInfo object."""
     info = MagicMock()
     info.backup_id = backup_id
-    info.timestamp = datetime(2026, 4, 24, 12, 0, 0, tzinfo=timezone.utc)
+    info.timestamp = datetime(2026, 4, 24, 12, 0, 0, tzinfo=UTC)
     info.size_bytes = size_bytes
     info.location = f"/tmp/backups/{backup_id}.tar.gz"
     info.status = status

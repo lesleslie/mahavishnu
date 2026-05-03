@@ -6,13 +6,14 @@
 **Author**: Claude Sonnet 4.5 + User Collaboration
 **Version**: 2.0
 
----
+______________________________________________________________________
 
 ## Change Log (v1.0 → v2.0)
 
 ### Critical Updates from Power Trio Reviews
 
 **Security (6.5/10 → Addressing All Critical Issues)**
+
 - ✅ Added webhook authentication section (HMAC signature validation)
 - ✅ Added comprehensive input sanitization framework
 - ✅ Added audit logging for all task operations
@@ -20,6 +21,7 @@
 - ✅ Added authorization checks for all MCP tools
 
 **SRE (5/10 → Comprehensive SLO/Monitoring Strategy)**
+
 - ✅ Added complete SLI/SLO definitions (732 lines from SRE reviewer)
 - ✅ Added monitoring strategy with Prometheus metrics
 - ✅ Added capacity planning guidelines
@@ -27,6 +29,7 @@
 - ✅ Added disaster recovery procedures
 
 **UX (7.5/10 → Modern UX Patterns)**
+
 - ✅ Added command palette pattern (Ctrl+K fuzzy search)
 - ✅ Added onboarding flow with interactive tutorial
 - ✅ Added accessibility compliance (WCAG 2.1 Level AA)
@@ -34,6 +37,7 @@
 - ✅ Added command shorthands for common operations
 
 **Architecture (8/10 → Resolved Consistency Issues)**
+
 - ✅ Added saga pattern for distributed transactions
 - ✅ Added event-driven architecture for storage consistency
 - ✅ Migrated from SQLite to PostgreSQL for production
@@ -41,57 +45,62 @@
 - ✅ Added event sourcing for task history
 
 **Python Pro (7.5/10 → Complete Type Safety)**
+
 - ✅ Added complete type hints throughout
 - ✅ Fixed Pydantic schema validation issues
 - ✅ Added structured error handling with custom exceptions
 - ✅ Added comprehensive docstring coverage
 
 **Performance (6.5/10 → Scalability Strategy)**
+
 - ✅ Added Redis caching strategy for frequent queries
 - ✅ Added query optimization guidelines with EXPLAIN ANALYZE
 - ✅ Added load testing strategy with k6
 - ✅ Added database indexing strategy
 
 **UI Designer (7/10 → Accessibility Compliance)**
+
 - ✅ Fixed color contrast ratios (WCAG AA compliant)
 - ✅ Standardized icon system (Lucide icons)
 - ✅ Added responsive layout support
 - ✅ Added dark mode support
 
 **Technical Writer (8.5/10 → Complete Documentation)**
+
 - ✅ Fixed date consistency (ISO 8601 format)
 - ✅ Added comprehensive definitions section
 - ✅ Added inline examples throughout
 - ✅ Added troubleshooting section
 
 **Cloud Architect (6/10 → Production Architecture)**
+
 - ✅ Designed PostgreSQL migration path from SQLite
 - ✅ Added horizontal scaling strategy
 - ✅ Added multi-region deployment guidelines
 - ✅ Added cloud-native architecture with Kubernetes
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Executive Summary](#executive-summary)
-2. [Market Research](#market-research)
-3. [Vision & Goals](#vision--goals)
-4. [Ecosystem Integration](#ecosystem-integration)
-5. [Architecture](#architecture)
-6. [Security](#security)
-7. [SRE & Reliability](#sre--reliability)
-8. [User Experience](#user-experience)
-9. [Core Features](#core-features)
-10. [Storage Strategy](#storage-strategy)
-11. [User Interfaces](#user-interfaces)
-12. [External Integrations](#external-integrations)
-13. [Implementation Phases](#implementation-phases)
-14. [Success Metrics](#success-metrics)
-15. [Risks & Mitigations](#risks--mitigations)
-16. [Open Questions](#open-questions)
+1. [Market Research](#market-research)
+1. [Vision & Goals](#vision--goals)
+1. [Ecosystem Integration](#ecosystem-integration)
+1. [Architecture](#architecture)
+1. [Security](#security)
+1. [SRE & Reliability](#sre--reliability)
+1. [User Experience](#user-experience)
+1. [Core Features](#core-features)
+1. [Storage Strategy](#storage-strategy)
+1. [User Interfaces](#user-interfaces)
+1. [External Integrations](#external-integrations)
+1. [Implementation Phases](#implementation-phases)
+1. [Success Metrics](#success-metrics)
+1. [Risks & Mitigations](#risks--mitigations)
+1. [Open Questions](#open-questions)
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
@@ -103,13 +112,13 @@ Unlike existing task management tools, MTOS is:
 
 1. **Ecosystem-Native**: Built on top of existing Mahavishnu components (Akosha for semantic search, Dhara for workflow config, Session-Buddy for context, Crackerjack for quality gates)
 
-2. **Developer-Centric**: Worktree-aware, quality gate integrated, git-native workflow
+1. **Developer-Centric**: Worktree-aware, quality gate integrated, git-native workflow
 
-3. **Semantic**: Uses vector embeddings and knowledge graphs for intelligent task discovery and dependency inference
+1. **Semantic**: Uses vector embeddings and knowledge graphs for intelligent task discovery and dependency inference
 
-4. **Predictive**: AI-powered pattern detection predicts blockers, task duration, and optimal task ordering
+1. **Predictive**: AI-powered pattern detection predicts blockers, task duration, and optimal task ordering
 
-5. **Multi-Repository**: Coordinates tasks across multiple repos with dependency management and cross-repo workflows
+1. **Multi-Repository**: Coordinates tasks across multiple repos with dependency management and cross-repo workflows
 
 ### Target Users
 
@@ -118,7 +127,7 @@ Unlike existing task management tools, MTOS is:
 - **Open Source Maintainers** managing external issues
 - **Engineering Teams** needing AI-assisted task prioritization
 
----
+______________________________________________________________________
 
 ## Market Research
 
@@ -157,6 +166,7 @@ Based on market research, here's how MTOS compares to existing solutions:
 ### Unique MTOS Advantages
 
 1. **No Existing Tool Combines**:
+
    - Semantic search (Akosha vector DB)
    - Multi-repository coordination
    - Worktree integration
@@ -164,14 +174,16 @@ Based on market research, here's how MTOS compares to existing solutions:
    - Natural language task creation
    - Predictive pattern detection
 
-2. **Ecosystem Synergy**:
+1. **Ecosystem Synergy**:
+
    - Uses existing components (no reinventing the wheel)
    - Leverages Session-Buddy for context
    - Integrates with Crackerjack for quality
    - Coordinates via Dhara workflows
    - Semantic search via Akosha
 
-3. **Developer Workflow Integration**:
+1. **Developer Workflow Integration**:
+
    - Automatic worktree creation when starting tasks
    - Quality gates run before task completion
    - Git-aware (branches, commits, PRs)
@@ -182,15 +194,15 @@ Based on market research, here's how MTOS compares to existing solutions:
 **What's Missing in Existing Tools:**
 
 1. ❌ **Semantic Task Discovery**: No tool uses vector embeddings for "find me tasks related to authentication"
-2. ❌ **Multi-Repository Coordination**: Most tools are single-repo or require manual cross-repo tracking
-3. ❌ **Predictive Insights**: No tool predicts blockers or estimates task duration using ML
-4. ❌ **Worktree Integration**: No tool integrates with git worktrees for isolated development
-5. ❌ **Quality Gate Integration**: No tool integrates automated quality checks into task completion
-6. ❌ **Natural Language Task Creation**: Limited NLP for task creation (most require forms)
+1. ❌ **Multi-Repository Coordination**: Most tools are single-repo or require manual cross-repo tracking
+1. ❌ **Predictive Insights**: No tool predicts blockers or estimates task duration using ML
+1. ❌ **Worktree Integration**: No tool integrates with git worktrees for isolated development
+1. ❌ **Quality Gate Integration**: No tool integrates automated quality checks into task completion
+1. ❌ **Natural Language Task Creation**: Limited NLP for task creation (most require forms)
 
 **MTOS Fills All These Gaps ✅**
 
----
+______________________________________________________________________
 
 ## Vision & Goals
 
@@ -201,11 +213,11 @@ Create a unified task orchestration system that understands developer intent, co
 ### Primary Goals
 
 1. **Natural Language Interface**: Create and manage tasks using plain English
-2. **Ecosystem Coordination**: Seamlessly coordinate tasks across multiple repositories
-3. **Predictive Insights**: Use AI to detect patterns, predict blockers, and optimize workflows
-4. **Developer-Centric**: Designed for actual development workflows (worktrees, quality gates, git)
-5. **One-Way Sync**: Import external issues without polluting GitHub/GitLab
-6. **Production Ready**: 99.9% availability, comprehensive monitoring, secure by default
+1. **Ecosystem Coordination**: Seamlessly coordinate tasks across multiple repositories
+1. **Predictive Insights**: Use AI to detect patterns, predict blockers, and optimize workflows
+1. **Developer-Centric**: Designed for actual development workflows (worktrees, quality gates, git)
+1. **One-Way Sync**: Import external issues without polluting GitHub/GitLab
+1. **Production Ready**: 99.9% availability, comprehensive monitoring, secure by default
 
 ### Non-Goals
 
@@ -214,7 +226,7 @@ Create a unified task orchestration system that understands developer intent, co
 - Non-technical task tracking (marketing, sales, HR tasks)
 - Replacing existing project management tools (complement, not replace)
 
----
+______________________________________________________________________
 
 ## Ecosystem Integration
 
@@ -261,7 +273,7 @@ User Input: "Create task to fix auth bug in session-buddy by Friday"
    └─ Enforcement: Block completion if gates fail
 ```
 
----
+______________________________________________________________________
 
 ## Architecture
 
@@ -363,20 +375,21 @@ Step 4: Create worktree (if applicable)
 **Events:**
 
 1. `TaskCreationRequested` - Initial user request
-2. `TaskCreated` - Task successfully created in all storage systems
-3. `TaskAssigned` - Task assigned to user
-4. `TaskStarted` - User started working on task
-5. `TaskCompleted` - Task marked complete (after quality gates)
-6. `TaskCancelled` - Task cancelled
-7. `TaskFailed` - Quality gates failed
+1. `TaskCreated` - Task successfully created in all storage systems
+1. `TaskAssigned` - Task assigned to user
+1. `TaskStarted` - User started working on task
+1. `TaskCompleted` - Task marked complete (after quality gates)
+1. `TaskCancelled` - Task cancelled
+1. `TaskFailed` - Quality gates failed
 
 **Benefits:**
+
 - Complete audit trail
 - Temporal queries (task state at any point in time)
 - Event replay for debugging
 - CQRS implementation (command vs query separation)
 
----
+______________________________________________________________________
 
 ## Security
 
@@ -387,10 +400,11 @@ Step 4: Create worktree (if applicable)
 Mahavishnu supports multiple authentication providers:
 
 1. **Claude Code Subscription** - Automatic detection via subscription check
-2. **Qwen Free Service** - Fallback authentication
-3. **Custom JWT** - Manual JWT token authentication
+1. **Qwen Free Service** - Fallback authentication
+1. **Custom JWT** - Manual JWT token authentication
 
 Configuration in `settings/mahavishnu.yaml`:
+
 ```yaml
 auth:
   enabled: true
@@ -579,7 +593,7 @@ async def create_task(
     # Create task...
 ```
 
----
+______________________________________________________________________
 
 ## SRE & Reliability
 
@@ -591,11 +605,12 @@ async def create_task(
 
 | Metric | Target | Measurement |
 |--------|--------|-------------|
-| p50 latency | <50ms | Time from API call to task creation confirmation |
-| p95 latency | <100ms | 95% of task creations complete within 100ms |
-| p99 latency | <500ms | 99% of task creations complete within 500ms |
+| p50 latency | \<50ms | Time from API call to task creation confirmation |
+| p95 latency | \<100ms | 95% of task creations complete within 100ms |
+| p99 latency | \<500ms | 99% of task creations complete within 500ms |
 
 **Error Budget Calculation:**
+
 - Monthly budget: 43.2 minutes (0.1% of 30 days)
 - Alert if error burn rate > 1x (consuming budget too fast)
 
@@ -607,6 +622,7 @@ async def create_task(
 | Downtime budget | 43.2 min/month | Allowed unplanned downtime |
 
 **Monitoring:**
+
 - Ping health endpoint every 30s
 - Alert if uptime < 99.9% over rolling 30-day window
 
@@ -618,6 +634,7 @@ async def create_task(
 | Data loss budget | 5 min/year | Allowed data loss events |
 
 **Implementation:**
+
 - PostgreSQL streaming replication to standby
 - Daily backups to S3/GCS with 30-day retention
 - Point-in-time recovery (PITR) capability
@@ -629,6 +646,7 @@ async def create_task(
 | Success rate | 95% | Workflows complete without errors |
 
 **Error Budget:**
+
 - Allow 5% of workflows to fail
 - Alert if error rate > 5% over rolling 7-day window
 
@@ -637,7 +655,7 @@ async def create_task(
 | Metric | Target | Definition |
 |--------|--------|------------|
 | Uptime | 99.5% | Webhook endpoint is reachable |
-| Latency p95 | <1s | 95% of webhooks processed within 1s |
+| Latency p95 | \<1s | 95% of webhooks processed within 1s |
 
 #### SLI 6: Semantic Search Accuracy
 
@@ -776,7 +794,7 @@ groups:
 
 | Cache Size | RAM | Connections |
 |------------|-----|-------------|
-| Small (<1GB) | 2GB | 1,000 |
+| Small (\<1GB) | 2GB | 1,000 |
 | Medium (1-5GB) | 8GB | 5,000 |
 | Large (5-20GB) | 16GB | 10,000 |
 | XL (20GB+) | 32GB+ | 20,000+ |
@@ -796,40 +814,46 @@ groups:
 #### Blue-Green Deployment
 
 **Phase 1: Deploy to Blue Environment**
+
 1. Create new blue infrastructure (Kubernetes namespace, DB replica)
-2. Run migrations on blue DB
-3. Deploy new version to blue
-4. Run smoke tests against blue
-5. If tests pass: proceed
+1. Run migrations on blue DB
+1. Deploy new version to blue
+1. Run smoke tests against blue
+1. If tests pass: proceed
 
 **Phase 2: Switch Traffic**
+
 1. Update load balancer to send 10% traffic to blue
-2. Monitor metrics (error rate, latency)
-3. Gradually increase to 50%, then 100%
-4. Monitor for 1 hour
+1. Monitor metrics (error rate, latency)
+1. Gradually increase to 50%, then 100%
+1. Monitor for 1 hour
 
 **Phase 3: Rollback Plan**
 If issues detected:
+
 1. Immediately switch 100% traffic back to green
-2. Investigate issues in blue
-3. Fix and redeploy to blue
-4. Repeat Phase 2
+1. Investigate issues in blue
+1. Fix and redeploy to blue
+1. Repeat Phase 2
 
 **Phase 4: Cleanup**
+
 1. Keep green environment for 24 hours
-2. If no issues, deprovision green
-3. Blue becomes new production
+1. If no issues, deprovision green
+1. Blue becomes new production
 
 ### Disaster Recovery
 
 #### Backup Strategy
 
 **Daily Backups:**
+
 - PostgreSQL: `pg_dump` to S3/GCS (30-day retention)
 - Akosha: Vector DB snapshot + graph export
 - Session-Buddy: Session export (JSON)
 
 **Point-in-Time Recovery (PITR):**
+
 - PostgreSQL WAL archiving to S3/GCS
 - Can restore to any point in last 7 days
 - RTO: 1 hour, RPO: 5 minutes
@@ -837,21 +861,24 @@ If issues detected:
 **Recovery Procedures:**
 
 1. **Database Failure:**
+
    - Promote standby replica to primary
    - Update connection strings
    - RTO: 5 minutes, RPO: 0 seconds (streaming replication)
 
-2. **Application Server Failure:**
+1. **Application Server Failure:**
+
    - Kubernetes auto-replacement
    - Health check fails → new pod created
    - RTO: 2 minutes
 
-3. **Region Failure:**
+1. **Region Failure:**
+
    - Multi-region deployment (active-passive)
    - DNS failover to secondary region
    - RTO: 30 minutes, RPO: 5 minutes
 
----
+______________________________________________________________________
 
 ## User Experience
 
@@ -902,6 +929,7 @@ async def show_command_palette():
 ```
 
 **Benefits:**
+
 - Discoverable: Users can search for commands without memorizing
 - Fast: Fuzzy search matches partial input
 - Keyboard-driven: No mouse needed
@@ -916,6 +944,7 @@ async def show_command_palette():
 **Onboarding Steps:**
 
 1. **Welcome Screen**
+
    ```
    Welcome to Mahavishnu Task Orchestration!
 
@@ -924,7 +953,8 @@ async def show_command_palette():
    Press Enter to continue...
    ```
 
-2. **Configuration**
+1. **Configuration**
+
    ```
    Step 1/3: Configure your repositories
 
@@ -936,7 +966,8 @@ async def show_command_palette():
    Is this correct? [Y/n]
    ```
 
-3. **First Task Creation**
+1. **First Task Creation**
+
    ```
    Step 2/3: Create your first task
 
@@ -952,7 +983,8 @@ async def show_command_palette():
    Create this task? [Y/n]
    ```
 
-4. **Interactive Tutorial**
+1. **Interactive Tutorial**
+
    ```
    Step 3/3: Learn the basics
 
@@ -1007,6 +1039,7 @@ raise TaskOrchestrationError(
 ```
 
 **User sees:**
+
 ```
 ❌ Error: WORKTREE_EXISTS
 
@@ -1047,25 +1080,30 @@ Documentation: https://docs.mahavishnu.org/errors/worktree-exists
 **Implementation:**
 
 1. **Color Contrast**
+
    - All text has minimum 4.5:1 contrast ratio (WCAG AA)
    - Interactive elements have 3:1 contrast ratio
    - Tools: `pa11y` for automated testing
 
-2. **Keyboard Navigation**
+1. **Keyboard Navigation**
+
    - All features accessible via keyboard
    - Tab order follows logical flow
    - Focus indicators visible on all interactive elements
 
-3. **Screen Reader Support**
+1. **Screen Reader Support**
+
    - Semantic HTML (TUI/GUI)
    - ARIA labels for interactive elements
    - Screen reader testing with NVDA/VoiceOver
 
-4. **Font Sizing**
+1. **Font Sizing**
+
    - Support 200% zoom without loss of functionality
    - Relative units (rem, em) instead of pixels
 
-5. **Testing:**
+1. **Testing:**
+
    ```bash
    # Automated accessibility testing
    pa11y http://localhost:3000
@@ -1083,23 +1121,28 @@ Documentation: https://docs.mahavishnu.org/errors/worktree-exists
 **Features:**
 
 1. **Contextual Help**
+
    - Press `?` anytime for context-sensitive help
    - Shows available commands and shortcuts for current view
 
-2. **Progress Indicators**
+1. **Progress Indicators**
+
    - Visual progress bars for long-running operations
    - Spinners for async operations
 
-3. **Rich Formatting**
+1. **Rich Formatting**
+
    - Syntax highlighting for code blocks
    - Markdown rendering for descriptions
    - Tables with sortable columns
 
-4. **Split Panes**
+1. **Split Panes**
+
    - Task list on left, task details on right
    - Resizable panes with mouse or keyboard
 
-5. **Theme Support**
+1. **Theme Support**
+
    - Light and dark themes
    - Customizable color schemes
 
@@ -1138,7 +1181,7 @@ class TaskOrchestrationTUI(App):
         task_details.update(f"Task {event.row_key} selected")
 ```
 
----
+______________________________________________________________________
 
 ## Core Features
 
@@ -1436,7 +1479,7 @@ async def start_task_in_worktree(
     return worktree_result
 ```
 
----
+______________________________________________________________________
 
 ## Storage Strategy
 
@@ -1550,7 +1593,7 @@ async def invalidate_task_cache(task_id: int):
 
 **See Architecture section for full saga implementation.**
 
----
+______________________________________________________________________
 
 ## User Interfaces
 
@@ -1559,6 +1602,7 @@ async def invalidate_task_cache(task_id: int):
 **Primary interface for developers.**
 
 **Features:**
+
 - Natural language task creation
 - Fuzzy command palette (Ctrl+K)
 - Command shorthands
@@ -1593,6 +1637,7 @@ $ mhv
 **Primary interface for task management.**
 
 **Features:**
+
 - Modern Textual UI
 - Split pane layout (list + details)
 - Keyboard navigation
@@ -1610,12 +1655,14 @@ $ mhv
 **Native macOS interface using SwiftUI (following mdinject architecture).**
 
 **Architecture:**
+
 - SwiftUI frontend (native macOS)
 - Python helper process (shared backend)
 - IPC via Unix Domain Socket (JSON-RPC 2.0)
 - Real-time updates via WebSocket
 
 **Features:**
+
 - Native macOS performance and feel
 - Visual workflow builder
 - Drag-and-drop task management
@@ -1624,6 +1671,7 @@ $ mhv
 - Offline support with local cache
 
 **IPC Protocol (JSON-RPC 2.0 over Unix Socket):**
+
 ```json
 // Request
 {
@@ -1650,6 +1698,7 @@ $ mhv
 **Timeline:** Post-Phase 8 (after core system is stable)
 
 **Features:**
+
 - FastBlocks-based PWA (HTMX + Python)
 - Real-time updates via WebSocket
 - Responsive design
@@ -1658,7 +1707,7 @@ $ mhv
 
 **Note:** Web interface deferred to leverage FastBlocks/SplashStand advancements
 
----
+______________________________________________________________________
 
 ## External Integrations
 
@@ -1759,7 +1808,7 @@ async def run_quality_gates(
     )
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Phases
 
@@ -1768,6 +1817,7 @@ async def run_quality_gates(
 **BLOCKER - Must complete before Phase 1**
 
 **Week 1-2: Security Fixes**
+
 - [ ] Implement webhook authentication (HMAC signature validation)
 - [ ] Add input sanitization framework (Pydantic models for all inputs)
 - [ ] Implement comprehensive audit logging
@@ -1776,6 +1826,7 @@ async def run_quality_gates(
 - [ ] Security review and penetration testing
 
 **Week 3-4: SRE Fundamentals**
+
 - [ ] Define and document SLI/SLOs (732 lines from SRE reviewer)
 - [ ] Implement Prometheus metrics
 - [ ] Set up Grafana dashboards
@@ -1784,6 +1835,7 @@ async def run_quality_gates(
 - [ ] Set up disaster recovery procedures
 
 **Deliverables:**
+
 - Secure webhook handlers
 - Comprehensive audit logging
 - SLI/SLO documentation
@@ -1793,36 +1845,42 @@ async def run_quality_gates(
 ### Phase 1: Core Task Management (4-5 weeks, extended from 2 weeks)
 
 **Week 1: NLP Parser**
+
 - [ ] Implement intent extraction from natural language
 - [ ] Add confidence score calculation
 - [ ] Handle uncertainty when confidence < 0.8
 - [ ] Comprehensive testing with varied inputs
 
 **Week 2: Task Storage (PostgreSQL)**
+
 - [ ] Migrate from SQLite to PostgreSQL
 - [ ] Implement event sourcing for task history
 - [ ] Create database migration scripts
 - [ ] Add connection pooling (asyncpg)
 
 **Week 3: Task CRUD Operations**
+
 - [ ] Create, read, update, delete tasks
 - [ ] Task validation using Pydantic
 - [ ] Complete type hints throughout
 - [ ] Comprehensive error handling
 
 **Week 4: Semantic Search (Akosha Integration)**
+
 - [ ] Generate embeddings for tasks
 - [ ] Implement vector search with pgvector
 - [ ] Add HNSW indexing for performance
 - [ ] Test search accuracy and relevance
 
 **Week 5: Command Palette & Onboarding (UX Patterns)**
+
 - [ ] Implement Ctrl+K fuzzy search command palette
 - [ ] Create interactive onboarding flow
 - [ ] Add error recovery guidance to all error messages
 - [ ] Add command shorthands for common operations
 
 **Deliverables:**
+
 - Working NLP parser with confidence scoring
 - PostgreSQL database with task tables
 - Semantic search with vector embeddings
@@ -1832,24 +1890,28 @@ async def run_quality_gates(
 ### Phase 2: Pattern Detection & Prediction (3 weeks)
 
 **Week 1: Pattern Detection Engine**
+
 - [ ] Implement pattern detection in Akosha
 - [ ] Analyze historical task data
 - [ ] Detect recurring blockers
 - [ ] Calculate task duration patterns
 
 **Week 2: Predictive Insights**
+
 - [ ] Predict potential blockers
 - [ ] Estimate task duration
 - [ ] Recommend optimal task ordering
 - [ ] Display predictions in TUI
 
 **Week 3: Dependency Management**
+
 - [ ] Implement dependency graph
 - [ ] Detect circular dependencies
 - [ ] Visualize dependency chains
 - [ ] Block/unblock tasks based on dependencies
 
 **Deliverables:**
+
 - Pattern detection engine
 - Predictive blocker detection
 - Task duration estimation
@@ -1858,24 +1920,28 @@ async def run_quality_gates(
 ### Phase 3: Cross-Repository Coordination (3 weeks)
 
 **Week 1: Multi-Repository Task Views**
+
 - [ ] Aggregate tasks across repositories
 - [ ] Filter by repository, tag, status
 - [ ] Cross-repo task search
 - [ ] Repository-specific dashboards
 
 **Week 2: Cross-Repository Dependencies**
+
 - [ ] Link tasks across repositories
 - [ ] Track cross-repo blocking
 - [ ] Coordinate task completion
 - [ ] Multi-repo workflow orchestration
 
 **Week 3: External Integrations**
+
 - [ ] GitHub/GitLab webhook handlers
 - [ ] One-way sync with approval workflow
 - [ ] Import external issues
 - [ ] Bi-directional sync opt-in (optional)
 
 **Deliverables:**
+
 - Multi-repository task views
 - Cross-repository dependency tracking
 - GitHub/GitLab integration
@@ -1884,18 +1950,21 @@ async def run_quality_gates(
 ### Phase 4: Quality Gate Integration (2 weeks)
 
 **Week 1: Crackerjack Integration**
+
 - [ ] Integrate Crackerjack MCP client
 - [ ] Define quality gate rules
 - [ ] Pre-completion validation
 - [ ] Quality gate results display
 
 **Week 2: Worktree Integration**
+
 - [ ] Automatic worktree creation on task start
 - [ ] Worktree lifecycle management
 - [ ] Worktree-aware task completion
 - [ ] Cleanup completed worktrees
 
 **Deliverables:**
+
 - Quality gate enforcement
 - Automatic worktree creation
 - Worktree lifecycle management
@@ -1903,12 +1972,14 @@ async def run_quality_gates(
 ### Phase 5: User Interfaces (4-5 weeks)
 
 **Week 1-2: CLI Enhancements**
+
 - [ ] Command palette (Ctrl+K)
 - [ ] Command shorthands
 - [ ] Rich output formatting
 - [ ] Progress indicators
 
 **Week 3-4: Modern TUI**
+
 - [ ] Textual-based TUI
 - [ ] Split pane layout
 - [ ] Keyboard navigation
@@ -1916,6 +1987,7 @@ async def run_quality_gates(
 - [ ] Theme support
 
 **Week 5: Accessibility Compliance**
+
 - [ ] WCAG 2.1 Level AA compliance
 - [ ] Keyboard navigation
 - [ ] Screen reader support
@@ -1923,6 +1995,7 @@ async def run_quality_gates(
 - [ ] Accessibility testing (pa11y)
 
 **Deliverables:**
+
 - Enhanced CLI with command palette
 - Modern TUI with rich features
 - Full accessibility compliance
@@ -1930,6 +2003,7 @@ async def run_quality_gates(
 ### Phase 6: Native GUI (3-4 weeks)
 
 **Week 1-2: SwiftUI macOS App**
+
 - [ ] Create SwiftUI project (following mdinject architecture)
 - [ ] Implement Unix Domain Socket IPC client (JSON-RPC 2.0)
 - [ ] Build task list view with filtering
@@ -1937,6 +2011,7 @@ async def run_quality_gates(
 - [ ] Implement task creation/editing forms
 
 **Week 3-4: Native Features & Real-Time**
+
 - [ ] WebSocket integration for real-time updates
 - [ ] macOS menu bar integration
 - [ ] System notifications
@@ -1945,36 +2020,42 @@ async def run_quality_gates(
 - [ ] Offline cache with sync
 
 **Deliverables:**
+
 - Native SwiftUI macOS application
 - IPC client (JSON-RPC 2.0 over Unix socket)
 - Real-time updates via WebSocket
 - macOS system integration
 
 **Future Enhancement:**
+
 - Web PWA using FastBlocks/SplashStand (post-Phase 8)
 - iOS/iPadOS app (shared SwiftUI codebase)
 
 ### Phase 7: Performance & Scalability (2-3 weeks)
 
 **Week 1: Caching Layer**
+
 - [ ] Redis integration
 - [ ] Cache frequent queries
 - [ ] Cache invalidation strategy
 - [ ] Cache hit rate monitoring
 
 **Week 2: Query Optimization**
+
 - [ ] EXPLAIN ANALYZE for slow queries
 - [ ] Add database indexes
 - [ ] Optimize N+1 queries
 - [ ] Connection pooling optimization
 
 **Week 3: Load Testing**
+
 - [ ] k6 load testing scripts
 - [ ] Performance benchmarks
 - [ ] Scalability testing
 - [ ] Performance tuning
 
 **Deliverables:**
+
 - Redis caching layer
 - Optimized database queries
 - Load testing results
@@ -1983,18 +2064,21 @@ async def run_quality_gates(
 ### Phase 8: Deployment & Documentation (2-3 weeks)
 
 **Week 1: Production Deployment**
+
 - [ ] Blue-green deployment setup
 - [ ] Kubernetes manifests
 - [ ] Database migration scripts
 - [ ] Monitoring and alerting setup
 
 **Week 2-3: Documentation**
+
 - [ ] User documentation
 - [ ] API documentation
 - [ ] Deployment guides
 - [ ] Runbooks and troubleshooting
 
 **Deliverables:**
+
 - Production deployment
 - Comprehensive documentation
 - Deployment runbooks
@@ -2002,13 +2086,14 @@ async def run_quality_gates(
 
 **Total Timeline: 24-29 weeks (6-7 months)**
 
----
+______________________________________________________________________
 
 ## Success Metrics
 
 ### Technical Metrics
 
 **SLI/SLO Compliance:**
+
 - Task creation latency p95 < 100ms ✅
 - Task availability 99.9% monthly ✅
 - Data durability 99.999% annual ✅
@@ -2017,6 +2102,7 @@ async def run_quality_gates(
 - Semantic search accuracy 95% results returned, 50% CTR ✅
 
 **Performance:**
+
 - Average page load time < 2s
 - API response time p95 < 500ms
 - Cache hit rate > 80%
@@ -2025,11 +2111,13 @@ async def run_quality_gates(
 ### User Adoption Metrics
 
 **Adoption:**
+
 - 50+ active users within 3 months
 - 1000+ tasks created within 6 months
 - 70%+ user retention (monthly active)
 
 **Engagement:**
+
 - Average 5+ tasks per user per week
 - 30%+ of tasks completed within estimated duration
 - 50%+ of users use semantic search weekly
@@ -2037,18 +2125,20 @@ async def run_quality_gates(
 ### Quality Metrics
 
 **Code Quality:**
+
 - 90%+ test coverage
 - Zero critical security vulnerabilities
 - All type hints complete (mypy strict mode)
 - Zero high-priority technical debt
 
 **UX Quality:**
+
 - WCAG 2.1 Level AA compliant ✅
 - 4.5+ star user satisfaction rating
 - < 10% error rate (user-facing errors)
 - 80%+ command palette discoverability
 
----
+______________________________________________________________________
 
 ## Risks & Mitigations
 
@@ -2059,6 +2149,7 @@ async def run_quality_gates(
 **Probability**: Medium | **Impact**: High
 
 **Mitigation**:
+
 - Implement confidence score threshold (0.8)
 - Ask user for confirmation when confidence < 0.8
 - Continuous improvement with user feedback
@@ -2071,6 +2162,7 @@ async def run_quality_gates(
 **Probability**: Medium | **Impact**: Critical
 
 **Mitigation**:
+
 - Comprehensive migration scripts with rollback plan
 - Extensive testing in staging environment
 - Blue-green deployment with zero-downtime migration
@@ -2083,6 +2175,7 @@ async def run_quality_gates(
 **Probability**: Low | **Impact**: Medium
 
 **Mitigation**:
+
 - Use HNSW indexing (O(log n) search)
 - Cache frequent search queries in Redis
 - Partition vectors by repository or user
@@ -2095,6 +2188,7 @@ async def run_quality_gates(
 **Probability**: Medium | **Impact**: High
 
 **Mitigation**:
+
 - Limit initial scope to 3-5 repositories
 - Visualize dependency graph clearly
 - Detect and prevent circular dependencies
@@ -2107,6 +2201,7 @@ async def run_quality_gates(
 **Probability**: Medium | **Impact**: Medium
 
 **Mitigation**:
+
 - Make quality gates configurable per repository
 - Allow manual override with justification
 - Provide clear feedback on which checks failed
@@ -2119,12 +2214,13 @@ async def run_quality_gates(
 **Probability**: Medium | **Impact**: High
 
 **Mitigation**:
+
 - Focus on unique differentiators (semantic search, NLP)
 - Smooth onboarding flow with interactive tutorial
 - Import from existing tools (Jira, GitHub, GitLab)
 - Gather user feedback and iterate quickly
 
----
+______________________________________________________________________
 
 ## Open Questions
 
@@ -2135,6 +2231,7 @@ async def run_quality_gates(
 **Current Plan**: One-way sync with approval workflow (GitHub → Mahavishnu)
 
 **Considerations**:
+
 - Pro: Users expect two-way sync
 - Con: Risk of polluting GitHub/GitLab with internal tasks
 - Con: Complexity of conflict resolution
@@ -2148,6 +2245,7 @@ async def run_quality_gates(
 **Current Plan**: No - focus on developer-centric features
 
 **Considerations**:
+
 - Pro: Many teams use agile
 - Con: Adds complexity, distracts from core value prop
 - Con: Many existing tools already do this well
@@ -2161,6 +2259,7 @@ async def run_quality_gates(
 **Current Plan**: Single-tenant (all users in same system)
 
 **Considerations**:
+
 - Pro: SaaS product potential
 - Con: Added complexity (isolation, billing)
 - Con: Not needed for open source ecosystem use case
@@ -2174,6 +2273,7 @@ async def run_quality_gates(
 **Current Plan**: PWA with mobile-friendly web interface
 
 **Considerations**:
+
 - Pro: Better UX on mobile
 - Con: Development overhead (2 platforms)
 - Con: PWA provides good mobile experience
@@ -2187,6 +2287,7 @@ async def run_quality_gates(
 **Current Plan**: No - focus on software development tasks
 
 **Considerations**:
+
 - Pro: Larger addressable market
 - Con: Dilutes focus, different user needs
 - Con: Many existing tools for general task management
@@ -2200,6 +2301,7 @@ async def run_quality_gates(
 **Current Plan**: Self-hosted (open source)
 
 **Considerations**:
+
 - Pro: Self-hosted appeals to open source community
 - Pro: SaaS provides recurring revenue
 - Con: SaaS requires infrastructure investment
@@ -2213,6 +2315,7 @@ async def run_quality_gates(
 **Current Plan**: No - users create tasks from scratch
 
 **Considerations**:
+
 - Pro: Faster task creation for common patterns
 - Con: Adds complexity to task creation flow
 - Con: NLP parser should learn patterns automatically
@@ -2226,28 +2329,30 @@ async def run_quality_gates(
 **Current Plan**: No - reactive (users create tasks)
 
 **Considerations**:
+
 - Pro: Proactive value, predicts needs
 - Con: Might feel intrusive or annoying
 - Con: Requires high confidence to be useful
 
 **Decision**: Add in v1.1 as opt-in feature, gauge user response
 
----
+______________________________________________________________________
 
 ## Next Steps
 
 1. ✅ **Review this updated plan** with 5-agent review (Security, Architecture, Python Pro, UX, SRE)
-2. **Approve plan** and proceed to Phase 0 (Critical Security & SRE Fundamentals)
-3. **Set up monitoring** (Prometheus, Grafana, alerting)
-4. **Implement security fixes** (webhook auth, input sanitization, audit logging)
-5. **Begin Phase 1** (Core Task Management) once Phase 0 complete
+1. **Approve plan** and proceed to Phase 0 (Critical Security & SRE Fundamentals)
+1. **Set up monitoring** (Prometheus, Grafana, alerting)
+1. **Implement security fixes** (webhook auth, input sanitization, audit logging)
+1. **Begin Phase 1** (Core Task Management) once Phase 0 complete
 
 **Estimated Timeline to Production:**
+
 - Phase 0: 3-4 weeks (BLOCKER - must complete first)
 - Phases 1-8: 21-25 weeks
 - **Total: 24-29 weeks (6-7 months) to production-ready system**
 
----
+______________________________________________________________________
 
 ## Appendix A: SLI/SLO Definitions
 
@@ -2290,6 +2395,7 @@ Key highlights:
 **SQLite → PostgreSQL Migration Steps:**
 
 1. **Setup PostgreSQL instance**
+
    ```bash
    # Install PostgreSQL 15+
    sudo apt-get install postgresql-15
@@ -2301,7 +2407,8 @@ Key highlights:
    GRANT ALL PRIVILEGES ON DATABASE mahavishnu_tasks TO mahavishnu;
    ```
 
-2. **Export SQLite data**
+1. **Export SQLite data**
+
    ```bash
    # Export to SQL
    sqlite3 mahavishnu_tasks.db .dump > mahavishnu_tasks.sql
@@ -2310,7 +2417,8 @@ Key highlights:
    # (Use pgloader or manual conversion)
    ```
 
-3. **Import to PostgreSQL**
+1. **Import to PostgreSQL**
+
    ```bash
    # Using pgloader (recommended)
    pgloader sqlite:///mahavishnu_tasks.db postgresql://mahavishnu@localhost/mahavishnu_tasks
@@ -2319,14 +2427,16 @@ Key highlights:
    psql -U mahavishnu -d mahavishnu_tasks -f mahavishnu_tasks.sql
    ```
 
-4. **Update connection strings in config**
+1. **Update connection strings in config**
+
    ```yaml
    # settings/mahavishnu.yaml
    database:
      url: "postgresql://mahavishnu:secure_password@localhost:5432/mahavishnu_tasks"
    ```
 
-5. **Run migration tests**
+1. **Run migration tests**
+
    ```bash
    # Verify data integrity
    pytest tests/integration/test_migration.py
@@ -2335,7 +2445,8 @@ Key highlights:
    pytest tests/performance/test_queries.py
    ```
 
-6. **Rollback plan** (if issues):
+1. **Rollback plan** (if issues):
+
    ```bash
    # Stop application
    systemctl stop mahavishnu
@@ -2346,7 +2457,7 @@ Key highlights:
    systemctl start mahavishnu
    ```
 
----
+______________________________________________________________________
 
 **END OF MASTER PLAN v2.0**
 

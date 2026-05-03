@@ -1,12 +1,6 @@
----
-name: persistent-state
-description: >
-  Proactive durable storage skill. Use automatically when state needs to survive beyond the
-  current session. Persists configuration via key-value store, tracks metrics over time via
-  time-series, manages adapters via the registry, and records service lifecycle events using
-  Dhara's ACID storage. NOT user-invoked — Claude activates this autonomously at "durability
-  moments."
----
+______________________________________________________________________
+
+## name: persistent-state description: > Proactive durable storage skill. Use automatically when state needs to survive beyond the current session. Persists configuration via key-value store, tracks metrics over time via time-series, manages adapters via the registry, and records service lifecycle events using Dhara's ACID storage. NOT user-invoked — Claude activates this autonomously at "durability moments."
 
 # Persistent State
 
@@ -16,8 +10,8 @@ description: >
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| dhara | 8683 | grep | mcp__dhara__put, mcp__dhara__get, mcp__dhara__record_event | 30s |
-| session-buddy | 8678 | grep | mcp__session-buddy__store_reflection | 30s |
+| dhara | 8683 | grep | mcp\_\_dhara\_\_put, mcp\_\_dhara\_\_get, mcp\_\_dhara\_\_record_event | 30s |
+| session-buddy | 8678 | grep | mcp\_\_session-buddy\_\_store_reflection | 30s |
 
 State that should survive session restarts deserves durable storage, not in-memory variables or temp files. This skill teaches Claude to use Dhara's ACID storage whenever it encounters a "durability moment" — any point where ephemeral state would be more valuable if persisted.
 
@@ -35,6 +29,7 @@ Dhara provides four storage capabilities, each suited to different types of stat
 ## Activation
 
 **Reactive** — triggers automatically when Claude is about to:
+
 - Store configuration or settings that should survive session restart
 - Track a metric or value that changes over time (time-series)
 - Discover, validate, or manage an adapter in the ecosystem

@@ -9,7 +9,6 @@ and git operations.
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import typer
 from typer.testing import CliRunner
 
 from mahavishnu.worktree_cli import worktree_app
@@ -19,7 +18,9 @@ runner = CliRunner()
 
 def _make_coordinator():
     coord = MagicMock()
-    coord.create_worktree = AsyncMock(return_value={"success": True, "worktree_path": "/tmp/test-wt"})
+    coord.create_worktree = AsyncMock(
+        return_value={"success": True, "worktree_path": "/tmp/test-wt"}
+    )
     coord.remove_worktree = AsyncMock(return_value={"success": True})
     coord.list_worktrees = AsyncMock(
         return_value={
@@ -71,7 +72,9 @@ class TestCreateWorktree:
         assert "Created worktree" in result.output
 
     def test_create_with_custom_name(self, mock_app):
-        result = runner.invoke(worktree_app, ["create", "myrepo", "feature-branch", "--name", "custom-wt"])
+        result = runner.invoke(
+            worktree_app, ["create", "myrepo", "feature-branch", "--name", "custom-wt"]
+        )
         assert result.exit_code == 0
         coord = mock_app.load.return_value.worktree_coordinator
         coord.create_worktree.assert_called_once_with(
@@ -503,17 +506,13 @@ class TestInitializeCoordinatorRaises:
     def test_create_init_raises(self):
         with patch("mahavishnu.worktree_cli.MahavishnuApp") as MockApp:
             app = MockApp.load.return_value
-            app.initialize_worktree_coordinator = AsyncMock(
-                side_effect=RuntimeError("init failed")
-            )
+            app.initialize_worktree_coordinator = AsyncMock(side_effect=RuntimeError("init failed"))
             result = runner.invoke(worktree_app, ["create", "repo", "branch"])
             assert result.exit_code != 0
 
     def test_list_init_raises(self):
         with patch("mahavishnu.worktree_cli.MahavishnuApp") as MockApp:
             app = MockApp.load.return_value
-            app.initialize_worktree_coordinator = AsyncMock(
-                side_effect=RuntimeError("init failed")
-            )
+            app.initialize_worktree_coordinator = AsyncMock(side_effect=RuntimeError("init failed"))
             result = runner.invoke(worktree_app, ["list"])
             assert result.exit_code != 0

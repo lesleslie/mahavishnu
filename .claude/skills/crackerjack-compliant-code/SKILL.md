@@ -1,11 +1,6 @@
----
-name: crackerjack-compliant-code
-description: >-
-  Use when writing or modifying Python code to ensure it passes crackerjack
-  quality gates on the first run. Encodes ruff, mypy strict, bandit, complexipy,
-  and refurb rules preventively so fix-after-the-fact cycles are eliminated.
-  Invoke before writing any new Python function, class, or module.
----
+______________________________________________________________________
+
+## name: crackerjack-compliant-code description: >- Use when writing or modifying Python code to ensure it passes crackerjack quality gates on the first run. Encodes ruff, mypy strict, bandit, complexipy, and refurb rules preventively so fix-after-the-fact cycles are eliminated. Invoke before writing any new Python function, class, or module.
 
 # Crackerjack-Compliant Code
 
@@ -13,7 +8,7 @@ description: >-
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| crackerjack | 8676 | summary | mcp__crackerjack__crackerjack_run, mcp__crackerjack__smart_error_analysis, mcp__crackerjack__get_comprehensive_status | 120s |
+| crackerjack | 8676 | summary | mcp\_\_crackerjack\_\_crackerjack_run, mcp\_\_crackerjack\_\_smart_error_analysis, mcp\_\_crackerjack\_\_get_comprehensive_status | 120s |
 
 ## Overview
 
@@ -23,7 +18,7 @@ so code passes on the first run rather than requiring a fix loop.
 **Core principle:** Internalize the rules before writing. Verify with `crackerjack run`
 after writing. Never commit until the run reports zero failures.
 
----
+______________________________________________________________________
 
 ## Before Writing — Rules to Internalize
 
@@ -187,7 +182,7 @@ Use `pathlib.Path` over `os.path`.
 - No commented-out code blocks in committed code
 - No unreachable branches or stub functions with only `pass`
 
----
+______________________________________________________________________
 
 ## Complexity Budget Cheatsheet
 
@@ -200,7 +195,7 @@ complexity ≤15       ≤6 return points  ≤55 statements
 
 If any limit is hit, **stop and refactor first**.
 
----
+______________________________________________________________________
 
 ## Type Annotation Quick-Reference
 
@@ -234,7 +229,7 @@ class Config:
     tags: list[str] = field(default_factory=list)
 ```
 
----
+______________________________________________________________________
 
 ## After Writing — Verification
 
@@ -268,7 +263,7 @@ optional — crackerjack enforces a ratchet. Skipping compounds debt.
 
 A passing `crackerjack run` is the definition of done for any Python code change.
 
----
+______________________________________________________________________
 
 ## Common First-Run Failures
 

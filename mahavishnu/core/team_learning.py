@@ -27,11 +27,11 @@ Related: Goal-Driven Teams Phase 3 - Learning System
 
 from __future__ import annotations
 
-import logging
-import warnings
 from contextvars import ContextVar
 from datetime import UTC, datetime
+import logging
 from typing import Any
+import warnings
 
 from pydantic import BaseModel, Field
 

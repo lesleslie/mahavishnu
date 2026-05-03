@@ -1,20 +1,16 @@
 """Output formatting for skill search results."""
 
-from typing import List
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
-from rich.markdown import Markdown
-from rich.text import Text
-
-from .search import SearchResult
+from rich.table import Table
 from skill_parser import SkillMetadata
 
+from .search import SearchResult
 
 console = Console()
 
 
-def format_results(results: List[SearchResult], query: str) -> Table:
+def format_results(results: list[SearchResult], query: str) -> Table:
     """
     Format search results as a Rich table.
 
@@ -63,11 +59,11 @@ def format_skill_detail(skill: SkillMetadata) -> Panel:
 [bold yellow]Description:[/bold yellow]
 {skill.description}
 
-[bold yellow]Keywords:[/bold yellow] {', '.join(skill.keywords) if skill.keywords else 'None'}
+[bold yellow]Keywords:[/bold yellow] {", ".join(skill.keywords) if skill.keywords else "None"}
 
-[bold yellow]Symptoms:[/bold yellow] {', '.join(skill.symptoms) if skill.symptoms else 'None'}
+[bold yellow]Symptoms:[/bold yellow] {", ".join(skill.symptoms) if skill.symptoms else "None"}
 
-[bold yellow]Use Cases:[/bold yellow] {', '.join(skill.use_cases) if skill.use_cases else 'None'}
+[bold yellow]Use Cases:[/bold yellow] {", ".join(skill.use_cases) if skill.use_cases else "None"}
 """
 
     # Related skills
@@ -81,7 +77,7 @@ def format_skill_detail(skill: SkillMetadata) -> Panel:
         content += f"\n[bold yellow]Referenced By:[/bold yellow] {', '.join(skill.referenced_by)}\n"
 
     # Statistics
-    content += f"\n[bold dim]Statistics:[/bold dim]"
+    content += "\n[bold dim]Statistics:[/bold dim]"
     content += f"\n  • Words: {skill.word_count:,}"
     content += f"\n  • Lines: {skill.line_count:,}"
     content += f"\n  • Examples: {'Yes' if skill.has_examples else 'No'}"
@@ -93,7 +89,7 @@ def format_skill_detail(skill: SkillMetadata) -> Panel:
     return Panel(content, title=f"Skill: {skill.name}", border_style="cyan")
 
 
-def print_results(results: List[SearchResult], query: str) -> None:
+def print_results(results: list[SearchResult], query: str) -> None:
     """
     Print search results to console.
 
@@ -109,7 +105,7 @@ def print_results(results: List[SearchResult], query: str) -> None:
     console.print(table)
 
 
-def print_skills(skills: List[SkillMetadata], title: str = "Skills") -> None:
+def print_skills(skills: list[SkillMetadata], title: str = "Skills") -> None:
     """
     Print a list of skills as a table.
 
@@ -134,7 +130,7 @@ def print_skills(skills: List[SkillMetadata], title: str = "Skills") -> None:
             skill.system,
             str(len(skill.related_skills)),
             f"{skill.word_count:,}",
-            "Yes" if skill.has_examples else "No"
+            "Yes" if skill.has_examples else "No",
         )
 
     console.print(table)
@@ -151,7 +147,7 @@ def print_skill_detail(skill: SkillMetadata) -> None:
     console.print(panel)
 
 
-def format_system_summary(skills: List[SkillMetadata]) -> Table:
+def format_system_summary(skills: list[SkillMetadata]) -> Table:
     """
     Format system distribution summary as a table.
 

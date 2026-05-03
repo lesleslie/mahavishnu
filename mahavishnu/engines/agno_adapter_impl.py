@@ -19,7 +19,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 import logging
 import os
 from types import SimpleNamespace
@@ -55,7 +55,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
-class LLMProvider(str, Enum):
+class LLMProvider(StrEnum):
     """Supported LLM providers for Agno agents."""
 
     ANTHROPIC = "anthropic"
@@ -64,7 +64,7 @@ class LLMProvider(str, Enum):
     ZAI = "zai"
 
 
-class MemoryBackend(str, Enum):
+class MemoryBackend(StrEnum):
     """Memory backend storage types."""
 
     SQLITE = "sqlite"
@@ -422,8 +422,7 @@ class LLMProviderFactory:
         return OpenAIChat(
             id=model_id,
             api_key=api_key,
-            base_url=self.config.base_url
-            or "https://api.z.ai/api/coding/paas/v4",
+            base_url=self.config.base_url or "https://api.z.ai/api/coding/paas/v4",
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
         )
@@ -650,7 +649,11 @@ class AgnoAdapter(OrchestratorAdapter):
 
         # Extract Agno-specific configuration
         self.agno_config = self._get_agno_config(config)
-        self.api_url = api_url or getattr(self.agno_config.tools, "mcp_server_url", None) or "http://localhost:8000"
+        self.api_url = (
+            api_url
+            or getattr(self.agno_config.tools, "mcp_server_url", None)
+            or "http://localhost:8000"
+        )
 
         # Initialize internal state
         self._client: Any | None = None
@@ -849,7 +852,7 @@ class AgnoAdapter(OrchestratorAdapter):
     # Team Management Methods (Phase 2)
     # ========================================================================
 
-    async def create_team(self, config: "TeamConfig") -> str:
+    async def create_team(self, config: TeamConfig) -> str:
         """Create an agent team from configuration.
 
         Args:
@@ -927,7 +930,7 @@ class AgnoAdapter(OrchestratorAdapter):
 
         return await self._team_manager.run_team(team_id, task, mode, session_id)
 
-    async def get_team(self, team_id: str) -> "Team | None":
+    async def get_team(self, team_id: str) -> Team | None:
         """Get a team instance by ID.
 
         Args:

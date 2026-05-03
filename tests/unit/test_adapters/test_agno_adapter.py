@@ -258,9 +258,7 @@ async def test_execute_code_sweep_single_repo(mock_config, sample_repo_path):
         "task_id": "test_123",
     }
 
-    with patch.object(
-        adapter, "_process_single_repo", return_value=mock_result
-    ):
+    with patch.object(adapter, "_process_single_repo", return_value=mock_result):
         # Ensure adapter is initialized to avoid init code path
         adapter._initialized = True
         adapter._semaphore = asyncio.Semaphore(5)
@@ -291,15 +289,11 @@ async def test_execute_code_sweep_multiple_repos(mock_config):
         "task_id": "test_123",
     }
 
-    with patch.object(
-        adapter, "_process_single_repo", return_value=mock_result
-    ):
+    with patch.object(adapter, "_process_single_repo", return_value=mock_result):
         adapter._initialized = True
         adapter._semaphore = asyncio.Semaphore(5)
 
-        result = await adapter.execute(
-            task={"type": "code_sweep", "id": "test_123"}, repos=repos
-        )
+        result = await adapter.execute(task={"type": "code_sweep", "id": "test_123"}, repos=repos)
 
         assert result["status"] in ("completed", "partial")
         assert result["repos_processed"] == 3
@@ -323,9 +317,7 @@ async def test_execute_code_sweep_with_analysis_details(mock_config, sample_repo
         "task_id": "test_123",
     }
 
-    with patch.object(
-        adapter, "_process_single_repo", return_value=mock_result
-    ):
+    with patch.object(adapter, "_process_single_repo", return_value=mock_result):
         adapter._initialized = True
         adapter._semaphore = asyncio.Semaphore(5)
 
@@ -362,9 +354,7 @@ async def test_execute_quality_check(mock_config, sample_repo_path):
         "task_id": "test_456",
     }
 
-    with patch.object(
-        adapter, "_process_single_repo", return_value=mock_result
-    ):
+    with patch.object(adapter, "_process_single_repo", return_value=mock_result):
         adapter._initialized = True
         adapter._semaphore = asyncio.Semaphore(5)
 
@@ -404,9 +394,7 @@ async def test_execute_default_operation(mock_config, sample_repo_path):
         "task_id": "test_789",
     }
 
-    with patch.object(
-        adapter, "_process_single_repo", return_value=mock_result
-    ):
+    with patch.object(adapter, "_process_single_repo", return_value=mock_result):
         adapter._initialized = True
         adapter._semaphore = asyncio.Semaphore(5)
 
@@ -441,9 +429,7 @@ async def test_execute_handles_repo_processing_errors(mock_config):
         "task_id": "test_error",
     }
 
-    with patch.object(
-        adapter, "_process_single_repo", return_value=failed_result
-    ):
+    with patch.object(adapter, "_process_single_repo", return_value=failed_result):
         adapter._initialized = True
         adapter._semaphore = asyncio.Semaphore(5)
 
@@ -464,9 +450,7 @@ async def test_process_single_repo_exception_handling(mock_config):
     adapter._semaphore = asyncio.Semaphore(5)
 
     # Mock _create_agent to raise an exception
-    with patch.object(
-        adapter, "_create_agent", side_effect=Exception("Agent creation failed")
-    ):
+    with patch.object(adapter, "_create_agent", side_effect=Exception("Agent creation failed")):
         result = await adapter._process_single_repo(
             repo="/nonexistent/path",
             task={"type": "code_sweep", "id": "test_exception"},
@@ -629,9 +613,7 @@ async def test_full_execution_workflow(mock_config, sample_repo_path):
         "task_id": "integration_test",
     }
 
-    with patch.object(
-        adapter, "_process_single_repo", return_value=mock_result
-    ):
+    with patch.object(adapter, "_process_single_repo", return_value=mock_result):
         adapter._initialized = True
         adapter._semaphore = asyncio.Semaphore(5)
 
@@ -674,9 +656,7 @@ async def test_concurrent_execution_multiple_repos(mock_config):
         "task_id": "concurrent_test",
     }
 
-    with patch.object(
-        adapter, "_process_single_repo", return_value=mock_result
-    ):
+    with patch.object(adapter, "_process_single_repo", return_value=mock_result):
         adapter._initialized = True
         adapter._semaphore = asyncio.Semaphore(5)
 
@@ -701,9 +681,7 @@ async def test_execute_with_empty_repo_list(mock_config):
     adapter._initialized = True
     adapter._semaphore = asyncio.Semaphore(5)
 
-    result = await adapter.execute(
-        task={"type": "code_sweep", "id": "empty_test"}, repos=[]
-    )
+    result = await adapter.execute(task={"type": "code_sweep", "id": "empty_test"}, repos=[])
 
     assert result["repos_processed"] == 0
     assert result["success_count"] == 0
@@ -723,9 +701,7 @@ async def test_execute_with_missing_task_id(mock_config, sample_repo_path):
         "task_id": "unknown",
     }
 
-    with patch.object(
-        adapter, "_process_single_repo", return_value=mock_result
-    ):
+    with patch.object(adapter, "_process_single_repo", return_value=mock_result):
         adapter._initialized = True
         adapter._semaphore = asyncio.Semaphore(5)
 
@@ -751,9 +727,7 @@ async def test_execute_with_missing_task_type(mock_config, sample_repo_path):
         "task_id": "no_type_test",
     }
 
-    with patch.object(
-        adapter, "_process_single_repo", return_value=mock_result
-    ):
+    with patch.object(adapter, "_process_single_repo", return_value=mock_result):
         adapter._initialized = True
         adapter._semaphore = asyncio.Semaphore(5)
 

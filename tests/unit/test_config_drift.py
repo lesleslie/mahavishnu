@@ -1,8 +1,8 @@
 """Tests for check_skill_mcp_drift in mahavishnu/core/config_validator.py."""
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -12,12 +12,14 @@ def project_layout(tmp_path):
     """Fake project with .mcp.json and one skill with a port reference."""
     mcp = tmp_path / ".mcp.json"
     mcp.write_text(
-        json.dumps({
-            "mcpServers": {
-                "crackerjack": {"url": "http://localhost:8676"},
-                "akosha": {"url": "http://localhost:8682"},
+        json.dumps(
+            {
+                "mcpServers": {
+                    "crackerjack": {"url": "http://localhost:8676"},
+                    "akosha": {"url": "http://localhost:8682"},
+                }
             }
-        })
+        )
     )
     skills_dir = tmp_path / ".claude" / "skills" / "my-skill"
     skills_dir.mkdir(parents=True)

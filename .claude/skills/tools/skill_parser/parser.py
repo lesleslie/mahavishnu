@@ -1,40 +1,41 @@
 """Core skill parser implementation."""
 
-import re
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import List, Optional, Tuple, Literal
-from dataclasses import dataclass, field, asdict
+import re
+from typing import Literal
+
 import yaml
 
-
 # Regex patterns
-FRONTMATTER_PATTERN = re.compile(r'^---\s*\n(.*?)\n---\s*\n(.*)$', re.DOTALL)
-RELATED_SKILLS_SECTION = re.compile(
-    r'##\s*Related\s+Skills',
-    re.MULTILINE | re.IGNORECASE
-)
-REQUIRED_PATTERN = re.compile(r'\*\*REQUIRED:\*\*\s*`([\w-]+)`')
-RELATED_PATTERN = re.compile(r'\*\*RELATED:\*\*\s*`([\w-]+)`')
+FRONTMATTER_PATTERN = re.compile(r"^---\s*\n(.*?)\n---\s*\n(.*)$", re.DOTALL)
+RELATED_SKILLS_SECTION = re.compile(r"##\s*Related\s+Skills", re.MULTILINE | re.IGNORECASE)
+REQUIRED_PATTERN = re.compile(r"\*\*REQUIRED:\*\*\s*`([\w-]+)`")
+RELATED_PATTERN = re.compile(r"\*\*RELATED:\*\*\s*`([\w-]+)`")
 
 
 class SkillParserError(Exception):
     """Base exception for parser errors."""
+
     pass
 
 
 class MalformedFrontmatterError(SkillParserError):
     """Raised when YAML frontmatter is malformed."""
+
     pass
 
 
 class MissingRequiredFieldError(SkillParserError):
     """Raised when required field is missing."""
+
     pass
 
 
 @dataclass
 class RelatedSkill:
     """Represents a related skill with relationship type."""
+
     name: str
     relationship_type: Literal["REQUIRED", "RELATED", "REQUIRED BACKGROUND"]
 
@@ -42,6 +43,7 @@ class RelatedSkill:
 @dataclass
 class SkillMetadata:
     """Complete metadata for a single skill."""
+
     # Core identity
     name: str
     description: str
@@ -50,16 +52,16 @@ class SkillMetadata:
 
     # Classification
     system: str  # mahavishnu, oneiric, crackerjack, session-buddy, akosha, dhruva, cross-ecosystem
-    skill_number: Optional[int] = None
+    skill_number: int | None = None
 
     # Searchable content
-    keywords: List[str] = field(default_factory=list)
-    symptoms: List[str] = field(default_factory=list)
-    use_cases: List[str] = field(default_factory=list)
+    keywords: list[str] = field(default_factory=list)
+    symptoms: list[str] = field(default_factory=list)
+    use_cases: list[str] = field(default_factory=list)
 
     # Relationships
-    related_skills: List[RelatedSkill] = field(default_factory=list)
-    referenced_by: List[str] = field(default_factory=list)  # Back-reference
+    related_skills: list[RelatedSkill] = field(default_factory=list)
+    referenced_by: list[str] = field(default_factory=list)  # Back-reference
 
     # Content stats
     word_count: int = 0
@@ -71,11 +73,11 @@ class SkillMetadata:
         """Serialize to dictionary for JSON export."""
         data = asdict(self)
         # Convert Path objects to strings
-        data['file_path'] = str(self.file_path)
-        data['directory'] = str(self.directory)
+        data["file_path"] = str(self.file_path)
+        data["directory"] = str(self.directory)
         # Convert RelatedSkill to dict
-        data['related_skills'] = [
-            {'name': rs.name, 'relationship_type': rs.relationship_type}
+        data["related_skills"] = [
+            {"name": rs.name, "relationship_type": rs.relationship_type}
             for rs in self.related_skills
         ]
         return data
@@ -97,14 +99,12 @@ def parse_skill_file(skill_path: Path) -> SkillMetadata:
     if not skill_path.exists():
         raise FileNotFoundError(f"Skill file not found: {skill_path}")
 
-    content = skill_path.read_text(encoding='utf-8')
+    content = skill_path.read_text(encoding="utf-8")
 
     # Extract YAML frontmatter
     frontmatter_match = FRONTMATTER_PATTERN.match(content)
     if not frontmatter_match:
-        raise MalformedFrontmatterError(
-            f"No YAML frontmatter found in {skill_path}"
-        )
+        raise MalformedFrontmatterError(f"No YAML frontmatter found in {skill_path}")
 
     frontmatter_yaml = frontmatter_match.group(1)
     markdown_body = frontmatter_match.group(2)
@@ -113,9 +113,7 @@ def parse_skill_file(skill_path: Path) -> SkillMetadata:
     try:
         frontmatter = yaml.safe_load(frontmatter_yaml)
     except yaml.YAMLError as e:
-        raise MalformedFrontmatterError(
-            f"Invalid YAML in {skill_path}: {e}"
-        )
+        raise MalformedFrontmatterError(f"Invalid YAML in {skill_path}: {e}")
 
     # Validate required fields
     if not isinstance(frontmatter, dict):
@@ -123,18 +121,14 @@ def parse_skill_file(skill_path: Path) -> SkillMetadata:
             f"Frontmatter must be a dict, got {type(frontmatter)} in {skill_path}"
         )
 
-    if 'name' not in frontmatter:
-        raise MissingRequiredFieldError(
-            f"Missing 'name' field in {skill_path}"
-        )
-    if 'description' not in frontmatter:
-        raise MissingRequiredFieldError(
-            f"Missing 'description' field in {skill_path}"
-        )
+    if "name" not in frontmatter:
+        raise MissingRequiredFieldError(f"Missing 'name' field in {skill_path}")
+    if "description" not in frontmatter:
+        raise MissingRequiredFieldError(f"Missing 'description' field in {skill_path}")
 
     # Extract metadata
-    name = frontmatter['name']
-    description = frontmatter['description']
+    name = frontmatter["name"]
+    description = frontmatter["description"]
 
     # Determine system
     system = _determine_system(skill_path, name, description)
@@ -147,9 +141,13 @@ def parse_skill_file(skill_path: Path) -> SkillMetadata:
 
     # Calculate content stats
     word_count = len(markdown_body.split())
-    line_count = len(markdown_body.split('\n'))
-    has_examples = '```' in markdown_body  # Code blocks
-    has_flowchart = 'graphviz' in markdown_body or 'dot graph' in markdown_body or 'flowchart' in markdown_body.lower()
+    line_count = len(markdown_body.split("\n"))
+    has_examples = "```" in markdown_body  # Code blocks
+    has_flowchart = (
+        "graphviz" in markdown_body
+        or "dot graph" in markdown_body
+        or "flowchart" in markdown_body.lower()
+    )
 
     return SkillMetadata(
         name=name,
@@ -164,15 +162,11 @@ def parse_skill_file(skill_path: Path) -> SkillMetadata:
         word_count=word_count,
         line_count=line_count,
         has_examples=has_examples,
-        has_flowchart=has_flowchart
+        has_flowchart=has_flowchart,
     )
 
 
-def _determine_system(
-    skill_path: Path,
-    name: str,
-    description: str
-) -> str:
+def _determine_system(skill_path: Path, name: str, description: str) -> str:
     """
     Determine which system a skill belongs to.
 
@@ -184,25 +178,25 @@ def _determine_system(
     """
     # Known cross-ecosystem skills
     CROSS_ECOSYSTEM_SKILLS = {
-        'mcp-integration',
-        'error-handling',
-        'observability',
-        'oneiric-integration',
-        'testing-strategies'
+        "mcp-integration",
+        "error-handling",
+        "observability",
+        "oneiric-integration",
+        "testing-strategies",
     }
 
     # Check if explicitly cross-ecosystem
     if name in CROSS_ECOSYSTEM_SKILLS:
-        return 'cross-ecosystem'
+        return "cross-ecosystem"
 
     # Map directory names to systems
     DIR_TO_SYSTEM = {
-        'mahavishnu': 'mahavishnu',
-        'oneiric': 'oneiric',
-        'crackerjack': 'crackerjack',
-        'session-buddy': 'session-buddy',
-        'akosha': 'akosha',
-        'dhruva': 'dhruva',
+        "mahavishnu": "mahavishnu",
+        "oneiric": "oneiric",
+        "crackerjack": "crackerjack",
+        "session-buddy": "session-buddy",
+        "akosha": "akosha",
+        "dhruva": "dhruva",
     }
 
     # Check directory
@@ -214,12 +208,12 @@ def _determine_system(
 
     # Step 1: Check for explicit system name mentions
     EXPLICIT_NAME_PATTERNS = [
-        ('session-buddy', ['session-buddy', 'session buddy']),
-        ('mahavishnu', ['mahavishnu', 'vishnu']),
-        ('crackerjack', ['crackerjack', 'jack']),
-        ('oneiric', ['oneiric']),
-        ('akosha', ['akosha']),
-        ('dhruva', ['dhruva']),
+        ("session-buddy", ["session-buddy", "session buddy"]),
+        ("mahavishnu", ["mahavishnu", "vishnu"]),
+        ("crackerjack", ["crackerjack", "jack"]),
+        ("oneiric", ["oneiric"]),
+        ("akosha", ["akosha"]),
+        ("dhruva", ["dhruva"]),
     ]
 
     for system, patterns in EXPLICIT_NAME_PATTERNS:
@@ -229,12 +223,12 @@ def _determine_system(
     # Step 2: Check for dominant keywords (appears multiple times = more specific)
     # Count keyword occurrences for each system
     SYSTEM_KEYWORDS = {
-        'session-buddy': ['session', 'capture', 'retention'],
-        'dhruva': ['storage', 'backup', 'acid', 'transaction', 'database', 'object'],
-        'crackerjack': ['coverage', 'ratchet', 'qc', 'quality gate'],
-        'mahavishnu': ['orchestrate', 'adapter', 'pool', 'sweep', 'workflow', 'repository'],
-        'oneiric': ['component', 'resolve', 'layered', 'lifecycle'],
-        'akosha': ['anomaly', 'semantic', 'correlation', 'time-series', 'knowledge graph'],
+        "session-buddy": ["session", "capture", "retention"],
+        "dhruva": ["storage", "backup", "acid", "transaction", "database", "object"],
+        "crackerjack": ["coverage", "ratchet", "qc", "quality gate"],
+        "mahavishnu": ["orchestrate", "adapter", "pool", "sweep", "workflow", "repository"],
+        "oneiric": ["component", "resolve", "layered", "lifecycle"],
+        "akosha": ["anomaly", "semantic", "correlation", "time-series", "knowledge graph"],
     }
 
     # Count matches for each system
@@ -249,12 +243,10 @@ def _determine_system(
         return max(system_scores, key=system_scores.get)
 
     # Default fallback
-    return 'cross-ecosystem'
+    return "cross-ecosystem"
 
 
-def _extract_description_info(
-    description: str
-) -> Tuple[List[str], List[str], List[str]]:
+def _extract_description_info(description: str) -> tuple[list[str], list[str], list[str]]:
     """
     Extract keywords, symptoms, and use cases from description.
 
@@ -266,12 +258,34 @@ def _extract_description_info(
     # Extract keywords (technical terms)
     # Common technical terms in skill descriptions
     TECHNICAL_KEYWORDS = [
-        'testing', 'configuration', 'logging', 'mcp', 'adapter',
-        'workflow', 'session', 'storage', 'backup', 'quality',
-        'coverage', 'observability', 'error', 'component', 'pool',
-        'search', 'pattern', 'trend', 'anomaly', 'insight',
-        'sweep', 'repository', 'orchestration', 'ratchet',
-        'lifecycle', 'resolve', 'distributed', 'tracing'
+        "testing",
+        "configuration",
+        "logging",
+        "mcp",
+        "adapter",
+        "workflow",
+        "session",
+        "storage",
+        "backup",
+        "quality",
+        "coverage",
+        "observability",
+        "error",
+        "component",
+        "pool",
+        "search",
+        "pattern",
+        "trend",
+        "anomaly",
+        "insight",
+        "sweep",
+        "repository",
+        "orchestration",
+        "ratchet",
+        "lifecycle",
+        "resolve",
+        "distributed",
+        "tracing",
     ]
 
     keywords = []
@@ -282,17 +296,17 @@ def _extract_description_info(
 
     # Extract symptoms (pain points)
     symptom_patterns = [
-        'flaky',
-        'cannot be sent',
-        'borrow',
-        'moved value',
-        'race condition',
-        'timeout',
-        'error',
-        'failure',
-        'crash',
-        'bug',
-        'issue'
+        "flaky",
+        "cannot be sent",
+        "borrow",
+        "moved value",
+        "race condition",
+        "timeout",
+        "error",
+        "failure",
+        "crash",
+        "bug",
+        "issue",
     ]
 
     symptoms = []
@@ -302,15 +316,15 @@ def _extract_description_info(
 
     # Extract use cases (actionable tasks)
     use_case_patterns = [
-        'implement',
-        'add',
-        'create',
-        'set up',
-        'configure',
-        'manage',
-        'test',
-        'debug',
-        'integrate'
+        "implement",
+        "add",
+        "create",
+        "set up",
+        "configure",
+        "manage",
+        "test",
+        "debug",
+        "integrate",
     ]
 
     use_cases = []
@@ -321,7 +335,7 @@ def _extract_description_info(
     return keywords, symptoms, use_cases
 
 
-def _extract_related_skills(markdown_body: str) -> List[RelatedSkill]:
+def _extract_related_skills(markdown_body: str) -> list[RelatedSkill]:
     """
     Parse "Related Skills" section and extract relationships.
 
@@ -336,9 +350,9 @@ def _extract_related_skills(markdown_body: str) -> List[RelatedSkill]:
 
     # Find "Related Skills" section
     section_match = re.search(
-        r'##\s*Related\s+Skills\s*$(.*?)(?=\n##|\Z)',
+        r"##\s*Related\s+Skills\s*$(.*?)(?=\n##|\Z)",
         markdown_body,
-        re.MULTILINE | re.DOTALL | re.IGNORECASE
+        re.MULTILINE | re.DOTALL | re.IGNORECASE,
     )
 
     if not section_match:
@@ -349,25 +363,19 @@ def _extract_related_skills(markdown_body: str) -> List[RelatedSkill]:
     # Extract REQUIRED skills
     for match in REQUIRED_PATTERN.finditer(section_content):
         skill_name = match.group(1)
-        related_skills.append(RelatedSkill(
-            name=skill_name,
-            relationship_type='REQUIRED'
-        ))
+        related_skills.append(RelatedSkill(name=skill_name, relationship_type="REQUIRED"))
 
     # Extract RELATED skills
     for match in RELATED_PATTERN.finditer(section_content):
         skill_name = match.group(1)
         # Avoid duplicates
         if not any(rs.name == skill_name for rs in related_skills):
-            related_skills.append(RelatedSkill(
-                name=skill_name,
-                relationship_type='RELATED'
-            ))
+            related_skills.append(RelatedSkill(name=skill_name, relationship_type="RELATED"))
 
     return related_skills
 
 
-def parse_all_skills(skills_dir: Path) -> List[SkillMetadata]:
+def parse_all_skills(skills_dir: Path) -> list[SkillMetadata]:
     """
     Parse all skill files in a directory tree.
 
@@ -380,7 +388,7 @@ def parse_all_skills(skills_dir: Path) -> List[SkillMetadata]:
     all_skills = []
 
     # Find all SKILL.md files recursively
-    for skill_file in skills_dir.rglob('SKILL.md'):
+    for skill_file in skills_dir.rglob("SKILL.md"):
         try:
             metadata = parse_skill_file(skill_file)
             all_skills.append(metadata)
@@ -397,7 +405,7 @@ def parse_all_skills(skills_dir: Path) -> List[SkillMetadata]:
     return all_skills
 
 
-def build_reverse_references(skills: List[SkillMetadata]) -> None:
+def build_reverse_references(skills: list[SkillMetadata]) -> None:
     """
     Build back-references (which skills reference each skill).
 

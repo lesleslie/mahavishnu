@@ -20,18 +20,17 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
-import logging
-import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import StrEnum
+import logging
+import re
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class Intent(str, Enum):
+class Intent(StrEnum):
     """Supported intents for task operations."""
 
     CREATE = "create"
@@ -45,7 +44,7 @@ class Intent(str, Enum):
     UNKNOWN = "unknown"
 
 
-class Priority(str, Enum):
+class Priority(StrEnum):
     """Task priority levels."""
 
     CRITICAL = "critical"

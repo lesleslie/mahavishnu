@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import json
-import sys
 from dataclasses import asdict
+import json
 from pathlib import Path
 
 import typer
@@ -54,8 +53,7 @@ def add_docs_commands(app: typer.Typer) -> None:
             )
         except ImportError:
             typer.echo(
-                "audit_ecosystem_docs module not found. "
-                "Ensure scripts/ is on PYTHONPATH.",
+                "audit_ecosystem_docs module not found. Ensure scripts/ is on PYTHONPATH.",
                 err=True,
             )
             raise typer.Exit(1)

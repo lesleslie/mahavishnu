@@ -1,22 +1,17 @@
 """Unit tests for secure logging with credential redaction."""
 
-import json
-import tempfile
 from pathlib import Path
-from unittest.mock import patch
+import tempfile
 
 import pytest
 
 from mahavishnu.core.secure_logging import (
-    CredentialPatterns,
     CredentialRedactor,
-    CredentialType,
     SecureLogger,
     get_secure_logger,
     redact_credentials,
     redact_dict,
 )
-
 
 # =============================================================================
 # FIXTURES
@@ -343,7 +338,7 @@ class TestSecureLogger:
             logger.close()
 
             # Read log file
-            with open(log_path, "r") as f:
+            with open(log_path) as f:
                 log_content = f.read()
 
             assert "Test message" in log_content
@@ -368,7 +363,7 @@ class TestSecureLogger:
             logger.close()
 
             # Read log file
-            with open(log_path, "r") as f:
+            with open(log_path) as f:
                 log_content = f.read()
 
             assert "testuser" in log_content

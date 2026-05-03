@@ -1,7 +1,6 @@
----
-name: sweep-repositories
-description: Use when executing workflow sweeps across multiple repositories. Use when user asks to apply workflows, run sweeps, or orchestrate tasks across multiple repos by tag, role, or capability. Use when coordinated multi-repository operations are needed.
----
+______________________________________________________________________
+
+## name: sweep-repositories description: Use when executing workflow sweeps across multiple repositories. Use when user asks to apply workflows, run sweeps, or orchestrate tasks across multiple repos by tag, role, or capability. Use when coordinated multi-repository operations are needed.
 
 # Sweep Repositories
 
@@ -11,7 +10,7 @@ description: Use when executing workflow sweeps across multiple repositories. Us
 
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
-| mahavishnu | 8680 | summary | mcp__mahavishnu__list_repos, mcp__mahavishnu__trigger_workflow | 60s |
+| mahavishnu | 8680 | summary | mcp\_\_mahavishnu\_\_list_repos, mcp\_\_mahavishnu\_\_trigger_workflow | 60s |
 
 A sweep executes a workflow across multiple target repositories, aggregating results for analysis. This skill guides you through selecting targets, choosing the adapter, and executing sweeps efficiently.
 
@@ -20,12 +19,14 @@ A sweep executes a workflow across multiple target repositories, aggregating res
 ## When to Use
 
 **Use when:**
+
 - User asks to "sweep repos", "run across all backends", "apply to all python repos"
 - Coordinated workflow execution across multiple repositories needed
 - User needs to aggregate results from multiple repositories
 - Bulk operations on repositories (testing, documentation, refactoring)
 
 **Don't use when:**
+
 - Single repository workflow (use `orchestrate-workflow`)
 - Pool management (use `manage-pools`)
 - Repository discovery without execution (use `find-capability`)
@@ -53,6 +54,7 @@ mahavishnu sweep-status <sweep_id>
 ### Step 1: Identify Target Repositories
 
 **By Role (Recommended):**
+
 ```bash
 # End-user applications
 mahavishnu list-repos --role app
@@ -65,6 +67,7 @@ mahavishnu list-repos --role tool
 ```
 
 **By Tag:**
+
 ```bash
 # Python repositories
 mahavishnu list-repos --tag python
@@ -74,6 +77,7 @@ mahavishnu list-repos --tag backend --tag api
 ```
 
 **Via MCP:**
+
 ```python
 repos = await mcp.call_tool("mcp__mahavishnu__list_repos", {
     "role": "app",
@@ -90,6 +94,7 @@ repos = await mcp.call_tool("mcp__mahavishnu__list_repos", {
 | Agent-based workflows | `agno` | ⚠️ Stub only |
 
 **Verify adapter availability:**
+
 ```bash
 mahavishnu mcp status
 ```
@@ -97,6 +102,7 @@ mahavishnu mcp status
 ### Step 3: Execute Sweep
 
 **CLI:**
+
 ```bash
 # Basic sweep
 mahavishnu sweep --role app --adapter llamaindex
@@ -110,6 +116,7 @@ mahavishnu sweep \
 ```
 
 **Via MCP:**
+
 ```python
 sweep_id = await mcp.call_tool("mcp__mahavishnu__trigger_workflow", {
     "repo": "*",  # Sweep across discovered repos
@@ -158,29 +165,36 @@ results = await mcp.call_tool("mcp__mahavishnu__search_workflows", {
 ## Sweep Strategies
 
 ### Parallel Execution (Default)
+
 ```yaml
 execution_mode: parallel
 max_concurrent: 10  # Limit concurrent workflows
 ```
+
 **Use for:** Independent workflows, I/O-bound tasks
 
 ### Sequential Execution
+
 ```yaml
 execution_mode: sequential
 ```
+
 **Use for:** Resource-intensive tasks, dependencies between repos
 
 ### Batched Execution
+
 ```yaml
 execution_mode: batched
 batch_size: 5
 delay_between_batches: 30  # seconds
 ```
+
 **Use for:** Rate limiting, API quotas
 
 ## Validation Checklist
 
 Before sweep:
+
 - [ ] Adapter enabled and healthy
 - [ ] Target repositories identified (preview count)
 - [ ] Workflow parameters validated
@@ -188,8 +202,9 @@ Before sweep:
 - [ ] Execution strategy configured
 
 After sweep:
+
 - [ ] Review per-repository results
-- [ ] Check failure rate (target: <5%)
+- [ ] Check failure rate (target: \<5%)
 - [ ] Verify aggregated output completeness
 - [ ] Document errors and warnings
 - [ ] Archive sweep results for reference
@@ -207,11 +222,13 @@ After sweep:
 ## Real-World Impact
 
 **Before this skill:**
+
 - Sweeps executed on all repos → 45% failure rate
 - No filtering → 20-minute execution time
 - Manual result aggregation → data loss
 
 **After this skill:**
+
 - Targeted sweeps → 95% success rate
 - Role-based filtering → 3-minute execution time
 - Automatic aggregation → complete results
@@ -219,6 +236,7 @@ After sweep:
 ## Example Workflows
 
 **Document Generation Sweep:**
+
 ```bash
 # Generate README.md for all app repos
 mahavishnu sweep \
@@ -229,6 +247,7 @@ mahavishnu sweep \
 ```
 
 **Testing Sweep:**
+
 ```bash
 # Run tests across all backend services
 mahavishnu sweep \
@@ -239,6 +258,7 @@ mahavishnu sweep \
 ```
 
 **Refactoring Sweep:**
+
 ```bash
 # Apply type hints to all python repos
 mahavishnu sweep \

@@ -11,17 +11,14 @@ Tests comprehensive worktree coordination with safety mechanisms:
 - Error handling for all failure scenarios
 """
 
-import asyncio
-from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mahavishnu.core.worktree_coordination import WorktreeCoordinator
 from mahavishnu.core.errors import ConfigurationError
 from mahavishnu.core.repo_models import Repository
-from mahavishnu.core.coordination.models import Dependency, DependencyStatus
+from mahavishnu.core.worktree_coordination import WorktreeCoordinator
 
 
 def _patch_safe_path(coordinator: WorktreeCoordinator, allowed_root: Path) -> None:
@@ -797,7 +794,9 @@ class TestWorktreeCoordinator:
         )
 
         # Mock branch existence (deleted-branch doesn't exist)
-        coordinator._branch_exists = AsyncMock(side_effect=lambda repo, branch: branch == "active-branch")
+        coordinator._branch_exists = AsyncMock(
+            side_effect=lambda repo, branch: branch == "active-branch"
+        )
 
         result = await coordinator.prune_worktrees(repo_nickname="test-repo")
 
@@ -904,16 +903,12 @@ class TestWorktreeCoordinator:
         assert has_changes is True
 
         # Commit changes
-        await coordinator._execute_git_command(
-            str(worktree_path), ["config", "user.name", "Test"]
-        )
+        await coordinator._execute_git_command(str(worktree_path), ["config", "user.name", "Test"])
         await coordinator._execute_git_command(
             str(worktree_path), ["config", "user.email", "test@example.com"]
         )
         await coordinator._execute_git_command(str(worktree_path), ["add", "."])
-        await coordinator._execute_git_command(
-            str(worktree_path), ["commit", "-m", "test"]
-        )
+        await coordinator._execute_git_command(str(worktree_path), ["commit", "-m", "test"])
 
         # No uncommitted changes
         has_changes = await coordinator._check_uncommitted_changes(str(worktree_path))
@@ -1075,9 +1070,7 @@ class TestWorktreeCoordinator:
         from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
 
         mock_provider = MockWorktreeProvider()
-        mock_provider.create_worktree = AsyncMock(
-            side_effect=RuntimeError("Provider failed")
-        )
+        mock_provider.create_worktree = AsyncMock(side_effect=RuntimeError("Provider failed"))
 
         coordinator = WorktreeCoordinator(
             repo_manager=mock_repo_manager,
@@ -1131,7 +1124,7 @@ class TestWorktreeCoordinator:
 
         # Mock backup creation to fail
         coordinator.backup_manager.create_backup_before_removal = AsyncMock(
-            side_effect=IOError("Backup failed")
+            side_effect=OSError("Backup failed")
         )
 
         result = await coordinator.remove_worktree(

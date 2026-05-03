@@ -67,9 +67,7 @@ class PatternLibrary:
         return [
             p
             for p in self._cache.values()
-            if q in p.name.lower()
-            or q in p.description.lower()
-            or q in " ".join(p.tags).lower()
+            if q in p.name.lower() or q in p.description.lower() or q in " ".join(p.tags).lower()
         ]
 
     def save(self, pattern: Pattern) -> Path:

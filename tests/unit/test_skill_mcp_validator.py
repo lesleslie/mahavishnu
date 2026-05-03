@@ -2,18 +2,14 @@
 from __future__ import annotations
 
 import textwrap
-from pathlib import Path
-
-import pytest
 
 from mahavishnu.core.skill_mcp_validator import (
     KNOWN_TOOLS,
-    SkillValidationReport,
     extract_mcp_refs,
-    validate_agent_file,
-    validate_skill_file,
     validate_agent_dir,
+    validate_agent_file,
     validate_skill_dir,
+    validate_skill_file,
 )
 
 
@@ -41,13 +37,15 @@ def test_extract_mcp_refs_triple_underscore():
 
 def test_validate_agent_file_no_refs(tmp_path):
     agent = tmp_path / "test-agent.md"
-    agent.write_text(textwrap.dedent("""\
+    agent.write_text(
+        textwrap.dedent("""\
         ---
         name: test-agent
         description: A short description with no ecosystem refs.
         model: sonnet
         ---
-        """))
+        """)
+    )
     report = validate_agent_file(agent)
     assert report.stale_refs == []
     assert not report.description_too_long
@@ -56,14 +54,16 @@ def test_validate_agent_file_no_refs(tmp_path):
 
 def test_validate_agent_file_valid_ref(tmp_path):
     agent = tmp_path / "test-agent.md"
-    agent.write_text(textwrap.dedent(f"""\
+    agent.write_text(
+        textwrap.dedent(f"""\
         ---
         name: test-agent
         description: >-
           Short description. Ecosystem: use {list(KNOWN_TOOLS)[0]} for quality.
         model: sonnet
         ---
-        """))
+        """)
+    )
     report = validate_agent_file(agent)
     assert report.stale_refs == []
     assert report.has_ecosystem_refs
@@ -71,13 +71,15 @@ def test_validate_agent_file_valid_ref(tmp_path):
 
 def test_validate_agent_file_stale_ref(tmp_path):
     agent = tmp_path / "test-agent.md"
-    agent.write_text(textwrap.dedent("""\
+    agent.write_text(
+        textwrap.dedent("""\
         ---
         name: test-agent
         description: Ecosystem: use mcp__crackerjack__nonexistent_tool.
         model: sonnet
         ---
-        """))
+        """)
+    )
     report = validate_agent_file(agent)
     assert "mcp__crackerjack__nonexistent_tool" in report.stale_refs
 
@@ -85,13 +87,15 @@ def test_validate_agent_file_stale_ref(tmp_path):
 def test_validate_agent_file_description_too_long(tmp_path):
     agent = tmp_path / "test-agent.md"
     long_desc = "x" * 301
-    agent.write_text(textwrap.dedent(f"""\
+    agent.write_text(
+        textwrap.dedent(f"""\
         ---
         name: test-agent
         description: {long_desc}
         model: sonnet
         ---
-        """))
+        """)
+    )
     report = validate_agent_file(agent)
     assert report.description_too_long
 
@@ -107,7 +111,8 @@ def test_validate_skill_file_no_mcp_section(tmp_path):
 def test_validate_skill_file_with_valid_mcp_section(tmp_path):
     skill = tmp_path / "SKILL.md"
     valid_tool = list(KNOWN_TOOLS)[0]
-    skill.write_text(textwrap.dedent(f"""\
+    skill.write_text(
+        textwrap.dedent(f"""\
         # My Skill
 
         ## Available MCP Servers
@@ -119,7 +124,8 @@ def test_validate_skill_file_with_valid_mcp_section(tmp_path):
         ## Overview
 
         Does something.
-        """))
+        """)
+    )
     report = validate_skill_file(skill)
     assert report.has_mcp_section
     assert report.stale_refs == []
@@ -127,7 +133,8 @@ def test_validate_skill_file_with_valid_mcp_section(tmp_path):
 
 def test_validate_skill_file_stale_ref(tmp_path):
     skill = tmp_path / "SKILL.md"
-    skill.write_text(textwrap.dedent("""\
+    skill.write_text(
+        textwrap.dedent("""\
         # My Skill
 
         ## Available MCP Servers
@@ -137,14 +144,16 @@ def test_validate_skill_file_stale_ref(tmp_path):
         ## Overview
 
         Does something.
-        """))
+        """)
+    )
     report = validate_skill_file(skill)
     assert "mcp__crackerjack__old_tool_name" in report.stale_refs
 
 
 def test_validate_skill_file_wrong_port(tmp_path):
     skill = tmp_path / "SKILL.md"
-    skill.write_text(textwrap.dedent("""\
+    skill.write_text(
+        textwrap.dedent("""\
         # My Skill
 
         ## Available MCP Servers
@@ -152,10 +161,15 @@ def test_validate_skill_file_wrong_port(tmp_path):
         session-buddy on port 8765.
 
         ## Overview
-        """))
+        """)
+    )
     report = validate_skill_file(skill)
-    assert any("8765" in w for w in report.wrong_ports), f"expected port 8765 in wrong_ports, got {report.wrong_ports}"
-    assert any("8678" in w for w in report.wrong_ports), f"expected correct port 8678 in wrong_ports, got {report.wrong_ports}"
+    assert any("8765" in w for w in report.wrong_ports), (
+        f"expected port 8765 in wrong_ports, got {report.wrong_ports}"
+    )
+    assert any("8678" in w for w in report.wrong_ports), (
+        f"expected correct port 8678 in wrong_ports, got {report.wrong_ports}"
+    )
 
 
 def test_extract_mcp_refs_no_trailing_hyphen_server():
@@ -168,10 +182,7 @@ def test_extract_mcp_refs_no_trailing_hyphen_server():
 def test_validate_skill_file_port_not_matched_in_prose(tmp_path):
     # A number appearing near a server name in prose should NOT trigger wrong_port
     skill = tmp_path / "SKILL.md"
-    skill.write_text(
-        "# Skill\n\n## Overview\n\n"
-        "session-buddy stores 12345 records per session.\n"
-    )
+    skill.write_text("# Skill\n\n## Overview\n\nsession-buddy stores 12345 records per session.\n")
     report = validate_skill_file(skill)
     assert report.wrong_ports == []
 

@@ -5,8 +5,8 @@ Deduplicates and selects latest versions.
 """
 
 import json
-import re
 from pathlib import Path
+import re
 from typing import Any
 
 # Active projects with .mcp.json files
@@ -27,9 +27,9 @@ def parse_version(version_str: str | None) -> tuple[int, ...]:
         return (999999,)
 
     # Extract version numbers (handles @1.0.20, 0.6.0, 2025.9.25, etc.)
-    match = re.search(r'(\d+(?:\.\d+)*)', version_str)
+    match = re.search(r"(\d+(?:\.\d+)*)", version_str)
     if match:
-        return tuple(int(x) for x in match.group(1).split('.'))
+        return tuple(int(x) for x in match.group(1).split("."))
     return (0,)
 
 
@@ -116,17 +116,13 @@ def compile_mcp_servers() -> dict[str, dict[str, Any]]:
             print(f"✓ {server_name}: unique (from {variants[0][1]})")
         else:
             # Multiple versions, pick latest
-            latest = max(
-                variants,
-                key=lambda x: parse_version(x[0].get("version"))
-            )
+            latest = max(variants, key=lambda x: parse_version(x[0].get("version")))
             unique_servers[server_name] = latest[0]
 
             # Show comparison
-            version_info = ", ".join([
-                f"{proj}: {v.get('version') or 'no-version'}"
-                for v, proj in variants
-            ])
+            version_info = ", ".join(
+                [f"{proj}: {v.get('version') or 'no-version'}" for v, proj in variants]
+            )
             print(f"✓ {server_name}: selected from {latest[1]} ({version_info})")
 
     return unique_servers

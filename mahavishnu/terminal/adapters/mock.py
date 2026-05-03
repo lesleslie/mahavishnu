@@ -8,12 +8,11 @@ hardware or applications. Useful for:
 """
 
 import asyncio
-import uuid
 from datetime import datetime
 from typing import Any
+import uuid
 
 # Generate UUID using uuid.uuid4()
-
 from .base import TerminalAdapter
 
 

@@ -16,9 +16,7 @@ def test_path_helper_functions_join_components() -> None:
     assert paths.get_audit_path("audit.log") == paths.AUDIT_DIR / "audit.log"
 
 
-def test_ensure_directories_creates_all_expected_directories(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_ensure_directories_creates_all_expected_directories(tmp_path: Path, monkeypatch) -> None:
     data = tmp_path / "data"
     config = tmp_path / "config"
     cache = tmp_path / "cache"

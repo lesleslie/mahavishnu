@@ -22,7 +22,7 @@ automated content quality classifiers used in the Mahavishnu ingestion pipeline.
 This rubric refines the existing framework into a **per-dimension 1–5 scale** suitable
 for labeled dataset creation and automated scoring.
 
----
+______________________________________________________________________
 
 ## Dimensions
 
@@ -34,7 +34,7 @@ for labeled dataset creation and automated scoring.
 | 4 | **Accuracy** | Factual correctness and technical precision of claims, code, and data | `ACCURACY` |
 | 5 | **Relevance** | Alignment with the knowledge base's target domains and utility for downstream RAG retrieval | `RELEVANCE` |
 
----
+______________________________________________________________________
 
 ## Scoring Scale (1–5)
 
@@ -66,7 +66,7 @@ Each dimension is scored independently. A label is then derived from the aggrega
 | Score | Label | Criteria |
 |-------|-------|----------|
 | **5** | Excellent | Self-contained document with introduction, body, and conclusion. All code examples are complete and runnable. No "continued on next page" or paywall truncation. Tables and figures render as readable text. |
-| **4** | Good | Mostly complete. Minor omissions (e.g., missing a single code listing or image description). Any truncation affects <10% of the content. |
+| **4** | Good | Mostly complete. Minor omissions (e.g., missing a single code listing or image description). Any truncation affects \<10% of the content. |
 | **3** | Acceptable | Core content is present but notable gaps exist. May be missing intro/outro. Some code blocks are incomplete. Paywall-visible portion only. Useful but requires external context. |
 | **2** | Poor | Significantly truncated. Missing large sections. Code blocks are just function signatures without bodies. Reads like a table of contents or abstract rather than full content. |
 | **1** | Unusable | Only metadata or title extracted. Body is empty or a single line. HTTP error page captured instead of content. |
@@ -91,7 +91,7 @@ Each dimension is scored independently. A label is then derived from the aggrega
 | **2** | Poor | Mostly irrelevant to the knowledge base. General tech news, opinion pieces without technical depth, or content from unrelated domains. |
 | **1** | Unusable | Completely off-topic (e.g., recipe blog, sports news, celebrity gossip captured by URL). Adds noise to the knowledge base. |
 
----
+______________________________________________________________________
 
 ## Aggregate Labels
 
@@ -115,7 +115,7 @@ The overall quality label is derived from the **mean** of all five dimension sco
 | Paywall-only abstract | 2 | 1 | 1 | 4 | 4 | 2.4 | Poor |
 | Error page or empty extraction | 1 | 1 | 1 | 1 | 1 | 1.0 | Poor |
 
----
+______________________________________________________________________
 
 ## Edge Cases
 
@@ -161,7 +161,7 @@ the **extracted text only** (since Mahavishnu's pipeline processes text).
 | Code-switching (English + code) | Normal scoring — code is language-agnostic. |
 | Machine-translated content | Accuracy may be reduced (2–3) depending on translation quality. Note `translation: machine` in metadata. |
 
----
+______________________________________________________________________
 
 ## Integration with Existing Code
 

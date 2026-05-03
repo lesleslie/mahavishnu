@@ -11,8 +11,6 @@ Note: XSS prevention is primarily handled at the output/display layer.
 These tests verify that input sanitization doesn't introduce vulnerabilities.
 """
 
-import pytest
-
 from mahavishnu.core.task_models import (
     FTSSearchQuery,
     TaskCreateRequest,
@@ -105,7 +103,7 @@ class TestJavaScriptURLInjection:
     def test_javascript_url_in_title(self):
         """Test that javascript: URLs are preserved as text."""
         request = TaskCreateRequest(
-            title='Click here: javascript:alert(1)',
+            title="Click here: javascript:alert(1)",
             repository="test-repo",
         )
         assert "javascript:" in request.title
@@ -113,7 +111,7 @@ class TestJavaScriptURLInjection:
     def test_javascript_url_with_encoding(self):
         """Test that encoded javascript URLs are preserved as text."""
         request = TaskCreateRequest(
-            title='javascript%3Aalert(1)',
+            title="javascript%3Aalert(1)",
             repository="test-repo",
         )
         # Preserved as text (not decoded)
@@ -122,7 +120,7 @@ class TestJavaScriptURLInjection:
     def test_javascript_url_uppercase(self):
         """Test that uppercase JAVASCRIPT: URLs are preserved as text."""
         request = TaskCreateRequest(
-            title='JAVASCRIPT:alert(1)',
+            title="JAVASCRIPT:alert(1)",
             repository="test-repo",
         )
         assert "JAVASCRIPT:" in request.title
@@ -134,7 +132,7 @@ class TestDataURIInjection:
     def test_data_uri_in_title(self):
         """Test that data: URIs are preserved as text."""
         request = TaskCreateRequest(
-            title='data:text/html,<script>alert(1)</script>',
+            title="data:text/html,<script>alert(1)</script>",
             repository="test-repo",
         )
         assert "data:" in request.title
@@ -142,7 +140,7 @@ class TestDataURIInjection:
     def test_data_uri_base64(self):
         """Test that base64 data URIs are preserved as text."""
         request = TaskCreateRequest(
-            title='data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==',
+            title="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==",
             repository="test-repo",
         )
         assert "base64" in request.title
@@ -163,7 +161,7 @@ class TestSVGInjection:
     def test_svg_script_injection(self):
         """Test that SVG script elements are preserved as text."""
         request = TaskCreateRequest(
-            title='<svg><script>alert(1)</script></svg>',
+            title="<svg><script>alert(1)</script></svg>",
             repository="test-repo",
         )
         assert "<svg>" in request.title
@@ -171,7 +169,7 @@ class TestSVGInjection:
     def test_svg_foreignobject(self):
         """Test that SVG foreignObject is preserved as text."""
         request = TaskCreateRequest(
-            title='<svg><foreignObject><script>alert(1)</script></foreignObject></svg>',
+            title="<svg><foreignObject><script>alert(1)</script></foreignObject></svg>",
             repository="test-repo",
         )
         assert "foreignObject" in request.title
@@ -200,7 +198,7 @@ class TestHTMLAttributeInjection:
     def test_attribute_without_quotes(self):
         """Test that unquoted attribute injection is preserved as text."""
         request = TaskCreateRequest(
-            title='onmouseover=alert(1)',
+            title="onmouseover=alert(1)",
             repository="test-repo",
         )
         assert "onmouseover" in request.title
@@ -213,7 +211,7 @@ class TestUnicodeXSS:
         """Test that Unicode script tags are preserved as text."""
         # Using Unicode escapes for <script>
         request = TaskCreateRequest(
-            title='\u003cscript\u003ealert(1)\u003c/script\u003e',
+            title="\u003cscript\u003ealert(1)\u003c/script\u003e",
             repository="test-repo",
         )
         # Unicode is preserved as-is
@@ -259,9 +257,7 @@ class TestUpdateRequestXSS:
 
     def test_update_description_with_xss(self):
         """Test that XSS in update description is preserved as text."""
-        update = TaskUpdateRequest(
-            description='<img src=x onerror="alert(1)">'
-        )
+        update = TaskUpdateRequest(description='<img src=x onerror="alert(1)">')
         assert "onerror" in update.description
 
 

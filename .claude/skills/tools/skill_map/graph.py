@@ -1,21 +1,21 @@
 """Graph building for skill relationship visualization."""
 
-from typing import Dict, List, Set, Optional
 from dataclasses import dataclass, field
-import networkx as nx
 
-from skill_parser import SkillMetadata, RelatedSkill
+import networkx as nx
+from skill_parser import SkillMetadata
 
 
 @dataclass
 class SkillGraph:
     """Directed graph of skill relationships."""
+
     graph: nx.DiGraph = field(default_factory=nx.DiGraph)
-    skills: Dict[str, SkillMetadata] = field(default_factory=dict)
+    skills: dict[str, SkillMetadata] = field(default_factory=dict)
 
     def __post_init__(self):
         """Ensure graph is initialized."""
-        if not hasattr(self, 'graph') or self.graph is None:
+        if not hasattr(self, "graph") or self.graph is None:
             self.graph = nx.DiGraph()
 
     def add_skill(self, skill: SkillMetadata) -> None:
@@ -23,12 +23,7 @@ class SkillGraph:
         self.skills[skill.name] = skill
         self.graph.add_node(skill.name, **_skill_to_node_attributes(skill))
 
-    def add_relationship(
-        self,
-        source: str,
-        target: str,
-        relationship_type: str
-    ) -> None:
+    def add_relationship(self, source: str, target: str, relationship_type: str) -> None:
         """Add a relationship edge between skills."""
         self.graph.add_edge(source, target, relationship_type=relationship_type)
 
@@ -37,7 +32,9 @@ def _skill_to_node_attributes(skill: SkillMetadata) -> dict:
     """Convert skill metadata to node attributes for graph visualization."""
     return {
         "system": skill.system,
-        "description": skill.description[:100] + "..." if len(skill.description) > 100 else skill.description,
+        "description": skill.description[:100] + "..."
+        if len(skill.description) > 100
+        else skill.description,
         "keywords": ", ".join(skill.keywords[:5]),
         "has_examples": skill.has_examples,
         "word_count": skill.word_count,
@@ -50,18 +47,18 @@ def _skill_to_node_attributes(skill: SkillMetadata) -> dict:
 def _get_system_color(system: str) -> str:
     """Get color for system in visualizations."""
     colors = {
-        "mahavishnu": "#FF6B6B",      # Red/coral
-        "oneiric": "#4ECDC4",          # Emerald
-        "crackerjack": "#FFE66D",     # Yellow
-        "session-buddy": "#95E1D3", # Light blue
-        "akosha": "#DDA0DD",           # Plum
-        "dhruva": "#FF8C00",           # Dark orange
-        "cross-ecosystem": "#98D8C8", # Teal
+        "mahavishnu": "#FF6B6B",  # Red/coral
+        "oneiric": "#4ECDC4",  # Emerald
+        "crackerjack": "#FFE66D",  # Yellow
+        "session-buddy": "#95E1D3",  # Light blue
+        "akosha": "#DDA0DD",  # Plum
+        "dhruva": "#FF8C00",  # Dark orange
+        "cross-ecosystem": "#98D8C8",  # Teal
     }
     return colors.get(system, "#CCCCCC")
 
 
-def build_graph(skills: List[SkillMetadata]) -> SkillGraph:
+def build_graph(skills: list[SkillMetadata]) -> SkillGraph:
     """
     Build dependency graph from skill relationships.
 
@@ -85,13 +82,13 @@ def build_graph(skills: List[SkillMetadata]) -> SkillGraph:
                 graph.add_relationship(
                     source=skill.name,
                     target=related.name,
-                    relationship_type=related.relationship_type
+                    relationship_type=related.relationship_type,
                 )
 
     return graph
 
 
-def find_orphan_skills(graph: SkillGraph) -> List[str]:
+def find_orphan_skills(graph: SkillGraph) -> list[str]:
     """
     Find skills with no incoming or outgoing edges.
 
@@ -115,7 +112,7 @@ def find_orphan_skills(graph: SkillGraph) -> List[str]:
     return orphans
 
 
-def detect_clusters(graph: SkillGraph) -> Dict[str, Set[str]]:
+def detect_clusters(graph: SkillGraph) -> dict[str, set[str]]:
     """
     Detect skill clusters by system.
 
@@ -125,7 +122,7 @@ def detect_clusters(graph: SkillGraph) -> Dict[str, Set[str]]:
     Returns:
         Dictionary mapping system names to sets of skill names
     """
-    clusters: Dict[str, Set[str]] = {}
+    clusters: dict[str, set[str]] = {}
 
     for skill_name, skill in graph.skills.items():
         system = skill.system
@@ -136,7 +133,7 @@ def detect_clusters(graph: SkillGraph) -> Dict[str, Set[str]]:
     return clusters
 
 
-def analyze_centrality(graph: SkillGraph) -> Dict[str, float]:
+def analyze_centrality(graph: SkillGraph) -> dict[str, float]:
     """
     Calculate which skills are most central (important) using PageRank.
 
@@ -154,10 +151,6 @@ def analyze_centrality(graph: SkillGraph) -> Dict[str, float]:
         pagerank = nx.pagerank(graph.graph)
 
     # Sort by score descending
-    sorted_scores = dict(sorted(
-        pagerank.items(),
-        key=lambda x: x[1],
-        reverse=True
-    ))
+    sorted_scores = dict(sorted(pagerank.items(), key=lambda x: x[1], reverse=True))
 
     return sorted_scores

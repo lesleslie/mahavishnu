@@ -21,18 +21,18 @@ Usage:
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
+import logging
 from typing import Any
 
-from mahavishnu.core.task_store import Task, TaskStatus, TaskPriority, TaskStore
+from mahavishnu.core.task_store import Task, TaskPriority, TaskStatus, TaskStore
 
 logger = logging.getLogger(__name__)
 
 
-class IssueSource(str, Enum):
+class IssueSource(StrEnum):
     """Source of external issues."""
 
     GITHUB = "github"
@@ -307,10 +307,9 @@ class ExternalIssueImporter:
             return False
 
         # Check status filter (skip closed by default)
-        if not self._config.import_closed:
-            if issue.status in ("closed", "merged"):
-                logger.debug(f"Skipping closed issue: {issue.external_id}")
-                return False
+        if not self._config.import_closed and issue.status in ("closed", "merged"):
+            logger.debug(f"Skipping closed issue: {issue.external_id}")
+            return False
 
         # Check repository filter
         if self._config.repository_filter:

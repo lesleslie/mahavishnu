@@ -1,16 +1,16 @@
 """Tests for Query Optimizer - Query analysis and optimization tools."""
 
-import pytest
-from datetime import datetime, UTC
-from unittest.mock import MagicMock, AsyncMock
+from datetime import UTC, datetime
 from typing import Any
 
+import pytest
+
 from mahavishnu.core.query_optimizer import (
-    QueryAnalyzer,
-    QueryPlan,
     IndexRecommendation,
-    QueryMetrics,
     NPlusOneDetector,
+    QueryAnalyzer,
+    QueryMetrics,
+    QueryPlan,
     QueryType,
 )
 
@@ -350,9 +350,7 @@ class TestQueryAnalyzer:
         """Analyze an INSERT query."""
         analyzer = QueryAnalyzer()
 
-        result = analyzer.analyze(
-            "INSERT INTO tasks (id, title) VALUES ('task-1', 'Test')"
-        )
+        result = analyzer.analyze("INSERT INTO tasks (id, title) VALUES ('task-1', 'Test')")
 
         assert result.query_type == QueryType.INSERT
         assert result.tables == ["tasks"]
@@ -361,9 +359,7 @@ class TestQueryAnalyzer:
         """Analyze an UPDATE query."""
         analyzer = QueryAnalyzer()
 
-        result = analyzer.analyze(
-            "UPDATE tasks SET status = 'done' WHERE id = 'task-1'"
-        )
+        result = analyzer.analyze("UPDATE tasks SET status = 'done' WHERE id = 'task-1'")
 
         assert result.query_type == QueryType.UPDATE
         assert result.tables == ["tasks"]
@@ -442,9 +438,7 @@ class TestQueryAnalyzer:
             rows_returned=120,
         )
 
-        stats = analyzer.get_query_stats(
-            "SELECT * FROM tasks WHERE status = ?"
-        )
+        stats = analyzer.get_query_stats("SELECT * FROM tasks WHERE status = ?")
 
         assert stats is not None
         assert stats["execution_count"] == 2

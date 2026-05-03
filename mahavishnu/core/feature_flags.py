@@ -10,9 +10,10 @@ Related: Goal-Driven Teams Phase 1 - Feature flag integration
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from contextvars import ContextVar
 from functools import wraps
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
@@ -133,9 +134,8 @@ def is_feature_enabled(feature_name: str) -> bool:
             return _get_default_flag(feature_name)
 
         # Check master switch first (for all features except "enabled" itself)
-        if feature_name != "enabled":
-            if not getattr(goal_teams, "enabled", False):
-                return False
+        if feature_name != "enabled" and not getattr(goal_teams, "enabled", False):
+            return False
 
         # If checking the master switch itself
         if feature_name == "enabled":
