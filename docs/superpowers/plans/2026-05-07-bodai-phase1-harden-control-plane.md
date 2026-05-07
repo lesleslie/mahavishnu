@@ -1,7 +1,7 @@
 # Phase 1: Harden the Control Plane
 
 **Date**: 2026-05-07
-**Status**: Ready to implement
+**Status**: COMPLETE — shipped 2026-05-07
 **Scope**: Replace simulated integrations in `checkpoint.py` and `qc/checker.py` with real service-backed HTTP MCP calls
 
 ## Context
@@ -200,17 +200,17 @@ grep respx pyproject.toml
 
 ## Task Checklist
 
-- [ ] A1: Verify `config.session_buddy_url` (top-level) is accessible from `checkpoint.py.__init__`
-- [ ] A2: Rewrite `checkpoint.py` as a write-forward sink using `store_conversation_checkpoint`
-- [ ] A3: Add `is_healthy()` to `SessionBuddy`
-- [ ] A4: Unit tests for `checkpoint.py` (respx mocks)
-- [ ] B1: Add `crackerjack_url` to `QualityControlConfig` in `config.py`
-- [ ] B2: Rewrite `qc/checker.py` using `execute_crackerjack` with real score computation
-- [ ] B3: Add `is_healthy()` to `QualityControl`
-- [ ] B4: Unit tests for `qc/checker.py` (respx mocks)
-- [ ] C1: Wire `is_healthy()` into Mahavishnu pre-execution path
-- [ ] C2: `grep respx pyproject.toml` — add to dev deps if missing
-- [ ] C3: Run `crackerjack run` to validate no regressions
+- [x] A1: Verify `config.session_buddy_url` (top-level) is accessible from `checkpoint.py.__init__`
+- [x] A2: Rewrite `checkpoint.py` as a write-forward sink using `store_conversation_checkpoint`
+- [x] A3: Add `is_healthy()` to `SessionBuddy`
+- [x] A4: Unit tests for `checkpoint.py` (respx mocks)
+- [x] B1: Add `crackerjack_url` to `QualityControlConfig` in `config.py`
+- [x] B2: Rewrite `qc/checker.py` using `execute_crackerjack` with real score computation
+- [x] B3: Add `is_healthy()` to `QualityControl`
+- [x] B4: Unit tests for `qc/checker.py` (respx mocks)
+- [x] C1: Wire `is_healthy()` into Mahavishnu pre-execution path
+- [x] C2: `grep respx pyproject.toml` — add to dev deps if missing
+- [x] C3: Run `crackerjack run` to validate no regressions
 
 ## Files to Modify
 

@@ -61,6 +61,8 @@ The roadmap assumes the following operating stance:
 
 ## Phase 1: Harden the Control Plane
 
+**Status**: COMPLETE — shipped 2026-05-07. `checkpoint.py` and `qc/checker.py` rewritten as real HTTP MCP clients; `is_healthy()` guards wired into pre-execution path; 45 unit tests passing. See `docs/superpowers/plans/2026-05-07-bodai-phase1-harden-control-plane.md`. The workstreams below are reference only.
+
 **Window**: 0-30 days
 
 **Goal**: Remove the largest sources of architectural drift between documented capabilities and real execution.
@@ -144,6 +146,8 @@ Without this phase, the ecosystem risks building more advanced automation on top
 This is what turns the Bodai ecosystem from "connected services" into a trustworthy internal platform. It also reduces future integration cost.
 
 ## Phase 3: Make Cross-Repo Coordination Operational
+
+**Status**: COMPLETE — shipped 2026-05-07. `get_ecosystem_status()` + `coord_get_ecosystem_status` MCP tool + `ecosystem-status`/`roadmap` CLI commands added; Akosha integration in `CoordinationMemory`; `_run_command_safe()` security fix; 19 new tests (154 total coordination tests). See `docs/superpowers/plans/2026-05-07-bodai-phase3-cross-repo-coordination.md`. The workstreams below are reference only.
 
 **Window**: 60-90 days
 
