@@ -30,7 +30,7 @@ from ..session.checkpoint import SessionBuddy
 from .circuit_breaker import CircuitBreaker
 from .config import MahavishnuSettings
 from .context import set_app_context
-from .errors import AdapterError, ConfigurationError, ValidationError
+from .errors import AdapterError, ConfigurationError, ExternalServiceError, ValidationError
 from .metrics_schema import AdapterType, TaskType
 from .monitoring import MonitoringService
 from .observability import init_observability
@@ -1312,7 +1312,41 @@ class MahavishnuApp:
                     )
 
         adapter = self.adapters[adapter_name]
+
+        await self._check_dependency_health()
+
         return adapter, validated_repos
+
+    async def _check_dependency_health(self) -> None:
+        """Check health of QC and Session-Buddy before execution.
+
+        QC is a blocking dependency: unhealthy + enabled raises ExternalServiceError.
+        Session-Buddy is non-blocking: unhealthy logs a warning and degrades silently.
+        """
+        import logging
+
+        _log = logging.getLogger(__name__)
+
+        async def _true() -> bool:
+            return True
+
+        qc_healthy, sb_healthy = await asyncio.gather(
+            self.qc.is_healthy() if self.config.qc.enabled else _true(),
+            self.session_buddy.is_healthy() if self.config.session.enabled else _true(),
+        )
+
+        if not sb_healthy and self.config.session.enabled:
+            _log.warning(
+                "Session-Buddy is unreachable — checkpoints will not persist (degraded mode)"
+            )
+
+        if not qc_healthy and self.config.qc.enabled:
+            raise ExternalServiceError(
+                "crackerjack",
+                "QC service is unreachable — block execution to prevent unvalidated runs. "
+                "Set qc.enabled=false to allow degraded-mode execution without quality gates.",
+                details={"url": self.config.qc.crackerjack_url},
+            )
 
     # ========================================================================
     # REFACTORED: execute_workflow_parallel helper methods

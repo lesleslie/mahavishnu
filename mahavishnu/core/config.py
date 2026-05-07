@@ -800,6 +800,10 @@ class QualityControlConfig(BaseModel):
         default_factory=lambda: ["linting", "type_checking", "security_scan"],
         description="List of QC checks to perform",
     )
+    crackerjack_url: str = Field(
+        default="http://localhost:8676/mcp",
+        description="Crackerjack MCP server URL",
+    )
 
     model_config = {"extra": "forbid"}
 

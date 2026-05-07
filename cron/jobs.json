@@ -20,8 +20,8 @@
         "to": null
       },
       "state": {
-        "nextRunAtMs": 1778170403017,
-        "lastRunAtMs": 1778163202658,
+        "nextRunAtMs": 1778177603120,
+        "lastRunAtMs": 1778170403018,
         "lastStatus": "ok",
         "lastError": null,
         "runHistory": [
@@ -36,11 +36,17 @@
             "status": "ok",
             "durationMs": 359,
             "error": null
+          },
+          {
+            "runAtMs": 1778170403018,
+            "status": "ok",
+            "durationMs": 101,
+            "error": null
           }
         ]
       },
       "createdAtMs": 1777793601281,
-      "updatedAtMs": 1778163203017,
+      "updatedAtMs": 1778170403119,
       "deleteAfterRun": false
     }
   ]

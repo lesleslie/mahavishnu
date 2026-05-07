@@ -8,6 +8,8 @@ and updates coordination data from ecosystem.yaml.
 import os
 from pathlib import Path
 import re
+import shlex
+import subprocess
 from typing import Any
 
 from pydantic import ValidationError
@@ -22,6 +24,42 @@ from mahavishnu.core.coordination.models import (
     TodoStatus,
 )
 from mahavishnu.core.errors import ConfigurationError
+
+
+def _run_command_safe(command: str) -> str:
+    """Run a validation command without shell=True.
+
+    Handles pipe-separated commands by chaining Popen processes explicitly
+    instead of delegating to a shell. Commands come from operator-controlled
+    ecosystem.yaml, but we still avoid shell=True to eliminate the injection
+    vector entirely.
+    """
+    stages = [shlex.split(stage.strip()) for stage in command.split("|")]
+    if not stages:
+        return ""
+
+    procs: list[subprocess.Popen[str]] = []
+    for args in stages:
+        stdin = procs[-1].stdout if procs else None
+        proc = subprocess.Popen(
+            args,
+            stdin=stdin,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        if stdin is not None:
+            stdin.close()
+        procs.append(proc)
+
+    output, _ = procs[-1].communicate()
+    for proc in procs[:-1]:
+        proc.wait()
+
+    last_rc = procs[-1].returncode
+    if last_rc not in (0, None):
+        raise subprocess.CalledProcessError(last_rc, stages[-1], output=output)
+    return output
 
 
 class CoordinationManager:
@@ -622,19 +660,12 @@ class CoordinationManager:
         Returns:
             Dictionary with validation results
         """
-        import subprocess
-
         result = {"method": None, "passed": False, "details": None}
 
         if dep.validation and dep.validation.command:
             result["method"] = "command"
             try:
-                output = subprocess.check_output(
-                    dep.validation.command,
-                    shell=True,
-                    text=True,
-                    stderr=subprocess.STDOUT,
-                )
+                output = _run_command_safe(dep.validation.command)
                 if dep.validation.expected_pattern:
                     pattern = re.compile(dep.validation.expected_pattern)
                     result["passed"] = bool(pattern.search(output))
@@ -644,7 +675,7 @@ class CoordinationManager:
                     result["details"] = output.strip()
             except subprocess.CalledProcessError as e:
                 result["passed"] = False
-                result["details"] = e.output
+                result["details"] = getattr(e, "output", str(e))
             except Exception as e:
                 result["passed"] = False
                 result["details"] = str(e)
@@ -716,3 +747,57 @@ class CoordinationManager:
         """
         deps = self.list_dependencies(consumer=repo)
         return [d for d in deps if d.status.value != "satisfied"]
+
+    def get_ecosystem_status(self) -> dict[str, Any]:
+        """Get unified ecosystem coordination status.
+
+        Returns a single aggregated view suitable for operator dashboards and
+        the coord_get_ecosystem_status MCP tool. Answers: "What is blocked,
+        failing, and needs action right now?"
+
+        Returns:
+            Dictionary with active_plans, critical_blockers, degraded_dependencies,
+            pending/in_progress todo counts, and an overall health indicator.
+        """
+        active_plans = self.list_plans(status="active")
+
+        open_blockers = [
+            i
+            for i in self.list_issues()
+            if i.priority.value in ("critical", "high")
+            and i.status.value not in ("resolved", "closed")
+        ]
+
+        dep_check = self.check_dependencies()
+        unsatisfied = [d for d in dep_check["dependencies"] if d["status"] != "satisfied"]
+
+        pending_todos = self.list_todos(status=TodoStatus.PENDING)
+        in_progress_todos = self.list_todos(status=TodoStatus.IN_PROGRESS)
+
+        health = "degraded" if (open_blockers or unsatisfied) else "healthy"
+
+        return {
+            "health": health,
+            "active_plans": len(active_plans),
+            "plans": [
+                {
+                    "id": p.id,
+                    "title": p.title,
+                    "target": p.target,
+                    "milestones_total": len(p.milestones),
+                    "milestones_done": sum(
+                        1 for m in p.milestones if m.status.value == "completed"
+                    ),
+                }
+                for p in active_plans
+            ],
+            "critical_blockers": len(open_blockers),
+            "blockers": [
+                {"id": i.id, "title": i.title, "priority": i.priority.value, "repos": i.repos}
+                for i in open_blockers
+            ],
+            "degraded_dependencies": len(unsatisfied),
+            "dependencies": unsatisfied,
+            "pending_todos": len(pending_todos),
+            "in_progress_todos": len(in_progress_todos),
+        }

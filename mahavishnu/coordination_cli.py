@@ -584,3 +584,85 @@ def blocking(
         console.print("\n[bold]Unsatisfied Dependencies:[/bold]")
         for dep in deps:
             console.print(f"  {dep.id}: requires {dep.provider} {dep.version_constraint}")
+
+
+@coord_app.command("ecosystem-status")
+def ecosystem_status() -> None:
+    """Show unified ecosystem coordination status.
+
+    Single-pane view: active plans, critical blockers, degraded dependencies,
+    and todo counts. Use this to answer 'what needs operator attention now?'
+    """
+    mgr = CoordinationManager()
+    status = mgr.get_ecosystem_status()
+
+    health_color = "green" if status["health"] == "healthy" else "red"
+    console.print(
+        f"\n[bold]Ecosystem Status:[/bold] [{health_color}]{status['health'].upper()}[/{health_color}]\n"
+    )
+
+    # Active plans
+    console.print(f"[bold]Active Plans:[/bold] {status['active_plans']}")
+    for plan in status["plans"]:
+        done = plan["milestones_done"]
+        total = plan["milestones_total"]
+        progress = f"{done}/{total} milestones" if total else "no milestones"
+        console.print(f"  {plan['id']}: {plan['title']} — {progress} (target: {plan['target'][:10]})")
+
+    # Critical blockers
+    blocker_color = "red" if status["critical_blockers"] else "green"
+    console.print(f"\n[bold]Critical Blockers:[/bold] [{blocker_color}]{status['critical_blockers']}[/{blocker_color}]")
+    for b in status["blockers"]:
+        repos_str = ", ".join(b["repos"])
+        console.print(f"  [{b['priority']}] {b['id']}: {b['title']} ({repos_str})")
+
+    # Degraded dependencies
+    dep_color = "red" if status["degraded_dependencies"] else "green"
+    console.print(
+        f"\n[bold]Degraded Dependencies:[/bold] [{dep_color}]{status['degraded_dependencies']}[/{dep_color}]"
+    )
+    for d in status["dependencies"]:
+        console.print(f"  {d['consumer']} → {d['provider']}: {d['status']}")
+
+    # Todos summary
+    console.print(
+        f"\n[bold]Todos:[/bold] {status['pending_todos']} pending, "
+        f"{status['in_progress_todos']} in progress"
+    )
+
+
+@coord_app.command("roadmap")
+def roadmap(
+    status: str | None = typer.Option(None, "--status", "-s", help="Filter by plan status"),
+) -> None:
+    """Show active plans with milestone progress."""
+    mgr = CoordinationManager()
+    plans = mgr.list_plans(status=status or "active")
+
+    if not plans:
+        console.print("No active plans found.")
+        return
+
+    for plan in plans:
+        done = sum(1 for m in plan.milestones if m.status.value == "completed")
+        total = len(plan.milestones)
+        bar = ("█" * done + "░" * (total - done)) if total else "—"
+        console.print(
+            f"\n[bold cyan]{plan.id}[/bold cyan] {plan.title} "
+            f"[dim]({plan.status.value}, target: {plan.target[:10]})[/dim]"
+        )
+        console.print(f"  Repos: {', '.join(plan.repos)}")
+        if plan.milestones:
+            console.print(f"  Progress: {bar} {done}/{total}")
+            table = Table(show_header=True, header_style="bold", box=None, padding=(0, 2))
+            table.add_column("Milestone")
+            table.add_column("Status")
+            table.add_column("Due")
+            for m in plan.milestones:
+                status_color = "green" if m.status.value == "completed" else "yellow"
+                table.add_row(
+                    m.name,
+                    f"[{status_color}]{m.status.value}[/{status_color}]",
+                    m.due[:10],
+                )
+            console.print(table)

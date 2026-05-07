@@ -1,11 +1,14 @@
 """Memory integration for cross-repository coordination.
 
-Stores coordination events in Session-Buddy for semantic search and analytics.
+Stores coordination events in Session-Buddy and Akosha for semantic search
+and analytics.
 """
 
 from datetime import datetime
 import logging
-from typing import Any
+from typing import Any, cast
+
+import httpx
 
 from mahavishnu.core.coordination.models import (
     CrossRepoIssue,
@@ -30,14 +33,23 @@ class CoordinationMemory:
         collection: Collection name for storing coordination events
     """
 
-    def __init__(self, session_buddy_client: Any | None = None) -> None:
+    def __init__(
+        self,
+        session_buddy_client: Any | None = None,
+        akosha_url: str | None = None,
+    ) -> None:
         """Initialize coordination memory integration.
 
         Args:
             session_buddy_client: Optional Session-Buddy MCP client
+            akosha_url: Optional Akosha MCP base URL for semantic indexing
         """
         self.session_buddy = session_buddy_client
         self.collection = "mahavishnu_coordination"
+        self._akosha_url = akosha_url
+        self._http: httpx.AsyncClient | None = (
+            httpx.AsyncClient(timeout=10.0) if akosha_url else None
+        )
 
     async def store_issue_event(
         self,
@@ -266,13 +278,65 @@ class CoordinationMemory:
                 metadata=metadata,
             )
         except Exception as e:
-            # Log but don't fail - coordination is more important than memory
-            logger.error(f"Failed to store coordination memory: {e}")
+            logger.error("Failed to store coordination memory in Session-Buddy: %s", e)
+
+        await self._push_to_akosha(content, metadata)
+
+    async def _push_to_akosha(self, content: str, metadata: dict[str, Any]) -> None:
+        """Push a coordination event to Akosha for semantic indexing.
+
+        Degrades silently — Akosha unavailability never blocks coordination.
+        """
+        if not self._http or not self._akosha_url:
+            return
+        try:
+            response = await self._http.post(
+                f"{self._akosha_url}/tools/call",
+                json={
+                    "name": "store_memory",
+                    "arguments": {
+                        "content": content,
+                        "metadata": metadata,
+                        "collection": self.collection,
+                    },
+                },
+            )
+            response.raise_for_status()
+        except (httpx.HTTPError, httpx.TransportError) as exc:
+            logger.warning("Akosha coordination push degraded: %s", exc)
+
+    async def search_semantic(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
+        """Search coordination history semantically via Akosha.
+
+        Args:
+            query: Natural-language search query
+            limit: Maximum number of results
+
+        Returns:
+            List of matching coordination records, empty on error or no Akosha.
+        """
+        if not self._http or not self._akosha_url:
+            return []
+        try:
+            response = await self._http.post(
+                f"{self._akosha_url}/tools/call",
+                json={
+                    "name": "search_all_systems",
+                    "arguments": {"query": query, "limit": limit},
+                },
+            )
+            response.raise_for_status()
+            raw = cast("dict[str, Any]", response.json())
+            results = raw.get("results") or raw.get("result") or []
+            return results if isinstance(results, list) else []
+        except (httpx.HTTPError, httpx.TransportError) as exc:
+            logger.warning("Akosha semantic search degraded: %s", exc)
+            return []
 
     async def close(self) -> None:
         """Close the memory integration and cleanup resources."""
-        # Cleanup if needed
-        pass
+        if self._http:
+            await self._http.aclose()
 
 
 # Extended manager with memory integration

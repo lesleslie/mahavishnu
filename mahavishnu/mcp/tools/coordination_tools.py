@@ -330,3 +330,19 @@ async def coord_list_dependencies(
         consumer=consumer, provider=provider, dependency_type=dependency_type
     )
     return [dep.model_dump(mode="json") for dep in deps]
+
+
+@mcp.tool()
+async def coord_get_ecosystem_status() -> dict[str, Any]:
+    """Get unified ecosystem coordination status.
+
+    Single-pane view answering: what is blocked, degraded, and needs operator
+    action right now? Aggregates active plans, high/critical blockers,
+    unsatisfied dependencies, and todo counts.
+
+    Returns:
+        Dictionary with health indicator, plan summaries, blockers,
+        degraded dependencies, and pending/in-progress todo counts.
+    """
+    mgr = _get_manager()
+    return mgr.get_ecosystem_status()
