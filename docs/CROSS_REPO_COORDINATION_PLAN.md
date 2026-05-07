@@ -1,6 +1,6 @@
 # Cross-Repository Coordination System Implementation Plan
 
-**Status:** Proposed
+**Status:** SUPERSEDED — all features shipped 2026-05-07 as part of Phase 3. See `docs/proposals/2026-05-02-bodai-ecosystem-improvement-roadmap.md` and `mahavishnu/core/coordination/`. Reference only.
 **Date:** 2026-01-31
 **Author:** @les
 **Priority:** High

@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** COMPLETE — all 42 tasks shipped 2026-04-30 per Phase 4 annotation. Call chain, impact analysis, and incremental re-indexing live in `session_buddy/subscribers/code_graph_subscriber.py`. Reference only.
+
 **Goal:** Add call chain resolution, change impact analysis, and incremental re-indexing to the Bodai ecosystem by extending Session-Buddy's DuckPGQ property graph and adding Mahavishnu CLI commands.
 
 **Architecture:** Session-Buddy owns the code graph (DuckDB/DuckPGQ). Mahavishnu orchestrates indexing via CLI + git hooks. Two new Session-Buddy MCP tools (`code_call_chain`, `code_impact_analysis`) query the graph via PGQ. Mahavishnu's CLI triggers parsing with mcp-common's `CodeGraphAnalyzer` and upserts to Session-Buddy via MCP.

@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** COMPLETE — all tasks checked [x]. Splashstand uses `from oneiric...` imports throughout; pyproject.toml restored. Verified via `MIGRATION-3.1.0.md`. Reference only.
+
 **Goal:** Replace all ACB imports with Oneiric equivalents across 17 Splashstand source files, restoring pyproject.toml and adding a `resolve_dep()` helper.
 
 **Architecture:** Mechanical import rename from `acb.*` to `oneiric.*` plus a `splashstand/deps.py` helper module. The `depends.inject` decorator is replaced with direct `resolve_dep()` calls. `dump`/`load` from `acb.actions.encode` are replaced with `yaml`/`json` standard library calls.
