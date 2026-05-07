@@ -1,6 +1,4 @@
 {
-  "additionalDirectories": [],
-  "outputStyle": "Explanatory",
   "permissions": {
     "allow": [
       "Bash(/Users/les/Projects/mahavishnu/tests/security/test_validation.py:*)",
@@ -311,7 +309,15 @@
       "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pip search *)",
       "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pip index *)",
       "Bash(/Users/les/.local/share/uv/tools/nanobot-ai/bin/nanobot --version)",
-      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pip uninstall *)"
+      "Bash(/Users/les/Projects/mahavishnu/.venv/bin/pip uninstall *)",
+      "Bash(launchctl kickstart *)",
+      "Bash(nc -z localhost 8678)",
+      "Bash(ccusage --version)",
+      "Bash(ccusage blocks *)",
+      "Bash(ccusage --help)",
+      "Bash(ccusage statusline *)"
     ]
-  }
+  },
+  "outputStyle": "Explanatory",
+  "additionalDirectories": []
 }

@@ -1,41 +1,47 @@
 {
+  "version": 1,
   "jobs": [
     {
-      "createdAtMs": 1777793601281,
-      "deleteAfterRun": false,
-      "enabled": true,
       "id": "dream",
       "name": "dream",
-      "payload": {
-        "channel": null,
-        "deliver": false,
-        "kind": "system_event",
-        "message": "",
-        "to": null
-      },
+      "enabled": true,
       "schedule": {
+        "kind": "every",
         "atMs": null,
         "everyMs": 7200000,
         "expr": null,
-        "kind": "every",
         "tz": null
       },
+      "payload": {
+        "kind": "system_event",
+        "message": "",
+        "deliver": false,
+        "channel": null,
+        "to": null
+      },
       "state": {
-        "lastError": null,
-        "lastRunAtMs": 1777800801586,
+        "nextRunAtMs": 1778170403017,
+        "lastRunAtMs": 1778163202658,
         "lastStatus": "ok",
-        "nextRunAtMs": 1777808002485,
+        "lastError": null,
         "runHistory": [
           {
-            "durationMs": 873,
-            "error": null,
             "runAtMs": 1777800801586,
-            "status": "ok"
+            "status": "ok",
+            "durationMs": 873,
+            "error": null
+          },
+          {
+            "runAtMs": 1778163202658,
+            "status": "ok",
+            "durationMs": 359,
+            "error": null
           }
         ]
       },
-      "updatedAtMs": 1777800802459
+      "createdAtMs": 1777793601281,
+      "updatedAtMs": 1778163203017,
+      "deleteAfterRun": false
     }
-  ],
-  "version": 1
+  ]
 }
