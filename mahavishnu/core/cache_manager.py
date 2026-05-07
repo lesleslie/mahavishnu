@@ -186,6 +186,10 @@ class LRUCache:
         """Get cache size."""
         return len(self._cache)
 
+    def __iter__(self):
+        """Iterate over non-expired cache keys."""
+        return iter(list(self._cache.keys()))
+
     def __contains__(self, key: str) -> bool:
         """Check if key exists."""
         entry = self._cache.get(key)

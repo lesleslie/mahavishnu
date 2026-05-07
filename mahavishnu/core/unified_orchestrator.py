@@ -18,6 +18,7 @@ import structlog
 
 logger = structlog.get_logger()
 
+from mahavishnu.core.adapters.base import AdapterType
 from mahavishnu.core.task_router import TaskRouter
 
 try:

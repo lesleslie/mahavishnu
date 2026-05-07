@@ -59,15 +59,17 @@ if TYPE_CHECKING:
 try:
     from mahavishnu.core.task_requirements import (
         TASK_CAPABILITY_REQUIREMENTS,
-        AdapterResolutionResult,
         ResolutionCache,
+        RoutingDecision,
         TaskRequirements,
     )
 
+    AdapterResolutionResult = RoutingDecision  # internal alias preserved
     CAPABILITY_ROUTING_AVAILABLE = True
 except ImportError:
     CAPABILITY_ROUTING_AVAILABLE = False
     TaskRequirements = None  # type: ignore[misc,assignment]
+    RoutingDecision = None  # type: ignore[misc,assignment]
     AdapterResolutionResult = None  # type: ignore[misc,assignment]
     ResolutionCache = None  # type: ignore[misc,assignment]
     TASK_CAPABILITY_REQUIREMENTS = {}  # type: ignore[misc]
@@ -377,8 +379,8 @@ class CapabilityRouter:
             resolution_time_ms = (time.time() - start_time) * 1000
 
             # Create routing decision
-            if CAPABILITY_ROUTING_AVAILABLE and AdapterResolutionResult is not None:
-                decision = AdapterResolutionResult(
+            if CAPABILITY_ROUTING_AVAILABLE and RoutingDecision is not None:
+                decision = RoutingDecision(
                     adapter_name=best_adapter.adapter_id,
                     adapter=None,  # Lazy-loaded by registry
                     matched_capabilities=[
