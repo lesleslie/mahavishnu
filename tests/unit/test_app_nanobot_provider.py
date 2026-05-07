@@ -13,13 +13,12 @@ def test_init_nanobot_provider_branches(monkeypatch) -> None:
     app = object.__new__(appmod.MahavishnuApp)
 
     # token missing -> None
-    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("ZAI_API_KEY", raising=False)
     assert appmod.MahavishnuApp._init_nanobot_provider(app) is None
 
     # import error -> None
-    monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "tok")
-    monkeypatch.delenv("ANTHROPIC_BASE_URL", raising=False)
-    monkeypatch.delenv("BIFROST_BASE_URL", raising=False)
+    monkeypatch.setenv("ZAI_API_KEY", "tok")
+    monkeypatch.delenv("ZAI_BASE_URL", raising=False)
     monkeypatch.delenv("MAHAVISHNU_LLM_GATEWAY_BASE_URL", raising=False)
 
     real_import = builtins.__import__
@@ -33,7 +32,7 @@ def test_init_nanobot_provider_branches(monkeypatch) -> None:
     assert appmod.MahavishnuApp._init_nanobot_provider(app) is None
     monkeypatch.setattr("builtins.__import__", real_import)
 
-    # success path
+    # success path — default base_url
     class _Provider:
         def __init__(self, api_key: str, base_url: str) -> None:
             self.api_key = api_key
@@ -47,14 +46,14 @@ def test_init_nanobot_provider_branches(monkeypatch) -> None:
     provider = appmod.MahavishnuApp._init_nanobot_provider(app)
     assert provider is not None
     assert provider.api_key == "tok"
-    assert provider.base_url == "https://api.anthropic.com"
+    assert provider.base_url == "https://api.z.ai/api/coding/paas/v4"
 
-    # project-specific gateway override path
-    monkeypatch.setenv("MAHAVISHNU_LLM_GATEWAY_BASE_URL", "http://127.0.0.1:8471")
-    gateway_provider = appmod.MahavishnuApp._init_nanobot_provider(app)
-    assert gateway_provider is not None
-    assert gateway_provider.base_url == "http://127.0.0.1:8471/v1"
-    monkeypatch.delenv("MAHAVISHNU_LLM_GATEWAY_BASE_URL", raising=False)
+    # custom ZAI_BASE_URL override
+    monkeypatch.setenv("ZAI_BASE_URL", "https://custom.zai.example.com")
+    custom_provider = appmod.MahavishnuApp._init_nanobot_provider(app)
+    assert custom_provider is not None
+    assert custom_provider.base_url == "https://custom.zai.example.com"
+    monkeypatch.delenv("ZAI_BASE_URL", raising=False)
 
     # generic exception path
     class _BadProvider:
