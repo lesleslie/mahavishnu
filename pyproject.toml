@@ -99,8 +99,6 @@ dependencies = [
     # Use the slim package with only the providers Mahavishnu integrates.
     # This avoids the umbrella package's transitive huggingface extra path.
     "pydantic-ai-slim[mcp,openai,anthropic,google,groq]>=1.77.0",
-    # In-process AI workers (nanobot Python API for AgentRunner/AgentLoop)
-    "nanobot-ai>=0.1.4",
     "llama-cpp-python>=0.3.20",
     # RunPod Flash: serverless GPU pool execution
     "runpod-flash~=1.7",
@@ -226,6 +224,11 @@ automation-full = [
     "mahavishnu[automation,automation-vision]",
 ]
 
+# Hatchet workflow orchestration adapter
+hatchet = [
+    "hatchet-sdk>=1.0,<2",
+]
+
 [tool.hatch.metadata]
 allow-direct-references = true
 
@@ -332,6 +335,7 @@ markers = [
     "prefect: Tests for Prefect adapter",
     "llamaindex: Tests for LlamaIndex adapter",
     "agno: Tests for Agno adapter",
+    "hatchet: Tests for Hatchet adapter",
     "mcp: Tests for MCP server functionality",
     "chaos: Chaos and failure-injection tests",
     "requires_network: Tests requiring network access",
