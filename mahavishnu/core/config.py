@@ -938,6 +938,57 @@ class AdapterConfig(BaseModel):
         default=True,
         description="Enable Agno adapter for agent-based workflows",
     )
+    hatchet_enabled: bool = Field(
+        default=False,
+        description="Enable Hatchet adapter for durable event-driven agent loops",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
+class HatchetConfig(BaseModel):
+    """Hatchet workflow engine configuration.
+
+    Configuration can be set via:
+    1. settings/mahavishnu.yaml under hatchet:
+    2. settings/local.yaml
+    3. Environment variables: MAHAVISHNU_HATCHET__SERVER_URL, etc.
+
+    Example YAML:
+        hatchet:
+          server_url: "localhost:7077"
+          namespace: "mahavishnu"
+          max_runs: 10
+          poll_interval_seconds: 2.0
+          task_timeout_seconds: 300
+    """
+
+    server_url: str = Field(
+        default="localhost:7077",
+        description="Hatchet gRPC server address (host:port)",
+    )
+    namespace: str = Field(
+        default="mahavishnu",
+        description="Hatchet namespace for workflow isolation",
+    )
+    max_runs: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum concurrent Hatchet workflow runs",
+    )
+    poll_interval_seconds: float = Field(
+        default=2.0,
+        ge=0.1,
+        le=60.0,
+        description="Polling interval when waiting for run completion",
+    )
+    task_timeout_seconds: int = Field(
+        default=300,
+        ge=10,
+        le=3600,
+        description="Maximum seconds to wait for a single Hatchet task",
+    )
 
     model_config = {"extra": "forbid"}
 
@@ -1460,6 +1511,42 @@ class HealthConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class DharaStatePersistenceConfig(BaseModel):
+    """Configuration for Dhara-backed durable state persistence.
+
+    Controls whether workflow lifecycle events, pool state, and routing
+    decisions are persisted to Dhara for recovery after restart.
+
+    Example YAML:
+        dhara_state:
+          enabled: true
+          flush_interval_seconds: 60
+          max_routing_buffer_age_seconds: 3600
+
+    Example Environment Variables:
+        MAHAVISHNU_DHARA_STATE__ENABLED=true
+        MAHAVISHNU_DHARA_STATE__FLUSH_INTERVAL_SECONDS=30
+    """
+
+    enabled: bool = Field(
+        default=True,
+        description="Enable Dhara state persistence (no-op if Dhara is unreachable)",
+    )
+    flush_interval_seconds: int = Field(
+        default=60,
+        ge=10,
+        le=3600,
+        description="Interval between periodic routing buffer flushes to Dhara",
+    )
+    max_routing_buffer_age_seconds: int = Field(
+        default=3600,
+        ge=60,
+        description="Maximum age of routing decisions retained in Dhara",
+    )
+
+    model_config = {"extra": "forbid"}
+
+
 class IntegrationConfig(BaseModel):
     """Feature flags for external platform integrations.
 
@@ -1699,6 +1786,12 @@ class MahavishnuSettings(BaseSettings):
         description="Agno multi-agent adapter configuration",
     )
 
+    # Hatchet workflow engine configuration (P10)
+    hatchet: HatchetConfig = Field(
+        default_factory=HatchetConfig,
+        description="Hatchet workflow engine configuration",
+    )
+
     # Dhara adapter registry integration (legacy oneiric_mcp settings key)
     oneiric_mcp: OneiricMCPConfig = Field(
         default_factory=OneiricMCPConfig,
@@ -1727,6 +1820,21 @@ class MahavishnuSettings(BaseSettings):
     integrations: IntegrationConfig = Field(
         default_factory=IntegrationConfig,
         description="Feature flags for external platform integrations",
+    )
+
+    # Dhara state persistence
+    dhara_state: DharaStatePersistenceConfig = Field(
+        default_factory=DharaStatePersistenceConfig,
+        description="Dhara-backed durable state persistence configuration",
+    )
+
+    # Unified config validation (soft-launch — off by default)
+    unified_validation_enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable strict cross-file config validation on startup. "
+            "Override via MAHAVISHNU_UNIFIED_VALIDATION_ENABLED=true or --config-strict CLI flag."
+        ),
     )
 
     # Learning pipeline (Phase 1B)
@@ -1797,6 +1905,7 @@ __all__ = [
     "ObservabilityConfig",
     "WorkerConfig",
     "AdapterConfig",
+    "HatchetConfig",
     "LLMConfig",
     "OneiricMCPConfig",
     "AdapterRegistryConfig",
@@ -1810,5 +1919,7 @@ __all__ = [
     "HealthConfig",
     # Learning pipeline configuration
     "LearningConfig",
+    # Dhara state persistence
+    "DharaStatePersistenceConfig",
     "MahavishnuSettings",
 ]

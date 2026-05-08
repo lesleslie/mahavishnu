@@ -28,6 +28,16 @@ adapters:
   prefect_enabled: true  # High-level orchestration with dynamic flows
   llamaindex_enabled: true  # RAG pipelines with Ollama embeddings
   agno_enabled: true  # Fast, scalable single/multi-agents with memory and tools
+  hatchet_enabled: false  # Durable agent loops; requires HATCHET_CLIENT_TOKEN
+
+# Hatchet durable workflow engine (opt-in)
+# Set adapters.hatchet_enabled: true and HATCHET_CLIENT_TOKEN to activate.
+hatchet:
+  server_url: "localhost:7077"
+  namespace: "mahavishnu"
+  max_runs: 10
+  poll_interval_seconds: 2.0
+  task_timeout_seconds: 300
 
 # LLM configuration for LlamaIndex and Agno
 llm:
@@ -295,3 +305,9 @@ health:
       required: false  # Optional - quality checks can run without it
       timeout_seconds: 10
       use_tls: false
+
+# Dhara state persistence (P2 — Storage Consolidation)
+dhara_state:
+  enabled: true
+  flush_interval_seconds: 60
+  max_routing_buffer_age_seconds: 3600
