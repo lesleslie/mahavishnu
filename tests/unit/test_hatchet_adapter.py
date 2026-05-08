@@ -143,3 +143,22 @@ async def test_hatchet_execute_timeout(hatchet_adapter, mock_hatchet_client):
         {"prompt": "run agent loop", "timeout": 0.01}, repos=[]
     )
     assert result["status"] == "timeout"
+
+
+def test_initialize_adapters_skips_hatchet_when_disabled():
+    """When hatchet_enabled=False, no HatchetAdapterImpl is instantiated."""
+    from mahavishnu.core.app import MahavishnuApp
+    from unittest.mock import MagicMock
+
+    app = MahavishnuApp.__new__(MahavishnuApp)
+    app.adapters = {}
+    app.config = MagicMock()
+    app.config.adapters.prefect_enabled = False
+    app.config.adapters.llamaindex_enabled = False
+    app.config.adapters.agno_enabled = False
+    app.config.adapters.hatchet_enabled = False
+    app.config.workers.enabled = False
+
+    app._initialize_adapters()
+
+    assert "hatchet" not in app.adapters

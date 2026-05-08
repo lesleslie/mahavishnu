@@ -212,9 +212,6 @@ class MahavishnuApp:
         if self.config.terminal.enabled:
             self.terminal_manager = self._init_terminal_manager()
 
-        # Initialize nanobot provider (optional, for in-process workers)
-        self._nanobot_provider = self._init_nanobot_provider()
-
         # Initialize workflow state manager
         self.workflow_state_manager = WorkflowState()
 
@@ -236,6 +233,28 @@ class MahavishnuApp:
 
         # Initialize OpenSearch integration for log analytics
         self.opensearch_integration = OpenSearchIntegration(self.config)
+
+        # Initialize Dhara state backend (degraded-boot: no-op if Dhara is down)
+        self._dhara_state = None
+        if self.config.dhara_state.enabled and self.dhara_url:
+            try:
+                from .state_backends.dhara import DharaStateBackend, DharaStateConfig
+
+                self._dhara_state = DharaStateBackend(
+                    base_url=self.dhara_url,
+                    config=DharaStateConfig(
+                        enabled=self.config.dhara_state.enabled,
+                        flush_interval_seconds=self.config.dhara_state.flush_interval_seconds,
+                        max_routing_buffer_age_seconds=self.config.dhara_state.max_routing_buffer_age_seconds,
+                    ),
+                )
+            except Exception:
+                pass  # Dhara state backend is optional; never block startup
+
+        # Initialize approval manager with optional Dhara persistence
+        from .approval_manager import ApprovalManager
+
+        self.approval_manager = ApprovalManager(dhara_state=self._dhara_state)
 
         # Initialize resilience and error recovery patterns
         self.resilience_manager = ResiliencePatterns(self)
@@ -398,6 +417,33 @@ class MahavishnuApp:
                 },
             )
 
+        # Probe Dhara and recover any in-flight workflow state
+        if self._dhara_state is not None:
+            available = await self._dhara_state.probe()
+            if available:
+                await self._recover_workflow_state_from_dhara()
+                await self._recover_approvals_from_dhara()
+
+        # Unified config validation (strict mode when enabled)
+        if getattr(self.config, "unified_validation_enabled", False):
+            try:
+                from .unified_config import UnifiedConfig
+                UnifiedConfig.validate_strict()
+                logger.info("Unified config validation passed")
+            except Exception as exc:
+                logger.error("Config validation failed: %s", exc)
+                return False
+        else:
+            # Report-only mode: log warnings but never block startup
+            try:
+                from .unified_config import UnifiedConfig
+                report = UnifiedConfig.validate()
+                if not report.valid:
+                    for err in report.get_errors():
+                        logger.warning("Config issue [%s]: %s", err.path, err.message)
+            except Exception:
+                pass  # Validation errors never block startup in report-only mode
+
         return result.success
 
     @property
@@ -514,36 +560,6 @@ class MahavishnuApp:
         except Exception as e:
             logger = __import__("logging").getLogger(__name__)
             logger.warning(f"Failed to initialize terminal manager: {e}")
-            return None
-
-    def _init_nanobot_provider(self) -> Any | None:
-        """Initialize nanobot LLM provider for in-process workers.
-
-        Uses ZAI_API_KEY + ZAI_BASE_URL env vars.
-
-        Returns:
-            nanobot provider instance or None if unavailable
-        """
-        logger = __import__("logging").getLogger(__name__)
-        try:
-            auth_token = os.environ.get("ZAI_API_KEY")
-            base_url = os.environ.get("ZAI_BASE_URL", "https://api.z.ai/api/coding/paas/v4")
-
-            if not auth_token:
-                logger.debug("ZAI_API_KEY not set; nanobot provider not configured")
-                return None
-
-            from nanobot.providers import OpenAICompatProvider
-
-            provider = OpenAICompatProvider(api_key=auth_token, base_url=base_url)
-            logger.info("Nanobot provider initialized via ZAI (base_url=%s)", base_url)
-            return provider
-
-        except ImportError:
-            logger.debug("nanobot package not installed; in-process workers unavailable")
-            return None
-        except Exception as e:
-            logger.warning(f"Failed to initialize nanobot provider: {e}")
             return None
 
     def _init_pool_manager(self):
@@ -818,6 +834,15 @@ class MahavishnuApp:
                 logger.warning("Agno adapter not available due to missing dependencies")
                 pass
 
+        # Hatchet - Durable workflow engine (disabled by default)
+        if self.config.adapters.hatchet_enabled:
+            try:
+                from ..engines.hatchet_adapter_impl import HatchetAdapterImpl
+                adapter_classes["hatchet"] = HatchetAdapterImpl
+                enabled_adapters["hatchet"] = True
+            except ImportError:
+                logger.warning("Hatchet adapter not available due to missing dependencies")
+
         # Worker - Headless AI execution (enabled by default)
         if getattr(self.config.workers, "enabled", True):
             try:
@@ -835,8 +860,11 @@ class MahavishnuApp:
                 try:
                     adapter_class = adapter_classes.get(adapter_name)
                     if adapter_class:
-                        # Standard adapter initialization with config only
-                        self.adapters[adapter_name] = adapter_class(self.config)
+                        if adapter_name == "hatchet":
+                            self.adapters[adapter_name] = adapter_class(self.config.hatchet)
+                        else:
+                            # Standard adapter initialization with config only
+                            self.adapters[adapter_name] = adapter_class(self.config)
                 except ImportError as e:
                     logger.warning(
                         f"{adapter_name} adapter initialization skipped due to missing "
@@ -950,6 +978,69 @@ class MahavishnuApp:
 
         scheme = "https" if dependency.use_tls else "http"
         return f"{scheme}://{dependency.host}:{dependency.port}/mcp"
+
+    async def _recover_workflow_state_from_dhara(self) -> None:
+        """Restore in-flight workflow state from Dhara on startup."""
+        if self._dhara_state is None:
+            return
+        logger = __import__("logging").getLogger(__name__)
+        try:
+            entries = await self._dhara_state.list_prefix("workflow/v1/")
+            recovered = 0
+            for _key, value in entries:
+                if isinstance(value, dict) and value.get("status") == "running":
+                    workflow_id = value.get("execution_id", "unknown")
+                    self.active_workflows.add(workflow_id)
+                    recovered += 1
+            if recovered:
+                logger.info("Recovered %d in-flight workflows from Dhara", recovered)
+        except Exception as exc:
+            logger.debug("Dhara workflow recovery skipped: %s", exc)
+
+    async def _recover_approvals_from_dhara(self) -> None:
+        """Re-register non-expired pending approvals from Dhara on startup."""
+        if self._dhara_state is None:
+            return
+        logger = __import__("logging").getLogger(__name__)
+        try:
+            entries = await self._dhara_state.list_prefix("approval/v1/")
+            restored = self.approval_manager.restore_from_dhara_entries(entries)
+            if restored:
+                logger.info("Recovered %d pending approvals from Dhara", restored)
+        except Exception as exc:
+            logger.debug("Dhara approval recovery skipped: %s", exc)
+
+    def _persist_workflow_start(self, execution_id: str, workflow_name: str, metadata: dict) -> None:
+        """Fire-and-forget: record workflow start in Dhara."""
+        if self._dhara_state is None:
+            return
+        self._dhara_state.schedule_put(
+            f"workflow/v1/{execution_id}",
+            {
+                "execution_id": execution_id,
+                "workflow_name": workflow_name,
+                "status": "running",
+                "metadata": metadata,
+            },
+        )
+
+    def _persist_workflow_end(
+        self, execution_id: str, workflow_name: str, status: str, error: str | None = None
+    ) -> None:
+        """Fire-and-forget: record workflow completion/failure in Dhara."""
+        if self._dhara_state is None:
+            return
+        from datetime import datetime, UTC
+        self._dhara_state.schedule_put(
+            f"workflow/v1/{execution_id}",
+            {
+                "execution_id": execution_id,
+                "workflow_name": workflow_name,
+                "status": status,
+                "end_time": datetime.now(UTC).isoformat(),
+                "error": error,
+            },
+        )
 
     def get_repos(
         self, tag: str | None = None, role: str | None = None, user_id: str | None = None
@@ -1948,12 +2039,18 @@ class MahavishnuApp:
             >>> if result["success"]:
             ...     print(f"Used adapter: {result['adapter_used']}")
         """
+        import uuid as _uuid
+
         router = TaskRouter()
         task_type = TaskType(task.get("type", "ai_task"))
 
         # Generate fallback chain
         preferred = AdapterType(adapter_preference[0]) if adapter_preference else None
         fallback_chain = router.generate_fallback_chain(task_type, preferred)
+
+        execution_id = str(_uuid.uuid4())
+        workflow_name = task.get("type", "workflow")
+        self._persist_workflow_start(execution_id, workflow_name, {"repos": repos})
 
         # Try each adapter in chain
         errors: list[tuple[str, str]] = []
@@ -1965,6 +2062,7 @@ class MahavishnuApp:
                     repos=repos,
                 )
 
+                self._persist_workflow_end(execution_id, workflow_name, "completed")
                 return {
                     "success": True,
                     "adapter_used": adapter_name.value,
@@ -1975,10 +2073,15 @@ class MahavishnuApp:
 
             except Exception as e:
                 errors.append((adapter_name.value, str(e)))
-                self.logger.warning(f"Adapter {adapter_name.value} failed: {e}")
+                logger = __import__("logging").getLogger(__name__)
+                logger.warning(f"Adapter {adapter_name.value} failed: {e}")
                 continue
 
         # All adapters failed
+        self._persist_workflow_end(
+            execution_id, workflow_name, "failed",
+            error="; ".join(f"{a}: {e}" for a, e in errors),
+        )
         return {
             "success": False,
             "adapter_used": None,
