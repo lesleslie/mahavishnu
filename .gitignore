@@ -200,7 +200,8 @@ secrets/
 *.bak3
 *.orig
 *.tmp
-health.db
+data/health.db
+ingested/
 
 # Git worktrees
 .worktrees/

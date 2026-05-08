@@ -1,6 +1,7 @@
 """Tests for the approval manager."""
 
 from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -178,3 +179,115 @@ class TestApprovalManager:
 
         assert expired not in manager.pending_requests
         assert valid in manager.pending_requests
+
+
+class TestApprovalManagerDharaPersistence:
+    """Tests for Dhara-backed durable persistence."""
+
+    def _make_mock_dhara(self) -> MagicMock:
+        mock = MagicMock()
+        mock.schedule_put = MagicMock()
+        mock.schedule_delete = MagicMock()
+        return mock
+
+    def test_create_request_schedules_dhara_persist(self) -> None:
+        mock_dhara = self._make_mock_dhara()
+        manager = ApprovalManager(dhara_state=mock_dhara)
+        request = manager.create_request(approval_type="version_bump", context={})
+        mock_dhara.schedule_put.assert_called_once()
+        args = mock_dhara.schedule_put.call_args[0]
+        assert args[0] == f"approval/v1/{request.id}"
+        assert args[1]["id"] == request.id
+
+    def test_create_request_without_dhara_does_not_raise(self) -> None:
+        manager = ApprovalManager()
+        request = manager.create_request(approval_type="publish", context={})
+        assert request.id.startswith("approval-")
+
+    def test_respond_schedules_dhara_delete(self) -> None:
+        mock_dhara = self._make_mock_dhara()
+        manager = ApprovalManager(dhara_state=mock_dhara)
+        request = manager.create_request(approval_type="publish", context={})
+        mock_dhara.schedule_put.reset_mock()
+        manager.respond(request.id, approved=True)
+        mock_dhara.schedule_delete.assert_called_once_with(f"approval/v1/{request.id}")
+
+    def test_cleanup_expired_schedules_dhara_delete(self) -> None:
+        mock_dhara = self._make_mock_dhara()
+        manager = ApprovalManager(dhara_state=mock_dhara)
+        expired = ApprovalRequest(
+            id="exp-001",
+            approval_type="version_bump",
+            context={},
+            created_at=datetime.now(UTC) - timedelta(hours=25),
+            expires_at=datetime.now(UTC) - timedelta(hours=1),
+            options=[],
+        )
+        manager._pending_requests[expired.id] = expired
+        mock_dhara.schedule_put.reset_mock()
+        manager.cleanup_expired()
+        mock_dhara.schedule_delete.assert_called_once_with("approval/v1/exp-001")
+
+    def test_restore_skips_expired_entries(self) -> None:
+        manager = ApprovalManager()
+        expired_request = ApprovalRequest(
+            id="expired-001",
+            approval_type="version_bump",
+            context={},
+            created_at=datetime.now(UTC) - timedelta(hours=25),
+            expires_at=datetime.now(UTC) - timedelta(hours=1),
+            options=[],
+        )
+        entries = [("approval/v1/expired-001", expired_request.to_dict())]
+        restored = manager.restore_from_dhara_entries(entries)
+        assert restored == 0
+        assert len(manager.pending_requests) == 0
+
+    def test_restore_registers_valid_approvals(self) -> None:
+        manager = ApprovalManager()
+        valid_request = ApprovalRequest(
+            id="valid-001",
+            approval_type="publish",
+            context={"version": "1.0.0"},
+            created_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC) + timedelta(hours=23),
+            options=[ApprovalOption(label="Publish", description="Do it", is_recommended=True)],
+        )
+        entries = [("approval/v1/valid-001", valid_request.to_dict())]
+        restored = manager.restore_from_dhara_entries(entries)
+        assert restored == 1
+        recovered = manager.get_request("valid-001")
+        assert recovered is not None
+        assert recovered.approval_type == "publish"
+        assert len(recovered.options) == 1
+
+    def test_restore_skips_duplicate_ids(self) -> None:
+        manager = ApprovalManager()
+        existing = manager.create_request(approval_type="version_bump", context={})
+        entry_data = {
+            "id": existing.id,
+            "approval_type": "publish",
+            "context": {},
+            "created_at": datetime.now(UTC).isoformat(),
+            "expires_at": (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
+            "options": [],
+        }
+        restored = manager.restore_from_dhara_entries(
+            [(f"approval/v1/{existing.id}", entry_data)]
+        )
+        assert restored == 0
+
+    def test_restore_ignores_malformed_entries(self) -> None:
+        manager = ApprovalManager()
+        entries = [
+            ("approval/v1/bad", {"missing": "required fields"}),
+            ("approval/v1/also-bad", {}),
+        ]
+        restored = manager.restore_from_dhara_entries(entries)
+        assert restored == 0
+
+    def test_default_timeout_is_24h(self) -> None:
+        manager = ApprovalManager()
+        request = manager.create_request(approval_type="publish", context={})
+        delta = request.expires_at - request.created_at
+        assert delta >= timedelta(hours=23, minutes=59)

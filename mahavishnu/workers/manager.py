@@ -45,7 +45,6 @@ class WorkerManager:
         debug_mode: bool = False,
         session_buddy_client: Any = None,
         mcp_client: Any = None,
-        nanobot_provider: Any = None,
     ) -> None:
         """Initialize worker manager.
 
@@ -55,22 +54,17 @@ class WorkerManager:
             debug_mode: Enable debug monitor
             session_buddy_client: Session-Buddy MCP client
             mcp_client: MCP client for application workers
-            nanobot_provider: Optional nanobot LLM provider for in-process workers
         """
         self.terminal_manager = terminal_manager
         self.max_concurrent = max(1, min(max_concurrent, 100))
         self.debug_mode = debug_mode
         self.session_buddy_client = session_buddy_client
         self.mcp_client = mcp_client
-        self.nanobot_provider = nanobot_provider
         self._workers: dict[str, BaseWorker] = {}
         self._semaphore = asyncio.Semaphore(self.max_concurrent)
         self._debug_monitor_worker: BaseWorker | None = None
 
-        logger.info(
-            f"Initialized WorkerManager (max_concurrent={self.max_concurrent}, debug={debug_mode}, "
-            f"nanobot={'available' if nanobot_provider else 'not configured'})"
-        )
+        logger.info(f"Initialized WorkerManager (max_concurrent={self.max_concurrent}, debug={debug_mode})")
 
     async def spawn_workers(
         self,
@@ -211,19 +205,6 @@ class WorkerManager:
                 )
 
             raise ValueError(f"Unknown gateway worker type: {worker_type}")
-
-        elif config.category == WorkerCategory.IN_PROCESS:
-            # In-process workers (Python API, no terminal/MCP)
-            if worker_type.startswith("in-process-nanobot"):
-                from .nanobot_worker import NanobotWorker
-
-                return NanobotWorker(
-                    worker_type=worker_type,
-                    nanobot_provider=self.nanobot_provider,
-                    config=config,
-                    session_buddy_client=self.session_buddy_client,
-                )
-            raise ValueError(f"Unknown in-process worker: {worker_type}")
 
         else:
             # Fallback - try GenericShellWorker

@@ -28,6 +28,7 @@ from .task_router import (
     DEFAULT_ZAI_ROUTING,
     TaskCategory,
     get_model_for_task,
+    get_rate_limiter,
 )
 
 logger = logging.getLogger(__name__)
@@ -188,6 +189,26 @@ class CloudWorker(BaseWorker):
         else:
             model = self.config.model
             task_category = TaskCategory.GENERAL
+
+        # Check rate limit before making the API call
+        user_id: str | None = task.get("user_id")
+        rate_limiter = get_rate_limiter()
+        if rate_limiter is not None:
+            allowed = await rate_limiter.check_and_record(model, user_id)
+            if not allowed:
+                logger.warning(
+                    "Rate limit exceeded: model=%s user=%s", model, user_id or "*"
+                )
+                try:
+                    from mahavishnu.core.routing_metrics import get_routing_metrics
+                    get_routing_metrics().record_rate_limit_rejected(model)
+                except Exception:
+                    pass
+                return WorkerResult(
+                    worker_id=self._worker_id,
+                    status=WorkerStatus.FAILED,
+                    error=f"Rate limit exceeded for model {model}",
+                )
 
         start_time = time.time()
 

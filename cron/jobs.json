@@ -20,8 +20,8 @@
         "to": null
       },
       "state": {
-        "nextRunAtMs": 1778177603120,
-        "lastRunAtMs": 1778170403018,
+        "nextRunAtMs": 1778249603519,
+        "lastRunAtMs": 1778242403506,
         "lastStatus": "ok",
         "lastError": null,
         "runHistory": [
@@ -42,11 +42,71 @@
             "status": "ok",
             "durationMs": 101,
             "error": null
+          },
+          {
+            "runAtMs": 1778177603124,
+            "status": "ok",
+            "durationMs": 50,
+            "error": null
+          },
+          {
+            "runAtMs": 1778184803179,
+            "status": "ok",
+            "durationMs": 60,
+            "error": null
+          },
+          {
+            "runAtMs": 1778192003242,
+            "status": "ok",
+            "durationMs": 34,
+            "error": null
+          },
+          {
+            "runAtMs": 1778199203278,
+            "status": "ok",
+            "durationMs": 38,
+            "error": null
+          },
+          {
+            "runAtMs": 1778206403320,
+            "status": "ok",
+            "durationMs": 85,
+            "error": null
+          },
+          {
+            "runAtMs": 1778213603411,
+            "status": "ok",
+            "durationMs": 54,
+            "error": null
+          },
+          {
+            "runAtMs": 1778220803469,
+            "status": "ok",
+            "durationMs": 8,
+            "error": null
+          },
+          {
+            "runAtMs": 1778228003479,
+            "status": "ok",
+            "durationMs": 7,
+            "error": null
+          },
+          {
+            "runAtMs": 1778235203487,
+            "status": "ok",
+            "durationMs": 3,
+            "error": null
+          },
+          {
+            "runAtMs": 1778242403506,
+            "status": "ok",
+            "durationMs": 13,
+            "error": null
           }
         ]
       },
       "createdAtMs": 1777793601281,
-      "updatedAtMs": 1778170403119,
+      "updatedAtMs": 1778242403519,
       "deleteAfterRun": false
     }
   ]

@@ -37,31 +37,75 @@ __all__ = [
     "PoolManager",
     "PoolSelector",
     "MemoryAggregator",
+    "GpuHandlerPool",
     "RunPodPool",
     "WebSocketBroadcaster",
     "create_broadcaster",
 ]
 
-# Mapping of export name -> (relative_module, attribute_name)
-_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
-    "BasePool": (".base", "BasePool"),
-    "PoolConfig": (".base", "PoolConfig"),
-    "PoolMetrics": (".base", "PoolMetrics"),
-    "PoolStatus": (".base", "PoolStatus"),
-    "PoolManager": (".manager", "PoolManager"),
-    "PoolSelector": (".manager", "PoolSelector"),
-    "MemoryAggregator": (".memory_aggregator", "MemoryAggregator"),
-    "RunPodPool": (".runpod_pool", "RunPodPool"),
-    "WebSocketBroadcaster": (".websocket", "WebSocketBroadcaster"),
-    "create_broadcaster": (".websocket", "create_broadcaster"),
+# Each value is a zero-arg callable that performs a hardcoded local import.
+# No dynamic string ever reaches importlib — satisfies CWE-706 / semgrep N802.
+def _lazy_base_pool():
+    from .base import BasePool
+    return BasePool
+
+def _lazy_pool_config():
+    from .base import PoolConfig
+    return PoolConfig
+
+def _lazy_pool_metrics():
+    from .base import PoolMetrics
+    return PoolMetrics
+
+def _lazy_pool_status():
+    from .base import PoolStatus
+    return PoolStatus
+
+def _lazy_pool_manager():
+    from .manager import PoolManager
+    return PoolManager
+
+def _lazy_pool_selector():
+    from .manager import PoolSelector
+    return PoolSelector
+
+def _lazy_memory_aggregator():
+    from .memory_aggregator import MemoryAggregator
+    return MemoryAggregator
+
+def _lazy_gpu_handler_pool():
+    from .gpu_handler_pool import GpuHandlerPool
+    return GpuHandlerPool
+
+def _lazy_runpod_pool():
+    from .runpod_pool import RunPodPool
+    return RunPodPool
+
+def _lazy_websocket_broadcaster():
+    from .websocket import WebSocketBroadcaster
+    return WebSocketBroadcaster
+
+def _lazy_create_broadcaster():
+    from .websocket import create_broadcaster
+    return create_broadcaster
+
+_LAZY_IMPORTERS: dict[str, object] = {
+    "BasePool": _lazy_base_pool,
+    "PoolConfig": _lazy_pool_config,
+    "PoolMetrics": _lazy_pool_metrics,
+    "PoolStatus": _lazy_pool_status,
+    "PoolManager": _lazy_pool_manager,
+    "PoolSelector": _lazy_pool_selector,
+    "MemoryAggregator": _lazy_memory_aggregator,
+    "GpuHandlerPool": _lazy_gpu_handler_pool,
+    "RunPodPool": _lazy_runpod_pool,
+    "WebSocketBroadcaster": _lazy_websocket_broadcaster,
+    "create_broadcaster": _lazy_create_broadcaster,
 }
 
 
 def __getattr__(name: str):
     """Lazy import to avoid heavy initialization on package import."""
-    if entry := _LAZY_IMPORTS.get(name):
-        from importlib import import_module
-
-        module = import_module(entry[0], __name__)
-        return getattr(module, entry[1])
+    if importer := _LAZY_IMPORTERS.get(name):
+        return importer()
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

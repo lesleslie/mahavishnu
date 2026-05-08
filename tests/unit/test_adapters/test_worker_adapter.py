@@ -26,7 +26,6 @@ class _Result:
 
 class _Manager:
     def __init__(self) -> None:
-        self.nanobot_provider = object()
         self.spawn_calls: list[tuple[str, int]] = []
         self.exec_calls: list[tuple[list[str], list[dict]]] = []
         self.collect_calls: list[list[str]] = []
@@ -116,7 +115,6 @@ async def test_health_and_lifecycle_methods() -> None:
     assert await adapter.cleanup() is None
     health = await adapter.get_health()
     assert health["status"] == "healthy"
-    assert health["nanobot_available"] is True
 
     # degraded branch
     async def hc():
@@ -125,58 +123,6 @@ async def test_health_and_lifecycle_methods() -> None:
     mgr.health_check = hc  # type: ignore[method-assign]
     health2 = await adapter.get_health()
     assert health2["status"] == "degraded"
-
-
-def test_nanobot_provider_fallback_branches(monkeypatch: pytest.MonkeyPatch) -> None:
-    # token missing -> None
-    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
-    assert wa.WorkerOrchestratorAdapter._init_nanobot_provider_fallback() is None
-
-    # import error -> None
-    monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "tok")
-    monkeypatch.delenv("ANTHROPIC_BASE_URL", raising=False)
-    import builtins
-
-    real_import = builtins.__import__
-
-    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):  # noqa: ANN001,ANN002,ANN003
-        if name == "nanobot.providers":
-            raise ImportError("missing")
-        return real_import(name, globals, locals, fromlist, level)
-
-    monkeypatch.setattr("builtins.__import__", fake_import)
-    assert wa.WorkerOrchestratorAdapter._init_nanobot_provider_fallback() is None
-    monkeypatch.setattr("builtins.__import__", real_import)
-
-    # success path
-    class _Provider:
-        def __init__(self, api_key: str, base_url: str) -> None:
-            self.api_key = api_key
-            self.base_url = base_url
-
-    mod = SimpleNamespace(OpenAICompatProvider=_Provider)
-    import sys
-
-    sys.modules["nanobot.providers"] = mod
-    p = wa.WorkerOrchestratorAdapter._init_nanobot_provider_fallback()
-    assert p is not None
-    assert p.api_key == "tok"
-    assert p.base_url == "https://api.anthropic.com"
-
-    # gateway override path
-    monkeypatch.setenv("BIFROST_BASE_URL", "http://127.0.0.1:8471")
-    p2 = wa.WorkerOrchestratorAdapter._init_nanobot_provider_fallback()
-    assert p2 is not None
-    assert p2.base_url == "http://127.0.0.1:8471/v1"
-    monkeypatch.delenv("BIFROST_BASE_URL", raising=False)
-
-    # generic exception path
-    class _BadProvider:
-        def __init__(self, api_key: str, base_url: str) -> None:  # noqa: ARG002
-            raise RuntimeError("bad")
-
-    sys.modules["nanobot.providers"] = SimpleNamespace(OpenAICompatProvider=_BadProvider)
-    assert wa.WorkerOrchestratorAdapter._init_nanobot_provider_fallback() is None
 
 
 def test_worker_adapter_entries_shape() -> None:
@@ -194,31 +140,15 @@ def test_init_with_config_branch_uses_terminal_and_context(monkeypatch: pytest.M
     class _WM:
         def __init__(self, **kwargs):  # noqa: ANN003
             captured.update(kwargs)
-            self.nanobot_provider = kwargs.get("nanobot_provider")
 
     monkeypatch.setattr(wa, "WorkerManager", _WM)
     monkeypatch.setattr(
         "mahavishnu.terminal.manager.TerminalManager.create",
         AsyncMock(return_value="tmgr"),
     )
-    import mahavishnu.core.context as ctx
-
-    monkeypatch.setattr(
-        ctx, "get_app_context", lambda: {"nanobot_provider": "ctx-provider"}, raising=False
-    )
 
     cfg = SimpleNamespace(workers=SimpleNamespace(max_concurrent=7))
     adapter = wa.WorkerOrchestratorAdapter(config=cfg)
-    assert adapter.worker_manager.nanobot_provider == "ctx-provider"
     assert captured["terminal_manager"] == "tmgr"
     assert captured["max_concurrent"] == 7
-
-    # fallback provider branch when context has no provider
-    monkeypatch.setattr(ctx, "get_app_context", lambda: {}, raising=False)
-    monkeypatch.setattr(
-        wa.WorkerOrchestratorAdapter,
-        "_init_nanobot_provider_fallback",
-        staticmethod(lambda: "fallback-provider"),
-    )
-    adapter2 = wa.WorkerOrchestratorAdapter(config=cfg)
-    assert adapter2.worker_manager.nanobot_provider == "fallback-provider"
+    assert adapter is not None

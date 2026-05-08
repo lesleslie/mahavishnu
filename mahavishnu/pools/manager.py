@@ -389,6 +389,20 @@ class PoolManager:
             pool_id = random.choice(list(self._pools.keys()))
             logger.debug(f"Random pool: {pool_id}")
 
+        # GPU category override: prefer a runpod pool for GPU-bound task categories.
+        # Falls back to the already-selected pool when no runpod pool is available.
+        task_category = task.get("category", "")
+        if task_category in {"vision", "ml_inference", "embedding"}:
+            runpod_pool_id = next(
+                (pid for pid, p in self._pools.items() if p.config.pool_type == "runpod"),
+                None,
+            )
+            if runpod_pool_id:
+                logger.debug(
+                    "GPU task category=%r — routing to runpod pool %s", task_category, runpod_pool_id
+                )
+                pool_id = runpod_pool_id
+
         return await self.execute_on_pool(pool_id, task)
 
     async def aggregate_results(

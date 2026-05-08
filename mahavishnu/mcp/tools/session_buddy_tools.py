@@ -1,10 +1,20 @@
 """MCP tools for Session Buddy integration with authorization."""
 
+from datetime import UTC, datetime
 from typing import Any
+import uuid
 
 from ...core.permissions import Permission, RBACManager
 from ...mcp.auth import require_mcp_auth
 from ...messaging import MessagePriority
+
+_CHANNEL_SESSION_TOOL = "mcp__session-buddy__track_channel_session"
+_CHANNEL_QUERY_TOOL = "mcp__session-buddy__get_channel_sessions"
+
+_VALID_EVENT_TYPES = frozenset(
+    {"channel_session_start", "channel_session_end", "channel_heartbeat"}
+)
+_VALID_SCOPES = frozenset({"conversation", "thread", "day"})
 
 
 def _coerce_priority(value: str) -> MessagePriority:
@@ -184,4 +194,107 @@ def register_session_buddy_tools(
         except Exception as e:
             return {"status": "error", "error": f"Failed to list project messages: {e}"}
 
-    print("✅ Registered 7 Session Buddy integration tools with MCP server (with authorization)")
+    @server.tool()
+    @require_mcp_auth(rbac_manager=rbac_manager)
+    async def track_channel_session(
+        event_type: str,
+        channel_type: str,
+        channel_id: str,
+        sender_id: str,
+        session_scope: str = "conversation",
+        thread_id: str | None = None,
+        component_name: str = "mahavishnu",
+        workspace: str | None = None,
+        platform: str | None = None,
+        message_preview: str | None = None,
+        message_count: int = 1,
+        metadata: dict[str, Any] | None = None,
+        user_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Track a channel session event (start / end / heartbeat) in Session-Buddy.
+
+        Delegates to Session-Buddy's track_channel_session MCP tool.
+        See docs/plans/session-buddy-multi-channel-spec.md for the full event schema.
+        """
+        if event_type not in _VALID_EVENT_TYPES:
+            return {
+                "status": "error",
+                "error": f"Invalid event_type {event_type!r}. Must be one of {sorted(_VALID_EVENT_TYPES)}",
+            }
+        if session_scope not in _VALID_SCOPES:
+            return {
+                "status": "error",
+                "error": f"Invalid session_scope {session_scope!r}. Must be one of {sorted(_VALID_SCOPES)}",
+            }
+
+        payload: dict[str, Any] = {
+            "event_version": "2.0",
+            "event_id": str(uuid.uuid4()),
+            "event_type": event_type,
+            "channel_type": channel_type,
+            "channel_id": channel_id,
+            "sender_id": sender_id,
+            "session_scope": session_scope,
+            "component_name": component_name,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "message_count": message_count,
+            "metadata": metadata or {},
+        }
+        if thread_id is not None:
+            payload["thread_id"] = thread_id
+        if workspace is not None:
+            payload["workspace"] = workspace
+        if platform is not None:
+            payload["platform"] = platform
+        if message_preview is not None:
+            payload["message_preview"] = message_preview[:200]
+
+        try:
+            result = await mcp_client.call_tool(_CHANNEL_SESSION_TOOL, payload)
+            return {"status": "success", "event_id": payload["event_id"], "result": result}
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": f"Session-Buddy call failed: {e}",
+                "event_id": payload["event_id"],
+            }
+
+    @server.tool()
+    @require_mcp_auth(rbac_manager=rbac_manager)
+    async def get_channel_sessions(
+        channel_type: str | None = None,
+        channel_id: str | None = None,
+        sender_id: str | None = None,
+        session_scope: str | None = None,
+        limit: int = 20,
+        user_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Query active or recent channel sessions tracked in Session-Buddy.
+
+        All filter parameters are optional — omit to retrieve all sessions.
+        """
+        if limit < 1 or limit > 200:
+            return {"status": "error", "error": "limit must be between 1 and 200"}
+
+        query: dict[str, Any] = {"limit": limit}
+        if channel_type is not None:
+            query["channel_type"] = channel_type
+        if channel_id is not None:
+            query["channel_id"] = channel_id
+        if sender_id is not None:
+            query["sender_id"] = sender_id
+        if session_scope is not None:
+            if session_scope not in _VALID_SCOPES:
+                return {
+                    "status": "error",
+                    "error": f"Invalid session_scope {session_scope!r}. Must be one of {sorted(_VALID_SCOPES)}",
+                }
+            query["session_scope"] = session_scope
+
+        try:
+            result = await mcp_client.call_tool(_CHANNEL_QUERY_TOOL, query)
+            return {"status": "success", "result": result}
+        except Exception as e:
+            return {"status": "error", "error": f"Session-Buddy query failed: {e}"}
+
+    print("✅ Registered 9 Session Buddy integration tools with MCP server (with authorization)")

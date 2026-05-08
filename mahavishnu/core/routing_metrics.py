@@ -132,6 +132,7 @@ class RoutingMetrics:
         self._cost_counter: Counter | None = None
         self._budget_alert_counter: Counter | None = None
         self._ab_test_counter: Counter | None = None
+        self._rate_limit_rejected_counter: Counter | None = None
 
         # Gauge metrics
         self._adapter_success_rate_gauge: dict[AdapterType, Gauge] = {}
@@ -219,6 +220,16 @@ class RoutingMetrics:
             )
         except ValueError:
             logger.debug(f"Reusing existing A/B test counter: {self.server_name}")
+
+        # Rate-limit rejection counter (single-process, advisory-only)
+        try:
+            self._rate_limit_rejected_counter = Counter(
+                "mahavishnu_rate_limit_rejected_total",
+                "Total requests rejected by the in-process sliding-window rate limiter",
+                ["server", "model"],
+            )
+        except ValueError:
+            logger.debug(f"Reusing existing rate limit rejected counter: {self.server_name}")
 
         # Create current cost gauge
         try:
@@ -493,6 +504,19 @@ class RoutingMetrics:
         if self._active_experiments_gauge:
             self._active_experiments_gauge.labels(server=self.server_name).set(count)
             logger.debug(f"Set active experiments: {count}")
+
+    def record_rate_limit_rejected(self, model: str) -> None:
+        """Record a request rejected by the in-process sliding-window rate limiter.
+
+        Args:
+            model: Model name that was rate-limited
+        """
+        self._ensure_enabled()
+        if self._rate_limit_rejected_counter:
+            self._rate_limit_rejected_counter.labels(
+                server=self.server_name, model=model
+            ).inc()
+            logger.debug("Rate limit rejected: model=%s", model)
 
     def get_metrics_summary(self) -> dict[str, Any]:
         """Get summary of current metrics.

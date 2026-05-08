@@ -18,7 +18,6 @@ class WorkerCategory(Enum):
     REMOTE = "remote"  # Remote execution (SSH)
     APPLICATION = "application"  # Desktop applications via MCP
     GATEWAY = "gateway"  # Remote gateway workers (HTTP/RPC)
-    IN_PROCESS = "in_process"  # In-process Python API workers (no terminal)
 
 
 @dataclass
@@ -477,29 +476,6 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         completion_markers=["$"],
         stream_format="text",
         requires_tool="terraform",
-        default_timeout=600,
-    ),
-    # In-Process Workers (no terminal, no MCP client)
-    "in-process-nanobot": WorkerConfig(
-        name="Nanobot AgentRunner",
-        worker_type="in-process-nanobot",
-        command="",
-        category=WorkerCategory.IN_PROCESS,
-        description="In-process nanobot AgentRunner for lightweight AI tasks",
-        completion_markers=[],
-        stream_format="text",
-        supports_interactive=False,
-        default_timeout=300,
-    ),
-    "in-process-nanobot-loop": WorkerConfig(
-        name="Nanobot AgentLoop",
-        worker_type="in-process-nanobot-loop",
-        command="",
-        category=WorkerCategory.IN_PROCESS,
-        description="Full nanobot AgentLoop with sessions, memory, MCP tools",
-        completion_markers=[],
-        stream_format="text",
-        supports_interactive=False,
         default_timeout=600,
     ),
 }

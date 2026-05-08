@@ -24,7 +24,7 @@ class TestWorkerCategory:
             assert len(cat.value) > 0
 
     def test_category_count(self):
-        assert len(WorkerCategory) == 7
+        assert len(WorkerCategory) == 6
 
     def test_specific_categories_exist(self):
         expected = {
@@ -34,7 +34,6 @@ class TestWorkerCategory:
             WorkerCategory.REMOTE,
             WorkerCategory.APPLICATION,
             WorkerCategory.GATEWAY,
-            WorkerCategory.IN_PROCESS,
         }
         assert set(WorkerCategory) == expected
 
@@ -150,7 +149,6 @@ class TestWorkerRegistry:
             "terminal-python",
             "terminal-ssh",
             "gateway-openclaw",
-            "in-process-nanobot",
         ]
         for wt in known:
             assert wt in WORKER_REGISTRY, f"{wt} missing from registry"
@@ -234,10 +232,6 @@ class TestListWorkerTypes:
         result = list_worker_types(WorkerCategory.REMOTE)
         assert "terminal-ssh" in result
 
-    def test_filter_by_in_process_category(self):
-        result = list_worker_types(WorkerCategory.IN_PROCESS)
-        assert all(WORKER_REGISTRY[wt].category == WorkerCategory.IN_PROCESS for wt in result)
-        assert "in-process-nanobot" in result
 
     def test_none_filter_returns_more_than_any_single_category(self):
         all_types = list_worker_types()

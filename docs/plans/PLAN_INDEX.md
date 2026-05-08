@@ -1,6 +1,6 @@
 # Plan Index
 
-**Date:** 2026-04-30
+**Date:** 2026-05-07
 **Purpose:** Canonical map for finding, reviewing, and implementing active Mahavishnu/Bodai plans.
 
 Use this file as the first stop before reviewing or implementing plan work. Older plans remain useful as source material, but the files below define the current review order and authority.
@@ -17,11 +17,17 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 
 ## Review Entry Points
 
+1. **Master backlog** ← start here
+
+   - File: [2026-05-07-mahavishnu-master-backlog.md](./2026-05-07-mahavishnu-master-backlog.md)
+   - Status: `canonical`
+   - Use for: the single authoritative list of confirmed open work, in priority order. All items verified against codebase 2026-05-07. Superseded/obsolete items moved to the backlog's closed table.
+
 1. **Current plan map**
 
    - File: [PLAN_INDEX.md](./PLAN_INDEX.md)
    - Status: `canonical`
-   - Use for: deciding which plan to review or implement next.
+   - Use for: navigating individual plan files and their status.
 
 1. **Repository plan overview**
 
@@ -140,6 +146,20 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 - Status: `shipped` — all 43 tasks complete; 0 `from acb` imports remain in Splashstand codebase
 - Use for: reference only.
 
+### Hatchet Integration
+
+- Backlog: [2026-05-07-mahavishnu-master-backlog.md](./2026-05-07-mahavishnu-master-backlog.md) — Priorities 7, 8, 10
+- Status: `active` — P7 (rate-limiting pattern) and P8 (approval durable wait) are plan-only; P10 (HatchetAdapter) requires spec first
+- Hatchet is an MIT-licensed durable task queue on Postgres (<20ms start, per-key rate limiting, WaitForEvent). P7 and P8 are pattern borrows (no SDK dependency). P10 adds `hatchet-sdk` and a full `OrchestratorAdapter` implementation gated on `adapters.hatchet: true`.
+- Use for: P7/P8 implementation details are inline in the backlog. P10 spec file path: `docs/plans/2026-05-07-hatchet-adapter-spec.md` (to be written).
+
+### OpenWebUI Integration
+
+- Backlog: [2026-05-07-mahavishnu-master-backlog.md](./2026-05-07-mahavishnu-master-backlog.md) — Priority 9
+- Status: `active` — Docker compose sidecar + tool registration, no Mahavishnu code changes
+- OpenWebUI is a self-hosted web UI for LLMs; `mcpo` bridges Mahavishnu's MCP server (stdio/SSE) to Streamable HTTP for OpenWebUI consumption.
+- Use for: P9 tasks are inline in the backlog. Output doc: `docs/integrations/openwebui.md`.
+
 ## Execution Board and Initiative Plans
 
 - Board: [2026-04-04-ecosystem-execution-board.md](./2026-04-04-ecosystem-execution-board.md)
@@ -157,7 +177,25 @@ Important reconciliation notes:
 
 ## Current Implementation Priority
 
-*Last verified: 2026-05-01. Items below are confirmed unfinished against codebase and plan checkboxes.*
+*Last verified: 2026-05-07. Canonical priority order is in the [master backlog](./2026-05-07-mahavishnu-master-backlog.md). The list below is a summary; the backlog is authoritative.*
+
+**Active priorities (all open as of 2026-05-07):**
+
+| # | Item | Plan / Spec |
+|---|------|-------------|
+| 1 | Session-Buddy Multi-Channel Tracking | [spec](./session-buddy-multi-channel-spec.md) |
+| 2 | Dhara Storage Consolidation | [plan](./2026-04-02-storage-consolidation-and-akosha-role.md) |
+| 3 | Config Consolidation (schema validation) | [spec](../superpowers/specs/2026-04-26-config-consolidation-design.md) / [plan](../superpowers/plans/2026-04-26-config-consolidation.md) |
+| 4 | RunPod Pool — remaining subtasks | [plan](../superpowers/plans/2026-05-01-runpod-flash-pool.md) |
+| 5 | Nanobot Phase A (Supergateway autostart) | [plan](./2026-04-05-nanobot-worker-integration.md) |
+| 6 | TUI Completion (command palette + skill drafts) | inline in backlog |
+| 7 | Hatchet rate-limiting pattern | inline in backlog |
+| 8 | Approval flow durable wait pattern | inline in backlog (requires P2) |
+| 9 | OpenWebUI mcpo bridge | inline in backlog |
+| 10 | HatchetAdapter (spec-first) | spec TBD (requires P2) |
+| — | README update | final gate (after all above) |
+
+*Completed items before 2026-05-07 are listed below for reference only.*
 
 1. **Config Consolidation** — shipped 2026-04-30
 
@@ -212,6 +250,24 @@ Important reconciliation notes:
   - [2026-02-27-health-check-implementation-plan.md](./2026-02-27-health-check-implementation-plan.md)
 - Completed initiative: [initiatives/01-health-contract-and-command.md](./initiatives/01-health-contract-and-command.md)
 - Canonical cleanup/extension: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
+
+### TensorZero Gateway
+
+- Superseded plan: [tensorzero-gateway-plan.md](./tensorzero-gateway-plan.md)
+- Reason: Mahavishnu already has ZAI (primary), Bifrost (`openclaw_gateway.py`), mcp-common `llm/`, and `task_router.py`. A separate TensorZero process duplicates this stack without adding value.
+- Closed: 2026-05-07
+
+### Claw-Inspired Orchestration
+
+- Superseded plan: [claw-inspired-orchestration-proposal.md](./claw-inspired-orchestration-proposal.md)
+- Reason: All three patterns shipped under different names — verification loops → `quality_gate_manager.py`; event routing → `event_bus.py` + `event_store.py`; audit trails → `task_audit.py` + `statistical_router.py` + `unified_orchestrator.py`.
+- Closed: 2026-05-07
+
+### Agno Phases 4-6
+
+- Superseded plan: [../../AGNO_ADAPTER_IMPLEMENTATION_PLAN.md](../../AGNO_ADAPTER_IMPLEMENTATION_PLAN.md) (phases 4-6 only)
+- Reason: Phase 4 (ecosystem memory) → Session-Buddy + Akosha; Phase 5 (OTel) → `otel_ingester.py`; Phase 6 (pool integration) → existing pool system. Phases 1-3 shipped.
+- Closed: 2026-05-07
 
 ## Review Checklist
 

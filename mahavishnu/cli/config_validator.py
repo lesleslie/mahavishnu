@@ -441,8 +441,42 @@ def add_config_validation_commands(app: typer.Typer) -> None:
             "--json",
             help="Emit structured JSON output",
         ),
+        strict: bool = typer.Option(
+            False,
+            "--strict",
+            help="Fail with exit code 1 on any config error (unified schema validation)",
+        ),
     ) -> None:
-        """Validate configuration files and runtime connectivity."""
+        """Validate configuration files and runtime connectivity.
+
+        Use --strict to run cross-file Pydantic schema validation and fail fast
+        on any error. Without --strict, issues are reported but exit code is 0.
+        """
+        if strict:
+            from ..core.unified_config import UnifiedConfig
+
+            try:
+                report = UnifiedConfig.validate(settings_dir=config_dir)
+            except Exception as exc:
+                typer.echo(f"[ERROR] Validation failed to run: {exc}", err=True)
+                raise typer.Exit(code=2) from exc
+
+            if json_output:
+                import json as _json
+                typer.echo(_json.dumps(report.to_dict(), indent=2, default=str))
+            else:
+                errors = report.get_errors()
+                if errors:
+                    for err in errors:
+                        prefix = f"[{err.path}] " if err.path else ""
+                        typer.echo(f"  ERROR  {prefix}{err.message}")
+                    typer.echo(f"\n{len(errors)} error(s) found — config is invalid.")
+                else:
+                    typer.echo("All config files valid.")
+
+            if not report.valid:
+                raise typer.Exit(code=1)
+            return
 
         async def _validate() -> None:
             report = await run_validation(config_dir=config_dir, full=full)

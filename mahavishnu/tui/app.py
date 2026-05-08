@@ -1,18 +1,19 @@
 """Mahavishnu Dashboard — read-only Textual TUI for ecosystem diagnostics.
 
-Provides five screens:
+Five tabs:
 - Overview: System health, active workflows, recent alerts
-- Sweep: Sweep history, success/fail rates
+- Sweep: Workflow history, success/fail rates
 - Routing: Adapter health, resolution decisions
 - Alerts: Active alerts, severity filter
 - Reviews: Pending skill drafts from the governance system
 
-All screens are read-only (no mutations).
+All screens are read-only. Auto-refreshes every 30 seconds (press R for immediate refresh).
+Launch with: mahavishnu dashboard
 """
 
 from __future__ import annotations
 
-import asyncio
+import contextlib
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
@@ -30,10 +31,14 @@ from textual.widgets import (
     TabPane,
 )
 
+from mahavishnu.tui.command_palette import MahavishnuCommandProvider
+
 if TYPE_CHECKING:
     from mahavishnu.core.ecosystem_status import EcosystemStatusReport
 
 __all__ = ["MahavishnuDashboard", "DashboardApp"]
+
+_REFRESH_INTERVAL = 30  # seconds
 
 
 # ---------------------------------------------------------------------------
@@ -42,103 +47,73 @@ __all__ = ["MahavishnuDashboard", "DashboardApp"]
 
 
 async def _get_report() -> EcosystemStatusReport | None:
-    """Fetch canonical ecosystem status report. Returns None on error."""
     try:
         from mahavishnu.core.config import MahavishnuSettings
         from mahavishnu.core.ecosystem_status import EcosystemStatusService
 
         settings = MahavishnuSettings()
-
-        # Build service configs from known ecosystem dependencies
         service_configs: dict[str, dict[str, Any]] = {}
-        ecosystem_services = {
+        for name, url in {
             "session-buddy": settings.session_buddy_url,
             "akosha": settings.akosha_url,
-        }
-        for name, url in ecosystem_services.items():
+        }.items():
             if url:
                 service_configs[name] = {"url": url, "required": False, "timeout_s": 3}
 
-        # Try to discover additional services from oneiric MCP config
         try:
             oneiric = getattr(settings, "oneiric_mcp", None)
             if oneiric:
                 dhara_url = getattr(oneiric, "url", None) or getattr(oneiric, "base_url", None)
                 if dhara_url:
-                    service_configs["dhara"] = {
-                        "url": dhara_url,
-                        "required": False,
-                        "timeout_s": 3,
-                    }
+                    service_configs["dhara"] = {"url": dhara_url, "required": False, "timeout_s": 3}
         except Exception:
             pass
 
-        service = EcosystemStatusService(service_configs=service_configs or None)
-        return await service.generate_report()
+        return await EcosystemStatusService(service_configs=service_configs or None).generate_report()
     except Exception:
         return None
 
 
 async def fetch_system_overview() -> dict[str, Any]:
-    """Fetch system health, active workflows, recent alerts."""
     report = await _get_report()
     if report is None:
-        return {
-            "status": "unknown",
-            "active_workflows": 0,
-            "total_adapters": 0,
-            "healthy_adapters": 0,
-            "recent_alerts": 0,
-            "uptime_seconds": 0,
-        }
+        return {"status": "unknown", "active_workflows": 0, "total_adapters": 0,
+                "healthy_adapters": 0, "recent_alerts": 0}
     adapters = report.adapters or {}
     workflows = report.workflows
     alerts = report.alerts
-    healthy_adapters = sum(1 for a in adapters.values() if a.status.value == "ok")
     return {
         "status": report.status.value,
         "active_workflows": workflows.active_count if workflows else 0,
         "total_adapters": len(adapters),
-        "healthy_adapters": healthy_adapters,
+        "healthy_adapters": sum(1 for a in adapters.values() if a.status.value == "ok"),
         "recent_alerts": alerts.total_active if alerts else 0,
-        "generated_at": (report.generated_at.isoformat() if report.generated_at else None),
+        "generated_at": report.generated_at.isoformat() if report.generated_at else None,
     }
 
 
 async def fetch_sweep_history() -> list[dict[str, Any]]:
-    """Fetch recent sweep history."""
     report = await _get_report()
     if report is None:
         return []
     w = report.workflows
     if w and (w.active_count or w.failed_count or w.recent_count):
-        return [
-            {
-                "status": "active",
-                "active": w.active_count,
-                "failed": w.failed_count,
-                "recent": w.recent_count,
-            }
-        ]
+        return [{"status": "active", "active": w.active_count,
+                 "failed": w.failed_count, "recent": w.recent_count}]
     return []
 
 
 async def fetch_routing_stats() -> dict[str, Any]:
-    """Fetch adapter routing statistics."""
     report = await _get_report()
     if report is None:
         return {"adapters": [], "total_decisions": 0, "cache_hit_rate": 0.0}
     adapters = report.adapters or {}
-    adapter_list = []
-    for name, adp in adapters.items():
-        adapter_list.append(
-            {
-                "name": name,
-                "status": adp.status.value,
-                "capabilities": adp.capabilities or {},
-                "preference_score": adp.preference_score,
-            }
-        )
+    adapter_list = [
+        {"name": name, "status": adp.status.value,
+         "capabilities": adp.capabilities or {},
+         "preference_score": adp.preference_score}
+        for name, adp in adapters.items()
+    ]
     healthy = sum(1 for a in adapter_list if a["status"] == "ok")
     return {
         "adapters": adapter_list,
@@ -148,271 +123,266 @@ async def fetch_routing_stats() -> dict[str, Any]:
 
 
 async def fetch_active_alerts() -> list[dict[str, Any]]:
-    """Fetch active alerts."""
     report = await _get_report()
     if report is None:
         return []
     alerts = report.alerts
     if alerts and alerts.top_alerts:
         return [
-            {
-                "id": str(i),
-                "severity": a.severity,
-                "title": f"{a.source}: {a.message}",
-                "description": a.message,
-                "time": (a.created_at.isoformat() if a.created_at else ""),
-            }
+            {"id": str(i), "severity": a.severity,
+             "title": f"{a.source}: {a.message}",
+             "description": a.message,
+             "time": a.created_at.isoformat() if a.created_at else ""}
             for i, a in enumerate(alerts.top_alerts)
         ]
     return []
 
 
 async def fetch_skill_drafts() -> list[dict[str, Any]]:
-    """Fetch skill drafts from the governance system.
+    """Fetch skill drafts by scanning ~/.claude/skills/ for SKILL.md files."""
+    from pathlib import Path
+    import re
 
-    Returns data from any registered SkillRegistry instances.
-    Falls back to an empty list when no registry is available.
-    """
-    return []
+    skills_root = Path.home() / ".claude" / "skills"
+    if not skills_root.exists():
+        return []
+
+    drafts: list[dict[str, Any]] = []
+    for skill_dir in sorted(skills_root.iterdir()):
+        skill_file = skill_dir / "SKILL.md"
+        if not skill_file.is_file():
+            continue
+        try:
+            text = skill_file.read_text(encoding="utf-8")
+            name = skill_dir.name
+            description = ""
+            m = re.search(r"^description:\s*(.+)$", text, re.MULTILINE)
+            if m:
+                description = m.group(1).strip()
+            mtime = datetime.fromtimestamp(skill_file.stat().st_mtime)
+            drafts.append({
+                "skill_id": name,
+                "name": name,
+                "version": "1.0",
+                "state": "active",
+                "proposed_by": "ecosystem",
+                "created_at": mtime,
+                "description": description,
+            })
+        except Exception:
+            continue
+    return drafts
 
 
 # ---------------------------------------------------------------------------
-# State-to-color mapping for skill drafts
+# Helpers
 # ---------------------------------------------------------------------------
 
-_STATE_COLORS: dict[str, str] = {
-    "draft": "yellow",
-    "review": "cyan",
-    "active": "green",
-    "deprecated": "red",
-}
+_SEVERITY_COLORS = {"critical": "red", "error": "red", "warning": "yellow",
+                    "info": "cyan", "debug": "dim"}
+_STATE_COLORS = {"draft": "yellow", "review": "cyan", "active": "green", "deprecated": "red"}
+
+
+def _severity_markup(severity: str) -> str:
+    color = _SEVERITY_COLORS.get(severity.lower(), "white")
+    return f"[bold {color}]{severity.upper()}[/]"
 
 
 def _state_markup(state: Any) -> str:
-    """Return a Textual markup string for a promotion state."""
     state_str = str(state).lower()
     color = _STATE_COLORS.get(state_str, "white")
     return f"[bold {color}]{state_str.upper()}[/]"
 
 
+def _status_color(status: str) -> str:
+    return {"ok": "green", "degraded": "yellow", "unknown": "dim"}.get(status.lower(), "red")
+
+
 # ---------------------------------------------------------------------------
-# Overview Screen
+# Screens
 # ---------------------------------------------------------------------------
 
 
 class OverviewScreen(VerticalScroll):
-    """System overview: health, active workflows, recent alerts."""
+    """System health, active workflows, recent alerts."""
 
-    status_text: reactive[str] = reactive("Loading...")
+    _status: reactive[str] = reactive("⏳ Loading…")
 
     def compose(self) -> ComposeResult:
-        yield Label("System Overview", id="overview-title")
-        yield Static(id="overview-status")
+        yield Label("System Overview", classes="screen-title")
+        yield Static(id="overview-status", classes="overview-block")
+        yield Label("", id="overview-timestamp", classes="dim-label")
 
     def on_mount(self) -> None:
-        self._load_data()
+        self.run_worker(self._fetch(), exclusive=True)
 
-    def _load_data(self) -> None:
-        """Load overview data asynchronously from EcosystemStatusService."""
+    async def _fetch(self) -> None:
+        data = await fetch_system_overview()
+        status = data.get("status", "unknown")
+        color = _status_color(status)
+        adapters = f"{data.get('healthy_adapters', 0)}/{data.get('total_adapters', 0)}"
+        workflows = data.get("active_workflows", 0)
+        alerts = data.get("recent_alerts", 0)
+        alert_color = "red" if alerts > 0 else "green"
 
-        async def _fetch() -> None:
-            data = await fetch_system_overview()
-            status = data.get("status", "unknown")
-            if status == "ok":
-                color = "green"
-            elif status == "degraded":
-                color = "yellow"
-            else:
-                color = "red"
-            self.status_text = (
-                f"[bold {color}]Status:[/] {status.capitalize()}  |  "
-                f"[bold]Adapters:[/] "
-                f"{data.get('healthy_adapters', 0)}/{data.get('total_adapters', 0)}  |  "
-                f"[bold]Workflows:[/] {data.get('active_workflows', 0)} active  |  "
-                f"[bold]Alerts:[/] {data.get('recent_alerts', 0)}"
-            )
+        self._status = (
+            f"[bold {color}]● {status.upper()}[/]   "
+            f"[bold]Adapters[/] {adapters}   "
+            f"[bold]Workflows[/] {workflows} active   "
+            f"[bold {alert_color}]Alerts[/] {alerts}"
+        )
+        ts = data.get("generated_at")
+        if ts:
+            self.query_one("#overview-timestamp", Label).update(f"Last updated: {ts}")
 
-        asyncio.create_task(_fetch())
+    def watch__status(self, new: str) -> None:
+        self.query_one("#overview-status", Static).update(new)
 
-    def watch_status_text(self, new_text: str) -> None:
-        status = self.query_one("#overview-status", Static)
-        status.update(new_text)
-
-
-# ---------------------------------------------------------------------------
-# Sweep Screen
-# ---------------------------------------------------------------------------
+    def refresh_data(self) -> None:
+        self.run_worker(self._fetch(), exclusive=True)
 
 
 class SweepScreen(VerticalScroll):
-    """Sweep history: recent sweeps with success/fail rates."""
+    """Workflow sweep history."""
 
     def compose(self) -> ComposeResult:
-        yield Label("Sweep History", id="sweep-title")
-        table = DataTable(id="sweep-table")
-        table.add_columns("ID", "Status", "Adapter", "Repos", "Started", "Duration")
+        yield Label("Sweep History", classes="screen-title")
+        table = DataTable(id="sweep-table", cursor_type="row", zebra_stripes=True)
+        table.add_columns("Status", "Active", "Failed", "Recent")
         yield table
 
     def on_mount(self) -> None:
-        async def _fetch() -> None:
-            data = await fetch_sweep_history()
-            table = self.query_one("#sweep-table", DataTable)
-            table.clear()
-            if data:
-                for entry in data:
-                    table.add_row(
-                        "-",
-                        entry.get("status", "-"),
-                        "-",
-                        str(entry.get("active", 0) + entry.get("failed", 0)),
-                        "-",
-                        "-",
-                    )
-            else:
-                table.add_row("-", "No sweeps yet", "-", "0", "-", "-")
+        self.run_worker(self._fetch(), exclusive=True)
 
-        asyncio.create_task(_fetch())
+    async def _fetch(self) -> None:
+        data = await fetch_sweep_history()
+        table = self.query_one("#sweep-table", DataTable)
+        table.clear()
+        if data:
+            for entry in data:
+                failed = entry.get("failed", 0)
+                fail_str = f"[red]{failed}[/]" if failed else str(failed)
+                table.add_row(entry.get("status", "-"), str(entry.get("active", 0)),
+                              fail_str, str(entry.get("recent", 0)))
+        else:
+            table.add_row("[dim]No sweeps yet[/]", "-", "-", "-")
 
-
-# ---------------------------------------------------------------------------
-# Routing Screen
-# ---------------------------------------------------------------------------
+    def refresh_data(self) -> None:
+        self.run_worker(self._fetch(), exclusive=True)
 
 
 class RoutingScreen(VerticalScroll):
     """Adapter health and routing decisions."""
 
     def compose(self) -> ComposeResult:
-        yield Label("Adapter Routing", id="routing-title")
-        yield Static(id="routing-summary")
-        table = DataTable(id="routing-table")
-        table.add_columns("Adapter", "Domain", "Status", "Priority", "Capabilities")
+        yield Label("Adapter Routing", classes="screen-title")
+        yield Static(id="routing-summary", classes="overview-block")
+        table = DataTable(id="routing-table", cursor_type="row", zebra_stripes=True)
+        table.add_columns("Adapter", "Status", "Score", "Capabilities")
         yield table
 
     def on_mount(self) -> None:
-        async def _fetch() -> None:
-            data = await fetch_routing_stats()
-            adapters = data.get("adapters", [])
-            healthy = sum(1 for a in adapters if a["status"] == "ok")
-            total = len(adapters)
-            hit_rate = data.get("cache_hit_rate", 0.0)
-            summary = self.query_one("#routing-summary", Static)
-            summary.update(
-                f"[bold]Healthy:[/] {healthy}/{total}  |  "
-                f"[bold]Total Decisions:[/] {data.get('total_decisions', 0)}  |  "
-                f"[bold]Hit Rate:[/] {hit_rate:.1%}"
-            )
-            table = self.query_one("#routing-table", DataTable)
-            table.clear()
-            if adapters:
-                for a in adapters:
-                    caps = (
-                        ", ".join(a.get("capabilities", {}).keys())
-                        if a.get("capabilities")
-                        else "-"
-                    )
-                    table.add_row(
-                        a["name"],
-                        "orchestration",
-                        a["status"],
-                        str(a.get("preference_score", 0) or 0),
-                        caps,
-                    )
-            else:
-                table.add_row("-", "-", "no adapters", "-", "-")
+        self.run_worker(self._fetch(), exclusive=True)
 
-        asyncio.create_task(_fetch())
+    async def _fetch(self) -> None:
+        data = await fetch_routing_stats()
+        adapters = data.get("adapters", [])
+        healthy = sum(1 for a in adapters if a["status"] == "ok")
+        total = len(adapters)
+        hit_rate = data.get("cache_hit_rate", 0.0)
+        color = _status_color("ok" if healthy == total and total > 0 else "degraded" if healthy else "error")
+        self.query_one("#routing-summary", Static).update(
+            f"[bold {color}]Healthy:[/] {healthy}/{total}   "
+            f"[bold]Decisions:[/] {data.get('total_decisions', 0)}   "
+            f"[bold]Adapter health:[/] {hit_rate:.0%}"
+        )
+        table = self.query_one("#routing-table", DataTable)
+        table.clear()
+        if adapters:
+            for a in adapters:
+                status = a["status"]
+                status_str = f"[bold {_status_color(status)}]{status}[/]"
+                caps = ", ".join(a.get("capabilities", {}).keys()) or "-"
+                score = a.get("preference_score")
+                table.add_row(a["name"], status_str,
+                              str(round(score, 2)) if score is not None else "-", caps)
+        else:
+            table.add_row("[dim]No adapters registered[/]", "-", "-", "-")
 
-
-# ---------------------------------------------------------------------------
-# Alerts Screen
-# ---------------------------------------------------------------------------
+    def refresh_data(self) -> None:
+        self.run_worker(self._fetch(), exclusive=True)
 
 
 class AlertsScreen(VerticalScroll):
-    """Active alerts with severity filter."""
+    """Active alerts with severity."""
 
     def compose(self) -> ComposeResult:
-        yield Label("Active Alerts", id="alerts-title")
-        yield Static(id="alerts-count")
-        table = DataTable(id="alerts-table")
-        table.add_columns("ID", "Severity", "Title", "Description", "Time")
+        yield Label("Active Alerts", classes="screen-title")
+        yield Static(id="alerts-count", classes="overview-block")
+        table = DataTable(id="alerts-table", cursor_type="row", zebra_stripes=True)
+        table.add_columns("Severity", "Source / Title", "Time")
         yield table
 
     def on_mount(self) -> None:
-        async def _fetch() -> None:
-            alerts = await fetch_active_alerts()
-            count = self.query_one("#alerts-count", Static)
-            total = len(alerts)
-            color = "red" if total > 0 else "green"
-            count.update(f"[bold {color}]{total} active alert{'s' if total != 1 else ''}[/]")
-            table = self.query_one("#alerts-table", DataTable)
-            table.clear()
-            if alerts:
-                for a in alerts:
-                    table.add_row(
-                        a["id"],
-                        a.get("severity", "unknown"),
-                        a.get("title", ""),
-                        a.get("description", ""),
-                        a.get("time", ""),
-                    )
+        self.run_worker(self._fetch(), exclusive=True)
 
-        asyncio.create_task(_fetch())
+    async def _fetch(self) -> None:
+        alerts = await fetch_active_alerts()
+        count_widget = self.query_one("#alerts-count", Static)
+        total = len(alerts)
+        color = "red" if total > 0 else "green"
+        count_widget.update(f"[bold {color}]{total} active alert{'s' if total != 1 else ''}[/]")
+        table = self.query_one("#alerts-table", DataTable)
+        table.clear()
+        if alerts:
+            for a in alerts:
+                table.add_row(_severity_markup(a.get("severity", "info")),
+                              a.get("title", ""), a.get("time", ""))
+        else:
+            table.add_row("[dim green]No active alerts[/]", "", "")
 
-
-# ---------------------------------------------------------------------------
-# Reviews Screen
-# ---------------------------------------------------------------------------
+    def refresh_data(self) -> None:
+        self.run_worker(self._fetch(), exclusive=True)
 
 
 class ReviewsScreen(VerticalScroll):
-    """Skill governance reviews: pending and recent drafts."""
+    """Skill governance: pending drafts and reviews."""
 
     def compose(self) -> ComposeResult:
-        yield Label("Skill Drafts", id="reviews-title")
-        yield Static(id="reviews-count")
-        table = DataTable(id="reviews-table")
+        yield Label("Skill Drafts", classes="screen-title")
+        yield Static(id="reviews-count", classes="overview-block")
+        table = DataTable(id="reviews-table", cursor_type="row", zebra_stripes=True)
         table.add_columns("ID", "Name", "Version", "State", "Proposed By", "Created")
         yield table
 
     def on_mount(self) -> None:
-        self._load_data()
+        self.run_worker(self._fetch(), exclusive=True)
 
-    def _load_data(self) -> None:
-        """Load skill drafts asynchronously."""
+    async def _fetch(self) -> None:
+        drafts = await fetch_skill_drafts()
+        count = self.query_one("#reviews-count", Static)
+        total = len(drafts)
+        review_count = sum(1 for d in drafts if str(d.get("state", "")).lower() == "review")
+        color = "cyan" if review_count > 0 else "green"
+        count.update(
+            f"[bold {color}]{total} draft{'s' if total != 1 else ''}[/]"
+            + (f"   [bold cyan]{review_count} pending review[/]" if review_count else "")
+        )
+        table = self.query_one("#reviews-table", DataTable)
+        table.clear()
+        if drafts:
+            for d in drafts:
+                created = d.get("created_at")
+                created_str = (created.strftime("%Y-%m-%d %H:%M")
+                               if isinstance(created, datetime) else str(created) if created else "-")
+                table.add_row(d.get("skill_id", "-"), d.get("name", "-"), d.get("version", "-"),
+                              _state_markup(d.get("state", "draft")),
+                              d.get("proposed_by", "-"), created_str)
+        else:
+            table.add_row("-", "[dim]No skill drafts found[/]", "-", "-", "-", "-")
 
-        async def _fetch() -> None:
-            drafts = await fetch_skill_drafts()
-            count = self.query_one("#reviews-count", Static)
-            total = len(drafts)
-            review_count = sum(1 for d in drafts if str(d.get("state", "")).lower() == "review")
-            color = "cyan" if review_count > 0 else "green"
-            count.update(
-                f"[bold {color}]{total} draft{'s' if total != 1 else ''}[/]"
-                + (f"  |  [bold cyan]{review_count} pending review[/]" if review_count else "")
-            )
-            table = self.query_one("#reviews-table", DataTable)
-            table.clear()
-            if drafts:
-                for d in drafts:
-                    created = d.get("created_at")
-                    if isinstance(created, datetime):
-                        created_str = created.strftime("%Y-%m-%d %H:%M")
-                    else:
-                        created_str = str(created) if created else "-"
-                    table.add_row(
-                        d.get("skill_id", "-"),
-                        d.get("name", "-"),
-                        d.get("version", "-"),
-                        _state_markup(d.get("state", "draft")),
-                        d.get("proposed_by", "-"),
-                        created_str,
-                    )
-            else:
-                table.add_row("-", "No skill drafts found", "-", "-", "-", "-")
-
-        asyncio.create_task(_fetch())
+    def refresh_data(self) -> None:
+        self.run_worker(self._fetch(), exclusive=True)
 
 
 # ---------------------------------------------------------------------------
@@ -421,31 +391,65 @@ class ReviewsScreen(VerticalScroll):
 
 
 class DashboardApp(App):
-    """Mahavishnu ecosystem dashboard -- read-only Textual TUI.
+    """Mahavishnu ecosystem dashboard — read-only Textual TUI.
 
     Usage:
-        dashboard = DashboardApp()
-        dashboard.run()
-
-    Or from CLI:
         mahavishnu dashboard
     """
 
     TITLE = "Mahavishnu Dashboard"
+    SUB_TITLE = f"Auto-refresh every {_REFRESH_INTERVAL}s · Press R to refresh now · Q to quit"
+
+    COMMANDS = {MahavishnuCommandProvider}
+
     CSS = """
-    #overview-title, #sweep-title, #routing-title, #alerts-title, #reviews-title {
+    Screen {
+        background: $surface;
+    }
+
+    .screen-title {
         text-style: bold;
+        color: $accent;
+        padding: 1 0 0 0;
         margin-bottom: 1;
     }
+
+    .overview-block {
+        background: $panel;
+        padding: 1 2;
+        border: tall $primary;
+        margin-bottom: 1;
+    }
+
+    .dim-label {
+        color: $text-muted;
+        margin-bottom: 1;
+    }
+
     DataTable {
         height: auto;
-        max-height: 20;
+        max-height: 30;
+        margin-bottom: 1;
+    }
+
+    DataTable > .datatable--header {
+        text-style: bold;
+        background: $primary-darken-2;
+    }
+
+    TabbedContent TabPane {
+        padding: 0 1;
+    }
+
+    Footer {
+        background: $primary-darken-3;
     }
     """
 
     BINDINGS = [
-        Binding("q", "quit", "Quit"),
-        Binding("r", "refresh_data", "Refresh"),
+        Binding("q", "quit", "Quit", priority=True),
+        Binding("r", "refresh_all", "Refresh"),
+        Binding("ctrl+k", "command_palette", "Commands"),
         Binding("1", "switch_tab('overview')", "Overview"),
         Binding("2", "switch_tab('sweep')", "Sweep"),
         Binding("3", "switch_tab('routing')", "Routing"),
@@ -454,40 +458,32 @@ class DashboardApp(App):
     ]
 
     def compose(self) -> ComposeResult:
-        yield Header()
+        yield Header(show_clock=True)
         with TabbedContent(initial="overview"):
-            with TabPane("Overview", id="overview"):
+            with TabPane("1 Overview", id="overview"):
                 yield OverviewScreen()
-            with TabPane("Sweep", id="sweep"):
+            with TabPane("2 Sweep", id="sweep"):
                 yield SweepScreen()
-            with TabPane("Routing", id="routing"):
+            with TabPane("3 Routing", id="routing"):
                 yield RoutingScreen()
-            with TabPane("Alerts", id="alerts"):
+            with TabPane("4 Alerts", id="alerts"):
                 yield AlertsScreen()
-            with TabPane("Reviews", id="reviews"):
+            with TabPane("5 Reviews", id="reviews"):
                 yield ReviewsScreen()
         yield Footer()
 
-    def action_switch_tab(self, tab_id: str) -> None:
-        """Switch to a specific tab."""
-        try:
-            tc = self.query_one(TabbedContent)
-            tc.active = tab_id
-        except Exception:
-            pass
+    def on_mount(self) -> None:
+        self.set_interval(_REFRESH_INTERVAL, self.action_refresh_all)
 
-    def action_refresh_data(self) -> None:
-        """Refresh all screen data from EcosystemStatusService."""
-        for screen in self.query(OverviewScreen):
-            screen._load_data()
-        for screen in self.query(SweepScreen):
-            screen.on_mount()
-        for screen in self.query(RoutingScreen):
-            screen.on_mount()
-        for screen in self.query(AlertsScreen):
-            screen.on_mount()
-        for screen in self.query(ReviewsScreen):
-            screen._load_data()
+    def action_switch_tab(self, tab_id: str) -> None:
+        with contextlib.suppress(Exception):
+            self.query_one(TabbedContent).active = tab_id
+
+    def action_refresh_all(self) -> None:
+        """Refresh all screens from live data."""
+        for screen_cls in (OverviewScreen, SweepScreen, RoutingScreen, AlertsScreen, ReviewsScreen):
+            for widget in self.query(screen_cls):
+                widget.refresh_data()
 
 
 # Alias for convenience

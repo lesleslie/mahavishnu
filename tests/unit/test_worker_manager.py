@@ -69,7 +69,6 @@ class TestWorkerManagerInit:
         assert mgr.debug_mode is False
         assert mgr.session_buddy_client is None
         assert mgr.mcp_client is None
-        assert mgr.nanobot_provider is None
         assert mgr._workers == {}
         assert mgr._debug_monitor_worker is None
 
@@ -111,16 +110,13 @@ class TestWorkerManagerInit:
         tm = _make_terminal_manager()
         sb = MagicMock()
         mcp = MagicMock()
-        nb = MagicMock()
         mgr = WorkerManager(
             terminal_manager=tm,
             session_buddy_client=sb,
             mcp_client=mcp,
-            nanobot_provider=nb,
         )
         assert mgr.session_buddy_client is sb
         assert mgr.mcp_client is mcp
-        assert mgr.nanobot_provider is nb
 
     def test_semaphore_created_with_max_concurrent(self):
         """Test that the internal semaphore is created."""
@@ -334,45 +330,6 @@ class TestCreateWorker:
             pytest.raises(ValueError, match="Unknown gateway worker type"),
         ):
             mgr._create_worker("gateway-unknown")
-
-    def test_in_process_nanobot_worker_created(self):
-        """Test that in-process-nanobot creates a NanobotWorker."""
-        tm = _make_terminal_manager()
-        nb = MagicMock()
-        mgr = WorkerManager(terminal_manager=tm, nanobot_provider=nb)
-        config = WorkerConfig(
-            name="Nanobot",
-            worker_type="in-process-nanobot",
-            command="",
-            category=WorkerCategory.IN_PROCESS,
-        )
-
-        with (
-            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
-            patch("mahavishnu.workers.nanobot_worker.NanobotWorker", create=True) as MockNW,
-        ):
-            worker = mgr._create_worker("in-process-nanobot")
-            MockNW.assert_called_once()
-            call_kwargs = MockNW.call_args[1]
-            assert call_kwargs["nanobot_provider"] is nb
-            assert worker is not None
-
-    def test_unknown_in_process_worker_raises(self):
-        """Test that an unknown in-process worker type raises ValueError."""
-        tm = _make_terminal_manager()
-        mgr = WorkerManager(terminal_manager=tm)
-        config = WorkerConfig(
-            name="Unknown InProcess",
-            worker_type="in-process-unknown",
-            command="",
-            category=WorkerCategory.IN_PROCESS,
-        )
-
-        with (
-            patch("mahavishnu.workers.registry.get_worker_config", return_value=config),
-            pytest.raises(ValueError, match="Unknown in-process worker"),
-        ):
-            mgr._create_worker("in-process-unknown")
 
     def test_fallback_creates_generic_shell_worker(self):
         """Test that an unrecognized category falls back to GenericShellWorker."""

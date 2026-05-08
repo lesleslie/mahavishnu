@@ -25,8 +25,11 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 import json
 import logging
+from pathlib import Path
 import sqlite3
 from typing import TYPE_CHECKING, Any
+
+_HEALTH_DB = Path(__file__).parent.parent.parent / "data" / "health.db"
 
 if TYPE_CHECKING:
     from mahavishnu.core.adapters.base import OrchestratorAdapter
@@ -582,7 +585,8 @@ class AdapterHealthMonitor:
             # Fallback to local SQLite if available
             try:
                 # Use local health.db for persistence
-                conn = sqlite3.connect("health.db")
+                _HEALTH_DB.parent.mkdir(parents=True, exist_ok=True)
+                conn = sqlite3.connect(_HEALTH_DB)
                 cursor = conn.cursor()
 
                 cursor.execute("""

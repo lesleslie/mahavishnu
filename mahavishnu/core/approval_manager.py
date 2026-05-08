@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 import uuid
+
+if TYPE_CHECKING:
+    from mahavishnu.core.state_backends.dhara import DharaStateBackend
 
 
 @dataclass
@@ -63,16 +66,29 @@ class ApprovalResult:
 
 
 class ApprovalManager:
-    """Manages manual approval workflows for version bumps and publishing."""
+    """Manages manual approval workflows for version bumps and publishing.
 
-    def __init__(self, default_timeout_minutes: int = 30) -> None:
+    Approvals are persisted to Dhara when a DharaStateBackend is provided,
+    enabling survival across orchestrator restarts (lookback window).
+    """
+
+    def __init__(
+        self,
+        default_timeout_minutes: int = 1440,  # 24 hours
+        dhara_state: DharaStateBackend | None = None,
+    ) -> None:
         """Initialize the approval manager.
 
         Args:
             default_timeout_minutes: Default time before requests expire.
+                Defaults to 1440 (24 hours) so approvals survive restarts.
+            dhara_state: Optional Dhara backend for durable persistence.
+                When provided, each pending approval is written to Dhara
+                and deleted on resolution or expiry.
         """
         self._pending_requests: dict[str, ApprovalRequest] = {}
         self._default_timeout = timedelta(minutes=default_timeout_minutes)
+        self._dhara_state = dhara_state
 
     @property
     def pending_requests(self) -> list[ApprovalRequest]:
@@ -100,7 +116,6 @@ class ApprovalManager:
         request_id = f"approval-{uuid.uuid4().hex[:8]}"
         timeout = timedelta(minutes=timeout_minutes) if timeout_minutes else self._default_timeout
 
-        # Generate default options if not provided
         if options is None:
             options = self._generate_default_options(approval_type, context)
 
@@ -114,7 +129,25 @@ class ApprovalManager:
         )
 
         self._pending_requests[request.id] = request
+        self._schedule_dhara_persist(request)
         return request
+
+    def _schedule_dhara_persist(self, request: ApprovalRequest) -> None:
+        """Fire-and-forget: persist approval to Dhara with a TTL matching expires_at."""
+        if self._dhara_state is None:
+            return
+        ttl = max(int((request.expires_at - datetime.now(UTC)).total_seconds()), 0)
+        self._dhara_state.schedule_put(
+            f"approval/v1/{request.id}",
+            request.to_dict(),
+            ttl=ttl if ttl > 0 else None,
+        )
+
+    def _schedule_dhara_delete(self, request_id: str) -> None:
+        """Fire-and-forget: remove resolved/expired approval from Dhara."""
+        if self._dhara_state is None:
+            return
+        self._dhara_state.schedule_delete(f"approval/v1/{request_id}")
 
     def _generate_default_options(
         self,
@@ -193,10 +226,11 @@ class ApprovalManager:
 
         if request.is_expired:
             del self._pending_requests[request_id]
+            self._schedule_dhara_delete(request_id)
             raise ValueError(f"Request {request_id} has expired")
 
-        # Remove from pending
         del self._pending_requests[request_id]
+        self._schedule_dhara_delete(request_id)
 
         return ApprovalResult(
             approved=approved,
@@ -205,7 +239,7 @@ class ApprovalManager:
         )
 
     def cleanup_expired(self) -> int:
-        """Remove all expired requests.
+        """Remove all expired requests and schedule Dhara cleanup.
 
         Returns:
             Number of requests removed.
@@ -213,4 +247,47 @@ class ApprovalManager:
         expired_ids = [req.id for req in self._pending_requests.values() if req.is_expired]
         for req_id in expired_ids:
             del self._pending_requests[req_id]
+            self._schedule_dhara_delete(req_id)
         return len(expired_ids)
+
+    def restore_from_dhara_entries(
+        self, entries: list[tuple[str, dict[str, Any]]]
+    ) -> int:
+        """Re-register non-expired approvals recovered from Dhara on restart.
+
+        Args:
+            entries: List of (key, value) pairs from DharaStateBackend.list_prefix.
+
+        Returns:
+            Number of approvals successfully restored.
+        """
+        restored = 0
+        for _key, data in entries:
+            try:
+                request = self._dict_to_request(data)
+                if not request.is_expired and request.id not in self._pending_requests:
+                    self._pending_requests[request.id] = request
+                    restored += 1
+            except Exception:
+                pass
+        return restored
+
+    @staticmethod
+    def _dict_to_request(data: dict[str, Any]) -> ApprovalRequest:
+        """Deserialize an ApprovalRequest from a Dhara-stored dict."""
+        options = [
+            ApprovalOption(
+                label=opt["label"],
+                description=opt["description"],
+                is_recommended=opt.get("is_recommended", False),
+            )
+            for opt in data.get("options", [])
+        ]
+        return ApprovalRequest(
+            id=data["id"],
+            approval_type=data["approval_type"],
+            context=data.get("context", {}),
+            created_at=datetime.fromisoformat(data["created_at"]),
+            expires_at=datetime.fromisoformat(data["expires_at"]),
+            options=options,
+        )

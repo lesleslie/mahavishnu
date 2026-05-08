@@ -31,6 +31,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
+from textual.command import Hit, Hits, Provider
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
@@ -513,6 +514,27 @@ def create_default_palette() -> CommandPalette:
     )
 
     return palette
+
+
+class MahavishnuCommandProvider(Provider):
+    """Textual Provider that exposes Mahavishnu commands in the command palette."""
+
+    async def search(self, query: str) -> Hits:
+        palette = get_command_palette()
+        for match in palette.search(query):
+            cmd = match.command
+            display = f"[bold]{cmd.name}[/]  [dim]{cmd.description}[/]"
+
+            async def _run(command_id: str = cmd.id) -> None:
+                await palette.execute(command_id)
+
+            yield Hit(
+                score=match.score,
+                match_display=display,
+                command=_run,
+                text=cmd.name,
+                help=cmd.description or None,
+            )
 
 
 # Singleton instance
