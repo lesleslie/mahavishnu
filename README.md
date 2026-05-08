@@ -195,9 +195,10 @@ Mahavishnu follows a modular, async-first architecture with these core component
 |  v                        v                             v      |
 | +----------+         +----------+                +---------+   |
 | |  Pools   |         | Workers  |                |Coord    |   |
-| | - Local  |         | - Qwen   |                |- Issues |   |
-| | - Deleg  |         | - Claude |                |- Todos  |   |
-| | - K8s    |         | - Cont   |                |- Deps   |   |
+| | - Local  |         | - Claude |                |- Issues |   |
+| | - Deleg  |         | - ZAI/GLM|                |- Todos  |   |
+| | - K8s    |         | - Nanobot|                |- Deps   |   |
+| | - RunPod |         | - OpenClaw               |-Messages|   |
 | +----------+         +----------+                +---------+   |
 |                                                                |
 |  +-------------------------------------------------------+     |
@@ -215,7 +216,7 @@ Mahavishnu follows a modular, async-first architecture with these core component
 **Adapter Architecture**
 
 - Async base adapter interface for orchestration engines
-- Pluggable adapters for LlamaIndex (RAG), Prefect (flows), Agno (agents)
+- Pluggable adapters for LlamaIndex (RAG), Prefect (flows), Agno (agents), Hatchet (durable workflows)
 - Easy to add new orchestration backends
 
 ### Capability Maturity Snapshot
@@ -226,10 +227,11 @@ This table clarifies current maturity so multi-engine expectations match impleme
 |-----------|--------|-------|
 | Multi-repo orchestration | Implemented | Repository manifest (`settings/repos.yaml`), cross-repo coordination, dependency/status tooling |
 | Async orchestration runtime | Implemented | Async-first core, async messaging, concurrent worker and pool execution |
-| Multi-pool execution (local/delegated/K8s) | Implemented | Routing strategies and pool health/monitoring are implemented |
+| Multi-pool execution (local/delegated/K8s/RunPod) | Implemented | Routing strategies and pool health/monitoring are implemented; RunPod GPU pool added 2026-05-01 |
 | LlamaIndex engine adapter | Implemented | RAG pipeline integration is implemented |
-| Prefect engine adapter | Implemented | Full Prefect 3.x SDK integration with flows, deployments, schedules, and task orchestration (1,800+ LOC) |
-| Agno engine adapter | Implemented | Multi-agent teams with MCP tools, Ollama/Claude/OpenAI support, and agent lifecycle management (1,400+ LOC) |
+| Prefect engine adapter | Implemented | Full Prefect 3.x SDK integration with flows, deployments, schedules, and task orchestration (1,974 LOC) |
+| Agno engine adapter | Implemented | Multi-agent teams with MCP tools, ZAI/Claude/Ollama/OpenAI support, and agent lifecycle management (1,627 LOC) |
+| Hatchet engine adapter | Implemented | Durable workflow execution with human-in-the-loop approval events, `send_approval_event`, and `AGENT_LOOP` task routing |
 
 **Configuration System**
 
@@ -344,7 +346,7 @@ mahavishnu show-role orchestrator
 mahavishnu mcp start
 ```
 
-The MCP server starts on `http://127.0.0.1:3000` and exposes 49+ orchestration and coordination tools.
+The MCP server starts on `http://127.0.0.1:8680` by default and exposes 150+ orchestration and coordination tools across 21 tool groups. Tool exposure is gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable: `full` (default, all groups), `standard` (core 7 groups), `minimal` (health probes only).
 
 ### 5. Use Admin Shell
 
@@ -420,7 +422,14 @@ Mahavishnu uses a role-based taxonomy to organize repositories:
 
 - Deploys workers as Kubernetes Jobs/Pods
 - Auto-scaling via HPA
-- Use for: deployed workloads, auto-scaling workloads
+- Use for: production deployments with K8s infrastructure
+
+**RunPodPool** (GPU Cloud)
+
+- Serverless GPU execution via RunPod Flash API
+- Register with `pool_type="runpod"`, requires `RUNPOD_API_KEY`
+- Subclass `RunPodPool` and override `_build_endpoint()` for a concrete GPU handler (`GpuHandlerPool`)
+- Use for: vision and ML inference workloads
 
 ### Worker Types
 
@@ -517,7 +526,7 @@ See **[Goal-Driven Teams Documentation](docs/GOAL_DRIVEN_TEAMS.md)** for complet
 
 ## MCP Tools
 
-Mahavishnu's MCP server exposes **49 tools** across 6 categories:
+Mahavishnu's MCP server exposes **150+ tools** across 21 tool groups (see `MAHAVISHNU_TOOL_PROFILE` for gating). Core tool groups:
 
 ### Pool Management (10 tools)
 
@@ -603,9 +612,22 @@ Mahavishnu uses a layered configuration system:
 # Authentication
 export MAHAVISHNU_AUTH__SECRET="your-32-character-secret"
 
+# Primary LLM provider (ZAI — OpenAI-compatible)
+export ZAI_API_KEY="your-zai-api-key"
+export ZAI_BASE_URL="https://api.z.ai/api/coding/paas/v4"  # optional override
+
+# RunPod GPU pool (optional)
+export RUNPOD_API_KEY="your-runpod-api-key"
+
+# Hatchet durable workflow engine (optional)
+export HATCHET_CLIENT_TOKEN="your-hatchet-client-token"
+
 # Pool configuration
 export MAHAVISHNU_POOLS__ENABLED="true"
 export MAHAVISHNU_POOLS__DEFAULT_TYPE="mahavishnu"
+
+# MCP tool surface (full | standard | minimal)
+export MAHAVISHNU_TOOL_PROFILE="full"
 
 # OTel storage
 export MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING="postgresql://..."
@@ -736,36 +758,40 @@ mahavishnu/
 
 ### Current Implementation
 
-**Quality Score: 92/100 (Validated and implemented)**
-
 Important scope note: Mahavishnu is validated for multi-repo orchestration, async coordination, and pool/worker routing. Engine adapter maturity varies by adapter (see Capability Maturity Snapshot).
 
 **Completed:**
 
-- Security hardening (JWT auth, Claude Code + Qwen support)
+- Security hardening (JWT auth, mcp-common canonical JWT package across Bodai)
 - Async base adapter architecture
-- FastMCP-based MCP server (49 tools)
-- Multi-pool orchestration (local, delegated, K8s)
-- Worker orchestration (Qwen, Claude, OpenClaw terminal/gateway)
-- Cross-repository coordination (issues, todos, dependencies)
-- Repository messaging (async event-driven)
+- FastMCP-based MCP server (150+ tools, 21 groups, profile-gated)
+- Multi-pool orchestration (local, delegated, K8s, RunPod GPU)
+- Worker orchestration (Claude, Qwen, ZAI/GLM, OpenClaw terminal/gateway)
+- Cross-repository coordination (issues, todos, dependencies, messaging)
 - OpenTelemetry integration (DuckDB + semantic search)
 - Configuration system (Oneiric patterns)
 - CLI with authentication framework
 - Admin shell (IPython-based)
-- Test infrastructure (12 test files)
+- Routing observability (StatisticalRouter, RoutingDecisionBuffer, Prometheus metrics)
+- Ecosystem status surface (EcosystemStatusService, MCP tools, CLI commands)
 
-**Engine Adapter Maturity:**
+**Engine Adapters (all fully implemented):**
 
-- LlamaIndex adapter (RAG pipelines, fully implemented)
-- Prefect adapter (fully implemented — flows, deployments, schedules)
-- Agno adapter (fully implemented — multi-agent teams, MCP tools)
+- LlamaIndex adapter — RAG pipelines, Ollama embeddings (1,800+ LOC)
+- Prefect adapter — flows, deployments, schedules, task orchestration (1,974 LOC)
+- Agno adapter — multi-agent teams, MCP tools, ZAI/Anthropic/Ollama/OpenAI support (1,627 LOC)
+- Hatchet adapter — durable agentic workflows, human-in-the-loop approval events, `AGENT_LOOP` task routing
 
-**Roadmap:**
+**Recently delivered (see [Master Backlog](docs/plans/2026-05-07-mahavishnu-master-backlog.md)):**
 
-- Phase 4: Deployment Features (error recovery, full observability)
-- Phase 5: Comprehensive Testing & Documentation
-- Phase 6: Release Readiness (security audit, benchmarking)
+- Session-Buddy Multi-Channel tracking — `track_channel_session` MCP tool + 19 tests
+- Storage Consolidation — Dhara integration for workflow/pool state persistence
+- Config Consolidation — unified schema validation across all YAML config files
+- RunPod Pool subtasks — task-category routing and GPU handler subclass pattern (`GpuHandlerPool`)
+- TUI completion — command palette + skill drafts
+- Hatchet rate-limiting — sliding-window limiter wired into `cloud_worker.py`
+- OpenWebUI mcpo bridge — `uvx mcpo --type streamable-http` bridge to MCP surface; see [integration guide](docs/integrations/openwebui.md)
+- HatchetAdapter — durable workflow adapter with approval event bridge
 
 ## Contributing
 

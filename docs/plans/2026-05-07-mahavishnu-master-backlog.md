@@ -3,7 +3,7 @@
 **Created**: 2026-05-07
 **Status**: `canonical` — single authoritative list of confirmed open work
 **Authority**: Verified against codebase 2026-05-07. Items here were confirmed missing by code inspection; closed/superseded items were removed.
-**Last updated**: 2026-05-07 — Priorities 7–10 and Final Gate added from Hatchet/OpenWebUI evaluation.
+**Last updated**: 2026-05-08 — All priorities delivered; Final Gate complete.
 
 ---
 
@@ -223,7 +223,7 @@ Mahavishnu's approval flow (`request_approval` → `respond_to_approval`) sends 
 ## Priority 9 — OpenWebUI mcpo Bridge
 
 **Plan**: _(this document — zero-infrastructure integration, no separate plan file needed)_
-**Status**: open — no web UI layer exists for Mahavishnu as of 2026-05-07
+**Status**: delivered 2026-05-08 — bridge code, mcpo config, and integration doc complete; manual UI steps (tool registration, model arena) in progress out-of-band
 **Scope**: Narrow; `uvx mcpo` bridge + OpenWebUI tool registration + integration doc. No Docker, no code changes to Mahavishnu.
 
 ### Why this priority
@@ -294,7 +294,7 @@ Hatchet is a durable task queue + DAG orchestrator built on Postgres with <20ms 
 
 ## Final Gate — README Update
 
-**Status**: blocked — must run after ALL priorities above are delivered
+**Status**: delivered 2026-05-08
 **Scope**: Single-pass documentation update; no code changes
 
 ### Why last
@@ -311,7 +311,7 @@ The README describes the current state of Mahavishnu. Updating it mid-implementa
 - [ ] Verify all ports, env vars, and CLI command examples are accurate
 - [ ] Confirm pool type table includes `runpod` with `GpuHandlerPool` note (after Priority 4)
 
-**Delivered**: _pending_
+**Delivered**: 2026-05-08 — README updated; all backlog items reflected
 
 ---
 
