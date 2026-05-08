@@ -33,3 +33,5 @@ def test_hatchet_config_defaults():
     assert cfg.server_url == "localhost:7077"
     assert cfg.namespace == "mahavishnu"
     assert cfg.max_runs == 10
+    assert cfg.poll_interval_seconds == 2.0
+    assert cfg.task_timeout_seconds == 300
