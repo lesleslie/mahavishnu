@@ -15,6 +15,7 @@ class AdapterType(StrEnum):
     LLAMAINDEX = "llamaindex"
     PYDANTIC_AI = "pydantic_ai"
     WORKER = "worker"
+    HATCHET = "hatchet"
 
 
 class AdapterCapabilities:
