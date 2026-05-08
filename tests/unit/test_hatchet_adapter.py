@@ -128,3 +128,18 @@ async def test_hatchet_send_approval_event(hatchet_adapter, mock_hatchet_client)
     hatchet_adapter._client = mock_hatchet_client
     await hatchet_adapter.send_approval_event("run-001", approved=True)
     mock_hatchet_client.event.push.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_hatchet_execute_timeout(hatchet_adapter, mock_hatchet_client):
+    import asyncio as _asyncio
+
+    async def slow_run(*args, **kwargs):
+        await _asyncio.sleep(999)
+
+    mock_hatchet_client.run = slow_run
+    hatchet_adapter._client = mock_hatchet_client
+    result = await hatchet_adapter.execute(
+        {"prompt": "run agent loop", "timeout": 0.01}, repos=[]
+    )
+    assert result["status"] == "timeout"
