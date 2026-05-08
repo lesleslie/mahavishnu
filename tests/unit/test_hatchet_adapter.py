@@ -48,3 +48,83 @@ def test_classify_task_agent_loop():
     prompt = "run an agent loop to autonomously complete this multi-step workflow"
     category = classify_task(prompt)
     assert category == TaskCategory.AGENT_LOOP
+
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from mahavishnu.engines.hatchet_adapter_impl import HatchetAdapterImpl
+
+
+@pytest.fixture()
+def mock_hatchet_client():
+    client = MagicMock()
+    client.run = AsyncMock(return_value={"run_id": "run-001", "status": "SUCCEEDED", "output": "done"})
+    client.close = AsyncMock()
+    client.rest = MagicMock()
+    client.rest.workflow_list = AsyncMock(return_value=[])
+    client.event = MagicMock()
+    client.event.push = AsyncMock()
+    return client
+
+
+@pytest.fixture()
+def hatchet_adapter():
+    from mahavishnu.core.config import HatchetConfig
+    cfg = HatchetConfig()
+    inst = HatchetAdapterImpl(config=cfg)
+    return inst
+
+
+@pytest.mark.asyncio
+async def test_hatchet_adapter_type(hatchet_adapter):
+    assert hatchet_adapter.adapter_type == AdapterType.HATCHET
+
+
+@pytest.mark.asyncio
+async def test_hatchet_adapter_name(hatchet_adapter):
+    assert hatchet_adapter.name == "hatchet"
+
+
+@pytest.mark.asyncio
+async def test_hatchet_execute_returns_output(hatchet_adapter, mock_hatchet_client):
+    hatchet_adapter._client = mock_hatchet_client
+    result = await hatchet_adapter.execute({"prompt": "run agent loop autonomously"}, repos=[])
+    assert result["status"] == "completed"
+    assert "output" in result
+
+
+@pytest.mark.asyncio
+async def test_hatchet_execute_no_prompt_returns_error(hatchet_adapter, mock_hatchet_client):
+    hatchet_adapter._client = mock_hatchet_client
+    result = await hatchet_adapter.execute({}, repos=[])
+    assert result["status"] == "error"
+    assert "prompt" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_hatchet_get_health_with_client(hatchet_adapter, mock_hatchet_client):
+    hatchet_adapter._client = mock_hatchet_client
+    health = await hatchet_adapter.get_health()
+    assert health["status"] in ("healthy", "degraded", "unhealthy")
+
+
+@pytest.mark.asyncio
+async def test_hatchet_get_health_no_client(hatchet_adapter):
+    hatchet_adapter._client = None
+    health = await hatchet_adapter.get_health()
+    assert health["status"] == "unhealthy"
+
+
+@pytest.mark.asyncio
+async def test_hatchet_cleanup_closes_client(hatchet_adapter, mock_hatchet_client):
+    hatchet_adapter._client = mock_hatchet_client
+    await hatchet_adapter.cleanup()
+    mock_hatchet_client.close.assert_awaited_once()
+    assert hatchet_adapter._client is None
+
+
+@pytest.mark.asyncio
+async def test_hatchet_send_approval_event(hatchet_adapter, mock_hatchet_client):
+    hatchet_adapter._client = mock_hatchet_client
+    await hatchet_adapter.send_approval_event("run-001", approved=True)
+    mock_hatchet_client.event.push.assert_awaited_once()
