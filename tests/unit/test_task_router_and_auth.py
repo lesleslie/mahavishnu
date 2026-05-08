@@ -46,6 +46,8 @@ class TestTaskCategory:
             "general",
             "swarm",
             "quick",
+            "ml_inference",
+            "agent_loop",
         }
         assert set(TaskCategory) == expected
 
@@ -680,3 +682,78 @@ class TestWorkflowState:
             await ws.update("wf-os-5", status="running")
 
         mock_os.update.assert_called_once()
+
+
+# =========================================================================
+# RateLimiter (task_router sliding-window implementation)
+# =========================================================================
+
+
+class TestRateLimiter:
+    """Tests for RateLimitConfig + RateLimiter in workers/task_router.py."""
+
+    @pytest.mark.asyncio
+    async def test_allows_requests_under_limit(self) -> None:
+        from mahavishnu.workers.task_router import RateLimitConfig, RateLimiter
+
+        limiter = RateLimiter(RateLimitConfig(limit=3, window_seconds=60.0))
+        for _ in range(3):
+            assert await limiter.check_and_record("glm-4.7") is True
+
+    @pytest.mark.asyncio
+    async def test_blocks_burst_exceeding_limit(self) -> None:
+        from mahavishnu.workers.task_router import RateLimitConfig, RateLimiter
+
+        limiter = RateLimiter(RateLimitConfig(limit=2, window_seconds=60.0))
+        assert await limiter.check_and_record("glm-4.7") is True
+        assert await limiter.check_and_record("glm-4.7") is True
+        assert await limiter.check_and_record("glm-4.7") is False
+
+    @pytest.mark.asyncio
+    async def test_window_expiry_resets_counter(self) -> None:
+        import time as _time
+        from unittest.mock import patch
+
+        from mahavishnu.workers.task_router import RateLimitConfig, RateLimiter
+
+        limiter = RateLimiter(RateLimitConfig(limit=1, window_seconds=1.0))
+        assert await limiter.check_and_record("glm-4.7") is True
+        assert await limiter.check_and_record("glm-4.7") is False
+
+        # Simulate window expiry by advancing monotonic clock
+        future = _time.monotonic() + 2.0
+        with patch("mahavishnu.workers.task_router.time.monotonic", return_value=future):
+            assert await limiter.check_and_record("glm-4.7") is True
+
+    @pytest.mark.asyncio
+    async def test_different_users_are_isolated(self) -> None:
+        from mahavishnu.workers.task_router import RateLimitConfig, RateLimiter
+
+        limiter = RateLimiter(RateLimitConfig(limit=1, window_seconds=60.0))
+        assert await limiter.check_and_record("glm-4.7", "alice") is True
+        assert await limiter.check_and_record("glm-4.7", "alice") is False
+        # Bob has his own window — should be allowed
+        assert await limiter.check_and_record("glm-4.7", "bob") is True
+
+    @pytest.mark.asyncio
+    async def test_different_models_are_isolated(self) -> None:
+        from mahavishnu.workers.task_router import RateLimitConfig, RateLimiter
+
+        limiter = RateLimiter(RateLimitConfig(limit=1, window_seconds=60.0))
+        assert await limiter.check_and_record("glm-4.7") is True
+        assert await limiter.check_and_record("glm-4.7") is False
+        # Different model has its own window
+        assert await limiter.check_and_record("glm-5.1") is True
+
+    @pytest.mark.asyncio
+    async def test_module_level_configure_and_get(self) -> None:
+        from mahavishnu.workers.task_router import (
+            RateLimitConfig,
+            configure_rate_limiter,
+            get_rate_limiter,
+        )
+
+        configure_rate_limiter(RateLimitConfig(limit=10, window_seconds=60.0))
+        limiter = get_rate_limiter()
+        assert limiter is not None
+        assert await limiter.check_and_record("glm-4.7") is True

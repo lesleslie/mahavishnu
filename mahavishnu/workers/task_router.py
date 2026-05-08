@@ -12,12 +12,84 @@ Each provider (Ollama, ZAI, etc.) has its own model routing config.
 
 from __future__ import annotations
 
+import asyncio
+from collections import deque
+from dataclasses import dataclass, field
 from enum import StrEnum
 import logging
 import re
+import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class RateLimitConfig:
+    """Sliding-window rate limit for a single key (model or user).
+
+    Scope: single-process, advisory-only. Not consistent across pool replicas.
+    """
+
+    limit: int
+    window_seconds: float = 60.0
+
+
+@dataclass
+class _SlidingWindow:
+    """Internal per-key state for a sliding window rate limiter."""
+
+    timestamps: deque[float] = field(default_factory=deque)
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+
+
+class RateLimiter:
+    """Async sliding-window rate limiter keyed by (model, user).
+
+    Single-process, advisory-only — not consistent across pool replicas.
+    """
+
+    def __init__(self, config: RateLimitConfig) -> None:
+        self._config = config
+        self._windows: dict[str, _SlidingWindow] = {}
+
+    def _window_for(self, key: str) -> _SlidingWindow:
+        if key not in self._windows:
+            self._windows[key] = _SlidingWindow()
+        return self._windows[key]
+
+    async def check_and_record(self, model: str, user: str | None = None) -> bool:
+        """Return True if the request is allowed; False if rate-limited.
+
+        Also records the request timestamp on success.
+        """
+        key = f"{model}:{user or '*'}"
+        window = self._window_for(key)
+        now = time.monotonic()
+        cutoff = now - self._config.window_seconds
+
+        async with window.lock:
+            while window.timestamps and window.timestamps[0] < cutoff:
+                window.timestamps.popleft()
+            if len(window.timestamps) >= self._config.limit:
+                return False
+            window.timestamps.append(now)
+            return True
+
+
+# Module-level rate limiter; None until configured via configure_rate_limiter().
+_rate_limiter: RateLimiter | None = None
+
+
+def configure_rate_limiter(config: RateLimitConfig) -> None:
+    """Install a module-level rate limiter (replaces any existing instance)."""
+    global _rate_limiter
+    _rate_limiter = RateLimiter(config)
+
+
+def get_rate_limiter() -> RateLimiter | None:
+    """Return the module-level rate limiter, or None if not configured."""
+    return _rate_limiter
 
 
 class TaskCategory(StrEnum):
@@ -37,6 +109,8 @@ class TaskCategory(StrEnum):
     GENERAL = "general"
     SWARM = "swarm"
     QUICK = "quick"
+    ML_INFERENCE = "ml_inference"  # GPU-required ML inference (routes to RunPod)
+    AGENT_LOOP = "agent_loop"
 
 
 # Task classification patterns - keywords and patterns for each category
@@ -116,6 +190,20 @@ TASK_PATTERNS: dict[TaskCategory, list[str]] = {
         r"\bsemantic\s*search\b",
         r"\bvectorize\b",
     ],
+    TaskCategory.ML_INFERENCE: [
+        r"\b(inference|infer|predict|classify|detect)\b",
+        r"\b(model|checkpoint|weights)\b.*\b(run|load|serve)\b",
+        r"\bml\s*inference\b",
+        r"\bgpu\b.*\btask\b",
+    ],
+    TaskCategory.AGENT_LOOP: [
+        r"\b(agent\s*loop|agentic|autonomous\s*workflow)\b",
+        r"\b(multi[-\s]?step\s*(agent|workflow|task))\b",
+        r"\bdurable\b.*\b(workflow|task|loop)\b",
+        r"\bhatchet\b",
+        r"\bwait\s*for\s*approval\b",
+        r"\bhuman[-\s]in[-\s]the[-\s]loop\b",
+    ],
     TaskCategory.SWARM: [
         r"\b(swarm|parallel|batch|bulk|scale)\b",
         r"\bmultiple\s*(tasks|workers|agents)\b",
@@ -142,6 +230,8 @@ DEFAULT_OLLAMA_ROUTING: dict[TaskCategory, str] = {
     TaskCategory.GENERAL: "qwen2.5-coder:7b",
     TaskCategory.SWARM: "qwen2.5-coder:7b",
     TaskCategory.QUICK: "qwen2.5-coder:7b",
+    TaskCategory.ML_INFERENCE: "llava:7b",
+    TaskCategory.AGENT_LOOP: "llama3:8b",
 }
 
 # Default model routing for ZAI cloud provider
@@ -160,6 +250,8 @@ DEFAULT_ZAI_ROUTING: dict[TaskCategory, str] = {
     TaskCategory.GENERAL: "glm-4.5",
     TaskCategory.SWARM: "glm-4.5-air",
     TaskCategory.QUICK: "glm-4.5-air",
+    TaskCategory.ML_INFERENCE: "GLM-4.5V",
+    TaskCategory.AGENT_LOOP: "glm-5.1",
 }
 
 
@@ -233,10 +325,14 @@ def get_model_for_task(
 
 
 __all__ = [
+    "RateLimitConfig",
+    "RateLimiter",
     "TaskCategory",
     "TASK_PATTERNS",
     "DEFAULT_OLLAMA_ROUTING",
     "DEFAULT_ZAI_ROUTING",
     "classify_task",
+    "configure_rate_limiter",
     "get_model_for_task",
+    "get_rate_limiter",
 ]

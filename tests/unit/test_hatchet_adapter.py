@@ -35,3 +35,16 @@ def test_hatchet_config_defaults():
     assert cfg.max_runs == 10
     assert cfg.poll_interval_seconds == 2.0
     assert cfg.task_timeout_seconds == 300
+
+
+from mahavishnu.workers.task_router import TaskCategory, classify_task
+
+
+def test_task_category_agent_loop_exists():
+    assert TaskCategory.AGENT_LOOP == "agent_loop"
+
+
+def test_classify_task_agent_loop():
+    prompt = "run an agent loop to autonomously complete this multi-step workflow"
+    category = classify_task(prompt)
+    assert category == TaskCategory.AGENT_LOOP
