@@ -8,6 +8,8 @@
 
 **Tech Stack:** Python stdlib (`pathlib`, `json`, `shutil`, `yaml`), Typer (existing in Mahavishnu CLI), pytest.
 
+**Status:** `delivered 2026-05-14 (verified)` — `scripts/migrate_config_to_project.py` (241 lines), `tests/unit/test_migration_script.py` (8 tests), `.claude/` directory populated, CLI commands `list-agents`/`list-skills`/`list-mcp-servers`/`sync-from-global`/`rollback` all implemented.
+
 ______________________________________________________________________
 
 ## File Structure
@@ -37,7 +39,7 @@ ______________________________________________________________________
 
 - Test: `tests/unit/test_migration_script.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 # tests/unit/test_migration_script.py
@@ -201,7 +203,7 @@ def test_additional_directories_updated(fake_home, tmp_path):
     assert "/keep/me" in dirs
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 cd /Users/les/Projects/mahavishnu
@@ -210,7 +212,7 @@ pytest tests/unit/test_migration_script.py -v
 
 Expected: `ModuleNotFoundError: No module named 'scripts.migrate_config_to_project'`
 
-- [ ] **Step 3: Create the migration script**
+- [x] **Step 3: Create the migration script**
 
 ```python
 # scripts/migrate_config_to_project.py
@@ -456,7 +458,7 @@ if __name__ == "__main__":
         runner.run()
 ```
 
-- [ ] **Step 4: Add `scripts/` to Python path for tests**
+- [x] **Step 4: Add `scripts/` to Python path for tests**
 
 Add to `pyproject.toml` under `[tool.pytest.ini_options]`:
 
@@ -474,7 +476,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 ```bash
 pytest tests/unit/test_migration_script.py -v
@@ -482,7 +484,7 @@ pytest tests/unit/test_migration_script.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 6: Commit the script before running it**
+- [x] **Step 6: Commit the script before running it**
 
 ```bash
 git add scripts/migrate_config_to_project.py tests/unit/test_migration_script.py
@@ -493,7 +495,7 @@ ______________________________________________________________________
 
 ## Task 2: Run migration dry-run + verify
 
-- [ ] **Step 1: Run dry-run**
+- [x] **Step 1: Run dry-run**
 
 ```bash
 python scripts/migrate_config_to_project.py --dry-run
@@ -501,7 +503,7 @@ python scripts/migrate_config_to_project.py --dry-run
 
 Review output — should list all copy operations, env-stripping, and settings.local.json changes without touching anything.
 
-- [ ] **Step 2: Verify source counts match expectations**
+- [x] **Step 2: Verify source counts match expectations**
 
 ```bash
 ls ~/.claude/agents/ | wc -l         # Expect ~102
@@ -510,7 +512,7 @@ python3 -c "import json, pathlib; d=json.load(open(pathlib.Path.home()/'.claude.
 # Expect ~33
 ```
 
-- [ ] **Step 3: Confirm no `.mcp.json` exists yet**
+- [x] **Step 3: Confirm no `.mcp.json` exists yet**
 
 ```bash
 test ! -f /Users/les/Projects/mahavishnu/.mcp.json && echo "OK — not yet created"
@@ -522,27 +524,27 @@ ______________________________________________________________________
 
 ## Task 3: Run full migration
 
-- [ ] **Step 1: Run full migration with backup**
+- [x] **Step 1: Run full migration with backup**
 
 ```bash
 python scripts/migrate_config_to_project.py --backup
 ```
 
-- [ ] **Step 2: Verify agent count**
+- [x] **Step 2: Verify agent count**
 
 ```bash
 ls /Users/les/Projects/mahavishnu/.claude/agents/ | wc -l
 # Expect ~102
 ```
 
-- [ ] **Step 3: Verify skill count**
+- [x] **Step 3: Verify skill count**
 
 ```bash
 ls -d /Users/les/Projects/mahavishnu/.claude/skills/*/SKILL.md | wc -l
 # Expect ~27
 ```
 
-- [ ] **Step 4: Verify MCP servers extracted**
+- [x] **Step 4: Verify MCP servers extracted**
 
 ```bash
 python3 -c "
@@ -559,7 +561,7 @@ print('No env blocks — OK')
 
 Expected: `33 servers` (or actual count) + `No env blocks — OK`
 
-- [ ] **Step 5: Verify ~/.claude.json no longer has mcpServers**
+- [x] **Step 5: Verify ~/.claude.json no longer has mcpServers**
 
 ```bash
 python3 -c "
@@ -570,7 +572,7 @@ print('mcpServers removed — OK')
 "
 ```
 
-- [ ] **Step 6: Verify additionalDirectories updated**
+- [x] **Step 6: Verify additionalDirectories updated**
 
 ```bash
 python3 -c "
@@ -583,14 +585,14 @@ print('OK')
 "
 ```
 
-- [ ] **Step 7: Verify ~/.claude/CLAUDE.md is now a stub**
+- [x] **Step 7: Verify ~/.claude/CLAUDE.md is now a stub**
 
 ```bash
 wc -l ~/.claude/CLAUDE.md   # Expect 3 lines
 head -1 ~/.claude/CLAUDE.md  # Expect: # Global Claude Code Configuration
 ```
 
-- [ ] **Step 8: Start Claude Code and verify discovery**
+- [x] **Step 8: Start Claude Code and verify discovery**
 
 ```bash
 claude  # Open a session from mahavishnu directory
@@ -608,7 +610,7 @@ ______________________________________________________________________
 
 - Modify: `mahavishnu/cli/config_validator.py` (add new subcommands)
 
-- [ ] **Step 1: Write the tests**
+- [x] **Step 1: Write the tests**
 
 ```python
 # tests/unit/test_config_cli.py
@@ -641,7 +643,7 @@ def test_list_mcp_servers_shows_servers(tmp_path, monkeypatch):
     assert "crackerjack" in result.output
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 pytest tests/unit/test_config_cli.py -v
@@ -649,7 +651,7 @@ pytest tests/unit/test_config_cli.py -v
 
 Expected: `ImportError` or `AttributeError` — `list-agents` and `list-mcp-servers` commands don't exist yet.
 
-- [ ] **Step 3: Add CLI commands to `config_validator.py`**
+- [x] **Step 3: Add CLI commands to `config_validator.py`**
 
 Locate the Typer `app` instance in `mahavishnu/cli/config_validator.py` and add these commands:
 
@@ -737,7 +739,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
 from migrate_config_to_project import MigrationRunner, rollback
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 pytest tests/unit/test_config_cli.py -v
@@ -745,7 +747,7 @@ pytest tests/unit/test_config_cli.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 5: Smoke test commands**
+- [x] **Step 5: Smoke test commands**
 
 ```bash
 python -m mahavishnu config list-agents | head -5
@@ -753,7 +755,7 @@ python -m mahavishnu config list-skills | head -5
 python -m mahavishnu config list-mcp-servers | head -5
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add mahavishnu/cli/config_validator.py tests/unit/test_config_cli.py
@@ -764,7 +766,7 @@ ______________________________________________________________________
 
 ## Task 5: Update `.gitignore`
 
-- [ ] **Step 1: Add rules**
+- [x] **Step 1: Add rules**
 
 Open `/Users/les/Projects/mahavishnu/.gitignore` and add:
 
@@ -775,14 +777,14 @@ Open `/Users/les/Projects/mahavishnu/.gitignore` and add:
 .claude/backups/
 ```
 
-- [ ] **Step 2: Verify agents and skills are tracked**
+- [x] **Step 2: Verify agents and skills are tracked**
 
 ```bash
 git status .claude/agents/ | head -10    # Should show files as untracked/new
 git status .mcp.json                      # Should show as untracked/new
 ```
 
-- [ ] **Step 3: Stage the canonical config files**
+- [x] **Step 3: Stage the canonical config files**
 
 ```bash
 git add .claude/agents/ .claude/skills/ .claude/commands/ .claude/hooks/mcp-hooks.json
@@ -790,7 +792,7 @@ git add .claude/CLAUDE.md .claude/settings.local.json .mcp.json .gitignore
 git status | grep "\.claude\|\.mcp" | head -20
 ```
 
-- [ ] **Step 4: Verify no secrets staged**
+- [x] **Step 4: Verify no secrets staged**
 
 ```bash
 # Should show no API keys or tokens
@@ -799,7 +801,7 @@ git diff --cached | grep -i "key\|token\|secret\|password" | grep "^+" | grep -v
 
 If any matches found, un-stage and check: these should only be variable names, never values.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -m "feat(config): commit canonical Claude Code configuration into project (agents, skills, commands, MCP servers)"
@@ -815,7 +817,7 @@ ______________________________________________________________________
 
 - Test: `tests/unit/test_config_drift.py`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```python
 # tests/unit/test_config_drift.py
@@ -862,7 +864,7 @@ def test_no_drift_when_ports_match(tmp_path):
     assert issues == []
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 pytest tests/unit/test_config_drift.py -v
@@ -870,7 +872,7 @@ pytest tests/unit/test_config_drift.py -v
 
 Expected: `ImportError` for `check_skill_mcp_drift`.
 
-- [ ] **Step 3: Add drift check to core config validator**
+- [x] **Step 3: Add drift check to core config validator**
 
 Find `mahavishnu/core/config_validator.py` and add:
 
@@ -933,7 +935,7 @@ warnings.extend(drift_issues)
 # with whatever list variable holds validation warnings in that function.
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 pytest tests/unit/test_config_drift.py -v
@@ -941,7 +943,7 @@ pytest tests/unit/test_config_drift.py -v
 
 Expected: All PASS.
 
-- [ ] **Step 5: Run full validation to confirm no drift in migrated files**
+- [x] **Step 5: Run full validation to confirm no drift in migrated files**
 
 ```bash
 mahavishnu config validate
@@ -949,7 +951,7 @@ mahavishnu config validate
 
 Expected: passes (or shows only known acceptable issues).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add mahavishnu/core/config_validator.py tests/unit/test_config_drift.py
@@ -960,7 +962,7 @@ ______________________________________________________________________
 
 ## Task 7: Final verification
 
-- [ ] **Step 1: Run all tests**
+- [x] **Step 1: Run all tests**
 
 ```bash
 pytest -x -q
@@ -968,7 +970,7 @@ pytest -x -q
 
 Expected: All PASS.
 
-- [ ] **Step 2: Run acceptance criteria check**
+- [x] **Step 2: Run acceptance criteria check**
 
 ```bash
 # AC1: 101+ agents present
@@ -1003,7 +1005,7 @@ git diff HEAD .claude/ .mcp.json | grep "^+" | grep -iE "(api_key|token|password
 # Should be empty
 ```
 
-- [ ] **Step 3: Final commit**
+- [x] **Step 3: Final commit**
 
 ```bash
 git add -A
