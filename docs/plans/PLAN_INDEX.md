@@ -1,8 +1,8 @@
 # Plan Index
 
 **Date:** 2026-05-07
-**Last structural update:** 2026-05-11
-**Last priority verification:** 2026-05-08
+**Last structural update:** 2026-05-14
+**Last priority verification:** 2026-05-14
 **Purpose:** Navigation map for finding and reviewing active Mahavishnu/Bodai plans.
 
 Use this file as the first stop before reviewing plan work. Older plans remain useful as source material, but the authority matrix below defines which document owns each kind of decision.
@@ -23,6 +23,7 @@ Use this file as the first stop before reviewing plan work. Older plans remain u
 | Area-local designs and detailed specs | The referenced area plan/spec |
 | Legacy backlog item details | `2026-05-07-mahavishnu-master-backlog.md` |
 | Scheduling priority after 2026-05-10 | Convergence plan C0-C7, once C0 is accepted |
+| Current open work (2026-05-14) | `2026-05-14-doc-sync-and-channel-phase2.md` |
 
 The master backlog is retained as delivered/historical source material. New convergence implementation should not use the 2026-05-07 active-priority table as scheduling authority unless it is reverified and explicitly promoted.
 
@@ -40,11 +41,17 @@ The master backlog is retained as delivered/historical source material. New conv
    - Status: `complete`, `historical`
    - Use for: the finished C0-C7 convergence program and its implementation record. Remaining terminal work is tracked separately in the remaining-work queue.
 
-1. **Remaining work execution order** ← prioritized open-task queue
+1. **Current open work** ← active plan
+
+   - File: [../superpowers/plans/2026-05-14-doc-sync-and-channel-phase2.md](../superpowers/plans/2026-05-14-doc-sync-and-channel-phase2.md)
+   - Status: `active`, `implementation`
+   - Use for: doc status sync (PLAN_INDEX, hatchet checkboxes, P2 backlog, config consolidation, ARCHITECTURE.md) and Session-Buddy Channel Phase 2 Dhara time-series publishing.
+
+1. **Remaining work execution order** ← historical execution record
 
    - File: [2026-05-11-remaining-work-execution-order.md](./2026-05-11-remaining-work-execution-order.md)
-   - Status: `active`, `implementation`
-   - Use for: the ordered queue of remaining implementation and cleanup tasks after plan reconciliation.
+   - Status: `complete`, `historical`
+   - Use for: the completed post-convergence execution queue. All tasks (T1/T4 terminal unification, C6a/C6b/C7 convergence cleanup) finished by 2026-05-13.
 
 1. **MiniMax provider migration** ← provider-default implementation plan
 
@@ -72,6 +79,13 @@ The master backlog is retained as delivered/historical source material. New conv
 
 ## Canonical And Active Plan Registry
 
+### Doc Status Sync and Session-Buddy Channel Phase 2
+
+- Plan: [../superpowers/plans/2026-05-14-doc-sync-and-channel-phase2.md](../superpowers/plans/2026-05-14-doc-sync-and-channel-phase2.md)
+- Status: `active`, `implementation`
+- Use for: the current work queue. Track A (Tasks 1–5): documentation housekeeping — PLAN_INDEX fixes, hatchet checkbox ticking, P2 backlog delivery notes, config consolidation sign-off, ARCHITECTURE.md Dhara section. Track B (Tasks 6–8): Session-Buddy Channel Phase 2 — `DharaChannelPublisher`, `register_channel_tracking_tools(dhara_publisher=)` wiring, `SESSION_BUDDY_DHARA_URL` env-var pickup in `server.py`.
+- Current implementation note: open as of 2026-05-14; all prior convergence, terminal unification, and backlog work is complete.
+
 ### Bodai Control Plane Convergence
 
 - Plan: [2026-05-10-bodai-control-plane-convergence-plan.md](./2026-05-10-bodai-control-plane-convergence-plan.md)
@@ -83,9 +97,8 @@ The master backlog is retained as delivered/historical source material. New conv
 ### Remaining Work Execution Order
 
 - Plan: [2026-05-11-remaining-work-execution-order.md](./2026-05-11-remaining-work-execution-order.md)
-- Status: `active`, `implementation`
-- Use for: the prioritized queue for the remaining convergence, terminal, and cleanup work after inventory reconciliation.
-- Current implementation note: tracks only tasks still open as of 2026-05-11; completed and historical plans are omitted.
+- Status: `complete`, `historical`
+- Use for: historical record of the post-convergence execution queue. All tasks complete as of 2026-05-13: T1 (`TerminalWorkerProtocol` in `workers/protocol.py`), T4 (`TerminalAIWorker` collapsed to 65-line shim), C6a (Crackerjack validation contracts), C6b (complexity/deletion pass), C7 (docs retirement cleanup).
 
 ### MiniMax 2.7 Provider Migration
 
@@ -98,9 +111,8 @@ The master backlog is retained as delivered/historical source material. New conv
 ### Terminal Worker Unification
 
 - Plan: [2026-05-10-terminal-worker-unification-plan.md](./2026-05-10-terminal-worker-unification-plan.md)
-- Status: `active`, `implementation`
-- Use for: collapsing provider-specific branching in terminal-based AI workers behind a shared provider-neutral protocol while preserving current defaults and optional non-default support until the shared contract is fully covered.
-- Current implementation note: this is a separate refactor track from the MiniMax migration. T0, T2, and T3 are complete; the remaining work is shared-protocol extraction and legacy-branch retirement. It should consume the existing `generic_shell.py` path, reduce special cases in `terminal.py`, and keep `terminal-*` workers registry-driven rather than provider-default driven.
+- Status: `complete`, `historical`
+- Use for: historical record. All phases T0–T4 complete as of 2026-05-13. `TerminalWorkerProtocol` lives in `workers/protocol.py`; `TerminalAIWorker` is a 65-line shim over `GenericShellWorker`; registry-driven worker selection replaces all provider-name branching.
 
 ### Worktree Manage Consolidation
 
@@ -225,10 +237,10 @@ The master backlog is retained as delivered/historical source material. New conv
 
 ### Hatchet Integration
 
+- Plan: [../superpowers/plans/2026-05-08-hatchet-adapter.md](../superpowers/plans/2026-05-08-hatchet-adapter.md)
 - Backlog: [2026-05-07-mahavishnu-master-backlog.md](./2026-05-07-mahavishnu-master-backlog.md) — Priorities 7, 8, 10
-- Status: `active`, `implementation` — P7 (rate-limiting pattern) and P8 (approval durable wait) are plan-only; P10 (HatchetAdapter) requires spec first
-- Hatchet is an MIT-licensed durable task queue on Postgres (<20ms start, per-key rate limiting, WaitForEvent). P7 and P8 are pattern borrows (no SDK dependency). P10 adds `hatchet-sdk` and a full `OrchestratorAdapter` implementation gated on `adapters.hatchet: true`.
-- Use for: P7/P8 implementation details are inline in the backlog. P10 spec file path: `docs/plans/2026-05-07-hatchet-adapter-spec.md` (to be written).
+- Status: `complete`, `historical`
+- Use for: historical record. P7 (sliding-window `RateLimiter` in `task_router.py`), P8 (durable approval persistence via `ApprovalManager` + Dhara), and P10 (`HatchetAdapterImpl` in `mahavishnu/engines/hatchet_adapter_impl.py` with `WaitForEvent` approval bridge, `TaskCategory.AGENT_LOOP`) are all delivered as of 2026-05-08.
 
 ### OpenWebUI Integration
 
@@ -254,9 +266,13 @@ Important reconciliation notes:
 
 ## Current Implementation Priority
 
-*Last priority verification: 2026-05-08. The [master backlog](./2026-05-07-mahavishnu-master-backlog.md) now marks all listed priorities delivered by 2026-05-08. It is retained below as historical context, not as current scheduling authority.*
+*Last priority verification: 2026-05-14. All backlog priorities (P0–P10), convergence phases (C0–C7), and the remaining-work execution queue (T1/T4) are complete.*
 
-**Current implementation queue:** [Remaining Work Execution Order](./2026-05-11-remaining-work-execution-order.md). The convergence plan is complete and historical; only the terminal queue remains active here.
+**Current implementation queue:** [Doc Status Sync and Session-Buddy Channel Phase 2](../superpowers/plans/2026-05-14-doc-sync-and-channel-phase2.md). This plan completes documentation housekeeping and implements Session-Buddy Channel Phase 2 (Dhara time-series publishing).
+
+**After that plan completes, open work is:**
+- OpenWebUI P9 manual UI steps (tool registration in OpenWebUI Admin, model arena run) — no code changes
+- Bodai Agent Platform I4 optional extensions — gated on product justification document
 
 **Historical priorities (open as of 2026-05-07, delivered by 2026-05-08 unless noted in the backlog):**
 
