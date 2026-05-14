@@ -31,7 +31,7 @@
 **Files:**
 - Modify: `pyproject.toml`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/unit/test_hatchet_adapter.py
@@ -45,7 +45,7 @@ def test_hatchet_sdk_importable():
     assert hatchet is not None
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```
 AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_hatchet_sdk_importable -v
@@ -53,7 +53,7 @@ AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_hatchet_sdk_impor
 
 Expected: `ModuleNotFoundError: No module named 'hatchet_sdk'`
 
-- [ ] **Step 3: Add the dependency**
+- [x] **Step 3: Add the dependency**
 
 Open `pyproject.toml`. Locate the `[project.optional-dependencies]` section and add a new group (or extend `hatchet` extras):
 
@@ -69,7 +69,7 @@ Then install:
 uv pip install -e ".[hatchet]"
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```
 AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_hatchet_sdk_importable -v
@@ -77,7 +77,7 @@ AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_hatchet_sdk_impor
 
 Expected: `PASSED`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add pyproject.toml uv.lock tests/unit/test_hatchet_adapter.py
@@ -91,7 +91,7 @@ git commit -m "build: add hatchet-sdk optional dependency"
 **Files:**
 - Modify: `mahavishnu/core/adapters/base.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/unit/test_hatchet_adapter.py`:
 
@@ -102,7 +102,7 @@ def test_adapter_type_hatchet_exists():
     assert AdapterType.HATCHET == "hatchet"
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```
 AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_adapter_type_hatchet_exists -v
@@ -110,7 +110,7 @@ AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_adapter_type_hatc
 
 Expected: `AttributeError: HATCHET`
 
-- [ ] **Step 3: Add the enum member**
+- [x] **Step 3: Add the enum member**
 
 In `mahavishnu/core/adapters/base.py`, find:
 
@@ -135,7 +135,7 @@ class AdapterType(StrEnum):
     HATCHET = "hatchet"
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```
 AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_adapter_type_hatchet_exists -v
@@ -143,7 +143,7 @@ AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_adapter_type_hatc
 
 Expected: `PASSED`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add mahavishnu/core/adapters/base.py tests/unit/test_hatchet_adapter.py
@@ -158,7 +158,7 @@ git commit -m "feat: add AdapterType.HATCHET enum member"
 - Modify: `mahavishnu/core/config.py`
 - Modify: `settings/mahavishnu.yaml`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/unit/test_hatchet_adapter.py`:
 
@@ -176,7 +176,7 @@ def test_hatchet_config_defaults():
     assert cfg.max_runs == 10
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```
 AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_adapter_config_has_hatchet_enabled tests/unit/test_hatchet_adapter.py::test_hatchet_config_defaults -v
@@ -184,7 +184,7 @@ AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_adapter_config_ha
 
 Expected: `ImportError` or `AttributeError`
 
-- [ ] **Step 3: Implement config changes**
+- [x] **Step 3: Implement config changes**
 
 In `mahavishnu/core/config.py`, find `class AdapterConfig(BaseModel):` and add the new field:
 
@@ -296,7 +296,7 @@ adapters:
   hatchet_enabled: false  # requires HATCHET_CLIENT_TOKEN env var
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```
 AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_adapter_config_has_hatchet_enabled tests/unit/test_hatchet_adapter.py::test_hatchet_config_defaults -v
@@ -304,7 +304,7 @@ AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_adapter_config_ha
 
 Expected: both `PASSED`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add mahavishnu/core/config.py settings/mahavishnu.yaml tests/unit/test_hatchet_adapter.py
@@ -318,7 +318,7 @@ git commit -m "feat: add HatchetConfig and hatchet_enabled to AdapterConfig"
 **Files:**
 - Modify: `mahavishnu/workers/task_router.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/unit/test_hatchet_adapter.py`:
 
@@ -334,7 +334,7 @@ def test_classify_task_agent_loop():
     assert category == TaskCategory.AGENT_LOOP
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```
 AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_task_category_agent_loop_exists tests/unit/test_hatchet_adapter.py::test_classify_task_agent_loop -v
@@ -342,7 +342,7 @@ AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_task_category_age
 
 Expected: `AttributeError: AGENT_LOOP`
 
-- [ ] **Step 3: Implement AGENT_LOOP**
+- [x] **Step 3: Implement AGENT_LOOP**
 
 In `mahavishnu/workers/task_router.py`, find `class TaskCategory(StrEnum)` and add the new member:
 
@@ -389,7 +389,7 @@ TaskCategory.AGENT_LOOP: "llama3:8b",
 TaskCategory.AGENT_LOOP: "glm-5.1",
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```
 AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_task_category_agent_loop_exists tests/unit/test_hatchet_adapter.py::test_classify_task_agent_loop -v
@@ -397,7 +397,7 @@ AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_task_category_age
 
 Expected: both `PASSED`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add mahavishnu/workers/task_router.py tests/unit/test_hatchet_adapter.py
@@ -411,7 +411,7 @@ git commit -m "feat: add TaskCategory.AGENT_LOOP with classification patterns"
 **Files:**
 - Create: `mahavishnu/engines/hatchet_adapter_impl.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `tests/unit/test_hatchet_adapter.py`:
 
@@ -495,7 +495,7 @@ async def test_cleanup_closes_client(adapter):
     client.close.assert_awaited_once()
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```
 AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py -k "test_adapter_type_is_hatchet or test_adapter_name or test_initialize or test_execute or test_get_health or test_cleanup" -v
@@ -503,7 +503,7 @@ AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py -k "test_adapter_type_i
 
 Expected: `ImportError: cannot import name 'HatchetAdapterImpl'`
 
-- [ ] **Step 3: Implement HatchetAdapterImpl**
+- [x] **Step 3: Implement HatchetAdapterImpl**
 
 Create `mahavishnu/engines/hatchet_adapter_impl.py`:
 
@@ -701,7 +701,7 @@ class HatchetAdapterImpl(OrchestratorAdapter):
 __all__ = ["HatchetAdapterImpl"]
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```
 AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py -k "test_adapter_type_is_hatchet or test_adapter_name or test_initialize or test_execute or test_get_health or test_cleanup" -v
@@ -709,7 +709,7 @@ AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py -k "test_adapter_type_i
 
 Expected: all `PASSED`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add mahavishnu/engines/hatchet_adapter_impl.py tests/unit/test_hatchet_adapter.py
@@ -723,7 +723,7 @@ git commit -m "feat: implement HatchetAdapterImpl with WaitForEvent approval bri
 **Files:**
 - Modify: `mahavishnu/core/app.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/unit/test_hatchet_adapter.py`:
 
@@ -748,7 +748,7 @@ def test_initialize_adapters_skips_hatchet_when_disabled(tmp_path, monkeypatch):
     assert "hatchet" not in app.adapters
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```
 AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_initialize_adapters_skips_hatchet_when_disabled -v
@@ -756,7 +756,7 @@ AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_initialize_adapte
 
 Expected: either `AttributeError` (no `hatchet_enabled`) or `FAILED` (hatchet key present when it shouldn't be).
 
-- [ ] **Step 3: Wire the adapter in app.py**
+- [x] **Step 3: Wire the adapter in app.py**
 
 In `mahavishnu/core/app.py`, inside `_initialize_adapters()`, find the block that handles `agno_enabled` (around line 826) and add after it:
 
@@ -790,7 +790,7 @@ Change to:
                             self.adapters[adapter_name] = adapter_class(self.config)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```
 AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_initialize_adapters_skips_hatchet_when_disabled -v
@@ -798,7 +798,7 @@ AI_AGENT=false pytest tests/unit/test_hatchet_adapter.py::test_initialize_adapte
 
 Expected: `PASSED`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add mahavishnu/core/app.py tests/unit/test_hatchet_adapter.py
@@ -812,7 +812,7 @@ git commit -m "feat: wire HatchetAdapterImpl into _initialize_adapters()"
 **Files:**
 - Create: `tests/integration/test_hatchet_smoke.py`
 
-- [ ] **Step 1: Write the smoke test**
+- [x] **Step 1: Write the smoke test**
 
 ```python
 """Integration smoke test for HatchetAdapter.
@@ -857,7 +857,7 @@ async def test_hatchet_adapter_type_and_capabilities():
     assert adapter.capabilities.can_deploy_flows is True
 ```
 
-- [ ] **Step 2: Verify smoke tests are skipped in CI (no token)**
+- [x] **Step 2: Verify smoke tests are skipped in CI (no token)**
 
 ```
 AI_AGENT=false pytest tests/integration/test_hatchet_smoke.py -v
@@ -865,7 +865,7 @@ AI_AGENT=false pytest tests/integration/test_hatchet_smoke.py -v
 
 Expected: both tests `SKIPPED`
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add tests/integration/test_hatchet_smoke.py
@@ -879,7 +879,7 @@ git commit -m "test: add Hatchet smoke tests (gated on HATCHET_CLIENT_TOKEN)"
 **Files:**
 - Modify: `docs/plans/2026-05-07-mahavishnu-master-backlog.md`
 
-- [ ] **Step 1: Run the full unit test suite**
+- [x] **Step 1: Run the full unit test suite**
 
 ```
 AI_AGENT=false pytest tests/unit/ -v --tb=short 2>&1 | tail -30
@@ -887,7 +887,7 @@ AI_AGENT=false pytest tests/unit/ -v --tb=short 2>&1 | tail -30
 
 Expected: all tests pass; no regressions.
 
-- [ ] **Step 2: Run linting**
+- [x] **Step 2: Run linting**
 
 ```bash
 ruff check mahavishnu/engines/hatchet_adapter_impl.py mahavishnu/core/adapters/base.py mahavishnu/core/config.py mahavishnu/workers/task_router.py mahavishnu/core/app.py
@@ -896,7 +896,7 @@ ruff format --check mahavishnu/engines/hatchet_adapter_impl.py
 
 Expected: no violations.
 
-- [ ] **Step 3: Mark P10 delivered in backlog**
+- [x] **Step 3: Mark P10 delivered in backlog**
 
 In `docs/plans/2026-05-07-mahavishnu-master-backlog.md`, find the P10 entry and update its status to:
 
@@ -904,7 +904,7 @@ In `docs/plans/2026-05-07-mahavishnu-master-backlog.md`, find the P10 entry and 
 **Status:** delivered 2026-05-08
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/plans/2026-05-07-mahavishnu-master-backlog.md
