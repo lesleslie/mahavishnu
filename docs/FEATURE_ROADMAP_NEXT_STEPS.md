@@ -126,22 +126,22 @@ ______________________________________________________________________
 
 **Rationale**: All 6 ecosystem components already have IPython AdminShells (via Oneiric), Typer CLIs, and MCP health endpoints. Building per-component interactive CLIs would create N UI layers for N components with inconsistent UX. A single unified dashboard — hosted in Mahavishnu as the orchestration hub — provides cross-component visibility that per-component dashboards cannot achieve.
 
-**Existing Infrastructure** (already 60% built):
+**Existing Infrastructure** (current surfaces):
 
 - `tui/command_palette.py` — Fuzzy search command palette
 - `core/task_dashboard.py` — Themes, key bindings, panel abstractions (525 lines)
 - `core/repo_dashboard.py` — Repository health dashboard (509 lines)
-- `core/monitoring.py` + `core/monitoring_infra.py` — AlertManager, MonitoringDashboard, MetricsExporter
+- `core/monitoring.py` — AlertManager, MonitoringDashboard, MetricsExporter
 - `core/routing_metrics.py` — Full Prometheus integration
 - `websocket/server.py` — Real-time event streaming on port 8690
 - `shell/formatters.py` — Rich formatters for workflows, logs, repos
 - 5 Grafana dashboards in `docs/grafana/`
 
-**Pre-requisite Cleanup** (Phase 0):
+**Pre-requisite Cleanup** (historical note only):
 
-- [ ] Delete 78 `.bak` files in source tree
-- [ ] Consolidate duplicate `AlertManager` classes (`monitoring.py` vs `monitoring_infra.py`)
-- [ ] Resolve `MonitoringDashboard` / `DashboardConfig` split
+- [x] Delete 78 `.bak` files in source tree
+- [x] Consolidate duplicate `AlertManager` classes
+- [x] Resolve `MonitoringDashboard` / `DashboardConfig` split
 
 **Phase 1: Unified Health Command** (2-3 days):
 

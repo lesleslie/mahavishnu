@@ -170,7 +170,7 @@ server_name: "Mahavishnu Orchestrator"
 log_level: INFO
 
 # Repository manifest
-repos_path: settings/repos.yaml
+repos_path: settings/ecosystem.yaml
 
 # Adapters (currently stub implementations)
 adapters:
@@ -193,7 +193,7 @@ pools:
 workers:
   enabled: true
   max_concurrent: 10
-  default_type: "terminal-qwen"
+  default_type: "terminal-claude"
 
 # Quality control
 qc:
@@ -218,7 +218,7 @@ terminal:
 
 ### Step 3: Configure Repositories
 
-Edit `settings/repos.yaml` to add your repositories:
+Edit `settings/ecosystem.yaml` to add your repositories:
 
 ```yaml
 repos:
@@ -478,16 +478,16 @@ pip install -e .
 which mahavishnu  # Should show path to venv/bin/mahavishnu
 ```
 
-### Issue: "repos.yaml not found"
+### Issue: "ecosystem.yaml not found"
 
 **Solution:** Create the repository manifest file.
 
 ```bash
-# Copy example repos.yaml
-cp settings/repos.yaml.example settings/repos.yaml
+# Copy example ecosystem.yaml
+cp settings/ecosystem.yaml.example settings/ecosystem.yaml
 
 # Edit with your repositories
-nano settings/repos.yaml
+nano settings/ecosystem.yaml
 ```
 
 ### Issue: "Authentication failed"

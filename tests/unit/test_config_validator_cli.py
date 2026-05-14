@@ -24,8 +24,7 @@ from mahavishnu.cli.config_validator import (
     run_validation,
 )
 from mahavishnu.core.config_validator import ValidationResult
-from mahavishnu.core.health import HealthStatus
-from mahavishnu.core.health_schemas import HealthCheckResult
+from mahavishnu.core.health import HealthCheckResult, HealthStatus
 
 # ---------------------------------------------------------------------------
 # RuntimeValidationCheck

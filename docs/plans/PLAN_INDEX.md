@@ -1,91 +1,168 @@
 # Plan Index
 
 **Date:** 2026-05-07
-**Purpose:** Canonical map for finding, reviewing, and implementing active Mahavishnu/Bodai plans.
+**Last structural update:** 2026-05-11
+**Last priority verification:** 2026-05-08
+**Purpose:** Navigation map for finding and reviewing active Mahavishnu/Bodai plans.
 
-Use this file as the first stop before reviewing or implementing plan work. Older plans remain useful as source material, but the files below define the current review order and authority.
+Use this file as the first stop before reviewing plan work. Older plans remain useful as source material, but the authority matrix below defines which document owns each kind of decision.
 
 ## Status Legend
 
-- `canonical`: source of truth for an active area
-- `implementation`: task-by-task build plan
-- `active`: current or next implementation candidate
-- `partial`: some code exists, but acceptance criteria are not complete
-- `shipped`: all tasks complete, verified against codebase
-- `historical`: useful background, not the current authority
-- `superseded`: replaced by another file
+- Lifecycle: `draft` means not yet accepted for implementation; `active` means current or next implementation candidate; `partial` means some code exists but acceptance criteria are not complete; `shipped` means all tasks complete and verified; `complete` means cross-repo work is done but retained as reference.
+- Role: `canonical` means source of truth for an active area; `implementation` means task-by-task build plan; `umbrella` means cross-plan tracker that references area plans; `historical` means useful background, not current authority; `superseded` means replaced by another file.
+- Legal combinations should read as lifecycle + role, for example `draft, umbrella`, `active, implementation`, or `shipped, canonical`.
+
+## Authority Matrix
+
+| Concern | Authority |
+|---|---|
+| Plan navigation and current ownership | `PLAN_INDEX.md` |
+| Current convergence phase status | `2026-05-10-bodai-control-plane-convergence-plan.md` |
+| Cross-repo LLM provider defaults and Bifrost model routing | `2026-05-10-minimax27-provider-migration.md` |
+| Area-local designs and detailed specs | The referenced area plan/spec |
+| Legacy backlog item details | `2026-05-07-mahavishnu-master-backlog.md` |
+| Scheduling priority after 2026-05-10 | Convergence plan C0-C7, once C0 is accepted |
+
+The master backlog is retained as delivered/historical source material. New convergence implementation should not use the 2026-05-07 active-priority table as scheduling authority unless it is reverified and explicitly promoted.
 
 ## Review Entry Points
 
-1. **Master backlog** ← start here
-
-   - File: [2026-05-07-mahavishnu-master-backlog.md](./2026-05-07-mahavishnu-master-backlog.md)
-   - Status: `canonical`
-   - Use for: the single authoritative list of confirmed open work, in priority order. All items verified against codebase 2026-05-07. Superseded/obsolete items moved to the backlog's closed table.
-
-1. **Current plan map**
+1. **Current plan map** ← start here
 
    - File: [PLAN_INDEX.md](./PLAN_INDEX.md)
-   - Status: `canonical`
+   - Status: `active`, `canonical`
    - Use for: navigating individual plan files and their status.
+
+1. **Convergence tracker** ← historical implementation record
+
+   - File: [2026-05-10-bodai-control-plane-convergence-plan.md](./2026-05-10-bodai-control-plane-convergence-plan.md)
+   - Status: `complete`, `historical`
+   - Use for: the finished C0-C7 convergence program and its implementation record. Remaining terminal work is tracked separately in the remaining-work queue.
+
+1. **Remaining work execution order** ← prioritized open-task queue
+
+   - File: [2026-05-11-remaining-work-execution-order.md](./2026-05-11-remaining-work-execution-order.md)
+   - Status: `active`, `implementation`
+   - Use for: the ordered queue of remaining implementation and cleanup tasks after plan reconciliation.
+
+1. **MiniMax provider migration** ← provider-default implementation plan
+
+   - File: [2026-05-10-minimax27-provider-migration.md](./2026-05-10-minimax27-provider-migration.md)
+   - Status: `draft`, `implementation`
+   - Use for: replacing ZAI/GLM defaults with MiniMax M2.7 text routing, supported MiniMax modality integrations or explicit modality deferrals, and cross-repo provider config updates in Mahavishnu, Bifrost, Crackerjack, and Session-Buddy.
+
+1. **Master backlog** ← historical reference only
+
+   - File: [2026-05-07-mahavishnu-master-backlog.md](./2026-05-07-mahavishnu-master-backlog.md)
+   - Status: `shipped`, `historical`
+   - Use for: delivered backlog details and source material for convergence planning. The file states all priorities were delivered by 2026-05-08; it is no longer the scheduling authority for new convergence work.
 
 1. **Repository plan overview**
 
    - File: [README.md](./README.md)
-   - Status: `canonical`
+   - Status: `active`, `canonical`
    - Use for: quick orientation to plan categories.
 
 1. **External review packet**
 
    - File: [REVIEW_PACKET_2026-04-02.md](./REVIEW_PACKET_2026-04-02.md)
-   - Status: `historical`
+   - Status: `shipped`, `historical`
    - Use for: third-party review workflow and older required reading order.
 
-## Active Canonical Plans
+## Canonical And Active Plan Registry
+
+### Bodai Control Plane Convergence
+
+- Plan: [2026-05-10-bodai-control-plane-convergence-plan.md](./2026-05-10-bodai-control-plane-convergence-plan.md)
+- Status: `complete`, `historical`
+- Use for: the historical implementation record for the Bodai control-plane convergence program: unified event spine, durable operational state, live operator cockpit, catalog drift prevention, incident-to-fix golden path, cross-repo complexity reduction/deletions, and docs/retirement cleanup.
+- Current implementation note: all C1-C7 phases are complete. Remaining terminal refactor work is tracked separately in `2026-05-11-remaining-work-execution-order.md`.
+- Priority relationship: C1-C7 are complete. Update this index only when lifecycle status or canonical ownership changes.
+
+### Remaining Work Execution Order
+
+- Plan: [2026-05-11-remaining-work-execution-order.md](./2026-05-11-remaining-work-execution-order.md)
+- Status: `active`, `implementation`
+- Use for: the prioritized queue for the remaining convergence, terminal, and cleanup work after inventory reconciliation.
+- Current implementation note: tracks only tasks still open as of 2026-05-11; completed and historical plans are omitted.
+
+### MiniMax 2.7 Provider Migration
+
+- Plan: [2026-05-10-minimax27-provider-migration.md](./2026-05-10-minimax27-provider-migration.md)
+- Status: `complete`, `historical`
+- Use for: replacing ZAI/GLM defaults with MiniMax M2.7 across Mahavishnu, Bifrost, Crackerjack, and Session-Buddy while preserving local fallback and routing only supported modality requests to current MiniMax modality APIs.
+- Current implementation note: the sidecar provider migration is complete. Mahavishnu runtime defaults, Bifrost text routing, operator docs, Session-Buddy default-provider cutover, and Crackerjack provider support have all landed; C4/C5/C6 of the convergence plan should consume its results when catalog drift checks, golden-path tests, and deletion ledgers are updated.
+- Source-verification note: MiniMax M2.7 is the text model family; modality routing uses MiniMax's current modality-specific models (`image-01`, `speech-2.8-*`, and `MiniMax-Hailuo-2.3*`) rather than invented M2.7 modality IDs.
+
+### Terminal Worker Unification
+
+- Plan: [2026-05-10-terminal-worker-unification-plan.md](./2026-05-10-terminal-worker-unification-plan.md)
+- Status: `active`, `implementation`
+- Use for: collapsing provider-specific branching in terminal-based AI workers behind a shared provider-neutral protocol while preserving current defaults and optional non-default support until the shared contract is fully covered.
+- Current implementation note: this is a separate refactor track from the MiniMax migration. T0, T2, and T3 are complete; the remaining work is shared-protocol extraction and legacy-branch retirement. It should consume the existing `generic_shell.py` path, reduce special cases in `terminal.py`, and keep `terminal-*` workers registry-driven rather than provider-default driven.
+
+### Worktree Manage Consolidation
+
+- Plan: [2026-05-11-worktree-manage-consolidation-plan.md](./2026-05-11-worktree-manage-consolidation-plan.md)
+- Status: `complete`, `historical`
+- Use for: historical record of the worktree MCP consolidation from six per-action tools into the single `worktree_manage` dispatcher.
+- Current implementation note: the retirement track is complete; `worktree_manage` is the only active MCP entry point for worktree coordination.
 
 ### Bodai Agent Platform and Agno/Textual TUI
 
 - Spec: [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
 - Implementation plan: [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
-- Status: `canonical`, `partial`
+- Status: `partial`, `canonical`
 - Use for: Agno-backed interactive agent runtime, Textual TUI boundaries, engine ownership, learning pipeline boundaries, and implementation order.
-- Current implementation note: Phase 0/Phase 1 governance and a read-only Textual dashboard shell exist, but Agno streaming, inline approvals, MCP-backed TUI data, file/diff panes, and richer session/skill views are not complete.
+- Current implementation note: Phase 0/Phase 1 governance and the read-only operator cockpit surfaces are implemented via the convergence plan (C3a/C3b). The remaining area-local plan work is broader platform/runtime ownership beyond the cockpit slice, not the live read-only panes.
+- Convergence relationship: area-local design remains canonical here; operator-cockpit convergence implementation status is tracked under C3a/C3b in [2026-05-10-bodai-control-plane-convergence-plan.md](./2026-05-10-bodai-control-plane-convergence-plan.md).
 
 ### Mahavishnu Ecosystem Control Plane
 
 - Plan: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
-- Status: `shipped` — all CP0–CP7 phases complete as of 2026-04-30
+- Status: `shipped`, `canonical` — all CP0–CP7 phases complete as of 2026-04-30
 - Use for: canonical ecosystem status report, health contract cleanup, capability discovery, routing observability, and wiring the TUI to live read-only data.
 - Delivered: `CanonicalStatus`, `EcosystemStatusService`, `EcosystemStatusReport`, `RoutingDecision` observability model, `RoutingDecisionBuffer`, `_collect_capabilities`, `_generate_recommendations`, `experiment_id` cardinality fix, `AdapterResolutionResult` rename. CLI (`mahavishnu ecosystem status/capabilities`), MCP tools (`ecosystem_status`, `ecosystem_capabilities`, `ecosystem_routing_readiness`), and TUI all wired to the canonical report.
 
 ### Ecosystem Docs Canonicalization
 
 - Plan: [2026-04-25-ecosystem-docs-canonicalization-plan.md](./2026-04-25-ecosystem-docs-canonicalization-plan.md)
-- Status: `shipped` — All phases complete (2026-04-30). `mahavishnu docs audit` wired; `scripts/audit_ecosystem_docs.py` is the backing implementation.
+- Status: `shipped`, `canonical` — All phases complete (2026-04-30). `mahavishnu docs audit` wired; `scripts/audit_ecosystem_docs.py` is the backing implementation.
 
 ### Type Adapter Migration
 
 - Plan: [2026-04-25-type-adapter-migration-plan.md](./2026-04-25-type-adapter-migration-plan.md)
-- Status: `shipped` — all phases (0–3) complete as of 2026-04-30; `ty`, `pyrefly`, `zuban` adapters refreshed and canary-promoted
+- Status: `shipped`, `canonical` — all phases (0–3) complete as of 2026-04-30; `ty`, `pyrefly`, `zuban` adapters refreshed and canary-promoted
 - Use for: reference only. All capability-based AI-fix routing is live in Crackerjack.
 
 ### Storage Consolidation and Akosha Role
 
 - Plan: [2026-04-02-storage-consolidation-and-akosha-role.md](./2026-04-02-storage-consolidation-and-akosha-role.md)
-- Status: `canonical`
+- Current addendum: [2026-05-07-dhara-state-backend-addendum.md](./2026-05-07-dhara-state-backend-addendum.md)
+- Status: `active`, `canonical`
 - Use for: storage ownership, Akosha optionality, and consolidated storage architecture.
+- Convergence relationship: the 2026-05-07 Dhara addendum is the current authority for restart/recovery checkpoints. C2 in [2026-05-10-bodai-control-plane-convergence-plan.md](./2026-05-10-bodai-control-plane-convergence-plan.md) tracks implementation of remaining operational durability work.
 
 ### Nanobot Worker Integration
 
-- Plan: [2026-04-05-nanobot-worker-integration.md](./2026-04-05-nanobot-worker-integration.md)
-- Status: `partial` — Phase B (`NanobotWorker` class, `WorkerManager` wiring, exports) complete; Phase A (`claude mcp serve` autostart via Supergateway) not started
-- Use for: Phase A only — wiring `claude mcp serve` into the autostart script and `~/.claude.json`.
+- Plan: [2026-05-07-mahavishnu-master-backlog.md](./2026-05-07-mahavishnu-master-backlog.md#priority-5--nanobot-worker-phase-a-removed-2026-05-07)
+- Status: `complete`, `historical` — Nanobot integration was removed from the codebase; the historical removal record lives in the master backlog.
+- Use for: historical reference only.
+
+### Bodai Unified Event Bus
+
+- Spec + Implementation Plan: [2026-05-09-unified-event-bus-spec.md](./2026-05-09-unified-event-bus-spec.md)
+- Status: `complete`, `historical`
+- Use for: standardizing all Bodai event/messaging/notification systems on Oneiric's EventBridge + EventDispatcher + NotificationRouter, with Redis Streams as transport. Replaces Mahavishnu's `EventBus`, `TaskEventEmitter`, `MessageBus`, and `AlertChannel` with a single unified event bus. WebSocket becomes an EventBridge handler.
+- Scope: Oneiric library integration, DLQ wiring, WebSocket handler, all notification adapters wired.
+- Convergence relationship: implementation progress was tracked under C1a/C1b in [2026-05-10-bodai-control-plane-convergence-plan.md](./2026-05-10-bodai-control-plane-convergence-plan.md); the convergence plan is now the active implementation record and this spec is retained as historical design context.
 
 ### Bodai Inter-Service Authentication
 
 - Spec: [../superpowers/specs/2026-04-27-bodai-auth-standardization-design.md](../superpowers/specs/2026-04-27-bodai-auth-standardization-design.md)
 - Plan: [../superpowers/plans/2026-04-27-bodai-auth-standardization.md](../superpowers/plans/2026-04-27-bodai-auth-standardization.md)
-- Status: `complete` — shipped 2026-04-30, all 14 tasks done, all 6 repos pushed
+- Status: `complete`, `historical` — shipped 2026-04-30, all 14 tasks done, all 6 repos pushed
 - Use for: reference only. `mcp_common.auth` is now the canonical JWT package. See memory entry for API, env vars, and commit SHAs.
 - Relationship: unblocks Phase 2 engine surface expansion. Must be implemented before adding new inter-service calls or promoting any service to production auth.
 
@@ -101,7 +178,7 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 
 - Spec: [../superpowers/specs/2026-04-26-agent-skill-modernization-design.md](../superpowers/specs/2026-04-26-agent-skill-modernization-design.md)
 - Plan: [../superpowers/plans/2026-04-26-agent-skill-modernization.md](../superpowers/plans/2026-04-26-agent-skill-modernization.md)
-- Status: `shipped` — all tasks complete as of 2026-05-01
+- Status: `shipped`, `historical` — all tasks complete as of 2026-05-01
 - Delivered: `skill_mcp_validator.py` (stale-ref validator), `DriftReport`/`check_skill_agent_drift` wired into `mahavishnu config validate`, 15 agent descriptions enriched with ecosystem MCP refs, 28 active skills with "Available MCP Servers" sections, `akasha-specialist` renamed to `akosha-specialist`, validator skips `.archive/` by default.
 - Use for: reference only.
 
@@ -110,53 +187,53 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 #### Akosha Skills
 
 - Plan: [../superpowers/plans/2026-04-14-akosha-skills.md](../superpowers/plans/2026-04-14-akosha-skills.md)
-- Status: `shipped` — `code-archaeologist` and `quality-pulse` skills exist at `~/.claude/skills/code-archaeologist/SKILL.md` and `~/.claude/skills/quality-pulse/SKILL.md`
+- Status: `shipped`, `historical` — `code-archaeologist` and `quality-pulse` skills exist at `~/.claude/skills/code-archaeologist/SKILL.md` and `~/.claude/skills/quality-pulse/SKILL.md`
 - Use for: reference only.
 
 #### Bodai Radar
 
 - Plan: [../superpowers/plans/2026-04-14-bodai-radar.md](../superpowers/plans/2026-04-14-bodai-radar.md)
-- Status: `shipped` — skill exists at `~/.claude/skills/bodai-radar/SKILL.md`
+- Status: `shipped`, `historical` — skill exists at `~/.claude/skills/bodai-radar/SKILL.md`
 - Use for: reference only.
 
 #### Session Archaeologist
 
 - Plan: [../superpowers/plans/2026-04-14-session-archaeologist.md](../superpowers/plans/2026-04-14-session-archaeologist.md)
-- Status: `shipped` — skill exists at `~/.claude/skills/session-archaeologist/SKILL.md`
+- Status: `shipped`, `historical` — skill exists at `~/.claude/skills/session-archaeologist/SKILL.md`
 - Use for: reference only.
 
 #### Code Indexing Integration
 
 - Spec: [../superpowers/specs/2026-04-26-code-indexing-integration-design.md](../superpowers/specs/2026-04-26-code-indexing-integration-design.md)
 - Plan: [../superpowers/plans/2026-04-26-code-indexing-integration.md](../superpowers/plans/2026-04-26-code-indexing-integration.md)
-- Status: `shipped` — all 42 tasks complete as of 2026-04-30
+- Status: `shipped`, `historical` — all 42 tasks complete as of 2026-04-30
 - Use for: reference only. Call chain resolution, impact analysis, and incremental re-indexing are live.
 
 #### Pattern Learning and Scaffolding
 
 - Spec: [../superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md](../superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md)
 - Plan: [../superpowers/plans/2026-04-26-pattern-learning-scaffolding.md](../superpowers/plans/2026-04-26-pattern-learning-scaffolding.md)
-- Status: `shipped` — all 63 tasks complete as of 2026-04-30
+- Status: `shipped`, `historical` — all 63 tasks complete as of 2026-04-30
 - Use for: reference only. Pattern library, scaffolding engine, and Fastblocks pattern extraction are live.
 
 #### Splashstand ACB → Oneiric Migration
 
 - Spec: [../superpowers/specs/2026-04-26-splashstand-oneiric-migration-design.md](../superpowers/specs/2026-04-26-splashstand-oneiric-migration-design.md)
 - Plan: [../superpowers/plans/2026-04-26-splashstand-oneiric-migration.md](../superpowers/plans/2026-04-26-splashstand-oneiric-migration.md)
-- Status: `shipped` — all 43 tasks complete; 0 `from acb` imports remain in Splashstand codebase
+- Status: `shipped`, `historical` — all 43 tasks complete; 0 `from acb` imports remain in Splashstand codebase
 - Use for: reference only.
 
 ### Hatchet Integration
 
 - Backlog: [2026-05-07-mahavishnu-master-backlog.md](./2026-05-07-mahavishnu-master-backlog.md) — Priorities 7, 8, 10
-- Status: `active` — P7 (rate-limiting pattern) and P8 (approval durable wait) are plan-only; P10 (HatchetAdapter) requires spec first
+- Status: `active`, `implementation` — P7 (rate-limiting pattern) and P8 (approval durable wait) are plan-only; P10 (HatchetAdapter) requires spec first
 - Hatchet is an MIT-licensed durable task queue on Postgres (<20ms start, per-key rate limiting, WaitForEvent). P7 and P8 are pattern borrows (no SDK dependency). P10 adds `hatchet-sdk` and a full `OrchestratorAdapter` implementation gated on `adapters.hatchet: true`.
 - Use for: P7/P8 implementation details are inline in the backlog. P10 spec file path: `docs/plans/2026-05-07-hatchet-adapter-spec.md` (to be written).
 
 ### OpenWebUI Integration
 
 - Backlog: [2026-05-07-mahavishnu-master-backlog.md](./2026-05-07-mahavishnu-master-backlog.md) — Priority 9
-- Status: `active` — Docker compose sidecar + tool registration, no Mahavishnu code changes
+- Status: `active`, `implementation` — Docker compose sidecar + tool registration, no Mahavishnu code changes
 - OpenWebUI is a self-hosted web UI for LLMs; `mcpo` bridges Mahavishnu's MCP server (stdio/SSE) to Streamable HTTP for OpenWebUI consumption.
 - Use for: P9 tasks are inline in the backlog. Output doc: `docs/integrations/openwebui.md`.
 
@@ -164,7 +241,7 @@ Use this file as the first stop before reviewing or implementing plan work. Olde
 
 - Board: [2026-04-04-ecosystem-execution-board.md](./2026-04-04-ecosystem-execution-board.md)
 - Initiative index: [initiatives/README.md](./initiatives/README.md)
-- Status: `historical`, `partial`
+- Status: `partial`, `historical`
 - Use for: previously prioritized 90-day execution board and initiative-level work packages.
 
 Important reconciliation notes:
@@ -177,9 +254,11 @@ Important reconciliation notes:
 
 ## Current Implementation Priority
 
-*Last verified: 2026-05-07. Canonical priority order is in the [master backlog](./2026-05-07-mahavishnu-master-backlog.md). The list below is a summary; the backlog is authoritative.*
+*Last priority verification: 2026-05-08. The [master backlog](./2026-05-07-mahavishnu-master-backlog.md) now marks all listed priorities delivered by 2026-05-08. It is retained below as historical context, not as current scheduling authority.*
 
-**Active priorities (all open as of 2026-05-07):**
+**Current implementation queue:** [Remaining Work Execution Order](./2026-05-11-remaining-work-execution-order.md). The convergence plan is complete and historical; only the terminal queue remains active here.
+
+**Historical priorities (open as of 2026-05-07, delivered by 2026-05-08 unless noted in the backlog):**
 
 | # | Item | Plan / Spec |
 |---|------|-------------|
@@ -273,7 +352,7 @@ Important reconciliation notes:
 
 Before implementing from any plan:
 
-- Verify the plan is listed in this index as `canonical`, `active`, or `implementation`.
+- Verify the plan is listed in this index with a lifecycle + role status such as `active, implementation`, `draft, implementation`, `partial, canonical`, or `shipped, historical`.
 - Check whether the plan has a supersession entry.
 - Check existing code before adding new abstractions.
 - Update the relevant plan progress log when implementation changes status.

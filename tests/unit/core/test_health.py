@@ -11,12 +11,10 @@ from mahavishnu.core.health import (
     DependencyWaiter,
     HealthChecker,
     HealthCheckError,
-    HealthEndpoint,
-    ServiceInfo,
-)
-from mahavishnu.core.health_schemas import (
     HealthCheckResult,
+    HealthEndpoint,
     HealthStatus,
+    ServiceInfo,
 )
 from monitoring.metrics import expose_metrics
 
@@ -162,6 +160,20 @@ class TestHealthChecker:
         assert "mahavishnu_dependency_requests_total" in metrics_text
         assert 'dependency="localhost:8678"' in metrics_text
         assert 'status="ok"' in metrics_text
+
+    def test_check_message_bus_uses_canonical_transport(self, monkeypatch):
+        import mahavishnu.health as health_module
+
+        class _FakeTransport:
+            def __init__(self) -> None:
+                self.created = True
+
+        monkeypatch.setattr(
+            "mahavishnu.core.events.contract.InMemoryEventTransport",
+            _FakeTransport,
+        )
+
+        assert health_module._check_message_bus() is True
 
 
 class TestDependencyWaiter:

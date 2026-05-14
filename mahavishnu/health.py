@@ -14,8 +14,8 @@ from datetime import UTC, datetime
 from fastapi import FastAPI, Response
 
 from .core.config import HealthConfig
-from .core.health_schemas import HealthResponse, HealthStatus
-from .core.health_schemas import ReadyResponse as ReadinessResponse
+from .core.health import HealthResponse, HealthStatus
+from .core.health import ReadyResponse as ReadinessResponse
 
 logger = __import__("logging").getLogger(__name__)
 
@@ -138,11 +138,12 @@ def _check_database() -> bool:
 def _check_message_bus() -> bool:
     """Check if message bus is operational."""
     try:
-        from ..core.event_bus import EventBus
+        from .core.events.contract import InMemoryEventTransport
 
-        # Try to create EventBus instance
-        bus = EventBus()
-        return bus is not None
+        # The canonical event transport is available if the in-memory transport
+        # can be constructed.
+        transport = InMemoryEventTransport()
+        return transport is not None
     except Exception:
         return False
 
@@ -150,7 +151,7 @@ def _check_message_bus() -> bool:
 def _check_adapters() -> bool:
     """Check if orchestration adapters are loaded."""
     try:
-        from ..core.config import MahavishnuSettings
+        from .core.config import MahavishnuSettings
 
         config = MahavishnuSettings()
         # Check if at least one adapter is configured

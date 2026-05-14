@@ -10,8 +10,10 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from dataclasses import asdict, dataclass
+from datetime import date
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 import yaml
@@ -28,6 +30,15 @@ STALE_ROOT_MARKERS = (
     "_ACTION_PLAN",
 )
 PLAN_MARKERS = ("PLAN", "ROADMAP", "STRATEGY")
+COUNT_CLAIM_PATTERNS: dict[str, re.Pattern[str]] = {
+    "repo_count": re.compile(r"^-\s+\*\*(\d+)\s+git repositories\*\*", re.MULTILINE),
+    "mcp_server_count": re.compile(r"^-\s+\*\*(\d+)\s+MCP servers\*\*", re.MULTILINE),
+    "agent_count": re.compile(r"^-\s+\*\*(\d+)\s+Claude agents\*\*", re.MULTILINE),
+    "workflow_count": re.compile(r"^-\s+\*\*(\d+)\s+workflows\*\*", re.MULTILINE),
+    "skill_count": re.compile(r"^-\s+\*\*(\d+)\s+skills\*\*", re.MULTILINE),
+    "tool_count": re.compile(r"^-\s+\*\*(\d+)\s+tools\*\*", re.MULTILINE),
+    "role_count": re.compile(r"^-\s+\*\*(\d+)\s+role definitions\*\*", re.MULTILINE),
+}
 
 
 @dataclass(frozen=True)
@@ -55,9 +66,147 @@ class RepoDocsSummary:
     recommendations: list[str]
 
 
+@dataclass(frozen=True)
+class CatalogSnapshot:
+    """Summary of the current ecosystem catalog."""
+
+    ecosystem_path: str
+    last_updated: str
+    repo_count: int
+    active_repo_count: int
+    mcp_server_count: int
+    agent_count: int
+    workflow_count: int
+    skill_count: int
+    tool_count: int
+    role_count: int
+
+
+def load_ecosystem_data(ecosystem_path: Path) -> dict[str, Any]:
+    """Load the raw ecosystem configuration payload."""
+    data = yaml.safe_load(ecosystem_path.read_text()) or {}
+    if not isinstance(data, dict):
+        raise ValueError(f"Invalid ecosystem data in {ecosystem_path}")
+    return data
+
+
+def load_catalog_snapshot(ecosystem_path: Path) -> CatalogSnapshot:
+    """Summarize the active catalog counts from ecosystem.yaml."""
+    data = load_ecosystem_data(ecosystem_path)
+    repos = data.get("repos", [])
+    return CatalogSnapshot(
+        ecosystem_path=str(ecosystem_path),
+        last_updated=str(data.get("last_updated", "")),
+        repo_count=len(repos) if isinstance(repos, list) else 0,
+        active_repo_count=sum(
+            1 for repo in repos if isinstance(repo, dict) and repo.get("status", "active") == "active"
+        )
+        if isinstance(repos, list)
+        else 0,
+        mcp_server_count=len(data.get("mcp_servers", []))
+        if isinstance(data.get("mcp_servers", []), list)
+        else 0,
+        agent_count=len(data.get("claude_agents", {}))
+        if isinstance(data.get("claude_agents", {}), dict)
+        else 0,
+        workflow_count=len(data.get("workflows", {}))
+        if isinstance(data.get("workflows", {}), dict)
+        else 0,
+        skill_count=len(data.get("skills", {}))
+        if isinstance(data.get("skills", {}), dict)
+        else 0,
+        tool_count=len(data.get("tools", {}))
+        if isinstance(data.get("tools", {}), dict)
+        else 0,
+        role_count=len(data.get("roles", []))
+        if isinstance(data.get("roles", []), list)
+        else 0,
+    )
+
+
+def extract_catalog_claims(docs_path: Path) -> dict[str, int]:
+    """Extract catalog count claims from docs/ECOSYSTEM.md."""
+    if not docs_path.exists():
+        return {}
+
+    text = docs_path.read_text()
+    claims: dict[str, int] = {}
+    for field, pattern in COUNT_CLAIM_PATTERNS.items():
+        match = pattern.search(text)
+        if match:
+            claims[field] = int(match.group(1))
+    return claims
+
+
+def audit_catalog_snapshot(snapshot: CatalogSnapshot, docs_path: Path) -> list[str]:
+    """Compare the catalog snapshot to docs claims and freshness metadata."""
+    issues: list[str] = []
+    docs_claims = extract_catalog_claims(docs_path)
+    labels = {
+        "repo_count": "git repositories",
+        "mcp_server_count": "MCP servers",
+        "agent_count": "Claude agents",
+        "workflow_count": "workflows",
+        "skill_count": "skills",
+        "tool_count": "tools",
+        "role_count": "role definitions",
+    }
+
+    for field, label in labels.items():
+        claimed = docs_claims.get(field)
+        actual = getattr(snapshot, field)
+        if claimed is not None and claimed != actual:
+            issues.append(
+                f"docs/ECOSYSTEM.md claims {claimed} {label} but {snapshot.ecosystem_path} has {actual}"
+            )
+
+    if snapshot.last_updated:
+        try:
+            updated = date.fromisoformat(snapshot.last_updated)
+        except ValueError:
+            issues.append(
+                f"{snapshot.ecosystem_path} has invalid last_updated metadata: {snapshot.last_updated!r}"
+            )
+        else:
+            age_days = (date.today() - updated).days
+            if age_days > 30:
+                issues.append(
+                    f"{snapshot.ecosystem_path} last_updated is {age_days} days old; refresh catalog metadata"
+                )
+    else:
+        issues.append(f"{snapshot.ecosystem_path} is missing last_updated metadata")
+
+    return issues
+
+
+def audit_health_probe_metadata(ecosystem_data: dict[str, Any]) -> list[str]:
+    """Check enabled HTTP MCP servers for health metadata."""
+    issues: list[str] = []
+    for server in ecosystem_data.get("mcp_servers", []):
+        if not isinstance(server, dict):
+            continue
+        if server.get("status", "enabled") != "enabled":
+            continue
+        if server.get("type") == "http" and not server.get("health_check"):
+            issues.append(f"{server.get('name', '<unknown>')}: enabled HTTP server is missing health_check")
+    return issues
+
+
+def build_audit_report(ecosystem_path: Path) -> tuple[CatalogSnapshot, list[str], list[RepoDocsSummary]]:
+    """Build the catalog snapshot, drift issues, and per-repo summaries."""
+    ecosystem_data = load_ecosystem_data(ecosystem_path)
+    snapshot = load_catalog_snapshot(ecosystem_path)
+    docs_path = ecosystem_path.parent.parent / "docs" / "ECOSYSTEM.md"
+    issues = audit_catalog_snapshot(snapshot, docs_path)
+    issues.extend(audit_health_probe_metadata(ecosystem_data))
+    repos = [repo for repo in ecosystem_data.get("repos", []) if repo.get("status", "active") == "active"]
+    summaries = [summarize_repo(repo) for repo in repos]
+    return snapshot, issues, summaries
+
+
 def load_active_repos(ecosystem_path: Path) -> list[dict[str, Any]]:
     """Load active repository entries from ecosystem.yaml."""
-    data = yaml.safe_load(ecosystem_path.read_text()) or {}
+    data = load_ecosystem_data(ecosystem_path)
     repos = data.get("repos", [])
     if not isinstance(repos, list):
         raise ValueError(f"Invalid repos list in {ecosystem_path}")
@@ -115,8 +264,8 @@ def summarize_repo(repo: dict[str, Any]) -> RepoDocsSummary:
     stale_root_candidates = [
         path for path in markdown_files if is_stale_root_candidate(path, docs_path)
     ]
-    top_level_dirs = sorted(
-        path.name for path in docs_path.iterdir() if docs_exists and path.is_dir()
+    top_level_dirs = (
+        sorted(path.name for path in docs_path.iterdir() if path.is_dir()) if docs_exists else []
     )
 
     recommendations: list[str] = []
@@ -164,9 +313,33 @@ def summarize_repo(repo: dict[str, Any]) -> RepoDocsSummary:
     )
 
 
-def render_text(summaries: list[RepoDocsSummary]) -> str:
+def render_text(
+    summaries: list[RepoDocsSummary],
+    *,
+    catalog: CatalogSnapshot | None = None,
+    catalog_issues: list[str] | None = None,
+) -> str:
     """Render a concise text report."""
     lines = []
+    if catalog is not None:
+        lines.extend(
+            [
+                "CATALOG SUMMARY",
+                f"  ecosystem.yaml: {catalog.ecosystem_path}",
+                f"  repos: {catalog.repo_count} total / {catalog.active_repo_count} active",
+                f"  mcp_servers: {catalog.mcp_server_count}",
+                f"  agents: {catalog.agent_count}",
+                f"  workflows: {catalog.workflow_count}",
+                f"  skills: {catalog.skill_count}",
+                f"  tools: {catalog.tool_count}",
+                f"  roles: {catalog.role_count}",
+            ]
+        )
+        if catalog_issues:
+            lines.append("CATALOG ISSUES")
+            for issue in catalog_issues:
+                lines.append(f"  - {issue}")
+        lines.append("")
     for summary in summaries:
         status = "OK" if summary.has_docs_readme and not summary.backup_like_files else "CHECK"
         lines.append(
@@ -184,6 +357,8 @@ def render_markdown(
     summaries: list[RepoDocsSummary],
     *,
     include_files: bool = False,
+    catalog: CatalogSnapshot | None = None,
+    catalog_issues: list[str] | None = None,
 ) -> str:
     """Render a markdown report."""
     totals = Counter()
@@ -199,6 +374,30 @@ def render_markdown(
         "",
         "Generated by `scripts/audit_ecosystem_docs.py`.",
         "",
+    ]
+    if catalog is not None:
+        lines.extend(
+            [
+                "## Catalog Summary",
+                "",
+                f"- Ecosystem file: `{catalog.ecosystem_path}`",
+                f"- Repos: {catalog.repo_count} total / {catalog.active_repo_count} active",
+                f"- MCP servers: {catalog.mcp_server_count}",
+                f"- Agents: {catalog.agent_count}",
+                f"- Workflows: {catalog.workflow_count}",
+                f"- Skills: {catalog.skill_count}",
+                f"- Tools: {catalog.tool_count}",
+                f"- Roles: {catalog.role_count}",
+                "",
+            ]
+        )
+        if catalog_issues:
+            lines.extend(["## Catalog Issues", ""])
+            for issue in catalog_issues:
+                lines.append(f"- {issue}")
+            lines.append("")
+    lines.extend(
+        [
         "## Totals",
         "",
         f"- Repos: {len(summaries)}",
@@ -212,7 +411,8 @@ def render_markdown(
         "",
         "| Repo | Files | Markdown | Archive | Backup-like | Generated | Root stale candidates | docs README | Archive README | Plan index |",
         "|---|---:|---:|---:|---:|---:|---:|---|---|---|",
-    ]
+        ]
+    )
     for summary in summaries:
         lines.append(
             f"| `{summary.name}` | {summary.total_files} | {summary.markdown_files} | "
@@ -300,15 +500,19 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     """Run the docs audit."""
     args = parse_args()
-    repos = load_active_repos(args.ecosystem)
-    summaries = [summarize_repo(repo) for repo in repos]
+    catalog, catalog_issues, summaries = build_audit_report(args.ecosystem)
 
     if args.output == "json":
         rendered = json.dumps([asdict(summary) for summary in summaries], indent=2)
     elif args.output == "markdown":
-        rendered = render_markdown(summaries, include_files=args.include_files)
+        rendered = render_markdown(
+            summaries,
+            include_files=args.include_files,
+            catalog=catalog,
+            catalog_issues=catalog_issues,
+        )
     else:
-        rendered = render_text(summaries)
+        rendered = render_text(summaries, catalog=catalog, catalog_issues=catalog_issues)
 
     if args.write:
         args.write.parent.mkdir(parents=True, exist_ok=True)

@@ -53,6 +53,7 @@ Commercially, the most plausible future niche is a narrow B2B control plane for 
 - **Multi-pool execution** - Local and delegated pools are real; some cloud-oriented paths are less mature than the core local control plane
 - **Multiple orchestration adapters** - Prefect, Agno, and LlamaIndex integrations exist, but operator maturity varies by workflow and deployment context
 - **Observability and monitoring** - Present across metrics, health, and WebSocket surfaces, but some surrounding docs and dashboards are still catching up
+- **Durable operational state** - Dhara owns restart/recovery checkpoints for workflows, pools, routing decisions, and approvals; Session-Buddy remains the session-local context store
 
 ### Experimental or planned edges
 
@@ -196,8 +197,8 @@ Mahavishnu follows a modular, async-first architecture with these core component
 | +----------+         +----------+                +---------+   |
 | |  Pools   |         | Workers  |                |Coord    |   |
 | | - Local  |         | - Claude |                |- Issues |   |
-| | - Deleg  |         | - ZAI/GLM|                |- Todos  |   |
-| | - K8s    |         | - Nanobot|                |- Deps   |   |
+| | - Deleg  |         | - MiniMax|                |- Todos  |   |
+| | - K8s    |         | - Session-Buddy          |- Deps   |   |
 | | - RunPod |         | - OpenClaw               |-Messages|   |
 | +----------+         +----------+                +---------+   |
 |                                                                |
@@ -225,12 +226,12 @@ This table clarifies current maturity so multi-engine expectations match impleme
 
 | Capability | Status | Notes |
 |-----------|--------|-------|
-| Multi-repo orchestration | Implemented | Repository manifest (`settings/repos.yaml`), cross-repo coordination, dependency/status tooling |
+| Multi-repo orchestration | Implemented | Repository manifest (`settings/ecosystem.yaml`), cross-repo coordination, dependency/status tooling |
 | Async orchestration runtime | Implemented | Async-first core, async messaging, concurrent worker and pool execution |
 | Multi-pool execution (local/delegated/K8s/RunPod) | Implemented | Routing strategies and pool health/monitoring are implemented; RunPod GPU pool added 2026-05-01 |
 | LlamaIndex engine adapter | Implemented | RAG pipeline integration is implemented |
 | Prefect engine adapter | Implemented | Full Prefect 3.x SDK integration with flows, deployments, schedules, and task orchestration (1,974 LOC) |
-| Agno engine adapter | Implemented | Multi-agent teams with MCP tools, ZAI/Claude/Ollama/OpenAI support, and agent lifecycle management (1,627 LOC) |
+| Agno engine adapter | Implemented | Multi-agent teams with MCP tools, MiniMax/Claude/Ollama/OpenAI support, and agent lifecycle management (1,627 LOC) |
 | Hatchet engine adapter | Implemented | Durable workflow execution with human-in-the-loop approval events, `send_approval_event`, and `AGENT_LOOP` task routing |
 
 **Configuration System**
@@ -283,7 +284,9 @@ See [Getting Started Guide](docs/GETTING_STARTED.md) for detailed installation i
 
 ### 1. Configure Repositories
 
-Edit `settings/repos.yaml` to define your repositories:
+Edit `settings/ecosystem.yaml` to define your repositories. This is the
+canonical repository manifest. A legacy `repos.yaml` fallback remains only for
+older tooling that has not yet been migrated:
 
 ```yaml
 repos:
@@ -304,7 +307,7 @@ Edit `settings/mahavishnu.yaml`:
 ```yaml
 server_name: "Mahavishnu Orchestrator"
 log_level: INFO
-repos_path: settings/repos.yaml
+repos_path: settings/ecosystem.yaml
 
 # Pool management
 pools:
@@ -316,7 +319,7 @@ pools:
 workers:
   enabled: true
   max_concurrent: 10
-  default_type: "terminal-qwen"
+  default_type: "terminal-claude"
 
 # Quality control
 qc:
@@ -369,7 +372,7 @@ For more workflows, see the [Getting Started Guide](docs/GETTING_STARTED.md).
 
 A typical async orchestration path looks like this:
 
-1. Load repositories from `settings/repos.yaml`.
+1. Load repositories from `settings/ecosystem.yaml`.
 1. Classify task intent and select an engine and worker strategy.
 1. Route execution to the best pool (`least_loaded`, `round_robin`, `random`, or `affinity`).
 1. Execute concurrently on workers (or delegated pools) with async task handling.
@@ -433,8 +436,8 @@ Mahavishnu uses a role-based taxonomy to organize repositories:
 
 ### Worker Types
 
-- **terminal-qwen** - Headless Qwen CLI execution
 - **terminal-claude** - Headless Claude Code CLI execution
+- **terminal-qwen** - Headless Qwen CLI execution (supported non-default worker type)
 - **terminal-codex** - Headless Codex CLI execution in one-shot mode with marker-based completion
 - **terminal-openclaw** - Headless OpenClaw agent execution for local communication and delivery tasks
 - **terminal-deepagents** - Headless DeepAgents CLI execution in one-shot mode with marker-based completion
@@ -449,7 +452,7 @@ Worker selection policy:
 ### Routing Notes
 
 - Communication-style tasks such as notifications, handoffs, replies, inbox triage, and channel delivery prefer **gateway-openclaw** when `OPENCLAW_GATEWAY_URL` is configured, and fall back to **terminal-openclaw** otherwise.
-- Coding tasks remain on coding workers such as Qwen and Claude unless you explicitly request OpenClaw.
+- Coding tasks remain on coding workers such as Claude or the configured cloud provider unless you explicitly request OpenClaw.
 
 ### Optional Worker CLI Profiles
 
@@ -587,11 +590,11 @@ Mahavishnu's MCP server exposes **150+ tools** across 21 tool groups (see `MAHAV
 
 ### Session Buddy (7 tools)
 
-- `index_code_graph` - Index codebase structure
+- `index_code_graph` - Legacy shim for code indexing; prefer `code_index.index_repo`
 - `get_function_context` - Get function context
-- `find_related_code` - Find related code
-- `index_documentation` - Index documentation
-- `search_documentation` - Search documentation
+- `find_related_code` - Legacy shim; prefer `treesitter_tools`
+- `index_documentation` - Legacy shim for documentation indexing; prefer `code_index.index_repo`
+- `search_documentation` - Legacy shim; prefer `search_tools.hybrid_search`
 - `send_project_message` - Send project message
 - `list_project_messages` - List project messages
 
@@ -612,9 +615,13 @@ Mahavishnu uses a layered configuration system:
 # Authentication
 export MAHAVISHNU_AUTH__SECRET="your-32-character-secret"
 
-# Primary LLM provider (ZAI — OpenAI-compatible)
+# Primary LLM provider (MiniMax — OpenAI-compatible)
+export MINIMAX_API_KEY="your-minimax-api-key"
+export MINIMAX_BASE_URL="https://api.minimax.io/v1"  # optional override
+
+# Optional compatibility for older z.ai call sites
 export ZAI_API_KEY="your-zai-api-key"
-export ZAI_BASE_URL="https://api.z.ai/api/coding/paas/v4"  # optional override
+export ZAI_BASE_URL="https://api.z.ai/api/coding/paas/v4"  # optional compatibility override
 
 # RunPod GPU pool (optional)
 export RUNPOD_API_KEY="your-runpod-api-key"
@@ -650,7 +657,7 @@ pools:
 workers:
   enabled: true
   max_concurrent: 10
-  default_type: "terminal-qwen"
+  default_type: "terminal-claude"
 
 # OpenTelemetry trace storage
 otel_storage:
@@ -732,7 +739,7 @@ mahavishnu/
 |   +-- goal_driven_team_tutorial.py  # Goal-driven teams tutorial
 +-- settings/           # Configuration files
     +-- mahavishnu.yaml
-    +-- repos.yaml
+    +-- ecosystem.yaml
 ```
 
 ## Documentation
@@ -766,7 +773,7 @@ Important scope note: Mahavishnu is validated for multi-repo orchestration, asyn
 - Async base adapter architecture
 - FastMCP-based MCP server (150+ tools, 21 groups, profile-gated)
 - Multi-pool orchestration (local, delegated, K8s, RunPod GPU)
-- Worker orchestration (Claude, Qwen, ZAI/GLM, OpenClaw terminal/gateway)
+- Worker orchestration (Claude, MiniMax, OpenClaw terminal/gateway)
 - Cross-repository coordination (issues, todos, dependencies, messaging)
 - OpenTelemetry integration (DuckDB + semantic search)
 - Configuration system (Oneiric patterns)
@@ -779,7 +786,7 @@ Important scope note: Mahavishnu is validated for multi-repo orchestration, asyn
 
 - LlamaIndex adapter — RAG pipelines, Ollama embeddings (1,800+ LOC)
 - Prefect adapter — flows, deployments, schedules, task orchestration (1,974 LOC)
-- Agno adapter — multi-agent teams, MCP tools, ZAI/Anthropic/Ollama/OpenAI support (1,627 LOC)
+- Agno adapter — multi-agent teams, MCP tools, MiniMax/Anthropic/Ollama/OpenAI support (1,627 LOC)
 - Hatchet adapter — durable agentic workflows, human-in-the-loop approval events, `AGENT_LOOP` task routing
 
 **Recently delivered (see [Master Backlog](docs/plans/2026-05-07-mahavishnu-master-backlog.md)):**

@@ -1,6 +1,7 @@
 """Multi-pool orchestration and management."""
 
 import asyncio
+from datetime import UTC, datetime
 from enum import Enum
 import heapq
 import logging
@@ -76,6 +77,8 @@ class PoolManager:
         terminal_manager,
         session_buddy_client: Any = None,
         message_bus: MessageBus | None = None,
+        event_publisher: Any = None,
+        dhara_state: Any = None,
     ):
         """Initialize pool manager.
 
@@ -86,7 +89,8 @@ class PoolManager:
         """
         self.terminal_manager = terminal_manager
         self.session_buddy_client = session_buddy_client
-        self.message_bus = message_bus or MessageBus()
+        self.message_bus = message_bus or MessageBus(event_publisher=event_publisher)
+        self._dhara_state = dhara_state
 
         self._pools: dict[str, BasePool] = {}
         self._pool_selector = PoolSelector.LEAST_LOADED
@@ -103,6 +107,55 @@ class PoolManager:
         self._heap_lock = asyncio.Lock()
 
         logger.info("PoolManager initialized with O(log n) heap routing and concurrent collection")
+
+    async def _persist_pool_state(self, pool_id: str, pool: BasePool, status: str) -> None:
+        if self._dhara_state is None:
+            return
+        try:
+            await self._dhara_state.persist_pool(
+                pool_id,
+                {
+                    "pool_id": pool_id,
+                    "pool_type": pool.config.pool_type,
+                    "name": pool.config.name,
+                    "status": status,
+                    "workers": len(pool._workers),
+                    "min_workers": pool.config.min_workers,
+                    "max_workers": pool.config.max_workers,
+                    "updated_at": datetime.now(UTC).isoformat(),
+                },
+            )
+        except Exception as exc:
+            logger.debug("Failed to persist pool state for %s: %s", pool_id, exc)
+
+    async def _persist_routing_decision(
+        self,
+        task: dict[str, Any],
+        pool_id: str,
+        selector: PoolSelector,
+        pool_affinity: str | None,
+        reason: str,
+    ) -> None:
+        if self._dhara_state is None:
+            return
+        try:
+            task_class = str(task.get("category") or task.get("type") or "unknown")
+            await self._dhara_state.persist_routing_decision(
+                task_class,
+                {
+                    "task_class": task_class,
+                    "task_type": task.get("type", "unknown"),
+                    "pool_id": pool_id,
+                    "selector": selector.value,
+                    "pool_affinity": pool_affinity,
+                    "reason": reason,
+                    "task_category": task.get("category"),
+                    "updated_at": datetime.now(UTC).isoformat(),
+                },
+                timestamp=datetime.now(UTC),
+            )
+        except Exception as exc:
+            logger.debug("Failed to persist routing decision for %s: %s", pool_id, exc)
 
     def _refresh_pool_worker_metrics(self) -> None:
         """Recompute live worker counts per pool type for shared Prometheus metrics."""
@@ -186,6 +239,7 @@ class PoolManager:
             initial_count = config.min_workers
             self._pool_worker_counts[pool_id] = initial_count
             heapq.heappush(self._worker_count_heap, (initial_count, pool_id))
+            await self._persist_pool_state(pool_id, pool, "running")
 
             # Announce pool creation via message bus
             await self.message_bus.publish(
@@ -313,6 +367,7 @@ class PoolManager:
             if new_count != old_count:
                 await self._update_pool_worker_count(pool_id, new_count)
         self._refresh_pool_worker_metrics()
+        await self._persist_pool_state(pool_id, pool, "running")
 
         # Announce task completion
         await self.message_bus.publish(
@@ -373,21 +428,25 @@ class PoolManager:
             if not pool_affinity:
                 raise ValueError("pool_affinity required for AFFINITY strategy")
             pool_id = pool_affinity
+            reason = "affinity"
         elif selector == PoolSelector.LEAST_LOADED:
             # O(log n) heap-based lookup (thread-safe)
             pool_id = await self._get_least_loaded_pool()
             if pool_id is None:
                 raise RuntimeError("No pools available for routing")
             logger.debug(f"Least loaded pool: {pool_id}")
+            reason = "least_loaded"
         elif selector == PoolSelector.ROUND_ROBIN:
             # Round-robin through pools
             pool_ids = list(self._pools.keys())
             pool_id = pool_ids[self._round_robin_index % len(pool_ids)]
             self._round_robin_index += 1
             logger.debug(f"Round-robin pool: {pool_id}")
+            reason = "round_robin"
         else:  # RANDOM
             pool_id = random.choice(list(self._pools.keys()))
             logger.debug(f"Random pool: {pool_id}")
+            reason = "random"
 
         # GPU category override: prefer a runpod pool for GPU-bound task categories.
         # Falls back to the already-selected pool when no runpod pool is available.
@@ -402,6 +461,9 @@ class PoolManager:
                     "GPU task category=%r — routing to runpod pool %s", task_category, runpod_pool_id
                 )
                 pool_id = runpod_pool_id
+                reason = "gpu_override"
+
+        await self._persist_routing_decision(task, pool_id, selector, pool_affinity, reason)
 
         return await self.execute_on_pool(pool_id, task)
 
@@ -477,6 +539,7 @@ class PoolManager:
         pool = self._pools.get(pool_id)
         if pool:
             await pool.stop()
+            await self._persist_pool_state(pool_id, pool, "closed")
             del self._pools[pool_id]
 
             # Remove from tracking structures

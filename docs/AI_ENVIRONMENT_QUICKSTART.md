@@ -9,7 +9,7 @@ ______________________________________________________________________
 A unified system to:
 
 1. **Manage Claude Code** (~/.claude/settings.json)
-1. **Switch LLMs** (Claude, Qwen, Codex)
+1. **Switch LLMs** (Claude, MiniMax, Codex)
 1. **Integrate Session-Buddy** shared memory
 1. **Three-tier memory** (AgentDB + pgvector + Session-Buddy)
 
@@ -110,7 +110,7 @@ from .claude_manager import ClaudeCodeManager
 
 
 class LLMSwitcher:
-    """Switch between LLM environments (Claude, Qwen, Codex)."""
+    """Switch between LLM environments (Claude, MiniMax, Codex)."""
 
     # Predefined LLM configurations
     LLM_CONFIGS = {
@@ -119,9 +119,9 @@ class LLMSwitcher:
             "ANTHROPIC_BASE_URL": "https://api.anthropic.com",
             "API_TIMEOUT_MS": "3000000",
         },
-        "qwen": {
-            "ANTHROPIC_AUTH_TOKEN": "${QWEN_API_KEY}",
-            "ANTHROPIC_BASE_URL": "https://api.qwen.com/v1",
+        "minimax": {
+            "ANTHROPIC_AUTH_TOKEN": "${MINIMAX_API_KEY}",
+            "ANTHROPIC_BASE_URL": "https://api.minimax.io/v1",
             "API_TIMEOUT_MS": "3000000",
         },
         "codex": {
@@ -345,7 +345,7 @@ app.add_typer(ai_app, name="ai")
 
 @ai_app.command("switch-llm")
 async def switch_llm(
-    llm_name: str = typer.Argument(..., help="LLM name (claude, qwen, codex)")
+    llm_name: str = typer.Argument(..., help="LLM name (claude, minimax, codex)")
 ):
     """Switch active LLM environment."""
     switcher = LLMSwitcher()
@@ -401,9 +401,9 @@ ai_environments:
       base_url: "https://api.anthropic.com"
       timeout_ms: 3000000
 
-    qwen:
-      name: "Qwen (Alibaba)"
-      base_url: "https://api.qwen.com/v1"
+    minimax:
+      name: "MiniMax (Primary Cloud)"
+      base_url: "https://api.minimax.io/v1"
       timeout_ms: 3000000
 
     codex:
@@ -438,11 +438,11 @@ memory:
 
 # Secrets management
 secrets:
-  env:
+    env:
     prefix: "LLM_API_"
     required_keys:
       - CLAUDE
-      - QWEN
+      - MINIMAX
       - CODEX
 ```
 
@@ -456,8 +456,8 @@ ______________________________________________________________________
 # Switch to Claude (default)
 mahavishnu ai switch-llm claude
 
-# Switch to Qwen
-mahavishnu ai switch-llm qwen
+# Switch to MiniMax
+mahavishnu ai switch-llm minimax
 
 # Switch to Codex
 mahavishnu ai switch-llm codex

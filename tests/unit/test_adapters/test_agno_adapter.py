@@ -690,6 +690,33 @@ async def test_execute_with_empty_repo_list(mock_config):
 
 
 @pytest.mark.asyncio
+async def test_execute_records_execution_log(mock_config, sample_repo_path):
+    """Test execute() records a cockpit-friendly activity summary."""
+    adapter = AgnoAdapter(config=mock_config)
+
+    mock_result = {
+        "repo": sample_repo_path,
+        "status": "completed",
+        "result": {"operation": "code_sweep", "content": "done"},
+        "task_id": "log_test",
+    }
+
+    with patch.object(adapter, "_process_single_repo", return_value=mock_result):
+        adapter._initialized = True
+        adapter._semaphore = asyncio.Semaphore(5)
+
+        await adapter.execute(
+            task={"type": "code_sweep", "id": "log_test"},
+            repos=[sample_repo_path],
+        )
+
+    log = adapter.get_execution_log()
+    assert log
+    assert log[-1]["kind"] == "task_batch"
+    assert log[-1]["success_count"] == 1
+
+
+@pytest.mark.asyncio
 async def test_execute_with_missing_task_id(mock_config, sample_repo_path):
     """Test executing task without ID."""
     adapter = AgnoAdapter(config=mock_config)

@@ -1,5 +1,5 @@
 version: '1.0'
-last_updated: '2026-03-25'
+last_updated: '2026-05-11'
 maintainer: les
 description: Bodai ecosystem repository and MCP configuration for Mahavishnu orchestration.
 repos:
@@ -231,7 +231,7 @@ roles:
   - processing
   - headless
   duties:
-  - Execute headless AI commands (Qwen, Claude Code)
+  - Execute headless AI commands (Claude Code, MiniMax-backed workers)
   - Run containerized workloads
   - Report progress and capture output
   - Handle retries, timeouts, and error recovery
@@ -241,6 +241,31 @@ roles:
   - retry
   - timeout
   - capture
+- name: seer
+  description: Semantic search and knowledge aggregation
+  tags:
+  - semantic
+  - search
+  - vector
+  - knowledge
+  capabilities:
+  - aggregate
+  - search
+  - detect
+  - correlate
+  - graph
+- name: curator
+  description: Durable operational state and recovery coordination
+  tags:
+  - workflow
+  - config
+  - distribution
+  capabilities:
+  - capture
+  - restore
+  - track
+  - persist
+  - recover
 coordination:
   issues:
   - id: MHV-001

@@ -136,17 +136,9 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         supports_interactive=False,
         default_timeout=300,
     ),
-    "terminal-ollama": WorkerConfig(
-        name="Ollama AI",
-        worker_type="terminal-ollama",
-        command="",  # HTTP API, no CLI command
-        category=WorkerCategory.AI_ASSISTANT,
-        description="Local AI via Ollama HTTP API (zero cost, complete privacy)",
-        completion_markers=["done"],  # API returns done: true
-        stream_format="json",
-        requires_tool="ollama",  # Checks for 'ollama' binary
-        default_timeout=300,
-    ),
+    # terminal-ollama intentionally absent: Ollama uses HTTP API, not a CLI
+    # session.  Use OllamaWorker directly instead of routing through
+    # GenericShellWorker with an empty command.
     # Shell/REPL Environments
     "terminal-shell": WorkerConfig(
         name="Bash Shell",
@@ -402,15 +394,6 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         category=WorkerCategory.APPLICATION,
         description="Image manipulation via Pillow/pilkit MCP server",
         mcp_server="graphics-mcp",
-        supports_interactive=False,
-    ),
-    "application-n8n": WorkerConfig(
-        name="n8n Workflows",
-        worker_type="application-n8n",
-        command="",  # Handled via MCP
-        category=WorkerCategory.APPLICATION,
-        description="n8n workflow automation via MCP server",
-        mcp_server="n8n-mcp",
         supports_interactive=False,
     ),
     "application-neo4j": WorkerConfig(

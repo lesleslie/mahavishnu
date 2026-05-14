@@ -10,7 +10,7 @@ import pytest
 from typer.testing import CliRunner
 
 from mahavishnu._main_cli import app
-from mahavishnu.core.health_schemas import (
+from mahavishnu.core.health import (
     DependencyStatus,
     HealthResponse,
     HealthStatus,
@@ -236,23 +236,25 @@ class TestWorkerCommands:
             mock_app_class.return_value = mock_app
 
             # Mock WorkerManager and TerminalManager
-            with patch("mahavishnu.workers.WorkerManager") as mock_worker_mgr_class:
-                with patch("mahavishnu.terminal.manager.TerminalManager") as mock_term_mgr_class:
-                    mock_worker_mgr = AsyncMock()
-                    mock_worker_mgr.spawn_workers = AsyncMock(return_value=["worker-1", "worker-2"])
-                    mock_worker_mgr.list_workers = AsyncMock(return_value=[])
-                    mock_worker_mgr_class.return_value = mock_worker_mgr
+            with (
+                patch("mahavishnu.workers.WorkerManager") as mock_worker_mgr_class,
+                patch("mahavishnu.terminal.manager.TerminalManager") as mock_term_mgr_class,
+            ):
+                mock_worker_mgr = AsyncMock()
+                mock_worker_mgr.spawn_workers = AsyncMock(return_value=["worker-1", "worker-2"])
+                mock_worker_mgr.list_workers = AsyncMock(return_value=[])
+                mock_worker_mgr_class.return_value = mock_worker_mgr
 
-                    mock_term_mgr = MagicMock()
-                    mock_term_mgr.create = MagicMock(return_value=mock_term_mgr)
-                    mock_term_mgr_class.create = MagicMock(return_value=mock_term_mgr)
+                mock_term_mgr = MagicMock()
+                mock_term_mgr.create = MagicMock(return_value=mock_term_mgr)
+                mock_term_mgr_class.create = MagicMock(return_value=mock_term_mgr)
 
-                    result = runner.invoke(
-                        app, ["workers", "spawn", "--type", "terminal-qwen", "--count", "2"]
-                    )
+                result = runner.invoke(
+                    app, ["workers", "spawn", "--type", "terminal-qwen", "--count", "2"]
+                )
 
-                    # Command should execute (may fail during execution but should parse)
-                    assert result.exit_code in [0, 1]  # May succeed or fail during execution
+                # Command should execute (may fail during execution but should parse)
+                assert result.exit_code in [0, 1]  # May succeed or fail during execution
 
     def test_workers_execute_command_validation(self):
         """Test workers execute requires prompt."""
@@ -726,40 +728,44 @@ class TestCLIMocking:
         """Test list-repos properly mocks MahavishnuApp."""
         runner = CliRunner()
 
-        with patch("mahavishnu._main_cli.MahavishnuApp") as mock_app_class:
-            with patch("mahavishnu._main_cli.MultiAuthHandler") as mock_auth_class:
-                mock_app = MagicMock()
-                mock_app.config.auth.enabled = False
-                mock_app.get_repos = MagicMock(return_value=["/test/repo"])
-                mock_app_class.return_value = mock_app
+        with (
+            patch("mahavishnu._main_cli.MahavishnuApp") as mock_app_class,
+            patch("mahavishnu._main_cli.MultiAuthHandler") as mock_auth_class,
+        ):
+            mock_app = MagicMock()
+            mock_app.config.auth.enabled = False
+            mock_app.get_repos = MagicMock(return_value=["/test/repo"])
+            mock_app_class.return_value = mock_app
 
-                mock_auth = MagicMock()
-                mock_auth.is_claude_subscribed.return_value = False
-                mock_auth_class.return_value = mock_auth
+            mock_auth = MagicMock()
+            mock_auth.is_claude_subscribed.return_value = False
+            mock_auth_class.return_value = mock_auth
 
-                result = runner.invoke(app, ["list-repos"])
+            result = runner.invoke(app, ["list-repos"])
 
-                # Should succeed
-                assert result.exit_code == 0
-                # Verify app was initialized
-                mock_app_class.assert_called_once()
+            # Should succeed
+            assert result.exit_code == 0
+            # Verify app was initialized
+            mock_app_class.assert_called_once()
 
     def test_auth_handler_initialization_in_commands(self):
         """Test auth handler is initialized in commands."""
         runner = CliRunner()
 
-        with patch("mahavishnu._main_cli.MahavishnuApp") as mock_app_class:
-            with patch("mahavishnu._main_cli.MultiAuthHandler") as mock_auth_class:
-                mock_app = MagicMock()
-                mock_app.config.auth.enabled = False
-                mock_app.get_repos = MagicMock(return_value=[])
-                mock_app_class.return_value = mock_app
+        with (
+            patch("mahavishnu._main_cli.MahavishnuApp") as mock_app_class,
+            patch("mahavishnu._main_cli.MultiAuthHandler") as mock_auth_class,
+        ):
+            mock_app = MagicMock()
+            mock_app.config.auth.enabled = False
+            mock_app.get_repos = MagicMock(return_value=[])
+            mock_app_class.return_value = mock_app
 
-                mock_auth = MagicMock()
-                mock_auth.is_claude_subscribed.return_value = False
-                mock_auth_class.return_value = mock_auth
+            mock_auth = MagicMock()
+            mock_auth.is_claude_subscribed.return_value = False
+            mock_auth_class.return_value = mock_auth
 
-                result = runner.invoke(app, ["list-repos"])
+            result = runner.invoke(app, ["list-repos"])
 
-                # Auth handler should be initialized
-                assert result.exit_code == 0
+            # Auth handler should be initialized
+            assert result.exit_code == 0

@@ -30,7 +30,7 @@ Backed by `DharaClient.put()` and `DharaClient.call_tool("get", ...)`. If Dhara 
 |--------|-------------|
 | Workflow execution | `workflow/v1/{execution_id}` |
 | Pool state | `pool/v1/{pool_id}` |
-| Routing decision | `routing/v1/{decision_id}` |
+| Routing decision | `routing/v1/{task_class}/{timestamp}` |
 | Pending approval | `approval/v1/{request_id}` |
 
 Schema version (`v1`) is embedded in the key, not the value, so key-range queries stay simple.
@@ -44,7 +44,8 @@ There is no `WorkflowEngine` class. The equivalent is `MahavishnuApp.execute_wor
 - **Start**: persist `WorkflowExecution` (status=`running`) at start of `execute_workflow_with_fallback`
 - **Success**: update status → `completed`, set `end_time`
 - **Failure**: update status → `failed`, set `end_time` + `error` field
-- **Pool spawn/close**: persist `PoolExecution` at `PoolManager.spawn_pool()` and `close_pool()`
+- **Startup recovery**: restore running workflows through `DharaStateBackend.recover_workflows()` and pending approvals through `ApprovalManager.restore_from_dhara_entries()`
+- **Pool spawn/close**: persist pool state at `PoolManager.spawn_pool()` and `close_pool()`
 
 All writes are fire-and-forget (`asyncio.create_task`). If Dhara is unavailable, `DharaStateBackend.put()` is a no-op — the orchestrator never blocks on persistence.
 
@@ -52,12 +53,7 @@ All writes are fire-and-forget (`asyncio.create_task`). If Dhara is unavailable,
 
 ## RoutingDecisionBuffer Batched-Write Strategy
 
-`RoutingDecisionBuffer` holds a `deque` of `RoutingDecision` objects per task class. Rather than writing each decision individually, flush on:
-
-1. `PoolManager.close_pool()` — flush all buffered decisions for the pool
-2. A periodic background task (60 s interval) initiated in `MahavishnuApp.wait_for_dependencies()`
-
-Each flush serializes the buffer to JSON and writes one key: `routing/v1/{task_class}/{timestamp}`.
+`PoolManager.route_task()` persists each routing decision through `DharaStateBackend.persist_routing_decision()` after selector/affinity resolution. The recover/read surface is `DharaStateBackend.recover_routing_decisions()` and `MahavishnuApp.get_recovered_routing_decisions()`.
 
 ---
 
@@ -69,6 +65,7 @@ Dhara dependency is already `required: false` in `settings/mahavishnu.yaml`. The
 - All writes silently skip; reads return `None`
 - A `WARN` log is emitted once: `"Dhara unavailable — state persistence disabled"`
 - Recovery: if a subsequent write finds Dhara responding, `available` flips to `True`
+- The orchestrator never hard-fails optional boot paths when Dhara is unavailable
 
 ---
 

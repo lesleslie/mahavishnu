@@ -74,7 +74,7 @@ ValidationError: Invalid path contains directory traversal
 
 #### Solution
 
-1. Check repository paths in repos.yaml for `..` sequences
+1. Check repository paths in ecosystem.yaml for `..` sequences
 1. Ensure paths are absolute or properly relative
 1. Verify paths exist and are accessible
 

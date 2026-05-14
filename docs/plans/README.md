@@ -6,6 +6,8 @@ This directory contains active and historical planning documents for Mahavishnu 
 
 1. Current plan map, implementation priority, and supersession notes:
    - [PLAN_INDEX.md](./PLAN_INDEX.md)
+1. Current prioritized execution queue for remaining work:
+   - [2026-05-11-remaining-work-execution-order.md](./2026-05-11-remaining-work-execution-order.md)
 1. Current Agno/Textual TUI and Bodai platform architecture:
    - [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
 1. Current Agno/Textual TUI and Bodai platform implementation plan:
@@ -27,6 +29,7 @@ This directory contains active and historical planning documents for Mahavishnu 
 ## Current Authority
 
 - Use [PLAN_INDEX.md](./PLAN_INDEX.md) as the source of truth for which plans are active, canonical, superseded, or historical.
+- Use [2026-05-11-remaining-work-execution-order.md](./2026-05-11-remaining-work-execution-order.md) as the prioritized queue for the remaining open implementation tasks.
 - Use [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md) for Agno/Textual TUI boundaries.
 - Use [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md) for ecosystem health, capability discovery, dashboard live-data wiring, and status normalization.
 - Use [2026-04-25-ecosystem-docs-canonicalization-plan.md](./2026-04-25-ecosystem-docs-canonicalization-plan.md) for cross-repo docs cleanup and drift prevention.

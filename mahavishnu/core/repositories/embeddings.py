@@ -13,16 +13,59 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
 
-if TYPE_CHECKING:
-    from uuid import UUID
-
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Static query constants — no f-strings, all user values via positional params.
+# ---------------------------------------------------------------------------
+
+_INSERT_EMBEDDING = (
+    "INSERT INTO search.document_embeddings"
+    " (document_id, model_name, embedding_dim, embedding, created_at, metadata)"
+    " VALUES ($1, $2, $3, $4, $5, $6)"
+    " ON CONFLICT (document_id) DO UPDATE SET"
+    "   model_name = EXCLUDED.model_name,"
+    "   embedding_dim = EXCLUDED.embedding_dim,"
+    "   embedding = EXCLUDED.embedding,"
+    "   metadata = EXCLUDED.metadata,"
+    "   created_at = EXCLUDED.created_at"
+    " RETURNING *"
+)
+
+_SELECT_BY_DOC = (
+    "SELECT document_id, model_name, embedding_dim, embedding, created_at, metadata"
+    " FROM search.document_embeddings"
+    " WHERE document_id = $1"
+)
+
+_SEARCH_SIMILAR = (
+    "SELECT document_id, model_name, embedding_dim, metadata,"
+    "       1 - (embedding <=> $1::vector) AS score"
+    " FROM search.document_embeddings"
+    " WHERE 1 - (embedding <=> $1::vector) >= $2"
+    " ORDER BY embedding <=> $1::vector"
+    " LIMIT $3"
+)
+
+_DELETE_EMBEDDING = "DELETE FROM search.document_embeddings WHERE document_id = $1"
+
+_LIST_ALL = (
+    "SELECT * FROM search.document_embeddings"
+    " ORDER BY created_at DESC LIMIT $1 OFFSET $2"
+)
+
+_LIST_BY_MODEL = (
+    "SELECT * FROM search.document_embeddings"
+    " WHERE model_name = $1"
+    " ORDER BY created_at DESC LIMIT $2 OFFSET $3"
+)
 
 
 # =============================================================================
@@ -31,101 +74,41 @@ logger = logging.getLogger(__name__)
 
 
 class EmbeddingCreate(BaseModel):
-    """Embedding creation request model.
-
-    Args:
-        document_id: Document ID this embedding belongs to
-        model_name: Embedding model name (e.g., 'all-MiniLM-L6-v2')
-        embedding_dim: Embedding dimension (e.g., 384)
-        embedding: Embedding vector as list of floats
-        metadata: Additional metadata
-    """
+    """Embedding creation request model."""
 
     document_id: UUID = Field(..., description="Document ID")
     model_name: str = Field(..., description="Embedding model name")
-    embedding_dim: int = Field(
-        default=384,
-        ge=128,
-        le=1024,
-        description="Embedding dimension",
-    )
-    embedding: list[float] = Field(
-        ...,
-        min_length=128,
-        max_length=1024,
-        description="Embedding vector",
-    )
-    metadata: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional metadata",
-    )
+    embedding_dim: int = Field(default=384, ge=128, le=1024, description="Embedding dimension")
+    embedding: list[float] = Field(..., min_length=128, max_length=1024, description="Embedding vector")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 
 class EmbeddingRead(BaseModel):
-    """Embedding read response model.
-
-    Args:
-        document_id: Document ID
-        model_name: Embedding model name
-        embedding_dim: Embedding dimension
-        embedding: Embedding vector
-        created_at: Creation timestamp
-        metadata: Additional metadata
-    """
+    """Embedding read response model."""
 
     document_id: UUID = Field(..., description="Document ID")
     model_name: str = Field(..., description="Embedding model name")
     embedding_dim: int = Field(..., description="Embedding dimension")
-    embedding: list[float] = Field(
-        ...,
-        description="Embedding vector",
-    )
+    embedding: list[float] = Field(..., description="Embedding vector")
     created_at: datetime = Field(..., description="Creation timestamp")
-    metadata: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional metadata",
-    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 
 class EmbeddingSearchResult(BaseModel):
-    """Embedding search result with similarity score.
-
-    Args:
-        document_id: Document ID of the match
-        model_name: Embedding model name
-        embedding_dim: Embedding dimension
-        score: Cosine similarity score (0.0-1.0)
-        metadata: Additional metadata
-    """
+    """Embedding search result with similarity score."""
 
     document_id: UUID = Field(..., description="Document ID")
     model_name: str = Field(..., description="Embedding model name")
     embedding_dim: int = Field(..., description="Embedding dimension")
     score: float = Field(..., ge=0.0, le=1.0, description="Similarity score")
-    metadata: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional metadata",
-    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 
 class EmbeddingUpdate(BaseModel):
-    """Embedding update request model.
+    """Embedding update request model (all fields optional)."""
 
-    All fields are optional for partial updates.
-
-    Args:
-        embedding: New embedding vector (optional)
-        metadata: Metadata updates (merged with existing, optional)
-    """
-
-    embedding: list[float] | None = Field(
-        None,
-        description="Updated embedding vector",
-    )
-    metadata: dict[str, Any] | None = Field(
-        None,
-        description="Metadata updates",
-    )
+    embedding: list[float] | None = Field(None, description="Updated embedding vector")
+    metadata: dict[str, Any] | None = Field(None, description="Metadata updates")
 
 
 # =============================================================================
@@ -136,64 +119,15 @@ class EmbeddingUpdate(BaseModel):
 class EmbeddingRepository(
     BaseRepository[EmbeddingCreate, EmbeddingRead, EmbeddingUpdate],
 ):
-    """Repository for search.document_embeddings table operations.
-
-    Provides CRUD operations for embeddings with:
-    - Type-safe Pydantic model returns
-    - Async context manager pattern
-    - Structured error handling
-    - Vector similarity search support
-
-    Usage:
-        repo = EmbeddingRepository()
-
-        async with repo:
-            embedding = await repo.store_embedding(
-                EmbeddingCreate(
-                    document_id=doc_id,
-                    model_name="all-MiniLM-L6-v2",
-                    embedding=[0.1, 0.2, ...],
-                )
-            )
-            results = await repo.search_similar(query_embedding, limit=10)
-    """
-
-    def __init__(self) -> None:
-        """Initialize embedding repository."""
-        super().__init__()
-        self._table = "search.document_embeddings"
+    """Repository for search.document_embeddings table operations."""
 
     async def store_embedding(self, data: EmbeddingCreate) -> EmbeddingRead:
-        """Store an embedding vector.
-
-        Args:
-            data: Embedding creation data
-
-        Returns:
-            Stored embedding with generated timestamp
-
-        Raises:
-            RepositoryError: If storage fails
-        """
+        """Store an embedding vector."""
         now = datetime.now(UTC)
-
-        query = f"""
-            INSERT INTO {self._table} (
-                document_id, model_name, embedding_dim, embedding, created_at, metadata
-            ) VALUES ($1, $2, $3, $4, $5, $6)
-            ON CONFLICT (document_id) DO UPDATE SET
-                model_name = EXCLUDED.model_name,
-                embedding_dim = EXCLUDED.embedding_dim,
-                embedding = EXCLUDED.embedding,
-                metadata = EXCLUDED.metadata,
-                created_at = EXCLUDED.created_at
-            RETURNING *
-        """
-
         try:
             async with self.transaction() as conn:
                 row = await conn.fetchrow(
-                    query,
+                    _INSERT_EMBEDDING,
                     data.document_id,
                     data.model_name,
                     data.embedding_dim,
@@ -201,56 +135,24 @@ class EmbeddingRepository(
                     now,
                     data.metadata,
                 )
-
                 if row is None:
                     raise RepositoryError(
                         "Failed to store embedding",
                         operation="store_embedding",
                         details={"document_id": str(data.document_id)},
                     )
-
                 return self._row_to_model(row)
-
         except Exception as e:
-            raise self._handle_error(
-                "store_embedding",
-                e,
-                {"document_id": str(data.document_id)},
-            )
+            raise self._handle_error("store_embedding", e, {"document_id": str(data.document_id)})
 
     async def get_embedding(self, document_id: UUID) -> EmbeddingRead | None:
-        """Get an embedding by document ID.
-
-        Args:
-            document_id: Document ID
-
-        Returns:
-            EmbeddingRead if found, None otherwise
-
-        Raises:
-            RepositoryError: If query fails
-        """
-        query = f"""
-            SELECT document_id, model_name, embedding_dim, embedding, created_at, metadata
-            FROM {self._table}
-            WHERE document_id = $1
-        """
-
+        """Get an embedding by document ID."""
         try:
             async with self.connection() as conn:
-                row = await conn.fetchrow(query, document_id)
-
-                if row is None:
-                    return None
-
-                return self._row_to_model(row)
-
+                row = await conn.fetchrow(_SELECT_BY_DOC, document_id)
+                return self._row_to_model(row) if row is not None else None
         except Exception as e:
-            raise self._handle_error(
-                "get_embedding",
-                e,
-                {"document_id": str(document_id)},
-            )
+            raise self._handle_error("get_embedding", e, {"document_id": str(document_id)})
 
     async def search_similar(
         self,
@@ -258,39 +160,10 @@ class EmbeddingRepository(
         limit: int = 20,
         similarity_threshold: float = 0.5,
     ) -> list[EmbeddingSearchResult]:
-        """Search for documents with similar embeddings.
-
-        Uses cosine similarity to find the closest matching documents.
-
-        Args:
-            query_embedding: Query embedding vector
-            limit: Maximum results (default: 20)
-            similarity_threshold: Minimum similarity score (default: 0.5)
-
-        Returns:
-            List of search results sorted by similarity
-
-        Raises:
-            RepositoryError: If search fails
-        """
-        query = f"""
-            SELECT document_id, model_name, embedding_dim, metadata,
-                   1 - (embedding <=> $1::vector) as score
-            FROM {self._table}
-            WHERE 1 - (embedding <=> $1::vector) >= $2
-            ORDER BY embedding <=> $1::vector
-            LIMIT $3
-        """
-
+        """Search for documents with similar embeddings using cosine similarity."""
         try:
             async with self.connection() as conn:
-                rows = await conn.fetch(
-                    query,
-                    str(query_embedding),
-                    similarity_threshold,
-                    limit,
-                )
-
+                rows = await conn.fetch(_SEARCH_SIMILAR, str(query_embedding), similarity_threshold, limit)
                 return [
                     EmbeddingSearchResult(
                         document_id=row["document_id"],
@@ -301,39 +174,19 @@ class EmbeddingRepository(
                     )
                     for row in rows
                 ]
-
         except Exception as e:
             raise self._handle_error(
-                "search_similar",
-                e,
-                {"limit": limit, "threshold": similarity_threshold},
+                "search_similar", e, {"limit": limit, "threshold": similarity_threshold}
             )
 
     async def delete_embedding(self, document_id: UUID) -> bool:
-        """Delete an embedding by document ID.
-
-        Args:
-            document_id: Document ID
-
-        Returns:
-            True if deleted, False if not found
-
-        Raises:
-            RepositoryError: If deletion fails
-        """
-        query = f"DELETE FROM {self._table} WHERE document_id = $1"
-
+        """Delete an embedding by document ID."""
         try:
             async with self.transaction() as conn:
-                result = await conn.execute(query, document_id)
+                result = await conn.execute(_DELETE_EMBEDDING, document_id)
                 return result == "DELETE 1"
-
         except Exception as e:
-            raise self._handle_error(
-                "delete_embedding",
-                e,
-                {"document_id": str(document_id)},
-            )
+            raise self._handle_error("delete_embedding", e, {"document_id": str(document_id)})
 
     async def list_embeddings(
         self,
@@ -341,61 +194,22 @@ class EmbeddingRepository(
         limit: int = 50,
         offset: int = 0,
     ) -> list[EmbeddingRead]:
-        """List embeddings with optional model filter.
-
-        Args:
-            model_name: Filter by model name (optional)
-            limit: Maximum results (default: 50)
-            offset: Result offset (default: 0)
-
-        Returns:
-            List of embeddings
-
-        Raises:
-            RepositoryError: If query fails
-        """
-        if model_name:
-            query = f"""
-                SELECT * FROM {self._table}
-                WHERE model_name = $1
-                ORDER BY created_at DESC
-                LIMIT $2 OFFSET $3
-            """
-            params: list[Any] = [model_name, limit, offset]
-        else:
-            query = f"""
-                SELECT * FROM {self._table}
-                ORDER BY created_at DESC
-                LIMIT $1 OFFSET $2
-            """
-            params = [limit, offset]
-
+        """List embeddings with optional model filter."""
         try:
             async with self.connection() as conn:
-                rows = await conn.fetch(query, *params)
+                if model_name:
+                    rows = await conn.fetch(_LIST_BY_MODEL, model_name, limit, offset)
+                else:
+                    rows = await conn.fetch(_LIST_ALL, limit, offset)
                 return [self._row_to_model(row) for row in rows]
-
         except Exception as e:
-            raise self._handle_error(
-                "list_embeddings",
-                e,
-                {"model_name": model_name},
-            )
+            raise self._handle_error("list_embeddings", e, {"model_name": model_name})
 
     def _row_to_model(self, row: Any) -> EmbeddingRead:
-        """Convert database row to EmbeddingRead model.
-
-        Args:
-            row: Database row record
-
-        Returns:
-            EmbeddingRead model instance
-        """
+        """Convert database row to EmbeddingRead model."""
         embedding = row["embedding"]
         if isinstance(embedding, str):
-            # Parse vector string representation
             embedding = [float(x) for x in embedding.strip("[]").split(",") if x.strip()]
-
         return EmbeddingRead(
             document_id=row["document_id"],
             model_name=row["model_name"],

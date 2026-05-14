@@ -75,7 +75,7 @@ class WorkerManager:
         """Spawn multiple workers of specified type.
 
         Args:
-            worker_type: Type of worker ("terminal-qwen", "terminal-claude", "terminal-codex", "container")
+            worker_type: Type of worker ("terminal-qwen" [legacy], "terminal-claude", "terminal-codex", "container")
             count: Number of workers to spawn
             task_spec: Optional task specification for immediate execution
 

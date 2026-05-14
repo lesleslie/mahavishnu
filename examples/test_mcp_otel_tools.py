@@ -15,7 +15,7 @@ async def main():
     try:
         from akosha.storage import HotStore
 
-        from mahavishnu.ingesters import OtelIngester
+        from mahavishnu.ingesters.otel_ingester import OtelIngester
     except ImportError as e:
         print(f"❌ Import error: {e}")
         print("\nRequired: pip install duckdb sentence-transformers")

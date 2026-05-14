@@ -1,9 +1,18 @@
 """Tests for canonical status normalization."""
 
+from datetime import datetime, timedelta
+
 import pytest
 
 from mahavishnu.core.ecosystem_status import (
+    AdapterStatus,
+    AlertSummary,
     CanonicalStatus,
+    EcosystemStatusReport,
+    EcosystemStatusService,
+    SectionError,
+    ServiceStatus,
+    WorkflowSummary,
     aggregate_statuses,
     aggregate_with_optional,
     is_valid_transition,
@@ -107,6 +116,20 @@ class TestAggregateWithOptional:
         result = aggregate_with_optional(required=[], optional=[])
         assert result == CanonicalStatus.OK
 
+    def test_required_degraded_returns_degraded(self):
+        result = aggregate_with_optional(
+            required=[CanonicalStatus.DEGRADED],
+            optional=[CanonicalStatus.OK],
+        )
+        assert result == CanonicalStatus.DEGRADED
+
+    def test_optional_degraded_returns_degraded(self):
+        result = aggregate_with_optional(
+            required=[CanonicalStatus.OK],
+            optional=[CanonicalStatus.DEGRADED],
+        )
+        assert result == CanonicalStatus.DEGRADED
+
 
 class TestValidTransitions:
     def test_ok_to_degraded(self):
@@ -126,21 +149,6 @@ class TestValidTransitions:
     def test_unknown_to_any(self):
         assert is_valid_transition(CanonicalStatus.UNKNOWN, CanonicalStatus.OK) is True
         assert is_valid_transition(CanonicalStatus.UNKNOWN, CanonicalStatus.UNHEALTHY) is True
-
-
-from datetime import datetime, timedelta
-
-from mahavishnu.core.ecosystem_status import (
-    AdapterStatus,
-    AlertSummary,
-    EcosystemStatusReport,
-    EcosystemStatusService,
-    SectionError,
-    ServiceStatus,
-    WorkflowSummary,
-)
-
-
 class TestEcosystemStatusReport:
     def test_default_report(self):
         report = EcosystemStatusReport(
@@ -151,6 +159,7 @@ class TestEcosystemStatusReport:
         assert report.schema_version == "1.0"
         assert report.services == {}
         assert report.adapters == {}
+        assert report.recovery.recovered_workflows == 0
         assert report.errors == []
 
     def test_report_with_services(self):
@@ -168,6 +177,16 @@ class TestEcosystemStatusReport:
 
 
 class TestEcosystemStatusService:
+    class _RecoveryProvider:
+        async def get_recovery_summary(self):
+            return {
+                "recovered_workflows": 2,
+                "recovered_approvals": 3,
+                "recovered_pools": 4,
+                "recovered_routing_decisions": 5,
+                "dhara_available": True,
+            }
+
     @pytest.mark.asyncio
     async def test_generate_empty_report(self):
         service = EcosystemStatusService()
@@ -176,6 +195,21 @@ class TestEcosystemStatusService:
         assert report.status == CanonicalStatus.UNKNOWN  # No services -> UNKNOWN
         assert report.duration_ms >= 0
         assert report.errors == []
+
+    @pytest.mark.asyncio
+    async def test_generate_report_includes_recovery_summary(self):
+        service = EcosystemStatusService(recovery_provider=self._RecoveryProvider())
+        report = await service.generate_report()
+        assert report.recovery.recovered_workflows == 2
+        assert report.recovery.recovered_approvals == 3
+        assert report.recovery.dhara_available is True
+
+    @pytest.mark.asyncio
+    async def test_generate_report_defaults_without_recovery_provider(self):
+        service = EcosystemStatusService(recovery_provider=None)
+        report = await service.generate_report()
+        assert report.recovery.recovered_workflows == 0
+        assert report.recovery.dhara_available is False
 
     @pytest.mark.asyncio
     async def test_generate_report_with_request_id(self):
@@ -354,7 +388,7 @@ class TestRoutingDecision:
 
         from mahavishnu.core.ecosystem_status import RoutingDecision
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             RoutingDecision(
                 task_id="t2",
                 task_class="AI_TASK",
@@ -420,6 +454,16 @@ class TestRoutingDecisionBuffer:
         buf = get_routing_buffer()
         assert isinstance(buf, RoutingDecisionBuffer)
         assert get_routing_buffer() is buf
+
+    def test_clear_empties_buffer(self):
+        from mahavishnu.core.ecosystem_status import RoutingDecision, RoutingDecisionBuffer
+
+        buf = RoutingDecisionBuffer()
+        buf.record(RoutingDecision(task_id="x", task_class="C1", selected_adapter="a"))
+        buf.record(RoutingDecision(task_id="y", task_class="C2", selected_adapter="b"))
+        buf.clear()
+        assert buf.all_task_classes() == []
+        assert buf.recent("C1") == []
 
 
 # ── Phase 6: Capability collection ─────────────────────────────────────────
@@ -518,6 +562,33 @@ class TestGenerateRecommendations:
         adapters = {"prefect": AdapterStatus(status=CanonicalStatus.OK)}
         recs = svc._generate_recommendations(services, adapters, AlertSummary())
         assert not any(r.severity == CanonicalStatus.UNHEALTHY for r in recs)
+
+    def test_unknown_required_service_gets_degraded_recommendation(self):
+        from mahavishnu.core.ecosystem_status import (
+            CanonicalStatus,
+            EcosystemStatusService,
+            ServiceStatus,
+        )
+
+        svc = EcosystemStatusService()
+        services = {"akosha": ServiceStatus(status=CanonicalStatus.UNKNOWN, required=True)}
+        recs = svc._generate_recommendations(services, {"x": AdapterStatus(status=CanonicalStatus.OK)}, AlertSummary())
+        assert any(
+            r.severity == CanonicalStatus.DEGRADED and "akosha" in r.component for r in recs
+        )
+
+    def test_unhealthy_adapter_gets_recommendation(self):
+        from mahavishnu.core.ecosystem_status import (
+            CanonicalStatus,
+            EcosystemStatusService,
+        )
+
+        svc = EcosystemStatusService()
+        adapters = {"llamaindex": AdapterStatus(status=CanonicalStatus.UNHEALTHY)}
+        recs = svc._generate_recommendations({}, adapters, AlertSummary())
+        assert any(
+            r.severity == CanonicalStatus.UNHEALTHY and "llamaindex" in r.component for r in recs
+        )
 
 
 # ── AdapterResolutionResult rename ─────────────────────────────────────────

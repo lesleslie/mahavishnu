@@ -18,8 +18,8 @@ agno:
       model: "llama3"
     - provider: "anthropic"
       model: "claude-3-5-sonnet-20241022"
-    - provider: "qwen"
-      model: "qwen-free"
+    - provider: "minimax"
+      model: "MiniMax-M2.7"
 ```
 
 ## Usage
@@ -35,7 +35,7 @@ mahavishnu workflow sweep --tag backend --adapter agno
 
 - Single and multi-agent systems
 - Memory management for agents
-- Multi-LLM routing (Ollama, Claude, Qwen)
+- Multi-LLM routing (Ollama, Claude, MiniMax)
 - Tool integration
 - High-performance agent execution
 - Agent lifecycle management

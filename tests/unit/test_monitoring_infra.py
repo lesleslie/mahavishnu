@@ -4,14 +4,20 @@ from __future__ import annotations
 
 import pytest
 
-from mahavishnu.core.monitoring_infra import (
+from mahavishnu.core.monitoring import (
     AlertManager,
-    HealthChecker,
-    HealthCheckResult,
-    HealthStatus,
     Metric,
     MetricsExporter,
     MetricType,
+)
+from mahavishnu.core.monitoring import (
+    ComponentHealthChecker as HealthChecker,
+)
+from mahavishnu.core.monitoring import (
+    ComponentHealthResult as HealthCheckResult,
+)
+from mahavishnu.core.monitoring import (
+    ComponentHealthStatus as HealthStatus,
 )
 
 
@@ -131,5 +137,5 @@ def test_alert_manager_get_active_alerts_filters() -> None:
         type("A", (), {"acknowledged": True, "firing": True})(),
         type("A", (), {"acknowledged": False, "firing": False})(),
     ]
-    active = manager.get_active_alerts()
+    active = manager.get_active_alerts_sync()
     assert len(active) == 1

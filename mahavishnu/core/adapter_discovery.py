@@ -292,10 +292,6 @@ class AdapterDiscoveryEngine:
 
         return self._dhara_client
 
-    def _get_oneiric_client(self) -> DharaAdapterRegistryClient | None:
-        """Compatibility alias for older tests/callers."""
-        return self._get_dhara_client()
-
     def _is_adapter_allowed(self, adapter_id: str) -> bool:
         """Check if adapter ID matches allowlist patterns.
 
@@ -514,10 +510,6 @@ class AdapterDiscoveryEngine:
         logger.info(f"Discovered {len(adapters)} adapters from Dhara")
         return adapters
 
-    async def discover_from_oneiric_mcp(self) -> list[AdapterMetadata]:
-        """Compatibility alias for older callers."""
-        return await self.discover_from_dhara()
-
     def invalidate_cache(self) -> None:
         """Clear all cached discovery results.
 
@@ -533,8 +525,6 @@ class AdapterDiscoveryEngine:
         Args:
             source: Cache key/source to invalidate ("entry_points", "dhara", etc.)
         """
-        if source == "oneiric_mcp":
-            source = "dhara"
         with self._lock:
             if source in self._cache:
                 del self._cache[source]

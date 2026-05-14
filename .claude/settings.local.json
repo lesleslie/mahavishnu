@@ -345,7 +345,15 @@
       "Bash(AI_AGENT=false pytest tests/unit/test_config.py tests/unit/test_task_router_and_auth.py -v --tb=short --no-cov)",
       "Bash(AI_AGENT=false pytest tests/integration/test_hatchet_smoke.py -v)",
       "Bash(AI_AGENT=false pytest tests/unit/ -v --tb=short)",
-      "Bash(AI_AGENT=false pytest tests/unit/ --tb=short)"
+      "Bash(AI_AGENT=false pytest tests/unit/ --tb=short)",
+      "Bash(CRACKERJACK_AI_AGENT=false .venv/bin/python -m pytest tests/unit/test_quality_utils_v2.py::TestReadCoverageDotfile -v)",
+      "Bash(CRACKERJACK_AI__AI_AGENT=false .venv/bin/python -m pytest tests/unit/test_quality_utils_v2.py::TestReadCoverageDotfile -v -p no:crackerjack)",
+      "Bash(printenv)",
+      "Bash(AI_AGENT=\"\" .venv/bin/python -m pytest tests/unit/test_quality_utils_v2.py::TestReadCoverageDotfile -v)",
+      "Bash(env -u AI_AGENT .venv/bin/python -m pytest tests/unit/test_quality_utils_v2.py::TestReadCoverageDotfile -v)",
+      "Bash(env -u AI_AGENT .venv/bin/python -m pytest tests/unit/test_quality_utils_v2.py::TestReadCoverageDotfile -v --tb=short)",
+      "Bash(env -u AI_AGENT .venv/bin/python -m pytest tests/unit/test_quality_utils_v2.py::TestReadCoverageDotfile -v --no-cov)",
+      "Bash(env -u AI_AGENT .venv/bin/python -m pytest tests/unit/test_quality_utils_v2.py::TestReadCoverageDotfile::test_preferred_over_missing_json -v --no-cov --tb=short)"
     ]
   },
   "outputStyle": "Explanatory",

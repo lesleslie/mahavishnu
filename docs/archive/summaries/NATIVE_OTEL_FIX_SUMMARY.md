@@ -21,7 +21,7 @@ from oneiric.adapters.observability import OTelStorageAdapter, OTelStorageSettin
 
 #### After (CORRECT):
 ```python
-from mahavishnu.ingesters import OtelIngester
+from mahavishnu.ingesters.otel_ingester import OtelIngester
 from akosha.storage import HotStore
 
 # Requires: Only pip install duckdb

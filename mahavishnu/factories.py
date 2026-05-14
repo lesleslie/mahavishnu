@@ -31,6 +31,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import threading
 from typing import TYPE_CHECKING, Any
 
 from mahavishnu.pools import PoolManager
@@ -46,9 +47,6 @@ _pool_manager: PoolManager | None = None
 _websocket_server: MahavishnuWebSocketServer | None = None
 _terminal_manager: TerminalManager | None = None
 
-# Lock for thread-safe singleton access
-import threading
-
 _pool_lock = threading.Lock()
 _ws_lock = threading.Lock()
 _tm_lock = threading.Lock()
@@ -58,6 +56,8 @@ def get_pool_manager(
     terminal_manager: TerminalManager | None = None,
     session_buddy_client: Any = None,
     message_bus: Any = None,
+    event_publisher: Any = None,
+    dhara_state: Any = None,
 ) -> PoolManager:
     """Get or create singleton PoolManager instance.
 
@@ -82,6 +82,8 @@ def get_pool_manager(
                 terminal_manager=tm,
                 session_buddy_client=session_buddy_client,
                 message_bus=message_bus,
+                event_publisher=event_publisher,
+                dhara_state=dhara_state,
             )
 
     return _pool_manager
@@ -160,9 +162,9 @@ def get_terminal_manager(
     with _tm_lock:
         if _terminal_manager is None:
             # Import here to avoid circular imports
-            from mahavishnu.terminal import TerminalManager as TM
+            from mahavishnu.terminal import TerminalManager as TerminalManagerCls
 
-            _terminal_manager = TM(adapter=adapter, config=config)
+            _terminal_manager = TerminalManagerCls(adapter=adapter, config=config)
 
     return _terminal_manager
 

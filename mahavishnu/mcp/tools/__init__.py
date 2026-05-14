@@ -12,7 +12,7 @@
 # - goal_team_tools: Goal-driven team creation and management tools
 # - team_learning_tools: [DEPRECATED] De-authorized from live MCP (Bodai I0.4).
 #   skill_governance.py is the canonical learning authority. Module retained
-#   for CLI-only use and backward compat.
+#   for CLI/backward compat only.
 # - treesitter_tools: Tree-sitter code parsing and analysis tools
 # - adapter_registry_tools: Hybrid adapter registry management tools
 # - search_tools: Hybrid search (semantic + lexical) tools
@@ -23,7 +23,7 @@ from .search_tools import register_search_tools
 
 # team_learning_tools de-authorized from MCP registration (Bodai I0.4).
 # skill_governance.py is the canonical learning authority.
-# Module still importable for CLI use via team_cli.py.
+# Module remains importable for CLI use via team_cli.py.
 from .treesitter_tools import register_treesitter_tools
 
 __all__ = [

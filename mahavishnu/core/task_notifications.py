@@ -24,6 +24,7 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -31,6 +32,8 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any
 import uuid
+
+from .events.contract import EventPublisherProtocol, create_event_envelope
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -199,9 +202,13 @@ class TaskEventEmitter:
         emitter.unsubscribe(sub_id)
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        event_publisher: EventPublisherProtocol | None = None,
+    ) -> None:
         """Initialize event emitter."""
         self.subscriptions: dict[str, EventSubscription] = {}
+        self._event_publisher = event_publisher
 
     def _generate_id(self) -> str:
         """Generate unique subscription ID."""
@@ -256,6 +263,33 @@ class TaskEventEmitter:
                     subscription.callback(event)
                 except Exception as e:
                     logger.error(f"Error in event callback for {subscription.subscription_id}: {e}")
+        self._publish_canonical_event(event)
+
+    def _publish_canonical_event(self, event: TaskEvent) -> None:
+        if self._event_publisher is None:
+            return
+        envelope = create_event_envelope(
+            event_type=f"task.{event.event_type.value}",
+            source="task_notifications",
+            payload={
+                "task_id": event.task_id,
+                "event_type": event.event_type.value,
+                "data": event.data,
+                "metadata": event.metadata,
+            },
+            metadata={
+                "task_id": event.task_id,
+                "event_type": event.event_type.value,
+            },
+        )
+        publish = self._event_publisher.publish(envelope)
+        if asyncio.iscoroutine(publish):
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                asyncio.run(publish)
+            else:
+                loop.create_task(publish)
 
     def emit_task_created(
         self,

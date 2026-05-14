@@ -9,6 +9,7 @@ from mcp_common.websocket import MessageType, WebSocketMessage
 from mcp_common.websocket.protocol import WebSocketProtocol
 import pytest
 
+from mahavishnu.core.events.contract import create_event_envelope
 from mahavishnu.websocket.rate_limiter import RateLimitResult
 from mahavishnu.websocket.server import (
     MahavishnuWebSocketServer,
@@ -44,11 +45,11 @@ def _make_server(**overrides) -> MahavishnuWebSocketServer:
         mock_metrics = MagicMock()
         mock_get_metrics.return_value = mock_metrics
 
-        defaults = dict(
-            pool_manager=_make_pool_manager(),
-            host="127.0.0.1",
-            port=8690,
-        )
+        defaults = {
+            "pool_manager": _make_pool_manager(),
+            "host": "127.0.0.1",
+            "port": 8690,
+        }
         defaults.update(overrides)
         server = MahavishnuWebSocketServer(**defaults)
         return server
@@ -150,6 +151,23 @@ class TestMahavishnuWebSocketServerInit:
         server = _make_server(message_rate_limit=50)
         assert server.rate_limiter.rate == 50.0
         assert server.rate_limiter.burst_size == 75.0  # 1.5x
+
+    @pytest.mark.asyncio
+    async def test_handle_event_envelope_broadcasts_to_room(self):
+        server = _make_server()
+        server.broadcast_to_room = AsyncMock()
+        envelope = create_event_envelope(
+            "workflow.started",
+            "test_service",
+            payload={"workflow_id": "wf-123"},
+        )
+
+        result = await server.handle_event_envelope(envelope)
+
+        assert result["event_type"] == "workflow.started"
+        assert server.broadcast_to_room.await_count == 2
+        server.broadcast_to_room.assert_any_await("workflow:wf-123", result)
+        server.broadcast_to_room.assert_any_await("global", result)
 
     def test_initializes_metrics(self):
         server = _make_server()

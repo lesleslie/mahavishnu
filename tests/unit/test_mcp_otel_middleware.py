@@ -5,9 +5,9 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from mcp_common.server.telemetry import FastMCPOpenTelemetryMiddleware
 import pytest
 
-from mahavishnu.mcp.otel_middleware import FastMCPOpenTelemetryMiddleware
 from mahavishnu.mcp.server_core import FastMCPServer
 
 

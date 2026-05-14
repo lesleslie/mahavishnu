@@ -21,6 +21,13 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
         try:
             loader = get_ecosystem_loader()
             result = loader.validate_mcp_servers()
+            catalog_result = loader.validate_catalog_references()
+            metadata_result = loader.validate_catalog_metadata()
+
+            result["errors"].extend(catalog_result["errors"])
+            result["errors"].extend(metadata_result["errors"])
+            result["warnings"].extend(catalog_result["warnings"])
+            result["warnings"].extend(metadata_result["warnings"])
 
             if result["errors"]:
                 typer.echo("❌ Validation Errors:", err=True)

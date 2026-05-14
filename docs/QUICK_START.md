@@ -29,12 +29,12 @@ pip install mahavishnu
 # Create default configuration
 mahavishnu init
 
-# Or manually create settings/repos.yaml
+# Or manually create settings/ecosystem.yaml
 ```
 
 ### 2. Configure Your Repositories
 
-Edit `settings/repos.yaml`:
+Edit `settings/ecosystem.yaml`:
 
 ```yaml
 repos:
@@ -189,7 +189,7 @@ Supports natural language parsing:
 
 ## Configuration
 
-### repos.yaml Structure
+### ecosystem.yaml Structure
 
 ```yaml
 repos:
@@ -289,7 +289,7 @@ mahavishnu init
 ### Repository path not found
 
 ```bash
-# Verify path in repos.yaml
+# Verify path in ecosystem.yaml
 ls /path/to/your/repo
 
 # Update configuration

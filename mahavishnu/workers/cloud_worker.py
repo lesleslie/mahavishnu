@@ -1,10 +1,10 @@
 """Cloud AI worker for OpenAI-compatible API task execution.
 
-This worker provides AI task execution through cloud providers (ZAI, Qwen,
-OpenAI) using the OpenAI-compatible chat completions API.
+This worker provides AI task execution through OpenAI-compatible cloud
+providers using the chat completions API.
 
 Features:
-- OpenAI-compatible API support (ZAI, Qwen, OpenAI)
+- OpenAI-compatible API support (MiniMax and other compatible providers)
 - Intelligent model routing based on task type
 - Circuit breaker integration via mcp_common.llm
 - Configurable generation parameters
@@ -25,7 +25,7 @@ from mahavishnu.core.status import WorkerStatus
 
 from .base import BaseWorker, WorkerResult
 from .task_router import (
-    DEFAULT_ZAI_ROUTING,
+    DEFAULT_MINIMAX_ROUTING,
     TaskCategory,
     get_model_for_task,
     get_rate_limiter,
@@ -33,7 +33,7 @@ from .task_router import (
 
 logger = logging.getLogger(__name__)
 
-ZAI_CODING_PLAN_URL = "https://api.z.ai/api/coding/paas/v4"
+MINIMAX_OPENAI_BASE_URL = "https://api.minimax.io/v1"
 
 
 @dataclass
@@ -52,10 +52,12 @@ class CloudWorkerConfig:
     """
 
     base_url: str = field(
-        default_factory=lambda: os.environ.get("ZAI_BASE_URL", ZAI_CODING_PLAN_URL)
+        default_factory=lambda: os.environ.get("MINIMAX_BASE_URL") or MINIMAX_OPENAI_BASE_URL
     )
-    api_key: str = field(default_factory=lambda: os.environ.get("ZAI_API_KEY", ""))
-    model: str = "glm-4.7"
+    api_key: str = field(
+        default_factory=lambda: os.environ.get("MINIMAX_API_KEY", "")
+    )
+    model: str = "MiniMax-M2.7"
     timeout: int = 300
     temperature: float = 0.7
     max_tokens: int = 4096
@@ -64,15 +66,15 @@ class CloudWorkerConfig:
 
     def get_model_for_category(self, category: TaskCategory) -> str:
         """Get the appropriate model for a task category."""
-        routing = self.model_routing or DEFAULT_ZAI_ROUTING
+        routing = self.model_routing or DEFAULT_MINIMAX_ROUTING
         return routing.get(category, self.model)
 
 
 class CloudWorker(BaseWorker):
     """Worker that executes tasks via OpenAI-compatible cloud APIs.
 
-    Supports ZAI GLM models, Qwen, OpenAI, and any provider that
-    implements the OpenAI chat completions API.
+    Supports MiniMax models and any provider that implements the OpenAI
+    chat completions API.
 
     Args:
         config: Cloud worker configuration with API settings
@@ -111,7 +113,7 @@ class CloudWorker(BaseWorker):
             self._status = WorkerStatus.FAILED
             raise RuntimeError(
                 "Cloud worker requires an API key. "
-                "Set ZAI_API_KEY environment variable or pass api_key in config."
+                "Set MINIMAX_API_KEY environment variable or pass api_key in config."
             )
 
         # Lazy import — openai is optional
@@ -181,7 +183,7 @@ class CloudWorker(BaseWorker):
         elif self.config.intelligent_routing:
             model, task_category = get_model_for_task(
                 prompt=prompt,
-                model_routing=self.config.model_routing or DEFAULT_ZAI_ROUTING,
+                model_routing=self.config.model_routing or DEFAULT_MINIMAX_ROUTING,
                 default_model=self.config.model,
                 context=task_context,
             )

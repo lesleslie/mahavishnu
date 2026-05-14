@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from datetime import UTC, datetime
 import logging
 from typing import Any
 
@@ -50,6 +51,28 @@ class DharaStateBackend:
         self._available = True
         self._consecutive_failures = 0
         self._circuit_open_until: float = 0.0
+
+    @staticmethod
+    def workflow_key(execution_id: str) -> str:
+        """Return the canonical Dhara key for workflow execution state."""
+        return f"workflow/v1/{execution_id}"
+
+    @staticmethod
+    def pool_key(pool_id: str) -> str:
+        """Return the canonical Dhara key for pool state."""
+        return f"pool/v1/{pool_id}"
+
+    @staticmethod
+    def routing_key(task_class: str, timestamp: datetime | None = None) -> str:
+        """Return the canonical Dhara key for routing decision state."""
+        when = timestamp or datetime.now(UTC)
+        timestamp_ms = int(when.timestamp() * 1000)
+        return f"routing/v1/{task_class}/{timestamp_ms}"
+
+    @staticmethod
+    def approval_key(request_id: str) -> str:
+        """Return the canonical Dhara key for approval state."""
+        return f"approval/v1/{request_id}"
 
     @property
     def available(self) -> bool:
@@ -90,6 +113,63 @@ class DharaStateBackend:
         except Exception as exc:
             self._record_failure()
             logger.debug("Dhara put(%r) failed: %s", key, exc)
+
+    async def persist_workflow(
+        self,
+        execution_id: str,
+        value: dict[str, Any],
+        ttl: int | None = None,
+    ) -> None:
+        """Persist workflow execution state using the canonical key schema."""
+        await self.put(self.workflow_key(execution_id), value, ttl=ttl)
+
+    async def persist_pool(
+        self,
+        pool_id: str,
+        value: dict[str, Any],
+        ttl: int | None = None,
+    ) -> None:
+        """Persist pool state using the canonical key schema."""
+        await self.put(self.pool_key(pool_id), value, ttl=ttl)
+
+    async def persist_routing_decision(
+        self,
+        task_class: str,
+        value: dict[str, Any],
+        timestamp: datetime | None = None,
+        ttl: int | None = None,
+    ) -> None:
+        """Persist a routing decision using the canonical key schema."""
+        await self.put(self.routing_key(task_class, timestamp=timestamp), value, ttl=ttl)
+
+    async def persist_approval(
+        self,
+        request_id: str,
+        value: dict[str, Any],
+        ttl: int | None = None,
+    ) -> None:
+        """Persist approval state using the canonical key schema."""
+        await self.put(self.approval_key(request_id), value, ttl=ttl)
+
+    async def recover_workflows(self) -> list[dict[str, Any]]:
+        """Recover workflow execution state from Dhara."""
+        entries = await self.list_prefix("workflow/v1/")
+        return [value for _key, value in entries if isinstance(value, dict)]
+
+    async def recover_pools(self) -> list[dict[str, Any]]:
+        """Recover pool state from Dhara."""
+        entries = await self.list_prefix("pool/v1/")
+        return [value for _key, value in entries if isinstance(value, dict)]
+
+    async def recover_routing_decisions(self) -> list[dict[str, Any]]:
+        """Recover routing decisions from Dhara."""
+        entries = await self.list_prefix("routing/v1/")
+        return [value for _key, value in entries if isinstance(value, dict)]
+
+    async def recover_approvals(self) -> list[dict[str, Any]]:
+        """Recover approval state from Dhara."""
+        entries = await self.list_prefix("approval/v1/")
+        return [value for _key, value in entries if isinstance(value, dict)]
 
     async def get(self, key: str) -> dict[str, Any] | None:
         """Retrieve a value from Dhara. Returns None when unavailable."""

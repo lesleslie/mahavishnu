@@ -175,25 +175,25 @@ class TestTerminalAIWorker:
 
     def test_initialization_qwen(self, terminal_qwen_worker):
         """Test Qwen worker initialization."""
-        assert terminal_qwen_worker.ai_type == "qwen"
+        assert terminal_qwen_worker.worker_name == "qwen"
         assert terminal_qwen_worker.session_id == "session_123"
         assert terminal_qwen_worker.worker_type == "terminal-qwen"
 
     def test_initialization_claude(self, terminal_claude_worker):
         """Test Claude worker initialization."""
-        assert terminal_claude_worker.ai_type == "claude"
+        assert terminal_claude_worker.worker_name == "claude"
         assert terminal_claude_worker.session_id == "session_123"
         assert terminal_claude_worker.worker_type == "terminal-claude"
 
     def test_command_template_qwen(self, terminal_qwen_worker):
-        """Test Qwen command template."""
-        template = terminal_qwen_worker._get_command_template()
+        """Test Qwen command template via registry config."""
+        template = terminal_qwen_worker.config.command
         assert "qwen" in template
         assert "stream-json" in template
 
     def test_command_template_claude(self, terminal_claude_worker):
-        """Test Claude command template."""
-        template = terminal_claude_worker._get_command_template()
+        """Test Claude command template via registry config."""
+        template = terminal_claude_worker.config.command
         assert "claude" in template
         assert "stream-json" in template
 
@@ -752,7 +752,7 @@ class TestSessionBuddyIntegration:
             mock_subprocess.return_value = mock_proc
 
             with patch("time.time", return_value=1234567890.0):
-                result = await worker.execute({"command": "echo test"})
+                await worker.execute({"command": "echo test"})
 
                 # Verify Session-Buddy was called
                 mock_sb_client.call_tool.assert_called()
@@ -765,66 +765,6 @@ class TestSessionBuddyIntegration:
 # ============================================================================
 # Stream-JSON Parsing Tests
 # ============================================================================
-
-
-class TestStreamJsonParsing:
-    """Test stream-json parsing in TerminalAIWorker."""
-
-    def test_is_complete_with_finish_reason(self):
-        """Test detecting completion via finish_reason."""
-        worker = TerminalAIWorker(
-            terminal_manager=MagicMock(),
-            ai_type="qwen",
-            session_buddy_client=None,
-        )
-
-        # Complete message
-        data = {"finish_reason": "stop"}
-        assert worker._is_complete(data) is True
-
-        # Incomplete message
-        data = {"delta": {"content": "more text"}}
-        assert worker._is_complete(data) is False
-
-    def test_is_complete_with_done_marker(self):
-        """Test detecting completion via done marker."""
-        worker = TerminalAIWorker(
-            terminal_manager=MagicMock(),
-            ai_type="claude",
-            session_buddy_client=None,
-        )
-
-        # Complete message
-        data = {"type": "done"}
-        assert worker._is_complete(data) is True
-
-        # Incomplete message
-        data = {"type": "content"}
-        assert worker._is_complete(data) is False
-
-    def test_extract_content_from_delta(self):
-        """Test extracting content from delta format."""
-        worker = TerminalAIWorker(
-            terminal_manager=MagicMock(),
-            ai_type="qwen",
-            session_buddy_client=None,
-        )
-
-        data = {"delta": {"content": "Hello, world!"}}
-        content = worker._extract_content(data)
-        assert content == "Hello, world!"
-
-    def test_extract_content_from_text_field(self):
-        """Test extracting content from text field."""
-        worker = TerminalAIWorker(
-            terminal_manager=MagicMock(),
-            ai_type="claude",
-            session_buddy_client=None,
-        )
-
-        data = {"text": "Hello, world!"}
-        content = worker._extract_content(data)
-        assert content == "Hello, world!"
 
 
 # ============================================================================
@@ -1073,17 +1013,14 @@ class TestErrorHandling:
         with pytest.raises(RuntimeError, match="Container not started"):
             await worker.execute({"command": "echo test"})
 
-    @pytest.mark.asyncio
-    async def test_terminal_worker_invalid_ai_type(self, mock_terminal_manager):
-        """Test starting worker with invalid AI type raises error."""
-        worker = TerminalAIWorker(
-            terminal_manager=mock_terminal_manager,
-            ai_type="invalid",
-            session_buddy_client=None,
-        )
-
-        with pytest.raises(ValueError, match="Unknown AI type"):
-            await worker.start()
+    def test_terminal_worker_invalid_ai_type(self, mock_terminal_manager):
+        """Test that an unknown ai_type raises at construction time."""
+        with pytest.raises(ValueError, match="Unknown worker type: terminal-invalid"):
+            TerminalAIWorker(
+                terminal_manager=mock_terminal_manager,
+                ai_type="invalid",
+                session_buddy_client=None,
+            )
 
 
 # ============================================================================
@@ -1388,7 +1325,7 @@ class TestSessionBuddyStorage:
             mock_proc.communicate = AsyncMock(return_value=(b"Output\n", b""))
             mock_subprocess.return_value = mock_proc
 
-            result = await worker.execute({"command": "echo test"})
+            await worker.execute({"command": "echo test"})
 
             # Verify Session-Buddy metadata
             call_args = mock_sb_client.call_tool.call_args
@@ -1400,63 +1337,6 @@ class TestSessionBuddyStorage:
 
 
 # ============================================================================
-# Stream-JSON Content Extraction Tests
-# ============================================================================
-
-
-class TestContentExtraction:
-    """Test content extraction from stream-json messages."""
-
-    def test_extract_content_multi_modal(self):
-        """Test extracting content from multi-modal messages."""
-        worker = TerminalAIWorker(
-            terminal_manager=MagicMock(),
-            ai_type="claude",
-            session_buddy_client=None,
-        )
-
-        # Multi-modal content
-        data = {
-            "content": [
-                {"type": "text", "text": "Hello"},
-                {"type": "image", "source": "data:image..."},
-            ]
-        }
-        content = worker._extract_content(data)
-        assert content == "Hello"
-
-    def test_extract_content_no_content(self):
-        """Test extracting content when none exists."""
-        worker = TerminalAIWorker(
-            terminal_manager=MagicMock(),
-            ai_type="qwen",
-            session_buddy_client=None,
-        )
-
-        data = {"other": "field"}
-        content = worker._extract_content(data)
-        assert content is None
-
-    def test_is_complete_multiple_markers(self):
-        """Test various completion markers."""
-        worker = TerminalAIWorker(
-            terminal_manager=MagicMock(),
-            ai_type="qwen",
-            session_buddy_client=None,
-        )
-
-        # All should return True
-        assert worker._is_complete({"finish_reason": "stop"}) is True
-        assert worker._is_complete({"done": True}) is True
-        assert worker._is_complete({"type": "done"}) is True
-        assert worker._is_complete({"type": "completion"}) is True
-        assert worker._is_complete({"status": "completed"}) is True
-
-        # Should return False
-        assert worker._is_complete({"content": "text"}) is False
-        assert worker._is_complete({"delta": {"content": "more"}}) is False
-
-
 # ============================================================================
 # Edge Case Tests
 # ============================================================================

@@ -8,18 +8,24 @@ from mahavishnu.core.config import MahavishnuSettings
 
 
 def get_registered_repos() -> set[str]:
-    """Load registered repo paths from settings/repos.yaml.
+    """Load registered repo paths from settings/ecosystem.yaml.
 
     Returns absolute paths as strings.
     """
     settings = MahavishnuSettings()
     settings_dir = Path(settings.repos_path).parent
+    ecosystem_path = settings_dir / "ecosystem.yaml"
     repos_path = settings_dir / "repos.yaml"
-    if not repos_path.exists():
+
+    if ecosystem_path.exists():
+        manifest_path = ecosystem_path
+    elif repos_path.exists():
+        manifest_path = repos_path
+    else:
         return set()
     import yaml
 
-    data = yaml.safe_load(repos_path.read_text())
+    data = yaml.safe_load(manifest_path.read_text())
     if not data or "repos" not in data:
         return set()
     return {str(Path(r["path"]).resolve()) for r in data["repos"] if "path" in r}
@@ -31,13 +37,13 @@ def validate_repo_path(repo_path: str) -> str:
     Returns the resolved absolute path.
 
     Raises:
-        ValueError: If the path is not registered in repos.yaml.
+        ValueError: If the path is not registered in ecosystem.yaml.
     """
     resolved = str(Path(repo_path).resolve())
     registered = get_registered_repos()
     if resolved not in registered:
         raise ValueError(
-            f"Repo path '{repo_path}' is not registered in repos.yaml. "
+            f"Repo path '{repo_path}' is not registered in ecosystem.yaml. "
             f"Registered paths: {sorted(registered)}"
         )
     return resolved

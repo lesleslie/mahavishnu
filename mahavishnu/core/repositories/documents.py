@@ -14,16 +14,167 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
 
-if TYPE_CHECKING:
-    from uuid import UUID
-
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Static query constants — no f-strings, no concatenation in execution paths.
+# All user-supplied values are bound via asyncpg positional parameters ($N).
+# ---------------------------------------------------------------------------
+
+_INSERT_DOCUMENT = (
+    "INSERT INTO search.documents"
+    " (source_type, source_id, source_key, content, repository, system_name, metadata)"
+    " VALUES ($1, $2, $3, $4, $5, $6, $7)"
+    " RETURNING *"
+)
+
+_SELECT_BY_ID = "SELECT * FROM search.documents WHERE id = $1"
+
+_SELECT_BY_KEY_WITH_TYPE = (
+    "SELECT * FROM search.documents"
+    " WHERE source_key = $1 AND source_type = $2"
+    " ORDER BY created_at DESC LIMIT 1"
+)
+
+_SELECT_BY_KEY = (
+    "SELECT * FROM search.documents"
+    " WHERE source_key = $1"
+    " ORDER BY created_at DESC LIMIT 1"
+)
+
+_DELETE_BY_ID = "DELETE FROM search.documents WHERE id = $1"
+
+# list_documents: 4 pre-defined variants, no dynamic query building.
+_LIST_ALL = (
+    "SELECT * FROM search.documents"
+    " ORDER BY created_at DESC LIMIT $1 OFFSET $2"
+)
+_LIST_BY_REPO = (
+    "SELECT * FROM search.documents"
+    " WHERE repository = $1"
+    " ORDER BY created_at DESC LIMIT $2 OFFSET $3"
+)
+_LIST_BY_TYPE = (
+    "SELECT * FROM search.documents"
+    " WHERE source_type = $1"
+    " ORDER BY created_at DESC LIMIT $2 OFFSET $3"
+)
+_LIST_BY_REPO_AND_TYPE = (
+    "SELECT * FROM search.documents"
+    " WHERE repository = $1 AND source_type = $2"
+    " ORDER BY created_at DESC LIMIT $3 OFFSET $4"
+)
+
+# search_documents: 2 pre-defined variants.
+_SEARCH_BASE = (
+    "SELECT *, ts_rank(to_tsvector('english', content),"
+    "                  plainto_tsquery('english', $1)) AS score"
+    " FROM search.documents"
+    " WHERE to_tsvector('english', content) @@ plainto_tsquery('english', $1)"
+    " ORDER BY score DESC LIMIT $2 OFFSET $3"
+)
+_SEARCH_WITH_REPO = (
+    "SELECT *, ts_rank(to_tsvector('english', content),"
+    "                  plainto_tsquery('english', $1)) AS score"
+    " FROM search.documents"
+    " WHERE to_tsvector('english', content) @@ plainto_tsquery('english', $1)"
+    "   AND repository = $2"
+    " ORDER BY score DESC LIMIT $3 OFFSET $4"
+)
+
+# update_document: all 15 non-empty subsets of {content, repository, system_name, metadata}.
+# Fields are always ordered: content → repository → system_name → metadata → updated_at.
+# $1 = document_id (always), remaining params follow field order above.
+_c = "content"
+_r = "repository"
+_s = "system_name"
+_m = "metadata"
+
+_UPDATE_QUERIES: dict[frozenset[str], str] = {
+    # 1 field
+    frozenset({_c}): (
+        "UPDATE search.documents SET content = $2, updated_at = $3"
+        " WHERE id = $1 RETURNING *"
+    ),
+    frozenset({_r}): (
+        "UPDATE search.documents SET repository = $2, updated_at = $3"
+        " WHERE id = $1 RETURNING *"
+    ),
+    frozenset({_s}): (
+        "UPDATE search.documents SET system_name = $2, updated_at = $3"
+        " WHERE id = $1 RETURNING *"
+    ),
+    frozenset({_m}): (
+        "UPDATE search.documents SET metadata = metadata || $2::jsonb, updated_at = $3"
+        " WHERE id = $1 RETURNING *"
+    ),
+    # 2 fields
+    frozenset({_c, _r}): (
+        "UPDATE search.documents SET content = $2, repository = $3, updated_at = $4"
+        " WHERE id = $1 RETURNING *"
+    ),
+    frozenset({_c, _s}): (
+        "UPDATE search.documents SET content = $2, system_name = $3, updated_at = $4"
+        " WHERE id = $1 RETURNING *"
+    ),
+    frozenset({_c, _m}): (
+        "UPDATE search.documents"
+        " SET content = $2, metadata = metadata || $3::jsonb, updated_at = $4"
+        " WHERE id = $1 RETURNING *"
+    ),
+    frozenset({_r, _s}): (
+        "UPDATE search.documents SET repository = $2, system_name = $3, updated_at = $4"
+        " WHERE id = $1 RETURNING *"
+    ),
+    frozenset({_r, _m}): (
+        "UPDATE search.documents"
+        " SET repository = $2, metadata = metadata || $3::jsonb, updated_at = $4"
+        " WHERE id = $1 RETURNING *"
+    ),
+    frozenset({_s, _m}): (
+        "UPDATE search.documents"
+        " SET system_name = $2, metadata = metadata || $3::jsonb, updated_at = $4"
+        " WHERE id = $1 RETURNING *"
+    ),
+    # 3 fields
+    frozenset({_c, _r, _s}): (
+        "UPDATE search.documents"
+        " SET content = $2, repository = $3, system_name = $4, updated_at = $5"
+        " WHERE id = $1 RETURNING *"
+    ),
+    frozenset({_c, _r, _m}): (
+        "UPDATE search.documents"
+        " SET content = $2, repository = $3, metadata = metadata || $4::jsonb, updated_at = $5"
+        " WHERE id = $1 RETURNING *"
+    ),
+    frozenset({_c, _s, _m}): (
+        "UPDATE search.documents"
+        " SET content = $2, system_name = $3, metadata = metadata || $4::jsonb, updated_at = $5"
+        " WHERE id = $1 RETURNING *"
+    ),
+    frozenset({_r, _s, _m}): (
+        "UPDATE search.documents"
+        " SET repository = $2, system_name = $3, metadata = metadata || $4::jsonb, updated_at = $5"
+        " WHERE id = $1 RETURNING *"
+    ),
+    # 4 fields
+    frozenset({_c, _r, _s, _m}): (
+        "UPDATE search.documents"
+        " SET content = $2, repository = $3, system_name = $4,"
+        "     metadata = metadata || $5::jsonb, updated_at = $6"
+        " WHERE id = $1 RETURNING *"
+    ),
+}
+
+# Field param order for UPDATE: always processed in this sequence.
+_UPDATE_FIELD_ORDER = (_c, _r, _s, _m)
 
 
 # =============================================================================
@@ -32,17 +183,7 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentCreate(BaseModel):
-    """Document creation request model.
-
-    Args:
-        source_type: Source type (e.g., 'task', 'run', 'document', 'webpage')
-        source_id: Optional source reference ID
-        source_key: Source key for deduplication and lookup
-        content: Document content text
-        repository: Repository name
-        system_name: System name (optional)
-        metadata: Additional metadata
-    """
+    """Document creation request model."""
 
     source_type: str = Field(..., description="Source type")
     source_id: UUID | None = Field(None, description="Source reference ID")
@@ -50,20 +191,11 @@ class DocumentCreate(BaseModel):
     content: str = Field(..., description="Document content")
     repository: str | None = Field(None, description="Repository name")
     system_name: str | None = Field(None, description="System name")
-    metadata: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional metadata",
-    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 
 class DocumentRead(BaseModel):
-    """Document read response model.
-
-    All fields from DocumentCreate plus:
-    - id: UUID (primary key)
-    - created_at: Creation timestamp
-    - updated_at: Last update timestamp
-    """
+    """Document read response model."""
 
     id: UUID = Field(..., description="Document unique identifier")
     source_type: str = Field(..., description="Source type")
@@ -74,48 +206,24 @@ class DocumentRead(BaseModel):
     system_name: str | None = Field(None, description="System name")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
-    metadata: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional metadata",
-    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 
 class DocumentUpdate(BaseModel):
-    """Document update request model.
-
-    All fields are optional for partial updates.
-
-    Args:
-        content: New content (optional)
-        repository: New repository name (optional)
-        system_name: New system name (optional)
-        metadata: Metadata updates (merged with existing, optional)
-    """
+    """Document update request model (all fields optional)."""
 
     content: str | None = Field(None, description="Document content")
     repository: str | None = Field(None, description="Repository name")
     system_name: str | None = Field(None, description="System name")
-    metadata: dict[str, Any] | None = Field(
-        None,
-        description="Metadata updates (merged)",
-    )
+    metadata: dict[str, Any] | None = Field(None, description="Metadata updates (merged)")
 
 
 class DocumentSearchResult(BaseModel):
-    """Document search result with relevance scoring.
-
-    Args:
-        document: The matched document
-        score: Relevance score (0.0-1.0)
-        match_type: How the document was matched (semantic, lexical, hybrid)
-    """
+    """Document search result with relevance scoring."""
 
     document: DocumentRead = Field(..., description="Matched document")
     score: float = Field(..., ge=0.0, le=1.0, description="Relevance score")
-    match_type: str = Field(
-        default="hybrid",
-        description="Match type (semantic, lexical, hybrid)",
-    )
+    match_type: str = Field(default="hybrid", description="Match type")
 
 
 # =============================================================================
@@ -126,57 +234,14 @@ class DocumentSearchResult(BaseModel):
 class DocumentRepository(
     BaseRepository[DocumentCreate, DocumentRead, DocumentUpdate],
 ):
-    """Repository for search.documents table operations.
-
-    Provides CRUD operations for documents with:
-    - Type-safe Pydantic model returns
-    - Async context manager pattern
-    - Structured error handling
-    - Full-text search support
-
-    Usage:
-        repo = DocumentRepository()
-
-        async with repo:
-            doc = await repo.create_document(
-                DocumentCreate(
-                    source_type="task",
-                    source_key="task-123-output",
-                    content="Analysis results...",
-                )
-            )
-            results = await repo.search_documents("error handling patterns")
-    """
-
-    def __init__(self) -> None:
-        """Initialize document repository."""
-        super().__init__()
-        self._table = "search.documents"
+    """Repository for search.documents table operations."""
 
     async def create_document(self, data: DocumentCreate) -> DocumentRead:
-        """Create a new document.
-
-        Args:
-            data: Document creation data
-
-        Returns:
-            Created document with generated ID and timestamps
-
-        Raises:
-            RepositoryError: If creation fails
-        """
-        query = f"""
-            INSERT INTO {self._table} (
-                source_type, source_id, source_key, content,
-                repository, system_name, metadata
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING *
-        """
-
+        """Create a new document."""
         try:
             async with self.transaction() as conn:
                 row = await conn.fetchrow(
-                    query,
+                    _INSERT_DOCUMENT,
                     data.source_type,
                     data.source_id,
                     data.source_key,
@@ -185,196 +250,76 @@ class DocumentRepository(
                     data.system_name,
                     data.metadata,
                 )
-
                 if row is None:
                     raise RepositoryError(
                         "Failed to create document",
                         operation="create_document",
                         details={"source_key": data.source_key},
                     )
-
                 return self._row_to_model(row)
-
         except Exception as e:
-            raise self._handle_error(
-                "create_document",
-                e,
-                {"source_key": data.source_key},
-            )
+            raise self._handle_error("create_document", e, {"source_key": data.source_key})
 
     async def get_document(self, document_id: UUID) -> DocumentRead | None:
-        """Get a document by ID.
-
-        Args:
-            document_id: Document unique identifier
-
-        Returns:
-            Document if found, None otherwise
-
-        Raises:
-            RepositoryError: If query fails
-        """
-        query = f"SELECT * FROM {self._table} WHERE id = $1"
-
+        """Get a document by ID."""
         try:
             async with self.connection() as conn:
-                row = await conn.fetchrow(query, document_id)
-
-                if row is None:
-                    return None
-
-                return self._row_to_model(row)
-
+                row = await conn.fetchrow(_SELECT_BY_ID, document_id)
+                return self._row_to_model(row) if row is not None else None
         except Exception as e:
-            raise self._handle_error(
-                "get_document",
-                e,
-                {"document_id": str(document_id)},
-            )
+            raise self._handle_error("get_document", e, {"document_id": str(document_id)})
 
     async def get_document_by_key(
         self,
         source_key: str,
         source_type: str | None = None,
     ) -> DocumentRead | None:
-        """Get a document by source key.
-
-        Args:
-            source_key: Source key to look up
-            source_type: Optional source type filter
-
-        Returns:
-            Document if found, None otherwise
-
-        Raises:
-            RepositoryError: If query fails
-        """
-        if source_type:
-            query = f"""
-                SELECT * FROM {self._table}
-                WHERE source_key = $1 AND source_type = $2
-                ORDER BY created_at DESC LIMIT 1
-            """
-            params = [source_key, source_type]
-        else:
-            query = f"""
-                SELECT * FROM {self._table}
-                WHERE source_key = $1
-                ORDER BY created_at DESC LIMIT 1
-            """
-            params = [source_key]
-
+        """Get a document by source key."""
         try:
             async with self.connection() as conn:
-                row = await conn.fetchrow(query, *params)
-
-                if row is None:
-                    return None
-
-                return self._row_to_model(row)
-
+                if source_type:
+                    row = await conn.fetchrow(_SELECT_BY_KEY_WITH_TYPE, source_key, source_type)
+                else:
+                    row = await conn.fetchrow(_SELECT_BY_KEY, source_key)
+                return self._row_to_model(row) if row is not None else None
         except Exception as e:
-            raise self._handle_error(
-                "get_document_by_key",
-                e,
-                {"source_key": source_key},
-            )
+            raise self._handle_error("get_document_by_key", e, {"source_key": source_key})
 
     async def update_document(
         self,
         document_id: UUID,
         data: DocumentUpdate,
     ) -> DocumentRead | None:
-        """Update document fields.
-
-        Args:
-            document_id: Document unique identifier
-            data: Update data (partial updates supported)
-
-        Returns:
-            Updated document if found, None otherwise
-
-        Raises:
-            RepositoryError: If update fails
-        """
-        updates = []
-        params = [document_id]
-        param_idx = 2
-
-        field_mapping = {
-            "content": "content",
-            "repository": "repository",
-            "system_name": "system_name",
-        }
-
-        for field, column in field_mapping.items():
-            value = getattr(data, field, None)
-            if value is not None:
-                updates.append(f"{column} = ${param_idx}")
-                params.append(value)
-                param_idx += 1
-
-        # Handle metadata merge
-        if data.metadata is not None:
-            updates.append(f"metadata = metadata || ${param_idx}::jsonb")
-            params.append(data.metadata)
-            param_idx += 1
-
-        if not updates:
+        """Update document fields (partial update supported)."""
+        fields = frozenset(
+            f for f in _UPDATE_FIELD_ORDER if getattr(data, f, None) is not None
+        )
+        if not fields:
             return await self.get_document(document_id)
 
+        query = _UPDATE_QUERIES[fields]
         now = datetime.now(UTC)
-        updates.append(f"updated_at = ${param_idx}")
+        params: list[Any] = [document_id]
+        for f in _UPDATE_FIELD_ORDER:
+            if f in fields:
+                params.append(getattr(data, f))
         params.append(now)
-
-        query = f"""
-            UPDATE {self._table}
-            SET {", ".join(updates)}
-            WHERE id = $1
-            RETURNING *
-        """
 
         try:
             async with self.transaction() as conn:
                 row = await conn.fetchrow(query, *params)
-
-                if row is None:
-                    return None
-
-                return self._row_to_model(row)
-
+                return self._row_to_model(row) if row is not None else None
         except Exception as e:
-            raise self._handle_error(
-                "update_document",
-                e,
-                {"document_id": str(document_id)},
-            )
+            raise self._handle_error("update_document", e, {"document_id": str(document_id)})
 
     async def delete_document(self, document_id: UUID) -> bool:
-        """Delete a document.
-
-        Args:
-            document_id: Document ID to delete
-
-        Returns:
-            True if deleted, False if not found
-
-        Raises:
-            RepositoryError: If deletion fails
-        """
-        query = f"DELETE FROM {self._table} WHERE id = $1"
-
+        """Delete a document."""
         try:
             async with self.transaction() as conn:
-                result = await conn.execute(query, document_id)
+                result = await conn.execute(_DELETE_BY_ID, document_id)
                 return result == "DELETE 1"
-
         except Exception as e:
-            raise self._handle_error(
-                "delete_document",
-                e,
-                {"document_id": str(document_id)},
-            )
+            raise self._handle_error("delete_document", e, {"document_id": str(document_id)})
 
     async def search_documents(
         self,
@@ -383,74 +328,26 @@ class DocumentRepository(
         limit: int = 20,
         offset: int = 0,
     ) -> list[DocumentSearchResult]:
-        """Search documents using full-text search.
-
-        Args:
-            query_text: Search query string
-            repository: Optional repository filter
-            limit: Maximum results (default: 20)
-            offset: Result offset (default: 0)
-
-        Returns:
-            List of search results with relevance scores
-
-        Raises:
-            RepositoryError: If search fails
-        """
-        conditions = []
-        params: list[Any] = []
-        param_idx = 1
-
-        # Full-text search condition
-        conditions.append(
-            f"to_tsvector('english', content) @@ plainto_tsquery('english', ${param_idx})",
-        )
-        params.append(query_text)
-        param_idx += 1
-
-        if repository:
-            conditions.append(f"repository = ${param_idx}")
-            params.append(repository)
-            param_idx += 1
-
-        params.extend([limit, offset])
-
-        query = f"""
-            SELECT *,
-                   ts_rank(
-                       to_tsvector('english', content),
-                       plainto_tsquery('english', ${1})
-                   ) as score
-            FROM {self._table}
-            WHERE {" AND ".join(conditions)}
-            ORDER BY score DESC
-            LIMIT ${param_idx} OFFSET ${param_idx + 1}
-        """
-
+        """Search documents using full-text search."""
         try:
             async with self.connection() as conn:
-                rows = await conn.fetch(query, *params)
+                if repository:
+                    rows = await conn.fetch(_SEARCH_WITH_REPO, query_text, repository, limit, offset)
+                else:
+                    rows = await conn.fetch(_SEARCH_BASE, query_text, limit, offset)
                 results = []
                 for row in rows:
-                    doc = self._row_to_model(row)
-                    score = float(row.get("score", 0.0))
-                    # Normalize score to 0-1 range
-                    normalized_score = min(max(score / 10.0, 0.0), 1.0)
+                    score = min(max(float(row.get("score", 0.0)) / 10.0, 0.0), 1.0)
                     results.append(
                         DocumentSearchResult(
-                            document=doc,
-                            score=normalized_score,
+                            document=self._row_to_model(row),
+                            score=score,
                             match_type="lexical",
-                        ),
+                        )
                     )
                 return results
-
         except Exception as e:
-            raise self._handle_error(
-                "search_documents",
-                e,
-                {"query": query_text},
-            )
+            raise self._handle_error("search_documents", e, {"query": query_text})
 
     async def list_documents(
         self,
@@ -459,65 +356,25 @@ class DocumentRepository(
         limit: int = 50,
         offset: int = 0,
     ) -> list[DocumentRead]:
-        """List documents with optional filters.
-
-        Args:
-            repository: Filter by repository (optional)
-            source_type: Filter by source type (optional)
-            limit: Maximum results (default: 50)
-            offset: Result offset (default: 0)
-
-        Returns:
-            List of documents matching filters
-
-        Raises:
-            RepositoryError: If query fails
-        """
-        conditions = []
-        params: list[Any] = []
-        param_idx = 1
-
-        if repository:
-            conditions.append(f"repository = ${param_idx}")
-            params.append(repository)
-            param_idx += 1
-
-        if source_type:
-            conditions.append(f"source_type = ${param_idx}")
-            params.append(source_type)
-            param_idx += 1
-
-        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        params.extend([limit, offset])
-
-        query = f"""
-            SELECT * FROM {self._table}
-            {where_clause}
-            ORDER BY created_at DESC
-            LIMIT ${param_idx} OFFSET ${param_idx + 1}
-        """
-
+        """List documents with optional filters."""
         try:
             async with self.connection() as conn:
-                rows = await conn.fetch(query, *params)
+                if repository and source_type:
+                    rows = await conn.fetch(_LIST_BY_REPO_AND_TYPE, repository, source_type, limit, offset)
+                elif repository:
+                    rows = await conn.fetch(_LIST_BY_REPO, repository, limit, offset)
+                elif source_type:
+                    rows = await conn.fetch(_LIST_BY_TYPE, source_type, limit, offset)
+                else:
+                    rows = await conn.fetch(_LIST_ALL, limit, offset)
                 return [self._row_to_model(row) for row in rows]
-
         except Exception as e:
             raise self._handle_error(
-                "list_documents",
-                e,
-                {"repository": repository, "source_type": source_type},
+                "list_documents", e, {"repository": repository, "source_type": source_type}
             )
 
     def _row_to_model(self, row: Any) -> DocumentRead:
-        """Convert database row to DocumentRead model.
-
-        Args:
-            row: Database row record
-
-        Returns:
-            DocumentRead model instance
-        """
+        """Convert database row to DocumentRead model."""
         return DocumentRead(
             id=row["id"],
             source_type=row["source_type"],

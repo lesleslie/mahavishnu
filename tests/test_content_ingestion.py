@@ -6,7 +6,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 import pytest
 
-from mahavishnu.ingesters import ContentIngester, ContentType
+from mahavishnu.ingesters.content_ingester import ContentIngester, ContentType
 
 
 @pytest.mark.unit

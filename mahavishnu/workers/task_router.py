@@ -7,7 +7,7 @@ Task routing works in two layers:
 1. classify_task() - regex-based prompt classification into TaskCategory
 2. Model routing - maps TaskCategory to the best model for the provider
 
-Each provider (Ollama, ZAI, etc.) has its own model routing config.
+Each provider (Ollama, MiniMax, etc.) has its own model routing config.
 """
 
 from __future__ import annotations
@@ -234,26 +234,25 @@ DEFAULT_OLLAMA_ROUTING: dict[TaskCategory, str] = {
     TaskCategory.AGENT_LOOP: "llama3:8b",
 }
 
-# Default model routing for ZAI cloud provider
-DEFAULT_ZAI_ROUTING: dict[TaskCategory, str] = {
-    TaskCategory.CODE_GENERATION: "glm-4.7",
-    TaskCategory.CODE_REVIEW: "glm-4.7",
-    TaskCategory.DEBUGGING: "glm-4.7",
-    TaskCategory.REFACTORING: "glm-4.7",
-    TaskCategory.DOCUMENTATION: "glm-4.5-air",
-    TaskCategory.TESTING: "glm-4.7",
-    TaskCategory.REASONING: "glm-5.1",
-    TaskCategory.CREATIVE: "glm-4.5",
-    TaskCategory.ANALYSIS: "glm-4.5",
-    TaskCategory.VISION: "GLM-4.5V",
-    TaskCategory.EMBEDDING: "glm-4.5-air",
-    TaskCategory.GENERAL: "glm-4.5",
-    TaskCategory.SWARM: "glm-4.5-air",
-    TaskCategory.QUICK: "glm-4.5-air",
-    TaskCategory.ML_INFERENCE: "GLM-4.5V",
-    TaskCategory.AGENT_LOOP: "glm-5.1",
+# Default model routing for MiniMax cloud provider
+DEFAULT_MINIMAX_ROUTING: dict[TaskCategory, str] = {
+    TaskCategory.CODE_GENERATION: "MiniMax-M2.7",
+    TaskCategory.CODE_REVIEW: "MiniMax-M2.7",
+    TaskCategory.DEBUGGING: "MiniMax-M2.7",
+    TaskCategory.REFACTORING: "MiniMax-M2.7",
+    TaskCategory.DOCUMENTATION: "MiniMax-M2.7",
+    TaskCategory.TESTING: "MiniMax-M2.7",
+    TaskCategory.REASONING: "MiniMax-M2.7",
+    TaskCategory.CREATIVE: "MiniMax-M2.7",
+    TaskCategory.ANALYSIS: "MiniMax-M2.7",
+    TaskCategory.VISION: "MiniMax-M2.7",
+    TaskCategory.EMBEDDING: "MiniMax-M2.7",
+    TaskCategory.GENERAL: "MiniMax-M2.7",
+    TaskCategory.SWARM: "MiniMax-M2.7-highspeed",
+    TaskCategory.QUICK: "MiniMax-M2.7-highspeed",
+    TaskCategory.ML_INFERENCE: "MiniMax-M2.7-highspeed",
+    TaskCategory.AGENT_LOOP: "MiniMax-M2.7",
 }
-
 
 def classify_task(prompt: str, context: dict[str, Any] | None = None) -> TaskCategory:
     """Classify a task based on prompt content.
@@ -330,7 +329,7 @@ __all__ = [
     "TaskCategory",
     "TASK_PATTERNS",
     "DEFAULT_OLLAMA_ROUTING",
-    "DEFAULT_ZAI_ROUTING",
+    "DEFAULT_MINIMAX_ROUTING",
     "classify_task",
     "configure_rate_limiter",
     "get_model_for_task",

@@ -137,8 +137,11 @@ async def test_get_health_executes_via_fastmcp_call_tool(server):
 
 @pytest.mark.asyncio
 async def test_monitoring_dashboard_executes_via_fastmcp_call_tool(server):
-    """Dashboard retrieval should work through the public FastMCP call path."""
+    """Dashboard retrieval should surface the canonical ecosystem status payload."""
     result = await server.server.call_tool("get_monitoring_dashboard", {})
 
     assert result is not None
     assert hasattr(result, "content")
+    assert result.structured_content["status"] == "success"
+    assert "ecosystem_status" in result.structured_content
+    assert "dashboard" not in result.structured_content

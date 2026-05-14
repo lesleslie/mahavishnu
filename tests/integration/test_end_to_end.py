@@ -130,6 +130,7 @@ async def test_workflow_execution_with_multiple_adapters():
 async def test_workflow_execution_parallel():
     """Test executing workflows in parallel across multiple repositories."""
     app = MahavishnuApp()
+    app.config.qc.enabled = False  # No Crackerjack server in unit/integration tests
 
     # Create multiple temporary directories to use as repositories
     with tempfile.TemporaryDirectory() as temp_base:
@@ -333,6 +334,7 @@ async def test_repository_messaging_integration():
 async def test_end_to_end_workflow():
     """Test an end-to-end workflow from task submission to completion."""
     app = MahavishnuApp()
+    app.config.qc.enabled = False  # No Crackerjack server in unit/integration tests
 
     # Create a temporary directory to use as a repository
     with tempfile.TemporaryDirectory() as temp_dir:

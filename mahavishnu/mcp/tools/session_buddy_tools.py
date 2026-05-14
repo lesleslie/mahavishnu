@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 from typing import Any
 import uuid
+import warnings
 
 from ...core.permissions import Permission, RBACManager
 from ...mcp.auth import require_mcp_auth
@@ -10,6 +11,11 @@ from ...messaging import MessagePriority
 
 _CHANNEL_SESSION_TOOL = "mcp__session-buddy__track_channel_session"
 _CHANNEL_QUERY_TOOL = "mcp__session-buddy__get_channel_sessions"
+
+_DEPRECATED_CODE_INTEL_MESSAGE = (
+    "This Session-Buddy code-intel tool is a compatibility shim. Prefer the "
+    "canonical code-index or search surfaces for new work."
+)
 
 _VALID_EVENT_TYPES = frozenset(
     {"channel_session_start", "channel_session_end", "channel_heartbeat"}
@@ -26,6 +32,13 @@ def register_session_buddy_tools(
 ):
     """Register Session Buddy integration tools with the MCP server."""
 
+    def _warn_code_intel_deprecation(tool_name: str, replacement: str) -> None:
+        warnings.warn(
+            f"{tool_name} is deprecated. Use {replacement} instead. {_DEPRECATED_CODE_INTEL_MESSAGE}",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
@@ -36,6 +49,7 @@ def register_session_buddy_tools(
         project_path: str, include_docs: bool = True, user_id: str | None = None
     ) -> dict[str, Any]:
         """Index codebase structure for better context in Session Buddy."""
+        _warn_code_intel_deprecation("index_code_graph", "code_index.index_repo")
         try:
             from ..session_buddy.integration import SessionBuddyManager
 
@@ -86,6 +100,7 @@ def register_session_buddy_tools(
         project_path: str, file_path: str, user_id: str | None = None
     ) -> dict[str, Any]:
         """Find code related by imports/calls for Session Buddy."""
+        _warn_code_intel_deprecation("find_related_code", "treesitter_tools")
         try:
             from ..session_buddy.integration import SessionBuddyIntegration
 
@@ -108,6 +123,7 @@ def register_session_buddy_tools(
     )
     async def index_documentation(project_path: str, user_id: str | None = None) -> dict[str, Any]:
         """Extract docstrings and index for semantic search in Session Buddy."""
+        _warn_code_intel_deprecation("index_documentation", "code_index.index_repo")
         try:
             from ..session_buddy.integration import SessionBuddyIntegration
 
@@ -126,6 +142,7 @@ def register_session_buddy_tools(
     @require_mcp_auth(rbac_manager=rbac_manager)  # No repo permission needed for search
     async def search_documentation(query: str, user_id: str | None = None) -> dict[str, Any]:
         """Search through indexed documentation in Session Buddy."""
+        _warn_code_intel_deprecation("search_documentation", "search_tools.hybrid_search")
         try:
             from ..session_buddy.integration import SessionBuddyIntegration
 

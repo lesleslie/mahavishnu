@@ -16,7 +16,7 @@ class PoolConfig:
         pool_type: Type identifier ("mahavishnu", "session-buddy", "kubernetes")
         min_workers: Minimum number of workers (default: 1)
         max_workers: Maximum number of workers (default: 10)
-        worker_type: Type of workers to spawn (default: "terminal-qwen")
+        worker_type: Type of workers to spawn (default: "terminal-claude")
         auto_scale: Enable automatic scaling (default: False)
         memory_enabled: Enable memory aggregation (default: True)
     """
@@ -25,7 +25,7 @@ class PoolConfig:
     pool_type: str
     min_workers: int = 1
     max_workers: int = 10
-    worker_type: str = "terminal-qwen"
+    worker_type: str = "terminal-claude"
     auto_scale: bool = False
     memory_enabled: bool = True
 

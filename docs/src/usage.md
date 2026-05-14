@@ -36,7 +36,7 @@ mahavishnu mcp-serve
 
 ## Repository Configuration
 
-Create a `repos.yaml` file to define your repositories:
+Create an `ecosystem.yaml` file to define your repositories:
 
 ```yaml
 repos:

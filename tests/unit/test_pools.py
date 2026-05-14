@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mahavishnu.core.events.envelope import EventEnvelope
 from mahavishnu.mcp.protocols.message_bus import Message, MessageBus, MessageType
 from mahavishnu.pools.base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 from mahavishnu.pools.manager import PoolManager, PoolSelector
@@ -22,7 +23,7 @@ class TestPoolConfig:
         assert config.pool_type == "mahavishnu"
         assert config.min_workers == 1
         assert config.max_workers == 10
-        assert config.worker_type == "terminal-qwen"
+        assert config.worker_type == "terminal-claude"
         assert config.auto_scale is False
         assert config.memory_enabled is True
 
@@ -110,10 +111,23 @@ class TestPoolMetrics:
 class TestMessageBus:
     """Test MessageBus for inter-pool communication."""
 
+    class _FakeEventPublisher:
+        def __init__(self) -> None:
+            self.published: list[EventEnvelope] = []
+
+        async def publish(self, envelope: EventEnvelope) -> EventEnvelope:
+            self.published.append(envelope)
+            return envelope
+
     @pytest.fixture
     def message_bus(self):
         """Create a MessageBus instance."""
         return MessageBus(max_queue_size=10)
+
+    @pytest.fixture
+    def message_bus_with_publisher(self):
+        publisher = self._FakeEventPublisher()
+        return MessageBus(max_queue_size=10, event_publisher=publisher), publisher
 
     @pytest.mark.asyncio
     async def test_publish_subscribe(self, message_bus):
@@ -140,6 +154,25 @@ class TestMessageBus:
         assert len(received_messages) == 1
         assert received_messages[0].type == MessageType.TASK_DELEGATE
         assert received_messages[0].source_pool_id == "pool_abc"
+
+    @pytest.mark.asyncio
+    async def test_publish_canonical_envelope(self, message_bus_with_publisher):
+        message_bus, publisher = message_bus_with_publisher
+        await message_bus.publish(
+            {
+                "type": "task_delegate",
+                "source_pool_id": "pool_abc",
+                "target_pool_id": "pool_def",
+                "payload": {"task": "test"},
+            }
+        )
+
+        assert len(publisher.published) == 1
+        envelope = publisher.published[0]
+        assert envelope.event_type == "pool.task_delegate"
+        assert envelope.source == "message_bus"
+        assert envelope.payload["source_pool_id"] == "pool_abc"
+        assert envelope.payload["target_pool_id"] == "pool_def"
 
     @pytest.mark.asyncio
     async def test_receive_from_queue(self, message_bus):
@@ -327,6 +360,36 @@ class MockPool(BasePool):
 class TestPoolManager:
     """Test PoolManager orchestration."""
 
+    class _FakeDharaState:
+        def __init__(self) -> None:
+            self.pools: list[tuple[str, dict]] = []
+            self.routings: list[tuple[str, dict]] = []
+
+        async def persist_pool(self, pool_id: str, value: dict, ttl: int | None = None) -> None:
+            self.pools.append((pool_id, value))
+
+        async def persist_routing_decision(
+            self,
+            task_class: str,
+            value: dict,
+            timestamp=None,
+            ttl: int | None = None,
+        ) -> None:
+            self.routings.append((task_class, value))
+
+    class _FailingDharaState:
+        async def persist_pool(self, pool_id: str, value: dict, ttl: int | None = None) -> None:
+            raise RuntimeError("dhara unavailable")
+
+        async def persist_routing_decision(
+            self,
+            task_class: str,
+            value: dict,
+            timestamp=None,
+            ttl: int | None = None,
+        ) -> None:
+            raise RuntimeError("dhara unavailable")
+
     @pytest.fixture
     def pool_manager(self):
         """Create a PoolManager instance."""
@@ -338,6 +401,40 @@ class TestPoolManager:
             terminal_manager=terminal_mgr,
             session_buddy_client=session_buddy,
             message_bus=message_bus,
+        )
+
+    @pytest.fixture
+    def pool_manager_with_dhara(self):
+        terminal_mgr = MagicMock()
+        session_buddy = MagicMock()
+        message_bus = MessageBus()
+        dhara_state = self._FakeDharaState()
+
+        return (
+            PoolManager(
+                terminal_manager=terminal_mgr,
+                session_buddy_client=session_buddy,
+                message_bus=message_bus,
+                dhara_state=dhara_state,
+            ),
+            dhara_state,
+        )
+
+    @pytest.fixture
+    def pool_manager_with_failing_dhara(self):
+        terminal_mgr = MagicMock()
+        session_buddy = MagicMock()
+        message_bus = MessageBus()
+        dhara_state = self._FailingDharaState()
+
+        return (
+            PoolManager(
+                terminal_manager=terminal_mgr,
+                session_buddy_client=session_buddy,
+                message_bus=message_bus,
+                dhara_state=dhara_state,
+            ),
+            dhara_state,
         )
 
     @pytest.mark.asyncio
@@ -357,6 +454,22 @@ class TestPoolManager:
             assert pools[0]["pool_type"] == "mahavishnu"
 
     @pytest.mark.asyncio
+    async def test_spawn_pool_continues_when_dhara_persistence_fails(
+        self,
+        pool_manager_with_failing_dhara,
+    ):
+        pool_manager, _ = pool_manager_with_failing_dhara
+        config = PoolConfig(name="test", pool_type="mahavishnu")
+        mock_pool = MockPool(config, "test_pool")
+
+        with patch("mahavishnu.pools.manager.MahavishnuPool", return_value=mock_pool):
+            pool_id = await pool_manager.spawn_pool("mahavishnu", config)
+
+        assert pool_id == "test_pool"
+        assert pool_id in pool_manager._pools
+        assert mock_pool._start_called is True
+
+    @pytest.mark.asyncio
     async def test_execute_on_pool(self, pool_manager):
         """Test executing task on specific pool."""
         config = PoolConfig(name="test", pool_type="mahavishnu")
@@ -373,6 +486,41 @@ class TestPoolManager:
         assert result["pool_id"] == "test_pool"
         assert result["status"] == "completed"
         assert "Hello" in result["output"]
+
+    @pytest.mark.asyncio
+    async def test_execute_on_pool_continues_when_dhara_persistence_fails(
+        self,
+        pool_manager_with_failing_dhara,
+    ):
+        pool_manager, _ = pool_manager_with_failing_dhara
+        config = PoolConfig(name="test", pool_type="mahavishnu")
+        mock_pool = MockPool(config, "test_pool")
+        await mock_pool.start()
+
+        pool_manager._pools["test_pool"] = mock_pool
+
+        result = await pool_manager.execute_on_pool(
+            "test_pool",
+            {"prompt": "Hello"},
+        )
+
+        assert result["pool_id"] == "test_pool"
+        assert result["status"] == "completed"
+        assert "Hello" in result["output"]
+
+    @pytest.mark.asyncio
+    async def test_execute_on_pool_persists_pool_state(self, pool_manager_with_dhara):
+        pool_manager, dhara_state = pool_manager_with_dhara
+        config = PoolConfig(name="test", pool_type="mahavishnu")
+        mock_pool = MockPool(config, "test_pool")
+        await mock_pool.start()
+        pool_manager._pools["test_pool"] = mock_pool
+
+        await pool_manager.execute_on_pool("test_pool", {"prompt": "Hello"})
+
+        assert dhara_state.pools
+        assert dhara_state.pools[0][0] == "test_pool"
+        assert dhara_state.pools[0][1]["status"] == "running"
 
     @pytest.mark.asyncio
     async def test_pool_worker_metrics_reflect_live_counts(self, pool_manager):
@@ -417,6 +565,44 @@ class TestPoolManager:
         assert result["pool_id"] == "pool2"
 
     @pytest.mark.asyncio
+    async def test_route_task_persists_routing_decision(self, pool_manager_with_dhara):
+        pool_manager, dhara_state = pool_manager_with_dhara
+        config = PoolConfig(name="pool1", pool_type="mahavishnu")
+        mock_pool = MockPool(config, "pool1")
+        await mock_pool.start()
+        pool_manager._pools["pool1"] = mock_pool
+
+        await pool_manager.route_task(
+            {"type": "workflow", "category": "workflow"},
+            pool_selector=PoolSelector.AFFINITY,
+            pool_affinity="pool1",
+        )
+
+        assert dhara_state.routings
+        assert dhara_state.routings[0][0] == "workflow"
+        assert dhara_state.routings[0][1]["pool_id"] == "pool1"
+
+    @pytest.mark.asyncio
+    async def test_route_task_continues_when_dhara_persistence_fails(
+        self,
+        pool_manager_with_failing_dhara,
+    ):
+        pool_manager, _ = pool_manager_with_failing_dhara
+        config = PoolConfig(name="pool1", pool_type="mahavishnu")
+        mock_pool = MockPool(config, "pool1")
+        await mock_pool.start()
+        pool_manager._pools["pool1"] = mock_pool
+
+        result = await pool_manager.route_task(
+            {"type": "workflow", "category": "workflow", "prompt": "Hello"},
+            pool_selector=PoolSelector.AFFINITY,
+            pool_affinity="pool1",
+        )
+
+        assert result["pool_id"] == "pool1"
+        assert result["status"] == "completed"
+
+    @pytest.mark.asyncio
     async def test_close_pool(self, pool_manager):
         """Test closing a specific pool."""
         config = PoolConfig(name="test", pool_type="mahavishnu")
@@ -429,6 +615,36 @@ class TestPoolManager:
 
         assert "test_pool" not in pool_manager._pools
         assert mock_pool._stop_called is True
+
+    @pytest.mark.asyncio
+    async def test_close_pool_continues_when_dhara_persistence_fails(
+        self,
+        pool_manager_with_failing_dhara,
+    ):
+        pool_manager, _ = pool_manager_with_failing_dhara
+        config = PoolConfig(name="test", pool_type="mahavishnu")
+        mock_pool = MockPool(config, "test_pool")
+        await mock_pool.start()
+        pool_manager._pools["test_pool"] = mock_pool
+
+        await pool_manager.close_pool("test_pool")
+
+        assert "test_pool" not in pool_manager._pools
+        assert mock_pool._stop_called is True
+
+    @pytest.mark.asyncio
+    async def test_close_pool_persists_closed_state(self, pool_manager_with_dhara):
+        pool_manager, dhara_state = pool_manager_with_dhara
+        config = PoolConfig(name="test", pool_type="mahavishnu")
+        mock_pool = MockPool(config, "test_pool")
+        await mock_pool.start()
+        pool_manager._pools["test_pool"] = mock_pool
+
+        await pool_manager.close_pool("test_pool")
+
+        assert dhara_state.pools
+        assert dhara_state.pools[-1][0] == "test_pool"
+        assert dhara_state.pools[-1][1]["status"] == "closed"
 
     @pytest.mark.asyncio
     async def test_close_all_pools(self, pool_manager):

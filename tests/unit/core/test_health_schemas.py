@@ -1,6 +1,6 @@
 """Tests for health check schemas."""
 
-from mahavishnu.core.health_schemas import (
+from mahavishnu.core.health import (
     DependencyStatus,
     HealthCheckResult,
     HealthResponse,

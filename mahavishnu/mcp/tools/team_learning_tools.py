@@ -20,6 +20,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import logging
 from typing import TYPE_CHECKING, Any
+import warnings
 
 from mahavishnu.core.feature_flags import is_feature_enabled
 from mahavishnu.core.team_learning import (
@@ -32,6 +33,21 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+warnings.warn(
+    "team_learning_tools is deprecated and de-authorized from live MCP registration. "
+    "Use skill_governance as the canonical learning authority.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+
+def _warn_deprecated_registration() -> None:
+    warnings.warn(
+        "register_team_learning_tools is deprecated and retained for CLI/backward compat only.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
 
 def register_team_learning_tools(mcp: FastMCP) -> None:
     """Register team learning tools with FastMCP.
@@ -39,6 +55,7 @@ def register_team_learning_tools(mcp: FastMCP) -> None:
     Args:
         mcp: FastMCP instance to register tools with
     """
+    _warn_deprecated_registration()
 
     @mcp.tool()
     async def record_team_outcome(

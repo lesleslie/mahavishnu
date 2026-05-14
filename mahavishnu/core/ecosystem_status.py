@@ -293,6 +293,13 @@ class WorkflowProvider(Protocol):
     async def list_workflows(self, limit: int = 100) -> list[dict[str, Any]]: ...
 
 
+@runtime_checkable
+class RecoveryProvider(Protocol):
+    """Provides durable recovery summary data."""
+
+    async def get_recovery_summary(self) -> dict[str, Any] | RecoverySummary: ...
+
+
 # ---------------------------------------------------------------------------
 # Control Plane Phase 2: Report models and EcosystemStatusService
 # ---------------------------------------------------------------------------
@@ -351,6 +358,17 @@ class WorkflowSummary(BaseModel):
     last_completed_at: datetime | None = None
 
 
+class RecoverySummary(BaseModel):
+    """High-level durable recovery state summary."""
+
+    recovered_workflows: int = 0
+    recovered_approvals: int = 0
+    recovered_pools: int = 0
+    recovered_routing_decisions: int = 0
+    dhara_available: bool = False
+    last_recovered_at: datetime | None = None
+
+
 class AlertRef(BaseModel):
     """Reference to a single active alert."""
 
@@ -390,6 +408,7 @@ class EcosystemStatusReport(BaseModel):
     adapters: dict[str, AdapterStatus] = Field(default_factory=dict)
     capabilities: dict[str, CapabilityStatus] = Field(default_factory=dict)
     workflows: WorkflowSummary = Field(default_factory=WorkflowSummary)
+    recovery: RecoverySummary = Field(default_factory=RecoverySummary)
     alerts: AlertSummary = Field(default_factory=AlertSummary)
     recommendations: list[OperationalRecommendation] = Field(default_factory=list)
     errors: list[SectionError] = Field(default_factory=list)
@@ -413,6 +432,7 @@ class EcosystemStatusService:
         adapters: dict[str, Any] | None = None,
         alert_provider: AlertProvider | None = None,
         workflow_provider: WorkflowProvider | None = None,
+        recovery_provider: RecoveryProvider | None = None,
         service_configs: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         self.section_timeout_ms = section_timeout_ms
@@ -420,6 +440,7 @@ class EcosystemStatusService:
         self._adapters = adapters or {}
         self._alert_provider = alert_provider
         self._workflow_provider = workflow_provider
+        self._recovery_provider = recovery_provider
         self._service_configs = service_configs or {}
 
     async def generate_report(self, request_id: str | None = None) -> EcosystemStatusReport:
@@ -436,6 +457,7 @@ class EcosystemStatusService:
             self._collect_services(),
             self._collect_adapters(),
             self._collect_workflows(),
+            self._collect_recovery(),
             self._collect_alerts(),
             self._collect_capabilities(),
             return_exceptions=True,
@@ -444,11 +466,19 @@ class EcosystemStatusService:
         services: dict[str, ServiceStatus] = {}
         adapters: dict[str, AdapterStatus] = {}
         workflows = WorkflowSummary()
+        recovery = RecoverySummary()
         alerts = AlertSummary()
         capabilities: dict[str, CapabilityStatus] = {}
         errors: list[SectionError] = []
 
-        section_names = ["services", "adapters", "workflows", "alerts", "capabilities"]
+        section_names = [
+            "services",
+            "adapters",
+            "workflows",
+            "recovery",
+            "alerts",
+            "capabilities",
+        ]
         for name, result in zip(section_names, section_results, strict=False):
             if isinstance(result, BaseException):
                 errors.append(
@@ -464,6 +494,8 @@ class EcosystemStatusService:
                 adapters = result
             elif name == "workflows":
                 workflows = result
+            elif name == "recovery":
+                recovery = result
             elif name == "alerts":
                 alerts = result
             elif name == "capabilities":
@@ -495,6 +527,7 @@ class EcosystemStatusService:
             adapters=adapters,
             capabilities=capabilities,
             workflows=workflows,
+            recovery=recovery,
             alerts=alerts,
             recommendations=recommendations,
             errors=errors,
@@ -575,6 +608,18 @@ class EcosystemStatusService:
         except Exception:
             return WorkflowSummary()
 
+    async def _collect_recovery(self) -> RecoverySummary:
+        """Collect durable recovery summary from the configured provider."""
+        if not self._recovery_provider:
+            return RecoverySummary()
+        try:
+            summary = await self._recovery_provider.get_recovery_summary()
+            if isinstance(summary, RecoverySummary):
+                return summary
+            return RecoverySummary.model_validate(summary)
+        except Exception:
+            return RecoverySummary()
+
     async def _collect_alerts(self) -> AlertSummary:
         """Collect active alerts from AlertManager."""
         if not self._alert_provider:
@@ -612,7 +657,7 @@ class EcosystemStatusService:
         Categories: orchestration, retrieval, session, storage, quality,
         monitoring, messaging, worker_pool.
         """
-        CAPABILITY_CATEGORIES: dict[str, str] = {
+        capability_categories: dict[str, str] = {
             "deploy_flows": "orchestration",
             "schedule": "orchestration",
             "monitor_execution": "orchestration",
@@ -663,7 +708,7 @@ class EcosystemStatusService:
         result: dict[str, CapabilityStatus] = {}
         for cap, providers in cap_providers.items():
             category = next(
-                (v for k, v in CAPABILITY_CATEGORIES.items() if k in cap.lower()),
+                (v for k, v in capability_categories.items() if k in cap.lower()),
                 "other",
             )
             result[cap] = CapabilityStatus(
@@ -789,6 +834,7 @@ __all__ = [
     "AdapterStatus",
     "CapabilityStatus",
     "WorkflowSummary",
+    "RecoverySummary",
     "AlertRef",
     "AlertSummary",
     "OperationalRecommendation",

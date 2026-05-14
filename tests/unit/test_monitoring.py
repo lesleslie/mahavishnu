@@ -2,19 +2,25 @@
 
 import pytest
 
-from mahavishnu.core.monitoring_infra import (
+from mahavishnu.core.monitoring import (
     Alert,
     AlertManager,
     AlertRule,
     AlertSeverity,
     DashboardConfig,
     DashboardPanel,
-    HealthChecker,
-    HealthCheckResult,
-    HealthStatus,
     Metric,
     MetricsExporter,
     MetricType,
+)
+from mahavishnu.core.monitoring import (
+    ComponentHealthChecker as HealthChecker,
+)
+from mahavishnu.core.monitoring import (
+    ComponentHealthResult as HealthCheckResult,
+)
+from mahavishnu.core.monitoring import (
+    ComponentHealthStatus as HealthStatus,
 )
 
 
@@ -419,7 +425,7 @@ class TestAlertManager:
         manager.fire_alert("alert2", "Second alert")
         manager.resolve_alert("alert1")
 
-        active = manager.get_active_alerts()
+        active = manager.get_active_alerts_sync()
 
         assert len(active) == 1
         assert active[0].rule_name == "alert2"

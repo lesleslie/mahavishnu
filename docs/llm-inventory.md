@@ -14,11 +14,10 @@ Date: 2026-04-09
 | Client | Current path | Base URL / mode | Notes |
 |---|---|---|---|
 | Codex | Direct native Codex/OpenAI path | Native Codex login/API behavior | `openai_base_url` override removed |
-| Claude Code | Direct z.ai Anthropic-compatible path | `https://api.z.ai/api/anthropic` | Uses `glm-4.5-air` / `glm-4.7` model ids |
-| Qwen | Direct DashScope OpenAI-compatible path | `https://dashscope.aliyuncs.com/compatible-mode/v1` | Uses `DASHSCOPE_API_KEY` |
-| Nanobot | Direct z.ai provider | `https://api.z.ai/api/coding/paas/v4` | Default provider restored to `zhipu` |
-| OpenClaw | Direct z.ai provider | `https://api.z.ai/api/coding/paas/v4` | Restored from pre-Bifrost backup |
-| Mahavishnu terminal workers | Native CLI config | No forced gateway | `terminal-claude` and `terminal-qwen` no longer inject Bifrost |
+| Claude Code | Direct z.ai Anthropic-compatible path | `https://api.z.ai/api/anthropic` | Uses `glm-4.5-air` / `glm-4.7` model ids; optional configurable path, not default |
+| Qwen | Direct DashScope OpenAI-compatible path | `https://dashscope.aliyuncs.com/compatible-mode/v1` | Supported configurable external path; not part of the default config |
+| OpenClaw | Direct z.ai provider | `https://api.z.ai/api/coding/paas/v4` | Optional configurable provider restored from pre-Bifrost backup |
+| Mahavishnu terminal workers | Native CLI config | No forced gateway | `terminal-claude` is the default; `terminal-qwen` is retained as a supported non-default worker type |
 
 ## Session-Buddy
 
@@ -60,7 +59,7 @@ Primary entrypoint:
 Provider order:
 
 - default configured provider in `crackerjack/config/settings.py`: `claude`
-- provider chain: `claude -> qwen -> ollama`
+- provider chain: `claude -> ollama` with Qwen retained as an explicit configurable fallback
 
 Important callsites:
 
@@ -81,7 +80,7 @@ Practical reading:
 
 - Crackerjack is not local-first by default.
 - Claude is the primary external provider.
-- Qwen is the secondary external provider.
+- Qwen is a supported configurable external path kept for explicit compatibility workflows.
 - Ollama is the local fallback.
 
 ## Mahavishnu
@@ -109,7 +108,7 @@ Practical reading:
 
 - The Agno-based orchestration path is local-Ollama-first by default.
 
-### Nanobot in-process path
+### Retired Nanobot in-process path
 
 Primary callsites:
 
@@ -123,7 +122,8 @@ Behavior:
 
 Practical reading:
 
-- When those env vars are present, this path uses a remote Anthropic-compatible endpoint, not Ollama.
+- This path is retired/historical. When those env vars were present in older
+  setups, it used a remote Anthropic-compatible endpoint, not Ollama.
 
 ### Terminal worker path
 
@@ -143,7 +143,7 @@ Practical reading:
 
 - These workers now defer to each CLI's native configuration.
 - The explicit local path is `terminal-ollama`.
-- The other terminal workers use whatever their corresponding CLI is configured to use.
+- The non-Ollama terminal workers are provider-neutral CLI shims that use whatever their corresponding CLI is configured to use.
 
 ### RAG and embeddings
 
@@ -166,9 +166,9 @@ Practical reading:
 | Component | Most likely actual path |
 |---|---|
 | Session-Buddy | Remote API first, Ollama last |
-| Crackerjack | Claude first, then Qwen, then Ollama |
+| Crackerjack | Claude first, then Ollama; Qwen is retained as an explicit configurable compatibility option |
 | Mahavishnu Agno / LlamaIndex / embeddings | Local Ollama or local embedding stack first |
-| Mahavishnu Nanobot in-process workers | Remote Anthropic-compatible endpoint if configured |
+| Retired Nanobot in-process workers | Retired historical path; no longer part of active fleet |
 | Mahavishnu terminal workers | Whatever the CLI itself is configured to use |
 
 ## Bifrost Economics

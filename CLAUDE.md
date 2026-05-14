@@ -20,7 +20,7 @@ Mahavishnu is part of the **Bodai Ecosystem** - a collection of interconnected c
 **Key Interactions:**
 
 - Routes tasks to **Akosha** for intelligence operations
-- Persists state to **Dhara** for recovery
+- Persists durable workflow, pool, routing, and approval state to **Dhara** for recovery
 - Tracks context in **Session-Buddy**
 - Validates with **Crackerjack** before execution
 
@@ -549,30 +549,33 @@ ingestion:
 
 ## Critical Architecture Decisions
 
-### LLM Provider Configuration (ZAI Primary)
+### LLM Provider Configuration (MiniMax Primary)
 
-Mahavishnu uses ZAI GLM models as the primary cloud LLM provider:
+Mahavishnu uses MiniMax M2.7 models as the primary cloud LLM provider:
 
-- **Primary provider**: `zai` (OpenAI-compatible API at `https://api.z.ai/api/coding/paas/v4`)
+- **Primary provider**: `minimax` (OpenAI-compatible API at `https://api.minimax.io/v1`)
 - **Local fallback**: `ollama` at `http://localhost:11434`
-- **Default models**: `glm-4.7` (Sonnet), `glm-5.1` (Opus/reasoning), `glm-4.5-air` (Haiku/swarms)
+- **Default models**: `MiniMax-M2.7` (general), `MiniMax-M2.7-highspeed` (quick/background)
+- **Optional compatibility provider**: `zai` (OpenAI-compatible API at `https://api.z.ai/api/coding/paas/v4`) when explicitly configured
 - **Task-based routing**: `TaskRouter` in `mahavishnu/workers/task_router.py` maps task categories to optimal models
 
 **Task-to-Model Mapping**:
 | Category | Cloud Model | Local Model |
 |-----------|-------------|-------------|
-| CODE_GENERATION, CODE_REVIEW, DEBUGGING | glm-4.7 | qwen2.5-coder:7b |
-| REASONING, ARCHITECTURE | glm-5.1 | llama3:8b |
-| SWARM, QUICK, DOCUMENTATION | glm-4.5-air | qwen2.5-coder:7b |
-| VISION | GLM-4.5V | N/A |
+| CODE_GENERATION, CODE_REVIEW, DEBUGGING | MiniMax-M2.7 | qwen2.5-coder:7b |
+| REASONING, ARCHITECTURE | MiniMax-M2.7 | llama3:8b |
+| SWARM, QUICK, DOCUMENTATION | MiniMax-M2.7-highspeed | qwen2.5-coder:7b |
+| VISION | MiniMax modality-specific routes where supported | N/A |
 
 **Key files**:
 
-- `mahavishnu/workers/cloud_worker.py` - OpenAI-compatible worker for ZAI
+- `mahavishnu/workers/cloud_worker.py` - OpenAI-compatible worker for MiniMax
 - `mahavishnu/workers/task_router.py` - TaskCategory enum, model routing
 - `settings/models.yaml` - YAML-driven provider and model configuration
 
-See `docs/plans/llm-provider-reconfiguration-v2.md` for the full reconfiguration plan.
+If MiniMax becomes unavailable, operators can temporarily restore `zai` as an optional non-default provider by reintroducing the compatibility settings in `settings/models.yaml` and setting `default_provider` back to `zai` only for the affected environment.
+
+See `docs/plans/2026-05-10-minimax27-provider-migration.md` for the current migration plan.
 
 See `docs/adr/` for full Architecture Decision Records:
 
@@ -788,7 +791,7 @@ The `examples/` directory contains runnable examples for key features:
 - **Worker manager**: `mahavishnu/workers/manager.py` - Worker lifecycle
 - **Worker base**: `mahavishnu/workers/base.py` - Abstract worker interface
 - **Container worker**: `mahavishnu/workers/container.py` - Containerized execution
-- **Cloud worker**: `mahavishnu/workers/cloud_worker.py` - ZAI/OpenAI-compatible cloud worker
+- **Cloud worker**: `mahavishnu/workers/cloud_worker.py` - OpenAI-compatible cloud worker with MiniMax primary defaults
 - **Task router**: `mahavishnu/workers/task_router.py` - Task classification + model selection
 - **Terminal manager**: `mahavishnu/terminal/manager.py` - Terminal session management
 - **Terminal adapters**:

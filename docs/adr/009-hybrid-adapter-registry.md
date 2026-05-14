@@ -84,7 +84,7 @@ class AdapterDiscoveryEngine:
         adapters = []
         adapters.extend(await self.discover_from_entry_points())
         if self.oneiric_mcp_enabled:
-            adapters.extend(await self.discover_from_oneiric_mcp())
+            adapters.extend(await self.discover_from_dhara())
         return adapters
 
     async def discover_from_entry_points(self) -> list[AdapterMetadata]:

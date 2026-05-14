@@ -8,6 +8,8 @@ import logging
 import time
 from typing import Any
 
+from ...core.events.contract import EventPublisherProtocol, create_event_envelope
+
 logger = logging.getLogger(__name__)
 
 
@@ -83,7 +85,11 @@ class MessageBus:
         ```
     """
 
-    def __init__(self, max_queue_size: int = 1000):
+    def __init__(
+        self,
+        max_queue_size: int = 1000,
+        event_publisher: EventPublisherProtocol | None = None,
+    ):
         """Initialize message bus.
 
         Args:
@@ -92,8 +98,16 @@ class MessageBus:
         self._queues: dict[str, asyncio.Queue] = {}
         self._subscribers: dict[MessageType, list[Callable]] = {}
         self._max_queue_size = max_queue_size
+        self._event_publisher = event_publisher
 
-        logger.info(f"MessageBus initialized (max_queue_size={max_queue_size})")
+    def set_event_publisher(
+        self, event_publisher: EventPublisherProtocol | None
+    ) -> None:
+        self._event_publisher = event_publisher
+
+        logger.info(
+            f"MessageBus initialized (max_queue_size={self._max_queue_size})"
+        )
 
     async def publish(self, message: dict[str, Any]) -> None:
         """Publish message to bus.
@@ -125,6 +139,7 @@ class MessageBus:
             payload=message.get("payload", {}),
             timestamp=time.time(),
         )
+        await self._publish_canonical_event(msg)
 
         # Deliver to target queue if specified
         if msg.target_pool_id:
@@ -148,6 +163,26 @@ class MessageBus:
                 asyncio.create_task(subscriber(msg))
             except Exception as e:
                 logger.error(f"Subscriber error: {e}")
+
+    async def _publish_canonical_event(self, msg: Message) -> None:
+        if self._event_publisher is None:
+            return
+        envelope = create_event_envelope(
+            event_type=f"pool.{msg.type.value}",
+            source="message_bus",
+            payload={
+                "source_pool_id": msg.source_pool_id,
+                "target_pool_id": msg.target_pool_id,
+                "payload": msg.payload,
+                "message_type": msg.type.value,
+            },
+            metadata={
+                "source_pool_id": msg.source_pool_id,
+                "target_pool_id": msg.target_pool_id,
+                "message_type": msg.type.value,
+            },
+        )
+        await self._event_publisher.publish(envelope)
 
     def subscribe(
         self,

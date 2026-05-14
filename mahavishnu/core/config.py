@@ -29,6 +29,7 @@ class LLMProvider(StrEnum):
 
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
+    MINIMAX = "minimax"
     OLLAMA = "ollama"
 
 
@@ -59,7 +60,7 @@ class AgnoLLMConfig(BaseModel):
 
     provider: LLMProvider = Field(
         default=LLMProvider.OLLAMA,
-        description="LLM provider (anthropic, openai, ollama)",
+        description="LLM provider (anthropic, openai, minimax, ollama)",
     )
     model_id: str = Field(
         default="qwen2.5:7b",
@@ -906,8 +907,8 @@ class WorkerConfig(BaseModel):
         description="Maximum number of concurrent workers (1-100)",
     )
     default_type: str = Field(
-        default="terminal-qwen",
-        description="Default worker type (terminal-qwen, terminal-claude, container-executor)",
+        default="terminal-claude",
+        description="Default worker type (terminal-claude, terminal-qwen [legacy], terminal-codex, container-executor)",
     )
     timeout_seconds: int = Field(
         default=300,

@@ -6,40 +6,113 @@ repository loading and adapter initialization using Oneiric patterns.
 
 import asyncio
 from asyncio import Semaphore
-from datetime import datetime
-import os
-from pathlib import Path
-import tempfile
-import time
 from typing import TYPE_CHECKING, Any
 import uuid
 
-import yaml
-
-from monitoring.metrics import (
-    mahavishnu_active_workflows,
-    mahavishnu_repos_processed_total,
-    mahavishnu_workflow_concurrency_utilization,
-    mahavishnu_workflow_duration_seconds,
-    mahavishnu_workflow_queue_depth,
-    mahavishnu_workflows_total,
+from .bootstrap import init_health_endpoint as _init_health_endpoint_helper
+from .bootstrap import init_learning_pipeline as _init_learning_pipeline_helper
+from .bootstrap import init_memory_aggregator as _init_memory_aggregator_helper
+from .bootstrap import init_observability as _init_observability_helper
+from .bootstrap import init_pool_manager as _init_pool_manager_helper
+from .bootstrap import init_terminal_manager as _init_terminal_manager_helper
+from .bootstrap import initialize_runtime_services as _initialize_runtime_services_helper
+from .bootstrap import load_config as _load_config_helper
+from .bootstrap import load_repos as _load_repos_helper
+from .bootstrap import recover_approvals_from_dhara as _recover_approvals_from_dhara_helper
+from .bootstrap import (
+    recover_workflow_state_from_dhara as _recover_workflow_state_from_dhara_helper,
 )
-
-from ..qc.checker import QualityControl
-from ..session.checkpoint import SessionBuddy
+from .bootstrap import resolve_dhara_url as _resolve_dhara_url_helper
 from .circuit_breaker import CircuitBreaker
 from .config import MahavishnuSettings
-from .context import set_app_context
-from .errors import AdapterError, ConfigurationError, ExternalServiceError, ValidationError
-from .metrics_schema import AdapterType, TaskType
-from .monitoring import MonitoringService
-from .observability import init_observability
-from .opensearch_integration import OpenSearchIntegration
-from .permissions import Permission, RBACManager
+from .control_surface import (
+    get_correlation_status as _get_correlation_status,
+)
+from .control_surface import (
+    get_event_activity as _get_event_activity,
+)
+from .control_surface import (
+    get_fix_trace as _get_fix_trace,
+)
+from .control_surface import (
+    get_recovered_routing_decisions as _get_recovered_routing_decisions,
+)
+from .control_surface import (
+    get_recovery_summary as _get_recovery_summary,
+)
+from .control_surface import (
+    list_pending_approvals as _list_pending_approvals,
+)
+from .control_surface import (
+    record_event_activity as _record_event_activity,
+)
+from .control_surface import (
+    record_fix_trace as _record_fix_trace,
+)
+from .control_surface import (
+    request_approval as _request_approval,
+)
+from .control_surface import (
+    respond_to_approval as _respond_to_approval,
+)
+from .dependency_waiter import wait_for_dependencies as _wait_for_dependencies_helper
+from .errors import AdapterError
+from .lifecycle import initialize_worktree_coordinator as _initialize_worktree_coordinator_helper
+from .lifecycle import start_learning_pipeline as _start_learning_pipeline_helper
+from .lifecycle import start_poller as _start_poller_helper
+from .lifecycle import stop_learning_pipeline as _stop_learning_pipeline_helper
+from .lifecycle import stop_poller as _stop_poller_helper
 from .repo_nicknames import get_repo_nicknames
-from .resilience import ErrorRecoveryManager, ResiliencePatterns
-from .routing import RoutingStrategy, TaskRouter
-from .workflow_state import WorkflowState
+from .repository_surface import (
+    check_user_repo_permission as _check_user_repo_permission_helper,
+)
+from .repository_surface import get_active_workflows as _get_active_workflows_helper
+from .repository_surface import get_all_nicknames as _get_all_nicknames_helper
+from .repository_surface import get_all_repo_paths as _get_all_repo_paths_helper
+from .repository_surface import get_all_repos as _get_all_repos_helper
+from .repository_surface import get_repos as _get_repos_helper
+from .repository_surface import get_repos_by_role as _get_repos_by_role_helper
+from .repository_surface import get_role_by_name as _get_role_by_name_helper
+from .repository_surface import get_roles as _get_roles_helper
+from .repository_surface import is_healthy as _is_healthy_helper
+from .repository_surface import persist_workflow_end as _persist_workflow_end_helper
+from .repository_surface import persist_workflow_start as _persist_workflow_start_helper
+from .repository_surface import (
+    update_workflow_runtime_gauges as _update_workflow_runtime_gauges_helper,
+)
+from .routing import RoutingStrategy
+from .workflow_execution import (
+    check_dependency_health as _check_dependency_health_helper,
+)
+from .workflow_execution import (
+    create_session_checkpoint as _create_session_checkpoint_helper,
+)
+from .workflow_execution import (
+    execute_parallel_workflow as _execute_parallel_workflow_helper,
+)
+from .workflow_execution import (
+    execute_workflow_parallel as _execute_workflow_parallel_helper,
+)
+from .workflow_execution import (
+    execute_workflow_with_fallback as _execute_workflow_with_fallback_helper,
+)
+from .workflow_execution import (
+    execute_workflow_with_routing as _execute_workflow_with_routing_helper,
+)
+from .workflow_execution import (
+    finalize_workflow_execution as _finalize_workflow_execution_helper,
+)
+from .workflow_execution import (
+    handle_workflow_execution_error as _handle_workflow_execution_error_helper,
+)
+from .workflow_execution import (
+    initialize_workflow_state as _initialize_workflow_state_helper,
+)
+from .workflow_execution import prepare_execution as _prepare_execution_helper
+from .workflow_execution import process_single_repo as _process_single_repo_helper
+from .workflow_execution import (
+    validate_pre_execution_qc as _validate_pre_execution_qc_helper,
+)
 
 if TYPE_CHECKING:
     from ..terminal.manager import TerminalManager
@@ -49,65 +122,6 @@ try:
     from ..terminal.manager import TerminalManager
 except Exception:  # pragma: no cover - optional runtime dependency
     TerminalManager = None  # type: ignore[assignment]
-
-
-def _validate_path(path_str: str, allowed_base_paths: list[str] | None = None) -> Path:
-    """Validate a path to prevent directory traversal attacks.
-
-    Args:
-        path_str: Path string to validate
-        allowed_base_paths: Optional list of allowed base paths (defaults to current directory)
-
-    Returns:
-        Validated Path object
-
-    Raises:
-        ValidationError: If path contains directory traversal sequences or is outside allowed paths
-    """
-    path = Path(path_str)
-    normalized_path = str(path_str).replace("\\", "/")
-
-    # Check for directory traversal patterns
-    if (
-        ".." in path.parts
-        or normalized_path.startswith("../")
-        or "/../" in normalized_path
-        or normalized_path.endswith("/..")
-        or "..\\" in path_str
-        or "\\.." in path_str
-    ):
-        raise ValidationError(
-            message=f"Invalid path contains directory traversal: {path_str}",
-            details={"path": path_str, "suggestion": "Remove any '..' sequences from path"},
-        )
-
-    # Resolve path to its absolute form only after traversal checks pass.
-    abs_path = path.expanduser().resolve()
-
-    # Check if path is within allowed boundaries
-    allowed_paths = allowed_base_paths or [str(Path.cwd()), tempfile.gettempdir()]
-
-    is_allowed = False
-    for allowed_base in allowed_paths:
-        try:
-            abs_path.relative_to(Path(allowed_base).expanduser().resolve())
-            is_allowed = True
-            break
-        except ValueError:
-            continue
-
-    if not is_allowed:
-        raise ValidationError(
-            message=f"Path is outside allowed directory: {path_str}",
-            details={
-                "path": path_str,
-                "allowed_paths": allowed_paths,
-                "suggestion": "Ensure path is within allowed boundaries",
-            },
-        )
-
-    return abs_path
-
 
 class MahavishnuApp:
     """Main application class for Mahavishnu orchestrator.
@@ -176,177 +190,12 @@ class MahavishnuApp:
             timeout=int(self.config.resilience.retry_base_delay * 10),  # Convert to int
         )
 
-        # Initialize observability
-        self.observability = init_observability(self.config)
+        # Initialize observability and health endpoint
+        self.observability = self._init_observability()
+        self._health_endpoint = self._init_health_endpoint()
 
-        # Initialize health endpoint
-        self._health_endpoint = None
-        if self.config.health.enabled:
-            from .health import HealthEndpoint, ServiceInfo
-
-            service_info = ServiceInfo(
-                name="mahavishnu",
-                version=getattr(self.config, "version", "0.3.2"),
-            )
-            self._health_endpoint = HealthEndpoint(
-                service_info=service_info,
-                config=self.config.health,
-            )
-
-        # Initialize quality control
-        self.qc = QualityControl(self.config)
-
-        # Initialize session management
-        self.session_buddy = SessionBuddy(self.config)
-        self.session_buddy_integration = self.session_buddy
-
-        try:
-            from ..messaging.repository_messenger import RepositoryMessenger
-
-            self.repository_messenger = RepositoryMessenger(self)
-        except Exception:
-            self.repository_messenger = None
-
-        # Initialize terminal manager (optional)
-        self.terminal_manager = None
-        if self.config.terminal.enabled:
-            self.terminal_manager = self._init_terminal_manager()
-
-        # Initialize workflow state manager
-        self.workflow_state_manager = WorkflowState()
-
-        # Initialize pool manager
-        self.pool_manager = None
-        self.memory_aggregator = None
-        self._learning_pipeline = None
-        if self.config.pools.enabled:
-            self.pool_manager = self._init_pool_manager()
-            if self.config.pools.memory_aggregation_enabled:
-                self.memory_aggregator = self._init_memory_aggregator()
-
-        # Initialize learning pipeline (review-gated evidence→skill synthesis)
-        if self.config.learning.enabled:
-            self._learning_pipeline = self._init_learning_pipeline()
-
-        # Initialize RBAC manager
-        self.rbac_manager = RBACManager(self.config)
-
-        # Initialize OpenSearch integration for log analytics
-        self.opensearch_integration = OpenSearchIntegration(self.config)
-
-        # Initialize Dhara state backend (degraded-boot: no-op if Dhara is down)
-        self._dhara_state = None
-        if self.config.dhara_state.enabled and self.dhara_url:
-            try:
-                from .state_backends.dhara import DharaStateBackend, DharaStateConfig
-
-                self._dhara_state = DharaStateBackend(
-                    base_url=self.dhara_url,
-                    config=DharaStateConfig(
-                        enabled=self.config.dhara_state.enabled,
-                        flush_interval_seconds=self.config.dhara_state.flush_interval_seconds,
-                        max_routing_buffer_age_seconds=self.config.dhara_state.max_routing_buffer_age_seconds,
-                    ),
-                )
-            except Exception:
-                pass  # Dhara state backend is optional; never block startup
-
-        # Initialize approval manager with optional Dhara persistence
-        from .approval_manager import ApprovalManager
-
-        self.approval_manager = ApprovalManager(dhara_state=self._dhara_state)
-
-        # Initialize resilience and error recovery patterns
-        self.resilience_manager = ResiliencePatterns(self)
-        self.error_recovery_manager = ErrorRecoveryManager(self)
-
-        # Initialize resilience monitoring service (will be started when event loop is available)
-        self._resilience_monitoring_task = None
-
-        # Initialize monitoring and alerting service
-        self.monitoring_service = MonitoringService(self)
-
-        # Initialize routing metrics on the shared Prometheus registry.
-        # Routing metrics are exposed via the main /metrics endpoint.
-        self.routing_metrics_server = None
-        logger = __import__("logging").getLogger(__name__)
-        try:
-            from .routing_metrics import get_routing_metrics
-
-            if getattr(self.config.monitoring, "routing_metrics_enabled", True):
-                get_routing_metrics("mahavishnu")
-                logger.info("Routing metrics registered on shared /metrics surface")
-            else:
-                logger.info("Routing metrics disabled by configuration")
-        except ImportError:
-            logger.warning("Routing metrics module not available, skipping metrics initialization")
-        except Exception as e:
-            logger.error(f"Failed to initialize routing metrics: {e}")
-
-        # Initialize backup and recovery managers
-        from .backup_recovery import BackupManager, DisasterRecoveryManager
-
-        self.backup_manager = BackupManager(self)
-        self.recovery_manager = DisasterRecoveryManager(self)
-
-        # Initialize worktree coordinator (Phase 1 integration)
-        self.worktree_coordinator = None
-        try:
-            from .coordination.manager import CoordinationManager
-            from .repo_manager import RepositoryManager
-
-            # Create repository manager (loads from repos_path)
-            repos_path = _validate_path(self.config.repos_path).expanduser()
-            self.repository_manager = RepositoryManager(repos_path)
-
-            # Create coordination manager (pass path string, not config object)
-            self.coordination_manager = CoordinationManager(str(repos_path))
-
-            # Initialize worktree coordinator (will be loaded asynchronously)
-            self.worktree_coordinator = None  # Will be initialized in async context
-
-            logger = __import__("logging").getLogger(__name__)
-            logger.info("WorktreeCoordinator components initialized")
-        except Exception as e:
-            logger = __import__("logging").getLogger(__name__)
-            logger.warning(f"Failed to initialize WorktreeCoordinator: {e}")
-
-        # Initialize Session-Buddy poller for telemetry collection
-        self.session_buddy_poller = None
-        if self.config.session_buddy_polling.enabled:
-            self.session_buddy_poller = self._init_session_buddy_poller()
-
-    def _init_session_buddy_poller(self):
-        """Initialize Session-Buddy poller for telemetry collection.
-
-        Returns:
-            SessionBuddyPoller instance or None if initialization fails
-
-        Note:
-            Poller must be started explicitly via await poller.start()
-            after the async event loop is running.
-        """
-        try:
-            from ..integrations.session_buddy_poller import SessionBuddyPoller
-
-            poller = SessionBuddyPoller(
-                config=self.config,
-                observability_manager=self.observability,
-            )
-
-            logger = __import__("logging").getLogger(__name__)
-            logger.info(
-                f"Session-Buddy poller initialized: "
-                f"endpoint={self.config.session_buddy_polling.endpoint}, "
-                f"interval={self.config.session_buddy_polling.interval_seconds}s"
-            )
-
-            return poller
-
-        except Exception as e:
-            logger = __import__("logging").getLogger(__name__)
-            logger.warning(f"Failed to initialize Session-Buddy poller: {e}")
-            return None
+        # Initialize remaining runtime services
+        self._initialize_runtime_services()
 
     async def start_poller(self) -> None:
         """Start Session-Buddy poller if configured.
@@ -358,10 +207,7 @@ class MahavishnuApp:
             >>> app = MahavishnuApp()
             >>> await app.start_poller()  # Start polling
         """
-        if self.session_buddy_poller and not self.session_buddy_poller._running:
-            await self.session_buddy_poller.start()
-            logger = __import__("logging").getLogger(__name__)
-            logger.info("Session-Buddy poller started")
+        await _start_poller_helper(self)
 
     async def wait_for_dependencies(self) -> bool:
         """Wait for all configured dependencies to become healthy.
@@ -381,70 +227,7 @@ class MahavishnuApp:
             >>> if not await app.wait_for_dependencies():
             ...     raise RuntimeError("Required dependencies unavailable")
         """
-        from .health import DependencyWaiter
-
-        config = self.config.health
-        if not config.enabled or not config.dependencies:
-            logger = __import__("logging").getLogger(__name__)
-            logger.debug("Health check disabled or no dependencies configured")
-            return True
-
-        logger = __import__("logging").getLogger(__name__)
-        logger.info(
-            "Waiting for dependencies",
-            extra={"dependencies": list(config.dependencies.keys())},
-        )
-
-        waiter = DependencyWaiter(config=config)
-        result = await waiter.wait_for_all(config.dependencies)
-
-        if result.success:
-            logger.info(
-                "All dependencies healthy",
-                extra={
-                    "total_wait_seconds": result.total_wait_seconds,
-                    "dependencies": {
-                        name: dep.status.value for name, dep in result.dependencies.items()
-                    },
-                },
-            )
-        else:
-            logger.error(
-                "Required dependencies unhealthy",
-                extra={
-                    "failed_required": result.failed_required,
-                    "skipped_optional": result.skipped_optional,
-                },
-            )
-
-        # Probe Dhara and recover any in-flight workflow state
-        if self._dhara_state is not None:
-            available = await self._dhara_state.probe()
-            if available:
-                await self._recover_workflow_state_from_dhara()
-                await self._recover_approvals_from_dhara()
-
-        # Unified config validation (strict mode when enabled)
-        if getattr(self.config, "unified_validation_enabled", False):
-            try:
-                from .unified_config import UnifiedConfig
-                UnifiedConfig.validate_strict()
-                logger.info("Unified config validation passed")
-            except Exception as exc:
-                logger.error("Config validation failed: %s", exc)
-                return False
-        else:
-            # Report-only mode: log warnings but never block startup
-            try:
-                from .unified_config import UnifiedConfig
-                report = UnifiedConfig.validate()
-                if not report.valid:
-                    for err in report.get_errors():
-                        logger.warning("Config issue [%s]: %s", err.path, err.message)
-            except Exception:
-                pass  # Validation errors never block startup in report-only mode
-
-        return result.success
+        return await _wait_for_dependencies_helper(self)
 
     @property
     def health_endpoint(self):
@@ -467,17 +250,7 @@ class MahavishnuApp:
         Example:
             >>> await app.stop_poller()  # Stop polling
         """
-        # Clear transitional routing metrics server state if present.
-        if self.routing_metrics_server:
-            logger = __import__("logging").getLogger(__name__)
-            logger.info("Routing metrics server reference cleared")
-            self.routing_metrics_server = None
-
-        # Stop Session-Buddy poller
-        if self.session_buddy_poller and self.session_buddy_poller._running:
-            await self.session_buddy_poller.stop()
-            logger = __import__("logging").getLogger(__name__)
-            logger.info("Session-Buddy poller stopped")
+        await _stop_poller_helper(self)
 
     async def start_learning_pipeline(self) -> None:
         """Start the learning pipeline if configured.
@@ -489,10 +262,7 @@ class MahavishnuApp:
             >>> app = MahavishnuApp()
             >>> await app.start_learning_pipeline()
         """
-        if self._learning_pipeline is not None and not self._learning_pipeline.is_running:
-            await self._learning_pipeline.start()
-            logger = __import__("logging").getLogger(__name__)
-            logger.info("Learning pipeline started")
+        await _start_learning_pipeline_helper(self)
 
     async def stop_learning_pipeline(self) -> None:
         """Stop the learning pipeline gracefully.
@@ -503,10 +273,7 @@ class MahavishnuApp:
         Example:
             >>> await app.stop_learning_pipeline()
         """
-        if self._learning_pipeline is not None:
-            await self._learning_pipeline.stop()
-            logger = __import__("logging").getLogger(__name__)
-            logger.info("Learning pipeline stopped")
+        await _stop_learning_pipeline_helper(self)
 
     async def initialize_worktree_coordinator(self) -> None:
         """Initialize WorktreeCoordinator after async event loop is running.
@@ -518,529 +285,130 @@ class MahavishnuApp:
             >>> app = MahavishnuApp()
             >>> await app.initialize_worktree_coordinator()
         """
-        if self.worktree_coordinator is None and hasattr(self, "repository_manager"):
-            try:
-                # Load repository manifest asynchronously
-                await self.repository_manager.load()
-
-                # Create worktree coordinator
-                from .worktree_coordination import WorktreeCoordinator
-
-                self.worktree_coordinator = WorktreeCoordinator(
-                    repo_manager=self.repository_manager,
-                    coordination_manager=self.coordination_manager,
-                )
-
-                logger = __import__("logging").getLogger(__name__)
-                logger.info("WorktreeCoordinator initialized")
-            except Exception as e:
-                logger = __import__("logging").getLogger(__name__)
-                logger.warning(f"Failed to initialize WorktreeCoordinator: {e}")
+        await _initialize_worktree_coordinator_helper(self)
 
     def _init_terminal_manager(self) -> "TerminalManager | None":
-        """Initialize terminal manager with mcpretentious adapter.
+        return _init_terminal_manager_helper(self)
 
-        Returns:
-            TerminalManager instance or None if initialization fails
+    def _initialize_runtime_services(self):
+        return _initialize_runtime_services_helper(self)
 
-        Note:
-            MCP client integration requires async context.
-            This method returns None if terminal management is not configured
-            or if the adapter cannot be initialized.
-        """
+    def _init_observability(self):
+        return _init_observability_helper(self)
 
-        try:
-            # Note: For now, we create a simple stub.
-            # In Phase 2 (MCP tools integration), this will connect to actual MCP client
-            # The MCP client will be passed from server_core.py during initialization
-            logger = __import__("logging").getLogger(__name__)
-            logger.info("Terminal management enabled, but MCP client not yet connected")
-            logger.info("Terminal manager will be fully initialized in MCP server context")
-            return None
-        except Exception as e:
-            logger = __import__("logging").getLogger(__name__)
-            logger.warning(f"Failed to initialize terminal manager: {e}")
-            return None
+    def _init_health_endpoint(self):
+        return _init_health_endpoint_helper(self)
 
     def _init_pool_manager(self):
-        """Initialize pool manager for multi-pool orchestration.
-
-        Returns:
-            PoolManager instance or None if initialization fails
-
-        Note:
-            PoolManager requires TerminalManager to be available.
-        """
-        try:
-            from ..mcp.protocols.message_bus import MessageBus
-            from ..pools.manager import PoolManager, PoolSelector
-
-            # Create message bus for inter-pool communication
-            message_bus = MessageBus()
-
-            # Initialize pool manager
-            pool_manager = PoolManager(
-                terminal_manager=self.terminal_manager,
-                session_buddy_client=self.session_buddy,
-                message_bus=message_bus,
-            )
-
-            # Set default pool selector strategy
-            selector = PoolSelector(self.config.pools.routing_strategy)
-            pool_manager.set_pool_selector(selector)
-
-            logger = __import__("logging").getLogger(__name__)
-            logger.info(
-                f"Pool manager initialized "
-                f"(strategy={self.config.pools.routing_strategy}, "
-                f"default_type={self.config.pools.default_type})"
-            )
-
-            return pool_manager
-
-        except Exception as e:
-            logger = __import__("logging").getLogger(__name__)
-            logger.warning(f"Failed to initialize pool manager: {e}")
-            return None
+        return _init_pool_manager_helper(self)
 
     def _init_memory_aggregator(self):
-        """Initialize memory aggregator for cross-pool memory sync.
-
-        Returns:
-            MemoryAggregator instance or None if initialization fails
-
-        Note:
-            MemoryAggregator requires Session-Buddy and Akosha MCP connections.
-        """
-        try:
-            from ..pools.memory_aggregator import MemoryAggregator
-
-            memory_aggregator = MemoryAggregator(
-                session_buddy_url=self.config.pools.session_buddy_url,
-                akosha_url=self.config.pools.akosha_url,
-                sync_interval=self.config.pools.memory_sync_interval,
-            )
-
-            logger = __import__("logging").getLogger(__name__)
-            logger.info(
-                f"Memory aggregator initialized "
-                f"(sync_interval={self.config.pools.memory_sync_interval}s)"
-            )
-
-            return memory_aggregator
-
-        except Exception as e:
-            logger = __import__("logging").getLogger(__name__)
-            logger.warning(f"Failed to initialize memory aggregator: {e}")
-            return None
+        return _init_memory_aggregator_helper(self)
 
     def _init_learning_pipeline(self):
-        """Initialize the review-gated learning pipeline service.
-
-        Returns:
-            LearningPipelineService instance or None if initialization fails
-
-        Note:
-            The pipeline must be started explicitly via await start_learning_pipeline()
-            after the async event loop is running.  All skill drafts remain in DRAFT
-            state pending human review (never auto-activated).
-        """
-        try:
-            from .learning_pipeline import LearningPipelineService
-
-            pipeline = LearningPipelineService(
-                config=self.config.learning,
-                session_buddy_url=self.config.pools.session_buddy_url,
-                akosha_url=self.config.pools.akosha_url,
-            )
-
-            logger = __import__("logging").getLogger(__name__)
-            logger.info(
-                f"Learning pipeline initialized "
-                f"(interval={self.config.learning.collection_interval_seconds}s, "
-                f"max_evidence={self.config.learning.max_evidence_per_cycle})"
-            )
-
-            return pipeline
-
-        except Exception as e:
-            logger = __import__("logging").getLogger(__name__)
-            logger.warning(f"Failed to initialize learning pipeline: {e}")
-            return None
+        return _init_learning_pipeline_helper(self)
 
     def _load_config(self) -> MahavishnuSettings:
-        """Load configuration from Oneiric-compatible sources.
-
-        Configuration loading order (later overrides earlier):
-        1. Default values in Pydantic model
-        2. settings/mahavishnu.yaml (committed)
-        3. settings/local.yaml (gitignored)
-        4. Environment variables MAHAVISHNU_*
-
-        Returns:
-            Loaded and validated configuration
-
-        Raises:
-            ConfigurationError: If configuration loading or validation fails
-        """
-        try:
-            return MahavishnuSettings()
-        except Exception as e:
-            raise ConfigurationError(
-                message=f"Failed to load configuration: {e}",
-                details={"error": str(e), "error_type": type(e).__name__},
-            ) from e
+        return _load_config_helper()
 
     def _load_repos(self) -> None:
-        """Load repository configurations with fallback chain.
-
-        Resolution order:
-        1. config.repos_path (default: settings/ecosystem.yaml)
-        2. settings/repos.yaml (standalone users without Bodai ecosystem)
-
-        Both files share the same ``repos:`` key schema. ecosystem.yaml
-        additionally provides ``roles:`` and ``coordination:`` sections.
-
-        Raises:
-            ConfigurationError: If no repository config file is found or invalid
-        """
-        import logging
-
-        logger = logging.getLogger(__name__)
-
-        primary_path = _validate_path(self.config.repos_path).expanduser()
-        fallback_path = _validate_path("settings/repos.yaml").expanduser()
-
-        # Resolve which file to use
-        repos_path: Path | None = None
-        using_fallback = False
-
-        if primary_path.exists():
-            repos_path = primary_path
-        elif fallback_path.exists() and fallback_path != primary_path:
-            repos_path = fallback_path
-            using_fallback = True
-            logger.warning(
-                "Repository config fallback: %s not found, using %s. "
-                "Consider creating ecosystem.yaml for richer configuration "
-                "(roles taxonomy, coordination tracking).",
-                primary_path,
-                fallback_path,
-            )
-
-        if repos_path is None:
-            raise ConfigurationError(
-                message=f"No repository configuration found. Tried: {primary_path}, {fallback_path}",
-                details={
-                    "repos_path": str(repos_path),
-                    "fallback_path": str(fallback_path),
-                    "suggestion": (
-                        "Create settings/ecosystem.yaml (preferred) or "
-                        "settings/repos.yaml with repository configurations"
-                    ),
-                },
-            )
-
-        try:
-            with repos_path.open() as f:
-                raw_config = yaml.safe_load(f)
-
-            # Validate structure - both files have a 'repos' key
-            if not isinstance(raw_config, dict) or "repos" not in raw_config:
-                raise ConfigurationError(
-                    message=f"Invalid repository config: missing 'repos' key in {repos_path.name}",
-                    details={"repos_path": str(repos_path)},
-                )
-
-            # Extract repos section
-            self.roles_config = raw_config.get("roles", [])
-            self.repos_config = {
-                "repos": raw_config["repos"],
-                "roles": self.roles_config,
-            }
-
-            source = "repos.yaml (fallback)" if using_fallback else "ecosystem.yaml"
-            logger.info(
-                "Loaded %d repositories from %s",
-                len(raw_config.get("repos", [])),
-                source,
-            )
-
-        except yaml.YAMLError as e:
-            raise ConfigurationError(
-                message=f"Invalid YAML in {repos_path.name}: {e}",
-                details={"repos_path": str(repos_path), "error": str(e)},
-            ) from e
-        except ConfigurationError:
-            raise
-        except Exception as e:
-            raise ConfigurationError(
-                message=f"Failed to load {repos_path.name}: {e}",
-                details={"repos_path": str(repos_path), "error": str(e)},
-            ) from e
+        _load_repos_helper(self)
 
     def _initialize_adapters(self) -> None:
-        """Initialize enabled adapters based on configuration.
+        from .bootstrap import initialize_adapters as _initialize_adapters_helper
 
-        Core Components:
-        - Prefect: High-level orchestration with dynamic flows
-        - LlamaIndex: RAG pipelines for ingesting repos/docs, embedding with Ollama
-        - Agno: Fast, scalable single/multi-agents with memory and tools
-
-        Only adapters that are enabled in configuration will be initialized.
-
-        Raises:
-            ConfigurationError: If adapter initialization fails
-        """
-        # Initialize logger at method scope for use in exception handlers
-        logger = __import__("logging").getLogger(__name__)
-
-        adapter_classes: dict[str, type] = {}
-        enabled_adapters: dict[str, bool] = {}
-
-        # Prefect - Core orchestration (enabled by default)
-        if self.config.adapters.prefect_enabled:
-            try:
-                from ..engines.prefect_adapter import PrefectAdapter
-
-                adapter_classes["prefect"] = PrefectAdapter
-                enabled_adapters["prefect"] = True
-            except ImportError:
-                # Prefect not available, skip this adapter
-                logger.warning("Prefect adapter not available due to missing dependencies")
-                pass
-
-        # LlamaIndex - RAG pipelines (enabled by default)
-        if self.config.adapters.llamaindex_enabled:
-            try:
-                from ..engines.llamaindex_adapter import LlamaIndexAdapter
-
-                adapter_classes["llamaindex"] = LlamaIndexAdapter
-                enabled_adapters["llamaindex"] = True
-            except ImportError:
-                # LlamaIndex not available, skip this adapter
-                logger.warning("LlamaIndex adapter not available due to missing dependencies")
-                pass
-
-        # Agno - Fast agents (enabled by default)
-        if self.config.adapters.agno_enabled:
-            try:
-                from ..engines.agno_adapter import AgnoAdapter
-
-                adapter_classes["agno"] = AgnoAdapter
-                enabled_adapters["agno"] = True
-            except ImportError:
-                # Agno not available, skip this adapter
-                logger.warning("Agno adapter not available due to missing dependencies")
-                pass
-
-        # Hatchet - Durable workflow engine (disabled by default)
-        if self.config.adapters.hatchet_enabled:
-            try:
-                from ..engines.hatchet_adapter_impl import HatchetAdapterImpl
-                adapter_classes["hatchet"] = HatchetAdapterImpl
-                enabled_adapters["hatchet"] = True
-            except ImportError:
-                logger.warning("Hatchet adapter not available due to missing dependencies")
-
-        # Worker - Headless AI execution (enabled by default)
-        if getattr(self.config.workers, "enabled", True):
-            try:
-                from .adapters.worker import WorkerOrchestratorAdapter
-
-                adapter_classes["worker"] = WorkerOrchestratorAdapter
-                enabled_adapters["worker"] = True
-            except ImportError as e:
-                # Worker components not available
-                logger.warning(f"Worker adapter not available due to missing dependencies: {e}")
-                pass
-
-        for adapter_name, is_enabled in enabled_adapters.items():
-            if is_enabled:
-                try:
-                    adapter_class = adapter_classes.get(adapter_name)
-                    if adapter_class:
-                        if adapter_name == "hatchet":
-                            self.adapters[adapter_name] = adapter_class(self.config.hatchet)
-                        else:
-                            # Standard adapter initialization with config only
-                            self.adapters[adapter_name] = adapter_class(self.config)
-                except ImportError as e:
-                    logger.warning(
-                        f"{adapter_name} adapter initialization skipped due to missing "
-                        f"optional dependencies: {e}"
-                    )
-                except Exception as e:
-                    raise ConfigurationError(
-                        message=f"Failed to initialize {adapter_name} adapter: {e}",
-                        details={
-                            "adapter": adapter_name,
-                            "error": str(e),
-                            "error_type": type(e).__name__,
-                        },
-                    ) from e
-
-        # Backward-compatible access for MCP worker tool registration.
-        worker_adapter = self.adapters.get("worker")
-        self._worker_manager = (
-            getattr(worker_adapter, "worker_manager", None) if worker_adapter is not None else None
-        )
+        _initialize_adapters_helper(self)
 
     def _set_app_context(self) -> None:
-        """Set application context for dependency injection.
+        from .bootstrap import set_app_context as _set_app_context_helper
 
-        This method populates ContextVar-based dependency injection for:
-        - llm_factory: Factory for creating LLM instances
-        - agno_adapter: Agno adapter for team execution
-
-        Called automatically during MahavishnuApp initialization.
-        Context is available via get_llm_factory() and get_agno_adapter().
-        """
-        from .oneiric_client import set_dhara_client_base_url
-
-        set_dhara_client_base_url(self.dhara_url)
-
-        # Set Agno adapter if available
-        agno_adapter = self.adapters.get("agno")
-
-        # Create LLM factory from Agno configuration
-        llm_factory = None
-        if agno_adapter is not None:
-            # Use Agno's LLM configuration as the default factory
-
-            class DefaultLLMFactory:
-                """Default LLM factory using Agno configuration."""
-
-                def __init__(self, config):
-                    self._config = config
-
-                def create_llm(
-                    self,
-                    provider: str | None = None,
-                    model_id: str | None = None,
-                    **kwargs,
-                ):
-                    """Create an LLM instance using Agno's configuration."""
-                    from agno.llm import LLM
-
-                    # Use provided values or fall back to config defaults
-                    actual_provider = provider or self._config.agno.llm.provider.value
-                    actual_model = model_id or self._config.agno.llm.model_id
-
-                    # Build LLM with configuration
-                    llm_kwargs = {
-                        "provider": actual_provider,
-                        "model": actual_model,
-                    }
-
-                    # Add provider-specific configuration
-                    if actual_provider == "ollama":
-                        llm_kwargs["base_url"] = self._config.agno.llm.base_url
-                    elif actual_provider in ("anthropic", "openai"):
-                        # API key should be set via environment variable
-                        pass
-
-                    # Add any additional kwargs
-                    llm_kwargs.update(kwargs)
-
-                    return LLM(**llm_kwargs)
-
-                def get_default_provider(self) -> str:
-                    """Get default provider name."""
-                    return self._config.agno.llm.provider.value
-
-                def get_default_model(self) -> str:
-                    """Get default model ID."""
-                    return self._config.agno.llm.model_id
-
-            llm_factory = DefaultLLMFactory(self.config)
-
-        # Set application context
-        set_app_context(
-            llm_factory=llm_factory,
-            agno_adapter=agno_adapter,
-        )
-
-        # Log context initialization
-        logger = __import__("logging").getLogger(__name__)
-        if llm_factory or agno_adapter:
-            logger.info(
-                f"Application context initialized: "
-                f"llm_factory={'available' if llm_factory else 'not available'}, "
-                f"agno_adapter={'available' if agno_adapter else 'not available'}"
-            )
+        _set_app_context_helper(self)
 
     def _resolve_dhara_url(self) -> str:
-        """Build the Dhara MCP URL from health dependency config."""
-        dependency = self.config.health.dependencies.get("dhara")
-        if dependency is None:
-            return "http://localhost:8683/mcp"
-
-        scheme = "https" if dependency.use_tls else "http"
-        return f"{scheme}://{dependency.host}:{dependency.port}/mcp"
+        return _resolve_dhara_url_helper(self.config)
 
     async def _recover_workflow_state_from_dhara(self) -> None:
-        """Restore in-flight workflow state from Dhara on startup."""
-        if self._dhara_state is None:
-            return
-        logger = __import__("logging").getLogger(__name__)
-        try:
-            entries = await self._dhara_state.list_prefix("workflow/v1/")
-            recovered = 0
-            for _key, value in entries:
-                if isinstance(value, dict) and value.get("status") == "running":
-                    workflow_id = value.get("execution_id", "unknown")
-                    self.active_workflows.add(workflow_id)
-                    recovered += 1
-            if recovered:
-                logger.info("Recovered %d in-flight workflows from Dhara", recovered)
-        except Exception as exc:
-            logger.debug("Dhara workflow recovery skipped: %s", exc)
+        await _recover_workflow_state_from_dhara_helper(self)
 
     async def _recover_approvals_from_dhara(self) -> None:
-        """Re-register non-expired pending approvals from Dhara on startup."""
-        if self._dhara_state is None:
-            return
-        logger = __import__("logging").getLogger(__name__)
-        try:
-            entries = await self._dhara_state.list_prefix("approval/v1/")
-            restored = self.approval_manager.restore_from_dhara_entries(entries)
-            if restored:
-                logger.info("Recovered %d pending approvals from Dhara", restored)
-        except Exception as exc:
-            logger.debug("Dhara approval recovery skipped: %s", exc)
+        await _recover_approvals_from_dhara_helper(self)
+
+    async def get_recovery_summary(self) -> dict[str, Any]:
+        return await _get_recovery_summary(self)
+
+    async def get_recovered_routing_decisions(
+        self,
+        task_class: str | None = None,
+    ) -> list[dict[str, Any]]:
+        return await _get_recovered_routing_decisions(self, task_class=task_class)
+
+    def record_event_activity(self, envelope: Any) -> None:
+        _record_event_activity(self, envelope)
+
+    def get_event_activity(self, limit: int = 25) -> list[dict[str, Any]]:
+        return _get_event_activity(self, limit=limit)
+
+    def record_fix_trace(
+        self,
+        correlation_id: str,
+        stage: str,
+        message: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        _record_fix_trace(self, correlation_id, stage, message, metadata)
+
+    def get_fix_trace(
+        self,
+        correlation_id: str | None = None,
+        limit: int = 25,
+    ) -> list[dict[str, Any]]:
+        return _get_fix_trace(self, correlation_id=correlation_id, limit=limit)
+
+    def get_correlation_status(self, correlation_id: str | None = None) -> dict[str, Any]:
+        return _get_correlation_status(self, correlation_id=correlation_id)
+
+    def list_pending_approvals(self) -> list[dict[str, Any]]:
+        return _list_pending_approvals(self)
+
+    def request_approval(
+        self,
+        approval_type: str,
+        context: dict[str, Any],
+        options: list[Any] | None = None,
+        timeout_minutes: int | None = None,
+    ) -> dict[str, Any]:
+        return _request_approval(
+            self,
+            approval_type=approval_type,
+            context=context,
+            options=options,
+            timeout_minutes=timeout_minutes,
+        )
+
+    def respond_to_approval(
+        self,
+        request_id: str,
+        approved: bool,
+        selected_option: int | None = None,
+        rejection_reason: str | None = None,
+    ) -> dict[str, Any]:
+        return _respond_to_approval(
+            self,
+            request_id=request_id,
+            approved=approved,
+            selected_option=selected_option,
+            rejection_reason=rejection_reason,
+        )
 
     def _persist_workflow_start(self, execution_id: str, workflow_name: str, metadata: dict) -> None:
         """Fire-and-forget: record workflow start in Dhara."""
-        if self._dhara_state is None:
-            return
-        self._dhara_state.schedule_put(
-            f"workflow/v1/{execution_id}",
-            {
-                "execution_id": execution_id,
-                "workflow_name": workflow_name,
-                "status": "running",
-                "metadata": metadata,
-            },
-        )
+        _persist_workflow_start_helper(self, execution_id, workflow_name, metadata)
 
     def _persist_workflow_end(
         self, execution_id: str, workflow_name: str, status: str, error: str | None = None
     ) -> None:
         """Fire-and-forget: record workflow completion/failure in Dhara."""
-        if self._dhara_state is None:
-            return
-        from datetime import datetime, UTC
-        self._dhara_state.schedule_put(
-            f"workflow/v1/{execution_id}",
-            {
-                "execution_id": execution_id,
-                "workflow_name": workflow_name,
-                "status": status,
-                "end_time": datetime.now(UTC).isoformat(),
-                "error": error,
-            },
-        )
+        _persist_workflow_end_helper(self, execution_id, workflow_name, status, error)
 
     def get_repos(
         self, tag: str | None = None, role: str | None = None, user_id: str | None = None
@@ -1058,64 +426,7 @@ class MahavishnuApp:
         Raises:
             ValidationError: If tag or role is invalid
         """
-        logger = __import__("logging").getLogger(__name__)
-
-        # Validate tag format if provided
-        if tag and not tag.replace("-", "").replace("_", "").isalnum():
-            raise ValidationError(
-                message=f"Invalid tag: {tag}",
-                details={
-                    "tag": tag,
-                    "suggestion": "Tags must be alphanumeric with hyphens/underscores",
-                },
-            )
-
-        # Validate role format if provided
-        if role:
-            valid_roles = [r["name"] for r in self.get_roles()]
-            if role not in valid_roles:
-                raise ValidationError(
-                    message=f"Invalid role: {role}",
-                    details={
-                        "role": role,
-                        "valid_roles": valid_roles,
-                        "suggestion": f"Use one of: {', '.join(valid_roles)}",
-                    },
-                )
-
-        repos = self.repos_config.get("repos", [])
-
-        if tag:
-            # Filter by tag
-            filtered_repos = [repo["path"] for repo in repos if tag in repo.get("tags", [])]
-        elif role:
-            # Filter by role
-            filtered_repos = [repo["path"] for repo in repos if repo.get("role") == role]
-        else:
-            # Return all repos
-            filtered_repos = [repo["path"] for repo in repos]
-
-        # Validate repository paths exist
-        validated_repos = []
-        for repo_path in filtered_repos:
-            try:
-                validated_path = _validate_path(repo_path, self.config.allowed_repo_paths)
-                if validated_path.exists():
-                    # If user_id is provided, check permissions
-                    if user_id:
-                        if self._check_user_repo_permission(user_id, str(validated_path)):
-                            validated_repos.append(str(validated_path))
-                    else:
-                        # No user specified, allow access
-                        validated_repos.append(str(validated_path))
-                else:
-                    # Log warning but continue with other repos
-                    logger.warning(f"Repository path does not exist: {validated_path}")
-            except ValidationError as e:
-                # Log warning but continue with other repos
-                logger.warning(f"Invalid repository path: {repo_path} - {e.message}")
-
-        return validated_repos
+        return _get_repos_helper(self, tag=tag, role=role, user_id=user_id)
 
     def _check_user_repo_permission(self, user_id: str, repo_path: str) -> bool:
         """Check if user has read permission for repository.
@@ -1124,32 +435,7 @@ class MahavishnuApp:
         context, uses the running event loop. When called from sync context,
         creates a new event loop.
         """
-        import asyncio
-
-        try:
-            # Check if there's already a running event loop
-            try:
-                asyncio.get_running_loop()
-                # We're in an async context - schedule the coroutine
-                # Create a Future and run the coroutine in the current loop
-                import concurrent.futures
-
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(
-                        asyncio.run,
-                        self.rbac_manager.check_permission(
-                            user_id, repo_path, Permission.READ_REPO
-                        ),
-                    )
-                    return future.result(timeout=5.0)
-            except RuntimeError:
-                # No running loop - safe to use asyncio.run()
-                return asyncio.run(
-                    self.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO)
-                )
-        except Exception:
-            # If permission check fails, still allow access for backward compatibility
-            return True
+        return _check_user_repo_permission_helper(self, user_id, repo_path)
 
     def get_all_repos(self) -> list[dict[str, Any]]:
         """Get all repositories with full metadata.
@@ -1157,7 +443,7 @@ class MahavishnuApp:
         Returns:
             List of repository dictionaries with path, tags, description
         """
-        return self.repos_config.get("repos", [])
+        return _get_all_repos_helper(self)
 
     def get_all_repo_paths(self) -> list[str]:
         """Get all repository paths.
@@ -1165,8 +451,7 @@ class MahavishnuApp:
         Returns:
             List of all repository paths
         """
-        repos = self.repos_config.get("repos", [])
-        return [repo["path"] for repo in repos]
+        return _get_all_repo_paths_helper(self)
 
     def get_roles(self) -> list[dict[str, Any]]:
         """Get all available roles.
@@ -1174,7 +459,7 @@ class MahavishnuApp:
         Returns:
             List of role definitions with name, description, tags, duties, capabilities
         """
-        return getattr(self, "roles_config", self.repos_config.get("roles", []))
+        return _get_roles_helper(self)
 
     def get_role_by_name(self, role_name: str) -> dict[str, Any] | None:
         """Get a specific role by name.
@@ -1185,11 +470,7 @@ class MahavishnuApp:
         Returns:
             Role definition if found, None otherwise
         """
-        roles = self.get_roles()
-        for role in roles:
-            if role.get("name") == role_name:
-                return role
-        return None
+        return _get_role_by_name_helper(self, role_name)
 
     def get_repos_by_role(self, role_name: str) -> list[dict[str, Any]]:
         """Get all repositories with a specific role.
@@ -1203,21 +484,7 @@ class MahavishnuApp:
         Raises:
             ValidationError: If role_name is not found in role taxonomy
         """
-        # Validate role exists
-        valid_roles = [r["name"] for r in self.get_roles()]
-        if role_name not in valid_roles:
-            raise ValidationError(
-                message=f"Invalid role: {role_name}",
-                details={
-                    "role": role_name,
-                    "valid_roles": valid_roles,
-                    "suggestion": f"Use one of: {', '.join(valid_roles)}",
-                },
-            )
-
-        # Filter repos by role
-        repos = self.repos_config.get("repos", [])
-        return [repo for repo in repos if repo.get("role") == role_name]
+        return _get_repos_by_role_helper(self, role_name)
 
     @staticmethod
     def get_repo_nicknames(repo: dict[str, Any]) -> list[str]:
@@ -1230,12 +497,7 @@ class MahavishnuApp:
         Returns:
             Dictionary mapping nickname to full repository name
         """
-        repos = self.repos_config.get("repos", [])
-        nicknames = {}
-        for repo in repos:
-            for nickname in self.get_repo_nicknames(repo):
-                nicknames[nickname] = repo.get("name", repo.get("path", ""))
-        return nicknames
+        return _get_all_nicknames_helper(self)
 
     async def is_healthy(self) -> bool:
         """Check if application is healthy.
@@ -1243,18 +505,7 @@ class MahavishnuApp:
         Returns:
             True if application is healthy (all adapters accessible)
         """
-        if not self.adapters:
-            return False
-
-        for adapter in self.adapters.values():
-            try:
-                health = await adapter.get_health()
-                if health.get("status") != "healthy":
-                    return False
-            except Exception:
-                return False
-
-        return True
+        return await _is_healthy_helper(self)
 
     async def get_active_workflows(self) -> list[str]:
         """Get list of active workflow IDs.
@@ -1265,29 +516,11 @@ class MahavishnuApp:
         Returns:
             List of active workflow IDs
         """
-        from .workflow_state import WorkflowStatus
-
-        # Get workflows with RUNNING status
-        workflows = await self.workflow_state_manager.list_workflows(
-            status=WorkflowStatus.RUNNING,
-            limit=1000,  # Sufficiently large limit
-        )
-
-        # Return workflow IDs
-        return [w.get("id", "") for w in workflows if w.get("id")]
+        return await _get_active_workflows_helper(self)
 
     def _update_workflow_runtime_gauges(self) -> None:
         """Update shared Prometheus gauges for workflow runtime state."""
-        active_count = len(self.active_workflows)
-        max_concurrency = max(self.config.max_concurrent_workflows, 1)
-
-        mahavishnu_active_workflows.labels(service="mahavishnu").set(active_count)
-        mahavishnu_workflow_queue_depth.labels(service="mahavishnu").set(
-            self.workflow_queue.qsize()
-        )
-        mahavishnu_workflow_concurrency_utilization.labels(service="mahavishnu").set(
-            active_count / max_concurrency
-        )
+        _update_workflow_runtime_gauges_helper(self)
 
     async def execute_workflow(
         self,
@@ -1354,59 +587,7 @@ class MahavishnuApp:
         self, adapter_name: str, task: dict[str, Any], repos: list[str] | None, user_id: str | None
     ) -> tuple["OrchestratorAdapter", list[str]]:
         """Helper method to validate adapter and prepare for execution."""
-        # Validate adapter
-        if adapter_name not in self.adapters:
-            raise ValidationError(
-                message=f"Adapter not found: {adapter_name}",
-                details={
-                    "adapter": adapter_name,
-                    "available_adapters": list(self.adapters.keys()),
-                    "suggestion": "Check adapter is enabled in configuration",
-                },
-            )
-
-        # Get repos if not provided
-        if repos is None:
-            repos = self.get_repos(user_id=user_id)
-
-        # Validate repository paths to prevent directory traversal
-        validated_repos = []
-        for repo_path in repos:
-            try:
-                validated_path = _validate_path(repo_path, self.config.allowed_repo_paths)
-                validated_repos.append(str(validated_path))
-            except ValidationError as e:
-                raise ValidationError(
-                    message=f"Invalid repository path: {repo_path}",
-                    details={
-                        "repo_path": repo_path,
-                        "error": str(e),
-                        "suggestion": "Ensure repository path is valid and does not contain directory traversal sequences",
-                    },
-                ) from e
-
-        # If user_id is provided, check execute permission for each repo
-        if user_id:
-            for repo_path in validated_repos:
-                has_permission = await self.rbac_manager.check_permission(
-                    user_id, repo_path, Permission.EXECUTE_WORKFLOW
-                )
-                if not has_permission:
-                    raise ValidationError(
-                        message=f"User {user_id} does not have permission to execute workflows on {repo_path}",
-                        details={
-                            "user": user_id,
-                            "repo": repo_path,
-                            "permission": "EXECUTE_WORKFLOW",
-                            "suggestion": "Contact administrator to grant required permissions",
-                        },
-                    )
-
-        adapter = self.adapters[adapter_name]
-
-        await self._check_dependency_health()
-
-        return adapter, validated_repos
+        return await _prepare_execution_helper(self, adapter_name, task, repos, user_id)
 
     async def _check_dependency_health(self) -> None:
         """Check health of QC and Session-Buddy before execution.
@@ -1414,30 +595,7 @@ class MahavishnuApp:
         QC is a blocking dependency: unhealthy + enabled raises ExternalServiceError.
         Session-Buddy is non-blocking: unhealthy logs a warning and degrades silently.
         """
-        import logging
-
-        _log = logging.getLogger(__name__)
-
-        async def _true() -> bool:
-            return True
-
-        qc_healthy, sb_healthy = await asyncio.gather(
-            self.qc.is_healthy() if self.config.qc.enabled else _true(),
-            self.session_buddy.is_healthy() if self.config.session.enabled else _true(),
-        )
-
-        if not sb_healthy and self.config.session.enabled:
-            _log.warning(
-                "Session-Buddy is unreachable — checkpoints will not persist (degraded mode)"
-            )
-
-        if not qc_healthy and self.config.qc.enabled:
-            raise ExternalServiceError(
-                "crackerjack",
-                "QC service is unreachable — block execution to prevent unvalidated runs. "
-                "Set qc.enabled=false to allow degraded-mode execution without quality gates.",
-                details={"url": self.config.qc.crackerjack_url},
-            )
+        await _check_dependency_health_helper(self)
 
     # ========================================================================
     # REFACTORED: execute_workflow_parallel helper methods
@@ -1459,33 +617,9 @@ class MahavishnuApp:
         Returns:
             workflow_id: Unique workflow identifier
         """
-        # Create a unique workflow ID
-        workflow_id = f"wf_{uuid.uuid4().hex[:8]}_{task.get('type', 'default')}"
-
-        # Create workflow state
-        await self.workflow_state_manager.create(
-            workflow_id=workflow_id, task=task, repos=validated_repos
+        return await _initialize_workflow_state_helper(
+            self, task, adapter_name, validated_repos
         )
-        self.active_workflows.add(workflow_id)
-        self._update_workflow_runtime_gauges()
-        mahavishnu_workflows_total.labels(
-            adapter=adapter_name,
-            task_type=task.get("type", "unknown"),
-            status="started",
-        ).inc()
-
-        # Update workflow state to running
-        await self.workflow_state_manager.update(workflow_id=workflow_id, status="running")
-
-        # Log workflow start to OpenSearch
-        await self.opensearch_integration.log_workflow_start(
-            workflow_id=workflow_id,
-            adapter=adapter_name,
-            task_type=task.get("type", "unknown"),
-            repos=validated_repos,
-        )
-
-        return workflow_id
 
     async def _validate_pre_execution_qc(
         self, workflow_id: str, validated_repos: list[str]
@@ -1499,23 +633,7 @@ class MahavishnuApp:
         Raises:
             ValidationError: If QC check fails
         """
-        if not self.config.qc.enabled:
-            return
-
-        qc_result = await self.qc.validate_pre_execution(validated_repos)
-        if not qc_result:
-            await self.workflow_state_manager.update(
-                workflow_id=workflow_id,
-                status="failed",
-                error="Pre-execution QC check failed",
-            )
-            raise ValidationError(
-                message="Pre-execution QC check failed",
-                details={
-                    "repos": validated_repos,
-                    "qc_result": "Failed to meet minimum quality standards",
-                },
-            )
+        await _validate_pre_execution_qc_helper(self, workflow_id, validated_repos)
 
     async def _create_session_checkpoint(
         self, task: dict[str, Any], adapter_name: str, validated_repos: list[str]
@@ -1530,17 +648,8 @@ class MahavishnuApp:
         Returns:
             checkpoint_id: Checkpoint ID if created, None otherwise
         """
-        if not self.config.session.enabled:
-            return None
-
-        return await self.session_buddy.create_checkpoint(
-            session_id=f"workflow_{task.get('id', 'default')}",
-            state={
-                "task": task,
-                "adapter": adapter_name,
-                "repos": validated_repos,
-                "status": "started",
-            },
+        return await _create_session_checkpoint_helper(
+            self, task, adapter_name, validated_repos
         )
 
     async def _process_single_repo(
@@ -1572,78 +681,17 @@ class MahavishnuApp:
         Raises:
             Exception: If execution fails (propagated for error handling)
         """
-        async with semaphore:
-            start_repo_time = time.time()
-
-            # Use circuit breaker for each repo processing
-            try:
-                result = await self.circuit_breaker.call(
-                    adapter.execute, task | {"single_repo": repo_path}, [repo_path]
-                )
-
-                # Add result to workflow state
-                await self.workflow_state_manager.add_result(workflow_id, result)
-
-                # Calculate and record repo processing time
-                repo_processing_time = time.time() - start_repo_time
-
-                # Update progress in workflow state
-                completed_repos = await self.workflow_state_manager.get_completed_count(workflow_id)
-                await self.workflow_state_manager.update_progress(
-                    workflow_id, completed_repos + 1, total_repos
-                )
-
-                # Record repo processing time in observability
-                if self.observability:
-                    self.observability.record_repo_processing_time(
-                        repo_path, workflow_id, repo_processing_time
-                    )
-
-                    # Start repo trace
-                    with self.observability.start_repo_trace(repo_path, workflow_id):
-                        pass  # Span is active during this context
-
-                # Report progress if callback provided
-                if progress_callback:
-                    progress_callback(completed_repos + 1, total_repos, repo_path)
-
-                return result
-
-            except Exception as e:
-                # Record failure in circuit breaker
-                self.circuit_breaker.record_failure()
-
-                # Add error to workflow state
-                error_info = {
-                    "repo": repo_path,
-                    "error": str(e),
-                    "type": type(e).__name__,
-                    "timestamp": datetime.now().isoformat(),
-                }
-                await self.workflow_state_manager.add_error(workflow_id, error_info)
-
-                # Record error in observability if enabled
-                if self.observability:
-                    error_counter = self.observability.create_error_counter()
-                    if error_counter:
-                        error_counter.add(
-                            1,
-                            {
-                                "adapter": adapter_name,
-                                "error_type": type(e).__name__,
-                                "repo": repo_path,
-                            },
-                        )
-
-                # Log error to OpenSearch
-                await self.opensearch_integration.log_error(
-                    workflow_id=workflow_id,
-                    error_msg=str(e),
-                    repo_path=repo_path,
-                    adapter=adapter_name,
-                )
-
-                raise e
+        return await _process_single_repo_helper(
+            self,
+            adapter=adapter,
+            task=task,
+            adapter_name=adapter_name,
+            workflow_id=workflow_id,
+            repo_path=repo_path,
+            total_repos=total_repos,
+            semaphore=semaphore,
+            progress_callback=progress_callback,
+        )
 
     async def _execute_parallel_workflow(
         self,
@@ -1667,92 +715,15 @@ class MahavishnuApp:
         Returns:
             Tuple of (execution_time, successful_results, errors)
         """
-        start_time = time.time()
-
-        # Add observability if enabled
-        if self.observability:
-            # Record workflow execution
-            workflow_counter = self.observability.create_workflow_counter()
-            if workflow_counter:
-                workflow_counter.add(
-                    1, {"adapter": adapter_name, "task_type": task.get("type", "unknown")}
-                )
-
-            # Record repository processing
-            repo_counter = self.observability.create_repo_counter()
-            if repo_counter:
-                repo_counter.add(len(validated_repos), {"adapter": adapter_name})
-
-        # Start workflow trace (span is ended automatically on context exit)
-        with self.observability.start_workflow_trace(
-            workflow_id, adapter_name, task.get("type", "unknown")
-        ) as workflow_span:
-            _ = workflow_span  # Mark as intentionally used
-
-        # Process repos in parallel with concurrency control
-        semaphore = self.semaphore
-        total_repos = len(validated_repos)
-
-        tasks = [
-            self._process_single_repo(
-                adapter=adapter,
-                task=task,
-                adapter_name=adapter_name,
-                workflow_id=workflow_id,
-                repo_path=repo_path,
-                total_repos=total_repos,
-                semaphore=semaphore,
-                progress_callback=progress_callback,
-            )
-            for repo_path in validated_repos
-        ]
-
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        execution_time = time.time() - start_time
-
-        # End workflow trace
-        if self.observability:
-            # Determine final status
-            errors_count = sum(1 for r in results if isinstance(r, Exception))
-            successful_count = len(results) - errors_count
-
-            final_status = (
-                "completed"
-                if errors_count == 0
-                else ("partial" if successful_count > 0 else "failed")
-            )
-
-            self.observability.end_workflow_trace(workflow_id, final_status)
-
-        # Handle any exceptions that occurred during parallel execution
-        errors: list[dict[str, Any]] = []
-        successful_results: list[Any] = []
-
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
-                errors.append(
-                    {
-                        "repo": validated_repos[i],
-                        "error": str(result),
-                        "type": type(result).__name__,
-                    }
-                )
-                # Record error in observability if enabled
-                if self.observability:
-                    error_counter = self.observability.create_error_counter()
-                    if error_counter:
-                        error_counter.add(
-                            1,
-                            {
-                                "adapter": adapter_name,
-                                "error_type": type(result).__name__,
-                                "repo": validated_repos[i],
-                            },
-                        )
-            else:
-                successful_results.append(result)
-
-        return execution_time, successful_results, errors
+        return await _execute_parallel_workflow_helper(
+            self,
+            adapter=adapter,
+            task=task,
+            adapter_name=adapter_name,
+            workflow_id=workflow_id,
+            validated_repos=validated_repos,
+            progress_callback=progress_callback,
+        )
 
     async def _finalize_workflow_execution(
         self,
@@ -1780,85 +751,17 @@ class MahavishnuApp:
         Returns:
             Final workflow summary dictionary
         """
-        logger = __import__("logging").getLogger(__name__)
-
-        # Determine final status
-        final_status = (
-            "completed" if not errors else ("partial" if successful_results else "failed")
-        )
-        task_type = task.get("type", "unknown")
-
-        # Update workflow state with final status
-        await self.workflow_state_manager.update(
+        return await _finalize_workflow_execution_helper(
+            self,
             workflow_id=workflow_id,
-            status=final_status,
-            execution_time_seconds=execution_time,
-            completed_at=datetime.now().isoformat(),
-        )
-
-        # Log workflow completion to OpenSearch
-        await self.opensearch_integration.log_workflow_completion(
-            workflow_id=workflow_id,
-            status=final_status,
+            adapter_name=adapter_name,
+            task=task,
+            validated_repos=validated_repos,
             execution_time=execution_time,
-            results_count=len(successful_results),
-            errors_count=len(errors),
-            adapter=adapter_name,
-            task_type=task.get("type", "unknown"),
+            successful_results=successful_results,
+            errors=errors,
+            checkpoint_id=checkpoint_id,
         )
-
-        # Update checkpoint if enabled
-        if self.config.session.enabled and checkpoint_id:
-            await self.session_buddy.update_checkpoint(
-                checkpoint_id,
-                final_status,
-                result={
-                    "successful_repos": len(successful_results),
-                    "failed_repos": len(errors),
-                    "execution_time": execution_time,
-                },
-            )
-
-        # Post-execution quality control check
-        if self.config.qc.enabled:
-            qc_result = await self.qc.validate_post_execution(validated_repos)
-            if not qc_result:
-                # Log warning but don't fail the workflow
-                logger.warning(f"Post-execution QC check failed for repos: {validated_repos}")
-
-        mahavishnu_workflows_total.labels(
-            adapter=adapter_name,
-            task_type=task_type,
-            status=final_status,
-        ).inc()
-        mahavishnu_workflow_duration_seconds.labels(
-            adapter=adapter_name,
-            task_type=task_type,
-            status=final_status,
-        ).observe(execution_time)
-        mahavishnu_repos_processed_total.labels(
-            adapter=adapter_name,
-            task_type=task_type,
-            status=final_status,
-        ).inc(len(validated_repos))
-        self.active_workflows.discard(workflow_id)
-        self._update_workflow_runtime_gauges()
-
-        return {
-            "workflow_id": workflow_id,
-            "status": final_status,
-            "adapter": adapter_name,
-            "task": task,
-            "repos_processed": len(validated_repos),
-            "successful_repos": len(successful_results),
-            "failed_repos": len(errors),
-            "execution_time_seconds": execution_time,
-            "results": successful_results,
-            "errors": errors or None,
-            "concurrency_limit": self.config.max_concurrent_workflows,
-            "qc_enabled": self.config.qc.enabled,
-            "session_enabled": self.config.session.enabled,
-        }
 
     async def _handle_workflow_execution_error(
         self,
@@ -1882,44 +785,15 @@ class MahavishnuApp:
         Raises:
             AdapterError: Always raises with detailed error information
         """
-        # Update workflow state with error
-        await self.workflow_state_manager.update(
+        await _handle_workflow_execution_error_helper(
+            self,
             workflow_id=workflow_id,
-            status="failed",
-            error=str(error),
-            completed_at=datetime.now().isoformat(),
+            adapter_name=adapter_name,
+            task=task,
+            validated_repos=validated_repos,
+            error=error,
+            checkpoint_id=checkpoint_id,
         )
-
-        # Log error to OpenSearch
-        await self.opensearch_integration.log_error(
-            workflow_id=workflow_id, error_msg=str(error), adapter=adapter_name
-        )
-
-        # Update checkpoint if enabled and there was an error
-        if self.config.session.enabled and checkpoint_id:
-            await self.session_buddy.update_checkpoint(
-                checkpoint_id, "failed", result={"error": str(error)}
-            )
-
-        mahavishnu_workflows_total.labels(
-            adapter=adapter_name,
-            task_type=task.get("type", "unknown"),
-            status="failed",
-        ).inc()
-        self.active_workflows.discard(workflow_id)
-        self._update_workflow_runtime_gauges()
-
-        # Raise AdapterError with details
-        raise AdapterError(
-            message=f"Adapter execution failed: {error}",
-            details={
-                "adapter": adapter_name,
-                "task": task,
-                "repos_count": len(validated_repos),
-                "error": str(error),
-                "error_type": type(error).__name__,
-            },
-        ) from error
 
     # ========================================================================
     # REFACTORED: execute_workflow_parallel (main orchestrator)
@@ -1956,51 +830,14 @@ class MahavishnuApp:
             ValidationError: If task or adapter_name is invalid
             AdapterError: If adapter execution fails
         """
-        # Validate adapter and prepare for execution
-        adapter, validated_repos = await self._prepare_execution(adapter_name, task, repos, user_id)
-
-        # Phase 1: Initialize workflow state, logging, and observability
-        workflow_id = await self._initialize_workflow_state(task, adapter_name, validated_repos)
-
-        # Phase 2: Validate pre-execution quality control
-        await self._validate_pre_execution_qc(workflow_id, validated_repos)
-
-        # Phase 3: Create session checkpoint if enabled
-        checkpoint_id = await self._create_session_checkpoint(task, adapter_name, validated_repos)
-
-        try:
-            # Phase 4: Execute workflow across repos in parallel
-            execution_time, successful_results, errors = await self._execute_parallel_workflow(
-                adapter=adapter,
-                task=task,
-                adapter_name=adapter_name,
-                workflow_id=workflow_id,
-                validated_repos=validated_repos,
-                progress_callback=progress_callback,
-            )
-
-            # Phase 5: Finalize workflow with logging and checkpoint updates
-            return await self._finalize_workflow_execution(
-                workflow_id=workflow_id,
-                adapter_name=adapter_name,
-                task=task,
-                validated_repos=validated_repos,
-                execution_time=execution_time,
-                successful_results=successful_results,
-                errors=errors,
-                checkpoint_id=checkpoint_id,
-            )
-
-        except Exception as e:
-            # Handle execution error with proper state updates
-            await self._handle_workflow_execution_error(
-                workflow_id=workflow_id,
-                adapter_name=adapter_name,
-                task=task,
-                validated_repos=validated_repos,
-                error=e,
-                checkpoint_id=checkpoint_id,
-            )
+        return await _execute_workflow_parallel_helper(
+            self,
+            task=task,
+            adapter_name=adapter_name,
+            repos=repos,
+            progress_callback=progress_callback,
+            user_id=user_id,
+        )
 
     async def execute_workflow_with_fallback(
         self,
@@ -2039,56 +876,14 @@ class MahavishnuApp:
             >>> if result["success"]:
             ...     print(f"Used adapter: {result['adapter_used']}")
         """
-        import uuid as _uuid
-
-        router = TaskRouter()
-        task_type = TaskType(task.get("type", "ai_task"))
-
-        # Generate fallback chain
-        preferred = AdapterType(adapter_preference[0]) if adapter_preference else None
-        fallback_chain = router.generate_fallback_chain(task_type, preferred)
-
-        execution_id = str(_uuid.uuid4())
-        workflow_name = task.get("type", "workflow")
-        self._persist_workflow_start(execution_id, workflow_name, {"repos": repos})
-
-        # Try each adapter in chain
-        errors: list[tuple[str, str]] = []
-        for adapter_name in fallback_chain:
-            try:
-                result = await self.execute_workflow_parallel(
-                    task=task,
-                    adapter_name=adapter_name.value,
-                    repos=repos,
-                )
-
-                self._persist_workflow_end(execution_id, workflow_name, "completed")
-                return {
-                    "success": True,
-                    "adapter_used": adapter_name.value,
-                    "fallback_chain": [a.value for a in fallback_chain],
-                    "repo_results": result,
-                    "errors": [],
-                }
-
-            except Exception as e:
-                errors.append((adapter_name.value, str(e)))
-                logger = __import__("logging").getLogger(__name__)
-                logger.warning(f"Adapter {adapter_name.value} failed: {e}")
-                continue
-
-        # All adapters failed
-        self._persist_workflow_end(
-            execution_id, workflow_name, "failed",
-            error="; ".join(f"{a}: {e}" for a, e in errors),
+        return await _execute_workflow_with_fallback_helper(
+            self,
+            task=task,
+            repos=repos,
+            adapter_preference=adapter_preference,
+            routing_strategy=routing_strategy,
+            enable_cost_tracking=enable_cost_tracking,
         )
-        return {
-            "success": False,
-            "adapter_used": None,
-            "fallback_chain": [a.value for a in fallback_chain],
-            "repo_results": {},
-            "errors": errors,
-        }
 
     async def execute_workflow_with_routing(
         self,
@@ -2123,29 +918,10 @@ class MahavishnuApp:
             ...     enable_fallback=True,
             ... )
         """
-        strategy = RoutingStrategy(routing_strategy)
-
-        if enable_fallback:
-            return await self.execute_workflow_with_fallback(
-                task=task,
-                repos=repos,
-                routing_strategy=strategy,
-            )
-
-        # Direct routing without fallback
-        router = TaskRouter()
-        task_type = TaskType(task.get("type", "ai_task"))
-        adapter = await router.select_adapter(task_type, strategy)
-
-        result = await self.execute_workflow_parallel(
+        return await _execute_workflow_with_routing_helper(
+            self,
             task=task,
-            adapter_name=adapter.value,
             repos=repos,
+            routing_strategy=routing_strategy,
+            enable_fallback=enable_fallback,
         )
-
-        return {
-            "success": result.get("success", False),
-            "adapter_used": adapter.value,
-            "repo_results": result,
-            "fallback_chain": [adapter.value],
-        }

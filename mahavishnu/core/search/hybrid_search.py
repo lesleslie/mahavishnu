@@ -42,6 +42,7 @@ from datetime import UTC, datetime
 import inspect
 import logging
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -49,8 +50,6 @@ from mahavishnu.core.database import Database, get_database
 from mahavishnu.core.embeddings import EmbeddingProvider, EmbeddingService
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from asyncpg import Pool
 
 logger = logging.getLogger(__name__)

@@ -32,7 +32,6 @@ Survives restarts. Shared across sessions.
 
 | Cache | Location | TTL | Invalidation |
 |-------|----------|-----|-------------|
-| EventBus events | `core/event_bus.py` (SQLite) | Permanent | Manual delete |
 | Tool version registry | `mcp/tool_versions.py` | Permanent | Version bump |
 | Mahavishnu settings | `core/paths.py` | Permanent | File modification |
 

@@ -40,8 +40,8 @@ class MahavishnuPool(BasePool):
     │           ↓                          │
     │  ┌───────────────────────────────┐  │
     │  │      Local Workers            │  │
-    │  │  • TerminalAIWorker (Qwen)    │  │
-    │  │  • TerminalAIWorker (Claude)  │  │
+    │  │  • GenericShellWorker (Qwen)   │  │
+    │  │  • GenericShellWorker (Claude) │  │
     │  │  • ContainerWorker (Docker)   │  │
     │  └───────────────────────────────┘  │
     └─────────────────────────────────────┘

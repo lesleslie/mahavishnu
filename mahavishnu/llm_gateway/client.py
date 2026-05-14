@@ -24,7 +24,7 @@ class ProtocolFamily(StrEnum):
 class ProviderNamespace(StrEnum):
     """Provider namespaces currently configured in Bifrost."""
 
-    ZAI_OPENAI = "zai-openai"
+    MINIMAX_OPENAI = "minimax-openai"
     ANTHROPIC = "anthropic"
 
 
@@ -68,7 +68,7 @@ def default_provider_for_protocol(protocol_family: ProtocolFamily | str) -> Prov
     protocol = ProtocolFamily(protocol_family)
     if protocol is ProtocolFamily.ANTHROPIC:
         return ProviderNamespace.ANTHROPIC
-    return ProviderNamespace.ZAI_OPENAI
+    return ProviderNamespace.MINIMAX_OPENAI
 
 
 def recommended_cache_mode(

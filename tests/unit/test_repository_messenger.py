@@ -6,6 +6,7 @@ from unittest.mock import Mock
 import pytest
 
 from mahavishnu.core.app import MahavishnuApp
+from mahavishnu.core.events.envelope import EventEnvelope
 from mahavishnu.messaging.repository_messenger import (
     MessagePriority,
     MessageType,
@@ -13,6 +14,15 @@ from mahavishnu.messaging.repository_messenger import (
     RepositoryMessenger,
     RepositoryMessengerManager,
 )
+
+
+class _FakeEventPublisher:
+    def __init__(self) -> None:
+        self.published: list[EventEnvelope] = []
+
+    async def publish(self, envelope: EventEnvelope) -> EventEnvelope:
+        self.published.append(envelope)
+        return envelope
 
 
 @pytest.fixture
@@ -71,6 +81,27 @@ async def test_repository_messenger_initialization(mock_app):
 
 
 @pytest.mark.asyncio
+async def test_repository_messenger_publishes_canonical_envelope(mock_app):
+    publisher = _FakeEventPublisher()
+    messenger = RepositoryMessenger(mock_app, event_publisher=publisher)
+
+    await messenger.send_message(
+        sender_repo="sender_repo",
+        receiver_repo="receiver_repo",
+        message_type=MessageType.WORKFLOW_STATUS_UPDATE,
+        content={"status": "completed", "workflow_id": "test_wf_123"},
+        priority=MessagePriority.NORMAL,
+    )
+
+    assert len(publisher.published) == 1
+    envelope = publisher.published[0]
+    assert envelope.event_type == "repository.workflow_status_update"
+    assert envelope.source == "repository_messenger"
+    assert envelope.payload["sender_repo"] == "sender_repo"
+    assert envelope.payload["receiver_repo"] == "receiver_repo"
+
+
+@pytest.mark.asyncio
 async def test_send_message(mock_app):
     """Test sending a message."""
     messenger = RepositoryMessenger(mock_app)
@@ -112,7 +143,7 @@ async def test_subscribe_and_notify(mock_app):
     messenger.subscribe("target_repo", message_callback)
 
     # Send a message to the subscribed repository
-    sent_message = await messenger.send_message(
+    await messenger.send_message(
         sender_repo="source_repo",
         receiver_repo="target_repo",  # This matches the subscription
         message_type=MessageType.QUALITY_ALERT,

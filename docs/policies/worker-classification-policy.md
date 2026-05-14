@@ -27,7 +27,7 @@ Keep an integration **external reference only** when the integration:
 
 ### Terminal workers
 
-- `terminal-qwen`
+- `terminal-qwen` (supported non-default)
 - `terminal-claude`
 - `terminal-codex`
 - `terminal-openclaw`

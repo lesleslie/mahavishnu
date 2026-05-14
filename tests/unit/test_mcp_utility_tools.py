@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 from fastmcp import FastMCP
 import pytest
 
-from mahavishnu.core.health_schemas import HealthStatus
+from mahavishnu.core.health import HealthStatus
 from mahavishnu.mcp.tools.health_tools import register_health_tools
 
 
@@ -65,6 +65,33 @@ class TestMCPUtilityTools:
         assert result["service_name"] == "session-buddy"
         assert result["latency_ms"] == 12.5
         assert result["response"] == {"status": "ok"}
+
+    @pytest.mark.asyncio
+    async def test_deprecated_health_tools_emit_warnings(self, mcp_server):
+        """Legacy health entry points should emit deprecation warnings."""
+        fake_result = SimpleNamespace(
+            status=HealthStatus.OK,
+            latency_ms=3.0,
+            error=None,
+            response_data={"status": "ok"},
+        )
+
+        with (
+            patch(
+                "mahavishnu.mcp.tools.health_tools.HealthChecker.check",
+                new=AsyncMock(return_value=fake_result),
+            ),
+            pytest.warns(DeprecationWarning, match="health_check_service is deprecated"),
+        ):
+            await (await mcp_server.get_tool("health_check_service")).fn(
+                service_name="session-buddy", host="localhost", port=8678
+            )
+
+        with pytest.warns(DeprecationWarning, match="get_liveness is deprecated"):
+            await (await mcp_server.get_tool("get_liveness")).fn()
+
+        with pytest.warns(DeprecationWarning, match="get_readiness is deprecated"):
+            await (await mcp_server.get_tool("get_readiness")).fn()
 
     @pytest.mark.asyncio
     async def test_mcp_get_metrics_returns_snapshot(self, mcp_server):

@@ -17,7 +17,7 @@ class TestCloudWorkerConfig:
 
     def test_defaults(self):
         cfg = CloudWorkerConfig()
-        assert cfg.model == "glm-4.7"
+        assert cfg.model == "MiniMax-M2.7"
         assert cfg.timeout == 300
         assert cfg.temperature == 0.7
         assert cfg.max_tokens == 4096
@@ -28,35 +28,35 @@ class TestCloudWorkerConfig:
         cfg = CloudWorkerConfig(
             base_url="https://custom.api/v1",
             api_key="test-key",
-            model="glm-5.1",
+            model="MiniMax-M2.7-highspeed",
             timeout=600,
             temperature=0.3,
             max_tokens=8192,
             intelligent_routing=False,
         )
-        assert cfg.model == "glm-5.1"
+        assert cfg.model == "MiniMax-M2.7-highspeed"
         assert cfg.temperature == 0.3
         assert cfg.intelligent_routing is False
         assert cfg.api_key == "test-key"
 
-    @patch.dict(os.environ, {"ZAI_BASE_URL": "https://override.api/v1"}, clear=False)
+    @patch.dict(os.environ, {"MINIMAX_BASE_URL": "https://override.api/v1"}, clear=False)
     def test_base_url_from_env(self):
         cfg = CloudWorkerConfig()
         assert cfg.base_url == "https://override.api/v1"
 
-    @patch.dict(os.environ, {"ZAI_API_KEY": "env-key-123"}, clear=False)
+    @patch.dict(os.environ, {"MINIMAX_API_KEY": "env-key-123"}, clear=False)
     def test_api_key_from_env(self):
         cfg = CloudWorkerConfig()
         assert cfg.api_key == "env-key-123"
 
     def test_get_model_for_category_default(self):
-        from mahavishnu.workers.task_router import DEFAULT_ZAI_ROUTING
+        from mahavishnu.workers.task_router import DEFAULT_MINIMAX_ROUTING
 
         cfg = CloudWorkerConfig(model="default-model")
-        # When model_routing is None, falls back to DEFAULT_ZAI_ROUTING
+        # When model_routing is None, falls back to DEFAULT_MINIMAX_ROUTING
         assert (
             cfg.get_model_for_category(TaskCategory.CODE_GENERATION)
-            == DEFAULT_ZAI_ROUTING[TaskCategory.CODE_GENERATION]
+            == DEFAULT_MINIMAX_ROUTING[TaskCategory.CODE_GENERATION]
         )
 
     def test_get_model_for_category_with_routing(self):
@@ -70,13 +70,13 @@ class TestCloudWorkerConfig:
         assert cfg.get_model_for_category(TaskCategory.GENERAL) == "fallback"
 
     def test_get_model_for_category_unknown(self):
-        from mahavishnu.workers.task_router import DEFAULT_ZAI_ROUTING
+        from mahavishnu.workers.task_router import DEFAULT_MINIMAX_ROUTING
 
         cfg = CloudWorkerConfig(model="fallback")
-        # GENERAL is in DEFAULT_ZAI_ROUTING → returns "glm-4.5", not config model
+        # GENERAL is in DEFAULT_MINIMAX_ROUTING → returns "MiniMax-M2.7", not config model
         assert (
             cfg.get_model_for_category(TaskCategory.GENERAL)
-            == DEFAULT_ZAI_ROUTING[TaskCategory.GENERAL]
+            == DEFAULT_MINIMAX_ROUTING[TaskCategory.GENERAL]
         )
 
 
@@ -87,7 +87,7 @@ class TestCloudWorkerInit:
         from mahavishnu.workers.cloud_worker import CloudWorker
 
         worker = CloudWorker()
-        assert worker.config.model == "glm-4.7"
+        assert worker.config.model == "MiniMax-M2.7"
         assert worker._client is None
         assert "cloud-" in worker._worker_id
 
@@ -142,9 +142,10 @@ class TestCloudWorkerStart:
         cfg = CloudWorkerConfig(api_key="test-key")
         worker = CloudWorker(config=cfg)
 
-        with patch.dict("sys.modules", {"openai": None}):
-            with pytest.raises(RuntimeError, match="openai package required"):
-                await worker.start()
+        with patch.dict("sys.modules", {"openai": None}), pytest.raises(
+            RuntimeError, match="openai package required"
+        ):
+            await worker.start()
 
 
 class TestCloudWorkerExecute:
@@ -180,7 +181,7 @@ class TestCloudWorkerExecute:
         mock_message.content = "result text"
         mock_message.role = "assistant"
         mock_completion.choices = [MagicMock(message=mock_message)]
-        mock_completion.model = "glm-4.7"
+        mock_completion.model = "MiniMax-M2.7"
         mock_completion.usage = MagicMock()
         mock_completion.usage.model_dump.return_value = {
             "prompt_tokens": 10,
@@ -195,7 +196,7 @@ class TestCloudWorkerExecute:
         with patch.dict("sys.modules", {"openai": mock_openai_module}):
             await worker.start()
 
-            result = await worker.execute({"prompt": "test prompt", "model": "glm-5.1"})
+            result = await worker.execute({"prompt": "test prompt", "model": "MiniMax-M2.7"})
             assert result.output == "result text"
             assert result.status.value == "completed"
 
@@ -212,7 +213,7 @@ class TestCloudWorkerExecute:
         mock_message.content = "auto result"
         mock_message.role = "assistant"
         mock_completion.choices = [MagicMock(message=mock_message)]
-        mock_completion.model = "glm-4.7"
+        mock_completion.model = "MiniMax-M2.7"
         mock_completion.usage = MagicMock()
         mock_completion.usage.model_dump.return_value = {
             "prompt_tokens": 5,
@@ -240,7 +241,7 @@ def _make_openai_mock(content="result", usage=None):
     mock_message.content = content
     mock_message.role = "assistant"
     mock_completion.choices = [MagicMock(message=mock_message)]
-    mock_completion.model = "glm-4.7"
+    mock_completion.model = "MiniMax-M2.7"
     mock_usage = MagicMock()
     mock_usage.model_dump.return_value = usage or {"prompt_tokens": 10, "completion_tokens": 20}
     mock_completion.usage = mock_usage
@@ -312,7 +313,7 @@ class TestCloudWorkerStatusAndProgress:
             assert progress["status"] == "running"
             assert progress["worker_id"] == "progress-test"
             assert progress["worker_type"] == "terminal-cloud"
-            assert progress["model"] == "glm-4.7"
+            assert progress["model"] == "MiniMax-M2.7"
             assert progress["duration_seconds"] >= 0
             assert progress["base_url"] == cfg.base_url
 
@@ -443,7 +444,7 @@ class TestCloudWorkerExecuteAdvanced:
             assert result.output == "routed result"
             assert result.is_success()
             call_kwargs = mock_client.chat.completions.create.call_args.kwargs
-            assert call_kwargs["model"] != "glm-4.7"
+            assert call_kwargs["model"] == "MiniMax-M2.7"
 
     @pytest.mark.asyncio
     async def test_execute_empty_content(self):
@@ -491,7 +492,7 @@ class TestCloudWorkerSessionBuddy:
 
         with patch.dict("sys.modules", {"openai": mock_openai}):
             await worker.start()
-            result = await worker.execute({"prompt": "test"})
+            await worker.execute({"prompt": "test"})
 
             sb_client.call_tool.assert_awaited_once()
             call_args = sb_client.call_tool.call_args

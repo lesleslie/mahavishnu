@@ -1,220 +1,138 @@
-"""Tests for mcp/tools/worktree_tools.py — deprecated worktree MCP tools.
-
-Tests cover the deprecation warning and tool behavior with/without coordinator.
-"""
+"""Tests for mcp/tools/worktree_tools.py — consolidated worktree MCP tool."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
-import warnings
 
 import pytest
 
-# Suppress the import-time deprecation warning for test collection
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore", DeprecationWarning)
-    from mahavishnu.mcp.tools.worktree_tools import (
-        create_ecosystem_worktree,
-        get_worktree_provider_health,
-        get_worktree_safety_status,
-        list_ecosystem_worktrees,
-        prune_ecosystem_worktrees,
-        remove_ecosystem_worktree,
-    )
-
-
-# ---------------------------------------------------------------------------
-# _get_coordinator returns None (no coordinator initialized)
-# ---------------------------------------------------------------------------
+from mahavishnu.mcp.tools.worktree_tools import register_worktree_tools, worktree_manage
 
 
 @pytest.mark.asyncio
-class TestToolsWithoutCoordinator:
-    async def test_create_returns_error(self):
+class TestWorktreeManage:
+    @pytest.mark.parametrize(
+        ("action", "kwargs", "method_name", "method_kwargs"),
+        [
+            (
+                "create",
+                {"user_id": "u1", "repo_nickname": "repo", "branch": "main"},
+                "create_worktree",
+                {
+                    "repo_nickname": "repo",
+                    "branch": "main",
+                    "worktree_name": None,
+                    "create_branch": False,
+                    "user_id": "u1",
+                },
+            ),
+            (
+                "remove",
+                {"user_id": "u1", "repo_nickname": "repo", "worktree_path": "/tmp/wt"},
+                "remove_worktree",
+                {
+                    "repo_nickname": "repo",
+                    "worktree_path": "/tmp/wt",
+                    "force": False,
+                    "force_reason": None,
+                    "user_id": "u1",
+                },
+            ),
+            (
+                "list",
+                {"user_id": "u1", "repo_nickname": "repo"},
+                "list_worktrees",
+                {"repo_nickname": "repo"},
+            ),
+            (
+                "prune",
+                {"user_id": "u1", "repo_nickname": "repo"},
+                "prune_worktrees",
+                ("repo",),
+            ),
+            (
+                "safety_status",
+                {"user_id": "u1", "repo_nickname": "repo", "worktree_path": "/tmp/wt"},
+                "get_worktree_safety_status",
+                {"repo_nickname": "repo", "worktree_path": "/tmp/wt"},
+            ),
+            (
+                "provider_health",
+                {"user_id": "u1"},
+                "get_provider_health",
+                (),
+            ),
+        ],
+    )
+    async def test_manage_delegates(self, action, kwargs, method_name, method_kwargs):
+        coord = MagicMock()
+        method = AsyncMock(return_value={"success": True, "action": action})
+        setattr(coord, method_name, method)
+
+        with patch(
+            "mahavishnu.mcp.tools.worktree_tools._get_coordinator",
+            return_value=coord,
+        ):
+            result = await worktree_manage(action=action, **kwargs)
+
+        assert result["success"] is True
+        if isinstance(method_kwargs, tuple):
+            method.assert_called_once_with(*method_kwargs)
+        else:
+            method.assert_called_once_with(**method_kwargs)
+
+    async def test_manage_missing_coordinator(self):
         with patch(
             "mahavishnu.mcp.tools.worktree_tools._get_coordinator",
             return_value=None,
         ):
-            result = await create_ecosystem_worktree(
+            result = await worktree_manage(
+                action="create",
                 user_id="u1",
                 repo_nickname="repo",
                 branch="main",
             )
-            assert result["success"] is False
-            assert "not initialized" in result["error"].lower()
 
-    async def test_remove_returns_error(self):
-        with patch(
-            "mahavishnu.mcp.tools.worktree_tools._get_coordinator",
-            return_value=None,
-        ):
-            result = await remove_ecosystem_worktree(
-                user_id="u1",
-                repo_nickname="repo",
-                worktree_path="/tmp/wt",
-            )
-            assert result["success"] is False
+        assert result["success"] is False
+        assert result["action"] == "create"
 
-    async def test_list_returns_error(self):
-        with patch(
-            "mahavishnu.mcp.tools.worktree_tools._get_coordinator",
-            return_value=None,
-        ):
-            result = await list_ecosystem_worktrees(user_id="u1")
-            assert result["success"] is False
-
-    async def test_prune_returns_error(self):
-        with patch(
-            "mahavishnu.mcp.tools.worktree_tools._get_coordinator",
-            return_value=None,
-        ):
-            result = await prune_ecosystem_worktrees(
-                user_id="u1",
-                repo_nickname="repo",
-            )
-            assert result["success"] is False
-
-    async def test_safety_status_returns_error(self):
-        with patch(
-            "mahavishnu.mcp.tools.worktree_tools._get_coordinator",
-            return_value=None,
-        ):
-            result = await get_worktree_safety_status(
-                user_id="u1",
-                repo_nickname="repo",
-                worktree_path="/tmp/wt",
-            )
-            assert result["success"] is False
-
-    async def test_provider_health_returns_error(self):
-        with patch(
-            "mahavishnu.mcp.tools.worktree_tools._get_coordinator",
-            return_value=None,
-        ):
-            result = await get_worktree_provider_health(user_id="u1")
-            assert result["success"] is False
-
-
-# ---------------------------------------------------------------------------
-# With coordinator present — tools delegate
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-class TestToolsWithCoordinator:
-    async def test_create_delegates(self):
+    async def test_manage_invalid_action(self):
         coord = MagicMock()
-        coord.create_worktree = AsyncMock(return_value={"success": True, "path": "/wt"})
         with patch(
             "mahavishnu.mcp.tools.worktree_tools._get_coordinator",
             return_value=coord,
         ):
-            result = await create_ecosystem_worktree(
-                user_id="u1",
-                repo_nickname="repo",
-                branch="feat",
-                worktree_name="my-wt",
-                create_branch=True,
-            )
-            assert result["success"] is True
-            coord.create_worktree.assert_called_once_with(
-                repo_nickname="repo",
-                branch="feat",
-                worktree_name="my-wt",
-                create_branch=True,
-                user_id="u1",
-            )
+            result = await worktree_manage(action="bogus", user_id="u1")
 
-    async def test_remove_delegates(self):
+        assert result["success"] is False
+        assert result["action"] == "bogus"
+        assert "supported_actions" in result
+
+    async def test_manage_missing_required_fields(self):
         coord = MagicMock()
-        coord.remove_worktree = AsyncMock(return_value={"success": True})
         with patch(
             "mahavishnu.mcp.tools.worktree_tools._get_coordinator",
             return_value=coord,
         ):
-            result = await remove_ecosystem_worktree(
-                user_id="u1",
-                repo_nickname="repo",
-                worktree_path="/wt",
-                force=True,
-                force_reason="cleanup",
-            )
-            assert result["success"] is True
-            coord.remove_worktree.assert_called_once_with(
-                repo_nickname="repo",
-                worktree_path="/wt",
-                force=True,
-                force_reason="cleanup",
-                user_id="u1",
-            )
+            result = await worktree_manage(action="remove", user_id="u1")
 
-    async def test_list_delegates(self):
-        coord = MagicMock()
-        coord.list_worktrees = AsyncMock(return_value={"worktrees": []})
-        with patch(
-            "mahavishnu.mcp.tools.worktree_tools._get_coordinator",
-            return_value=coord,
-        ):
-            result = await list_ecosystem_worktrees(
-                user_id="u1",
-                repo_nickname="repo",
-            )
-            coord.list_worktrees.assert_called_once_with(repo_nickname="repo")
-
-    async def test_prune_delegates(self):
-        coord = MagicMock()
-        coord.prune_worktrees = AsyncMock(return_value={"pruned": 2})
-        with patch(
-            "mahavishnu.mcp.tools.worktree_tools._get_coordinator",
-            return_value=coord,
-        ):
-            result = await prune_ecosystem_worktrees(
-                user_id="u1",
-                repo_nickname="repo",
-            )
-            coord.prune_worktrees.assert_called_once_with("repo")
-
-    async def test_safety_status_delegates(self):
-        coord = MagicMock()
-        coord.get_worktree_safety_status = AsyncMock(return_value={"safe": True})
-        with patch(
-            "mahavishnu.mcp.tools.worktree_tools._get_coordinator",
-            return_value=coord,
-        ):
-            result = await get_worktree_safety_status(
-                user_id="u1",
-                repo_nickname="repo",
-                worktree_path="/wt",
-            )
-            coord.get_worktree_safety_status.assert_called_once_with(
-                repo_nickname="repo",
-                worktree_path="/wt",
-            )
-
-    async def test_provider_health_delegates(self):
-        coord = MagicMock()
-        coord.get_provider_health = AsyncMock(return_value={"healthy": True})
-        with patch(
-            "mahavishnu.mcp.tools.worktree_tools._get_coordinator",
-            return_value=coord,
-        ):
-            result = await get_worktree_provider_health(user_id="u1")
-            coord.get_provider_health.assert_called_once()
+        assert result["success"] is False
+        assert result["missing_fields"] == ["repo_nickname", "worktree_path"]
 
 
-# ---------------------------------------------------------------------------
-# Deprecation warning
-# ---------------------------------------------------------------------------
+class TestRegistration:
+    def test_register_worktree_tools_registers_manage_tool_only(self):
+        class FakeMCP:
+            def __init__(self):
+                self.registered: list[str] = []
 
+            def tool(self):
+                def decorator(func):
+                    self.registered.append(func.__name__)
+                    return func
 
-class TestDeprecationWarning:
-    def test_import_emits_deprecation_warning(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            # Re-import to trigger warning
-            import importlib
+                return decorator
 
-            import mahavishnu.mcp.tools.worktree_tools as wt
+        fake_mcp = FakeMCP()
 
-            importlib.reload(wt)
-            deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
-            assert len(deprecation_warnings) >= 1
-            assert "deprecated" in str(deprecation_warnings[0].message).lower()
+        register_worktree_tools(fake_mcp)
+
+        assert fake_mcp.registered == ["worktree_manage"]

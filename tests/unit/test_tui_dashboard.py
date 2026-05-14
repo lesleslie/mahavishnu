@@ -52,6 +52,15 @@ class TestDashboardAppStructure:
         assert "3" in binding_keys  # routing tab
         assert "4" in binding_keys  # alerts tab
         assert "5" in binding_keys  # reviews tab
+        assert "6" in binding_keys  # recovery tab
+        assert "7" in binding_keys  # session tab
+        assert "8" in binding_keys  # approvals tab
+        assert "9" in binding_keys  # files tab
+        assert "0" in binding_keys  # events tab
+        assert "g" in binding_keys  # agno tab
+        assert "c" in binding_keys  # trace tab
+        assert "a" in binding_keys  # approve selected approval
+        assert "x" in binding_keys  # reject selected approval
 
     def test_app_title(self) -> None:
         from mahavishnu.tui.app import DashboardApp
@@ -93,6 +102,47 @@ class TestScreenModules:
 
         assert ReviewsScreen is not None
 
+    def test_session_screen(self) -> None:
+        from mahavishnu.tui.app import SessionScreen
+
+        assert SessionScreen is not None
+
+    def test_recovery_screen(self) -> None:
+        from mahavishnu.tui.app import RecoveryScreen
+
+        assert RecoveryScreen is not None
+
+    def test_approvals_screen(self) -> None:
+        from mahavishnu.tui.app import ApprovalsScreen
+
+        assert ApprovalsScreen is not None
+
+    def test_approvals_screen_actions(self) -> None:
+        from mahavishnu.tui.app import ApprovalsScreen
+
+        assert hasattr(ApprovalsScreen, "action_approve_selected_approval")
+        assert hasattr(ApprovalsScreen, "action_reject_selected_approval")
+
+    def test_files_screen(self) -> None:
+        from mahavishnu.tui.app import FilesScreen
+
+        assert FilesScreen is not None
+
+    def test_event_stream_screen(self) -> None:
+        from mahavishnu.tui.app import EventStreamScreen
+
+        assert EventStreamScreen is not None
+
+    def test_agno_screen(self) -> None:
+        from mahavishnu.tui.app import AgnoScreen
+
+        assert AgnoScreen is not None
+
+    def test_trace_screen(self) -> None:
+        from mahavishnu.tui.app import TraceScreen
+
+        assert TraceScreen is not None
+
 
 class TestDataFetchers:
     """Verify data-fetching helpers return expected shapes."""
@@ -127,6 +177,152 @@ class TestDataFetchers:
 
         data = await fetch_active_alerts()
         assert isinstance(data, list)
+
+    @pytest.mark.asyncio
+    async def test_fetch_skill_drafts_uses_registry_when_available(self, monkeypatch) -> None:
+        from types import SimpleNamespace
+
+        from mahavishnu.tui import app as tui_app
+
+        class _FakeRegistry:
+            def list_active(self):
+                return [
+                    SimpleNamespace(
+                        skill_id="skill-1",
+                        version="1.0.0",
+                        state="active",
+                        body="# Skill 1\nBody",
+                        activation=SimpleNamespace(activated_by="ci", activated_at=tui_app.datetime.now()),
+                        review=None,
+                    )
+                ]
+
+        monkeypatch.setattr(
+            "mahavishnu.core.context.get_app_from_context",
+            lambda: SimpleNamespace(skill_registry=_FakeRegistry()),
+        )
+
+        data = await tui_app.fetch_skill_drafts()
+        assert len(data) == 1
+        assert data[0]["skill_id"] == "skill-1"
+        assert data[0]["proposed_by"] == "ci"
+
+    @pytest.mark.asyncio
+    async def test_fetch_session_summary(self) -> None:
+        from mahavishnu.tui.app import fetch_session_summary
+
+        data = await fetch_session_summary()
+        assert "enabled" in data
+        assert "checkpoint_interval" in data
+        assert "session_buddy_url" in data
+
+    @pytest.mark.asyncio
+    async def test_fetch_recovery_summary(self) -> None:
+        from mahavishnu.tui.app import fetch_recovery_summary
+
+        data = await fetch_recovery_summary()
+        assert "recovered_workflows" in data
+        assert "recovered_approvals" in data
+        assert "dhara_available" in data
+
+    @pytest.mark.asyncio
+    async def test_fetch_pending_approvals(self) -> None:
+        from mahavishnu.tui.app import fetch_pending_approvals
+
+        data = await fetch_pending_approvals()
+        assert isinstance(data, list)
+
+    @pytest.mark.asyncio
+    async def test_fetch_event_activity(self) -> None:
+        from mahavishnu.tui.app import fetch_event_activity
+
+        data = await fetch_event_activity()
+        assert isinstance(data, list)
+
+    @pytest.mark.asyncio
+    async def test_fetch_agno_activity(self) -> None:
+        from mahavishnu.tui.app import fetch_agno_activity
+
+        data = await fetch_agno_activity()
+        assert isinstance(data, list)
+
+    @pytest.mark.asyncio
+    async def test_fetch_correlation_trace(self) -> None:
+        from mahavishnu.tui.app import fetch_correlation_trace
+
+        data = await fetch_correlation_trace()
+        assert "trace" in data
+        assert "trace_count" in data
+        assert "latest_stage" in data
+
+    @pytest.mark.asyncio
+    async def test_forward_approval_request(self, monkeypatch) -> None:
+        from types import SimpleNamespace
+
+        from mahavishnu.tui.app import forward_approval_request
+
+        class _FakeApp:
+            def request_approval(self, **kwargs):
+                return {"status": "pending", "approval_id": "approval-1", **kwargs}
+
+        monkeypatch.setattr(
+            "mahavishnu.core.context.get_app_from_context",
+            lambda: SimpleNamespace(request_approval=_FakeApp().request_approval),
+        )
+
+        result = await forward_approval_request(
+            approval_type="version_bump",
+            context={"current_version": "1.0.0"},
+        )
+        assert result["status"] == "pending"
+        assert result["approval_type"] == "version_bump"
+
+    @pytest.mark.asyncio
+    async def test_forward_approval_response(self, monkeypatch) -> None:
+        from types import SimpleNamespace
+
+        from mahavishnu.tui.app import forward_approval_response
+
+        class _FakeApp:
+            def respond_to_approval(self, **kwargs):
+                return {"status": "ok", "request_id": kwargs["request_id"], **kwargs}
+
+        monkeypatch.setattr(
+            "mahavishnu.core.context.get_app_from_context",
+            lambda: SimpleNamespace(respond_to_approval=_FakeApp().respond_to_approval),
+        )
+
+        result = await forward_approval_response(
+            request_id="approval-1",
+            approved=True,
+            selected_option=0,
+        )
+        assert result["status"] == "ok"
+        assert result["request_id"] == "approval-1"
+
+    def test_app_approval_actions_exist(self) -> None:
+        from mahavishnu.tui.app import DashboardApp
+
+        assert hasattr(DashboardApp, "action_approve_selected_approval")
+        assert hasattr(DashboardApp, "action_reject_selected_approval")
+
+    @pytest.mark.asyncio
+    async def test_fetch_file_views(self) -> None:
+        from mahavishnu.tui.app import fetch_file_views
+
+        data = await fetch_file_views()
+        assert isinstance(data, list)
+        assert len(data) > 0
+        assert "path" in data[0]
+
+    @pytest.mark.asyncio
+    async def test_fetch_diff_views(self) -> None:
+        from mahavishnu.tui.app import fetch_diff_views
+
+        data = await fetch_diff_views()
+        assert isinstance(data, list)
+        assert len(data) > 0
+        assert "path" in data[0]
 
     @pytest.mark.asyncio
     async def test_fetch_skill_drafts(self) -> None:
@@ -180,10 +376,9 @@ class TestOverviewScreenCompose:
 
         from mahavishnu.tui.app import OverviewScreen
 
-        assert hasattr(OverviewScreen, "status_text")
-        reactive = OverviewScreen.status_text
+        assert hasattr(OverviewScreen, "_status")
+        reactive = OverviewScreen._status
         assert isinstance(reactive, Reactive)
-        assert reactive._default == "Loading..."
 
 
 @pytest.mark.skipif(not _textual_available, reason="textual not installed")
@@ -233,11 +428,11 @@ class TestReviewsScreenCompose:
 
         assert issubclass(ReviewsScreen, VerticalScroll)
 
-    def test_reviews_screen_has_load_data(self):
+    def test_reviews_screen_has_fetch(self):
         from mahavishnu.tui.app import ReviewsScreen
 
-        assert hasattr(ReviewsScreen, "_load_data")
-        assert callable(ReviewsScreen._load_data)
+        assert hasattr(ReviewsScreen, "_fetch")
+        assert callable(ReviewsScreen._fetch)
 
 
 @pytest.mark.skipif(not _textual_available, reason="textual not installed")
@@ -269,3 +464,21 @@ class TestDashboardAppCompose:
 
         app = DashboardApp()
         app.action_switch_tab("reviews")  # Should not raise
+
+    def test_action_switch_tab_recovery(self):
+        from mahavishnu.tui.app import DashboardApp
+
+        app = DashboardApp()
+        app.action_switch_tab("recovery")  # Should not raise
+
+    def test_action_switch_tab_session(self):
+        from mahavishnu.tui.app import DashboardApp
+
+        app = DashboardApp()
+        app.action_switch_tab("session")  # Should not raise
+
+    def test_action_switch_tab_trace(self):
+        from mahavishnu.tui.app import DashboardApp
+
+        app = DashboardApp()
+        app.action_switch_tab("trace")  # Should not raise

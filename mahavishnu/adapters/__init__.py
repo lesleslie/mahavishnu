@@ -1,32 +1,10 @@
 """Mahavishnu orchestration adapters package.
 
-Provides adapters for different workflow orchestration engines:
-- Prefect: Workflow orchestration with Prefect Cloud
-- Agno: Multi-agent AI task execution
-- Pydantic-AI: Type-safe agent orchestration with structured outputs
-- LlamaIndex: RAG pipeline orchestration
-- Pgvector: Production vector storage with HNSW indexing
-
-Each adapter implements the OrchestratorAdapter interface.
+Provides the package-level adapter surface that is still consumed by the repo:
+Pydantic-AI. Prefect, Agno, LlamaIndex, and Pgvector remain available through
+their canonical implementation modules.
 """
 
-# Import PrefectAdapter from engines module (canonical implementation)
-try:
-    from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
-
-    _prefect_available = True
-except ImportError:
-    PrefectAdapter = None  # type: ignore[misc,assignment]
-    _prefect_available = False
-
-# Import AgnoAdapter from engines module (canonical implementation using Agno SDK)
-try:
-    from mahavishnu.engines.agno_adapter_impl import AgnoAdapter
-
-    _agno_available = True
-except ImportError:
-    AgnoAdapter = None  # type: ignore[misc,assignment]
-    _agno_available = False
 from mahavishnu.adapters.ai.pydantic_ai_adapter import (
     AgentResult,
     AgentStatus,
@@ -36,32 +14,13 @@ from mahavishnu.adapters.ai.pydantic_ai_adapter import (
     PydanticAIAdapter,
     PydanticAISettings,
 )
-from mahavishnu.adapters.pgvector_adapter import (
-    HNSWConfig,
-    IndexType,
-    IVFFlatConfig,
-    PgvectorAdapter,
-    PgvectorSettings,
-)
-from mahavishnu.engines.llamaindex_adapter_impl import LlamaIndexAdapter
 
 __all__ = [
     "AgentResult",
     "AgentStatus",
-    "AgnoAdapter",
     "FallbackStrategy",
-    "HNSWConfig",
-    "IVFFlatConfig",
-    "IndexType",
-    "LlamaIndexAdapter",
     "MCPToolConfig",
     "ModelConfig",
-    "PgvectorAdapter",
-    "PgvectorSettings",
     "PydanticAIAdapter",
     "PydanticAISettings",
 ]
-
-# Only add PrefectAdapter if available
-if _prefect_available:
-    __all__.append("PrefectAdapter")

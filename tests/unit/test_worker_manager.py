@@ -25,7 +25,7 @@ def _make_terminal_manager():
 
 def _make_worker(
     worker_id: str = "worker-1",
-    worker_type: str = "terminal-qwen",
+    worker_type: str = "terminal-claude",
     status: WorkerStatus = WorkerStatus.RUNNING,
     execute_result: WorkerResult | None = None,
     progress: dict | None = None,

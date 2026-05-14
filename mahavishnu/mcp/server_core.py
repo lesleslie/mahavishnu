@@ -10,8 +10,7 @@ import time
 from typing import Any
 
 from fastmcp import FastMCP
-from starlette.requests import Request
-from starlette.responses import JSONResponse
+from mcp_common.server.telemetry import FastMCPOpenTelemetryMiddleware
 
 from monitoring.metrics import (
     mcp_tool_calls_total,
@@ -22,11 +21,12 @@ from monitoring.metrics import (
 from ..core.app import MahavishnuApp
 from ..core.auth import get_auth_from_config
 from ..core.permissions import Permission
-from ..terminal.adapters.iterm2 import ITERM2_AVAILABLE, ITerm2Adapter
-from ..terminal.adapters.mcpretentious import McpretentiousAdapter
-from ..terminal.manager import TerminalManager
 from ..terminal.mcp_client import McpretentiousClient
-from .otel_middleware import FastMCPOpenTelemetryMiddleware
+from .bootstrap import init_terminal_manager as _init_terminal_manager_helper
+from .bootstrap import register_health_endpoint as _register_health_endpoint_helper
+from .lifecycle import register_worktree_tools as _register_worktree_tools_helper
+from .lifecycle import start_server as _start_server_helper
+from .lifecycle import stop_server as _stop_server_helper
 
 logger = getLogger(__name__)
 
@@ -138,7 +138,7 @@ class FastMCPServer:
         # Initialize terminal manager if enabled
         self.terminal_manager = None
         if self.app.config.terminal.enabled:
-            self.terminal_manager = self._init_terminal_manager()
+            self.terminal_manager = _init_terminal_manager_helper(self)
 
             # Update pool_manager's terminal_manager reference if both exist
             # This is needed because pool_manager is initialized before terminal_manager
@@ -152,7 +152,7 @@ class FastMCPServer:
                 logger.info("Updated pool_manager terminal_manager reference")
 
         # Register HTTP health endpoint for Claude Code health checks
-        self._register_health_endpoint()
+        _register_health_endpoint_helper(self, __version__)
 
         # Register all tools
         self._register_tools()
@@ -269,91 +269,6 @@ class FastMCPServer:
         if not isinstance(server_name, str) or not server_name:
             server_name = "mahavishnu"
         mcp_tools_registered.labels(server=server_name).set(self._registered_tool_count)
-
-    def _init_terminal_manager(self) -> TerminalManager | None:
-        """Initialize terminal manager with appropriate adapter.
-
-        Selects adapter based on terminal.adapter_preference setting:
-        - "iterm2": Use iTerm2 Python API (requires iTerm2 running)
-        - "mcpretentious": Use mcpretentious MCP server
-        - "auto": Auto-detect (iTerm2 if available, else mcpretentious)
-
-        Returns:
-            TerminalManager instance or None if initialization fails
-        """
-        try:
-            config = self.app.config.terminal
-            preference = config.adapter_preference.lower()
-
-            # Auto-detect if preference is "auto"
-            if preference == "auto":
-                if ITERM2_AVAILABLE:
-                    preference = "iterm2"
-                    logger.info("Auto-detected iTerm2 availability, using iTerm2 adapter")
-                else:
-                    preference = "mcpretentious"
-                    logger.info("iTerm2 not available, using mcpretentious adapter")
-
-            # Initialize selected adapter
-            if preference == "iterm2":
-                if not ITERM2_AVAILABLE:
-                    logger.warning(
-                        "iTerm2 adapter requested but not available. "
-                        "Install with: pip install iterm2"
-                    )
-                    logger.info("Falling back to mcpretentious adapter")
-                    adapter = McpretentiousAdapter(self.mcp_client)
-                else:
-                    try:
-                        adapter = ITerm2Adapter()
-                        logger.info("Initialized iTerm2 adapter")
-                    except Exception as e:
-                        logger.warning(f"Failed to initialize iTerm2 adapter: {e}")
-                        logger.info("Falling back to mcpretentious adapter")
-                        adapter = McpretentiousAdapter(self.mcp_client)
-            else:
-                adapter = McpretentiousAdapter(self.mcp_client)
-                logger.info("Initialized mcpretentious adapter")
-
-            manager = TerminalManager(adapter, config)
-            logger.info(
-                f"Terminal manager initialized with {adapter.adapter_name} adapter "
-                f"(max_concurrent={config.max_concurrent_sessions})"
-            )
-            return manager
-        except Exception as e:
-            logger.error(f"Failed to initialize terminal manager: {e}")
-            return None
-
-    def _register_health_endpoint(self) -> None:
-        """Register HTTP health endpoint for Claude Code health checks.
-
-        Claude Code's `mcp list` command checks /health endpoint to verify
-        server status. This endpoint returns basic health information.
-        """
-
-        @self.server.custom_route("/health", methods=["GET"])
-        async def health_check(request: Request) -> JSONResponse:
-            """HTTP health check endpoint for Claude Code compatibility."""
-            return JSONResponse(
-                {
-                    "status": "ok",
-                    "service": "mahavishnu",
-                    "version": __version__,
-                }
-            )
-
-        @self.server.custom_route("/healthz", methods=["GET"])
-        async def healthz_check(request: Request) -> JSONResponse:
-            """Kubernetes-style health check endpoint."""
-            return JSONResponse({"status": "ok"})
-
-        @self.server.custom_route("/metrics", methods=["GET"])
-        async def metrics_endpoint(request: Request):
-            """Prometheus metrics endpoint for the main FastMCP HTTP surface."""
-            from monitoring.metrics import metrics_endpoint as prometheus_metrics_endpoint
-
-            return await prometheus_metrics_endpoint()
 
     def _register_tools(self):
         """Register all MCP tools using the FastMCP decorator pattern."""
@@ -979,14 +894,23 @@ class FastMCPServer:
 
         @server.tool()
         async def get_monitoring_dashboard() -> dict[str, Any]:
-            """Get comprehensive monitoring dashboard data."""
+            """Get comprehensive monitoring dashboard data.
+
+            Compatibility wrapper around the canonical ecosystem status report.
+            """
             try:
-                if not self.app.monitoring_service:
-                    return {"status": "error", "error": "Monitoring service not initialized"}
+                from ..core.ecosystem_status import EcosystemStatusService
 
-                dashboard_data = await self.app.monitoring_service.get_dashboard_data()
-
-                return {"status": "success", "dashboard": dashboard_data}
+                service = EcosystemStatusService(
+                    recovery_provider=(
+                        self.app if hasattr(self.app, "get_recovery_summary") else None
+                    )
+                )
+                report = await service.generate_report()
+                return {
+                    "status": "success",
+                    "ecosystem_status": report.model_dump(mode="json"),
+                }
             except Exception as e:
                 return {"status": "error", "error": f"Failed to get monitoring dashboard: {e}"}
 
@@ -1307,288 +1231,16 @@ class FastMCPServer:
             }
 
     async def start(self, host: str = "127.0.0.1", port: int = 3000):
-        """Start the MCP server.
-
-        Feature-specific tool groups are gated by the active ToolProfile.
-        Core inline tools (registered in ``_register_tools()``) are always
-        present. The profile is read from the ``MAHAVISHNU_TOOL_PROFILE``
-        environment variable, falling back to ``ToolProfile.FULL`` for
-        full backward compatibility.
-
-        Args:
-            host: Host address to bind to
-            port: Port to listen on
-        """
-        from mahavishnu.mcp.tools.profiles import (
-            PROFILE_REGISTRATIONS,
-            get_active_profile,
-        )
-
-        # Resolve active profile from environment
-        self._active_profile = get_active_profile()
-        methods_to_call = PROFILE_REGISTRATIONS[self._active_profile]
-        methods_set = set(methods_to_call)
-
-        logger.info(
-            "Starting Mahavishnu MCP server with tool profile: %s "
-            "(%d registration groups scheduled)",
-            self._active_profile.value,
-            len(methods_to_call),
-        )
-
-        # Terminal tools have a runtime gate (terminal_manager) in addition
-        # to the profile gate. Only call if both conditions are met.
-        if self.terminal_manager is not None and "_register_terminal_tools" in methods_set:
-            self._register_terminal_tools()
-
-        # Feature-specific registrations gated by profile
-        if "_register_session_buddy_tools" in methods_set:
-            self._register_session_buddy_tools()
-
-        if "_register_git_analytics_tools" in methods_set:
-            self._register_git_analytics_tools()
-
-        if "_register_worker_tools" in methods_set:
-            self._register_worker_tools()
-
-        if "_register_pool_tools" in methods_set:
-            self._register_pool_tools()
-
-        if "_register_repository_messaging_tools" in methods_set:
-            self._register_repository_messaging_tools()
-
-        if "_register_otel_tools" in methods_set:
-            self._register_otel_tools()
-
-        # Worktree tools are async and conditionally registered based on
-        # WorktreeCoordinator runtime state. They are not gated by profile.
-        await self.register_worktree_tools()
-
-        if "_register_self_improvement_tools" in methods_set:
-            self._register_self_improvement_tools()
-
-        if "_register_goal_team_tools" in methods_set:
-            self._register_goal_team_tools()
-
-        # team_learning_tools is de-authorized from live MCP (Bodai I0: Phase 4.4).
-        # The module remains importable for CLI debugging but is no longer
-        # registered as an MCP tool — skill_governance.py is the canonical
-        # learning authority.
-
-        if "_register_treesitter_tools" in methods_set:
-            self._register_treesitter_tools()
-
-        if "_register_adapter_registry_tools" in methods_set:
-            self._register_adapter_registry_tools()
-
-        # Health tools are mandatory regardless of profile
-        self._register_health_tools()
-
-        # Ecosystem status tools are mandatory (canonical status surface)
-        self._register_ecosystem_tools()
-
-        if "_register_pycharm_tools" in methods_set:
-            self._register_pycharm_tools()
-
-        self._update_registered_tool_metrics()
-
-        await self.server.run_http_async(host=host, port=port)
+        """Start the MCP server."""
+        await _start_server_helper(self, host=host, port=port)
 
     async def stop(self) -> None:
-        """Stop the MCP server and cleanup resources.
-
-        Stops the mcpretentious server if it was started.
-        """
-        # Stop mcpretentious server
-        if hasattr(self, "mcp_client") and hasattr(self.mcp_client, "_client"):
-            try:
-                await self.mcp_client._client.stop()
-                logger.info("Stopped mcpretentious MCP server")
-            except Exception as e:
-                logger.warning(f"Error stopping mcpretentious server: {e}")
-
-    def _register_terminal_tools(self):
-        """Register terminal management tools with MCP server."""
-        from ..mcp.tools.terminal_tools import register_terminal_tools
-
-        register_terminal_tools(self.server, self.terminal_manager, self.mcp_client)
-        logger.info("Registered 12 terminal management tools with MCP server")
-
-    def _register_session_buddy_tools(self):
-        """Register Session Buddy integration tools with MCP server."""
-        from ..mcp.tools.session_buddy_tools import register_session_buddy_tools
-
-        register_session_buddy_tools(self.server, self.app, self.mcp_client)
-        logger.info("Registered Session Buddy integration tools with MCP server")
-
-    def _register_git_analytics_tools(self):
-        """Register Git analytics tools for symbiotic ecosystem integration."""
-        from ..mcp.tools.git_analytics import register_git_analytics_tools
-
-        register_git_analytics_tools(self.server, self.mcp_client)
-        logger.info("Registered 3 Git analytics tools with MCP server")
-
-    def _register_repository_messaging_tools(self):
-        """Register repository messaging tools with MCP server."""
-        from ..mcp.tools.repository_messaging_tools import register_repository_messaging_tools
-
-        register_repository_messaging_tools(self.server, self.app, self.mcp_client)
-        logger.info("Registered repository messaging tools with MCP server")
-
-    def _register_worker_tools(self) -> None:
-        """Register worker orchestration tools with MCP server."""
-        # Check if workers are enabled in config
-        if not getattr(self.app.config, "workers_enabled", True):
-            logger.info("Worker orchestration disabled, skipping tool registration")
-            return
-
-        # Get worker manager from app (if initialized)
-        worker_manager = getattr(self.app, "_worker_manager", None)
-        if worker_manager is None:
-            logger.warning("Worker manager not initialized, skipping worker tools")
-            return
-
-        # Get Session-Buddy client for result storage
-        session_buddy_client = getattr(self.app, "session_buddy", None)
-        if session_buddy_client:
-            # Get the MCP client from Session-Buddy
-            try:
-                session_buddy_client = getattr(session_buddy_client, "mcp_client", None)
-            except Exception:
-                session_buddy_client = None
-
-        # Import and register worker tools
-        from ..mcp.tools.worker_tools import register_worker_tools
-
-        register_worker_tools(
-            self.server,
-            worker_manager,
-        )
-        logger.info("Registered 9 worker orchestration tools with MCP server")
-
-    def _register_pool_tools(self) -> None:
-        """Register pool management tools with MCP server."""
-        # Check if pools are enabled in config
-        if not getattr(self.app.config, "pools_enabled", True):
-            logger.info("Pool management disabled, skipping tool registration")
-            return
-
-        # Get pool manager from app (if initialized)
-        pool_manager = getattr(self.app, "pool_manager", None)
-        if pool_manager is None:
-            logger.warning("Pool manager not initialized, skipping pool tools")
-            return
-
-        # Import and register pool tools
-        from ..mcp.tools.pool_tools import register_pool_tools
-
-        register_pool_tools(self.server, pool_manager)
-        logger.info("Registered 10 pool management tools with MCP server")
-
-    def _register_otel_tools(self) -> None:
-        """Register OTel trace management tools with MCP server."""
-        # Check if OTel storage is enabled in config
-        if not getattr(self.app.config, "otel_storage_enabled", False):
-            logger.info("OTel storage disabled, skipping tool registration")
-            return
-
-        # Import and register OTel tools
-        from ..mcp.tools.otel_tools import register_otel_tools
-
-        register_otel_tools(self.server, self.app, self.mcp_client)
-        logger.info("Registered 4 OTel trace management tools with MCP server")
+        """Stop the MCP server and cleanup resources."""
+        await _stop_server_helper(self)
 
     async def register_worktree_tools(self):
         """Register worktree management tools."""
-        if not self.app.worktree_coordinator:
-            logger.info("WorktreeCoordinator not initialized, skipping tool registration")
-            return
-
-        # Import and register worktree tools
-        from ..mcp.tools.worktree_tools import register_worktree_tools
-
-        register_worktree_tools(self.server, self.app)
-        logger.info("Registered 6 worktree management tools with MCP server")
-
-    def _register_self_improvement_tools(self) -> None:
-        """Register self-improvement tools with MCP server."""
-        from ..mcp.tools.self_improvement_tools import register_self_improvement_tools
-
-        register_self_improvement_tools(self.server, self.app)
-
-    def _register_goal_team_tools(self) -> None:
-        """Register goal-driven team management tools with MCP server."""
-        # Check if goal-driven teams feature is enabled
-        from ..core.feature_flags import is_feature_enabled
-
-        if not is_feature_enabled("enabled"):
-            logger.info("Goal-Driven Teams disabled, skipping tool registration")
-            return
-
-        if not is_feature_enabled("mcp_tools_enabled"):
-            logger.info("Goal-Driven Teams MCP tools disabled, skipping tool registration")
-            return
-
-        # Import and register goal team tools
-        from ..mcp.tools.goal_team_tools import register_goal_team_tools
-
-        register_goal_team_tools(self.server)
-        logger.info("Registered 3 goal-driven team tools with MCP server")
-
-    def _register_treesitter_tools(self) -> None:
-        """Register tree-sitter code analysis tools with MCP server."""
-        try:
-            from ..mcp.tools.treesitter_tools import register_treesitter_tools
-
-            register_treesitter_tools(self.server)
-            logger.info("Registered 7 tree-sitter code analysis tools with MCP server")
-        except ImportError as e:
-            logger.info(
-                f"Tree-sitter tools not available (mcp-common[treesitter] not installed): {e}"
-            )
-
-        logger.info("Registered 4 self-improvement tools with MCP server")
-
-    def _register_adapter_registry_tools(self) -> None:
-        """Register adapter registry management tools with MCP server."""
-        # Check if adapter registry is enabled in config
-        adapter_registry_config = getattr(self.app.config, "adapter_registry", None)
-        if adapter_registry_config and not adapter_registry_config.enabled:
-            logger.info("Adapter registry disabled, skipping tool registration")
-            return
-
-        try:
-            from ..mcp.tools.adapter_registry_tools import register_adapter_registry_tools
-
-            register_adapter_registry_tools(self.server)
-            logger.info("Registered 7 adapter registry management tools with MCP server")
-        except ImportError as e:
-            logger.warning(f"Adapter registry tools not available: {e}")
-
-    def _register_health_tools(self) -> None:
-        """Register health check tools with MCP server."""
-        from ..mcp.tools.health_tools import register_health_tools
-
-        register_health_tools(self.server, self.app)
-        logger.info("Registered health check tools with MCP server")
-
-    def _register_ecosystem_tools(self) -> None:
-        """Register canonical ecosystem status tools with MCP server."""
-        from ..mcp.tools.ecosystem_tools import register_ecosystem_tools
-
-        register_ecosystem_tools(self.server)
-        logger.info("Registered 3 canonical ecosystem status tools with MCP server")
-
-    def _register_pycharm_tools(self) -> None:
-        """Register PyCharm IDE tools with MCP server."""
-        try:
-            from ..mcp.tools.pycharm_tools import register_pycharm_tools
-
-            register_pycharm_tools(self.server, self.app)
-            logger.info("Registered 8 PyCharm IDE tools with MCP server")
-        except ImportError as e:
-            logger.warning(f"PyCharm tools not available: {e}")
-
+        await _register_worktree_tools_helper(self)
 
 async def run_server(config=None):
     """Run the MCP server."""

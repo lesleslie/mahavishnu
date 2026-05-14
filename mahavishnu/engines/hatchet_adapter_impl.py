@@ -105,13 +105,19 @@ class HatchetAdapterImpl(OrchestratorAdapter):
         timeout = task.get("timeout", self._config.task_timeout_seconds)
 
         try:
-            run_result = await asyncio.wait_for(
-                self._client.run(
-                    workflow_name,
-                    input={"prompt": prompt, "repos": repos},
-                ),
-                timeout=timeout,
+            # hatchet-sdk >=1.0: Hatchet.run() is async (returns a coroutine).
+            # Guard against SDK variants that return a WorkflowRunRef requiring .result().
+            coro_or_ref = self._client.run(
+                workflow_name,
+                input={"prompt": prompt, "repos": repos},
             )
+            if asyncio.iscoroutine(coro_or_ref):
+                awaitable = coro_or_ref
+            elif hasattr(coro_or_ref, "result"):
+                awaitable = coro_or_ref.result()
+            else:
+                awaitable = coro_or_ref
+            run_result = await asyncio.wait_for(awaitable, timeout=timeout)
 
             return {
                 "status": "completed",

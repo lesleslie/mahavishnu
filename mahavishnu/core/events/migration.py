@@ -18,9 +18,10 @@ logger = logging.getLogger(__name__)
 def migrate_legacy_event_bus_event(
     legacy: dict[str, Any],
     correlation_id: UUID | None = None,
+    causation_id: UUID | None = None,
 ) -> EventEnvelope:
-    """Migrate a legacy EventBus.Event dataclass dict to EventEnvelope.
-    The legacy EventBus.Event (from event_bus.py) has this structure:
+    """Migrate a legacy system-wide event dataclass dict to EventEnvelope.
+    The legacy event structure has this shape:
         {
             "id": "uuid-string",
             "type": "worker.started",
@@ -33,6 +34,7 @@ def migrate_legacy_event_bus_event(
     Args:
         legacy: Dictionary from legacy Event.to_dict() format.
         correlation_id: Optional correlation ID to attach.
+        causation_id: Optional causation ID to attach.
 
     Returns:
         EventEnvelope with migrated data.
@@ -52,6 +54,7 @@ def migrate_legacy_event_bus_event(
         timestamp=_parse_timestamp(legacy.get("timestamp")),
         source=legacy.get("source", "unknown"),
         correlation_id=correlation_id,
+        causation_id=causation_id,
         payload=legacy.get("data", {}),
         metadata={"migrated_from": "event_bus_v1"},
     )
@@ -60,6 +63,7 @@ def migrate_legacy_event_bus_event(
 def migrate_legacy_task_event(
     legacy: dict[str, Any],
     correlation_id: UUID | None = None,
+    causation_id: UUID | None = None,
 ) -> EventEnvelope:
     """Migrate a legacy TaskEvent dataclass dict to EventEnvelope.
     The legacy TaskEvent (from task_notifications.py) has:
@@ -74,6 +78,7 @@ def migrate_legacy_task_event(
     Args:
         legacy: Dictionary from legacy TaskEvent.to_dict() format.
         correlation_id: Optional correlation ID to attach.
+        causation_id: Optional causation ID to attach.
 
     Returns:
         EventEnvelope with migrated data.
@@ -82,6 +87,7 @@ def migrate_legacy_task_event(
         event_type=f"task.{legacy.get('event_type', 'unknown')}",
         source="task_notifications",
         correlation_id=correlation_id,
+        causation_id=causation_id,
         payload={
             "task_id": legacy.get("task_id"),
             **legacy.get("data", {}),
@@ -96,6 +102,7 @@ def migrate_legacy_task_event(
 def migrate_legacy_webhook_event(
     legacy: dict[str, Any],
     correlation_id: UUID | None = None,
+    causation_id: UUID | None = None,
 ) -> EventEnvelope:
     """Migrate a legacy WebhookEvent dataclass dict to EventEnvelope.
     The legacy WebhookEvent (from webhook_handler.py) has:
@@ -111,6 +118,7 @@ def migrate_legacy_webhook_event(
     Args:
         legacy: Dictionary from legacy WebhookEvent.to_dict() format.
         correlation_id: Optional correlation ID to attach.
+        causation_id: Optional causation ID to attach.
 
     Returns:
         EventEnvelope with migrated data.
@@ -130,6 +138,7 @@ def migrate_legacy_webhook_event(
         timestamp=received_at or datetime.now(UTC),
         source=f"webhook.{legacy.get('source', 'unknown')}",
         correlation_id=correlation_id,
+        causation_id=causation_id,
         payload={"repository": legacy.get("repository"), "sender": legacy.get("sender")},
         metadata={"migrated_from": "webhook_event_v1"},
     )

@@ -20,7 +20,7 @@ server_name: "Mahavishnu Orchestrator"
 cache_root: .oneiric_cache
 health_ttl_seconds: 60.0
 log_level: INFO
-repos_path: "~/repos.yaml"
+repos_path: "~/ecosystem.yaml"
 
 adapters:
   airflow: false  # Use Prefect instead
@@ -63,7 +63,7 @@ Required environment variables:
 
 - `MAHAVISHNU_AUTH_SECRET`: JWT secret (required if auth is enabled)
 - `MAHAVISHNU_LLM_API_KEY`: API key for LLM provider
-- `MAHAVISHNU_REPOS_PATH`: Path to repos.yaml file
+- `MAHAVISHNU_REPOS_PATH`: Path to the ecosystem inventory file (`ecosystem.yaml`)
 
 ## Adapter Configuration
 

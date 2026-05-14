@@ -53,7 +53,7 @@ async def example_basic_usage():
     print("Example 1: Basic Usage")
     print("=" * 60)
 
-    from mahavishnu.ingesters import OtelIngester
+    from mahavishnu.ingesters.otel_ingester import OtelIngester
 
     # Create ingester
     ingester = OtelIngester()
@@ -88,7 +88,7 @@ async def example_context_manager():
     print("Example 2: Context Manager")
     print("=" * 60)
 
-    from mahavishnu.ingesters import OtelIngester
+    from mahavishnu.ingesters.otel_ingester import OtelIngester
 
     # Context manager automatically handles initialization and cleanup
     async with OtelIngester() as ingester:
@@ -115,7 +115,7 @@ async def example_factory_function():
     print("Example 3: Factory Function")
     print("=" * 60)
 
-    from mahavishnu.ingesters import create_otel_ingester
+    from mahavishnu.ingesters.otel_ingester import create_otel_ingester
 
     # Create ingester with custom configuration
     ingester = await create_otel_ingester(
@@ -150,7 +150,7 @@ async def example_error_handling():
     print("=" * 60)
 
     from mahavishnu.core.errors import ValidationError
-    from mahavishnu.ingesters import OtelIngester
+    from mahavishnu.ingesters.otel_ingester import OtelIngester
 
     async with OtelIngester() as ingester:
         # Try to ingest invalid trace (missing trace_id)
@@ -193,7 +193,7 @@ async def example_advanced_search():
     print("Example 5: Advanced Search")
     print("=" * 60)
 
-    from mahavishnu.ingesters import OtelIngester
+    from mahavishnu.ingesters.otel_ingester import OtelIngester
 
     async with OtelIngester() as ingester:
         # Ingest sample traces with different content

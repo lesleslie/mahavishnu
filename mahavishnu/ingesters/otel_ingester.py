@@ -604,7 +604,7 @@ class OtelIngester:
                 "Set the MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING environment variable."
             )
 
-        from mahavishnu.adapters import PgvectorAdapter, PgvectorSettings
+        from mahavishnu.adapters.pgvector_adapter import PgvectorAdapter, PgvectorSettings
 
         settings = PgvectorSettings(
             dsn=self._pgvector_dsn,

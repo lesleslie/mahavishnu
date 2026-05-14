@@ -50,6 +50,7 @@ from mahavishnu.core.adapters.base import (
 )
 from mahavishnu.core.resilience import RetryExhaustedError, RetryPolicy, retry_async
 from mahavishnu.core.routing_metrics import RoutingMetrics, get_routing_metrics
+from mahavishnu.core.status import WorkflowStatus
 
 if TYPE_CHECKING:
     from mahavishnu.core.cost_optimizer import CostOptimizer
@@ -187,7 +188,7 @@ class StateManager:
     _DEFAULT_STATE_DIR = Path("data/workflow_state")
 
     def __init__(self, state_dir: Path | str | None = None) -> None:
-        self._workflows: dict[str, WorkflowState] = {}
+        self._workflows: dict[str, dict[str, Any]] = {}
         self._state_dir = Path(state_dir) if state_dir else self._DEFAULT_STATE_DIR
         self._load()
 
@@ -201,9 +202,13 @@ class StateManager:
         try:
             data = json.loads(path.read_text())
             for wf_id, wf_data in data.items():
-                ws = WorkflowState(workflow_id=wf_id)
-                ws.adapter_states = wf_data.get("adapter_states", {})
-                self._workflows[wf_id] = ws
+                record = self._default_record(wf_id)
+                if isinstance(wf_data, dict):
+                    record.update(wf_data)
+                    adapter_states = wf_data.get("adapter_states", {})
+                    if isinstance(adapter_states, dict):
+                        record["adapter_states"] = adapter_states
+                self._workflows[wf_id] = record
             logger.debug("Loaded %d workflow states from %s", len(self._workflows), path)
         except Exception:
             logger.warning("Failed to load workflow state from %s", path, exc_info=True)
@@ -211,57 +216,172 @@ class StateManager:
     def _persist(self) -> None:
         try:
             self._state_dir.mkdir(parents=True, exist_ok=True)
-            data = {
-                wf_id: {"workflow_id": ws.workflow_id, "adapter_states": ws.adapter_states}
-                for wf_id, ws in self._workflows.items()
-            }
+            data = dict(self._workflows)
             self._state_file().write_text(json.dumps(data, indent=2))
         except Exception:
             logger.warning("Failed to persist workflow state", exc_info=True)
+
+    @staticmethod
+    def _normalize_status(value: Any | None) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, WorkflowStatus):
+            return value.value
+        return str(value)
+
+    @staticmethod
+    def _now_iso() -> str:
+        from datetime import datetime
+
+        return datetime.now().isoformat()
+
+    def _default_record(self, workflow_id: str) -> dict[str, Any]:
+        now = self._now_iso()
+        return {
+            "workflow_id": workflow_id,
+            "id": workflow_id,
+            "status": WorkflowStatus.PENDING.value,
+            "task": {},
+            "repos": [],
+            "created_at": now,
+            "updated_at": now,
+            "progress": 0,
+            "results": [],
+            "errors": [],
+            "adapter_states": {},
+        }
+
+    def _ensure_record(self, workflow_id: str) -> dict[str, Any]:
+        record = self._workflows.get(workflow_id)
+        if record is None:
+            record = self._default_record(workflow_id)
+            self._workflows[workflow_id] = record
+        return record
+
+    def _copy_record(self, record: dict[str, Any]) -> dict[str, Any]:
+        copied = dict(record)
+        copied["task"] = dict(record.get("task", {}))
+        copied["repos"] = list(record.get("repos", []))
+        copied["results"] = list(record.get("results", []))
+        copied["errors"] = list(record.get("errors", []))
+        copied["adapter_states"] = {
+            str(key): dict(value)
+            for key, value in record.get("adapter_states", {}).items()
+        }
+        return copied
+
+    async def create(
+        self,
+        workflow_id: str,
+        task: dict[str, Any],
+        repos: list[str],
+    ) -> dict[str, Any]:
+        record = self._default_record(workflow_id)
+        record["task"] = dict(task)
+        record["repos"] = list(repos)
+        self._workflows[workflow_id] = record
+        self._persist()
+        return self._copy_record(record)
+
+    async def update(self, workflow_id: str, **updates: Any) -> None:
+        record = self._workflows.get(workflow_id)
+        if record is None:
+            return
+
+        record["updated_at"] = self._now_iso()
+        if "status" in updates:
+            updates["status"] = self._normalize_status(updates["status"])
+        if "task" in updates and isinstance(updates["task"], dict):
+            updates["task"] = dict(updates["task"])
+        if "repos" in updates and updates["repos"] is not None:
+            updates["repos"] = list(updates["repos"])
+        if "results" in updates and updates["results"] is not None:
+            updates["results"] = list(updates["results"])
+        if "errors" in updates and updates["errors"] is not None:
+            updates["errors"] = list(updates["errors"])
+        if "adapter_states" in updates and isinstance(updates["adapter_states"], dict):
+            updates["adapter_states"] = {
+                str(key): dict(value) for key, value in updates["adapter_states"].items()
+            }
+        record.update(updates)
+        self._persist()
+
+    async def get(self, workflow_id: str) -> dict[str, Any] | None:
+        record = self._workflows.get(workflow_id)
+        if record is None:
+            return None
+        return self._copy_record(record)
+
+    async def list_workflows(
+        self,
+        status: WorkflowStatus | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        status_value = self._normalize_status(status)
+        workflows = [
+            self._copy_record(record)
+            for record in self._workflows.values()
+            if status_value is None or record.get("status") == status_value
+        ]
+        return workflows[:limit]
+
+    async def delete(self, workflow_id: str) -> None:
+        self._workflows.pop(workflow_id, None)
+        self._persist()
+
+    async def update_progress(self, workflow_id: str, completed: int, total: int) -> None:
+        progress = int((completed / total) * 100) if total > 0 else 0
+        await self.update(workflow_id, progress=progress)
+
+    async def get_completed_count(self, workflow_id: str) -> int:
+        state = await self.get(workflow_id)
+        if not state:
+            return 0
+        return len(state.get("results", [])) + len(state.get("errors", []))
+
+    async def add_result(self, workflow_id: str, result: dict[str, Any]) -> None:
+        state = await self.get(workflow_id)
+        if not state:
+            return
+        results = list(state.get("results", []))
+        results.append(dict(result))
+        await self.update(workflow_id, results=results)
+
+    async def add_error(self, workflow_id: str, error: dict[str, Any]) -> None:
+        state = await self.get(workflow_id)
+        if not state:
+            return
+        errors = list(state.get("errors", []))
+        errors.append(dict(error))
+        await self.update(workflow_id, errors=errors)
 
     async def create_workflow_state(
         self,
         workflow_id: str,
         adapter_type: str | AdapterType,
         initial_state: dict[str, Any],
-    ) -> WorkflowState:
-        state = WorkflowState(workflow_id=workflow_id)
-        state.adapter_states[self._adapter_key(adapter_type)] = dict(initial_state)
-        self._workflows[workflow_id] = state
+    ) -> dict[str, Any]:
+        record = self._ensure_record(workflow_id)
+        record["adapter_states"][self._adapter_key(adapter_type)] = dict(initial_state)
         self._persist()
-        return state
+        return self._copy_record(record)
 
     async def update_adapter_state(
         self,
         workflow_id: str,
         adapter_type: str | AdapterType,
         state: dict[str, Any],
-    ) -> WorkflowState:
-        workflow_state = self._workflows.setdefault(
-            workflow_id, WorkflowState(workflow_id=workflow_id)
-        )
-        workflow_state.adapter_states[self._adapter_key(adapter_type)] = dict(state)
+    ) -> dict[str, Any]:
+        workflow_state = self._ensure_record(workflow_id)
+        workflow_state["adapter_states"][self._adapter_key(adapter_type)] = dict(state)
         self._persist()
-        return workflow_state
+        return self._copy_record(workflow_state)
 
     async def get_workflow_state(self, workflow_id: str) -> dict[str, Any] | None:
         workflow_state = self._workflows.get(workflow_id)
         if workflow_state is None:
             return None
-        return {
-            "workflow_id": workflow_state.workflow_id,
-            "adapter_states": workflow_state.adapter_states,
-        }
-
-    async def list_workflows(self, limit: int = 100) -> list[dict[str, Any]]:
-        workflows = [
-            {
-                "workflow_id": workflow_id,
-                "adapter_states": state.adapter_states,
-            }
-            for workflow_id, state in self._workflows.items()
-        ]
-        return workflows[:limit]
+        return self._copy_record(workflow_state)
 
     @staticmethod
     def _adapter_key(adapter_type: str | AdapterType) -> str:
@@ -786,17 +906,3 @@ class TaskRouter:
         for adapter_type in self.adapter_registry.adapters:
             health[adapter_type.value] = await self._get_adapter_health(adapter_type)
         return health
-
-
-def get_task_router() -> Any:
-    """Compatibility alias for the legacy routing singleton.
-
-    The older code path expected ``mahavishnu.core.task_router.get_task_router``.
-    Preserve that surface by delegating to the routing module singleton.
-    """
-    return _legacy_get_task_router()
-
-
-def reset_task_router() -> None:
-    """Compatibility alias for the legacy routing singleton reset."""
-    _legacy_reset_task_router()

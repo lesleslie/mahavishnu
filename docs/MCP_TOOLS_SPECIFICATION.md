@@ -812,7 +812,7 @@ Spawn worker instances for task execution.
 
 ```python
 async def worker_spawn(
-    worker_type: str = "terminal-qwen",
+    worker_type: str = "terminal-claude",
     count: int = 1,
 ) -> list[str]
 ```
@@ -820,8 +820,8 @@ async def worker_spawn(
 **Parameters:**
 
 - `worker_type`: Type of worker to spawn. Options:
-  - `"terminal-qwen"`: Headless Qwen CLI execution
   - `"terminal-claude"`: Headless Claude Code CLI execution
+  - `"terminal-qwen"`: Headless Qwen CLI execution (supported non-default worker type)
   - `"container-executor"`: Containerized task execution
 - `count`: Number of workers to spawn (1-50). Default: 1
 
@@ -845,11 +845,11 @@ async def worker_spawn(
 **Example:**
 
 ```python
-# Spawn 3 Qwen workers
-worker_ids = await worker_spawn(worker_type="terminal-qwen", count=3)
-
 # Spawn 5 Claude workers
 worker_ids = await worker_spawn(worker_type="terminal-claude", count=5)
+
+# Spawn 3 Qwen workers
+worker_ids = await worker_spawn(worker_type="terminal-qwen", count=3)
 
 # Spawn 2 container workers
 worker_ids = await worker_spawn(worker_type="container-executor", count=2)
@@ -888,7 +888,7 @@ async def worker_execute(
     "exit_code": 0,
     "duration_seconds": 45.2,
     "metadata": {
-        "worker_type": "terminal-qwen",
+        "worker_type": "terminal-qwen",  # supported non-default worker type
         "last_output": "Final response",
         "output_lines": 10,
     },
@@ -996,7 +996,7 @@ async def worker_list() -> list[dict[str, Any]]
 [
     {
         "worker_id": "term_abc123",
-        "worker_type": "terminal-qwen",
+        "worker_type": "terminal-qwen",  # supported non-default worker type
         "status": "running",
     },
     {
@@ -1206,7 +1206,7 @@ async def worker_health() -> dict[str, Any]
     "workers": [
         {
             "worker_id": "term_abc123",
-            "worker_type": "terminal-qwen",
+            "worker_type": "terminal-qwen",  # supported non-default worker type
             "status": "running",
         },
         {
@@ -1244,7 +1244,7 @@ async def pool_spawn(
     name: str = "default",
     min_workers: int = 1,
     max_workers: int = 10,
-    worker_type: str = "terminal-qwen",
+    worker_type: str = "terminal-claude",
 ) -> dict[str, Any]
 ```
 
@@ -1254,7 +1254,7 @@ async def pool_spawn(
 - `name`: Human-readable pool name
 - `min_workers`: Minimum number of workers (1-10)
 - `max_workers`: Maximum number of workers (1-100)
-- `worker_type`: Worker type. Options: "terminal-qwen", "terminal-claude", "container"
+- `worker_type`: Worker type. Options: "terminal-claude", "terminal-qwen" (supported non-default), "container"
 
 **Returns:**
 

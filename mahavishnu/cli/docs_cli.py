@@ -46,10 +46,9 @@ def add_docs_commands(app: typer.Typer) -> None:
         # Import from scripts/ (added to pythonpath in pyproject.toml)
         try:
             from audit_ecosystem_docs import (  # type: ignore[import]
-                load_active_repos,
+                build_audit_report,
                 render_markdown,
                 render_text,
-                summarize_repo,
             )
         except ImportError:
             typer.echo(
@@ -66,15 +65,19 @@ def add_docs_commands(app: typer.Typer) -> None:
             typer.echo(f"Invalid output format: {output!r}. Use text, json, or markdown.", err=True)
             raise typer.Exit(1)
 
-        repos = load_active_repos(ecosystem)
-        summaries = [summarize_repo(repo) for repo in repos]
+        catalog, catalog_issues, summaries = build_audit_report(ecosystem)
 
         if output == "json":
             rendered = json.dumps([asdict(s) for s in summaries], indent=2)
         elif output == "markdown":
-            rendered = render_markdown(summaries, include_files=include_files)
+            rendered = render_markdown(
+                summaries,
+                include_files=include_files,
+                catalog=catalog,
+                catalog_issues=catalog_issues,
+            )
         else:
-            rendered = render_text(summaries)
+            rendered = render_text(summaries, catalog=catalog, catalog_issues=catalog_issues)
 
         if write:
             write.parent.mkdir(parents=True, exist_ok=True)

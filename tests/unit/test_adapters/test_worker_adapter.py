@@ -77,7 +77,12 @@ def test_adapter_properties_and_init_variants(monkeypatch: pytest.MonkeyPatch) -
 async def test_execute_validation_and_success_and_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     mgr = _Manager()
     adapter = wa.WorkerOrchestratorAdapter(worker_manager=mgr)
-    monkeypatch.setattr(wa, "resolve_worker_type", lambda req, task_type, prompt: "terminal-qwen")
+    requested_worker_types: list[str] = []
+    monkeypatch.setattr(
+        wa,
+        "resolve_worker_type",
+        lambda req, task_type, prompt: requested_worker_types.append(req) or "terminal-qwen",
+    )
 
     with pytest.raises(ValueError):
         await adapter.execute({"prompt": ""}, ["/repo"])
@@ -100,6 +105,7 @@ async def test_execute_validation_and_success_and_fallback(monkeypatch: pytest.M
     out2 = await adapter.execute({"prompt": "x", "count": 1}, ["/repo"])
     assert out2["successful"] == 1
     assert mgr.collect_calls
+    assert requested_worker_types[-1] == "terminal-claude"
 
     # spawn failure surfaces
     mgr.raise_spawn = True

@@ -12,7 +12,7 @@ from typer.testing import CliRunner
 
 from mahavishnu._main_cli import app
 from mahavishnu.cli.config_validator import DriftReport, run_validation
-from mahavishnu.core.health_schemas import HealthStatus
+from mahavishnu.core.health import HealthStatus
 
 if TYPE_CHECKING:
     from pathlib import Path

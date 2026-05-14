@@ -1,13 +1,14 @@
 """Comprehensive unit tests for the TerminalAIWorker in mahavishnu.workers.terminal."""
 
-import asyncio
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from mahavishnu.core.status import WorkerStatus
 from mahavishnu.workers.base import WorkerResult
+from mahavishnu.workers.generic_shell import GenericShellWorker
+from mahavishnu.workers.protocol import TerminalWorkerProtocol
+from mahavishnu.workers.registry import get_worker_config
 from mahavishnu.workers.terminal import TerminalAIWorker
 
 
@@ -79,7 +80,7 @@ class TestStart:
     async def test_start_qwen_launches_correct_command(self, qwen_worker, mock_terminal_manager):
         await qwen_worker.start()
         mock_terminal_manager.launch_sessions.assert_called_once_with(
-            command="qwen -o stream-json --approval-mode yolo",
+            command=get_worker_config("terminal-qwen").command,
             count=1,
         )
         assert qwen_worker.session_id == "session_abc"
@@ -92,7 +93,7 @@ class TestStart:
     ):
         await claude_worker.start()
         mock_terminal_manager.launch_sessions.assert_called_once_with(
-            command="claude --output-format stream-json --permission-mode acceptEdits",
+            command=get_worker_config("terminal-claude").command,
             count=1,
         )
         assert claude_worker.session_id == "session_abc"
@@ -103,12 +104,10 @@ class TestStart:
         session_id = await qwen_worker.start()
         assert session_id == "session_abc"
 
-    @pytest.mark.asyncio
-    async def test_start_unknown_ai_type_raises(self):
+    def test_start_unknown_ai_type_raises(self):
         mgr = AsyncMock()
-        worker = TerminalAIWorker(mgr, "unknown_type")
-        with pytest.raises(ValueError, match="Unknown AI type: unknown_type"):
-            await worker.start()
+        with pytest.raises(ValueError, match="Unknown worker type: terminal-unknown_type"):
+            TerminalAIWorker(mgr, "unknown_type")
 
     @pytest.mark.asyncio
     async def test_start_overwrites_existing_session_id(self, qwen_worker):
@@ -206,7 +205,9 @@ class TestExecute:
                 "metadata": {
                     "type": "worker_execution",
                     "worker_id": "existing_session",
-                    "worker_type": "qwen",
+                    "worker_type": "terminal-qwen",
+                    "worker_name": "Qwen AI",
+                    "category": "ai_assistant",
                     "task_prompt": "do work",
                     "status": "completed",
                     "duration_seconds": 5.0,
@@ -280,299 +281,6 @@ class TestStoreResultInSessionBuddy:
         worker_with_session.session_buddy_client = mock_client
         result = WorkerResult(worker_id="x", status=WorkerStatus.COMPLETED, output="o")
         await worker_with_session._store_result_in_session_buddy(result, {})
-
-
-class TestMonitorCompletion:
-    @pytest.mark.asyncio
-    async def test_returns_on_finish_reason(self, worker_with_session, mock_terminal_manager):
-        completion_line = json.dumps({"finish_reason": "stop"})
-        mock_terminal_manager.capture_output.return_value = completion_line
-        worker_with_session._is_complete = lambda d: "finish_reason" in d
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            result = await worker_with_session._monitor_completion({"timeout": 5})
-        assert result.status == WorkerStatus.COMPLETED
-        assert result.exit_code == 0
-
-    @pytest.mark.asyncio
-    async def test_returns_on_done_key(self, worker_with_session, mock_terminal_manager):
-        mock_terminal_manager.capture_output.return_value = json.dumps({"done": True})
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            result = await worker_with_session._monitor_completion({"timeout": 5})
-        assert result.status == WorkerStatus.COMPLETED
-
-    @pytest.mark.asyncio
-    async def test_returns_on_type_done(self, worker_with_session, mock_terminal_manager):
-        mock_terminal_manager.capture_output.return_value = json.dumps({"type": "done"})
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            result = await worker_with_session._monitor_completion({"timeout": 5})
-        assert result.status == WorkerStatus.COMPLETED
-
-    @pytest.mark.asyncio
-    async def test_returns_on_type_completion(self, worker_with_session, mock_terminal_manager):
-        mock_terminal_manager.capture_output.return_value = json.dumps({"type": "completion"})
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            result = await worker_with_session._monitor_completion({"timeout": 5})
-        assert result.status == WorkerStatus.COMPLETED
-
-    @pytest.mark.asyncio
-    async def test_returns_on_status_completed(self, worker_with_session, mock_terminal_manager):
-        mock_terminal_manager.capture_output.return_value = json.dumps({"status": "completed"})
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            result = await worker_with_session._monitor_completion({"timeout": 5})
-        assert result.status == WorkerStatus.COMPLETED
-
-    @pytest.mark.asyncio
-    async def test_extracts_string_content_before_completion(
-        self, worker_with_session, mock_terminal_manager
-    ):
-        content_line = json.dumps({"content": "hello world"})
-        done_line = json.dumps({"type": "done"})
-        mock_terminal_manager.capture_output.return_value = f"{content_line}\n{done_line}"
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            result = await worker_with_session._monitor_completion({"timeout": 5})
-        assert "hello world" in result.output
-
-    @pytest.mark.asyncio
-    async def test_extracts_multimodal_content_before_completion(
-        self, worker_with_session, mock_terminal_manager
-    ):
-        content_line = json.dumps({"content": [{"type": "text", "text": "multi-modal output"}]})
-        done_line = json.dumps({"type": "done"})
-        mock_terminal_manager.capture_output.return_value = f"{content_line}\n{done_line}"
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            result = await worker_with_session._monitor_completion({"timeout": 5})
-        assert "multi-modal output" in result.output
-
-    @pytest.mark.asyncio
-    async def test_content_on_completion_line_is_not_captured(
-        self, worker_with_session, mock_terminal_manager
-    ):
-        mock_terminal_manager.capture_output.return_value = json.dumps(
-            {
-                "content": "lost content",
-                "type": "done",
-            }
-        )
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            result = await worker_with_session._monitor_completion({"timeout": 5})
-        assert "lost content" not in result.output
-
-    @pytest.mark.asyncio
-    async def test_handles_non_json_lines(self, worker_with_session, mock_terminal_manager):
-        mock_terminal_manager.capture_output.return_value = "plain text line\n" + json.dumps(
-            {"type": "done"}
-        )
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            result = await worker_with_session._monitor_completion({"timeout": 5})
-        assert "plain text line" in result.output
-
-    @pytest.mark.asyncio
-    async def test_timeout_returns_timeout_result(self, worker_with_session, mock_terminal_manager):
-        mock_terminal_manager.capture_output.return_value = ""
-        call_count = 0
-        original_time = asyncio.get_event_loop().time()
-
-        def fake_time():
-            nonlocal call_count
-            call_count += 1
-            return original_time + (call_count * 1000)
-
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            with patch("asyncio.get_event_loop") as mock_loop:
-                mock_loop.return_value.time = fake_time
-                result = await worker_with_session._monitor_completion({"timeout": 5})
-        assert result.status == WorkerStatus.TIMEOUT
-        assert result.error == "Task timed out"
-        assert result.metadata["timeout"] == 5
-
-    @pytest.mark.asyncio
-    async def test_capture_output_exception_handled(
-        self, worker_with_session, mock_terminal_manager
-    ):
-        mock_terminal_manager.capture_output.side_effect = RuntimeError("capture failed")
-        call_count = 0
-        original_time = asyncio.get_event_loop().time()
-
-        def fake_time():
-            nonlocal call_count
-            call_count += 1
-            return original_time + (call_count * 1000)
-
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            with patch("asyncio.get_event_loop") as mock_loop:
-                mock_loop.return_value.time = fake_time
-                result = await worker_with_session._monitor_completion({"timeout": 5})
-        assert result.status == WorkerStatus.TIMEOUT
-
-    @pytest.mark.asyncio
-    async def test_multiple_content_chunks_accumulated(
-        self, worker_with_session, mock_terminal_manager
-    ):
-        chunk1 = json.dumps({"content": "chunk1"})
-        chunk2 = json.dumps({"content": "chunk2"})
-        chunk3 = json.dumps({"type": "done"})
-        mock_terminal_manager.capture_output.return_value = f"{chunk1}\n{chunk2}\n{chunk3}"
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            result = await worker_with_session._monitor_completion({"timeout": 5})
-        assert "chunk1" in result.output
-        assert "chunk2" in result.output
-
-    @pytest.mark.asyncio
-    async def test_multimodal_list_without_text_key_ignored(
-        self, worker_with_session, mock_terminal_manager
-    ):
-        mock_terminal_manager.capture_output.return_value = json.dumps(
-            {
-                "content": [{"type": "image", "url": "http://example.com/img.png"}],
-                "type": "done",
-            }
-        )
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            result = await worker_with_session._monitor_completion({"timeout": 5})
-        assert result.output == ""
-
-    @pytest.mark.asyncio
-    async def test_default_timeout_is_300(self, worker_with_session, mock_terminal_manager):
-        mock_terminal_manager.capture_output.return_value = ""
-        call_count = 0
-        original_time = asyncio.get_event_loop().time()
-
-        def fake_time():
-            nonlocal call_count
-            call_count += 1
-            return original_time + (call_count * 1000)
-
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            with patch("asyncio.get_event_loop") as mock_loop:
-                mock_loop.return_value.time = fake_time
-                result = await worker_with_session._monitor_completion({})
-        assert result.metadata["timeout"] == 300
-
-
-class TestIsComplete:
-    def test_finish_reason_key(self, qwen_worker):
-        assert qwen_worker._is_complete({"finish_reason": "stop"}) is True
-
-    def test_done_key(self, qwen_worker):
-        assert qwen_worker._is_complete({"done": True}) is True
-
-    def test_type_done(self, qwen_worker):
-        assert qwen_worker._is_complete({"type": "done"}) is True
-
-    def test_type_completion(self, qwen_worker):
-        assert qwen_worker._is_complete({"type": "completion"}) is True
-
-    def test_status_completed(self, qwen_worker):
-        assert qwen_worker._is_complete({"status": "completed"}) is True
-
-    def test_not_complete(self, qwen_worker):
-        assert qwen_worker._is_complete({"content": "still going"}) is False
-
-    def test_empty_dict_not_complete(self, qwen_worker):
-        assert qwen_worker._is_complete({}) is False
-
-    def test_type_other_not_complete(self, qwen_worker):
-        assert qwen_worker._is_complete({"type": "content"}) is False
-
-
-class TestExtractContent:
-    def test_delta_content_format(self, qwen_worker):
-        result = qwen_worker._extract_content({"delta": {"content": "delta text"}})
-        assert result == "delta text"
-
-    def test_delta_without_content_key(self, qwen_worker):
-        result = qwen_worker._extract_content({"delta": {"role": "assistant"}})
-        assert result is None
-
-    def test_delta_not_dict(self, qwen_worker):
-        result = qwen_worker._extract_content({"delta": "string_delta"})
-        assert result is None
-
-    def test_text_field(self, qwen_worker):
-        result = qwen_worker._extract_content({"text": "direct text"})
-        assert result == "direct text"
-
-    def test_content_string(self, qwen_worker):
-        result = qwen_worker._extract_content({"content": "string content"})
-        assert result == "string content"
-
-    def test_content_list_with_text_item(self, qwen_worker):
-        result = qwen_worker._extract_content({"content": [{"type": "text", "text": "list text"}]})
-        assert result == "list text"
-
-    def test_content_list_without_text_key(self, qwen_worker):
-        result = qwen_worker._extract_content({"content": [{"type": "image"}]})
-        assert result is None
-
-    def test_content_empty_list(self, qwen_worker):
-        result = qwen_worker._extract_content({"content": []})
-        assert result is None
-
-    def test_content_list_non_dict_item(self, qwen_worker):
-        result = qwen_worker._extract_content({"content": ["plain_string"]})
-        assert result is None
-
-    def test_no_matching_keys(self, qwen_worker):
-        result = qwen_worker._extract_content({"role": "assistant", "model": "qwen"})
-        assert result is None
-
-    def test_priority_delta_over_content(self, qwen_worker):
-        result = qwen_worker._extract_content(
-            {
-                "delta": {"content": "delta"},
-                "content": "content",
-            }
-        )
-        assert result == "delta"
-
-    def test_priority_text_over_content(self, qwen_worker):
-        result = qwen_worker._extract_content(
-            {
-                "text": "text_val",
-                "content": "content_val",
-            }
-        )
-        assert result == "text_val"
-
-
-class TestBuildResult:
-    def test_build_result_with_start_time(self, worker_with_session):
-        result = worker_with_session._build_result(["line1", "line2"], "last")
-        assert result.status == WorkerStatus.COMPLETED
-        assert result.worker_id == "existing_session"
-        assert result.output == "line1\nline2"
-        assert result.exit_code == 0
-        assert result.error is None
-        assert result.metadata["last_output"] == "last"
-        assert result.metadata["output_lines"] == 2
-        assert result.metadata["ai_type"] == "qwen"
-        assert isinstance(result.duration_seconds, float)
-
-    def test_build_result_without_start_time(self, qwen_worker):
-        qwen_worker.session_id = "sid"
-        result = qwen_worker._build_result(["out"], "last_out")
-        assert result.duration_seconds == 0
-
-    def test_build_result_empty_lines(self, worker_with_session):
-        result = worker_with_session._build_result([], "")
-        assert result.output == ""
-        assert result.metadata["output_lines"] == 0
-
-
-class TestGetCommandTemplate:
-    def test_qwen_template(self, qwen_worker):
-        template = qwen_worker._get_command_template()
-        assert template == "qwen -o stream-json --approval-mode yolo"
-
-    def test_claude_template(self, claude_worker):
-        template = claude_worker._get_command_template()
-        assert template == "claude --output-format stream-json --permission-mode acceptEdits"
-
-    def test_unknown_type_raises(self):
-        mgr = AsyncMock()
-        worker = TerminalAIWorker(mgr, "invalid")
-        with pytest.raises(ValueError, match="Unknown AI type: invalid"):
-            worker._get_command_template()
 
 
 class TestStop:
@@ -655,7 +363,7 @@ class TestGetProgress:
         assert progress["session_id"] is None
         assert progress["output_preview"] == ""
         assert progress["worker_type"] == "terminal-qwen"
-        assert progress["ai_type"] == "qwen"
+        assert progress["worker_name"] == "Qwen AI"
 
     @pytest.mark.asyncio
     async def test_progress_with_session(self, worker_with_session, mock_terminal_manager):
@@ -690,3 +398,28 @@ class TestGetProgress:
         worker_with_session._status = WorkerStatus.RUNNING
         progress = await worker_with_session.get_progress()
         assert progress["status"] == "running"
+
+
+class TestProtocolConformance:
+    """Verify that concrete worker classes satisfy TerminalWorkerProtocol."""
+
+    def test_generic_shell_worker_satisfies_protocol(self):
+        worker = GenericShellWorker(
+            terminal_manager=AsyncMock(),
+            worker_type="terminal-shell",
+        )
+        assert isinstance(worker, TerminalWorkerProtocol)
+
+    def test_terminal_ai_worker_satisfies_protocol(self):
+        worker = TerminalAIWorker(terminal_manager=AsyncMock(), ai_type="qwen")
+        assert isinstance(worker, TerminalWorkerProtocol)
+
+    def test_non_worker_does_not_satisfy_protocol(self):
+        assert not isinstance(object(), TerminalWorkerProtocol)
+
+    def test_worker_name_is_raw_ai_type_not_config_name(self, qwen_worker):
+        # worker_name is the raw ai_type for backward compatibility
+        assert qwen_worker.worker_name == "qwen"
+        # config.name is the full registry label used in session-buddy metadata
+        assert qwen_worker.config.name == "Qwen AI"
+        assert qwen_worker.worker_name != qwen_worker.config.name

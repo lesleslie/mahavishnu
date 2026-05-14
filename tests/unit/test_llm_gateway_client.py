@@ -33,12 +33,14 @@ def test_gateway_api_base_matches_protocol() -> None:
 
 
 def test_qualify_model_is_idempotent() -> None:
-    assert qualify_model("glm-5-turbo", provider="zai-openai") == "zai-openai/glm-5-turbo"
+    assert qualify_model("MiniMax-M2.7", provider="minimax-openai") == (
+        "minimax-openai/MiniMax-M2.7"
+    )
     assert qualify_model("anthropic/GLM-4.7", provider="anthropic") == "anthropic/GLM-4.7"
 
 
 def test_default_provider_follows_protocol_family() -> None:
-    assert default_provider_for_protocol(ProtocolFamily.OPENAI).value == "zai-openai"
+    assert default_provider_for_protocol(ProtocolFamily.OPENAI).value == "minimax-openai"
     assert default_provider_for_protocol(ProtocolFamily.ANTHROPIC).value == "anthropic"
 
 
@@ -85,6 +87,6 @@ def test_build_gateway_envelope_allows_openai_override_and_no_cache() -> None:
 
     assert envelope.url == "http://127.0.0.1:8471/v1/chat/completions"
     assert envelope.api_base == "http://127.0.0.1:8471/v1"
-    assert envelope.request.model == "zai-openai/glm-5-turbo"
+    assert envelope.request.model == "minimax-openai/glm-5-turbo"
     assert envelope.request.route_class is RouteClass.IMAGE
     assert envelope.request.cache_headers == {}

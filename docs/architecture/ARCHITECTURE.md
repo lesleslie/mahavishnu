@@ -23,7 +23,7 @@ This document should be read as an architectural reference and historical snapsh
 
 **Complete**:
 
-- Security hardening (JWT auth, Claude Code + Qwen support)
+- Security hardening (JWT auth, Claude Code + configurable non-default worker/provider support)
 - Async base adapter architecture
 - FastMCP-based MCP server with terminal management
 - Configuration system using Oneiric patterns
@@ -93,7 +93,7 @@ ______________________________________________________________________
 
 - Real Ollama integration (not simulated)
 - Vector embeddings with `nomic-embed-text` model
-- Document ingestion from `repos.yaml`
+- Document ingestion from `ecosystem.yaml`
 - Semantic search across codebases
 - Configuration-based model selection
 - Comprehensive error handling
@@ -160,7 +160,7 @@ results = await adapter.query_documents(query="authentication patterns")
 - Agno v2.0 integration
 - Agent lifecycle management
 - Tool integration
-- Multi-LLM routing (Ollama, Claude, Qwen)
+- Multi-LLM routing (Ollama, Claude, configurable non-default providers)
 - Memory and context management
 - Agent coordination
 
@@ -321,7 +321,7 @@ server_name: "Mahavishnu Orchestrator"
 cache_root: .oneiric_cache
 health_ttl_seconds: 60.0
 log_level: INFO
-repos_path: "~/repos.yaml"
+repos_path: "~/ecosystem.yaml"
 
 # Adapters
 adapters:
@@ -407,7 +407,7 @@ ______________________________________________________________________
 **JWT Authentication** with multiple providers:
 
 - Claude Code subscription authentication
-- Qwen free service authentication
+- Configurable non-default provider authentication
 - Custom JWT tokens
 
 **Configuration**:

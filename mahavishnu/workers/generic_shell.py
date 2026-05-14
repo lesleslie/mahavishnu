@@ -13,7 +13,7 @@ from typing import Any
 
 from ..terminal.manager import TerminalManager
 from .base import BaseWorker, WorkerResult, WorkerStatus
-from .registry import WorkerConfig, get_worker_config
+from .registry import WorkerCategory, WorkerConfig, get_worker_config
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,21 @@ class GenericShellWorker(BaseWorker):
         self._start_time: float | None = None
         self._kwargs = kwargs
 
+        # Guard: SHELL/AI_ASSISTANT/REMOTE workers must have a non-empty command.
+        # CONTAINER, APPLICATION, and GATEWAY workers intentionally use command=""
+        # because they are handled by dedicated worker classes, not this path.
+        _requires_command = (
+            WorkerCategory.SHELL,
+            WorkerCategory.AI_ASSISTANT,
+            WorkerCategory.REMOTE,
+        )
+        if self.config.category in _requires_command and not self.config.command:
+            raise ValueError(
+                f"Worker '{worker_type}' (category={self.config.category.value}) "
+                "requires a non-empty command. "
+                "HTTP-API-only workers must use a dedicated worker class, not GenericShellWorker."
+            )
+
         # For SSH, require host parameter
         if worker_type == "terminal-ssh" and "host" not in kwargs:
             raise ValueError("SSH worker requires 'host' parameter")
@@ -91,7 +106,7 @@ class GenericShellWorker(BaseWorker):
             try:
                 command = command.format(**format_kwargs)
             except KeyError as e:
-                raise ValueError(f"Missing parameter for command: {e}")
+                raise ValueError(f"Missing parameter for command: {e}") from e
 
         return command
 
@@ -380,6 +395,7 @@ class GenericShellWorker(BaseWorker):
                         "type": "worker_execution",
                         "worker_id": result.worker_id,
                         "worker_type": self.worker_type,
+                        "worker_name": self.config.name,
                         "category": self.config.category.value,
                         "task_prompt": task.get("prompt", ""),
                         "status": result.status.value,
@@ -445,6 +461,7 @@ class GenericShellWorker(BaseWorker):
             "output_preview": output[:200] if output else "",
             "duration_seconds": duration,
             "worker_type": self.worker_type,
+            "worker_name": self.config.name,
             "category": self.config.category.value,
         }
 

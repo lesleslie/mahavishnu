@@ -12,16 +12,134 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
 
-if TYPE_CHECKING:
-    from uuid import UUID
-
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Static query constants — no f-strings, all user values via positional params.
+# ---------------------------------------------------------------------------
+
+_INSERT_EVENT = (
+    "INSERT INTO audit.task_events"
+    " (task_id, run_id, event_type, event_time, actor, payload, metadata)"
+    " VALUES ($1, $2, $3, $4, $5, $6, $7)"
+    " RETURNING *"
+)
+
+_SELECT_BY_TASK = (
+    "SELECT * FROM audit.task_events"
+    " WHERE task_id = $1"
+    " ORDER BY event_time DESC LIMIT $2 OFFSET $3"
+)
+
+_SELECT_BY_TASK_AND_RUN = (
+    "SELECT * FROM audit.task_events"
+    " WHERE task_id = $1 AND run_id = $2"
+    " ORDER BY event_time DESC"
+)
+
+# list_events: all 16 combinations of optional filters {task_id, run_id, event_type, actor}.
+# Filter fields are always ordered: task_id → run_id → event_type → actor.
+# $1..$N = filter values in that order; last two params are always LIMIT, OFFSET.
+_T = "task_id"
+_R = "run_id"
+_E = "event_type"
+_A = "actor"
+
+_LIST_QUERIES: dict[frozenset[str], str] = {
+    # 0 filters
+    frozenset(): (
+        "SELECT * FROM audit.task_events"
+        " ORDER BY event_time DESC LIMIT $1 OFFSET $2"
+    ),
+    # 1 filter
+    frozenset({_T}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE task_id = $1"
+        " ORDER BY event_time DESC LIMIT $2 OFFSET $3"
+    ),
+    frozenset({_R}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE run_id = $1"
+        " ORDER BY event_time DESC LIMIT $2 OFFSET $3"
+    ),
+    frozenset({_E}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE event_type = $1"
+        " ORDER BY event_time DESC LIMIT $2 OFFSET $3"
+    ),
+    frozenset({_A}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE actor = $1"
+        " ORDER BY event_time DESC LIMIT $2 OFFSET $3"
+    ),
+    # 2 filters
+    frozenset({_T, _R}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE task_id = $1 AND run_id = $2"
+        " ORDER BY event_time DESC LIMIT $3 OFFSET $4"
+    ),
+    frozenset({_T, _E}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE task_id = $1 AND event_type = $2"
+        " ORDER BY event_time DESC LIMIT $3 OFFSET $4"
+    ),
+    frozenset({_T, _A}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE task_id = $1 AND actor = $2"
+        " ORDER BY event_time DESC LIMIT $3 OFFSET $4"
+    ),
+    frozenset({_R, _E}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE run_id = $1 AND event_type = $2"
+        " ORDER BY event_time DESC LIMIT $3 OFFSET $4"
+    ),
+    frozenset({_R, _A}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE run_id = $1 AND actor = $2"
+        " ORDER BY event_time DESC LIMIT $3 OFFSET $4"
+    ),
+    frozenset({_E, _A}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE event_type = $1 AND actor = $2"
+        " ORDER BY event_time DESC LIMIT $3 OFFSET $4"
+    ),
+    # 3 filters
+    frozenset({_T, _R, _E}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE task_id = $1 AND run_id = $2 AND event_type = $3"
+        " ORDER BY event_time DESC LIMIT $4 OFFSET $5"
+    ),
+    frozenset({_T, _R, _A}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE task_id = $1 AND run_id = $2 AND actor = $3"
+        " ORDER BY event_time DESC LIMIT $4 OFFSET $5"
+    ),
+    frozenset({_T, _E, _A}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE task_id = $1 AND event_type = $2 AND actor = $3"
+        " ORDER BY event_time DESC LIMIT $4 OFFSET $5"
+    ),
+    frozenset({_R, _E, _A}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE run_id = $1 AND event_type = $2 AND actor = $3"
+        " ORDER BY event_time DESC LIMIT $4 OFFSET $5"
+    ),
+    # 4 filters
+    frozenset({_T, _R, _E, _A}): (
+        "SELECT * FROM audit.task_events"
+        " WHERE task_id = $1 AND run_id = $2 AND event_type = $3 AND actor = $4"
+        " ORDER BY event_time DESC LIMIT $5 OFFSET $6"
+    ),
+}
+
+_LIST_FILTER_ORDER = (_T, _R, _E, _A)
 
 
 # =============================================================================
@@ -30,47 +148,19 @@ logger = logging.getLogger(__name__)
 
 
 class TaskEventCreate(BaseModel):
-    """Task event creation request model.
-
-    Args:
-        task_id: Task ID (required)
-        run_id: Run ID (optional)
-        event_type: Event type (required)
-        event_time: Event timestamp (default: now)
-        actor: Actor identifier (optional)
-        payload: Event data (optional)
-    """
+    """Task event creation request model."""
 
     task_id: UUID = Field(..., description="Task ID")
     run_id: UUID | None = Field(None, description="Run ID")
     event_type: str = Field(..., description="Event type")
-    event_time: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
-    )
-    payload: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Event data",
-    )
+    event_time: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    payload: dict[str, Any] = Field(default_factory=dict, description="Event data")
     actor: str | None = Field(None, description="Actor identifier")
-    metadata: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Event metadata",
-    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Event metadata")
 
 
 class TaskEventRead(BaseModel):
-    """Task event read response model.
-
-    Args:
-        id: Event ID (from database)
-        task_id: Task ID
-        run_id: Run ID (optional)
-        event_type: Event type
-        event_time: Event timestamp
-        actor: Actor identifier
-        payload: Event payload
-        metadata: Additional metadata
-    """
+    """Task event read response model."""
 
     id: UUID = Field(..., description="Event ID")
     task_id: UUID = Field(..., description="Task ID")
@@ -78,41 +168,19 @@ class TaskEventRead(BaseModel):
     event_type: str = Field(..., description="Event type")
     event_time: datetime = Field(..., description="Event timestamp")
     actor: str | None = Field(None, description="Actor identifier")
-    payload: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Event payload",
-    )
-    metadata: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional metadata",
-    )
+    payload: dict[str, Any] = Field(default_factory=dict, description="Event payload")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 
 class TaskEventUpdate(BaseModel):
-    """Task event update request model.
-
-    All fields are optional for partial updates.
-
-    Args:
-        payload: Updated payload (optional)
-        metadata: Metadata updates (merged with existing, optional)
-    """
+    """Task event update request model (all fields optional)."""
 
     payload: dict[str, Any] | None = Field(None, description="Updated payload")
     metadata: dict[str, Any] | None = Field(None, description="Metadata updates")
 
 
 class TaskEventFilter(BaseModel):
-    """Task event filter for list operations.
-
-    Args:
-        task_id: Filter by task (optional)
-        run_id: Filter by run (optional)
-        event_type: Filter by event type (optional)
-        actor: Filter by actor (optional)
-        limit: Maximum results (default: 50)
-        offset: Result offset (default: 0)
-    """
+    """Task event filter for list operations."""
 
     task_id: UUID | None = Field(None, description="Filter by task")
     run_id: UUID | None = Field(None, description="Filter by run")
@@ -128,51 +196,14 @@ class TaskEventFilter(BaseModel):
 
 
 class TaskEventRepository(BaseRepository[TaskEventCreate, TaskEventRead, TaskEventUpdate]):
-    """Repository for audit.task_events table operations.
-
-    Provides CRUD operations for task events with:
-    - Type-safe Pydantic model returns
-    - Async context manager pattern
-    - Structured error handling
-
-    Usage:
-        repo = TaskEventRepository()
-
-        async with repo:
-            event = await repo.record_event(
-                TaskEventCreate(task_id=task_id, event_type="status_changed")
-            )
-            events = await repo.get_events_for_task(task_id)
-    """
-
-    def __init__(self) -> None:
-        """Initialize task event repository."""
-        super().__init__()
-        self._table = "audit.task_events"
+    """Repository for audit.task_events table operations."""
 
     async def record_event(self, data: TaskEventCreate) -> TaskEventRead:
-        """Record a task event.
-
-        Args:
-            data: Event creation data
-
-        Returns:
-            Created event with generated ID
-
-        Raises:
-            RepositoryError: If creation fails
-        """
-        query = f"""
-            INSERT INTO {self._table} (
-                task_id, run_id, event_type, event_time, actor, payload, metadata
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING *
-        """
-
+        """Record a task event."""
         try:
             async with self.transaction() as conn:
                 row = await conn.fetchrow(
-                    query,
+                    _INSERT_EVENT,
                     data.task_id,
                     data.run_id,
                     data.event_type,
@@ -181,22 +212,15 @@ class TaskEventRepository(BaseRepository[TaskEventCreate, TaskEventRead, TaskEve
                     data.payload,
                     data.metadata,
                 )
-
                 if row is None:
                     raise RepositoryError(
                         "Failed to create task event",
                         operation="record_event",
                         details={"task_id": str(data.task_id)},
                     )
-
                 return self._row_to_model(row)
-
         except Exception as e:
-            raise self._handle_error(
-                "record_event",
-                e,
-                {"task_id": str(data.task_id)},
-            )
+            raise self._handle_error("record_event", e, {"task_id": str(data.task_id)})
 
     async def get_events_for_task(
         self,
@@ -204,139 +228,43 @@ class TaskEventRepository(BaseRepository[TaskEventCreate, TaskEventRead, TaskEve
         limit: int = 50,
         offset: int = 0,
     ) -> list[TaskEventRead]:
-        """Get events for a task.
-
-        Args:
-            task_id: Task ID
-            limit: Maximum results
-            offset: Result offset
-
-        Returns:
-            List of events for the task
-
-        Raises:
-            RepositoryError: If query fails
-        """
-        query = f"""
-            SELECT * FROM {self._table}
-            WHERE task_id = $1
-            ORDER BY event_time DESC
-            LIMIT $2 OFFSET $3
-        """
-
+        """Get events for a task."""
         try:
             async with self.connection() as conn:
-                rows = await conn.fetch(query, task_id, limit, offset)
+                rows = await conn.fetch(_SELECT_BY_TASK, task_id, limit, offset)
                 return [self._row_to_model(row) for row in rows]
-
         except Exception as e:
-            raise self._handle_error(
-                "get_events_for_task",
-                e,
-                {"task_id": str(task_id)},
-            )
+            raise self._handle_error("get_events_for_task", e, {"task_id": str(task_id)})
 
-    async def get_events_for_run(
-        self,
-        task_id: UUID,
-        run_id: UUID,
-    ) -> list[TaskEventRead]:
-        """Get events for a run (filtered by both task and run IDs).
-
-        Args:
-            task_id: Task ID
-            run_id: Run ID to filter by
-
-        Returns:
-            List of events for the run
-
-        Raises:
-            RepositoryError: If query fails
-        """
-        query = f"""
-            SELECT * FROM {self._table}
-            WHERE task_id = $1 AND run_id = $2
-            ORDER BY event_time DESC
-        """
-
+    async def get_events_for_run(self, task_id: UUID, run_id: UUID) -> list[TaskEventRead]:
+        """Get events for a run (filtered by both task and run IDs)."""
         try:
             async with self.connection() as conn:
-                rows = await conn.fetch(query, task_id, run_id)
+                rows = await conn.fetch(_SELECT_BY_TASK_AND_RUN, task_id, run_id)
                 return [self._row_to_model(row) for row in rows]
-
         except Exception as e:
             raise self._handle_error(
-                "get_events_for_run",
-                e,
-                {"task_id": str(task_id), "run_id": str(run_id)},
+                "get_events_for_run", e, {"task_id": str(task_id), "run_id": str(run_id)}
             )
 
-    async def list_events(
-        self,
-        filters: TaskEventFilter,
-    ) -> list[TaskEventRead]:
-        """List events with optional filters.
-
-        Args:
-            filters: Filter criteria for events
-
-        Returns:
-            List of events matching filters
-
-        Raises:
-            RepositoryError: If query fails
-        """
-        conditions = []
-        params = []
-        param_idx = 1
-
-        if filters.task_id:
-            conditions.append(f"task_id = ${param_idx}")
-            params.append(filters.task_id)
-            param_idx += 1
-
-        if filters.run_id:
-            conditions.append(f"run_id = ${param_idx}")
-            params.append(filters.run_id)
-            param_idx += 1
-
-        if filters.event_type:
-            conditions.append(f"event_type = ${param_idx}")
-            params.append(filters.event_type)
-            param_idx += 1
-
-        if filters.actor:
-            conditions.append(f"actor = ${param_idx}")
-            params.append(filters.actor)
-            param_idx += 1
-
-        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    async def list_events(self, filters: TaskEventFilter) -> list[TaskEventRead]:
+        """List events with optional filters."""
+        active = frozenset(
+            f for f in _LIST_FILTER_ORDER if getattr(filters, f, None) is not None
+        )
+        query = _LIST_QUERIES[active]
+        params: list[Any] = [getattr(filters, f) for f in _LIST_FILTER_ORDER if f in active]
         params.extend([filters.limit, filters.offset])
-
-        query = f"""
-            SELECT * FROM {self._table}
-            {where_clause}
-            ORDER BY event_time DESC
-            LIMIT ${param_idx} OFFSET ${param_idx + 1}
-        """
 
         try:
             async with self.connection() as conn:
                 rows = await conn.fetch(query, *params)
                 return [self._row_to_model(row) for row in rows]
-
         except Exception as e:
             raise self._handle_error("list_events", e, {"filters": filters.model_dump()})
 
     def _row_to_model(self, row: Any) -> TaskEventRead:
-        """Convert database row to TaskEventRead model.
-
-        Args:
-            row: Database row record
-
-        Returns:
-            TaskEventRead model instance
-        """
+        """Convert database row to TaskEventRead model."""
         return TaskEventRead(
             id=row["id"],
             task_id=row["task_id"],

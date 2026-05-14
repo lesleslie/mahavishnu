@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import inspect
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import uuid
 
 from mcp_common.websocket import (
@@ -26,6 +26,8 @@ from mcp_common.websocket import (
 
 # Import EventTypes from protocol module
 from mcp_common.websocket.protocol import EventTypes
+
+from mahavishnu.core.events.transport import WebSocketEventHandler
 
 # Import authentication
 from mahavishnu.websocket.auth import get_authenticator
@@ -40,6 +42,9 @@ from mahavishnu.websocket.rate_limiter import RateLimitResult, TokenBucketRateLi
 from mahavishnu.websocket.tls_config import get_websocket_tls_config, load_ssl_context
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from mahavishnu.core.events.envelope import EventEnvelope
 
 
 def _get_explicit_attribute(obj: Any, name: str, default: Any = None) -> Any:
@@ -190,6 +195,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
 
         # Track connection IDs for rate limiting
         self._connection_ids: dict[Any, str] = {}
+        self._event_bridge = WebSocketEventHandler(self)
 
         # Security warning for non-localhost without TLS
         if not tls_enabled and host not in ("127.0.0.1", "localhost", "::1"):
@@ -203,6 +209,14 @@ class MahavishnuWebSocketServer(WebSocketServer):
             f"MahavishnuWebSocketServer initialized: {host}:{port} "
             f"(TLS: {ssl_context is not None}, rate_limit: {message_rate_limit}/s)"
         )
+
+    async def handle_event_envelope(self, envelope: EventEnvelope) -> dict[str, Any]:
+        """Bridge a canonical event envelope into websocket rooms."""
+        return await self._event_bridge.handle(envelope)
+
+    async def handle(self, envelope: EventEnvelope) -> dict[str, Any]:
+        """Compatibility handler for event consumers."""
+        return await self.handle_event_envelope(envelope)
 
     async def on_connect(self, websocket: Any, connection_id: str) -> None:
         """Handle new WebSocket connection.

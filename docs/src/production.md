@@ -91,7 +91,7 @@ Set required environment variables:
 ```bash
 export MAHAVISHNU_AUTH_SECRET="your-production-jwt-secret"
 export MAHAVISHNU_LLM_API_KEY="your-production-llm-key"
-export MAHAVISHNU_REPOS_PATH="/etc/mahavishnu/repos.yaml"
+export MAHAVISHNU_REPOS_PATH="/etc/mahavishnu/ecosystem.yaml"
 ```
 
 ## Deployment Strategies
@@ -175,7 +175,7 @@ Regularly backup configuration files:
 ```bash
 tar -czf mahavishnu-config-backup-$(date +%Y%m%d).tar.gz \
   settings/production.yaml \
-  repos.yaml
+  ecosystem.yaml
 ```
 
 ### Rollback Plan

@@ -1,7 +1,7 @@
 # Mahavishnu - LLM Model Configuration
-# Updated: 2026-04-13 (LLM Provider Reconfiguration v2)
+# Updated: 2026-05-10 (MiniMax provider migration, phase M1)
 #
-# ZAI GLM models are the primary cloud provider via coding plan subscription.
+# MiniMax M2.7 models are the primary cloud provider via the public MiniMax API.
 # Ollama remains the local fallback. Bifrost is optional (activated via env vars).
 #
 # Related files:
@@ -13,30 +13,30 @@
 # CLOUD PROVIDERS (priority order)
 # =============================================================================
 
-# ZAI - Primary cloud provider (coding plan subscription)
-zai:
+# MiniMax - Primary cloud provider
+minimax:
   enabled: true
-  base_url: "https://api.z.ai/api/coding/paas/v4"
-  api_key: "${ZAI_API_KEY}"
+  base_url: "https://api.minimax.io/v1"
+  api_key: "${MINIMAX_API_KEY}"
   priority: 1
   timeout: 30
   max_retries: 2
   task_routing:
-    CODE_GENERATION: "glm-4.7"
-    CODE_REVIEW: "glm-4.7"
-    DEBUGGING: "glm-4.7"
-    REFACTORING: "glm-4.7"
-    TESTING: "glm-4.7"
-    REASONING: "glm-5.1"
-    GENERAL: "glm-4.5"
-    ANALYSIS: "glm-4.5"
-    DOCUMENTATION: "glm-4.5-air"
-    SWARM: "glm-4.5-air"
-    SWARM_FREE: "glm-4.7-flash"
-    VISION: "GLM-4.5V"
-    QUICK: "glm-4.5-air"
+    CODE_GENERATION: "MiniMax-M2.7"
+    CODE_REVIEW: "MiniMax-M2.7"
+    DEBUGGING: "MiniMax-M2.7"
+    REFACTORING: "MiniMax-M2.7"
+    TESTING: "MiniMax-M2.7"
+    REASONING: "MiniMax-M2.7"
+    GENERAL: "MiniMax-M2.7"
+    ANALYSIS: "MiniMax-M2.7"
+    DOCUMENTATION: "MiniMax-M2.7"
+    SWARM: "MiniMax-M2.7-highspeed"
+    SWARM_FREE: "MiniMax-M2.7-highspeed"
+    VISION: "MiniMax-M2.7"
+    QUICK: "MiniMax-M2.7-highspeed"
   fallback:
-    subscription_exhausted: "glm-4.7-flash"
+    subscription_exhausted: "MiniMax-M2.7-highspeed"
 
 # =============================================================================
 # LOCAL PROVIDER
@@ -44,21 +44,21 @@ zai:
 
 ollama:
   enabled: true
-  base_url: "http://localhost:11434"
+  base_url: "http://localhost:11434"  # llama-server (llama.cpp)
   priority: 2
   task_routing:
-    CODE_GENERATION: "qwen2.5-coder:7b"
-    CODE_REVIEW: "qwen2.5-coder:7b"
-    DEBUGGING: "qwen2.5-coder:7b"
-    REFACTORING: "qwen2.5-coder:7b"
-    DOCUMENTATION: "qwen2.5-coder:7b"
-    TESTING: "qwen2.5-coder:7b"
-    REASONING: "llama3:8b"
-    CREATIVE: "llava:7b"
-    ANALYSIS: "qwen2.5-coder:7b"
-    VISION: "llava:7b"
+    CODE_GENERATION: "Qwen3-8B-8.2B-Q4_K_M"
+    CODE_REVIEW: "Qwen3-8B-8.2B-Q4_K_M"
+    DEBUGGING: "Qwen3-8B-8.2B-Q4_K_M"
+    REFACTORING: "Qwen3-8B-8.2B-Q4_K_M"
+    DOCUMENTATION: "Qwen3-8B-8.2B-Q4_K_M"
+    TESTING: "Qwen3-8B-8.2B-Q4_K_M"
+    REASONING: "Qwen3-8B-8.2B-Q4_K_M"
+    CREATIVE: "Qwen3-8B-8.2B-Q4_K_M"
+    ANALYSIS: "Qwen3-8B-8.2B-Q4_K_M"
+    VISION: "Qwen3-8B-8.2B-Q4_K_M"
     EMBEDDING: "nomic-embed-text"
-    GENERAL: "qwen2.5-coder:7b"
+    GENERAL: "Qwen3-8B-8.2B-Q4_K_M"
 
 # =============================================================================
 # OPTIONAL PROVIDERS
@@ -70,19 +70,10 @@ bifrost:
   base_url: "http://127.0.0.1:8471"
   activate_env: "BIFROST_BASE_URL"
 
-# Qwen (Alibaba Cloud) - future provider
-qwen:
-  enabled: false
-  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
-  api_key: "${QWEN_API_KEY}"
-  task_routing:
-    CODE_GENERATION: "qwen-coder-plus"
-    GENERAL: "qwen-plus"
-
 # =============================================================================
 # DEFAULTS
 # =============================================================================
 
-default_provider: "zai"
-fallback_chain: ["zai", "ollama"]
-free_tier_provider: "zai-free"
+default_provider: "minimax"
+fallback_chain: ["minimax", "ollama"]
+free_tier_provider: "minimax"

@@ -128,7 +128,7 @@ class FlowRegistry:
             "Registered flow in registry",
             extra={
                 "flow_id": flow_id,
-                "name": name,
+                "flow_name": name,
                 "prefect_name": prefect_name,
                 "tags": tags or [],
             },
@@ -220,7 +220,7 @@ class FlowRegistry:
 
             logger.info(
                 "Unregistered flow from registry",
-                extra={"flow_id": flow_id, "name": flow_name},
+                extra={"flow_id": flow_id, "flow_name": flow_name},
             )
 
             return True

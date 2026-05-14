@@ -6,7 +6,7 @@ Welcome to the Mahavishnu documentation. Mahavishnu is a multi-engine orchestrat
 
 **Completed**:
 
-- Security hardening (JWT auth, Claude Code + Qwen support)
+- Security hardening (JWT auth, Claude Code, MiniMax, and configurable Qwen support)
 - Async base adapter architecture
 - FastMCP-based MCP server with terminal management
 - Configuration system using Oneiric patterns
@@ -58,7 +58,7 @@ Mahavishnu provides a unified interface to multiple orchestration engines, allow
 - **CLI**: Typer-based command-line interface with authentication
 - **MCP Server**: FastMCP-based server for tool integration
 - **Terminal Management**: Multi-terminal session management (10+ concurrent sessions)
-- **Security**: JWT authentication with multiple providers (Claude Code, Qwen, custom)
+- **Security**: JWT authentication with multiple providers (Claude Code, MiniMax, configurable Qwen support, custom)
 
 ### Adapters
 

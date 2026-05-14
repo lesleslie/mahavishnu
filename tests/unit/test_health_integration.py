@@ -538,21 +538,19 @@ class TestSingleton:
 @pytest.mark.asyncio
 class TestPersistHealthState:
     async def test_persists_to_sqlite_fallback(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
+        db_path = tmp_path / "health.db"
+        monkeypatch.setattr("mahavishnu.core.health_integration._HEALTH_DB", db_path)
         cfg = HealthIntegrationConfig(persist_to_storage=True)
         monitor = AdapterHealthMonitor(registry={}, config=cfg)
         state = AdapterHealthState(adapter_name="test")
         state.update({"status": "healthy"}, cfg)
-        # Patch the source module to trigger SQLite fallback
         with patch(
             "mahavishnu.core.oneiric_client.get_dhara_client",
             side_effect=ImportError("no client"),
         ):
             await monitor._persist_health_state("test", state)
-        # Verify SQLite file was created
         import sqlite3
 
-        db_path = tmp_path / "health.db"
         assert db_path.exists()
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()

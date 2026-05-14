@@ -12,14 +12,14 @@ from mahavishnu.core.code_index.path_validation import (
 
 def _make_mock_settings(config_dir: str):
     """Build a lightweight MahavishnuSettings stand-in with repos_path."""
-    repos_path = str(Path(config_dir) / "repos.yaml")
+    repos_path = str(Path(config_dir) / "ecosystem.yaml")
     return type("S", (), {"repos_path": repos_path})()
 
 
 def test_validate_repo_path_registered(tmp_path, monkeypatch):
-    """Accepts a path listed in repos.yaml."""
-    repos_yaml = tmp_path / "repos.yaml"
-    repos_yaml.write_text(f"repos:\n  - path: {tmp_path / 'my-repo'}\n")
+    """Accepts a path listed in ecosystem.yaml."""
+    ecosystem_yaml = tmp_path / "ecosystem.yaml"
+    ecosystem_yaml.write_text(f"repos:\n  - path: {tmp_path / 'my-repo'}\n")
     monkeypatch.setattr(
         "mahavishnu.core.code_index.path_validation.MahavishnuSettings",
         lambda: _make_mock_settings(str(tmp_path)),
@@ -29,9 +29,9 @@ def test_validate_repo_path_registered(tmp_path, monkeypatch):
 
 
 def test_validate_repo_path_unregistered(tmp_path, monkeypatch):
-    """Rejects a path not in repos.yaml."""
-    repos_yaml = tmp_path / "repos.yaml"
-    repos_yaml.write_text("repos: []\n")
+    """Rejects a path not in ecosystem.yaml."""
+    ecosystem_yaml = tmp_path / "ecosystem.yaml"
+    ecosystem_yaml.write_text("repos: []\n")
     monkeypatch.setattr(
         "mahavishnu.core.code_index.path_validation.MahavishnuSettings",
         lambda: _make_mock_settings(str(tmp_path)),
@@ -41,9 +41,9 @@ def test_validate_repo_path_unregistered(tmp_path, monkeypatch):
 
 
 def test_get_registered_repos_empty_file(tmp_path, monkeypatch):
-    """Returns empty set when repos.yaml has no repos key."""
-    repos_yaml = tmp_path / "repos.yaml"
-    repos_yaml.write_text("other_key: []\n")
+    """Returns empty set when ecosystem.yaml has no repos key."""
+    ecosystem_yaml = tmp_path / "ecosystem.yaml"
+    ecosystem_yaml.write_text("other_key: []\n")
     monkeypatch.setattr(
         "mahavishnu.core.code_index.path_validation.MahavishnuSettings",
         lambda: _make_mock_settings(str(tmp_path)),
@@ -53,7 +53,7 @@ def test_get_registered_repos_empty_file(tmp_path, monkeypatch):
 
 
 def test_get_registered_repos_missing_file(tmp_path, monkeypatch):
-    """Returns empty set when repos.yaml does not exist."""
+    """Returns empty set when no repository manifest exists."""
     monkeypatch.setattr(
         "mahavishnu.core.code_index.path_validation.MahavishnuSettings",
         lambda: _make_mock_settings(str(tmp_path)),
@@ -64,8 +64,10 @@ def test_get_registered_repos_missing_file(tmp_path, monkeypatch):
 
 def test_get_registered_repos_filters_missing_path(tmp_path, monkeypatch):
     """Ignores repo entries that lack a 'path' key."""
-    repos_yaml = tmp_path / "repos.yaml"
-    repos_yaml.write_text(f"repos:\n  - name: no-path-repo\n  - path: {tmp_path / 'valid-repo'}\n")
+    ecosystem_yaml = tmp_path / "ecosystem.yaml"
+    ecosystem_yaml.write_text(
+        f"repos:\n  - name: no-path-repo\n  - path: {tmp_path / 'valid-repo'}\n"
+    )
     monkeypatch.setattr(
         "mahavishnu.core.code_index.path_validation.MahavishnuSettings",
         lambda: _make_mock_settings(str(tmp_path)),
@@ -81,8 +83,8 @@ def test_validate_repo_path_resolves_symlinks(tmp_path, monkeypatch):
     link_dir = tmp_path / "symlink-repo"
     link_dir.symlink_to(repo_dir)
 
-    repos_yaml = tmp_path / "repos.yaml"
-    repos_yaml.write_text(f"repos:\n  - path: {repo_dir}\n")
+    ecosystem_yaml = tmp_path / "ecosystem.yaml"
+    ecosystem_yaml.write_text(f"repos:\n  - path: {repo_dir}\n")
     monkeypatch.setattr(
         "mahavishnu.core.code_index.path_validation.MahavishnuSettings",
         lambda: _make_mock_settings(str(tmp_path)),

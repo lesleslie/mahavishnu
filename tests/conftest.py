@@ -5,6 +5,12 @@ allowing the production readiness checker to run only unit tests with the
 `-m unit` flag.
 """
 
+import os
+
+# Remove AI_AGENT before any imports so crackerjack's AISettings.ai_agent bool
+# field doesn't receive a string value set by the outer Claude Code environment.
+os.environ.pop("AI_AGENT", None)
+
 import pytest
 
 # Import fixtures from fixtures package for global availability

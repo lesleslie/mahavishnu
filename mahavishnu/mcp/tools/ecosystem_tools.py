@@ -47,9 +47,14 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
             timeout_per_section_ms: Per-section collection timeout in
                                     milliseconds.
         """
+        from mahavishnu.core.context import get_app_from_context
         from mahavishnu.core.ecosystem_status import EcosystemStatusService
 
-        service = EcosystemStatusService(section_timeout_ms=timeout_per_section_ms)
+        app = get_app_from_context()
+        service = EcosystemStatusService(
+            section_timeout_ms=timeout_per_section_ms,
+            recovery_provider=app if app and hasattr(app, "get_recovery_summary") else None,
+        )
         report = await service.generate_report()
         data = report.model_dump(mode="json")
 
@@ -77,9 +82,13 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
             capability: Optional capability name filter (partial match,
                         case-insensitive).
         """
+        from mahavishnu.core.context import get_app_from_context
         from mahavishnu.core.ecosystem_status import EcosystemStatusService
 
-        service = EcosystemStatusService()
+        app = get_app_from_context()
+        service = EcosystemStatusService(
+            recovery_provider=app if app and hasattr(app, "get_recovery_summary") else None
+        )
         report = await service.generate_report()
         caps = report.capabilities
 
@@ -102,9 +111,13 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
             task_class: The task class to check routing readiness for
                         (e.g. AI_TASK, CODE_GENERATION).
         """
+        from mahavishnu.core.context import get_app_from_context
         from mahavishnu.core.ecosystem_status import EcosystemStatusService
 
-        service = EcosystemStatusService()
+        app = get_app_from_context()
+        service = EcosystemStatusService(
+            recovery_provider=app if app and hasattr(app, "get_recovery_summary") else None
+        )
         report = await service.generate_report()
 
         available_adapters = {}

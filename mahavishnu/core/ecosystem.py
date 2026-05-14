@@ -8,6 +8,7 @@ This module provides utilities to:
 - Manage audit timestamps
 """
 
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -316,6 +317,44 @@ class EcosystemLoader:
                         f"{server.name}: Dependency '{dep}' is disabled, "
                         f"server may not function correctly"
                     )
+
+        return {"errors": errors, "warnings": warnings}
+
+    def validate_catalog_references(self) -> dict[str, list[str]]:
+        """Validate repository role references against the role catalog."""
+        errors: list[str] = []
+        warnings: list[str] = []
+        known_roles = {
+            role.get("name")
+            for role in self.config.roles
+            if isinstance(role, dict) and role.get("name")
+        }
+
+        for repo in self.config.repos:
+            if repo.role not in known_roles:
+                errors.append(f"{repo.name}: role '{repo.role}' is not defined in roles catalog")
+
+        return {"errors": errors, "warnings": warnings}
+
+    def validate_catalog_metadata(self) -> dict[str, list[str]]:
+        """Validate freshness and health metadata for the catalog."""
+        errors: list[str] = []
+        warnings: list[str] = []
+
+        try:
+            updated = date.fromisoformat(self.config.last_updated)
+        except ValueError:
+            warnings.append(f"ecosystem last_updated is invalid: {self.config.last_updated!r}")
+        else:
+            age_days = (date.today() - updated).days
+            if age_days > 30:
+                warnings.append(f"ecosystem last_updated is {age_days} days old; refresh metadata")
+
+        for server in self.config.mcp_servers:
+            if server.status != "enabled":
+                continue
+            if server.type == "http" and not server.health_check:
+                warnings.append(f"{server.name}: enabled HTTP server is missing health_check metadata")
 
         return {"errors": errors, "warnings": warnings}
 

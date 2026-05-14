@@ -314,14 +314,14 @@ class ShellFixtures:
                 "level": "ERROR",
                 "workflow_id": "wf_i9j0k1l2_refactor",
                 "message": "Failed to process repository: ImportError",
-                "logger": "mahavishnu.engines.prefect_adapter",
+                "logger": "mahavishnu.engines.prefect_adapter_impl",
             },
             {
                 "timestamp": "2026-02-09T22:30:30",
                 "level": "INFO",
                 "workflow_id": "wf_e5f6g7h8_test_gen",
                 "message": "Workflow completed successfully: 25 tests generated",
-                "logger": "mahavishnu.engines.agno_adapter",
+                "logger": "mahavishnu.engines.agno_adapter_impl",
             },
         ]
 

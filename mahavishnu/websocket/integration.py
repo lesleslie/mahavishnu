@@ -9,11 +9,23 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from mahavishnu.core.events.transport import (
+    CompositeEventEnvelopeHandler,
+    DLQEventHandler,
+    EventBusConsumer,
+    NotificationEventHandler,
+    RedisEventTransport,
+    RetryingEventEnvelopeHandler,
+)
+
 from .server import MahavishnuWebSocketServer
 from .tls_config import get_websocket_tls_config
 
 if TYPE_CHECKING:
+    from oneiric.runtime.notifications import NotificationRouter
+
     from ..core.config import MahavishnuSettings
+    from ..core.dead_letter_queue import DeadLetterQueue
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +41,9 @@ async def start_websocket_server(
     ca_file: str | None = None,
     verify_client: bool = False,
     auto_cert: bool = False,
+    event_transport: RedisEventTransport | None = None,
+    notification_router: NotificationRouter | None = None,
+    dead_letter_queue: DeadLetterQueue | None = None,
 ) -> MahavishnuWebSocketServer | None:
     """Start WebSocket server for Mahavishnu.
 
@@ -85,6 +100,37 @@ async def start_websocket_server(
 
         # Start server
         await server.start()
+
+        if event_transport is not None:
+            dlq_handler = (
+                DLQEventHandler(dead_letter_queue)
+                if dead_letter_queue is not None
+                else None
+            )
+            websocket_handler = RetryingEventEnvelopeHandler(
+                handler=server,
+                handler_name="websocket",
+                dead_letter_handler=dlq_handler,
+            )
+            handler = websocket_handler
+            if notification_router is not None:
+                notification_handler = RetryingEventEnvelopeHandler(
+                    handler=NotificationEventHandler(notification_router),
+                    handler_name="notification",
+                    dead_letter_handler=dlq_handler,
+                )
+                handler = CompositeEventEnvelopeHandler(
+                    (
+                        websocket_handler,
+                        notification_handler,
+                    )
+                )
+            event_consumer = EventBusConsumer(
+                transport=event_transport,
+                handler=handler,
+            )
+            await event_consumer.start()
+            server.event_consumer = event_consumer
 
         scheme = "wss" if server.ssl_context else "ws"
         logger.info(f"WebSocket server started on {scheme}://{host}:{port}")

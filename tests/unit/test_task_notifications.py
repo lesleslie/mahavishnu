@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from mahavishnu.core.events.envelope import EventEnvelope
 from mahavishnu.core.task_notifications import (
     EventFilter,
     EventSubscription,
@@ -13,6 +14,15 @@ from mahavishnu.core.task_notifications import (
     TaskEventEmitter,
     TaskEventType,
 )
+
+
+class _FakeEventPublisher:
+    def __init__(self) -> None:
+        self.published: list[EventEnvelope] = []
+
+    async def publish(self, envelope: EventEnvelope) -> EventEnvelope:
+        self.published.append(envelope)
+        return envelope
 
 
 @pytest.fixture
@@ -477,6 +487,24 @@ class TestTaskEventEmitter:
         assert event.event_type == TaskEventType.CREATED
         assert event.task_id == "task-123"
         callback.assert_called_once()
+
+    def test_emit_task_created_publishes_canonical_envelope(
+        self,
+        sample_task: dict[str, Any],
+    ) -> None:
+        """Emit task created event to the canonical event transport."""
+        publisher = _FakeEventPublisher()
+        emitter = TaskEventEmitter(event_publisher=publisher)
+
+        event = emitter.emit_task_created(sample_task, metadata={"source": "api"})
+
+        assert event.event_type == TaskEventType.CREATED
+        assert len(publisher.published) == 1
+        envelope = publisher.published[0]
+        assert envelope.event_type == "task.created"
+        assert envelope.source == "task_notifications"
+        assert envelope.payload["task_id"] == "task-123"
+        assert envelope.payload["metadata"] == {"source": "api"}
 
     def test_emit_task_updated(
         self,

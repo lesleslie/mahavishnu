@@ -38,7 +38,7 @@ from .errors import ContextNotInitializedError
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ..engines.agno_adapter import AgnoAdapter
+    from ..engines.agno_adapter_impl import AgnoAdapter
     from ..websocket.server import MahavishnuWebSocketServer
 
 
@@ -114,6 +114,7 @@ _websocket_server: ContextVar[MahavishnuWebSocketServer | None] = ContextVar(
     "websocket_server", default=None
 )
 _learning_engine: ContextVar[Any | None] = ContextVar("learning_engine", default=None)
+_app: ContextVar[Any | None] = ContextVar("app", default=None)
 
 
 # Re-export ContextNotInitializedError from errors for convenience
@@ -202,11 +203,17 @@ def get_learning_engine_from_context() -> Any | None:
     return _learning_engine.get()
 
 
+def get_app_from_context() -> Any | None:
+    """Get the active MahavishnuApp from context if one is registered."""
+    return _app.get()
+
+
 def set_app_context(
     llm_factory: LLMFactory | None = None,
     agno_adapter: AgnoAdapter | None = None,
     websocket_server: MahavishnuWebSocketServer | None = None,
     learning_engine: Any | None = None,
+    app: Any | None = None,
 ) -> None:
     """Set application context variables for dependency injection.
 
@@ -218,6 +225,7 @@ def set_app_context(
         agno_adapter: Optional Agno adapter for team execution
         websocket_server: Optional WebSocket server for real-time broadcasting
         learning_engine: Optional learning engine for team optimization
+        app: Optional MahavishnuApp for recovery/status access
 
     Example:
         >>> from mahavishnu.core.context import set_app_context
@@ -240,6 +248,9 @@ def set_app_context(
     if learning_engine is not None:
         _learning_engine.set(learning_engine)
 
+    if app is not None:
+        _app.set(app)
+
 
 def clear_app_context() -> None:
     """Clear all application context variables.
@@ -254,6 +265,7 @@ def clear_app_context() -> None:
     _agno_adapter.set(None)
     _websocket_server.set(None)
     _learning_engine.set(None)
+    _app.set(None)
 
 
 def is_context_initialized() -> bool:
@@ -334,6 +346,7 @@ class AppContext:
         agno_adapter: AgnoAdapter | None = None,
         websocket_server: MahavishnuWebSocketServer | None = None,
         learning_engine: Any | None = None,
+        app: Any | None = None,
     ) -> None:
         """Initialize context manager.
 
@@ -347,10 +360,12 @@ class AppContext:
         self._agno_adapter = agno_adapter
         self._websocket_server = websocket_server
         self._learning_engine = learning_engine
+        self._app = app
         self._old_llm_factory: LLMFactory | None = None
         self._old_agno_adapter: AgnoAdapter | None = None
         self._old_websocket_server: MahavishnuWebSocketServer | None = None
         self._old_learning_engine: Any | None = None
+        self._old_app: Any | None = None
 
     def __enter__(self) -> AppContext:
         """Enter context and set variables."""
@@ -358,6 +373,7 @@ class AppContext:
         self._old_agno_adapter = _agno_adapter.get()
         self._old_websocket_server = _websocket_server.get()
         self._old_learning_engine = _learning_engine.get()
+        self._old_app = _app.get()
 
         if self._llm_factory is not None:
             _llm_factory.set(self._llm_factory)
@@ -367,6 +383,8 @@ class AppContext:
             _websocket_server.set(self._websocket_server)
         if self._learning_engine is not None:
             _learning_engine.set(self._learning_engine)
+        if self._app is not None:
+            _app.set(self._app)
 
         return self
 
@@ -376,6 +394,7 @@ class AppContext:
         _agno_adapter.set(self._old_agno_adapter)
         _websocket_server.set(self._old_websocket_server)
         _learning_engine.set(self._old_learning_engine)
+        _app.set(self._old_app)
 
 
 # ============================================================================
@@ -390,6 +409,7 @@ __all__ = [
     "get_agno_adapter",
     "get_websocket_server",
     "get_learning_engine_from_context",
+    "get_app_from_context",
     # Context setters
     "set_app_context",
     "clear_app_context",

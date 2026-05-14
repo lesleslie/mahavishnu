@@ -7,7 +7,7 @@ Key Features:
 - Multi-agent team orchestration
 - Native MCP tool integration
 - Native Agno tools (file operations, code analysis)
-- Multiple LLM provider support (Anthropic, OpenAI, Ollama)
+- Multiple LLM provider support (Anthropic, OpenAI, Ollama, MiniMax)
 - Memory and session management
 - OpenTelemetry instrumentation
 
@@ -17,6 +17,7 @@ SDK Verified: 2026-02-20 against Agno v2.5.3
 from __future__ import annotations
 
 import asyncio
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -61,7 +62,7 @@ class LLMProvider(StrEnum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     OLLAMA = "ollama"
-    ZAI = "zai"
+    MINIMAX = "minimax"
 
 
 class MemoryBackend(StrEnum):
@@ -77,7 +78,7 @@ class AgnoLLMConfig(BaseModel):
 
     provider: LLMProvider = Field(
         default=LLMProvider.OLLAMA,
-        description="LLM provider (anthropic, openai, ollama)",
+        description="LLM provider (anthropic, openai, ollama, minimax)",
     )
     model_id: str = Field(
         default="qwen2.5:7b",
@@ -313,8 +314,8 @@ class LLMProviderFactory:
                 self._model_instance = self._create_anthropic_model(model_id)
             elif provider == LLMProvider.OLLAMA:
                 self._model_instance = self._create_ollama_model(model_id)
-            elif provider == LLMProvider.ZAI:
-                self._model_instance = self._create_zai_model(model_id)
+            elif provider == LLMProvider.MINIMAX:
+                self._model_instance = self._create_minimax_model(model_id)
             else:
                 raise AgnoError(
                     f"Unsupported LLM provider: {provider}",
@@ -330,7 +331,7 @@ class LLMProviderFactory:
                 f"Failed to import LLM provider '{provider}': {e}",
                 error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
                 details={"provider": provider, "import_error": str(e)},
-            )
+            ) from e
         except ConfigurationError:
             raise
         except Exception as e:
@@ -338,7 +339,7 @@ class LLMProviderFactory:
                 f"Failed to create LLM model: {e}",
                 error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
                 details={"provider": provider, "model_id": model_id, "error": str(e)},
-            )
+            ) from e
 
     def _create_openai_model(self, model_id: str) -> Any:
         """Create OpenAI model instance.
@@ -403,26 +404,26 @@ class LLMProviderFactory:
             options=options,
         )
 
-    def _create_zai_model(self, model_id: str) -> Any:
-        """Create ZAI model instance using OpenAI-compatible coding plan endpoint.
+    def _create_minimax_model(self, model_id: str) -> Any:
+        """Create MiniMax model instance using the OpenAI-compatible endpoint.
 
-        Uses ZAI's GLM models through the coding plan subscription endpoint.
-        Base URL: https://api.z.ai/api/coding/paas/v4
+        Uses MiniMax M2.7 models through the public OpenAI-compatible API.
+        Base URL: https://api.minimax.io/v1
 
         Args:
-            model_id: ZAI model identifier (e.g., 'glm-4.7', 'glm-5.1', 'glm-4.5-air')
+            model_id: MiniMax model identifier (e.g., 'MiniMax-M2.7', 'MiniMax-M2.7-highspeed')
 
         Returns:
-            OpenAIChat model instance configured for ZAI
+            OpenAIChat model instance configured for MiniMax
         """
         from agno.models.openai import OpenAIChat
 
-        api_key = self._get_api_key("ZAI_API_KEY", self.config.api_key_env)
+        api_key = self._get_api_key("MINIMAX_API_KEY", self.config.api_key_env)
 
         return OpenAIChat(
             id=model_id,
             api_key=api_key,
-            base_url=self.config.base_url or "https://api.z.ai/api/coding/paas/v4",
+            base_url=self.config.base_url or "https://api.minimax.io/v1",
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
         )
@@ -604,7 +605,7 @@ class AgnoAdapter(OrchestratorAdapter):
     Example:
         ```python
         from mahavishnu.core.config import MahavishnuSettings
-        from mahavishnu.engines.agno_adapter import AgnoAdapter
+        from mahavishnu.engines.agno_adapter_impl import AgnoAdapter
 
         settings = MahavishnuSettings()
         adapter = AgnoAdapter(config=settings)
@@ -665,6 +666,7 @@ class AgnoAdapter(OrchestratorAdapter):
         self._teams: dict[str, Team] = {}
         self._semaphore: asyncio.Semaphore | None = None
         self._team_manager: AgentTeamManager | None = None
+        self._execution_log: deque[dict[str, Any]] = deque(maxlen=200)
 
         # Set up capabilities
         self._capabilities = AdapterCapabilities(
@@ -781,7 +783,7 @@ class AgnoAdapter(OrchestratorAdapter):
                 f"AgnoAdapter initialization failed: {e}",
                 error_code=ErrorCode.CONFIGURATION_ERROR,
                 details={"error": str(e)},
-            )
+            ) from e
 
     async def _initialize_team_manager(self) -> None:
         """Initialize the agent team manager for multi-agent orchestration."""
@@ -818,7 +820,7 @@ class AgnoAdapter(OrchestratorAdapter):
                 "Agno SDK not installed. Install with: pip install agno>=2.5.0",
                 error_code=ErrorCode.CONFIGURATION_ERROR,
                 details={"import_error": str(e)},
-            )
+            ) from e
 
     def _get_all_tools(self) -> list[Any]:
         """Get all available tools (MCP + native).
@@ -873,7 +875,16 @@ class AgnoAdapter(OrchestratorAdapter):
                 error_code=ErrorCode.CONFIGURATION_ERROR,
             )
 
-        return await self._team_manager.create_team(config)
+        team_id = await self._team_manager.create_team(config)
+        self._execution_log.append(
+            {
+                "kind": "team_created",
+                "team_id": team_id,
+                "team_name": getattr(config, "name", team_id),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        )
+        return team_id
 
     async def create_team_from_yaml(self, yaml_path: str) -> str:
         """Create a team from a YAML configuration file.
@@ -928,7 +939,19 @@ class AgnoAdapter(OrchestratorAdapter):
                 error_code=ErrorCode.CONFIGURATION_ERROR,
             )
 
-        return await self._team_manager.run_team(team_id, task, mode, session_id)
+        result = await self._team_manager.run_team(team_id, task, mode, session_id)
+        self._execution_log.append(
+            {
+                "kind": "team_run",
+                "team_id": team_id,
+                "task": task,
+                "mode": mode or "coordinate",
+                "session_id": session_id,
+                "response_count": len(getattr(result, "responses", []) or []),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        )
+        return result
 
     async def get_team(self, team_id: str) -> Team | None:
         """Get a team instance by ID.
@@ -952,6 +975,12 @@ class AgnoAdapter(OrchestratorAdapter):
         if not self._team_manager:
             return []
         return self._team_manager.list_teams()
+
+    def get_execution_log(self, limit: int = 25) -> list[dict[str, Any]]:
+        """Return recent execution summaries for cockpit views."""
+        if limit <= 0:
+            return []
+        return list(self._execution_log)[-limit:]
 
     async def delete_team(self, team_id: str) -> bool:
         """Delete a team and cleanup resources.
@@ -1028,7 +1057,7 @@ class AgnoAdapter(OrchestratorAdapter):
                 f"Failed to create agent '{name}': {e}",
                 error_code=ErrorCode.AGNO_AGENT_NOT_FOUND,
                 details={"agent_name": name, "error": str(e)},
-            )
+            ) from e
 
     def _create_mock_agent(self, task_type: str) -> Any:
         """Create a lightweight fallback agent for mocked or offline runs."""
@@ -1175,7 +1204,7 @@ class AgnoAdapter(OrchestratorAdapter):
                 operation=f"agent_run:{agent.name}",
                 timeout_seconds=self.agno_config.default_timeout_seconds,
                 details={"agent_name": agent.name, "latency_ms": latency_ms},
-            )
+            ) from None
         except Exception as e:
             latency_ms = (time.monotonic() - start_time) * 1000
             raise AgnoError(
@@ -1186,7 +1215,7 @@ class AgnoAdapter(OrchestratorAdapter):
                     "error": str(e),
                     "latency_ms": latency_ms,
                 },
-            )
+            ) from e
 
     def _extract_content(self, response: RunOutput) -> str:
         """Extract content from Agno RunOutput.
@@ -1459,6 +1488,16 @@ Use available tools to complete the task and provide a summary."""
             # Calculate success/failure counts
             success_count = sum(1 for r in processed_results if r.get("status") == "completed")
             failure_count = len(processed_results) - success_count
+            self._execution_log.append(
+                {
+                    "kind": "task_batch",
+                    "task_type": task.get("type", "default"),
+                    "repos": list(repos),
+                    "success_count": success_count,
+                    "failure_count": failure_count,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                }
+            )
 
             return {
                 "status": "completed",
@@ -1479,7 +1518,7 @@ Use available tools to complete the task and provide a summary."""
                 f"Agno execution failed: {e}",
                 error_code=ErrorCode.INTERNAL_ERROR,
                 details={"task": task, "repos": repos, "error": str(e)},
-            )
+            ) from e
 
     async def get_health(self) -> dict[str, Any]:
         """Get adapter health status.
@@ -1551,6 +1590,7 @@ Use available tools to complete the task and provide a summary."""
         # Clear caches
         self._agents.clear()
         self._teams.clear()
+        self._execution_log.clear()
 
         # Reset state
         self._initialized = False
@@ -1611,7 +1651,7 @@ def agno_adapter_entries() -> list[dict[str, Any]]:
         {
             "category": "orchestration",
             "provider": "agno",
-            "factory_path": "mahavishnu.engines.agno_adapter:AgnoAdapter",
+            "factory_path": "mahavishnu.engines.agno_adapter_impl:AgnoAdapter",
             "description": "Agno multi-agent AI orchestration engine",
             "capabilities": [
                 "multi_agent",

@@ -159,6 +159,10 @@ class EventEnvelope(BaseModel):
         default=None,
         description="Correlation ID for tracing across services",
     )
+    causation_id: UUID | None = Field(
+        default=None,
+        description="Causation ID for tracing event lineage",
+    )
     payload: dict[str, Any] = Field(
         default_factory=dict,
         description="Domain-specific event payload",
@@ -194,6 +198,7 @@ class EventEnvelope(BaseModel):
             "timestamp": self.timestamp.isoformat(),
             "source": self.source,
             "correlation_id": str(self.correlation_id) if self.correlation_id else None,
+            "causation_id": str(self.causation_id) if self.causation_id else None,
             "payload": self.payload,
             "metadata": self.metadata,
         }
@@ -219,6 +224,8 @@ class EventEnvelope(BaseModel):
             data = {**data, "version": "0.1.0"}
         if "correlation_id" not in data:
             data = {**data, "correlation_id": None}
+        if "causation_id" not in data:
+            data = {**data, "causation_id": None}
         if "metadata" not in data:
             data = {**data, "metadata": {}}
         if "event_id" not in data:

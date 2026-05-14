@@ -132,7 +132,7 @@ mahavishnu ingest stats
 
 ```python
 import asyncio
-from mahavishnu.ingesters import ContentIngester
+from mahavishnu.ingesters.content_ingester import ContentIngester
 
 async def main():
     # Create ingester
@@ -155,7 +155,7 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from mahavishnu.ingesters import ContentIngester
+from mahavishnu.ingesters.content_ingester import ContentIngester
 
 async def main():
     urls = [
@@ -183,7 +183,7 @@ asyncio.run(main())
 ### Custom Configuration
 
 ```python
-from mahavishnu.ingesters import ContentIngester
+from mahavishnu.ingesters.content_ingester import ContentIngester
 from mahavishnu.core.embeddings import EmbeddingProvider
 
 # Custom chunking for technical documentation
@@ -395,7 +395,7 @@ Content ingester connects to MCP servers at default ports:
 To customize, create a custom ingester:
 
 ```python
-from mahavishnu.ingesters import ContentIngester
+from mahavishnu.ingesters.content_ingester import ContentIngester
 
 ingester = ContentIngester(
     akosha_url="http://custom-akosha:8682/mcp",

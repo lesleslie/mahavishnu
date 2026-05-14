@@ -12,7 +12,7 @@ ______________________________________________________________________
 Mahavishnu can manage your global AI environments including:
 
 - **Claude Code** (~/.claude, ~/.claude/settings.json)
-- **LLM Environments** (Claude Code, Qwen, Codex, etc.)
+- **LLM Environments** (Claude Code, MiniMax, Codex, etc.)
 - **Session-Buddy** shared memory integration
 - **Unified memory system** (Session-Buddy + AgentDB + pgvector)
 
@@ -62,7 +62,7 @@ ______________________________________________________________________
   "enabledPlugins": { ... },
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "...",
-    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "ANTHROPIC_BASE_URL": "https://api.minimax.io/v1",
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1
   }
@@ -153,17 +153,17 @@ ______________________________________________________________________
 secrets:
   # Environment variables (current Claude Code env vars)
   env:
-    prefix: "CLAUDE_"  # CLAUDE_ANTHROPIC_AUTH_TOKEN, etc.
+    prefix: "MINIMAX_"  # MINIMAX_API_KEY, MINIMAX_BASE_URL, etc.
     required_keys:
-      - ANTHROPIC_AUTH_TOKEN
-      - ANTHROPIC_BASE_URL
+      - MINIMAX_API_KEY
+      - MINIMAX_BASE_URL
 
   # File-based secrets for LLM API keys
   file:
     path: "~/.claude/secrets.json"
     required_keys:
       - claude_api_key
-      - qwen_api_key
+      - minimax_api_key
       - codex_api_key
 ```
 
@@ -193,15 +193,15 @@ class AIAccountManager:
         self._update_claude_settings(key, value)
 
     async def switch_llm(self, llm_name: str) -> None:
-        """Switch active LLM (Claude, Qwen, Codex)."""
+        """Switch active LLM (Claude, MiniMax, Codex)."""
         llm_configs = {
             "claude": {
                 "ANTHROPIC_AUTH_TOKEN": "...",
                 "ANTHROPIC_BASE_URL": "https://api.anthropic.com",
             },
-            "qwen": {
+            "minimax": {
                 "ANTHROPIC_AUTH_TOKEN": "...",
-                "ANTHROPIC_BASE_URL": "https://api.qwen.com",
+                "ANTHROPIC_BASE_URL": "https://api.minimax.io/v1",
             },
             "codex": {
                 "ANTHROPIC_AUTH_TOKEN": "...",
@@ -380,7 +380,7 @@ ______________________________________________________________________
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  AI Environment Manager                              │   │
 │  │  ├─ Claude Code (~/.claude/settings.json)           │   │
-│  │  ├─ Qwen (config + env vars)                        │   │
+│  │  ├─ MiniMax (config + env vars)                     │   │
 │  │  └─ Codex (config + env vars)                       │   │
 │  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
@@ -610,13 +610,13 @@ ______________________________________________________________________
        config_path: "~/.claude/settings.json"
        enabled: true
 
-     llm_profiles:
-       claude:
-         anthropic_base_url: "https://api.anthropic.com"
-       qwen:
-         anthropic_base_url: "https://api.qwen.com"
-       codex:
-         anthropic_base_url: "https://api.codex.com"
+    llm_profiles:
+      claude:
+        anthropic_base_url: "https://api.anthropic.com"
+      minimax:
+        anthropic_base_url: "https://api.minimax.io/v1"
+      codex:
+        anthropic_base_url: "https://api.codex.com"
 
    memory:
      tier1:
@@ -668,7 +668,7 @@ ______________________________________________________________________
    ```bash
    # Switch LLM
    mahavishnu ai switch-llm claude
-   mahavishnu ai switch-llm qwen
+   mahavishnu ai switch-llm minimax
    mahavishnu ai switch-llm codex
 
    # Memory operations
@@ -759,7 +759,7 @@ secrets:
     prefix: "LLM_API_"
     required_keys:
       - CLAUDE
-      - QWEN
+      - MINIMAX
       - CODEX
 
   # Option 2: File-based (encrypted)
@@ -871,7 +871,7 @@ ______________________________________________________________________
 **Benefits**:
 
 - ✅ Unified memory across all AI environments
-- ✅ Seamless LLM switching (Claude, Qwen, Codex)
+- ✅ Seamless LLM switching (Claude, MiniMax, Codex)
 - ✅ Automatic service restart on config changes
 - ✅ Cross-session shared memory via Session-Buddy
 - ✅ Three-tier memory (hot, warm, cold)

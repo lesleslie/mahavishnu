@@ -12,7 +12,7 @@ Architecture:
     6. Track ingestion history in Session-Buddy
 
 Example:
-    >>> from mahavishnu.ingesters import ContentIngester
+    >>> from mahavishnu.ingesters.content_ingester import ContentIngester
     >>> ingester = ContentIngester()
     >>> await ingester.initialize()
     >>> result = await ingester.ingest_url("https://blog.example.com/post")
@@ -853,13 +853,13 @@ class ContentIngester:
             Extracted text
         """
         try:
-            from ebooklib import epub
+            from ebooklib import ITEM_DOCUMENT, epub
 
             book = epub.read_epub(str(file_path))
             chapters = []
 
             for item in book.get_items():
-                if item.get_type() == ebooklib.ITEM_DOCUMENT:
+                if item.get_type() == ITEM_DOCUMENT:
                     content = item.get_content()
                     # Extract text from HTML (simplified)
                     import re

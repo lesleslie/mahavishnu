@@ -132,15 +132,18 @@ class TestEventEnvelope:
 
     def test_create_full_envelope(self):
         corr_id = UUID("12345678-1234-1234-1234-123456789012")
+        causation_id = UUID("87654321-4321-4321-4321-210987654321")
         envelope = EventEnvelope(
             event_type="code.graph.indexed",
             version="1.2.0",
             source="code_index_service",
             correlation_id=corr_id,
+            causation_id=causation_id,
             payload={"repo": "/path/to/repo", "stats": {"files": 42}},
             metadata={"trace_id": "abc-123"},
         )
         assert envelope.correlation_id == corr_id
+        assert envelope.causation_id == causation_id
         assert envelope.payload["repo"] == "/path/to/repo"
         assert envelope.metadata["trace_id"] == "abc-123"
         assert envelope.version == "1.2.0"
@@ -163,11 +166,13 @@ class TestEventEnvelope:
 
     def test_to_dict_and_from_dict_roundtrip(self):
         corr_id = UUID("12345678-1234-1234-1234-123456789012")
+        causation_id = UUID("87654321-4321-4321-4321-210987654321")
         original = EventEnvelope(
             event_type="code.graph.indexed",
             version="1.2.0",
             source="code_index_service",
             correlation_id=corr_id,
+            causation_id=causation_id,
             payload={"repo": "/path", "files": 42},
             metadata={"trace": "abc"},
         )
@@ -176,12 +181,14 @@ class TestEventEnvelope:
         assert isinstance(d["timestamp"], str)
         assert d["event_type"] == "code.graph.indexed"
         assert d["correlation_id"] == str(corr_id)
+        assert d["causation_id"] == str(causation_id)
         restored = EventEnvelope.from_dict(d)
         assert restored.event_id == original.event_id
         assert restored.event_type == original.event_type
         assert restored.version == original.version
         assert restored.source == original.source
         assert restored.correlation_id == original.correlation_id
+        assert restored.causation_id == original.causation_id
         assert restored.payload == original.payload
         assert restored.metadata == original.metadata
 
@@ -213,6 +220,38 @@ class TestEventEnvelope:
         envelope = EventEnvelope(event_type="test", source="s")
         d = envelope.to_dict()
         assert d["correlation_id"] is None
+
+    def test_from_dict_legacy_missing_all_optional_fields(self):
+        """from_dict fills in version, correlation_id, metadata, event_id when absent."""
+        from mahavishnu.core.events.envelope import EventEnvelope
+
+        data = {
+            "event_type": "test.legacy",
+            "source": "legacy_service",
+            "timestamp": "2024-01-01T00:00:00",
+        }
+        env = EventEnvelope.from_dict(data)
+        assert env.event_type == "test.legacy"
+        assert env.version is not None
+        assert env.correlation_id is None
+        assert env.metadata == {}
+        assert env.event_id is not None
+
+    def test_event_version_eq_with_non_version(self):
+        """__eq__ returns NotImplemented for non-EventVersion types."""
+        from mahavishnu.core.events.envelope import EventVersion
+
+        v = EventVersion("1.0.0")
+        result = v.__eq__(42)
+        assert result is NotImplemented
+
+    def test_event_version_lt_with_non_version(self):
+        """__lt__ returns NotImplemented for non-EventVersion types."""
+        from mahavishnu.core.events.envelope import EventVersion
+
+        v = EventVersion("1.0.0")
+        result = v.__lt__(42)  # type: ignore[arg-type]
+        assert result is NotImplemented
 
 
 # =============================================================================

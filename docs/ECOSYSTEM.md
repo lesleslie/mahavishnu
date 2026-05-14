@@ -4,13 +4,19 @@
 
 The `ecosystem.yaml` file is the **single source of truth** for your entire development ecosystem. It tracks:
 
-- **24 git repositories** with roles, tags, and audit timestamps
-- **14 MCP servers** with ports, commands, health checks, and dependencies
-- **83 Claude agents** with categorization and relevance tracking
-- **18 workflows** with validation timestamps
-- **64 skills** with usage tracking
-- **49 tools** with maintenance tracking
-- **12 role definitions** for repository classification
+- **8 git repositories** with roles, tags, and audit timestamps
+- **0 MCP servers** in the current local catalog
+- **0 Claude agents** in the current local catalog
+- **0 workflows** in the current local catalog
+- **0 skills** in the current local catalog
+- **0 tools** in the current local catalog
+- **15 role definitions** for repository classification
+
+Legacy consumers may still read `settings/repos.yaml`, but new configuration and
+documentation should treat `settings/ecosystem.yaml` as canonical.
+
+This guide is manually maintained. Run `mahavishnu docs audit` after catalog
+updates to confirm the counts below still match `settings/ecosystem.yaml`.
 
 ## Quick Start
 
@@ -49,7 +55,32 @@ mahavishnu/
 
 ### Relationship to repos.yaml
 
-The `repos.yaml` file is being **migrated into** `ecosystem.yaml`. The `repos` section in `ecosystem.yaml` now contains all 24 repositories with enhanced audit tracking:
+The `repos.yaml` file is a legacy compatibility path. The `repos` section in
+`ecosystem.yaml` now contains the 8 repositories currently defined in this
+checkout with enhanced audit tracking:
+
+For day-to-day Bodai work:
+
+- use `ecosystem.yaml` for new repo and operator inventory entries
+- use `ecosystem.yaml` for docs and examples unless you are explicitly
+  maintaining a compatibility path
+- treat `repos.yaml` as legacy input only
+
+### Canonical surfaces
+
+These are the preferred operator-facing surfaces for the overlap cleanup:
+
+- `ecosystem_status` for ecosystem health and capability summaries
+- `health_check_all` and `mcp_test_connection` for dependency probes
+- `code_index.index_repo` for repo structure indexing
+- `treesitter_tools` for structural parsing and symbol inspection
+- `search_tools.hybrid_search` for retrieval across indexed documents
+- Session-Buddy messaging tools for session and channel coordination
+
+Session-Buddy code-intel helpers such as `index_code_graph`,
+`find_related_code`, `index_documentation`, and `search_documentation` are
+retained as compatibility shims and should not be the default choice for new
+work.
 
 **Before** (repos.yaml only):
 
@@ -183,14 +214,15 @@ Categories for MCP servers and repositories:
 | `visualizer` | Creates visual diagrams and documentation | draw, render, visualize, document |
 | `extension` | Extends framework capabilities with pluggable modules | extend, filter, enhance, plug-in |
 | `tool` | Specialized tools and integrations via MCP protocol | connect, expose, integrate |
-| `database` | Databases and data storage systems | query, persist, index, search |
+| `worker` | Executes tasks and workflows under orchestrator direction | execute, report, retry, timeout, capture |
+| `seer` | Semantic search and knowledge aggregation | aggregate, search, detect, correlate, graph |
+| `curator` | Durable operational state and recovery coordination | capture, restore, track, persist, recover |
 
 ## Repository Management
 
 ### Adding a New Repository
 
 1. Create the repository
-1. Add it to `repos.yaml` (for now)
 1. Add it to `ecosystem.yaml` in the appropriate role section
 1. Include audit timestamps
 
@@ -359,7 +391,7 @@ When adding or updating servers:
 
 ## Migration from repos.yaml
 
-The `repos.yaml` file is being migrated into `ecosystem.yaml`. Key differences:
+The `repos.yaml` file remains a legacy compatibility input. Key differences:
 
 | repos.yaml | ecosystem.yaml |
 |------------|----------------|

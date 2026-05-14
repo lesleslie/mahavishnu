@@ -12,8 +12,8 @@ import pytest
 
 from mahavishnu.core.auth import JWTAuth, TokenPayload, get_auth_from_config
 from mahavishnu.workers.task_router import (
+    DEFAULT_MINIMAX_ROUTING,
     DEFAULT_OLLAMA_ROUTING,
-    DEFAULT_ZAI_ROUTING,
     TASK_PATTERNS,
     TaskCategory,
     classify_task,
@@ -207,11 +207,11 @@ class TestGetModelForTask:
     def test_zai_routing(self):
         model, category = get_model_for_task(
             "Compare REST vs GraphQL",
-            DEFAULT_ZAI_ROUTING,
-            "glm-4.5",
+            DEFAULT_MINIMAX_ROUTING,
+            "MiniMax-M2.7",
         )
         assert category == TaskCategory.REASONING
-        assert model == "glm-5.1"
+        assert model == "MiniMax-M2.7"
 
     def test_default_model_fallback(self):
         custom_routing: dict[TaskCategory, str] = {}
@@ -225,12 +225,12 @@ class TestGetModelForTask:
     def test_zai_vision(self):
         model, category = get_model_for_task(
             "describe image",
-            DEFAULT_ZAI_ROUTING,
-            "glm-4.5",
+            DEFAULT_MINIMAX_ROUTING,
+            "MiniMax-M2.7",
             context={"has_image": True},
         )
         assert category == TaskCategory.VISION
-        assert model == "GLM-4.5V"
+        assert model == "MiniMax-M2.7"
 
     def test_returns_tuple(self):
         result = get_model_for_task("test this", DEFAULT_OLLAMA_ROUTING, "default")
@@ -245,7 +245,7 @@ class TestGetModelForTask:
 
 class TestTaskPatterns:
     def test_all_patterns_are_valid_regex(self):
-        for category, patterns in TASK_PATTERNS.items():
+        for _category, patterns in TASK_PATTERNS.items():
             for pattern in patterns:
                 # Should not raise
                 re.compile(pattern)
@@ -257,7 +257,7 @@ class TestTaskPatterns:
     def test_default_routing_covers_all_categories(self):
         for cat in TaskCategory:
             assert cat in DEFAULT_OLLAMA_ROUTING, f"Missing ollama routing for {cat}"
-            assert cat in DEFAULT_ZAI_ROUTING, f"Missing zai routing for {cat}"
+            assert cat in DEFAULT_MINIMAX_ROUTING, f"Missing minimax routing for {cat}"
 
 
 # =========================================================================

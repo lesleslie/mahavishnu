@@ -103,7 +103,7 @@ When exposing the MCP server externally, ensure:
 Mahavishnu supports multiple authentication providers:
 
 - Claude Code subscription authentication
-- Qwen free service authentication
+- Qwen free-service compatibility
 - Custom JWT tokens
 
 Enable authentication in configuration:

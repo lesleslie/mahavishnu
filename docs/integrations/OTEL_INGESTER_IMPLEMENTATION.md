@@ -146,7 +146,7 @@ class OtelIngester:
 #### Basic Usage
 
 ```python
-from mahavishnu.ingesters import OtelIngester
+from mahavishnu.ingesters.otel_ingester import OtelIngester
 
 ingester = OtelIngester()
 await ingester.initialize()
@@ -181,7 +181,7 @@ async with OtelIngester() as ingester:
 #### Factory Function
 
 ```python
-from mahavishnu.ingesters import create_otel_ingester
+from mahavishnu.ingesters.otel_ingester import create_otel_ingester
 
 ingester = await create_otel_ingester(
     hot_store_path="/data/traces.db",
@@ -292,7 +292,7 @@ mahavishnu/ingesters/
 
    ```python
    if settings.otel_ingester_enabled:
-       from mahavishnu.ingesters import OtelIngester
+       from mahavishnu.ingesters.otel_ingester import OtelIngester
        self.otel_ingester = OtelIngester()
        await self.otel_ingester.initialize()
    ```

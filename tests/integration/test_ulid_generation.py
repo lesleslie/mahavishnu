@@ -3,13 +3,6 @@
 Tests ULID generation functionality without cross-system dependencies.
 """
 
-from pathlib import Path
-import sys
-
-# Add project paths to Python path
-sys.path.insert(0, str(Path("/Users/les/Projects/crackerjack")))
-sys.path.insert(0, str(Path("/Users/les/Projects/session-buddy")))
-
 import pytest
 
 _ULID_CHARS = "0123456789abcdefghjkmnpqrstvwxyz"

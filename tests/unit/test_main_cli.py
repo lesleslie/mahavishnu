@@ -68,7 +68,7 @@ def _make_mock_app(**config_overrides):
 
 @pytest.fixture(autouse=True)
 def _suppress_deprecation_warnings():
-    """Suppress DeprecationWarning from health_schemas compatibility wrapper."""
+    """Suppress any deprecation warnings emitted during CLI import tests."""
     import warnings
 
     with warnings.catch_warnings():

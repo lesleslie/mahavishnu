@@ -22,7 +22,7 @@ The OTel Ingester converts OpenTelemetry trace data into Akosha `HotRecord` form
 
 ```python
 import asyncio
-from mahavishnu.ingesters import OtelIngester
+from mahavishnu.ingesters.otel_ingester import OtelIngester
 
 async def main():
     # Create ingester
@@ -71,7 +71,7 @@ asyncio.run(main())
 ### Context Manager Usage
 
 ```python
-from mahavishnu.ingesters import OtelIngester
+from mahavishnu.ingesters.otel_ingester import OtelIngester
 
 async with OtelIngester() as ingester:
     await ingester.ingest_trace(trace_data)
@@ -81,7 +81,7 @@ async with OtelIngester() as ingester:
 ### Factory Function
 
 ```python
-from mahavishnu.ingesters import create_otel_ingester
+from mahavishnu.ingesters.otel_ingester import create_otel_ingester
 
 # Create with custom HotStore path
 ingester = await create_otel_ingester(
@@ -272,7 +272,7 @@ Create and initialize OTel ingester.
 
 ```python
 from akosha.storage import HotStore
-from mahavishnu.ingesters import OtelIngester
+from mahavishnu.ingesters.otel_ingester import OtelIngester
 
 # Create persistent HotStore
 hot_store = HotStore(database_path="/data/traces.db")

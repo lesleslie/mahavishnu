@@ -1,7 +1,4 @@
-"""Integration tests for worktree MCP tools.
-
-Tests all 6 MCP tools by starting Mahavishnu MCP server and calling tools via client.
-"""
+"""Integration tests for the consolidated worktree MCP tool."""
 
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -26,11 +23,10 @@ def _make_worktree_coordinator(tmp_path: Path) -> WorktreeCoordinator:
 
 
 class TestWorktreeMCPTools:
-    """Integration tests for worktree MCP tools."""
+    """Integration tests for the consolidated worktree MCP tool."""
 
     @pytest.mark.asyncio
-    async def test_create_ecosystem_worktree_tool(self, tmp_path):
-        """Test create_ecosystem_worktree MCP tool."""
+    async def test_manage_create_worktree(self, tmp_path):
         app = MahavishnuApp.load()
         app.worktree_coordinator = _make_worktree_coordinator(tmp_path)
         mock_provider = MockWorktreeProvider()
@@ -47,26 +43,22 @@ class TestWorktreeMCPTools:
             return_value=mock_provider
         )
 
-        # Mock repository
         mock_repo = MagicMock()
         mock_repo.path = str(tmp_path / "repos" / "test")
         app.worktree_coordinator.repo_manager.get_by_name = MagicMock(return_value=mock_repo)
         app.worktree_coordinator.repo_manager.get_by_package = MagicMock(return_value=None)
-
         app.worktree_coordinator.coordination_manager.get_blocking_dependencies = MagicMock(
             return_value=[]
         )
-
-        # Mock path validator
         app.worktree_coordinator.path_validator.validate_worktree_path = MagicMock(
             return_value=(True, None)
         )
 
-        # Call the tool function directly (simulating MCP call)
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):
-            from mahavishnu.mcp.tools.worktree_tools import create_ecosystem_worktree
+            from mahavishnu.mcp.tools.worktree_tools import worktree_manage
 
-            result = await create_ecosystem_worktree(
+            result = await worktree_manage(
+                action="create",
                 user_id="test-user",
                 repo_nickname="test",
                 branch="main",
@@ -78,8 +70,7 @@ class TestWorktreeMCPTools:
         assert "worktree_path" in result
 
     @pytest.mark.asyncio
-    async def test_remove_ecosystem_worktree_tool(self, tmp_path):
-        """Test remove_ecosystem_worktree MCP tool."""
+    async def test_manage_remove_worktree(self, tmp_path):
         app = MahavishnuApp.load()
         app.worktree_coordinator = _make_worktree_coordinator(tmp_path)
         mock_provider = MockWorktreeProvider()
@@ -97,7 +88,6 @@ class TestWorktreeMCPTools:
         app.worktree_coordinator.repo_manager.get_by_name = MagicMock(return_value=mock_repo)
         app.worktree_coordinator.repo_manager.get_by_package = MagicMock(return_value=None)
         app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(return_value=[])
-
         app.worktree_coordinator.path_validator.validate_worktree_path = MagicMock(
             return_value=(True, None)
         )
@@ -105,9 +95,10 @@ class TestWorktreeMCPTools:
         app.worktree_coordinator._verify_is_worktree = AsyncMock(return_value=True)
 
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):
-            from mahavishnu.mcp.tools.worktree_tools import remove_ecosystem_worktree
+            from mahavishnu.mcp.tools.worktree_tools import worktree_manage
 
-            result = await remove_ecosystem_worktree(
+            result = await worktree_manage(
+                action="remove",
                 user_id="test-user",
                 repo_nickname="test",
                 worktree_path=str(tmp_path / "worktrees" / "test" / "main"),
@@ -117,8 +108,7 @@ class TestWorktreeMCPTools:
         assert result["success"] is True
 
     @pytest.mark.asyncio
-    async def test_list_ecosystem_worktrees_tool(self, tmp_path):
-        """Test list_ecosystem_worktrees MCP tool."""
+    async def test_manage_list_worktrees(self, tmp_path):
         app = MahavishnuApp.load()
         app.worktree_coordinator = _make_worktree_coordinator(tmp_path)
         mock_provider = MockWorktreeProvider()
@@ -138,9 +128,10 @@ class TestWorktreeMCPTools:
         )
 
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):
-            from mahavishnu.mcp.tools.worktree_tools import list_ecosystem_worktrees
+            from mahavishnu.mcp.tools.worktree_tools import worktree_manage
 
-            result = await list_ecosystem_worktrees(
+            result = await worktree_manage(
+                action="list",
                 user_id="test-user",
                 repo_nickname=None,
             )
@@ -149,8 +140,7 @@ class TestWorktreeMCPTools:
         assert "worktrees" in result
 
     @pytest.mark.asyncio
-    async def test_prune_ecosystem_worktrees_tool(self, tmp_path):
-        """Test prune_ecosystem_worktrees MCP tool."""
+    async def test_manage_prune_worktrees(self, tmp_path):
         app = MahavishnuApp.load()
         app.worktree_coordinator = _make_worktree_coordinator(tmp_path)
         mock_provider = MockWorktreeProvider()
@@ -173,13 +163,13 @@ class TestWorktreeMCPTools:
         mock_repo.path = str(tmp_path / "repos" / "test")
         app.worktree_coordinator.repo_manager.get_by_name = MagicMock(return_value=mock_repo)
         app.worktree_coordinator.repo_manager.get_by_package = MagicMock(return_value=None)
-
         app.worktree_coordinator._branch_exists = AsyncMock(return_value=False)
 
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):
-            from mahavishnu.mcp.tools.worktree_tools import prune_ecosystem_worktrees
+            from mahavishnu.mcp.tools.worktree_tools import worktree_manage
 
-            result = await prune_ecosystem_worktrees(
+            result = await worktree_manage(
+                action="prune",
                 user_id="test-user",
                 repo_nickname="test",
             )
@@ -188,8 +178,7 @@ class TestWorktreeMCPTools:
         assert result["pruned_count"] >= 0
 
     @pytest.mark.asyncio
-    async def test_get_worktree_safety_status_tool(self, tmp_path):
-        """Test get_worktree_safety_status MCP tool."""
+    async def test_manage_safety_status(self, tmp_path):
         app = MahavishnuApp.load()
         app.worktree_coordinator = _make_worktree_coordinator(tmp_path)
 
@@ -201,9 +190,10 @@ class TestWorktreeMCPTools:
         app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(return_value=[])
 
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):
-            from mahavishnu.mcp.tools.worktree_tools import get_worktree_safety_status
+            from mahavishnu.mcp.tools.worktree_tools import worktree_manage
 
-            result = await get_worktree_safety_status(
+            result = await worktree_manage(
+                action="safety_status",
                 user_id="test-user",
                 repo_nickname="test",
                 worktree_path=str(tmp_path / "worktrees" / "test" / "main"),
@@ -215,22 +205,19 @@ class TestWorktreeMCPTools:
         assert "path_safe" in result
 
     @pytest.mark.asyncio
-    async def test_get_worktree_provider_health_tool(self, tmp_path):
-        """Test get_worktree_provider_health MCP tool."""
+    async def test_manage_provider_health(self, tmp_path):
         app = MahavishnuApp.load()
         app.worktree_coordinator = _make_worktree_coordinator(tmp_path)
 
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):
-            from mahavishnu.mcp.tools.worktree_tools import get_worktree_provider_health
+            from mahavishnu.mcp.tools.worktree_tools import worktree_manage
 
-            result = await get_worktree_provider_health(user_id="test-user")
+            result = await worktree_manage(action="provider_health", user_id="test-user")
 
         assert isinstance(result, dict)
-        # Should return health status for all providers
 
     @pytest.mark.asyncio
-    async def test_force_removal_with_reason(self, tmp_path):
-        """Test force removal with force_reason parameter."""
+    async def test_manage_force_removal_with_reason(self, tmp_path):
         app = MahavishnuApp.load()
         app.worktree_coordinator = _make_worktree_coordinator(tmp_path)
         mock_provider = MockWorktreeProvider()
@@ -252,8 +239,6 @@ class TestWorktreeMCPTools:
         app.worktree_coordinator.path_validator.validate_worktree_path = MagicMock(
             return_value=(True, None)
         )
-
-        # Mock uncommitted changes and backup
         app.worktree_coordinator._check_uncommitted_changes = AsyncMock(return_value=True)
         app.worktree_coordinator._get_worktree_branch = AsyncMock(return_value="main")
         app.worktree_coordinator._verify_is_worktree = AsyncMock(return_value=True)
@@ -262,9 +247,10 @@ class TestWorktreeMCPTools:
         )
 
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):
-            from mahavishnu.mcp.tools.worktree_tools import remove_ecosystem_worktree
+            from mahavishnu.mcp.tools.worktree_tools import worktree_manage
 
-            result = await remove_ecosystem_worktree(
+            result = await worktree_manage(
+                action="remove",
                 user_id="test-user",
                 repo_nickname="test",
                 worktree_path=str(tmp_path / "worktrees" / "test" / "main"),
@@ -273,12 +259,10 @@ class TestWorktreeMCPTools:
             )
 
         assert result["success"] is True
-        # Verify backup was created
         app.worktree_coordinator.backup_manager.create_backup_before_removal.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_force_removal_without_reason_blocked(self, tmp_path):
-        """Test that force removal without reason is blocked."""
+    async def test_manage_force_removal_without_reason_blocked(self, tmp_path):
         app = MahavishnuApp.load()
         app.worktree_coordinator = _make_worktree_coordinator(tmp_path)
 
@@ -291,50 +275,41 @@ class TestWorktreeMCPTools:
         app.worktree_coordinator.path_validator.validate_worktree_path = MagicMock(
             return_value=(True, None)
         )
-
-        # Mock uncommitted changes
         app.worktree_coordinator._check_uncommitted_changes = AsyncMock(return_value=True)
         app.worktree_coordinator._verify_is_worktree = AsyncMock(return_value=True)
 
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):
-            from mahavishnu.mcp.tools.worktree_tools import remove_ecosystem_worktree
+            from mahavishnu.mcp.tools.worktree_tools import worktree_manage
 
-            result = await remove_ecosystem_worktree(
+            result = await worktree_manage(
+                action="remove",
                 user_id="test-user",
                 repo_nickname="test",
                 worktree_path=str(tmp_path / "worktrees" / "test" / "main"),
                 force=True,
-                force_reason=None,  # Missing reason
+                force_reason=None,
             )
 
         assert result["success"] is False
         assert result["safety_check"] == "force_reason_required"
         assert "--force requires --force-reason" in result["error"]
 
-    @pytest.mark.asyncio
-    async def test_all_tools_require_authentication(self, tmp_path):
-        """Test that all MCP tools have authentication decorators."""
-        from mahavishnu.mcp.tools.worktree_tools import (
-            create_ecosystem_worktree,
-            get_worktree_provider_health,
-            get_worktree_safety_status,
-            list_ecosystem_worktrees,
-            prune_ecosystem_worktrees,
-            remove_ecosystem_worktree,
-        )
+    def test_register_worktree_tools_registers_manage_tool_only(self):
+        class FakeMCP:
+            def __init__(self):
+                self.registered: list[str] = []
 
-        # Verify all tools have require_mcp_auth decorator
-        # This is checked by inspecting the function's attributes
-        tools = [
-            create_ecosystem_worktree,
-            remove_ecosystem_worktree,
-            list_ecosystem_worktrees,
-            prune_ecosystem_worktrees,
-            get_worktree_safety_status,
-            get_worktree_provider_health,
-        ]
+            def tool(self):
+                def decorator(func):
+                    self.registered.append(func.__name__)
+                    return func
 
-        for tool_func in tools:
-            # All tools should have been decorated with @require_mcp_auth
-            # We verify this by checking the function exists and is callable
-            assert callable(tool_func), f"{tool_func.__name__} should be callable"
+                return decorator
+
+        fake_mcp = FakeMCP()
+
+        from mahavishnu.mcp.tools.worktree_tools import register_worktree_tools
+
+        register_worktree_tools(fake_mcp)
+
+        assert fake_mcp.registered == ["worktree_manage"]

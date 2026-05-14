@@ -56,9 +56,10 @@ class TestGpuHandlerPoolStart:
     def test_start_fails_without_sdk(self, gpu_config):
         """GpuHandlerPool raises RuntimeError when runpod-flash is not installed."""
         pool = GpuHandlerPool(config=gpu_config)
-        with patch("mahavishnu.pools.gpu_handler_pool.Endpoint", None):
-            with pytest.raises(RuntimeError, match="runpod-flash"):
-                pool._build_endpoint()
+        with patch("mahavishnu.pools.gpu_handler_pool.Endpoint", None), pytest.raises(
+            RuntimeError, match="runpod-flash"
+        ):
+            pool._build_endpoint()
 
     @pytest.mark.asyncio
     async def test_start_registers_endpoint(self, gpu_config, mock_endpoint_factory):
@@ -152,7 +153,7 @@ class TestCategoryRouting:
 
         assert TaskCategory.ML_INFERENCE in DEFAULT_OLLAMA_ROUTING
 
-    def test_ml_inference_routing_entry_in_zai_table(self):
-        from mahavishnu.workers.task_router import DEFAULT_ZAI_ROUTING
+    def test_ml_inference_routing_entry_in_minimax_table(self):
+        from mahavishnu.workers.task_router import DEFAULT_MINIMAX_ROUTING
 
-        assert TaskCategory.ML_INFERENCE in DEFAULT_ZAI_ROUTING
+        assert TaskCategory.ML_INFERENCE in DEFAULT_MINIMAX_ROUTING

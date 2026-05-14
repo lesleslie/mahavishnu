@@ -30,7 +30,7 @@ from .cli.team_cli import add_team_commands
 # Import coordination CLI
 from .coordination_cli import add_coordination_commands
 from .core.app import MahavishnuApp
-from .core.health_schemas import HealthStatus
+from .core.health import HealthStatus
 from .core.subscription_auth import MultiAuthHandler
 
 # Import ecosystem management CLI
@@ -268,9 +268,9 @@ async def _async_fix_orchestrate(
 
     task = FixTask(
         issue_id=issue_id,
-        description=description,
-        files=files,
+        pool_type="mahavishnu",
         prompt="\n".join(prompt_parts),
+        affected_files=files,
     )
 
     orchestrator = FixOrchestrator()
@@ -1007,12 +1007,12 @@ app.add_typer(workers_app, name="workers")
 @workers_app.command("spawn")
 def workers_spawn(
     worker_type: str = typer.Option(
-        "terminal-qwen",
+        "terminal-claude",
         "--type",
         "-t",
         help=(
             "Type of worker "
-            "(terminal-qwen, terminal-claude, terminal-codex, terminal-openclaw, "
+            "(terminal-qwen [legacy], terminal-claude, terminal-codex, terminal-openclaw, "
             "gateway-openclaw, container-executor)"
         ),
     ),
@@ -1021,7 +1021,7 @@ def workers_spawn(
     """Spawn worker instances for task execution.
 
     Example:
-        $ mahavishnu workers spawn --type terminal-qwen --count 3
+        $ mahavishnu workers spawn --type terminal-claude --count 3
         $ mahavishnu workers spawn -t terminal-claude -n 5
         $ mahavishnu workers spawn -t terminal-codex -n 2
         $ mahavishnu workers spawn -t terminal-openclaw -n 2
@@ -1078,12 +1078,12 @@ def workers_execute(
     prompt: str = typer.Option(..., "--prompt", "-p", help="Task prompt for AI workers"),
     count: int = typer.Option(3, "--count", "-n", min=1, max=20, help="Number of workers to use"),
     worker_type: str = typer.Option(
-        "terminal-qwen",
+        "terminal-claude",
         "--type",
         "-t",
         help=(
             "Type of worker "
-            "(terminal-qwen, terminal-claude, terminal-codex, terminal-openclaw, gateway-openclaw)"
+            "(terminal-qwen [legacy], terminal-claude, terminal-codex, terminal-openclaw, gateway-openclaw)"
         ),
     ),
     timeout: int = typer.Option(
@@ -1101,7 +1101,7 @@ def workers_execute(
         $ mahavishnu workers execute --prompt "Implement a REST API" --count 3
         $ mahavishnu workers execute -p "Create a Python class" -n 5 -t terminal-claude
         $ mahavishnu workers execute -p "Draft migration steps for this API" -t terminal-codex
-        $ mahavishnu workers execute -p "Review this patch for regressions" -t terminal-qwen
+        $ mahavishnu workers execute -p "Review this patch for regressions" -t terminal-claude
         $ mahavishnu workers execute -p "Notify Slack with a deployment summary" -t terminal-openclaw
 
     Notes:
@@ -1317,12 +1317,12 @@ def pool_spawn(
     min_workers: int = typer.Option(1, "--min", "-m", min=1, max=10, help="Minimum workers"),
     max_workers: int = typer.Option(10, "--max", "-M", min=1, max=100, help="Maximum workers"),
     worker_type: str = typer.Option(
-        "terminal-qwen",
+        "terminal-claude",
         "--worker-type",
         "-w",
         help=(
             "Worker type "
-            "(terminal-qwen, terminal-claude, terminal-codex, terminal-openclaw, "
+            "(terminal-qwen [legacy], terminal-claude, terminal-codex, terminal-openclaw, "
             "gateway-openclaw, container-executor)"
         ),
     ),

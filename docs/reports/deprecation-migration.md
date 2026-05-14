@@ -49,40 +49,39 @@ ______________________________________________________________________
 | Field | Value |
 |-------|-------|
 | **Score** | 0.642 |
-| **Tools** | `create_ecosystem_worktree`, `remove_ecosystem_worktree`, `list_ecosystem_worktrees`, `prune_ecosystem_worktrees`, `get_worktree_safety_status`, `get_worktree_provider_health` (6) |
+| **Tools** | `worktree_manage` (1) |
 | **Lines** | 226 |
 | **Registration** | `server_core.py:1575` via `register_worktree_tools()` — conditionally loaded if `WorktreeCoordinator` exists |
-| **Primary Concern** | Zero error handling around coordinator calls; entire module is a thin pass-through to `WorktreeCoordinator` |
+| **Primary Concern** | Consolidated `worktree_manage` is the active path; individual wrappers have been retired |
 | **Severity** | 🟡 Low — `WorktreeCoordinator` may not be initialized (graceful early return), and the registration is guarded |
 
 ### Migration Path
 
-The worktree tools are thin wrappers around `WorktreeCoordinator`. Rather than
-exposing 6 separate MCP tools, the recommendation is:
+The worktree tools are consolidated around `worktree_manage`, which dispatches
+to `WorktreeCoordinator`:
 
-1. **Consolidate** into a single `worktree_manage` tool that accepts a subcommand
-   parameter (`create`, `remove`, `list`, `prune`, `safety_status`, `provider_health`),
-   reducing surface area from 6 tools to 1.
-1. **Add error handling** — wrap all `coordinator.*` calls in try/except with
-   structured error responses.
+1. **Use `worktree_manage`** as the MCP entry point. It accepts a
+   subcommand parameter (`create`, `remove`, `list`, `prune`, `safety_status`,
+   `provider_health`) and centralizes error handling.
 1. **Alternative**: If worktree management moves to git CLI tooling or Crackerjack,
    remove the MCP layer entirely and use `git worktree` commands directly.
 
 | Current Tool | Merged Into |
 |-------------|-------------|
-| `create_ecosystem_worktree` | `worktree_manage(action="create")` |
-| `remove_ecosystem_worktree` | `worktree_manage(action="remove")` |
-| `list_ecosystem_worktrees` | `worktree_manage(action="list")` |
-| `prune_ecosystem_worktrees` | `worktree_manage(action="prune")` |
-| `get_worktree_safety_status` | `worktree_manage(action="safety_status")` |
-| `get_worktree_provider_health` | `worktree_manage(action="provider_health")` |
+| `worktree_manage` | consolidated dispatcher |
 
 ### Deprecation Timeline
 
-1. **v0.5.0** (current): Add `DeprecationWarning` to each tool's docstring and runtime log
-1. **v0.5.0**: Add consolidated `worktree_manage` tool alongside existing tools
-1. **v0.6.0**: Remove individual tools, keep consolidated version
-1. **v0.7.0** (conditional): Remove entirely if worktree management migrates to CLI tools
+1. **v0.5.0** (current): `worktree_manage` is the consolidated worktree MCP entry point; `team_learning_tools` remains de-authorized from live MCP and CLI-only.
+1. **v0.6.0**: Remove any remaining compatibility references if they surface in downstream docs or registries.
+1. **v0.7.0** (conditional): Remove worktree MCP entirely if management migrates to CLI tools.
+
+### Worktree Consolidation Note
+
+The W0 audit for the `worktree_manage` consolidation track is recorded in
+`docs/reports/worktree-manage-audit.md`. It captures the current call-site map,
+the replacement action contract, and the field-preservation rules that must be
+maintained when the consolidated dispatcher is implemented.
 
 ______________________________________________________________________
 
@@ -125,7 +124,7 @@ ______________________________________________________________________
 ## Implementation Checklist
 
 - [ ] Add `DeprecationWarning` imports and runtime warnings to `content_ingestion_tools.py`
-- [ ] Add `DeprecationWarning` imports and runtime warnings to `worktree_tools.py`
+- [x] `worktree_tools.py` now exposes only the consolidated `worktree_manage` tool.
 - [ ] Add `DeprecationWarning` imports and runtime warnings to `oneiric_tools.py`
 - [ ] Update `tool_versions.py` to mark deprecated tools
 - [ ] Update initiative doc I10 checkbox for I10-2
@@ -155,6 +154,6 @@ From `mahavishnu/mcp/tool_versions.py`, these entries should be marked deprecate
 # No tool_versions.py entries to update — add note in version registry
 ```
 
-Worktree tools are registered dynamically and don't appear in `tool_versions.py` —
-the deprecation warning should be added in the `register_worktree_tools()` function
-in `server_core.py`.
+Worktree tools are registered dynamically and now consist of `worktree_manage`
+only. Keep the module live as the canonical MCP entry point unless the entire
+worktree MCP layer is retired.

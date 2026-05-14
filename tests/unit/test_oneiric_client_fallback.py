@@ -22,7 +22,7 @@ class _FakeDharaClient:
                 "key": "workflow",
                 "provider": "prefect",
                 "version": "1.0.0",
-                "factory_path": "mahavishnu.engines.prefect_adapter:PrefectAdapter",
+                "factory_path": "mahavishnu.engines.prefect_adapter_impl:PrefectAdapter",
                 "capabilities": ["workflow"],
                 "metadata": {"category": "workflow", "project": "mahavishnu", "priority": 5},
                 "created_at": "2026-01-01T00:00:00+00:00",

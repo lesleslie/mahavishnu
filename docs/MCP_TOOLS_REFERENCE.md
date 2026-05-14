@@ -35,7 +35,7 @@ async def pool_spawn(
     name: str = "default",
     min_workers: int = 1,
     max_workers: int = 10,
-    worker_type: str = "terminal-qwen",
+    worker_type: str = "terminal-claude",
 ) -> dict[str, Any]
 ```
 
@@ -45,7 +45,7 @@ async def pool_spawn(
 - `name` - Pool name for identification
 - `min_workers` - Minimum worker count (1-10)
 - `max_workers` - Maximum worker count (1-100)
-- `worker_type` - Worker type: `"terminal-qwen"`, `"terminal-claude"`, `"container"`
+- `worker_type` - Worker type: `"terminal-claude"`, `"terminal-qwen"` (supported configurable, non-default), `"container"`
 
 **Returns:**
 
@@ -430,14 +430,14 @@ Spawn worker instances for task execution.
 
 ```python
 async def worker_spawn(
-    worker_type: str = "terminal-qwen",
+    worker_type: str = "terminal-claude",
     count: int = 1,
 ) -> list[str]
 ```
 
 **Parameters:**
 
-- `worker_type` - Worker type: `"terminal-qwen"`, `"terminal-claude"`, `"container-executor"`
+- `worker_type` - Worker type: `"terminal-claude"`, `"terminal-qwen"` (supported configurable, non-default), `"container-executor"`
 - `count` - Number of workers to spawn (1-50)
 
 **Returns:**
@@ -449,7 +449,7 @@ async def worker_spawn(
 **Example:**
 
 ```python
-worker_ids = await worker_spawn(worker_type="terminal-qwen", count=3)
+worker_ids = await worker_spawn(worker_type="terminal-claude", count=3)
 print(f"Spawned {len(worker_ids)} workers")
 ```
 
@@ -568,7 +568,7 @@ async def worker_list() -> list[dict]
 [
     {
         "worker_id": "term_abc123",
-        "worker_type": "terminal-qwen",
+        "worker_type": "terminal-qwen",  # supported configurable, non-default worker type
         "status": "running",
         "pool_id": "pool_xyz789"
     }
@@ -1714,9 +1714,15 @@ ______________________________________________________________________
 
 Integration with Session Buddy for session management and code analysis.
 
+> Canonical note: the Session-Buddy code-intel tools below are compatibility
+> shims. For new work, prefer `code_index.index_repo` for indexing,
+> `treesitter_tools` for structural parsing, and `search_tools.hybrid_search`
+> for retrieval. Keep using the Session-Buddy messaging/session tools for
+> channel and project coordination.
+
 ### `index_code_graph` 🚧
 
-Index codebase structure for better context in Session Buddy.
+Legacy shim for codebase indexing in Session Buddy.
 
 **Signature:**
 
@@ -1802,7 +1808,7 @@ ______________________________________________________________________
 
 ### `find_related_code` 🚧
 
-Find code related by imports/calls.
+Legacy shim for related-code lookup.
 
 **Signature:**
 
@@ -1845,7 +1851,7 @@ ______________________________________________________________________
 
 ### `index_documentation` 🚧
 
-Extract docstrings and index for semantic search.
+Legacy shim for documentation indexing.
 
 **Signature:**
 
@@ -1882,7 +1888,7 @@ ______________________________________________________________________
 
 ### `search_documentation` 🚧
 
-Search through indexed documentation.
+Legacy shim for documentation search.
 
 **Signature:**
 

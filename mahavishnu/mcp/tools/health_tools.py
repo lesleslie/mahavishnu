@@ -35,14 +35,15 @@ from __future__ import annotations
 import asyncio
 import time
 from typing import TYPE_CHECKING, Any
+import warnings
 
 from mahavishnu.core.health import (
     DependencyWaiter,
     HealthChecker,
     HealthEndpoint,
+    HealthStatus,
     ServiceInfo,
 )
-from mahavishnu.core.health_schemas import HealthStatus
 from monitoring.metrics import expose_metrics, get_metrics_registry
 
 if TYPE_CHECKING:
@@ -63,6 +64,13 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
             if isinstance(server_name, str) and server_name.strip():
                 return server_name
         return "mahavishnu"
+
+    def _warn_deprecated_tool(tool_name: str, replacement: str) -> None:
+        warnings.warn(
+            f"{tool_name} is deprecated; use {replacement} instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     def _tool_timeout_seconds(tool: Any) -> float | None:
         timeout = getattr(tool, "timeout", None)
@@ -87,6 +95,12 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
         }
         if parameters is not None:
             summary["parameters"] = parameters
+        from mahavishnu.mcp.tool_versions import get_tool_deprecation
+
+        replacement = get_tool_deprecation(summary["name"])
+        if replacement is not None:
+            summary["deprecated"] = True
+            summary["deprecated_replaced_by"] = replacement
         return summary
 
     # deprecated: redundant with health_check_all; use mcp_test_connection for single-service pings
@@ -100,6 +114,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
         use_tls: bool = False,
     ) -> dict[str, Any]:
         """Check health of a specific service."""
+        _warn_deprecated_tool("health_check_service", "health_check_all")
         from mahavishnu.core.config import HealthConfig
 
         config = HealthConfig(check_timeout_seconds=timeout)
@@ -366,6 +381,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
     @mcp.tool()
     async def get_liveness() -> dict[str, Any]:
         """Get liveness status for this service."""
+        _warn_deprecated_tool("get_liveness", "ecosystem_status")
         from mahavishnu.core.config import MahavishnuSettings
 
         settings = MahavishnuSettings()
@@ -385,6 +401,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
     @mcp.tool()
     async def get_readiness() -> dict[str, Any]:
         """Get readiness status for this service."""
+        _warn_deprecated_tool("get_readiness", "ecosystem_status")
         from mahavishnu.core.config import MahavishnuSettings
 
         settings = MahavishnuSettings()

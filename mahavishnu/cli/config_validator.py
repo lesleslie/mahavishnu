@@ -14,8 +14,7 @@ import yaml
 
 from ..core.config import MahavishnuSettings
 from ..core.config_validator import ConfigValidationReport, ValidationResult, validate_config
-from ..core.health import HealthChecker
-from ..core.health_schemas import HealthStatus
+from ..core.health import HealthChecker, HealthStatus
 from ..core.skill_mcp_validator import validate_agent_dir, validate_skill_dir
 
 

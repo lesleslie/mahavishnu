@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import pytest
 
 from mahavishnu.core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
+from mahavishnu.core.status import WorkflowStatus
 import mahavishnu.core.task_router as tr
 
 
@@ -73,6 +74,16 @@ async def test_adapter_manager_and_state_manager_basics() -> None:
     assert stats["success_rate"] == 0.5
 
     state_mgr = tr.StateManager()
+    created = await state_mgr.create("w1", {"task_type": "workflow"}, ["repo-a"])
+    assert created["workflow_id"] == "w1"
+    assert created["status"] == WorkflowStatus.PENDING.value
+
+    await state_mgr.update("w1", status=WorkflowStatus.RUNNING.value, progress=10)
+    current = await state_mgr.get("w1")
+    assert current is not None
+    assert current["status"] == WorkflowStatus.RUNNING.value
+    assert current["progress"] == 10
+
     await state_mgr.create_workflow_state("w1", AdapterType.PREFECT, {"step": 1})
     await state_mgr.update_adapter_state("w1", AdapterType.AGNO, {"step": 2})
     state = await state_mgr.get_workflow_state("w1")
@@ -80,9 +91,16 @@ async def test_adapter_manager_and_state_manager_basics() -> None:
     assert state["workflow_id"] == "w1"
     assert "prefect" in state["adapter_states"]
     assert "agno" in state["adapter_states"]
-    assert await state_mgr.get_workflow_state("missing") is None
+
+    await state_mgr.add_result("w1", {"repo": "repo-a", "success": True})
+    await state_mgr.add_error("w1", {"repo": "repo-b", "error": "boom"})
+    assert await state_mgr.get_completed_count("w1") == 2
+
     listed = await state_mgr.list_workflows(limit=1)
     assert len(listed) == 1
+    assert await state_mgr.get_workflow_state("missing") is None
+    await state_mgr.delete("w1")
+    assert await state_mgr.get("w1") is None
 
 
 @pytest.mark.asyncio

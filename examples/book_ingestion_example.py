@@ -10,7 +10,7 @@ Usage:
 import asyncio
 from pathlib import Path
 
-from mahavishnu.ingesters import ContentIngester, ContentType
+from mahavishnu.ingesters.content_ingester import ContentIngester, ContentType
 
 
 async def main() -> None:

@@ -31,7 +31,7 @@ def register_otel_tools(server, app, mcp_client):
         """Ingest OpenTelemetry traces from log files or direct trace data."""
         try:
             # Import native OTel ingester (uses Akosha HotStore)
-            from mahavishnu.ingesters import OtelIngester
+            from mahavishnu.ingesters.otel_ingester import OtelIngester
 
             # Validate inputs - either log_files or trace_data must be provided
             if not log_files and not trace_data:
@@ -154,7 +154,7 @@ def register_otel_tools(server, app, mcp_client):
     ) -> list[dict[str, Any]]:
         """Semantic search over OTel traces using vector embeddings."""
         try:
-            from mahavishnu.ingesters import OtelIngester
+            from mahavishnu.ingesters.otel_ingester import OtelIngester
 
             # Initialize ingester
             ingester = OtelIngester(
@@ -189,7 +189,7 @@ def register_otel_tools(server, app, mcp_client):
     ) -> dict[str, Any] | None:
         """Retrieve a specific OTel trace by ID."""
         try:
-            from mahavishnu.ingesters import OtelIngester
+            from mahavishnu.ingesters.otel_ingester import OtelIngester
 
             # Initialize ingester
             ingester = OtelIngester(
@@ -221,8 +221,6 @@ def register_otel_tools(server, app, mcp_client):
         """Get statistics about the OTel trace ingester."""
         try:
             from akosha.storage import HotStore
-
-            from mahavishnu.ingesters import OtelIngester
 
             # Initialize HotStore to query statistics
             hot_store = HotStore(database_path=app.config.otel_ingester.hot_store_path)

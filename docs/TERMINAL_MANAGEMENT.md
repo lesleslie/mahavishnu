@@ -358,7 +358,7 @@ async def main():
     app = MahavishnuApp()
 
     if app.terminal_manager:
-        # Launch 3 Qwen sessions
+# Launch 3 Qwen sessions
         session_ids = await app.terminal_manager.launch_sessions(
             "qwen",
             count=3,

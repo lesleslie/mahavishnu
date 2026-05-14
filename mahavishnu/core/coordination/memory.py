@@ -22,6 +22,69 @@ from mahavishnu.core.coordination.models import (
 logger = logging.getLogger(__name__)
 
 
+class SessionBuddyMemoryClient:
+    """Minimal MCP tool client for Session-Buddy memory/search calls."""
+
+    def __init__(self, base_url: str, timeout: float = 10.0) -> None:
+        self._base_url = base_url.rstrip("/")
+        self._client = httpx.AsyncClient(timeout=timeout)
+
+    async def store_memory(
+        self,
+        collection: str,
+        content: str,
+        metadata: dict[str, Any],
+    ) -> Any:
+        response = await self._client.post(
+            f"{self._base_url}/tools/call",
+            json={
+                "name": "store_memory",
+                "arguments": {
+                    "collection": collection,
+                    "content": content,
+                    "metadata": metadata,
+                },
+            },
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if isinstance(payload, dict) and "result" in payload:
+            return payload["result"]
+        return payload
+
+    async def search(
+        self,
+        query: str,
+        filters: dict[str, Any],
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        response = await self._client.post(
+            f"{self._base_url}/tools/call",
+            json={
+                "name": "search_all_systems",
+                "arguments": {
+                    "query": query,
+                    "filters": filters,
+                    "limit": limit,
+                },
+            },
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if isinstance(payload, dict):
+            result = payload.get("result")
+            if isinstance(result, list):
+                return result
+            if isinstance(result, dict):
+                items = result.get("results") or result.get("items") or result.get("conversations")
+                if isinstance(items, list):
+                    return items
+        return []
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
+
 class CoordinationMemory:
     """Store coordination events in memory systems.
 

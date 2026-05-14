@@ -37,6 +37,12 @@ def _make_backend(enabled: bool = True, dhara_put: AsyncMock | None = None) -> D
 
 
 class TestDharaStateBackendPut:
+    def test_key_helpers(self):
+        assert DharaStateBackend.workflow_key("wf-1") == "workflow/v1/wf-1"
+        assert DharaStateBackend.pool_key("pool-1") == "pool/v1/pool-1"
+        assert DharaStateBackend.approval_key("app-1") == "approval/v1/app-1"
+        assert DharaStateBackend.routing_key("task", None).startswith("routing/v1/task/")
+
     @pytest.mark.asyncio
     async def test_put_calls_client_when_available(self):
         mock_put = AsyncMock()
@@ -155,3 +161,58 @@ class TestSchedulePut:
         import asyncio
         await asyncio.sleep(0)
         mock_put.assert_awaited_once()
+
+
+class TestDharaStateBackendConvenienceMethods:
+    @pytest.mark.asyncio
+    async def test_persist_pool_uses_canonical_key(self):
+        backend = _make_backend()
+        backend._client.put = AsyncMock()
+
+        await backend.persist_pool("pool-123", {"status": "running"})
+
+        backend._client.put.assert_awaited_once()
+        args = backend._client.put.call_args[0]
+        assert args[0] == "pool/v1/pool-123"
+
+    @pytest.mark.asyncio
+    async def test_persist_routing_decision_uses_task_class_key(self):
+        backend = _make_backend()
+        backend._client.put = AsyncMock()
+
+        await backend.persist_routing_decision("workflow", {"pool_id": "pool-1"})
+
+        backend._client.put.assert_awaited_once()
+        key = backend._client.put.call_args[0][0]
+        assert key.startswith("routing/v1/workflow/")
+
+    @pytest.mark.asyncio
+    async def test_recover_helpers_filter_dict_values(self):
+        backend = _make_backend()
+        backend._client.call_tool = AsyncMock(
+            return_value=[
+                {"key": "pool/v1/pool-1", "value": {"pool_id": "pool-1"}},
+                {"key": "pool/v1/pool-2", "value": "not-a-dict"},
+            ]
+        )
+
+        pools = await backend.recover_pools()
+
+        assert pools == [{"pool_id": "pool-1"}]
+
+    @pytest.mark.asyncio
+    async def test_recover_routing_decisions_filters_dict_values(self):
+        backend = _make_backend()
+        backend._client.call_tool = AsyncMock(
+            return_value=[
+                {
+                    "key": "routing/v1/workflow/1",
+                    "value": {"task_class": "workflow", "pool_id": "pool-1"},
+                },
+                {"key": "routing/v1/workflow/2", "value": "not-a-dict"},
+            ]
+        )
+
+        decisions = await backend.recover_routing_decisions()
+
+        assert decisions == [{"task_class": "workflow", "pool_id": "pool-1"}]

@@ -12,7 +12,7 @@ Usage:
 
 import asyncio
 
-from mahavishnu.ingesters import ContentIngester
+from mahavishnu.ingesters.content_ingester import ContentIngester
 
 
 async def main() -> None:

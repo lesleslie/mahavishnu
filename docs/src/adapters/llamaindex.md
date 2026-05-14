@@ -31,7 +31,7 @@ mahavishnu query --query "authentication patterns" --adapter llamaindex
 
 ## Features
 
-- Repository/document ingestion from `repos.yaml`
+- Repository/document ingestion from `ecosystem.yaml`
 - Vector embeddings with Ollama (local models)
 - Document chunking and indexing
 - Semantic search across codebases

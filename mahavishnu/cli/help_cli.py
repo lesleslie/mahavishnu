@@ -211,11 +211,11 @@ COMMAND_CATEGORIES: dict[str, dict[str, Any]] = {
                 "usage": "mahavishnu workers spawn [options]",
                 "description": "Spawn worker instances",
                 "options": {
-                    "-t, --type": "Worker type (terminal-qwen, terminal-claude)",
+                    "-t, --type": "Worker type (terminal-claude, terminal-qwen [legacy])",
                     "-n, --count": "Number of workers (default: 1)",
                 },
                 "examples": [
-                    "mahavishnu workers spawn --type terminal-qwen --count 3",
+                    "mahavishnu workers spawn --type terminal-claude --count 3",
                 ],
             },
             "workers execute": {

@@ -47,7 +47,7 @@ TOOL_VERSIONS: dict[str, str] = {
     "run_disaster_recovery_check": "1.0.0",
     "heal_workflows": "1.0.0",
     # Monitoring
-    "get_monitoring_dashboard": "1.0.0",
+    "get_monitoring_dashboard": "2.0.0",
     "get_active_alerts": "1.0.0",
     "acknowledge_alert": "1.0.0",
     "trigger_test_alert": "1.0.0",
@@ -222,12 +222,7 @@ TOOL_VERSIONS: dict[str, str] = {
     "treesitter_parse": "1.0.0",
     "treesitter_query": "1.0.0",
     # Worktree tools
-    "create_ecosystem_worktree": "1.0.0",
-    "get_worktree_provider_health": "1.0.0",
-    "get_worktree_safety_status": "1.0.0",
-    "list_ecosystem_worktrees": "1.0.0",
-    "prune_ecosystem_worktrees": "1.0.0",
-    "remove_ecosystem_worktree": "1.0.0",
+    "worktree_manage": "1.0.0",
     # Health tools - wait
     "wait_for_all_dependencies": "1.0.0",
     # Documentation indexing
@@ -236,6 +231,25 @@ TOOL_VERSIONS: dict[str, str] = {
     "ecosystem_status": "1.0.0",
     "ecosystem_capabilities": "1.0.0",
     "ecosystem_routing_readiness": "1.0.0",
+}
+
+# ---------------------------------------------------------------------------
+# Deprecation registry
+# ---------------------------------------------------------------------------
+
+# These tools are still available for backward compatibility, but the
+# ecosystem should prefer the replacement tool where one exists.
+DEPRECATED_TOOLS: dict[str, str | None] = {
+    # Health surface consolidation
+    "health_check_service": "health_check_all",
+    "get_liveness": "ecosystem_status",
+    "get_readiness": "ecosystem_status",
+    "get_monitoring_dashboard": "ecosystem_status",
+    # Session-Buddy code-intel overlap
+    "index_code_graph": "code_index.index_repo",
+    "find_related_code": "treesitter_tools",
+    "index_documentation": "code_index.index_repo",
+    "search_documentation": "search_tools.hybrid_search",
 }
 
 
@@ -256,8 +270,25 @@ def get_all_tool_versions() -> dict[str, str]:
     return dict(TOOL_VERSIONS)
 
 
+def get_tool_deprecation(tool_name: str) -> str | None:
+    """Return the preferred replacement tool for a deprecated tool.
+
+    Returns ``None`` for non-deprecated tools or when no direct replacement
+    exists yet.
+    """
+    return DEPRECATED_TOOLS.get(tool_name)
+
+
+def is_tool_deprecated(tool_name: str) -> bool:
+    """Return whether a tool is marked deprecated."""
+    return tool_name in DEPRECATED_TOOLS
+
+
 __all__ = [
     "TOOL_VERSIONS",
+    "DEPRECATED_TOOLS",
     "get_tool_version",
     "get_all_tool_versions",
+    "get_tool_deprecation",
+    "is_tool_deprecated",
 ]

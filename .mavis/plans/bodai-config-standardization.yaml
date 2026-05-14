@@ -1,0 +1,183 @@
+version: 1
+plan:
+  name: 'standardize Bodai config to Oneiric pattern'
+  max_concurrency: 3
+  max_consecutive_failures: 2
+  max_cycles: 10
+tasks:
+  # Session-Buddy: Add LLM provider config to SessionMgmtSettings
+  - id: session-buddy-llm
+    title: 'session-buddy llm config migration'
+    prompt: |
+      Migrate Session-Buddy's LLM provider configuration to use Oneiric/MCPBaseSettings pattern.
+      
+      Current state:
+      - `session_buddy/llm_providers.py` reads env vars directly via `os.getenv("OLLAMA_BASE_URL")`, `os.getenv("OLLAMA_DEFAULT_MODEL")`
+      - `session_buddy/settings.py` has `SessionMgmtSettings(MCPBaseSettings)` already
+      
+      Task:
+      1. Add an `LLMProvidersConfig` section to `SessionMgmtSettings` in `session_buddy/settings.py` with fields:
+         - `default_provider: str` (zai, openai, gemini, ollama)
+         - `ollama_base_url: str` (default: "http://localhost:11434")
+         - `ollama_default_model: str` (default: "Qwen3-8B-8.2B-Q4_K_M")
+         - `fallback_providers: list[str]` (default: ["zai", "ollama"])
+      2. Update `session_buddy/llm_providers.py` `_load_provider_configs()` to use `get_settings().llm_providers.ollama_base_url` etc instead of `os.getenv()`
+      3. Create `settings/session-buddy.yaml` with the default LLM config (can be empty/minimal since defaults are in Pydantic)
+      4. Run tests to verify: `cd /Users/les/Projects/session-buddy && python -m pytest tests/unit/test_llm_providers.py -v`
+      
+      Deliverable: Report which files were changed and test results.
+    assigned_to: general
+    verified_by: general
+    verify_prompt: |
+      Verify the Session-Buddy LLM config migration:
+      1. Check that `SessionMgmtSettings` in `session_buddy/settings.py` has the new `llm_providers` section with the fields mentioned
+      2. Check that `llm_providers.py` no longer uses `os.getenv("OLLAMA_BASE_URL")` or `os.getenv("OLLAMA_DEFAULT_MODEL")` - should use `get_settings().llm_providers.ollama_base_url` instead
+      3. Run: `cd /Users/les/Projects/session-buddy && python -m pytest tests/unit/test_llm_providers.py -v` - should pass
+      4. Verify `settings/session-buddy.yaml` exists with at least comments/doc structure for LLM config
+      
+      Report: which checks passed/failed, any issues found.
+    timeout_ms: 1800000
+
+  # Crackerjack: Migrate pydantic_settings.BaseSettings to MCPBaseSettings
+  - id: crackerjack-config
+    title: 'crackerjack config migration'
+    prompt: |
+      Migrate Crackerjack's config system from `pydantic_settings.BaseSettings` to `MCPBaseSettings` (Oneiric pattern).
+      
+      Current state:
+      - `crackerjack/config/settings.py` has multiple settings classes all extending `pydantic_settings.BaseSettings as Settings`
+      - Files affected: `crackerjack/config/settings.py`, `crackerjack/config/__init__.py`
+      
+      Task:
+      1. Change the import at the top of `settings.py` from:
+         `from pydantic_settings import BaseSettings as Settings`
+         to:
+         `from mcp_common import MCPBaseSettings`
+         and have all Settings classes extend `MCPBaseSettings`
+      
+      2. The `MCPBaseSettings` class has a `.load()` classmethod that handles layered config (defaults -> YAML -> env vars)
+      3. Update `CrackerjackSettings` class to use `MCPBaseSettings.load("crackerjack")` pattern
+      4. Create `settings/crackerjack.yaml` with the current default values (you'll need to extract them from the current Settings classes)
+      
+      Important: Keep the AISettings with ollama_base_url and ollama_model fields with same defaults:
+      - `ollama_base_url: str = "http://localhost:11434"`
+      - `ollama_model: str = "Qwen3-8B-8.2B-Q4_K_M"`
+      
+      5. Update `crackerjack/config/__init__.py` if needed to use the new pattern
+      6. Run tests: `cd /Users/les/Projects/crackerjack && python -m pytest tests/ -x -q --tb=short` (stop on first failure, show traceback)
+      
+      Deliverable: Report which files changed, any test failures (and whether they're pre-existing or caused by migration).
+    assigned_to: general
+    verified_by: general
+    verify_prompt: |
+      Verify Crackerjack config migration:
+      1. Check that all settings classes in `crackerjack/config/settings.py` now extend `MCPBaseSettings` (not `pydantic_settings.BaseSettings`)
+      2. Check that `crackerjack/adapters/ai/ollama.py` still has correct defaults for ollama_base_url and ollama_model
+      3. Check that `settings/crackerjack.yaml` exists
+      4. Run: `cd /Users/les/Projects/crackerjack && python -m pytest tests/unit/test_config_settings.py -v` - look for ollama settings test
+      5. Quick smoke test: `cd /Users/les/Projects/crackerjack && python -c "from crackerjack.config import load_settings; print('Config loads OK')"`
+      
+      Report: which checks passed/failed.
+    timeout_ms: 2400000
+
+  # Akosha: Migrate AkoshaConfig from BaseSettings to MCPBaseSettings
+  - id: akosha-config
+    title: 'akosha config migration'
+    prompt: |
+      Migrate Akosha's config system from `pydantic_settings.BaseSettings` to `MCPBaseSettings` (Oneiric pattern).
+      
+      Current state:
+      - `akosha/akosha/config.py` has `AkoshaConfig(BaseSettings)` from pydantic_settings
+      - It uses a custom approach with YAML loading and environment variables
+      
+      Task:
+      1. Change `AkoshaConfig` to extend `MCPBaseSettings` instead of `BaseSettings`
+      2. Remove any custom YAML loading code - `MCPBaseSettings.load("akosha")` handles this
+      3. Update `AkoshaConfig` to use the standard pattern with `server_name: str = "Akosha Seer"` field
+      4. Create `settings/akosha.yaml` with the existing defaults (extract from current class)
+      
+      Keep these storage configs as nested Pydantic models (they're fine as-is):
+      - HotStorageConfig, WarmStorageConfig, ColdStorageConfig, CacheConfig
+      
+      5. Run tests: `cd /Users/les/Projects/akosha && python -m pytest tests/ -x -q --tb=short`
+      
+      Deliverable: Report which files changed and test results.
+    assigned_to: general
+    verified_by: general
+    verify_prompt: |
+      Verify Akosha config migration:
+      1. Check that `AkoshaConfig` in `akosha/config.py` now extends `MCPBaseSettings` (not `pydantic_settings.BaseSettings`)
+      2. Check that `AkoshaConfig` has `server_name: str = "Akosha Seer"` field
+      3. Check that nested models (HotStorageConfig, etc.) are still present
+      4. Check that `settings/akosha.yaml` exists
+      5. Run: `cd /Users/les/Projects/akosha && python -c "from akosha.config import AkoshaConfig; c = AkoshaConfig.load('akosha'); print(f'Server: {c.server_name}')"`
+      
+      Report: which checks passed/failed.
+    timeout_ms: 1800000
+
+  # Launchd plist for llama-server (low priority, do last)
+  - id: launchd-plist
+    title: 'launchd plist for llama-server'
+    prompt: |
+      Create a launchd plist file for llama-server on macOS.
+      
+      Requirements:
+      1. Create `~/.config/launchd/com.github.les.bodai.llama-server.plist` (or similar standard location)
+      2. The plist should:
+         - Run llama-server automatically on boot (KeepAlive: true)
+         - Use the Intel-optimized Qwen model: `/Users/les/Library/Application Support/open-webui/models/Intel--Qwen3-8B-gguf-q4km-AutoRound-inc-v1/Qwen3-8B-8.2B-Q4_K_M.gguf`
+         - Listen on 127.0.0.1:11434
+         - Run as the user (not as root)
+         - Log output to /tmp/llama-server-launchd.log
+      3. Also create a symlink or note about loading it:
+         - macOS: `launchctl load ~/.config/launchd/com.github.les.bodai.llama-server.plist`
+      
+      For the Label, use a reverse-DNS style: `com.github.les.bodai.llama-server`
+      
+      Example plist structure:
+      ```xml
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+        <key>Label</key>
+        <string>com.github.les.bodai.llama-server</string>
+        <key>ProgramArguments</key>
+        <array>
+          <string>/usr/local/bin/llama-server</string>
+          <string>-m</string>
+          <string>/path/to/model.gguf</string>
+          <string>--host</string>
+          <string>127.0.0.1</string>
+          <string>--port</string>
+          <string>11434</string>
+        </array>
+        <key>RunAtLoad</key>
+        <true/>
+        <key>KeepAlive</key>
+        <true/>
+        <key>StandardOutPath</key>
+        <string>/tmp/llama-server-launchd.log</string>
+        <key>StandardErrorPath</key>
+        <string>/tmp/llama-server-launchd.log</string>
+      </dict>
+      </plist>
+      ```
+      
+      4. After creating the plist, stop any running llama-server and test loading:
+         - `pkill -f llama-server` (if running)
+         - `launchctl load ~/.config/launchd/com.github.les.bodai.llama-server.plist`
+         - Wait 5 seconds, then `curl http://localhost:11434/api/tags` to verify
+         - If working, `launchctl unload ~/.config/launchd/com.github.les.bodai.llama-server.plist` (we don't want it auto-running now)
+      
+      Deliverable: Report plist location and whether test succeeded.
+    assigned_to: general
+    verified_by: general
+    verify_prompt: |
+      Verify launchd plist creation:
+      1. Check file exists at `~/.config/launchd/com.github.les.bodai.llama-server.plist`
+      2. Check it has correct Label, ProgramArguments with model path, KeepAlive, RunAtLoad
+      3. Report the full path where it was created
+      
+      Report: file location and content verification.
+    timeout_ms: 600000

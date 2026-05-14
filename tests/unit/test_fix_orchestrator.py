@@ -110,6 +110,51 @@ class TestQualityGateResult:
         assert d["blocking_failure"] is False
         assert d["errors"] == ["mypy warning"]
 
+    def test_to_crackerjack_report(self) -> None:
+        """Test converting to the Crackerjack report contract."""
+        result = QualityGateResult(
+            fast_hooks=True,
+            tests=False,
+            comprehensive=False,
+            coverage=72.5,
+            errors=["tests failed"],
+        )
+
+        report = result.to_crackerjack_report(
+            repository="crackerjack",
+            profile="standard",
+        )
+
+        assert report["fast_hooks"] is True
+        assert report["tests"] is False
+        assert report["comprehensive"] is False
+        assert report["coverage"] == 72.5
+        assert report["passed"] is False
+        assert report["blocking_failure"] is True
+        assert report["repository"] == "crackerjack"
+        assert report["profile"] == "standard"
+        assert report["checks"][0]["name"] == "fast_hooks"
+
+    def test_from_crackerjack_report(self) -> None:
+        """Test building a result from the Crackerjack quality-gate report."""
+        report = {
+            "fast_hooks": True,
+            "tests": True,
+            "comprehensive": False,
+            "coverage": 98.0,
+            "errors": ["formatting warning"],
+            "repository": "crackerjack",
+            "profile": "quick",
+            "source": "crackerjack",
+        }
+
+        result = QualityGateResult.from_crackerjack_report(report)
+
+        assert result.fast_hooks is True
+        assert result.tests is True
+        assert result.comprehensive is False
+        assert result.coverage == 98.0
+        assert result.errors == ["formatting warning"]
 
 class TestFixResult:
     """Test FixResult model."""
@@ -187,6 +232,22 @@ class TestFixOrchestrator:
             coordination_manager=mock_coordination_manager,
             approval_manager=mock_approval_manager,
         )
+
+    @patch("mahavishnu.core.fix_orchestrator.MahavishnuApp")
+    def test_default_constructor_uses_app_managers(self, mock_app_cls) -> None:
+        app = MagicMock()
+        app.pool_manager = MagicMock()
+        app.coordination_manager = MagicMock()
+        app.approval_manager = MagicMock()
+        app.qc = MagicMock()
+        mock_app_cls.return_value = app
+
+        orchestrator = FixOrchestrator()
+
+        assert orchestrator.pool_manager is app.pool_manager
+        assert orchestrator.coordination_manager is app.coordination_manager
+        assert orchestrator.approval_manager is app.approval_manager
+        assert orchestrator.quality_control is app.qc
 
     @pytest.mark.asyncio
     async def test_execute_fix_success(

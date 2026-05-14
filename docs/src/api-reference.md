@@ -24,7 +24,7 @@ Configuration class extending MCPServerSettings with application-specific settin
 
 #### Fields
 
-- `repos_path: str` - Path to repos.yaml repository manifest
+- `repos_path: str` - Path to the ecosystem inventory file (`ecosystem.yaml`)
 - `max_concurrent_workflows: int` - Maximum number of concurrent workflows (1-100)
 - `airflow_enabled: bool` - Enable Airflow adapter
 - `crewai_enabled: bool` - Enable CrewAI adapter
@@ -69,7 +69,7 @@ mahavishnu sweep --tag TAG --adapter ADAPTER
 
 ### list-repos
 
-List repositories in repos.yaml.
+List repositories in ecosystem.yaml.
 
 ```bash
 mahavishnu list-repos [--tag TAG]

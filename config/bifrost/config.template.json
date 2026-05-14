@@ -14,10 +14,10 @@
     "routing_rules": [
       {
         "cel_expression": "headers[\"x-bf-task\"] == \"think\" || headers[\"x-bf-route\"] == \"think\"",
-        "description": "Route high-reasoning tasks to ZAI's strongest coding plan model.",
+        "description": "Route high-reasoning tasks to MiniMax's strongest text model.",
         "enabled": true,
         "fallbacks": [
-          "zai-openai/glm-4.7"
+          "minimax-openai/MiniMax-M2.7-highspeed"
         ],
         "id": "route-think",
         "name": "Think Tasks",
@@ -25,18 +25,18 @@
         "scope": "global",
         "targets": [
           {
-            "model": "glm-5.1",
-            "provider": "zai-openai",
+            "model": "MiniMax-M2.7",
+            "provider": "minimax-openai",
             "weight": 1
           }
         ]
       },
       {
         "cel_expression": "headers[\"x-bf-task\"] == \"long_context\" || headers[\"x-bf-route\"] == \"long_context\" || headers[\"x-bf-task\"] == \"longContext\" || headers[\"x-bf-route\"] == \"longContext\"",
-        "description": "Prefer the strongest long-context model for explicitly labeled long-context work.",
+        "description": "Prefer the strongest MiniMax text model for explicitly labeled long-context work.",
         "enabled": true,
         "fallbacks": [
-          "zai-openai/glm-4.7"
+          "minimax-openai/MiniMax-M2.7-highspeed"
         ],
         "id": "route-long-context",
         "name": "Long Context Tasks",
@@ -44,18 +44,18 @@
         "scope": "global",
         "targets": [
           {
-            "model": "glm-5-turbo",
-            "provider": "zai-openai",
+            "model": "MiniMax-M2.7-highspeed",
+            "provider": "minimax-openai",
             "weight": 1
           }
         ]
       },
       {
         "cel_expression": "headers[\"x-bf-task\"] == \"web_search\" || headers[\"x-bf-route\"] == \"web_search\" || headers[\"x-bf-task\"] == \"webSearch\" || headers[\"x-bf-route\"] == \"webSearch\"",
-        "description": "Prefer the stronger model when the caller marks a browsing or search-heavy request.",
+        "description": "Prefer MiniMax's stronger text model when the caller marks a browsing or search-heavy request.",
         "enabled": true,
         "fallbacks": [
-          "zai-openai/glm-4.7"
+          "minimax-openai/MiniMax-M2.7-highspeed"
         ],
         "id": "route-web-search",
         "name": "Web Search Tasks",
@@ -63,18 +63,18 @@
         "scope": "global",
         "targets": [
           {
-            "model": "glm-5-turbo",
-            "provider": "zai-openai",
+            "model": "MiniMax-M2.7-highspeed",
+            "provider": "minimax-openai",
             "weight": 1
           }
         ]
       },
       {
         "cel_expression": "headers[\"x-bf-task\"] == \"image\" || headers[\"x-bf-route\"] == \"image\"",
-        "description": "Route explicitly labeled multimodal or vision chat requests to ZAI vision models.",
-        "enabled": true,
+        "description": "Deferred until a supported MiniMax multimodal adapter exists.",
+        "enabled": false,
         "fallbacks": [
-          "zai-openai/glm-4.5-air"
+          "minimax-openai/MiniMax-M2.7"
         ],
         "id": "route-image",
         "name": "Vision Tasks",
@@ -82,23 +82,18 @@
         "scope": "global",
         "targets": [
           {
-            "model": "GLM-4.5V",
-            "provider": "zai-openai",
-            "weight": 0.6
-          },
-          {
-            "model": "GLM-4.6V",
-            "provider": "zai-openai",
-            "weight": 0.4
+            "model": "MiniMax-M2.7",
+            "provider": "minimax-openai",
+            "weight": 1
           }
         ]
       },
       {
         "cel_expression": "headers[\"x-bf-task\"] == \"background\" || headers[\"x-bf-route\"] == \"background\" || headers[\"x-bf-task\"] == \"cheap\" || headers[\"x-bf-route\"] == \"cheap\" || headers[\"x-bf-task\"] == \"high_throughput\" || headers[\"x-bf-route\"] == \"high_throughput\"",
-        "description": "Keep low-priority background work on the cheaper ZAI model.",
+        "description": "Keep low-priority background work on MiniMax's faster text model.",
         "enabled": true,
         "fallbacks": [
-          "zai-openai/glm-4.5-air"
+          "minimax-openai/MiniMax-M2.7-highspeed"
         ],
         "id": "route-background",
         "name": "Background Tasks",
@@ -106,8 +101,8 @@
         "scope": "global",
         "targets": [
           {
-            "model": "glm-4.7-flashx",
-            "provider": "zai-openai",
+            "model": "MiniMax-M2.7-highspeed",
+            "provider": "minimax-openai",
             "weight": 1
           }
         ]
@@ -128,24 +123,6 @@
     }
   ],
   "providers": {
-    "anthropic": {
-      "keys": [
-        {
-          "models": [
-            "GLM-4.7",
-            "GLM-4.5-Air",
-            "GLM-4.5V",
-            "GLM-4.6V"
-          ],
-          "name": "zai-anthropic-primary",
-          "value": "env.ZAI_API_KEY",
-          "weight": 1.0
-        }
-      ],
-      "network_config": {
-        "base_url": "https://api.z.ai/api/anthropic"
-      }
-    },
     "openai": {
       "keys": [
         {
@@ -163,7 +140,7 @@
         "base_url": "https://api.openai.com"
       }
     },
-    "zai-openai": {
+    "minimax-openai": {
       "custom_provider_config": {
         "allowed_requests": {
           "chat_completion": true,
@@ -171,25 +148,23 @@
         },
         "base_provider_type": "openai",
         "request_path_overrides": {
-          "chat_completion": "/api/coding/paas/v4/chat/completions",
-          "chat_completion_stream": "/api/coding/paas/v4/chat/completions"
+          "chat_completion": "/v1/chat/completions",
+          "chat_completion_stream": "/v1/chat/completions"
         }
       },
       "keys": [
         {
           "models": [
-            "GLM-5.1",
-            "GLM-5-Turbo",
-            "GLM-4.7",
-            "GLM-4.5-Air"
+            "MiniMax-M2.7",
+            "MiniMax-M2.7-highspeed"
           ],
-          "name": "zai-openai-primary",
-          "value": "env.ZAI_API_KEY",
+          "name": "minimax-openai-primary",
+          "value": "env.MINIMAX_API_KEY",
           "weight": 1.0
         }
       ],
       "network_config": {
-        "base_url": "https://api.z.ai"
+        "base_url": "https://api.minimax.io"
       }
     }
   },

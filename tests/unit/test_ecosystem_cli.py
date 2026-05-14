@@ -130,6 +130,9 @@ def _build_mock_loader(
     loader.config.repos = repos or []
     loader.config.lsp_servers = lsp_servers or []
     loader.config.portmap = portmap or []
+    loader.validate_mcp_servers.return_value = {"errors": [], "warnings": []}
+    loader.validate_catalog_references.return_value = {"errors": [], "warnings": []}
+    loader.validate_catalog_metadata.return_value = {"errors": [], "warnings": []}
     return loader
 
 

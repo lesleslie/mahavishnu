@@ -119,7 +119,7 @@ class TestAdapterMetadata:
             }
         ]
         mock_ep.name = "prefect"
-        mock_ep.module = "mahavishnu.engines.prefect_adapter"
+        mock_ep.module = "mahavishnu.engines.prefect_adapter_impl"
 
         # The from_entry_point method expects an EntryPoint object
         # and calls entry_point.load() to get the factory function
@@ -458,6 +458,7 @@ class TestHybridAdapterRegistry:
 
         # Persistence should be initialized
         assert registry.persistence._initialized
+        await registry.close()
 
     @pytest.mark.asyncio
     async def test_get_adapter_not_found(self, mock_config):
@@ -611,4 +612,5 @@ class TestModuleFunctions:
         assert isinstance(registry, HybridAdapterRegistry)
 
         # Cleanup
+        await registry.close()
         reg_module._registry = None

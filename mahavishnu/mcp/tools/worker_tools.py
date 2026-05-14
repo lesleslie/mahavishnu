@@ -18,7 +18,7 @@ def register_worker_tools(
 
     @mcp.tool()
     async def worker_spawn(
-        worker_type: str = "terminal-qwen",
+        worker_type: str = "terminal-claude",
         count: int = 1,
     ) -> list[str]:
         """Spawn worker instances for task execution."""

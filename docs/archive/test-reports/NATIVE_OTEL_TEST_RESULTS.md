@@ -202,7 +202,7 @@ pip install sentence-transformers
 
 # Then use OtelIngester instead of HotStore directly
 python -c "
-from mahavishnu.ingesters import OtelIngester
+from mahavishnu.ingesters.otel_ingester import OtelIngester
 from akosha.storage import HotStore
 import asyncio
 

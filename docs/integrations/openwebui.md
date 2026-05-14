@@ -144,16 +144,16 @@ A successful response confirms the full round-trip: OpenWebUI → mcpo → Mahav
 
 **Connection drops**: Streamable HTTP is stateless per-request — mcpo reconnects automatically on each tool call. No persistent connection to drop.
 
-## Model Arena: ZAI vs Ollama Benchmarking
+## Model Arena: MiniMax vs Ollama Benchmarking
 
 OpenWebUI's Arena mode enables blind ELO comparisons between models. Use this to build data for improving `StatisticalRouter` priors.
 
 ### Setup
 
 1. In OpenWebUI **Admin → Settings → Connections**:
-   - Add ZAI endpoint: `https://api.z.ai/api/coding/paas/v4` with your `ZAI_API_KEY`
+   - Add MiniMax endpoint: `https://api.minimax.io/v1` with your `MINIMAX_API_KEY`
    - Add Ollama endpoint: `http://localhost:11434` (or your Ollama host)
-2. Enable models: `glm-4.7`, `glm-5.1`, `glm-4.5-air`, `llama3:8b`, `qwen2.5-coder:7b`
+2. Enable models: `MiniMax-M2.7`, `MiniMax-M2.7-highspeed`, `llama3:8b`, `qwen2.5-coder:7b`
 
 ### Benchmark Prompt Set
 
@@ -179,4 +179,4 @@ After 10 prompts, export the ELO table from **Admin → Evaluations** and update
 - FastMCP HTTP transport: exposes `/mcp` (Streamable HTTP) on port 8680 — use `--type streamable-http` with mcpo
 - mcpo source: https://github.com/open-webui/mcpo
 - Tool profile docs: `mahavishnu/mcp/tools/profiles.py`
-- ZAI model configuration: `settings/models.yaml`
+- MiniMax model configuration: `settings/models.yaml`

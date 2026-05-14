@@ -8,7 +8,7 @@ Tests cover:
 
 import json
 
-from mahavishnu.core.dashboard_config import DashboardConfig, DashboardPanel
+from mahavishnu.core.monitoring import DashboardConfig, DashboardPanel
 
 
 class TestDashboardPanel:

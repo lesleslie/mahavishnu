@@ -256,7 +256,7 @@ docs/
 
 ### **1. Quick Start with Sample Data:**
 ```python
-from mahavishnu.ingesters import OtelIngester
+from mahavishnu.ingesters.otel_ingester import OtelIngester
 from akosha.storage import HotStore
 import json
 

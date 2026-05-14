@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path("/Users/les/Projects/akosha")))
 
 from akosha.storage import HotStore
 
-from mahavishnu.ingesters import OtelIngester
+from mahavishnu.ingesters.otel_ingester import OtelIngester
 
 
 async def main():

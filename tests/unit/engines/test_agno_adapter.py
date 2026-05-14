@@ -121,6 +121,7 @@ class TestAgnoLLMConfig:
         """Test LLM provider enum values."""
         assert LLMProvider.ANTHROPIC.value == "anthropic"
         assert LLMProvider.OPENAI.value == "openai"
+        assert LLMProvider.MINIMAX.value == "minimax"
         assert LLMProvider.OLLAMA.value == "ollama"
 
     def test_temperature_bounds(self) -> None:
@@ -265,6 +266,28 @@ class TestLLMProviderFactory:
             call_kwargs = mock_claude.call_args[1]
             assert call_kwargs["id"] == "claude-sonnet-4-6"
             assert call_kwargs["api_key"] == "test-key"
+            assert model == mock_model
+
+    @patch.dict(os.environ, {"MINIMAX_API_KEY": "test-key"})
+    def test_create_minimax_model(self, agno_llm_config: AgnoLLMConfig) -> None:
+        """Test MiniMax model creation."""
+        agno_llm_config.provider = LLMProvider.MINIMAX
+        agno_llm_config.model_id = "MiniMax-M2.7"
+        agno_llm_config.base_url = "https://api.minimax.io/v1"
+
+        factory = LLMProviderFactory(agno_llm_config)
+
+        with patch("agno.models.openai.OpenAIChat") as mock_openai:
+            mock_model = MagicMock()
+            mock_openai.return_value = mock_model
+
+            model = factory.create_model()
+
+            mock_openai.assert_called_once()
+            call_kwargs = mock_openai.call_args[1]
+            assert call_kwargs["id"] == "MiniMax-M2.7"
+            assert call_kwargs["api_key"] == "test-key"
+            assert call_kwargs["base_url"] == "https://api.minimax.io/v1"
             assert model == mock_model
 
     def test_create_ollama_model(self, agno_llm_config: AgnoLLMConfig) -> None:

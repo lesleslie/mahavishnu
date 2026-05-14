@@ -24,7 +24,7 @@ Configuration (settings/mahavishnu.yaml):
 
 Example:
     ```python
-    from mahavishnu.engines.prefect_adapter import PrefectAdapter
+    from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
     from mahavishnu.core.config import PrefectConfig
 
     config = PrefectConfig(api_url="http://localhost:4200")
@@ -464,7 +464,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
     Example:
         ```python
-        from mahavishnu.engines.prefect_adapter import PrefectAdapter
+        from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
         from mahavishnu.core.config import PrefectConfig
 
         # Create adapter with configuration
@@ -1958,7 +1958,7 @@ def prefect_adapter_entries() -> list[dict[str, Any]]:
         {
             "category": "orchestration",
             "provider": "prefect",
-            "factory_path": "mahavishnu.engines.prefect_adapter:PrefectAdapter",
+            "factory_path": "mahavishnu.engines.prefect_adapter_impl:PrefectAdapter",
             "description": "Prefect 3.x workflow orchestration engine",
             "capabilities": [
                 "deploy_flows",

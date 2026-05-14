@@ -132,6 +132,11 @@ class TestTaskOrderingResult:
         assert result.total_tasks == 2
         assert result.critical_path == ["task-1", "task-2"]
 
+        d = result.to_dict()
+        assert d["strategy"] == OrderingStrategy.BALANCED.value
+        assert d["total_tasks"] == 2
+        assert len(d["recommendations"]) == 2
+
     def test_get_ordered_task_ids(self) -> None:
         """Test getting ordered task IDs."""
         rec1 = TaskOrderRecommendation(task_id="task-1", recommended_position=0, score=0.9)
@@ -161,7 +166,7 @@ class TestTaskOrderer:
     @pytest.fixture
     def sample_tasks(self) -> list[dict]:
         """Create sample tasks."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         return [
             {
                 "id": "task-1",
@@ -485,13 +490,119 @@ class TestTaskOrderer:
         assert task_ids.index("task-1") < task_ids.index("task-2")
         assert task_ids.index("task-2") < task_ids.index("task-3")
 
+    def test_generate_reasoning_no_significant_factors(self, orderer: TaskOrderer) -> None:
+        """Test reasoning fallback when all factor scores are tiny."""
+        factors = [
+            {"name": "priority", "score": 0.05, "reason": "Priority: medium"},
+            {"name": "dependencies", "score": 0.04, "reason": "Blocked by 0 tasks"},
+        ]
+        reasoning = orderer._generate_reasoning(factors, OrderingStrategy.BALANCED)
+        assert "Balanced consideration of all factors" in reasoning
+
+    def test_calculate_urgency_overdue(self, orderer: TaskOrderer) -> None:
+        """Test urgency is critical for overdue tasks."""
+        past = (datetime.now(UTC) - timedelta(days=2)).isoformat()
+        task = {"deadline": past}
+        assert orderer._calculate_urgency(task, {"total_score": 0.5}) == "critical"
+
+    def test_calculate_critical_path_empty(self, orderer: TaskOrderer) -> None:
+        """Test critical path returns empty list for no tasks."""
+        result = orderer._calculate_critical_path([], {}, {})
+        assert result == []
+
+    def test_score_deadline_with_datetime_object(self, orderer: TaskOrderer) -> None:
+        """Test deadline scoring when deadline is a datetime object, not a string."""
+        now = datetime.now(UTC)
+        task = {"deadline": now + timedelta(days=1)}
+        score = orderer._score_deadline(task)
+        assert score == 0.9
+
+    def test_score_deadline_invalid_string(self, orderer: TaskOrderer) -> None:
+        """Test deadline scoring returns None for unparseable deadline strings."""
+        task = {"deadline": "not-a-date"}
+        score = orderer._score_deadline(task)
+        assert score is None
+
+    def test_get_deadline_reason_no_deadline(self, orderer: TaskOrderer) -> None:
+        """Test _get_deadline_reason returns 'No deadline' when no deadline set."""
+        assert orderer._get_deadline_reason({}) == "No deadline"
+
+    def test_get_deadline_reason_with_datetime_object(self, orderer: TaskOrderer) -> None:
+        """Test _get_deadline_reason with a datetime object deadline."""
+        future = datetime.now(UTC) + timedelta(days=5)
+        task = {"deadline": future}
+        reason = orderer._get_deadline_reason(task)
+        assert "days" in reason
+
+    def test_get_deadline_reason_overdue(self, orderer: TaskOrderer) -> None:
+        """Test _get_deadline_reason for overdue task."""
+        past = (datetime.now(UTC) - timedelta(days=3)).isoformat()
+        task = {"deadline": past}
+        reason = orderer._get_deadline_reason(task)
+        assert "Overdue" in reason
+
+    def test_get_deadline_reason_due_tomorrow(self, orderer: TaskOrderer) -> None:
+        """Test _get_deadline_reason when exactly 1 day remains."""
+        tomorrow = (datetime.now(UTC) + timedelta(hours=30)).isoformat()
+        task = {"deadline": tomorrow}
+        reason = orderer._get_deadline_reason(task)
+        assert reason in ("Due tomorrow", "Due in 1 days")
+
+    def test_get_deadline_reason_invalid(self, orderer: TaskOrderer) -> None:
+        """Test _get_deadline_reason returns 'Invalid deadline' for bad strings."""
+        task = {"deadline": "not-a-date"}
+        assert orderer._get_deadline_reason(task) == "Invalid deadline"
+
+    def test_calculate_urgency_with_datetime_object(self, orderer: TaskOrderer) -> None:
+        """Test _calculate_urgency when deadline is a datetime object."""
+        past_dt = datetime.now(UTC) - timedelta(hours=1)
+        task = {"deadline": past_dt}
+        assert orderer._calculate_urgency(task, {"total_score": 0.5}) == "critical"
+
+    def test_calculate_urgency_invalid_deadline(self, orderer: TaskOrderer) -> None:
+        """Test _calculate_urgency falls through when deadline is invalid."""
+        task = {"deadline": "bad-date", "priority": "low"}
+        result = orderer._calculate_urgency(task, {"total_score": 0.3})
+        assert result == "low"
+
+    def test_topological_sort_circular_deps(self, orderer: TaskOrderer) -> None:
+        """Test _topological_sort handles circular dependencies without infinite loop."""
+        tasks = [
+            {"id": "a", "priority": "low"},
+            {"id": "b", "priority": "low"},
+        ]
+        dep_graph = {
+            "blocked_by": {"a": ["b"], "b": ["a"]},
+            "blocking": {"a": ["b"], "b": ["a"]},
+        }
+        scored = [
+            (tasks[0], {"total_score": 0.5}),
+            (tasks[1], {"total_score": 0.4}),
+        ]
+        result = orderer._topological_sort(scored, dep_graph)
+        task_ids = [t[0]["id"] for t in result]
+        assert set(task_ids) == {"a", "b"}
+
+    def test_calculate_critical_path_all_blocked(self, orderer: TaskOrderer) -> None:
+        """Test _calculate_critical_path when every task is blocked (line 708)."""
+        tasks = [
+            {"id": "a", "estimated_hours": 4.0},
+            {"id": "b", "estimated_hours": 6.0},
+        ]
+        dep_graph = {
+            "blocking": {"a": ["b"], "b": ["a"]},
+            "blocked_by": {},
+        }
+        result = orderer._calculate_critical_path(tasks, dep_graph, {})
+        assert isinstance(result, list)
+
 
 class TestConvenienceFunction:
     """Test convenience function."""
 
     def test_order_tasks_function(self) -> None:
         """Test order_tasks convenience function."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         tasks = [
             {
                 "id": "task-1",
@@ -525,7 +636,7 @@ class TestStrategyComparison:
     @pytest.fixture
     def complex_tasks(self) -> list[dict]:
         """Create complex task set."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         return [
             {
                 "id": "urgent-long",

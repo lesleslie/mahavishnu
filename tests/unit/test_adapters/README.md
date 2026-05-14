@@ -230,9 +230,9 @@ pytest tests/unit/test_adapters/test_llamaindex_adapter.py -v
 
 ```bash
 pytest tests/unit/test_adapters/ \
-  --cov=mahavishnu.engines.agno_adapter \
-  --cov=mahavishnu.engines.prefect_adapter \
-  --cov=mahavishnu.engines.llamaindex_adapter \
+  --cov=mahavishnu.engines.agno_adapter_impl \
+  --cov=mahavishnu.engines.prefect_adapter_impl \
+  --cov=mahavishnu.engines.llamaindex_adapter_impl \
   --cov-report=html \
   --cov-report=term
 ```

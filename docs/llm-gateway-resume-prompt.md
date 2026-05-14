@@ -10,21 +10,21 @@ I'm building an LLM gateway/proxy on macOS (Intel x86_64) to unify multiple AI c
 
 ### The Problem
 
-I have 5+ LLM clients that all hit z.ai (GLM models from Zhipu AI) independently:
+I have 5+ LLM clients that all hit the MiniMax primary cloud provider independently:
 
 - **Claude Code** (via CCR — Claude Code Router, installed at `/usr/local/bin/ccr`)
 - **Codex CLI** (OpenAI-compatible)
-- **Qwen CLI** (OpenAI-compatible)
-- **Nanobot** (my AI assistant, OpenAI-compatible)
+- **Qwen CLI** (OpenAI-compatible, supported client)
 - **Vish Workers** (OpenAI-compatible)
+- **Retired Nanobot client** (historical; no longer part of the active fleet)
 
-z.ai has two API formats:
+The provider exposes multiple API formats:
 
-- **OpenAI-compatible**: `https://api.z.ai/api/paas/v4/chat/completions` (glm-5, glm-5-turbo, glm-4.7, glm-4.5, etc.)
-- **Anthropic Messages**: `https://api.z.ai/api/anthropic/v1/messages` (GLM-4.7, GLM-4.5-Air, GLM-4.5V, GLM-4.6V)
-- **Coding Plan** (cheaper, rate-limited): `https://api.z.ai/api/coding/paas/v4/chat/completions`
+- **OpenAI-compatible**: `https://api.minimax.io/v1/chat/completions` (MiniMax-M2.7, MiniMax-M2.7-highspeed)
+- **Anthropic-compatible optional path**: `https://api.z.ai/api/anthropic/v1/messages` (GLM-4.7, GLM-4.5-Air, GLM-4.5V, GLM-4.6V)
+- **Coding plan / optional path**: `https://api.z.ai/api/coding/paas/v4/chat/completions`
 
-Auth: `Authorization: Bearer $Z_AI_API_KEY`
+Auth: `Authorization: Bearer $MINIMAX_API_KEY`
 
 ### What We've Done
 
@@ -38,7 +38,7 @@ A **simple, self-hosted LLM proxy** that:
 
 1. Listens on localhost:8471
 1. Exposes OpenAI-compatible `/v1/chat/completions` endpoint
-1. Routes requests to z.ai's OpenAI-compatible endpoint with the API key injected
+1. Routes requests to the primary OpenAI-compatible provider endpoint with the API key injected
 1. Has basic rate limiting (per-minute or per-model)
 1. Optionally caches identical requests
 1. Logs requests/responses for observability (structured JSON logs are fine)
@@ -74,7 +74,7 @@ A **simple, self-hosted LLM proxy** that:
 - **No Docker** — native install only
 - **localhost only** — no external exposure needed
 - Must work with `OPENAI_BASE_URL=http://127.0.0.1:8471/v1` for OpenAI-compatible clients
-- Must not conflict with Claude Code's own timeout (900s) or Nanobot's retry logic (3 attempts, 7s total)
+- Must not conflict with Claude Code's own timeout (900s) or other clients' retry logic
 
 ### What I Want You To Do
 
@@ -97,4 +97,4 @@ ______________________________________________________________________
 - `psql` full path: `/usr/local/opt/postgresql@18/bin/psql`
 - Python: system `python`/`python3` alias points to 3.12 — use full path for non-default venvs
 - `.bash_profile` has two stale source lines (harmless but noisy): `/Users/les/.cargo/env` is a directory, `/Users/les/.config/broot/launcher/bash/br` doesn't exist
-- `Z_AI_API_KEY` env var is not currently set anywhere persistent — you'll need to ask me for it
+- `MINIMAX_API_KEY` should be the primary cloud key now; `ZAI_API_KEY` remains available for optional non-default compatibility paths

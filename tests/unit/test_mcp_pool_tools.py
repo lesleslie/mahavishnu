@@ -76,7 +76,7 @@ class TestPoolSpawnTool:
             name: str = "default",
             min_workers: int = 1,
             max_workers: int = 10,
-            worker_type: str = "terminal-qwen",
+            worker_type: str = "terminal-claude",
         ):
 
             config = PoolConfig(

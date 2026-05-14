@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from mahavishnu.ingesters.quality_evaluator import EvaluationReport, MetricScore, QualityMetric
 from mahavishnu.ingesters.quality_scorer import (
     ContentQualityScorer,
+    EvaluationReport,
+    MetricScore,
+    QualityMetric,
     QualityThresholds,
     score_completeness,
     score_readability,

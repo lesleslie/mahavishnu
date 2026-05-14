@@ -22,7 +22,7 @@ As of 2026-04-09:
   - `config/launchd/ai.bifrost.gateway.plist`
   - `config/launchd/ai.bifrost.redis-stack.plist`
 - installed copies were removed from `~/Library/LaunchAgents`
-- live user configs for Codex, Claude Code, Qwen, Nanobot, and OpenClaw were reverted to direct provider endpoints
+- live user configs for Codex, Claude Code, Qwen, and OpenClaw were reverted to direct provider endpoints; Nanobot is retired
 - Bifrost and the dedicated Redis Stack cache are not expected to auto-start on reboot
 
 ## Prerequisites
@@ -35,7 +35,7 @@ As of 2026-04-09:
 Expected key material:
 
 - `OPENAI_API_KEY`
-- `ZAI_API_KEY` or `Z_AI_API_KEY`
+- `MINIMAX_API_KEY`
 
 Optional later:
 
@@ -58,7 +58,7 @@ Check that the current shell sees the keys:
 
 ```zsh
 source ~/.zshrc
-env | rg 'OPENAI_API_KEY|ZAI_API_KEY|Z_AI_API_KEY'
+env | rg 'OPENAI_API_KEY|MINIMAX_API_KEY'
 ```
 
 If you changed `.zshrc` in another shell, restart the terminal or re-source it first.
@@ -122,27 +122,14 @@ cd /Users/les/Projects/mahavishnu
 curl -sS http://127.0.0.1:8471/v1/models
 ```
 
-### Anthropic path
-
-```zsh
-curl -sS http://127.0.0.1:8471/anthropic/v1/messages \
-  -H 'content-type: application/json' \
-  -H "x-api-key: ${ZAI_API_KEY:-$Z_AI_API_KEY}" \
-  -d '{
-    "model": "anthropic/GLM-4.5-Air",
-    "max_tokens": 32,
-    "messages": [{"role":"user","content":"Reply with exactly pong"}]
-  }'
-```
-
 ### OpenAI chat path
 
 ```zsh
 curl -sS http://127.0.0.1:8471/v1/chat/completions \
   -H 'content-type: application/json' \
-  -H "authorization: Bearer ${ZAI_API_KEY:-$Z_AI_API_KEY}" \
+  -H "authorization: Bearer ${MINIMAX_API_KEY}" \
   -d '{
-    "model": "zai-openai/glm-5-turbo",
+    "model": "minimax-openai/MiniMax-M2.7",
     "messages": [{"role":"user","content":"Reply with exactly pong"}]
   }'
 ```
@@ -162,7 +149,7 @@ curl -sS http://127.0.0.1:8471/v1/responses \
 Interpretation:
 
 - upstream `429 insufficient_quota` means the gateway path is fine and the provider account needs quota
-- z.ai `1113` means the gateway path is fine and the z.ai account needs balance/package
+- speech/transcription is intentionally not part of the current Bifrost bootstrap and remains deferred until a supported MiniMax-compatible route is added
 
 ## 6. Validate Exact-Match Cache
 
@@ -171,14 +158,13 @@ The current cache plugin is proven in direct-only mode.
 Use a fixed key:
 
 ```zsh
-curl -sS http://127.0.0.1:8471/anthropic/v1/messages \
+curl -sS http://127.0.0.1:8471/v1/chat/completions \
   -H 'content-type: application/json' \
-  -H "x-api-key: ${ZAI_API_KEY:-$Z_AI_API_KEY}" \
+  -H "authorization: Bearer ${MINIMAX_API_KEY}" \
   -H 'x-bf-cache-type: direct' \
   -H 'x-bf-cache-key: smoke-test-ping' \
   -d '{
-    "model": "anthropic/GLM-4.5-Air",
-    "max_tokens": 32,
+    "model": "minimax-openai/MiniMax-M2.7",
     "messages": [{"role":"user","content":"Reply with exactly pong"}]
   }'
 ```

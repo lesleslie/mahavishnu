@@ -291,11 +291,14 @@ class TestTaskRouterMetrics:
 
         await router.adapter_registry.register_adapter(AdapterType.PREFECT, FailingAdapter())
 
-        # Create mock task that will fail first adapter then succeed
+        # Create mock task that will fail first adapter then succeed.
+        # Explicit preference_order ensures PREFECT (failing) runs before AGNO (succeeding),
+        # regardless of the default AI_TASK routing priority (which prefers AGNO first).
         task = {
             "task_type": TaskType.AI_TASK,
             "prompt": "Test failing task",
             "repos": [],
+            "preference_order": [AdapterType.PREFECT, AdapterType.AGNO],
         }
 
         # Execute - should record first failure, then success with fallback

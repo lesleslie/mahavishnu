@@ -26,7 +26,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         >>> adapter = WorkerOrchestratorAdapter(worker_manager)
         >>> task = {
         ...     "type": "code_generation",
-        ...     "worker_type": "terminal-qwen",
+        ...     "worker_type": "terminal-claude",
         ...     "prompt": "Implement a REST API",
         ...     "count": 3,
         ... }
@@ -139,7 +139,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
 
         Args:
             task: Task specification with keys:
-                - worker_type: Type of worker to spawn ("terminal-qwen", "terminal-claude")
+                - worker_type: Type of worker to spawn ("terminal-claude", "terminal-qwen")
                 - prompt: Task prompt for AI workers
                 - count: Number of workers to spawn
                 - timeout: Task timeout in seconds (default: 300)
@@ -164,7 +164,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         worker_manager = await self._ensure_worker_manager()
 
         # Extract task parameters
-        requested_worker_type = task.get("worker_type", "terminal-qwen")
+        requested_worker_type = task.get("worker_type", "terminal-claude")
         count = task.get("count", len(repos))
         prompt = task.get("prompt", "")
         timeout = task.get("timeout", 300)

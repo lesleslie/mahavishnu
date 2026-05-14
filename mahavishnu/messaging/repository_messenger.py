@@ -6,6 +6,7 @@ from enum import Enum
 from typing import Any
 import uuid
 
+from ..core.events.contract import EventPublisherProtocol, create_event_envelope
 from ..session_buddy.auth import CrossProjectAuth
 
 
@@ -54,12 +55,17 @@ class RepositoryMessage:
 class RepositoryMessenger:
     """Manages messaging between repositories."""
 
-    def __init__(self, app):
+    def __init__(
+        self,
+        app,
+        event_publisher: EventPublisherProtocol | None = None,
+    ):
         self.app = app
         self.logger = __import__("logging").getLogger(__name__)
         self.messages: list[RepositoryMessage] = []
         self.subscribers: dict[str, list[callable]] = {}  # repo -> list of callbacks
         self.authenticator: CrossProjectAuth | None = None
+        self._event_publisher = event_publisher
 
         # Initialize authenticator if cross-project auth is configured
         auth_secret = getattr(app.config, "cross_project_auth_secret", None)
@@ -123,6 +129,7 @@ class RepositoryMessenger:
 
             # Notify subscribers
             await self._notify_subscribers(message)
+            await self._publish_canonical_event(message)
 
             self.logger.info(
                 f"Message sent from {sender_repo} to {receiver_repo}: {message_type.value}"
@@ -150,6 +157,35 @@ class RepositoryMessenger:
                     await callback(message)
                 except Exception as e:
                     self.logger.error(f"Error in wildcard subscriber callback: {e}")
+
+    async def _publish_canonical_event(self, message: RepositoryMessage) -> None:
+        if self._event_publisher is None:
+            return
+        envelope = create_event_envelope(
+            event_type=f"repository.{message.message_type.value}",
+            source="repository_messenger",
+            payload={
+                "id": message.id,
+                "sender_repo": message.sender_repo,
+                "receiver_repo": message.receiver_repo,
+                "message_type": message.message_type.value,
+                "content": message.content,
+                "priority": message.priority.value,
+                "timestamp": message.timestamp.isoformat()
+                if message.timestamp is not None
+                else None,
+                "correlation_id": message.correlation_id,
+                "signature": message.signature,
+            },
+            metadata={
+                "sender_repo": message.sender_repo,
+                "receiver_repo": message.receiver_repo,
+                "message_type": message.message_type.value,
+                "priority": message.priority.value,
+                "correlation_id": message.correlation_id,
+            },
+        )
+        await self._event_publisher.publish(envelope)
 
     async def get_messages_for_repo(
         self,
@@ -274,9 +310,13 @@ class RepositoryMessenger:
 class RepositoryMessengerManager:
     """Manager for repository messenger functionality."""
 
-    def __init__(self, app):
+    def __init__(
+        self,
+        app,
+        event_publisher: EventPublisherProtocol | None = None,
+    ):
         self.app = app
-        self.messenger = RepositoryMessenger(app)
+        self.messenger = RepositoryMessenger(app, event_publisher=event_publisher)
         self.logger = __import__("logging").getLogger(__name__)
 
     async def process_repository_changes(

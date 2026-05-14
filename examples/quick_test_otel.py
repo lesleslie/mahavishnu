@@ -3,7 +3,7 @@
 
 import asyncio
 
-from mahavishnu.ingesters import OtelIngester
+from mahavishnu.ingesters.otel_ingester import OtelIngester
 
 
 async def main():

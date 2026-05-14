@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 import pytest
 import yaml
@@ -224,6 +227,58 @@ def test_generate_claude_mcp_config_and_startup_commands(tmp_path: Path) -> None
     startup = loader.get_startup_commands()
     assert ("managed-http", "9102", "run-managed --port 9102") in startup
     assert not any(name == "ide-http" for name, _, _ in startup)
+
+
+def test_validate_catalog_references_reports_invalid_role(tmp_path: Path) -> None:
+    data = _base_ecosystem_dict()
+    data["roles"] = [{"name": "orchestrator"}]
+    data["repos"] = [
+        {
+            "name": "repo-a",
+            "path": "/tmp/repo-a",
+            "role": "unknown-role",
+            "description": "Repo A",
+            "status": "active",
+        }
+    ]
+    path = tmp_path / "ecosystem.yaml"
+    _write_config(path, data)
+    loader = EcosystemLoader(path)
+    loader.load()
+
+    result = loader.validate_catalog_references()
+
+    assert result["errors"] == ["repo-a: role 'unknown-role' is not defined in roles catalog"]
+    assert result["warnings"] == []
+
+
+def test_validate_catalog_metadata_reports_stale_catalog_and_missing_health_check(
+    tmp_path: Path,
+) -> None:
+    data = _base_ecosystem_dict()
+    data["last_updated"] = "2026-01-01"
+    data["mcp_servers"] = [
+        {
+            "name": "catalog-http",
+            "type": "http",
+            "port": 9300,
+            "category": "core",
+            "function": "serve",
+            "command": "run-catalog --port {port}",
+            "description": "Catalog server",
+            "status": "enabled",
+        }
+    ]
+    path = tmp_path / "ecosystem.yaml"
+    _write_config(path, data)
+    loader = EcosystemLoader(path)
+    loader.load()
+
+    result = loader.validate_catalog_metadata()
+
+    assert any("last_updated is" in warning for warning in result["warnings"])
+    assert any("missing health_check metadata" in warning for warning in result["warnings"])
+    assert result["errors"] == []
 
 
 def test_validate_mcp_servers_reports_errors_and_warnings(tmp_path: Path) -> None:

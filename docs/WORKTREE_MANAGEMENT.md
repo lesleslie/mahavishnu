@@ -322,12 +322,9 @@ Mahavishnu exposes worktree management via MCP tools for AI agent integration:
 
 ### Available Tools
 
-1. **create_ecosystem_worktree**
-1. **remove_ecosystem_worktree**
-1. **list_ecosystem_worktrees**
-1. **prune_ecosystem_worktrees**
-1. **get_worktree_safety_status**
-1. **get_worktree_provider_health**
+1. **worktree_manage**
+
+`worktree_manage` is the MCP entry point for worktree management.
 
 ### Example MCP Client Usage
 
@@ -336,31 +333,24 @@ from mcp_client import MCPClient
 
 client = MCPClient("http://localhost:8680/mcp")
 
-# Create worktree
+# Manage worktree actions through the consolidated dispatcher
 result = await client.call_tool(
-    "create_ecosystem_worktree",
+    "worktree_manage",
     arguments={
         "user_id": "user-123",
         "repo_nickname": "mahavishnu",
+        "action": "create",
         "branch": "feature-auth",
         "create_branch": True,
     }
 )
 
-# List worktrees
-result = await client.call_tool(
-    "list_ecosystem_worktrees",
-    arguments={
-        "user_id": "user-123",
-        "repo_nickname": "mahavishnu",
-    }
-)
-
 # Get safety status
 result = await client.call_tool(
-    "get_worktree_safety_status",
+    "worktree_manage",
     arguments={
         "user_id": "user-123",
+        "action": "safety_status",
         "repo_nickname": "mahavishnu",
         "worktree_path": "~/worktrees/mahavishnu/feature-auth",
     }
@@ -397,7 +387,7 @@ worktree_coordination:
 
 ### Repository Configuration
 
-Worktree metadata in `settings/repos.yaml`:
+Worktree metadata in `settings/ecosystem.yaml`:
 
 ```yaml
 repos:
@@ -411,7 +401,7 @@ repos:
 
 ### Issue: "Repository not found"
 
-**Cause**: Repository nickname not found in `settings/repos.yaml`
+**Cause**: Repository nickname not found in `settings/ecosystem.yaml`
 
 **Solution**:
 
@@ -569,8 +559,13 @@ mahavishnu worktree create repo main
 from mcp_client import MCPClient
 client = MCPClient("http://localhost:8680/mcp")
 await client.call_tool(
-    "create_ecosystem_worktree",
-    arguments={"repo_nickname": "repo", "branch": "main"}
+    "worktree_manage",
+    arguments={
+        "action": "create",
+        "user_id": "user-123",
+        "repo_nickname": "repo",
+        "branch": "main",
+    }
 )
 ```
 
@@ -593,7 +588,7 @@ from mahavishnu.mcp.auth import require_mcp_auth, Permission
 
 @server.tool()
 @require_mcp_auth(required_permission=Permission.WRITE_REPO)
-async def create_ecosystem_worktree(...):
+async def worktree_manage(...):
     ...
 ```
 

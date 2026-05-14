@@ -113,6 +113,61 @@ class TestAdapterScore:
                 last_updated=datetime.now(UTC),
             )
 
+    def test_score_validation_latency_score_invalid(self):
+        """Should reject latency_score out of [0, 1]."""
+        with pytest.raises(ValueError, match="Invalid latency score"):
+            AdapterScore(
+                adapter=AdapterType.PREFECT,
+                task_type=TaskType.WORKFLOW,
+                success_rate=0.9,
+                latency_score=1.5,  # Invalid
+                combined_score=0.8,
+                sample_count=50,
+                confidence_level=ConfidenceLevel.HIGH,
+                last_updated=datetime.now(UTC),
+            )
+
+    def test_score_validation_combined_score_invalid(self):
+        """Should reject combined_score out of [0, 1]."""
+        with pytest.raises(ValueError, match="Invalid combined score"):
+            AdapterScore(
+                adapter=AdapterType.AGNO,
+                task_type=TaskType.AI_TASK,
+                success_rate=0.9,
+                latency_score=0.8,
+                combined_score=-0.1,  # Invalid
+                sample_count=50,
+                confidence_level=ConfidenceLevel.HIGH,
+                last_updated=datetime.now(UTC),
+            )
+
+
+class TestPreferenceOrderChain:
+    """Test PreferenceOrder.get_preference_chain."""
+
+    def test_get_preference_chain(self):
+        """Should return adapter value strings in order."""
+        pref = PreferenceOrder(
+            task_type=TaskType.WORKFLOW,
+            adapters=[AdapterType.PREFECT, AdapterType.AGNO, AdapterType.LLAMAINDEX],
+            scores=[],
+            generated_at=datetime.now(UTC),
+            confidence=ConfidenceLevel.HIGH,
+        )
+        chain = pref.get_preference_chain()
+        assert chain == [a.value for a in [AdapterType.PREFECT, AdapterType.AGNO, AdapterType.LLAMAINDEX]]
+
+    def test_get_preference_chain_empty(self):
+        """Should return empty list for empty adapters."""
+        pref = PreferenceOrder(
+            task_type=TaskType.AI_TASK,
+            adapters=[],
+            scores=[],
+            generated_at=datetime.now(UTC),
+            confidence=ConfidenceLevel.LOW,
+        )
+        assert pref.get_preference_chain() == []
+
 
 class TestConfidenceIntervals:
     """Test confidence interval calculations."""
@@ -500,6 +555,81 @@ class TestABTesting:
 
         assert result["status"] == "running"
         assert "experiment_id" in result
+
+    @pytest.mark.asyncio
+    async def test_evaluate_ab_test_not_found(self, router):
+        """Should return error for unknown experiment."""
+        result = await router.evaluate_ab_test("nonexistent_exp")
+        assert result["status"] == "error"
+        assert "not found" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_evaluate_ab_test_not_running(self, router):
+        """Should return error when test is already completed."""
+        variant_a = PreferenceOrder(
+            task_type=TaskType.WORKFLOW,
+            adapters=[AdapterType.PREFECT],
+            scores=[],
+            generated_at=datetime.now(UTC),
+            confidence=ConfidenceLevel.HIGH,
+        )
+        variant_b = PreferenceOrder(
+            task_type=TaskType.WORKFLOW,
+            adapters=[AdapterType.AGNO],
+            scores=[],
+            generated_at=datetime.now(UTC),
+            confidence=ConfidenceLevel.HIGH,
+        )
+        await router.start_ab_test(
+            experiment_id="test_eval_done",
+            name="Done test",
+            description="Test",
+            variant_a=variant_a,
+            variant_b=variant_b,
+            traffic_split=0.5,
+            duration_hours=24,
+        )
+        await router.complete_ab_test("test_eval_done", winner="A")
+        result = await router.evaluate_ab_test("test_eval_done")
+        assert result["status"] == "error"
+        assert "not running" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_complete_ab_test_not_found(self, router):
+        """Should return error for unknown experiment."""
+        result = await router.complete_ab_test("nonexistent_exp", winner="A")
+        assert result["status"] == "error"
+        assert "not found" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_complete_ab_test_inconclusive(self, router):
+        """Should apply variant A when winner is inconclusive."""
+        variant_a = PreferenceOrder(
+            task_type=TaskType.RAG_QUERY,
+            adapters=[AdapterType.LLAMAINDEX],
+            scores=[],
+            generated_at=datetime.now(UTC),
+            confidence=ConfidenceLevel.HIGH,
+        )
+        variant_b = PreferenceOrder(
+            task_type=TaskType.RAG_QUERY,
+            adapters=[AdapterType.AGNO],
+            scores=[],
+            generated_at=datetime.now(UTC),
+            confidence=ConfidenceLevel.HIGH,
+        )
+        await router.start_ab_test(
+            experiment_id="test_inconclusive",
+            name="Inconclusive test",
+            description="Test",
+            variant_a=variant_a,
+            variant_b=variant_b,
+            traffic_split=0.5,
+            duration_hours=24,
+        )
+        result = await router.complete_ab_test("test_inconclusive", winner="inconclusive")
+        assert result["status"] == "completed"
+        assert result["winner"] == "inconclusive"
 
 
 class TestRecalculationLoop:

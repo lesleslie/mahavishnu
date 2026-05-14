@@ -26,8 +26,7 @@ Current status:
 The template is intentionally conservative:
 
 - OpenAI provider configured for Codex/OpenAI Responses clients
-- OpenAI-compatible z.ai custom provider configured
-- Anthropic-compatible z.ai provider configured
+- OpenAI-compatible MiniMax provider configured for chat/completions traffic
 - dedicated Redis Stack cache backend configured on `127.0.0.1:6380`
 - semantic cache plugin enabled in direct-only mode
 
@@ -36,8 +35,7 @@ This means:
 - routing works without a second router like CCR
 - `x-bf-cache-*` headers are active for trusted callers
 - direct-cache hits work now; semantic similarity cache still needs an embedding provider if we want near-duplicate matches
-- Claude Code can target Bifrost directly through `/anthropic/v1/messages`
-- OpenAI-style callers can target `/v1/chat/completions` with explicit `zai-openai/<model>` names
+- OpenAI-style callers can target `/v1/chat/completions` with explicit `minimax-openai/<model>` names
 - OpenAI Responses clients such as Codex can target `/v1/responses` with explicit `openai/<model>` names
 - CCR-style task routing is bootstrapped through header-driven global routing rules
 - user-level configs were previously cut over for validation and then reverted to direct provider endpoints when subscription-backed usage resumed
@@ -50,14 +48,12 @@ does not provide RediSearch `FT.*`, which Bifrost requires.
 The current bootstrap config uses:
 
 - `openai/<model>` for OpenAI-backed Responses clients
-- `zai-openai/<model>` for z.ai OpenAI-compatible chat models
-- `anthropic/<model>` for z.ai Anthropic-compatible chat models
+- `minimax-openai/<model>` for MiniMax OpenAI-compatible chat models
 
 Example:
 
 - `openai/gpt-5.4`
-- `zai-openai/glm-5-turbo`
-- `anthropic/GLM-4.7`
+- `minimax-openai/MiniMax-M2.7`
 
 ## Client Opt-In
 
@@ -104,17 +100,17 @@ Supported route headers:
 
 Current task mappings:
 
-- `think` -> `zai-openai/glm-5.1`
-- `long_context` or `longContext` -> `zai-openai/glm-5-turbo`
-- `web_search` or `webSearch` -> `zai-openai/glm-5-turbo`
-- `image` -> `zai-openai/GLM-4.5V` or `zai-openai/GLM-4.6V`
-- `background`, `cheap`, or `high_throughput` -> `zai-openai/glm-4.7-flashx`
+- `think` -> `minimax-openai/MiniMax-M2.7`
+- `long_context` or `longContext` -> `minimax-openai/MiniMax-M2.7`
+- `web_search` or `webSearch` -> `minimax-openai/MiniMax-M2.7`
+- `image` -> deferred until a supported MiniMax multimodal route exists
+- `background`, `cheap`, or `high_throughput` -> `minimax-openai/MiniMax-M2.7-highspeed`
 
 Notes:
 
 - these rules are intentionally header-driven for now
 - they are meant to reproduce the useful routing buckets from CCR without introducing a second router
-- the `image` route currently means vision or multimodal chat, not a separate image-generation API
+- the `image` route is currently disabled in the template until the gateway has a supported multimodal adapter
 
 ## Verified Bootstrap State
 
@@ -122,13 +118,12 @@ As of 2026-04-08:
 
 - the LaunchAgent starts Bifrost on `127.0.0.1:8471`
 - the Redis Stack LaunchAgent starts a dedicated cache backend on `127.0.0.1:6380`
-- Anthropic-compatible requests succeed against `http://127.0.0.1:8471/anthropic/v1/messages`
-- OpenAI-compatible requests reach the z.ai provider through `http://127.0.0.1:8471/v1/chat/completions`
+- OpenAI-compatible requests reach the MiniMax provider through `http://127.0.0.1:8471/v1/chat/completions`
 - `/v1/models` now advertises `openai/gpt-5.3-codex`, `openai/gpt-5.4`, and `openai/gpt-5.4-mini`
 - `/v1/responses` is reachable through Bifrost and fails with upstream `429 insufficient_quota` when the OpenAI account has no quota
-- `/v1/chat/completions` reaches `zai-openai/glm-5-turbo` through Bifrost and currently fails with upstream z.ai balance error `1113` when that account has insufficient balance
+- `/v1/chat/completions` reaches `minimax-openai/MiniMax-M2.7` through Bifrost when the MiniMax provider is healthy
 - Codex reaches Bifrost on the OpenAI Responses path and is therefore protocol-compatible with the gateway
-- `zai-openai/*` does not currently support the OpenAI Responses API, so Codex cannot be switched to z.ai through `/v1/responses` as a quota workaround
+- `minimax-openai/*` does not currently support the OpenAI Responses API, so Codex cannot be switched to MiniMax through `/v1/responses` as a quota workaround
 - after rebootstrap, Bifrost now stores `config.db` under `~/.config/bifrost` instead of the repo root and the launchd job writes the expected ready file
 - after the config-store cleanup, `/v1/models` reports only healthy OpenAI and Anthropic key statuses; the old misleading invalid-key status was caused by the previous stale/orphaned startup state
 - `x-bf-task: think` routes to the stronger reasoning model
@@ -137,11 +132,10 @@ As of 2026-04-08:
 - `x-bf-task: image` routes to the vision model(s)
 - `x-bf-task: background` routes to the cheaper background model
 - `x-bf-task: cheap` routes to the cheaper background model
-- the OpenAI z.ai custom provider still does not support `list_models`, so Bifrost falls back to static datasheets for `zai-openai/*`
+- the OpenAI MiniMax custom provider still does not support `list_models`, so Bifrost falls back to static datasheets for `minimax-openai/*`
 - plain Homebrew Redis 8.6.2 on `6379` still lacks RediSearch `FT.*`, so Bifrost cache uses the dedicated Redis Stack instance on `6380`
 - Bifrost now reports `semantic_cache - active`
 - repeated requests with `x-bf-cache-type: direct` and a fixed `x-bf-cache-key` return the same message id on the second request and complete much faster, confirming direct cache hits
-- Anthropic-compatible responses preserve provider prompt-cache accounting fields such as `cache_read_input_tokens`
 - the launch wrapper now prefers the cached Bifrost `bin.js` under `~/.npm/_npx` and falls back to `npx` only when the cache is missing
 
 ## Important Bifrost Behavior
@@ -209,5 +203,3 @@ Operational note:
 - `scripts/bifrost-ctl` now force-kills any orphan listener on `127.0.0.1:8471` before restart/rebootstrap so stale child processes do not hold the port open
 - when validating the OpenAI provider, distinguish protocol failures from account-state failures:
   `429 insufficient_quota` from `/v1/responses` means the gateway path is working and the backing OpenAI account needs billing/quota attention
-- when validating the z.ai OpenAI-compatible provider, distinguish protocol failures from account-state failures:
-  provider error `1113` from `/v1/chat/completions` means the gateway path is working and the backing z.ai account needs balance/package attention

@@ -10,6 +10,7 @@ Fixtures are organized into:
 - Common Test Data: Shared across workflow, shell, and CLI tests
 """
 
+from contextlib import suppress
 import os
 from pathlib import Path
 import sys
@@ -48,11 +49,9 @@ def clean_prometheus_registry():
                 collectors_to_remove.append((name, collector))
 
         # Remove Prefect collectors
-        for name, collector in collectors_to_remove:
-            try:
+        for _name, collector in collectors_to_remove:
+            with suppress(Exception):
                 REGISTRY.unregister(collector)
-            except Exception:
-                pass  # Collector may already be unregistered
 
     except ImportError:
         pass  # prometheus_client not installed
@@ -567,6 +566,21 @@ def mock_event_loop():
 
     yield loop
 
+    # Drain async SQLite/persistence singletons before shutting the loop down.
+    try:
+        from mahavishnu.core.adapter_persistence import close_persistence
+
+        loop.run_until_complete(close_persistence())
+    except Exception:
+        pass
+
+    pending = [task for task in asyncio.all_tasks(loop) if not task.done()]
+    for task in pending:
+        task.cancel()
+    if pending:
+        loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+
+    loop.run_until_complete(loop.shutdown_asyncgens())
     loop.close()
 
 

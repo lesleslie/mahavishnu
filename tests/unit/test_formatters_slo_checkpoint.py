@@ -578,45 +578,43 @@ class TestSessionBuddy:
         cid = await sb.create_checkpoint("sess-1", {"key": "val"})
         assert "disabled" in cid
 
-    async def test_create_checkpoint_enabled(self, capsys):
+    async def test_create_checkpoint_enabled(self):
         sb = SessionBuddy(_mock_config(enabled=True))
         cid = await sb.create_checkpoint("sess-2", {"key": "val"})
         assert len(cid) == 36  # UUID format
-        assert "sess-2" in capsys.readouterr().out
 
     async def test_update_checkpoint_disabled(self):
         sb = SessionBuddy(_mock_config(enabled=False))
         result = await sb.update_checkpoint("cp-1", "running")
         assert result is True
 
-    async def test_update_checkpoint_enabled(self, capsys):
+    async def test_update_checkpoint_enabled(self):
         sb = SessionBuddy(_mock_config(enabled=True))
-        result = await sb.update_checkpoint("cp-2", "completed", {"output": "ok"})
+        # Non-terminal status returns True immediately (no MCP call attempted)
+        result = await sb.update_checkpoint("cp-2", "running")
         assert result is True
-        assert "cp-2" in capsys.readouterr().out
 
     async def test_get_checkpoint_disabled(self):
         sb = SessionBuddy(_mock_config(enabled=False))
         result = await sb.get_checkpoint("cp-1")
         assert result is None
 
-    async def test_get_checkpoint_enabled(self, capsys):
+    async def test_get_checkpoint_enabled(self):
         sb = SessionBuddy(_mock_config(enabled=True))
+        # Session-Buddy has no lookup-by-ID API; always returns None
         result = await sb.get_checkpoint("cp-3")
-        assert result is not None
-        assert result["checkpoint_id"] == "cp-3"
+        assert result is None
 
     async def test_restore_from_checkpoint_disabled(self):
         sb = SessionBuddy(_mock_config(enabled=False))
         result = await sb.restore_from_checkpoint("cp-1")
         assert result is None
 
-    async def test_restore_from_checkpoint_running(self, capsys):
+    async def test_restore_from_checkpoint_running(self):
         sb = SessionBuddy(_mock_config(enabled=True))
+        # Session-Buddy has no restore-by-ID API; always returns None
         result = await sb.restore_from_checkpoint("cp-4")
-        # restore_from_checkpoint returns checkpoint.get("state") which is {} from get_checkpoint
-        assert result is not None
-        assert result == {}
+        assert result is None
 
     async def test_restore_from_checkpoint_completed(self):
         """Completed checkpoints can't be restored."""
@@ -631,8 +629,7 @@ class TestSessionBuddy:
         result = await sb.cleanup_checkpoint("cp-1")
         assert result is True
 
-    async def test_cleanup_checkpoint_enabled(self, capsys):
+    async def test_cleanup_checkpoint_enabled(self):
         sb = SessionBuddy(_mock_config(enabled=True))
         result = await sb.cleanup_checkpoint("cp-6")
         assert result is True
-        assert "cp-6" in capsys.readouterr().out

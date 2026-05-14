@@ -75,10 +75,6 @@
       "type": "http",
       "url": "http://localhost:3033/mcp"
     },
-    "n8n": {
-      "type": "http",
-      "url": "http://localhost:3044/mcp"
-    },
     "neo4j": {
       "type": "http",
       "url": "http://localhost:3045/mcp"

@@ -41,8 +41,8 @@ hatchet:
 
 # LLM configuration for LlamaIndex and Agno
 llm:
-  model: nomic-embed-text  # Ollama embedding model
-  ollama_base_url: http://localhost:11434  # Ollama API endpoint
+  model: nomic-embed-text  # Embedding model for llama-server
+  ollama_base_url: http://localhost:11434  # llama-server (llama.cpp) API endpoint
 
 # OpenSearch configuration for vector storage and observability
 opensearch:
@@ -102,7 +102,7 @@ runpod_pool:
 workers:
   enabled: true  # Enable worker orchestration
   max_concurrent: 10  # Maximum concurrent workers (1-100)
-  default_type: "terminal-qwen"  # Default worker type (terminal-qwen, terminal-claude, container-executor)
+  default_type: "terminal-claude"  # Default worker type (terminal-claude, terminal-qwen, terminal-codex, container-executor)
   timeout_seconds: 300  # Default worker timeout in seconds (30-3600)
   session_buddy_integration: true  # Enable Session-Buddy result storage for workers
 

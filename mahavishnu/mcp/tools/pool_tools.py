@@ -42,7 +42,7 @@ def register_pool_tools(
         name: str = "default",
         min_workers: int = 1,
         max_workers: int = 10,
-        worker_type: str = "terminal-qwen",
+        worker_type: str = "terminal-claude",
     ) -> dict[str, Any]:
         """Spawn a new worker pool."""
         from mahavishnu.pools.base import PoolConfig
