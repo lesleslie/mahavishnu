@@ -158,3 +158,24 @@ def test_init_with_config_branch_uses_terminal_and_context(monkeypatch: pytest.M
     assert captured["terminal_manager"] == "tmgr"
     assert captured["max_concurrent"] == 7
     assert adapter is not None
+
+
+@pytest.mark.asyncio
+async def test_ensure_worker_manager_raises_when_no_config() -> None:
+    """_ensure_worker_manager raises RuntimeError when _config is None (line 92)."""
+    mgr = _Manager()
+    adapter = wa.WorkerOrchestratorAdapter(worker_manager=mgr)
+    adapter.worker_manager = None
+    adapter._config = None
+
+    with pytest.raises(RuntimeError, match="unavailable"):
+        await adapter._ensure_worker_manager()
+
+
+@pytest.mark.asyncio
+async def test_cleanup_returns_none() -> None:
+    """cleanup() default returns None without error (line 124)."""
+    mgr = _Manager()
+    adapter = wa.WorkerOrchestratorAdapter(worker_manager=mgr)
+    result = await adapter.cleanup()
+    assert result is None

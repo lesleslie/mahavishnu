@@ -7,7 +7,7 @@ import pytest
 from mahavishnu.core.status import WorkerStatus
 from mahavishnu.workers.base import WorkerResult
 from mahavishnu.workers.generic_shell import GenericShellWorker
-from mahavishnu.workers.protocol import TerminalWorkerProtocol
+from mahavishnu.workers.protocol import is_terminal_worker
 from mahavishnu.workers.registry import get_worker_config
 from mahavishnu.workers.terminal import TerminalAIWorker
 
@@ -104,7 +104,7 @@ class TestStart:
         session_id = await qwen_worker.start()
         assert session_id == "session_abc"
 
-    def test_start_unknown_ai_type_raises(self):
+    def test_init_unknown_ai_type_raises(self):
         mgr = AsyncMock()
         with pytest.raises(ValueError, match="Unknown worker type: terminal-unknown_type"):
             TerminalAIWorker(mgr, "unknown_type")
@@ -183,6 +183,23 @@ class TestExecute:
         )
         await worker_with_session.execute({})
         mock_terminal_manager.send_command.assert_called_once_with("existing_session", "")
+
+    @pytest.mark.asyncio
+    async def test_execute_with_repo_and_empty_prompt(
+        self, worker_with_session, mock_terminal_manager
+    ):
+        worker_with_session._monitor_completion = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="existing_session",
+                status=WorkerStatus.COMPLETED,
+                output="done",
+            )
+        )
+        await worker_with_session.execute({"prompt": "", "repo": "/some/repo"})
+        mock_terminal_manager.send_command.assert_called_once_with(
+            "existing_session",
+            "Working in /some/repo. ",
+        )
 
     @pytest.mark.asyncio
     async def test_execute_stores_in_session_buddy(self, worker_with_session):
@@ -273,6 +290,8 @@ class TestStoreResultInSessionBuddy:
         assert meta["error"] == "boom"
         assert meta["exit_code"] == 1
         assert meta["status"] == "failed"
+        assert meta["worker_name"] == "Qwen AI"
+        assert meta["category"] == "ai_assistant"
 
     @pytest.mark.asyncio
     async def test_exception_is_caught_and_logged(self, worker_with_session):
@@ -408,14 +427,14 @@ class TestProtocolConformance:
             terminal_manager=AsyncMock(),
             worker_type="terminal-shell",
         )
-        assert isinstance(worker, TerminalWorkerProtocol)
+        assert is_terminal_worker(worker)
 
     def test_terminal_ai_worker_satisfies_protocol(self):
         worker = TerminalAIWorker(terminal_manager=AsyncMock(), ai_type="qwen")
-        assert isinstance(worker, TerminalWorkerProtocol)
+        assert is_terminal_worker(worker)
 
     def test_non_worker_does_not_satisfy_protocol(self):
-        assert not isinstance(object(), TerminalWorkerProtocol)
+        assert not is_terminal_worker(object())
 
     def test_worker_name_is_raw_ai_type_not_config_name(self, qwen_worker):
         # worker_name is the raw ai_type for backward compatibility

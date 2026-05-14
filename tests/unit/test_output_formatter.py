@@ -1,6 +1,6 @@
 """Tests for OutputFormatter - Rich console output formatting."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -562,3 +562,160 @@ class TestOutputFormatter:
         formatter.print_tree(tree_data)
 
         mock_console.print.assert_called()
+
+    # ------------------------------------------------------------------
+    # format_timestamp branches
+    # ------------------------------------------------------------------
+
+    def test_format_timestamp_minutes_ago(self, mock_console: MagicMock) -> None:
+        formatter = OutputFormatter(console=mock_console)
+        ts = datetime.now(UTC) - timedelta(minutes=30)
+        result = formatter.format_timestamp(ts)
+        assert result.endswith("m ago")
+
+    def test_format_timestamp_hours_ago(self, mock_console: MagicMock) -> None:
+        formatter = OutputFormatter(console=mock_console)
+        ts = datetime.now(UTC) - timedelta(hours=3)
+        result = formatter.format_timestamp(ts)
+        assert result.endswith("h ago")
+
+    def test_format_timestamp_yesterday(self, mock_console: MagicMock) -> None:
+        formatter = OutputFormatter(console=mock_console)
+        ts = datetime.now(UTC) - timedelta(days=1, hours=1)
+        result = formatter.format_timestamp(ts)
+        assert result == "yesterday"
+
+    def test_format_timestamp_days_ago(self, mock_console: MagicMock) -> None:
+        formatter = OutputFormatter(console=mock_console)
+        ts = datetime.now(UTC) - timedelta(days=4)
+        result = formatter.format_timestamp(ts)
+        assert result.endswith("d ago")
+
+    def test_format_timestamp_naive_datetime(self, mock_console: MagicMock) -> None:
+        """Naive datetime (no tzinfo) should be handled by replacing with UTC."""
+        formatter = OutputFormatter(console=mock_console)
+        naive_ts = datetime.now() - timedelta(days=20)
+        result = formatter.format_timestamp(naive_ts)
+        assert result is not None  # Should not raise
+
+    # ------------------------------------------------------------------
+    # TableColumn.get_value() with format_fn
+    # ------------------------------------------------------------------
+
+    def test_table_column_get_value_with_format_fn(self) -> None:
+        col = TableColumn(name="Status", key="status", format_fn=lambda x: x.upper())
+        row = {"status": "pending"}
+        assert col.get_value(row) == "PENDING"
+
+    def test_table_column_get_value_none(self) -> None:
+        col = TableColumn(name="Opt", key="optional")
+        row = {"optional": None}
+        assert col.get_value(row) == ""
+
+    def test_table_column_get_value_datetime(self) -> None:
+        col = TableColumn(name="When", key="ts")
+        now = datetime.now(UTC)
+        row = {"ts": now}
+        result = col.get_value(row)
+        assert "-" in result  # strftime output contains dashes
+
+    # ------------------------------------------------------------------
+    # _simple_yaml
+    # ------------------------------------------------------------------
+
+    def test_simple_yaml_dict(self, mock_console: MagicMock) -> None:
+        formatter = OutputFormatter(console=mock_console)
+        result = formatter._simple_yaml({"key": "value", "num": 42})
+        assert "key:" in result
+        assert "value" in result
+
+    def test_simple_yaml_list_of_dicts(self, mock_console: MagicMock) -> None:
+        formatter = OutputFormatter(console=mock_console)
+        result = formatter._simple_yaml([{"a": 1}, {"b": 2}])
+        assert "-" in result
+
+    def test_simple_yaml_list_of_scalars(self, mock_console: MagicMock) -> None:
+        formatter = OutputFormatter(console=mock_console)
+        result = formatter._simple_yaml(["foo", "bar"])
+        assert "foo" in result
+
+    def test_simple_yaml_nested_dict(self, mock_console: MagicMock) -> None:
+        formatter = OutputFormatter(console=mock_console)
+        result = formatter._simple_yaml({"outer": {"inner": "val"}})
+        assert "outer:" in result
+        assert "inner:" in result
+
+    def test_simple_yaml_scalar(self, mock_console: MagicMock) -> None:
+        formatter = OutputFormatter(console=mock_console)
+        result = formatter._simple_yaml("plain string")
+        assert "plain string" in result
+
+    # ------------------------------------------------------------------
+    # _format_plain_table
+    # ------------------------------------------------------------------
+
+    def test_format_plain_table_with_title_and_row_numbers(self, mock_console: MagicMock) -> None:
+        formatter = OutputFormatter(console=mock_console)
+        config = TableConfig(
+            title="My Table",
+            columns=[
+                TableColumn(name="Name", key="name"),
+                TableColumn(name="Value", key="val"),
+            ],
+            show_row_numbers=True,
+        )
+        data = [{"name": "alpha", "val": "1"}, {"name": "beta", "val": "2"}]
+        result = formatter._format_plain_table(data, config)
+        assert "My Table" in result
+        assert "alpha" in result
+        assert "1." in result
+
+    def test_format_plain_table_no_header(self, mock_console: MagicMock) -> None:
+        formatter = OutputFormatter(console=mock_console)
+        config = TableConfig(
+            columns=[TableColumn(name="X", key="x")],
+            show_header=False,
+        )
+        data = [{"x": "hello"}]
+        result = formatter._format_plain_table(data, config)
+        assert "hello" in result
+        assert "X" not in result  # no header row
+
+    # ------------------------------------------------------------------
+    # _format_markdown
+    # ------------------------------------------------------------------
+
+    def test_format_markdown_with_list_of_dicts(self, mock_console: MagicMock) -> None:
+        formatter = OutputFormatter(console=mock_console, format=OutputFormat.MARKDOWN)
+        result = formatter.format_data({"items": [{"k": "v"}]})
+        assert result is not None
+
+    def test_format_markdown_direct_list(self, mock_console: MagicMock) -> None:
+        formatter = OutputFormatter(console=mock_console)
+        result = formatter._format_markdown([{"col1": "a", "col2": "b"}])
+        assert "|" in result
+        assert "col1" in result
+
+    # ------------------------------------------------------------------
+    # print_panel / print_rule without console (fallback path)
+    # ------------------------------------------------------------------
+
+    def test_print_panel_no_console_with_title(self) -> None:
+        formatter = OutputFormatter()
+        formatter._console = None
+        formatter.print_panel("Some content", title="Title")  # Should not raise
+
+    def test_print_panel_no_console_no_title(self) -> None:
+        formatter = OutputFormatter()
+        formatter._console = None
+        formatter.print_panel("Content")  # Should not raise
+
+    def test_print_rule_no_console_with_title(self) -> None:
+        formatter = OutputFormatter()
+        formatter._console = None
+        formatter.print_rule("Section")  # Should not raise
+
+    def test_print_rule_no_console_empty(self) -> None:
+        formatter = OutputFormatter()
+        formatter._console = None
+        formatter.print_rule()  # Should not raise

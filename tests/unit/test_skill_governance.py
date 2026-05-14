@@ -105,3 +105,68 @@ def test_policy_rejects_invalid_transitions_and_rollback_versions() -> None:
     assert rollback.from_version == "2.0.0"
     assert rollback.to_version == "1.0.0"
     assert rollback.rollback_id.startswith("rb_")
+
+
+def test_validate_review_rejects_non_approved_review() -> None:
+    """validate_review_for_activation raises for non-APPROVE decisions (line 187)."""
+    policy = SkillPromotionPolicy()
+    review = SkillReview(
+        skill_id="skill-x",
+        reviewer="reviewer",
+        decision=SkillReviewDecision.REJECT,
+        rationale="Needs work",
+        required_changes=["fix bug"],
+    )
+    with pytest.raises(ValueError, match="approved review"):
+        policy.validate_review_for_activation(review)
+
+
+def test_validate_review_rejects_required_changes() -> None:
+    """validate_review_for_activation raises when required_changes is non-empty (line 189)."""
+    policy = SkillPromotionPolicy()
+    review = SkillReview(
+        skill_id="skill-x",
+        reviewer="reviewer",
+        decision=SkillReviewDecision.APPROVE,
+        rationale="Almost there",
+        required_changes=["tweak docstring"],
+    )
+    with pytest.raises(ValueError, match="required changes"):
+        policy.validate_review_for_activation(review)
+
+
+def test_promote_draft_rejects_active_state() -> None:
+    """promote_draft raises when draft.state is not DRAFT or REVIEW (line 202)."""
+    from mahavishnu.core.skill_governance import SkillActivation
+
+    policy = SkillPromotionPolicy()
+    draft = SkillDraft(
+        name="dep-skill",
+        version="1.0.0",
+        description="Deprecated skill",
+        trigger_conditions=["dep"],
+        body="Do nothing",
+        source_evidence_ids=["ev-1"],
+    )
+    review = SkillReview(
+        skill_id=draft.skill_id,
+        reviewer="reviewer",
+        decision=SkillReviewDecision.APPROVE,
+        rationale="ok",
+    )
+    # Activate first so draft.state becomes ACTIVE
+    activation = policy.promote_draft(draft, review, activated_by="ci")
+    draft.state = SkillPromotionState.ACTIVE  # simulate already-active
+
+    with pytest.raises(ValueError, match="DRAFT or REVIEW"):
+        policy.promote_draft(draft, review, activated_by="ci")
+
+
+def test_deprecate_nonexistent_skill_raises() -> None:
+    """SkillRegistry.deprecate raises ValueError for unknown skill (line 120)."""
+    from mahavishnu.core.skill_registry import SkillRegistry
+
+    policy = SkillPromotionPolicy()
+    registry = SkillRegistry(policy=policy)
+    with pytest.raises(ValueError, match="No active version found"):
+        registry.deprecate("nonexistent-skill", deprecated_by="ci")

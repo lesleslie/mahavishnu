@@ -225,6 +225,41 @@ class TestIsConcreteAdapterContract:
 
         assert is_concrete_adapter_contract(ConcreteAdapter) is True
 
+    @pytest.mark.asyncio
+    async def test_base_cleanup_returns_none(self):
+        """OrchestratorAdapter.cleanup() default returns None (line 57 in base.py)."""
+        from mahavishnu.core.adapters.base import (
+            AdapterCapabilities,
+            AdapterType,
+            OrchestratorAdapter,
+        )
+
+        class MinimalAdapter(OrchestratorAdapter):
+            async def initialize(self):
+                pass
+
+            async def execute(self, task, repos=None, user_id=None):
+                pass
+
+            async def get_health(self):
+                pass
+
+            @property
+            def name(self):
+                return "minimal"
+
+            @property
+            def capabilities(self):
+                return AdapterCapabilities()
+
+            @property
+            def adapter_type(self):
+                return AdapterType.PREFECT
+
+        adapter = MinimalAdapter()
+        result = await adapter.cleanup()
+        assert result is None
+
 
 # ---------------------------------------------------------------------------
 # render_contract_report

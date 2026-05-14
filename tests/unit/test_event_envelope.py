@@ -439,6 +439,22 @@ class TestCompatibilityPolicy:
         assert len(errors) > 0
         assert any("Breaking change" in e for e in errors)
 
+    def test_check_compatibility_consumer_minor_ahead(self):
+        # producer has LOWER minor than consumer → MAJOR incompatibility (line 61)
+        result = CompatibilityPolicy.check_compatibility(
+            producer_version=EventVersion("1.0.0"),
+            consumer_version=EventVersion("1.2.0"),
+        )
+        assert result == CompatibilityLevel.MAJOR
+
+    def test_validate_version_exceeds_ecosystem(self):
+        # new_version.major > CURRENT_VERSION.major + 1 triggers the "exceeds" error (line 95)
+        errors = CompatibilityPolicy.validate_version_transition(
+            old_version=EventVersion("1.0.0"),
+            new_version=EventVersion("3.0.0"),
+        )
+        assert any("exceeds" in e for e in errors)
+
     def test_policy_summary(self):
         summary = CompatibilityPolicy.get_policy_summary()
         assert "current_version" in summary
@@ -540,3 +556,27 @@ class TestLegacyMigration:
         envelope = migrate_legacy_event_bus_event(legacy)
         assert isinstance(envelope, EventEnvelope)
         assert envelope.version == "1.0.0"
+
+    def test_migrate_event_bus_event_no_id_generates_uuid(self):
+        """When legacy event has no 'id', a UUID is auto-generated (lines 46-48)."""
+        legacy = {
+            # no "id" key
+            "type": "some.event",
+            "data": {},
+            "timestamp": "2026-04-05T12:00:00+00:00",
+            "source": "test",
+            "version": 1,
+        }
+        envelope = migrate_legacy_event_bus_event(legacy)
+        assert isinstance(envelope, EventEnvelope)
+        assert envelope.event_id is not None
+
+    def test_parse_timestamp_none_returns_now(self):
+        """_parse_timestamp(None) returns current UTC time (line 171)."""
+        from mahavishnu.core.events.migration import _parse_timestamp
+        from datetime import UTC, datetime
+
+        before = datetime.now(UTC)
+        result = _parse_timestamp(None)
+        after = datetime.now(UTC)
+        assert before <= result <= after

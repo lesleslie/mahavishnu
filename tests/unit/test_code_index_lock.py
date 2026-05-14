@@ -55,3 +55,12 @@ def test_release_nonexistent(tmp_path: Path) -> None:
     lock = RepoIndexLock(str(tmp_path))
     # Should not raise
     lock.release()
+
+
+def test_acquire_with_malformed_lock_file(tmp_path: Path) -> None:
+    """Malformed lock file triggers except path: removes and re-acquires (lines 39-41)."""
+    lock = RepoIndexLock(str(tmp_path))
+    lock.lock_file.parent.mkdir(parents=True, exist_ok=True)
+    lock.lock_file.write_text("not-a-pid\n")  # non-integer PID → ValueError
+    assert lock.acquire() is True
+    lock.release()

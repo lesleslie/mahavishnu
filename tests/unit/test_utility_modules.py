@@ -198,6 +198,45 @@ class TestSkillRegistry:
         registry.register(draft, review, activated_by="ci")
         assert registry.evidence_history_preserved(draft.skill_id) is True
 
+    def test_evidence_history_preserved_returns_false_when_rollback_id_in_evidence(
+        self, _skill_fixtures
+    ):
+        """Return False when rollback_id matches a review_id in history (line 140)."""
+        from mahavishnu.core.skill_governance import SkillRollback
+        from mahavishnu.core.skill_registry import SkillRegistry, VersionRecord
+        from mahavishnu.core.skill_governance import SkillPromotionState
+
+        policy, draft, review = _skill_fixtures
+        registry = SkillRegistry(policy=policy)
+
+        # Build a VersionRecord with a rollback_id that equals the review's review_id
+        rollback = SkillRollback(
+            rollback_id=review.review_id,  # intentionally matches review_id
+            skill_id=draft.skill_id,
+            from_version="2.0.0",
+            to_version="1.0.0",
+            reason="regression",
+            performed_by="ci",
+        )
+
+        rec_with_review = VersionRecord(
+            skill_id=draft.skill_id,
+            version="1.0.0",
+            state=SkillPromotionState.ACTIVE,
+            body="def x(): pass",
+            review=review,
+        )
+        rec_with_rollback = VersionRecord(
+            skill_id=draft.skill_id,
+            version="2.0.0",
+            state=SkillPromotionState.DEPRECATED,
+            body="def x(): pass",
+            rollback=rollback,
+        )
+        registry._history.extend([rec_with_review, rec_with_rollback])
+
+        assert registry.evidence_history_preserved(draft.skill_id) is False
+
 
 # ---------------------------------------------------------------------------
 # mahavishnu.adapters package surface

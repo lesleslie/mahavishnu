@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, Final
 
 from mahavishnu.core.status import WorkerStatus
 
@@ -136,7 +136,7 @@ class BaseWorker(ABC):
         Args:
             worker_type: Type identifier for this worker
         """
-        self.worker_type = worker_type
+        self.worker_type: Final = worker_type
         self._status = WorkerStatus.PENDING
 
     @abstractmethod

@@ -435,6 +435,217 @@ class TestTaskStore:
         assert deps[0].depends_on_task_id == "task-2"
 
 
+    @pytest.mark.asyncio
+    async def test_get_task_not_found(self, store: TaskStore, mock_db: MagicMock) -> None:
+        """Test get raises DatabaseError when task not found."""
+        from mahavishnu.core.errors import DatabaseError
+
+        mock_db.fetchrow = AsyncMock(return_value=None)
+
+        with pytest.raises(DatabaseError, match="Task not found"):
+            await store.get("nonexistent-id")
+
+    @pytest.mark.asyncio
+    async def test_get_by_external_id_found(self, store: TaskStore, mock_db: MagicMock) -> None:
+        """Test get_by_external_id returns Task when found."""
+        mock_db.fetchrow = AsyncMock(
+            return_value={
+                "id": "task-ext",
+                "title": "External Task",
+                "repository": "mahavishnu",
+                "description": None,
+                "status": "pending",
+                "priority": "medium",
+                "assignee": None,
+                "tags": [],
+                "metadata": {},
+                "due_date": None,
+                "external_id": "GH-42",
+                "created_at": datetime.now(UTC),
+                "updated_at": datetime.now(UTC),
+                "completed_at": None,
+                "created_by": "system",
+            }
+        )
+
+        task = await store.get_by_external_id("GH-42")
+        assert task is not None
+        assert task.id == "task-ext"
+
+    @pytest.mark.asyncio
+    async def test_get_by_external_id_not_found(self, store: TaskStore, mock_db: MagicMock) -> None:
+        """Test get_by_external_id returns None when not found."""
+        mock_db.fetchrow = AsyncMock(return_value=None)
+
+        task = await store.get_by_external_id("MISSING-99")
+        assert task is None
+
+    @pytest.mark.asyncio
+    async def test_update_task_all_fields(self, store: TaskStore, mock_db: MagicMock) -> None:
+        """Test update with every optional field set covers all update branches."""
+        update_data = TaskUpdate(
+            title="Updated Title",
+            description="Updated desc",
+            status=TaskStatus.IN_PROGRESS,
+            priority=TaskPriority.HIGH,
+            assignee="user@example.com",
+            tags=["bug", "urgent"],
+            metadata={"key": "value"},
+            due_date=datetime.now(UTC),
+        )
+
+        mock_db.fetchrow = AsyncMock(
+            return_value={
+                "id": "task-123",
+                "title": "Updated Title",
+                "repository": "mahavishnu",
+                "description": "Updated desc",
+                "status": "in_progress",
+                "priority": "high",
+                "assignee": "user@example.com",
+                "tags": ["bug", "urgent"],
+                "metadata": {"key": "value"},
+                "due_date": None,
+                "external_id": None,
+                "created_at": datetime.now(UTC),
+                "updated_at": datetime.now(UTC),
+                "completed_at": None,
+                "created_by": "system",
+            }
+        )
+
+        task = await store.update("task-123", update_data)
+        assert task.id == "task-123"
+        mock_db.execute.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_update_task_completed_sets_completed_at(self, store: TaskStore, mock_db: MagicMock) -> None:
+        """Test that setting status=COMPLETED adds completed_at to the query."""
+        update_data = TaskUpdate(status=TaskStatus.COMPLETED)
+
+        mock_db.fetchrow = AsyncMock(
+            return_value={
+                "id": "task-done",
+                "title": "Done Task",
+                "repository": "mahavishnu",
+                "description": None,
+                "status": "completed",
+                "priority": "medium",
+                "assignee": None,
+                "tags": [],
+                "metadata": {},
+                "due_date": None,
+                "external_id": None,
+                "created_at": datetime.now(UTC),
+                "updated_at": datetime.now(UTC),
+                "completed_at": datetime.now(UTC),
+                "created_by": "system",
+            }
+        )
+
+        task = await store.update("task-done", update_data)
+        assert task.id == "task-done"
+
+    @pytest.mark.asyncio
+    async def test_list_tasks_full_filters(self, store: TaskStore, mock_db: MagicMock) -> None:
+        """Test list() with all filter fields set covers every filter branch."""
+        now = datetime.now(UTC)
+        filters = TaskListFilter(
+            repository="mahavishnu",
+            status=TaskStatus.PENDING,
+            priority=TaskPriority.HIGH,
+            assignee="user@example.com",
+            tags=["bug"],
+            search="crash",
+            due_before=now,
+            due_after=now,
+            created_after=now,
+        )
+
+        mock_db.fetch = AsyncMock(return_value=[])
+
+        tasks = await store.list(filters)
+        assert tasks == []
+        mock_db.fetch.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_count_tasks_full_filters(self, store: TaskStore, mock_db: MagicMock) -> None:
+        """Test count() with all filter fields set covers every filter branch."""
+        now = datetime.now(UTC)
+        filters = TaskListFilter(
+            status=TaskStatus.IN_PROGRESS,
+            priority=TaskPriority.LOW,
+            assignee="other@example.com",
+            tags=["feature"],
+            search="login",
+            due_before=now,
+            due_after=now,
+        )
+
+        mock_db.fetchval = AsyncMock(return_value=5)
+
+        count = await store.count(filters)
+        assert count == 5
+
+    @pytest.mark.asyncio
+    async def test_update_status_batch_empty(self, store: TaskStore) -> None:
+        """Test update_status_batch with empty list returns 0 immediately."""
+        result = await store.update_status_batch([], TaskStatus.COMPLETED)
+        assert result == 0
+
+    @pytest.mark.asyncio
+    async def test_update_status_batch_non_completed(self, store: TaskStore, mock_db: MagicMock) -> None:
+        """Test update_status_batch with non-COMPLETED status (no completed_at)."""
+        mock_conn = AsyncMock()
+        mock_conn.execute = AsyncMock()
+        mock_transaction = MagicMock()
+        mock_transaction.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_transaction.__aexit__ = AsyncMock(return_value=None)
+        mock_db.transaction.return_value = mock_transaction
+
+        result = await store.update_status_batch(["t1", "t2"], TaskStatus.IN_PROGRESS)
+        assert result == 2
+
+    @pytest.mark.asyncio
+    async def test_update_status_batch_completed(self, store: TaskStore, mock_db: MagicMock) -> None:
+        """Test update_status_batch with COMPLETED status (sets completed_at)."""
+        mock_conn = AsyncMock()
+        mock_conn.execute = AsyncMock()
+        mock_transaction = MagicMock()
+        mock_transaction.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_transaction.__aexit__ = AsyncMock(return_value=None)
+        mock_db.transaction.return_value = mock_transaction
+
+        result = await store.update_status_batch(["t1"], TaskStatus.COMPLETED)
+        assert result == 1
+
+    @pytest.mark.asyncio
+    async def test_remove_dependency(self, store: TaskStore, mock_db: MagicMock) -> None:
+        """Test removing a dependency between tasks."""
+        await store.remove_dependency("task-1", "task-2")
+
+        mock_db.execute.assert_called()
+        store.event_store.append.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_get_dependents(self, store: TaskStore, mock_db: MagicMock) -> None:
+        """Test getting tasks that depend on a given task."""
+        mock_db.fetch = AsyncMock(
+            return_value=[
+                {
+                    "task_id": "task-2",
+                    "depends_on_task_id": "task-1",
+                    "dependency_type": "blocks",
+                    "created_at": datetime.now(UTC),
+                }
+            ]
+        )
+
+        deps = await store.get_dependents("task-1")
+        assert len(deps) == 1
+        assert deps[0].task_id == "task-2"
+
+
 class TestTaskDependency:
     """Test task dependency."""
 

@@ -291,3 +291,15 @@ class TestApprovalManagerDharaPersistence:
         request = manager.create_request(approval_type="publish", context={})
         delta = request.expires_at - request.created_at
         assert delta >= timedelta(hours=23, minutes=59)
+
+    def test_respond_nonexistent_request_raises(self) -> None:
+        """respond() raises ValueError when request_id is not found (line 225)."""
+        manager = ApprovalManager()
+        with pytest.raises(ValueError, match="not found"):
+            manager.respond("no-such-id", approved=True)
+
+    def test_get_default_options_unknown_type_returns_empty(self) -> None:
+        """_get_default_options falls back to [] for unrecognized types (line 196)."""
+        manager = ApprovalManager()
+        request = manager.create_request(approval_type="unknown_custom_type", context={})
+        assert request.options == []

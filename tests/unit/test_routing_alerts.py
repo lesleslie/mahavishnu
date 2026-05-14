@@ -1,6 +1,7 @@
 """Tests for core/routing_alerts.py — Alert dataclass, handlers, RoutingAlertManager."""
 
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -12,7 +13,9 @@ from mahavishnu.core.routing_alerts import (
     AlertType,
     LoggingAlertHandler,
     RoutingAlertManager,
+    WebhookAlertHandler,
     get_alert_manager,
+    initialize_alert_manager,
 )
 
 # =========================================================================
@@ -287,6 +290,109 @@ class TestRoutingAlertManagerLifecycle:
     async def test_stop_without_start(self):
         mgr = RoutingAlertManager(handlers=[])
         await mgr.stop()  # Should not raise
+
+
+# =========================================================================
+# get_alert_manager / initialize_alert_manager
+# =========================================================================
+
+
+# =========================================================================
+# WebhookAlertHandler
+# =========================================================================
+
+
+class TestWebhookAlertHandler:
+    def test_init_stores_url_and_timeout(self):
+        handler = WebhookAlertHandler("https://example.com/hook", timeout_seconds=10)
+        assert handler.webhook_url == "https://example.com/hook"
+        assert handler.timeout_seconds == 10
+
+    def test_init_default_timeout(self):
+        handler = WebhookAlertHandler("https://example.com/hook")
+        assert handler.timeout_seconds == 5
+
+    def _make_session_mock(self, status: int) -> MagicMock:
+        """Build a properly-wired aiohttp.ClientSession mock."""
+        mock_response = MagicMock()
+        mock_response.status = status
+
+        mock_post_ctx = MagicMock()
+        mock_post_ctx.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_post_ctx.__aexit__ = AsyncMock(return_value=False)
+
+        mock_session = MagicMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+        mock_session.post.return_value = mock_post_ctx
+        return mock_session
+
+    @pytest.mark.asyncio
+    async def test_send_alert_success(self):
+        handler = WebhookAlertHandler("https://example.com/hook")
+        alert = Alert(
+            alert_type=AlertType.ADAPTER_DEGRADATION,
+            severity=AlertSeverity.WARNING,
+            message="Adapter degraded",
+        )
+        with patch("aiohttp.ClientSession", return_value=self._make_session_mock(200)):
+            await handler.send_alert(alert)  # Should not raise
+
+    @pytest.mark.asyncio
+    async def test_send_alert_http_error(self):
+        handler = WebhookAlertHandler("https://example.com/hook")
+        alert = Alert(
+            alert_type=AlertType.COST_SPIKE,
+            severity=AlertSeverity.CRITICAL,
+            message="Cost spike detected",
+        )
+        with patch("aiohttp.ClientSession", return_value=self._make_session_mock(500)):
+            await handler.send_alert(alert)  # Should log error, not raise
+
+    @pytest.mark.asyncio
+    async def test_send_alert_exception(self):
+        handler = WebhookAlertHandler("https://example.com/hook")
+        alert = Alert(
+            alert_type=AlertType.EXCESSIVE_FALLBACKS,
+            severity=AlertSeverity.WARNING,
+            message="Too many fallbacks",
+        )
+        with patch("aiohttp.ClientSession", side_effect=RuntimeError("network error")):
+            await handler.send_alert(alert)  # Should log error, not raise
+
+
+# =========================================================================
+# initialize_alert_manager
+# =========================================================================
+
+
+class TestInitializeAlertManager:
+    @pytest.fixture(autouse=True)
+    def _reset_singleton(self):
+        import mahavishnu.core.routing_alerts as mod
+
+        original = mod._manager
+        mod._manager = None
+        yield
+        mod._manager = original
+
+    @pytest.mark.asyncio
+    async def test_initialize_creates_and_starts_manager(self):
+        mgr = await initialize_alert_manager(
+            success_rate_threshold=0.90,
+            fallback_rate_threshold=0.15,
+            handlers=[],
+        )
+        assert isinstance(mgr, RoutingAlertManager)
+        assert mgr._alert_task is not None
+        await mgr.stop()
+
+    @pytest.mark.asyncio
+    async def test_initialize_reuses_existing_manager(self):
+        mgr1 = await initialize_alert_manager(handlers=[])
+        mgr2 = await initialize_alert_manager(handlers=[])
+        assert mgr1 is mgr2
+        await mgr1.stop()
 
 
 # =========================================================================

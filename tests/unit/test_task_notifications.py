@@ -650,3 +650,25 @@ class TestTaskEventEmitter:
         emitter.emit(event)
 
         callback_ok.assert_called_once_with(event)
+
+    def test_to_json_raises_for_non_serializable(self) -> None:
+        """json_serial raises TypeError for objects that aren't datetime (line 93)."""
+        import json
+
+        event = TaskEvent(
+            event_type=TaskEventType.CREATED,
+            task_id="task-xyz",
+            data={"unserializable": object()},
+        )
+        with pytest.raises(TypeError):
+            event.to_json()
+
+    def test_filter_excludes_wrong_repository(self) -> None:
+        """EventFilter returns False when task repo is not in allowed repositories (line 135)."""
+        ef = EventFilter(repositories=["allowed-repo"])
+        event = TaskEvent(
+            event_type=TaskEventType.CREATED,
+            task_id="t1",
+            data={"task": {"repository": "other-repo"}},
+        )
+        assert ef.matches(event) is False

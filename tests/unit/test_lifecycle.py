@@ -48,6 +48,20 @@ async def test_learning_pipeline_lifecycle() -> None:
 
 
 @pytest.mark.asyncio
+async def test_initialize_worktree_coordinator_exception_is_swallowed() -> None:
+    """Exception during init is caught and logged — worktree_coordinator stays None (lines 57-58)."""
+    repo_manager = SimpleNamespace(load=AsyncMock(side_effect=RuntimeError("load failed")))
+    app = SimpleNamespace(
+        worktree_coordinator=None,
+        repository_manager=repo_manager,
+        coordination_manager=None,
+    )
+
+    await initialize_worktree_coordinator(app)
+    assert app.worktree_coordinator is None
+
+
+@pytest.mark.asyncio
 async def test_initialize_worktree_coordinator_creates_instance(monkeypatch: pytest.MonkeyPatch) -> None:
     repo_manager = SimpleNamespace(load=AsyncMock())
     coordination_manager = object()

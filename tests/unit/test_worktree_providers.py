@@ -428,3 +428,22 @@ class TestDirectGitListWorktrees:
             result = await provider.list_worktrees(Path("/repo"))
 
         assert len(result["worktrees"]) == 0
+
+
+# ---------------------------------------------------------------------------
+# WorktreeProviderError.to_dict
+# ---------------------------------------------------------------------------
+
+
+def test_worktree_provider_error_to_dict():
+    """WorktreeOperationError.to_dict returns expected keys (line 39 in errors.py)."""
+    err = WorktreeOperationError(
+        message="something failed",
+        details={"op": "create"},
+        providers=["direct_git", "session_buddy"],
+    )
+    d = err.to_dict()
+    assert d["error"] == "something failed"
+    assert d["error_type"] == "WorktreeOperationError"
+    assert d["details"] == {"op": "create"}
+    assert d["providers"] == ["direct_git", "session_buddy"]

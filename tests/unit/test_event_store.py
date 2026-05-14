@@ -419,3 +419,143 @@ class TestEventStore:
         event = await store.get_event_by_idempotency_key("nonexistent")
 
         assert event is None
+
+    @pytest.mark.asyncio
+    async def test_append_event_database_error(self, store: EventStore) -> None:
+        """Test that database errors in append are wrapped in DatabaseError."""
+        from mahavishnu.core.errors import DatabaseError
+
+        store.db.execute = AsyncMock(side_effect=RuntimeError("db failure"))
+
+        with pytest.raises(DatabaseError):
+            await store.append(
+                task_id="task-err",
+                event_type=TaskEventType.CREATED,
+                data={},
+                actor="system",
+            )
+
+    @pytest.mark.asyncio
+    async def test_get_task_events_with_filters(self, store: EventStore) -> None:
+        """Test get_task_events with since, until, and event_types filters."""
+        now = datetime.now(UTC)
+        store.db.fetch = AsyncMock(return_value=[])
+
+        events = await store.get_task_events(
+            "task-123",
+            since=now,
+            until=now,
+            event_types=[TaskEventType.CREATED, TaskEventType.STATUS_CHANGED],
+        )
+        assert events == []
+        store.db.fetch.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_get_events_by_correlation_id(self, store: EventStore) -> None:
+        """Test getting events by correlation ID."""
+        store.db.fetch = AsyncMock(return_value=[])
+
+        events = await store.get_events_by_correlation("corr-abc")
+        assert events == []
+        store.db.fetch.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_get_events_by_type_with_since(self, store: EventStore) -> None:
+        """Test get_events_by_type with a since datetime."""
+        now = datetime.now(UTC)
+        store.db.fetch = AsyncMock(return_value=[])
+
+        events = await store.get_events_by_type(TaskEventType.STATUS_CHANGED, since=now)
+        assert events == []
+        store.db.fetch.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_get_events_by_type_without_since(self, store: EventStore) -> None:
+        """Test get_events_by_type without since."""
+        store.db.fetch = AsyncMock(return_value=[])
+
+        events = await store.get_events_by_type(TaskEventType.DELETED)
+        assert events == []
+        store.db.fetch.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_iter_all_events_empty(self, store: EventStore) -> None:
+        """Test iter_all_events with empty db returns no batches."""
+        store.db.fetch = AsyncMock(return_value=[])
+
+        batches = []
+        async for batch in store.iter_all_events():
+            batches.append(batch)
+        assert batches == []
+
+    @pytest.mark.asyncio
+    async def test_iter_all_events_with_since(self, store: EventStore) -> None:
+        """Test iter_all_events with a since filter."""
+        now = datetime.now(UTC)
+        store.db.fetch = AsyncMock(return_value=[])
+
+        batches = []
+        async for batch in store.iter_all_events(since=now):
+            batches.append(batch)
+        assert batches == []
+
+
+class TestTaskStateUncoveredBranches:
+    """Cover UPDATED, PRIORITY_CHANGED, UNASSIGNED, FAILED, CANCELLED event branches."""
+
+    def test_apply_updated_event_all_fields(self) -> None:
+        state = TaskState(task_id="t1", title="Old", metadata={})
+        event = TaskEvent.create(
+            task_id="t1",
+            event_type=TaskEventType.UPDATED,
+            data={"title": "New", "description": "Desc", "metadata": {"k": "v"}},
+            actor="user@example.com",
+        )
+        state.apply_event(event)
+        assert state.title == "New"
+        assert state.description == "Desc"
+        assert state.metadata == {"k": "v"}
+
+    def test_apply_priority_changed_event(self) -> None:
+        state = TaskState(task_id="t2")
+        event = TaskEvent.create(
+            task_id="t2",
+            event_type=TaskEventType.PRIORITY_CHANGED,
+            data={"new_priority": "high"},
+            actor="user@example.com",
+        )
+        state.apply_event(event)
+        assert state.priority == "high"
+
+    def test_apply_unassigned_event(self) -> None:
+        state = TaskState(task_id="t3", assignee="dev@example.com")
+        event = TaskEvent.create(
+            task_id="t3",
+            event_type=TaskEventType.UNASSIGNED,
+            data={},
+            actor="user@example.com",
+        )
+        state.apply_event(event)
+        assert state.assignee is None
+
+    def test_apply_failed_event(self) -> None:
+        state = TaskState(task_id="t4", status="in_progress")
+        event = TaskEvent.create(
+            task_id="t4",
+            event_type=TaskEventType.FAILED,
+            data={},
+            actor="system",
+        )
+        state.apply_event(event)
+        assert state.status == "failed"
+
+    def test_apply_cancelled_event(self) -> None:
+        state = TaskState(task_id="t5", status="in_progress")
+        event = TaskEvent.create(
+            task_id="t5",
+            event_type=TaskEventType.CANCELLED,
+            data={},
+            actor="user@example.com",
+        )
+        state.apply_event(event)
+        assert state.status == "cancelled"

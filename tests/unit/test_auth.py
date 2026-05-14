@@ -1,6 +1,8 @@
 """Unit tests for JWT authentication."""
 
 import pytest
+from unittest.mock import patch
+import jwt
 
 from mahavishnu.core.auth import JWTAuth, get_auth_from_config
 from mahavishnu.core.config import MahavishnuSettings
@@ -69,6 +71,19 @@ def test_invalid_token():
     # Try to verify an invalid token
     with pytest.raises(Exception):
         auth.verify_token("invalid.token.string")
+
+
+def test_verify_token_decode_error():
+    """Test that jwt.DecodeError is caught and wrapped as AuthenticationError."""
+    from mahavishnu.core.errors import AuthenticationError
+
+    secret = "x" * 32
+    auth = JWTAuth(secret=secret)
+
+    with patch("jwt.decode", side_effect=jwt.exceptions.DecodeError("bad token")):
+        with pytest.raises(AuthenticationError) as exc_info:
+            auth.verify_token("any.token.here")
+    assert "decode" in exc_info.value.message.lower()
 
 
 def test_get_auth_from_config():

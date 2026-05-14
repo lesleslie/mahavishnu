@@ -7,6 +7,7 @@ import pytest
 from mahavishnu.core.adaptive_rag import (
     AdaptiveRAGRouter,
     ComplexityScore,
+    QueryAnalysis,
     QueryComplexityAnalyzer,
     RAGStrategyType,
     create_adaptive_router,
@@ -175,3 +176,24 @@ class TestCreateAdaptiveRouter:
         """Test that custom domain patterns are accepted."""
         router = create_adaptive_router(domain_patterns=[r"\b(custom_term)\b"])
         assert isinstance(router, AdaptiveRAGRouter)
+
+    def test_custom_reasoning_patterns(self) -> None:
+        """QueryComplexityAnalyzer with reasoning_patterns extends the default list (line 197)."""
+        analyzer = QueryComplexityAnalyzer(reasoning_patterns=[r"\bwhy\b"])
+        assert any(r"\bwhy\b" in p.pattern for p in analyzer._reasoning_regex)
+
+
+class TestQueryAnalysisToDict:
+    def test_to_dict_returns_expected_keys(self) -> None:
+        """QueryAnalysis.to_dict() is exercised (line 107)."""
+        analysis = QueryAnalysis(
+            query="What is the adapter pattern?",
+            complexity=ComplexityScore(score=0.4),
+            suggested_strategy=RAGStrategyType.NAIVE,
+        )
+        d = analysis.to_dict()
+        assert d["query"] == "What is the adapter pattern?"
+        assert "complexity" in d
+        assert "detected_entities" in d
+        assert "suggested_strategy" in d
+        assert "routing_reason" in d

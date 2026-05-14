@@ -83,3 +83,24 @@ async def test_in_memory_transport_supports_exact_and_pattern_matches():
 def test_protocol_accepts_in_memory_transport():
     transport = InMemoryEventTransport()
     assert isinstance(transport, EventPublisherProtocol)
+
+
+def test_coerce_uuid_with_uuid_object():
+    """_coerce_uuid returns UUID unchanged when already a UUID (line 33)."""
+    from mahavishnu.core.events.contract import _coerce_uuid
+
+    uid = UUID("12345678-1234-5678-1234-567812345678")
+    assert _coerce_uuid(uid) is uid
+
+
+@pytest.mark.asyncio
+async def test_in_memory_transport_clear():
+    """InMemoryEventTransport.clear() resets history and subscriptions (lines 137-138)."""
+    transport = InMemoryEventTransport()
+    transport.subscribe("test.event", lambda e: None)
+    await transport.publish(create_event_envelope("test.event", "svc"))
+
+    assert len(transport.history()) == 1
+    transport.clear()
+    assert transport.history() == []
+    assert transport._subscriptions == {}

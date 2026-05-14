@@ -13,6 +13,7 @@ from typing import Any
 
 from ..terminal.manager import TerminalManager
 from .base import BaseWorker, WorkerResult, WorkerStatus
+from .protocol import ProgressSnapshot
 from .registry import WorkerCategory, WorkerConfig, get_worker_config
 
 logger = logging.getLogger(__name__)
@@ -442,11 +443,11 @@ class GenericShellWorker(BaseWorker):
 
         return self._status
 
-    async def get_progress(self) -> dict[str, Any]:
+    async def get_progress(self) -> ProgressSnapshot:
         """Get worker progress information.
 
         Returns:
-            Dictionary with progress details
+            ProgressSnapshot with typed progress details
         """
         output = ""
         if self.session_id:
