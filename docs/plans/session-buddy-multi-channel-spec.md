@@ -1,7 +1,7 @@
 # Session-Buddy Multi-Channel Tracking — Concrete Spec
 
-**Status**: Draft v0.2
-**Date**: 2026-04-07
+**Status**: Delivered — Phase 1 (in-memory store, 2026-05-08) and Phase 2 (Dhara time-series publishing, 2026-05-14) complete
+**Date**: 2026-04-07 (original spec); Phase 1 delivered 2026-05-08; Phase 2 delivered 2026-05-14
 **Based on**: nanobot v0.1.4.post6 (installed) + v0.1.5 (latest, not yet installed)
 
 ______________________________________________________________________
@@ -273,7 +273,7 @@ ______________________________________________________________________
 | Phase | Scope | Effort | Dependencies |
 |---|---|---|---|
 | **Phase 1** | SB channel adapter + skill update | 2-3 days | None |
-| **Phase 2** | Dhara event bus | 1 day | Phase 1 |
+| **Phase 2** | Dhara event bus | delivered 2026-05-14 | Phase 1 |
 | **Phase 3** | Nanobot plugin | 2 days | v0.1.5 upgrade, Phase 1 |
 
 **Total**: ~5-6 days for all phases.
