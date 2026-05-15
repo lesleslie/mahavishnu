@@ -412,8 +412,8 @@ ignore = [
 
 # Codespell configuration (typo detection)
 [tool.codespell]
-ignore-words-list = ["assertIn", "import"]
-skip = '.git,*.egg-info,*cache,.venv,build,dist'
+ignore-words-list = ["assertIn", "import", "ttest", "ned"]
+skip = '.git,*.egg-info,*cache,.venv,build,dist,htmlcov'
 
 # Complexipy configuration (complexity checking)
 [tool.complexipy]
