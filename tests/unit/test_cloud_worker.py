@@ -224,7 +224,7 @@ class TestCloudWorkerExecute:
         """Intelligent routing passes task_type from classify_task() to chain."""
         await worker.execute({"prompt": "write a python function"})
         call_task = mock_chain.execute.call_args[0][0]
-        assert "task_type" in call_task
+        assert call_task["task_type"] == TaskCategory.CODE_GENERATION.value
 
     @pytest.mark.asyncio
     async def test_execute_code_task_type(self, worker, mock_chain):
@@ -272,6 +272,23 @@ class TestCloudWorkerExecute:
             await worker.execute({"prompt": "debug this error"})
         call_task = mock_chain.execute.call_args[0][0]
         assert call_task["task_type"] == TaskCategory.GENERAL.value
+
+    @pytest.mark.asyncio
+    async def test_execute_rate_limit_rejected(self, mock_chain):
+        """Rate-limit rejection returns FAILED result without calling chain."""
+        from mahavishnu.workers.task_router import RateLimitConfig, configure_rate_limiter
+
+        configure_rate_limiter(RateLimitConfig(limit=0))  # reject all
+        try:
+            with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+                worker = CloudWorker()
+                await worker.start()
+                result = await worker.execute({"prompt": "test"})
+            assert result.status == WorkerStatus.FAILED
+            assert "Rate limit exceeded" in result.error
+            mock_chain.execute.assert_not_awaited()
+        finally:
+            configure_rate_limiter(RateLimitConfig(limit=10_000))  # restore permissive limit
 
     @pytest.mark.asyncio
     async def test_execute_metadata_includes_provider(self, worker, mock_chain):
@@ -375,6 +392,7 @@ class TestCloudWorkerSessionBuddy:
             await worker.execute({"prompt": "test"})
 
         sb_client.call_tool.assert_awaited_once()
+        assert sb_client.call_tool.call_args.args[0] == "store_memory"
         args = sb_client.call_tool.call_args.kwargs["arguments"]
         assert args["content"] == "stored result"
         assert args["metadata"]["type"] == "cloud_execution"

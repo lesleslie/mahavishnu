@@ -8,6 +8,7 @@ field so each provider selects the right model from its routing table.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import time
@@ -101,7 +102,13 @@ def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
         },
         fallback_chain=["minimax", "llama_server", "ollama"],
     )
-    return FallbackChain.from_settings(settings)
+    chain = FallbackChain.from_settings(settings)
+    if len(chain._providers) < 3:
+        logger.error(
+            "FallbackChain built with only %d provider(s); check MINIMAX_API_KEY and local server URLs.",
+            len(chain._providers),
+        )
+    return chain
 
 
 class CloudWorker(BaseWorker):
@@ -164,7 +171,15 @@ class CloudWorker(BaseWorker):
             WorkerResult with execution results
         """
         if self._status != WorkerStatus.RUNNING:
-            await self.start()
+            try:
+                await self.start()
+            except Exception as e:
+                logger.error("Cloud worker failed to start: %s", e)
+                return WorkerResult(
+                    worker_id=self._worker_id,
+                    status=WorkerStatus.FAILED,
+                    error=f"Worker failed to start: {e}",
+                )
 
         assert self._chain is not None
 
@@ -304,7 +319,9 @@ class CloudWorker(BaseWorker):
         provider_health: dict[str, bool] = {}
         for provider in self._chain._providers:
             try:
-                provider_health[provider.name] = await provider.health_check()
+                provider_health[provider.name] = await asyncio.wait_for(
+                    provider.health_check(), timeout=5.0
+                )
             except Exception:
                 provider_health[provider.name] = False
 

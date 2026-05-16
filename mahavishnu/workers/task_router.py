@@ -301,7 +301,10 @@ def classify_task(prompt: str, context: dict[str, Any] | None = None) -> TaskCat
     if max_score == 0:
         return TaskCategory.GENERAL
 
-    # Return the category with the highest score
+    # Return the first category in TaskCategory declaration order with the highest score.
+    # Tie-breaking is intentional: enum declaration order defines routing priority.
+    # On ties, categories declared earlier (e.g. CODE_GENERATION) beat later ones
+    # (e.g. QUICK, GENERAL). Add pattern specificity to avoid unwanted ties.
     for category, score in scores.items():
         if score == max_score:
             return category
