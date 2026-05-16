@@ -1,8 +1,10 @@
 # Mahavishnu - LLM Model Configuration
-# Updated: 2026-05-10 (MiniMax provider migration, phase M1)
+# Updated: 2026-05-16 (three-tier provider chain: minimax → llama_server → ollama)
 #
-# MiniMax M2.7 models are the primary cloud provider via the public MiniMax API.
-# Ollama remains the local fallback. Bifrost is optional (activated via env vars).
+# Provider chain:
+#   1. minimax  - MiniMax M2.7 (primary cloud, API key required)
+#   2. llama_server - llama.cpp server with qwen3.5 (local, no auth)
+#   3. ollama   - Ollama with qwen2.5-coder (local fallback, no auth)
 #
 # Related files:
 #   - mahavishnu/workers/ollama.py        - OllamaWorker implementation
@@ -10,12 +12,14 @@
 #   - config/bifrost/config.template.json - Bifrost gateway config
 
 # =============================================================================
-# CLOUD PROVIDERS (priority order)
+# CLOUD PROVIDERS
 # =============================================================================
 
-# MiniMax - Primary cloud provider
+# MiniMax - Primary cloud provider (API key required)
 minimax:
   enabled: true
+  require_auth: true
+  api_key_env: "MINIMAX_API_KEY"
   base_url: "https://api.minimax.io/v1"
   api_key: "${MINIMAX_API_KEY}"
   priority: 1
@@ -32,33 +36,60 @@ minimax:
     ANALYSIS: "MiniMax-M2.7"
     DOCUMENTATION: "MiniMax-M2.7"
     SWARM: "MiniMax-M2.7-highspeed"
-    SWARM_FREE: "MiniMax-M2.7-highspeed"
-    VISION: "MiniMax-M2.7"
     QUICK: "MiniMax-M2.7-highspeed"
-  fallback:
-    subscription_exhausted: "MiniMax-M2.7-highspeed"
+    VISION: "MiniMax-M2.7"
+    ML_INFERENCE: "MiniMax-M2.7"
+    AGENT_LOOP: "MiniMax-M2.7"
 
 # =============================================================================
-# LOCAL PROVIDER
+# LOCAL PROVIDERS (no auth required, always available when running)
 # =============================================================================
 
+# llama-server (llama.cpp) - Secondary local provider with qwen3.5
+llama_server:
+  enabled: true
+  require_auth: false
+  base_url: "http://localhost:8081"
+  priority: 2
+  timeout: 60
+  max_retries: 2
+  task_routing:
+    CODE_GENERATION: "qwen3.5"
+    CODE_REVIEW: "qwen3.5"
+    DEBUGGING: "qwen3.5"
+    REFACTORING: "qwen3.5"
+    TESTING: "qwen3.5"
+    REASONING: "qwen3.5"
+    GENERAL: "qwen3.5"
+    ANALYSIS: "qwen3.5"
+    DOCUMENTATION: "qwen3.5"
+    SWARM: "qwen3.5"
+    QUICK: "qwen3.5"
+    ML_INFERENCE: "qwen3.5"
+    AGENT_LOOP: "qwen3.5"
+
+# Ollama - Tertiary local fallback with qwen2.5-coder
 ollama:
   enabled: true
-  base_url: "http://localhost:11434"  # llama-server (llama.cpp)
-  priority: 2
+  require_auth: false
+  base_url: "http://localhost:11434"
+  priority: 3
+  timeout: 120
+  max_retries: 1
   task_routing:
-    CODE_GENERATION: "Qwen3-8B-8.2B-Q4_K_M"
-    CODE_REVIEW: "Qwen3-8B-8.2B-Q4_K_M"
-    DEBUGGING: "Qwen3-8B-8.2B-Q4_K_M"
-    REFACTORING: "Qwen3-8B-8.2B-Q4_K_M"
-    DOCUMENTATION: "Qwen3-8B-8.2B-Q4_K_M"
-    TESTING: "Qwen3-8B-8.2B-Q4_K_M"
-    REASONING: "Qwen3-8B-8.2B-Q4_K_M"
-    CREATIVE: "Qwen3-8B-8.2B-Q4_K_M"
-    ANALYSIS: "Qwen3-8B-8.2B-Q4_K_M"
-    VISION: "Qwen3-8B-8.2B-Q4_K_M"
+    CODE_GENERATION: "qwen2.5-coder:7b"
+    CODE_REVIEW: "qwen2.5-coder:7b"
+    DEBUGGING: "qwen2.5-coder:7b"
+    REFACTORING: "qwen2.5-coder:7b"
+    DOCUMENTATION: "qwen2.5-coder:7b"
+    TESTING: "qwen2.5-coder:7b"
+    REASONING: "qwen2.5-coder:7b"
+    CREATIVE: "qwen2.5-coder:7b"
+    ANALYSIS: "qwen2.5-coder:7b"
+    GENERAL: "qwen2.5-coder:7b"
+    QUICK: "qwen2.5-coder:7b"
     EMBEDDING: "nomic-embed-text"
-    GENERAL: "Qwen3-8B-8.2B-Q4_K_M"
+    ML_INFERENCE: "qwen2.5-coder:7b"
 
 # =============================================================================
 # OPTIONAL PROVIDERS
@@ -75,5 +106,4 @@ bifrost:
 # =============================================================================
 
 default_provider: "minimax"
-fallback_chain: ["minimax", "ollama"]
-free_tier_provider: "minimax"
+fallback_chain: ["minimax", "llama_server", "ollama"]
