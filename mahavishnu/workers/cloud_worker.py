@@ -1,34 +1,32 @@
-"""Cloud AI worker for OpenAI-compatible API task execution.
+"""Cloud AI worker — three-tier FallbackChain (MiniMax → llama-server → Ollama).
 
-This worker provides AI task execution through OpenAI-compatible cloud
-providers using the chat completions API.
-
-Features:
-- OpenAI-compatible API support (MiniMax and other compatible providers)
-- Intelligent model routing based on task type
-- Circuit breaker integration via mcp_common.llm
-- Configurable generation parameters
-- Connection health monitoring
-- Session-Buddy integration for result storage
+Delegates all LLM dispatch to mcp_common.llm.FallbackChain, which handles
+per-provider retry, circuit breaking, and fail-closed auth checks.
+Intelligent task classification via classify_task() feeds the task_type
+field so each provider selects the right model from its routing table.
 """
 
 from __future__ import annotations
 
-import asyncio
-from dataclasses import dataclass, field
 import logging
 import os
 import time
+from dataclasses import dataclass, field
 from typing import Any
+
+from mcp_common.llm import FallbackChain, LLMSettings
 
 from mahavishnu.core.status import WorkerStatus
 
 from .base import BaseWorker, WorkerResult
 from .task_router import (
+    DEFAULT_LLAMA_SERVER_ROUTING,
     DEFAULT_MINIMAX_ROUTING,
+    DEFAULT_OLLAMA_ROUTING,
     TaskCategory,
-    get_model_for_task,
+    classify_task,
     get_rate_limiter,
+    routing_to_task_map,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,21 +39,25 @@ class CloudWorkerConfig:
     """Configuration for cloud AI worker.
 
     Attributes:
-        base_url: OpenAI-compatible API endpoint
-        api_key: API key (or env var reference)
-        model: Default model identifier
-        timeout: Request timeout in seconds
+        minimax_url: MiniMax API endpoint (OpenAI-compatible)
+        llama_server_url: llama.cpp server endpoint (secondary)
+        ollama_url: Ollama endpoint (tertiary)
+        model: Default MiniMax model when no task_type routing matches
+        timeout: Request timeout in seconds (applied to each provider tier)
         temperature: Sampling temperature (0.0-2.0)
         max_tokens: Maximum tokens to generate
         intelligent_routing: Enable automatic model selection based on task type
-        model_routing: Custom model routing (category -> model)
+        model_routing: Custom MiniMax model routing (overrides DEFAULT_MINIMAX_ROUTING)
     """
 
-    base_url: str = field(
+    minimax_url: str = field(
         default_factory=lambda: os.environ.get("MINIMAX_BASE_URL") or MINIMAX_OPENAI_BASE_URL
     )
-    api_key: str = field(
-        default_factory=lambda: os.environ.get("MINIMAX_API_KEY", "")
+    llama_server_url: str = field(
+        default_factory=lambda: os.environ.get("LLAMA_SERVER_URL", "http://localhost:8081")
+    )
+    ollama_url: str = field(
+        default_factory=lambda: os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
     )
     model: str = "MiniMax-M2.7"
     timeout: int = 300
@@ -65,19 +67,51 @@ class CloudWorkerConfig:
     model_routing: dict[TaskCategory, str] | None = None
 
     def get_model_for_category(self, category: TaskCategory) -> str:
-        """Get the appropriate model for a task category."""
+        """Get the MiniMax model for a task category (used for rate limiting)."""
         routing = self.model_routing or DEFAULT_MINIMAX_ROUTING
         return routing.get(category, self.model)
 
 
-class CloudWorker(BaseWorker):
-    """Worker that executes tasks via OpenAI-compatible cloud APIs.
+def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
+    minimax_routing = routing_to_task_map(config.model_routing or DEFAULT_MINIMAX_ROUTING)
+    settings = LLMSettings(
+        providers={
+            "minimax": {
+                "name": "minimax",
+                "base_url": config.minimax_url,
+                "api_key": "${MINIMAX_API_KEY}",
+                "require_auth": True,
+                "task_routing": minimax_routing,
+                "timeout_seconds": config.timeout,
+            },
+            "llama_server": {
+                "name": "llama_server",
+                "base_url": config.llama_server_url,
+                "require_auth": False,
+                "task_routing": routing_to_task_map(DEFAULT_LLAMA_SERVER_ROUTING),
+                "timeout_seconds": config.timeout,
+            },
+            "ollama": {
+                "name": "ollama",
+                "base_url": config.ollama_url,
+                "require_auth": False,
+                "task_routing": routing_to_task_map(DEFAULT_OLLAMA_ROUTING),
+                "timeout_seconds": config.timeout,
+            },
+        },
+        fallback_chain=["minimax", "llama_server", "ollama"],
+    )
+    return FallbackChain.from_settings(settings)
 
-    Supports MiniMax models and any provider that implements the OpenAI
-    chat completions API.
+
+class CloudWorker(BaseWorker):
+    """Worker that executes tasks via a three-tier FallbackChain.
+
+    Provider order: MiniMax (primary cloud) → llama-server/qwen3.5
+    (local secondary) → Ollama/qwen2.5-coder (local tertiary).
 
     Args:
-        config: Cloud worker configuration with API settings
+        config: Cloud worker configuration
         worker_id: Unique identifier for this worker instance
         session_buddy_client: Optional Session-Buddy client for result storage
     """
@@ -92,66 +126,38 @@ class CloudWorker(BaseWorker):
         self.config = config or CloudWorkerConfig()
         self._worker_id = worker_id or f"cloud-{int(time.time())}"
         self.session_buddy_client = session_buddy_client
-        self._client: Any = None
+        self._chain: FallbackChain | None = None
         self._start_time: float | None = None
 
     async def start(self) -> str:
-        """Initialize the cloud worker.
-
-        Creates the OpenAI async client with configured credentials.
+        """Initialize the cloud worker by building the FallbackChain.
 
         Returns:
             Worker ID string
-
-        Raises:
-            RuntimeError: If API key is not configured
         """
         self._status = WorkerStatus.STARTING
         self._start_time = time.time()
-
-        if not self.config.api_key:
-            self._status = WorkerStatus.FAILED
-            raise RuntimeError(
-                "Cloud worker requires an API key. "
-                "Set MINIMAX_API_KEY environment variable or pass api_key in config."
-            )
-
-        # Lazy import — openai is optional
-        try:
-            import openai
-        except ImportError:
-            self._status = WorkerStatus.FAILED
-            raise RuntimeError(
-                "openai package required for CloudWorker. Install with: pip install mcp-common[llm]"
-            ) from None
-
-        self._client = openai.AsyncOpenAI(
-            api_key=self.config.api_key,
-            base_url=self.config.base_url,
-            max_retries=2,
-            timeout=self.config.timeout,
-        )
-
+        self._chain = _build_fallback_chain(self.config)
         self._status = WorkerStatus.RUNNING
         logger.info(
-            "Started cloud worker: %s (model: %s, base_url: %s)",
+            "Started cloud worker: %s (primary: %s, model: %s)",
             self._worker_id,
+            self.config.minimax_url,
             self.config.model,
-            self.config.base_url,
         )
         return self._worker_id
 
     async def execute(self, task: dict[str, Any]) -> WorkerResult:
-        """Execute a task using OpenAI-compatible cloud API.
+        """Execute a task via the three-tier FallbackChain.
 
         Args:
             task: Task specification with keys:
-                - prompt: Task prompt to send to AI (required)
-                - timeout: Execution timeout in seconds (default: config.timeout)
-                - model: Override model for this task (skips intelligent routing)
+                - prompt: Task prompt (required)
+                - timeout: Execution timeout override
+                - model: Override model for primary provider
                 - system: Optional system prompt
-                - temperature: Override temperature for this task
-                - max_tokens: Override max tokens for this task
+                - temperature: Override temperature
+                - max_tokens: Override max tokens
                 - context: Optional context dict for intelligent routing
 
         Returns:
@@ -159,6 +165,8 @@ class CloudWorker(BaseWorker):
         """
         if self._status != WorkerStatus.RUNNING:
             await self.start()
+
+        assert self._chain is not None
 
         prompt = task.get("prompt", "")
         if not prompt:
@@ -168,77 +176,68 @@ class CloudWorker(BaseWorker):
                 error="No prompt provided in task",
             )
 
-        timeout = task.get("timeout", self.config.timeout)
-        system = task.get("system")
         temperature = task.get("temperature", self.config.temperature)
         max_tokens = task.get("max_tokens", self.config.max_tokens)
+        system = task.get("system")
         task_context = task.get("context")
-
-        # Intelligent model selection (unless explicitly specified)
         explicit_model = task.get("model")
+
+        # Classify the task for intelligent model routing
         if explicit_model:
-            model = explicit_model
             task_category = TaskCategory.GENERAL
-            logger.info("Using explicitly specified model: %s", model)
+            logger.info("Using explicitly specified model: %s", explicit_model)
         elif self.config.intelligent_routing:
-            model, task_category = get_model_for_task(
-                prompt=prompt,
-                model_routing=self.config.model_routing or DEFAULT_MINIMAX_ROUTING,
-                default_model=self.config.model,
-                context=task_context,
-            )
-            logger.info("Intelligent routing: %s -> %s", task_category.value, model)
+            task_category = classify_task(prompt, task_context)
+            logger.info("Intelligent routing: %s", task_category.value)
         else:
-            model = self.config.model
             task_category = TaskCategory.GENERAL
 
-        # Check rate limit before making the API call
+        # Rate limit against the primary provider's expected model
         user_id: str | None = task.get("user_id")
         rate_limiter = get_rate_limiter()
         if rate_limiter is not None:
-            allowed = await rate_limiter.check_and_record(model, user_id)
+            model_for_rate = explicit_model or self.config.get_model_for_category(task_category)
+            allowed = await rate_limiter.check_and_record(model_for_rate, user_id)
             if not allowed:
-                logger.warning(
-                    "Rate limit exceeded: model=%s user=%s", model, user_id or "*"
-                )
+                logger.warning("Rate limit exceeded: model=%s user=%s", model_for_rate, user_id or "*")
                 try:
                     from mahavishnu.core.routing_metrics import get_routing_metrics
-                    get_routing_metrics().record_rate_limit_rejected(model)
+
+                    get_routing_metrics().record_rate_limit_rejected(model_for_rate)
                 except Exception:
                     pass
                 return WorkerResult(
                     worker_id=self._worker_id,
                     status=WorkerStatus.FAILED,
-                    error=f"Rate limit exceeded for model {model}",
+                    error=f"Rate limit exceeded for model {model_for_rate}",
                 )
+
+        messages: list[dict[str, str]] = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+
+        chain_task: dict[str, Any] = {
+            "task_type": task_category.value,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if explicit_model:
+            chain_task["model"] = explicit_model
 
         start_time = time.time()
 
         try:
-            # Build messages
-            messages: list[dict[str, str]] = []
-            if system:
-                messages.append({"role": "system", "content": system})
-            messages.append({"role": "user", "content": prompt})
-
-            # Call the API
-            response = await asyncio.wait_for(
-                self._client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                ),
-                timeout=timeout,
-            )
-
-            output = response.choices[0].message.content or ""
+            result = await self._chain.execute(chain_task)
             duration = time.time() - start_time
 
-            # Extract usage stats
-            usage = response.usage.model_dump() if response.usage else {}
+            output = result.get("content", "")
+            model = result.get("model", self.config.model)
+            provider = result.get("provider", "unknown")
+            usage = result.get("usage", {})
 
-            result = WorkerResult(
+            worker_result = WorkerResult(
                 worker_id=self._worker_id,
                 status=WorkerStatus.COMPLETED,
                 output=output,
@@ -247,8 +246,7 @@ class CloudWorker(BaseWorker):
                 metadata={
                     "model": model,
                     "task_category": task_category.value,
-                    "provider": "cloud",
-                    "base_url": self.config.base_url,
+                    "provider": provider,
                     "temperature": temperature,
                     "max_tokens": max_tokens,
                     "intelligent_routing": self.config.intelligent_routing and not explicit_model,
@@ -256,26 +254,14 @@ class CloudWorker(BaseWorker):
                 },
             )
 
-            # Store in Session-Buddy if available
             if self.session_buddy_client:
-                await self._store_result_in_session_buddy(result, task)
+                await self._store_result_in_session_buddy(worker_result, task)
 
-            return result
-
-        except TimeoutError:
-            duration = time.time() - start_time
-            logger.warning("Cloud task timed out after %ss", duration)
-            return WorkerResult(
-                worker_id=self._worker_id,
-                status=WorkerStatus.TIMEOUT,
-                error=f"Task timed out after {timeout}s",
-                duration_seconds=duration,
-                metadata={"timeout": timeout},
-            )
+            return worker_result
 
         except Exception as e:
             duration = time.time() - start_time
-            logger.error("Cloud task failed: %s", e)
+            logger.error("Cloud task failed (all providers exhausted): %s", e)
             return WorkerResult(
                 worker_id=self._worker_id,
                 status=WorkerStatus.FAILED,
@@ -284,14 +270,8 @@ class CloudWorker(BaseWorker):
             )
 
     async def stop(self) -> None:
-        """Stop the worker by closing the client."""
-        if self._client:
-            try:
-                await self._client.close()
-            except Exception as e:
-                logger.error("Error closing cloud client: %s", e)
-            finally:
-                self._client = None
+        """Stop the worker by releasing the chain reference."""
+        self._chain = None
         self._status = WorkerStatus.COMPLETED
         logger.info("Stopped cloud worker: %s", self._worker_id)
 
@@ -302,47 +282,43 @@ class CloudWorker(BaseWorker):
     async def get_progress(self) -> dict[str, Any]:
         """Get worker progress information."""
         duration = time.time() - self._start_time if self._start_time else 0
-
         return {
             "status": self._status.value,
             "worker_id": self._worker_id,
             "worker_type": self.worker_type,
             "model": self.config.model,
             "duration_seconds": duration,
-            "base_url": self.config.base_url,
+            "minimax_url": self.config.minimax_url,
         }
 
     async def health_check(self) -> dict[str, Any]:
-        """Check worker health and availability."""
-        try:
-            if self._client:
-                # Try listing models as a lightweight health check
-                await asyncio.wait_for(
-                    self._client.models.list(),
-                    timeout=10.0,
-                )
-                ollama_available = True
-            else:
-                ollama_available = False
-
-            return {
-                "healthy": self._status == WorkerStatus.RUNNING and ollama_available,
-                "status": self._status.value,
-                "worker_type": self.worker_type,
-                "details": {
-                    "provider": "cloud",
-                    "model": self.config.model,
-                    "base_url": self.config.base_url,
-                    "api_key_set": bool(self.config.api_key),
-                },
-            }
-        except Exception as e:
+        """Check worker health — reports per-provider availability."""
+        if self._chain is None:
             return {
                 "healthy": False,
                 "status": self._status.value,
                 "worker_type": self.worker_type,
-                "details": {"error": str(e)},
+                "details": {"error": "chain not initialized"},
             }
+
+        provider_health: dict[str, bool] = {}
+        for provider in self._chain._providers:
+            try:
+                provider_health[provider.name] = await provider.health_check()
+            except Exception:
+                provider_health[provider.name] = False
+
+        any_healthy = any(provider_health.values())
+        return {
+            "healthy": self._status == WorkerStatus.RUNNING and any_healthy,
+            "status": self._status.value,
+            "worker_type": self.worker_type,
+            "details": {
+                "providers": provider_health,
+                "model": self.config.model,
+                "minimax_url": self.config.minimax_url,
+            },
+        }
 
     async def _store_result_in_session_buddy(
         self,
@@ -362,7 +338,8 @@ class CloudWorker(BaseWorker):
                         "type": "cloud_execution",
                         "worker_id": result.worker_id,
                         "worker_type": self.worker_type,
-                        "model": self.config.model,
+                        "model": result.metadata.get("model", self.config.model),
+                        "provider": result.metadata.get("provider", "unknown"),
                         "task_prompt": task.get("prompt", "")[:500],
                         "status": result.status.value,
                         "duration_seconds": result.duration_seconds,

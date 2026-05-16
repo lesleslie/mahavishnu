@@ -234,6 +234,9 @@ DEFAULT_OLLAMA_ROUTING: dict[TaskCategory, str] = {
     TaskCategory.AGENT_LOOP: "llama3:8b",
 }
 
+# Default model routing for llama-server (qwen3.5 — single model, all categories)
+DEFAULT_LLAMA_SERVER_ROUTING: dict[TaskCategory, str] = {cat: "qwen3.5" for cat in TaskCategory}
+
 # Default model routing for MiniMax cloud provider
 DEFAULT_MINIMAX_ROUTING: dict[TaskCategory, str] = {
     TaskCategory.CODE_GENERATION: "MiniMax-M2.7",
@@ -253,6 +256,12 @@ DEFAULT_MINIMAX_ROUTING: dict[TaskCategory, str] = {
     TaskCategory.ML_INFERENCE: "MiniMax-M2.7-highspeed",
     TaskCategory.AGENT_LOOP: "MiniMax-M2.7",
 }
+
+
+def routing_to_task_map(routing: dict[TaskCategory, str]) -> dict[str, str]:
+    """Convert a TaskCategory→model dict to the string-keyed format FallbackChain expects."""
+    return {cat.value: model for cat, model in routing.items()}
+
 
 def classify_task(prompt: str, context: dict[str, Any] | None = None) -> TaskCategory:
     """Classify a task based on prompt content.
@@ -328,10 +337,12 @@ __all__ = [
     "RateLimiter",
     "TaskCategory",
     "TASK_PATTERNS",
-    "DEFAULT_OLLAMA_ROUTING",
+    "DEFAULT_LLAMA_SERVER_ROUTING",
     "DEFAULT_MINIMAX_ROUTING",
+    "DEFAULT_OLLAMA_ROUTING",
     "classify_task",
     "configure_rate_limiter",
     "get_model_for_task",
     "get_rate_limiter",
+    "routing_to_task_map",
 ]
