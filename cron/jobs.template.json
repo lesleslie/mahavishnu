@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "jobs": [
+    {
+      "id": "dream",
+      "name": "dream",
+      "enabled": true,
+      "schedule": {
+        "kind": "every",
+        "atMs": null,
+        "everyMs": 7200000,
+        "expr": null,
+        "tz": null
+      },
+      "payload": {
+        "kind": "system_event",
+        "message": "",
+        "deliver": false,
+        "channel": null,
+        "to": null
+      },
+      "state": null,
+      "createdAtMs": null,
+      "updatedAtMs": null,
+      "deleteAfterRun": false
+    }
+  ]
+}
