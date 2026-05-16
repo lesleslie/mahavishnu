@@ -163,9 +163,9 @@ def check_user_repo_permission(app: Any, user_id: str, repo_path: str) -> bool:
                     asyncio.run,
                     app.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO),
                 )
-                return future.result(timeout=5.0)
+                return future.result(timeout=5.0)  # type: ignore[no-any-return]
         except RuntimeError:
-            return asyncio.run(
+            return asyncio.run(  # type: ignore[no-any-return]
                 app.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO)
             )
     except Exception:
@@ -173,7 +173,7 @@ def check_user_repo_permission(app: Any, user_id: str, repo_path: str) -> bool:
 
 
 def get_all_repos(app: Any) -> list[dict[str, Any]]:
-    return app.repos_config.get("repos", [])
+    return app.repos_config.get("repos", [])  # type: ignore[no-any-return]
 
 
 def get_all_repo_paths(app: Any) -> list[str]:
@@ -181,7 +181,7 @@ def get_all_repo_paths(app: Any) -> list[str]:
 
 
 def get_roles(app: Any) -> list[dict[str, Any]]:
-    return getattr(app, "roles_config", app.repos_config.get("roles", []))
+    return getattr(app, "roles_config", app.repos_config.get("roles", []))  # type: ignore[no-any-return]
 
 
 def get_role_by_name(app: Any, role_name: str) -> dict[str, Any] | None:

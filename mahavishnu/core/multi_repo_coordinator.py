@@ -355,7 +355,7 @@ class MultiRepoCoordinator:
 
             # Update task status to completed
             task.status = TaskStatus.COMPLETED
-            await self.task_store.update(task)
+            await self.task_store.update(task)  # type: ignore[arg-type, call-arg]
 
             # Update dependency status
             self.dependency_linker.update_all_statuses(
@@ -422,7 +422,7 @@ class MultiRepoCoordinator:
                     task = await self.task_store.get(step.task_id)
                     if task:
                         task.status = TaskStatus.PENDING
-                        await self.task_store.update(task)
+                        await self.task_store.update(task)  # type: ignore[arg-type, call-arg]
                         step.status = CoordinationStatus.ROLLED_BACK
                         rollback_count += 1
                         logger.info(f"Rolled back step {step.step_id}")

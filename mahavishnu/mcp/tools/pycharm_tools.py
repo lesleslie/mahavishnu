@@ -180,7 +180,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         }
 
     @mcp.tool()
-    async def pycharm_open_file(file_path: str, line: int | None = None) -> dict[str, Any]:
+    async def pycharm_open_file(file_path: str, line: int | None = None) -> dict[str, Any]:  # type: ignore[return]
         """Open a file in PyCharm editor, optionally at a specific line."""
         try:
             if app and hasattr(app, "worker_manager") and app.worker_manager:
@@ -232,7 +232,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         }
 
     @mcp.tool()
-    async def pycharm_replace_in_file(
+    async def pycharm_replace_in_file(  # type: ignore[return]
         file_path: str,
         search_text: str,
         replace_text: str,
@@ -264,7 +264,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
             }
 
     @mcp.tool()
-    async def pycharm_reformat_file(file_path: str) -> dict[str, Any]:
+    async def pycharm_reformat_file(file_path: str) -> dict[str, Any]:  # type: ignore[return]
         """Reformat a file using PyCharm's code formatter."""
         try:
             if app and hasattr(app, "worker_manager") and app.worker_manager:
@@ -285,7 +285,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
             }
 
     @mcp.tool()
-    async def pycharm_refactor_symbol(
+    async def pycharm_refactor_symbol(  # type: ignore[return]
         symbol_name: str,
         new_name: str,
         scope: str = "project",
@@ -362,7 +362,7 @@ def _extract_problems(result: Any) -> list[dict[str, Any]]:
         return result
     if isinstance(result, dict):
         if "problems" in result:
-            return result["problems"]
+            return result["problems"]  # type: ignore[no-any-return]
         if "content" in result:
             content = result["content"]
             if isinstance(content, list):

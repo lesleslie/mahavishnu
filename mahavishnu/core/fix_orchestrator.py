@@ -251,7 +251,7 @@ class FixOrchestrator:
                 self.trace_recorder(correlation_id, "checkpoint", "Session checkpoint created",
                                     {"checkpoint_id": checkpoint_id,
                                      "session_id": task.session_id or correlation_id})
-            return checkpoint_id
+            return checkpoint_id  # type: ignore[no-any-return]
         except Exception as exc:
             trace.append(f"Session checkpoint degraded: {exc}")
             return None
@@ -442,7 +442,7 @@ class FixOrchestrator:
                     )
                 )
             else:
-                final_results.append(result)
+                final_results.append(result)  # type: ignore[arg-type]
 
         return final_results
 

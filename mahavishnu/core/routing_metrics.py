@@ -85,7 +85,7 @@ except ImportError:
         def time(self):
             return self
 
-    def start_http_server(port: int):
+    def start_http_server(port: int):  # type: ignore[misc]
         logging.warning(
             f"prometheus_client not available, metrics server not started on port {port}"
         )
@@ -339,7 +339,7 @@ class RoutingMetrics:
             preference_order: Position in preference order (1=first choice)
         """
         self._ensure_enabled()
-        self._routing_decision_counter.labels(
+        self._routing_decision_counter.labels(  # type: ignore[union-attr]
             server=self.server_name, adapter=adapter.value, task_type=task_type.value
         ).inc()
         logger.debug(
@@ -362,7 +362,7 @@ class RoutingMetrics:
         """
         self._ensure_enabled()
         status = "success" if success else "failure"
-        self._adapter_execution_counter.labels(
+        self._adapter_execution_counter.labels(  # type: ignore[union-attr]
             server=self.server_name, adapter=adapter.value, status=status
         ).inc()
 
@@ -386,7 +386,7 @@ class RoutingMetrics:
             fallback_adapter: Adapter chosen as fallback
         """
         self._ensure_enabled()
-        self._fallback_counter.labels(
+        self._fallback_counter.labels(  # type: ignore[union-attr]
             server=self.server_name,
             original_adapter=original_adapter,
             fallback_adapter=fallback_adapter.value,
@@ -418,7 +418,7 @@ class RoutingMetrics:
             cost_usd: Cost in USD
         """
         self._ensure_enabled()
-        self._cost_counter.labels(
+        self._cost_counter.labels(  # type: ignore[union-attr]
             server=self.server_name, adapter=adapter.value, task_type=task_type.value
         ).inc(cost_usd)
 

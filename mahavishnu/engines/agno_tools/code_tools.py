@@ -146,7 +146,7 @@ def _analyze_python_file(file_path: Path) -> dict[str, Any]:
                 # Extract methods
                 for item in node.body:
                     if isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef):
-                        class_info["methods"].append(item.name)
+                        class_info["methods"].append(item.name)  # type: ignore[attr-defined]
 
                 result["classes"].append(class_info)
                 result["complexity"]["classes"] += 1

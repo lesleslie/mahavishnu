@@ -97,7 +97,7 @@ class ProcessPoolTaskExecutor:
                 "Falling back to ThreadPoolExecutor for process pool startup: %s",
                 exc,
             )
-            self._executor = ThreadPoolExecutor(max_workers=self._max_workers)
+            self._executor = ThreadPoolExecutor(max_workers=self._max_workers)  # type: ignore[assignment]
 
         # Defer event-loop capture until submit() runs inside an active loop.
         self._loop = None

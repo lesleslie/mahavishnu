@@ -290,10 +290,10 @@ class CredentialRedactor:
                 redacted[key] = self.redaction_string
             elif isinstance(value, dict):
                 # Recursively redact nested dictionaries
-                redacted[key] = self.redact_dict(value, sensitive_keys)
+                redacted[key] = self.redact_dict(value, sensitive_keys)  # type: ignore[assignment]
             elif isinstance(value, list):
                 # Redact list items
-                redacted[key] = [
+                redacted[key] = [  # type: ignore[assignment]
                     self.redact_dict(item, sensitive_keys)
                     if isinstance(item, dict)
                     else self.redact_string

@@ -131,7 +131,7 @@ def register_adapter_registry_tools(mcp: FastMCP) -> None:
 
             if adapter_name:
                 # Check single adapter
-                health = await registry.check_adapter_health(adapter_name)
+                health = await registry.check_adapter_health(adapter_name)  # type: ignore[attr-defined]
                 if health is None:
                     return {
                         "success": False,

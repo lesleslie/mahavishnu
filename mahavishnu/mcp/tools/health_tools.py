@@ -136,7 +136,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
             response["error"] = result.error
 
         if result.response_data:
-            response["response"] = result.response_data
+            response["response"] = result.response_data  # type: ignore[assignment]
 
         return response
 
@@ -261,10 +261,10 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
                     }
                 else:
                     results[name] = {
-                        "status": result.status.value,
-                        "latency_ms": result.latency_ms,
+                        "status": result.status.value,  # type: ignore[union-attr]
+                        "latency_ms": result.latency_ms,  # type: ignore[dict-item, union-attr]
                     }
-                    if result.error:
+                    if result.error:  # type: ignore[union-attr]
                         results[name]["error"] = result.error
 
         # Determine overall status

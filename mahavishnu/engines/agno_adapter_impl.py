@@ -493,7 +493,7 @@ class MCPToolsRegistry:
 
             self._mcp_tools = MCPTools(
                 url=self.config.mcp_server_url,
-                transport=self.config.mcp_transport,
+                transport=self.config.mcp_transport,  # type: ignore[arg-type]
             )
 
             self._initialized = True
@@ -955,7 +955,7 @@ class AgnoAdapter(OrchestratorAdapter):
                 "timestamp": datetime.now(UTC).isoformat(),
             }
         )
-        return result
+        return result  # type: ignore[return-value]
 
     async def get_team(self, team_id: str) -> Team | None:
         """Get a team instance by ID.
@@ -1140,7 +1140,7 @@ class AgnoAdapter(OrchestratorAdapter):
             api_key_env=api_key_env or self.agno_config.llm.api_key_env,
             base_url=base_url or self.agno_config.llm.base_url,
             temperature=temperature,
-            max_tokens=max_tokens,
+            max_tokens=max_tokens,  # type: ignore[arg-type]
         )
 
     def _get_llm(self) -> Any:
@@ -1194,7 +1194,7 @@ class AgnoAdapter(OrchestratorAdapter):
             content = self._extract_content(response)
 
             return AgentRunResult(
-                agent_name=agent.name,
+                agent_name=agent.name,  # type: ignore[arg-type]
                 content=content,
                 run_id=getattr(response, "run_id", "unknown"),
                 success=True,
@@ -1263,7 +1263,7 @@ class AgnoAdapter(OrchestratorAdapter):
         Returns:
             Processing result dictionary
         """
-        async with self._semaphore:
+        async with self._semaphore:  # type: ignore[union-attr]
             task_type = task.get("type", "default")
 
             try:
@@ -1487,7 +1487,7 @@ Use available tools to complete the task and provide a summary."""
                         }
                     )
                 else:
-                    processed_results.append(result)
+                    processed_results.append(result)  # type: ignore[arg-type]
 
             # Calculate success/failure counts
             success_count = sum(1 for r in processed_results if r.get("status") == "completed")

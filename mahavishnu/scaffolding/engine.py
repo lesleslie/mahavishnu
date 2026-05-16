@@ -82,7 +82,7 @@ class ScaffoldingEngine:
     def __init__(self, library: PatternLibrary) -> None:
         self.library = library
 
-    def _validate_resolved_patterns(self, resolved: dict, graph: Any) -> None:
+    def _validate_resolved_patterns(self, resolved: dict, graph: Any) -> None:  # type: ignore[name-defined]
         issues: list[str] = []
         for p in resolved.values():
             for issue in validate_pattern(p, self.library):
@@ -93,7 +93,7 @@ class ScaffoldingEngine:
             raise ValueError("Validation failed:\n" + "\n".join(f"  - {i}" for i in issues))
 
     def _prepare_all_variables(
-        self, resolved: dict, variables: dict, scaffold_env: Any, template_env: Any
+        self, resolved: dict, variables: dict, scaffold_env: Any, template_env: Any  # type: ignore[name-defined]
     ) -> dict:
         slot_injections = self._collect_slot_injections(resolved, variables, scaffold_env, template_env)
         all_slot_names: set[str] = {
@@ -388,7 +388,7 @@ class ScaffoldingEngine:
         # Render files
         for f in pattern.get_files():
             template_name = f.template
-            template_str = pattern.templates.get(template_name, "")
+            template_str = pattern.templates.get(template_name, "")  # type: ignore[call-overload]
             if not template_str:
                 continue
 

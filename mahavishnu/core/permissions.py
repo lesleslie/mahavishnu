@@ -188,7 +188,7 @@ class JWTManager:
         self.algorithm = config.auth.algorithm
         self.expire_minutes = config.auth.expire_minutes
 
-    def create_token(self, user_id: str, additional_claims: dict = None) -> str:
+    def create_token(self, user_id: str, additional_claims: dict | None = None) -> str:
         """Create a JWT token for a user."""
         payload = {
             "user_id": user_id,

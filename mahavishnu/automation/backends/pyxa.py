@@ -113,7 +113,7 @@ class PyXABackend(DesktopAutomationBackend):
                     details={"error": str(e)},
                 ) from e
 
-        return await self._run_sync(_launch)
+        return await self._run_sync(_launch)  # type: ignore[no-any-return]
 
     async def get_application(self, bundle_id: str) -> ApplicationInfo | None:
         """Get information about a running application."""
@@ -128,7 +128,7 @@ class PyXABackend(DesktopAutomationBackend):
             except Exception:
                 return None
 
-        return await self._run_sync(_get)
+        return await self._run_sync(_get)  # type: ignore[no-any-return]
 
     async def list_applications(self) -> list[ApplicationInfo]:
         """List all running applications."""
@@ -142,7 +142,7 @@ class PyXABackend(DesktopAutomationBackend):
                 logger.error(f"Failed to list applications: {e}")
                 return []
 
-        return await self._run_sync(_list)
+        return await self._run_sync(_list)  # type: ignore[no-any-return]
 
     async def quit_application(self, bundle_id: str, force: bool = False) -> bool:
         """Quit an application."""
@@ -162,7 +162,7 @@ class PyXABackend(DesktopAutomationBackend):
                 logger.error(f"Failed to quit {bundle_id}: {e}")
                 return False
 
-        return await self._run_sync(_quit)
+        return await self._run_sync(_quit)  # type: ignore[no-any-return]
 
     async def activate_application(self, bundle_id: str) -> bool:
         """Activate (bring to front) an application."""
@@ -177,7 +177,7 @@ class PyXABackend(DesktopAutomationBackend):
                 logger.error(f"Failed to activate {bundle_id}: {e}")
                 return False
 
-        return await self._run_sync(_activate)
+        return await self._run_sync(_activate)  # type: ignore[no-any-return]
 
     async def get_active_application(self) -> ApplicationInfo | None:
         """Get the currently active application."""
@@ -190,7 +190,7 @@ class PyXABackend(DesktopAutomationBackend):
             except Exception:
                 return None
 
-        return await self._run_sync(_get)
+        return await self._run_sync(_get)  # type: ignore[no-any-return]
 
     def _app_to_info(self, app: Any) -> ApplicationInfo:
         """Convert PyXA app to ApplicationInfo."""
@@ -244,8 +244,8 @@ class PyXABackend(DesktopAutomationBackend):
             return WindowInfo(
                 id=win_id,
                 title=title or "",
-                position=tuple(position) if position else (0, 0),
-                size=tuple(size) if size else (0, 0),
+                position=tuple(position) if position else (0, 0),  # type: ignore[arg-type]
+                size=tuple(size) if size else (0, 0),  # type: ignore[arg-type]
                 state=state,
                 focused=focused,
                 bundle_id=bundle_id,
@@ -278,7 +278,7 @@ class PyXABackend(DesktopAutomationBackend):
                 logger.error(f"Failed to get windows for {bundle_id}: {e}")
                 return []
 
-        return await self._run_sync(_get)
+        return await self._run_sync(_get)  # type: ignore[no-any-return]
 
     async def activate_window(self, window_id: str) -> bool:
         """Activate (bring to front) a window."""
@@ -337,7 +337,7 @@ class PyXABackend(DesktopAutomationBackend):
                 logger.error(f"Failed to click menu {menu_path}: {e}")
                 return False
 
-        return await self._run_sync(_click)
+        return await self._run_sync(_click)  # type: ignore[no-any-return]
 
     async def list_menus(self, bundle_id: str) -> list[MenuInfo]:
         """List all menus for an application."""
@@ -359,7 +359,7 @@ class PyXABackend(DesktopAutomationBackend):
                 logger.error(f"Failed to list menus for {bundle_id}: {e}")
                 return []
 
-        return await self._run_sync(_list)
+        return await self._run_sync(_list)  # type: ignore[no-any-return]
 
     def _menu_to_info(self, menu: Any, path: list[str]) -> MenuInfo | None:
         """Convert PyXA menu to MenuInfo."""
@@ -408,7 +408,7 @@ class PyXABackend(DesktopAutomationBackend):
                 logger.error(f"Failed to type text: {e}")
                 return False
 
-        return await self._run_sync(_type)
+        return await self._run_sync(_type)  # type: ignore[no-any-return]
 
     async def press_key(self, key: str, modifiers: list[str] | None = None) -> bool:
         """Press a key with optional modifiers."""
@@ -431,7 +431,7 @@ class PyXABackend(DesktopAutomationBackend):
                 logger.error(f"Failed to press key {key}: {e}")
                 return False
 
-        return await self._run_sync(_press)
+        return await self._run_sync(_press)  # type: ignore[no-any-return]
 
     def _key_to_code(self, key: str) -> int:
         """Convert key name to macOS key code."""
@@ -509,7 +509,7 @@ class PyXABackend(DesktopAutomationBackend):
                 logger.error(f"Failed to click at ({x}, {y}): {e}")
                 return False
 
-        return await self._run_sync(_click)
+        return await self._run_sync(_click)  # type: ignore[no-any-return]
 
     async def drag(
         self,
@@ -534,7 +534,7 @@ class PyXABackend(DesktopAutomationBackend):
                 logger.error(f"Failed to drag: {e}")
                 return False
 
-        return await self._run_sync(_drag)
+        return await self._run_sync(_drag)  # type: ignore[no-any-return]
 
     async def scroll(self, x: int, y: int, dx: int, dy: int) -> bool:
         """Scroll at coordinates."""
@@ -551,7 +551,7 @@ class PyXABackend(DesktopAutomationBackend):
                 logger.error(f"Failed to scroll: {e}")
                 return False
 
-        return await self._run_sync(_scroll)
+        return await self._run_sync(_scroll)  # type: ignore[no-any-return]
 
     # =========================================================================
     # Screenshot Operations
@@ -579,7 +579,7 @@ class PyXABackend(DesktopAutomationBackend):
                     region=region,
                 ) from e
 
-        return await self._run_sync(_capture)
+        return await self._run_sync(_capture)  # type: ignore[no-any-return]
 
     # =========================================================================
     # Screen Operations
@@ -608,7 +608,7 @@ class PyXABackend(DesktopAutomationBackend):
                 logger.error(f"Failed to list screens: {e}")
                 return []
 
-        return await self._run_sync(_list)
+        return await self._run_sync(_list)  # type: ignore[no-any-return]
 
     # =========================================================================
     # UI Element Operations
@@ -638,7 +638,7 @@ class PyXABackend(DesktopAutomationBackend):
                 logger.error(f"Failed to get UI elements: {e}")
                 return []
 
-        return await self._run_sync(_get)
+        return await self._run_sync(_get)  # type: ignore[no-any-return]
 
     def _element_to_info(self, elem: Any) -> UIElement:
         """Convert PyXA element to UIElement."""
@@ -675,7 +675,7 @@ class PyXABackend(DesktopAutomationBackend):
                 logger.error(f"Failed to click UI element: {e}")
                 return False
 
-        return await self._run_sync(_click)
+        return await self._run_sync(_click)  # type: ignore[no-any-return]
 
     async def close(self) -> None:
         """Clean up backend resources."""

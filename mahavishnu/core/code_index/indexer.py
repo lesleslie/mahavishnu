@@ -58,7 +58,7 @@ def index_repo(
         logger.info("Indexing already in progress for %s, skipping", repo_path)
         return IndexWorkItem(
             repo_path=repo_path,
-            trigger=trigger,
+            trigger=trigger,  # type: ignore[arg-type]
             files_changed=[],
             status="failed",
         )
@@ -66,7 +66,7 @@ def index_repo(
     try:
         work_item = IndexWorkItem(
             repo_path=repo_path,
-            trigger=trigger,
+            trigger=trigger,  # type: ignore[arg-type]
             files_changed=[],
             status="parsing",
             started_at=datetime.now(UTC),

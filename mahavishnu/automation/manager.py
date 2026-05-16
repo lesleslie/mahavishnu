@@ -231,7 +231,7 @@ class AutomationManager:
     async def _execute(
         self,
         operation_type: OperationType,
-        operation: callable,
+        operation: callable,  # type: ignore[valid-type]
         *args,
         **kwargs,
     ) -> AutomationResult:
@@ -307,7 +307,7 @@ class AutomationManager:
 
         return await self._execute(
             OperationType.LAUNCH_APP,
-            self._backend.launch_application,
+            self._backend.launch_application,  # type: ignore[union-attr]
             bundle_id,
             dry_run=dry_run,
         )
@@ -316,7 +316,7 @@ class AutomationManager:
         """Get information about a running application."""
         return await self._execute(
             OperationType.GET_ACTIVE_APP,
-            self._backend.get_application,
+            self._backend.get_application,  # type: ignore[union-attr]
             bundle_id,
         )
 
@@ -324,7 +324,7 @@ class AutomationManager:
         """List all running applications."""
         return await self._execute(
             OperationType.LIST_APPS,
-            self._backend.list_applications,
+            self._backend.list_applications,  # type: ignore[union-attr]
         )
 
     async def quit_application(
@@ -346,7 +346,7 @@ class AutomationManager:
 
         return await self._execute(
             OperationType.QUIT_APP,
-            self._backend.quit_application,
+            self._backend.quit_application,  # type: ignore[union-attr]
             bundle_id,
             force=force,
             dry_run=dry_run,
@@ -359,7 +359,7 @@ class AutomationManager:
 
         return await self._execute(
             OperationType.ACTIVATE_APP,
-            self._backend.activate_application,
+            self._backend.activate_application,  # type: ignore[union-attr]
             bundle_id,
         )
 
@@ -367,7 +367,7 @@ class AutomationManager:
         """Get the currently active application."""
         return await self._execute(
             OperationType.GET_ACTIVE_APP,
-            self._backend.get_active_application,
+            self._backend.get_active_application,  # type: ignore[union-attr]
         )
 
     # =========================================================================
@@ -378,7 +378,7 @@ class AutomationManager:
         """Get all windows for an application."""
         return await self._execute(
             OperationType.LIST_WINDOWS,
-            self._backend.get_windows,
+            self._backend.get_windows,  # type: ignore[union-attr]
             bundle_id,
         )
 
@@ -386,7 +386,7 @@ class AutomationManager:
         """Activate (bring to front) a window."""
         return await self._execute(
             OperationType.ACTIVATE_WINDOW,
-            self._backend.activate_window,
+            self._backend.activate_window,  # type: ignore[union-attr]
             window_id,
         )
 
@@ -399,7 +399,7 @@ class AutomationManager:
         """Resize a window."""
         return await self._execute(
             OperationType.RESIZE_WINDOW,
-            self._backend.resize_window,
+            self._backend.resize_window,  # type: ignore[union-attr]
             window_id,
             width,
             height,
@@ -414,7 +414,7 @@ class AutomationManager:
         """Move a window to a new position."""
         return await self._execute(
             OperationType.MOVE_WINDOW,
-            self._backend.move_window,
+            self._backend.move_window,  # type: ignore[union-attr]
             window_id,
             x,
             y,
@@ -424,7 +424,7 @@ class AutomationManager:
         """Close a window."""
         return await self._execute(
             OperationType.CLOSE_WINDOW,
-            self._backend.close_window,
+            self._backend.close_window,  # type: ignore[union-attr]
             window_id,
         )
 
@@ -448,7 +448,7 @@ class AutomationManager:
 
         return await self._execute(
             OperationType.CLICK_MENU,
-            self._backend.click_menu_item,
+            self._backend.click_menu_item,  # type: ignore[union-attr]
             bundle_id,
             menu_path,
         )
@@ -457,7 +457,7 @@ class AutomationManager:
         """List all menus for an application."""
         return await self._execute(
             OperationType.LIST_MENUS,
-            self._backend.list_menus,
+            self._backend.list_menus,  # type: ignore[union-attr]
             bundle_id,
         )
 
@@ -484,7 +484,7 @@ class AutomationManager:
 
         return await self._execute(
             OperationType.TYPE_TEXT,
-            self._backend.type_text,
+            self._backend.type_text,  # type: ignore[union-attr]
             text,
             interval=interval,
             dry_run=dry_run,
@@ -503,7 +503,7 @@ class AutomationManager:
         """
         return await self._execute(
             OperationType.PRESS_KEY,
-            self._backend.press_key,
+            self._backend.press_key,  # type: ignore[union-attr]
             key,
             modifiers=modifiers,
         )
@@ -525,7 +525,7 @@ class AutomationManager:
         """
         return await self._execute(
             OperationType.CLICK,
-            self._backend.click,
+            self._backend.click,  # type: ignore[union-attr]
             x,
             y,
             button=button,
@@ -544,7 +544,7 @@ class AutomationManager:
         """Drag from one point to another."""
         return await self._execute(
             OperationType.DRAG,
-            self._backend.drag,
+            self._backend.drag,  # type: ignore[union-attr]
             start_x,
             start_y,
             end_x,
@@ -563,7 +563,7 @@ class AutomationManager:
         """Scroll at coordinates."""
         return await self._execute(
             OperationType.SCROLL,
-            self._backend.scroll,
+            self._backend.scroll,  # type: ignore[union-attr]
             x,
             y,
             dx,
@@ -585,7 +585,7 @@ class AutomationManager:
         """
         return await self._execute(
             OperationType.SCREENSHOT,
-            self._backend.screenshot,
+            self._backend.screenshot,  # type: ignore[union-attr]
             region=region,
         )
 
@@ -597,7 +597,7 @@ class AutomationManager:
         """List all connected displays."""
         return await self._execute(
             OperationType.LIST_WINDOWS,
-            self._backend.list_screens,
+            self._backend.list_screens,  # type: ignore[union-attr]
         )
 
     # =========================================================================
@@ -612,7 +612,7 @@ class AutomationManager:
         """Get UI elements for an application."""
         return await self._execute(
             OperationType.LIST_WINDOWS,
-            self._backend.get_ui_elements,
+            self._backend.get_ui_elements,  # type: ignore[union-attr]
             bundle_id,
             window_id=window_id,
         )

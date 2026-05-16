@@ -298,7 +298,7 @@ class FastEmbedProvider(EmbeddingProviderInterface):
             logger.warning(
                 "FastEmbed unavailable, using deterministic fallback", extra={"error": str(e)}
             )
-            self._client = self._FallbackTextEmbedding(self.model)
+            self._client = self._FallbackTextEmbedding(self.model)  # type: ignore[assignment]
 
     async def embed(self, texts: list[str]) -> EmbeddingResult:
         """Generate embeddings using FastEmbed."""
@@ -311,7 +311,7 @@ class FastEmbedProvider(EmbeddingProviderInterface):
         # FastEmbed's embed method returns a generator, collect results in thread pool
         def _collect_embeddings():
             collected = []
-            for emb in self._client.embed(texts):
+            for emb in self._client.embed(texts):  # type: ignore[attr-defined]
                 if hasattr(emb, "tolist"):
                     collected.append(emb.tolist())
                 else:
@@ -592,7 +592,7 @@ class EmbeddingService:
 
         return self._providers[provider]
 
-    async def embed(self, texts: list[str]) -> EmbeddingResult:
+    async def embed(self, texts: list[str]) -> EmbeddingResult:  # type: ignore[return]
         """Generate embeddings for texts.
 
         Uses circuit breaker pattern to prevent cascading failures.
@@ -760,7 +760,7 @@ class EmbeddingService:
 
         tasks = [_embed_with_limit(batch) for batch in text_batches]
         # Return exceptions for graceful error handling
-        return await asyncio.gather(*tasks, return_exceptions=True)
+        return await asyncio.gather(*tasks, return_exceptions=True)  # type: ignore[return-value]
 
     def get_available_providers(self) -> list[EmbeddingProvider]:
         """Get list of available providers.

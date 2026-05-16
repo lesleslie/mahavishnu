@@ -58,7 +58,7 @@ def _load_yaml_mapping(path: Path) -> dict[str, Any]:
         return {}
 
     with path.open() as handle:
-        data = yaml.safe_load(handle) or {}
+        data = yaml.safe_load(handle) or {}  # type: ignore[var-annotated]
 
     if not isinstance(data, dict):
         raise ValueError(f"Configuration file must contain a mapping: {path}")

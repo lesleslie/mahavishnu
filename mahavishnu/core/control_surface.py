@@ -38,7 +38,7 @@ async def get_recovery_summary(app: Any) -> dict[str, Any]:
                 "recovered_pools": len(pools),
                 "recovered_routing_decisions": len(routing),
                 "dhara_available": bool(app._dhara_state.available),
-                "last_recovered_at": datetime.now().isoformat(),
+                "last_recovered_at": datetime.now().isoformat(),  # type: ignore[dict-item]
             }
         )
     except Exception as exc:
@@ -59,7 +59,7 @@ async def get_recovered_routing_decisions(
     try:
         decisions = await app._dhara_state.recover_routing_decisions()
         if task_class is None:
-            return decisions
+            return decisions  # type: ignore[no-any-return]
         return [
             decision
             for decision in decisions
@@ -163,7 +163,7 @@ def request_approval(
         options=options,
         timeout_minutes=timeout_minutes,
     )
-    return request.to_dict()
+    return request.to_dict()  # type: ignore[no-any-return]
 
 
 def respond_to_approval(

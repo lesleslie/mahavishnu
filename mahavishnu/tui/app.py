@@ -70,8 +70,8 @@ async def _get_report() -> EcosystemStatusReport | None:
         settings = MahavishnuSettings()
         service_configs: dict[str, dict[str, Any]] = {}
         for name, url in {
-            "session-buddy": settings.session_buddy_url,
-            "akosha": settings.akosha_url,
+            "session-buddy": settings.session_buddy_url,  # type: ignore[attr-defined]
+            "akosha": settings.akosha_url,  # type: ignore[attr-defined]
         }.items():
             if url:
                 service_configs[name] = {"url": url, "required": False, "timeout_s": 3}
@@ -401,7 +401,7 @@ async def forward_approval_request(
             "status": "failed",
         }
     try:
-        return app.request_approval(
+        return app.request_approval(  # type: ignore[no-any-return]
             approval_type=approval_type,
             context=context,
             options=options,
@@ -432,7 +432,7 @@ async def forward_approval_response(
             "status": "failed",
         }
     try:
-        return app.respond_to_approval(
+        return app.respond_to_approval(  # type: ignore[no-any-return]
             request_id=request_id,
             approved=approved,
             selected_option=selected_option,
@@ -585,7 +585,7 @@ class SweepScreen(VerticalScroll):
 
     def compose(self) -> ComposeResult:
         yield Label("Sweep History", classes="screen-title")
-        table = DataTable(id="sweep-table", cursor_type="row", zebra_stripes=True)
+        table = DataTable(id="sweep-table", cursor_type="row", zebra_stripes=True)  # type: ignore[var-annotated]
         table.add_columns("Status", "Active", "Failed", "Recent")
         yield table
 
@@ -619,7 +619,7 @@ class RoutingScreen(VerticalScroll):
     def compose(self) -> ComposeResult:
         yield Label("Adapter Routing", classes="screen-title")
         yield Static(id="routing-summary", classes="overview-block")
-        table = DataTable(id="routing-table", cursor_type="row", zebra_stripes=True)
+        table = DataTable(id="routing-table", cursor_type="row", zebra_stripes=True)  # type: ignore[var-annotated]
         table.add_columns("Adapter", "Status", "Score", "Capabilities")
         yield table
 
@@ -664,7 +664,7 @@ class AlertsScreen(VerticalScroll):
     def compose(self) -> ComposeResult:
         yield Label("Active Alerts", classes="screen-title")
         yield Static(id="alerts-count", classes="overview-block")
-        table = DataTable(id="alerts-table", cursor_type="row", zebra_stripes=True)
+        table = DataTable(id="alerts-table", cursor_type="row", zebra_stripes=True)  # type: ignore[var-annotated]
         table.add_columns("Severity", "Source / Title", "Time")
         yield table
 
@@ -699,7 +699,7 @@ class ReviewsScreen(VerticalScroll):
     def compose(self) -> ComposeResult:
         yield Label("Skill Drafts", classes="screen-title")
         yield Static(id="reviews-count", classes="overview-block")
-        table = DataTable(id="reviews-table", cursor_type="row", zebra_stripes=True)
+        table = DataTable(id="reviews-table", cursor_type="row", zebra_stripes=True)  # type: ignore[var-annotated]
         table.add_columns("ID", "Name", "Version", "State", "Proposed By", "Created")
         yield table
 
@@ -749,7 +749,7 @@ class SessionScreen(VerticalScroll):
     def compose(self) -> ComposeResult:
         yield Label("Session Posture", classes="screen-title")
         yield Static(id="session-summary", classes="overview-block")
-        table = DataTable(id="session-table", cursor_type="row", zebra_stripes=True)
+        table = DataTable(id="session-table", cursor_type="row", zebra_stripes=True)  # type: ignore[var-annotated]
         table.add_columns("Field", "Value")
         yield table
 
@@ -778,7 +778,7 @@ class RecoveryScreen(VerticalScroll):
     def compose(self) -> ComposeResult:
         yield Label("Recovery Summary", classes="screen-title")
         yield Static(id="recovery-summary", classes="overview-block")
-        table = DataTable(id="recovery-table", cursor_type="row", zebra_stripes=True)
+        table = DataTable(id="recovery-table", cursor_type="row", zebra_stripes=True)  # type: ignore[var-annotated]
         table.add_columns("Area", "Recovered")
         yield table
 
@@ -813,7 +813,7 @@ class ApprovalsScreen(VerticalScroll):
         yield Label("Pending Approvals", classes="screen-title")
         yield Static(id="approvals-summary", classes="overview-block")
         yield Static(id="approval-details", classes="overview-block")
-        table = DataTable(id="approvals-table", cursor_type="row", zebra_stripes=True)
+        table = DataTable(id="approvals-table", cursor_type="row", zebra_stripes=True)  # type: ignore[var-annotated]
         table.add_columns("ID", "Type", "Expires", "Options")
         yield table
 
@@ -883,10 +883,10 @@ class FilesScreen(VerticalScroll):
     def compose(self) -> ComposeResult:
         yield Label("Repository Files", classes="screen-title")
         yield Static(id="files-summary", classes="overview-block")
-        previews = DataTable(id="files-table", cursor_type="row", zebra_stripes=True)
+        previews = DataTable(id="files-table", cursor_type="row", zebra_stripes=True)  # type: ignore[var-annotated]
         previews.add_columns("Path", "Lines", "Preview")
         yield previews
-        diffs = DataTable(id="diff-table", cursor_type="row", zebra_stripes=True)
+        diffs = DataTable(id="diff-table", cursor_type="row", zebra_stripes=True)  # type: ignore[var-annotated]
         diffs.add_columns("Path", "Changed", "Diff Summary")
         yield diffs
 
@@ -940,7 +940,7 @@ class EventStreamScreen(VerticalScroll):
     def compose(self) -> ComposeResult:
         yield Label("Event Activity", classes="screen-title")
         yield Static(id="events-summary", classes="overview-block")
-        table = DataTable(id="events-table", cursor_type="row", zebra_stripes=True)
+        table = DataTable(id="events-table", cursor_type="row", zebra_stripes=True)  # type: ignore[var-annotated]
         table.add_columns("Time", "Type", "Source", "Correlation")
         yield table
 
@@ -975,7 +975,7 @@ class AgnoScreen(VerticalScroll):
     def compose(self) -> ComposeResult:
         yield Label("Agno Activity", classes="screen-title")
         yield Static(id="agno-summary", classes="overview-block")
-        table = DataTable(id="agno-table", cursor_type="row", zebra_stripes=True)
+        table = DataTable(id="agno-table", cursor_type="row", zebra_stripes=True)  # type: ignore[var-annotated]
         table.add_columns("Time", "Kind", "Team", "Details")
         yield table
 
@@ -1015,7 +1015,7 @@ class TraceScreen(VerticalScroll):
     def compose(self) -> ComposeResult:
         yield Label("Fix Trace", classes="screen-title")
         yield Static(id="trace-summary", classes="overview-block")
-        table = DataTable(id="trace-table", cursor_type="row", zebra_stripes=True)
+        table = DataTable(id="trace-table", cursor_type="row", zebra_stripes=True)  # type: ignore[var-annotated]
         table.add_columns("Time", "Stage", "Correlation", "Message")
         yield table
 
@@ -1188,7 +1188,7 @@ class DashboardApp(App):
             TraceScreen,
         ):
             for widget in self.query(screen_cls):
-                widget.refresh_data()
+                widget.refresh_data()  # type: ignore[attr-defined]
 
     def action_approve_selected_approval(self) -> None:
         for widget in self.query(ApprovalsScreen):

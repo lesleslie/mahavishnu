@@ -8,7 +8,7 @@ from fastmcp import FastMCP
 try:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator
 except Exception:  # pragma: no cover - optional import for test patching
-    MemoryAggregator = None
+    MemoryAggregator = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ def register_pool_tools(
 
         try:
             result = await pool_manager.execute_on_pool(pool_id, task)
-            return result
+            return result  # type: ignore[no-any-return]
         except Exception as e:
             logger.error(f"Failed to execute task: {e}")
             return {
@@ -113,7 +113,7 @@ def register_pool_tools(
         try:
             selector = PoolSelector(pool_selector)
             result = await pool_manager.route_task(task, selector)
-            return result
+            return result  # type: ignore[no-any-return]
         except Exception as e:
             logger.error(f"Failed to route task: {e}")
             return {
@@ -125,7 +125,7 @@ def register_pool_tools(
     async def pool_list() -> list[dict[str, Any]]:
         """List all active pools."""
         try:
-            return await pool_manager.list_pools()
+            return await pool_manager.list_pools()  # type: ignore[no-any-return]
         except Exception as e:
             logger.error(f"Failed to list pools: {e}")
             return []
@@ -136,7 +136,7 @@ def register_pool_tools(
     ) -> dict[str, dict[str, Any]]:
         """Monitor pool status and metrics."""
         try:
-            return await pool_manager.aggregate_results(pool_ids)
+            return await pool_manager.aggregate_results(pool_ids)  # type: ignore[no-any-return]
         except Exception as e:
             logger.error(f"Failed to monitor pools: {e}")
             return {}
@@ -223,7 +223,7 @@ def register_pool_tools(
     async def pool_health() -> dict[str, Any]:
         """Get health status of all pools."""
         try:
-            return await pool_manager.health_check()
+            return await pool_manager.health_check()  # type: ignore[no-any-return]
         except Exception as e:
             logger.error(f"Failed to get health: {e}")
             return {

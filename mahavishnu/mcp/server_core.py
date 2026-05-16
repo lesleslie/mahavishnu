@@ -311,7 +311,7 @@ class FastMCPServer:
         async def trigger_workflow(
             adapter: str,
             task_type: str,
-            params: dict[str, Any] = None,
+            params: dict[str, Any] | None = None,
             tag: str | None = None,
             repos: list[str] | None = None,
             timeout: int | None = None,

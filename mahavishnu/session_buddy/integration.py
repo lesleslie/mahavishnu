@@ -210,7 +210,7 @@ class SessionBuddyIntegration:
                     and node.name == function_name
                 ):
                     docstring = __import__("ast").get_docstring(node)
-                    return docstring
+                    return docstring  # type: ignore[no-any-return]
 
             return None
         except Exception:

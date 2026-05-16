@@ -183,7 +183,7 @@ def validate_agent_file(path: Path) -> AgentValidationReport:
         parts = content.split("---", 2)
         if len(parts) >= 3:
             try:
-                frontmatter = yaml.safe_load(parts[1]) or {}
+                frontmatter = yaml.safe_load(parts[1]) or {}  # type: ignore[var-annotated]
             except yaml.YAMLError:
                 frontmatter = {}
             description = str(frontmatter.get("description", ""))

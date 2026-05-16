@@ -132,7 +132,7 @@ def migrate_legacy_webhook_event(
         event_id = UUID(str(event_id))
 
     return EventEnvelope(
-        event_id=event_id,
+        event_id=event_id,  # type: ignore[arg-type]
         event_type=f"webhook.{legacy.get('event_type', 'unknown')}",
         version="1.0.0",
         timestamp=received_at or datetime.now(UTC),

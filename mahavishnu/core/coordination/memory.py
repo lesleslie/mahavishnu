@@ -145,7 +145,7 @@ class CoordinationMemory:
         }
 
         if changes:
-            metadata["changes"] = changes
+            metadata["changes"] = changes  # type: ignore[assignment]
 
         await self._store_memory(content, metadata)
 
@@ -181,7 +181,7 @@ class CoordinationMemory:
         }
 
         if changes:
-            metadata["changes"] = changes
+            metadata["changes"] = changes  # type: ignore[assignment]
 
         await self._store_memory(content, metadata)
 
@@ -219,7 +219,7 @@ class CoordinationMemory:
         }
 
         if validation_result:
-            metadata["validation"] = validation_result
+            metadata["validation"] = validation_result  # type: ignore[assignment]
 
         await self._store_memory(content, metadata)
 
@@ -296,7 +296,7 @@ class CoordinationMemory:
                 filters=filters,
                 limit=limit,
             )
-            return results
+            return results  # type: ignore[no-any-return]
         except Exception as e:
             # If search fails, log error and return empty results
             logger.error(f"Coordination memory search failed: {e}")
@@ -335,7 +335,7 @@ class CoordinationMemory:
             metadata: Metadata dictionary
         """
         try:
-            await self.session_buddy.store_memory(
+            await self.session_buddy.store_memory(  # type: ignore[union-attr]
                 collection=self.collection,
                 content=content,
                 metadata=metadata,
@@ -390,7 +390,7 @@ class CoordinationMemory:
             )
             response.raise_for_status()
             raw = cast("dict[str, Any]", response.json())
-            results = raw.get("results") or raw.get("result") or []
+            results = raw.get("results") or raw.get("result") or []  # type: ignore[var-annotated]
             return results if isinstance(results, list) else []
         except (httpx.HTTPError, httpx.TransportError) as exc:
             logger.warning("Akosha semantic search degraded: %s", exc)

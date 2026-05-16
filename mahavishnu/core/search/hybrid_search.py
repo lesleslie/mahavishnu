@@ -679,7 +679,7 @@ class HybridSearchEngine:
                 else:
                     logger.warning("Document not found for deletion", extra={"doc_id": str(doc_id)})
 
-                return deleted
+                return deleted  # type: ignore[no-any-return]
 
         except Exception as e:
             logger.error(

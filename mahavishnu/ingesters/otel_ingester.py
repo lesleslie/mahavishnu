@@ -104,7 +104,7 @@ class SentenceTransformersWrapper:
         Returns:
             Embedding vector
         """
-        return self._model.encode(text, convert_to_numpy=True).tolist()
+        return self._model.encode(text, convert_to_numpy=True).tolist()  # type: ignore[no-any-return]
 
     @property
     def dimension(self) -> int:
@@ -139,7 +139,7 @@ class FastEmbedWrapper:
         """
         # fastembed returns a generator, get first result
         embeddings = list(self._model.embed([text]))
-        return embeddings[0].tolist()
+        return embeddings[0].tolist()  # type: ignore[no-any-return]
 
     @property
     def dimension(self) -> int:
@@ -300,7 +300,7 @@ class AkoshaEmbedder:
                     import json
 
                     data = json.loads(content["text"])
-                    return data.get("embedding", [0.0] * self._dimension)
+                    return data.get("embedding", [0.0] * self._dimension)  # type: ignore[no-any-return]
 
             logger.warning(f"unexpected_akosha_response: {result}")
             return [0.0] * self._dimension
@@ -336,7 +336,7 @@ class AkoshaEmbedder:
                     import json
 
                     data = json.loads(content["text"])
-                    return data.get("embeddings", [[0.0] * self._dimension] * len(texts))
+                    return data.get("embeddings", [[0.0] * self._dimension] * len(texts))  # type: ignore[no-any-return]
 
             return [[0.0] * self._dimension] * len(texts)
 
@@ -890,7 +890,7 @@ class OtelIngester:
         if not self._hot_store:
             raise RuntimeError("HotStore not initialized. Call initialize() first.")
 
-        return await self._hot_store.search_similar(
+        return await self._hot_store.search_similar(  # type: ignore[no-any-return]
             query_embedding=query_embedding,
             system_id=system_id,
             limit=limit,
@@ -973,7 +973,7 @@ class OtelIngester:
             for result in results:
                 if result.get("conversation_id") == trace_id:
                     logger.debug(f"Found trace {trace_id}")
-                    return result
+                    return result  # type: ignore[no-any-return]
 
             logger.debug(f"Trace {trace_id} not found")
             return None
@@ -1082,7 +1082,7 @@ class OtelIngester:
                 elif "qwen" in service_name.lower():
                     return "qwen"
                 else:
-                    return service_name
+                    return service_name  # type: ignore[no-any-return]
 
         return "unknown"
 

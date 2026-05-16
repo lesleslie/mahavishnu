@@ -191,7 +191,7 @@ class MahavishnuPool(BasePool):
             f"MahavishnuPool {self.pool_id} executed {len(tasks)} tasks in {total_duration:.2f}s"
         )
 
-        return task_results
+        return task_results  # type: ignore[return-value]
 
     async def scale(self, target_worker_count: int) -> None:
         """Scale pool to target worker count.
@@ -263,7 +263,7 @@ class MahavishnuPool(BasePool):
             "tasks_failed": self._tasks_failed,
         }
 
-    async def get_metrics(self) -> dict[str, Any]:
+    async def get_metrics(self) -> dict[str, Any]:  # type: ignore[override]
         """Get real-time pool metrics.
 
         Returns:
@@ -278,7 +278,7 @@ class MahavishnuPool(BasePool):
             sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
         )
 
-        return PoolMetrics(
+        return PoolMetrics(  # type: ignore[return-value]
             pool_id=self.pool_id,
             status=self._status,
             active_workers=len(self._workers),

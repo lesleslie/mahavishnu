@@ -343,12 +343,12 @@ def register_team_learning_tools(mcp: FastMCP) -> None:
 
             elif stats_type == "recent":
                 limit = 10  # Default limit for recent outcomes
-                stats = engine.get_recent_outcomes(limit=limit)
+                stats = engine.get_recent_outcomes(limit=limit)  # type: ignore[assignment]
                 return {
                     "success": True,
                     "stats_type": stats_type,
                     "stats": stats,
-                    "count": len(stats),
+                    "count": len(stats),  # type: ignore[arg-type]
                 }
 
             else:

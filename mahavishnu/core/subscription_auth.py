@@ -77,7 +77,7 @@ class SubscriptionAuth:
         }
 
         expire = datetime.now(tz=UTC) + timedelta(minutes=self.expire_minutes)
-        to_encode.update({"exp": int(expire.timestamp())})  # Convert datetime to integer timestamp
+        to_encode.update({"exp": int(expire.timestamp())})  # Convert datetime to integer timestamp  # type: ignore[dict-item]
 
         encoded_jwt = jwt.encode(to_encode, self.secret, algorithm=self.algorithm)
         return encoded_jwt
@@ -116,8 +116,8 @@ class SubscriptionAuth:
 
     def _validate_subscription_payload(self, payload: dict) -> SubscriptionTokenData:
         """Validate the subscription token payload and extract token data."""
-        user_id: str = payload.get("user_id")
-        subscription_type: str = payload.get("subscription_type")
+        user_id: str = payload.get("user_id")  # type: ignore[assignment]
+        subscription_type: str = payload.get("subscription_type")  # type: ignore[assignment]
 
         if not user_id or not subscription_type:
             raise AuthenticationError(
@@ -128,7 +128,7 @@ class SubscriptionAuth:
         return SubscriptionTokenData(
             user_id=user_id,
             subscription_type=subscription_type,
-            exp=payload.get("exp"),
+            exp=payload.get("exp"),  # type: ignore[arg-type]
             scopes=payload.get("scopes", []),
         )
 
@@ -240,7 +240,7 @@ class MultiAuthHandler:
         # Try JWT auth (with full signature validation)
         if self.jwt_auth:
             try:
-                token_data = self.jwt_auth.verify_token(token)
+                token_data = self.jwt_auth.verify_token(token)  # type: ignore[assignment]
                 if isinstance(token_data, dict):
                     user = token_data.get("user_id") or token_data.get("sub")
                 else:
@@ -259,7 +259,7 @@ class MultiAuthHandler:
             message="All authentication methods failed", details={"errors": errors}
         )
 
-    def create_claude_subscription_token(self, user_id: str, scopes: list[str] = None) -> str:
+    def create_claude_subscription_token(self, user_id: str, scopes: list[str] | None = None) -> str:
         """
         Create a Claude Code subscription token.
 
@@ -298,7 +298,7 @@ class MultiAuthHandler:
         """
         return self.subscription_auth is not None
 
-    def create_codex_subscription_token(self, user_id: str, scopes: list[str] = None) -> str:
+    def create_codex_subscription_token(self, user_id: str, scopes: list[str] | None = None) -> str:
         """
         Create a Codex subscription token.
 

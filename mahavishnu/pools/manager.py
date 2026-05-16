@@ -166,7 +166,7 @@ class PoolManager:
 
         active_pool_types = set(self._pool_worker_counts.keys())
         for pool_id in active_pool_types:
-            pool = self._pools.get(pool_id)
+            pool = self._pools.get(pool_id)  # type: ignore[assignment]
             if pool is not None:
                 worker_counts.setdefault(pool.config.pool_type, 0)
 
@@ -215,19 +215,19 @@ class PoolManager:
                     session_buddy_client=self.session_buddy_client,
                 )
             elif pool_type == "session-buddy":
-                pool = SessionBuddyPool(
+                pool = SessionBuddyPool(  # type: ignore[assignment]
                     config=config,
                     session_buddy_url=config.get("session_buddy_url", "http://localhost:8678/mcp"),
                 )
             elif pool_type == "kubernetes":
-                pool = KubernetesPool(
+                pool = KubernetesPool(  # type: ignore[assignment]
                     config=config,
                     namespace=config.get("namespace", "mahavishnu"),
                     kubeconfig_path=config.get("kubeconfig_path"),
                     container_image=config.get("container_image", "python:3.13-slim"),
                 )
             elif pool_type == "runpod":
-                pool = RunPodPool(config=config)
+                pool = RunPodPool(config=config)  # type: ignore[assignment]
             else:
                 raise ValueError(f"Unknown pool type: {pool_type}")
 
@@ -431,7 +431,7 @@ class PoolManager:
             reason = "affinity"
         elif selector == PoolSelector.LEAST_LOADED:
             # O(log n) heap-based lookup (thread-safe)
-            pool_id = await self._get_least_loaded_pool()
+            pool_id = await self._get_least_loaded_pool()  # type: ignore[assignment]
             if pool_id is None:
                 raise RuntimeError("No pools available for routing")
             logger.debug(f"Least loaded pool: {pool_id}")
@@ -522,7 +522,7 @@ class PoolManager:
                 logger.warning(f"Pool aggregation failed: {result}")
                 continue
 
-            pool_id, data = result
+            pool_id, data = result  # type: ignore[misc]
             aggregated[pool_id] = data
 
         return aggregated
@@ -617,7 +617,7 @@ class PoolManager:
         pools_info = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Filter out exceptions and return valid results
-        return [p for p in pools_info if not isinstance(p, Exception)]
+        return [p for p in pools_info if not isinstance(p, Exception)]  # type: ignore[misc]
 
     async def health_check(self) -> dict[str, Any]:
         """Get health status of all pools.

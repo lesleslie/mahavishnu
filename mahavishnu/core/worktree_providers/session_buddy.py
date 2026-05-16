@@ -53,7 +53,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
                 from mcp_client import MCPClient
 
                 self._mcp_client = MCPClient(self.session_buddy_url)
-                await self._mcp_client.__aenter__()
+                await self._mcp_client.__aenter__()  # type: ignore[attr-defined]
 
                 logger.info(f"Connected to Session-Buddy MCP: {self.session_buddy_url}")
 

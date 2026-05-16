@@ -97,7 +97,7 @@ class EmbeddingConfig(BaseModel):
 
         if config_path and os.path.exists(config_path):
             with open(config_path) as f:
-                data = yaml.safe_load(f) or {}
+                data = yaml.safe_load(f) or {}  # type: ignore[var-annotated]
                 return cls(**data)
 
         # Return defaults if file doesn't exist
@@ -134,7 +134,7 @@ class EmbeddingConfig(BaseModel):
 
         # Ollama
         if ollama_url := os.getenv("MAHAVISHNU_EMBEDDINGS_OLLAMA_BASE_URL"):
-            config.llm.ollama_base_url = ollama_url
+            config.llm.ollama_base_url = ollama_url  # type: ignore[attr-defined]
 
         # OpenAI
         if api_key := os.getenv("MAHAVISHNU_EMBEDDINGS_OPENAI_API_KEY"):
@@ -177,12 +177,12 @@ class EmbeddingConfig(BaseModel):
             "settings/local.yaml",
         ]:
             try:
-                config = config.load_from_file(yaml_file)
+                config = config.load_from_file(yaml_file)  # type: ignore[assignment]
             except Exception:
                 pass  # File doesn't exist or has errors
 
         # Override with environment variables
-        config = config.load_from_env()
+        config = config.load_from_env()  # type: ignore[assignment]
 
         return config
 
@@ -360,7 +360,7 @@ async def mcp_tool_get_embeddings(
 
     return {
         "embeddings": embeddings,
-        "model": config.model,
-        "provider": config.provider.value,
-        "dimension": len(embeddings[0]) if embeddings else 0,
+        "model": config.model,  # type: ignore[dict-item]
+        "provider": config.provider.value,  # type: ignore[dict-item]
+        "dimension": len(embeddings[0]) if embeddings else 0,  # type: ignore[dict-item]
     }

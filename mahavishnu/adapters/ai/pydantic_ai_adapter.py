@@ -393,7 +393,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                 details={"max_length": MAX_PROMPT_LENGTH, "actual_length": len(prompt)},
             )
 
-        return prompt
+        return prompt  # type: ignore[no-any-return]
 
     def _sanitize_error_message(self, error: Exception) -> str:
         """Sanitize error message for safe external consumption.
@@ -617,7 +617,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                     agent_tools.append(self._mcp_servers[tool_name])
 
         try:
-            agent = Agent(
+            agent = Agent(  # type: ignore[call-overload]
                 model=model_str,
                 system_prompt=instructions,
                 output_type=output_type or self.output_type,
@@ -634,7 +634,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
             }
 
             logger.info("Created agent '%s' with ID: %s", name, agent_id)
-            return agent_id
+            return agent_id  # type: ignore[no-any-return]
 
         except Exception as e:
             raise PydanticAIAdapterError(
@@ -944,7 +944,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
 
         for i, model_config in enumerate(models):
             try:
-                agent = Agent(
+                agent = Agent(  # type: ignore[call-overload]
                     model=model_config.to_model_string(),
                     system_prompt=system_prompt,
                     output_type=output_type,

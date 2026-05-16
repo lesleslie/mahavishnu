@@ -288,7 +288,7 @@ class ResilientEmbeddingClient:
 
                     if embedding and self._validate_dimension(embedding, "akosha"):
                         self._circuit_breaker.record_success()
-                        return embedding
+                        return embedding  # type: ignore[no-any-return]
 
             self._circuit_breaker.record_failure()
             return None
@@ -554,7 +554,7 @@ class ResilientEmbeddingClient:
                     valid = all(self._validate_dimension(emb, "akosha_batch") for emb in embeddings)
                     if valid and len(embeddings) == len(texts):
                         self._circuit_breaker.record_success()
-                        return embeddings
+                        return embeddings  # type: ignore[no-any-return]
 
             self._circuit_breaker.record_failure()
             return None

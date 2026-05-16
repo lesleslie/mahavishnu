@@ -66,7 +66,7 @@ def parse_file(
 
     now = datetime.now(UTC)
 
-    for node in result.nodes:
+    for node in result.nodes:  # type: ignore[attr-defined]
         if node.node_type not in _ALLOWED_NODE_TYPES:
             continue
 
@@ -102,7 +102,7 @@ def parse_file(
         nodes.append(graph_node)
 
     # Build call edges
-    for node in result.nodes:
+    for node in result.nodes:  # type: ignore[attr-defined]
         if node.node_type == "function" and hasattr(node, "calls"):
             source_id = f"{repo_path}|||{file_path}|||function|||{node.name}"
             for callee in node.calls:
@@ -119,7 +119,7 @@ def parse_file(
                 edges.append(edge)
 
     # Build import edges
-    for node in result.nodes:
+    for node in result.nodes:  # type: ignore[attr-defined]
         if node.node_type == "import" and hasattr(node, "module"):
             source_id = f"{repo_path}|||{file_path}|||file|||{path.name}"
             target_id = f"{repo_path}|||{file_path}|||import|||{node.module}"

@@ -102,7 +102,7 @@ class SessionBuddyPool(BasePool):
             )
         )
         response.raise_for_status()
-        return response.json()
+        return response.json()  # type: ignore[no-any-return]
 
     async def start(self) -> str:
         """Initialize Session-Buddy pool via MCP.
@@ -309,7 +309,7 @@ class SessionBuddyPool(BasePool):
                 "error": str(e),
             }
 
-    async def get_metrics(self) -> dict[str, Any]:
+    async def get_metrics(self) -> dict[str, Any]:  # type: ignore[override]
         """Get metrics from Session-Buddy.
 
         Returns:
@@ -324,7 +324,7 @@ class SessionBuddyPool(BasePool):
             sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
         )
 
-        return PoolMetrics(
+        return PoolMetrics(  # type: ignore[return-value]
             pool_id=self.pool_id,
             status=self._status,
             active_workers=len(self._workers),
@@ -357,7 +357,7 @@ class SessionBuddyPool(BasePool):
                 f"Collected {len(conversations)} memory items from SessionBuddyPool {self.pool_id}"
             )
 
-            return conversations
+            return conversations  # type: ignore[no-any-return]
 
         except httpx.HTTPError as e:
             logger.error(f"Failed to collect memory from SessionBuddyPool: {e}")

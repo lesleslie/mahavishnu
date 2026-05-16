@@ -74,7 +74,7 @@ class StdioMCPClient:
 
         try:
             while True:
-                line = await self.process.stdout.readline()
+                line = await self.process.stdout.readline()  # type: ignore[union-attr]
                 if not line:
                     break
 
@@ -127,8 +127,8 @@ class StdioMCPClient:
         # Send request
         try:
             message = json.dumps(request) + "\n"
-            self.process.stdin.write(message.encode())
-            await self.process.stdin.drain()
+            self.process.stdin.write(message.encode())  # type: ignore[union-attr]
+            await self.process.stdin.drain()  # type: ignore[union-attr]
 
             # Wait for response (with timeout)
             response = await asyncio.wait_for(future, timeout=30.0)
@@ -188,7 +188,7 @@ class McpretentiousClient:
         result = await self._client.call_tool(
             "mcpretentious-open", {"columns": columns, "rows": rows}
         )
-        return result["terminal_id"]
+        return result["terminal_id"]  # type: ignore[no-any-return]
 
     async def type_text(self, terminal_id: str, *input_parts: str) -> None:
         """Type text into a terminal.
@@ -216,7 +216,7 @@ class McpretentiousClient:
             params["limit_lines"] = lines
 
         result = await self._client.call_tool("mcpretentious-read", params)
-        return result["output"]
+        return result["output"]  # type: ignore[no-any-return]
 
     async def close_terminal(self, terminal_id: str) -> None:
         """Close a terminal.
@@ -233,4 +233,4 @@ class McpretentiousClient:
             List of terminal information
         """
         result = await self._client.call_tool("mcpretentious-list", {})
-        return result.get("terminals", [])
+        return result.get("terminals", [])  # type: ignore[no-any-return]

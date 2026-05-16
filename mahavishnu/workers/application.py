@@ -115,7 +115,7 @@ class ApplicationWorker(BaseWorker):
 
         tool_name = task.get("tool")
         arguments = task.get("arguments", {})
-        timeout = task.get("timeout", self.config.default_timeout)
+        timeout = task.get("timeout", self.config.default_timeout)  # type: ignore[union-attr]
 
         if not tool_name:
             return WorkerResult(

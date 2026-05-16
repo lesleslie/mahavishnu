@@ -76,11 +76,11 @@ async def start_websocket_server(
     # Get TLS configuration from environment if not explicitly provided
     if tls_enabled is None:
         env_tls = get_websocket_tls_config()
-        tls_enabled = env_tls["tls_enabled"]
-        cert_file = cert_file or env_tls["cert_file"]
-        key_file = key_file or env_tls["key_file"]
-        ca_file = ca_file or env_tls["ca_file"]
-        verify_client = verify_client or env_tls.get("verify_client", False)
+        tls_enabled = env_tls["tls_enabled"]  # type: ignore[assignment]
+        cert_file = cert_file or env_tls["cert_file"]  # type: ignore[assignment]
+        key_file = key_file or env_tls["key_file"]  # type: ignore[assignment]
+        ca_file = ca_file or env_tls["ca_file"]  # type: ignore[assignment]
+        verify_client = verify_client or env_tls.get("verify_client", False)  # type: ignore[assignment]
 
     try:
         # Create WebSocket server
@@ -93,7 +93,7 @@ async def start_websocket_server(
             cert_file=cert_file,
             key_file=key_file,
             ca_file=ca_file,
-            tls_enabled=tls_enabled,
+            tls_enabled=tls_enabled,  # type: ignore[arg-type]
             verify_client=verify_client,
             auto_cert=auto_cert,
         )
@@ -117,7 +117,7 @@ async def start_websocket_server(
                     handler_name="notification",
                     dead_letter_handler=dlq_handler,
                 )
-                handler = CompositeEventEnvelopeHandler(
+                handler = CompositeEventEnvelopeHandler(  # type: ignore[assignment]
                     (
                         websocket_handler,
                         notification_handler,
@@ -128,7 +128,7 @@ async def start_websocket_server(
                 handler=handler,
             )
             await event_consumer.start()
-            server.event_consumer = event_consumer
+            server.event_consumer = event_consumer  # type: ignore[attr-defined]
 
         scheme = "wss" if server.ssl_context else "ws"
         logger.info(f"WebSocket server started on {scheme}://{host}:{port}")

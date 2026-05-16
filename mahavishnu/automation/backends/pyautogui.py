@@ -209,7 +209,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to type text: {e}")
                 return False
 
-        return await self._run_sync(_type)
+        return await self._run_sync(_type)  # type: ignore[no-any-return]
 
     async def press_key(self, key: str, modifiers: list[str] | None = None) -> bool:
         """Press a key with optional modifiers."""
@@ -232,7 +232,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to press key {key}: {e}")
                 return False
 
-        return await self._run_sync(_press)
+        return await self._run_sync(_press)  # type: ignore[no-any-return]
 
     def _normalize_key(self, key: str) -> str:
         """Normalize key name for PyAutoGUI."""
@@ -272,7 +272,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to click at ({x}, {y}): {e}")
                 return False
 
-        return await self._run_sync(_click)
+        return await self._run_sync(_click)  # type: ignore[no-any-return]
 
     async def drag(
         self,
@@ -300,7 +300,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to drag: {e}")
                 return False
 
-        return await self._run_sync(_drag)
+        return await self._run_sync(_drag)  # type: ignore[no-any-return]
 
     async def scroll(self, x: int, y: int, dx: int, dy: int) -> bool:
         """Scroll at coordinates."""
@@ -316,7 +316,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to scroll: {e}")
                 return False
 
-        return await self._run_sync(_scroll)
+        return await self._run_sync(_scroll)  # type: ignore[no-any-return]
 
     # =========================================================================
     # Screenshot Operations (Supported)
@@ -359,7 +359,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                     region=region,
                 ) from e
 
-        return await self._run_sync(_capture)
+        return await self._run_sync(_capture)  # type: ignore[no-any-return]
 
     def _mss_to_pil(self, screenshot: Any) -> Any:
         """Convert mss screenshot to PIL Image."""
@@ -430,7 +430,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to list screens: {e}")
                 return []
 
-        return await self._run_sync(_list)
+        return await self._run_sync(_list)  # type: ignore[no-any-return]
 
     # =========================================================================
     # Additional PyAutoGUI-specific Methods
@@ -457,7 +457,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to move to ({x}, {y}): {e}")
                 return False
 
-        return await self._run_sync(_move)
+        return await self._run_sync(_move)  # type: ignore[no-any-return]
 
     async def get_mouse_position(self) -> tuple[int, int]:
         """Get current mouse position.
@@ -471,7 +471,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
             pos = pyautogui.position()
             return (pos.x, pos.y)
 
-        return await self._run_sync(_get)
+        return await self._run_sync(_get)  # type: ignore[no-any-return]
 
     async def locate_on_screen(
         self,
@@ -499,7 +499,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to locate image: {e}")
                 return None
 
-        return await self._run_sync(_locate)
+        return await self._run_sync(_locate)  # type: ignore[no-any-return]
 
     async def locate_center_on_screen(
         self,
@@ -527,7 +527,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to locate image center: {e}")
                 return None
 
-        return await self._run_sync(_locate)
+        return await self._run_sync(_locate)  # type: ignore[no-any-return]
 
     async def alert(self, text: str, title: str = "Alert") -> None:
         """Show an alert dialog.
@@ -556,9 +556,9 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
         pyautogui = self._get_pyautogui()
 
         def _confirm() -> bool:
-            return pyautogui.confirm(text=text, title=title) == "OK"
+            return pyautogui.confirm(text=text, title=title) == "OK"  # type: ignore[no-any-return]
 
-        return await self._run_sync(_confirm)
+        return await self._run_sync(_confirm)  # type: ignore[no-any-return]
 
     async def prompt(
         self,
@@ -579,9 +579,9 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
         pyautogui = self._get_pyautogui()
 
         def _prompt() -> str | None:
-            return pyautogui.prompt(text=text, title=title, default=default)
+            return pyautogui.prompt(text=text, title=title, default=default)  # type: ignore[no-any-return]
 
-        return await self._run_sync(_prompt)
+        return await self._run_sync(_prompt)  # type: ignore[no-any-return]
 
     async def close(self) -> None:
         """Clean up backend resources."""

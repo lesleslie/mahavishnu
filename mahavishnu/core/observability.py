@@ -29,19 +29,19 @@ except ImportError:
 
     # Define minimal fallback classes
     class MockCounter:
-        def add(self, amount: int, attributes: dict[str, str] = None):
+        def add(self, amount: int, attributes: dict[str, str] | None = None):
             pass
 
     class MockHistogram:
-        def record(self, amount: float, attributes: dict[str, str] = None):
+        def record(self, amount: float, attributes: dict[str, str] | None = None):
             pass
 
     class MockUpDownCounter:
-        def add(self, amount: int, attributes: dict[str, str] = None):
+        def add(self, amount: int, attributes: dict[str, str] | None = None):
             pass
 
     class MockTracer:
-        def start_as_current_span(self, name: str, attributes: dict[str, str] = None):
+        def start_as_current_span(self, name: str, attributes: dict[str, str] | None = None):
             class MockSpan:
                 def __enter__(self):
                     return self
@@ -167,8 +167,8 @@ class ObservabilityManager:
 
     def _init_fallback_components(self):
         """Initialize fallback components when OpenTelemetry is not available."""
-        self.tracer = MockTracer() if OTEL_AVAILABLE else MockTracer()
-        self.meter = MockMeter()
+        self.tracer = MockTracer() if OTEL_AVAILABLE else MockTracer()  # type: ignore[assignment]
+        self.meter = MockMeter()  # type: ignore[assignment]
 
         # Create fallback instruments
         self.workflow_counter = self.meter.create_counter("mahavishnu.workflows.executed")
@@ -194,7 +194,7 @@ class ObservabilityManager:
         return self.error_counter
 
     def log(
-        self, level: LogLevel, message: str, attributes: dict[str, Any] = None, trace_id: str = None
+        self, level: LogLevel, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None
     ):
         """Log a message with attributes."""
         log_entry = LogEntry(
@@ -212,23 +212,23 @@ class ObservabilityManager:
             f"[{trace_id}] {message}" if trace_id else message
         )
 
-    def log_debug(self, message: str, attributes: dict[str, Any] = None, trace_id: str = None):
+    def log_debug(self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None):
         """Log a debug message."""
         self.log(LogLevel.DEBUG, message, attributes, trace_id)
 
-    def log_info(self, message: str, attributes: dict[str, Any] = None, trace_id: str = None):
+    def log_info(self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None):
         """Log an info message."""
         self.log(LogLevel.INFO, message, attributes, trace_id)
 
-    def log_warning(self, message: str, attributes: dict[str, Any] = None, trace_id: str = None):
+    def log_warning(self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None):
         """Log a warning message."""
         self.log(LogLevel.WARNING, message, attributes, trace_id)
 
-    def log_error(self, message: str, attributes: dict[str, Any] = None, trace_id: str = None):
+    def log_error(self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None):
         """Log an error message."""
         self.log(LogLevel.ERROR, message, attributes, trace_id)
 
-    def log_critical(self, message: str, attributes: dict[str, Any] = None, trace_id: str = None):
+    def log_critical(self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None):
         """Log a critical message."""
         self.log(LogLevel.CRITICAL, message, attributes, trace_id)
 
@@ -289,7 +289,7 @@ class ObservabilityManager:
         )
 
     def get_logs(
-        self, limit: int = 100, level: LogLevel = None, since: datetime = None
+        self, limit: int = 100, level: LogLevel | None = None, since: datetime | None = None
     ) -> list[LogEntry]:
         """Get logs with optional filtering."""
         filtered_logs = self.logs[-limit:]  # Get last N logs
@@ -324,12 +324,12 @@ class ObservabilityManager:
                 # Force flush metrics
                 from opentelemetry.metrics import get_meter_provider
 
-                get_meter_provider().force_flush()
+                get_meter_provider().force_flush()  # type: ignore[attr-defined]
 
                 # Force flush traces
                 from opentelemetry.trace import get_tracer_provider
 
-                get_tracer_provider().force_flush()
+                get_tracer_provider().force_flush()  # type: ignore[attr-defined]
             except Exception as e:
                 self.logger.warning(f"Failed to flush metrics: {e}")
 
@@ -341,8 +341,8 @@ class ObservabilityManager:
                 from opentelemetry.metrics import get_meter_provider
                 from opentelemetry.trace import get_tracer_provider
 
-                get_meter_provider().shutdown()
-                get_tracer_provider().shutdown()
+                get_meter_provider().shutdown()  # type: ignore[attr-defined]
+                get_tracer_provider().shutdown()  # type: ignore[attr-defined]
             except Exception as e:
                 self.logger.warning(f"Error during observability shutdown: {e}")
 
@@ -360,7 +360,7 @@ def get_observability_manager() -> ObservabilityManager | None:
 
 
 # Observability decorators (temporary fix - need proper implementation)
-def observe(span_name: str = None):
+def observe(span_name: str | None = None):
     """Decorator for observing function execution with tracing."""
 
     def decorator(func):

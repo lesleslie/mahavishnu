@@ -165,7 +165,7 @@ class MemoryAggregator:
         try:
             memory_items = await _await_if_needed(pool.collect_memory())
             logger.info(f"Collected {len(memory_items)} items from pool {pool_id}")
-            return memory_items
+            return memory_items  # type: ignore[no-any-return]
         except Exception as e:
             logger.warning(f"Failed to collect from pool {pool_id}: {e}")
             return []
@@ -530,7 +530,7 @@ class MemoryAggregator:
 
             if age < self.CACHE_TTL:
                 logger.debug(f"Cache HIT for query: {query} (age: {age.total_seconds():.1f}s)")
-                return cached_entry["results"][:limit]
+                return cached_entry["results"][:limit]  # type: ignore[no-any-return]
             else:
                 # Cache expired - remove and continue to fetch
                 del self._search_cache[cache_key]
@@ -569,7 +569,7 @@ class MemoryAggregator:
                     "cached_at": datetime.now(),
                 }
 
-                return conversations
+                return conversations  # type: ignore[no-any-return]
             else:
                 self._sb_breaker.record_failure()
                 logger.warning(f"Search failed: {response.text[:200]}")

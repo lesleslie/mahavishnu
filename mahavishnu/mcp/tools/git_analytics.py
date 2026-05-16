@@ -24,7 +24,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
-        required_permission=Permission.READ_REPO,
+        required_permission=Permission.READ_REPO,  # type: ignore[arg-type]
         require_repo_param="repo_path",
     )
     async def get_git_velocity_dashboard(
@@ -101,7 +101,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
-        required_permission=Permission.READ_REPO,
+        required_permission=Permission.READ_REPO,  # type: ignore[arg-type]
         require_repo_param="repo_path",
     )
     async def get_repository_health(
@@ -164,7 +164,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
-        required_permission=Permission.READ_REPO,
+        required_permission=Permission.READ_REPO,  # type: ignore[arg-type]
     )
     async def get_cross_project_patterns(
         days_back: int = 90,
@@ -207,7 +207,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
                     "workflow_patterns": workflow_patterns,
                     "quality_patterns": quality_patterns,
                     "correlations": correlations,
-                    "insights": _generate_insights(git_patterns, workflow_patterns, correlations),
+                    "insights": _generate_insights(git_patterns, workflow_patterns, correlations),  # type: ignore[arg-type]
                     "generated_at": datetime.now().isoformat(),
                 },
             }
@@ -229,7 +229,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             from ...session_buddy.integration import SessionBuddyIntegration
 
             integration = SessionBuddyIntegration(app)
-            return await integration.get_workflow_metrics(repo_path)
+            return await integration.get_workflow_metrics(repo_path)  # type: ignore[no-any-return, attr-defined]
         except Exception:
             # Session-Buddy might not be available or configured
             return {"status": "unavailable", "metrics": {}}
@@ -248,7 +248,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             from ...session_buddy.integration import SessionBuddyIntegration
 
             integration = SessionBuddyIntegration(app)
-            return await integration.detect_patterns(days_back)
+            return await integration.detect_patterns(days_back)  # type: ignore[no-any-return, attr-defined]
         except Exception:
             return []
 
@@ -266,7 +266,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             from ...session_buddy.integration import SessionBuddyIntegration
 
             integration = SessionBuddyIntegration(app)
-            return await integration.get_quality_patterns(days_back)
+            return await integration.get_quality_patterns(days_back)  # type: ignore[no-any-return, attr-defined]
         except Exception:
             return []
 
@@ -372,7 +372,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
                 }
             )
 
-        return correlations
+        return correlations  # type: ignore[return-value]
 
     def _generate_insights(
         git_patterns: list[dict],

@@ -490,7 +490,7 @@ class TaskOrderer:
         """Score based on blocker prediction (lower probability = higher score)."""
         blocker_prob = prediction.get("blocker_probability", 0.0)
         # Invert: lower probability = higher score
-        return 1.0 - blocker_prob
+        return 1.0 - blocker_prob  # type: ignore[no-any-return]
 
     def _score_duration(self, task: dict[str, Any], prediction: dict[str, Any]) -> float:
         """Score based on duration (shorter = higher score for quick wins)."""
@@ -716,7 +716,7 @@ class TaskOrderer:
             task = next((t for t in tasks if t.get("id") == task_id), None)
             if task:
                 pred = predictions.get(task_id, {})
-                return pred.get("estimated_hours") or task.get("estimated_hours", 8.0)
+                return pred.get("estimated_hours") or task.get("estimated_hours", 8.0)  # type: ignore[no-any-return]
             return 8.0
 
         def find_path_to(task_id: str, visited: set[str]) -> list[str]:

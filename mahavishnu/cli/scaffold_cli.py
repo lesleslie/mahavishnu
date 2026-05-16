@@ -95,9 +95,9 @@ def patterns_show(
 
     if dirs:
         typer.echo("\nDirectories:")
-        for d in dirs:
-            req = " [required]" if d.required else ""
-            typer.echo(f"  {d.path}{req}")
+        for d in dirs:  # type: ignore[assignment]
+            req = " [required]" if d.required else ""  # type: ignore[attr-defined]
+            typer.echo(f"  {d.path}{req}")  # type: ignore[attr-defined]
 
     if files:
         typer.echo("\nFiles:")

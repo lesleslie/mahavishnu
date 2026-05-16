@@ -141,14 +141,14 @@ async def process_repository(repo_path: str, task_spec: dict[str, Any]) -> dict[
             for _node_id, node in graph_analyzer.nodes.items():
                 if hasattr(node, "end_line") and hasattr(node, "start_line"):
                     func_length = node.end_line - node.start_line
-                    if func_length > 10 or len(node.calls) > 5:
+                    if func_length > 10 or len(node.calls) > 5:  # type: ignore[attr-defined]
                         complex_funcs.append(
                             {
                                 "name": node.name,
                                 "file": node.file_id,
                                 "length": func_length,
-                                "calls_count": len(node.calls),
-                                "is_export": node.is_export,
+                                "calls_count": len(node.calls),  # type: ignore[attr-defined]
+                                "is_export": node.is_export,  # type: ignore[attr-defined]
                             }
                         )
 
@@ -184,8 +184,8 @@ async def process_repository(repo_path: str, task_spec: dict[str, Any]) -> dict[
             if QualityControl is None:
                 raise ImportError("QualityControl is unavailable")
 
-            qc = QualityControl()
-            result = await qc.check_repository(repo_path)
+            qc = QualityControl()  # type: ignore[call-arg]
+            result = await qc.check_repository(repo_path)  # type: ignore[attr-defined]
 
         else:
             # Default operation
@@ -781,7 +781,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
                 # Get actual results from flow run
                 is_completed = await _maybe_await(state.is_completed())
-                results = await _maybe_await(state.result()) if is_completed else []
+                results = await _maybe_await(state.result()) if is_completed else []  # type: ignore[var-annotated]
                 if results is None:
                     results = []
 

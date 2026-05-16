@@ -60,7 +60,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             running_loop = None
 
         if running_loop and running_loop.is_running():
-            self.worker_manager = None
+            self.worker_manager = None  # type: ignore[assignment]
             self._needs_lazy_init = True
             return
 

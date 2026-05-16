@@ -146,7 +146,7 @@ async def coord_update_issue(
     mgr.save()
 
     issue = mgr.get_issue(issue_id)
-    return issue.model_dump(mode="json")
+    return issue.model_dump(mode="json")  # type: ignore[union-attr]
 
 
 @mcp.tool()
@@ -157,7 +157,7 @@ async def coord_close_issue(issue_id: str) -> dict[str, Any]:
     mgr.save()
 
     issue = mgr.get_issue(issue_id)
-    return issue.model_dump(mode="json")
+    return issue.model_dump(mode="json")  # type: ignore[union-attr]
 
 
 @mcp.tool()
@@ -263,7 +263,7 @@ async def coord_complete_todo(todo_id: str) -> dict[str, Any]:
             mgr._coordination["todos"] = todos_data
             mgr.save()
 
-            return todo
+            return todo  # type: ignore[no-any-return]
 
     raise ValueError(f"Todo {todo_id} not found")
 

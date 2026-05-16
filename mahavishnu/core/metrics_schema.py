@@ -91,7 +91,7 @@ class ExecutionRecord(BaseModel):
         default_factory=dict, description="Additional execution context"
     )
 
-    model_config = ConfigDict(mode="json")
+    model_config = ConfigDict(mode="json")  # type: ignore[typeddict-unknown-key]
 
 
 class AdapterStats(BaseModel):
@@ -137,7 +137,7 @@ class AdapterStats(BaseModel):
         None, ge=0, le=1.0, description="Statistical confidence (0-1)"
     )
 
-    model_config = ConfigDict(mode="json")
+    model_config = ConfigDict(mode="json")  # type: ignore[typeddict-unknown-key]
 
 
 class TaskTypeStats(BaseModel):
@@ -262,7 +262,7 @@ class ABTest(BaseModel):
 
     winner: AdapterType | None = Field(None, description="Winning adapter if experiment completed")
 
-    model_config = ConfigDict(mode="json")
+    model_config = ConfigDict(mode="json")  # type: ignore[typeddict-unknown-key]
 
 
 # Utility Functions
@@ -290,7 +290,7 @@ def generate_cost_key(execution_id: str) -> str:
 
 def calculate_percentiles(
     latencies: list[int],
-    percentiles: list[float] = None,
+    percentiles: list[float] | None = None,
 ) -> dict[str, float | None]:
     """Calculate percentile values from latency data.
 
@@ -321,7 +321,7 @@ def calculate_percentiles(
             index = len(sorted_latencies) - 1
         result[f"p{int(p)}"] = sorted_latencies[index]
 
-    return result
+    return result  # type: ignore[return-value]
 
 
 def calculate_confidence_interval(

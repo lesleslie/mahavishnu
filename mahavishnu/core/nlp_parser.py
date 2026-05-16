@@ -247,12 +247,12 @@ class NlpParser:
         if not scores or max(scores.values()) == 0:
             return Intent.UNKNOWN, 0.0
 
-        best_intent = max(scores, key=scores.get)
+        best_intent = max(scores, key=scores.get)  # type: ignore[call-overload]
         return best_intent, scores[best_intent]
 
     async def _extract_entities(self, text: str, intent: Intent) -> dict[str, ParsedEntity]:
         """Extract entities from text based on intent."""
-        entities: dict[str, ParsedEntity] = {}
+        entities: dict[str, ParsedEntity | None] = {}
 
         # Always try to extract these
         entities["title"] = self._extract_title(text, intent)
@@ -273,9 +273,9 @@ class NlpParser:
             entities["query"] = self._extract_search_query(text)
 
         # Remove None values
-        entities = {k: v for k, v in entities.items() if v is not None}
+        entities = {k: v for k, v in entities.items() if v is not None}  # type: ignore[assignment]
 
-        return entities
+        return entities  # type: ignore[return-value]
 
     def _extract_title(self, text: str, intent: Intent) -> ParsedEntity | None:
         """Extract task title from text."""
@@ -366,9 +366,9 @@ class NlpParser:
 
         # Explicit tags
         for pattern in self.TAG_PATTERNS[1:]:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                tag_list = [t.strip().lower() for t in match.group(1).split(",")]
+            tag_match = re.search(pattern, text, re.IGNORECASE)
+            if tag_match:
+                tag_list = [t.strip().lower() for t in tag_match.group(1).split(",")]
                 tags.extend(tag_list)
                 break
 

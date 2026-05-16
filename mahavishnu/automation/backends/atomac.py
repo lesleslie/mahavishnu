@@ -114,7 +114,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                     details={"error": str(e)},
                 ) from e
 
-        return await self._run_sync(_launch)
+        return await self._run_sync(_launch)  # type: ignore[no-any-return]
 
     async def get_application(self, bundle_id: str) -> ApplicationInfo | None:
         """Get information about a running application."""
@@ -129,7 +129,7 @@ class ATOMacBackend(DesktopAutomationBackend):
             except Exception:
                 return None
 
-        return await self._run_sync(_get)
+        return await self._run_sync(_get)  # type: ignore[no-any-return]
 
     async def list_applications(self) -> list[ApplicationInfo]:
         """List all running applications."""
@@ -161,7 +161,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to list applications: {e}")
                 return []
 
-        return await self._run_sync(_list)
+        return await self._run_sync(_list)  # type: ignore[no-any-return]
 
     async def quit_application(self, bundle_id: str, force: bool = False) -> bool:
         """Quit an application."""
@@ -190,7 +190,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to quit {bundle_id}: {e}")
                 return False
 
-        return await self._run_sync(_quit)
+        return await self._run_sync(_quit)  # type: ignore[no-any-return]
 
     async def activate_application(self, bundle_id: str) -> bool:
         """Activate (bring to front) an application."""
@@ -207,7 +207,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to activate {bundle_id}: {e}")
                 return False
 
-        return await self._run_sync(_activate)
+        return await self._run_sync(_activate)  # type: ignore[no-any-return]
 
     async def get_active_application(self) -> ApplicationInfo | None:
         """Get the currently active application."""
@@ -231,7 +231,7 @@ class ATOMacBackend(DesktopAutomationBackend):
             except Exception:
                 return None
 
-        return await self._run_sync(_get)
+        return await self._run_sync(_get)  # type: ignore[no-any-return]
 
     def _app_to_info(self, app: Any, bundle_id: str) -> ApplicationInfo:
         """Convert ATOMac app to ApplicationInfo."""
@@ -264,8 +264,8 @@ class ATOMacBackend(DesktopAutomationBackend):
             return WindowInfo(
                 id=str(id(win)),
                 title=title,
-                position=tuple(position),
-                size=tuple(size),
+                position=tuple(position),  # type: ignore[arg-type]
+                size=tuple(size),  # type: ignore[arg-type]
                 state=WindowState.NORMAL,
                 bundle_id=bundle_id,
             )
@@ -300,7 +300,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to get windows for {bundle_id}: {e}")
                 return []
 
-        return await self._run_sync(_get)
+        return await self._run_sync(_get)  # type: ignore[no-any-return]
 
     async def activate_window(self, window_id: str) -> bool:
         """Activate (bring to front) a window."""
@@ -360,7 +360,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to click menu {menu_path}: {e}")
                 return False
 
-        return await self._run_sync(_click)
+        return await self._run_sync(_click)  # type: ignore[no-any-return]
 
     async def list_menus(self, bundle_id: str) -> list[MenuInfo]:
         """List all menus for an application."""
@@ -385,7 +385,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to list menus for {bundle_id}: {e}")
                 return []
 
-        return await self._run_sync(_list)
+        return await self._run_sync(_list)  # type: ignore[no-any-return]
 
     def _menu_to_info(self, menu: Any, path: list[str]) -> MenuInfo | None:
         """Convert ATOMac menu to MenuInfo."""
@@ -432,7 +432,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to type text: {e}")
                 return False
 
-        return await self._run_sync(_type)
+        return await self._run_sync(_type)  # type: ignore[no-any-return]
 
     async def press_key(self, key: str, modifiers: list[str] | None = None) -> bool:
         """Press a key with optional modifiers."""
@@ -453,7 +453,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to press key {key}: {e}")
                 return False
 
-        return await self._run_sync(_press)
+        return await self._run_sync(_press)  # type: ignore[no-any-return]
 
     def _key_to_code(self, key: str) -> str | int:
         """Convert key name to key code."""
@@ -505,7 +505,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to click at ({x}, {y}): {e}")
                 return False
 
-        return await self._run_sync(_click)
+        return await self._run_sync(_click)  # type: ignore[no-any-return]
 
     async def drag(
         self,
@@ -527,7 +527,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to drag: {e}")
                 return False
 
-        return await self._run_sync(_drag)
+        return await self._run_sync(_drag)  # type: ignore[no-any-return]
 
     async def scroll(self, x: int, y: int, dx: int, dy: int) -> bool:
         """Scroll at coordinates."""
@@ -541,7 +541,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to scroll: {e}")
                 return False
 
-        return await self._run_sync(_scroll)
+        return await self._run_sync(_scroll)  # type: ignore[no-any-return]
 
     # =========================================================================
     # Screenshot Operations
@@ -578,7 +578,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                     region=region,
                 ) from e
 
-        return await self._run_sync(_capture)
+        return await self._run_sync(_capture)  # type: ignore[no-any-return]
 
     # =========================================================================
     # Screen Operations
@@ -611,7 +611,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to list screens: {e}")
                 return []
 
-        return await self._run_sync(_list)
+        return await self._run_sync(_list)  # type: ignore[no-any-return]
 
     # =========================================================================
     # UI Element Operations
@@ -645,7 +645,7 @@ class ATOMacBackend(DesktopAutomationBackend):
                 logger.error(f"Failed to get UI elements: {e}")
                 return []
 
-        return await self._run_sync(_get)
+        return await self._run_sync(_get)  # type: ignore[no-any-return]
 
     def _get_all_elements(self, parent: Any) -> list[UIElement]:
         """Recursively get all UI elements."""

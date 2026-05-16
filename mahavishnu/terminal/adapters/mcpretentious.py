@@ -92,7 +92,7 @@ class McpretentiousAdapter(TerminalAdapter):
             # Send initial command
             await self.send_command(session_id, command)
 
-            return session_id
+            return session_id  # type: ignore[no-any-return]
 
         except Exception as e:
             raise TerminalError(
@@ -165,7 +165,7 @@ class McpretentiousAdapter(TerminalAdapter):
                 kwargs["limit_lines"] = lines
 
             result = await self.mcp.call_tool("mcpretentious-read", kwargs)
-            return result["output"]
+            return result["output"]  # type: ignore[no-any-return]
 
         except Exception as e:
             raise TerminalError(
@@ -210,7 +210,7 @@ class McpretentiousAdapter(TerminalAdapter):
         """
         try:
             result = await self.mcp.call_tool("mcpretentious-list", {})
-            return result.get("terminals", [])
+            return result.get("terminals", [])  # type: ignore[no-any-return]
 
         except Exception as e:
             raise TerminalError(

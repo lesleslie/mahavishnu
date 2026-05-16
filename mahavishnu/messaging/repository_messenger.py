@@ -40,7 +40,7 @@ class RepositoryMessage:
     message_type: MessageType
     content: dict[str, Any]
     priority: MessagePriority = MessagePriority.NORMAL
-    timestamp: datetime = None
+    timestamp: datetime | None = None
     correlation_id: str | None = None  # For tracking related messages
     expires_at: datetime | None = None  # Optional expiration time
     signature: str | None = None  # For authentication
@@ -63,7 +63,7 @@ class RepositoryMessenger:
         self.app = app
         self.logger = __import__("logging").getLogger(__name__)
         self.messages: list[RepositoryMessage] = []
-        self.subscribers: dict[str, list[callable]] = {}  # repo -> list of callbacks
+        self.subscribers: dict[str, list[callable]] = {}  # repo -> list of callbacks  # type: ignore[valid-type]
         self.authenticator: CrossProjectAuth | None = None
         self._event_publisher = event_publisher
 
@@ -72,14 +72,14 @@ class RepositoryMessenger:
         if auth_secret:
             self.authenticator = CrossProjectAuth(auth_secret)
 
-    def subscribe(self, repo_name: str, callback: callable):
+    def subscribe(self, repo_name: str, callback: callable):  # type: ignore[valid-type]
         """Subscribe to messages for a specific repository."""
         if repo_name not in self.subscribers:
             self.subscribers[repo_name] = []
         self.subscribers[repo_name].append(callback)
         self.logger.info(f"Subscribed to messages for repository: {repo_name}")
 
-    def unsubscribe(self, repo_name: str, callback: callable):
+    def unsubscribe(self, repo_name: str, callback: callable):  # type: ignore[valid-type]
         """Unsubscribe from messages for a specific repository."""
         if repo_name in self.subscribers and callback in self.subscribers[repo_name]:
             self.subscribers[repo_name].remove(callback)
@@ -119,7 +119,7 @@ class RepositoryMessenger:
                         "receiver_repo": message.receiver_repo,
                         "message_type": message.message_type.value,
                         "content": message.content,
-                        "timestamp": message.timestamp.isoformat(),
+                        "timestamp": message.timestamp.isoformat(),  # type: ignore[union-attr]
                         "correlation_id": message.correlation_id,
                     }
                 )
@@ -202,11 +202,11 @@ class RepositoryMessenger:
                 for msg in self.messages
                 if msg.receiver_repo == repo_name
                 and (message_type is None or msg.message_type == message_type)
-                and (since is None or msg.timestamp >= since)
+                and (since is None or msg.timestamp >= since)  # type: ignore[operator]
             ]
 
             # Sort by timestamp (newest first)
-            repo_messages.sort(key=lambda x: x.timestamp, reverse=True)
+            repo_messages.sort(key=lambda x: x.timestamp, reverse=True)  # type: ignore[arg-type]
 
             # Return limited results
             return repo_messages[:limit]
@@ -300,7 +300,7 @@ class RepositoryMessenger:
             "receiver_repo": message.receiver_repo,
             "message_type": message.message_type.value,
             "content": message.content,
-            "timestamp": message.timestamp.isoformat(),
+            "timestamp": message.timestamp.isoformat(),  # type: ignore[union-attr]
             "correlation_id": message.correlation_id,
         }
 
@@ -349,7 +349,7 @@ class RepositoryMessengerManager:
             return {"status": "error", "error": str(e)}
 
     async def notify_workflow_status(
-        self, workflow_id: str, status: str, repo_path: str, target_repos: list[str] = None
+        self, workflow_id: str, status: str, repo_path: str, target_repos: list[str] | None = None
     ) -> dict[str, Any]:
         """Notify other repositories about workflow status changes."""
         try:

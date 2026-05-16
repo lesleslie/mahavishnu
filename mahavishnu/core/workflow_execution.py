@@ -82,7 +82,7 @@ async def create_session_checkpoint(
     if not app.config.session.enabled:
         return None
 
-    return await app.session_buddy.create_checkpoint(
+    return await app.session_buddy.create_checkpoint(  # type: ignore[no-any-return]
         session_id=f"workflow_{task.get('id', 'default')}",
         state={
             "task": task,
@@ -455,7 +455,7 @@ async def handle_workflow_execution_error(
     ) from error
 
 
-async def execute_workflow_parallel(
+async def execute_workflow_parallel(  # type: ignore[return]
     app: Any,
     task: dict[str, Any],
     adapter_name: str,
@@ -565,7 +565,7 @@ async def execute_workflow_with_routing(
     strategy = RoutingStrategy(routing_strategy)
 
     if enable_fallback:
-        return await app.execute_workflow_with_fallback(
+        return await app.execute_workflow_with_fallback(  # type: ignore[no-any-return]
             task=task,
             repos=repos,
             routing_strategy=strategy,

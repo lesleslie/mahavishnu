@@ -388,13 +388,13 @@ class DatabaseMigrator:
     async def _verify_connections(self) -> None:
         """Verify both database connections work."""
         # Test PostgreSQL
-        pg_health = await self._postgres.health_check()
+        pg_health = await self._postgres.health_check()  # type: ignore[union-attr]
         if not pg_health.get("connected"):
             raise DatabaseError("PostgreSQL connection failed")
 
         # Test SQLite
         try:
-            cursor = self._sqlite_conn.cursor()
+            cursor = self._sqlite_conn.cursor()  # type: ignore[union-attr]
             cursor.execute("SELECT 1")
             cursor.fetchone()
         except sqlite3.Error as e:
@@ -515,7 +515,7 @@ class DatabaseMigrator:
 
             # PostgreSQL count
             try:
-                pg_count = await self._postgres.fetchval(f"SELECT COUNT(*) FROM {table}")
+                pg_count = await self._postgres.fetchval(f"SELECT COUNT(*) FROM {table}")  # type: ignore[union-attr]
             except Exception:
                 pg_count = 0  # Table might not exist yet
 

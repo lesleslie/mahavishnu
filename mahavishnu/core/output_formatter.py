@@ -496,7 +496,7 @@ class OutputFormatter:
                 table.add_column(
                     col.name,
                     width=col.width,
-                    justify=col.align,
+                    justify=col.align,  # type: ignore[arg-type]
                 )
 
             # Add rows

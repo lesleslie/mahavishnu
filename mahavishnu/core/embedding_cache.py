@@ -376,7 +376,7 @@ class EmbeddingCache:
                 ssl_cert_reqs="required" if self._config.l2_tls_verify else "none",
             )
             # Test connection
-            await self._l2_client.ping()
+            await self._l2_client.ping()  # type: ignore[attr-defined]
             self._l2_available = True
             logger.info("L2 Redis cache connected")
             return self._l2_client
@@ -402,7 +402,7 @@ class EmbeddingCache:
         result = self._l1.get(key)
         if result is not None:
             self._metrics.record_l1_hit()
-            return result
+            return result  # type: ignore[no-any-return]
 
         self._metrics.record_l1_miss()
 
@@ -418,7 +418,7 @@ class EmbeddingCache:
                         self._l1.set(key, embedding)
                         self._metrics.record_l2_hit()
                         self._circuit_breaker.record_success()
-                        return embedding
+                        return embedding  # type: ignore[no-any-return]
                 except Exception as e:
                     logger.debug(f"L2 cache get failed: {e}")
                     self._circuit_breaker.record_failure()
@@ -498,7 +498,7 @@ class EmbeddingCache:
                 self._metrics.record_compute(latency_ms)
                 return embedding
 
-            return await self._singleflight.do(key, _compute_and_cache)
+            return await self._singleflight.do(key, _compute_and_cache)  # type: ignore[no-any-return]
 
         # Fallback without singleflight
         start_time = time.perf_counter()

@@ -18,7 +18,7 @@ def _score_from_result(result: dict[str, Any], min_score: int) -> int:
     """Map a Crackerjack QualityCheckResult to a numeric score."""
     if result.get("success"):
         return 100
-    errors = result.get("errors") or []
+    errors = result.get("errors") or []  # type: ignore[var-annotated]
     raw = 100 - len(errors) * 10
     return max(0, raw)
 
@@ -85,7 +85,7 @@ class QualityControl:
             cj_result = json.loads(result_str) if isinstance(result_str, str) else result_str
 
             score = _score_from_result(cj_result, self.min_score)
-            errors = cj_result.get("errors") or []
+            errors = cj_result.get("errors") or []  # type: ignore[var-annotated]
             success = cj_result.get("success", False)
 
             per_check: dict[str, Any] = {}

@@ -249,13 +249,13 @@ async def with_retry[**P, T](
     )
     try:
         result, _attempts = await retry_async(
-            func,
-            *args,
+            func,  # type: ignore[arg-type]
+            *args,  # type: ignore[misc]
             policy=policy,
             operation="async_patterns.with_retry",
-            **kwargs,
+            **kwargs,  # type: ignore[arg-type]
         )
-        return result
+        return result  # type: ignore[no-any-return]
     except RetryExhaustedError as exc:
         raise exc.last_exception if exc.last_exception is not None else exc
 
@@ -334,7 +334,7 @@ class AsyncTaskManager:
         else:
             results = await asyncio.gather(*self._tasks, return_exceptions=True)
 
-        return results
+        return results  # type: ignore[no-any-return]
 
     async def cancel_all(self, timeout: float = 5.0) -> None:
         """Cancel all tracked tasks."""

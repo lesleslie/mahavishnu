@@ -271,7 +271,7 @@ class EventBusConsumer:
             message_id = entry.get("message_id")
             if message_id and message_id in self._replayed_message_ids:
                 continue
-            payload = entry.get("payload") or {}
+            payload = entry.get("payload") or {}  # type: ignore[var-annotated]
             envelope_data = payload.get("envelope") if isinstance(payload, dict) else None
             if not envelope_data:
                 continue

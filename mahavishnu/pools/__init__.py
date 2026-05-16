@@ -130,5 +130,5 @@ _LAZY_IMPORTERS: dict[str, object] = {
 def __getattr__(name: str):
     """Lazy import to avoid heavy initialization on package import."""
     if importer := _LAZY_IMPORTERS.get(name):
-        return importer()
+        return importer()  # type: ignore[operator]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

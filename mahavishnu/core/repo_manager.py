@@ -171,7 +171,7 @@ class RepositoryManager:
         if len(tags_list) == 1:
             # Single tag - use index directly
             return [
-                self.get_by_package(pkg)
+                self.get_by_package(pkg)  # type: ignore[misc]
                 for pkg in self.get_by_tag(tags_list[0])
                 if self.get_by_package(pkg)
             ]

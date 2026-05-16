@@ -145,7 +145,7 @@ class TaskMetrics:
         class NoOpMetric:
             """No-op metric that does nothing."""
 
-            def labels(self, *args: Any, **kwargs: Any) -> "NoOpMetric":
+            def labels(self, *args: Any, **kwargs: Any) -> "NoOpMetric":  # type: ignore[name-defined]
                 return self
 
             def inc(self, *args: Any, **kwargs: Any) -> None:
@@ -161,14 +161,14 @@ class TaskMetrics:
                 pass
 
         noop = NoOpMetric()
-        self.task_operations_total = noop
-        self.task_duration_seconds = noop
-        self.quality_gate_results_total = noop
-        self.active_tasks_gauge = noop
-        self.task_errors_total = noop
-        self.webhook_operations_total = noop
-        self.validation_failures_total = noop
-        self.audit_events_total = noop
+        self.task_operations_total = noop  # type: ignore[assignment]
+        self.task_duration_seconds = noop  # type: ignore[assignment]
+        self.quality_gate_results_total = noop  # type: ignore[assignment]
+        self.active_tasks_gauge = noop  # type: ignore[assignment]
+        self.task_errors_total = noop  # type: ignore[assignment]
+        self.webhook_operations_total = noop  # type: ignore[assignment]
+        self.validation_failures_total = noop  # type: ignore[assignment]
+        self.audit_events_total = noop  # type: ignore[assignment]
 
     # Task lifecycle metrics
 

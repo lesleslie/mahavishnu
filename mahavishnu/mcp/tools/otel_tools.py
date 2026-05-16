@@ -46,7 +46,7 @@ def register_otel_tools(server, app, mcp_client):
                 }
 
             # Initialize ingester with app config
-            ingester = OtelIngester(
+            ingester = OtelIngester(  # type: ignore[call-arg]
                 hot_store_path=app.config.otel_ingester.hot_store_path,
                 embedding_model=app.config.otel_ingester.embedding_model,
                 cache_size=app.config.otel_ingester.cache_size,
@@ -157,7 +157,7 @@ def register_otel_tools(server, app, mcp_client):
             from mahavishnu.ingesters.otel_ingester import OtelIngester
 
             # Initialize ingester
-            ingester = OtelIngester(
+            ingester = OtelIngester(  # type: ignore[call-arg]
                 hot_store_path=app.config.otel_ingester.hot_store_path,
                 embedding_model=app.config.otel_ingester.embedding_model,
                 similarity_threshold=threshold or app.config.otel_ingester.similarity_threshold,
@@ -192,7 +192,7 @@ def register_otel_tools(server, app, mcp_client):
             from mahavishnu.ingesters.otel_ingester import OtelIngester
 
             # Initialize ingester
-            ingester = OtelIngester(
+            ingester = OtelIngester(  # type: ignore[call-arg]
                 hot_store_path=app.config.otel_ingester.hot_store_path,
             )
             await ingester.initialize()

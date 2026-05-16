@@ -51,8 +51,8 @@ def _resolve_postgres_dsn(explicit_dsn: str | None) -> str | None:
         import yaml
 
         with settings_path.open() as f:
-            data = yaml.safe_load(f) or {}
-        persistence = data.get("persistence", {}) if isinstance(data, dict) else {}
+            data = yaml.safe_load(f) or {}  # type: ignore[var-annotated]
+        persistence = data.get("persistence", {}) if isinstance(data, dict) else {}  # type: ignore[var-annotated]
         dsn = persistence.get("postgres_url")
         if isinstance(dsn, str) and dsn.strip():
             return dsn.strip()

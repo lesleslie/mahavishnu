@@ -183,7 +183,7 @@ class CommandHandler:
             # Handle different return types
             if isinstance(result, CommandResult):
                 return result
-            return CommandResult.success(data=result)
+            return CommandResult.success(data=result)  # type: ignore[no-any-return, operator]
 
         except Exception as e:
             # Handle validation errors

@@ -50,7 +50,7 @@ try:
     HAS_SLOWAPI = True
 except ImportError:
     HAS_SLOWAPI = False
-    RateLimitExceeded = type("RateLimitExceeded", (Exception,), {})  # Placeholder for type hints
+    RateLimitExceeded = type("RateLimitExceeded", (Exception,), {})  # Placeholder for type hints  # type: ignore[assignment]
     logger.warning("slowapi not installed, rate limiting will be disabled")
 
 
@@ -98,7 +98,7 @@ def setup_rate_limiting(app: FastAPI) -> None:
         return
 
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)  # type: ignore[arg-type]
     logger.info("Rate limiting configured successfully")
 
 
@@ -159,7 +159,7 @@ def rate_limit(limit: str) -> Callable:
 
     def decorator(func: Callable) -> Callable:
         if HAS_SLOWAPI and limiter is not None:
-            return limiter.limit(limit)(func)
+            return limiter.limit(limit)(func)  # type: ignore[no-any-return]
         return func
 
     return decorator
@@ -168,29 +168,29 @@ def rate_limit(limit: str) -> Callable:
 # Convenience decorators for common rate limits
 def limit_task_create(func: Callable) -> Callable:
     """Apply task creation rate limit."""
-    return rate_limit(RATE_LIMITS["task_create"])(func)
+    return rate_limit(RATE_LIMITS["task_create"])(func)  # type: ignore[no-any-return]
 
 
 def limit_task_search(func: Callable) -> Callable:
     """Apply task search rate limit."""
-    return rate_limit(RATE_LIMITS["task_search"])(func)
+    return rate_limit(RATE_LIMITS["task_search"])(func)  # type: ignore[no-any-return]
 
 
 def limit_webhook(func: Callable) -> Callable:
     """Apply webhook rate limit."""
-    return rate_limit(RATE_LIMITS["webhook_github"])(func)
+    return rate_limit(RATE_LIMITS["webhook_github"])(func)  # type: ignore[no-any-return]
 
 
 def limit_api_general(func: Callable) -> Callable:
     """Apply general API rate limit."""
-    return rate_limit(RATE_LIMITS["api_general"])(func)
+    return rate_limit(RATE_LIMITS["api_general"])(func)  # type: ignore[no-any-return]
 
 
 def limit_embedding(func: Callable) -> Callable:
     """Apply embedding service rate limit."""
-    return rate_limit(RATE_LIMITS["embedding"])(func)
+    return rate_limit(RATE_LIMITS["embedding"])(func)  # type: ignore[no-any-return]
 
 
 def limit_nlp(func: Callable) -> Callable:
     """Apply NLP parsing rate limit."""
-    return rate_limit(RATE_LIMITS["nlp_parse"])(func)
+    return rate_limit(RATE_LIMITS["nlp_parse"])(func)  # type: ignore[no-any-return]

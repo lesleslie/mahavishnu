@@ -65,7 +65,7 @@ except ImportError:
         def observe(self, amount):
             pass
 
-    def start_http_server(port: int):
+    def start_http_server(port: int):  # type: ignore[misc]
         logging.warning(
             f"prometheus_client not available, metrics server not started on port {port}"
         )
@@ -189,12 +189,12 @@ class WebSocketMetrics:
     def _get_message_counter(self) -> Counter:
         """Get message counter (initializes if needed)."""
         self._ensure_enabled()
-        return self._message_counter
+        return self._message_counter  # type: ignore[return-value]
 
     def _get_connection_gauge(self) -> Gauge:
         """Get connection gauge (initializes if needed)."""
         self._ensure_enabled()
-        return self._connection_gauge
+        return self._connection_gauge  # type: ignore[return-value]
 
     def _get_broadcast_histogram(self, channel: str) -> Histogram:
         """Get or create broadcast histogram for channel."""
@@ -221,7 +221,7 @@ class WebSocketMetrics:
     def _get_subscription_gauge(self) -> Gauge:
         """Get subscription gauge (initializes if needed)."""
         self._ensure_enabled()
-        return self._subscription_gauge
+        return self._subscription_gauge  # type: ignore[return-value]
 
     def _get_error_counter(self, error_type: str) -> Counter:
         """Get or create error counter for specific error type."""
@@ -359,9 +359,9 @@ class WebSocketMetrics:
             "enabled": self._enabled,
             "initialized": self._metrics_initialized,
             "connection_tracking": self._connection_gauge is not None,
-            "broadcast_tracking": len(self._broadcast_histograms) > 0,
+            "broadcast_tracking": len(self._broadcast_histograms) > 0,  # type: ignore[attr-defined]
             "subscription_tracking": self._subscription_gauge is not None,
-            "error_types_tracked": list(self._error_counters.keys()) if self._enabled else [],
+            "error_types_tracked": list(self._error_counters.keys()) if self._enabled else [],  # type: ignore[attr-defined]
         }
 
 

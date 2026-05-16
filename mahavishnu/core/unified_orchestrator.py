@@ -59,7 +59,7 @@ class UnifiedOrchestrator:
         self,
         workflow_name: str,
         workflow_type: str = "workflow",  # workflow, ai_task, rag_query
-        tasks: list[dict[str, Any]] = None,  # Default to empty list
+        tasks: list[dict[str, Any]] | None = None,  # Default to empty list
         repos: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> str:
@@ -150,7 +150,7 @@ class UnifiedOrchestrator:
                 },
             )
 
-            return workflow_id
+            return workflow_id  # type: ignore[no-any-return]
 
         except Exception as e:
             # Log error and update state

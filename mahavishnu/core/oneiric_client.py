@@ -254,7 +254,7 @@ class DharaAdapterRegistryClient:
         if isinstance(payload, dict) and payload.get("success") is False:
             raise ConnectionError(payload.get("error") or "Dhara list_adapters failed")
 
-        raw_adapters = payload.get("adapters", []) if isinstance(payload, dict) else []
+        raw_adapters = payload.get("adapters", []) if isinstance(payload, dict) else []  # type: ignore[var-annotated]
         adapters = [AdapterEntry.from_dhara(a) for a in raw_adapters if isinstance(a, dict)]
 
         if project:

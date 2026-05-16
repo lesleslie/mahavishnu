@@ -32,15 +32,15 @@ except ImportError:
     LLAMAINDEX_AVAILABLE = False
     from unittest.mock import MagicMock
 
-    Document = MagicMock(name="Document")
-    OllamaEmbedding = MagicMock(name="OllamaEmbedding")
-    Ollama = MagicMock(name="Ollama")
-    OpensearchVectorStore = MagicMock(name="OpensearchVectorStore")
+    Document = MagicMock(name="Document")  # type: ignore[assignment]
+    OllamaEmbedding = MagicMock(name="OllamaEmbedding")  # type: ignore[assignment]
+    Ollama = MagicMock(name="Ollama")  # type: ignore[assignment]
+    OpensearchVectorStore = MagicMock(name="OpensearchVectorStore")  # type: ignore[assignment]
     Settings = MagicMock(name="Settings")
-    SimpleDirectoryReader = MagicMock(name="SimpleDirectoryReader")
-    StorageContext = MagicMock(name="StorageContext")
-    SentenceSplitter = MagicMock(name="SentenceSplitter")
-    VectorStoreIndex = MagicMock(name="VectorStoreIndex")
+    SimpleDirectoryReader = MagicMock(name="SimpleDirectoryReader")  # type: ignore[assignment]
+    StorageContext = MagicMock(name="StorageContext")  # type: ignore[assignment]
+    SentenceSplitter = MagicMock(name="SentenceSplitter")  # type: ignore[assignment]
+    VectorStoreIndex = MagicMock(name="VectorStoreIndex")  # type: ignore[assignment]
 
 # Import code graph analyzer
 from mcp_common.code_graph import CodeGraphAnalyzer
@@ -72,7 +72,7 @@ except ImportError:
 class MockCounter:
     """No-op counter for fallback instrumentation."""
 
-    def add(self, amount: int, attributes: dict[str, str] = None) -> None:
+    def add(self, amount: int, attributes: dict[str, str] | None = None) -> None:
         """No-op add method."""
         pass
 
@@ -80,7 +80,7 @@ class MockCounter:
 class MockHistogram:
     """No-op histogram for fallback instrumentation."""
 
-    def record(self, amount: float, attributes: dict[str, str] = None) -> None:
+    def record(self, amount: float, attributes: dict[str, str] | None = None) -> None:
         """No-op record method."""
         pass
 
@@ -112,7 +112,7 @@ class MockSpan:
 class MockTracer:
     """No-op tracer for fallback instrumentation."""
 
-    def start_as_current_span(self, name: str, attributes: dict[str, str] = None) -> MockSpan:
+    def start_as_current_span(self, name: str, attributes: dict[str, str] | None = None) -> MockSpan:
         """Return a no-op span."""
         return MockSpan()
 
@@ -370,7 +370,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             logger.info(
                 "Using in-memory vector store (install opensearch-knn plugin for persistence)"
             )
-            self.vector_store = None
+            self.vector_store = None  # type: ignore[assignment]
             self._vector_backend = "memory"
 
         # Initialize OpenTelemetry instrumentation
@@ -439,8 +439,8 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
     def _init_fallback_instrumentation(self) -> None:
         """Initialize fallback no-op instrumentation when OTel is unavailable."""
-        self.tracer = MockTracer()
-        self.meter = MockMeter()
+        self.tracer = MockTracer()  # type: ignore[assignment]
+        self.meter = MockMeter()  # type: ignore[assignment]
 
         # Create fallback metric instruments
         self.ingest_duration_histogram = self.meter.create_histogram("llamaindex.ingest.duration")
@@ -560,7 +560,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 if not repo.exists():
                     error_msg = f"Repository path does not exist: {repo_path}"
                     span.set_attribute("error.message", error_msg)
-                    span.set_status("ERROR")
+                    span.set_status("ERROR")  # type: ignore[arg-type]
                     self.error_counter.add(
                         1,
                         attributes={
@@ -738,7 +738,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 # Record error in span
                 span.set_attribute("error.message", error_msg)
                 span.set_attribute("error.type", type(e).__name__)
-                span.set_status("ERROR")
+                span.set_status("ERROR")  # type: ignore[arg-type]
                 span.record_exception(e)
 
                 # Record error metric
@@ -869,7 +869,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 if not query_text:
                     error_msg = "Query text not provided in task_params"
                     span.set_attribute("error.message", error_msg)
-                    span.set_status("ERROR")
+                    span.set_status("ERROR")  # type: ignore[arg-type]
                     self.error_counter.add(
                         1,
                         attributes={
@@ -900,7 +900,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                             error_msg = f"No index found for repository: {repo_path}"
                             find_span.set_attribute("index.found", False)
                             find_span.set_attribute("error.message", error_msg)
-                            span.set_status("ERROR")
+                            span.set_status("ERROR")  # type: ignore[arg-type]
                             self.error_counter.add(
                                 1,
                                 attributes={
@@ -999,7 +999,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 # Record error in span
                 span.set_attribute("error.message", error_msg)
                 span.set_attribute("error.type", type(e).__name__)
-                span.set_status("ERROR")
+                span.set_status("ERROR")  # type: ignore[arg-type]
                 span.record_exception(e)
 
                 # Record error metric

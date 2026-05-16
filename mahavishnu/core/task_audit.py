@@ -311,7 +311,7 @@ class TaskAuditLogger:
         # Support both parameter naming conventions
         actual_blocked_by = blocked_by_task_id or blocked_by
         actual_reason = dependency_reason or reason
-        details = {}
+        details: dict[str, Any] = {}
         if actual_blocked_by:
             details["blocked_by_task_id"] = actual_blocked_by
         if actual_reason:
@@ -466,7 +466,7 @@ class TaskAuditLogger:
         task_data: dict[str, Any] | None = None,
     ) -> int:
         """Log validation failure event (security event)."""
-        details = {
+        details: dict[str, Any] = {
             "action": action,
             "validation_errors": validation_errors,
         }
@@ -496,7 +496,7 @@ class TaskAuditLogger:
         Returns:
             Data dictionary with sensitive fields redacted
         """
-        redacted = {}
+        redacted: dict[str, Any] = {}
 
         for key, value in data.items():
             # Check if this key is a sensitive key within nested structures

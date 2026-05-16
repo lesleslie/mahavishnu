@@ -49,7 +49,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.check_permissions()
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     @mcp.tool()
     async def automation_status() -> dict:
@@ -79,7 +79,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.launch_application(bundle_id, dry_run=dry_run)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     @mcp.tool()
     async def automation_quit_app(
@@ -91,7 +91,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.quit_application(bundle_id, force=force)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     @mcp.tool()
     async def automation_activate_app(
@@ -102,7 +102,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.activate_application(bundle_id)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     @mcp.tool()
     async def automation_list_apps() -> dict:
@@ -111,7 +111,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.list_applications()
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     @mcp.tool()
     async def automation_get_active_app() -> dict:
@@ -120,7 +120,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.get_active_application()
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     # =========================================================================
     # Window Tools
@@ -135,7 +135,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.get_windows(bundle_id)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     @mcp.tool()
     async def automation_resize_window(
@@ -148,7 +148,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.resize_window(window_id, width, height)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     @mcp.tool()
     async def automation_move_window(
@@ -161,7 +161,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.move_window(window_id, x, y)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     @mcp.tool()
     async def automation_close_window(
@@ -172,7 +172,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.close_window(window_id)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     # =========================================================================
     # Menu Tools
@@ -188,7 +188,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.click_menu_item(bundle_id, menu_path)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     @mcp.tool()
     async def automation_list_menus(
@@ -199,7 +199,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.list_menus(bundle_id)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     # =========================================================================
     # Input Tools
@@ -216,7 +216,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.type_text(text, interval=interval, dry_run=dry_run)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     @mcp.tool()
     async def automation_press_key(
@@ -230,7 +230,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.press_key(key, modifiers=modifiers)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     @mcp.tool()
     async def automation_click(
@@ -244,7 +244,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.click(x, y, button=button, clicks=clicks)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     @mcp.tool()
     async def automation_drag(
@@ -259,7 +259,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.drag(start_x, start_y, end_x, end_y, duration=duration)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     @mcp.tool()
     async def automation_scroll(
@@ -273,7 +273,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.scroll(x, y, dx, dy)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     # =========================================================================
     # Screenshot Tools
@@ -291,7 +291,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         region_tuple = tuple(region) if region else None
-        result = await manager.screenshot(region=region_tuple)
+        result = await manager.screenshot(region=region_tuple)  # type: ignore[arg-type]
 
         if result.status == "success" and result.data:
             # Encode image data as base64
@@ -309,7 +309,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
                 "image_base64": image_base64,
             }
 
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     @mcp.tool()
     async def automation_list_screens() -> dict:
@@ -318,7 +318,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.list_screens()
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     # =========================================================================
     # UI Element Tools
@@ -336,7 +336,7 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         await manager.initialize()
 
         result = await manager.get_ui_elements(bundle_id, window_id=window_id)
-        return result.to_dict()
+        return result.to_dict()  # type: ignore[no-any-return, attr-defined]
 
     # =========================================================================
     # Utility Tools

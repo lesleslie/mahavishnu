@@ -403,14 +403,14 @@ def set_app_context(app: Any) -> None:
                 return LLM(**llm_kwargs)
 
             def get_default_provider(self) -> str:
-                return self._config.agno.llm.provider.value
+                return self._config.agno.llm.provider.value  # type: ignore[no-any-return]
 
             def get_default_model(self) -> str:
-                return self._config.agno.llm.model_id
+                return self._config.agno.llm.model_id  # type: ignore[no-any-return]
 
         llm_factory = DefaultLLMFactory(app.config)
 
-    set_context(llm_factory=llm_factory, agno_adapter=agno_adapter, app=app)
+    set_context(llm_factory=llm_factory, agno_adapter=agno_adapter, app=app)  # type: ignore[arg-type]
 
     import logging
 

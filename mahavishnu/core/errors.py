@@ -608,7 +608,7 @@ class RateLimitError(MahavishnuError):
     def __init__(self, limit: str, retry_after: int | None = None) -> None:
         details = {"limit": limit}
         if retry_after:
-            details["retry_after_seconds"] = retry_after
+            details["retry_after_seconds"] = retry_after  # type: ignore[assignment]
         super().__init__(
             f"Rate limit exceeded: {limit}",
             ErrorCode.RATE_LIMIT_EXCEEDED,

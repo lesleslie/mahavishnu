@@ -91,13 +91,13 @@ def build_contract_app() -> Any:
     """Build a lightweight app fixture for MCP contract evaluation."""
     from .config import MahavishnuSettings
 
-    settings = MahavishnuSettings(
+    settings = MahavishnuSettings(  # type: ignore[call-arg]
         server_name="Contract Test Server",
         observability_enabled=False,
         terminal_enabled=False,
-        pools={"enabled": False},
-        workers={"enabled": False},
-        otel_storage={"enabled": False},
+        pools={"enabled": False},  # type: ignore[arg-type]
+        workers={"enabled": False},  # type: ignore[arg-type]
+        otel_storage={"enabled": False},  # type: ignore[arg-type]
     )
 
     app = Mock()

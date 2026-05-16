@@ -163,7 +163,7 @@ class CostOptimizer:
         self.metrics = metrics if metrics is not None else get_routing_metrics()
 
         self._cost_tracking: dict[str, dict[str, dict[str, Decimal]]] = defaultdict(
-            lambda: defaultdict(lambda: defaultdict(Decimal))
+            lambda: defaultdict(lambda: defaultdict(Decimal))  # type: ignore[arg-type]
         )
         self._frontier_cache: dict[str, ParetoFrontier] = {}
         self._recalc_task: asyncio.Task | None = None

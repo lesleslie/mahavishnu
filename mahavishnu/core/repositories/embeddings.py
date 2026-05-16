@@ -187,7 +187,7 @@ class EmbeddingRepository(
         try:
             async with self.transaction() as conn:
                 result = await conn.execute(_DELETE_EMBEDDING, document_id)
-                return result == "DELETE 1"
+                return result == "DELETE 1"  # type: ignore[no-any-return]
         except Exception as e:
             raise self._handle_error("delete_embedding", e, {"document_id": str(document_id)})
 

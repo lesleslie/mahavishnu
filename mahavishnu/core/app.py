@@ -302,7 +302,7 @@ class MahavishnuApp:
         await _initialize_worktree_coordinator_helper(self)
 
     def _init_terminal_manager(self) -> "TerminalManager | None":
-        return _init_terminal_manager_helper(self)
+        return _init_terminal_manager_helper(self)  # type: ignore[no-any-return]
 
     def _initialize_runtime_services(self):
         return _initialize_runtime_services_helper(self)

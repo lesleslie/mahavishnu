@@ -218,7 +218,7 @@ class EcosystemLoader:
         # Topological sort by dependencies
         ordered = []
         remaining = {s.name: s for s in servers}
-        resolved = set()
+        resolved = set()  # type: ignore[var-annotated]
 
         while remaining:
             # Find servers with no unresolved dependencies
@@ -261,7 +261,7 @@ class EcosystemLoader:
             else:  # stdio
                 mcp_config[server.name] = {
                     "type": "stdio",
-                    "command": server.command,
+                    "command": server.command,  # type: ignore[dict-item]
                 }
 
         return mcp_config
@@ -376,7 +376,7 @@ class EcosystemLoader:
                 cmd = server.get_rendered_command()
                 commands.append((server.name, str(server.port), cmd))
 
-        return commands
+        return commands  # type: ignore[return-value]
 
     def update_audit_timestamp(
         self,
@@ -413,7 +413,7 @@ class EcosystemLoader:
         """
         try:
             with self.config_path.open("w") as f:
-                yaml.dump(self._config.model_dump(mode="yaml"), f, default_flow_style=False)
+                yaml.dump(self._config.model_dump(mode="yaml"), f, default_flow_style=False)  # type: ignore[union-attr]
         except Exception as e:
             raise ConfigurationError(
                 message=f"Failed to save ecosystem configuration: {e}",

@@ -169,7 +169,7 @@ class EncryptedSQLite:
             decrypted_data = self._fernet.decrypt(encrypted_data)
 
             # Write decrypted database
-            with open(self.db_path, "wb") as f:
+            with open(self.db_path, "wb") as f:  # type: ignore[assignment]
                 f.write(decrypted_data)
 
             logger.debug("Database decrypted successfully")
@@ -204,7 +204,7 @@ class EncryptedSQLite:
             encrypted_data = self._fernet.encrypt(plaintext_data)
 
             # Write encrypted database
-            with open(self.enc_path, "wb") as f:
+            with open(self.enc_path, "wb") as f:  # type: ignore[assignment]
                 f.write(encrypted_data)
 
             logger.debug("Database encrypted successfully")
@@ -411,7 +411,7 @@ class EncryptedSQLite:
 
                 # Encrypt and write
                 encrypted_data = self._fernet.encrypt(plaintext_data)
-                with open(enc_backup_path, "wb") as f:
+                with open(enc_backup_path, "wb") as f:  # type: ignore[assignment]
                     f.write(encrypted_data)
 
                 # Delete plaintext backup

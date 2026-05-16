@@ -40,7 +40,7 @@ def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
                 adapter = McpretentiousAdapter(server.mcp_client)
             else:
                 try:
-                    adapter = ITerm2Adapter()
+                    adapter = ITerm2Adapter()  # type: ignore[assignment]
                     logger.info("Initialized iTerm2 adapter")
                 except Exception as exc:
                     logger.warning("Failed to initialize iTerm2 adapter: %s", exc)
@@ -65,15 +65,15 @@ def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
 def register_health_endpoint(server: FastMCPServer, version: str) -> None:
     """Register HTTP health endpoints on the FastMCP server."""
 
-    @server.server.custom_route("/health", methods=["GET"])
+    @server.server.custom_route("/health", methods=["GET"])  # type: ignore[arg-type]
     async def health_check() -> JSONResponse:
         return JSONResponse({"status": "ok", "service": "mahavishnu", "version": version})
 
-    @server.server.custom_route("/healthz", methods=["GET"])
+    @server.server.custom_route("/healthz", methods=["GET"])  # type: ignore[arg-type]
     async def healthz_check() -> JSONResponse:
         return JSONResponse({"status": "ok"})
 
-    @server.server.custom_route("/metrics", methods=["GET"])
+    @server.server.custom_route("/metrics", methods=["GET"])  # type: ignore[arg-type]
     async def metrics_endpoint():
         from monitoring.metrics import metrics_endpoint as prometheus_metrics_endpoint
 

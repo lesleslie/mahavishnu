@@ -189,7 +189,7 @@ class VectorStore:
                     "No embedding service configured",
                     query=text,
                 )
-            result = await self.embedding_service.embed(text)
+            result = await self.embedding_service.embed(text)  # type: ignore[arg-type]
             embedding = result.embeddings[0]
 
         # Upsert embedding
@@ -210,7 +210,7 @@ class VectorStore:
             metadata or {},
         )
 
-        return row["id"]
+        return row["id"]  # type: ignore[index, no-any-return]
 
     async def get_embedding(self, task_id: str) -> list[float] | None:
         """Get embedding for a task."""

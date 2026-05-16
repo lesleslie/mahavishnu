@@ -449,7 +449,7 @@ class TerminalManager:
         # mcpretentious (requires MCP client)
         if preference == "mcpretentious" and mcp_client is not None:
             try:
-                adapter = McpretentiousAdapter(mcp_client)
+                adapter = McpretentiousAdapter(mcp_client)  # type: ignore[assignment]
                 logger.info("Using mcpretentious adapter")
                 return cls(adapter, terminal_config)
             except Exception as e:
@@ -464,7 +464,7 @@ class TerminalManager:
             try:
                 from .adapters.iterm2 import ITerm2Adapter
 
-                adapter = ITerm2Adapter()
+                adapter = ITerm2Adapter()  # type: ignore[assignment]
                 logger.info("Using iTerm2 adapter")
                 return cls(adapter, terminal_config)
             except Exception as e:

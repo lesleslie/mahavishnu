@@ -17,7 +17,7 @@ async def test_opensearch_connection():
     # Create a simple vector store instance
     # Note: This assumes OpenSearch is running at http://localhost:9200
     try:
-        vector_store = OpensearchVectorStore(
+        vector_store = OpensearchVectorStore(  # type: ignore[call-arg]
             endpoint="http://localhost:9200",
             index_name="test-index",
             dim=1536,  # Standard for text-embedding-ada-002

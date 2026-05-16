@@ -523,9 +523,8 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
             )
         else:
             if not caps:
-                typer.echo(
-                    f"No capabilities found{f' matching "{capability}"' if capability else ''}."
-                )
+                suffix = f' matching "{capability}"' if capability else ""
+                typer.echo(f"No capabilities found{suffix}.")
                 return
             typer.echo(f"Capabilities ({len(caps)}):")
             for name, cap in caps.items():

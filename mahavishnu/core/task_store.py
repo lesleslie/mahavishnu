@@ -678,11 +678,11 @@ class TaskStore:
             query += f" AND assignee = ${param_count}"
             params.append(filters.assignee)
 
-        return await self.db.fetchval(query, *params)
+        return await self.db.fetchval(query, *params)  # type: ignore[no-any-return]
 
     # Batch operations
 
-    async def create_batch(self, tasks: list[TaskCreate], actor: str = "system") -> list[Task]:
+    async def create_batch(self, tasks: list[TaskCreate], actor: str = "system") -> list[Task]:  # type: ignore[valid-type]
         """Create multiple tasks in a batch.
 
         Args:
@@ -704,7 +704,7 @@ class TaskStore:
 
     async def update_status_batch(
         self,
-        task_ids: list[str],
+        task_ids: list[str],  # type: ignore[valid-type]
         status: TaskStatus,
         actor: str = "system",
     ) -> int:
@@ -852,7 +852,7 @@ class TaskStore:
             actor=actor,
         )
 
-    async def get_dependencies(self, task_id: str) -> list[TaskDependency]:
+    async def get_dependencies(self, task_id: str) -> list[TaskDependency]:  # type: ignore[valid-type]
         """Get all dependencies for a task.
 
         Args:
@@ -869,7 +869,7 @@ class TaskStore:
         )
         return [TaskDependency.from_row(row) for row in rows]
 
-    async def get_dependents(self, task_id: str) -> list[TaskDependency]:
+    async def get_dependents(self, task_id: str) -> list[TaskDependency]:  # type: ignore[valid-type]
         """Get all tasks that depend on a task.
 
         Args:

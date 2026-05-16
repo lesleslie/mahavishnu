@@ -182,7 +182,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
         )
 
         # Initialize metrics
-        self.metrics = get_metrics("mahavishnu")
+        self.metrics = get_metrics("mahavishnu")  # type: ignore[assignment]
 
         # Initialize rate limiter with configured rate
         # Burst size is 1.5x the rate to allow small bursts
@@ -212,7 +212,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
 
     async def handle_event_envelope(self, envelope: EventEnvelope) -> dict[str, Any]:
         """Bridge a canonical event envelope into websocket rooms."""
-        return await self._event_bridge.handle(envelope)
+        return await self._event_bridge.handle(envelope)  # type: ignore[no-any-return]
 
     async def handle(self, envelope: EventEnvelope) -> dict[str, Any]:
         """Compatibility handler for event consumers."""
@@ -237,7 +237,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
         logger.info(f"Client connected: {connection_id} (user: {user_id})")
 
         # Track connection metrics
-        self.metrics.adjust_connections(1)
+        self.metrics.adjust_connections(1)  # type: ignore[union-attr]
 
         # Send welcome message
         welcome = WebSocketProtocol.create_event(
@@ -267,7 +267,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
         logger.info(f"Client disconnected: {connection_id}")
 
         # Track connection metrics
-        self.metrics.adjust_connections(-1)
+        self.metrics.adjust_connections(-1)  # type: ignore[union-attr]
 
         # Clean up rate limiter bucket for this connection
         self.rate_limiter.remove_connection(connection_id)
@@ -332,7 +332,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
             rate_result: Rate limit check result
         """
         # Track rate limit error in metrics
-        self.metrics.inc_error("rate_limit")
+        self.metrics.inc_error("rate_limit")  # type: ignore[union-attr]
 
         # Create and send error response
         error = WebSocketProtocol.create_error(
@@ -362,7 +362,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
             channel = message.data.get("channel")
 
             # Check authorization for this channel
-            if user and not self._can_subscribe_to_channel(user, channel):
+            if user and not self._can_subscribe_to_channel(user, channel):  # type: ignore[arg-type]
                 error = WebSocketProtocol.create_error(
                     error_code="FORBIDDEN",
                     error_message=f"Not authorized to subscribe to {channel}",

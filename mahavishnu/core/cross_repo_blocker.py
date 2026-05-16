@@ -343,7 +343,7 @@ class CrossRepoBlockerTracker:
         # Update dependency statuses through the linker
         updated = self.dependency_linker.update_all_statuses(
             {
-                blocker_task_id: DependencyStatus.SATISFIED,
+                blocker_task_id: DependencyStatus.SATISFIED,  # type: ignore[dict-item]
             }
         )
 
@@ -356,7 +356,7 @@ class CrossRepoBlockerTracker:
         for _repo in impact.affected_repositories:
             # Clear any cached chains that might involve this blocker
             keys_to_remove = [
-                k for k in self._chain_cache if blocker_task_id in self._chain_cache[k].chain_path
+                k for k in self._chain_cache if blocker_task_id in self._chain_cache[k].chain_path  # type: ignore[attr-defined]
             ]
             for key in keys_to_remove:
                 del self._chain_cache[key]

@@ -409,7 +409,7 @@ class LoadTestRunner:
                 "actual_ms": m.p99_ms,
                 "passed": m.p99_ms <= self.config.task_create_p99_ms,
             }
-            validation["checks"].append(check)
+            validation["checks"].append(check)  # type: ignore[attr-defined]
             if not check["passed"]:
                 validation["passed"] = False
 
@@ -423,7 +423,7 @@ class LoadTestRunner:
                     "actual_ms": m.p99_ms,
                     "passed": m.p99_ms <= self.config.task_query_p99_ms,
                 }
-                validation["checks"].append(check)
+                validation["checks"].append(check)  # type: ignore[attr-defined]
                 if not check["passed"]:
                     validation["passed"] = False
 
@@ -435,7 +435,7 @@ class LoadTestRunner:
                 "actual_percent": m.success_rate,
                 "passed": m.success_rate >= self.config.min_success_rate,
             }
-            validation["checks"].append(check)
+            validation["checks"].append(check)  # type: ignore[attr-defined]
             if not check["passed"]:
                 validation["passed"] = False
 

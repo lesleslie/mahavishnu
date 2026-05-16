@@ -596,7 +596,7 @@ class OllamaWorker(BaseWorker):
         response = await self._client.get("/api/tags")
         response.raise_for_status()
         data = response.json()
-        return data.get("models", [])
+        return data.get("models", [])  # type: ignore[no-any-return]
 
     async def _pull_model(self, model_name: str) -> bool:
         """Pull a model from Ollama registry."""
@@ -608,7 +608,7 @@ class OllamaWorker(BaseWorker):
             timeout=600.0,
         )
         response.raise_for_status()
-        return response.json().get("status") == "success"
+        return response.json().get("status") == "success"  # type: ignore[no-any-return]
 
     async def _generate(
         self,
@@ -637,7 +637,7 @@ class OllamaWorker(BaseWorker):
             },
         )
         response.raise_for_status()
-        return response.json()
+        return response.json()  # type: ignore[no-any-return]
 
     async def _chat(
         self,

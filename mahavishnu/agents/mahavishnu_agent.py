@@ -387,7 +387,7 @@ class MahavishnuAgent:
 
         except Exception as e:
             logger.warning("get_routing_info failed: %s", e)
-            return RoutingInfoResult(
+            return RoutingInfoResult(  # type: ignore[call-arg]
                 task_type=task_type,
                 strategy=strategy,
                 error=str(e),

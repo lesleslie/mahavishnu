@@ -355,7 +355,7 @@ class Database:
             Query status string
         """
         async with self.connection() as conn:
-            return await conn.execute(query, *args, timeout=timeout)
+            return await conn.execute(query, *args, timeout=timeout)  # type: ignore[no-any-return]
 
     async def fetch(
         self,
@@ -374,7 +374,7 @@ class Database:
             List of records
         """
         async with self.connection() as conn:
-            return await conn.fetch(query, *args, timeout=timeout)
+            return await conn.fetch(query, *args, timeout=timeout)  # type: ignore[no-any-return]
 
     async def fetchrow(
         self,

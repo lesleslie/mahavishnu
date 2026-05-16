@@ -41,7 +41,7 @@ try:
     OPENSEARCH_AVAILABLE = True
 except ImportError:
     OPENSEARCH_AVAILABLE = False
-    AsyncOpenSearch = MockAsyncOpenSearch
+    AsyncOpenSearch = MockAsyncOpenSearch  # type: ignore[assignment]
 
 
 class OpenSearchLogAnalytics:
@@ -72,9 +72,9 @@ class OpenSearchLogAnalytics:
                 self._indices_initialized = False
             except Exception as e:
                 logging.warning(f"Failed to initialize OpenSearch client: {e}")
-                self.client = MockAsyncOpenSearch()
+                self.client = MockAsyncOpenSearch()  # type: ignore[assignment]
         else:
-            self.client = MockAsyncOpenSearch()
+            self.client = MockAsyncOpenSearch()  # type: ignore[assignment]
 
         # Track whether indices have been initialized
         self._indices_initialized = False
@@ -150,11 +150,11 @@ class OpenSearchLogAnalytics:
         self,
         level: str,
         message: str,
-        attributes: dict[str, Any] = None,
-        trace_id: str = None,
-        workflow_id: str = None,
-        repo_path: str = None,
-        adapter: str = None,
+        attributes: dict[str, Any] | None = None,
+        trace_id: str | None = None,
+        workflow_id: str | None = None,
+        repo_path: str | None = None,
+        adapter: str | None = None,
     ):
         """Log an event to OpenSearch."""
         if not self.client:
@@ -203,12 +203,12 @@ class OpenSearchLogAnalytics:
 
     async def search_logs(
         self,
-        query: str = None,
-        level: str = None,
-        workflow_id: str = None,
-        repo_path: str = None,
-        start_time: str = None,
-        end_time: str = None,
+        query: str | None = None,
+        level: str | None = None,
+        workflow_id: str | None = None,
+        repo_path: str | None = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
         size: int = 100,
     ) -> list[dict[str, Any]]:
         """Search logs with various filters."""
@@ -219,18 +219,18 @@ class OpenSearchLogAnalytics:
             search_body = {"query": {"bool": {"must": []}}, "size": size}
 
             if query:
-                search_body["query"]["bool"]["must"].append(
+                search_body["query"]["bool"]["must"].append(  # type: ignore[index]
                     {"simple_query_string": {"query": query}}
                 )
 
             if level:
-                search_body["query"]["bool"]["must"].append({"term": {"level": level}})
+                search_body["query"]["bool"]["must"].append({"term": {"level": level}})  # type: ignore[index]
 
             if workflow_id:
-                search_body["query"]["bool"]["must"].append({"term": {"workflow_id": workflow_id}})
+                search_body["query"]["bool"]["must"].append({"term": {"workflow_id": workflow_id}})  # type: ignore[index]
 
             if repo_path:
-                search_body["query"]["bool"]["must"].append({"term": {"repo_path": repo_path}})
+                search_body["query"]["bool"]["must"].append({"term": {"repo_path": repo_path}})  # type: ignore[index]
 
             if start_time or end_time:
                 date_range = {}
@@ -238,10 +238,10 @@ class OpenSearchLogAnalytics:
                     date_range["gte"] = start_time
                 if end_time:
                     date_range["lte"] = end_time
-                search_body["query"]["bool"]["must"].append({"range": {"timestamp": date_range}})
+                search_body["query"]["bool"]["must"].append({"range": {"timestamp": date_range}})  # type: ignore[index]
 
             # If no filters, match all
-            if not search_body["query"]["bool"]["must"]:
+            if not search_body["query"]["bool"]["must"]:  # type: ignore[index]
                 search_body["query"] = {"match_all": {}}
 
             response = await self.client.search(index=self.log_index, body=search_body)
@@ -253,12 +253,12 @@ class OpenSearchLogAnalytics:
 
     async def search_workflows(
         self,
-        workflow_id: str = None,
-        adapter: str = None,
-        task_type: str = None,
-        status: str = None,
-        start_time: str = None,
-        end_time: str = None,
+        workflow_id: str | None = None,
+        adapter: str | None = None,
+        task_type: str | None = None,
+        status: str | None = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
         size: int = 100,
     ) -> list[dict[str, Any]]:
         """Search workflows with various filters."""
@@ -269,16 +269,16 @@ class OpenSearchLogAnalytics:
             search_body = {"query": {"bool": {"must": []}}, "size": size}
 
             if workflow_id:
-                search_body["query"]["bool"]["must"].append({"term": {"workflow_id": workflow_id}})
+                search_body["query"]["bool"]["must"].append({"term": {"workflow_id": workflow_id}})  # type: ignore[index]
 
             if adapter:
-                search_body["query"]["bool"]["must"].append({"term": {"adapter": adapter}})
+                search_body["query"]["bool"]["must"].append({"term": {"adapter": adapter}})  # type: ignore[index]
 
             if task_type:
-                search_body["query"]["bool"]["must"].append({"term": {"task_type": task_type}})
+                search_body["query"]["bool"]["must"].append({"term": {"task_type": task_type}})  # type: ignore[index]
 
             if status:
-                search_body["query"]["bool"]["must"].append({"term": {"status": status}})
+                search_body["query"]["bool"]["must"].append({"term": {"status": status}})  # type: ignore[index]
 
             if start_time or end_time:
                 date_range = {}
@@ -286,10 +286,10 @@ class OpenSearchLogAnalytics:
                     date_range["gte"] = start_time
                 if end_time:
                     date_range["lte"] = end_time
-                search_body["query"]["bool"]["must"].append({"range": {"timestamp": date_range}})
+                search_body["query"]["bool"]["must"].append({"range": {"timestamp": date_range}})  # type: ignore[index]
 
             # If no filters, match all
-            if not search_body["query"]["bool"]["must"]:
+            if not search_body["query"]["bool"]["must"]:  # type: ignore[index]
                 search_body["query"] = {"match_all": {}}
 
             response = await self.client.search(index=self.workflow_index, body=search_body)
@@ -422,7 +422,7 @@ class OpenSearchIntegration:
         )
 
     async def log_workflow_update(
-        self, workflow_id: str, status: str, progress: int = None, **kwargs
+        self, workflow_id: str, status: str, progress: int | None = None, **kwargs
     ):
         """Log workflow update event."""
         details = dict(kwargs)
@@ -488,8 +488,8 @@ class OpenSearchIntegration:
         self,
         workflow_id: str,
         error_msg: str,
-        repo_path: str = None,
-        adapter: str = None,
+        repo_path: str | None = None,
+        adapter: str | None = None,
         attributes: dict[str, Any] | None = None,
     ):
         """Log an error event."""

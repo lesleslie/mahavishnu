@@ -92,7 +92,7 @@ class PermissionChecker:
         try:
             from ApplicationServices import AXIsProcessTrusted
 
-            return AXIsProcessTrusted()
+            return AXIsProcessTrusted()  # type: ignore[no-any-return]
         except ImportError:
             # PyObjC not available, assume permissions are granted
             # This allows the code to run in test environments
@@ -204,7 +204,7 @@ class PermissionChecker:
 
             # Request accessibility with prompt
             options = {"kAXTrustedCheckOptionPrompt": True}
-            return AXIsProcessTrustedWithOptions(options)
+            return AXIsProcessTrustedWithOptions(options)  # type: ignore[no-any-return]
         except ImportError:
             return True
         except Exception:

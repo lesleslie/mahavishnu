@@ -17,10 +17,10 @@ except ImportError:
         from dhara import is_ulid
 
         def generate_config_id() -> str:
-            return generate_ulid()
+            return generate_ulid()  # type: ignore[no-any-return]
 
         def is_config_ulid(value: str) -> bool:
-            return is_ulid(value)
+            return is_ulid(value)  # type: ignore[no-any-return]
     except ImportError:
         # Last resort: timestamp-based ULID generation
         import os
@@ -43,7 +43,7 @@ except ImportError:
             def b32_encode(data):
                 return "".join([alphabet[(b >> 35) & 31] for b in data])
 
-            return b32_encode(ulid_bytes)
+            return b32_encode(ulid_bytes)  # type: ignore[no-any-return]
 
         def is_config_ulid(value: str) -> bool:
             # Basic validation: 26 chars, alphanumeric

@@ -502,8 +502,8 @@ class CrossRepoDependencyLinker:
             "total": len(self._dependencies),
             "cross_repo": 0,
             "same_repo": 0,
-            "by_type": {t.value: 0 for t in DependencyType},
-            "by_status": {s.value: 0 for s in DependencyStatus},
+            "by_type": {t.value: 0 for t in DependencyType},  # type: ignore[dict-item]
+            "by_status": {s.value: 0 for s in DependencyStatus},  # type: ignore[dict-item]
         }
 
         for dep in self._dependencies.values():
@@ -512,8 +512,8 @@ class CrossRepoDependencyLinker:
             else:
                 counts["same_repo"] += 1
 
-            counts["by_type"][dep.dependency_type.value] += 1
-            counts["by_status"][dep.status.value] += 1
+            counts["by_type"][dep.dependency_type.value] += 1  # type: ignore[index]
+            counts["by_status"][dep.status.value] += 1  # type: ignore[index]
 
         return counts
 

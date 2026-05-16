@@ -231,7 +231,7 @@ class MessageBus:
             self._queues[pool_id] = asyncio.Queue(maxsize=self._max_queue_size)
 
         try:
-            return await asyncio.wait_for(
+            return await asyncio.wait_for(  # type: ignore[no-any-return]
                 self._queues[pool_id].get(),
                 timeout=timeout,
             )

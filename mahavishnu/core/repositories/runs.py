@@ -300,12 +300,12 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
         # Handle JSONB merges
         if data.metrics is not None:
             updates.append(f"metrics = metrics || ${param_idx}::jsonb")
-            params.append(data.metrics)
+            params.append(data.metrics)  # type: ignore[arg-type]
             param_idx += 1
 
         if data.metadata is not None:
             updates.append(f"metadata = metadata || ${param_idx}::jsonb")
-            params.append(data.metadata)
+            params.append(data.metadata)  # type: ignore[arg-type]
             param_idx += 1
 
         if not updates:
@@ -391,36 +391,36 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
 
         if filters.status:
             conditions.append(f"status = ${param_idx}")
-            params.append(filters.status)
+            params.append(filters.status)  # type: ignore[arg-type]
             param_idx += 1
 
         if filters.pool_name:
             conditions.append(f"pool_name = ${param_idx}")
-            params.append(filters.pool_name)
+            params.append(filters.pool_name)  # type: ignore[arg-type]
             param_idx += 1
 
         if filters.worker_id:
             conditions.append(f"worker_id = ${param_idx}")
-            params.append(filters.worker_id)
+            params.append(filters.worker_id)  # type: ignore[arg-type]
             param_idx += 1
 
         if filters.engine:
             conditions.append(f"engine = ${param_idx}")
-            params.append(filters.engine)
+            params.append(filters.engine)  # type: ignore[arg-type]
             param_idx += 1
 
         if filters.started_after:
             conditions.append(f"started_at >= ${param_idx}")
-            params.append(filters.started_after)
+            params.append(filters.started_after)  # type: ignore[arg-type]
             param_idx += 1
 
         if filters.started_before:
             conditions.append(f"started_at <= ${param_idx}")
-            params.append(filters.started_before)
+            params.append(filters.started_before)  # type: ignore[arg-type]
             param_idx += 1
 
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        params.extend([filters.limit, filters.offset])
+        params.extend([filters.limit, filters.offset])  # type: ignore[list-item]
 
         query = f"""
             SELECT * FROM {self._table}

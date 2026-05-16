@@ -36,7 +36,7 @@ except ImportError:  # pragma: no cover - optional dependency
         def set(self, value: float) -> None:
             return None
 
-    Counter = Gauge = _NoopMetric
+    Counter = Gauge = _NoopMetric  # type: ignore[assignment]
 
 
 logger = logging.getLogger(__name__)
@@ -325,7 +325,7 @@ async def retry_async(
         except asyncio.CancelledError:
             raise
         except retry_policy.retryable_exceptions as exc:  # type: ignore[misc]
-            last_exception = exc
+            last_exception = exc  # type: ignore[assignment]
             metrics_collector.record_retry_attempt(dependency, operation, "failure")
             if attempt >= retry_policy.max_attempts:
                 break

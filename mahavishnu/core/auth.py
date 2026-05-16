@@ -118,7 +118,7 @@ class JWTAuth:
             payload = jwt.decode(token, self.secret, algorithms=[self.algorithm])
             payload.setdefault("username", payload.get("user_id") or payload.get("sub"))
             return TokenPayload(payload)
-        except tuple(self._JWT_ERROR_MAP) as e:
+        except tuple(self._JWT_ERROR_MAP) as e:  # type: ignore[misc]
             msg, detail = self._JWT_ERROR_MAP[type(e)]
             raise AuthenticationError(message=msg, details={"error": detail}) from e
         except Exception as e:

@@ -95,7 +95,7 @@ except ImportError:
         def info(self, val):
             pass
 
-    def start_http_server(port: int):
+    def start_http_server(port: int):  # type: ignore[misc]
         logging.warning(
             f"prometheus_client not available, metrics server not started on port {port}"
         )

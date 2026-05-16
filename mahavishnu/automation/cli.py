@@ -92,7 +92,7 @@ def launch_app(
         result = asyncio.run(_run())
         if result.status == "success":
             if not json_output:
-                data = result.data or {}
+                data = result.data or {}  # type: ignore[var-annotated]
                 console.print(f"[green]✓[/green] Launched: {data.get('name', bundle_id)}")
             else:
                 format_result(result, "json")
@@ -130,7 +130,7 @@ def list_apps(
             console.print(f"[red]Error:[/red] {result.error}")
             raise typer.Exit(1)
 
-        apps = result.data.get("result", result.data) if result.data else []
+        apps = result.data.get("result", result.data) if result.data else []  # type: ignore[var-annotated]
 
         if json_output:
             format_result({"apps": apps}, "json")
@@ -242,7 +242,7 @@ def list_windows(
             console.print(f"[red]Error:[/red] {result.error}")
             raise typer.Exit(1)
 
-        windows = result.data.get("result", result.data) if result.data else []
+        windows = result.data.get("result", result.data) if result.data else []  # type: ignore[var-annotated]
 
         if json_output:
             format_result({"windows": windows}, "json")
@@ -448,7 +448,7 @@ def screenshot(
 
     async def _run():
         async with manager:
-            return await manager.screenshot(region=region_tuple)
+            return await manager.screenshot(region=region_tuple)  # type: ignore[arg-type]
 
     try:
         result = asyncio.run(_run())
@@ -464,7 +464,7 @@ def screenshot(
                 elif "result" in image_data:
                     image_bytes = image_data["result"]
                 else:
-                    image_bytes = image_data
+                    image_bytes = image_data  # type: ignore[assignment]
             else:
                 image_bytes = image_data
 
@@ -509,7 +509,7 @@ def check_permissions(
             console.print(f"[red]Error:[/red] {result.error}")
             raise typer.Exit(1)
 
-        data = result.data or {}
+        data = result.data or {}  # type: ignore[var-annotated]
 
         if json_output:
             format_result(data, "json")
@@ -597,7 +597,7 @@ def list_screens(
             console.print(f"[red]Error:[/red] {result.error}")
             raise typer.Exit(1)
 
-        screens = result.data.get("result", result.data) if result.data else []
+        screens = result.data.get("result", result.data) if result.data else []  # type: ignore[var-annotated]
 
         if json_output:
             format_result({"screens": screens}, "json")

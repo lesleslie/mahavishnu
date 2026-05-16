@@ -357,7 +357,7 @@ class ExternalIssueImporter:
                 },
             )
 
-            created_task = await self.task_store.create(task)
+            created_task = await self.task_store.create(task)  # type: ignore[arg-type]
 
             # Track the import
             key = f"{issue.source.value}:{issue.external_id}"

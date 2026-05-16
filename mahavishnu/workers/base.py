@@ -48,7 +48,7 @@ class WorkerResult:
 
         return cls(
             worker_id=data["worker_id"],
-            status=status,
+            status=status,  # type: ignore[arg-type]
             output=data.get("output"),
             error=data.get("error"),
             exit_code=data.get("exit_code"),

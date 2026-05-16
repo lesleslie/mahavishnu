@@ -449,7 +449,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
         # Handle metadata merge
         if data.metadata is not None:
             updates.append(f"metadata = metadata || $${param_idx}::jsonb")
-            params.append(data.metadata)
+            params.append(data.metadata)  # type: ignore[arg-type]
             param_idx += 1
 
         if not updates:
@@ -458,7 +458,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
 
         now = datetime.now(UTC)
         updates.append(f"updated_at = ${param_idx}")
-        params.append(now)
+        params.append(now)  # type: ignore[arg-type]
 
         query = f"""
             UPDATE {self._table}
@@ -521,16 +521,16 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
 
         if filters.created_after:
             conditions.append(f"created_at >= ${param_idx}")
-            params.append(filters.created_after)
+            params.append(filters.created_after)  # type: ignore[arg-type]
             param_idx += 1
 
         if filters.created_before:
             conditions.append(f"created_at <= ${param_idx}")
-            params.append(filters.created_before)
+            params.append(filters.created_before)  # type: ignore[arg-type]
             param_idx += 1
 
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        params.extend([filters.limit, filters.offset])
+        params.extend([filters.limit, filters.offset])  # type: ignore[list-item]
 
         query = f"""
             SELECT * FROM {self._table}
@@ -667,7 +667,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
         try:
             async with self.transaction() as conn:
                 result = await conn.execute(query, task_id)
-                return result == "DELETE 1"
+                return result == "DELETE 1"  # type: ignore[no-any-return]
 
         except Exception as e:
             raise self._handle_error(

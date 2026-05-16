@@ -413,13 +413,13 @@ class PgvectorAdapter:
                     """
                 )
             else:  # IVFFlat
-                config = self._settings.ivfflat_config
+                config = self._settings.ivfflat_config  # type: ignore[assignment]
                 await conn.execute(
                     f"""
                     CREATE INDEX IF NOT EXISTS {table_name}_embedding_ivf_idx
                     ON {qualified}
                     USING ivfflat (embedding {operator_class})
-                    WITH (lists = {config.lists})
+                    WITH (lists = {config.lists})  # type: ignore[attr-defined]
                     """
                 )
 

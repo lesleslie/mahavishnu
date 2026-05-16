@@ -59,7 +59,7 @@ try:
 
     OPENSEARCH_AVAILABLE = True
 except ImportError:
-    _AsyncOpenSearch = None
+    _AsyncOpenSearch = None  # type: ignore[assignment]
     OPENSEARCH_AVAILABLE = False
 
 

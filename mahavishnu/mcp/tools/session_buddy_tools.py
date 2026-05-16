@@ -42,7 +42,7 @@ def register_session_buddy_tools(
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
-        required_permission=Permission.READ_REPO,
+        required_permission=Permission.READ_REPO,  # type: ignore[arg-type]
         require_repo_param="project_path",
     )
     async def index_code_graph(
@@ -69,7 +69,7 @@ def register_session_buddy_tools(
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
-        required_permission=Permission.READ_REPO,
+        required_permission=Permission.READ_REPO,  # type: ignore[arg-type]
         require_repo_param="project_path",
     )
     async def get_function_context(
@@ -93,7 +93,7 @@ def register_session_buddy_tools(
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
-        required_permission=Permission.READ_REPO,
+        required_permission=Permission.READ_REPO,  # type: ignore[arg-type]
         require_repo_param="project_path",
     )
     async def find_related_code(
@@ -118,7 +118,7 @@ def register_session_buddy_tools(
     @server.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager,
-        required_permission=Permission.READ_REPO,
+        required_permission=Permission.READ_REPO,  # type: ignore[arg-type]
         require_repo_param="project_path",
     )
     async def index_documentation(project_path: str, user_id: str | None = None) -> dict[str, Any]:

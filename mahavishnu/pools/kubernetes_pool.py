@@ -178,7 +178,7 @@ class KubernetesPool(BasePool):
                 body=job_spec,
             )
 
-            self._active_jobs[id(task)] = job_name
+            self._active_jobs[id(task)] = job_name  # type: ignore[index]
             logger.info(f"Created K8s Job: {job_name}")
 
             # Wait for completion
@@ -309,7 +309,7 @@ class KubernetesPool(BasePool):
                 "error": str(e),
             }
 
-    async def get_metrics(self) -> dict[str, Any]:
+    async def get_metrics(self) -> dict[str, Any]:  # type: ignore[override]
         """Get K8s pool metrics.
 
         Returns:
@@ -324,7 +324,7 @@ class KubernetesPool(BasePool):
             sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
         )
 
-        return PoolMetrics(
+        return PoolMetrics(  # type: ignore[return-value]
             pool_id=self.pool_id,
             status=self._status,
             active_workers=health.get("active_jobs", 0),
@@ -410,7 +410,7 @@ class KubernetesPool(BasePool):
         """
         from kubernetes import client
 
-        return client.V1Job(
+        return client.V1Job(  # type: ignore[no-any-return]
             api_version="batch/v1",
             kind="Job",
             metadata=client.V1ObjectMeta(
@@ -501,7 +501,7 @@ class KubernetesPool(BasePool):
                 name=pod_name,
                 namespace=self.namespace,
             )
-            return logs
+            return logs  # type: ignore[no-any-return]
         except Exception as e:
             logger.warning(f"Failed to get logs from {pod_name}: {e}")
             return ""

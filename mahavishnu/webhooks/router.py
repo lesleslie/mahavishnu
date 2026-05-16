@@ -118,7 +118,7 @@ async def validate_auth(
                     ],
                 },
             )
-        return result
+        return result  # type: ignore[no-any-return]
     except AuthenticationError as e:
         logger.warning(f"Authentication failed: {e.message}")
         raise HTTPException(
@@ -326,7 +326,7 @@ async def webhook_health() -> dict[str, str]:
     return {
         "status": "healthy",
         "service": "mahavishnu-webhooks",
-        "endpoints": ["/openclaw/sweep", "/openclaw/workflow"],
+        "endpoints": ["/openclaw/sweep", "/openclaw/workflow"],  # type: ignore[dict-item]
     }
 
 

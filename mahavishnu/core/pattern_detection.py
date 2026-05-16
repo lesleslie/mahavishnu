@@ -200,7 +200,7 @@ class PatternDetector:
                     occurrence_count=len(blocked_tasks),
                     affected_task_ids=[t["id"] for t in blocked_tasks[:20]],
                     affected_repositories=list(
-                        {t.get("repository") for t in blocked_tasks if t.get("repository")}
+                        {t.get("repository") for t in blocked_tasks if t.get("repository")}  # type: ignore[misc]
                     ),
                     resolution_suggestions=self._get_resolution_suggestions(keyword),
                     avg_resolution_time_hours=avg_resolution,
@@ -239,7 +239,7 @@ class PatternDetector:
 
         # Create patterns for common sequences
         total_tasks = len(tasks)
-        for sequence, count in transitions.most_common(10):
+        for sequence, count in transitions.most_common(10):  # type: ignore[attr-defined]
             if count >= self.config.min_samples:
                 completion_prob = self._calculate_sequence_completion_prob(sequence, tasks)
 

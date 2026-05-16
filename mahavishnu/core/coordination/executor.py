@@ -277,11 +277,11 @@ class CoordinationExecutor:
             from mahavishnu.pools import PoolSelector
 
             selector = PoolSelector(pool_selector)
-            result = await self.pool_manager.route_task(
+            result = await self.pool_manager.route_task(  # type: ignore[union-attr]
                 task_data,
                 pool_selector=selector,
             )
-            return result
+            return result  # type: ignore[no-any-return]
 
         except Exception as e:
             return {

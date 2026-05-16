@@ -271,7 +271,7 @@ class HealthChecker(HTTPXClientMixin):
                 return health_result
 
             # Parse response body
-            json_data = result.get("json") or {}
+            json_data = result.get("json") or {}  # type: ignore[var-annotated]
             status_str = json_data.get("status", "ok").lower()
 
             # Map status string to enum

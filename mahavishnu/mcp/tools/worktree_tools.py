@@ -76,7 +76,7 @@ async def _dispatch_worktree_action(
     fields: dict[str, Any],
 ) -> dict[str, Any]:
     if action == "create":
-        return await coordinator.create_worktree(
+        return await coordinator.create_worktree(  # type: ignore[no-any-return]
             repo_nickname=fields["repo_nickname"],
             branch=fields["branch"],
             worktree_name=fields.get("worktree_name"),
@@ -84,7 +84,7 @@ async def _dispatch_worktree_action(
             user_id=fields["user_id"],
         )
     if action == "remove":
-        return await coordinator.remove_worktree(
+        return await coordinator.remove_worktree(  # type: ignore[no-any-return]
             repo_nickname=fields["repo_nickname"],
             worktree_path=fields["worktree_path"],
             force=fields.get("force", False),
@@ -92,16 +92,16 @@ async def _dispatch_worktree_action(
             user_id=fields["user_id"],
         )
     if action == "list":
-        return await coordinator.list_worktrees(repo_nickname=fields.get("repo_nickname"))
+        return await coordinator.list_worktrees(repo_nickname=fields.get("repo_nickname"))  # type: ignore[no-any-return]
     if action == "prune":
-        return await coordinator.prune_worktrees(fields["repo_nickname"])
+        return await coordinator.prune_worktrees(fields["repo_nickname"])  # type: ignore[no-any-return]
     if action == "safety_status":
-        return await coordinator.get_worktree_safety_status(
+        return await coordinator.get_worktree_safety_status(  # type: ignore[no-any-return]
             repo_nickname=fields["repo_nickname"],
             worktree_path=fields["worktree_path"],
         )
     if action == "provider_health":
-        return await coordinator.get_provider_health()
+        return await coordinator.get_provider_health()  # type: ignore[no-any-return]
     return _unsupported_action_payload(action)
 
 
