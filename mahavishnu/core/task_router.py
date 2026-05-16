@@ -265,8 +265,7 @@ class StateManager:
         copied["results"] = list(record.get("results", []))
         copied["errors"] = list(record.get("errors", []))
         copied["adapter_states"] = {
-            str(key): dict(value)
-            for key, value in record.get("adapter_states", {}).items()
+            str(key): dict(value) for key, value in record.get("adapter_states", {}).items()
         }
         return copied
 

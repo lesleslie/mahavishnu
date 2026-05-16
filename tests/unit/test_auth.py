@@ -1,8 +1,9 @@
 """Unit tests for JWT authentication."""
 
-import pytest
 from unittest.mock import patch
+
 import jwt
+import pytest
 
 from mahavishnu.core.auth import JWTAuth, get_auth_from_config
 from mahavishnu.core.config import MahavishnuSettings

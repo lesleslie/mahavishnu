@@ -433,5 +433,5 @@ for entity in graph["connected_entities"]:
 ## Related Documentation
 
 - [Akosha README](https://github.com/lesleslie/akosha) - Complete documentation
-- [MCP Tools Spec](docs/MCP_TOOLS_SPECIFICATION.md) - Akosha MCP tools
-- [Privacy Architecture](docs/PRIVACY.md) - Local embeddings, 100% private
+- MCP Tools Spec - Akosha MCP tools
+- Privacy Architecture - Local embeddings, 100% private

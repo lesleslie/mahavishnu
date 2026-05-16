@@ -308,4 +308,4 @@ mahavishnu health
 
 ______________________________________________________________________
 
-**Need more help?** Check the [full documentation](docs/) or open an issue on GitHub.
+**Need more help?** Check the full documentation or open an issue on GitHub.

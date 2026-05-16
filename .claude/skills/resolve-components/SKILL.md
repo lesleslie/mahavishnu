@@ -416,6 +416,6 @@ resolver.register_hook(LoggingHook())
 
 ## Related Documentation
 
-- [Oneiric Resolver](oneiric/core/resolver.py) - Complete implementation
-- [ADR 002: Deterministic Resolution](docs/adr/002-deterministic-resolution.md) - Architecture decisions
-- [Resolution Examples](docs/examples/resolution/) - Code examples and patterns
+- Oneiric Resolver - Complete implementation
+- ADR 002: Deterministic Resolution - Architecture decisions
+- Resolution Examples - Code examples and patterns

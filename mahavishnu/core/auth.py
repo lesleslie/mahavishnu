@@ -96,6 +96,12 @@ class JWTAuth:
         token_scopes = scopes if scopes is not None else claims.get("scopes")
         return self.create_token(user_id=user_id, scopes=token_scopes, **merged_claims)
 
+    _JWT_ERROR_MAP: dict[type, tuple[str, str]] = {
+        jwt.exceptions.InvalidSignatureError: ("Invalid token signature", "Invalid signature"),
+        jwt.exceptions.ExpiredSignatureError: ("Token has expired", "Expired token"),
+        jwt.exceptions.DecodeError: ("Could not decode token", "Decode error"),
+    }
+
     def verify_token(self, token: str) -> dict[str, Any]:
         """Verify and decode a JWT token.
 
@@ -112,21 +118,9 @@ class JWTAuth:
             payload = jwt.decode(token, self.secret, algorithms=[self.algorithm])
             payload.setdefault("username", payload.get("user_id") or payload.get("sub"))
             return TokenPayload(payload)
-        except jwt.exceptions.InvalidSignatureError as e:
-            raise AuthenticationError(
-                message="Invalid token signature",
-                details={"error": "Invalid signature"},
-            ) from e
-        except jwt.exceptions.ExpiredSignatureError as e:
-            raise AuthenticationError(
-                message="Token has expired",
-                details={"error": "Expired token"},
-            ) from e
-        except jwt.exceptions.DecodeError as e:
-            raise AuthenticationError(
-                message="Could not decode token",
-                details={"error": "Decode error"},
-            ) from e
+        except tuple(self._JWT_ERROR_MAP) as e:
+            msg, detail = self._JWT_ERROR_MAP[type(e)]
+            raise AuthenticationError(message=msg, details={"error": detail}) from e
         except Exception as e:
             raise AuthenticationError(
                 message=f"Authentication error: {e}",

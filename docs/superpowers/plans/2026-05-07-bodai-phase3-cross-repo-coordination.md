@@ -25,6 +25,7 @@ The coordination infrastructure is largely complete (2951 lines, 316 passing tes
 The roadmap requires a single query that answers: "What is blocked, failing, and needs operator action — right now?"
 
 Missing:
+
 - `CoordinationManager.get_ecosystem_status()` — aggregates active plans, critical blockers, degraded deps
 - `coord_get_ecosystem_status` MCP tool in `coordination_tools.py`
 - `mahavishnu coord ecosystem-status` CLI command
@@ -35,6 +36,7 @@ Missing:
 `CoordinationMemory` pushes events to Session-Buddy but not to Akosha. The roadmap requires operators and agents can search issues, plans, and failure patterns semantically across the ecosystem.
 
 Missing:
+
 - Akosha HTTP client in `CoordinationMemory.__init__`
 - `_push_to_akosha()` helper — POST to `{akosha_url}/tools/call` with `store_memory` tool
 - `search_semantic()` method — POST to Akosha `search_all_systems` for cross-system semantic search
@@ -108,6 +110,7 @@ mahavishnu coord roadmap             # active plans with milestone progress tabl
 `CoordinationMemory.__init__` accepts optional `akosha_url: str | None`. If provided, push coordination events to Akosha after Session-Buddy storage. Degrade silently on `httpx.TransportError`.
 
 Push uses the same `/tools/call` REST pattern as other services:
+
 ```
 POST {akosha_url}/tools/call
 {"name": "store_memory", "arguments": {"content": ..., "metadata": ..., "collection": "coordination"}}

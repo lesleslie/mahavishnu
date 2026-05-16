@@ -159,6 +159,7 @@ class TestSchedulePut:
 
         # Yield to allow the created task to run
         import asyncio
+
         await asyncio.sleep(0)
         mock_put.assert_awaited_once()
 

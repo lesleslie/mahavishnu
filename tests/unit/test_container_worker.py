@@ -166,11 +166,11 @@ class TestStart:
         worker = ContainerWorker(image="python:3.13-slim")
         fake_id = b"abc123container"
         proc = _make_process(returncode=0, stdout=fake_id)
-        with patch(
-            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        with (
+            patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc),
+            patch("mahavishnu.workers.container.asyncio.sleep", new_callable=AsyncMock),
         ):
-            with patch("mahavishnu.workers.container.asyncio.sleep", new_callable=AsyncMock):
-                container_id = await worker.start()
+            container_id = await worker.start()
         assert container_id == "abc123container"
         assert worker.container_id == "abc123container"
         assert worker._running is True
@@ -180,11 +180,11 @@ class TestStart:
     async def test_start_failure_nonzero_return(self):
         worker = ContainerWorker()
         proc = _make_process(returncode=1, stderr=b"image not found")
-        with patch(
-            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        with (
+            patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc),
+            pytest.raises(RuntimeError, match="Failed to launch container"),
         ):
-            with pytest.raises(RuntimeError, match="Failed to launch container"):
-                await worker.start()
+            await worker.start()
         assert worker._status == WorkerStatus.FAILED
 
     @pytest.mark.asyncio
@@ -202,34 +202,38 @@ class TestStart:
             capture_starting()
             await original_sleep(0)
 
-        with patch(
-            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+        with (
+            patch("mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc),
+            patch("mahavishnu.workers.container.asyncio.sleep", side_effect=tracked_sleep),
         ):
-            with patch("mahavishnu.workers.container.asyncio.sleep", side_effect=tracked_sleep):
-                await worker.start()
+            await worker.start()
         assert WorkerStatus.STARTING in status_transitions
         assert worker._status == WorkerStatus.RUNNING
 
     @pytest.mark.asyncio
     async def test_start_exception_wraps_in_runtime_error(self):
         worker = ContainerWorker()
-        with patch(
-            "mahavishnu.workers.container.asyncio.create_subprocess_exec",
-            side_effect=OSError("docker not found"),
+        with (
+            patch(
+                "mahavishnu.workers.container.asyncio.create_subprocess_exec",
+                side_effect=OSError("docker not found"),
+            ),
+            pytest.raises(RuntimeError, match="Container worker failed to start"),
         ):
-            with pytest.raises(RuntimeError, match="Container worker failed to start"):
-                await worker.start()
+            await worker.start()
         assert worker._status == WorkerStatus.FAILED
 
     @pytest.mark.asyncio
     async def test_start_uses_correct_runtime(self):
         worker = ContainerWorker(runtime="podman", image="alpine:3.18")
         proc = _make_process(returncode=0, stdout=b"pcid")
-        with patch(
-            "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
-        ) as mock_exec:
-            with patch("mahavishnu.workers.container.asyncio.sleep", new_callable=AsyncMock):
-                await worker.start()
+        with (
+            patch(
+                "mahavishnu.workers.container.asyncio.create_subprocess_exec", return_value=proc
+            ) as mock_exec,
+            patch("mahavishnu.workers.container.asyncio.sleep", new_callable=AsyncMock),
+        ):
+            await worker.start()
         call_args = mock_exec.call_args[0]
         assert call_args[0] == "podman"
         assert call_args[1] == "run"
@@ -463,12 +467,14 @@ class TestStop:
         worker = ContainerWorker()
         worker.container_id = "cid"
         worker._running = True
-        with patch(
-            "mahavishnu.workers.container.asyncio.create_subprocess_exec",
-            side_effect=OSError("error"),
+        with (
+            patch(
+                "mahavishnu.workers.container.asyncio.create_subprocess_exec",
+                side_effect=OSError("error"),
+            ),
+            pytest.raises(RuntimeError, match="Failed to stop container"),
         ):
-            with pytest.raises(RuntimeError, match="Failed to stop container"):
-                await worker.stop()
+            await worker.stop()
         assert worker._status == WorkerStatus.FAILED
 
     @pytest.mark.asyncio
@@ -476,12 +482,14 @@ class TestStop:
         worker = ContainerWorker()
         worker.container_id = "cid"
         worker._running = True
-        with patch(
-            "mahavishnu.workers.container.asyncio.create_subprocess_exec",
-            side_effect=OSError("err"),
+        with (
+            patch(
+                "mahavishnu.workers.container.asyncio.create_subprocess_exec",
+                side_effect=OSError("err"),
+            ),
+            pytest.raises(RuntimeError),
         ):
-            with pytest.raises(RuntimeError):
-                await worker.stop()
+            await worker.stop()
         assert worker.container_id is None
 
     @pytest.mark.asyncio

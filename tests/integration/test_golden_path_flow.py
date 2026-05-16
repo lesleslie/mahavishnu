@@ -27,7 +27,9 @@ class RecordingSessionBuddy:
         self.memories: list[_RecordedMemory] = []
         self.search_calls: list[dict[str, object]] = []
 
-    async def store_memory(self, collection: str, content: str, metadata: dict[str, object]) -> None:
+    async def store_memory(
+        self, collection: str, content: str, metadata: dict[str, object]
+    ) -> None:
         self.memories.append(_RecordedMemory(collection, content, metadata))
 
     async def search(
@@ -167,7 +169,9 @@ async def test_golden_path_flow_uses_recorded_contract_packet() -> None:
         milestones=["C5a"],
     )
 
-    transcript: list[str] = [f"Incident detected for {fixture.issue_id} with correlation {fixture.correlation_id}."]
+    transcript: list[str] = [
+        f"Incident detected for {fixture.issue_id} with correlation {fixture.correlation_id}."
+    ]
 
     await coordination_memory.store_issue_event("created", issue)
     await coordination_memory.store_plan_event("updated", plan, milestone="C5a")
@@ -238,7 +242,9 @@ async def test_golden_path_flow_uses_recorded_contract_packet() -> None:
     )
 
     fix_result = await orchestrator.execute_fix("pool-golden-path", task)
-    transcript.append(f"Dhara recovery state shows the same correlation and workflow identifiers ({fixture.correlation_id}, {fixture.workflow_id}).")
+    transcript.append(
+        f"Dhara recovery state shows the same correlation and workflow identifiers ({fixture.correlation_id}, {fixture.workflow_id})."
+    )
     transcript.append("Akosha indexed the validated fix for semantic retrieval.")
     transcript.append("Operator cockpit reports the incident resolved and searchable.")
 

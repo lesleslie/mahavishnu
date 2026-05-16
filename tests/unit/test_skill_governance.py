@@ -137,7 +137,6 @@ def test_validate_review_rejects_required_changes() -> None:
 
 def test_promote_draft_rejects_active_state() -> None:
     """promote_draft raises when draft.state is not DRAFT or REVIEW (line 202)."""
-    from mahavishnu.core.skill_governance import SkillActivation
 
     policy = SkillPromotionPolicy()
     draft = SkillDraft(

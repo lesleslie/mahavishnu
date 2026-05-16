@@ -56,6 +56,55 @@ def _unsupported_action_payload(action: str) -> dict[str, Any]:
     }
 
 
+_ACTION_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
+    "create": ("repo_nickname", "branch"),
+    "remove": ("repo_nickname", "worktree_path"),
+    "prune": ("repo_nickname",),
+    "safety_status": ("repo_nickname", "worktree_path"),
+}
+
+
+def _check_required_fields(action: str, fields: dict[str, Any]) -> dict[str, Any] | None:
+    required = _ACTION_REQUIRED_FIELDS.get(action, ())
+    missing = [f for f in required if not fields.get(f)]
+    return _missing_fields_payload(action, missing) if missing else None
+
+
+async def _dispatch_worktree_action(
+    coordinator: Any,
+    action: str,
+    fields: dict[str, Any],
+) -> dict[str, Any]:
+    if action == "create":
+        return await coordinator.create_worktree(
+            repo_nickname=fields["repo_nickname"],
+            branch=fields["branch"],
+            worktree_name=fields.get("worktree_name"),
+            create_branch=fields.get("create_branch", False),
+            user_id=fields["user_id"],
+        )
+    if action == "remove":
+        return await coordinator.remove_worktree(
+            repo_nickname=fields["repo_nickname"],
+            worktree_path=fields["worktree_path"],
+            force=fields.get("force", False),
+            force_reason=fields.get("force_reason"),
+            user_id=fields["user_id"],
+        )
+    if action == "list":
+        return await coordinator.list_worktrees(repo_nickname=fields.get("repo_nickname"))
+    if action == "prune":
+        return await coordinator.prune_worktrees(fields["repo_nickname"])
+    if action == "safety_status":
+        return await coordinator.get_worktree_safety_status(
+            repo_nickname=fields["repo_nickname"],
+            worktree_path=fields["worktree_path"],
+        )
+    if action == "provider_health":
+        return await coordinator.get_provider_health()
+    return _unsupported_action_payload(action)
+
+
 async def worktree_manage(
     action: str,
     user_id: str,
@@ -74,76 +123,23 @@ async def worktree_manage(
     if not coordinator:
         return _missing_coordinator_payload(normalized_action)
 
+    fields = {
+        "user_id": user_id,
+        "repo_nickname": repo_nickname,
+        "branch": branch,
+        "worktree_name": worktree_name,
+        "create_branch": create_branch,
+        "worktree_path": worktree_path,
+        "force": force,
+        "force_reason": force_reason,
+    }
+
+    error = _check_required_fields(normalized_action, fields)
+    if error:
+        return error
+
     try:
-        if normalized_action == "create":
-            missing_fields = [
-                field
-                for field, value in (
-                    ("repo_nickname", repo_nickname),
-                    ("branch", branch),
-                )
-                if not value
-            ]
-            if missing_fields:
-                return _missing_fields_payload(normalized_action, missing_fields)
-
-            return await coordinator.create_worktree(
-                repo_nickname=repo_nickname,
-                branch=branch,
-                worktree_name=worktree_name,
-                create_branch=create_branch,
-                user_id=user_id,
-            )
-
-        if normalized_action == "remove":
-            missing_fields = [
-                field
-                for field, value in (
-                    ("repo_nickname", repo_nickname),
-                    ("worktree_path", worktree_path),
-                )
-                if not value
-            ]
-            if missing_fields:
-                return _missing_fields_payload(normalized_action, missing_fields)
-
-            return await coordinator.remove_worktree(
-                repo_nickname=repo_nickname,
-                worktree_path=worktree_path,
-                force=force,
-                force_reason=force_reason,
-                user_id=user_id,
-            )
-
-        if normalized_action == "list":
-            return await coordinator.list_worktrees(repo_nickname=repo_nickname)
-
-        if normalized_action == "prune":
-            if not repo_nickname:
-                return _missing_fields_payload(normalized_action, ["repo_nickname"])
-            return await coordinator.prune_worktrees(repo_nickname)
-
-        if normalized_action == "safety_status":
-            missing_fields = [
-                field
-                for field, value in (
-                    ("repo_nickname", repo_nickname),
-                    ("worktree_path", worktree_path),
-                )
-                if not value
-            ]
-            if missing_fields:
-                return _missing_fields_payload(normalized_action, missing_fields)
-
-            return await coordinator.get_worktree_safety_status(
-                repo_nickname=repo_nickname,
-                worktree_path=worktree_path,
-            )
-
-        if normalized_action == "provider_health":
-            return await coordinator.get_provider_health()
-
-        return _unsupported_action_payload(normalized_action)
+        return await _dispatch_worktree_action(coordinator, normalized_action, fields)
     except Exception as e:  # pragma: no cover - exercised by integration tests
         return {
             "success": False,

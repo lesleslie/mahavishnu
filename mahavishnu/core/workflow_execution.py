@@ -56,9 +56,7 @@ async def initialize_workflow_state(
     return workflow_id
 
 
-async def validate_pre_execution_qc(
-    app: Any, workflow_id: str, validated_repos: list[str]
-) -> None:
+async def validate_pre_execution_qc(app: Any, workflow_id: str, validated_repos: list[str]) -> None:
     if not app.config.qc.enabled:
         return
 
@@ -301,9 +299,7 @@ async def execute_parallel_workflow(
         errors_count = sum(1 for r in results if isinstance(r, Exception))
         successful_count = len(results) - errors_count
         final_status = (
-            "completed"
-            if errors_count == 0
-            else ("partial" if successful_count > 0 else "failed")
+            "completed" if errors_count == 0 else ("partial" if successful_count > 0 else "failed")
         )
         app.observability.end_workflow_trace(workflow_id, final_status)
 
@@ -467,9 +463,7 @@ async def execute_workflow_parallel(
     progress_callback=None,
     user_id: str | None = None,
 ) -> dict[str, Any]:
-    adapter, validated_repos = await app._prepare_execution(
-        adapter_name, task, repos, user_id
-    )
+    adapter, validated_repos = await app._prepare_execution(adapter_name, task, repos, user_id)
     workflow_id = await initialize_workflow_state(app, task, adapter_name, validated_repos)
     await validate_pre_execution_qc(app, workflow_id, validated_repos)
     checkpoint_id = await create_session_checkpoint(app, task, adapter_name, validated_repos)

@@ -13,12 +13,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import logging
-from typing import Any
-from uuid import UUID
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -56,10 +58,7 @@ _SEARCH_SIMILAR = (
 
 _DELETE_EMBEDDING = "DELETE FROM search.document_embeddings WHERE document_id = $1"
 
-_LIST_ALL = (
-    "SELECT * FROM search.document_embeddings"
-    " ORDER BY created_at DESC LIMIT $1 OFFSET $2"
-)
+_LIST_ALL = "SELECT * FROM search.document_embeddings ORDER BY created_at DESC LIMIT $1 OFFSET $2"
 
 _LIST_BY_MODEL = (
     "SELECT * FROM search.document_embeddings"
@@ -79,7 +78,9 @@ class EmbeddingCreate(BaseModel):
     document_id: UUID = Field(..., description="Document ID")
     model_name: str = Field(..., description="Embedding model name")
     embedding_dim: int = Field(default=384, ge=128, le=1024, description="Embedding dimension")
-    embedding: list[float] = Field(..., min_length=128, max_length=1024, description="Embedding vector")
+    embedding: list[float] = Field(
+        ..., min_length=128, max_length=1024, description="Embedding vector"
+    )
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 
@@ -163,7 +164,9 @@ class EmbeddingRepository(
         """Search for documents with similar embeddings using cosine similarity."""
         try:
             async with self.connection() as conn:
-                rows = await conn.fetch(_SEARCH_SIMILAR, str(query_embedding), similarity_threshold, limit)
+                rows = await conn.fetch(
+                    _SEARCH_SIMILAR, str(query_embedding), similarity_threshold, limit
+                )
                 return [
                     EmbeddingSearchResult(
                         document_id=row["document_id"],

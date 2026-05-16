@@ -227,14 +227,14 @@ class ConfigValidator:
             return
 
         # Check required fields
-        for field in self.REQUIRED_REPO_FIELDS:
-            if field not in repo or not repo[field]:
+        for field_name in self.REQUIRED_REPO_FIELDS:
+            if field_name not in repo or not repo[field_name]:
                 self.report.add_result(
                     ValidationResult(
                         valid=False,
-                        message=f"Missing required field: {field}",
+                        message=f"Missing required field: {field_name}",
                         path=path,
-                        suggestions=[f"Add '{field}: <value>' to this repository entry"],
+                        suggestions=[f"Add '{field_name}: <value>' to this repository entry"],
                     )
                 )
 

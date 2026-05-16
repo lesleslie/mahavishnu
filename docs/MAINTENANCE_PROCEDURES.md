@@ -836,7 +836,7 @@ ______________________________________________________________________
 
 - [Incident Response Runbook](INCIDENT_RESPONSE_RUNBOOK.md)
 - [Production Deployment Guide](PRODUCTION_DEPLOYMENT_GUIDE.md)
-- [Monitoring & Alerting](../monitoring/README.md)
+- Monitoring & Alerting
 
 ______________________________________________________________________
 

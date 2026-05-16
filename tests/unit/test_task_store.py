@@ -434,7 +434,6 @@ class TestTaskStore:
         assert len(deps) == 1
         assert deps[0].depends_on_task_id == "task-2"
 
-
     @pytest.mark.asyncio
     async def test_get_task_not_found(self, store: TaskStore, mock_db: MagicMock) -> None:
         """Test get raises DatabaseError when task not found."""
@@ -519,7 +518,9 @@ class TestTaskStore:
         mock_db.execute.assert_called()
 
     @pytest.mark.asyncio
-    async def test_update_task_completed_sets_completed_at(self, store: TaskStore, mock_db: MagicMock) -> None:
+    async def test_update_task_completed_sets_completed_at(
+        self, store: TaskStore, mock_db: MagicMock
+    ) -> None:
         """Test that setting status=COMPLETED adds completed_at to the query."""
         update_data = TaskUpdate(status=TaskStatus.COMPLETED)
 
@@ -594,7 +595,9 @@ class TestTaskStore:
         assert result == 0
 
     @pytest.mark.asyncio
-    async def test_update_status_batch_non_completed(self, store: TaskStore, mock_db: MagicMock) -> None:
+    async def test_update_status_batch_non_completed(
+        self, store: TaskStore, mock_db: MagicMock
+    ) -> None:
         """Test update_status_batch with non-COMPLETED status (no completed_at)."""
         mock_conn = AsyncMock()
         mock_conn.execute = AsyncMock()
@@ -607,7 +610,9 @@ class TestTaskStore:
         assert result == 2
 
     @pytest.mark.asyncio
-    async def test_update_status_batch_completed(self, store: TaskStore, mock_db: MagicMock) -> None:
+    async def test_update_status_batch_completed(
+        self, store: TaskStore, mock_db: MagicMock
+    ) -> None:
         """Test update_status_batch with COMPLETED status (sets completed_at)."""
         mock_conn = AsyncMock()
         mock_conn.execute = AsyncMock()

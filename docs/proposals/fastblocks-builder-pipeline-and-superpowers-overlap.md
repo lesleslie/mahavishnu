@@ -104,7 +104,7 @@ User prompt
 
 The clearest alignment is with the master platform spec:
 
-- [docs/plans/2026-04-16-bodai-agent-platform-master-spec.md](/Users/les/Projects/mahavishnu/docs/plans/2026-04-16-bodai-agent-platform-master-spec.md:24)
+- docs/plans/2026-04-16-bodai-agent-platform-master-spec.md
 
 That document already argues for a layered system:
 
@@ -116,7 +116,7 @@ My builder recommendation is consistent with that model. The builder product is 
 
 ### 2. Pattern learning/scaffolding is directly relevant
 
-- [docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md](/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md:1)
+- docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md
 
 **Status note**: This spec is fully shipped as of 2026-04-30 (all 63 tasks complete). The pattern library, scaffolding engine, and FastBlocks pattern extraction are live in Mahavishnu. The overlap analysis below remains valid; treat the spec as describing the current production state rather than future work.
 
@@ -136,7 +136,7 @@ This overlaps heavily with:
 
 ### 3. Code indexing integration is useful supporting infrastructure
 
-- [docs/superpowers/specs/2026-04-26-code-indexing-integration-design.md](/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-04-26-code-indexing-integration-design.md:1)
+- docs/superpowers/specs/2026-04-26-code-indexing-integration-design.md
 
 **Status note**: Shipped 2026-04-30 (all 42 tasks complete). Call chain resolution, impact analysis, and incremental re-indexing are live in Session-Buddy.
 
@@ -149,7 +149,7 @@ This does not conflict with the builder proposal. It is useful input for:
 
 ### 4. Agent/skill modernization helps orchestration quality
 
-- [docs/superpowers/specs/2026-04-26-agent-skill-modernization-design.md](/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-04-26-agent-skill-modernization-design.md:1)
+- docs/superpowers/specs/2026-04-26-agent-skill-modernization-design.md
 
 This can improve the builder backend indirectly by making orchestrated skills and agents more ecosystem-aware.
 
@@ -159,7 +159,7 @@ This can improve the builder backend indirectly by making orchestrated skills an
 
 The pattern learning/scaffolding design puts the pattern library under Mahavishnu:
 
-- [docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md](/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md:121)
+- docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md
 
 That is reasonable for internal scaffolding, but it creates a boundary problem for a real FastBlocks-native product:
 
@@ -291,10 +291,10 @@ The cleanest next step is:
 
 ## Most Relevant Existing Docs
 
-- [docs/plans/2026-04-16-bodai-agent-platform-master-spec.md](/Users/les/Projects/mahavishnu/docs/plans/2026-04-16-bodai-agent-platform-master-spec.md:1)
-- [docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md](/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md:1)
-- [docs/superpowers/specs/2026-04-26-code-indexing-integration-design.md](/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-04-26-code-indexing-integration-design.md:1)
-- [docs/superpowers/specs/2026-04-26-agent-skill-modernization-design.md](/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-04-26-agent-skill-modernization-design.md:1)
+- docs/plans/2026-04-16-bodai-agent-platform-master-spec.md
+- docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md
+- docs/superpowers/specs/2026-04-26-code-indexing-integration-design.md
+- docs/superpowers/specs/2026-04-26-agent-skill-modernization-design.md
 
 ## Final Answer
 

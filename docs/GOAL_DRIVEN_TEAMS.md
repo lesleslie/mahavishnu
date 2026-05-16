@@ -437,7 +437,7 @@ asyncio.run(complex_goal_with_llm())
 
 ## Related Documentation
 
-- [Agno Adapter Documentation](/docs/AGNO_ADAPTER.md)
-- [Team Configuration Reference](/docs/AGNO_TEAMS.md)
+- Agno Adapter Documentation
+- Team Configuration Reference
 - [MCP Tools Reference](/docs/MCP_TOOLS_REFERENCE.md)
-- [Architecture Overview](/ARCHITECTURE.md)
+- Architecture Overview

@@ -47,7 +47,9 @@ async def test_in_memory_transport_publishes_and_records_history():
         seen.append(envelope)
 
     subscription_id = transport.subscribe("workflow.*", handler)
-    envelope = create_event_envelope("workflow.started", "test_service", payload={"workflow_id": "wf-1"})
+    envelope = create_event_envelope(
+        "workflow.started", "test_service", payload={"workflow_id": "wf-1"}
+    )
 
     returned = await transport.publish(envelope)
 

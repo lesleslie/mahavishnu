@@ -607,11 +607,15 @@ def ecosystem_status() -> None:
         done = plan["milestones_done"]
         total = plan["milestones_total"]
         progress = f"{done}/{total} milestones" if total else "no milestones"
-        console.print(f"  {plan['id']}: {plan['title']} — {progress} (target: {plan['target'][:10]})")
+        console.print(
+            f"  {plan['id']}: {plan['title']} — {progress} (target: {plan['target'][:10]})"
+        )
 
     # Critical blockers
     blocker_color = "red" if status["critical_blockers"] else "green"
-    console.print(f"\n[bold]Critical Blockers:[/bold] [{blocker_color}]{status['critical_blockers']}[/{blocker_color}]")
+    console.print(
+        f"\n[bold]Critical Blockers:[/bold] [{blocker_color}]{status['critical_blockers']}[/{blocker_color}]"
+    )
     for b in status["blockers"]:
         repos_str = ", ".join(b["repos"])
         console.print(f"  [{b['priority']}] {b['id']}: {b['title']} ({repos_str})")

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Track A — markdown edits only. Track B — `httpx` (already in session-buddy), `asyncio.create_task` for fire-and-forget, `pytest-asyncio`, `unittest.mock`.
 
----
+______________________________________________________________________
 
 ## Why These Changes
 
@@ -21,7 +21,7 @@ Investigation revealed:
 - `docs/architecture/ARCHITECTURE.md` still says "Last Updated: 2026-05-02" and has zero Dhara mentions — it is the only doc that needs a real content addition.
 - Session-Buddy `channel_tracking_tools.py` is purely in-memory — Dhara publishing is the one genuinely-unimplemented feature.
 
----
+______________________________________________________________________
 
 ## File Map
 
@@ -43,13 +43,14 @@ Investigation revealed:
 | Modify | `session_buddy/mcp/server.py` | Read `SESSION_BUDDY_DHARA_URL` env var; pass `DharaChannelPublisher` to registration |
 | Modify | `tests/unit/test_channel_tracking_tools.py` | Add 5 Phase 2 tests covering publish on start/heartbeat/end, skip when no publisher, error tolerance |
 
----
+______________________________________________________________________
 
 ## Track A: Documentation Housekeeping
 
 ### Task 1: Fix PLAN_INDEX.md stale entries
 
 **Files:**
+
 - Modify: `docs/plans/PLAN_INDEX.md`
 
 - [ ] **Step 1: Update Remaining Work Execution Order entry**
@@ -154,11 +155,12 @@ git -C /Users/les/Projects/mahavishnu add docs/plans/PLAN_INDEX.md
 git -C /Users/les/Projects/mahavishnu commit -m "docs: update PLAN_INDEX — terminal, remaining-work, and hatchet entries now complete/historical"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Tick Hatchet adapter plan checkboxes
 
 **Files:**
+
 - Modify: `docs/superpowers/plans/2026-05-08-hatchet-adapter.md`
 
 The code was shipped 2026-05-08 but none of the 8 tasks had their checkboxes ticked.
@@ -192,11 +194,12 @@ git -C /Users/les/Projects/mahavishnu add docs/superpowers/plans/2026-05-08-hatc
 git -C /Users/les/Projects/mahavishnu commit -m "docs: tick all hatchet adapter plan checkboxes — delivered 2026-05-08"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Mark P2 deferred backlog items delivered
 
 **Files:**
+
 - Modify: `docs/plans/2026-05-07-mahavishnu-master-backlog.md`
 
 The three P2 deferred items are actually implemented. `PoolManager._persist_pool_state` is called at spawn (line 242), route (line 370/466), and close (line 542). `ARCHITECTURE.md` will be updated in Task 5.
@@ -264,11 +267,12 @@ git -C /Users/les/Projects/mahavishnu add docs/plans/2026-05-07-mahavishnu-maste
 git -C /Users/les/Projects/mahavishnu commit -m "docs: mark P2 PoolManager/RoutingDecisionBuffer deferred items delivered"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Mark config consolidation plan complete
 
 **Files:**
+
 - Modify: `docs/superpowers/plans/2026-04-26-config-consolidation.md`
 
 Everything in this plan is shipped: `scripts/migrate_config_to_project.py` (241 lines), `tests/unit/test_migration_script.py` (224 lines, 8 tests), `.claude/` directory populated, CLI commands `list-agents`/`sync-from-global` implemented.
@@ -310,11 +314,12 @@ git -C /Users/les/Projects/mahavishnu add docs/superpowers/plans/2026-04-26-conf
 git -C /Users/les/Projects/mahavishnu commit -m "docs: mark config consolidation plan delivered — all tasks verified in codebase"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Update ARCHITECTURE.md with Dhara persistence section
 
 **Files:**
+
 - Modify: `docs/architecture/ARCHITECTURE.md`
 
 This file has zero Dhara mentions and says "Last Updated: 2026-05-02". It needs one new section covering the persistence layer that shipped in May 2026.
@@ -345,7 +350,7 @@ Find the line:
 
 Insert the following new section BEFORE that line:
 
-```markdown
+````markdown
 ## Persistence Architecture
 
 ### Dhara State Backend
@@ -372,7 +377,7 @@ dhara_state:
   enabled: true
   flush_interval_seconds: 60
   max_routing_buffer_age_seconds: 3600
-```
+````
 
 Dhara URL is read from the `DHARA_URL` environment variable (default: `http://localhost:8683`).
 
@@ -380,15 +385,15 @@ Dhara URL is read from the `DHARA_URL` environment variable (default: `http://lo
 
 `RoutingDecisionBuffer` (in `mahavishnu/core/ecosystem_status.py`) is a bounded in-memory ring buffer (1000 entries per task class) for live query performance. It is **not** the persistence layer — Dhara is. The buffer is populated by the same routing path that triggers Dhara writes.
 
----
+______________________________________________________________________
 
-```
+````
 
 - [ ] **Step 3: Verify the section is present**
 
 ```bash
 grep -n "Dhara State Backend\|Degraded-boot\|Key schema" /Users/les/Projects/mahavishnu/docs/architecture/ARCHITECTURE.md
-```
+````
 
 Expected: all three strings found.
 
@@ -399,13 +404,14 @@ git -C /Users/les/Projects/mahavishnu add docs/architecture/ARCHITECTURE.md
 git -C /Users/les/Projects/mahavishnu commit -m "docs: add Dhara persistence layer section to ARCHITECTURE.md"
 ```
 
----
+______________________________________________________________________
 
 ## Track B: Session-Buddy Channel Phase 2
 
 ### Task 6: Add DharaChannelPublisher to channel_tracking_tools.py
 
 **Files:**
+
 - Modify: `session_buddy/mcp/tools/session/channel_tracking_tools.py`
 - Modify: `tests/unit/test_channel_tracking_tools.py`
 
@@ -641,11 +647,12 @@ git -C /Users/les/Projects/session-buddy add session_buddy/mcp/tools/session/cha
 git -C /Users/les/Projects/session-buddy commit -m "feat: add DharaChannelPublisher for Phase 2 time-series publishing"
 ```
 
----
+______________________________________________________________________
 
 ### Task 7: Wire DharaChannelPublisher through server.py
 
 **Files:**
+
 - Modify: `session_buddy/mcp/server.py`
 
 The MCP server startup should read `SESSION_BUDDY_DHARA_URL` from the environment and pass a `DharaChannelPublisher` to `register_channel_tracking_tools` when set.
@@ -684,7 +691,7 @@ uv run pytest tests/unit/test_channel_tracking_tools.py::TestServerDharaWiring -
 
 Expected: `AttributeError: module 'session_buddy.mcp.server' has no attribute '_make_dhara_publisher'`
 
-- [ ] **Step 3: Add _make_dhara_publisher to server.py**
+- [ ] **Step 3: Add \_make_dhara_publisher to server.py**
 
 In `session_buddy/mcp/server.py`, add the import near the top (with the other local imports):
 
@@ -765,11 +772,12 @@ git -C /Users/les/Projects/session-buddy add session_buddy/mcp/server.py tests/u
 git -C /Users/les/Projects/session-buddy commit -m "feat: wire DharaChannelPublisher in server startup via SESSION_BUDDY_DHARA_URL"
 ```
 
----
+______________________________________________________________________
 
 ### Task 8: Update session-buddy-multi-channel-spec.md Phase 2 status
 
 **Files:**
+
 - Modify: `docs/plans/session-buddy-multi-channel-spec.md` (in mahavishnu repo)
 
 - [ ] **Step 1: Update Phase 2 status in the spec**
@@ -807,7 +815,7 @@ git -C /Users/les/Projects/mahavishnu add docs/plans/session-buddy-multi-channel
 git -C /Users/les/Projects/mahavishnu commit -m "docs: mark Session-Buddy channel Phase 2 delivered"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 

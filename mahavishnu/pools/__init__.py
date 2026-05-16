@@ -43,51 +43,74 @@ __all__ = [
     "create_broadcaster",
 ]
 
+
 # Each value is a zero-arg callable that performs a hardcoded local import.
 # No dynamic string ever reaches importlib — satisfies CWE-706 / semgrep N802.
 def _lazy_base_pool():
     from .base import BasePool
+
     return BasePool
+
 
 def _lazy_pool_config():
     from .base import PoolConfig
+
     return PoolConfig
+
 
 def _lazy_pool_metrics():
     from .base import PoolMetrics
+
     return PoolMetrics
+
 
 def _lazy_pool_status():
     from .base import PoolStatus
+
     return PoolStatus
+
 
 def _lazy_pool_manager():
     from .manager import PoolManager
+
     return PoolManager
+
 
 def _lazy_pool_selector():
     from .manager import PoolSelector
+
     return PoolSelector
+
 
 def _lazy_memory_aggregator():
     from .memory_aggregator import MemoryAggregator
+
     return MemoryAggregator
+
 
 def _lazy_gpu_handler_pool():
     from .gpu_handler_pool import GpuHandlerPool
+
     return GpuHandlerPool
+
 
 def _lazy_runpod_pool():
     from .runpod_pool import RunPodPool
+
     return RunPodPool
+
 
 def _lazy_websocket_broadcaster():
     from .websocket import WebSocketBroadcaster
+
     return WebSocketBroadcaster
+
 
 def _lazy_create_broadcaster():
     from .websocket import create_broadcaster
+
     return create_broadcaster
+
 
 _LAZY_IMPORTERS: dict[str, object] = {
     "BasePool": _lazy_base_pool,

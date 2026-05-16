@@ -458,7 +458,9 @@ class PoolManager:
             )
             if runpod_pool_id:
                 logger.debug(
-                    "GPU task category=%r — routing to runpod pool %s", task_category, runpod_pool_id
+                    "GPU task category=%r — routing to runpod pool %s",
+                    task_category,
+                    runpod_pool_id,
                 )
                 pool_id = runpod_pool_id
                 reason = "gpu_override"

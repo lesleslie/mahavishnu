@@ -9,7 +9,6 @@ import pytest
 
 from mahavishnu.mcp.tools.otel_tools import register_otel_tools
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -78,12 +77,14 @@ class TestIngestOtelTracesImportError:
     @pytest.mark.asyncio
     async def test_import_error_returns_error_dict(self) -> None:
         tools = _register()
-        with patch.dict("sys.modules", {"mahavishnu.ingesters.otel_ingester": None}):
-            with patch(
+        with (
+            patch.dict("sys.modules", {"mahavishnu.ingesters.otel_ingester": None}),
+            patch(
                 "builtins.__import__",
                 side_effect=ImportError("OtelIngester missing"),
-            ):
-                result = await tools["ingest_otel_traces"](trace_data=[{"span": "x"}])
+            ),
+        ):
+            result = await tools["ingest_otel_traces"](trace_data=[{"span": "x"}])
         assert result["status"] == "error"
 
     @pytest.mark.asyncio
@@ -146,9 +147,7 @@ class TestIngestOtelTracesTraceData:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            await tools["ingest_otel_traces"](
-                trace_data=[{"span": "z"}], system_id="my-svc"
-            )
+            await tools["ingest_otel_traces"](trace_data=[{"span": "z"}], system_id="my-svc")
         assert ingested[0]["system_id"] == "my-svc"
 
 

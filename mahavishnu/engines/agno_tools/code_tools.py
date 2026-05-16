@@ -300,26 +300,36 @@ def _search_code_impl(query: str, repo_path: str) -> list[dict[str, Any]]:
     return results
 
 
+def _extract_ast_args(node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[list, dict]:
+    args: list[str] = []
+    defaults: dict[str, str | None] = {}
+    default_offset = len(node.args.args) - len(node.args.defaults)
+    for i, arg in enumerate(node.args.args):
+        args.append(arg.arg)
+        if i >= default_offset:
+            default = node.args.defaults[i - default_offset]
+            defaults[arg.arg] = ast.unparse(default) if default else None
+    if node.args.vararg:
+        args.append(f"*{node.args.vararg.arg}")
+    if node.args.kwarg:
+        args.append(f"**{node.args.kwarg.arg}")
+    return args, defaults
+
+
+def _extract_ast_decorators(node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
+    decorators = []
+    for dec in node.decorator_list:
+        if isinstance(dec, ast.Name):
+            decorators.append(dec.id)
+        elif isinstance(dec, ast.Attribute):
+            decorators.append(ast.unparse(dec))
+        else:
+            decorators.append(str(dec))
+    return decorators
+
+
 def _get_function_signature_impl(file_path: str, function_name: str) -> dict[str, Any]:
-    """Get function signature from a code file - implementation.
-
-    Args:
-        file_path: Path to the code file
-        function_name: Name of the function to extract
-
-    Returns:
-        Dict with function signature info:
-        - name: Function name
-        - args: List of argument names
-        - defaults: Dict of default values
-        - return_annotation: Return type annotation
-        - docstring: Function docstring
-        - decorators: List of decorator names
-        - is_async: Whether function is async
-
-    Raises:
-        AgnoError: If extraction fails or function not found
-    """
+    """Get function signature from a code file - implementation."""
     path = Path(file_path).resolve()
 
     if not path.exists():
@@ -328,7 +338,6 @@ def _get_function_signature_impl(file_path: str, function_name: str) -> dict[str
             error_code=ErrorCode.AGNO_TOOL_EXECUTION_ERROR,
             details={"file_path": file_path},
         )
-
     if path.suffix != ".py":
         raise AgnoError(
             f"Only Python files are supported: {file_path}",
@@ -336,51 +345,14 @@ def _get_function_signature_impl(file_path: str, function_name: str) -> dict[str
             details={"file_path": file_path},
         )
 
-    content = path.read_text(encoding="utf-8")
-    tree = ast.parse(content)
-
-    # Find the function
+    tree = ast.parse(path.read_text(encoding="utf-8"))
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and node.name == function_name:
-            # Extract argument info
-            args = []
-            defaults = {}
-
-            # Regular args
-            for i, arg in enumerate(node.args.args):
-                args.append(arg.arg)
-
-                # Get default value if present
-                default_offset = len(node.args.args) - len(node.args.defaults)
-                if i >= default_offset:
-                    default_idx = i - default_offset
-                    default = node.args.defaults[default_idx]
-                    defaults[arg.arg] = ast.unparse(default) if default else None
-
-            # *args
-            if node.args.vararg:
-                args.append(f"*{node.args.vararg.arg}")
-
-            # **kwargs
-            if node.args.kwarg:
-                args.append(f"**{node.args.kwarg.arg}")
-
-            # Return annotation
-            return_annotation = None
-            if node.returns:
-                return_annotation = ast.unparse(node.returns)
-
-            # Decorators
-            decorators = []
-            for dec in node.decorator_list:
-                if isinstance(dec, ast.Name):
-                    decorators.append(dec.id)
-                elif isinstance(dec, ast.Attribute):
-                    decorators.append(ast.unparse(dec))
-                else:
-                    decorators.append(str(dec))
-
-            result = {
+            args, defaults = _extract_ast_args(node)
+            decorators = _extract_ast_decorators(node)
+            return_annotation = ast.unparse(node.returns) if node.returns else None
+            logger.debug(f"Extracted signature for {function_name} from {file_path}")
+            return {
                 "name": node.name,
                 "args": args,
                 "defaults": defaults,
@@ -391,10 +363,6 @@ def _get_function_signature_impl(file_path: str, function_name: str) -> dict[str
                 "line": node.lineno,
             }
 
-            logger.debug(f"Extracted signature for {function_name} from {file_path}")
-            return result
-
-    # Function not found
     raise AgnoError(
         f"Function '{function_name}' not found in {file_path}",
         error_code=ErrorCode.AGNO_TOOL_EXECUTION_ERROR,

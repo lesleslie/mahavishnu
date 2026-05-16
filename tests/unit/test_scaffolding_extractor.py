@@ -102,9 +102,7 @@ class TestPatternExtractor:
 
         ex = PatternExtractor()
         ex.register_repo("r", tmp_path)
-        draft = ex.create_draft_from_project(
-            "r", "cat", "nm", include_patterns=[r"keep"]
-        )
+        draft = ex.create_draft_from_project("r", "cat", "nm", include_patterns=[r"keep"])
         file_paths = [f["path"] for f in draft.files]
         assert any("keep.py" in p for p in file_paths)
         assert not any("skip.py" in p for p in file_paths)
@@ -116,9 +114,7 @@ class TestPatternExtractor:
 
         ex = PatternExtractor()
         ex.register_repo("r", tmp_path)
-        draft = ex.create_draft_from_project(
-            "r", "cat", "nm", exclude_patterns=[r"bad"]
-        )
+        draft = ex.create_draft_from_project("r", "cat", "nm", exclude_patterns=[r"bad"])
         file_paths = [f["path"] for f in draft.files]
         assert not any("bad" in p for p in file_paths)
 

@@ -199,7 +199,7 @@ ______________________________________________________________________
 The admin shell documentation references:
 
 - [README.md](../README.md) - Main project overview
-- [ARCHITECTURE.md](../ARCHITECTURE.md) - System architecture
+- ARCHITECTURE.md - System architecture
 - [MCP_TOOLS_SPECIFICATION.md](MCP_TOOLS_SPECIFICATION.md) - MCP tool API
 - [TERMINAL_MANAGEMENT.md](TERMINAL_MANAGEMENT.md) - Terminal features
 

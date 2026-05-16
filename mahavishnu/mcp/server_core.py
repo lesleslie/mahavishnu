@@ -1242,6 +1242,7 @@ class FastMCPServer:
         """Register worktree management tools."""
         await _register_worktree_tools_helper(self)
 
+
 async def run_server(config=None):
     """Run the MCP server."""
     server = FastMCPServer(config)

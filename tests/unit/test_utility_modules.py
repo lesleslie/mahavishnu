@@ -202,9 +202,8 @@ class TestSkillRegistry:
         self, _skill_fixtures
     ):
         """Return False when rollback_id matches a review_id in history (line 140)."""
-        from mahavishnu.core.skill_governance import SkillRollback
+        from mahavishnu.core.skill_governance import SkillPromotionState, SkillRollback
         from mahavishnu.core.skill_registry import SkillRegistry, VersionRecord
-        from mahavishnu.core.skill_governance import SkillPromotionState
 
         policy, draft, review = _skill_fixtures
         registry = SkillRegistry(policy=policy)

@@ -100,14 +100,10 @@ class MessageBus:
         self._max_queue_size = max_queue_size
         self._event_publisher = event_publisher
 
-    def set_event_publisher(
-        self, event_publisher: EventPublisherProtocol | None
-    ) -> None:
+    def set_event_publisher(self, event_publisher: EventPublisherProtocol | None) -> None:
         self._event_publisher = event_publisher
 
-        logger.info(
-            f"MessageBus initialized (max_queue_size={self._max_queue_size})"
-        )
+        logger.info(f"MessageBus initialized (max_queue_size={self._max_queue_size})")
 
     async def publish(self, message: dict[str, Any]) -> None:
         """Publish message to bus.

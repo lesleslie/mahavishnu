@@ -136,7 +136,7 @@ def _load_engine_metrics_from_prometheus(
 ) -> dict[str, dict[str, int]]:
     """Load engine metrics by parsing Prometheus exposition text."""
     try:
-        with urllib_request.urlopen(metrics_url, timeout=2.0) as response:
+        with urllib_request.urlopen(metrics_url, timeout=2.0) as response:  # nosemgrep: dynamic-urllib-use-detected
             body = response.read().decode("utf-8", errors="replace")
     except urllib_error.URLError as exc:
         raise RuntimeError(f"failed to fetch Prometheus metrics from {metrics_url}: {exc}") from exc
@@ -577,6 +577,118 @@ def verify_endpoints(
         raise typer.Exit(1) from e
 
 
+def _fetch_engine_metrics(
+    source_normalized: str,
+    resolved_dsn: str | None,
+    metrics_url: str,
+    days: int | None,
+) -> tuple[dict[str, dict[str, int]], str, list[str]]:
+    """Fetch engine metrics from configured source, return (metrics, source, errors)."""
+    metrics: dict[str, dict[str, int]] | None = None
+    selected_source = ""
+    errors: list[str] = []
+
+    if source_normalized in {"auto", "postgres"}:
+        if not resolved_dsn:
+            if source_normalized == "postgres":
+                console.print(
+                    "[red]No PostgreSQL DSN found. Use --dsn or set "
+                    "MAHAVISHNU_PERSISTENCE__POSTGRES_URL.[/red]"
+                )
+                raise typer.Exit(1)
+            errors.append("postgres: no DSN configured")
+        else:
+            try:
+                metrics = asyncio.run(_load_engine_metrics_from_postgres(resolved_dsn, days))
+                selected_source = "postgres"
+            except Exception as exc:
+                errors.append(f"postgres: {exc}")
+                if source_normalized == "postgres":
+                    console.print(f"[red]PostgreSQL query failed:[/red] {exc}")
+                    raise typer.Exit(1) from exc
+
+    if metrics is None and source_normalized in {"auto", "prometheus"}:
+        try:
+            metrics = _load_engine_metrics_from_prometheus(metrics_url)
+            selected_source = "prometheus"
+        except Exception as exc:
+            errors.append(f"prometheus: {exc}")
+            if source_normalized == "prometheus":
+                console.print(f"[red]Prometheus query failed:[/red] {exc}")
+                raise typer.Exit(1) from exc
+
+    if metrics is None:
+        console.print("[yellow]No engine metrics source available.[/yellow]")
+        for err in errors:
+            console.print(f"[dim]- {err}[/dim]")
+        raise typer.Exit(1)
+
+    return metrics, selected_source, errors
+
+
+def _build_engine_rows(metrics: dict[str, dict[str, int]]) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for engine in sorted(metrics.keys()):
+        row = metrics[engine]
+        executions = int(row.get("executions", 0))
+        success = int(row.get("success", 0))
+        success_rate = (success / executions * 100.0) if executions > 0 else 0.0
+        rows.append({
+            "engine": engine,
+            "selected": int(row.get("selected", 0)),
+            "executions": executions,
+            "success": success,
+            "failure": int(row.get("failure", 0)),
+            "success_rate_pct": round(success_rate, 2),
+        })
+    return rows
+
+
+def _render_engine_output(
+    rows: list[dict[str, object]],
+    output_format: str,
+    selected_source: str,
+    metrics_url: str,
+    days: int | None,
+    errors: list[str],
+) -> None:
+    if output_format == "json":
+        console.print_json(json.dumps({
+            "source": selected_source,
+            "days": days,
+            "metrics_url": metrics_url if selected_source == "prometheus" else None,
+            "engines": rows,
+            "warnings": errors if errors else [],
+        }))
+        return
+
+    if output_format != "table":
+        console.print("[red]Invalid --output. Use: table or json[/red]")
+        raise typer.Exit(2)
+
+    table = Table(title=f"Engine Usage Metrics ({selected_source})")
+    table.add_column("Engine", style="cyan")
+    table.add_column("Selected", justify="right")
+    table.add_column("Executions", justify="right")
+    table.add_column("Success", justify="right")
+    table.add_column("Failure", justify="right")
+    table.add_column("Success Rate", justify="right")
+    for row in rows:
+        table.add_row(
+            str(row["engine"]),
+            str(row["selected"]),
+            str(row["executions"]),
+            str(row["success"]),
+            str(row["failure"]),
+            f"{row['success_rate_pct']:.2f}%",
+        )
+    console.print(table)
+    if errors:
+        console.print("[dim]Warnings:[/dim]")
+        for err in errors:
+            console.print(f"[dim]- {err}[/dim]")
+
+
 @metrics_app.command("engines")
 def engine_metrics(
     source: str = typer.Option(
@@ -612,114 +724,17 @@ def engine_metrics(
     - agno
     - llamaindex
     """
-
-    async def _run_postgres_query(resolved_dsn: str) -> dict[str, dict[str, int]]:
-        return await _load_engine_metrics_from_postgres(resolved_dsn, days)
-
     source_normalized = source.strip().lower()
     if source_normalized not in {"auto", "postgres", "prometheus"}:
         console.print("[red]Invalid --source. Use: auto, postgres, or prometheus[/red]")
         raise typer.Exit(2)
 
     resolved_dsn = _resolve_postgres_dsn(dsn)
-    selected_source = ""
-    metrics: dict[str, dict[str, int]] | None = None
-    errors: list[str] = []
-
-    if source_normalized in {"auto", "postgres"}:
-        if not resolved_dsn:
-            if source_normalized == "postgres":
-                console.print(
-                    "[red]No PostgreSQL DSN found. Use --dsn or set "
-                    "MAHAVISHNU_PERSISTENCE__POSTGRES_URL.[/red]"
-                )
-                raise typer.Exit(1)
-            errors.append("postgres: no DSN configured")
-        else:
-            try:
-                metrics = asyncio.run(_run_postgres_query(resolved_dsn))
-                selected_source = "postgres"
-            except Exception as exc:
-                errors.append(f"postgres: {exc}")
-                if source_normalized == "postgres":
-                    console.print(f"[red]PostgreSQL query failed:[/red] {exc}")
-                    raise typer.Exit(1) from exc
-
-    if metrics is None and source_normalized in {"auto", "prometheus"}:
-        try:
-            metrics = _load_engine_metrics_from_prometheus(metrics_url)
-            selected_source = "prometheus"
-        except Exception as exc:
-            errors.append(f"prometheus: {exc}")
-            if source_normalized == "prometheus":
-                console.print(f"[red]Prometheus query failed:[/red] {exc}")
-                raise typer.Exit(1) from exc
-
-    if metrics is None:
-        console.print("[yellow]No engine metrics source available.[/yellow]")
-        for err in errors:
-            console.print(f"[dim]- {err}[/dim]")
-        raise typer.Exit(1)
-
-    ordered_engines = sorted(metrics.keys())
-    rows: list[dict[str, object]] = []
-    for engine in ordered_engines:
-        row = metrics[engine]
-        executions = int(row.get("executions", 0))
-        success = int(row.get("success", 0))
-        success_rate = (success / executions * 100.0) if executions > 0 else 0.0
-        rows.append(
-            {
-                "engine": engine,
-                "selected": int(row.get("selected", 0)),
-                "executions": executions,
-                "success": success,
-                "failure": int(row.get("failure", 0)),
-                "success_rate_pct": round(success_rate, 2),
-            }
-        )
-
-    if output_format == "json":
-        console.print_json(
-            json.dumps(
-                {
-                    "source": selected_source,
-                    "days": days,
-                    "metrics_url": metrics_url if selected_source == "prometheus" else None,
-                    "engines": rows,
-                    "warnings": errors if errors else [],
-                }
-            )
-        )
-        return
-
-    if output_format != "table":
-        console.print("[red]Invalid --output. Use: table or json[/red]")
-        raise typer.Exit(2)
-
-    table = Table(title=f"Engine Usage Metrics ({selected_source})")
-    table.add_column("Engine", style="cyan")
-    table.add_column("Selected", justify="right")
-    table.add_column("Executions", justify="right")
-    table.add_column("Success", justify="right")
-    table.add_column("Failure", justify="right")
-    table.add_column("Success Rate", justify="right")
-
-    for row in rows:
-        table.add_row(
-            str(row["engine"]),
-            str(row["selected"]),
-            str(row["executions"]),
-            str(row["success"]),
-            str(row["failure"]),
-            f"{row['success_rate_pct']:.2f}%",
-        )
-
-    console.print(table)
-    if errors:
-        console.print("[dim]Warnings:[/dim]")
-        for err in errors:
-            console.print(f"[dim]- {err}[/dim]")
+    metrics, selected_source, errors = _fetch_engine_metrics(
+        source_normalized, resolved_dsn, metrics_url, days
+    )
+    rows = _build_engine_rows(metrics)
+    _render_engine_output(rows, output_format, selected_source, metrics_url, days, errors)
 
 
 def add_metrics_commands(app: typer.Typer) -> None:

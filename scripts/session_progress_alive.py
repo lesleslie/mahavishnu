@@ -95,11 +95,13 @@ def main():
             output_buffer = io.StringIO()
 
             # Create a single-step progress bar
-            with redirect_stdout(output_buffer):
-                with alive_bar(
+            with (
+                redirect_stdout(output_buffer),
+                alive_bar(
                     100, bar="smooth", spinner=None, title="", length=25, theme="smooth"
-                ) as bar:
-                    bar(int(percentage))
+                ) as bar,
+            ):
+                bar(int(percentage))
 
             # Extract the bar portion from alive_bar output
             bar_output = output_buffer.getvalue().strip()

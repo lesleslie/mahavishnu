@@ -140,11 +140,7 @@ class DLQIntegration:
                 return True
 
             # Resource errors - sometimes worth retrying
-            if error_category == ErrorCategory.RESOURCE:
-                return True
-
-            # Don't retry permanent, permission, or validation errors
-            return False
+            return error_category == ErrorCategory.RESOURCE
 
         return False
 

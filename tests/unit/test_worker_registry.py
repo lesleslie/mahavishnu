@@ -232,7 +232,6 @@ class TestListWorkerTypes:
         result = list_worker_types(WorkerCategory.REMOTE)
         assert "terminal-ssh" in result
 
-
     def test_none_filter_returns_more_than_any_single_category(self):
         all_types = list_worker_types()
         for cat in WorkerCategory:

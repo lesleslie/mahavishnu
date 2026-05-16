@@ -599,7 +599,7 @@ def generate_completion_script(shell: str = "bash") -> str:
     Returns:
         Completion script content
     """
-    if shell == "bash":
+    if shell == "bash":  # noqa: SIM116
         return """
 # Bash completion for mahavishnu
 _mahavishnu_completion() {

@@ -620,12 +620,6 @@ class EmbeddingService:
         if self._auto_fallback:
             return await self._embed_with_fallback(texts)
 
-            # Default to FastEmbed (will fail if not available)
-            # With the built-in fallback, this remains usable even without the optional package.
-            return await self._embed_with_circuit_breaker(
-                EmbeddingProvider.FASTEMBED, texts, allow_fallback=False
-            )
-
     async def _embed_with_circuit_breaker(
         self,
         provider_type: EmbeddingProvider,

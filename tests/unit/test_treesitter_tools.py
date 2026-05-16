@@ -10,7 +10,6 @@ import pytest
 
 from mahavishnu.mcp.tools.treesitter_tools import register_treesitter_tools
 
-
 # ---------------------------------------------------------------------------
 # Helpers / Fixtures
 # ---------------------------------------------------------------------------
@@ -212,9 +211,13 @@ class TestTreesitterParseSuccess:
         tools = _register_and_get(mcp)
         with (
             patch("mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser),
-            patch("mahavishnu.mcp.tools.treesitter_tools._ensure_grammar_loaded", return_value=True),
             patch(
-                "mahavishnu.mcp.tools.treesitter_tools.SupportedLanguage" if False else "builtins.open",
+                "mahavishnu.mcp.tools.treesitter_tools._ensure_grammar_loaded", return_value=True
+            ),
+            patch(
+                "mahavishnu.mcp.tools.treesitter_tools.SupportedLanguage"
+                if False
+                else "builtins.open",
                 create=True,
             ),
         ):

@@ -286,7 +286,7 @@ class ProductionReadinessChecker:
 
         # Check for structlog in dependencies
         try:
-            import structlog
+            import structlog  # noqa: F401
 
             status = ReadinessStatus.PASS
             message = "Structured logging available (structlog)"
@@ -411,7 +411,7 @@ class ProductionReadinessChecker:
             coverage_file = self.project_root / "coverage.xml"
             if coverage_file.exists():
                 try:
-                    import xml.etree.ElementTree as ET
+                    import defusedxml.ElementTree as ET  # noqa: N817
 
                     tree = ET.parse(coverage_file)
                     root = tree.getroot()

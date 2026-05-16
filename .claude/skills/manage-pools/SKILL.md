@@ -306,6 +306,6 @@ After spawning pool:
 
 ## Related Documentation
 
-- [Pool Architecture](docs/POOL_ARCHITECTURE.md) - Complete architecture guide
+- Pool Architecture - Complete architecture guide
 - [Migration Guide](docs/POOL_MIGRATION.md) - From WorkerManager to pools
-- [MCP Tools Spec](docs/MCP_TOOLS_SPECIFICATION.md) - Pool MCP tool reference
+- MCP Tools Spec - Pool MCP tool reference

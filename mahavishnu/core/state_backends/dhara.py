@@ -80,6 +80,7 @@ class DharaStateBackend:
 
     def _circuit_is_open(self) -> bool:
         import time
+
         if self._circuit_open_until > 0 and time.monotonic() < self._circuit_open_until:
             return True
         if self._circuit_open_until > 0:
@@ -89,6 +90,7 @@ class DharaStateBackend:
 
     def _record_failure(self) -> None:
         import time
+
         self._consecutive_failures += 1
         if self._consecutive_failures >= _DHARA_FAILURE_THRESHOLD:
             self._circuit_open_until = time.monotonic() + _DHARA_RECOVERY_SECONDS

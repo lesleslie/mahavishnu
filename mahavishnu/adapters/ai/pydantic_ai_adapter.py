@@ -44,9 +44,6 @@ OutputT = TypeVar("OutputT", bound=BaseModel)
 
 logger = logging.getLogger(__name__)
 
-# Type variables for structured output
-OutputT = TypeVar("OutputT", bound=BaseModel)
-
 # Constants
 MAX_AGENTS = 100
 MAX_PROMPT_LENGTH = 100000
@@ -891,9 +888,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
             key_env = f"{config.provider.upper()}_API_KEY"
             if not config.api_key and not os.getenv(key_env):
                 logger.warning(
-                    "No API key configured for %s. Set %s environment variable.",
-                    config.provider,
-                    key_env,
+                    f"Provider '{config.provider}' is not authenticated. Set the '{key_env}' variable to enable it."
                 )
 
         return True

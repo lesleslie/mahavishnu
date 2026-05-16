@@ -261,7 +261,7 @@ class ExternalIssueImporter:
         """
         labels = data.get("labels", [])
         if isinstance(labels, list) and labels and isinstance(labels[0], dict):
-            labels = [l.get("name", "") for l in labels]
+            labels = [lbl.get("name", "") for lbl in labels]
 
         assignees = [a.get("username", "") for a in data.get("assignees", [])]
 

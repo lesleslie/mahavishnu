@@ -301,7 +301,7 @@ ______________________________________________________________________
 
 ## Related Documentation
 
-- [Production Readiness Checklist](../PRODUCTION_READINESS_CHECKLIST.md)
+- Production Readiness Checklist
 - [Pytest Timeout Plugin](https://github.com/pytest-dev/pytest-timeout)
 
 ______________________________________________________________________

@@ -4,14 +4,14 @@
 **Supplements**: `docs/superpowers/plans/2026-04-26-config-consolidation.md`
 **Status**: approved — written to unblock P3 implementation
 
----
+______________________________________________________________________
 
 ## Gap addressed
 
 The existing plan covers file migration. This note covers the missing pieces:
 `UnifiedConfig`, `ConfigValidationError`, startup validation hook, and CLI surface.
 
----
+______________________________________________________________________
 
 ## UnifiedConfig
 
@@ -38,15 +38,16 @@ class UnifiedConfig:
 | `embeddings.yaml` | YAML syntax + key presence check |
 | `repos.yaml` / `ecosystem.yaml` | Existing `ConfigValidator.validate_repos_yaml()` |
 
----
+______________________________________________________________________
 
 ## ConfigValidationError
 
 Raised by `validate_strict()` when any error is found. Carries:
+
 - `errors: list[str]` — human-readable error messages
 - `file_path: str | None` — the file that caused the first error (best-effort)
 
----
+______________________________________________________________________
 
 ## Startup validation hook
 
@@ -59,7 +60,7 @@ if self.config.unified_validation_enabled:
 
 Default: `unified_validation_enabled = False` (soft-launch). Enable via `--config-strict` CLI flag or env var `MAHAVISHNU_UNIFIED_VALIDATION_ENABLED=true`.
 
----
+______________________________________________________________________
 
 ## CLI surface
 
@@ -67,7 +68,7 @@ Default: `unified_validation_enabled = False` (soft-launch). Enable via `--confi
 
 The `config` sub-group already exists in the CLI. Add `validate` as a new command in the appropriate CLI module (check `cli/` directory).
 
----
+______________________________________________________________________
 
 ## Soft-launch strategy
 

@@ -271,6 +271,7 @@ Important reconciliation notes:
 **Current implementation queue:** [Doc Status Sync and Session-Buddy Channel Phase 2](../superpowers/plans/2026-05-14-doc-sync-and-channel-phase2.md). This plan completes documentation housekeeping and implements Session-Buddy Channel Phase 2 (Dhara time-series publishing).
 
 **After that plan completes, open work is:**
+
 - OpenWebUI P9 manual UI steps (tool registration in OpenWebUI Admin, model arena run) — no code changes
 - Bodai Agent Platform I4 optional extensions — gated on product justification document
 
@@ -282,7 +283,7 @@ Important reconciliation notes:
 | 2 | Dhara Storage Consolidation | [plan](./2026-04-02-storage-consolidation-and-akosha-role.md) |
 | 3 | Config Consolidation (schema validation) | [spec](../superpowers/specs/2026-04-26-config-consolidation-design.md) / [plan](../superpowers/plans/2026-04-26-config-consolidation.md) |
 | 4 | RunPod Pool — remaining subtasks | [plan](../superpowers/plans/2026-05-01-runpod-flash-pool.md) |
-| 5 | Nanobot Phase A (Supergateway autostart) | [plan](./2026-04-05-nanobot-worker-integration.md) |
+| 5 | Nanobot Phase A (Supergateway autostart) | plan |
 | 6 | TUI Completion (command palette + skill drafts) | inline in backlog |
 | 7 | Hatchet rate-limiting pattern | inline in backlog |
 | 8 | Approval flow durable wait pattern | inline in backlog (requires P2) |
@@ -309,7 +310,7 @@ Important reconciliation notes:
 
 1. **Nanobot Worker Phase B completion** — `shipped` 2026-05-02
 
-   - Plan: [2026-04-05-nanobot-worker-integration.md](./2026-04-05-nanobot-worker-integration.md)
+   - Plan: 2026-04-05-nanobot-worker-integration.md
    - Delivered: `nanobot-ai>=0.1.4` dep (corrected from wrong `nanobot` robotics package), `_init_nanobot_provider()` fixed to use `ZAI_API_KEY` + `https://api.z.ai/api/coding/paas/v4`, `tests/unit/workers/test_nanobot_worker.py` (6 tests). `gpt4all` dep removed (ollama is the local inference backend).
    - Use for: reference only.
 
@@ -360,7 +361,7 @@ Important reconciliation notes:
 
 ### Agno Phases 4-6
 
-- Superseded plan: [../../AGNO_ADAPTER_IMPLEMENTATION_PLAN.md](../../AGNO_ADAPTER_IMPLEMENTATION_PLAN.md) (phases 4-6 only)
+- Superseded plan: ../../AGNO_ADAPTER_IMPLEMENTATION_PLAN.md (phases 4-6 only)
 - Reason: Phase 4 (ecosystem memory) → Session-Buddy + Akosha; Phase 5 (OTel) → `otel_ingester.py`; Phase 6 (pool integration) → existing pool system. Phases 1-3 shipped.
 - Closed: 2026-05-07
 

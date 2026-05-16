@@ -97,8 +97,13 @@ async def _get_report() -> EcosystemStatusReport | None:
 async def fetch_system_overview() -> dict[str, Any]:
     report = await _get_report()
     if report is None:
-        return {"status": "unknown", "active_workflows": 0, "total_adapters": 0,
-                "healthy_adapters": 0, "recent_alerts": 0}
+        return {
+            "status": "unknown",
+            "active_workflows": 0,
+            "total_adapters": 0,
+            "healthy_adapters": 0,
+            "recent_alerts": 0,
+        }
     adapters = report.adapters or {}
     workflows = report.workflows
     alerts = report.alerts
@@ -118,8 +123,14 @@ async def fetch_sweep_history() -> list[dict[str, Any]]:
         return []
     w = report.workflows
     if w and (w.active_count or w.failed_count or w.recent_count):
-        return [{"status": "active", "active": w.active_count,
-                 "failed": w.failed_count, "recent": w.recent_count}]
+        return [
+            {
+                "status": "active",
+                "active": w.active_count,
+                "failed": w.failed_count,
+                "recent": w.recent_count,
+            }
+        ]
     return []
 
 
@@ -129,9 +140,12 @@ async def fetch_routing_stats() -> dict[str, Any]:
         return {"adapters": [], "total_decisions": 0, "cache_hit_rate": 0.0}
     adapters = report.adapters or {}
     adapter_list = [
-        {"name": name, "status": adp.status.value,
-         "capabilities": adp.capabilities or {},
-         "preference_score": adp.preference_score}
+        {
+            "name": name,
+            "status": adp.status.value,
+            "capabilities": adp.capabilities or {},
+            "preference_score": adp.preference_score,
+        }
         for name, adp in adapters.items()
     ]
     healthy = sum(1 for a in adapter_list if a["status"] == "ok")
@@ -149,12 +163,15 @@ async def fetch_active_alerts() -> list[dict[str, Any]]:
     alerts = report.alerts
     if alerts and alerts.top_alerts:
         return [
-            {"id": str(i), "severity": a.severity,
-             "title": f"{a.source}: {a.message}",
-             "description": a.message,
-             "time": a.created_at.isoformat() if a.created_at else ""}
+            {
+                "id": str(i),
+                "severity": a.severity,
+                "title": f"{a.source}: {a.message}",
+                "description": a.message,
+                "time": a.created_at.isoformat() if a.created_at else "",
+            }
             for i, a in enumerate(alerts.top_alerts)
-            ]
+        ]
     return []
 
 
@@ -227,7 +244,7 @@ async def fetch_skill_drafts() -> list[dict[str, Any]]:
     if not skills_root.exists():
         return []
 
-    drafts: list[dict[str, Any]] = []
+    drafts = []
     for skill_dir in sorted(skills_root.iterdir()):
         skill_file = skill_dir / "SKILL.md"
         if not skill_file.is_file():
@@ -240,15 +257,17 @@ async def fetch_skill_drafts() -> list[dict[str, Any]]:
             if m:
                 description = m.group(1).strip()
             mtime = datetime.fromtimestamp(skill_file.stat().st_mtime)
-            drafts.append({
-                "skill_id": name,
-                "name": name,
-                "version": "1.0",
-                "state": "active",
-                "proposed_by": "ecosystem",
-                "created_at": mtime,
-                "description": description,
-            })
+            drafts.append(
+                {
+                    "skill_id": name,
+                    "name": name,
+                    "version": "1.0",
+                    "state": "active",
+                    "proposed_by": "ecosystem",
+                    "created_at": mtime,
+                    "description": description,
+                }
+            )
         except Exception:
             continue
     return drafts
@@ -336,7 +355,11 @@ async def fetch_correlation_trace(
     from mahavishnu.core.context import get_app_from_context
 
     app = get_app_from_context()
-    if app is None or not hasattr(app, "get_fix_trace") or not hasattr(app, "get_correlation_status"):
+    if (
+        app is None
+        or not hasattr(app, "get_fix_trace")
+        or not hasattr(app, "get_correlation_status")
+    ):
         return {
             "correlation_id": correlation_id,
             "trace": [],
@@ -488,8 +511,13 @@ async def fetch_diff_views(paths: tuple[str, ...] = _COCKPIT_FILES) -> list[dict
 # Helpers
 # ---------------------------------------------------------------------------
 
-_SEVERITY_COLORS = {"critical": "red", "error": "red", "warning": "yellow",
-                    "info": "cyan", "debug": "dim"}
+_SEVERITY_COLORS = {
+    "critical": "red",
+    "error": "red",
+    "warning": "yellow",
+    "info": "cyan",
+    "debug": "dim",
+}
 _STATE_COLORS = {"draft": "yellow", "review": "cyan", "active": "green", "deprecated": "red"}
 
 
@@ -572,8 +600,12 @@ class SweepScreen(VerticalScroll):
             for entry in data:
                 failed = entry.get("failed", 0)
                 fail_str = f"[red]{failed}[/]" if failed else str(failed)
-                table.add_row(entry.get("status", "-"), str(entry.get("active", 0)),
-                              fail_str, str(entry.get("recent", 0)))
+                table.add_row(
+                    entry.get("status", "-"),
+                    str(entry.get("active", 0)),
+                    fail_str,
+                    str(entry.get("recent", 0)),
+                )
         else:
             table.add_row("[dim]No sweeps yet[/]", "-", "-", "-")
 
@@ -600,7 +632,9 @@ class RoutingScreen(VerticalScroll):
         healthy = sum(1 for a in adapters if a["status"] == "ok")
         total = len(adapters)
         hit_rate = data.get("cache_hit_rate", 0.0)
-        color = _status_color("ok" if healthy == total and total > 0 else "degraded" if healthy else "error")
+        color = _status_color(
+            "ok" if healthy == total and total > 0 else "degraded" if healthy else "error"
+        )
         self.query_one("#routing-summary", Static).update(
             f"[bold {color}]Healthy:[/] {healthy}/{total}   "
             f"[bold]Decisions:[/] {data.get('total_decisions', 0)}   "
@@ -614,8 +648,9 @@ class RoutingScreen(VerticalScroll):
                 status_str = f"[bold {_status_color(status)}]{status}[/]"
                 caps = ", ".join(a.get("capabilities", {}).keys()) or "-"
                 score = a.get("preference_score")
-                table.add_row(a["name"], status_str,
-                              str(round(score, 2)) if score is not None else "-", caps)
+                table.add_row(
+                    a["name"], status_str, str(round(score, 2)) if score is not None else "-", caps
+                )
         else:
             table.add_row("[dim]No adapters registered[/]", "-", "-", "-")
 
@@ -646,8 +681,11 @@ class AlertsScreen(VerticalScroll):
         table.clear()
         if alerts:
             for a in alerts:
-                table.add_row(_severity_markup(a.get("severity", "info")),
-                              a.get("title", ""), a.get("time", ""))
+                table.add_row(
+                    _severity_markup(a.get("severity", "info")),
+                    a.get("title", ""),
+                    a.get("time", ""),
+                )
         else:
             table.add_row("[dim green]No active alerts[/]", "", "")
 
@@ -683,11 +721,21 @@ class ReviewsScreen(VerticalScroll):
         if drafts:
             for d in drafts:
                 created = d.get("created_at")
-                created_str = (created.strftime("%Y-%m-%d %H:%M")
-                               if isinstance(created, datetime) else str(created) if created else "-")
-                table.add_row(d.get("skill_id", "-"), d.get("name", "-"), d.get("version", "-"),
-                              _state_markup(d.get("state", "draft")),
-                              d.get("proposed_by", "-"), created_str)
+                created_str = (
+                    created.strftime("%Y-%m-%d %H:%M")
+                    if isinstance(created, datetime)
+                    else str(created)
+                    if created
+                    else "-"
+                )
+                table.add_row(
+                    d.get("skill_id", "-"),
+                    d.get("name", "-"),
+                    d.get("version", "-"),
+                    _state_markup(d.get("state", "draft")),
+                    d.get("proposed_by", "-"),
+                    created_str,
+                )
         else:
             table.add_row("-", "[dim]No skill drafts found[/]", "-", "-", "-", "-")
 
@@ -743,8 +791,7 @@ class RecoveryScreen(VerticalScroll):
         last_recovered_at = data.get("last_recovered_at") or "-"
         color = "green" if data.get("dhara_available") else "yellow"
         self.query_one("#recovery-summary", Static).update(
-            f"[bold {color}]Dhara {dhara_state}[/]   "
-            f"[bold]Last recovery:[/] {last_recovered_at}"
+            f"[bold {color}]Dhara {dhara_state}[/]   [bold]Last recovery:[/] {last_recovered_at}"
         )
         table = self.query_one("#recovery-table", DataTable)
         table.clear()
@@ -852,8 +899,7 @@ class FilesScreen(VerticalScroll):
 
         summary = self.query_one("#files-summary", Static)
         summary.update(
-            f"[bold]Files tracked:[/] {len(file_views)}   "
-            f"[bold]Diff targets:[/] {len(diff_views)}"
+            f"[bold]Files tracked:[/] {len(file_views)}   [bold]Diff targets:[/] {len(diff_views)}"
         )
 
         files_table = self.query_one("#files-table", DataTable)
@@ -945,7 +991,9 @@ class AgnoScreen(VerticalScroll):
         if activity:
             for item in activity:
                 timestamp = str(item.get("timestamp") or "-")[:19].replace("T", " ")
-                details = item.get("task") or item.get("success_count") or item.get("response_count")
+                details = (
+                    item.get("task") or item.get("success_count") or item.get("response_count")
+                )
                 if isinstance(details, dict):
                     details = details.get("type") or details.get("operation") or str(details)
                 table.add_row(

@@ -155,7 +155,9 @@ class TestPreferenceOrderChain:
             confidence=ConfidenceLevel.HIGH,
         )
         chain = pref.get_preference_chain()
-        assert chain == [a.value for a in [AdapterType.PREFECT, AdapterType.AGNO, AdapterType.LLAMAINDEX]]
+        assert chain == [
+            a.value for a in [AdapterType.PREFECT, AdapterType.AGNO, AdapterType.LLAMAINDEX]
+        ]
 
     def test_get_preference_chain_empty(self):
         """Should return empty list for empty adapters."""

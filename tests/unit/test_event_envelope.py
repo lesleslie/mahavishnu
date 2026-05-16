@@ -573,8 +573,9 @@ class TestLegacyMigration:
 
     def test_parse_timestamp_none_returns_now(self):
         """_parse_timestamp(None) returns current UTC time (line 171)."""
-        from mahavishnu.core.events.migration import _parse_timestamp
         from datetime import UTC, datetime
+
+        from mahavishnu.core.events.migration import _parse_timestamp
 
         before = datetime.now(UTC)
         result = _parse_timestamp(None)

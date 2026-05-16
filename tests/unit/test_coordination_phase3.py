@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 import tempfile
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -23,10 +23,10 @@ import yaml
 from mahavishnu.core.coordination.manager import CoordinationManager, _run_command_safe
 from mahavishnu.core.coordination.memory import CoordinationMemory
 
-
 # ---------------------------------------------------------------------------
 # Helpers (mirrors test_coordination.py pattern)
 # ---------------------------------------------------------------------------
+
 
 def _write_ecosystem(data: dict) -> str:
     fd, path = tempfile.mkstemp(suffix=".yaml")
@@ -193,6 +193,7 @@ class TestAkoshaIntegration:
         await memory._store_memory("test content", {"key": "val"})
         assert route.called
         import json
+
         payload = json.loads(route.calls[0].request.content)
         assert payload["name"] == "store_memory"
         assert payload["arguments"]["content"] == "test content"
@@ -263,5 +264,6 @@ class TestRunCommandSafe:
 
     def test_failing_command_raises(self):
         import subprocess
+
         with pytest.raises(subprocess.CalledProcessError):
             _run_command_safe("false")

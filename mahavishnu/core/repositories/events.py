@@ -12,12 +12,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import logging
-from typing import Any
-from uuid import UUID
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -33,15 +35,11 @@ _INSERT_EVENT = (
 )
 
 _SELECT_BY_TASK = (
-    "SELECT * FROM audit.task_events"
-    " WHERE task_id = $1"
-    " ORDER BY event_time DESC LIMIT $2 OFFSET $3"
+    "SELECT * FROM audit.task_events WHERE task_id = $1 ORDER BY event_time DESC LIMIT $2 OFFSET $3"
 )
 
 _SELECT_BY_TASK_AND_RUN = (
-    "SELECT * FROM audit.task_events"
-    " WHERE task_id = $1 AND run_id = $2"
-    " ORDER BY event_time DESC"
+    "SELECT * FROM audit.task_events WHERE task_id = $1 AND run_id = $2 ORDER BY event_time DESC"
 )
 
 # list_events: all 16 combinations of optional filters {task_id, run_id, event_type, actor}.
@@ -54,10 +52,7 @@ _A = "actor"
 
 _LIST_QUERIES: dict[frozenset[str], str] = {
     # 0 filters
-    frozenset(): (
-        "SELECT * FROM audit.task_events"
-        " ORDER BY event_time DESC LIMIT $1 OFFSET $2"
-    ),
+    frozenset(): ("SELECT * FROM audit.task_events ORDER BY event_time DESC LIMIT $1 OFFSET $2"),
     # 1 filter
     frozenset({_T}): (
         "SELECT * FROM audit.task_events"
@@ -249,9 +244,7 @@ class TaskEventRepository(BaseRepository[TaskEventCreate, TaskEventRead, TaskEve
 
     async def list_events(self, filters: TaskEventFilter) -> list[TaskEventRead]:
         """List events with optional filters."""
-        active = frozenset(
-            f for f in _LIST_FILTER_ORDER if getattr(filters, f, None) is not None
-        )
+        active = frozenset(f for f in _LIST_FILTER_ORDER if getattr(filters, f, None) is not None)
         query = _LIST_QUERIES[active]
         params: list[Any] = [getattr(filters, f) for f in _LIST_FILTER_ORDER if f in active]
         params.extend([filters.limit, filters.offset])

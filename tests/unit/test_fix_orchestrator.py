@@ -156,6 +156,7 @@ class TestQualityGateResult:
         assert result.coverage == 98.0
         assert result.errors == ["formatting warning"]
 
+
 class TestFixResult:
     """Test FixResult model."""
 

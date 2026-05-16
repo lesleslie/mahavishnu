@@ -27,7 +27,7 @@ except ImportError:
     PROMETHEUS_AVAILABLE = False
 
     # Create dummy classes for graceful degradation
-    class Counter:
+    class Counter:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             pass
 
@@ -40,7 +40,7 @@ except ImportError:
         def count(self):
             return 0
 
-    class Gauge:
+    class Gauge:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             pass
 
@@ -59,7 +59,7 @@ except ImportError:
         def dec(self, amount=1):
             pass
 
-    class Histogram:
+    class Histogram:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             pass
 
@@ -72,7 +72,7 @@ except ImportError:
         def time(self):
             return self
 
-    class Summary:
+    class Summary:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             pass
 
@@ -513,9 +513,7 @@ class RoutingMetrics:
         """
         self._ensure_enabled()
         if self._rate_limit_rejected_counter:
-            self._rate_limit_rejected_counter.labels(
-                server=self.server_name, model=model
-            ).inc()
+            self._rate_limit_rejected_counter.labels(server=self.server_name, model=model).inc()
             logger.debug("Rate limit rejected: model=%s", model)
 
     def get_metrics_summary(self) -> dict[str, Any]:

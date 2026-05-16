@@ -64,7 +64,9 @@ class WorkerManager:
         self._semaphore = asyncio.Semaphore(self.max_concurrent)
         self._debug_monitor_worker: BaseWorker | None = None
 
-        logger.info(f"Initialized WorkerManager (max_concurrent={self.max_concurrent}, debug={debug_mode})")
+        logger.info(
+            f"Initialized WorkerManager (max_concurrent={self.max_concurrent}, debug={debug_mode})"
+        )
 
     async def spawn_workers(
         self,

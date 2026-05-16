@@ -210,6 +210,6 @@ After workflow execution:
 
 ## Related Documentation
 
-- [MCP Tools Specification](docs/MCP_TOOLS_SPECIFICATION.md) - Complete tool reference
-- [ADR 004: Adapter Architecture](docs/adr/004-adapter-architecture.md) - Design decisions
-- [Pool Architecture](docs/POOL_ARCHITECTURE.md) - Pool-based execution
+- MCP Tools Specification - Complete tool reference
+- ADR 004: Adapter Architecture - Design decisions
+- Pool Architecture - Pool-based execution

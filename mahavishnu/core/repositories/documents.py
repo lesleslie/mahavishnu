@@ -14,12 +14,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import logging
-from typing import Any
-from uuid import UUID
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -44,18 +46,13 @@ _SELECT_BY_KEY_WITH_TYPE = (
 )
 
 _SELECT_BY_KEY = (
-    "SELECT * FROM search.documents"
-    " WHERE source_key = $1"
-    " ORDER BY created_at DESC LIMIT 1"
+    "SELECT * FROM search.documents WHERE source_key = $1 ORDER BY created_at DESC LIMIT 1"
 )
 
 _DELETE_BY_ID = "DELETE FROM search.documents WHERE id = $1"
 
 # list_documents: 4 pre-defined variants, no dynamic query building.
-_LIST_ALL = (
-    "SELECT * FROM search.documents"
-    " ORDER BY created_at DESC LIMIT $1 OFFSET $2"
-)
+_LIST_ALL = "SELECT * FROM search.documents ORDER BY created_at DESC LIMIT $1 OFFSET $2"
 _LIST_BY_REPO = (
     "SELECT * FROM search.documents"
     " WHERE repository = $1"
@@ -100,16 +97,13 @@ _m = "metadata"
 _UPDATE_QUERIES: dict[frozenset[str], str] = {
     # 1 field
     frozenset({_c}): (
-        "UPDATE search.documents SET content = $2, updated_at = $3"
-        " WHERE id = $1 RETURNING *"
+        "UPDATE search.documents SET content = $2, updated_at = $3 WHERE id = $1 RETURNING *"
     ),
     frozenset({_r}): (
-        "UPDATE search.documents SET repository = $2, updated_at = $3"
-        " WHERE id = $1 RETURNING *"
+        "UPDATE search.documents SET repository = $2, updated_at = $3 WHERE id = $1 RETURNING *"
     ),
     frozenset({_s}): (
-        "UPDATE search.documents SET system_name = $2, updated_at = $3"
-        " WHERE id = $1 RETURNING *"
+        "UPDATE search.documents SET system_name = $2, updated_at = $3 WHERE id = $1 RETURNING *"
     ),
     frozenset({_m}): (
         "UPDATE search.documents SET metadata = metadata || $2::jsonb, updated_at = $3"
@@ -291,9 +285,7 @@ class DocumentRepository(
         data: DocumentUpdate,
     ) -> DocumentRead | None:
         """Update document fields (partial update supported)."""
-        fields = frozenset(
-            f for f in _UPDATE_FIELD_ORDER if getattr(data, f, None) is not None
-        )
+        fields = frozenset(f for f in _UPDATE_FIELD_ORDER if getattr(data, f, None) is not None)
         if not fields:
             return await self.get_document(document_id)
 
@@ -332,7 +324,9 @@ class DocumentRepository(
         try:
             async with self.connection() as conn:
                 if repository:
-                    rows = await conn.fetch(_SEARCH_WITH_REPO, query_text, repository, limit, offset)
+                    rows = await conn.fetch(
+                        _SEARCH_WITH_REPO, query_text, repository, limit, offset
+                    )
                 else:
                     rows = await conn.fetch(_SEARCH_BASE, query_text, limit, offset)
                 results = []
@@ -360,7 +354,9 @@ class DocumentRepository(
         try:
             async with self.connection() as conn:
                 if repository and source_type:
-                    rows = await conn.fetch(_LIST_BY_REPO_AND_TYPE, repository, source_type, limit, offset)
+                    rows = await conn.fetch(
+                        _LIST_BY_REPO_AND_TYPE, repository, source_type, limit, offset
+                    )
                 elif repository:
                     rows = await conn.fetch(_LIST_BY_REPO, repository, limit, offset)
                 elif source_type:

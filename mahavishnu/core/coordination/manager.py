@@ -321,6 +321,24 @@ class CoordinationManager:
 
     # Issue Management
 
+    @staticmethod
+    def _apply_issue_filters(
+        issues: list[CrossRepoIssue],
+        status: IssueStatus | None,
+        priority: str | None,
+        repo: str | None,
+        assignee: str | None,
+    ) -> list[CrossRepoIssue]:
+        if status:
+            issues = [i for i in issues if i.status == status]
+        if priority:
+            issues = [i for i in issues if i.priority.value == priority]
+        if repo:
+            issues = [i for i in issues if repo in i.repos]
+        if assignee:
+            issues = [i for i in issues if i.assignee == assignee]
+        return issues
+
     def list_issues(
         self,
         status: IssueStatus | None = None,
@@ -352,17 +370,7 @@ class CoordinationManager:
                 details={"error": str(e)},
             ) from e
 
-        # Apply filters
-        if status:
-            issues = [i for i in issues if i.status == status]
-        if priority:
-            issues = [i for i in issues if i.priority.value == priority]
-        if repo:
-            issues = [i for i in issues if repo in i.repos]
-        if assignee:
-            issues = [i for i in issues if i.assignee == assignee]
-
-        return issues
+        return self._apply_issue_filters(issues, status, priority, repo, assignee)
 
     def get_issue(self, issue_id: str) -> CrossRepoIssue | None:
         """

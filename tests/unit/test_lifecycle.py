@@ -62,7 +62,9 @@ async def test_initialize_worktree_coordinator_exception_is_swallowed() -> None:
 
 
 @pytest.mark.asyncio
-async def test_initialize_worktree_coordinator_creates_instance(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_initialize_worktree_coordinator_creates_instance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     repo_manager = SimpleNamespace(load=AsyncMock())
     coordination_manager = object()
 

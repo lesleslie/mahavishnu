@@ -462,6 +462,7 @@ def add_config_validation_commands(app: typer.Typer) -> None:
 
             if json_output:
                 import json as _json
+
                 typer.echo(_json.dumps(report.to_dict(), indent=2, default=str))
             else:
                 errors = report.get_errors()

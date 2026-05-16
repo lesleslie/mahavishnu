@@ -173,7 +173,6 @@ class QualityGateResult:
         )
 
 
-
 @dataclass
 class FixResult:
     """Result of a fix execution."""
@@ -230,6 +229,91 @@ class FixOrchestrator:
         self.coordination_memory = coordination_memory
         self.trace_recorder = trace_recorder
 
+    async def _init_checkpoint(
+        self,
+        task: FixTask,
+        pool_id: str,
+        correlation_id: str,
+        trace: list[str],
+    ) -> str | None:
+        if self.session_checkpoint is None:
+            return None
+        try:
+            checkpoint_id = await _await_if_needed(
+                self.session_checkpoint.create_checkpoint(
+                    task.session_id or correlation_id,
+                    {"issue_id": task.issue_id, "correlation_id": correlation_id,
+                     "pool_id": pool_id, "prompt": task.prompt},
+                )
+            )
+            trace.append(f"Session checkpoint created: {checkpoint_id}")
+            if self.trace_recorder is not None:
+                self.trace_recorder(correlation_id, "checkpoint", "Session checkpoint created",
+                                    {"checkpoint_id": checkpoint_id,
+                                     "session_id": task.session_id or correlation_id})
+            return checkpoint_id
+        except Exception as exc:
+            trace.append(f"Session checkpoint degraded: {exc}")
+            return None
+
+    async def _record_coord_start(
+        self, issue: Any, correlation_id: str, pool_id: str, trace: list[str]
+    ) -> None:
+        if issue is None or self.coordination_memory is None:
+            return
+        try:
+            await _await_if_needed(self.coordination_memory.store_issue_event(
+                "updated", issue,
+                changes={"stage": "execution_started", "correlation_id": correlation_id, "pool_id": pool_id},
+            ))
+            trace.append("Coordination memory recorded execution start")
+        except Exception as exc:
+            trace.append(f"Coordination memory degraded: {exc}")
+
+    async def _record_coord_close(
+        self, issue: Any, correlation_id: str, pool_id: str,
+        execution_result: dict, trace: list[str],
+    ) -> None:
+        if issue is None or self.coordination_memory is None:
+            return
+        try:
+            await _await_if_needed(self.coordination_memory.store_issue_event(
+                "closed", issue,
+                changes={"stage": "validated", "correlation_id": correlation_id,
+                         "pool_id": pool_id, "worker_id": execution_result.get("worker_id", "")},
+            ))
+            trace.append("Coordination memory recorded fix validation")
+        except Exception as exc:
+            trace.append(f"Coordination memory search/index degraded: {exc}")
+
+        try:
+            search_results = await _await_if_needed(
+                self.coordination_memory.search_coordination_history(
+                    correlation_id,
+                    repo=(issue.repos[0] if getattr(issue, "repos", None) else None),
+                    limit=10,
+                )
+            )
+            trace.append(f"Coordination memory search returned {len(search_results)} result(s)")
+        except Exception as exc:
+            trace.append(f"Coordination memory search degraded: {exc}")
+
+    async def _complete_checkpoint(
+        self, checkpoint_id: str | None, quality_result: Any,
+        execution_result: dict, trace: list[str],
+    ) -> None:
+        if self.session_checkpoint is None or checkpoint_id is None:
+            return
+        try:
+            await _await_if_needed(self.session_checkpoint.update_checkpoint(
+                checkpoint_id, "completed",
+                {"quality_score": quality_result.coverage,
+                 "changes": execution_result.get("changes", [])},
+            ))
+            trace.append("Session checkpoint marked completed")
+        except Exception as exc:
+            trace.append(f"Session checkpoint completion degraded: {exc}")
+
     async def execute_fix(
         self,
         pool_id: str,
@@ -250,105 +334,42 @@ class FixOrchestrator:
         """
         correlation_id = task.correlation_id or task.issue_id
         trace: list[str] = []
-        checkpoint_id: str | None = None
 
-        # Step 0: Record and checkpoint the incident context
         trace.append(f"Starting fix for {task.issue_id} with correlation {correlation_id}")
         if self.trace_recorder is not None:
-            self.trace_recorder(
-                correlation_id,
-                "start",
-                "Fix execution started",
-                {
-                    "issue_id": task.issue_id,
-                    "pool_id": pool_id,
-                    "pool_type": task.pool_type,
-                    "session_id": task.session_id,
-                },
-            )
+            self.trace_recorder(correlation_id, "start", "Fix execution started",
+                                {"issue_id": task.issue_id, "pool_id": pool_id,
+                                 "pool_type": task.pool_type, "session_id": task.session_id})
 
-        if self.session_checkpoint is not None:
-            try:
-                checkpoint_id = await _await_if_needed(
-                    self.session_checkpoint.create_checkpoint(
-                        task.session_id or correlation_id,
-                        {
-                            "issue_id": task.issue_id,
-                            "correlation_id": correlation_id,
-                            "pool_id": pool_id,
-                            "prompt": task.prompt,
-                        },
-                    )
-                )
-                trace.append(f"Session checkpoint created: {checkpoint_id}")
-                if self.trace_recorder is not None:
-                    self.trace_recorder(
-                        correlation_id,
-                        "checkpoint",
-                        "Session checkpoint created",
-                        {"checkpoint_id": checkpoint_id, "session_id": task.session_id or correlation_id},
-                    )
-            except Exception as exc:
-                trace.append(f"Session checkpoint degraded: {exc}")
+        checkpoint_id = await self._init_checkpoint(task, pool_id, correlation_id, trace)
 
         issue = None
         if self.coordination_manager is not None and hasattr(self.coordination_manager, "get_issue"):
-            try:
+            with contextlib.suppress(Exception):
                 issue = await _await_if_needed(self.coordination_manager.get_issue(task.issue_id))
-            except Exception:
-                issue = None
 
-        if issue is not None and self.coordination_memory is not None:
-            try:
-                await _await_if_needed(
-                    self.coordination_memory.store_issue_event(
-                        "updated",
-                        issue,
-                        changes={
-                            "stage": "execution_started",
-                            "correlation_id": correlation_id,
-                            "pool_id": pool_id,
-                        },
-                    )
-                )
-                trace.append("Coordination memory recorded execution start")
-            except Exception as exc:
-                trace.append(f"Coordination memory degraded: {exc}")
+        await self._record_coord_start(issue, correlation_id, pool_id, trace)
 
         # Step 1: Execute fix in pool
         try:
             execution_result = await self.pool_manager.execute_on_pool(
                 pool_id,
-                {
-                    "prompt": task.prompt,
-                    "issue_id": task.issue_id,
-                    "files": task.affected_files,
-                },
+                {"prompt": task.prompt, "issue_id": task.issue_id, "files": task.affected_files},
             )
         except Exception as e:
-            return FixResult(
-                success=False,
-                stage="execution",
-                error_message=str(e),
-            )
+            return FixResult(success=False, stage="execution", error_message=str(e))
 
         if not execution_result.get("success", False):
             if self.session_checkpoint is not None and checkpoint_id is not None:
                 with contextlib.suppress(Exception):
-                    await _await_if_needed(
-                        self.session_checkpoint.update_checkpoint(
-                            checkpoint_id,
-                            "failed",
-                            {"quality_score": 0, "error": execution_result.get("error")},
-                        )
-                    )
+                    await _await_if_needed(self.session_checkpoint.update_checkpoint(
+                        checkpoint_id, "failed",
+                        {"quality_score": 0, "error": execution_result.get("error")},
+                    ))
             return FixResult(
-                success=False,
-                stage="execution",
+                success=False, stage="execution",
                 error_message=execution_result.get("error", "Unknown error"),
-                correlation_id=correlation_id,
-                checkpoint_id=checkpoint_id,
-                trace=trace,
+                correlation_id=correlation_id, checkpoint_id=checkpoint_id, trace=trace,
             )
 
         # Step 2: Run quality gates
@@ -363,90 +384,31 @@ class FixOrchestrator:
             stage = "fast_hooks" if not quality_result.fast_hooks else "tests"
             if self.session_checkpoint is not None and checkpoint_id is not None:
                 with contextlib.suppress(Exception):
-                    await _await_if_needed(
-                        self.session_checkpoint.update_checkpoint(
-                            checkpoint_id,
-                            "failed",
-                            {"quality_score": quality_result.coverage, "error": quality_result.errors},
-                        )
-                    )
+                    await _await_if_needed(self.session_checkpoint.update_checkpoint(
+                        checkpoint_id, "failed",
+                        {"quality_score": quality_result.coverage, "error": quality_result.errors},
+                    ))
             return FixResult(
-                success=False,
-                stage=stage,
-                quality_gates=quality_result,
-                correlation_id=correlation_id,
-                checkpoint_id=checkpoint_id,
-                trace=trace,
+                success=False, stage=stage, quality_gates=quality_result,
+                correlation_id=correlation_id, checkpoint_id=checkpoint_id, trace=trace,
             )
 
-        # Step 4: Update issue status
+        # Step 4: Update issue status and finalize
         await self._update_issue_status(task.issue_id, execution_result, quality_result)
-
-        if issue is not None and self.coordination_memory is not None:
-            try:
-                await _await_if_needed(
-                    self.coordination_memory.store_issue_event(
-                        "closed",
-                        issue,
-                        changes={
-                            "stage": "validated",
-                            "correlation_id": correlation_id,
-                            "pool_id": pool_id,
-                            "worker_id": execution_result.get("worker_id", ""),
-                        },
-                    )
-                )
-                trace.append("Coordination memory recorded fix validation")
-            except Exception as exc:
-                trace.append(f"Coordination memory search/index degraded: {exc}")
-
-            try:
-                search_results = await _await_if_needed(
-                    self.coordination_memory.search_coordination_history(
-                        correlation_id,
-                        repo=(issue.repos[0] if getattr(issue, "repos", None) else None),
-                        limit=10,
-                    )
-                )
-                trace.append(f"Coordination memory search returned {len(search_results)} result(s)")
-            except Exception as exc:
-                trace.append(f"Coordination memory search degraded: {exc}")
-
-        if self.session_checkpoint is not None and checkpoint_id is not None:
-            try:
-                await _await_if_needed(
-                    self.session_checkpoint.update_checkpoint(
-                        checkpoint_id,
-                        "completed",
-                        {"quality_score": quality_result.coverage, "changes": execution_result.get("changes", [])},
-                    )
-                )
-                trace.append("Session checkpoint marked completed")
-            except Exception as exc:
-                trace.append(f"Session checkpoint completion degraded: {exc}")
+        await self._record_coord_close(issue, correlation_id, pool_id, execution_result, trace)
+        await self._complete_checkpoint(checkpoint_id, quality_result, execution_result, trace)
 
         if self.trace_recorder is not None:
-            self.trace_recorder(
-                correlation_id,
-                "complete",
-                "Fix execution completed",
-                {
-                    "issue_id": task.issue_id,
-                    "pool_id": pool_id,
-                    "worker_id": execution_result.get("worker_id", ""),
-                    "quality_coverage": quality_result.coverage,
-                },
-            )
+            self.trace_recorder(correlation_id, "complete", "Fix execution completed",
+                                {"issue_id": task.issue_id, "pool_id": pool_id,
+                                 "worker_id": execution_result.get("worker_id", ""),
+                                 "quality_coverage": quality_result.coverage})
 
         return FixResult(
-            success=True,
-            stage="complete",
-            quality_gates=quality_result,
+            success=True, stage="complete", quality_gates=quality_result,
             changes=execution_result.get("changes", []),
             worker_id=execution_result.get("worker_id", ""),
-            correlation_id=correlation_id,
-            checkpoint_id=checkpoint_id,
-            trace=trace,
+            correlation_id=correlation_id, checkpoint_id=checkpoint_id, trace=trace,
         )
 
     async def execute_batch(

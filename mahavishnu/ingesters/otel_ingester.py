@@ -24,7 +24,7 @@ try:
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
-    SentenceTransformer: type[Any] | None = None  # type: ignore[misc]
+    SentenceTransformer: type[Any] | None = None  # type: ignore[no-redef]
 
 try:
     from fastembed import TextEmbedding
@@ -32,7 +32,7 @@ try:
     FASTEMBED_AVAILABLE = True
 except ImportError:
     FASTEMBED_AVAILABLE = False
-    TextEmbedding: type[Any] | None = None  # type: ignore[misc]
+    TextEmbedding: type[Any] | None = None  # type: ignore[no-redef]
 
 if TYPE_CHECKING:
     from akosha.storage import HotStore

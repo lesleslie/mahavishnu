@@ -164,6 +164,6 @@ ______________________________________________________________________
 
 ## Related Documentation
 
-- [Parallel Execution Plan](../PARALLEL_EXECUTION_PLAN.md)
-- [Master Plan V3](../TASK_ORCHESTRATION_MASTER_PLAN_V3.md)
+- Parallel Execution Plan
+- Master Plan V3
 - [Phase 0 Action Plan](../PHASE_0_ACTION_PLAN.md)

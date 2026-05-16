@@ -192,7 +192,9 @@ class TestDataFetchers:
                         version="1.0.0",
                         state="active",
                         body="# Skill 1\nBody",
-                        activation=SimpleNamespace(activated_by="ci", activated_at=tui_app.datetime.now()),
+                        activation=SimpleNamespace(
+                            activated_by="ci", activated_at=tui_app.datetime.now()
+                        ),
                         review=None,
                     )
                 ]

@@ -123,6 +123,7 @@ try:
 except Exception:  # pragma: no cover - optional runtime dependency
     TerminalManager = None  # type: ignore[assignment]
 
+
 class MahavishnuApp:
     """Main application class for Mahavishnu orchestrator.
 
@@ -143,6 +144,19 @@ class MahavishnuApp:
         ...     repos=repos,
         ... )
     """
+
+    # Runtime attributes set by _initialize_runtime_services / lifecycle helpers
+    terminal_manager: Any
+    session_buddy: Any
+    workflow_state_manager: Any
+    rbac_manager: Any
+    worktree_coordinator: Any
+    pool_manager: Any
+    approval_manager: Any
+    coordination_manager: Any
+    error_recovery_manager: Any
+    monitoring_service: Any
+    opensearch_integration: Any
 
     @classmethod
     def load(cls) -> "MahavishnuApp":
@@ -400,7 +414,9 @@ class MahavishnuApp:
             rejection_reason=rejection_reason,
         )
 
-    def _persist_workflow_start(self, execution_id: str, workflow_name: str, metadata: dict) -> None:
+    def _persist_workflow_start(
+        self, execution_id: str, workflow_name: str, metadata: dict
+    ) -> None:
         """Fire-and-forget: record workflow start in Dhara."""
         _persist_workflow_start_helper(self, execution_id, workflow_name, metadata)
 
@@ -617,9 +633,7 @@ class MahavishnuApp:
         Returns:
             workflow_id: Unique workflow identifier
         """
-        return await _initialize_workflow_state_helper(
-            self, task, adapter_name, validated_repos
-        )
+        return await _initialize_workflow_state_helper(self, task, adapter_name, validated_repos)
 
     async def _validate_pre_execution_qc(
         self, workflow_id: str, validated_repos: list[str]
@@ -648,9 +662,7 @@ class MahavishnuApp:
         Returns:
             checkpoint_id: Checkpoint ID if created, None otherwise
         """
-        return await _create_session_checkpoint_helper(
-            self, task, adapter_name, validated_repos
-        )
+        return await _create_session_checkpoint_helper(self, task, adapter_name, validated_repos)
 
     async def _process_single_repo(
         self,

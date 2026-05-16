@@ -1,8 +1,8 @@
 # Worktree Manage Consolidation Plan
 
-**Date:** 2026-05-11  
-**Status:** `complete`, `historical`  
-**Owner:** Core Eng  
+**Date:** 2026-05-11
+**Status:** `complete`, `historical`
+**Owner:** Core Eng
 **Purpose:** Consolidate the deprecated `worktree_tools.py` MCP surface into a single `worktree_manage` tool with subcommands, preserving behavior while reducing duplicated tool entry points.
 
 ## 1. Outcome

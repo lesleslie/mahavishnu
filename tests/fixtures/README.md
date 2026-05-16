@@ -599,4 +599,4 @@ async def test_async(mock_app):
 
 - [Pytest Fixture Documentation](https://docs.pytest.org/en/stable/fixture.html)
 - [Project CLAUDE.md](../../CLAUDE.md) - Project-specific testing guidelines
-- [Testing Best Practices](../../docs/TESTING.md) - Additional testing guidelines
+- Testing Best Practices - Additional testing guidelines

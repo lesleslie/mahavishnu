@@ -390,5 +390,5 @@ python -m myapp
 ## Related Documentation
 
 - [Oneiric README](https://github.com/lesleslie/oneiric) - Complete configuration guide
-- [Config Module](oneiric/core/config.py) - Pydantic models and validation
-- [ADR 001: Oneiric Configuration](docs/adr/001-oneiric-config.md) - Architecture decisions
+- Config Module - Pydantic models and validation
+- ADR 001: Oneiric Configuration - Architecture decisions

@@ -8,7 +8,7 @@
 
 **Tech Stack:** `hatchet-sdk~=0.x`, Pydantic v2, `asyncio`, existing `OrchestratorAdapter` / `AdapterType` / `AdapterCapabilities` from `mahavishnu/core/adapters/base.py`, `TaskCategory` from `mahavishnu/workers/task_router.py`.
 
----
+______________________________________________________________________
 
 ## File Map
 
@@ -24,11 +24,12 @@
 | Create | `tests/unit/test_hatchet_adapter.py` | Unit tests (mocked client) |
 | Create | `tests/integration/test_hatchet_smoke.py` | Smoke test (skipped without `HATCHET_CLIENT_TOKEN`) |
 
----
+______________________________________________________________________
 
 ### Task 1: Add hatchet-sdk dependency
 
 **Files:**
+
 - Modify: `pyproject.toml`
 
 - [x] **Step 1: Write the failing test**
@@ -84,11 +85,12 @@ git add pyproject.toml uv.lock tests/unit/test_hatchet_adapter.py
 git commit -m "build: add hatchet-sdk optional dependency"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Add AdapterType.HATCHET
 
 **Files:**
+
 - Modify: `mahavishnu/core/adapters/base.py`
 
 - [x] **Step 1: Write the failing test**
@@ -150,12 +152,14 @@ git add mahavishnu/core/adapters/base.py tests/unit/test_hatchet_adapter.py
 git commit -m "feat: add AdapterType.HATCHET enum member"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Add HatchetConfig + hatchet_enabled to config
 
 **Files:**
+
 - Modify: `mahavishnu/core/config.py`
+
 - Modify: `settings/mahavishnu.yaml`
 
 - [x] **Step 1: Write the failing test**
@@ -311,11 +315,12 @@ git add mahavishnu/core/config.py settings/mahavishnu.yaml tests/unit/test_hatch
 git commit -m "feat: add HatchetConfig and hatchet_enabled to AdapterConfig"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Add TaskCategory.AGENT_LOOP
 
 **Files:**
+
 - Modify: `mahavishnu/workers/task_router.py`
 
 - [x] **Step 1: Write the failing test**
@@ -404,11 +409,12 @@ git add mahavishnu/workers/task_router.py tests/unit/test_hatchet_adapter.py
 git commit -m "feat: add TaskCategory.AGENT_LOOP with classification patterns"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Implement HatchetAdapterImpl
 
 **Files:**
+
 - Create: `mahavishnu/engines/hatchet_adapter_impl.py`
 
 - [x] **Step 1: Write the failing tests**
@@ -716,11 +722,12 @@ git add mahavishnu/engines/hatchet_adapter_impl.py tests/unit/test_hatchet_adapt
 git commit -m "feat: implement HatchetAdapterImpl with WaitForEvent approval bridge"
 ```
 
----
+______________________________________________________________________
 
-### Task 6: Wire into _initialize_adapters()
+### Task 6: Wire into \_initialize_adapters()
 
 **Files:**
+
 - Modify: `mahavishnu/core/app.py`
 
 - [x] **Step 1: Write the failing test**
@@ -805,11 +812,12 @@ git add mahavishnu/core/app.py tests/unit/test_hatchet_adapter.py
 git commit -m "feat: wire HatchetAdapterImpl into _initialize_adapters()"
 ```
 
----
+______________________________________________________________________
 
 ### Task 7: Integration smoke test (gated on env var)
 
 **Files:**
+
 - Create: `tests/integration/test_hatchet_smoke.py`
 
 - [x] **Step 1: Write the smoke test**
@@ -872,11 +880,12 @@ git add tests/integration/test_hatchet_smoke.py
 git commit -m "test: add Hatchet smoke tests (gated on HATCHET_CLIENT_TOKEN)"
 ```
 
----
+______________________________________________________________________
 
 ### Task 8: Full test suite pass + backlog update
 
 **Files:**
+
 - Modify: `docs/plans/2026-05-07-mahavishnu-master-backlog.md`
 
 - [x] **Step 1: Run the full unit test suite**
@@ -911,7 +920,7 @@ git add docs/plans/2026-05-07-mahavishnu-master-backlog.md
 git commit -m "docs: mark P10 HatchetAdapter as delivered"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 

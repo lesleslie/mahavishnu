@@ -243,7 +243,7 @@ reflections_stored = Counter(
 system_memory_usage_bytes = Gauge(
     "system_memory_usage_bytes",
     "System memory usage",
-    ["type"],  # type: rss, vms, shared
+    ["type"],  # values: rss, vms, shared
 )
 
 system_cpu_usage_percent = Gauge(

@@ -50,7 +50,7 @@ def test_classify_task_agent_loop():
     assert category == TaskCategory.AGENT_LOOP
 
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from mahavishnu.engines.hatchet_adapter_impl import HatchetAdapterImpl
 
@@ -58,7 +58,9 @@ from mahavishnu.engines.hatchet_adapter_impl import HatchetAdapterImpl
 @pytest.fixture()
 def mock_hatchet_client():
     client = MagicMock()
-    client.run = AsyncMock(return_value={"run_id": "run-001", "status": "SUCCEEDED", "output": "done"})
+    client.run = AsyncMock(
+        return_value={"run_id": "run-001", "status": "SUCCEEDED", "output": "done"}
+    )
     client.close = AsyncMock()
     client.rest = MagicMock()
     client.rest.workflow_list = AsyncMock(return_value=[])
@@ -70,6 +72,7 @@ def mock_hatchet_client():
 @pytest.fixture()
 def hatchet_adapter():
     from mahavishnu.core.config import HatchetConfig
+
     cfg = HatchetConfig()
     inst = HatchetAdapterImpl(config=cfg)
     return inst
@@ -139,16 +142,15 @@ async def test_hatchet_execute_timeout(hatchet_adapter, mock_hatchet_client):
 
     mock_hatchet_client.run = slow_run
     hatchet_adapter._client = mock_hatchet_client
-    result = await hatchet_adapter.execute(
-        {"prompt": "run agent loop", "timeout": 0.01}, repos=[]
-    )
+    result = await hatchet_adapter.execute({"prompt": "run agent loop", "timeout": 0.01}, repos=[])
     assert result["status"] == "timeout"
 
 
 def test_initialize_adapters_skips_hatchet_when_disabled():
     """When hatchet_enabled=False, no HatchetAdapterImpl is instantiated."""
-    from mahavishnu.core.app import MahavishnuApp
     from unittest.mock import MagicMock
+
+    from mahavishnu.core.app import MahavishnuApp
 
     app = MahavishnuApp.__new__(MahavishnuApp)
     app.adapters = {}

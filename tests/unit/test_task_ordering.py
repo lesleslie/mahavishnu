@@ -518,7 +518,7 @@ class TestTaskOrderer:
         assert score == 0.9
 
     def test_score_deadline_invalid_string(self, orderer: TaskOrderer) -> None:
-        """Test deadline scoring returns None for unparseable deadline strings."""
+        """Test deadline scoring returns None for unparsable deadline strings."""
         task = {"deadline": "not-a-date"}
         score = orderer._score_deadline(task)
         assert score is None

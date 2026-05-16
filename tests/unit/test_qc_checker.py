@@ -3,9 +3,8 @@
 import json
 from unittest.mock import MagicMock
 
-import pytest
-import respx
 import httpx
+import respx
 
 from mahavishnu.qc.checker import QualityControl
 
@@ -25,7 +24,9 @@ _TOOLS_URL = "http://localhost:8676/mcp/tools/call"
 _HEALTH_URL = "http://localhost:8676/health"
 
 _SUCCESS_RESULT = json.dumps({"success": True, "errors": [], "warnings": [], "duration": 1.2})
-_FAILURE_RESULT = json.dumps({"success": False, "errors": ["lint error 1", "type error 2"], "warnings": [], "duration": 2.0})
+_FAILURE_RESULT = json.dumps(
+    {"success": False, "errors": ["lint error 1", "type error 2"], "warnings": [], "duration": 2.0}
+)
 
 
 class TestQualityControlInit:
@@ -61,7 +62,9 @@ class TestRunPreChecksDisabled:
 class TestRunPreChecksSuccess:
     @respx.mock
     async def test_single_repo_success(self):
-        respx.post(_TOOLS_URL).mock(return_value=httpx.Response(200, json={"result": _SUCCESS_RESULT}))
+        respx.post(_TOOLS_URL).mock(
+            return_value=httpx.Response(200, json={"result": _SUCCESS_RESULT})
+        )
         qc = QualityControl(_mock_config())
         result = await qc.run_pre_checks(["/tmp/repo"])
         assert result["enabled"] is True
@@ -71,10 +74,12 @@ class TestRunPreChecksSuccess:
 
     @respx.mock
     async def test_multiple_repos_uses_min_score(self):
-        respx.post(_TOOLS_URL).mock(side_effect=[
-            httpx.Response(200, json={"result": _SUCCESS_RESULT}),
-            httpx.Response(200, json={"result": _FAILURE_RESULT}),
-        ])
+        respx.post(_TOOLS_URL).mock(
+            side_effect=[
+                httpx.Response(200, json={"result": _SUCCESS_RESULT}),
+                httpx.Response(200, json={"result": _FAILURE_RESULT}),
+            ]
+        )
         qc = QualityControl(_mock_config(min_score=90))  # worst repo score=80 < 90
         result = await qc.run_pre_checks(["/tmp/a", "/tmp/b"])
         assert result["score"] < 100
@@ -82,7 +87,9 @@ class TestRunPreChecksSuccess:
 
     @respx.mock
     async def test_per_check_results_populated(self):
-        respx.post(_TOOLS_URL).mock(return_value=httpx.Response(200, json={"result": _SUCCESS_RESULT}))
+        respx.post(_TOOLS_URL).mock(
+            return_value=httpx.Response(200, json={"result": _SUCCESS_RESULT})
+        )
         qc = QualityControl(_mock_config())
         result = await qc.run_pre_checks(["/tmp/r"])
         repo_checks = result["individual_results"]["/tmp/r"]
@@ -92,7 +99,9 @@ class TestRunPreChecksSuccess:
 
     @respx.mock
     async def test_custom_checks_override(self):
-        respx.post(_TOOLS_URL).mock(return_value=httpx.Response(200, json={"result": _SUCCESS_RESULT}))
+        respx.post(_TOOLS_URL).mock(
+            return_value=httpx.Response(200, json={"result": _SUCCESS_RESULT})
+        )
         qc = QualityControl(_mock_config())
         result = await qc.run_pre_checks(["/tmp/r"], checks=["security_scan"])
         assert result["checks"] == ["security_scan"]
@@ -109,15 +118,19 @@ class TestRunPreChecksSuccess:
 class TestRunPreChecksFailure:
     @respx.mock
     async def test_failure_score_below_threshold(self):
-        respx.post(_TOOLS_URL).mock(return_value=httpx.Response(200, json={"result": _FAILURE_RESULT}))
+        respx.post(_TOOLS_URL).mock(
+            return_value=httpx.Response(200, json={"result": _FAILURE_RESULT})
+        )
         qc = QualityControl(_mock_config(min_score=90))  # score=80 < 90
         result = await qc.run_pre_checks(["/tmp/r"])
-        assert result["score"] == 80   # 100 - 2*10
+        assert result["score"] == 80  # 100 - 2*10
         assert result["passed"] is False
 
     @respx.mock
     async def test_failure_check_status_failed(self):
-        respx.post(_TOOLS_URL).mock(return_value=httpx.Response(200, json={"result": _FAILURE_RESULT}))
+        respx.post(_TOOLS_URL).mock(
+            return_value=httpx.Response(200, json={"result": _FAILURE_RESULT})
+        )
         qc = QualityControl(_mock_config())
         result = await qc.run_pre_checks(["/tmp/r"])
         repo_checks = result["individual_results"]["/tmp/r"]
@@ -162,7 +175,9 @@ class TestRunPostChecks:
 
     @respx.mock
     async def test_post_success(self):
-        respx.post(_TOOLS_URL).mock(return_value=httpx.Response(200, json={"result": _SUCCESS_RESULT}))
+        respx.post(_TOOLS_URL).mock(
+            return_value=httpx.Response(200, json={"result": _SUCCESS_RESULT})
+        )
         qc = QualityControl(_mock_config())
         result = await qc.run_post_checks(["/tmp/r"])
         assert result["passed"] is True
@@ -200,12 +215,16 @@ class TestValidateExecution:
 
     @respx.mock
     async def test_validate_pre_passes_on_success(self):
-        respx.post(_TOOLS_URL).mock(return_value=httpx.Response(200, json={"result": _SUCCESS_RESULT}))
+        respx.post(_TOOLS_URL).mock(
+            return_value=httpx.Response(200, json={"result": _SUCCESS_RESULT})
+        )
         qc = QualityControl(_mock_config())
         assert await qc.validate_pre_execution(["/tmp/r"]) is True
 
     @respx.mock
     async def test_validate_pre_fails_on_errors(self):
-        respx.post(_TOOLS_URL).mock(return_value=httpx.Response(200, json={"result": _FAILURE_RESULT}))
+        respx.post(_TOOLS_URL).mock(
+            return_value=httpx.Response(200, json={"result": _FAILURE_RESULT})
+        )
         qc = QualityControl(_mock_config(min_score=90))
         assert await qc.validate_pre_execution(["/tmp/r"]) is False

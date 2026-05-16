@@ -292,6 +292,25 @@ class LLMProviderFactory:
         self.config = config
         self._model_instance = None
 
+    _PROVIDER_FACTORY_METHODS: dict[str, str] = {
+        LLMProvider.OPENAI: "_create_openai_model",
+        LLMProvider.ANTHROPIC: "_create_anthropic_model",
+        LLMProvider.OLLAMA: "_create_ollama_model",
+        LLMProvider.MINIMAX: "_create_minimax_model",
+    }
+
+    def _instantiate_model(self, provider: str, model_id: str, factory_name: str) -> Any:
+        try:
+            instance = getattr(self, factory_name)(model_id)
+            logger.info(f"Created LLM model: provider={provider}, model_id={model_id}")
+            return instance
+        except ImportError as e:
+            raise AgnoError(
+                f"Failed to import LLM provider '{provider}': {e}",
+                error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
+                details={"provider": provider, "import_error": str(e)},
+            ) from e
+
     def create_model(self) -> Any:
         """Create and return an LLM model instance.
 
@@ -306,33 +325,18 @@ class LLMProviderFactory:
 
         provider = self.config.provider
         model_id = self.config.model_id
+        factory_name = self._PROVIDER_FACTORY_METHODS.get(provider)
+        if factory_name is None:
+            raise AgnoError(
+                f"Unsupported LLM provider: {provider}",
+                error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
+                details={"provider": provider},
+            )
 
         try:
-            if provider == LLMProvider.OPENAI:
-                self._model_instance = self._create_openai_model(model_id)
-            elif provider == LLMProvider.ANTHROPIC:
-                self._model_instance = self._create_anthropic_model(model_id)
-            elif provider == LLMProvider.OLLAMA:
-                self._model_instance = self._create_ollama_model(model_id)
-            elif provider == LLMProvider.MINIMAX:
-                self._model_instance = self._create_minimax_model(model_id)
-            else:
-                raise AgnoError(
-                    f"Unsupported LLM provider: {provider}",
-                    error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
-                    details={"provider": provider},
-                )
-
-            logger.info(f"Created LLM model: provider={provider}, model_id={model_id}")
+            self._model_instance = self._instantiate_model(provider, model_id, factory_name)
             return self._model_instance
-
-        except ImportError as e:
-            raise AgnoError(
-                f"Failed to import LLM provider '{provider}': {e}",
-                error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
-                details={"provider": provider, "import_error": str(e)},
-            ) from e
-        except ConfigurationError:
+        except (AgnoError, ConfigurationError):
             raise
         except Exception as e:
             raise AgnoError(

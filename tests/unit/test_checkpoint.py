@@ -2,9 +2,8 @@
 
 from unittest.mock import MagicMock
 
-import pytest
-import respx
 import httpx
+import respx
 
 from mahavishnu.session.checkpoint import SessionBuddy
 
@@ -20,7 +19,9 @@ def _mock_config(enabled=True, session_buddy_url="http://localhost:8678/mcp"):
 _TOOLS_URL = "http://localhost:8678/mcp/tools/call"
 _HEALTH_URL = "http://localhost:8678/health"
 
-_SUCCESS_RESPONSE = {"result": "✅ Conversation checkpoint stored successfully!\n📝 Conversation ID: abc-123"}
+_SUCCESS_RESPONSE = {
+    "result": "✅ Conversation checkpoint stored successfully!\n📝 Conversation ID: abc-123"
+}
 
 
 class TestSessionBuddyInit:
@@ -51,12 +52,15 @@ class TestCreateCheckpoint:
 
     @respx.mock
     async def test_calls_store_conversation_checkpoint(self):
-        route = respx.post(_TOOLS_URL).mock(return_value=httpx.Response(200, json=_SUCCESS_RESPONSE))
+        route = respx.post(_TOOLS_URL).mock(
+            return_value=httpx.Response(200, json=_SUCCESS_RESPONSE)
+        )
         sb = SessionBuddy(_mock_config())
         await sb.create_checkpoint("sess-1", {})
         assert route.called
         body = route.calls[0].request.content
         import json
+
         payload = json.loads(body)
         assert payload["name"] == "store_conversation_checkpoint"
 
@@ -76,10 +80,13 @@ class TestCreateCheckpoint:
 
     @respx.mock
     async def test_passes_quality_score_when_present(self):
-        route = respx.post(_TOOLS_URL).mock(return_value=httpx.Response(200, json=_SUCCESS_RESPONSE))
+        route = respx.post(_TOOLS_URL).mock(
+            return_value=httpx.Response(200, json=_SUCCESS_RESPONSE)
+        )
         sb = SessionBuddy(_mock_config())
         await sb.create_checkpoint("sess-1", {"quality_score": 85})
         import json
+
         payload = json.loads(route.calls[0].request.content)
         assert payload["arguments"]["quality_score"] == 85
 
@@ -91,7 +98,9 @@ class TestUpdateCheckpoint:
 
     @respx.mock
     async def test_non_terminal_does_not_call_service(self):
-        route = respx.post(_TOOLS_URL).mock(return_value=httpx.Response(200, json=_SUCCESS_RESPONSE))
+        route = respx.post(_TOOLS_URL).mock(
+            return_value=httpx.Response(200, json=_SUCCESS_RESPONSE)
+        )
         sb = SessionBuddy(_mock_config())
         result = await sb.update_checkpoint("ckpt-1", "running")
         assert result is True
@@ -99,7 +108,9 @@ class TestUpdateCheckpoint:
 
     @respx.mock
     async def test_terminal_completed_calls_service(self):
-        route = respx.post(_TOOLS_URL).mock(return_value=httpx.Response(200, json=_SUCCESS_RESPONSE))
+        route = respx.post(_TOOLS_URL).mock(
+            return_value=httpx.Response(200, json=_SUCCESS_RESPONSE)
+        )
         sb = SessionBuddy(_mock_config())
         result = await sb.update_checkpoint("ckpt-1", "completed")
         assert result is True
@@ -107,7 +118,9 @@ class TestUpdateCheckpoint:
 
     @respx.mock
     async def test_terminal_failed_calls_service(self):
-        route = respx.post(_TOOLS_URL).mock(return_value=httpx.Response(200, json=_SUCCESS_RESPONSE))
+        route = respx.post(_TOOLS_URL).mock(
+            return_value=httpx.Response(200, json=_SUCCESS_RESPONSE)
+        )
         sb = SessionBuddy(_mock_config())
         result = await sb.update_checkpoint("ckpt-1", "failed")
         assert result is True

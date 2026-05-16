@@ -753,7 +753,7 @@ mahavishnu/
 - **[Deployment Guide](docs/PRODUCTION_DEPLOYMENT_GUIDE.md)** - Deployment checklist and operational notes
 - **[MCP Tools Specification](docs/MCP_TOOLS_SPECIFICATION.md)** - Detailed tool specs
 - **[Codex + Claude Routing Playbook](docs/integrations/CODEX_CLAUDE_ENGINE_ROUTING_PLAYBOOK.md)** - Configure agents to use Mahavishnu engines and multi-repo orchestration consistently
-- **[Security Checklist](SECURITY_CHECKLIST.md)** - Security guidelines
+- **Security Checklist** - Security guidelines
 
 ### LLM Gateway Docs
 

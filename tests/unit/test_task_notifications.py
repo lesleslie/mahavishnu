@@ -653,7 +653,6 @@ class TestTaskEventEmitter:
 
     def test_to_json_raises_for_non_serializable(self) -> None:
         """json_serial raises TypeError for objects that aren't datetime (line 93)."""
-        import json
 
         event = TaskEvent(
             event_type=TaskEventType.CREATED,

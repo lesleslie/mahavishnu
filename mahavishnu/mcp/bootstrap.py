@@ -34,8 +34,7 @@ def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
         if preference == "iterm2":
             if not ITERM2_AVAILABLE:
                 logger.warning(
-                    "iTerm2 adapter requested but not available. "
-                    "Install with: pip install iterm2"
+                    "iTerm2 adapter requested but not available. Install with: pip install iterm2"
                 )
                 logger.info("Falling back to mcpretentious adapter")
                 adapter = McpretentiousAdapter(server.mcp_client)
@@ -81,26 +80,29 @@ def register_health_endpoint(server: FastMCPServer, version: str) -> None:
         return await prometheus_metrics_endpoint()
 
 
-async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -> None:
-    """Register the profile-gated MCP tool groups on the server."""
+async def _register_core_integration_tools(server: FastMCPServer, methods_set: set[str]) -> None:
     if server.terminal_manager is not None and "_register_terminal_tools" in methods_set:
         from ..mcp.tools.terminal_tools import register_terminal_tools
-
         register_terminal_tools(server.server, server.terminal_manager, server.mcp_client)
         logger.info("Registered 12 terminal management tools with MCP server")
 
     if "_register_session_buddy_tools" in methods_set:
         from ..mcp.tools.session_buddy_tools import register_session_buddy_tools
-
         register_session_buddy_tools(server.server, server.app, server.mcp_client)
         logger.info("Registered Session Buddy integration tools with MCP server")
 
     if "_register_git_analytics_tools" in methods_set:
         from ..mcp.tools.git_analytics import register_git_analytics_tools
-
         register_git_analytics_tools(server.server, server.mcp_client)
         logger.info("Registered 3 Git analytics tools with MCP server")
 
+    if "_register_repository_messaging_tools" in methods_set:
+        from ..mcp.tools.repository_messaging_tools import register_repository_messaging_tools
+        register_repository_messaging_tools(server.server, server.app, server.mcp_client)
+        logger.info("Registered repository messaging tools with MCP server")
+
+
+async def _register_worker_pool_tools(server: FastMCPServer, methods_set: set[str]) -> None:
     if "_register_worker_tools" in methods_set:
         if not getattr(server.app.config, "workers_enabled", True):
             logger.info("Worker orchestration disabled, skipping tool registration")
@@ -110,7 +112,6 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
                 logger.warning("Worker manager not initialized, skipping worker tools")
             else:
                 from ..mcp.tools.worker_tools import register_worker_tools
-
                 register_worker_tools(server.server, worker_manager)
                 logger.info("Registered 9 worker orchestration tools with MCP server")
 
@@ -123,56 +124,39 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
                 logger.warning("Pool manager not initialized, skipping pool tools")
             else:
                 from ..mcp.tools.pool_tools import register_pool_tools
-
                 register_pool_tools(server.server, pool_manager)
                 logger.info("Registered 10 pool management tools with MCP server")
-
-    if "_register_repository_messaging_tools" in methods_set:
-        from ..mcp.tools.repository_messaging_tools import register_repository_messaging_tools
-
-        register_repository_messaging_tools(server.server, server.app, server.mcp_client)
-        logger.info("Registered repository messaging tools with MCP server")
 
     if "_register_otel_tools" in methods_set:
         if not getattr(server.app.config, "otel_storage_enabled", False):
             logger.info("OTel storage disabled, skipping tool registration")
         else:
             from ..mcp.tools.otel_tools import register_otel_tools
-
             register_otel_tools(server.server, server.app, server.mcp_client)
             logger.info("Registered 4 OTel trace management tools with MCP server")
 
-    await server.register_worktree_tools()
 
+async def _register_optional_tools(server: FastMCPServer, methods_set: set[str]) -> None:
     if "_register_self_improvement_tools" in methods_set:
         from ..mcp.tools.self_improvement_tools import register_self_improvement_tools
-
         register_self_improvement_tools(server.server, server.app)
 
     if "_register_goal_team_tools" in methods_set:
         from ..core.feature_flags import is_feature_enabled
-
-        if not is_feature_enabled("enabled"):
-            logger.info("Goal-Driven Teams disabled, skipping tool registration")
-        elif not is_feature_enabled("mcp_tools_enabled"):
-            logger.info("Goal-Driven Teams MCP tools disabled, skipping tool registration")
-        else:
+        if is_feature_enabled("enabled") and is_feature_enabled("mcp_tools_enabled"):
             from ..mcp.tools.goal_team_tools import register_goal_team_tools
-
             register_goal_team_tools(server.server)
             logger.info("Registered 3 goal-driven team tools with MCP server")
+        else:
+            logger.info("Goal-Driven Teams tools disabled, skipping tool registration")
 
     if "_register_treesitter_tools" in methods_set:
         try:
             from ..mcp.tools.treesitter_tools import register_treesitter_tools
-
             register_treesitter_tools(server.server)
             logger.info("Registered 7 tree-sitter code analysis tools with MCP server")
         except ImportError as exc:
-            logger.info(
-                "Tree-sitter tools not available (mcp-common[treesitter] not installed): %s",
-                exc,
-            )
+            logger.info("Tree-sitter tools not available: %s", exc)
 
     if "_register_adapter_registry_tools" in methods_set:
         adapter_registry_config = getattr(server.app.config, "adapter_registry", None)
@@ -181,26 +165,31 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
         else:
             try:
                 from ..mcp.tools.adapter_registry_tools import register_adapter_registry_tools
-
                 register_adapter_registry_tools(server.server)
                 logger.info("Registered 7 adapter registry management tools with MCP server")
             except ImportError as exc:
                 logger.warning("Adapter registry tools not available: %s", exc)
+
+    if "_register_pycharm_tools" in methods_set:
+        try:
+            from ..mcp.tools.pycharm_tools import register_pycharm_tools
+            register_pycharm_tools(server.server, server.app)
+            logger.info("Registered 8 PyCharm IDE tools with MCP server")
+        except ImportError as exc:
+            logger.warning("PyCharm tools not available: %s", exc)
+
+
+async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -> None:
+    """Register the profile-gated MCP tool groups on the server."""
+    await _register_core_integration_tools(server, methods_set)
+    await _register_worker_pool_tools(server, methods_set)
+    await server.register_worktree_tools()
+    await _register_optional_tools(server, methods_set)
 
     from ..mcp.tools.ecosystem_tools import register_ecosystem_tools
     from ..mcp.tools.health_tools import register_health_tools
 
     register_health_tools(server.server, server.app)
     logger.info("Registered health check tools with MCP server")
-
     register_ecosystem_tools(server.server)
     logger.info("Registered 3 canonical ecosystem status tools with MCP server")
-
-    if "_register_pycharm_tools" in methods_set:
-        try:
-            from ..mcp.tools.pycharm_tools import register_pycharm_tools
-
-            register_pycharm_tools(server.server, server.app)
-            logger.info("Registered 8 PyCharm IDE tools with MCP server")
-        except ImportError as exc:
-            logger.warning("PyCharm tools not available: %s", exc)

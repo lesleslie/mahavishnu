@@ -31,11 +31,6 @@
       "type": "http",
       "url": "http://localhost:3032/mcp"
     },
-    "gitlab": {
-      "args": [],
-      "command": "/usr/local/bin/mcp-server-gitlab",
-      "type": "stdio"
-    },
     "grafana": {
       "type": "http",
       "url": "http://localhost:3035/mcp"

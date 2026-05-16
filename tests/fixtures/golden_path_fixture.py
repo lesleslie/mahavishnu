@@ -66,7 +66,10 @@ def golden_path_incident_fixture() -> GoldenPathIncidentFixture:
             MockServiceContract(
                 repo="crackerjack",
                 owner_role="inspector",
-                entrypoints=("QualityGateManager.run_all_checks", "QualityGateManager.validate_for_completion"),
+                entrypoints=(
+                    "QualityGateManager.run_all_checks",
+                    "QualityGateManager.validate_for_completion",
+                ),
                 preserved_surfaces=("run_qc", "get_qc_thresholds", "set_qc_thresholds"),
                 mock_strategy="Return a deterministic pass/fail score and issue list.",
             ),

@@ -396,5 +396,5 @@ for result in results["results"]:
 ## Related Documentation
 
 - [Session-Buddy README](https://github.com/lesleslie/session-buddy) - Complete documentation
-- [MCP Tools Spec](docs/MCP_TOOLS_SPECIFICATION.md) - Session-Buddy MCP tools
-- [Privacy Architecture](docs/PRIVACY.md) - Local embeddings, zero external calls
+- MCP Tools Spec - Session-Buddy MCP tools
+- Privacy Architecture - Local embeddings, zero external calls

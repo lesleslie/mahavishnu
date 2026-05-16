@@ -250,9 +250,7 @@ class ApprovalManager:
             self._schedule_dhara_delete(req_id)
         return len(expired_ids)
 
-    def restore_from_dhara_entries(
-        self, entries: list[tuple[str, dict[str, Any]]]
-    ) -> int:
+    def restore_from_dhara_entries(self, entries: list[tuple[str, dict[str, Any]]]) -> int:
         """Re-register non-expired approvals recovered from Dhara on restart.
 
         Args:

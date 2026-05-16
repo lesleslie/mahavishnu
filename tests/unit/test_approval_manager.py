@@ -272,9 +272,7 @@ class TestApprovalManagerDharaPersistence:
             "expires_at": (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
             "options": [],
         }
-        restored = manager.restore_from_dhara_entries(
-            [(f"approval/v1/{existing.id}", entry_data)]
-        )
+        restored = manager.restore_from_dhara_entries([(f"approval/v1/{existing.id}", entry_data)])
         assert restored == 0
 
     def test_restore_ignores_malformed_entries(self) -> None:

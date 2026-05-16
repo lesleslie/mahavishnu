@@ -250,10 +250,10 @@ class CrossRepoSearch:
         for task in tasks:
             matches: list[SearchMatch] = []
 
-            for field in search_fields:
-                field_value = self._get_field_value(task, field)
+            for field_name in search_fields:
+                field_value = self._get_field_value(task, field_name)
                 if field_value:
-                    match = self._find_matches(field, field_value, terms)
+                    match = self._find_matches(field_name, field_value, terms)
                     if match:
                         matches.append(match)
 

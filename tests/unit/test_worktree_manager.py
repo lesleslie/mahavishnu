@@ -139,12 +139,14 @@ class TestWorktreeManager:
         ):
             assert await runner.run("status", cwd="/tmp") == "ok"
 
-        with patch(
-            "mahavishnu.core.worktree_manager.asyncio.create_subprocess_exec",
-            side_effect=_create_fail,
+        with (
+            patch(
+                "mahavishnu.core.worktree_manager.asyncio.create_subprocess_exec",
+                side_effect=_create_fail,
+            ),
+            pytest.raises(Exception, match="boom"),
         ):
-            with pytest.raises(Exception, match="boom"):
-                await runner.run("status", cwd="/tmp")
+            await runner.run("status", cwd="/tmp")
 
         manager = WorktreeManager(
             task_store=mock_task_store, git_runner=MagicMock(), base_path="/repos"

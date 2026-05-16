@@ -12,7 +12,7 @@ ______________________________________________________________________
 |-------|-------------|----------|------|
 | **Visual Guide** | Master reference for all architecture and system diagrams | 50+ | [VISUAL_GUIDE.md](VISUAL_GUIDE.md) |
 | **Workflow Diagrams** | Step-by-step operational procedures | 15+ | [WORKFLOW_DIAGRAMS.md](WORKFLOW_DIAGRAMS.md) |
-| **Architecture** | High-level system architecture | 1 | [ARCHITECTURE.md](../ARCHITECTURE.md#architecture-diagram) |
+| **Architecture** | High-level system architecture | 1 | ARCHITECTURE.md |
 
 ______________________________________________________________________
 

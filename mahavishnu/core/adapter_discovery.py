@@ -405,7 +405,7 @@ class AdapterDiscoveryEngine:
                 self._cache_hits += 1
                 return adapters
 
-        adapters: list[AdapterMetadata] = []
+        adapters: list[AdapterMetadata] = []  # type: ignore[no-redef]
 
         try:
             # Use importlib.metadata for entry point discovery
@@ -473,7 +473,7 @@ class AdapterDiscoveryEngine:
                 self._cache_hits += 1
                 return adapters
 
-        adapters: list[AdapterMetadata] = []
+        adapters: list[AdapterMetadata] = []  # type: ignore[no-redef]
 
         # Get client
         client = self._get_dhara_client()

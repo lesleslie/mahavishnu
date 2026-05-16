@@ -238,8 +238,7 @@ class Database:
         if self.config.ssl_mode == "disable":
             return False
         elif self.config.ssl_mode == "require":
-            # Require SSL but don't verify certificate
-            return ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
             return ssl_context

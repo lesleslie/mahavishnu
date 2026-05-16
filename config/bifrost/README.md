@@ -178,7 +178,7 @@ Do not enable semantic mode while you remain primarily on subscription-backed cl
 
 ## Local Control
 
-Use [`scripts/bifrost-ctl`](/Users/les/Projects/mahavishnu/scripts/bifrost-ctl) for local management:
+Use [`scripts/bifrost-ctl`](../../scripts/bifrost-ctl) for local management:
 
 - `scripts/bifrost-ctl install`
 - `scripts/bifrost-ctl sync-config`
@@ -187,7 +187,7 @@ Use [`scripts/bifrost-ctl`](/Users/les/Projects/mahavishnu/scripts/bifrost-ctl) 
 - `scripts/bifrost-ctl status`
 - `scripts/bifrost-ctl tail`
 
-Use [`scripts/redis-stack-ctl`](/Users/les/Projects/mahavishnu/scripts/redis-stack-ctl) for the dedicated cache backend:
+Use [`scripts/redis-stack-ctl`](../../scripts/redis-stack-ctl) for the dedicated cache backend:
 
 - `scripts/redis-stack-ctl install`
 - `scripts/redis-stack-ctl start`

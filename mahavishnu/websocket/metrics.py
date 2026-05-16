@@ -29,7 +29,7 @@ except ImportError:
     PROMETHEUS_AVAILABLE = False
 
     # Create dummy classes for graceful degradation
-    class Counter:
+    class Counter:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             pass
 
@@ -42,7 +42,7 @@ except ImportError:
         def count(self):
             return 0
 
-    class Gauge:
+    class Gauge:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             pass
 
@@ -55,7 +55,7 @@ except ImportError:
         def set_to_current_value(self):
             pass
 
-    class Histogram:
+    class Histogram:  # type: ignore[no-redef]
         def __init__(self, *args, **kwargs):
             pass
 

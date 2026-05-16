@@ -309,5 +309,5 @@ Always use type hints in Python function signatures, even for private methods. W
 ## Related Documentation
 
 - [Session-Buddy README](https://github.com/lesleslie/session-buddy) - Complete documentation
-- [MCP Tools Specification](docs/MCP_TOOLS_SPECIFICATION.md) - Session-Buddy MCP tools
-- [Privacy Architecture](docs/PRIVACY.md) - How local embeddings work
+- MCP Tools Specification - Session-Buddy MCP tools
+- Privacy Architecture - How local embeddings work

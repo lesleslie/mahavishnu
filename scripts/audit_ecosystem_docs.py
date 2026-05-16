@@ -99,7 +99,9 @@ def load_catalog_snapshot(ecosystem_path: Path) -> CatalogSnapshot:
         last_updated=str(data.get("last_updated", "")),
         repo_count=len(repos) if isinstance(repos, list) else 0,
         active_repo_count=sum(
-            1 for repo in repos if isinstance(repo, dict) and repo.get("status", "active") == "active"
+            1
+            for repo in repos
+            if isinstance(repo, dict) and repo.get("status", "active") == "active"
         )
         if isinstance(repos, list)
         else 0,
@@ -112,15 +114,9 @@ def load_catalog_snapshot(ecosystem_path: Path) -> CatalogSnapshot:
         workflow_count=len(data.get("workflows", {}))
         if isinstance(data.get("workflows", {}), dict)
         else 0,
-        skill_count=len(data.get("skills", {}))
-        if isinstance(data.get("skills", {}), dict)
-        else 0,
-        tool_count=len(data.get("tools", {}))
-        if isinstance(data.get("tools", {}), dict)
-        else 0,
-        role_count=len(data.get("roles", []))
-        if isinstance(data.get("roles", []), list)
-        else 0,
+        skill_count=len(data.get("skills", {})) if isinstance(data.get("skills", {}), dict) else 0,
+        tool_count=len(data.get("tools", {})) if isinstance(data.get("tools", {}), dict) else 0,
+        role_count=len(data.get("roles", [])) if isinstance(data.get("roles", []), list) else 0,
     )
 
 
@@ -188,18 +184,24 @@ def audit_health_probe_metadata(ecosystem_data: dict[str, Any]) -> list[str]:
         if server.get("status", "enabled") != "enabled":
             continue
         if server.get("type") == "http" and not server.get("health_check"):
-            issues.append(f"{server.get('name', '<unknown>')}: enabled HTTP server is missing health_check")
+            issues.append(
+                f"{server.get('name', '<unknown>')}: enabled HTTP server is missing health_check"
+            )
     return issues
 
 
-def build_audit_report(ecosystem_path: Path) -> tuple[CatalogSnapshot, list[str], list[RepoDocsSummary]]:
+def build_audit_report(
+    ecosystem_path: Path,
+) -> tuple[CatalogSnapshot, list[str], list[RepoDocsSummary]]:
     """Build the catalog snapshot, drift issues, and per-repo summaries."""
     ecosystem_data = load_ecosystem_data(ecosystem_path)
     snapshot = load_catalog_snapshot(ecosystem_path)
     docs_path = ecosystem_path.parent.parent / "docs" / "ECOSYSTEM.md"
     issues = audit_catalog_snapshot(snapshot, docs_path)
     issues.extend(audit_health_probe_metadata(ecosystem_data))
-    repos = [repo for repo in ecosystem_data.get("repos", []) if repo.get("status", "active") == "active"]
+    repos = [
+        repo for repo in ecosystem_data.get("repos", []) if repo.get("status", "active") == "active"
+    ]
     summaries = [summarize_repo(repo) for repo in repos]
     return snapshot, issues, summaries
 
@@ -398,19 +400,19 @@ def render_markdown(
             lines.append("")
     lines.extend(
         [
-        "## Totals",
-        "",
-        f"- Repos: {len(summaries)}",
-        f"- Files: {totals['files']}",
-        f"- Markdown files: {totals['markdown']}",
-        f"- Archive files: {totals['archive']}",
-        f"- Backup-like files: {totals['backup_like']}",
-        f"- Generated files: {totals['generated']}",
-        "",
-        "## Repo Summary",
-        "",
-        "| Repo | Files | Markdown | Archive | Backup-like | Generated | Root stale candidates | docs README | Archive README | Plan index |",
-        "|---|---:|---:|---:|---:|---:|---:|---|---|---|",
+            "## Totals",
+            "",
+            f"- Repos: {len(summaries)}",
+            f"- Files: {totals['files']}",
+            f"- Markdown files: {totals['markdown']}",
+            f"- Archive files: {totals['archive']}",
+            f"- Backup-like files: {totals['backup_like']}",
+            f"- Generated files: {totals['generated']}",
+            "",
+            "## Repo Summary",
+            "",
+            "| Repo | Files | Markdown | Archive | Backup-like | Generated | Root stale candidates | docs README | Archive README | Plan index |",
+            "|---|---:|---:|---:|---:|---:|---:|---|---|---|",
         ]
     )
     for summary in summaries:

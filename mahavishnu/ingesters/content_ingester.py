@@ -339,6 +339,29 @@ class ContentIngester:
 
         return chunks
 
+    @staticmethod
+    def _check_hostname_blocklist(hostname: str) -> None:
+        hostname_lower = hostname.lower()
+        for blocked in BLOCKED_HOSTNAMES:
+            if hostname_lower == blocked or hostname_lower.endswith(f".{blocked}"):
+                raise ValueError(f"Blocked hostname: {hostname}")
+
+    @staticmethod
+    def _check_ip_ranges(hostname: str, port: int | None, scheme: str) -> None:
+        default_port = 443 if scheme == "https" else 80
+        try:
+            addr_info = socket.getaddrinfo(hostname, port or default_port)
+        except socket.gaierror as e:
+            raise ValueError(f"DNS resolution failed for {hostname}: {e}") from e
+        for _family, _, _, _, sockaddr in addr_info:
+            try:
+                ip = ipaddress.ip_address(sockaddr[0])
+            except ValueError:
+                continue
+            for blocked_range in BLOCKED_IP_RANGES:
+                if ip in blocked_range:
+                    raise ValueError(f"Blocked IP range: {ip} is in {blocked_range}")
+
     def _validate_url(self, url: str) -> None:
         """Validate URL for SSRF protection.
 
@@ -350,43 +373,15 @@ class ContentIngester:
         """
         parsed = urllib.parse.urlparse(url)
 
-        # Only allow http and https schemes
         if parsed.scheme not in ("http", "https"):
             raise ValueError(f"Blocked scheme: {parsed.scheme}. Only http and https are allowed.")
-
-        # Block file:// protocol explicitly
-        if parsed.scheme == "file":
-            raise ValueError("file:// protocol is not allowed.")
 
         hostname = parsed.hostname
         if not hostname:
             raise ValueError("Invalid URL: no hostname")
 
-        # Check blocked hostnames
-        hostname_lower = hostname.lower()
-        for blocked in BLOCKED_HOSTNAMES:
-            if hostname_lower == blocked or hostname_lower.endswith(f".{blocked}"):
-                raise ValueError(f"Blocked hostname: {hostname}")
-
-        # Resolve hostname and check IP ranges
-        try:
-            # Get all IP addresses for the hostname
-            addr_info = socket.getaddrinfo(
-                hostname, parsed.port or (443 if parsed.scheme == "https" else 80)
-            )
-            for _family, _, _, _, sockaddr in addr_info:
-                ip_str = sockaddr[0]
-                try:
-                    ip = ipaddress.ip_address(ip_str)
-                except ValueError:
-                    # Not a valid IP address, skip this entry
-                    continue
-                for blocked_range in BLOCKED_IP_RANGES:
-                    if ip in blocked_range:
-                        raise ValueError(f"Blocked IP range: {ip} is in {blocked_range}")
-        except socket.gaierror as e:
-            # DNS resolution failed - could be intentional for SSRF
-            raise ValueError(f"DNS resolution failed for {hostname}: {e}") from e
+        self._check_hostname_blocklist(hostname)
+        self._check_ip_ranges(hostname, parsed.port, parsed.scheme)
 
     @observe(span_name="content_ingester.fetch_url")
     async def _fetch_url(self, url: str) -> dict[str, Any]:

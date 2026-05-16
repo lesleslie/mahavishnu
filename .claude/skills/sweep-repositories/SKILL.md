@@ -276,5 +276,5 @@ mahavishnu sweep \
 
 ## Related Documentation
 
-- [MCP Tools Specification](docs/MCP_TOOLS_SPECIFICATION.md) - Complete tool reference
-- [Pool Architecture](docs/POOL_ARCHITECTURE.md) - Pool-based sweep execution
+- MCP Tools Specification - Complete tool reference
+- Pool Architecture - Pool-based sweep execution

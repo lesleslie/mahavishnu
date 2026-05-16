@@ -805,7 +805,7 @@ ______________________________________________________________________
 
 - [Production Deployment Guide](PRODUCTION_DEPLOYMENT_GUIDE.md)
 - [Maintenance Procedures](MAINTENANCE_PROCEDURES.md)
-- [Monitoring & Alerting](../monitoring/README.md)
+- Monitoring & Alerting
 
 ______________________________________________________________________
 

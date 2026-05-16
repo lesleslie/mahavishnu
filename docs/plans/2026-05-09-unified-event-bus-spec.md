@@ -7,13 +7,13 @@
 - Target Window: `2026-05-18` to `2026-06-30`
 - Prerequisite: Oneiric integration in Mahavishnu (MCP or library mode)
 
----
+______________________________________________________________________
 
 ## 1. Outcome
 
 All Bodai components publish events through a **single unified event bus** backed by Oneiric's `EventBridge` + `EventDispatcher`, with Redis Streams as the transport layer. Mahavishnu adopts Oneiric as a library. Fragmented parallel event systems are removed. The WebSocket server becomes an EventBridge handler. All failed events land in Mahavishnu's existing DLQ. All notification adapters are wired through Oneiric's `NotificationRouter`.
 
----
+______________________________________________________________________
 
 ## 2. Architecture Summary
 
@@ -73,23 +73,26 @@ CODE                          MAHAVISHNU                        ONEIRIC
 ### Before (current state)
 
 Mahavishnu has four independent event-like systems that never talk to each other or to Oneiric:
+
 - `EventBus` — SQLite-backed, in-process, own `EventType` enum
 - `TaskEventEmitter` — in-process pub/sub for task lifecycle
 - `MessageBus` — inter-pool async queue (pool-scoped)
 - `Monitoring/Alerting` — `AlertChannel.send_notification(Alert)` with email/slack/webhook
 
 Oneiric has:
+
 - `EventBridge` + `EventDispatcher` — topic-based pub/sub with priority, retry, fanout
 - `NotificationRouter` — routes to messaging adapters (Slack, Teams, FCM, APNs, WebPush, Webhook)
 - Queue adapters (Redis Streams, NATS, Kafka, RabbitMQ, GCP Pub/Sub, CloudTasks) — available but not wired into EventBridge
 
 WebSocket (`MahavishnuWebSocketServer`, ports 8690/8691) operates as a standalone channel — publishing directly via its own broadcast methods, not through any event bus.
 
----
+______________________________________________________________________
 
 ## 3. Key Decisions
 
 ### 3.1 Integration Model
+
 **Decision:** Mahavishnu consumes Oneiric as a library (`from oneiric.runtime.orchestrator import RuntimeOrchestrator`, or individual components like `EventBridge`, `EventDispatcher`).
 
 **Rationale:** Tight coupling is appropriate here — event bus is infrastructure, not a remote service. Library mode gives Mahavishnu full access to Oneiric's adapter resolution, lifecycle management, and config layering without network overhead or API versioning concerns.
@@ -148,21 +151,25 @@ pubsub_channel_prefix: str = Field(
 **Event transport pattern:**
 
 1. **`RedisEventTransport.publish(envelope)`** (replaces standalone file, becomes a thin wrapper or inline helper):
+
    - Calls `adapter.pubsub_publish("bodai:events:{topic}", envelope_json)` — real-time fan-out
    - Calls `adapter.enqueue(envelope.to_dict())` — persists to stream
 
-2. **`EventBusConsumer`** (background subscriber):
+1. **`EventBusConsumer`** (background subscriber):
+
    - `pubsub_subscribe(pattern="bodai:events:*", callback=on_event)` — pattern subscribe receives all topic channels
    - On each message → dispatch to local `EventDispatcher`
    - On startup: `read()` replays unacknowledged entries from the stream
 
-3. **Reconnection:** `EventBusConsumer` handles reconnection; coredis pub/sub subscriber auto-reconnects at the protocol level.
+1. **Reconnection:** `EventBusConsumer` handles reconnection; coredis pub/sub subscriber auto-reconnects at the protocol level.
 
 **Redis channel naming:**
+
 - Pub/Sub: `bodai:events:{topic}` (e.g., `bodai:events:pool.spawned`)
 - Stream: `bodai:events` (single stream for all events)
 
 ### 3.3 Event Envelope
+
 **Decision:** Extend Oneiric's `EventEnvelope` with Bodai-standard fields.
 
 **Rationale:** Oneiric's envelope is minimal (`topic + payload + headers`). Mahavishnu's envelope has `event_id`, `version`, `timestamp`, `source`, `correlation_id` — all valuable. Rather than lose them, extend Oneiric's schema. After extension, drop `mahavishnu/core/events/envelope.py` entirely.
@@ -186,6 +193,7 @@ class EventEnvelope(msgspec.Struct):
 This keeps Oneiric's msgspec struct clean while adding Bodai metadata via headers. No changes to EventDispatcher logic required.
 
 ### 3.4 WebSocket Integration
+
 **Decision:** WebSocket server becomes an EventBridge handler (subscriber).
 
 **Rationale:** WebSocket's value is real-time push to connected clients — not event routing. Making it a handler is the cleanest integration: code publishes events to `EventBridge.emit()` as normal. WebSocket handler subscribes to topics and fans out to rooms.
@@ -206,6 +214,7 @@ This keeps Oneiric's msgspec struct clean while adding Bodai metadata via header
 Clients subscribe to rooms via WebSocket protocol (`subscribe` / `unsubscribe` request). No direct coupling between Mahavishnu code and WebSocket — both just use EventBridge.
 
 ### 3.5 Correlation and Tracing
+
 **Decision:** `correlation_id` and `causation_id` go into `EventEnvelope.headers`.
 
 **Implementation:** Add a helper in Mahavishnu's event helpers:
@@ -253,6 +262,7 @@ class EventContext:
 `EventContext` is created at workflow start and threaded through all `emit()` calls.
 
 ### 3.6 Topic Mapping
+
 **Decision:** Migrate all Mahavishnu `EventType` values to Oneiric topic strings.
 
 No new topics introduced — all existing events map 1:1:
@@ -285,9 +295,11 @@ New topics for Mahavishnu monitoring events:
 | `workflow.failed` | Workflow failed |
 
 ### 3.7 DLQ Integration
+
 **Decision:** Wire exhausted EventDispatcher retries to Mahavishnu's existing `DeadLetterQueue`.
 
 **Implementation:**
+
 - `EventDispatcher._run_handler` already has a retry loop via `run_with_retry`. When retries exhaust, the exception propagates.
 - Add a new handler type: `DLQEventHandler` registered on every event topic.
 - On `HandlerResult.success == False` after max attempts, the DLQ handler enqueues the failed event:
@@ -314,6 +326,7 @@ class DLQEventHandler:
 - Existing Mahavishnu DLQ workflows (task_id + repos + task payload) are unaffected — they already use a different code path.
 
 ### 3.8 Notification Adapters
+
 **Decision:** Wire all available adapters.
 
 | Adapter | Purpose | Configuration |
@@ -337,11 +350,12 @@ Notification routing via Oneiric's `NotificationRouter` with topic-based rules:
 | `adapter.health_changed` | Slack | degraded adapter alert |
 
 ### 3.9 Migration: Drop and Replace
+
 **Decision:** No compatibility shim. All callers migrate to Oneiric directly.
 
 Rationale: This is a deliberate architectural migration, not a side-by-side rollout. Code that calls `mahavishnu.core.event_bus.EventBus` is migrated to `EventBridge.emit()`. Code that uses `mahavishnu.core.task_notifications` is migrated to EventBridge topics. No dual-path maintenance.
 
----
+______________________________________________________________________
 
 ## 4. Work Packages
 
@@ -392,7 +406,7 @@ Rationale: This is a deliberate architectural migration, not a side-by-side roll
 | P4-3 | Update ADR for Bodai unified event bus (or new ADR) | Core Eng | `docs/adr/` |
 | P4-4 | Add event bus to PLAN_INDEX.md as active initiative | Core Eng | `docs/plans/` |
 
----
+______________________________________________________________________
 
 ## 5. File Inventory
 
@@ -431,7 +445,7 @@ Rationale: This is a deliberate architectural migration, not a side-by-side roll
 | `mahavishnu/core/config.py` | Add Oneiric/Redis Streams queue config section |
 | `settings/mahavishnu.yaml` | Add notification adapters, Redis Streams transport config |
 
----
+______________________________________________________________________
 
 ## 6. Dependencies
 
@@ -440,7 +454,7 @@ Rationale: This is a deliberate architectural migration, not a side-by-side roll
 - `aiosqlite` (existing)
 - `msgspec` (Oneiric — already a dependency)
 
----
+______________________________________________________________________
 
 ## 7. Exit Criteria
 
@@ -457,7 +471,7 @@ Rationale: This is a deliberate architectural migration, not a side-by-side roll
 - [ ] CLAUDE.md updated to remove references to old event systems
 - [ ] ADR written documenting the unified event bus decision
 
----
+______________________________________________________________________
 
 ## 8. Risks
 
@@ -470,7 +484,7 @@ Rationale: This is a deliberate architectural migration, not a side-by-side roll
 | Redis Pub/Sub subscriber disconnects during heavy event flow | Low | Medium | Events persisted to Streams; `EventBusConsumer` auto-reconnects with exponential backoff; circuit breaker prevents tight retry loops |
 | Redis unavailable during event publish | Low | Medium | Publishes to Streams synchronously (durability); Pub/Sub publish is best-effort; circuit breaker prevents cascading failures |
 
----
+______________________________________________________________________
 
 ## 9. Open Questions
 

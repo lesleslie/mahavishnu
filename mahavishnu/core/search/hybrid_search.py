@@ -42,7 +42,6 @@ from datetime import UTC, datetime
 import inspect
 import logging
 from typing import TYPE_CHECKING, Any
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -50,6 +49,8 @@ from mahavishnu.core.database import Database, get_database
 from mahavishnu.core.embeddings import EmbeddingProvider, EmbeddingService
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from asyncpg import Pool
 
 logger = logging.getLogger(__name__)
@@ -570,11 +571,13 @@ class HybridSearchEngine:
         now = datetime.now(UTC)
 
         try:
-            async with self._acquire_connection(pool) as conn:
-                async with self._enter_async_context(conn.transaction()):
-                    # Insert document
-                    await conn.execute(
-                        """
+            async with (
+                self._acquire_connection(pool) as conn,
+                self._enter_async_context(conn.transaction()),
+            ):
+                # Insert document
+                await conn.execute(
+                    """
                         INSERT INTO search.documents (
                             id, source_type, source_id, source_key, title, content,
                             repository, system_name, created_at, updated_at, metadata
@@ -587,25 +590,25 @@ class HybridSearchEngine:
                             updated_at = EXCLUDED.updated_at,
                             metadata = EXCLUDED.metadata
                         """,
-                        doc_id,
-                        source_type,
-                        source_id,
-                        source_key,
-                        title,
-                        content,
-                        repository,
-                        system_name,
-                        now,
-                        now,
-                        metadata,
-                    )
+                    doc_id,
+                    source_type,
+                    source_id,
+                    source_key,
+                    title,
+                    content,
+                    repository,
+                    system_name,
+                    now,
+                    now,
+                    metadata,
+                )
 
-                    # Generate and store embedding
-                    embedding_result = await self._embedding_service.embed([content])
-                    if embedding_result.embeddings and len(embedding_result.embeddings) > 0:
-                        embedding = embedding_result.embeddings[0]
-                        await conn.execute(
-                            """
+                # Generate and store embedding
+                embedding_result = await self._embedding_service.embed([content])
+                if embedding_result.embeddings and len(embedding_result.embeddings) > 0:
+                    embedding = embedding_result.embeddings[0]
+                    await conn.execute(
+                        """
                             INSERT INTO search.document_embeddings (
                                 document_id, model_name, embedding_dim, embedding, created_at
                             ) VALUES ($1, $2, $3, $4, $5)
@@ -615,12 +618,12 @@ class HybridSearchEngine:
                                 embedding = EXCLUDED.embedding,
                                 created_at = EXCLUDED.created_at
                             """,
-                            doc_id,
-                            embedding_result.model,
-                            embedding_result.dimension,
-                            embedding,
-                            now,
-                        )
+                        doc_id,
+                        embedding_result.model,
+                        embedding_result.dimension,
+                        embedding,
+                        now,
+                    )
 
             logger.info(
                 "Document indexed successfully",

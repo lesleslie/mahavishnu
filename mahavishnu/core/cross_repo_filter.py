@@ -195,6 +195,29 @@ class CrossRepoFilter:
         self.task_store = task_store
         self.repo_manager = repo_manager
 
+    async def _resolve_effective_repos(
+        self, criteria: FilterCriteria
+    ) -> tuple[list[str] | None, dict[str, Any]]:
+        effective_repo_names = list(criteria.repo_names) if criteria.repo_names else None
+        applied_filters: dict[str, Any] = {}
+        if criteria.repo_roles:
+            resolved = await self._resolve_repos_by_roles(criteria.repo_roles)
+            if effective_repo_names is None:
+                effective_repo_names = resolved
+            else:
+                effective_repo_names = list(set(effective_repo_names) & set(resolved))
+            applied_filters["repo_roles"] = criteria.repo_roles
+        if criteria.repo_tags:
+            resolved = await self._resolve_repos_by_tags(criteria.repo_tags)
+            if effective_repo_names is None:
+                effective_repo_names = resolved
+            else:
+                effective_repo_names = list(set(effective_repo_names) & set(resolved))
+            applied_filters["repo_tags"] = criteria.repo_tags
+        if effective_repo_names:
+            applied_filters["repo_names"] = effective_repo_names
+        return effective_repo_names, applied_filters
+
     async def filter(self, criteria: FilterCriteria) -> FilterResult:
         """Filter tasks based on criteria.
 
@@ -204,56 +227,21 @@ class CrossRepoFilter:
         Returns:
             FilterResult with matching tasks
         """
-        # Build the base query
-        applied_filters: dict[str, Any] = {}
+        effective_repo_names, applied_filters = await self._resolve_effective_repos(criteria)
 
-        # Resolve repo names from roles/tags if needed
-        effective_repo_names = list(criteria.repo_names) if criteria.repo_names else None
+        status_filter = criteria.statuses[0] if criteria.statuses and len(criteria.statuses) == 1 else None
+        priority_filter = criteria.priorities[0] if criteria.priorities and len(criteria.priorities) == 1 else None
 
-        if criteria.repo_roles:
-            resolved = await self._resolve_repos_by_roles(criteria.repo_roles)
-            if effective_repo_names is None:
-                effective_repo_names = resolved
-            else:
-                effective_repo_names = list(set(effective_repo_names) & set(resolved))
-            applied_filters["repo_roles"] = criteria.repo_roles
-
-        if criteria.repo_tags:
-            resolved = await self._resolve_repos_by_tags(criteria.repo_tags)
-            if effective_repo_names is None:
-                effective_repo_names = resolved
-            else:
-                effective_repo_names = list(set(effective_repo_names) & set(resolved))
-            applied_filters["repo_tags"] = criteria.repo_tags
-
-        if effective_repo_names:
-            applied_filters["repo_names"] = effective_repo_names
-
-        # Fetch tasks
-        if criteria.statuses and len(criteria.statuses) == 1:
-            status_filter = criteria.statuses[0]
-        else:
-            status_filter = None
-
-        if criteria.priorities and len(criteria.priorities) == 1:
-            priority_filter = criteria.priorities[0]
-        else:
-            priority_filter = None
-
-        # Build task list filter
         task_filter = TaskListFilter(
             status=status_filter,
             priority=priority_filter,
-            tags=criteria.tags_all,  # Use AND logic for tags_all
-            limit=10000,  # High limit, we'll paginate after
+            tags=criteria.tags_all,
+            limit=10000,
         )
 
         all_tasks = await self.task_store.list(task_filter)
-
-        # Apply in-memory filters
         filtered_tasks = self._apply_filters(all_tasks, criteria, effective_repo_names)
 
-        # Record applied filters
         if criteria.statuses:
             applied_filters["statuses"] = [s.value for s in criteria.statuses]
         if criteria.priorities:
@@ -265,12 +253,8 @@ class CrossRepoFilter:
         if criteria.date_range:
             applied_filters["date_range"] = {
                 "last_n_days": criteria.date_range.last_n_days,
-                "start": criteria.date_range.start_date.isoformat()
-                if criteria.date_range.start_date
-                else None,
-                "end": criteria.date_range.end_date.isoformat()
-                if criteria.date_range.end_date
-                else None,
+                "start": criteria.date_range.start_date.isoformat() if criteria.date_range.start_date else None,
+                "end": criteria.date_range.end_date.isoformat() if criteria.date_range.end_date else None,
             }
         if criteria.text_search:
             applied_filters["text_search"] = criteria.text_search
@@ -327,6 +311,41 @@ class CrossRepoFilter:
 
         return repo_names
 
+    @staticmethod
+    def _matches_text_search(task: Task, pattern: re.Pattern, fields: list[str]) -> bool:
+        return any(
+            (value := getattr(task, f, None)) and pattern.search(str(value))
+            for f in fields
+        )
+
+    def _apply_text_filter(self, tasks: list[Task], criteria: FilterCriteria) -> list[Task]:
+        if not criteria.text_search:
+            return tasks
+        fields = criteria.search_fields or ["title", "description"]
+        pattern = re.compile(re.escape(criteria.text_search), re.IGNORECASE)
+        return [t for t in tasks if self._matches_text_search(t, pattern, fields)]
+
+    def _apply_date_filter(self, tasks: list[Task], criteria: FilterCriteria) -> list[Task]:
+        if not criteria.date_range:
+            return tasks
+        start, end = criteria.date_range.get_date_range()
+        return [t for t in tasks if t.created_at and start <= t.created_at <= end]
+
+    @staticmethod
+    def _filter_by_memberships(
+        tasks: list[Task],
+        criteria: FilterCriteria,
+        effective_repo_names: list[str] | None,
+    ) -> list[Task]:
+        result = tasks
+        if effective_repo_names:
+            result = [t for t in result if t.repository in effective_repo_names]
+        if criteria.statuses:
+            result = [t for t in result if t.status in criteria.statuses]
+        if criteria.priorities:
+            result = [t for t in result if t.priority in criteria.priorities]
+        return result
+
     def _apply_filters(
         self,
         tasks: list[Task],
@@ -334,44 +353,15 @@ class CrossRepoFilter:
         effective_repo_names: list[str] | None,
     ) -> list[Task]:
         """Apply all filters to the task list."""
-        result = tasks
+        result = self._filter_by_memberships(tasks, criteria, effective_repo_names)
 
-        # Filter by repository names
-        if effective_repo_names:
-            result = [t for t in result if t.repository in effective_repo_names]
-
-        # Filter by statuses (always if specified, as store may not filter)
-        if criteria.statuses:
-            result = [t for t in result if t.status in criteria.statuses]
-
-        # Filter by priorities (always if specified, as store may not filter)
-        if criteria.priorities:
-            result = [t for t in result if t.priority in criteria.priorities]
-
-        # Filter by tags (ANY match)
         if criteria.tags:
-            result = [t for t in result if any(tag in t.tags for tag in criteria.tags)]
+            tags = set(criteria.tags)
+            result = [t for t in result if set(t.tags) & tags]
 
-        # Filter by date range
-        if criteria.date_range:
-            start, end = criteria.date_range.get_date_range()
-            result = [t for t in result if t.created_at and start <= t.created_at <= end]
+        result = self._apply_date_filter(result, criteria)
+        result = self._apply_text_filter(result, criteria)
 
-        # Text search
-        if criteria.text_search:
-            search_fields = criteria.search_fields or ["title", "description"]
-            search_pattern = re.compile(re.escape(criteria.text_search), re.IGNORECASE)
-
-            def matches_search(task: Task) -> bool:
-                for field in search_fields:
-                    value = getattr(task, field, None)
-                    if value and search_pattern.search(str(value)):
-                        return True
-                return False
-
-            result = [t for t in result if matches_search(t)]
-
-        # Exclude completed
         if criteria.exclude_completed:
             result = [t for t in result if t.status != TaskStatus.COMPLETED]
 

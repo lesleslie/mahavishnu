@@ -332,5 +332,5 @@ crackerjack run --ai-fix
 ## Related Documentation
 
 - [Crackerjack README](https://github.com/lesleslie/crackerjack) - Complete documentation
-- [Adapter Architecture](docs/adapters/) - 11 concurrent adapters
-- [AI Agents](docs/agents/) - Specialized agent capabilities
+- Adapter Architecture - 11 concurrent adapters
+- AI Agents - Specialized agent capabilities

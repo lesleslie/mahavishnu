@@ -14,8 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from rich.console import Console
 from rich.table import Table
@@ -24,6 +23,9 @@ import typer
 from mahavishnu.automation import AutomationManager
 from mahavishnu.automation.errors import AutomationError
 from mahavishnu.automation.models import AutomationConfig
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 app = typer.Typer(
     name="automation",

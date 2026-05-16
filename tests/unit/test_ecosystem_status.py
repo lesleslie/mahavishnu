@@ -149,6 +149,8 @@ class TestValidTransitions:
     def test_unknown_to_any(self):
         assert is_valid_transition(CanonicalStatus.UNKNOWN, CanonicalStatus.OK) is True
         assert is_valid_transition(CanonicalStatus.UNKNOWN, CanonicalStatus.UNHEALTHY) is True
+
+
 class TestEcosystemStatusReport:
     def test_default_report(self):
         report = EcosystemStatusReport(
@@ -572,10 +574,10 @@ class TestGenerateRecommendations:
 
         svc = EcosystemStatusService()
         services = {"akosha": ServiceStatus(status=CanonicalStatus.UNKNOWN, required=True)}
-        recs = svc._generate_recommendations(services, {"x": AdapterStatus(status=CanonicalStatus.OK)}, AlertSummary())
-        assert any(
-            r.severity == CanonicalStatus.DEGRADED and "akosha" in r.component for r in recs
+        recs = svc._generate_recommendations(
+            services, {"x": AdapterStatus(status=CanonicalStatus.OK)}, AlertSummary()
         )
+        assert any(r.severity == CanonicalStatus.DEGRADED and "akosha" in r.component for r in recs)
 
     def test_unhealthy_adapter_gets_recommendation(self):
         from mahavishnu.core.ecosystem_status import (

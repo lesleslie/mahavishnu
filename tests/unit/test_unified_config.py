@@ -16,7 +16,7 @@ def _make_report(valid: bool = True, errors: list | None = None):
     from mahavishnu.core.config_validator import ConfigValidationReport, ValidationResult
 
     report = ConfigValidationReport(valid=valid)
-    for msg in (errors or []):
+    for msg in errors or []:
         report.add_result(ValidationResult(valid=False, message=msg, path="settings/test.yaml"))
     return report
 
@@ -42,14 +42,21 @@ class TestUnifiedConfigValidate:
 
         with (
             patch("mahavishnu.core.unified_config.validate_config") as mock_vc,
-            patch("mahavishnu.core.unified_config.UnifiedConfig._validate_pydantic_settings") as mock_ps,
+            patch(
+                "mahavishnu.core.unified_config.UnifiedConfig._validate_pydantic_settings"
+            ) as mock_ps,
         ):
             valid_report = _make_report(valid=True)
             mock_vc.return_value = valid_report
 
             def _add_error(report):
                 from mahavishnu.core.config_validator import ValidationResult
-                report.add_result(ValidationResult(valid=False, message="Bad field", path="settings/mahavishnu.yaml"))
+
+                report.add_result(
+                    ValidationResult(
+                        valid=False, message="Bad field", path="settings/mahavishnu.yaml"
+                    )
+                )
 
             mock_ps.side_effect = _add_error
             report = UnifiedConfig.validate(settings_dir=tmp_path)

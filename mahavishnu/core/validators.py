@@ -89,6 +89,36 @@ class PathValidator:
         )
         self.strict_mode = strict_mode
 
+    def _check_path_format(self, path_str: str) -> None:
+        if ".." in path_str:
+            raise PathValidationError(
+                message="Path traversal attempt detected",
+                path=path_str,
+                details="Path contains '..' sequences",
+            )
+        if "//" in path_str:
+            raise PathValidationError(
+                message="Invalid path format detected",
+                path=path_str,
+                details="Path contains '//' sequences",
+            )
+
+    def _resolve_path_safely(self, path_obj: Path, must_exist: bool) -> Path:
+        try:
+            return path_obj.resolve(strict=must_exist)
+        except FileNotFoundError as e:
+            if must_exist:
+                raise PathValidationError(
+                    message="Path does not exist",
+                    path=str(path_obj),
+                    details=f"Required path not found: {e}",
+                ) from e
+            try:
+                resolved_parent = path_obj.parent.resolve(strict=True)
+                return resolved_parent / path_obj.name
+            except FileNotFoundError:
+                return path_obj.resolve()
+
     def validate_path(
         self,
         path: str | Path,
@@ -125,51 +155,15 @@ class PathValidator:
             >>> validator.validate_path("/etc/passwd")
         """
         try:
-            # Convert to Path object
             path_obj = Path(path) if not isinstance(path, Path) else path
+            self._check_path_format(str(path_obj))
+            resolved_path = self._resolve_path_safely(path_obj, must_exist)
 
-            # Check for path traversal in the original string
-            path_str = str(path_obj)
-            if ".." in path_str:
-                raise PathValidationError(
-                    message="Path traversal attempt detected",
-                    path=path_str,
-                    details="Path contains '..' sequences",
-                )
-
-            # Check for double slashes (potential path manipulation)
-            if "//" in path_str:
-                raise PathValidationError(
-                    message="Invalid path format detected",
-                    path=path_str,
-                    details="Path contains '//' sequences",
-                )
-
-            # Resolve to absolute path (follows symlinks by default)
-            try:
-                resolved_path = path_obj.resolve(strict=must_exist)
-            except FileNotFoundError as e:
-                if must_exist:
-                    raise PathValidationError(
-                        message="Path does not exist",
-                        path=str(path_obj),
-                        details=f"Required path not found: {e}",
-                    ) from e
-                # For non-existent paths, resolve parent and append
-                try:
-                    resolved_parent = path_obj.parent.resolve(strict=True)
-                    resolved_path = resolved_parent / path_obj.name
-                except FileNotFoundError:
-                    # Parent doesn't exist either, just resolve as much as possible
-                    resolved_path = path_obj.resolve()
-
-            # Check against allowed base directories
             base_dirs = (
                 [Path(d).resolve() for d in allowed_base_dirs]
                 if allowed_base_dirs
                 else self.allowed_base_dirs
             )
-
             if base_dirs and not any(
                 self._is_path_within_base(resolved_path, base_dir) for base_dir in base_dirs
             ):
@@ -179,8 +173,6 @@ class PathValidator:
                     details=f"Path must be within one of: {[str(d) for d in base_dirs]}",
                 )
 
-            # Final safety check for directory traversal in resolved path
-            # (shouldn't happen if resolve() worked correctly, but be defensive)
             resolved_str = str(resolved_path)
             if ".." in resolved_str:
                 raise PathValidationError(
@@ -227,6 +219,37 @@ class PathValidator:
         except (OSError, RuntimeError):
             return False
 
+    _REPO_INDICATOR_FILES = (
+        "README.md", "README.rst", "pyproject.toml",
+        "setup.py", "package.json", "Cargo.toml", "go.mod",
+    )
+
+    def _is_valid_repository(self, path: Path) -> bool:
+        git_dir = path / ".git"
+        if git_dir.exists() and git_dir.is_dir():
+            return True
+        return any((path / f).exists() for f in self._REPO_INDICATOR_FILES)
+
+    def _assert_directory_readable(self, validated_path: Path) -> None:
+        if not validated_path.is_dir():
+            raise PathValidationError(
+                message="Repository path must be a directory",
+                path=str(validated_path),
+                details="Path is a file, not a directory",
+            )
+        if not self._is_valid_repository(validated_path):
+            raise PathValidationError(
+                message="Path does not appear to be a repository",
+                path=str(validated_path),
+                details="No .git directory or common repository files found",
+            )
+        if not os.access(validated_path, os.R_OK):
+            raise PathValidationError(
+                message="Repository path is not readable",
+                path=str(validated_path),
+                details="Insufficient permissions to read directory",
+            )
+
     def validate_repository_path(self, path: str | Path) -> Path:
         """Validate repository path with additional checks.
 
@@ -251,51 +274,9 @@ class PathValidator:
             /path/to/repo
         """
         try:
-            # First perform standard validation
             validated_path = self.validate_path(path, must_exist=True)
-
-            # Must be a directory
-            if not validated_path.is_dir():
-                raise PathValidationError(
-                    message="Repository path must be a directory",
-                    path=str(validated_path),
-                    details="Path is a file, not a directory",
-                )
-
-            # Check for .git directory (strong repository indicator)
-            git_dir = validated_path / ".git"
-            is_repo = git_dir.exists() and git_dir.is_dir()
-
-            # Alternative: Check for common repository files
-            if not is_repo:
-                common_files = [
-                    "README.md",
-                    "README.rst",
-                    "pyproject.toml",
-                    "setup.py",
-                    "package.json",
-                    "Cargo.toml",
-                    "go.mod",
-                ]
-                has_repo_files = any((validated_path / f).exists() for f in common_files)
-
-                if not has_repo_files:
-                    raise PathValidationError(
-                        message="Path does not appear to be a repository",
-                        path=str(validated_path),
-                        details="No .git directory or common repository files found",
-                    )
-
-            # Check directory is readable
-            if not os.access(validated_path, os.R_OK):
-                raise PathValidationError(
-                    message="Repository path is not readable",
-                    path=str(validated_path),
-                    details="Insufficient permissions to read directory",
-                )
-
+            self._assert_directory_readable(validated_path)
             return validated_path
-
         except PathValidationError:
             raise
         except Exception as e:
@@ -390,6 +371,71 @@ class PathValidator:
 
         return sanitized
 
+    def _check_read_permission(self, path: Path) -> None:
+        if not os.access(path, os.R_OK):
+            raise PathValidationError(
+                message="Read permission denied",
+                path=str(path),
+                details="File or directory is not readable",
+            )
+
+    def _check_write_permission(self, path: Path) -> None:
+        if not path.exists():
+            parent = path.parent
+            if not parent.exists():
+                raise PathValidationError(
+                    message="Parent directory does not exist",
+                    path=str(path),
+                    details=f"Cannot create file: {parent} does not exist",
+                )
+            if not os.access(parent, os.W_OK):
+                raise PathValidationError(
+                    message="Write permission denied",
+                    path=str(path),
+                    details="Parent directory is not writable",
+                )
+        elif not os.access(path, os.W_OK):
+            raise PathValidationError(
+                message="Write permission denied",
+                path=str(path),
+                details="File or directory is not writable",
+            )
+
+    def _check_delete_permission(self, path: Path) -> None:
+        if not os.access(path, os.W_OK):
+            raise PathValidationError(
+                message="Delete permission denied",
+                path=str(path),
+                details="File or directory is not writable",
+            )
+        if path.is_dir() and (path / ".git").exists():
+            raise PathValidationError(
+                message="Cannot delete repository directory",
+                path=str(path),
+                details="Directory contains .git - likely a repository",
+            )
+
+    def _check_execute_permission(self, path: Path) -> None:
+        if not os.access(path, os.X_OK):
+            raise PathValidationError(
+                message="Execute permission denied",
+                path=str(path),
+                details="File is not executable",
+            )
+        if not path.is_file():
+            raise PathValidationError(
+                message="Cannot execute directory",
+                path=str(path),
+                details="Only files can be executed",
+            )
+        st_mode = path.stat().st_mode
+        if not (st_mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)):
+            raise PathValidationError(
+                message="File is not marked as executable",
+                path=str(path),
+                details="No execute permission bits set",
+            )
+
     def validate_file_operation(
         self,
         path: Path,
@@ -421,11 +467,15 @@ class PathValidator:
             >>> # This raises if file is not readable
             >>> validator.validate_file_operation(path, "read")
         """
+        _operation_checkers = {
+            "read": self._check_read_permission,
+            "write": self._check_write_permission,
+            "delete": self._check_delete_permission,
+            "execute": self._check_execute_permission,
+        }
         try:
-            # First validate the path itself
             validated_path = self.validate_path(path)
 
-            # Check if path exists (for most operations)
             if operation != "write" and not validated_path.exists():
                 raise PathValidationError(
                     message=f"Cannot {operation} non-existent path",
@@ -433,89 +483,14 @@ class PathValidator:
                     details=f"Path must exist for {operation} operation",
                 )
 
-            # Check permissions based on operation type
-            if operation == "read":
-                if not os.access(validated_path, os.R_OK):
-                    raise PathValidationError(
-                        message="Read permission denied",
-                        path=str(validated_path),
-                        details="File or directory is not readable",
-                    )
-
-            elif operation == "write":
-                # Check parent directory is writable if file doesn't exist
-                if not validated_path.exists():
-                    parent = validated_path.parent
-                    if not parent.exists():
-                        raise PathValidationError(
-                            message="Parent directory does not exist",
-                            path=str(validated_path),
-                            details=f"Cannot create file: {parent} does not exist",
-                        )
-                    if not os.access(parent, os.W_OK):
-                        raise PathValidationError(
-                            message="Write permission denied",
-                            path=str(validated_path),
-                            details="Parent directory is not writable",
-                        )
-                else:
-                    if not os.access(validated_path, os.W_OK):
-                        raise PathValidationError(
-                            message="Write permission denied",
-                            path=str(validated_path),
-                            details="File or directory is not writable",
-                        )
-
-            elif operation == "delete":
-                if not os.access(validated_path, os.W_OK):
-                    raise PathValidationError(
-                        message="Delete permission denied",
-                        path=str(validated_path),
-                        details="File or directory is not writable",
-                    )
-
-                # Prevent deletion of critical directories
-                if validated_path.is_dir():
-                    # Check for .git directory (prevent accidental repo deletion)
-                    if (validated_path / ".git").exists():
-                        raise PathValidationError(
-                            message="Cannot delete repository directory",
-                            path=str(validated_path),
-                            details="Directory contains .git - likely a repository",
-                        )
-
-            elif operation == "execute":
-                if not os.access(validated_path, os.X_OK):
-                    raise PathValidationError(
-                        message="Execute permission denied",
-                        path=str(validated_path),
-                        details="File is not executable",
-                    )
-
-                # Verify it's actually a file (not directory) for execution
-                if not validated_path.is_file():
-                    raise PathValidationError(
-                        message="Cannot execute directory",
-                        path=str(validated_path),
-                        details="Only files can be executed",
-                    )
-
-                # Check for executable bit
-                st_mode = validated_path.stat().st_mode
-                if not (st_mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)):
-                    raise PathValidationError(
-                        message="File is not marked as executable",
-                        path=str(validated_path),
-                        details="No execute permission bits set",
-                    )
-
-            else:
+            checker = _operation_checkers.get(operation)
+            if checker is None:
                 raise PathValidationError(
                     message=f"Invalid operation type: {operation}",
                     path=str(validated_path),
                     details="Operation must be 'read', 'write', 'delete', or 'execute'",
                 )
-
+            checker(validated_path)
             return True
 
         except PathValidationError:

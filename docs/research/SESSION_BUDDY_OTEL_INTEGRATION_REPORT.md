@@ -1444,7 +1444,7 @@ ______________________________________________________________________
 - [OpenTelemetry Python Documentation](https://opentelemetry.io/docs/instrumentation/python/)
 - [OTLP Specification](https://opentelemetry.io/docs/reference/specification/protocol/otlp/)
 - [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/)
-- [Mahavishnu Architecture](/Users/les/Projects/mahavishnu/ARCHITECTURE.md)
+- Mahavishnu Architecture
 
 ### 10.3 Standards and Protocols
 

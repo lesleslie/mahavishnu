@@ -27,7 +27,7 @@ This document consolidates the recommendations from:
 
 - the Hermes Agent comparison
 - the Agno / Prefect / LlamaIndex adapter review
-- the proposed Bodai TUI spec at [2026-04-09-tui-design.md](/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-04-09-tui-design.md)
+- the proposed Bodai TUI spec at 2026-04-09-tui-design.md
 
 The goal is to define a clean boundary for:
 

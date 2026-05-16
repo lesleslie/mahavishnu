@@ -427,6 +427,75 @@ class ResilientEmbeddingClient:
             latency_ms=latency_ms,
         )
 
+    async def _partition_by_cache(
+        self, texts: list[str], use_cache: bool
+    ) -> tuple[dict[int, list[float]], list[int]]:
+        cached_results: dict[int, list[float]] = {}
+        uncached_indices: list[int] = []
+        if use_cache and self._embedding_cache:
+            for i, text in enumerate(texts):
+                cached = await self._embedding_cache.get(text)
+                if cached is not None:
+                    cached_results[i] = cached
+                else:
+                    uncached_indices.append(i)
+        else:
+            uncached_indices = list(range(len(texts)))
+        return cached_results, uncached_indices
+
+    async def _generate_uncached(
+        self, texts: list[str], uncached_indices: list[int], use_cache: bool
+    ) -> list[ResilientEmbeddingResult]:
+        uncached_texts = [texts[i] for i in uncached_indices]
+        batch_embeddings = await self._try_batch_akosha(uncached_texts)
+        if batch_embeddings is None and self._embedding_service:
+            try:
+                result = await self._embedding_service.embed(uncached_texts)
+                if result.embeddings:
+                    batch_embeddings = result.embeddings
+            except Exception as e:
+                logger.debug(f"local_batch_failed: {e}")
+
+        results: list[ResilientEmbeddingResult] = []
+        for i, idx in enumerate(uncached_indices):
+            if batch_embeddings and i < len(batch_embeddings):
+                emb, source = batch_embeddings[i], EmbeddingSource.AKOSHA_MCP
+            else:
+                r = await self.generate_embedding(texts[idx], use_cache=False)
+                emb, source = r.embedding, r.source
+            results.append(ResilientEmbeddingResult(
+                embedding=emb, source=source, dimension=len(emb), latency_ms=0.0, cached=False,
+            ))
+            if use_cache and self._embedding_cache:
+                await self._embedding_cache.set(texts[idx], emb)
+        return results
+
+    def _assemble_batch_results(
+        self,
+        texts: list[str],
+        cached_results: dict[int, list[float]],
+        new_results: list[ResilientEmbeddingResult],
+    ) -> list[ResilientEmbeddingResult]:
+        final: list[ResilientEmbeddingResult] = []
+        new_idx = 0
+        for i, text in enumerate(texts):
+            if i in cached_results:
+                emb = cached_results[i]
+                final.append(ResilientEmbeddingResult(
+                    embedding=emb, source=EmbeddingSource.CACHE,
+                    dimension=len(emb), latency_ms=0.0, cached=True,
+                ))
+            elif new_idx < len(new_results):
+                final.append(new_results[new_idx])
+                new_idx += 1
+            else:
+                emb = self._generate_mock_embedding(text)
+                final.append(ResilientEmbeddingResult(
+                    embedding=emb, source=EmbeddingSource.MOCK,
+                    dimension=len(emb), latency_ms=0.0, cached=False,
+                ))
+        return final
+
     async def generate_batch_embeddings(
         self,
         texts: list[str],
@@ -443,99 +512,11 @@ class ResilientEmbeddingClient:
         Returns:
             List of ResilientEmbeddingResult objects
         """
-        results = []
-
-        # Check cache for all texts first
-        cached_results: dict[int, list[float]] = {}
-        uncached_indices: list[int] = []
-
-        if use_cache and self._embedding_cache:
-            for i, text in enumerate(texts):
-                cached = await self._embedding_cache.get(text)
-                if cached is not None:
-                    cached_results[i] = cached
-                else:
-                    uncached_indices.append(i)
-        else:
-            uncached_indices = list(range(len(texts)))
-
-        # Generate embeddings for uncached texts
+        cached_results, uncached_indices = await self._partition_by_cache(texts, use_cache)
+        new_results: list[ResilientEmbeddingResult] = []
         if uncached_indices:
-            uncached_texts = [texts[i] for i in uncached_indices]
-
-            # Try batch generation from Akosha
-            batch_embeddings = await self._try_batch_akosha(uncached_texts)
-
-            if batch_embeddings is None and self._embedding_service:
-                # Try local batch generation
-                try:
-                    result = await self._embedding_service.embed(uncached_texts)
-                    if result.embeddings:
-                        batch_embeddings = result.embeddings
-                except Exception as e:
-                    logger.debug(f"local_batch_failed: {e}")
-
-            # Fill in results
-            for i, idx in enumerate(uncached_indices):
-                if batch_embeddings and i < len(batch_embeddings):
-                    emb = batch_embeddings[i]
-                    source = EmbeddingSource.AKOSHA_MCP  # Or determine actual source
-                else:
-                    # Last resort: generate individually
-                    result = await self.generate_embedding(texts[idx], use_cache=False)
-                    emb = result.embedding
-                    source = result.source
-
-                latency_ms = 0.0  # Batch operation, individual latency not tracked
-                cached = idx in cached_results
-
-                if not cached:
-                    results.append(
-                        ResilientEmbeddingResult(
-                            embedding=emb,
-                            source=source,
-                            dimension=len(emb),
-                            latency_ms=latency_ms,
-                            cached=False,
-                        )
-                    )
-                    # Cache the result
-                    if use_cache and self._embedding_cache:
-                        await self._embedding_cache.set(texts[idx], emb)
-
-        # Combine cached and new results in original order
-        final_results: list[ResilientEmbeddingResult] = []
-        new_result_idx = 0
-
-        for i in range(len(texts)):
-            if i in cached_results:
-                final_results.append(
-                    ResilientEmbeddingResult(
-                        embedding=cached_results[i],
-                        source=EmbeddingSource.CACHE,
-                        dimension=len(cached_results[i]),
-                        latency_ms=0.0,
-                        cached=True,
-                    )
-                )
-            else:
-                if new_result_idx < len(results):
-                    final_results.append(results[new_result_idx])
-                    new_result_idx += 1
-                else:
-                    # Fallback to mock
-                    emb = self._generate_mock_embedding(texts[i])
-                    final_results.append(
-                        ResilientEmbeddingResult(
-                            embedding=emb,
-                            source=EmbeddingSource.MOCK,
-                            dimension=len(emb),
-                            latency_ms=0.0,
-                            cached=False,
-                        )
-                    )
-
-        return final_results
+            new_results = await self._generate_uncached(texts, uncached_indices, use_cache)
+        return self._assemble_batch_results(texts, cached_results, new_results)
 
     async def _try_batch_akosha(self, texts: list[str]) -> list[list[float]] | None:
         """Try batch embedding from Akosha MCP.

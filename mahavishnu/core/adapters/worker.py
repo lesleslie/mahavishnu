@@ -276,6 +276,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             "details": health,
         }
 
+
 # =============================================================================
 # Entry Point for Hybrid Adapter Registry
 # =============================================================================

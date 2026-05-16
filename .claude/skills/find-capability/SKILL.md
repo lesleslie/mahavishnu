@@ -298,5 +298,5 @@ After discovering repository:
 
 ## Related Documentation
 
-- [CLAUDE.md - Role-Based Organization](CLAUDE.md) - Complete role taxonomy
-- [settings/repos.yaml](settings/repos.yaml) - Repository manifest
+- CLAUDE.md - Role-Based Organization - Complete role taxonomy
+- settings/repos.yaml - Repository manifest

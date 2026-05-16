@@ -80,7 +80,7 @@ Dhara URL is read from the `DHARA_URL` environment variable (default: `http://lo
 
 `RoutingDecisionBuffer` (in `mahavishnu/core/ecosystem_status.py`) is a bounded in-memory ring buffer (1000 entries per task class) for live query performance. It is **not** the persistence layer — Dhara is. The buffer is populated by the same routing path that triggers Dhara writes.
 
----
+______________________________________________________________________
 
 ## Architecture Overview
 
@@ -685,11 +685,11 @@ ______________________________________________________________________
 
 ## Documentation
 
-- **[README.md](README.md)**: Project overview and quick start
-- **[CLAUDE.md](CLAUDE.md)**: Development guidelines for Claude Code
-- **[REMAINING_TASKS.md](REMAINING_TASKS.md)**: Detailed task breakdown
-- **[docs/adr/](docs/adr/)**: Architecture Decision Records
-- **[docs/MCP_TOOLS_SPECIFICATION.md](docs/MCP_TOOLS_SPECIFICATION.md)**: MCP tool API documentation
+- **README.md**: Project overview and quick start
+- **CLAUDE.md**: Development guidelines for Claude Code
+- **REMAINING_TASKS.md**: Detailed task breakdown
+- **docs/adr/**: Architecture Decision Records
+- **docs/MCP_TOOLS_SPECIFICATION.md**: MCP tool API documentation
 - **[Implementation Summary](../archive/completion-reports/IMPLEMENTATION_SUMMARY.md)**: Modernization notes
 
 ______________________________________________________________________

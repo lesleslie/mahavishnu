@@ -70,8 +70,7 @@ class NotificationEventHandler:
         extra_payload = route_data.get("extra_payload")
         return NotificationRoute(
             adapter_key=route_data.get("adapter_key") or route_data.get("adapter"),
-            adapter_provider=route_data.get("adapter_provider")
-            or route_data.get("provider"),
+            adapter_provider=route_data.get("adapter_provider") or route_data.get("provider"),
             target=route_data.get("target"),
             channel=route_data.get("channel"),
             title=route_data.get("title"),
@@ -97,31 +96,23 @@ class NotificationEventHandler:
         context = payload.get("context")
         if not isinstance(context, dict):
             context = dict(payload)
-        record: dict[str, Any] = {
+        built: dict[str, Any] = {
             "message": message,
             "channel": str(
-                payload.get("channel")
-                or envelope.metadata.get("channel")
-                or envelope.event_type
+                payload.get("channel") or envelope.metadata.get("channel") or envelope.event_type
             ),
-            "level": str(
-                payload.get("level") or envelope.metadata.get("level") or "info"
-            ),
+            "level": str(payload.get("level") or envelope.metadata.get("level") or "info"),
             "context": context,
             "source": envelope.source,
-            "correlation_id": (
-                str(envelope.correlation_id) if envelope.correlation_id else None
-            ),
+            "correlation_id": (str(envelope.correlation_id) if envelope.correlation_id else None),
             "causation_id": str(envelope.causation_id) if envelope.causation_id else None,
         }
         extra_payload = envelope.metadata.get("notification_extra_payload")
         if isinstance(extra_payload, dict):
-            record.update(extra_payload)
-        return record
+            built.update(extra_payload)
+        return built
 
-    def _extract_notification_data(
-        self, envelope: EventEnvelope
-    ) -> dict[str, Any] | None:
+    def _extract_notification_data(self, envelope: EventEnvelope) -> dict[str, Any] | None:
         for candidate in (envelope.metadata, envelope.payload):
             if not isinstance(candidate, dict):
                 continue
@@ -154,12 +145,8 @@ class DLQEventHandler:
         metadata = {
             "event_type": envelope.event_type,
             "source": envelope.source,
-            "correlation_id": str(envelope.correlation_id)
-            if envelope.correlation_id
-            else None,
-            "causation_id": str(envelope.causation_id)
-            if envelope.causation_id
-            else None,
+            "correlation_id": str(envelope.correlation_id) if envelope.correlation_id else None,
+            "causation_id": str(envelope.causation_id) if envelope.causation_id else None,
             "handler_name": handler_name,
         }
         return await self.dead_letter_queue.enqueue(

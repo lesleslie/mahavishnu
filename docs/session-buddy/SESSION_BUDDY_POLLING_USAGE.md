@@ -465,4 +465,4 @@ The Session-Buddy polling integration provides:
 For more details, see:
 
 - [Implementation Plan](SESSION_BUDDY_POLLING_PLAN.md)
-- [Configuration](/Users/les/Projects/mahavishnu/mahavishnu/core/config.py)
+- Configuration

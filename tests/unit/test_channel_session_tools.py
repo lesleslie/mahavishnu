@@ -38,6 +38,7 @@ def _make_server_and_client():
     # Wrap each registered function so tests don't need to pass user_id every time.
     authed: dict[str, object] = {}
     for name, fn in registered.items():
+
         async def _authed(fn=fn, **kwargs):
             kwargs.setdefault("user_id", "test-user")
             return await fn(**kwargs)

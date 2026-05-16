@@ -120,14 +120,37 @@ class DebugMonitorWorker(BaseWorker):
         logger.info(f"Started terminal debug monitor: {self.session_id}")
         return self.session_id
 
+    async def _capture_iterm2_screen(self, iterm2: Any) -> str | None:
+        if not self._iterm2_connection or not self.session_id:
+            return None
+        app = await iterm2.App.async_get_connection(self._iterm2_connection)
+        sessions = await app.async_get_sessions()
+        debug_session = next(
+            (s for s in sessions if getattr(s, "session_id", None) == self.session_id), None
+        )
+        if not debug_session:
+            return None
+        contents = await debug_session.async_get_contents(first_line=-100, number_of_lines=100)
+        lines = [text for line in contents if (text := getattr(line, "string", None))]
+        return "\n".join(lines)
+
+    async def _store_log_to_session_buddy(self, log_text: str, line_count: int) -> None:
+        await self.session_buddy_client.call_tool(
+            "store_memory",
+            arguments={
+                "content": log_text,
+                "metadata": {
+                    "type": "debug_log",
+                    "source": "mahavishnu_debug_monitor",
+                    "log_path": str(self.log_path),
+                    "session_id": self.session_id,
+                    "line_count": line_count,
+                },
+            },
+        )
+
     async def _stream_to_session_buddy(self) -> None:
-        """Stream captured log lines to Session-Buddy for persistent storage.
-
-        Captures iTerm2 screen contents every second and stores in Session-Buddy
-        as memories for searchable debug history.
-
-        This method runs in the background until the worker is stopped.
-        """
+        """Stream captured log lines to Session-Buddy for persistent storage."""
         if not self.session_buddy_client:
             return
 
@@ -135,72 +158,26 @@ class DebugMonitorWorker(BaseWorker):
 
         try:
             line_count = 0
-
             while self._running:
                 try:
-                    # Capture screen contents using iTerm2 API
-                    if self._iterm2_connection and self.session_id:
-                        # Find the session
-                        app = await iterm2.App.async_get_connection(self._iterm2_connection)
-                        sessions = await app.async_get_sessions()
-
-                        # Find our debug session by session_id
-                        debug_session = None
-                        for session in sessions:
-                            session_id = getattr(session, "session_id", None)
-                            if session_id == self.session_id:
-                                debug_session = session
-                                break
-
-                        if debug_session:
-                            # Get screen contents (last 100 lines)
-                            try:
-                                contents = await debug_session.async_get_contents(
-                                    first_line=-100, number_of_lines=100
+                    try:
+                        log_text = await self._capture_iterm2_screen(iterm2)
+                        if log_text and log_text.strip():
+                            await self._store_log_to_session_buddy(log_text, line_count)
+                            line_count += 1
+                            if line_count % 60 == 0:
+                                logger.debug(
+                                    f"Streamed {line_count} updates to Session-Buddy "
+                                    f"for {self.session_id}"
                                 )
+                    except Exception as e:
+                        logger.warning(f"Failed to capture iTerm2 screen: {e}")
 
-                                # Extract text from screen contents
-                                log_lines = []
-                                for line in contents:
-                                    text = getattr(line, "string", None)
-                                    if text:
-                                        log_lines.append(text)
-
-                                log_text = "\n".join(log_lines)
-
-                                # Store in Session-Buddy as memory
-                                if log_text.strip():  # Only store non-empty
-                                    await self.session_buddy_client.call_tool(
-                                        "store_memory",
-                                        arguments={
-                                            "content": log_text,
-                                            "metadata": {
-                                                "type": "debug_log",
-                                                "source": "mahavishnu_debug_monitor",
-                                                "log_path": str(self.log_path),
-                                                "session_id": self.session_id,
-                                                "line_count": line_count,
-                                            },
-                                        },
-                                    )
-
-                                    line_count += 1
-                                    if line_count % 60 == 0:  # Log every minute
-                                        logger.debug(
-                                            f"Streamed {line_count} updates to Session-Buddy "
-                                            f"for {self.session_id}"
-                                        )
-
-                            except Exception as e:
-                                logger.warning(f"Failed to capture iTerm2 screen: {e}")
-
-                    # Wait before next capture
                     await asyncio.sleep(1)
-
                 except Exception as e:
                     if self._running:
                         logger.warning(f"Error in streaming loop: {e}")
-                    await asyncio.sleep(5)  # Wait before retry
+                    await asyncio.sleep(5)
 
         except asyncio.CancelledError:
             logger.info("Debug monitor streaming cancelled")

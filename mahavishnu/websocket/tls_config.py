@@ -7,6 +7,7 @@ and helper functions for secure WebSocket connections.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from mcp_common.websocket.tls import (
     create_ssl_context,

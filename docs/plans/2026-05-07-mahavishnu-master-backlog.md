@@ -5,19 +5,19 @@
 **Authority**: Verified against codebase 2026-05-07. Items here were confirmed missing by code inspection; closed/superseded items were removed.
 **Last updated**: 2026-05-08 — All priorities delivered; Final Gate complete.
 
----
+______________________________________________________________________
 
 ## How to use this document
 
 This is the single place to track remaining implementation work. Before starting any item:
 
 1. Confirm the item is still open by spot-checking the relevant code.
-2. Tick the task checkbox when done and add a delivered note.
-3. Update the status line at the top of the section when the item is fully complete.
+1. Tick the task checkbox when done and add a delivered note.
+1. Update the status line at the top of the section when the item is fully complete.
 
 Do not add speculative work here. New items require code-verified evidence that the feature is missing.
 
----
+______________________________________________________________________
 
 ## Priority 0 — Pre-Implementation Bug Fixes
 
@@ -35,7 +35,7 @@ These bugs were confirmed by code inspection — they are not speculative.
 
 **Delivered**: 2026-05-07 — both bugs were non-issues; the implementation was already correct
 
----
+______________________________________________________________________
 
 ## Priority 1 — Session-Buddy Multi-Channel Tracking
 
@@ -55,7 +55,7 @@ These bugs were confirmed by code inspection — they are not speculative.
 
 **Delivered**: 2026-05-08 — Phase 1 complete; Phase 2 (Dhara-backed event bus) is a follow-up
 
----
+______________________________________________________________________
 
 ## Priority 2 — Storage Consolidation (Dhara Integration)
 
@@ -84,7 +84,7 @@ Dhara provides ACID-guaranteed persistent object storage and is already in the B
 
 **Delivered**: 2026-05-07 (core), 2026-05-14 (PoolManager wiring verified, arch doc update tracked) — all P2 tasks complete.
 
----
+______________________________________________________________________
 
 ## Priority 3 — Config Consolidation
 
@@ -111,7 +111,7 @@ Verify against the spec for exact task list. High-level:
 
 **Delivered**: 2026-05-07 — UnifiedConfig + ConfigValidationError + CLI --strict flag + startup hook + README + 7 tests.
 
----
+______________________________________________________________________
 
 ## Priority 4 — RunPod Pool — Remaining Subtasks
 
@@ -126,13 +126,13 @@ Verify against the spec for exact task list. High-level:
 
 **Delivered**: 2026-05-07
 
----
+______________________________________________________________________
 
 ## Priority 5 — ~~Nanobot Worker Phase A~~ (Removed 2026-05-07)
 
 **Status**: Removed — all nanobot integration (`NanobotWorker`, `nanobot-ai` dependency, in-process worker registry entries, provider wiring) deleted from the codebase. Workspace files also purged from project root.
 
----
+______________________________________________________________________
 
 ## Priority 6 — TUI Completion (Command Palette + Skill Drafts)
 
@@ -166,7 +166,7 @@ The TUI's five screens are functional and auto-refreshing. The two remaining gap
 
 **Delivered**: 2026-05-07
 
----
+______________________________________________________________________
 
 ## Priority 7 — Hatchet Rate-Limiting Pattern
 
@@ -191,7 +191,7 @@ Mahavishnu routes ZAI API calls via `TaskRouter` with no per-user or per-model-k
 
 **Delivered**: 2026-05-08
 
----
+______________________________________________________________________
 
 ## Priority 8 — Approval Flow Durable Wait Pattern
 
@@ -218,7 +218,7 @@ Mahavishnu's approval flow (`request_approval` → `respond_to_approval`) sends 
 
 **Delivered**: 2026-05-07 — durable approval persistence + restart recovery + 9 tests. Also fixed the missing `approval_manager` initialization on `MahavishnuApp`.
 
----
+______________________________________________________________________
 
 ## Priority 9 — OpenWebUI mcpo Bridge
 
@@ -253,7 +253,7 @@ OpenWebUI (local desktop, Homebrew)
 
 **Delivered**: 2026-05-07 — bridge verified working (`streamable-http` / `/mcp`), integration doc written, mcpo config created. Remaining tasks are manual UI steps (tool registration, model arena) — no further code changes needed.
 
----
+______________________________________________________________________
 
 ## Priority 10 — HatchetAdapter (post-Dhara)
 
@@ -263,7 +263,7 @@ OpenWebUI (local desktop, Homebrew)
 
 ### Why this priority
 
-Hatchet is a durable task queue + DAG orchestrator built on Postgres with <20ms task start latency, per-key rate limiting, and first-class human-in-the-loop via `WaitForEvent`. It complements the Prefect adapter: Prefect for scheduled batch/data pipelines, Hatchet for high-frequency AI agent loops and approval-gated workflows. Since both Dhara (Priority 2) and Hatchet use Postgres as the durable state layer, implementing Dhara first avoids duplicated Postgres connection management.
+Hatchet is a durable task queue + DAG orchestrator built on Postgres with \<20ms task start latency, per-key rate limiting, and first-class human-in-the-loop via `WaitForEvent`. It complements the Prefect adapter: Prefect for scheduled batch/data pipelines, Hatchet for high-frequency AI agent loops and approval-gated workflows. Since both Dhara (Priority 2) and Hatchet use Postgres as the durable state layer, implementing Dhara first avoids duplicated Postgres connection management.
 
 **Prerequisite**: Priority 2 (Dhara Integration) must be complete. Spec must be written and reviewed before implementation begins.
 
@@ -290,7 +290,7 @@ Hatchet is a durable task queue + DAG orchestrator built on Postgres with <20ms 
 
 **Delivered**: 2026-05-08
 
----
+______________________________________________________________________
 
 ## Final Gate — README Update
 
@@ -313,7 +313,7 @@ The README describes the current state of Mahavishnu. Updating it mid-implementa
 
 **Delivered**: 2026-05-08 — README updated; all backlog items reflected
 
----
+______________________________________________________________________
 
 ## Closed / Superseded Items (reference)
 

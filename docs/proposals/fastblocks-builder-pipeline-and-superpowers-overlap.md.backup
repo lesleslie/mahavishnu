@@ -1,0 +1,305 @@
+# FastBlocks Builder Pipeline and Superpowers Overlap Review
+
+**Date**: 2026-05-02
+**Status**: Proposal
+**Scope**: Concrete builder pipeline plus comparison against `docs/superpowers/specs` and `docs/superpowers/plans`
+
+## Summary
+
+This document does two things:
+
+1. defines a concrete `prompt -> spec -> generate -> preview -> refine -> publish` pipeline for a FastBlocks-native builder product
+1. compares that proposal to the existing `docs/superpowers/specs` and `docs/superpowers/plans` documents to identify overlap, reuse opportunities, and boundary risks
+
+## Recommended Pipeline
+
+### End-to-end flow
+
+```text
+User prompt
+  -> product repo captures session + project context
+  -> prompt-to-spec translator creates or updates AppSpec
+  -> Mahavishnu orchestrates generation workflow
+  -> FastBlocks templates/components generate app structure
+  -> FastBlocks validators enforce framework idioms
+  -> preview runtime builds or refreshes preview
+  -> user refines via chat or direct edits
+  -> Mahavishnu runs validation/repair/rebuild loop
+  -> product repo triggers publish flow
+  -> Mahavishnu executes deployment workflow
+```
+
+### Stage ownership
+
+| Stage | Primary owner | Notes |
+|------|---------------|------|
+| Prompt intake | New product repo | Product UX, project/session state, clarification prompts |
+| Prompt-to-spec translation | New product repo | Produces `AppSpec`; may call Mahavishnu as execution backend |
+| Workflow orchestration | Mahavishnu | Runs generation, validation, repair, and publish pipelines |
+| Template selection and rendering | FastBlocks | Framework-native starter kits, page patterns, component primitives |
+| Idiom validation and repair hints | FastBlocks | Defines valid FastBlocks output |
+| Preview session lifecycle | Product repo + FastBlocks | Product owns session state; FastBlocks owns preview runtime |
+| Publish UX | New product repo | User-facing environments, targets, publish state |
+| Deployment execution | Mahavishnu | Durable workflow, retries, checks, approvals |
+
+## Suggested Interfaces
+
+### Product repo contracts
+
+- `AppSpec`
+- `Project`
+- `Draft`
+- `ConversationSession`
+- `PreviewSession`
+- `PublishRequest`
+
+### FastBlocks contracts
+
+- `generate_from_app_spec(app_spec, template_family, target_dir)`
+- `validate_app(target_dir) -> ValidationResult`
+- `repair_hints(validation_result) -> list[RepairHint]`
+- `start_preview(target_dir, session_id) -> PreviewHandle`
+
+### Mahavishnu workflow contracts
+
+- `builder_generate`
+- `builder_validate`
+- `builder_repair`
+- `builder_refresh_preview`
+- `builder_publish`
+
+## Execution Loops
+
+### Initial generation
+
+1. Product repo stores the user prompt and creates a draft
+1. Product repo translates the prompt into an `AppSpec`
+1. Mahavishnu receives a workflow request with `AppSpec`
+1. FastBlocks generates the first app version
+1. FastBlocks validates the output
+1. If invalid, Mahavishnu runs repair passes
+1. Product repo opens preview session
+
+### Iterative refinement
+
+1. User requests a change
+1. Product repo updates `AppSpec` or records a patch request
+1. Mahavishnu orchestrates delta generation
+1. FastBlocks re-renders or patches the app
+1. FastBlocks validates again
+1. Preview refreshes
+
+### Publish
+
+1. User clicks publish
+1. Product repo creates `PublishRequest`
+1. Mahavishnu runs validation, tests, build, target-specific deploy steps
+1. Product repo reports status and resulting URL/domain/artifacts
+
+## Comparison to Superpowers Docs
+
+## Strong overlaps worth reusing
+
+### 1. Layered platform thesis already aligns
+
+The clearest alignment is with the master platform spec:
+
+- docs/plans/2026-04-16-bodai-agent-platform-master-spec.md
+
+That document already argues for a layered system:
+
+- TUI layer
+- Mahavishnu layer
+- ecosystem layer
+
+My builder recommendation is consistent with that model. The builder product is effectively a new product/UI layer that should sit above Mahavishnu, not inside it.
+
+### 2. Pattern learning/scaffolding is directly relevant
+
+- docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md
+
+**Status note**: This spec is fully shipped as of 2026-04-30 (all 63 tasks complete). The pattern library, scaffolding engine, and FastBlocks pattern extraction are live in Mahavishnu. The overlap analysis below remains valid; treat the spec as describing the current production state rather than future work.
+
+This is the most directly relevant existing spec. It already proposes:
+
+- a pattern library
+- FastBlocks-oriented scaffolding
+- pattern extraction from existing apps
+- hybrid deterministic + AI-assisted generation
+- validation against pattern contracts
+
+This overlaps heavily with:
+
+- design/template system
+- generation layer
+- FastBlocks idiom guardrails
+
+### 3. Code indexing integration is useful supporting infrastructure
+
+- docs/superpowers/specs/2026-04-26-code-indexing-integration-design.md
+
+**Status note**: Shipped 2026-04-30 (all 42 tasks complete). Call chain resolution, impact analysis, and incremental re-indexing are live in Session-Buddy.
+
+This does not conflict with the builder proposal. It is useful input for:
+
+- pattern extraction
+- repair workflows
+- impact analysis during iterative edits
+- future code-aware refinement loops
+
+### 4. Agent/skill modernization helps orchestration quality
+
+- docs/superpowers/specs/2026-04-26-agent-skill-modernization-design.md
+
+This can improve the builder backend indirectly by making orchestrated skills and agents more ecosystem-aware.
+
+## Main overlaps and issues
+
+### Issue 1: Pattern/scaffolding ownership is too Mahavishnu-centric
+
+The pattern learning/scaffolding design puts the pattern library under Mahavishnu:
+
+- docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md
+
+That is reasonable for internal scaffolding, but it creates a boundary problem for a real FastBlocks-native product:
+
+- framework-native templates belong closer to FastBlocks
+- framework idiom validators belong in FastBlocks
+- product-level template choice belongs in the product repo
+
+If Mahavishnu owns too much template logic, it risks becoming both orchestrator and framework authority.
+
+**Recommendation:**
+
+- keep Mahavishnu's `patterns/` library as an internal orchestration/scaffolding asset if useful
+- move canonical FastBlocks template packs and validation contracts into FastBlocks
+- let Mahavishnu consume FastBlocks-owned pattern metadata rather than becoming the long-term source of truth for framework patterns
+
+### Issue 2: “Generate complete runnable FastBlocks projects” needs a narrower reading
+
+The pattern-learning spec says:
+
+- generate complete, runnable FastBlocks projects
+
+That is fine for internal scaffolding and bootstrap generation, but if taken too literally it can expand Mahavishnu into a full app-builder product shell.
+
+**Recommendation:**
+
+- Mahavishnu may generate projects as a backend workflow
+- the external product experience should still live in a separate product repo
+
+### Issue 3: Missing explicit product/UI layer in superpowers docs
+
+The master spec strongly defends layered architecture, but it does not explicitly name a separate commercial builder product layer. It talks mostly about TUI, Mahavishnu core, and ecosystem services.
+
+For a Lovable-style FastBlocks product, that missing layer matters:
+
+- user/session/project model
+- browser-based preview UX
+- publish UX
+- account/workspace concepts
+
+**Recommendation:**
+
+- if this direction becomes serious, add a short architecture note referencing a distinct product layer above Mahavishnu
+
+### Issue 4: Preview/session state is not clearly assigned in the superpowers material
+
+The current superpowers set is strong on orchestration, skills, and scaffolding, but weak on explicit ownership for:
+
+- live preview state
+- draft session state
+- collaborative edit state
+
+Those are not good fits for Mahavishnu core.
+
+**Recommendation:**
+
+- product repo owns preview/draft/conversation sessions
+- FastBlocks owns preview runtime behavior
+- Mahavishnu owns rebuild/revalidate/redeploy workflows
+
+### Issue 5: Deployment is intentionally out of scope in pattern-learning spec
+
+The pattern-learning spec explicitly says deployment is separate.
+
+That is fine, but it means the existing superpowers material does not yet cover one of the essential Lovable-style product loops:
+
+- generate
+- preview
+- publish
+
+**Recommendation:**
+
+- keep deployment execution in Mahavishnu
+- keep deployment UX in the product repo
+- avoid forcing deployment semantics into FastBlocks itself
+
+## Suggested Reconciliation
+
+### Keep in Mahavishnu
+
+- orchestration workflows
+- pattern extraction workflows
+- validation pipeline orchestration
+- repair loop orchestration
+- deployment execution
+- operational telemetry
+
+### Move or define in FastBlocks
+
+- canonical template registry
+- framework idiom rules
+- preview runtime APIs
+- component/page/layout contracts
+- framework-specific repair hints
+
+### Create in new product repo
+
+- chat/prompt UX
+- `AppSpec`
+- project/draft/session persistence
+- preview UX
+- publish UX
+- workspace/account semantics
+
+## Practical interpretation of current docs
+
+The current superpowers material is compatible with a FastBlocks-native builder if interpreted like this:
+
+- Mahavishnu is the backend orchestrator
+- FastBlocks is the framework source of truth
+- the user-facing builder is a separate product layer
+
+The material becomes problematic only if the pattern-learning/scaffolding work is used to justify putting the entire builder product into Mahavishnu.
+
+## Recommendation
+
+Treat the existing superpowers work as:
+
+- **reusable backend and scaffolding infrastructure**
+
+Do not treat it as:
+
+- **proof that Mahavishnu should become the builder product repo**
+
+The cleanest next step is:
+
+1. keep evolving pattern-learning/scaffolding in a way that can call into FastBlocks-owned template and validation contracts
+1. keep Mahavishnu focused on orchestration
+1. introduce a separate product repo if you want a real Lovable-style offering
+
+## Most Relevant Existing Docs
+
+- docs/plans/2026-04-16-bodai-agent-platform-master-spec.md
+- docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md
+- docs/superpowers/specs/2026-04-26-code-indexing-integration-design.md
+- [docs/superpowers/specs/2026-04-26-agent-skill-modernization-design.md](/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-04-26-agent-skill-modernization-design.md:1)
+
+## Final Answer
+
+There is meaningful overlap, especially with the pattern-learning/scaffolding spec. The overlap is mostly useful, but there is one central risk:
+
+- **template/scaffolding authority drifting into Mahavishnu instead of staying anchored in FastBlocks**
+
+That is the main architectural issue to watch.

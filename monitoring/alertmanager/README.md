@@ -501,7 +501,7 @@ ______________________________________________________________________
 
 ## Related Documentation
 
-- [Maintenance Procedures](../MAINTENANCE_PROCEDURES.md)
+- Maintenance Procedures
 - [Prometheus Documentation](https://prometheus.io/docs/alerting/latest/alertmanager/)
 
 ______________________________________________________________________

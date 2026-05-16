@@ -123,23 +123,6 @@
     }
   ],
   "providers": {
-    "openai": {
-      "keys": [
-        {
-          "models": [
-            "gpt-5.4",
-            "gpt-5.4-mini",
-            "gpt-5.3-codex"
-          ],
-          "name": "openai-primary",
-          "value": "env.OPENAI_API_KEY",
-          "weight": 1.0
-        }
-      ],
-      "network_config": {
-        "base_url": "https://api.openai.com"
-      }
-    },
     "minimax-openai": {
       "custom_provider_config": {
         "allowed_requests": {
@@ -165,6 +148,23 @@
       ],
       "network_config": {
         "base_url": "https://api.minimax.io"
+      }
+    },
+    "openai": {
+      "keys": [
+        {
+          "models": [
+            "gpt-5.4",
+            "gpt-5.4-mini",
+            "gpt-5.3-codex"
+          ],
+          "name": "openai-primary",
+          "value": "env.OPENAI_API_KEY",
+          "weight": 1.0
+        }
+      ],
+      "network_config": {
+        "base_url": "https://api.openai.com"
       }
     }
   },

@@ -66,22 +66,13 @@ def _validate_path(path_str: str, allowed_base_paths: list[str] | None = None) -
     return abs_path
 
 
-def load_repos(app: Any) -> None:
-    """Load repository configurations with fallback chain."""
-    import logging
-
-    logger = logging.getLogger(__name__)
+def _resolve_repos_path(app: Any, logger: Any) -> tuple[Path, bool]:
     primary_path = _validate_path(app.config.repos_path).expanduser()
     fallback_path = _validate_path("settings/repos.yaml").expanduser()
 
-    repos_path: Path | None = None
-    using_fallback = False
-
     if primary_path.exists():
-        repos_path = primary_path
-    elif fallback_path.exists() and fallback_path != primary_path:
-        repos_path = fallback_path
-        using_fallback = True
+        return primary_path, False
+    if fallback_path.exists() and fallback_path != primary_path:
         logger.warning(
             "Repository config fallback: %s not found, using %s. "
             "Consider creating ecosystem.yaml for richer configuration "
@@ -89,43 +80,40 @@ def load_repos(app: Any) -> None:
             primary_path,
             fallback_path,
         )
+        return fallback_path, True
+    raise ConfigurationError(
+        message=f"No repository configuration found. Tried: {primary_path}, {fallback_path}",
+        details={
+            "repos_path": str(primary_path),
+            "fallback_path": str(fallback_path),
+            "suggestion": (
+                "Create settings/ecosystem.yaml (preferred) or "
+                "settings/repos.yaml with repository configurations"
+            ),
+        },
+    )
 
-    if repos_path is None:
-        raise ConfigurationError(
-            message=f"No repository configuration found. Tried: {primary_path}, {fallback_path}",
-            details={
-                "repos_path": str(repos_path),
-                "fallback_path": str(fallback_path),
-                "suggestion": (
-                    "Create settings/ecosystem.yaml (preferred) or "
-                    "settings/repos.yaml with repository configurations"
-                ),
-            },
-        )
 
+def _load_raw_yaml(repos_path: Path) -> Any:
     try:
         with repos_path.open() as f:
-            raw_config = yaml.safe_load(f)
-
-        if not isinstance(raw_config, dict) or "repos" not in raw_config:
-            raise ConfigurationError(
-                message=f"Invalid repository config: missing 'repos' key in {repos_path.name}",
-                details={"repos_path": str(repos_path)},
-            )
-
-        app.roles_config = raw_config.get("roles", [])
-        app.repos_config = {
-            "repos": raw_config["repos"],
-            "roles": app.roles_config,
-        }
-
-        source = "repos.yaml (fallback)" if using_fallback else "ecosystem.yaml"
-        logger.info("Loaded %d repositories from %s", len(raw_config.get("repos", [])), source)
+            return yaml.safe_load(f)
     except yaml.YAMLError as exc:
         raise ConfigurationError(
             message=f"Invalid YAML in {repos_path.name}: {exc}",
             details={"repos_path": str(repos_path), "error": str(exc)},
         ) from exc
+
+
+def _parse_repos_config_file(repos_path: Path) -> dict:
+    try:
+        raw_config = _load_raw_yaml(repos_path)
+        if not isinstance(raw_config, dict) or "repos" not in raw_config:
+            raise ConfigurationError(
+                message=f"Invalid repository config: missing 'repos' key in {repos_path.name}",
+                details={"repos_path": str(repos_path)},
+            )
+        return raw_config
     except ConfigurationError:
         raise
     except Exception as exc:
@@ -135,70 +123,68 @@ def load_repos(app: Any) -> None:
         ) from exc
 
 
-def initialize_adapters(app: Any) -> None:
-    """Initialize enabled adapters based on configuration."""
+def load_repos(app: Any) -> None:
+    """Load repository configurations with fallback chain."""
     import logging
 
     logger = logging.getLogger(__name__)
+    repos_path, using_fallback = _resolve_repos_path(app, logger)
+    raw_config = _parse_repos_config_file(repos_path)
 
-    adapter_classes: dict[str, type] = {}
-    enabled_adapters: dict[str, bool] = {}
+    app.roles_config = raw_config.get("roles", [])
+    app.repos_config = {"repos": raw_config["repos"], "roles": app.roles_config}
 
-    if app.config.adapters.prefect_enabled:
-        try:
+    source = "repos.yaml (fallback)" if using_fallback else "ecosystem.yaml"
+    logger.info("Loaded %d repositories from %s", len(raw_config.get("repos", [])), source)
+
+
+def _import_adapter_class(name: str) -> type | None:
+    try:
+        if name == "prefect":
             from ..engines.prefect_adapter_impl import PrefectAdapter
-
-            adapter_classes["prefect"] = PrefectAdapter
-            enabled_adapters["prefect"] = True
-        except ImportError:
-            logger.warning("Prefect adapter not available due to missing dependencies")
-
-    if app.config.adapters.llamaindex_enabled:
-        try:
+            return PrefectAdapter
+        if name == "llamaindex":
             from ..engines.llamaindex_adapter_impl import LlamaIndexAdapter
-
-            adapter_classes["llamaindex"] = LlamaIndexAdapter
-            enabled_adapters["llamaindex"] = True
-        except ImportError:
-            logger.warning("LlamaIndex adapter not available due to missing dependencies")
-
-    if app.config.adapters.agno_enabled:
-        try:
+            return LlamaIndexAdapter
+        if name == "agno":
             from ..engines.agno_adapter_impl import AgnoAdapter
-
-            adapter_classes["agno"] = AgnoAdapter
-            enabled_adapters["agno"] = True
-        except ImportError:
-            logger.warning("Agno adapter not available due to missing dependencies")
-
-    if app.config.adapters.hatchet_enabled:
-        try:
+            return AgnoAdapter
+        if name == "hatchet":
             from ..engines.hatchet_adapter_impl import HatchetAdapterImpl
-
-            adapter_classes["hatchet"] = HatchetAdapterImpl
-            enabled_adapters["hatchet"] = True
-        except ImportError:
-            logger.warning("Hatchet adapter not available due to missing dependencies")
-
-    if getattr(app.config.workers, "enabled", True):
-        try:
+            return HatchetAdapterImpl
+        if name == "worker":
             from .adapters.worker import WorkerOrchestratorAdapter
+            return WorkerOrchestratorAdapter
+    except ImportError:
+        return None
+    return None
 
-            adapter_classes["worker"] = WorkerOrchestratorAdapter
-            enabled_adapters["worker"] = True
-        except ImportError as exc:
-            logger.warning("Worker adapter not available due to missing dependencies: %s", exc)
 
-    for adapter_name, is_enabled in enabled_adapters.items():
-        if not is_enabled:
+def _collect_adapter_classes(app: Any, logger: Any) -> dict[str, type]:
+    adapter_specs = [
+        ("prefect", app.config.adapters.prefect_enabled),
+        ("llamaindex", app.config.adapters.llamaindex_enabled),
+        ("agno", app.config.adapters.agno_enabled),
+        ("hatchet", app.config.adapters.hatchet_enabled),
+        ("worker", getattr(app.config.workers, "enabled", True)),
+    ]
+    adapter_classes: dict[str, type] = {}
+    for name, enabled in adapter_specs:
+        if not enabled:
             continue
+        cls = _import_adapter_class(name)
+        if cls is not None:
+            adapter_classes[name] = cls
+        else:
+            logger.warning("%s adapter not available due to missing dependencies", name)
+    return adapter_classes
+
+
+def _instantiate_adapters(app: Any, adapter_classes: dict[str, type], logger: Any) -> None:
+    for adapter_name, adapter_class in adapter_classes.items():
         try:
-            adapter_class = adapter_classes.get(adapter_name)
-            if adapter_class:
-                if adapter_name == "hatchet":
-                    app.adapters[adapter_name] = adapter_class(app.config.hatchet)
-                else:
-                    app.adapters[adapter_name] = adapter_class(app.config)
+            config_arg = app.config.hatchet if adapter_name == "hatchet" else app.config
+            app.adapters[adapter_name] = adapter_class(config_arg)
         except ImportError as exc:
             logger.warning(
                 "%s adapter initialization skipped due to missing optional dependencies: %s",
@@ -214,6 +200,15 @@ def initialize_adapters(app: Any) -> None:
                     "error_type": type(exc).__name__,
                 },
             ) from exc
+
+
+def initialize_adapters(app: Any) -> None:
+    """Initialize enabled adapters based on configuration."""
+    import logging
+
+    logger = logging.getLogger(__name__)
+    adapter_classes = _collect_adapter_classes(app, logger)
+    _instantiate_adapters(app, adapter_classes, logger)
 
     worker_adapter = app.adapters.get("worker")
     app._worker_manager = (
@@ -391,7 +386,9 @@ def set_app_context(app: Any) -> None:
             def __init__(self, config):
                 self._config = config
 
-            def create_llm(self, provider: str | None = None, model_id: str | None = None, **kwargs):
+            def create_llm(
+                self, provider: str | None = None, model_id: str | None = None, **kwargs
+            ):
                 from agno.llm import LLM
 
                 actual_provider = provider or self._config.agno.llm.provider.value

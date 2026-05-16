@@ -1,8 +1,8 @@
 # Worktree Manage W0 Audit
 
-**Date:** 2026-05-11  
-**Scope:** `worktree_tools.py` retirement planning  
-**Status:** audit-backed  
+**Date:** 2026-05-11
+**Scope:** `worktree_tools.py` retirement planning
+**Status:** audit-backed
 **Owner:** Core Eng
 
 ## 1. Purpose
@@ -84,5 +84,5 @@ worktree_manage(
 ## 6. Next Steps
 
 1. Implement the consolidated `worktree_manage` dispatcher.
-2. Add MCP registration and dispatch tests.
-3. Remove the individual tools only after parity is verified.
+1. Add MCP registration and dispatch tests.
+1. Remove the individual tools only after parity is verified.

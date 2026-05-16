@@ -353,7 +353,13 @@
       "Bash(env -u AI_AGENT .venv/bin/python -m pytest tests/unit/test_quality_utils_v2.py::TestReadCoverageDotfile -v)",
       "Bash(env -u AI_AGENT .venv/bin/python -m pytest tests/unit/test_quality_utils_v2.py::TestReadCoverageDotfile -v --tb=short)",
       "Bash(env -u AI_AGENT .venv/bin/python -m pytest tests/unit/test_quality_utils_v2.py::TestReadCoverageDotfile -v --no-cov)",
-      "Bash(env -u AI_AGENT .venv/bin/python -m pytest tests/unit/test_quality_utils_v2.py::TestReadCoverageDotfile::test_preferred_over_missing_json -v --no-cov --tb=short)"
+      "Bash(env -u AI_AGENT .venv/bin/python -m pytest tests/unit/test_quality_utils_v2.py::TestReadCoverageDotfile::test_preferred_over_missing_json -v --no-cov --tb=short)",
+      "Bash(/opt/homebrew/bin/node /Users/les/.npm/_npx/b229ae5a79c0ddcd/node_modules/.bin/mcp-mermaid -t streamable -p 3033)",
+      "Bash(pyscn check *)",
+      "Bash(lychee --no-progress --cache .cache/lychee --verbose --exclude-mail .)",
+      "Bash(lychee --no-progress --cache .cache/lychee --verbose .)",
+      "Bash(/Users/les/Projects/session-buddy/.venv/bin/pip install *)",
+      "Bash(/Users/les/Projects/session-buddy/.venv/bin/pip show *)"
     ]
   },
   "outputStyle": "Explanatory",

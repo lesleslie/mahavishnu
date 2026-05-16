@@ -1289,6 +1289,6 @@ prefect = [
 - [Prefect 3.x Documentation](https://docs.prefect.io/3.0/)
 - [Prefect Python SDK](https://docs.prefect.io/3.0/api-ref/prefect/)
 - [Prefect REST API](https://docs.prefect.io/3.0/api-ref/rest-api/)
-- [Temporal Workflow Patterns](../docs/patterns/temporal-workflows.md)
-- [Mahavishnu ADRs](../docs/adr/)
-- [MCP Tools Specification](./MCP_TOOLS_SPECIFICATION.md)
+- Temporal Workflow Patterns
+- Mahavishnu ADRs
+- MCP Tools Specification

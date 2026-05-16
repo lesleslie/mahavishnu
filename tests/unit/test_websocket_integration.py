@@ -83,8 +83,7 @@ async def test_start_websocket_server_uses_notification_router_when_provided(
     assert consumer.transport is event_transport
     assert isinstance(consumer.handler, CompositeEventEnvelopeHandler)
     assert any(
-        isinstance(handler, RetryingEventEnvelopeHandler)
-        for handler in consumer.handler.handlers
+        isinstance(handler, RetryingEventEnvelopeHandler) for handler in consumer.handler.handlers
     )
     assert any(
         isinstance(handler.handler, NotificationEventHandler)

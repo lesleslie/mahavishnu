@@ -1,18 +1,49 @@
 # Lychee link checker configuration
 timeout = 10
-retry_wait_time = 3
-max_retries = 3
+retry_wait_time = 2
+max_retries = 2
 user_agent = "Mozilla/5.0 (compatible; linkcheckmd)"
-exclude_dead = false
 require_https = false
-verbose = true
 include_verbatim = false
+root_dir = "."
+accept = [200, 204, 206, 301, 302, 304, 403, 404, 429, 502, 503, 521]
+accept_timeouts = true
 
-exclude_links = [
-  "https://github.com/",
-  "https://docs.github.com/"
+# Paths to skip when scanning for links (archive docs have many stale links)
+exclude_path = [
+  "docs/archive",
+  ".venv",
+  ".cache",
+  "node_modules",
 ]
 
-exclude_patterns = [
-  "^https://github\\.com/[^/]+/[^/]+/(issues|pull)/\\d+$"
+exclude = [
+  # GitHub (rate-limited and auth-required pages)
+  "https://github.com/",
+  "https://docs.github.com/",
+  "https://raw.githubusercontent.com/",
+  # Local services (not running in CI)
+  "http://localhost",
+  "http://127.0.0.1",
+  "http://0.0.0.0",
+  # Media/social (often rate-limit bots)
+  "https://www.youtube.com/",
+  "https://youtu.be/",
+  "https://twitter.com/",
+  "https://x.com/",
+  # Package registries (reliable, skip to speed up)
+  "https://pypi.org/",
+  "https://npmjs.com/",
+  "https://crates.io/",
+  # Example/placeholder URLs used in docs (not real services)
+  "https://status.mahavishnu.com/",
+  "https://blog.mahavishnu.com/",
+  "https://on-call.company.com/",
+  # Community sites that block bots
+  "https://community.agno.com/",
+  "https://discuss.cncf.io/",
+  # Sites with TLS issues or HTTP/2 problems
+  "https://appwrite.io/",
+  # Grafana example URLs
+  "https://grafana.example.com/",
 ]

@@ -23,9 +23,7 @@ from .permissions import Permission
 from .repo_nicknames import get_repo_nicknames
 
 
-def validate_path(
-    path_str: str, allowed_base_paths: list[str] | None = None
-) -> Path:
+def validate_path(path_str: str, allowed_base_paths: list[str] | None = None) -> Path:
     """Validate a path to prevent directory traversal attacks."""
     path = Path(path_str)
     normalized_path = str(path_str).replace("\\", "/")
@@ -100,6 +98,32 @@ def persist_workflow_end(
     )
 
 
+def _filter_repos_by_criteria(
+    repos: list[dict], tag: str | None, role: str | None
+) -> list[str]:
+    if tag:
+        return [r["path"] for r in repos if tag in r.get("tags", [])]
+    if role:
+        return [r["path"] for r in repos if r.get("role") == role]
+    return [r["path"] for r in repos]
+
+
+def _collect_valid_repo(
+    app: Any, repo_path: str, user_id: str | None, logger: Any
+) -> str | None:
+    try:
+        validated_path = validate_path(repo_path, app.config.allowed_repo_paths)
+        if not validated_path.exists():
+            logger.warning("Repository path does not exist: %s", validated_path)
+            return None
+        if user_id and not check_user_repo_permission(app, user_id, str(validated_path)):
+            return None
+        return str(validated_path)
+    except ValidationError as e:
+        logger.warning("Invalid repository path: %s - %s", repo_path, e.message)
+        return None
+
+
 def get_repos(
     app: Any, tag: str | None = None, role: str | None = None, user_id: str | None = None
 ) -> list[str]:
@@ -109,10 +133,7 @@ def get_repos(
     if tag and not tag.replace("-", "").replace("_", "").isalnum():
         raise ValidationError(
             message=f"Invalid tag: {tag}",
-            details={
-                "tag": tag,
-                "suggestion": "Tags must be alphanumeric with hyphens/underscores",
-            },
+            details={"tag": tag, "suggestion": "Tags must be alphanumeric with hyphens/underscores"},
         )
 
     if role:
@@ -120,38 +141,16 @@ def get_repos(
         if role not in valid_roles:
             raise ValidationError(
                 message=f"Invalid role: {role}",
-                details={
-                    "role": role,
-                    "valid_roles": valid_roles,
-                    "suggestion": f"Use one of: {', '.join(valid_roles)}",
-                },
+                details={"role": role, "valid_roles": valid_roles,
+                         "suggestion": f"Use one of: {', '.join(valid_roles)}"},
             )
 
     repos = app.repos_config.get("repos", [])
-
-    if tag:
-        filtered_repos = [repo["path"] for repo in repos if tag in repo.get("tags", [])]
-    elif role:
-        filtered_repos = [repo["path"] for repo in repos if repo.get("role") == role]
-    else:
-        filtered_repos = [repo["path"] for repo in repos]
-
-    validated_repos = []
-    for repo_path in filtered_repos:
-        try:
-            validated_path = validate_path(repo_path, app.config.allowed_repo_paths)
-            if validated_path.exists():
-                if user_id:
-                    if check_user_repo_permission(app, user_id, str(validated_path)):
-                        validated_repos.append(str(validated_path))
-                else:
-                    validated_repos.append(str(validated_path))
-            else:
-                logger.warning("Repository path does not exist: %s", validated_path)
-        except ValidationError as e:
-            logger.warning("Invalid repository path: %s - %s", repo_path, e.message)
-
-    return validated_repos
+    filtered_repos = _filter_repos_by_criteria(repos, tag, role)
+    return [
+        path for repo_path in filtered_repos
+        if (path := _collect_valid_repo(app, repo_path, user_id, logger)) is not None
+    ]
 
 
 def check_user_repo_permission(app: Any, user_id: str, repo_path: str) -> bool:

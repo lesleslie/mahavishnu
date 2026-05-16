@@ -117,18 +117,18 @@ The `checks` list argument to `run_pre_checks`/`run_post_checks` does not map to
 **Implementation steps:**
 
 1. Add `httpx.AsyncClient` as `self._client` in `__init__`, URL from `config.session_buddy_url`
-2. Add `async def _call_mcp(self, tool: str, args: dict) -> dict` — use the pool pattern (with session handshake)
-3. Rewrite `create_checkpoint`:
+1. Add `async def _call_mcp(self, tool: str, args: dict) -> dict` — use the pool pattern (with session handshake)
+1. Rewrite `create_checkpoint`:
    - Call `store_conversation_checkpoint` with `checkpoint_type="workflow"`
    - Extract `conversation_id` from response as the checkpoint ID
    - Wrap `httpx.TransportError | httpx.HTTPStatusError` → fall through to degraded mode
-4. Rewrite `update_checkpoint`:
+1. Rewrite `update_checkpoint`:
    - On terminal states (`completed`, `failed`): call `store_conversation_checkpoint` again with `checkpoint_type=f"workflow_{status}"`
    - On non-terminal states: log locally only (no Session-Buddy call needed)
-5. Rewrite `get_checkpoint` → return `None` (Session-Buddy has no lookup-by-ID)
-6. Rewrite `restore_from_checkpoint` → return `None` (no restore API available)
-7. Rewrite `cleanup_checkpoint` → no-op, return `True`
-8. Remove all `print()` statements — use `self.logger`
+1. Rewrite `get_checkpoint` → return `None` (Session-Buddy has no lookup-by-ID)
+1. Rewrite `restore_from_checkpoint` → return `None` (no restore API available)
+1. Rewrite `cleanup_checkpoint` → no-op, return `True`
+1. Remove all `print()` statements — use `self.logger`
 
 **Degraded-mode contract:**
 
@@ -147,15 +147,15 @@ The `checks` list argument to `run_pre_checks`/`run_post_checks` does not map to
 **Implementation steps:**
 
 1. Add `crackerjack_url` to `QualityControlConfig` in `config.py`
-2. Add `httpx.AsyncClient` as `self._client` in `__init__`, URL from `config.qc.crackerjack_url`
-3. Add `async def _call_mcp(self, tool: str, args: dict) -> dict`
-4. Rewrite `run_pre_checks` and `run_post_checks`:
+1. Add `httpx.AsyncClient` as `self._client` in `__init__`, URL from `config.qc.crackerjack_url`
+1. Add `async def _call_mcp(self, tool: str, args: dict) -> dict`
+1. Rewrite `run_pre_checks` and `run_post_checks`:
    - For each repo, call `execute_crackerjack` with `args=""` and `kwargs=json.dumps({"target_dir": repo})`
    - Parse `QualityCheckResult` from JSON response
    - Map `success`/`errors` to the existing result shape
-5. Compute `score` from the real result (see formula above)
-6. On `httpx.TransportError | httpx.HTTPStatusError`: return `passed=False` with `error` key
-7. Keep the `enabled: False` short-circuit — intentional for dev/test bypass
+1. Compute `score` from the real result (see formula above)
+1. On `httpx.TransportError | httpx.HTTPStatusError`: return `passed=False` with `error` key
+1. Keep the `enabled: False` short-circuit — intentional for dev/test bypass
 
 ## Workstream C: Health-Aware Guard
 
@@ -189,8 +189,8 @@ No new error classes needed:
 ## Test Coverage
 
 1. Unit tests with `respx` for happy path, HTTP error, `ConnectError`, timeout
-2. Integration smoke tests marked `@pytest.mark.integration` — skip if service unavailable
-3. `enabled: False` path must continue to pass
+1. Integration smoke tests marked `@pytest.mark.integration` — skip if service unavailable
+1. `enabled: False` path must continue to pass
 
 Confirm `respx` is in dev dependencies before writing tests:
 

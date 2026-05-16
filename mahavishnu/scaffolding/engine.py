@@ -82,6 +82,30 @@ class ScaffoldingEngine:
     def __init__(self, library: PatternLibrary) -> None:
         self.library = library
 
+    def _validate_resolved_patterns(self, resolved: dict, graph: Any) -> None:
+        issues: list[str] = []
+        for p in resolved.values():
+            for issue in validate_pattern(p, self.library):
+                if "outside all pattern dirs" not in issue:
+                    issues.append(issue)
+        issues.extend(self._check_file_conflicts(resolved, graph))
+        if issues:
+            raise ValueError("Validation failed:\n" + "\n".join(f"  - {i}" for i in issues))
+
+    def _prepare_all_variables(
+        self, resolved: dict, variables: dict, scaffold_env: Any, template_env: Any
+    ) -> dict:
+        slot_injections = self._collect_slot_injections(resolved, variables, scaffold_env, template_env)
+        all_slot_names: set[str] = {
+            slot_name
+            for p in resolved.values()
+            for slot_name, slot in p.get_slots().items()
+            if slot.type == "file-merge"
+        }
+        slot_variables = {f"slot_{name}": "" for name in all_slot_names}
+        slot_variables.update({f"slot_{name}": content for name, content in slot_injections.items()})
+        return {**variables, **slot_variables}
+
     def scaffold(
         self,
         project_name: str,
@@ -119,17 +143,7 @@ class ScaffoldingEngine:
         graph = self._build_graph(resolved)
 
         # 3. Validate
-        issues: list[str] = []
-        for p in resolved.values():
-            for issue in validate_pattern(p, self.library):
-                # Skip slot path warnings for root-level file-merge slots
-                if "outside all pattern dirs" in issue:
-                    continue
-                issues.append(issue)
-        file_conflicts = self._check_file_conflicts(resolved, graph)
-        issues.extend(file_conflicts)
-        if issues:
-            raise ValueError("Validation failed:\n" + "\n".join(f"  - {i}" for i in issues))
+        self._validate_resolved_patterns(resolved, graph)
 
         # 4. Compute variables
         variables = self._compute_variables(
@@ -145,24 +159,9 @@ class ScaffoldingEngine:
         try:
             temp_dir.mkdir(parents=True)
 
-            # First pass: collect file-merge injection templates from all patterns
-            slot_injections = self._collect_slot_injections(
+            all_variables = self._prepare_all_variables(
                 resolved, variables, scaffold_env, template_env
             )
-
-            # Collect all declared slot names and provide empty defaults
-            all_slot_names: set[str] = set()
-            for p in resolved.values():
-                for slot_name, slot in p.get_slots().items():
-                    if slot.type == "file-merge":
-                        all_slot_names.add(slot_name)
-
-            # Add slot injections as template variables (slot_<name> = content)
-            slot_variables = {f"slot_{name}": "" for name in all_slot_names}
-            slot_variables.update(
-                {f"slot_{name}": content for name, content in slot_injections.items()}
-            )
-            all_variables = {**variables, **slot_variables}
 
             # Second pass: render patterns in topological order
             for pattern_id in graph.topological_sort():

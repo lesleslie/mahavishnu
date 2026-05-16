@@ -55,8 +55,7 @@ class GpuHandlerPool(RunPodPool):
         gpu = getattr(GpuType, self._gpu_type, None)
         if gpu is None:
             raise ValueError(
-                f"Unknown GpuType: {self._gpu_type}. "
-                f"Valid values: {[g.name for g in GpuType]}"
+                f"Unknown GpuType: {self._gpu_type}. Valid values: {[g.name for g in GpuType]}"
             )
 
         deps = self._dependencies

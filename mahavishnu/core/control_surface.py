@@ -84,7 +84,9 @@ def record_event_activity(app: Any, envelope: Any) -> None:
             "correlation_id": payload.get("correlation_id"),
             "causation_id": payload.get("causation_id"),
             "payload": payload.get("payload") if isinstance(payload.get("payload"), dict) else {},
-            "metadata": payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {},
+            "metadata": payload.get("metadata")
+            if isinstance(payload.get("metadata"), dict)
+            else {},
         }
     )
 

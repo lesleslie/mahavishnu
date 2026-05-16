@@ -103,9 +103,7 @@ async def start_websocket_server(
 
         if event_transport is not None:
             dlq_handler = (
-                DLQEventHandler(dead_letter_queue)
-                if dead_letter_queue is not None
-                else None
+                DLQEventHandler(dead_letter_queue) if dead_letter_queue is not None else None
             )
             websocket_handler = RetryingEventEnvelopeHandler(
                 handler=server,

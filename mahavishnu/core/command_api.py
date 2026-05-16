@@ -89,7 +89,7 @@ class CommandResult:
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @classmethod
-    def success(
+    def success(  # type: ignore[no-redef]
         cls,
         data: Any = None,
         message: str = "Success",

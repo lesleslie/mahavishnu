@@ -56,8 +56,9 @@ class TestGpuHandlerPoolStart:
     def test_start_fails_without_sdk(self, gpu_config):
         """GpuHandlerPool raises RuntimeError when runpod-flash is not installed."""
         pool = GpuHandlerPool(config=gpu_config)
-        with patch("mahavishnu.pools.gpu_handler_pool.Endpoint", None), pytest.raises(
-            RuntimeError, match="runpod-flash"
+        with (
+            patch("mahavishnu.pools.gpu_handler_pool.Endpoint", None),
+            pytest.raises(RuntimeError, match="runpod-flash"),
         ):
             pool._build_endpoint()
 

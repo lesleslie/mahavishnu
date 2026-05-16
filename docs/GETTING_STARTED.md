@@ -569,18 +569,18 @@ mahavishnu terminal list
 
 ### Learn More
 
-- **[Admin Shell Guide](docs/ADMIN_SHELL.md)** - Interactive debugging and monitoring
+- **Admin Shell Guide** - Interactive debugging and monitoring
 
-- **[MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md)** - Complete MCP tool API documentation
+- **MCP Tools Reference** - Complete MCP tool API documentation
 
 - **[Configuration Reference](#configuration-reference)** - All configuration options
 
-- **[Security](SECURITY_CHECKLIST.md)** - Security guidelines and best practices
+- **Security** - Security guidelines and best practices
 
 ### Advanced Features
 
-- **[OpenTelemetry Integration](docs/NATIVE_OTEL_SETUP_GUIDE.md)** - Distributed tracing setup
-- **[Disaster Recovery](docs/MAINTENANCE_PROCEDURES.md)** - Backup and restore procedures
+- **OpenTelemetry Integration** - Distributed tracing setup
+- **Disaster Recovery** - Backup and restore procedures
 
 ## Testing
 

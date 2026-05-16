@@ -354,7 +354,9 @@ class EcosystemLoader:
             if server.status != "enabled":
                 continue
             if server.type == "http" and not server.health_check:
-                warnings.append(f"{server.name}: enabled HTTP server is missing health_check metadata")
+                warnings.append(
+                    f"{server.name}: enabled HTTP server is missing health_check metadata"
+                )
 
         return {"errors": errors, "warnings": warnings}
 

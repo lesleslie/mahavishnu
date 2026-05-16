@@ -34,7 +34,7 @@ from mahavishnu.core.metrics_schema import (
     AdapterType,
     TaskType,
 )
-from mahavishnu.core.routing_metrics import get_routing_metrics
+from mahavishnu.core.routing_metrics import RoutingMetrics, get_routing_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -480,6 +480,37 @@ class CostOptimizer:
             latency_score = max(0.0, 1.0 - (choice.latency_ms / self.max_latency_ms))
             return 0.7 * choice.success_rate + 0.3 * latency_score
 
+    async def _compute_avg_latency(
+        self, tracker: Any, adapter: Any, task_type: TaskType
+    ) -> int:
+        recent = await tracker.get_recent_executions(limit=100)
+        latencies = [
+            e.latency_ms for e in recent
+            if e.adapter == adapter and e.task_type == task_type and e.latency_ms
+        ]
+        if latencies:
+            return int(np.mean(latencies))
+        tracked_cost = self._get_tracked_cost(adapter, task_type)
+        cost_per_second = ADAPTER_COSTS.get(adapter)
+        return (
+            int((tracked_cost / cost_per_second) * Decimal("1000"))
+            if tracked_cost > 0 and cost_per_second
+            else 0
+        )
+
+    def _build_choice_reasoning(self, best: Any, frontier: Any, strategy: Any) -> str:
+        parts = [f"Strategy: {strategy.value}"]
+        if len(frontier.frontier) > 1:
+            parts.append(f"Pareto frontier: {len(frontier.frontier)} optimal adapters")
+        else:
+            parts.append("Single adapter meets criteria")
+        parts.append(f"Success rate: {best.success_rate:.1%}")
+        parts.append(f"Cost: ${best.cost_usd:.6f}")
+        parts.append(f"Latency: {best.latency_ms}ms")
+        if best.violated_budgets:
+            parts.append(f"⚠️  Over budget: {len(best.violated_budgets)} budget(s)")
+        return " | ".join(parts)
+
     async def get_optimal_adapter(
         self,
         task_type: TaskType,
@@ -498,149 +529,59 @@ class CostOptimizer:
         Returns:
             Best adapter choice with reasoning
         """
-        # Use provided strategy or default
         strategy = self.default_strategy if strategy is None else strategy
-
         tracker = metrics_tracker or get_execution_tracker()
 
-        # Get adapter statistics
         adapters_data = []
         for adapter in AdapterType:
             stats = await tracker.get_adapter_stats(adapter)
-            if stats is None:
-                continue
-
-            adapters_data.append(
-                {
+            if stats is not None:
+                adapters_data.append({
                     "adapter": adapter,
                     "success_rate": stats["success_rate"],
                     "total_executions": stats["total_executions"],
-                }
-            )
+                })
 
         if not adapters_data:
             return None
 
-        # Build cost-aware choices
         choices = []
         for adapter_data in adapters_data:
-            # Get recent executions for latency/cost
-            recent = await tracker.get_recent_executions(limit=100)
-            adapter_executions = [
-                e
-                for e in recent
-                if e.adapter == adapter_data["adapter"] and e.task_type == task_type
-            ]
-
-            # Calculate average latency
-            latencies = [e.latency_ms for e in adapter_executions if e.latency_ms]
-            if latencies:
-                avg_latency = int(np.mean(latencies))
-            else:
-                tracked_cost = self._get_tracked_cost(adapter_data["adapter"], task_type)
-                cost_per_second = ADAPTER_COSTS.get(adapter_data["adapter"])
-                avg_latency = (
-                    int((tracked_cost / cost_per_second) * Decimal("1000"))
-                    if tracked_cost > 0 and cost_per_second
-                    else 0
-                )
-
-            # Estimate cost (will be tracked during execution)
-            # For now, calculate from latency
+            adapter = adapter_data["adapter"]
+            avg_latency = await self._compute_avg_latency(tracker, adapter, task_type)
             cost_usd = await self.track_execution_cost(
-                adapter=adapter_data["adapter"],
-                task_type=task_type,
-                execution_id="estimate",
-                latency_ms=avg_latency,
+                adapter=adapter, task_type=task_type,
+                execution_id="estimate", latency_ms=avg_latency,
             )
-
-            # Calculate base score
-            base_score = self.score_adapter_choice(
-                choice=CostAwareChoice(
-                    adapter=adapter_data["adapter"],
-                    task_type=task_type,
-                    strategy=strategy,
-                    cost_usd=cost_usd,
-                    success_rate=adapter_data["success_rate"],
-                    latency_ms=avg_latency,
-                    score=0.0,
-                    reasoning="",
-                    pareto_dominated=False,
-                    constraints_satisfied=True,
-                ),
-                strategy=strategy,
+            base_choice = CostAwareChoice(
+                adapter=adapter, task_type=task_type, strategy=strategy,
+                cost_usd=cost_usd, success_rate=adapter_data["success_rate"],
+                latency_ms=avg_latency, score=0.0, reasoning="",
+                pareto_dominated=False, constraints_satisfied=True,
             )
+            base_choice.score = self.score_adapter_choice(choice=base_choice, strategy=strategy)
+            choices.append(base_choice)
 
-            choices.append(
-                CostAwareChoice(
-                    adapter=adapter_data["adapter"],
-                    task_type=task_type,
-                    strategy=strategy,
-                    cost_usd=cost_usd,
-                    success_rate=adapter_data["success_rate"],
-                    latency_ms=avg_latency,
-                    score=base_score,
-                    reasoning="",
-                    pareto_dominated=False,
-                    constraints_satisfied=True,
-                )
-            )
-
-        # Check budget constraints if provided
         if constraints:
             for choice in choices:
-                check = await self.check_budget_constraints(
-                    adapter=choice.adapter,
-                    task_type=task_type,
-                )
+                check = await self.check_budget_constraints(adapter=choice.adapter, task_type=task_type)
                 choice.constraints_satisfied = check["constraints_satisfied"]
                 choice.violated_budgets = check["violated_budgets"]
-
-                # Disqualify if over budget
                 if not choice.constraints_satisfied:
-                    choice.score = 0.0  # Zero score if violates constraints
+                    choice.score = 0.0
 
-            {
-                "constraints_applied": constraints is not None,
-                "budget_violations": sum(1 for c in choices if not c.constraints_satisfied),
-            }
-
-        # Apply Pareto frontier analysis
         valid_choices = [c for c in choices if c.constraints_satisfied]
         frontier = self.calculate_pareto_frontier(valid_choices)
 
-        # Select best from frontier
         if not frontier.frontier:
             return None
 
-        # Pick adapter with highest score from frontier
         best = max(frontier.frontier, key=lambda c: c.score)
+        best.reasoning = self._build_choice_reasoning(best, frontier, strategy)
 
-        # Generate reasoning
-        reasoning_parts = []
-        reasoning_parts.append(f"Strategy: {strategy.value}")
-
-        if len(frontier.frontier) > 1:
-            reasoning_parts.append(f"Pareto frontier: {len(frontier.frontier)} optimal adapters")
-        else:
-            reasoning_parts.append("Single adapter meets criteria")
-
-        reasoning_parts.append(f"Success rate: {best.success_rate:.1%}")
-        reasoning_parts.append(f"Cost: ${best.cost_usd:.6f}")
-        reasoning_parts.append(f"Latency: {best.latency_ms}ms")
-
-        if best.violated_budgets:
-            reasoning_parts.append(f"⚠️  Over budget: {len(best.violated_budgets)} budget(s)")
-
-        best.reasoning = " | ".join(reasoning_parts)
-
-        # Record routing decision in Prometheus
         self.metrics.record_routing_decision(
-            adapter=best.adapter,
-            task_type=task_type,
-            preference_order=1,
+            adapter=best.adapter, task_type=task_type, preference_order=1,
         )
-
         return best
 
     async def set_strategy_for_task_type(

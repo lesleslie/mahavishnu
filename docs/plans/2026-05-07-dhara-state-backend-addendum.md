@@ -4,7 +4,7 @@
 **Amends**: `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`
 **Status**: approved — written to unblock P2 implementation
 
----
+______________________________________________________________________
 
 ## DharaStateBackend Interface
 
@@ -22,7 +22,7 @@ class DharaStateBackend:
 
 Backed by `DharaClient.put()` and `DharaClient.call_tool("get", ...)`. If Dhara is unreachable at construction time, `available` is `False` and all writes become no-ops (degraded-boot). Reads return `None`.
 
----
+______________________________________________________________________
 
 ## Key Schema
 
@@ -35,7 +35,7 @@ Backed by `DharaClient.put()` and `DharaClient.call_tool("get", ...)`. If Dhara 
 
 Schema version (`v1`) is embedded in the key, not the value, so key-range queries stay simple.
 
----
+______________________________________________________________________
 
 ## WorkflowEngine Hook Points
 
@@ -49,13 +49,13 @@ There is no `WorkflowEngine` class. The equivalent is `MahavishnuApp.execute_wor
 
 All writes are fire-and-forget (`asyncio.create_task`). If Dhara is unavailable, `DharaStateBackend.put()` is a no-op — the orchestrator never blocks on persistence.
 
----
+______________________________________________________________________
 
 ## RoutingDecisionBuffer Batched-Write Strategy
 
 `PoolManager.route_task()` persists each routing decision through `DharaStateBackend.persist_routing_decision()` after selector/affinity resolution. The recover/read surface is `DharaStateBackend.recover_routing_decisions()` and `MahavishnuApp.get_recovered_routing_decisions()`.
 
----
+______________________________________________________________________
 
 ## Degraded-Boot Mode
 
@@ -67,7 +67,7 @@ Dhara dependency is already `required: false` in `settings/mahavishnu.yaml`. The
 - Recovery: if a subsequent write finds Dhara responding, `available` flips to `True`
 - The orchestrator never hard-fails optional boot paths when Dhara is unavailable
 
----
+______________________________________________________________________
 
 ## Circuit-Breaker Policy
 
@@ -79,7 +79,7 @@ Reuse the existing `CircuitBreaker` in `mahavishnu/core/circuit_breaker.py`. Con
 
 When the circuit is open, `DharaStateBackend.put()` logs at DEBUG and returns immediately. No new errors are propagated to the caller.
 
----
+______________________________________________________________________
 
 ## Config Stanza
 

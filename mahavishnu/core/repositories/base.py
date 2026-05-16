@@ -16,7 +16,7 @@ Usage:
 
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
 import logging
 from typing import TYPE_CHECKING, Any, TypeVar
@@ -148,15 +148,9 @@ class BaseRepository[CreateModel, ReadModel, UpdateModel](ABC):
 
     # Abstract CRUD operations
 
+    @abstractmethod
     async def create(self, data: CreateModel) -> ReadModel:
-        """Create a new record.
-
-        Subclasses should override with domain-specific create methods.
-
-        Raises:
-            NotImplementedError: If not overridden by subclass
-        """
-        raise NotImplementedError("Subclasses must implement create() or a domain-specific variant")
+        """Create a new record."""
 
     async def get(self, id: str) -> ReadModel | None:
         """Retrieve a record by ID.

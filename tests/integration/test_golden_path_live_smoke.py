@@ -13,9 +13,7 @@ from mahavishnu.core.state_backends.dhara import DharaStateBackend, DharaStateCo
 from mahavishnu.session.checkpoint import SessionBuddy
 from tests.fixtures.golden_path_fixture import golden_path_incident_fixture
 
-SKIP_REASON = (
-    "set MAHAVISHNU_C5_LIVE_SMOKE=1 and the live service URLs to run the C5 smoke test"
-)
+SKIP_REASON = "set MAHAVISHNU_C5_LIVE_SMOKE=1 and the live service URLs to run the C5 smoke test"
 
 pytestmark = [
     pytest.mark.integration,

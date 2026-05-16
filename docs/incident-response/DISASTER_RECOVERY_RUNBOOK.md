@@ -1031,10 +1031,10 @@ journalctl -u service -f
 
 ### Related Documentation
 
-- [Backup System Implementation](monitoring/backup_system.py)
-- [Monitoring Guide](monitoring/MONITORING_GUIDE.md)
-- [Alerting Rules](monitoring/alerts.py)
-- [Resilience Patterns](monitoring/resilience.py)
+- Backup System Implementation
+- Monitoring Guide
+- Alerting Rules
+- Resilience Patterns
 
 ______________________________________________________________________
 
