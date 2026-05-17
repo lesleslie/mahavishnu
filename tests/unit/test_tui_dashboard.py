@@ -5,6 +5,8 @@ Uses widget tree assertions (no headless rendering required).
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 # ---------------------------------------------------------------------------
@@ -484,3 +486,396 @@ class TestDashboardAppCompose:
 
         app = DashboardApp()
         app.action_switch_tab("trace")  # Should not raise
+
+
+# ---------------------------------------------------------------------------
+# BodaiComponentScreen
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(not _textual_available, reason="textual not installed")
+class TestBodaiComponentScreen:
+    """Verify BodaiComponentScreen class structure and construction."""
+
+    def test_import(self) -> None:
+        from mahavishnu.tui.app import BodaiComponentScreen
+
+        assert BodaiComponentScreen is not None
+
+    def test_is_vertical_scroll(self) -> None:
+        from textual.containers import VerticalScroll
+
+        from mahavishnu.tui.app import BodaiComponentScreen
+
+        assert issubclass(BodaiComponentScreen, VerticalScroll)
+
+    def test_init_stores_args(self) -> None:
+        from mahavishnu.tui.app import BodaiComponentScreen
+
+        screen = BodaiComponentScreen("Akosha — Intelligence Seer", "akosha", "http://localhost:8682")
+        assert screen._label == "Akosha — Intelligence Seer"
+        assert screen._slug == "akosha"
+        assert screen._base_url == "http://localhost:8682"
+
+    def test_has_refresh_data(self) -> None:
+        from mahavishnu.tui.app import BodaiComponentScreen
+
+        assert hasattr(BodaiComponentScreen, "refresh_data")
+        assert callable(BodaiComponentScreen.refresh_data)
+
+    def test_has_fetch(self) -> None:
+        from mahavishnu.tui.app import BodaiComponentScreen
+
+        assert hasattr(BodaiComponentScreen, "_fetch")
+        assert callable(BodaiComponentScreen._fetch)
+
+    def test_four_slugs_instantiate(self) -> None:
+        """All four expected Bodai component slugs construct without error."""
+        from mahavishnu.tui.app import BodaiComponentScreen
+
+        slugs = [
+            ("Crackerjack — Quality Inspector", "crackerjack", "http://localhost:8676"),
+            ("Akosha — Intelligence Seer", "akosha", "http://localhost:8682"),
+            ("Dhara — State Curator", "dhara", "http://localhost:8683"),
+            ("Session-Buddy — Memory Builder", "sb-metrics", "http://localhost:8678"),
+        ]
+        for label, slug, url in slugs:
+            screen = BodaiComponentScreen(label, slug, url)
+            assert screen._slug == slug
+
+    def test_action_refresh_all_includes_bodai_component_screen(self) -> None:
+        """DashboardApp.action_refresh_all iterates BodaiComponentScreen."""
+        import inspect
+
+        from mahavishnu.tui.app import BodaiComponentScreen, DashboardApp
+
+        src = inspect.getsource(DashboardApp.action_refresh_all)
+        assert "BodaiComponentScreen" in src
+
+
+# ---------------------------------------------------------------------------
+# _status_color helper
+# ---------------------------------------------------------------------------
+
+
+class TestStatusColor:
+    """Verify _status_color maps all expected statuses correctly."""
+
+    def test_ok_is_green(self) -> None:
+        from mahavishnu.tui.app import _status_color
+
+        assert _status_color("ok") == "green"
+
+    def test_healthy_is_green(self) -> None:
+        from mahavishnu.tui.app import _status_color
+
+        assert _status_color("healthy") == "green"
+
+    def test_degraded_is_yellow(self) -> None:
+        from mahavishnu.tui.app import _status_color
+
+        assert _status_color("degraded") == "yellow"
+
+    def test_unknown_is_dim(self) -> None:
+        from mahavishnu.tui.app import _status_color
+
+        assert _status_color("unknown") == "dim"
+
+    def test_unrecognised_is_red(self) -> None:
+        from mahavishnu.tui.app import _status_color
+
+        assert _status_color("critical") == "red"
+        assert _status_color("error") == "red"
+        assert _status_color("unavailable") == "red"
+
+    def test_case_insensitive(self) -> None:
+        from mahavishnu.tui.app import _status_color
+
+        assert _status_color("OK") == "green"
+        assert _status_color("Healthy") == "green"
+        assert _status_color("DEGRADED") == "yellow"
+
+
+# ---------------------------------------------------------------------------
+# _probe_service
+# ---------------------------------------------------------------------------
+
+
+class TestProbeService:
+    """Verify _probe_service network-probe behaviour via mocked httpx."""
+
+    def _make_client_mock(self, status_code: int) -> MagicMock:
+        """Return an async context manager mock that yields a response with *status_code*."""
+        resp = MagicMock()
+        resp.status_code = status_code
+        client = AsyncMock()
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=None)
+        client.get = AsyncMock(return_value=resp)
+        return client
+
+    @pytest.mark.asyncio
+    async def test_returns_true_on_200(self) -> None:
+        from mahavishnu.tui.app import _probe_service
+
+        with patch("httpx.AsyncClient", return_value=self._make_client_mock(200)):
+            assert await _probe_service("http://localhost:8676") is True
+
+    @pytest.mark.asyncio
+    async def test_returns_true_on_404(self) -> None:
+        from mahavishnu.tui.app import _probe_service
+
+        with patch("httpx.AsyncClient", return_value=self._make_client_mock(404)):
+            assert await _probe_service("http://localhost:8676") is True
+
+    @pytest.mark.asyncio
+    async def test_returns_false_on_500(self) -> None:
+        from mahavishnu.tui.app import _probe_service
+
+        with patch("httpx.AsyncClient", return_value=self._make_client_mock(500)):
+            assert await _probe_service("http://localhost:8676") is False
+
+    @pytest.mark.asyncio
+    async def test_returns_false_on_connect_error(self) -> None:
+        import httpx
+
+        from mahavishnu.tui.app import _probe_service
+
+        client = AsyncMock()
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=None)
+        client.get = AsyncMock(side_effect=httpx.ConnectError("refused"))
+        with patch("httpx.AsyncClient", return_value=client):
+            assert await _probe_service("http://localhost:9999") is False
+
+    @pytest.mark.asyncio
+    async def test_returns_false_on_timeout(self) -> None:
+        import httpx
+
+        from mahavishnu.tui.app import _probe_service
+
+        client = AsyncMock()
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=None)
+        client.get = AsyncMock(side_effect=httpx.TimeoutException("timed out"))
+        with patch("httpx.AsyncClient", return_value=client):
+            assert await _probe_service("http://localhost:9999") is False
+
+    @pytest.mark.asyncio
+    async def test_returns_false_on_unexpected_exception(self) -> None:
+        from mahavishnu.tui.app import _probe_service
+
+        client = AsyncMock()
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=None)
+        client.get = AsyncMock(side_effect=RuntimeError("unexpected"))
+        with patch("httpx.AsyncClient", return_value=client):
+            assert await _probe_service("http://localhost:9999") is False
+
+
+# ---------------------------------------------------------------------------
+# _fetch_health
+# ---------------------------------------------------------------------------
+
+
+class TestFetchHealth:
+    """Verify _fetch_health HTTP response handling and error branches."""
+
+    def _make_json_response(self, status_code: int, body: dict) -> tuple[AsyncMock, MagicMock]:
+        resp = MagicMock()
+        resp.status_code = status_code
+        resp.json = MagicMock(return_value=body)
+        client = AsyncMock()
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=None)
+        client.get = AsyncMock(return_value=resp)
+        return client, resp
+
+    @pytest.mark.asyncio
+    async def test_200_returns_available_true_with_merged_json(self) -> None:
+        from mahavishnu.tui.app import _fetch_health
+
+        client, _ = self._make_json_response(200, {"status": "ok", "version": "1.2.3"})
+        with patch("httpx.AsyncClient", return_value=client):
+            data = await _fetch_health("http://localhost:8676")
+
+        assert data["available"] is True
+        assert data["status"] == "ok"
+        assert data["version"] == "1.2.3"
+
+    @pytest.mark.asyncio
+    async def test_200_non_dict_json_uses_raw_field(self) -> None:
+        from mahavishnu.tui.app import _fetch_health
+
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json = MagicMock(return_value=["item1", "item2"])
+        client = AsyncMock()
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=None)
+        client.get = AsyncMock(return_value=resp)
+        with patch("httpx.AsyncClient", return_value=client):
+            data = await _fetch_health("http://localhost:8676")
+
+        assert data["available"] is True
+        assert "raw" in data
+
+    @pytest.mark.asyncio
+    async def test_401_returns_credentials_reason(self) -> None:
+        from mahavishnu.tui.app import _fetch_health
+
+        client, _ = self._make_json_response(401, {})
+        with patch("httpx.AsyncClient", return_value=client):
+            data = await _fetch_health("http://localhost:8676")
+
+        assert data["available"] is False
+        assert "401" in data["reason"]
+        assert "credential" in data["reason"].lower()
+
+    @pytest.mark.asyncio
+    async def test_403_returns_credentials_reason(self) -> None:
+        from mahavishnu.tui.app import _fetch_health
+
+        client, _ = self._make_json_response(403, {})
+        with patch("httpx.AsyncClient", return_value=client):
+            data = await _fetch_health("http://localhost:8676")
+
+        assert data["available"] is False
+        assert "403" in data["reason"]
+
+    @pytest.mark.asyncio
+    async def test_500_returns_server_error_reason(self) -> None:
+        from mahavishnu.tui.app import _fetch_health
+
+        client, _ = self._make_json_response(500, {})
+        with patch("httpx.AsyncClient", return_value=client):
+            data = await _fetch_health("http://localhost:8676")
+
+        assert data["available"] is False
+        assert "500" in data["reason"]
+        assert "server" in data["reason"].lower()
+
+    @pytest.mark.asyncio
+    async def test_network_error_returns_unreachable(self) -> None:
+        import httpx
+
+        from mahavishnu.tui.app import _fetch_health
+
+        client = AsyncMock()
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=None)
+        client.get = AsyncMock(side_effect=httpx.ConnectError("refused"))
+        with patch("httpx.AsyncClient", return_value=client):
+            data = await _fetch_health("http://localhost:9999")
+
+        assert data["available"] is False
+        assert data["reason"] == "unreachable"
+
+    @pytest.mark.asyncio
+    async def test_unexpected_exception_returns_available_false(self) -> None:
+        from mahavishnu.tui.app import _fetch_health
+
+        client = AsyncMock()
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=None)
+        client.get = AsyncMock(side_effect=ValueError("boom"))
+        with patch("httpx.AsyncClient", return_value=client):
+            data = await _fetch_health("http://localhost:9999")
+
+        assert data["available"] is False
+
+
+# ---------------------------------------------------------------------------
+# _component_urls
+# ---------------------------------------------------------------------------
+
+
+class TestComponentUrls:
+    """Verify _component_urls settings resolution and error resilience."""
+
+    def test_returns_all_four_keys_always(self) -> None:
+        from mahavishnu.tui.app import _component_urls
+
+        urls = _component_urls()
+        assert set(urls.keys()) == {"crackerjack", "akosha", "dhara", "sb-metrics"}
+
+    def test_all_none_when_settings_unavailable(self, monkeypatch) -> None:
+        from mahavishnu.tui.app import _component_urls
+
+        monkeypatch.setattr(
+            "mahavishnu.core.config.MahavishnuSettings",
+            MagicMock(side_effect=RuntimeError("no config")),
+        )
+        urls = _component_urls()
+        assert all(v is None for v in urls.values())
+
+    def test_crackerjack_strips_mcp_suffix(self, monkeypatch) -> None:
+        from mahavishnu.tui.app import _component_urls
+
+        qc_mock = MagicMock()
+        qc_mock.crackerjack_url = "http://localhost:8676/mcp"
+        settings_mock = MagicMock()
+        settings_mock.qc = qc_mock
+        settings_mock.pools = MagicMock(akosha_url=None, session_buddy_url=None)
+        settings_mock.oneiric_mcp = None
+
+        with patch("mahavishnu.core.config.MahavishnuSettings", return_value=settings_mock):
+            urls = _component_urls()
+
+        assert urls["crackerjack"] == "http://localhost:8676"
+
+    def test_akosha_uses_pools_attribute(self, monkeypatch) -> None:
+        from mahavishnu.tui.app import _component_urls
+
+        pools_mock = MagicMock()
+        pools_mock.akosha_url = "http://localhost:8682/mcp"
+        pools_mock.session_buddy_url = None
+        settings_mock = MagicMock()
+        settings_mock.qc = None
+        settings_mock.pools = pools_mock
+        settings_mock.oneiric_mcp = None
+
+        with patch("mahavishnu.core.config.MahavishnuSettings", return_value=settings_mock):
+            urls = _component_urls()
+
+        assert urls["akosha"] == "http://localhost:8682"
+
+    def test_session_buddy_uses_pools_attribute(self, monkeypatch) -> None:
+        from mahavishnu.tui.app import _component_urls
+
+        pools_mock = MagicMock()
+        pools_mock.akosha_url = None
+        pools_mock.session_buddy_url = "http://localhost:8678/mcp"
+        settings_mock = MagicMock()
+        settings_mock.qc = None
+        settings_mock.pools = pools_mock
+        settings_mock.oneiric_mcp = None
+
+        with patch("mahavishnu.core.config.MahavishnuSettings", return_value=settings_mock):
+            urls = _component_urls()
+
+        assert urls["sb-metrics"] == "http://localhost:8678"
+
+    def test_partial_failure_does_not_suppress_other_urls(self, monkeypatch) -> None:
+        """If crackerjack URL raises, Akosha URL still resolves."""
+        from mahavishnu.tui.app import _component_urls
+
+        class _BadQC:
+            @property
+            def crackerjack_url(self):
+                raise AttributeError("no url configured")
+
+        pools_mock = MagicMock()
+        pools_mock.akosha_url = "http://localhost:8682/mcp"
+        pools_mock.session_buddy_url = None
+        settings_mock = MagicMock()
+        settings_mock.qc = _BadQC()
+        settings_mock.pools = pools_mock
+        settings_mock.oneiric_mcp = None
+
+        with patch("mahavishnu.core.config.MahavishnuSettings", return_value=settings_mock):
+            urls = _component_urls()
+
+        # crackerjack failed (AttributeError suppressed) but akosha still resolved
+        assert urls["crackerjack"] is None
+        assert urls["akosha"] == "http://localhost:8682"
