@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import contextlib
 from datetime import datetime
+import logging
 from pathlib import Path
 import subprocess
 from typing import TYPE_CHECKING, Any
@@ -508,6 +509,90 @@ async def fetch_diff_views(paths: tuple[str, ...] = _COCKPIT_FILES) -> list[dict
 
 
 # ---------------------------------------------------------------------------
+# Optional Bodai component probing
+# ---------------------------------------------------------------------------
+
+
+_tui_log = logging.getLogger(__name__)
+
+
+async def _probe_service(base_url: str) -> bool:
+    """Return True if the service responds to GET /health with status < 500."""
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(f"{base_url}/health")
+            return resp.status_code < 500
+    except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError):
+        return False
+    except Exception:
+        _tui_log.warning("Unexpected error probing %s — treating as unavailable", base_url, exc_info=True)
+        return False
+
+
+def _component_urls() -> dict[str, str | None]:
+    """Resolve optional Bodai component base URLs from settings."""
+    urls: dict[str, str | None] = {
+        "crackerjack": None,
+        "akosha": None,
+        "dhara": None,
+        "sb-metrics": None,
+    }
+    try:
+        from mahavishnu.core.config import MahavishnuSettings
+
+        s = MahavishnuSettings()
+    except Exception:
+        _tui_log.warning("Could not load MahavishnuSettings; optional tabs suppressed", exc_info=True)
+        return urls
+
+    with contextlib.suppress(Exception):
+        qc = getattr(s, "qc", None)
+        if qc and getattr(qc, "crackerjack_url", None):
+            urls["crackerjack"] = qc.crackerjack_url.removesuffix("/mcp")
+
+    with contextlib.suppress(Exception):
+        pools = getattr(s, "pools", None)
+        if pools and getattr(pools, "akosha_url", None):
+            urls["akosha"] = pools.akosha_url.removesuffix("/mcp")
+
+    with contextlib.suppress(Exception):
+        oneiric = getattr(s, "oneiric_mcp", None)
+        if oneiric:
+            dhara = getattr(oneiric, "url", None) or getattr(oneiric, "base_url", None)
+            if dhara:
+                urls["dhara"] = dhara.removesuffix("/mcp")
+
+    with contextlib.suppress(Exception):
+        pools = getattr(s, "pools", None)
+        if pools and getattr(pools, "session_buddy_url", None):
+            urls["sb-metrics"] = pools.session_buddy_url.removesuffix("/mcp")
+
+    return urls
+
+
+async def _fetch_health(base_url: str) -> dict[str, Any]:
+    """GET /health from *base_url*; return parsed JSON or a dict with ``available=False``."""
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{base_url}/health")
+            if resp.status_code in (401, 403):
+                return {"available": False, "reason": f"HTTP {resp.status_code} — check credentials"}
+            if resp.status_code >= 500:
+                return {"available": False, "reason": f"HTTP {resp.status_code} — server error"}
+            data = resp.json()
+            return {"available": True, **(data if isinstance(data, dict) else {"raw": str(data)})}
+    except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError):
+        return {"available": False, "reason": "unreachable"}
+    except Exception:
+        _tui_log.warning("Unexpected error fetching health from %s", base_url, exc_info=True)
+        return {"available": False, "reason": "unexpected error"}
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -533,7 +618,9 @@ def _state_markup(state: Any) -> str:
 
 
 def _status_color(status: str) -> str:
-    return {"ok": "green", "degraded": "yellow", "unknown": "dim"}.get(status.lower(), "red")
+    return {"ok": "green", "healthy": "green", "degraded": "yellow", "unknown": "dim"}.get(
+        status.lower(), "red"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1055,6 +1142,64 @@ class TraceScreen(VerticalScroll):
 
 
 # ---------------------------------------------------------------------------
+# Optional Bodai component screens (probe-on-mount)
+# ---------------------------------------------------------------------------
+
+
+class BodaiComponentScreen(VerticalScroll):
+    """Generic health view for an optional Bodai component (probe-on-mount)."""
+
+    def __init__(self, label: str, slug: str, base_url: str) -> None:
+        super().__init__()
+        self._label = label
+        self._slug = slug
+        self._base_url = base_url
+
+    def compose(self) -> ComposeResult:
+        yield Label(self._label, classes="screen-title")
+        yield Static(id=f"{self._slug}-summary", classes="overview-block")
+        table: DataTable = DataTable(id=f"{self._slug}-table", cursor_type="row", zebra_stripes=True)
+        table.add_columns("Check", "Status", "Detail")
+        yield table
+
+    def on_mount(self) -> None:
+        self.run_worker(self._fetch(), exclusive=True)
+
+    async def _fetch(self) -> None:
+        data = await _fetch_health(self._base_url)
+        summary = self.query_one(f"#{self._slug}-summary", Static)
+        available = bool(data.get("available"))
+        if available:
+            status_raw = data.get("status", "unknown")
+            status = str(status_raw) if status_raw is not None else "unknown"
+        else:
+            status = "unavailable"
+        version = data.get("version", "-")
+        reason = data.get("reason", "")
+        color = _status_color(status)
+        detail_line = f"   [bold]Reason:[/] {reason}" if reason else ""
+        summary.update(
+            f"[bold]Status:[/] [{color}]{status.upper()}[/]   "
+            f"[bold]Version:[/] {version}   "
+            f"[bold]URL:[/] {self._base_url}{detail_line}"
+        )
+        table = self.query_one(f"#{self._slug}-table", DataTable)
+        table.clear()
+        checks: dict[str, Any] = data.get("checks", {}) if available else {}
+        if checks:
+            for name, info in checks.items():
+                chk_status = info.get("status", "-") if isinstance(info, dict) else str(info)
+                detail = info.get("details", "") if isinstance(info, dict) else ""
+                chk_color = "green" if chk_status in ("ok", "healthy") else "red"
+                table.add_row(name, f"[{chk_color}]{chk_status}[/]", str(detail))
+        else:
+            table.add_row("[dim]No check data[/]", status, reason or "-")
+
+    def refresh_data(self) -> None:
+        self.run_worker(self._fetch(), exclusive=True)
+
+
+# ---------------------------------------------------------------------------
 # Dashboard App
 # ---------------------------------------------------------------------------
 
@@ -1164,8 +1309,28 @@ class DashboardApp(App):
                 yield TraceScreen()
         yield Footer()
 
+    async def _probe_and_mount_optional_tabs(self) -> None:
+        urls = _component_urls()
+        tabs = self.query_one(TabbedContent)
+        tab_configs = [
+            ("crackerjack", "13 Crackerjack", "Crackerjack — Quality Inspector"),
+            ("akosha", "14 Akosha", "Akosha — Intelligence Seer"),
+            ("dhara", "15 Dhara", "Dhara — State Curator"),
+            ("sb-metrics", "16 Metrics", "Session-Buddy — Memory Builder"),
+        ]
+        for tab_id, tab_label, screen_label in tab_configs:
+            url = urls.get(tab_id)
+            if url and await _probe_service(url):
+                try:
+                    await tabs.add_pane(
+                        TabPane(tab_label, BodaiComponentScreen(screen_label, tab_id, url), id=tab_id)
+                    )
+                except Exception:
+                    _tui_log.warning("Failed to mount tab %r", tab_id, exc_info=True)
+
     def on_mount(self) -> None:
         self.set_interval(_REFRESH_INTERVAL, self.action_refresh_all)
+        self.run_worker(self._probe_and_mount_optional_tabs(), exclusive=False)
 
     def action_switch_tab(self, tab_id: str) -> None:
         with contextlib.suppress(Exception):
@@ -1186,6 +1351,7 @@ class DashboardApp(App):
             EventStreamScreen,
             AgnoScreen,
             TraceScreen,
+            BodaiComponentScreen,
         ):
             for widget in self.query(screen_cls):
                 widget.refresh_data()  # type: ignore[attr-defined]
