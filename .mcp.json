@@ -8,13 +8,6 @@
       "type": "http",
       "url": "http://localhost:3036/mcp"
     },
-    "codex": {
-      "args": [
-        "mcp-server"
-      ],
-      "command": "/usr/local/bin/codex",
-      "type": "stdio"
-    },
     "crackerjack": {
       "type": "http",
       "url": "http://localhost:8676/mcp"
@@ -39,32 +32,13 @@
       "type": "http",
       "url": "http://localhost:3040/mcp"
     },
-    "homebrew": {
-      "args": [
-        "mcp-server"
-      ],
-      "command": "brew",
-      "type": "stdio"
-    },
     "langsmith": {
       "type": "http",
       "url": "http://localhost:3048/mcp"
     },
-    "macos_automator": {
-      "args": [
-        "-y",
-        "@steipete/macos-automator-mcp"
-      ],
-      "command": "npx",
-      "type": "stdio"
-    },
     "mahavishnu": {
       "type": "http",
       "url": "http://localhost:8680/mcp"
-    },
-    "mailgun": {
-      "type": "http",
-      "url": "http://localhost:3039/mcp"
     },
     "mermaid": {
       "type": "http",
@@ -74,10 +48,6 @@
       "type": "http",
       "url": "http://localhost:3045/mcp"
     },
-    "opera-cloud": {
-      "type": "http",
-      "url": "http://localhost:3037/mcp"
-    },
     "penpot": {
       "args": [
         "-y",
@@ -85,14 +55,6 @@
       ],
       "command": "npx",
       "type": "stdio"
-    },
-    "porkbun-dns": {
-      "type": "http",
-      "url": "http://localhost:3042/mcp"
-    },
-    "porkbun-domain": {
-      "type": "http",
-      "url": "http://localhost:3043/mcp"
     },
     "postman": {
       "type": "http",
@@ -102,25 +64,9 @@
       "type": "http",
       "url": "http://127.0.0.1:64342/stream"
     },
-    "raindropio": {
-      "type": "http",
-      "url": "http://localhost:3034/mcp"
-    },
     "session-buddy": {
       "type": "http",
       "url": "http://localhost:8678/mcp"
-    },
-    "synxis-crs": {
-      "type": "http",
-      "url": "http://localhost:3046/mcp"
-    },
-    "synxis-pms": {
-      "type": "http",
-      "url": "http://localhost:3047/mcp"
-    },
-    "unifi": {
-      "type": "http",
-      "url": "http://localhost:3038/mcp"
     }
   }
 }

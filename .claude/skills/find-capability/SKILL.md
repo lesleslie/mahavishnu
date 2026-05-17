@@ -1,302 +1,31 @@
 ______________________________________________________________________
 
-## name: find-capability description: Use when discovering which repository has the capability needed for a task. Use when user asks "which repo does X", "where is the Y feature", or needs to find the right repository by capability, role, or tag.
+## name: find-capability description: Use when discovering which repository has the needed capability.
 
 # Find Capability
 
 ## Overview
 
-## Available MCP Servers
-
-| Server | Port | Context Mode | Relevant Tools | Default Timeout |
-|--------|------|-------------|---------------|----------------|
-| mahavishnu | 8680 | summary | mcp\_\_mahavishnu\_\_list_repos, mcp\_\_mahavishnu\_\_get_health | 60s |
-| akosha | 8682 | summary | mcp\_\_akosha\_\_search_all_systems, mcp\_\_akosha\_\_search_code_patterns | 60s |
-
-Mahavishnu organizes repositories by role, tag, and capability. This skill guides you through discovering the right repository for a given task using role-based taxonomy and metadata queries.
-
-**Core principle:** Query by role first, then filter by tags and capabilities to find the best-fit repository.
+Use this skill to find the best repository for a task using role, tag, and capability metadata.
 
 ## When to Use
 
-**Use when:**
+- The user asks which repo handles a feature
+- The user needs a repo by capability or domain
+- You do not yet know which repo should own the work
 
-- User asks "which repo handles X", "where is the Y feature"
-- User needs to find repository with specific capability
-- User doesn't know which repository to use for a task
-- Discovering repositories by domain/technology
+## Core Rule
 
-**Don't use when:**
-
-- Repository already known (use `orchestrate-workflow`)
-- Executing workflows (use appropriate workflow skill)
-
-## Role-Based Taxonomy
-
-Mahavishnu uses 12 defined roles to organize repositories:
-
-| Role | Purpose | Capabilities | Example Repos |
-|------|---------|--------------|---------------|
-| **orchestrator** | Coordinates workflows | sweep, schedule, route, coordinate | mahavishnu |
-| **resolver** | Resolves components/lifecycle | resolve, activate, swap, explain | oneiric |
-| **manager** | Manages state/sessions | capture, search, restore, track | session-buddy |
-| **inspector** | Validates quality | test, lint, scan, validate | crackerjack |
-| **builder** | Builds applications | render, route, build | fastblocks |
-| **soothsayer** | Reveals patterns | aggregate, detect, correlate | akosha |
-| **app** | End-user applications | interface, serve-users | mdinject, splashstand |
-| **asset** | UI libraries | style, componentize | fastbulma |
-| **foundation** | Shared utilities | share, standardize | mcp-common |
-| **visualizer** | Creates diagrams | draw, visualize | excalidraw-mcp, mermaid-mcp |
-| **extension** | Extends frameworks | extend, plug-in | jinja2-inflection |
-| **tool** | MCP integrations | connect, integrate | mailgun-mcp, unifi-mcp |
+- Query by role first, then narrow by tags and capabilities.
 
 ## Quick Reference
 
-```bash
-# 1. List by role (most common)
-mahavishnu list-repos --role orchestrator
-mahavishnu list-repos --role tool
+- List repos: `mahavishnu list-repos`
+- List roles: `mahavishnu list-roles`
+- Show role: `mahavishnu show-role`
+- Search via MCP: `mcp__mahavishnu__list_repos`
 
-# 2. List by tag
-mahavishnu list-repos --tag python
-mahavishnu list-repos --tag ml
+## Notes
 
-# 3. List all roles
-mahavishnu list-roles
-
-# 4. Show role details
-mahavishnu show-role tool
-
-# 5. Search by capability (via MCP)
-mcp__mahavishnu__list_repos(tags=["mcp"], role="tool")
-```
-
-## Implementation
-
-### Step 1: Identify Required Capability
-
-**User question examples → capability mapping:**
-
-| User Question | Likely Role | Tags |
-|---------------|-------------|------|
-| "Which repo orchestrates workflows?" | orchestrator | - |
-| "Where's the session management code?" | manager | - |
-| "Which repo handles email sending?" | tool | mailgun |
-| "Find me all Python apps" | app | python |
-| "Where's the shared utilities?" | foundation | - |
-
-### Step 2: Query by Role
-
-```bash
-# Get all repositories for a role
-mahavishnu list-repos --role <role>
-
-# Examples:
-mahavishnu list-repos --role orchestrator  # Just mahavishnu
-mahavishnu list-repos --role tool         # All MCP tools
-mahavishnu list-repos --role app          # End-user apps
-```
-
-**Via MCP:**
-
-```python
-repos = await mcp.call_tool("mcp__mahavishnu__list_repos", {
-    "role": "tool"
-})
-```
-
-### Step 3: Filter by Tag
-
-```bash
-# Combine role and tag filters
-mahavishnu list-repos --role app --tag python
-mahavishnu list-repos --role tool --tag integration
-
-# Multiple tags (AND logic)
-mahavishnu list-repos --tag backend --tag api
-```
-
-**Via MCP:**
-
-```python
-repos = await mcp.call_tool("mcp__mahavishnu__list_repos", {
-    "role": "tool",
-    "tags": ["integration", "cloud"]
-})
-```
-
-### Step 4: Inspect Repository Details
-
-```bash
-# Show detailed information about a repository
-mahavishnu show-repo <repo-name>
-
-# Output includes:
-# - Full name and description
-# - Assigned role
-# - Tags
-# - Path and package name
-# - Nickname (if set)
-# - MCP integration type
-```
-
-**Via MCP:**
-
-```python
-# Get repo metadata from repos.yaml
-repo_info = await mcp.call_tool("mcp__mahavishnu__list_repos", {
-    "nickname": "buddy"  # or full repo name
-})
-```
-
-### Step 5: Explore Role Capabilities
-
-```bash
-# List all available roles
-mahavishnu list-roles
-
-# Show detailed information about a role
-mahavishnu show-role tool
-
-# Output includes:
-# - Role description
-# - Key capabilities
-# - Example repositories
-# - Common use cases
-```
-
-## Discovery Patterns
-
-### Pattern 1: Capability-First Discovery
-
-```bash
-# User: "I need to send emails"
-# 1. Identify capability: email sending
-# 2. Query by role: tool (MCP integrations)
-# 3. Filter by tag: mailgun
-mahavishnu list-repos --role tool --tag mailgun
-```
-
-### Pattern 2: Technology-First Discovery
-
-```bash
-# User: "Find all Python repositories"
-# 1. Query by tag: python
-mahavishnu list-repos --tag python
-
-# 2. Optional: Filter by role
-mahavishnu list-repos --tag python --role backend
-```
-
-### Pattern 3: Domain-First Discovery
-
-```bash
-# User: "Which repos handle ML/AI?"
-# 1. Query by tag: ml
-mahavishnu list-repos --tag ml
-
-# 2. Review roles to understand purpose
-#    - app: ML-powered applications
-#    - tool: ML model integrations
-```
-
-## Search Strategy
-
-```dot
-digraph search_strategy {
-    "Need to find repository?" [shape=diamond];
-    "Know the role?" [shape=diamond];
-    "Know the technology?" [shape=diamond];
-    "Know the capability?" [shape=diamond];
-
-    "Query by role" [shape=box];
-    "Query by tag" [shape=box];
-    "Combine filters" [shape=box];
-    "Inspect results" [shape=box];
-
-    "Need to find repository?" -> "Know the role?";
-    "Know the role?" -> "Query by role" [label="yes"];
-    "Know the role?" -> "Know the technology?" [label="no"];
-    "Know the technology?" -> "Query by tag" [label="yes"];
-    "Know the technology?" -> "Know the capability?" [label="no"];
-    "Know the capability?" -> "Combine filters" [label="yes"];
-    "Know the capability?" -> "Query by role" [label="no"];
-    "Query by role" -> "Inspect results";
-    "Query by tag" -> "Inspect results";
-    "Combine filters" -> "Inspect results";
-}
-```
-
-## Common Queries
-
-| User Goal | Command |
-|-----------|---------|
-| "Find all orchestrators" | `mahavishnu list-repos --role orchestrator` |
-| "Show me all MCP tools" | `mahavishnu list-repos --role tool` |
-| "Find Python backend repos" | `mahavishnu list-repos --tag python --role backend` |
-| "Which repos handle visualization?" | `mahavishnu list-repos --role visualizer` |
-| "Find all testing tools" | `mahavishnu list-repos --role inspector` |
-| "Show me all apps" | `mahavishnu list-repos --role app` |
-
-## Repository Metadata
-
-Each repository in `settings/repos.yaml` includes:
-
-```yaml
-repos:
-  - name: example-repo
-    package: example_repo
-    path: /path/to/repo
-    nickname: example      # Optional short name
-    role: tool             # One of 12 defined roles
-    tags:                  # Additional categorization
-      - python
-      - integration
-    description: "Human-readable description"
-    mcp: "native"          # "native" for core MCP, "3rd-party" for external
-```
-
-## Validation Checklist
-
-After discovering repository:
-
-- [ ] Role matches expected capability
-- [ ] Tags confirm technology/stack
-- [ ] Description confirms purpose
-- [ ] Path is valid and accessible
-- [ ] MCP integration status known
-
-## Common Mistakes
-
-| Mistake | Symptom | Fix |
-|---------|---------|-----|
-| **Searching by name only** | Missing related repos | Use role/tag filters for broader discovery |
-| **Not using role taxonomy** | Confusion about repo purpose | Always check role to understand repo's function |
-| **Ignoring nicknames** | Can't find commonly-referenced repo | Use nickname parameter for common repos |
-| **Single-filter queries** | Too many results | Combine role + tags for precise discovery |
-| **Not verifying repo details** | Using wrong repo | Always inspect repo metadata before proceeding |
-
-## Real-World Impact
-
-**Before this skill:**
-
-- Users searched by repo name only → missed relevant repos
-- No role understanding → confusion about repo purpose
-- Manual grep across repos.yaml → slow discovery
-
-**After this skill:**
-
-- Role-based discovery → 100% coverage of relevant repos
-- Clear capability mapping → instant understanding
-- Combining filters → precise targeting
-
-## Related Skills
-
-- **REQUIRED:** `orchestrate-workflow` - After finding repo, execute workflows
-- **REQUIRED:** `sweep-repositories` - For multi-repo discovery and execution
-- **REQUIRED:** `inspect-repository` - For deep dive into repo details
-
-## Related Documentation
-
-- CLAUDE.md - Role-Based Organization - Complete role taxonomy
-- settings/repos.yaml - Repository manifest
+- If the repo is already known, use the relevant workflow instead.
+- Prefer metadata queries over guesswork.

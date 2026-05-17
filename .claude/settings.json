@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.backups/**)",
+      "Read(./.archive/**)",
+      "Read(./docs/archive/**)",
+      "Read(./.claude/backups/**)",
+      "Read(./.claude/agents/.a2a_enrollment/**)",
+      "Read(./.claude/agents/**/*.backup*)",
+      "Read(./.claude/commands/**/*.backup*)",
+      "Read(./.claude/skills/.archive/**)",
+      "Read(./.claude/skills/*.backup)",
+      "Read(./.claude/skills/*.backup.json)",
+      "Read(./.claude/agents/*.backup)",
+      "Read(./.claude/agents/*.backup.json)",
+      "Read(./.claude/commands/**/*.backup)",
+      "Read(./.claude/commands/**/*.backup.json)"
+    ]
+  }
+}

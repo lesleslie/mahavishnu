@@ -2,19 +2,24 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from types import ModuleType
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import mahavishnu.core.worktree_providers as worktree_providers_pkg
 from mahavishnu.core.worktree_providers.direct_git import DirectGitWorktreeProvider
 from mahavishnu.core.worktree_providers.errors import (
+    ProviderUnavailableError,
     WorktreeCreationError,
     WorktreeOperationError,
     WorktreeRemovalError,
     WorktreeValidationError,
 )
+from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
+from mahavishnu.core.worktree_providers.registry import WorktreeProviderRegistry
 from mahavishnu.core.worktree_providers.session_buddy import (
     SessionBuddyWorktreeProvider,
 )
@@ -67,9 +72,14 @@ class TestSessionBuddyGetMcpClient:
     async def test_import_error_raises_creation_error(self):
         provider = SessionBuddyWorktreeProvider()
 
-        with patch.dict("sys.modules", {"mcp_client": None}):
-            with pytest.raises(WorktreeCreationError, match="MCP client not installed"):
-                await provider._get_mcp_client()
+        with (
+            patch.dict("sys.modules", {"mcp_client": None}),
+            pytest.raises(
+                WorktreeCreationError,
+                match="MCP client not installed",
+            ),
+        ):
+            await provider._get_mcp_client()
 
     async def test_connection_error_raises_creation_error(self):
         provider = SessionBuddyWorktreeProvider()
@@ -78,9 +88,14 @@ class TestSessionBuddyGetMcpClient:
 
         mock_module = ModuleType("mcp_client")
         mock_module.MCPClient = mock_cls
-        with patch.dict("sys.modules", {"mcp_client": mock_module}):
-            with pytest.raises(WorktreeCreationError, match="Failed to connect"):
-                await provider._get_mcp_client()
+        with (
+            patch.dict("sys.modules", {"mcp_client": mock_module}),
+            pytest.raises(
+                WorktreeCreationError,
+                match="Failed to connect",
+            ),
+        ):
+            await provider._get_mcp_client()
 
 
 class TestSessionBuddyCreateWorktree:
@@ -332,9 +347,14 @@ class TestDirectGitCreateWorktree:
         process = _make_process(returncode=128, stderr=b"fatal: not a git repo\n")
         process.communicate = AsyncMock(return_value=(b"", b"fatal: not a git repo\n"))
 
-        with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)):
-            with pytest.raises(WorktreeCreationError, match="Failed to create worktree"):
-                await provider.create_worktree(Path("/bad"), "f", Path("/wt"))
+        with (
+            patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)),
+            pytest.raises(
+                WorktreeCreationError,
+                match="Failed to create worktree",
+            ),
+        ):
+            await provider.create_worktree(Path("/bad"), "f", Path("/wt"))
 
 
 class TestDirectGitRemoveWorktree:
@@ -362,9 +382,14 @@ class TestDirectGitRemoveWorktree:
         provider = DirectGitWorktreeProvider()
         process = _make_process(returncode=1, stderr=b"error\n")
 
-        with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)):
-            with pytest.raises(WorktreeOperationError, match="Failed to remove worktree"):
-                await provider.remove_worktree(Path("/repo"), Path("/wt"))
+        with (
+            patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)),
+            pytest.raises(
+                WorktreeOperationError,
+                match="Failed to remove worktree",
+            ),
+        ):
+            await provider.remove_worktree(Path("/repo"), Path("/wt"))
 
 
 class TestDirectGitListWorktrees:
@@ -415,9 +440,14 @@ class TestDirectGitListWorktrees:
         provider = DirectGitWorktreeProvider()
         process = _make_process(returncode=1, stderr=b"error\n")
 
-        with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)):
-            with pytest.raises(WorktreeOperationError, match="Failed to list worktrees"):
-                await provider.list_worktrees(Path("/repo"))
+        with (
+            patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)),
+            pytest.raises(
+                WorktreeOperationError,
+                match="Failed to list worktrees",
+            ),
+        ):
+            await provider.list_worktrees(Path("/repo"))
 
     async def test_handles_three_column_porcelain(self):
         provider = DirectGitWorktreeProvider()
@@ -428,6 +458,250 @@ class TestDirectGitListWorktrees:
             result = await provider.list_worktrees(Path("/repo"))
 
         assert len(result["worktrees"]) == 0
+
+
+class TestMockWorktreeProvider:
+    def test_init_and_identity(self) -> None:
+        provider = MockWorktreeProvider()
+
+        assert provider.provider_name() == "mock"
+        assert provider.health_check() is True
+        assert provider.created_worktrees == []
+        assert provider.removed_worktrees == []
+        assert provider.should_fail is False
+
+    async def test_create_remove_list_and_reset(self) -> None:
+        provider = MockWorktreeProvider()
+
+        created = await provider.create_worktree(
+            Path("/repo"),
+            "feature",
+            Path("/wt/feature"),
+            create_branch=True,
+        )
+        removed = await provider.remove_worktree(Path("/repo"), Path("/wt/feature"), force=True)
+        listed = await provider.list_worktrees(Path("/repo"))
+
+        assert created == {
+            "success": True,
+            "worktree_path": "/wt/feature",
+            "branch": "feature",
+            "repository_path": "/repo",
+        }
+        assert removed == {
+            "success": True,
+            "removed_path": "/wt/feature",
+            "repository_path": "/repo",
+        }
+        assert listed == {
+            "success": True,
+            "worktrees": [{"path": "/wt/feature", "branch": "feature"}],
+            "repository_path": "/repo",
+        }
+        assert provider.created_worktrees == [
+            {
+                "repository_path": "/repo",
+                "branch": "feature",
+                "worktree_path": "/wt/feature",
+                "create_branch": True,
+            }
+        ]
+        assert provider.removed_worktrees == ["/wt/feature"]
+
+        provider.set_healthy(False)
+        assert provider.health_check() is False
+
+        provider.reset()
+        assert provider.created_worktrees == []
+        assert provider.removed_worktrees == []
+        assert provider.should_fail is False
+        assert provider.health_check() is True
+
+    async def test_failures_raise_expected_errors(self) -> None:
+        provider = MockWorktreeProvider()
+        provider.should_fail = True
+
+        with pytest.raises(WorktreeCreationError, match="Mock provider failure"):
+            await provider.create_worktree(Path("/repo"), "feature", Path("/wt/feature"))
+
+        with pytest.raises(WorktreeRemovalError, match="Mock provider failure"):
+            await provider.remove_worktree(Path("/repo"), Path("/wt/feature"))
+
+    async def test_list_worktrees_filters_by_repository(self) -> None:
+        provider = MockWorktreeProvider()
+        await provider.create_worktree(Path("/repo-a"), "a", Path("/wt/a"))
+        await provider.create_worktree(Path("/repo-b"), "b", Path("/wt/b"))
+
+        result = await provider.list_worktrees(Path("/repo-a"))
+
+        assert result["worktrees"] == [{"path": "/wt/a", "branch": "a"}]
+
+
+class _FakeProvider:
+    def __init__(self, name: str, healthy: bool) -> None:
+        self._name = name
+        self._healthy = healthy
+
+    def provider_name(self) -> str:
+        return self._name
+
+    def health_check(self) -> bool:
+        return self._healthy
+
+
+class _ExplodingProvider(_FakeProvider):
+    def health_check(self) -> bool:
+        raise RuntimeError("boom")
+
+
+class TestWorktreeProviderRegistry:
+    async def test_get_available_provider_returns_first_healthy(self):
+        first = _FakeProvider("first", True)
+        second = _FakeProvider("second", True)
+        registry = WorktreeProviderRegistry([first, second])
+
+        provider = await registry.get_available_provider()
+
+        assert provider is first
+        assert registry.get_provider_health() == {"first": True}
+
+    async def test_get_available_provider_skips_unhealthy_and_falls_back(self):
+        first = _FakeProvider("first", False)
+        second = _FakeProvider("second", True)
+        registry = WorktreeProviderRegistry([first, second])
+
+        provider = await registry.get_available_provider()
+
+        assert provider is second
+        assert registry.get_provider_health() == {"first": False, "second": True}
+
+    async def test_get_available_provider_raises_when_all_unavailable(self):
+        first = _FakeProvider("first", False)
+        second = _FakeProvider("second", False)
+        registry = WorktreeProviderRegistry([first, second])
+
+        with pytest.raises(ProviderUnavailableError) as exc_info:
+            await registry.get_available_provider()
+
+        assert "No worktree providers available" in str(exc_info.value)
+        assert exc_info.value.providers == ["first", "second"]
+
+    async def test_get_available_provider_skips_exploding_provider(self):
+        first = _ExplodingProvider("first", True)
+        second = _FakeProvider("second", True)
+        registry = WorktreeProviderRegistry([first, second])
+
+        provider = await registry.get_available_provider()
+
+        assert provider is second
+        assert registry.get_provider_health() == {"first": False, "second": True}
+
+    def test_get_primary_provider(self):
+        provider = _FakeProvider("first", True)
+        registry = WorktreeProviderRegistry([provider])
+
+        assert registry.get_primary_provider() is provider
+
+    def test_get_primary_provider_empty_registry(self):
+        registry = WorktreeProviderRegistry([])
+
+        with pytest.raises(IndexError, match="No providers configured"):
+            registry.get_primary_provider()
+
+    def test_get_provider_health_returns_copy(self):
+        provider = _FakeProvider("first", True)
+        registry = WorktreeProviderRegistry([provider])
+        registry._provider_health["first"] = True
+
+        health = registry.get_provider_health()
+        health["first"] = False
+
+        assert registry.get_provider_health()["first"] is True
+
+    async def test_health_check_loop_runs_and_handles_cancellation(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        provider = _FakeProvider("first", True)
+        registry = WorktreeProviderRegistry([provider])
+
+        calls = {"count": 0}
+
+        async def fake_sleep(_: float) -> None:
+            calls["count"] += 1
+            if calls["count"] > 1:
+                raise asyncio.CancelledError()
+
+        monkeypatch.setattr("asyncio.sleep", fake_sleep)
+
+        await registry.health_check_loop(interval_seconds=0.0)
+
+        assert registry.get_provider_health() == {"first": True}
+
+    async def test_health_check_loop_handles_provider_exception(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        provider = _ExplodingProvider("first", True)
+        registry = WorktreeProviderRegistry([provider])
+
+        calls = {"count": 0}
+
+        async def fake_sleep(_: float) -> None:
+            calls["count"] += 1
+            if calls["count"] > 1:
+                raise asyncio.CancelledError()
+
+        monkeypatch.setattr("asyncio.sleep", fake_sleep)
+
+        await registry.health_check_loop(interval_seconds=0.0)
+
+        assert registry.get_provider_health() == {"first": False}
+
+    async def test_health_check_loop_handles_unhealthy_provider(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        provider = _FakeProvider("first", False)
+        registry = WorktreeProviderRegistry([provider])
+
+        calls = {"count": 0}
+
+        async def fake_sleep(_: float) -> None:
+            calls["count"] += 1
+            if calls["count"] > 1:
+                raise asyncio.CancelledError()
+
+        monkeypatch.setattr("asyncio.sleep", fake_sleep)
+
+        await registry.health_check_loop(interval_seconds=0.0)
+
+        assert registry.get_provider_health() == {"first": False}
+
+    async def test_health_check_loop_handles_sleep_exception(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        provider = _FakeProvider("first", True)
+        registry = WorktreeProviderRegistry([provider])
+
+        calls = {"count": 0}
+
+        async def fake_sleep(_: float) -> None:
+            calls["count"] += 1
+            if calls["count"] == 1:
+                raise RuntimeError("sleep failed")
+            raise asyncio.CancelledError()
+
+        monkeypatch.setattr("asyncio.sleep", fake_sleep)
+
+        await registry.health_check_loop(interval_seconds=0.0)
+
+        assert registry.get_provider_health() == {}
+
+
+def test_lazy_imports_and_attribute_errors() -> None:
+    assert worktree_providers_pkg.WorktreeProviderRegistry is WorktreeProviderRegistry
+    assert worktree_providers_pkg.ProviderUnavailableError is ProviderUnavailableError
+
+    with pytest.raises(AttributeError):
+        worktree_providers_pkg.__getattr__("does_not_exist")
 
 
 # ---------------------------------------------------------------------------

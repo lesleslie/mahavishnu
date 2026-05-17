@@ -77,7 +77,9 @@ class SubscriptionAuth:
         }
 
         expire = datetime.now(tz=UTC) + timedelta(minutes=self.expire_minutes)
-        to_encode.update({"exp": int(expire.timestamp())})  # Convert datetime to integer timestamp  # type: ignore[dict-item]
+        to_encode.update(
+            {"exp": int(expire.timestamp())}
+        )  # Convert datetime to integer timestamp  # type: ignore[dict-item]
 
         encoded_jwt = jwt.encode(to_encode, self.secret, algorithm=self.algorithm)
         return encoded_jwt
@@ -259,7 +261,9 @@ class MultiAuthHandler:
             message="All authentication methods failed", details={"errors": errors}
         )
 
-    def create_claude_subscription_token(self, user_id: str, scopes: list[str] | None = None) -> str:
+    def create_claude_subscription_token(
+        self, user_id: str, scopes: list[str] | None = None
+    ) -> str:
         """
         Create a Claude Code subscription token.
 

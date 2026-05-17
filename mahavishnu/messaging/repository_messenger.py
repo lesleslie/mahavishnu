@@ -63,7 +63,9 @@ class RepositoryMessenger:
         self.app = app
         self.logger = __import__("logging").getLogger(__name__)
         self.messages: list[RepositoryMessage] = []
-        self.subscribers: dict[str, list[callable]] = {}  # repo -> list of callbacks  # type: ignore[valid-type]
+        self.subscribers: dict[
+            str, list[callable]
+        ] = {}  # repo -> list of callbacks  # type: ignore[valid-type]
         self.authenticator: CrossProjectAuth | None = None
         self._event_publisher = event_publisher
 

@@ -25,6 +25,18 @@ async def test_start_poller_starts_inactive_poller() -> None:
 
 
 @pytest.mark.asyncio
+async def test_start_poller_noops_for_running_or_missing_poller() -> None:
+    running_poller = SimpleNamespace(_running=True, start=AsyncMock())
+    running_app = SimpleNamespace(session_buddy_poller=running_poller)
+    missing_app = SimpleNamespace(session_buddy_poller=None)
+
+    await start_poller(running_app)
+    await start_poller(missing_app)
+
+    running_poller.start.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_stop_poller_clears_metrics_and_stops_running_poller() -> None:
     poller = SimpleNamespace(_running=True, stop=AsyncMock())
     app = SimpleNamespace(session_buddy_poller=poller, routing_metrics_server=object())
@@ -33,6 +45,17 @@ async def test_stop_poller_clears_metrics_and_stops_running_poller() -> None:
 
     assert app.routing_metrics_server is None
     poller.stop.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_stop_poller_noops_when_nothing_to_stop() -> None:
+    poller = SimpleNamespace(_running=False, stop=AsyncMock())
+    app = SimpleNamespace(session_buddy_poller=poller, routing_metrics_server=None)
+
+    await stop_poller(app)
+
+    assert app.routing_metrics_server is None
+    poller.stop.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -48,6 +71,19 @@ async def test_learning_pipeline_lifecycle() -> None:
 
 
 @pytest.mark.asyncio
+async def test_learning_pipeline_noops_for_running_or_missing_pipeline() -> None:
+    running_pipeline = SimpleNamespace(is_running=True, start=AsyncMock(), stop=AsyncMock())
+    running_app = SimpleNamespace(_learning_pipeline=running_pipeline)
+    missing_app = SimpleNamespace(_learning_pipeline=None)
+
+    await start_learning_pipeline(running_app)
+    await stop_learning_pipeline(missing_app)
+
+    running_pipeline.start.assert_not_awaited()
+    running_pipeline.stop.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_initialize_worktree_coordinator_exception_is_swallowed() -> None:
     """Exception during init is caught and logged — worktree_coordinator stays None (lines 57-58)."""
     repo_manager = SimpleNamespace(load=AsyncMock(side_effect=RuntimeError("load failed")))
@@ -58,6 +94,30 @@ async def test_initialize_worktree_coordinator_exception_is_swallowed() -> None:
     )
 
     await initialize_worktree_coordinator(app)
+    assert app.worktree_coordinator is None
+
+
+@pytest.mark.asyncio
+async def test_initialize_worktree_coordinator_noops_when_already_initialized() -> None:
+    repo_manager = SimpleNamespace(load=AsyncMock())
+    app = SimpleNamespace(
+        worktree_coordinator=object(),
+        repository_manager=repo_manager,
+        coordination_manager=object(),
+    )
+
+    await initialize_worktree_coordinator(app)
+
+    repo_manager.load.assert_not_awaited()
+    assert app.worktree_coordinator is not None
+
+
+@pytest.mark.asyncio
+async def test_initialize_worktree_coordinator_noops_without_repository_manager() -> None:
+    app = SimpleNamespace(worktree_coordinator=None, coordination_manager=object())
+
+    await initialize_worktree_coordinator(app)
+
     assert app.worktree_coordinator is None
 
 

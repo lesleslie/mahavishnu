@@ -142,18 +142,23 @@ def _import_adapter_class(name: str) -> type | None:
     try:
         if name == "prefect":
             from ..engines.prefect_adapter_impl import PrefectAdapter
+
             return PrefectAdapter
         if name == "llamaindex":
             from ..engines.llamaindex_adapter_impl import LlamaIndexAdapter
+
             return LlamaIndexAdapter
         if name == "agno":
             from ..engines.agno_adapter_impl import AgnoAdapter
+
             return AgnoAdapter
         if name == "hatchet":
             from ..engines.hatchet_adapter_impl import HatchetAdapterImpl
+
             return HatchetAdapterImpl
         if name == "worker":
             from .adapters.worker import WorkerOrchestratorAdapter
+
             return WorkerOrchestratorAdapter
     except ImportError:
         return None

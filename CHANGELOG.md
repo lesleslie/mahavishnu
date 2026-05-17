@@ -5,6 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-05-17
+
+### Added
+
+- Add AdapterType.HATCHET enum member
+- Add HatchetConfig and hatchet_enabled to AdapterConfig
+- Add TaskCategory.AGENT_LOOP with classification patterns
+- config: Add llama_server tier with qwen3.5; update models.yaml to three-tier chain
+- Implement HatchetAdapterImpl with WaitForEvent approval bridge
+- llm: Migrate CloudWorker to mcp_common FallbackChain three-tier routing
+- Wire HatchetAdapterImpl into _initialize_adapters()
+
+### Changed
+
+- Mahavishnu (quality: 66/100) - 2026-05-07 08:08:58
+- Mahavishnu (quality: 66/100) - 2026-05-07 10:48:06
+- Mahavishnu (quality: 66/100) - 2026-05-08 05:18:38
+- Mahavishnu (quality: 68/100) - 2026-05-13 23:44:38
+- Mahavishnu (quality: 69/100) - 2026-05-16 14:50:46
+- Mahavishnu (quality: 80/100) - 2026-05-14 04:21:03
+
+### Fixed
+
+- cloud_worker: Harden FallbackChain integration from review findings
+- Resolve 7 pre-existing test failures across 4 modules
+- Resolve codespell and check-added-large-files hook failures
+- Resolve two pre-existing test failures
+- types: Clear all zuban type errors — 9/9 comprehensive hooks pass
+- Use asyncio.TimeoutError for py<3.11 compat; add execute timeout test
+
+### Removed
+
+- Delete .mcp.json
+
+### Documentation
+
+- Add Dhara persistence layer section to ARCHITECTURE.md
+- Add LLM routing standardization design spec
+- Close master backlog — P9 delivered, Final Gate complete
+- Correct stale open/closed status across 7 plan documents
+- llm: Add Plan 2 — downstream migration to three-tier FallbackChain
+- llm: Update Plan 1 with multi-agent review fixes (rev 2)
+- Mark config consolidation plan delivered — all tasks verified in codebase
+- Mark P10 HatchetAdapter as delivered 2026-05-08
+- Mark P2 PoolManager/RoutingDecisionBuffer deferred items delivered
+- Mark Phase 1 and Phase 3 complete in roadmap and plan files
+- Mark Session-Buddy channel Phase 2 delivered
+- Tick all hatchet adapter plan checkboxes — delivered 2026-05-08
+- Update LLM routing spec with multi-agent review findings
+- Update PLAN_INDEX and add 2026-05-14 doc-sync + channel-phase2 plan
+
+### Testing
+
+- Add Hatchet smoke tests (gated on HATCHET_CLIENT_TOKEN)
+- Complete HatchetConfig defaults assertions
+
+### Build
+
+- Add hatchet-sdk optional dependency
+
+### Internal
+
+- cron: Add jobs.template.json with definitions only
+- gitignore: Exclude .lycheecache and cron/jobs.json
+
 ## [0.6.4] - 2026-05-03
 
 ### Added

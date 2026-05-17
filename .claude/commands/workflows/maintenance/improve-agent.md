@@ -15,53 +15,26 @@ ______________________________________________________________________
 
 ## Agent Improvement Workflow
 
-[Extended thinking: Enhance Claude subagents with structured analysis, implementation, and validation.]
-
-## Overview
-
-Follow this workflow to update or extend an existing subagent’s capabilities.
-
-## Prerequisites
-
-- Current agent instructions and usage analytics.
-- Identified gaps or feedback from users.
-- Access to test harnesses for verification.
-
 ## Inputs
 
-- `$ARGUMENTS` — target agent name and desired improvement.
-- `$IMPROVEMENT_TYPE` — e.g., `scope`, `tone`, `playbook`, `metadata`.
-- `$SUCCESS_METRICS` — criteria showing the update is effective.
+- `$ARGUMENTS` - target agent name and desired improvement.
+- `$IMPROVEMENT_TYPE` - `scope`, `tone`, `playbook`, or `metadata`.
+- `$SUCCESS_METRICS` - criteria that show the update worked.
 
 ## Outputs
 
 - Revised agent instructions and metadata.
-- Test results confirming expected behavior.
+- Validation results for the new behavior.
 - Changelog entry for catalog governance.
 
 ## Phases
 
-### Phase 1 – Assess & Plan
+1. Review usage, feedback, and the improvement goal.
+1. Draft the changes and keep the structure clear and consistent.
+1. Validate the updated prompts and telemetry hooks.
+1. Publish the update and record the change.
 
-- `support-analytics-specialist` reviews usage logs and feedback to prioritize needs.
-- `product-manager` aligns improvements with business impact.
+## Handoffs
 
-### Phase 2 – Design & Draft
-
-- `developer-enablement-lead` updates structure and metadata referencing `commands/tools/development/code-quality/dependency-lifecycle.md` for schema checks.
-- `content-designer` polishes tone, clarity, and consistency.
-
-### Phase 3 – Validate & Iterate
-
-- `qa-strategist` runs scenario tests and regression prompts via `commands/tools/development/testing/quality-validation.md`.
-- `observability-incident-lead` ensures any telemetry hooks remain valid.
-
-### Phase 4 – Publish & Communicate
-
-- `release-manager` coordinates catalog update and change announcement.
-- `customer-success-lead` informs stakeholders if the agent is externally visible.
-
-## Handoffs & Follow-Up
-
-- Schedule follow-up review to measure success metrics.
-- Archive previous agent versions for auditability.
+- Schedule a follow-up review.
+- Archive the previous agent version for auditability.

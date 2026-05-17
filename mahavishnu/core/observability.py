@@ -194,7 +194,11 @@ class ObservabilityManager:
         return self.error_counter
 
     def log(
-        self, level: LogLevel, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None
+        self,
+        level: LogLevel,
+        message: str,
+        attributes: dict[str, Any] | None = None,
+        trace_id: str | None = None,
     ):
         """Log a message with attributes."""
         log_entry = LogEntry(
@@ -212,23 +216,33 @@ class ObservabilityManager:
             f"[{trace_id}] {message}" if trace_id else message
         )
 
-    def log_debug(self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None):
+    def log_debug(
+        self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None
+    ):
         """Log a debug message."""
         self.log(LogLevel.DEBUG, message, attributes, trace_id)
 
-    def log_info(self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None):
+    def log_info(
+        self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None
+    ):
         """Log an info message."""
         self.log(LogLevel.INFO, message, attributes, trace_id)
 
-    def log_warning(self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None):
+    def log_warning(
+        self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None
+    ):
         """Log a warning message."""
         self.log(LogLevel.WARNING, message, attributes, trace_id)
 
-    def log_error(self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None):
+    def log_error(
+        self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None
+    ):
         """Log an error message."""
         self.log(LogLevel.ERROR, message, attributes, trace_id)
 
-    def log_critical(self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None):
+    def log_critical(
+        self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None
+    ):
         """Log a critical message."""
         self.log(LogLevel.CRITICAL, message, attributes, trace_id)
 

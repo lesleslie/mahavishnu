@@ -9,10 +9,10 @@ field so each provider selects the right model from its routing table.
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass, field
 import logging
 import os
 import time
-from dataclasses import dataclass, field
 from typing import Any
 
 from mcp_common.llm import FallbackChain, LLMSettings
@@ -214,7 +214,9 @@ class CloudWorker(BaseWorker):
             model_for_rate = explicit_model or self.config.get_model_for_category(task_category)
             allowed = await rate_limiter.check_and_record(model_for_rate, user_id)
             if not allowed:
-                logger.warning("Rate limit exceeded: model=%s user=%s", model_for_rate, user_id or "*")
+                logger.warning(
+                    "Rate limit exceeded: model=%s user=%s", model_for_rate, user_id or "*"
+                )
                 try:
                     from mahavishnu.core.routing_metrics import get_routing_metrics
 

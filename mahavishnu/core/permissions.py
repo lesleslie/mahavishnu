@@ -92,7 +92,7 @@ class RBACManager:
         for role_name in roles:
             if role_name in self.roles:
                 # Create a copy of the role with user-specific repo permissions
-                role_copy = self.roles[role_name].copy()
+                role_copy = self.roles[role_name].model_copy()
                 role_copy.allowed_repos = allowed_repos
                 role_objects.append(role_copy)
 

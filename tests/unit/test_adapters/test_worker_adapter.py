@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from mahavishnu.core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
 import mahavishnu.core.adapters.worker as wa
 
 
@@ -53,6 +54,29 @@ class _Manager:
 
     async def health_check(self) -> dict:
         return {"workers_active": 1, "max_concurrent": 10, "debug_mode": False}
+
+
+class _AdapterStub(OrchestratorAdapter):
+    async def initialize(self) -> None:
+        return None
+
+    @property
+    def adapter_type(self) -> AdapterType:
+        return AdapterType.WORKER
+
+    @property
+    def name(self) -> str:
+        return "stub"
+
+    @property
+    def capabilities(self) -> AdapterCapabilities:
+        return AdapterCapabilities()
+
+    async def execute(self, task: dict[str, object], repos: list[str]) -> dict[str, object]:
+        return {"task": task, "repos": repos}
+
+    async def get_health(self) -> dict[str, object]:
+        return {"status": "healthy"}
 
 
 def test_adapter_properties_and_init_variants(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -158,6 +182,41 @@ def test_init_with_config_branch_uses_terminal_and_context(monkeypatch: pytest.M
     assert captured["terminal_manager"] == "tmgr"
     assert captured["max_concurrent"] == 7
     assert adapter is not None
+
+
+@pytest.mark.asyncio
+async def test_init_lazy_path_and_ensure_builds_manager(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _Loop:
+        def is_running(self) -> bool:
+            return True
+
+    build_calls: list[object] = []
+
+    async def _build(self: wa.WorkerOrchestratorAdapter, config: object) -> _Manager:
+        build_calls.append(config)
+        return _Manager()
+
+    monkeypatch.setattr(wa.asyncio, "get_running_loop", lambda: _Loop())
+    monkeypatch.setattr(wa.WorkerOrchestratorAdapter, "_build_worker_manager", _build)
+
+    cfg = SimpleNamespace(workers=SimpleNamespace(max_concurrent=3))
+    adapter = wa.WorkerOrchestratorAdapter(config=cfg)
+    assert adapter.worker_manager is None
+    assert adapter._needs_lazy_init is True
+
+    assert await adapter.initialize() is None
+    assert adapter.worker_manager is not None
+    manager = await adapter._ensure_worker_manager()
+    assert isinstance(manager, _Manager)
+    assert build_calls == [cfg]
+    assert adapter._needs_lazy_init is False
+
+
+@pytest.mark.asyncio
+async def test_base_adapter_cleanup_and_shutdown_alias() -> None:
+    adapter = _AdapterStub()
+    assert await adapter.cleanup() is None
+    assert await adapter.shutdown() is None
 
 
 @pytest.mark.asyncio

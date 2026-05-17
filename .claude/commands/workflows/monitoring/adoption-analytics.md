@@ -15,51 +15,30 @@ ______________________________________________________________________
 
 ## Adoption & Analytics Workflow
 
-[Extended thinking: Close the loop between feature delivery and customer outcomes through data-informed rituals.]
+Use this workflow to review feature adoption, usage, and customer sentiment after launch.
 
-## Overview
+## Focus areas
 
-Run this workflow after launches or on a recurring cadence to analyze usage, adoption, and customer sentiment.
+- Usage and conversion trends
+- Support and customer-success signals
+- Metrics interpretation and action planning
+- Dashboard and alert updates
 
-## Prerequisites
+## Workflow
 
-- Instrumentation and dashboards configured for the target product area.
-- Access to support ticket systems and customer feedback channels.
-- Baseline success metrics defined during feature planning.
+1. Gather telemetry, support, and product signals.
+1. Analyze cohorts, funnels, and outcomes.
+1. Decide what to change in product, support, or enablement.
+1. Update dashboards and follow-up tasks.
+
+## Output
+
+- Adoption summary
+- Prioritized action plan
+- Metrics and dashboard updates
 
 ## Inputs
 
-- `$ARGUMENTS` — product area or feature to evaluate.
-- `$EVALUATION_WINDOW` — time period for analysis (e.g., "last 30 days").
-- `$METRICS` — key KPIs or OKRs to inspect.
-
-## Outputs
-
-- Adoption and performance summary with insights.
-- Action plan for product, support, or enablement teams.
-- Updated dashboards or alerts reflecting new targets.
-
-## Phases
-
-### Phase 1 – Gather Signals
-
-- Use Task tool with `subagent_type="support-analytics-specialist"` to pull support trends and satisfaction data.
-- Engage `observability-incident-lead` for telemetry on usage, latency, and error rates.
-- `product-manager` compiles OKR status and experiment results.
-
-### Phase 2 – Analyze & Interpret
-
-- `data-scientist` performs deeper analysis on cohorts, funnels, or experiments.
-- `customer-success-lead` adds qualitative insights from executive business reviews.
-- `qa-strategist` assesses defect patterns to feed back into testing improvements.
-
-### Phase 3 – Decide & Act
-
-- `product-manager` facilitates decision meeting, prioritizing actions.
-- `delivery-lead` maps resulting work into roadmaps or maintenance cadences.
-- `content-designer` updates documentation or comms if behavior changes are required.
-
-## Handoffs & Follow-Up
-
-- Share outcomes with stakeholders and track actions in backlog systems.
-- Schedule the next analytics review based on business cadence (monthly/quarterly).
+- `$ARGUMENTS`
+- `$EVALUATION_WINDOW`
+- `$METRICS`

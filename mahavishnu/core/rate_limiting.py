@@ -50,7 +50,9 @@ try:
     HAS_SLOWAPI = True
 except ImportError:
     HAS_SLOWAPI = False
-    RateLimitExceeded = type("RateLimitExceeded", (Exception,), {})  # Placeholder for type hints  # type: ignore[assignment]
+    RateLimitExceeded = type(
+        "RateLimitExceeded", (Exception,), {}
+    )  # Placeholder for type hints  # type: ignore[assignment]
     logger.warning("slowapi not installed, rate limiting will be disabled")
 
 

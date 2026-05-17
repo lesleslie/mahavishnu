@@ -1,9 +1,10 @@
 # LLM Routing Standardization — Design Spec
+
 **Date:** 2026-05-16
 **Status:** Approved (rev 2 — post multi-agent review)
 **Scope:** crackerjack, session-buddy, mahavishnu, akosha, dhara (all Bodai components)
 
----
+______________________________________________________________________
 
 ## 1. Background and Motivation
 
@@ -11,7 +12,7 @@ Anthropic's June 15, 2026 billing change moves `claude -p` and the Agent SDK to 
 
 MiniMax's Token Plan (March 23, 2026) provides a single API key covering all modalities (text, image, audio, video) and explicitly allows concurrent Claude Code + API usage, making it the correct primary cloud provider.
 
----
+______________________________________________________________________
 
 ## 2. Provider Hierarchy
 
@@ -24,7 +25,7 @@ MiniMax's Token Plan (March 23, 2026) provides a single API key covering all mod
 
 **Key constraint:** llama-server runs on port **8081**, ollama on **11434**. These are separate processes and must not be conflated in configuration. Both services must bind to `127.0.0.1` (not `0.0.0.0`) — document this explicitly in the deployment runbook.
 
----
+______________________________________________________________________
 
 ## 3. Architecture
 
@@ -58,7 +59,7 @@ Mahavishnu maintains two complementary routing layers that operate at different 
 
 **Authority contract:** `task_router.py` determines the task category and model variant. Bifrost's CEL rules use `x-bf-task` to make operational decisions (cache, load balancing, priority queuing) — they do not override the model variant selected by task_router. This ensures task_router remains the single authoritative source of model selection when Bifrost is active.
 
----
+______________________________________________________________________
 
 ## 4. Components
 
@@ -82,6 +83,7 @@ class LLMAdapter(ABC):
 ```
 
 **Security hooks** are defined on the base class and called by `LLMProviderChain` (not by individual adapters):
+
 - `sanitize_input` — strips prompt injection patterns before any tier call (preserves the logic from `crackerjack/adapters/ai/base.py:_sanitize_prompt_input`)
 - `sanitize_error` — strips paths, API keys (`sk-[a-zA-Z0-9]{20,}` — note: fix stray space in existing regex), secrets before logging or raising
 - `validate_output` — for code-fixing callers: dangerous pattern detection + AST security scan (preserves `_validate_ai_generated_code` from crackerjack). Optional — callers that don't need code validation skip this hook.
@@ -101,6 +103,7 @@ Does **not** support: IMAGE_GENERATION, VIDEO_GENERATION (these require HailuoAd
 Async polling adapter for MiniMax Hailuo video generation. Supports: VIDEO_GENERATION only.
 
 **SSRF constraints (mandatory):**
+
 - Poll URL is constructed from a fixed base (`https://api.minimax.io/v1/video_generation/{job_id}`) — never from a URL returned in the job-submit response
 - HTTP redirects disabled on all poll requests
 - Hard cap: 60 poll iterations, 300s wall-clock maximum
@@ -148,7 +151,7 @@ class LLMProviderChain:
 
 **Circuit breaker:** Failure unit is **per tier-call** (after all retries for that tier are exhausted), not per attempt. N=5 consecutive tier-call failures → 60s cooldown.
 
-**Caller-level timeout:** The optional `timeout` parameter on `complete()` is an outer deadline wrapping the entire chain (all tiers). Tier-level timeouts come from `LLMTierConfig.timeout_seconds` (30s/60s/120s). The outer deadline, if set, pre-empts tier timeouts via `asyncio.wait_for` wrapping the full chain call — it is never used as the per-tier timeout.
+**Caller-level timeout:** The optional `timeout` parameter on `complete()` is an outer deadline wrapping the entire chain (all tiers). Tier-level timeouts come from `LLMTierConfig.timeout_seconds` (30s/60s/120s). The outer deadline, if set, preempts tier timeouts via `asyncio.wait_for` wrapping the full chain call — it is never used as the per-tier timeout.
 
 **Error sanitization:** All exception messages pass through `sanitize_error` before logging or inclusion in `AllTiersExhausted`. Provider SDK exceptions frequently embed the `Authorization` header value; this must be stripped before surfacing.
 
@@ -197,7 +200,7 @@ task_tiers:
 
 **YAML schema migration:** The existing `settings/models.yaml` uses top-level provider names with nested `task_routing:` dicts keyed by uppercase string enum names (e.g. `VISION`). The new schema is a **breaking change**. `LLMChainConfig` must include a Pydantic `model_validator` that accepts both the old shape (for backward compat during transition) and the new shape, with a deprecation warning on old-format load.
 
----
+______________________________________________________________________
 
 ## 5. Extended TaskCategory Enum
 
@@ -232,7 +235,7 @@ class TaskCategory(StrEnum):
 | AUDIO_TRANSCRIPTION | MiniMax-Speech-02-Turbo | whisper.cpp if local | ✗ |
 | VIDEO_GENERATION | MiniMax-Video-01 (Hailuo) | ✗ | ✗ |
 
----
+______________________________________________________________________
 
 ## 6. Data Flow
 
@@ -263,7 +266,7 @@ LLMResponse(content, provider, model, usage, latency_ms)
 
 **Bifrost overlay** (Phase 2, optional): When `BIFROST_BASE_URL` is set, Tier 1 requests route through Bifrost at `http://127.0.0.1:8471`. The `x-bf-task` header carries the `TaskCategory` value. Bifrost adds semantic caching (5m TTL, Redis Stack port 6380 — ensure cached prompts/responses contain no secrets as cache keys) and load-aware routing. Bifrost does **not** override the model variant chosen by task_router. Tiers 2 and 3 bypass Bifrost.
 
----
+______________________________________________________________________
 
 ## 7. Error Handling and Edge Cases
 
@@ -282,23 +285,26 @@ LLMResponse(content, provider, model, usage, latency_ms)
 | Malformed JSON from provider | sanitize_error → log DEBUG, count as failure | P2 |
 | Token limit exceeded | Log WARN with usage info, do not retry | P2 |
 
----
+______________________________________________________________________
 
 ## 8. Per-Repository Migration
 
 **Release sequencing:** Oneiric must be released with the `oneiric/llm/` module (targeting version `0.4.0`) before any downstream repo migration begins. Pin `oneiric>=0.4.0` in all consuming repos.
 
 ### 8.1 Oneiric (ships first — target v0.4.0)
+
 - **Add**: `oneiric/llm/` module (models, base, openai_compat, hailuo, chain, config)
 - **Add**: `TaskCategory` enum (extended, with VISION deprecation alias)
 - **Add**: `classify_task()` core logic
 - **Add**: Security hooks to `LLMAdapter` base
 
 ### 8.2 mcp-common
+
 - **Add**: `mcp_common/llm/__init__.py` — re-exports `LLMMessage`, `LLMUsage`, `LLMResponse` from `oneiric.llm.models`
 - (No new DTOs defined here — avoids dependency cycle)
 
 ### 8.3 crackerjack
+
 - **Remove**: `adapters/ai/claude.py`, `adapters/ai/qwen.py`, `adapters/ai/minimax.py`, `adapters/ai/ollama.py`, `adapters/ai/registry.py`
 - **Update** (these import from registry.py and must be migrated simultaneously):
   - `agents/enhanced_coordinator.py` — replace `ProviderChain`/`ProviderID` imports
@@ -312,18 +318,21 @@ LLMResponse(content, provider, model, usage, latency_ms)
 - **Change dep**: `oneiric>=0.4.0` (was `>=0.3.x`)
 
 ### 8.4 session-buddy
+
 - **Remove**: `llm/providers/anthropic_provider.py`, `llm/providers/gemini_provider.py`
 - **Keep**: `llm/providers/openai_provider.py` as reference during transition
 - **Add dep**: `oneiric>=0.4.0` (currently missing from pyproject.toml)
 - **Verify**: `default_provider = "minimax"` already set in settings.py ✓
 
 ### 8.5 akosha
+
 - **Audit**: Enumerate all LLM call sites in akosha before migration; add `test_akosha_llm_migration.py` parity test (mirrors crackerjack's approach)
 - **Add dep**: `mcp-common>=0.13.x` (currently missing from pyproject.toml)
 - **Remove**: try/except MCPBaseSettings fallback in `akosha/config.py`
 - **Add**: Oneiric LLMProviderChain for each identified LLM call site
 
 ### 8.6 mahavishnu
+
 - **Update**: `mahavishnu/workers/task_router.py` — extend TaskCategory, keep VISION alias, align model names
 - **Update**: `settings/models.yaml` — migrate to new `providers` + `task_tiers` schema with backward-compat validator
 - **Migrate**: String key `"VISION"` → `"IMAGE_UNDERSTANDING"` in models.yaml after VISION alias ships
@@ -332,14 +341,16 @@ LLMResponse(content, provider, model, usage, latency_ms)
 - **Bifrost Phase 2**: Reactivate via LaunchAgent after three-tier chain is stable
 
 ### 8.7 dhara
+
 - Verify via grep: `grep -r "llm\|LLM\|openai\|anthropic\|minimax" /path/to/dhara --include="*.py" -l`
 - If no results: no changes required
 
----
+______________________________________________________________________
 
 ## 9. Testing Strategy
 
 ### 9.1 Unit Tests (no external services)
+
 - `tests/unit/test_llm_classify.py` — parametrized classify_task() including empty prompt, new modality categories, VISION→IMAGE_UNDERSTANDING redirect
 - `tests/unit/test_llm_chain.py` — mocked tiers: fallback on failure, circuit breaker counts per tier-call not per attempt, CancelledError propagates, empty response retries within tier then advances, error messages are sanitized before surfacing
 - `tests/unit/test_modality_routing.py` — UnsupportedModalityError from OpenAICompatAdapter for VIDEO_GENERATION, video routed to HailuoAdapter
@@ -374,20 +385,21 @@ def skip_if_service_down(request):
 | akosha | `test_akosha_llm_migration.py` (enumerate + verify each migrated call site) |
 | mahavishnu | extend `test_task_router.py` for new TaskCategory variants + VISION alias |
 
----
+______________________________________________________________________
 
 ## 10. Bifrost Phase 2 (Deferred)
 
 Bifrost stays **optional** via `BIFROST_BASE_URL` env var until three-tier chain is stable end-to-end. No code change required to make Bifrost optional — the env var gate already exists in `mahavishnu/llm_gateway/client.py`.
 
 When ready to activate:
-1. Add audio/video CEL route rules to `config/bifrost/config.template.json`
-2. Re-enable image route rule (already drafted, currently disabled)
-3. Restore LaunchAgent via `docs/bifrost-reactivation-runbook.md`
-4. Set `BIFROST_BASE_URL=http://127.0.0.1:8471` in local environment
-5. Verify Redis Stack (port 6380) TTL enforcement and confirm no secrets are used as cache keys
 
----
+1. Add audio/video CEL route rules to `config/bifrost/config.template.json`
+1. Re-enable image route rule (already drafted, currently disabled)
+1. Restore LaunchAgent via `docs/bifrost-reactivation-runbook.md`
+1. Set `BIFROST_BASE_URL=http://127.0.0.1:8471` in local environment
+1. Verify Redis Stack (port 6380) TTL enforcement and confirm no secrets are used as cache keys
+
+______________________________________________________________________
 
 ## 11. Dependency Corrections and Release Order
 
@@ -405,6 +417,6 @@ When ready to activate:
 ### Release order (strict):
 
 1. **Oneiric v0.4.0** — ships `oneiric/llm/` module with VISION alias
-2. **mcp-common** — adds re-export shim
-3. **crackerjack, session-buddy, akosha, mahavishnu** — can migrate in parallel after step 2
-4. **VISION alias removal** — one release cycle after step 3, after all call sites confirmed migrated
+1. **mcp-common** — adds re-export shim
+1. **crackerjack, session-buddy, akosha, mahavishnu** — can migrate in parallel after step 2
+1. **VISION alias removal** — one release cycle after step 3, after all call sites confirmed migrated

@@ -1,5 +1,7 @@
 """Tests for signature redaction."""
 
+import pytest
+
 from mahavishnu.core.code_index.signature_redaction import (
     has_secrets,
     redact_signature,
@@ -39,3 +41,31 @@ def test_redact_none():
 
 def test_redact_connection_string():
     assert redact_signature('database_url = "postgres://..."') == 'database_url = "<REDACTED>"'
+
+
+@pytest.mark.parametrize(
+    ("signature", "expected"),
+    [
+        ('api_secret = "abc"', 'api_secret = "<REDACTED>"'),
+        ('private_key = "-----BEGIN RSA PRIVATE KEY-----"', 'private_key = "<REDACTED>"'),
+        ('github_token = "ghp_123"', 'github_token = "<REDACTED>"'),
+    ],
+)
+def test_redact_additional_secret_patterns(signature: str, expected: str) -> None:
+    assert redact_signature(signature) == expected
+
+
+def test_has_secrets_none() -> None:
+    assert has_secrets(None) is False
+
+
+@pytest.mark.parametrize(
+    "signature",
+    [
+        'api_secret = "abc"',
+        'private_key = "-----BEGIN RSA PRIVATE KEY-----"',
+        'github_token = "ghp_123"',
+    ],
+)
+def test_has_secrets_additional_matches(signature: str) -> None:
+    assert has_secrets(signature) is True

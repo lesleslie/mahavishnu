@@ -10,7 +10,7 @@
 
 **Tech Stack:** Python 3.13+, pydantic v2, mcp-common ≥0.14.0, pytest, pytest-asyncio
 
----
+______________________________________________________________________
 
 ## File Map
 
@@ -35,12 +35,14 @@
 | `session_buddy/settings.py` | session-buddy | Ensure `default_provider = "minimax"` |
 | `tests/` (per-repo) | all | New migration parity tests |
 
----
+______________________________________________________________________
 
 ## Task 1: Update mahavishnu `settings/models.yaml` for three-tier chain
 
 **Files:**
+
 - Modify: `settings/models.yaml` in `/Users/les/Projects/mahavishnu`
+
 - Modify: `tests/unit/test_models_yaml.py` (create if absent)
 
 - [ ] **Step 1: Write a failing test that validates the new schema**
@@ -231,12 +233,14 @@ git commit -m "feat(config): migrate models.yaml to three-tier provider chain sc
 - Mark bifrost as disabled pending Phase 2 activation"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Extend mahavishnu `task_router.py` with multimodal TaskCategory variants
 
 **Files:**
+
 - Modify: `mahavishnu/workers/task_router.py` in `/Users/les/Projects/mahavishnu`
+
 - Modify: `tests/unit/test_task_router_and_auth.py`
 
 - [ ] **Step 1: Write failing tests for new TaskCategory variants**
@@ -394,11 +398,12 @@ git commit -m "feat(routing): extend TaskCategory with multimodal variants and a
 - Add DEFAULT_LLAMA_SERVER_ROUTING for new llama-server tier"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Migrate mahavishnu workers to FallbackChain
 
 **Files:**
+
 - Modify: `mahavishnu/workers/cloud_worker.py`
 - Modify: `mahavishnu/workers/ollama.py`
 - Modify: `mahavishnu/workers/__init__.py`
@@ -581,19 +586,26 @@ Both workers now load their configuration from settings/models.yaml.
 CloudWorker covers all three tiers; OllamaWorker is restricted to ollama tier only."
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Migrate crackerjack AI registry to FallbackChain
 
 **Working directory:** `/Users/les/Projects/crackerjack`
 
 **Files:**
+
 - Delete: `crackerjack/adapters/ai/claude.py`, `minimax.py`, `qwen.py`, `ollama.py`, `registry.py`
+
 - Modify: `crackerjack/adapters/ai/__init__.py`
+
 - Modify: `crackerjack/adapters/ai/base.py`
+
 - Modify: `crackerjack/agents/enhanced_coordinator.py`
+
 - Modify: `crackerjack/cli/handlers/provider_selection.py`
+
 - Modify: `crackerjack/adapters/factory.py`
+
 - Rewrite: `crackerjack/tests/adapters/test_provider_chain.py`
 
 - [ ] **Step 1: Write parity tests before deleting anything**
@@ -657,7 +669,7 @@ Expected: PASS (mcp-common 0.14.0 must be installed).
 
 In `crackerjack/adapters/ai/base.py`, keep the existing security validation methods and add a new `execute_with_chain` helper:
 
-```python
+````python
 # In crackerjack/adapters/ai/base.py — ADD alongside existing BaseCodeFixer class
 
 from mcp_common.llm.fallback import FallbackChain
@@ -710,7 +722,7 @@ async def fix_code_with_chain(
         raise ValueError("AI-generated code failed safety validation")
 
     return content
-```
+````
 
 > **Note:** `_sanitize_prompt_input_static` and `_validate_ai_generated_code_static` are static
 > versions of the existing instance methods. Add `@staticmethod` wrappers in `base.py` if not
@@ -793,6 +805,7 @@ Fix any remaining import errors. The most common pattern: any file that imported
 `QwenCodeFixer`, or `OllamaCodeFixer` needs to be updated.
 
 Find all remaining references:
+
 ```bash
 grep -rn "ProviderChain\|ProviderID\|ProviderFactory\|ClaudeCodeFixer\|MiniMaxCodeFixer\|QwenCodeFixer\|OllamaCodeFixer" crackerjack/ --include="*.py"
 ```
@@ -810,18 +823,24 @@ Security validation (sanitize_input, validate_output) preserved in base.py.
 All callers updated to use FallbackChain.from_settings() + fix_code_with_chain()."
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: Migrate session-buddy LLM providers
 
 **Working directory:** `/Users/les/Projects/session-buddy`
 
 **Files:**
+
 - Delete: `session_buddy/llm/providers/anthropic_provider.py`
+
 - Delete: `session_buddy/llm/providers/gemini_provider.py`
+
 - Modify: `session_buddy/llm/providers/openai_provider.py` → rename to `minimax_provider.py`
+
 - Modify: `session_buddy/llm_providers.py`
+
 - Modify: `session_buddy/settings.py`
+
 - Modify: `session_buddy/llm/providers/__init__.py`
 
 - [ ] **Step 1: Write migration parity tests**
@@ -909,6 +928,7 @@ Ensure `default_provider = "minimax"` is set. Remove any `ANTHROPIC_API_KEY` or
 `GOOGLE_API_KEY` fields that were only needed by the deleted providers.
 
 Find and verify:
+
 ```bash
 grep -n "anthropic\|gemini\|ANTHROPIC\|GOOGLE_API" session_buddy/settings.py
 ```
@@ -950,7 +970,7 @@ session_buddy.llm_providers.get_llm_chain() returns the singleton FallbackChain.
 default_provider remains 'minimax'; all API key env vars for removed providers cleaned up."
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: Audit and migrate akosha LLM usage
 
@@ -1046,11 +1066,12 @@ git commit -m "feat(llm): migrate akosha LLM call sites to mcp_common FallbackCh
 git commit --allow-empty -m "chore: akosha LLM audit — no direct LLM call sites found, no changes needed"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: Integration smoke tests
 
 **Files:**
+
 - Create: `tests/integration/test_llm_e2e.py` (in mahavishnu repo)
 
 Run only when `BODAI_INTEGRATION_TESTS=1` **and** the relevant service is reachable.
@@ -1214,7 +1235,7 @@ Tests are skipped unless BODAI_INTEGRATION_TESTS=1.
 Per-tier skip guards check port reachability before attempting connection."
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review Checklist
 
@@ -1222,7 +1243,7 @@ Per-tier skip guards check port reachability before attempting connection."
 - [x] **Release sequencing** — Plan 1 (mcp-common 0.14.0) must ship before any task here executes. Stated as prerequisite.
 - [x] **Port conflation fixed** — Task 1 YAML explicitly documents llama-server on 8081 and ollama on 11434, with inline comments.
 - [x] **VISION alias preserved** — Task 2 keeps VISION in TaskCategory; DEFAULT_OLLAMA_ROUTING covers it.
-- [x] **Security validation preserved** — crackerjack's `_sanitize_prompt_input` and `_validate_ai_generated_code` are kept in `base.py` and re-used via static methods in `fix_code_with_chain`.
+- [x] **Security validation preserved** — crackerjack's `_sanitize_prompt_input` and `_validate_ai_generated_code` are kept in `base.py` and reused via static methods in `fix_code_with_chain`.
 - [x] **No placeholder steps** — all steps have complete code or explicit grep/find commands.
 - [x] **Akosha handled as conditional** — Task 6 covers both the "has LLM calls" and "no LLM calls" cases.
 - [x] **Integration tests skip-guard** — port reachability check gates each test independently, preventing CI failures when local tiers are offline.

@@ -1,364 +1,79 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-For a shorter, tool-neutral bootstrap document, start with `AGENTS.md`.
+Guidance for Claude Code working with Mahavishnu. Start with `AGENTS.md` for a shorter bootstrap.
 
 ## Ecosystem Context
 
-Mahavishnu is part of the **Bodai Ecosystem** - a collection of interconnected components:
+Mahavishnu is the control plane for the **Bodai Ecosystem**:
 
-| Component | Role | Port | Description |
-|-----------|------|------|-------------|
-| **Mahavishnu** | Orchestrator | 8680 | Multi-engine workflow orchestration (this repo) |
-| [Akosha](https://github.com/lesleslie/akosha) | Seer | 8682 | Cross-system intelligence & embeddings |
-| [Dhara](https://github.com/lesleslie/dhara) | Curator | 8683 | Persistent object storage with ACID |
-| [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder | 8678 | Session lifecycle & knowledge graphs |
-| [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector | 8676 | Quality gates & CI/CD validation |
-| [Oneiric](https://github.com/lesleslie/oneiric) | Foundation | N/A | Component resolution, lifecycle management, adapter system, action kits, domain bridges, runtime orchestration, remote delivery |
+| Component | Role | Port |
+|-----------|------|------|
+| **Mahavishnu** | Orchestrator | 8680 |
+| [Akosha](https://github.com/lesleslie/akosha) | Seer (Intelligence) | 8682 |
+| [Dhara](https://github.com/lesleslie/dhara) | Curator (State) | 8683 |
+| [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder (Memory) | 8678 |
+| [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector (Quality) | 8676 |
+| [Oneiric](https://github.com/lesleslie/oneiric) | Foundation | N/A |
 
-**Key Interactions:**
-
-- Routes tasks to **Akosha** for intelligence operations
-- Persists durable workflow, pool, routing, and approval state to **Dhara** for recovery
-- Tracks context in **Session-Buddy**
-- Validates with **Crackerjack** before execution
+Routes tasks to Akosha, persists state to Dhara, tracks context in Session-Buddy, validates with Crackerjack.
 
 ## Project Overview
 
-Mahavishnu is the internal control plane for the Bodai ecosystem. It is optimized first for orchestrating Bodai-owned repositories, MCP services, and AI-capable backends, with reusable patterns exposed through adapters and MCP tools.
+Mahavishnu is repo-centric orchestration infrastructure optimized for the Bodai ecosystem. Not a general-purpose end-user product. Provides:
 
-It is not primarily a general-purpose end-user coding product. The most accurate mental model is repo-centric orchestration and operations infrastructure with agent and workflow backends behind it.
+- **Adapters**: Prefect, LlamaIndex, Agno (all production-ready)
+- **Multi-pool orchestration**: Horizontal scaling across local, delegated, cloud workers
+- **WebSocket infrastructure**: Real-time workflow monitoring
+- **Content ingestion**: Webpages, blogs, books, OpenTelemetry traces
+- **MCP tools**: ~174 tools across pool, worker, coordination, messaging, session-buddy, OTel domains
 
-It currently provides:
+**Product posture**: Internal-first. MCP-first. Control-plane scope.
 
-- **Prefect adapter** - High-level orchestration with dynamic flows, deployment CRUD, schedules
-- **LlamaIndex adapter** - RAG pipelines with Ollama embeddings (re-enabled 2026-02-23 with 0.14.x)
-- **Agno adapter** - Multi-agent teams with MCP tools, Ollama/Claude/OpenAI support
-- **Multi-pool orchestration** for horizontal scaling across local, delegated, and cloud workers
-- **WebSocket infrastructure** for real-time workflow monitoring and coordination
-- **Content ingestion** system for blogs, webpages, and books
-- **OpenTelemetry ingester** with semantic search using pgvector
+## Key Architecture
 
-### Product posture
+**Oneiric layered config**: Defaults → `settings/mahavishnu.yaml` → `settings/local.yaml` → env vars (`MAHAVISHNU_*`).
 
-- Internal-first: treat Mahavishnu as ecosystem infrastructure for our own repos unless a task explicitly targets external reuse
-- MCP-first: prefer reusable orchestration capabilities exposed via tools and service layers over one-off scripts
-- Control-plane scope: emphasize routing, coordination, monitoring, and operational workflows more than "write code" framing
+**Adapter Pattern**: All engines implement `OrchestratorAdapter` from `mahavishnu/core/adapters/base.py`.
 
-### Key Architectural Patterns
+**Error Handling**: Custom exception hierarchy in `mahavishnu/core/errors.py` with structured context.
 
-**Oneiric Integration**: All configuration uses Oneiric patterns with layered loading:
+**Configuration**: `MahavishnuSettings` extends `MCPServerSettings` from mcp-common.
 
-1. Default values in Pydantic models
-1. `settings/mahavishnu.yaml` (committed)
-1. `settings/local.yaml` (gitignored, local dev)
-1. Environment variables `MAHAVISHNU_{FIELD}`
+## Quick Start
 
-**Key environment variables:**
-
-- `MAHAVISHNU_AUTH_SECRET` — JWT secret (minimum 32 chars)
-- `RUNPOD_API_KEY` — required for RunPodPool; set before spawning `pool_type="runpod"` pools
-
-**Adapter Pattern**: All orchestration engines implement `OrchestratorAdapter` from `mahavishnu/core/adapters/base.py`. Adapters are initialized in `MahavishnuApp._initialize_adapters()` only if enabled in configuration.
-
-**Error Handling**: Custom exception hierarchy in `mahavishnu/core/errors.py` provides structured error context with `message`, `details`, and `to_dict()` method for API responses.
-
-**Configuration Class**: `MahavishnuSettings` extends `MCPServerSettings` from mcp-common, providing field validation, type coercion, and environment variable overrides.
-
-## Development Commands
-
-### Environment Setup
+**Setup**:
 
 ```bash
-# Using uv (recommended)
-uv venv
-source .venv/bin/activate
-uv pip install -e ".[dev]"  # Installs dev dependencies
-
-# Or with pip
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+uv venv && source .venv/bin/activate && uv pip install -e ".[dev]"
 ```
 
-### Testing
+**Testing & Quality**:
 
 ```bash
-# Run all tests
-pytest
-
-# Run specific test file
-pytest tests/unit/test_config.py
-
-# Run with coverage
+pytest                                    # Run tests
 pytest --cov=mahavishnu --cov-report=html
-
-# Run async tests specifically
-pytest tests/unit/ -k "async"
-
-# Property-based tests with Hypothesis
-pytest tests/property/
+crackerjack run                          # All quality checks
 ```
 
-### Code Quality
+**MCP Server**:
 
 ```bash
-# Format code (Ruff replaces black/isort)
-ruff format mahavishnu/
-
-# Lint (Ruff replaces flake8)
-ruff check mahavishnu/
-ruff check --fix mahavishnu/  # Auto-fix issues
-
-# Type check (mypy or pyright fallback)
-mypy mahavishnu/
-pyright mahavishnu/  # Fallback option
-
-# Security scan
-bandit -r mahavishnu/
-safety check
-
-# Additional checks
-creosote                    # Detect unused dependencies
-refurb mahavishnu/          # Modern Python suggestions
-codespell mahavishnu/        # Typo detection
-complexipy --max_complexity 15 mahavishnu/  # Complexity checking
-
-# Run all checks via Crackerjack
-crackerjack run
+mahavishnu mcp start|status|health|stop
 ```
 
-### MCP Server
+**CLI**: See [CLI Reference](docs/CLI_REFERENCE.md) for all commands (repo, content, pool, routing, monitoring, etc.)
 
-```bash
-# Start MCP server
-mahavishnu mcp start
+## Reference Documentation
 
-# Check MCP server status
-mahavishnu mcp status
+For detailed information, see:
 
-# Run health probe
-mahavishnu mcp health
-
-# Stop MCP server
-mahavishnu mcp stop
-```
-
-### CLI Commands
-
-**Repository Management:**
-
-```bash
-# List all repositories
-mahavishnu list-repos
-
-# List repositories by tag
-mahavishnu list-repos --tag backend
-
-# List repositories by role
-mahavishnu list-repos --role orchestrator
-
-# List all available roles
-mahavishnu list-roles
-
-# Show detailed information about a specific role
-mahavishnu show-role tool
-
-# List all repository nicknames
-mahavishnu list-nicknames
-```
-
-**Content Ingestion:**
-
-```bash
-# Ingest a webpage
-mahavishnu ingest web --url "https://example.com"
-
-# Ingest a blog
-mahavishnu ingest blog --url "https://blog.example.com/post"
-
-# Ingest a book (PDF/EPUB)
-mahavishnu ingest book --path ~/Documents/book.pdf
-
-# Evaluate content quality
-mahavishnu quality evaluate --content-id <id>
-```
-
-**WebSocket & Monitoring:**
-
-```bash
-# Start WebSocket server for real-time updates
-mahavishnu websocket start --port 8690
-
-# View pool metrics via WebSocket
-mahavishnu monitor pools
-
-# View workflow execution status
-mahavishnu monitor workflows
-```
-
-**Adaptive Routing System**
-
-Mahavishnu implements intelligent adaptive routing with statistical learning and cost optimization:
-
-**Routing CLI Commands** (`routing_cli.py`):
-
-- View adapter statistics and performance
-- Recalculate preference order based on latest data
-- Configure cost budgets with alerts
-- Set optimization strategies by task type
-- Manage A/B tests for routing preferences
-
-```bash
-# View routing statistics
-mahavishnu routing stats
-
-# Recalculate adapter preferences
-mahavishnu routing recalculate
-
-# Set cost budget
-mahavishnu routing set-budget --type daily --limit 50
-
-# Set optimization strategy
-mahavishnu routing set-strategy --task-type AI_TASK --strategy cost
-
-# List all budgets
-mahavishnu routing list-budgets
-
-# Delete budget
-mahavishnu routing delete-budget --type daily
-```
-
-**Monitoring & Alerting**:
-
-- **Routing Metrics** (`mahavishnu/core/routing_metrics.py`):
-  - Prometheus metrics for routing decisions, adapter executions, fallbacks, costs, A/B tests
-  - Counter metrics: decisions, executions, fallbacks, costs, budget alerts, A/B test events
-  - Histogram metrics: routing latency, adapter latency, fallback chain length, cost distribution
-  - Gauge metrics: current costs, active experiments
-  - Summary: Metrics server on port 9091
-  - **Alerting System** (`mahavishnu/core/routing_alerts.py`):
-  - Adapter degradation detection (success rate < 95%)
-  - Cost spike detection (2x multiplier triggers alert)
-  - Excessive fallback detection (> 10% rate)
-  - Alert handlers: Logging, Webhook (Slack/PagerDuty/etc.)
-  - Background evaluation loop (60s intervals)
-- **Grafana Dashboard** (`docs/grafana/Routing_Monitoring.json`):
-  - 12 panels: routing decisions, success rates, latency percentiles, fallbacks, costs, budgets, A/B tests
-  - Dashboard UID: `mahavishnu-routing-monitoring`
-  - Import: Dashboards → Import → Upload `Routing_Monitoring.json`
-  - Configure Prometheus datasource: `http://localhost:9091`
-
-**Routing Metrics Setup**
-
-The routing metrics system is automatically initialized when MahavishnuApp starts. The Prometheus metrics server runs on port 9091 (configurable via `monitoring.routing_metrics_port`).
-
-**Metrics Initialization:**
-
-```python
-from mahavishnu.core.routing_metrics import get_routing_metrics
-
-# Lazy singleton pattern - components use shared metrics instance
-metrics = get_routing_metrics()
-
-# Or initialize with custom metrics instance
-from mahavishnu.core.routing_metrics import RoutingMetrics
-metrics = RoutingMetrics()
-```
-
-**Starting Metrics Server:**
-
-```bash
-# Metrics server starts automatically with MahavishnuApp
-python -m mahavishnu.core.routing_metrics
-
-# Or manually start metrics server
-python -m mahavishnu.core.routing_metrics
-# Metrics available at: http://localhost:9091
-```
-
-**Grafana Dashboard Setup:**
-
-1. Start Prometheus metrics server (if not already running)
-1. Open Grafana: http://localhost:3000
-1. Go to Dashboards → Import
-1. Upload `docs/grafana/Routing_Monitoring.json`
-1. Import dashboard and select Prometheus datasource: `http://localhost:9091`
-1. View real-time routing metrics and alerts
-
-**Key Architecture Insights:**
-
-- **StatisticalRouter**: Analyzes adapter performance and generates preference orders
-- **CostOptimizer**: Pareto frontier analysis for cost-aware routing
-- **TaskRouter**: Coordinates adapters with fallback chains and graceful degradation
-- **ExecutionTracker**: Storage-agnostic metrics collection with batch writes
-- **Lazy metric initialization**: Prevents duplicate Prometheus registration errors
-
-**Key Architecture Insights**:
-
-- **StatisticalRouter**: Analyzes adapter performance and dynamically updates preference order
-- **CostOptimizer**: Pareto frontier analysis for multi-objective optimization (cost vs latency vs success)
-- **TaskRouter**: Coordinates adapters with fallback chains and graceful degradation
-- **ExecutionTracker**: Storage-agnostic metrics with batch writes and TTL cleanup
-- **Lazy metric initialization**: Prevents duplicate Prometheus registration errors
-
-**Workflow Sweep:**
-
-```bash
-# Trigger workflow sweep
-mahavishnu sweep --tag python --adapter prefect
-```
-
-#### Role-Based Repository Organization
-
-Mahavishnu uses a role-based taxonomy to organize repositories and enable intelligent workflow routing. Each repository is assigned a single role that defines its purpose and capabilities within the ecosystem.
-
-**Available Roles:**
-
-| Role | Description | Capabilities | Example Repos |
-|------|-------------|---------------|---------------|
-| **orchestrator** | Coordinates workflows and manages cross-repository operations | sweep, schedule, monitor, route, coordinate | mahavishnu (vishnu) |
-| **resolver** | Platform foundation: component resolution, lifecycle management, adapter system, action kits, domain bridges, runtime orchestration, remote delivery | resolve, activate, swap, explain, watch, resolve, configure, orchestrate | oneiric |
-| **manager** | Manages state, sessions, and knowledge across the ecosystem | capture, search, restore, track, analyze | session-buddy (buddy) |
-| **inspector** | Validates code quality and enforces development standards | test, lint, scan, report, validate | crackerjack (jack) |
-| **builder** | Builds applications and web interfaces | render, route, authenticate, build | fastblocks |
-| **soothsayer** | Reveals hidden patterns and insights across distributed systems | aggregate, search, detect, correlate, graph | akosha |
-| **app** | End-user applications with graphical interfaces | interface, automate, serve-users, integrate | mdinject, splashstand |
-| **asset** | UI libraries, component collections, and style guides | style, theme, componentize, design | fastbulma |
-| **foundation** | Foundational utilities, libraries, and shared code | share, standardize, abstract, build-upon | mcp-common |
-| **visualizer** | Creates visual diagrams and documentation | draw, render, visualize, document | excalidraw-mcp, mermaid-mcp |
-| **extension** | Extends framework capabilities with pluggable modules | extend, filter, enhance, plug-in | jinja2-inflection, jinja2-custom-delimiters |
-| **tool** | Specialized tools and integrations via MCP protocol | connect, expose, integrate | mailgun-mcp, raindropio-mcp, unifi-mcp, etc. |
-
-**Role-Based Query Examples:**
-
-```bash
-# Find all orchestrator repos (should be just mahavishnu)
-mahavishnu list-repos --role orchestrator
-
-# Find all MCP tool integrations
-mahavishnu list-repos --role tool
-
-# Find all UI libraries
-mahavishnu list-repos --role asset
-
-# Show detailed info about the tool role
-mahavishnu show-role tool
-```
-
-**Repository Metadata:**
-
-Each repository in `settings/repos.yaml` includes:
-
-- `name`: Repository name
-- `package`: Python package name
-- `path`: Filesystem path
-- `nickname`: Short nickname (optional)
-- `role`: Single role from taxonomy
-- `tags`: List of tags for additional categorization
-- `description`: Human-readable description
-- `mcp`: "native" for core MCP servers, "3rd-party" for external integrations
+- **[CLI Reference](docs/CLI_REFERENCE.md)** — All CLI commands organized by subsystem
+- **[Routing Guide](docs/ROUTING_GUIDE.md)** — Adaptive routing, metrics, alerting, Grafana setup
+- **[Repository Roles](docs/REPOSITORY_ROLES.md)** — Role taxonomy and metadata
+- **[Pool Reference](docs/POOL_REFERENCE.md)** — Pool types, configuration, usage patterns
+- **[Data Ingestion](docs/DATA_INGESTION.md)** — Content and OpenTelemetry trace ingestion
+- **[Configuration](docs/CONFIGURATION.md)** — Config files, environment variables, LLM routing
+- **[File Reference](docs/FILE_REFERENCE.md)** — Core app, MCP, pools, workers, CLI, ingesters
 
 ## Pool Management
 

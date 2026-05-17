@@ -463,9 +463,15 @@ class ResilientEmbeddingClient:
             else:
                 r = await self.generate_embedding(texts[idx], use_cache=False)
                 emb, source = r.embedding, r.source
-            results.append(ResilientEmbeddingResult(
-                embedding=emb, source=source, dimension=len(emb), latency_ms=0.0, cached=False,
-            ))
+            results.append(
+                ResilientEmbeddingResult(
+                    embedding=emb,
+                    source=source,
+                    dimension=len(emb),
+                    latency_ms=0.0,
+                    cached=False,
+                )
+            )
             if use_cache and self._embedding_cache:
                 await self._embedding_cache.set(texts[idx], emb)
         return results
@@ -481,19 +487,29 @@ class ResilientEmbeddingClient:
         for i, text in enumerate(texts):
             if i in cached_results:
                 emb = cached_results[i]
-                final.append(ResilientEmbeddingResult(
-                    embedding=emb, source=EmbeddingSource.CACHE,
-                    dimension=len(emb), latency_ms=0.0, cached=True,
-                ))
+                final.append(
+                    ResilientEmbeddingResult(
+                        embedding=emb,
+                        source=EmbeddingSource.CACHE,
+                        dimension=len(emb),
+                        latency_ms=0.0,
+                        cached=True,
+                    )
+                )
             elif new_idx < len(new_results):
                 final.append(new_results[new_idx])
                 new_idx += 1
             else:
                 emb = self._generate_mock_embedding(text)
-                final.append(ResilientEmbeddingResult(
-                    embedding=emb, source=EmbeddingSource.MOCK,
-                    dimension=len(emb), latency_ms=0.0, cached=False,
-                ))
+                final.append(
+                    ResilientEmbeddingResult(
+                        embedding=emb,
+                        source=EmbeddingSource.MOCK,
+                        dimension=len(emb),
+                        latency_ms=0.0,
+                        cached=False,
+                    )
+                )
         return final
 
     async def generate_batch_embeddings(

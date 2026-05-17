@@ -10,7 +10,7 @@ from pathlib import Path
 import secrets
 import shutil
 import subprocess
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 import uuid
 
 import yaml
@@ -93,9 +93,15 @@ class ScaffoldingEngine:
             raise ValueError("Validation failed:\n" + "\n".join(f"  - {i}" for i in issues))
 
     def _prepare_all_variables(
-        self, resolved: dict, variables: dict, scaffold_env: Any, template_env: Any  # type: ignore[name-defined]
+        self,
+        resolved: dict,
+        variables: dict,
+        scaffold_env: Any,
+        template_env: Any,  # type: ignore[name-defined]
     ) -> dict:
-        slot_injections = self._collect_slot_injections(resolved, variables, scaffold_env, template_env)
+        slot_injections = self._collect_slot_injections(
+            resolved, variables, scaffold_env, template_env
+        )
         all_slot_names: set[str] = {
             slot_name
             for p in resolved.values()
@@ -103,7 +109,9 @@ class ScaffoldingEngine:
             if slot.type == "file-merge"
         }
         slot_variables = {f"slot_{name}": "" for name in all_slot_names}
-        slot_variables.update({f"slot_{name}": content for name, content in slot_injections.items()})
+        slot_variables.update(
+            {f"slot_{name}": content for name, content in slot_injections.items()}
+        )
         return {**variables, **slot_variables}
 
     def scaffold(

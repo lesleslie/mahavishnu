@@ -10,7 +10,7 @@
 
 **Working directory:** `/Users/les/Projects/mcp-common`
 
----
+______________________________________________________________________
 
 ## File Map
 
@@ -25,12 +25,14 @@
 | `mcp_common/llm/__init__.py` | Export new types and HailuoAdapter |
 | `tests/test_llm.py` | Extend with new tests (all existing tests must still pass) |
 
----
+______________________________________________________________________
 
 ## Task 1: Add multimodal TaskType variants
 
 **Files:**
+
 - Modify: `mcp_common/llm/types.py`
+
 - Modify: `tests/test_llm.py`
 
 - [ ] **Step 1: Write failing tests for new TaskType variants**
@@ -141,13 +143,16 @@ git add mcp_common/llm/types.py tests/test_llm.py
 git commit -m "feat(llm): add multimodal TaskType variants and VISION deprecation alias"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Add UnsupportedModalityError exception
 
 **Files:**
+
 - Modify: `mcp_common/llm/exceptions.py`
+
 - Modify: `mcp_common/llm/__init__.py`
+
 - Modify: `tests/test_llm.py`
 
 - [ ] **Step 1: Write failing test**
@@ -206,12 +211,14 @@ git add mcp_common/llm/exceptions.py mcp_common/llm/__init__.py tests/test_llm.p
 git commit -m "feat(llm): add UnsupportedModalityError exception"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: Add per-tier timeout and conditional auth to ProviderConfig
 
 **Files:**
+
 - Modify: `mcp_common/llm/config.py`
+
 - Modify: `tests/test_llm.py`
 
 - [ ] **Step 1: Write failing tests**
@@ -317,12 +324,14 @@ git add mcp_common/llm/config.py tests/test_llm.py
 git commit -m "feat(llm): add timeout_seconds, require_auth, api_key_env to ProviderConfig"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Add llama-server as a recognized provider and fail-closed init validation
 
 **Files:**
+
 - Modify: `mcp_common/llm/config.py`
+
 - Modify: `tests/test_llm.py`
 
 - [ ] **Step 1: Write failing tests**
@@ -475,12 +484,14 @@ git add mcp_common/llm/config.py tests/test_llm.py
 git commit -m "feat(llm): add llama_server support and fail-closed API key validation"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: Add per-tier retry loop and error sanitization to FallbackChain
 
 **Files:**
+
 - Modify: `mcp_common/llm/fallback.py`
+
 - Modify: `tests/test_llm.py`
 
 - [ ] **Step 1: Write failing tests**
@@ -783,13 +794,16 @@ git add mcp_common/llm/fallback.py mcp_common/llm/provider.py tests/test_llm.py
 git commit -m "feat(llm): add per-tier retry loop, error sanitization, and CancelledError propagation"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: Create HailuoAdapter for MiniMax video generation
 
 **Files:**
+
 - Create: `mcp_common/llm/hailuo.py`
+
 - Modify: `mcp_common/llm/__init__.py`
+
 - Modify: `tests/test_llm.py`
 
 - [ ] **Step 1: Write failing tests**
@@ -1027,11 +1041,12 @@ git add mcp_common/llm/hailuo.py mcp_common/llm/__init__.py tests/test_llm.py
 git commit -m "feat(llm): add HailuoAdapter with SSRF-safe async polling for MiniMax video"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: Add edge case tests, Hypothesis property test, and final validation
 
 **Files:**
+
 - Modify: `tests/test_llm.py`
 
 - [ ] **Step 1: Add FallbackChain edge case tests**
@@ -1138,10 +1153,13 @@ Expected: all tests PASS, no ruff errors.
 - [ ] **Step 5: Bump version to 0.14.0 in `pyproject.toml`**
 
 Change:
+
 ```toml
 version = "0.13.3"
 ```
+
 To:
+
 ```toml
 version = "0.14.0"
 ```
@@ -1163,7 +1181,7 @@ git commit -m "feat(llm): finalize mcp-common 0.14.0 — three-tier provider cha
 - HailuoAdapter: SSRF-safe video generation with fixed-base poll URL"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review Checklist
 

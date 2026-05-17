@@ -149,6 +149,7 @@ tests/archived/
 # Track canonical config (agents, skills, commands, CLAUDE.md, mcp-hooks.json,
 # settings.local.json, CLAUDE.md); ignore runtime-only and secret-adjacent dirs.
 .claude/settings.json
+!.claude/settings.json
 .claude/hooks/scripts/
 .claude/skills/*/.archive/
 .claude/backups/
@@ -166,6 +167,8 @@ oneiric/
 backups/
 .backups/
 data/
+!.claude/commands/tools/development/data/
+!.claude/commands/tools/development/data/**
 
 # ============================================================================
 # XDG Base Directory Compliance

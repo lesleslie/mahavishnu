@@ -229,8 +229,14 @@ class CrossRepoFilter:
         """
         effective_repo_names, applied_filters = await self._resolve_effective_repos(criteria)
 
-        status_filter = criteria.statuses[0] if criteria.statuses and len(criteria.statuses) == 1 else None
-        priority_filter = criteria.priorities[0] if criteria.priorities and len(criteria.priorities) == 1 else None
+        status_filter = (
+            criteria.statuses[0] if criteria.statuses and len(criteria.statuses) == 1 else None
+        )
+        priority_filter = (
+            criteria.priorities[0]
+            if criteria.priorities and len(criteria.priorities) == 1
+            else None
+        )
 
         task_filter = TaskListFilter(
             status=status_filter,
@@ -253,8 +259,12 @@ class CrossRepoFilter:
         if criteria.date_range:
             applied_filters["date_range"] = {
                 "last_n_days": criteria.date_range.last_n_days,
-                "start": criteria.date_range.start_date.isoformat() if criteria.date_range.start_date else None,
-                "end": criteria.date_range.end_date.isoformat() if criteria.date_range.end_date else None,
+                "start": criteria.date_range.start_date.isoformat()
+                if criteria.date_range.start_date
+                else None,
+                "end": criteria.date_range.end_date.isoformat()
+                if criteria.date_range.end_date
+                else None,
             }
         if criteria.text_search:
             applied_filters["text_search"] = criteria.text_search
@@ -313,10 +323,7 @@ class CrossRepoFilter:
 
     @staticmethod
     def _matches_text_search(task: Task, pattern: re.Pattern, fields: list[str]) -> bool:
-        return any(
-            (value := getattr(task, f, None)) and pattern.search(str(value))
-            for f in fields
-        )
+        return any((value := getattr(task, f, None)) and pattern.search(str(value)) for f in fields)
 
     def _apply_text_filter(self, tasks: list[Task], criteria: FilterCriteria) -> list[Task]:
         if not criteria.text_search:

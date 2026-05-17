@@ -98,9 +98,7 @@ def persist_workflow_end(
     )
 
 
-def _filter_repos_by_criteria(
-    repos: list[dict], tag: str | None, role: str | None
-) -> list[str]:
+def _filter_repos_by_criteria(repos: list[dict], tag: str | None, role: str | None) -> list[str]:
     if tag:
         return [r["path"] for r in repos if tag in r.get("tags", [])]
     if role:
@@ -108,9 +106,7 @@ def _filter_repos_by_criteria(
     return [r["path"] for r in repos]
 
 
-def _collect_valid_repo(
-    app: Any, repo_path: str, user_id: str | None, logger: Any
-) -> str | None:
+def _collect_valid_repo(app: Any, repo_path: str, user_id: str | None, logger: Any) -> str | None:
     try:
         validated_path = validate_path(repo_path, app.config.allowed_repo_paths)
         if not validated_path.exists():
@@ -133,7 +129,10 @@ def get_repos(
     if tag and not tag.replace("-", "").replace("_", "").isalnum():
         raise ValidationError(
             message=f"Invalid tag: {tag}",
-            details={"tag": tag, "suggestion": "Tags must be alphanumeric with hyphens/underscores"},
+            details={
+                "tag": tag,
+                "suggestion": "Tags must be alphanumeric with hyphens/underscores",
+            },
         )
 
     if role:
@@ -141,14 +140,18 @@ def get_repos(
         if role not in valid_roles:
             raise ValidationError(
                 message=f"Invalid role: {role}",
-                details={"role": role, "valid_roles": valid_roles,
-                         "suggestion": f"Use one of: {', '.join(valid_roles)}"},
+                details={
+                    "role": role,
+                    "valid_roles": valid_roles,
+                    "suggestion": f"Use one of: {', '.join(valid_roles)}",
+                },
             )
 
     repos = app.repos_config.get("repos", [])
     filtered_repos = _filter_repos_by_criteria(repos, tag, role)
     return [
-        path for repo_path in filtered_repos
+        path
+        for repo_path in filtered_repos
         if (path := _collect_valid_repo(app, repo_path, user_id, logger)) is not None
     ]
 

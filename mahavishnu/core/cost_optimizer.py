@@ -480,12 +480,11 @@ class CostOptimizer:
             latency_score = max(0.0, 1.0 - (choice.latency_ms / self.max_latency_ms))
             return 0.7 * choice.success_rate + 0.3 * latency_score
 
-    async def _compute_avg_latency(
-        self, tracker: Any, adapter: Any, task_type: TaskType
-    ) -> int:
+    async def _compute_avg_latency(self, tracker: Any, adapter: Any, task_type: TaskType) -> int:
         recent = await tracker.get_recent_executions(limit=100)
         latencies = [
-            e.latency_ms for e in recent
+            e.latency_ms
+            for e in recent
             if e.adapter == adapter and e.task_type == task_type and e.latency_ms
         ]
         if latencies:
@@ -536,11 +535,13 @@ class CostOptimizer:
         for adapter in AdapterType:
             stats = await tracker.get_adapter_stats(adapter)
             if stats is not None:
-                adapters_data.append({
-                    "adapter": adapter,
-                    "success_rate": stats["success_rate"],
-                    "total_executions": stats["total_executions"],
-                })
+                adapters_data.append(
+                    {
+                        "adapter": adapter,
+                        "success_rate": stats["success_rate"],
+                        "total_executions": stats["total_executions"],
+                    }
+                )
 
         if not adapters_data:
             return None
@@ -550,21 +551,31 @@ class CostOptimizer:
             adapter = adapter_data["adapter"]
             avg_latency = await self._compute_avg_latency(tracker, adapter, task_type)
             cost_usd = await self.track_execution_cost(
-                adapter=adapter, task_type=task_type,
-                execution_id="estimate", latency_ms=avg_latency,
+                adapter=adapter,
+                task_type=task_type,
+                execution_id="estimate",
+                latency_ms=avg_latency,
             )
             base_choice = CostAwareChoice(
-                adapter=adapter, task_type=task_type, strategy=strategy,
-                cost_usd=cost_usd, success_rate=adapter_data["success_rate"],
-                latency_ms=avg_latency, score=0.0, reasoning="",
-                pareto_dominated=False, constraints_satisfied=True,
+                adapter=adapter,
+                task_type=task_type,
+                strategy=strategy,
+                cost_usd=cost_usd,
+                success_rate=adapter_data["success_rate"],
+                latency_ms=avg_latency,
+                score=0.0,
+                reasoning="",
+                pareto_dominated=False,
+                constraints_satisfied=True,
             )
             base_choice.score = self.score_adapter_choice(choice=base_choice, strategy=strategy)
             choices.append(base_choice)
 
         if constraints:
             for choice in choices:
-                check = await self.check_budget_constraints(adapter=choice.adapter, task_type=task_type)
+                check = await self.check_budget_constraints(
+                    adapter=choice.adapter, task_type=task_type
+                )
                 choice.constraints_satisfied = check["constraints_satisfied"]
                 choice.violated_budgets = check["violated_budgets"]
                 if not choice.constraints_satisfied:
@@ -580,7 +591,9 @@ class CostOptimizer:
         best.reasoning = self._build_choice_reasoning(best, frontier, strategy)
 
         self.metrics.record_routing_decision(
-            adapter=best.adapter, task_type=task_type, preference_order=1,
+            adapter=best.adapter,
+            task_type=task_type,
+            preference_order=1,
         )
         return best
 

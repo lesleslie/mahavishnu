@@ -733,7 +733,9 @@ class PagerDutyNotificationChannel(NotificationChannel):
             headers = {"Content-Type": "application/json"}
 
             response = requests.post(
-                "https://events.pagerduty.com/v2/enqueue", json=payload, headers=headers  # type: ignore[arg-type]
+                "https://events.pagerduty.com/v2/enqueue",
+                json=payload,
+                headers=headers,  # type: ignore[arg-type]
             )
 
             if response.status_code != 202:

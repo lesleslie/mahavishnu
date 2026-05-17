@@ -16,53 +16,32 @@ ______________________________________________________________________
 
 ## Automation Orchestration Playbook
 
-[Extended thinking: Consolidate automation work across pipelines, environments, and guardrails so teams can iterate quickly without fragmenting responsibilities.]
+Use this workflow to scope, build, and hand off automation that spans pipelines, quality gates, or telemetry.
 
-## Overview
+## Focus areas
 
-Use this workflow to scope, implement, and socialize automation spanning build pipelines, quality gates, and telemetry.
+- Clear ownership and target environments
+- Pipeline or workflow design
+- Quality and safety gates
+- Telemetry and failure monitoring
+- Handoff, docs, and freshness checks
 
-## Prerequisites
+## Workflow
 
-- Confirm target repository or service ownership and availability.
-- Ensure required credentials for CI/CD, observability, and package registries are provisioned.
-- Review recent incidents or automation gaps to prioritize fixes.
+1. Identify the automation goal and current friction.
+1. Design the minimal workflow and guardrails.
+1. Integrate quality, telemetry, and any required approvals.
+1. Create runbooks and enablement material.
+1. Schedule a review to keep the automation current.
+
+## Output
+
+- Automation implementation plan
+- Pipeline/workflow definition
+- Handoff and upkeep checklist
 
 ## Inputs
 
-- `$ARGUMENTS` — short summary of the automation goal (e.g., "CI pipeline for payments service").
-- `$AUTOMATION_SCOPE` — comma-separated modes: `pipeline`, `quality`, `telemetry`, `enablement`.
-- `$TARGET_ENV` — environments affected (dev, staging, prod).
-
-## Outputs
-
-- Automation implementation plan with owners and milestones.
-- Updated pipeline or workflow definition merged to main.
-- Documentation and enablement assets for ongoing upkeep.
-
-## Phases
-
-### Phase 1 – Discovery & Intent
-
-- Use Task tool with `subagent_type="developer-enablement-lead"` to analyze current workflows, tooling friction, and baseline metrics for `$ARGUMENTS`.
-- Capture automation backlog, success criteria, and dependency list.
-
-### Phase 2 – Build & Integrate
-
-- For pipeline work, delegate to `developer-enablement-lead` with prompts referencing `commands/tools/development/code-quality/dependency-lifecycle.md` for bootstrap actions.
-- For quality gates, engage `qa-strategist` to design test matrices and CI/CD guardrails, aligning with `commands/tools/development/testing/quality-validation.md`.
-
-### Phase 3 – Telemetry & Safety Nets
-
-- Engage `observability-incident-lead` to instrument pipelines and deployments, ensuring alerting on automation failure paths.
-- Consult `privacy-officer` when automation touches personal data flows.
-
-### Phase 4 – Enablement & Handoff
-
-- Use Task tool with `subagent_type="content-designer"` to produce runbooks and quick-start guides.
-- Partner with `support-analytics-specialist` to monitor adoption metrics and gather feedback.
-
-## Handoffs & Follow-Up
-
-- Schedule a review with the owning squad to validate automation outcomes.
-- Set recurring freshness checks (quarterly) with `developer-enablement-lead` and `observability-incident-lead` to keep guardrails current.
+- `$ARGUMENTS`
+- `$AUTOMATION_SCOPE`
+- `$TARGET_ENV`

@@ -112,7 +112,9 @@ class MockSpan:
 class MockTracer:
     """No-op tracer for fallback instrumentation."""
 
-    def start_as_current_span(self, name: str, attributes: dict[str, str] | None = None) -> MockSpan:
+    def start_as_current_span(
+        self, name: str, attributes: dict[str, str] | None = None
+    ) -> MockSpan:
         """Return a no-op span."""
         return MockSpan()
 

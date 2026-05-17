@@ -15,51 +15,25 @@ ______________________________________________________________________
 
 ## Product Discovery Sprint
 
-[Extended thinking: Align cross-functional partners on the problem space before investing in delivery.]
-
-## Overview
-
-This workflow guides a one- to two-week discovery sprint to clarify user problems, validate hypotheses, and prioritize solutions.
-
-## Prerequisites
-
-- Executive sponsor or product trio ready to invest in discovery.
-- Access to stakeholders, users, or proxies for interviews.
-- Agreement on decision criteria for prioritization.
-
 ## Inputs
 
-- `$ARGUMENTS` — problem statement or opportunity area.
-- `$DISCOVERY_SCOPE` — focus areas such as `user-research`, `data-analysis`, `compliance`.
-- `$DECISION_DATE` — date to present findings.
+- `$ARGUMENTS` - problem statement or opportunity area.
+- `$DISCOVERY_SCOPE` - `user-research`, `data-analysis`, or `compliance`.
+- `$DECISION_DATE` - date to present findings.
 
 ## Outputs
 
-- Discovery brief with validated insights and recommended next steps.
+- Discovery brief with validated insights.
 - Prioritized backlog or experiment plan.
-- Risk and compliance considerations documented.
+- Risk and compliance notes.
 
 ## Phases
 
-### Phase 1 – Frame & Plan
+1. Frame the work with goals, success metrics, stakeholders, and research plan.
+1. Validate hypotheses with interviews, usability tests, and data analysis where needed.
+1. Synthesize findings into a recommendation and decision.
 
-- `product-manager` refines goals, success metrics, and stakeholder map.
-- `ux-researcher` designs the research plan and recruiting needs.
-- `support-analytics-specialist` surfaces existing customer feedback or ticket data.
+## Handoffs
 
-### Phase 2 – Explore & Validate
-
-- Conduct interviews and usability tests via `ux-researcher` with focus from `$DISCOVERY_SCOPE`.
-- Use `data-scientist` for quantitative validation when data analysis is required.
-- Engage `privacy-officer` leveraging `commands/tools/workflow/privacy-impact-assessment.md` if personal data is involved.
-
-### Phase 3 – Synthesize & Decide
-
-- `product-manager` facilitates synthesis workshop, distilling insights into opportunity solution trees.
-- `delivery-lead` assesses feasibility and sequencing for candidate solutions.
-- `customer-success-lead` outlines early adopter enablement and feedback loops.
-
-## Handoffs & Follow-Up
-
-- Present discovery outcomes to leadership, capturing go/no-go decisions.
-- Feed prioritized items into the Feature Delivery Lifecycle workflow.
+- Present the outcome to leadership.
+- Feed approved work into the delivery lifecycle.

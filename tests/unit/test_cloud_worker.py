@@ -111,7 +111,9 @@ class TestBuildFallbackChain:
             return _make_mock_chain()
 
         cfg = CloudWorkerConfig()
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", side_effect=capture):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", side_effect=capture
+        ):
             _build_fallback_chain(cfg)
 
         assert len(captured) == 1
@@ -131,7 +133,9 @@ class TestBuildFallbackChain:
             return _make_mock_chain()
 
         cfg = CloudWorkerConfig(minimax_url="https://custom.minimax/v1")
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", side_effect=capture):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", side_effect=capture
+        ):
             _build_fallback_chain(cfg)
 
         assert captured[0].providers["minimax"]["base_url"] == "https://custom.minimax/v1"
@@ -146,7 +150,9 @@ class TestBuildFallbackChain:
             return _make_mock_chain()
 
         cfg = CloudWorkerConfig(llama_server_url="http://myserver:9000")
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", side_effect=capture):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", side_effect=capture
+        ):
             _build_fallback_chain(cfg)
 
         assert captured[0].providers["llama_server"]["base_url"] == "http://myserver:9000"
@@ -184,7 +190,9 @@ class TestCloudWorkerStart:
 
     @pytest.mark.asyncio
     async def test_start_sets_running(self, mock_chain):
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain
+        ):
             worker = CloudWorker()
             await worker.start()
             assert worker._status == WorkerStatus.RUNNING
@@ -193,7 +201,9 @@ class TestCloudWorkerStart:
 class TestCloudWorkerExecute:
     @pytest.mark.asyncio
     async def test_execute_no_prompt(self, mock_chain):
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain
+        ):
             worker = CloudWorker()
             await worker.start()
             result = await worker.execute({})
@@ -213,7 +223,9 @@ class TestCloudWorkerExecute:
 
     @pytest.mark.asyncio
     async def test_execute_auto_starts(self, mock_chain):
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain
+        ):
             worker = CloudWorker()
             # Don't call start() — execute should auto-start
             result = await worker.execute({"prompt": "test"})
@@ -256,7 +268,9 @@ class TestCloudWorkerExecute:
     @pytest.mark.asyncio
     async def test_execute_chain_failure_returns_failed_result(self, mock_chain):
         mock_chain.execute = AsyncMock(side_effect=RuntimeError("all providers down"))
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain
+        ):
             worker = CloudWorker()
             await worker.start()
             result = await worker.execute({"prompt": "test"})
@@ -266,7 +280,9 @@ class TestCloudWorkerExecute:
     @pytest.mark.asyncio
     async def test_execute_no_intelligent_routing(self, mock_chain):
         cfg = CloudWorkerConfig(intelligent_routing=False)
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain
+        ):
             worker = CloudWorker(config=cfg)
             await worker.start()
             await worker.execute({"prompt": "debug this error"})
@@ -280,7 +296,10 @@ class TestCloudWorkerExecute:
 
         configure_rate_limiter(RateLimitConfig(limit=0))  # reject all
         try:
-            with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+            with patch(
+                "mahavishnu.workers.cloud_worker.FallbackChain.from_settings",
+                return_value=mock_chain,
+            ):
                 worker = CloudWorker()
                 await worker.start()
                 result = await worker.execute({"prompt": "test"})
@@ -308,7 +327,9 @@ class TestCloudWorkerExecute:
 class TestCloudWorkerStop:
     @pytest.mark.asyncio
     async def test_stop_clears_chain(self, mock_chain):
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain
+        ):
             worker = CloudWorker()
             await worker.start()
             await worker.stop()
@@ -337,7 +358,9 @@ class TestCloudWorkerHealthCheck:
         mock_provider.health_check = AsyncMock(return_value=True)
         mock_chain._providers = [mock_provider]
 
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain
+        ):
             worker = CloudWorker()
             await worker.start()
             result = await worker.health_check()
@@ -352,7 +375,9 @@ class TestCloudWorkerHealthCheck:
         mock_provider.health_check = AsyncMock(return_value=False)
         mock_chain._providers = [mock_provider]
 
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain
+        ):
             worker = CloudWorker()
             await worker.start()
             result = await worker.health_check()
@@ -366,7 +391,9 @@ class TestCloudWorkerHealthCheck:
         mock_provider.health_check = AsyncMock(side_effect=RuntimeError("timeout"))
         mock_chain._providers = [mock_provider]
 
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain
+        ):
             worker = CloudWorker()
             await worker.start()
             result = await worker.health_check()
@@ -386,7 +413,9 @@ class TestCloudWorkerSessionBuddy:
             }
         )
         sb_client = AsyncMock()
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain
+        ):
             worker = CloudWorker(worker_id="sb-test", session_buddy_client=sb_client)
             await worker.start()
             await worker.execute({"prompt": "test"})
@@ -401,7 +430,9 @@ class TestCloudWorkerSessionBuddy:
     async def test_session_buddy_error_does_not_fail_worker(self, mock_chain):
         sb_client = AsyncMock()
         sb_client.call_tool = AsyncMock(side_effect=RuntimeError("SB down"))
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain
+        ):
             worker = CloudWorker(worker_id="sb-test", session_buddy_client=sb_client)
             await worker.start()
             result = await worker.execute({"prompt": "test"})
@@ -412,14 +443,18 @@ class TestCloudWorkerSessionBuddy:
 class TestCloudWorkerStatusAndProgress:
     @pytest.mark.asyncio
     async def test_status_returns_current(self, mock_chain):
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain
+        ):
             worker = CloudWorker()
             await worker.start()
             assert await worker.status() == WorkerStatus.RUNNING
 
     @pytest.mark.asyncio
     async def test_get_progress(self, mock_chain):
-        with patch("mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain):
+        with patch(
+            "mahavishnu.workers.cloud_worker.FallbackChain.from_settings", return_value=mock_chain
+        ):
             worker = CloudWorker(worker_id="progress-test")
             await worker.start()
             progress = await worker.get_progress()

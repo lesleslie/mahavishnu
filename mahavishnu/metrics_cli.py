@@ -136,7 +136,9 @@ def _load_engine_metrics_from_prometheus(
 ) -> dict[str, dict[str, int]]:
     """Load engine metrics by parsing Prometheus exposition text."""
     try:
-        with urllib_request.urlopen(metrics_url, timeout=2.0) as response:  # nosemgrep: dynamic-urllib-use-detected
+        with urllib_request.urlopen(
+            metrics_url, timeout=2.0
+        ) as response:  # nosemgrep: dynamic-urllib-use-detected
             body = response.read().decode("utf-8", errors="replace")
     except urllib_error.URLError as exc:
         raise RuntimeError(f"failed to fetch Prometheus metrics from {metrics_url}: {exc}") from exc
@@ -633,14 +635,16 @@ def _build_engine_rows(metrics: dict[str, dict[str, int]]) -> list[dict[str, obj
         executions = int(row.get("executions", 0))
         success = int(row.get("success", 0))
         success_rate = (success / executions * 100.0) if executions > 0 else 0.0
-        rows.append({
-            "engine": engine,
-            "selected": int(row.get("selected", 0)),
-            "executions": executions,
-            "success": success,
-            "failure": int(row.get("failure", 0)),
-            "success_rate_pct": round(success_rate, 2),
-        })
+        rows.append(
+            {
+                "engine": engine,
+                "selected": int(row.get("selected", 0)),
+                "executions": executions,
+                "success": success,
+                "failure": int(row.get("failure", 0)),
+                "success_rate_pct": round(success_rate, 2),
+            }
+        )
     return rows
 
 
@@ -653,13 +657,17 @@ def _render_engine_output(
     errors: list[str],
 ) -> None:
     if output_format == "json":
-        console.print_json(json.dumps({
-            "source": selected_source,
-            "days": days,
-            "metrics_url": metrics_url if selected_source == "prometheus" else None,
-            "engines": rows,
-            "warnings": errors if errors else [],
-        }))
+        console.print_json(
+            json.dumps(
+                {
+                    "source": selected_source,
+                    "days": days,
+                    "metrics_url": metrics_url if selected_source == "prometheus" else None,
+                    "engines": rows,
+                    "warnings": errors if errors else [],
+                }
+            )
+        )
         return
 
     if output_format != "table":

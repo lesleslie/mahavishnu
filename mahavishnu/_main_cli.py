@@ -1204,6 +1204,7 @@ _WORKER_CATEGORY_ICONS: dict = {}
 
 def _get_worker_category_icons() -> dict:
     from .workers.registry import WorkerCategory
+
     return {
         WorkerCategory.AI_ASSISTANT: "🤖",
         WorkerCategory.SHELL: "💻",

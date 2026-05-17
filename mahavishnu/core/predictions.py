@@ -186,7 +186,9 @@ class BlockerPredictor:
 
             # Tag match
             task_tags = set(task.get("tags", []))
-            pattern_tags = set()  # Would be populated from pattern metadata  # type: ignore[var-annotated]
+            pattern_tags = (
+                set()
+            )  # Would be populated from pattern metadata  # type: ignore[var-annotated]
             if task_tags & pattern_tags:
                 match_score += 0.2
 

@@ -220,8 +220,13 @@ class PathValidator:
             return False
 
     _REPO_INDICATOR_FILES = (
-        "README.md", "README.rst", "pyproject.toml",
-        "setup.py", "package.json", "Cargo.toml", "go.mod",
+        "README.md",
+        "README.rst",
+        "pyproject.toml",
+        "setup.py",
+        "package.json",
+        "Cargo.toml",
+        "go.mod",
     )
 
     def _is_valid_repository(self, path: Path) -> bool:

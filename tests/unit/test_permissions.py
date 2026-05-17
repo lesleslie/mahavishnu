@@ -1,11 +1,12 @@
-"""Unit tests for permissions and JWT manager with comprehensive security validation."""
+from datetime import UTC, datetime, timedelta
 
+import jwt
 from pydantic import ValidationError
 import pytest
 
 from mahavishnu.core.config import MahavishnuSettings
 from mahavishnu.core.errors import ConfigurationError
-from mahavishnu.core.permissions import JWTManager, Permission, RBACManager
+from mahavishnu.core.permissions import CrossProjectAuth, JWTManager, Permission, RBACManager
 
 
 class TestJWTManagerSecurity:
@@ -132,6 +133,39 @@ class TestJWTManagerSecurity:
 
         assert "Invalid token" in str(exc_info.value)
 
+    def test_jwt_expired_token_raises_error(self):
+        """Test that expired tokens raise ValueError."""
+        secret = "test_secret_32_characters_long_xyz"
+        config = MahavishnuSettings(auth={"enabled": True, "secret": secret})
+        jwt_manager = JWTManager(config)
+
+        expired_token = jwt.encode(
+            {
+                "user_id": "user_123",
+                "exp": datetime.now(tz=UTC) - timedelta(minutes=5),
+                "iat": datetime.now(tz=UTC) - timedelta(minutes=10),
+                "type": "access",
+            },
+            secret,
+            algorithm="HS256",
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            jwt_manager.verify_token(expired_token)
+
+        assert "expired" in str(exc_info.value).lower()
+
+    def test_jwt_create_token_merges_additional_claims(self):
+        """Test that additional claims are preserved in created tokens."""
+        secret = "test_secret_32_characters_long_xyz"
+        config = MahavishnuSettings(auth={"enabled": True, "secret": secret})
+        jwt_manager = JWTManager(config)
+
+        token = jwt_manager.create_token("user_123", {"scope": "admin"})
+        payload = jwt_manager.verify_token(token)
+
+        assert payload["scope"] == "admin"
+
 
 class TestRBACManager:
     """Tests for Role-Based Access Control manager."""
@@ -177,7 +211,7 @@ class TestRBACManager:
         import asyncio
 
         # Create admin user with access to all repos
-        admin = asyncio.run(rbac.create_user("admin_user", ["admin"]))
+        asyncio.run(rbac.create_user("admin_user", ["admin"]))
 
         # Admin should have all permissions on any repo
         has_perm = asyncio.run(
@@ -186,7 +220,7 @@ class TestRBACManager:
         assert has_perm is True
 
         # Create viewer user with limited access
-        viewer = asyncio.run(rbac.create_user("viewer_user", ["viewer"], allowed_repos=["repo1"]))
+        asyncio.run(rbac.create_user("viewer_user", ["viewer"], allowed_repos=["repo1"]))
 
         # Viewer should not have write permission
         has_perm = asyncio.run(rbac.check_permission("viewer_user", "repo1", Permission.WRITE_REPO))
@@ -199,6 +233,70 @@ class TestRBACManager:
         # Viewer should not have read permission on non-allowed repo
         has_perm = asyncio.run(rbac.check_permission("viewer_user", "repo2", Permission.READ_REPO))
         assert has_perm is False
+
+    def test_rbac_handles_missing_and_unknown_inputs(self):
+        config = MahavishnuSettings()
+        rbac = RBACManager(config)
+
+        import asyncio
+
+        user = asyncio.run(rbac.create_user("unknown_role_user", ["does-not-exist"]))
+        assert user.roles == []
+
+        assert (
+            asyncio.run(rbac.check_permission("missing_user", "repo1", Permission.READ_REPO))
+            is False
+        )
+        assert (
+            asyncio.run(rbac.check_permission("viewer_user", "repo1", "not-a-permission")) is False
+        )
+        assert asyncio.run(rbac.get_user_permissions("missing_user", "repo1")) == []
+        assert (
+            asyncio.run(rbac.filter_repos_by_permission("missing_user", Permission.READ_REPO)) == []
+        )
+
+    def test_get_user_permissions_and_filter_repos(self):
+        config = MahavishnuSettings()
+        rbac = RBACManager(config)
+
+        import asyncio
+
+        asyncio.run(
+            rbac.create_user(
+                "mixed_user",
+                ["admin", "viewer"],
+                allowed_repos=["repo1", "repo2"],
+            )
+        )
+
+        permissions = asyncio.run(rbac.get_user_permissions("mixed_user", "repo1"))
+        assert Permission.READ_REPO in permissions
+        assert Permission.VIEW_WORKFLOW_STATUS in permissions
+        assert Permission.WRITE_REPO in permissions
+
+        repos = asyncio.run(rbac.filter_repos_by_permission("mixed_user", Permission.READ_REPO))
+        assert set(repos) == {"repo1", "repo2"}
+
+    def test_check_permission_accepts_string_permissions(self):
+        config = MahavishnuSettings()
+        rbac = RBACManager(config)
+
+        import asyncio
+
+        asyncio.run(rbac.create_user("viewer_user", ["viewer"], allowed_repos=["repo1"]))
+
+        assert asyncio.run(rbac.check_permission("viewer_user", "repo1", "read_repo")) is True
+
+    def test_filter_repos_skips_global_access_role(self):
+        config = MahavishnuSettings()
+        rbac = RBACManager(config)
+
+        import asyncio
+
+        asyncio.run(rbac.create_user("admin_user", ["admin"]))
+        assert (
+            asyncio.run(rbac.filter_repos_by_permission("admin_user", Permission.READ_REPO)) == []
+        )
 
 
 class TestConfigurationValidation:
@@ -231,3 +329,14 @@ class TestConfigurationValidation:
             JWTManager(config)
 
         assert "at least 32 characters long" in str(exc_info.value)
+
+
+class TestCrossProjectAuth:
+    def test_sign_and_verify_message(self):
+        auth = CrossProjectAuth(shared_secret="shared-secret")
+        message = {"b": 2, "a": 1}
+
+        signature = auth.sign_message(message)
+
+        assert auth.verify_message(message, signature) is True
+        assert auth.verify_message(message, "wrong-signature") is False

@@ -1,28 +1,28 @@
 {
-  "version": 1,
   "jobs": [
     {
+      "createdAtMs": null,
+      "deleteAfterRun": false,
+      "enabled": true,
       "id": "dream",
       "name": "dream",
-      "enabled": true,
+      "payload": {
+        "channel": null,
+        "deliver": false,
+        "kind": "system_event",
+        "message": "",
+        "to": null
+      },
       "schedule": {
-        "kind": "every",
         "atMs": null,
         "everyMs": 7200000,
         "expr": null,
+        "kind": "every",
         "tz": null
       },
-      "payload": {
-        "kind": "system_event",
-        "message": "",
-        "deliver": false,
-        "channel": null,
-        "to": null
-      },
       "state": null,
-      "createdAtMs": null,
-      "updatedAtMs": null,
-      "deleteAfterRun": false
+      "updatedAtMs": null
     }
-  ]
+  ],
+  "version": 1
 }
