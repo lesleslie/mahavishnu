@@ -35,6 +35,7 @@ from mahavishnu.ingesters.content_ingester import (
     ContentIngester,
     ContentType,
     IngestionResult,
+    TurboQuantCompressionInfo,
     create_content_ingester,
 )
 
@@ -165,6 +166,30 @@ class TestIngestionResult:
         assert d["error"] == "boom"
         assert d["success"] is False
 
+    def test_to_dict_turboquant_compression_none_by_default(self):
+        result = IngestionResult(
+            success=True,
+            content_type=ContentType.WEBPAGE,
+            source="https://example.com",
+        )
+        d = result.to_dict()
+        assert "turboquant_compression" in d
+        assert d["turboquant_compression"] is None
+
+    def test_to_dict_turboquant_compression_present(self):
+        tq_info = TurboQuantCompressionInfo(
+            uncompressed_kb=1500.0, compressed_kb=187.5, savings_kb=1312.5, ratio=8.0, bits=4
+        )
+        result = IngestionResult(
+            success=True,
+            content_type=ContentType.WEBPAGE,
+            source="https://example.com",
+            turboquant_compression=tq_info,
+        )
+        d = result.to_dict()
+        assert d["turboquant_compression"] == tq_info
+        assert d["turboquant_compression"]["bits"] == 4
+
 
 # ---------------------------------------------------------------------------
 # ContentIngester -- Initialization
@@ -216,6 +241,16 @@ class TestContentIngesterInit:
             output_dir=str(tmp_path),
         )
         assert ingester._embedding_provider == EmbeddingProvider.OLLAMA
+
+    def test_turboquant_bits_stored(self, tmp_path: Path):
+        ingester = ContentIngester(output_dir=str(tmp_path), turboquant_bits=4)
+        assert ingester._turboquant_bits == 4
+        assert ingester._compressor is None  # lazy — not created until initialize()
+
+    def test_turboquant_bits_none_by_default(self, tmp_path: Path):
+        ingester = ContentIngester(output_dir=str(tmp_path))
+        assert ingester._turboquant_bits is None
+        assert ingester._compressor is None
 
 
 # ---------------------------------------------------------------------------
@@ -322,6 +357,41 @@ class TestContentIngesterInitialize:
         mock_crackerjack.aclose.assert_awaited_once()
         mock_session.aclose.assert_awaited_once()
         mock_web_reader.aclose.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_initialize_creates_compressor_when_bits_set(self, tmp_path: Path):
+        """initialize() should construct TurboQuantCompressor when turboquant_bits is set."""
+        with (
+            patch("mahavishnu.ingesters.content_ingester.get_embedding_service", return_value=MagicMock()),
+            patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True),
+        ):
+            ingester = ContentIngester(output_dir=str(tmp_path), turboquant_bits=4)
+            await ingester.initialize()
+            assert ingester._compressor is not None
+            assert ingester._compressor.bits == 4
+            await ingester.close()
+
+    @pytest.mark.asyncio
+    async def test_initialize_no_compressor_when_bits_none(self, tmp_path: Path):
+        """initialize() should not create a compressor when turboquant_bits is None."""
+        with patch("mahavishnu.ingesters.content_ingester.get_embedding_service", return_value=MagicMock()):
+            ingester = ContentIngester(output_dir=str(tmp_path))
+            await ingester.initialize()
+            assert ingester._compressor is None
+            await ingester.close()
+
+    @pytest.mark.asyncio
+    async def test_initialize_compressor_unavailable_does_not_raise(self, tmp_path: Path):
+        """initialize() should succeed even when turboquant-pro is not installed."""
+        with (
+            patch("mahavishnu.ingesters.content_ingester.get_embedding_service", return_value=MagicMock()),
+            patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", False),
+        ):
+            ingester = ContentIngester(output_dir=str(tmp_path), turboquant_bits=4)
+            await ingester.initialize()  # must not raise
+            assert ingester._compressor is not None
+            assert ingester._compressor.available is False
+            await ingester.close()
 
 
 # ---------------------------------------------------------------------------
@@ -1643,6 +1713,113 @@ class TestCreateContentIngester:
         a = create_content_ingester(chunk_size=200)
         b = create_content_ingester(chunk_size=300)
         assert a is not b
+
+    def test_turboquant_bits_forwarded(self):
+        ingester = create_content_ingester(turboquant_bits=4)
+        assert ingester._turboquant_bits == 4
+
+    def test_turboquant_bits_none_default(self):
+        ingester = create_content_ingester()
+        assert ingester._turboquant_bits is None
+
+
+# ---------------------------------------------------------------------------
+# TurboQuant integration — ContentIngester
+# ---------------------------------------------------------------------------
+
+
+class TestContentIngesterTurboQuant:
+    """Tests for TurboQuant compression reporting in ContentIngester."""
+
+    @pytest.mark.asyncio
+    async def test_turboquant_compression_in_ingest_result(self, tmp_path: Path):
+        """ingest_url should populate turboquant_compression when compressor is available."""
+        ingester = ContentIngester(output_dir=str(tmp_path), turboquant_bits=4)
+        ingester._initialized = True
+        ingester._akosha_client = AsyncMock(spec=httpx.AsyncClient)
+        ingester._crackerjack_client = AsyncMock(spec=httpx.AsyncClient)
+        ingester._session_buddy_client = AsyncMock(spec=httpx.AsyncClient)
+        ingester._web_reader_client = AsyncMock(spec=httpx.AsyncClient)
+
+        mock_service = AsyncMock()
+        mock_service.embed.return_value = MagicMock(embeddings=[[0.1] * 384] * 3)
+        ingester._embedding_service = mock_service
+
+        mock_tq = MagicMock()
+        mock_tq.available = True
+        mock_tq.bits = 4
+        mock_tq.estimate_savings.return_value = {
+            "uncompressed_kb": 4.5,
+            "compressed_kb": 0.5625,
+            "savings_kb": 3.9375,
+            "ratio": 8.0,
+        }
+        ingester._compressor = mock_tq
+
+        web_response = _make_web_reader_response(text="Hello world. " * 50, title="Test")
+        ingester._web_reader_client.post.return_value = _make_mcp_response(200, web_response)
+        ingester._akosha_client.post.return_value = _make_mcp_response(200)
+        ingester._crackerjack_client.post.return_value = _make_mcp_response(200)
+        ingester._session_buddy_client.post.return_value = _make_mcp_response(200)
+
+        result = await ingester.ingest_url("https://example.com/article")
+
+        assert result.turboquant_compression is not None
+        assert result.turboquant_compression["bits"] == 4
+        assert result.turboquant_compression["ratio"] == 8.0
+        mock_tq.estimate_savings.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_turboquant_none_when_no_compressor(self, tmp_path: Path):
+        """turboquant_compression should be None when turboquant_bits was not set."""
+        ingester = ContentIngester(output_dir=str(tmp_path))
+        ingester._initialized = True
+        ingester._akosha_client = AsyncMock(spec=httpx.AsyncClient)
+        ingester._crackerjack_client = AsyncMock(spec=httpx.AsyncClient)
+        ingester._session_buddy_client = AsyncMock(spec=httpx.AsyncClient)
+        ingester._web_reader_client = AsyncMock(spec=httpx.AsyncClient)
+
+        mock_service = AsyncMock()
+        mock_service.embed.return_value = MagicMock(embeddings=[[0.1] * 384] * 2)
+        ingester._embedding_service = mock_service
+
+        web_response = _make_web_reader_response(text="Hello world. " * 20, title="Test")
+        ingester._web_reader_client.post.return_value = _make_mcp_response(200, web_response)
+        ingester._akosha_client.post.return_value = _make_mcp_response(200)
+        ingester._crackerjack_client.post.return_value = _make_mcp_response(200)
+        ingester._session_buddy_client.post.return_value = _make_mcp_response(200)
+
+        result = await ingester.ingest_url("https://example.com/article")
+
+        assert result.turboquant_compression is None
+
+    @pytest.mark.asyncio
+    async def test_turboquant_none_when_compressor_unavailable(self, tmp_path: Path):
+        """turboquant_compression should be None when the package is not installed."""
+        ingester = ContentIngester(output_dir=str(tmp_path), turboquant_bits=4)
+        ingester._initialized = True
+        ingester._akosha_client = AsyncMock(spec=httpx.AsyncClient)
+        ingester._crackerjack_client = AsyncMock(spec=httpx.AsyncClient)
+        ingester._session_buddy_client = AsyncMock(spec=httpx.AsyncClient)
+        ingester._web_reader_client = AsyncMock(spec=httpx.AsyncClient)
+
+        mock_service = AsyncMock()
+        mock_service.embed.return_value = MagicMock(embeddings=[[0.1] * 384] * 2)
+        ingester._embedding_service = mock_service
+
+        mock_tq = MagicMock()
+        mock_tq.available = False  # package not installed
+        ingester._compressor = mock_tq
+
+        web_response = _make_web_reader_response(text="Hello world. " * 20, title="Test")
+        ingester._web_reader_client.post.return_value = _make_mcp_response(200, web_response)
+        ingester._akosha_client.post.return_value = _make_mcp_response(200)
+        ingester._crackerjack_client.post.return_value = _make_mcp_response(200)
+        ingester._session_buddy_client.post.return_value = _make_mcp_response(200)
+
+        result = await ingester.ingest_url("https://example.com/article")
+
+        assert result.turboquant_compression is None
 
 
 # ---------------------------------------------------------------------------

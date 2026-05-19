@@ -29,7 +29,7 @@ from functools import lru_cache
 import ipaddress
 from pathlib import Path
 import socket
-from typing import Any
+from typing import Any, TypedDict
 import urllib.parse
 
 import httpx
@@ -37,6 +37,7 @@ import structlog
 
 from ..core.embeddings import EmbeddingProvider, EmbeddingService, get_embedding_service
 from ..core.observability import observe
+from .turboquant_compressor import TurboQuantCompressor
 
 # SSRF protection: blocked IP ranges
 BLOCKED_IP_RANGES = [
@@ -70,6 +71,7 @@ __all__ = [
     "ContentIngester",
     "ContentType",
     "IngestionResult",
+    "TurboQuantCompressionInfo",
     "create_content_ingester",
 ]
 
@@ -87,6 +89,16 @@ class ContentType(Enum):
     MARKDOWN = "markdown"
     TEXT = "text"
     UNKNOWN = "unknown"
+
+
+class TurboQuantCompressionInfo(TypedDict):
+    """Compression statistics reported by TurboQuant for an ingestion run."""
+
+    uncompressed_kb: float
+    compressed_kb: float
+    savings_kb: float
+    ratio: float
+    bits: int
 
 
 @dataclass
@@ -116,6 +128,7 @@ class IngestionResult:
     indexed_in_crackerjack: bool = False
     error: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    turboquant_compression: TurboQuantCompressionInfo | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API responses."""
@@ -130,6 +143,7 @@ class IngestionResult:
             "indexed_in_crackerjack": self.indexed_in_crackerjack,
             "error": self.error,
             "metadata": self.metadata,
+            "turboquant_compression": self.turboquant_compression,
         }
 
 
@@ -159,6 +173,7 @@ class ContentIngester:
         crackerjack_url: str = "http://localhost:8676/mcp",
         session_buddy_url: str = "http://localhost:8678/mcp",
         web_reader_url: str = "http://localhost:8699/mcp",  # web_reader MCP port
+        turboquant_bits: int | None = None,
     ):
         """Initialize content ingester.
 
@@ -171,12 +186,20 @@ class ContentIngester:
             crackerjack_url: Crackerjack MCP server URL
             session_buddy_url: Session-Buddy MCP server URL
             web_reader_url: web_reader MCP server URL
+            turboquant_bits: Enable TurboQuant embedding compression (3 or 4 bits).
+                None disables compression. 4 is recommended (8x ratio, 0.978 similarity).
         """
+        if turboquant_bits is not None and turboquant_bits not in (3, 4):
+            raise ValueError(
+                f"turboquant_bits must be 3 or 4, got {turboquant_bits}. "
+                "3 gives 10.7x ratio, 4 gives 8x ratio (recommended)."
+            )
         self._embedding_provider = embedding_provider
         self._chunk_size = chunk_size
         self._chunk_overlap = chunk_overlap
         self._output_dir = Path(output_dir)
         self._output_dir.mkdir(parents=True, exist_ok=True)
+        self._turboquant_bits = turboquant_bits
 
         # MCP server URLs
         self._akosha_url = akosha_url
@@ -193,6 +216,7 @@ class ContentIngester:
         self._session_buddy_client: httpx.AsyncClient | None = None
         self._web_reader_client: httpx.AsyncClient | None = None
 
+        self._compressor: TurboQuantCompressor | None = None
         self._initialized = False
         self._log = logger.bind(component="content_ingester")
 
@@ -216,6 +240,21 @@ class ContentIngester:
             # Initialize embedding service
             if self._embedding_service is None:
                 self._embedding_service = get_embedding_service(self._embedding_provider)
+
+            # Initialize TurboQuant compressor if requested
+            if self._turboquant_bits is not None and self._compressor is None:
+                self._compressor = TurboQuantCompressor(bits=self._turboquant_bits)
+                if self._compressor.available:
+                    self._log.info(
+                        "turboquant_enabled",
+                        bits=self._turboquant_bits,
+                        ratio=self._compressor.compression_ratio,
+                    )
+                else:
+                    self._log.warning(
+                        "turboquant_unavailable",
+                        hint="Install with: uv pip install turboquant-pro",
+                    )
 
             # Create HTTP clients for MCP servers
             timeout = httpx.Timeout(30.0, connect=10.0)
@@ -263,6 +302,27 @@ class ContentIngester:
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
         await self.close()
+
+    def _make_tq_info(self, chunk_count: int) -> TurboQuantCompressionInfo | None:
+        """Build TurboQuant compression stats for an ingestion result.
+
+        Returns None when the compressor is absent or unavailable, so callers
+        can unconditionally pass the return value to IngestionResult.
+        """
+        if not (self._compressor and self._compressor.available):
+            return None
+        try:
+            savings = self._compressor.estimate_savings(chunk_count)
+            return TurboQuantCompressionInfo(
+                uncompressed_kb=savings["uncompressed_kb"],
+                compressed_kb=savings["compressed_kb"],
+                savings_kb=savings["savings_kb"],
+                ratio=savings["ratio"],
+                bits=self._compressor.bits,
+            )
+        except Exception as e:
+            self._log.warning("turboquant_estimate_failed", error=str(e))
+            return None
 
     @observe(span_name="content_ingester.detect_content_type")
     def _detect_content_type(self, source: str) -> ContentType:
@@ -651,6 +711,8 @@ class ContentIngester:
             # Generate embeddings for chunks
             embeddings = await self._generate_embeddings(chunks)
 
+            tq_info = self._make_tq_info(len(embeddings)) if embeddings else None
+
             # Save to file
             safe_title = "".join(
                 c if c.isalnum() or c in (" ", "-", "_") else "_" for c in (title or "untitled")
@@ -691,6 +753,7 @@ class ContentIngester:
                     "char_count": len(text),
                     **metadata,
                 },
+                turboquant_compression=tq_info,
             )
 
             self._log.info(
@@ -767,6 +830,8 @@ class ContentIngester:
             # Generate embeddings
             embeddings = await self._generate_embeddings(chunks)
 
+            tq_info_file = self._make_tq_info(len(embeddings)) if embeddings else None
+
             # Store in Akosha
             stored_in_akosha = await self._store_in_akosha(
                 content=text,
@@ -798,6 +863,7 @@ class ContentIngester:
                     "word_count": len(text.split()),
                     "char_count": len(text),
                 },
+                turboquant_compression=tq_info_file,
             )
 
             self._log.info(
@@ -918,6 +984,7 @@ def create_content_ingester(
     embedding_provider: EmbeddingProvider | None = None,
     chunk_size: int = 1000,
     chunk_overlap: int = 200,
+    turboquant_bits: int | None = None,
 ) -> ContentIngester:
     """Create or get cached content ingester instance.
 
@@ -925,17 +992,20 @@ def create_content_ingester(
         embedding_provider: Preferred embedding provider
         chunk_size: Maximum characters per chunk
         chunk_overlap: Character overlap between chunks
+        turboquant_bits: Enable TurboQuant compression (3 or 4). None disables.
 
     Returns:
         ContentIngester instance (cached)
 
     Example:
-        >>> ingester = create_content_ingester()
+        >>> ingester = create_content_ingester(turboquant_bits=4)
         >>> await ingester.initialize()
         >>> result = await ingester.ingest_url("https://example.com")
+        >>> print(result.turboquant_compression)
     """
     return ContentIngester(
         embedding_provider=embedding_provider,
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
+        turboquant_bits=turboquant_bits,
     )

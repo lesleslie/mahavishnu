@@ -144,6 +144,9 @@ worker = "mahavishnu.core.adapters.worker:worker_adapter_entries"
 tui = [
     "textual>=0.40",
 ]
+compression = [
+    "turboquant-pro>=0.1.0",  # TurboQuant (Zandieh et al., ICLR 2026) embedding compression
+]
 dev = [
     # Testing
     "pytest>=9.0.2",
@@ -437,6 +440,7 @@ exclude_deps = [
     # Optional content ingestion features
     "pypdf",
     "ebooklib",
+    "turboquant-pro",  # optional compression extra
     # Optional AI adapter features
     "llama-cpp-python",
     "hatchet-sdk",

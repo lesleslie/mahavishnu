@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from akosha.storage import HotStore
 
 from mahavishnu.core.errors import ValidationError
+from mahavishnu.ingesters.turboquant_compressor import TQPackedVector, TurboQuantCompressor
 
 logger = logging.getLogger(__name__)
 
@@ -427,6 +428,7 @@ class OtelIngester:
         pgvector_dsn: str | None = None,
         pgvector_collection: str = "otel_traces",
         akosha_url: str = "http://localhost:8682/mcp",
+        turboquant_bits: int | None = None,
     ) -> None:
         """Initialize OTel ingester.
 
@@ -440,6 +442,8 @@ class OtelIngester:
             pgvector_dsn: PostgreSQL DSN for pgvector storage (required if storage_type="postgresql")
             pgvector_collection: Collection/table name for pgvector (default: "otel_traces")
             akosha_url: Akosha MCP server URL for centralized embeddings
+            turboquant_bits: Enable TurboQuant in-memory cache compression (3 or 4 bits).
+                Reduces the 1000-entry embedding cache from ~1.5MB to ~188KB at 4-bit.
 
         Raises:
             ImportError: If preferred_backend is unavailable
@@ -457,7 +461,12 @@ class OtelIngester:
 
         self._embedding_model_name = embedding_model
         self._cache_size = cache_size
-        self._embedding_cache: dict[str, list[float]] = {}
+        # Cache stores float32 vectors normally, or TurboQuant packed format when
+        # turboquant_bits is set. _get_embedding() handles the compress/decompress
+        # boundary transparently so callers always receive list[float].
+        self._embedding_cache: dict[str, list[float] | TQPackedVector] = {}
+        self._turboquant_bits = turboquant_bits
+        self._compressor: TurboQuantCompressor | None = None
 
         # Determine embedding backend
         if preferred_backend is not None:
@@ -580,6 +589,26 @@ class OtelIngester:
                     if self._embedder is not None:
                         self._embedding_dimension = self._embedder.dimension
                         logger.info(f"Using fallback embedding backend: {self._backend.value}")
+
+            # Initialize TurboQuant cache compressor if requested
+            if self._turboquant_bits is not None and self._compressor is None:
+                self._compressor = TurboQuantCompressor(
+                    dimension=self._embedding_dimension,
+                    bits=self._turboquant_bits,
+                )
+                if self._compressor.available:
+                    savings = self._compressor.estimate_savings(self._cache_size)
+                    logger.info(
+                        f"TurboQuant cache compression enabled "
+                        f"(bits={self._turboquant_bits}, "
+                        f"cache RAM: {savings['uncompressed_kb']:.0f}KB → "
+                        f"{savings['compressed_kb']:.0f}KB)"
+                    )
+                else:
+                    logger.warning(
+                        "TurboQuant requested but turboquant-pro not installed. "
+                        "Install with: uv pip install turboquant-pro"
+                    )
 
             logger.info(f"OTel ingester initialized (storage={self._storage_type.value})")
 
@@ -1032,36 +1061,58 @@ class OtelIngester:
     async def _get_embedding(self, content: str) -> list[float]:
         """Generate embedding for content with caching.
 
+        When TurboQuant is enabled, cache entries are stored in compressed
+        packed format to reduce RAM, and decompressed transparently on retrieval.
+
         Args:
             content: Text content to embed
 
         Returns:
-            Embedding vector
+            Float32 embedding vector (always decompressed before returning)
+
+        Raises:
+            RuntimeError: If embedding model is not loaded or embedding fails.
+                Callers (_ingest_trace_duckdb/_ingest_trace_pgvector) absorb
+                per-trace failures — do not return zero vectors here.
         """
-        # Check cache
+        # Check cache — decompress if TurboQuant is active
         if content in self._embedding_cache:
-            return self._embedding_cache[content]
+            cached = self._embedding_cache[content]
+            if self._compressor and self._compressor.available:
+                try:
+                    return self._compressor.decompress_batch([cached])[0]
+                except Exception as e:
+                    # Cache entry is corrupt (e.g. bit-width changed after restart).
+                    # Evict it and fall through to re-generate a fresh embedding.
+                    logger.warning(
+                        f"turboquant_decompress_failed, evicting corrupt cache entry: {e}"
+                    )
+                    del self._embedding_cache[content]
+            else:
+                return cached  # type: ignore[return-value]
 
         if not self._embedder:
             raise RuntimeError("Embedding model not loaded")
 
-        try:
-            # Generate embedding
-            embedding = self._embedder.encode(content)
+        # Generate embedding — let exceptions propagate to the per-trace handler.
+        embedding = self._embedder.encode(content)
 
-            # Update cache (with size limit)
-            if len(self._embedding_cache) >= self._cache_size:
-                # Remove oldest entry (FIFO)
-                oldest_key = next(iter(self._embedding_cache))
-                del self._embedding_cache[oldest_key]
+        # Evict oldest entry when cache is full (FIFO)
+        if len(self._embedding_cache) >= self._cache_size:
+            oldest_key = next(iter(self._embedding_cache))
+            del self._embedding_cache[oldest_key]
 
+        # Store compressed when TurboQuant is active, raw otherwise
+        if self._compressor and self._compressor.available:
+            try:
+                self._embedding_cache[content] = self._compressor.compress_batch([embedding])[0]
+            except Exception as e:
+                logger.warning(f"turboquant_compress_failed, caching raw: {e}")
+                self._embedding_cache[content] = embedding
+        else:
             self._embedding_cache[content] = embedding
-            return embedding
 
-        except Exception as e:
-            logger.error(f"Failed to generate embedding: {e}")
-            # Return zero embedding on error
-            return [0.0] * self._embedding_dimension
+        return embedding
 
     def _extract_system_id(self, spans: list[dict[str, Any]]) -> str:
         """Extract system_id from span attributes.
@@ -1179,6 +1230,7 @@ async def create_otel_ingester(
     pgvector_dsn: str | None = None,
     pgvector_collection: str = "otel_traces",
     akosha_url: str = "http://localhost:8682/mcp",
+    turboquant_bits: int | None = None,
 ) -> OtelIngester:
     """Create and initialize OTel ingester.
 
@@ -1191,20 +1243,22 @@ async def create_otel_ingester(
         pgvector_dsn: PostgreSQL DSN (required if storage_type="postgresql")
         pgvector_collection: pgvector collection name (default: "otel_traces")
         akosha_url: Akosha MCP server URL for centralized embeddings
+        turboquant_bits: Enable TurboQuant in-memory cache compression (3 or 4 bits).
 
     Returns:
         Initialized OtelIngester instance
 
     Example:
-        >>> # DuckDB (development)
-        >>> ingester = await create_otel_ingester()
+        >>> # DuckDB (development) with TurboQuant cache compression
+        >>> ingester = await create_otel_ingester(turboquant_bits=4)
         >>> await ingester.ingest_trace(trace_data)
         >>> await ingester.close()
 
-        >>> # PostgreSQL (production)
+        >>> # PostgreSQL (production) with compressed embedding cache
         >>> ingester = await create_otel_ingester(
         ...     storage_type="postgresql",
-        ...     pgvector_dsn="postgresql://user:pass@localhost/mahavishnu"
+        ...     pgvector_dsn="postgresql://user:pass@localhost/mahavishnu",
+        ...     turboquant_bits=4,
         ... )
     """
     # Convert string to enum if needed
@@ -1219,6 +1273,7 @@ async def create_otel_ingester(
         pgvector_dsn=pgvector_dsn,
         pgvector_collection=pgvector_collection,
         akosha_url=akosha_url,
+        turboquant_bits=turboquant_bits,
     )
 
     # For DuckDB, create HotStore if path provided
