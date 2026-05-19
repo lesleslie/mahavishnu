@@ -621,6 +621,21 @@ class OTelIngesterConfig(BaseModel):
         le=1.0,
         description="Minimum similarity score for semantic search",
     )
+    turboquant_bits: int | None = Field(
+        default=4,
+        description=(
+            "TurboQuant embedding cache compression bits (3 or 4). "
+            "4 gives 8x RAM reduction with 0.978 cosine similarity. "
+            "Set to null to disable. Requires turboquant-pro package."
+        ),
+    )
+
+    @field_validator("turboquant_bits")
+    @classmethod
+    def _validate_turboquant_bits(cls, v: int | None) -> int | None:
+        if v is not None and v not in (3, 4):
+            raise ValueError(f"turboquant_bits must be 3 or 4, got {v}")
+        return v
 
     model_config = {"extra": "forbid"}
 

@@ -1244,6 +1244,9 @@ async def create_otel_ingester(
         pgvector_collection: pgvector collection name (default: "otel_traces")
         akosha_url: Akosha MCP server URL for centralized embeddings
         turboquant_bits: Enable TurboQuant in-memory cache compression (3 or 4 bits).
+            Defaults to None (disabled) so the factory stays config-agnostic.
+            When called via MCP tools, ``app.config.otel_ingester.turboquant_bits``
+            (YAML default: 4) is threaded in automatically.
 
     Returns:
         Initialized OtelIngester instance

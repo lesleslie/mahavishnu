@@ -74,6 +74,7 @@ otel_ingester:
   embedding_model: "all-MiniLM-L6-v2"  # Sentence transformer model
   cache_size: 1000  # Max embeddings in memory cache
   similarity_threshold: 0.7  # Min similarity for search (0.0-1.0)
+  turboquant_bits: 4  # TurboQuant cache compression (3 or 4 bits; null to disable)
 
 # Pool management for multi-pool orchestration
 pools:

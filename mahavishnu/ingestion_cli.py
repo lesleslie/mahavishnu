@@ -17,6 +17,11 @@ import typer
 
 from .core.embeddings import EmbeddingProvider
 from .ingesters.content_ingester import create_content_ingester
+from .ingesters.turboquant_compressor import TURBOQUANT_AVAILABLE
+
+# Evaluated once at import time. Tests that need to override this must patch
+# `mahavishnu.ingestion_cli._DEFAULT_TURBOQUANT_BITS` directly (not the source flag).
+_DEFAULT_TURBOQUANT_BITS: int | None = 4 if TURBOQUANT_AVAILABLE else None
 
 logger = structlog.get_logger()
 ingestion_app = typer.Typer(help="Content ingestion commands")
@@ -89,6 +94,7 @@ def ingest_url(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             output_dir=output_dir,
+            turboquant_bits=_DEFAULT_TURBOQUANT_BITS,
         )
 
         async with ingester:
@@ -142,6 +148,7 @@ def ingest_file(
             embedding_provider=embedding_provider,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
+            turboquant_bits=_DEFAULT_TURBOQUANT_BITS,
         )
 
         async with ingester:
@@ -200,6 +207,7 @@ def ingest_batch(
 
         ingester = create_content_ingester(
             embedding_provider=embedding_provider,
+            turboquant_bits=_DEFAULT_TURBOQUANT_BITS,
         )
 
         async with ingester:
@@ -269,6 +277,7 @@ def ingestion_stats(
 
         ingester = create_content_ingester(
             embedding_provider=embedding_provider,
+            turboquant_bits=_DEFAULT_TURBOQUANT_BITS,
         )
 
         await ingester.initialize()

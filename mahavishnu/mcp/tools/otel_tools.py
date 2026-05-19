@@ -50,6 +50,7 @@ def register_otel_tools(server, app, mcp_client):
                 hot_store_path=app.config.otel_ingester.hot_store_path,
                 embedding_model=app.config.otel_ingester.embedding_model,
                 cache_size=app.config.otel_ingester.cache_size,
+                turboquant_bits=app.config.otel_ingester.turboquant_bits,
             )
             await ingester.initialize()
 
@@ -161,6 +162,7 @@ def register_otel_tools(server, app, mcp_client):
                 hot_store_path=app.config.otel_ingester.hot_store_path,
                 embedding_model=app.config.otel_ingester.embedding_model,
                 similarity_threshold=threshold or app.config.otel_ingester.similarity_threshold,
+                turboquant_bits=app.config.otel_ingester.turboquant_bits,
             )
             await ingester.initialize()
 
@@ -194,6 +196,7 @@ def register_otel_tools(server, app, mcp_client):
             # Initialize ingester
             ingester = OtelIngester(  # type: ignore[call-arg]
                 hot_store_path=app.config.otel_ingester.hot_store_path,
+                turboquant_bits=app.config.otel_ingester.turboquant_bits,
             )
             await ingester.initialize()
 
@@ -228,12 +231,15 @@ def register_otel_tools(server, app, mcp_client):
 
             # Query total traces (basic implementation)
             # Note: DuckDB doesn't expose count directly without SQL query
+            tq_bits = app.config.otel_ingester.turboquant_bits
             stats = {
                 "storage_backend": "duckdb_hotstore",
                 "hot_store_path": app.config.otel_ingester.hot_store_path,
                 "embedding_model": app.config.otel_ingester.embedding_model,
                 "cache_size": app.config.otel_ingester.cache_size,
                 "similarity_threshold": app.config.otel_ingester.similarity_threshold,
+                "turboquant_bits": tq_bits,
+                "turboquant_compression": tq_bits is not None,
                 "status": "healthy",
                 # Would need to add SQL query to HotStore for exact counts
                 "total_traces": "unknown",

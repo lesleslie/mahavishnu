@@ -7,6 +7,7 @@ Covers:
     4. No compression when turboquant_bits is None
     5. Cache still works when compressor is unavailable (package absent)
     6. create_otel_ingester() forwards turboquant_bits
+    7. OTelIngesterConfig turboquant_bits field validation
 """
 
 from __future__ import annotations
@@ -285,3 +286,44 @@ class TestCreateOtelIngesterFactory:
 
         assert ingester._turboquant_bits is None
         await ingester.close()
+
+
+# ---------------------------------------------------------------------------
+# OTelIngesterConfig turboquant_bits field
+# ---------------------------------------------------------------------------
+
+
+class TestOTelIngesterConfigTurboQuant:
+    """Tests for OTelIngesterConfig.turboquant_bits Pydantic field."""
+
+    def test_default_is_4(self):
+        from mahavishnu.core.config import OTelIngesterConfig
+
+        c = OTelIngesterConfig()
+        assert c.turboquant_bits == 4
+
+    def test_none_disables_compression(self):
+        from mahavishnu.core.config import OTelIngesterConfig
+
+        c = OTelIngesterConfig(turboquant_bits=None)
+        assert c.turboquant_bits is None
+
+    def test_3_accepted(self):
+        from mahavishnu.core.config import OTelIngesterConfig
+
+        c = OTelIngesterConfig(turboquant_bits=3)
+        assert c.turboquant_bits == 3
+
+    def test_4_accepted(self):
+        from mahavishnu.core.config import OTelIngesterConfig
+
+        c = OTelIngesterConfig(turboquant_bits=4)
+        assert c.turboquant_bits == 4
+
+    def test_invalid_bits_raises(self):
+        from pydantic import ValidationError
+
+        from mahavishnu.core.config import OTelIngesterConfig
+
+        with pytest.raises(ValidationError, match="turboquant_bits must be 3 or 4"):
+            OTelIngesterConfig(turboquant_bits=5)
