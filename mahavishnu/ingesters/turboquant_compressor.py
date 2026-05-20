@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, TypeAlias
+from typing import TYPE_CHECKING, Any
 
 try:
     from turboquant_pro import TurboQuantPGVector
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 # Opaque binary format produced by TurboQuantPGVector.compress().
 # The internal representation is not a stable Python type — treat as bytes-like.
-TQPackedVector: TypeAlias = Any
+type TQPackedVector = Any
 
 __all__ = ["TurboQuantCompressor", "TQPackedVector", "TURBOQUANT_AVAILABLE"]
 
@@ -95,8 +95,7 @@ class TurboQuantCompressor:
     def _get_tq(self) -> Any:
         if not TURBOQUANT_AVAILABLE:
             raise ImportError(
-                "turboquant-pro not installed. "
-                "Install with: uv pip install turboquant-pro"
+                "turboquant-pro not installed. Install with: uv pip install turboquant-pro"
             )
         if self._tq is None:
             self._tq = TurboQuantPGVector(
@@ -175,9 +174,7 @@ class TurboQuantCompressor:
                 lambda: tq.search_compressed(conn, table, query_embedding, top_k=top_k),
             )
         except Exception as e:
-            logger.error(
-                f"turboquant_search_pgvector_failed table={table} top_k={top_k} error={e}"
-            )
+            logger.error(f"turboquant_search_pgvector_failed table={table} top_k={top_k} error={e}")
             raise
 
     def compressed_bytes_per_vector(self) -> int:

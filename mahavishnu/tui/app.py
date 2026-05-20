@@ -527,7 +527,9 @@ async def _probe_service(base_url: str) -> bool:
     except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError):
         return False
     except Exception:
-        _tui_log.warning("Unexpected error probing %s — treating as unavailable", base_url, exc_info=True)
+        _tui_log.warning(
+            "Unexpected error probing %s — treating as unavailable", base_url, exc_info=True
+        )
         return False
 
 
@@ -544,7 +546,9 @@ def _component_urls() -> dict[str, str | None]:
 
         s = MahavishnuSettings()
     except Exception:
-        _tui_log.warning("Could not load MahavishnuSettings; optional tabs suppressed", exc_info=True)
+        _tui_log.warning(
+            "Could not load MahavishnuSettings; optional tabs suppressed", exc_info=True
+        )
         return urls
 
     with contextlib.suppress(Exception):
@@ -580,7 +584,10 @@ async def _fetch_health(base_url: str) -> dict[str, Any]:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(f"{base_url}/health")
             if resp.status_code in (401, 403):
-                return {"available": False, "reason": f"HTTP {resp.status_code} — check credentials"}
+                return {
+                    "available": False,
+                    "reason": f"HTTP {resp.status_code} — check credentials",
+                }
             if resp.status_code >= 500:
                 return {"available": False, "reason": f"HTTP {resp.status_code} — server error"}
             data = resp.json()
@@ -1158,7 +1165,9 @@ class BodaiComponentScreen(VerticalScroll):
     def compose(self) -> ComposeResult:
         yield Label(self._label, classes="screen-title")
         yield Static(id=f"{self._slug}-summary", classes="overview-block")
-        table: DataTable = DataTable(id=f"{self._slug}-table", cursor_type="row", zebra_stripes=True)
+        table: DataTable = DataTable(
+            id=f"{self._slug}-table", cursor_type="row", zebra_stripes=True
+        )
         table.add_columns("Check", "Status", "Detail")
         yield table
 
@@ -1323,7 +1332,9 @@ class DashboardApp(App):
             if url and await _probe_service(url):
                 try:
                     await tabs.add_pane(
-                        TabPane(tab_label, BodaiComponentScreen(screen_label, tab_id, url), id=tab_id)
+                        TabPane(
+                            tab_label, BodaiComponentScreen(screen_label, tab_id, url), id=tab_id
+                        )
                     )
                 except Exception:
                     _tui_log.warning("Failed to mount tab %r", tab_id, exc_info=True)

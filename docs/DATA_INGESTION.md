@@ -7,11 +7,13 @@ Ingest web content, blogs, and books into the knowledge ecosystem.
 **Ingester**: `mahavishnu/ingesters/content_ingester.py`
 
 **Supported Types**:
+
 - Webpages (via BeautifulSoup HTTP fetching)
 - Blogs (RSS/Atom feeds)
 - Books (PDF via pypdf, EPUB via ebooklib)
 
 **Quality Evaluation**: `mahavishnu/ingesters/quality_evaluator.py`
+
 - Scores for readability, technical depth, completeness
 - Configurable quality thresholds
 
@@ -39,6 +41,7 @@ Ingest and semantically search OpenTelemetry traces.
 **Ingester**: `mahavishnu/ingesters/otel_ingester.py`
 
 **Storage Options**:
+
 - **DuckDB** — Zero-dependency, in-memory or file-based
 - **PostgreSQL + pgvector** — Production, persistent, vector similarity
 

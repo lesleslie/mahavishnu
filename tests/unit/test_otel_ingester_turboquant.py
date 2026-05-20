@@ -18,7 +18,6 @@ import pytest
 
 from mahavishnu.ingesters.otel_ingester import OtelIngester
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -33,7 +32,9 @@ def _make_ingester(**kwargs) -> OtelIngester:
     return OtelIngester(preferred_backend="text_only", **kwargs)
 
 
-def _attach_mock_embedder(ingester: OtelIngester, embedding: list[float] | None = None) -> MagicMock:
+def _attach_mock_embedder(
+    ingester: OtelIngester, embedding: list[float] | None = None
+) -> MagicMock:
     """Attach a synchronous mock embedder directly."""
     mock_embedder = MagicMock()
     mock_embedder.encode.return_value = embedding or _fake_embedding()
@@ -216,7 +217,9 @@ class TestGetEmbeddingWithCompression:
         result = await ingester._get_embedding("key")
 
         # Corrupt entry must be evicted; fresh embedding returned
-        assert "key" not in ingester._embedding_cache or ingester._embedding_cache["key"] == fresh_emb
+        assert (
+            "key" not in ingester._embedding_cache or ingester._embedding_cache["key"] == fresh_emb
+        )
         assert result == fresh_emb
         mock_embedder.encode.assert_called_once_with("key")
 

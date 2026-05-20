@@ -362,7 +362,10 @@ class TestContentIngesterInitialize:
     async def test_initialize_creates_compressor_when_bits_set(self, tmp_path: Path):
         """initialize() should construct TurboQuantCompressor when turboquant_bits is set."""
         with (
-            patch("mahavishnu.ingesters.content_ingester.get_embedding_service", return_value=MagicMock()),
+            patch(
+                "mahavishnu.ingesters.content_ingester.get_embedding_service",
+                return_value=MagicMock(),
+            ),
             patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True),
         ):
             ingester = ContentIngester(output_dir=str(tmp_path), turboquant_bits=4)
@@ -374,7 +377,9 @@ class TestContentIngesterInitialize:
     @pytest.mark.asyncio
     async def test_initialize_no_compressor_when_bits_none(self, tmp_path: Path):
         """initialize() should not create a compressor when turboquant_bits is None."""
-        with patch("mahavishnu.ingesters.content_ingester.get_embedding_service", return_value=MagicMock()):
+        with patch(
+            "mahavishnu.ingesters.content_ingester.get_embedding_service", return_value=MagicMock()
+        ):
             ingester = ContentIngester(output_dir=str(tmp_path))
             await ingester.initialize()
             assert ingester._compressor is None
@@ -384,7 +389,10 @@ class TestContentIngesterInitialize:
     async def test_initialize_compressor_unavailable_does_not_raise(self, tmp_path: Path):
         """initialize() should succeed even when turboquant-pro is not installed."""
         with (
-            patch("mahavishnu.ingesters.content_ingester.get_embedding_service", return_value=MagicMock()),
+            patch(
+                "mahavishnu.ingesters.content_ingester.get_embedding_service",
+                return_value=MagicMock(),
+            ),
             patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", False),
         ):
             ingester = ContentIngester(output_dir=str(tmp_path), turboquant_bits=4)

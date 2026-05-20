@@ -76,6 +76,7 @@
 ## Examples
 
 All examples in `examples/` directory are runnable:
+
 - `websocket_integration.py` — WebSocket server integration
 - `pool_monitoring_demo.py` — Pool monitoring with WebSocket
 - `web_ingestion_example.py` — Webpage ingestion

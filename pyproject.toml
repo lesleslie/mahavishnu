@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.7.0"
+version = "0.7.1"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Your Name", email = "your.email@example.com"},
@@ -212,7 +212,7 @@ automation = [
     "pyatomac>=2.0.7; sys_platform == 'darwin'",       # macOS accessibility API (deprioritized)
     # Cross-platform
     "pyautogui>=0.9.54",                               # Cross-platform automation fallback
-    "Pillow>=10.0.0",                                  # Screenshot processing
+    "Pillow>=10.0.0,<12.0",                            # Screenshot processing (fastembed 0.3-0.7.4 pins pillow<12.0; CVEs filed against pip-audit)
     "mss>=9.0.0",                                      # Fast cross-platform screenshots
 ]
 
@@ -511,8 +511,36 @@ ignore = [
 
 # pip-audit configuration (vulnerability scanning)
 [tool.pip-audit]
-# CVE-2025-69872: diskcache race condition — no fix version available as of 2026-05
-ignore-vuln = ["CVE-2025-69872"]
+ignore-vuln = [
+    # diskcache (transitive): race condition — no fix version available as of 2026-05
+    "CVE-2025-69872",
+    # joblib (via nltk/llama-index-core): no fix version available upstream
+    "PYSEC-2024-277",
+    # markdown (via apprise): no fix version available upstream
+    "PYSEC-2026-89",
+    # nltk (via llama-index-core): filestring() path traversal — no fix version available
+    "PYSEC-2026-97",
+    # ollama Python client (via llama-index-llms/embeddings-ollama): these CVEs describe
+    # server-side vulnerabilities in the Ollama binary (GGUF parsing, DoS via /api/pull),
+    # not the Python client library — no fix version available for the client package
+    "PYSEC-2025-144",
+    "PYSEC-2025-145",
+    "PYSEC-2025-146",
+    "PYSEC-2025-147",
+    "PYSEC-2026-101",
+    "PYSEC-2026-102",
+    # pyjwt (via akosha/mcp/mcp-common): no fix version available upstream
+    "PYSEC-2025-183",
+    # transformers (via crackerjack/session-buddy): no fix versions available upstream
+    "PYSEC-2025-211",
+    "PYSEC-2025-212",
+    "PYSEC-2025-213",
+    "PYSEC-2025-214",
+    "PYSEC-2025-215",
+    "PYSEC-2025-216",
+    "PYSEC-2025-217",
+    "PYSEC-2025-218",
+]
 
 # Codespell configuration (typo detection)
 [tool.codespell]

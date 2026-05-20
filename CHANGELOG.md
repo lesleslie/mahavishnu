@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-05-20
+
+### Added
+
+- ingesters: Add TurboQuant embedding compression for OTel cache and content ingestion
+- tui: Add probe-on-mount optional tabs for Bodai components
+- Wire TurboQuant compression as config-driven default-on
+
+### Changed
+
+- Mahavishnu (quality: 68/100) - 2026-05-17 06:21:40
+
+### Testing
+
+- tui: Add tests for probe-on-mount optional Bodai component screens
+
 ## [0.7.0] - 2026-05-17
 
 ### Added
@@ -15,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - config: Add llama_server tier with qwen3.5; update models.yaml to three-tier chain
 - Implement HatchetAdapterImpl with WaitForEvent approval bridge
 - llm: Migrate CloudWorker to mcp_common FallbackChain three-tier routing
-- Wire HatchetAdapterImpl into _initialize_adapters()
+- Wire HatchetAdapterImpl into \_initialize_adapters()
 
 ### Changed
 
@@ -33,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Resolve codespell and check-added-large-files hook failures
 - Resolve two pre-existing test failures
 - types: Clear all zuban type errors — 9/9 comprehensive hooks pass
-- Use asyncio.TimeoutError for py<3.11 compat; add execute timeout test
+- Use asyncio.TimeoutError for py\<3.11 compat; add execute timeout test
 
 ### Removed
 

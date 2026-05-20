@@ -7,17 +7,17 @@ supported_platforms:
 
 - macOS
 - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6HDQR8TGXVN4PW2ZJKM9YH5
-category: development/data
-agents:
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6HDQR8TGXVN4PW2ZJKM9YH5
+  category: development/data
+  agents:
 - data-engineer
 - architecture-council
 - redis-specialist
 - python-pro
-tags:
+  tags:
 - messaging
 - kafka
 - rabbitmq

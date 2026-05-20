@@ -7,11 +7,11 @@ supported_platforms:
 
 - macOS
 - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6EEXC5G16B82V03H85FC5HG
-category: development/data
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6EEXC5G16B82V03H85FC5HG
+  category: development/data
 
 ______________________________________________________________________
 

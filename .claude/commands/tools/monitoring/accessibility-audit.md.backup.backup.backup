@@ -328,7 +328,7 @@ class ColorContrastAnalyzer {
             });
         }
 
-        // Try lightning background
+        // Try lightening background
         const lighterBg = this.adjustColorForContrast(
             background,
             foreground,

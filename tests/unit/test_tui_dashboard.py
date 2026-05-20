@@ -512,7 +512,9 @@ class TestBodaiComponentScreen:
     def test_init_stores_args(self) -> None:
         from mahavishnu.tui.app import BodaiComponentScreen
 
-        screen = BodaiComponentScreen("Akosha — Intelligence Seer", "akosha", "http://localhost:8682")
+        screen = BodaiComponentScreen(
+            "Akosha — Intelligence Seer", "akosha", "http://localhost:8682"
+        )
         assert screen._label == "Akosha — Intelligence Seer"
         assert screen._slug == "akosha"
         assert screen._base_url == "http://localhost:8682"
@@ -547,7 +549,7 @@ class TestBodaiComponentScreen:
         """DashboardApp.action_refresh_all iterates BodaiComponentScreen."""
         import inspect
 
-        from mahavishnu.tui.app import BodaiComponentScreen, DashboardApp
+        from mahavishnu.tui.app import DashboardApp
 
         src = inspect.getsource(DashboardApp.action_refresh_all)
         assert "BodaiComponentScreen" in src
