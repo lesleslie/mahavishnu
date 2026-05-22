@@ -8,7 +8,7 @@ import stat
 HOOK_CONTENT = """#!/bin/sh
 # Managed by mahavishnu index --install-hooks
 # Remove with: mahavishnu index --uninstall-hooks --repo <path>
-mahavishnu index --trigger git-event --repo "$(pwd)" &
+mahavishnu index repo --trigger git-event --repo "$(pwd)" &
 """
 
 MAHAVISHNU_HEADER = "# Managed by mahavishnu index --install-hooks"

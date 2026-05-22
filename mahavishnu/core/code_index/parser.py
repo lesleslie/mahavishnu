@@ -53,10 +53,13 @@ def parse_file(
             return None
 
     try:
+        import asyncio
         from mcp_common.code_graph.analyzer import CodeGraphAnalyzer
 
         analyzer = CodeGraphAnalyzer(Path(repo_path))
-        result = analyzer._analyze_python_file(path)
+        # _analyze_python_file populates analyzer.nodes but returns None
+        asyncio.run(analyzer._analyze_python_file(path))
+        result_nodes = list(analyzer.nodes.values())
     except Exception as e:
         logger.warning(f"Parse failure for {file_path}: {e}")
         raise
@@ -66,7 +69,7 @@ def parse_file(
 
     now = datetime.now(UTC)
 
-    for node in result.nodes:  # type: ignore[attr-defined]
+    for node in result_nodes:
         if node.node_type not in _ALLOWED_NODE_TYPES:
             continue
 
@@ -102,7 +105,7 @@ def parse_file(
         nodes.append(graph_node)
 
     # Build call edges
-    for node in result.nodes:  # type: ignore[attr-defined]
+    for node in result_nodes:
         if node.node_type == "function" and hasattr(node, "calls"):
             source_id = f"{repo_path}|||{file_path}|||function|||{node.name}"
             for callee in node.calls:
@@ -119,7 +122,7 @@ def parse_file(
                 edges.append(edge)
 
     # Build import edges
-    for node in result.nodes:  # type: ignore[attr-defined]
+    for node in result_nodes:
         if node.node_type == "import" and hasattr(node, "module"):
             source_id = f"{repo_path}|||{file_path}|||file|||{path.name}"
             target_id = f"{repo_path}|||{file_path}|||import|||{node.module}"
@@ -144,15 +147,24 @@ def filter_changed_files(
     """Return list of changed Python files since the last indexed commit.
 
     If *commit_hash* is ``None`` (full re-index), returns all parseable files
-    found under *repo_path*.
+    found under *repo_path*, respecting .gitignore patterns.
     """
     repo = Path(repo_path)
 
     if commit_hash is None:
-        files: list[str] = []
-        for ext in PARSABLE_EXTENSIONS:
-            files.extend(str(f) for f in repo.rglob(f"*{ext}"))
-        return sorted(files)
+        # Use git ls-files for full re-index to respect .gitignore
+        result = subprocess.run(
+            ["git", "-C", repo_path, "ls-files", "--cached"],
+            capture_output=True,
+            text=True,
+        )
+        all_files = result.stdout.strip().split("\n") if result.stdout.strip() else []
+        py_files = [
+            str(repo / f)
+            for f in all_files
+            if Path(f).suffix == ".py"
+        ]
+        return sorted(py_files)
 
     result = subprocess.run(
         ["git", "diff", commit_hash, "--name-only", "--diff-filter=ACMR"],

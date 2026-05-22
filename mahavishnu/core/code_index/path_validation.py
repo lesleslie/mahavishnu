@@ -12,15 +12,22 @@ def get_registered_repos() -> set[str]:
 
     Returns absolute paths as strings.
     """
+    from mahavishnu.core.config import MahavishnuSettings
+
     settings = MahavishnuSettings()
-    settings_dir = Path(settings.repos_path).parent
+    # Resolve relative to project directory, not cwd
+    settings_dir = Path(__file__).parent.parent.parent.parent / "settings"
     ecosystem_path = settings_dir / "ecosystem.yaml"
     repos_path = settings_dir / "repos.yaml"
 
-    if ecosystem_path.exists():
-        manifest_path = ecosystem_path
-    elif repos_path.exists():
+    repos_path = settings_dir / "repos.yaml"
+    ecosystem_path = settings_dir / "ecosystem.yaml"
+
+    # repos.yaml is the full catalog; ecosystem.yaml is core-only
+    if repos_path.exists():
         manifest_path = repos_path
+    elif ecosystem_path.exists():
+        manifest_path = ecosystem_path
     else:
         return set()
     import yaml

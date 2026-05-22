@@ -1,6 +1,4 @@
 {
-  "additionalDirectories": [],
-  "outputStyle": "Explanatory",
   "permissions": {
     "allow": [
       "Bash(/Users/les/Projects/mahavishnu/tests/security/test_validation.py:*)",
@@ -361,7 +359,27 @@
       "Bash(lychee --no-progress --cache .cache/lychee --verbose --exclude-mail .)",
       "Bash(lychee --no-progress --cache .cache/lychee --verbose .)",
       "Bash(/Users/les/Projects/session-buddy/.venv/bin/pip install *)",
-      "Bash(/Users/les/Projects/session-buddy/.venv/bin/pip show *)"
+      "Bash(/Users/les/Projects/session-buddy/.venv/bin/pip show *)",
+      "Bash(read d *)",
+      "Bash([ ! -f \"$d/__init__.py\" ])",
+      "Bash(jobs)",
+      "Bash(CRACKERJACK_DEBUG=1 python -m crackerjack run --ai-fix -f --verbose)",
+      "Bash(ls -la /tmp/crackerjack*)",
+      "mcp__pycharm__list_directory_tree",
+      "mcp__pycharm__search_file",
+      "mcp__pycharm__search_regex",
+      "Bash(log show *)",
+      "mcp__mahavishnu__ecosystem_status",
+      "mcp__mahavishnu__list_repos",
+      "mcp__mahavishnu__get_cross_project_patterns",
+      "mcp__akosha__query_knowledge_graph",
+      "mcp__mahavishnu__get_git_velocity_dashboard",
+      "Bash(rm -f ~/.claude/data/mahavishnu-index-queue/mahavishnu_20260522T085411Z.json ~/.claude/data/mahavishnu-index-queue/mahavishnu_20260522T085557Z.json)",
+      "Bash(rm -f ~/.claude/data/mahavishnu-index-queue/mahavishnu_20260522T085936Z.json)",
+      "Bash(sh -c 'mahavishnu index --trigger git-event --repo \"$\\(pwd\\)\"')",
+      "mcp__mahavishnu__health_check_service"
     ]
-  }
+  },
+  "outputStyle": "Explanatory",
+  "additionalDirectories": []
 }

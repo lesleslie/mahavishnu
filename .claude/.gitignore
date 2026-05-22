@@ -1,0 +1,16 @@
+# Claude Code metadata — intentionally not tracked
+# (runtime state, local overrides, user-specific hooks)
+
+# Runtime state
+scheduled_tasks.json
+scheduled_tasks.lock
+
+# Backup artifacts — prevent recursive backup chains
+*.backup
+*.backup.json
+
+# Local overrides
+settings.local.json
+
+# Backups dir
+backups/
