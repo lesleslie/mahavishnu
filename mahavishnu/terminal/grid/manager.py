@@ -7,6 +7,8 @@ from logging import getLogger
 
 from mahavishnu.terminal.adapters.iterm2 import ITerm2Adapter
 
+from mcp_common.apple_script import AppleScriptError
+
 from .exceptions import (
     GridNotFoundError,
     SessionNotFoundError,
@@ -62,7 +64,7 @@ class TerminalGridManager:
             await asyncio.wait_for(self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT)
             await asyncio.sleep(0.5)
             return True
-        except (RuntimeError, asyncio.TimeoutError):
+        except (AppleScriptError, asyncio.TimeoutError):
             return False
 
     async def _create_positioned_window(
