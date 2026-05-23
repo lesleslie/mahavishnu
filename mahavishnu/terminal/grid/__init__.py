@@ -8,9 +8,11 @@ from .exceptions import (
     SessionNotFoundError,
     WindowTilingError,
 )
+from .manager import TerminalGridManager
 from .models import DesktopSession, GridSession, GridStatus, Quadrant, WindowSession
 
 __all__ = [
+    "TerminalGridManager",
     "GridSession",
     "DesktopSession",
     "WindowSession",
