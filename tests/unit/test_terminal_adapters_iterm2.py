@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from mcp_common.apple_script import AppleScriptError
 from mahavishnu.terminal.adapters.iterm2 import (
     OSASCRIPT_AVAILABLE,
     ITerm2Adapter,
@@ -67,6 +68,9 @@ class TestITerm2Adapter:
         adapter._sessions["test_session"] = {
             "command": "initial",
             "created_at": datetime.now(),
+            "window": "win_123",
+            "tab": "tab_456",
+            "new_window": False,
         }
 
         with patch.object(adapter, "_run_applescript", return_value="") as mock_run:
@@ -76,6 +80,7 @@ class TestITerm2Adapter:
         call_args = mock_run.call_args[0][0]
         assert "write text" in call_args.lower()
         assert "ls -la" in call_args
+        assert "win_123" in call_args  # Uses window_id for targeting
 
     @pytest.mark.asyncio
     async def test_send_command_session_not_found(self, adapter):
@@ -113,6 +118,8 @@ class TestITerm2Adapter:
             "command": "test",
             "created_at": datetime.now(),
             "new_window": False,
+            "window": "win_123",
+            "tab": "tab_456",
         }
 
         with patch.object(adapter, "_run_applescript", return_value="") as mock_run:
@@ -120,6 +127,10 @@ class TestITerm2Adapter:
 
         assert "test_session" not in adapter._sessions
         mock_run.assert_called_once()
+        # Verify the script targets by window/tab identity
+        call_args = mock_run.call_args[0][0]
+        assert "win_123" in call_args
+        assert "tab_456" in call_args
 
     @pytest.mark.asyncio
     async def test_close_session_not_found(self, adapter):
@@ -162,11 +173,15 @@ class TestITerm2Adapter:
                 "command": "test",
                 "created_at": datetime.now(),
                 "new_window": False,
+                "window": "win_1",
+                "tab": "tab_1",
             },
             "session_2": {
                 "command": "test2",
                 "created_at": datetime.now(),
                 "new_window": True,
+                "window": "win_2",
+                "tab": None,
             },
         }
 
@@ -202,7 +217,7 @@ class TestITerm2Adapter:
             return proc
 
         with patch("asyncio.create_subprocess_exec", mock_exec):
-            with pytest.raises(RuntimeError, match="AppleScript failed"):
+            with pytest.raises(AppleScriptError, match="AppleScript error"):
                 await adapter._run_applescript("invalid script")
 
     @pytest.mark.asyncio
@@ -247,6 +262,9 @@ class TestITerm2AdapterEdgeCases:
         adapter._sessions["test"] = {
             "command": "initial",
             "created_at": datetime.now(),
+            "window": "win_123",
+            "tab": "tab_456",
+            "new_window": False,
         }
 
         with patch.object(adapter, "_run_applescript", return_value="") as mock_run:
@@ -263,10 +281,12 @@ class TestITerm2AdapterEdgeCases:
             "command": "test",
             "created_at": datetime.now(),
             "new_window": False,
+            "window": "win_123",
+            "tab": "tab_456",
         }
 
         with (
-            patch.object(adapter, "_run_applescript", side_effect=RuntimeError("Failed")),
+            patch.object(adapter, "_run_applescript", side_effect=AppleScriptError("Failed")),
             pytest.raises(RuntimeError),
         ):
             await adapter.close_session("test")
