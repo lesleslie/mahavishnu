@@ -13,13 +13,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import logging
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
+
+if TYPE_CHECKING:
+    pass
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
-
-if TYPE_CHECKING:
-    from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +193,10 @@ class TaskEventFilter(BaseModel):
 
 class TaskEventRepository(BaseRepository[TaskEventCreate, TaskEventRead, TaskEventUpdate]):
     """Repository for audit.task_events table operations."""
+
+    async def create(self, data: TaskEventCreate) -> TaskEventRead:
+        """Not used directly — use record_event() instead."""
+        raise NotImplementedError("Use record_event() instead")
 
     async def record_event(self, data: TaskEventCreate) -> TaskEventRead:
         """Record a task event."""

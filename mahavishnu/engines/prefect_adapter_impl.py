@@ -688,7 +688,8 @@ class PrefectAdapter(OrchestratorAdapter):
             return
 
         if isinstance(client_factory, Mock):
-            yield client_factory
+            async with client_factory as client:
+                yield client
             return
 
         if self.config.api_key:

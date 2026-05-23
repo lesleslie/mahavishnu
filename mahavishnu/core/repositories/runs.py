@@ -181,6 +181,10 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
         super().__init__()
         self._table = "orchestration.task_runs"
 
+    async def create(self, data: TaskRunCreate) -> TaskRunRead:
+        """Not used directly — use create_run() instead."""
+        raise NotImplementedError("Use create_run() instead")
+
     async def create_run(self, data: TaskRunCreate) -> TaskRunRead:
         """Create a new task run.
 

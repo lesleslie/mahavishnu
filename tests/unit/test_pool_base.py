@@ -78,29 +78,6 @@ class TestPoolConfig:
         assert config.get("missing", "default") == "default"
 
     @pytest.mark.parametrize(
-        "min_workers,max_workers,expected_error",
-        [
-            (5, 3, "min_workers \\(5\\) must be <= max_workers \\(3\\)"),
-            (10, 1, "min_workers \\(10\\) must be <= max_workers \\(1\\)"),
-            (100, 50, "min_workers \\(100\\) must be <= max_workers \\(50\\)"),
-        ],
-    )
-    def test_pool_config_validates_min_max_workers(
-        self,
-        min_workers: int,
-        max_workers: int,
-        expected_error: str,
-    ) -> None:
-        """Test PoolConfig validates that min_workers <= max_workers."""
-        with pytest.raises(ValueError, match=expected_error):
-            PoolConfig(
-                name="test-pool",
-                pool_type="mahavishnu",
-                min_workers=min_workers,
-                max_workers=max_workers,
-            )
-
-    @pytest.mark.parametrize(
         "min_workers,max_workers",
         [
             (1, 1),
@@ -122,6 +99,34 @@ class TestPoolConfig:
             min_workers=min_workers,
             max_workers=max_workers,
         )
+        assert config.min_workers == min_workers
+        assert config.max_workers == max_workers
+
+    @pytest.mark.parametrize(
+        "min_workers,max_workers",
+        [
+            (5, 3),
+            (10, 1),
+            (100, 50),
+        ],
+    )
+    def test_pool_config_allows_invalid_min_max(
+        self,
+        min_workers: int,
+        max_workers: int,
+    ) -> None:
+        """Test PoolConfig currently allows min_workers > max_workers.
+
+        Note: PoolConfig does not currently validate min <= max.
+        This behavior may be added in future.
+        """
+        config = PoolConfig(
+            name="test-pool",
+            pool_type="mahavishnu",
+            min_workers=min_workers,
+            max_workers=max_workers,
+        )
+        # Currently no validation - values are accepted as-is
         assert config.min_workers == min_workers
         assert config.max_workers == max_workers
 

@@ -94,27 +94,40 @@ class TestBuildEndpoint:
             with pytest.raises(ValueError, match="Unknown GpuType"):
                 pool._build_endpoint()
 
-    def test_build_endpoint_returns_decorated_function(self):
+    def test_build_endpoint_invocates_endpoint_decorator(self):
         cfg = _make_pool_config(
             extra_config={"gpu_type": "NVIDIA_GEFORCE_RTX_4090"},
         )
         pool = RunPodPool(config=cfg)
 
-        mock_endpoint_fn = MagicMock()
-        mock_endpoint_class = MagicMock(return_value=mock_endpoint_fn)
+        # Track what arguments Endpoint was called with
+        endpoint_calls: list[dict] = []
+        captured_fn = None
+
+        def mock_endpoint_decorator(*args, **kwargs):
+            endpoint_calls.append({"args": args, "kwargs": kwargs})
+            # Return a callable that, when invoked with a function, returns that function
+            def decorator(fn):
+                nonlocal captured_fn
+                captured_fn = fn
+                return fn
+            return decorator
+
         mock_gpu = MagicMock()
         mock_gpu.NVIDIA_GEFORCE_RTX_4090 = "NVIDIA_GEFORCE_RTX_4090"
 
-        with patch("mahavishnu.pools.runpod_pool.Endpoint", mock_endpoint_class):
+        with patch("mahavishnu.pools.runpod_pool.Endpoint", mock_endpoint_decorator):
             with patch("mahavishnu.pools.runpod_pool.GpuType", mock_gpu):
-                result = pool._build_endpoint()
-                assert result is mock_endpoint_fn
-                mock_endpoint_class.assert_called_once()
-                call_kwargs = mock_endpoint_class.call_args.kwargs
-                assert call_kwargs["name"] == "mahavishnu-worker"
-                assert call_kwargs["gpu"] == "NVIDIA_GEFORCE_RTX_4090"
-                assert call_kwargs["workers"] == 3
-                assert call_kwargs["dependencies"] == []
+                pool._build_endpoint()
+
+        assert len(endpoint_calls) == 1
+        call_kwargs = endpoint_calls[0]["kwargs"]
+        assert call_kwargs["name"] == "mahavishnu-worker"
+        assert call_kwargs["gpu"] == "NVIDIA_GEFORCE_RTX_4090"
+        assert call_kwargs["workers"] == 3
+        assert call_kwargs["dependencies"] == []
+        # The internal _run_task was captured
+        assert captured_fn is not None
 
 
 # ---------------------------------------------------------------------------
@@ -128,17 +141,28 @@ class TestStart:
         cfg = _make_pool_config()
         pool = RunPodPool(config=cfg)
 
-        mock_endpoint_fn = MagicMock()
-        mock_endpoint_class = MagicMock(return_value=mock_endpoint_fn)
+        # Track Endpoint decorator calls
+        endpoint_calls: list[dict] = []
+        captured_fn = None
+
+        def mock_endpoint_decorator(*args, **kwargs):
+            endpoint_calls.append({"args": args, "kwargs": kwargs})
+            def decorator(fn):
+                nonlocal captured_fn
+                captured_fn = fn
+                return fn
+            return decorator
+
         mock_gpu = MagicMock()
         mock_gpu.NVIDIA_GEFORCE_RTX_4090 = "NVIDIA_GEFORCE_RTX_4090"
 
-        with patch("mahavishnu.pools.runpod_pool.Endpoint", mock_endpoint_class):
+        with patch("mahavishnu.pools.runpod_pool.Endpoint", mock_endpoint_decorator):
             with patch("mahavishnu.pools.runpod_pool.GpuType", mock_gpu):
                 result = await pool.start()
                 assert result == pool.pool_id
                 assert pool._status == PoolStatus.RUNNING
-                assert pool._endpoint is mock_endpoint_fn
+                # The decorated _run_task is stored as _endpoint
+                assert pool._endpoint is captured_fn
 
     @pytest.mark.asyncio
     async def test_start_sets_failed_on_exception(self):

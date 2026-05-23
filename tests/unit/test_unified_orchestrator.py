@@ -124,16 +124,16 @@ async def test_execute_workflow_success(monkeypatch: pytest.MonkeyPatch) -> None
         execution_results=[
             {
                 "success": True,
-                "adapter": uo.AdapterType.PREFECT,
+                "adapter": "prefect",
                 "result": "exec-1",
-                "fallback_chain": [uo.AdapterType.PREFECT],
+                "fallback_chain": ["prefect"],
                 "total_attempts": 1,
             },
             {
                 "success": True,
-                "adapter": uo.AdapterType.AGNO,
+                "adapter": "agno",
                 "result": "exec-2",
-                "fallback_chain": [uo.AdapterType.PREFECT, uo.AdapterType.AGNO],
+                "fallback_chain": ["prefect", "agno"],
                 "total_attempts": 2,
             },
         ]
@@ -150,8 +150,8 @@ async def test_execute_workflow_success(monkeypatch: pytest.MonkeyPatch) -> None
     state = await router.state_manager.get_workflow_state("wf-fixed-id")
     assert state["adapter_states"]["task_router"]["status"] == "completed"
     assert len(state["adapter_states"]["task_router"]["results"]) == 2
-    assert state["adapter_states"][uo.AdapterType.PREFECT]["execution_id"] == "exec-1"
-    assert state["adapter_states"][uo.AdapterType.AGNO]["execution_id"] == "exec-2"
+    assert state["adapter_states"]["prefect"]["execution_id"] == "exec-1"
+    assert state["adapter_states"]["agno"]["execution_id"] == "exec-2"
     assert all("preference_order" not in call for call in router.execute_calls)
 
 
@@ -165,7 +165,7 @@ async def test_execute_workflow_failure_marks_failed_and_raises(
             {
                 "success": False,
                 "error": "all adapters failed",
-                "fallback_chain": [uo.AdapterType.PREFECT, uo.AdapterType.AGNO],
+                "fallback_chain": ["prefect", "agno"],
             }
         ]
     )

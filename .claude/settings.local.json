@@ -395,7 +395,8 @@
       "Bash(xcodebuild test *)",
       "Bash(xcodebuild build *)",
       "Bash(xcodebuild *)",
-      "Bash(swiftc -parse AppleScriptBridgeConformanceTests.swift)"
+      "Bash(swiftc -parse AppleScriptBridgeConformanceTests.swift)",
+      "mcp__akosha__search_code_patterns"
     ]
   },
   "outputStyle": "Explanatory",

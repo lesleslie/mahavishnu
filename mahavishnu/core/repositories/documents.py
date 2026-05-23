@@ -15,12 +15,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import logging
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
 
 if TYPE_CHECKING:
+    pass
     from uuid import UUID
 
 logger = logging.getLogger(__name__)
@@ -229,6 +231,10 @@ class DocumentRepository(
     BaseRepository[DocumentCreate, DocumentRead, DocumentUpdate],
 ):
     """Repository for search.documents table operations."""
+
+    async def create(self, data: DocumentCreate) -> DocumentRead:
+        """Not used directly — use create_document() instead."""
+        raise NotImplementedError("Use create_document() instead")
 
     async def create_document(self, data: DocumentCreate) -> DocumentRead:
         """Create a new document."""

@@ -14,13 +14,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import logging
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
+
+if TYPE_CHECKING:
+    pass
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
-
-if TYPE_CHECKING:
-    from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +122,10 @@ class EmbeddingRepository(
     BaseRepository[EmbeddingCreate, EmbeddingRead, EmbeddingUpdate],
 ):
     """Repository for search.document_embeddings table operations."""
+
+    async def create(self, data: EmbeddingCreate) -> EmbeddingRead:
+        """Not used directly — use store_embedding() instead."""
+        raise NotImplementedError("Use store_embedding() instead")
 
     async def store_embedding(self, data: EmbeddingCreate) -> EmbeddingRead:
         """Store an embedding vector."""

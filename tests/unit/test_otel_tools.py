@@ -36,6 +36,7 @@ def _make_mock_app() -> MagicMock:
         embedding_model="nomic-embed-text",
         cache_size=100,
         similarity_threshold=0.7,
+        turboquant_bits=8,
     )
     app = MagicMock()
     app.config.otel_ingester = otel_cfg

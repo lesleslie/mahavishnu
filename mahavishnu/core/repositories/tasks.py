@@ -225,6 +225,10 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
         super().__init__()
         self._table = "orchestration.tasks"
 
+    async def create(self, data: TaskCreate) -> TaskRead:
+        """Not used directly — use create_task() instead."""
+        raise NotImplementedError("Use create_task() instead")
+
     async def create_task(self, data: TaskCreate) -> TaskRead:
         """Create a new task.
 

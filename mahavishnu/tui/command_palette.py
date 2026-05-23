@@ -84,6 +84,11 @@ class CommandMatch(BaseModel):
     matched_text: str = ""
 
 
+# Rebuild CommandMatch after Command is fully defined
+# to resolve forward reference to Callable
+CommandMatch.model_rebuild()
+
+
 class FuzzyMatcher:
     """Fuzzy string matching for command search."""
 

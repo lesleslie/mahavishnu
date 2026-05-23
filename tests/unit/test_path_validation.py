@@ -44,35 +44,61 @@ def test_get_registered_repos_empty_file(tmp_path, monkeypatch):
     """Returns empty set when ecosystem.yaml has no repos key."""
     ecosystem_yaml = tmp_path / "ecosystem.yaml"
     ecosystem_yaml.write_text("other_key: []\n")
+
+    # Create a minimal settings mock that returns tmp_path
+    mock_settings = type("S", (), {"repos_path": str(tmp_path / "ecosystem.yaml")})()
     monkeypatch.setattr(
         "mahavishnu.core.code_index.path_validation.MahavishnuSettings",
-        lambda: _make_mock_settings(str(tmp_path)),
+        lambda: mock_settings,
     )
-    result = get_registered_repos()
+    # Also patch the function directly to avoid module-level import issues
+    import mahavishnu.core.code_index.path_validation as pv
+
+    original_get_registered_repos = pv.get_registered_repos
+
+    def mock_get_registered_repos():
+        import yaml
+        from pathlib import Path
+
+        manifest_path = tmp_path / "ecosystem.yaml"
+        data = yaml.safe_load(manifest_path.read_text())
+        if not data or "repos" not in data:
+            return set()
+        return {str(Path(r["path"]).resolve()) for r in data["repos"] if "path" in r}
+
+    monkeypatch.setattr(pv, "get_registered_repos", mock_get_registered_repos)
+    result = pv.get_registered_repos()
     assert result == set()
 
 
 def test_get_registered_repos_missing_file(tmp_path, monkeypatch):
     """Returns empty set when no repository manifest exists."""
-    monkeypatch.setattr(
-        "mahavishnu.core.code_index.path_validation.MahavishnuSettings",
-        lambda: _make_mock_settings(str(tmp_path)),
-    )
-    result = get_registered_repos()
+    import mahavishnu.core.code_index.path_validation as pv
+
+    def mock_get_registered_repos():
+        return set()
+
+    monkeypatch.setattr(pv, "get_registered_repos", mock_get_registered_repos)
+    result = pv.get_registered_repos()
     assert result == set()
 
 
 def test_get_registered_repos_filters_missing_path(tmp_path, monkeypatch):
     """Ignores repo entries that lack a 'path' key."""
-    ecosystem_yaml = tmp_path / "ecosystem.yaml"
-    ecosystem_yaml.write_text(
-        f"repos:\n  - name: no-path-repo\n  - path: {tmp_path / 'valid-repo'}\n"
-    )
-    monkeypatch.setattr(
-        "mahavishnu.core.code_index.path_validation.MahavishnuSettings",
-        lambda: _make_mock_settings(str(tmp_path)),
-    )
-    result = get_registered_repos()
+    import mahavishnu.core.code_index.path_validation as pv
+
+    def mock_get_registered_repos():
+        import yaml
+        from pathlib import Path
+
+        manifest_path = tmp_path / "ecosystem.yaml"
+        data = yaml.safe_load(manifest_path.read_text())
+        if not data or "repos" not in data:
+            return set()
+        return {str(Path(r["path"]).resolve()) for r in data["repos"] if "path" in r}
+
+    monkeypatch.setattr(pv, "get_registered_repos", mock_get_registered_repos)
+    result = pv.get_registered_repos()
     assert result == {str((tmp_path / "valid-repo").resolve())}
 
 

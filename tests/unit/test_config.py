@@ -79,7 +79,7 @@ def test_models_yaml_defaults_to_minimax() -> None:
     data = yaml.safe_load(models_path.read_text(encoding="utf-8"))
 
     assert data["default_provider"] == "minimax"
-    assert data["fallback_chain"] == ["minimax", "ollama"]
+    assert data["fallback_chain"] == ["minimax", "llama_server", "ollama"]
     assert data["free_tier_provider"] == "minimax"
     assert data["minimax"]["api_key"] == "${MINIMAX_API_KEY}"
     assert data["minimax"]["base_url"] == "https://api.minimax.io/v1"

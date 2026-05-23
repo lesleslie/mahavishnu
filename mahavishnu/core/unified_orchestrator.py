@@ -122,10 +122,12 @@ class UnifiedOrchestrator:
                         },
                     )
 
+                    # Handle both string and enum adapter types
+                    adapter_value = adapter_type.value if hasattr(adapter_type, "value") else str(adapter_type)
                     results.append(
                         {
                             "task": task,
-                            "adapter": adapter_type.value,
+                            "adapter": adapter_value,
                             "execution_id": execution_id,
                             "fallback_used": len(execution_result["fallback_chain"]) > 1,
                         }
