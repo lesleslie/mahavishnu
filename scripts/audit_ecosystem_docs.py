@@ -251,13 +251,13 @@ def repo_relative(path: Path, repo_path: Path) -> str:
     return str(path.relative_to(repo_path))
 
 
-def summarize_repo(repo: dict[str, Any]) -> RepoDocsSummary:
-    """Summarize docs health for one repo."""
-    repo_path = Path(str(repo["path"]))
-    docs_path = repo_path / "docs"
-    docs_exists = docs_path.exists()
+def _categorize_docs_files(docs_path: Path) -> dict[str, list[Path]]:
+    """Categorize files within a docs directory.
 
-    files = [path for path in docs_path.rglob("*") if path.is_file()] if docs_exists else []
+    Returns a dict with keys: all_files, markdown, archive, backup_like,
+    generated, root_markdown, stale_root_candidates.
+    """
+    files = [path for path in docs_path.rglob("*") if path.is_file()]
     markdown_files = [path for path in files if path.suffix.lower() == ".md"]
     archive_files = [path for path in files if "archive" in path.parts]
     backup_like_files = [path for path in files if is_backup_like(path)]
@@ -266,31 +266,71 @@ def summarize_repo(repo: dict[str, Any]) -> RepoDocsSummary:
     stale_root_candidates = [
         path for path in markdown_files if is_stale_root_candidate(path, docs_path)
     ]
-    top_level_dirs = (
-        sorted(path.name for path in docs_path.iterdir() if path.is_dir()) if docs_exists else []
-    )
+    return {
+        "all_files": files,
+        "markdown": markdown_files,
+        "archive": archive_files,
+        "backup_like": backup_like_files,
+        "generated": generated_files,
+        "root_markdown": root_markdown_files,
+        "stale_root_candidates": stale_root_candidates,
+    }
 
+
+def _build_repo_recommendations(
+    docs_path: Path,
+    docs_exists: bool,
+    categories: dict[str, list[Path]],
+) -> list[str]:
+    """Build recommendation strings for a repo's docs directory."""
     recommendations: list[str] = []
     if not docs_exists:
         recommendations.append("create docs/ or confirm repo intentionally has no docs")
-    else:
-        if not (docs_path / "README.md").exists():
-            recommendations.append("add docs/README.md")
-        if archive_files and not (docs_path / "archive" / "README.md").exists():
-            recommendations.append("add docs/archive/README.md")
-        root_plan_like_files = [
-            path
-            for path in root_markdown_files
-            if any(marker in path.stem.upper() for marker in PLAN_MARKERS)
-        ]
-        if len(root_plan_like_files) > 3 and not has_plan_index(docs_path):
-            recommendations.append("add docs/plans/PLAN_INDEX.md")
-        if backup_like_files:
-            recommendations.append("review/remove backup-like artifacts under docs")
-        if generated_files:
-            recommendations.append("move generated artifacts out of docs")
-        if stale_root_candidates:
-            recommendations.append("move stale root reports/summaries into archive")
+        return recommendations
+
+    if not (docs_path / "README.md").exists():
+        recommendations.append("add docs/README.md")
+    if categories["archive"] and not (docs_path / "archive" / "README.md").exists():
+        recommendations.append("add docs/archive/README.md")
+
+    root_plan_like_files = [
+        path
+        for path in categories["root_markdown"]
+        if any(marker in path.stem.upper() for marker in PLAN_MARKERS)
+    ]
+    if len(root_plan_like_files) > 3 and not has_plan_index(docs_path):
+        recommendations.append("add docs/plans/PLAN_INDEX.md")
+    if categories["backup_like"]:
+        recommendations.append("review/remove backup-like artifacts under docs")
+    if categories["generated"]:
+        recommendations.append("move generated artifacts out of docs")
+    if categories["stale_root_candidates"]:
+        recommendations.append("move stale root reports/summaries into archive")
+    return recommendations
+
+
+def summarize_repo(repo: dict[str, Any]) -> RepoDocsSummary:
+    """Summarize docs health for one repo."""
+    repo_path = Path(str(repo["path"]))
+    docs_path = repo_path / "docs"
+    docs_exists = docs_path.exists()
+
+    categories = _categorize_docs_files(docs_path) if docs_exists else {
+        "all_files": [], "markdown": [], "archive": [], "backup_like": [],
+        "generated": [], "root_markdown": [], "stale_root_candidates": [],
+    }
+
+    files = categories["all_files"]
+    markdown_files = categories["markdown"]
+    archive_files = categories["archive"]
+    backup_like_files = categories["backup_like"]
+    generated_files = categories["generated"]
+    stale_root_candidates = categories["stale_root_candidates"]
+    root_markdown_files = categories["root_markdown"]
+
+    recommendations = _build_repo_recommendations(
+        docs_path, docs_exists, categories
+    )
 
     return RepoDocsSummary(
         name=str(repo["name"]),
@@ -307,7 +347,10 @@ def summarize_repo(repo: dict[str, Any]) -> RepoDocsSummary:
         has_docs_readme=(docs_path / "README.md").exists(),
         has_archive_readme=(docs_path / "archive" / "README.md").exists(),
         has_plan_index=has_plan_index(docs_path),
-        top_level_dirs=top_level_dirs,
+        top_level_dirs=(
+            sorted(path.name for path in docs_path.iterdir() if path.is_dir())
+            if docs_exists else []
+        ),
         backup_like_paths=sorted(repo_relative(path, repo_path) for path in backup_like_files),
         generated_paths=sorted(repo_relative(path, repo_path) for path in generated_files),
         stale_root_paths=sorted(repo_relative(path, repo_path) for path in stale_root_candidates),
@@ -426,6 +469,17 @@ def render_markdown(
         )
 
     lines.extend(["", "## Recommendations", ""])
+    lines.extend(_render_markdown_recommendations(summaries))
+
+    if include_files:
+        lines.extend(_render_markdown_cleanup_candidates(summaries))
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _render_markdown_recommendations(summaries: list[RepoDocsSummary]) -> list[str]:
+    """Render the recommendations section of the markdown report."""
+    lines: list[str] = []
     for summary in summaries:
         lines.append(f"### {summary.name}")
         lines.append("")
@@ -435,39 +489,41 @@ def render_markdown(
         else:
             lines.append("- no immediate structural recommendations")
         lines.append("")
+    return lines
 
-    if include_files:
-        lines.extend(["## Detailed Cleanup Candidates", ""])
-        for summary in summaries:
-            lines.append(f"### {summary.name}")
+
+def _render_markdown_cleanup_candidates(summaries: list[RepoDocsSummary]) -> list[str]:
+    """Render the detailed cleanup candidates section of the markdown report."""
+    lines = ["## Detailed Cleanup Candidates", ""]
+    for summary in summaries:
+        lines.append(f"### {summary.name}")
+        lines.append("")
+        if not (
+            summary.backup_like_paths or summary.generated_paths or summary.stale_root_paths
+        ):
+            lines.append("- no detailed candidates")
             lines.append("")
-            if not (
-                summary.backup_like_paths or summary.generated_paths or summary.stale_root_paths
-            ):
-                lines.append("- no detailed candidates")
-                lines.append("")
-                continue
+            continue
 
-            if summary.backup_like_paths:
-                lines.append("Backup-like files:")
-                lines.append("")
-                for path in summary.backup_like_paths:
-                    lines.append(f"- `{path}`")
-                lines.append("")
-            if summary.generated_paths:
-                lines.append("Generated files:")
-                lines.append("")
-                for path in summary.generated_paths:
-                    lines.append(f"- `{path}`")
-                lines.append("")
-            if summary.stale_root_paths:
-                lines.append("Root stale candidates:")
-                lines.append("")
-                for path in summary.stale_root_paths:
-                    lines.append(f"- `{path}`")
-                lines.append("")
-
-    return "\n".join(lines).rstrip() + "\n"
+        if summary.backup_like_paths:
+            lines.append("Backup-like files:")
+            lines.append("")
+            for path in summary.backup_like_paths:
+                lines.append(f"- `{path}`")
+            lines.append("")
+        if summary.generated_paths:
+            lines.append("Generated files:")
+            lines.append("")
+            for path in summary.generated_paths:
+                lines.append(f"- `{path}`")
+            lines.append("")
+        if summary.stale_root_paths:
+            lines.append("Root stale candidates:")
+            lines.append("")
+            for path in summary.stale_root_paths:
+                lines.append(f"- `{path}`")
+            lines.append("")
+    return lines
 
 
 def parse_args() -> argparse.Namespace:

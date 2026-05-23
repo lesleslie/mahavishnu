@@ -373,60 +373,69 @@ class ToolFrontmatterValidator:
         print("Tool Frontmatter Validation Report")
         print(f"{'=' * 80}\n")
 
-        # Summary stats
+        self._print_summary(results)
+        self._report_critical_issues(results)
+        self._report_warnings(results)
+
+        print(f"\n{'=' * 80}")
+
+    def _print_summary(self, results: list[ValidationResult]) -> None:
+        """Print summary statistics"""
         total = len(results)
         valid = sum(1 for r in results if r.valid)
-        critical_count = sum(
-            len([i for i in r.issues if i.severity == "critical"]) for r in results
-        )
-        warning_count = sum(len([i for i in r.issues if i.severity == "warning"]) for r in results)
-        info_count = sum(len([i for i in r.issues if i.severity == "info"]) for r in results)
+        critical_count = sum(1 for r in results for i in r.issues if i.severity == "critical")
+        warning_count = sum(1 for r in results for i in r.issues if i.severity == "warning")
+        info_count = sum(1 for r in results for i in r.issues if i.severity == "info")
 
         print(f"Total Tools: {total}")
         print(f"Valid: {valid} ({valid / total * 100:.1f}%)")
         print(f"Invalid: {total - valid} ({(total - valid) / total * 100:.1f}%)\n")
         print(f"Issues: {critical_count} critical, {warning_count} warnings, {info_count} info\n")
 
-        # Details for invalid tools
+    def _report_critical_issues(self, results: list[ValidationResult]) -> None:
+        """Print critical issues for invalid tools"""
         invalid_results = [r for r in results if not r.valid]
-        if invalid_results:
-            print(f"\n{'-' * 80}")
-            print(f"CRITICAL ISSUES ({len(invalid_results)} tools)")
-            print(f"{'-' * 80}\n")
+        if not invalid_results:
+            return
 
-            for result in invalid_results:
-                rel_path = result.file_path.relative_to(self.tools_dir.parent)
-                print(f"📄 {rel_path}")
-                critical_issues = [i for i in result.issues if i.severity == "critical"]
-                for issue in critical_issues:
-                    print(f"   ❌ [{issue.field}] {issue.message}")
-                    if issue.suggestion:
-                        print(f"      💡 {issue.suggestion}")
-                print()
+        print(f"\n{'-' * 80}")
+        print(f"CRITICAL ISSUES ({len(invalid_results)} tools)")
+        print(f"{'-' * 80}\n")
 
-        # Warnings
+        for result in invalid_results:
+            rel_path = result.file_path.relative_to(self.tools_dir.parent)
+            print(f"📄 {rel_path}")
+            critical_issues = [i for i in result.issues if i.severity == "critical"]
+            for issue in critical_issues:
+                print(f"   ❌ [{issue.field}] {issue.message}")
+                if issue.suggestion:
+                    print(f"      💡 {issue.suggestion}")
+            print()
+
+    def _report_warnings(self, results: list[ValidationResult]) -> None:
+        """Print warnings for valid tools"""
         warning_results = [
             r for r in results if r.valid and any(i.severity == "warning" for i in r.issues)
         ]
-        if warning_results:
-            print(f"\n{'-' * 80}")
-            print(f"WARNINGS ({len(warning_results)} tools)")
-            print(f"{'-' * 80}\n")
+        if not warning_results:
+            return
 
-            for result in warning_results[:10]:  # Limit to first 10
-                rel_path = result.file_path.relative_to(self.tools_dir.parent)
-                print(f"📄 {rel_path}")
-                warnings = [i for i in result.issues if i.severity == "warning"]
-                for issue in warnings:
-                    print(f"   ⚠️  [{issue.field}] {issue.message}")
-                    if issue.suggestion:
-                        print(f"      💡 {issue.suggestion}")
-                print()
+        print(f"\n{'-' * 80}")
+        print(f"WARNINGS ({len(warning_results)} tools)")
+        print(f"{'-' * 80}\n")
 
-            if len(warning_results) > 10:
-                print(f"... and {len(warning_results) - 10} more tools with warnings\n")
+        for result in warning_results[:10]:  # Limit to first 10
+            rel_path = result.file_path.relative_to(self.tools_dir.parent)
+            print(f"📄 {rel_path}")
+            warnings = [i for i in result.issues if i.severity == "warning"]
+            for issue in warnings:
+                print(f"   ⚠️  [{issue.field}] {issue.message}")
+                if issue.suggestion:
+                    print(f"      💡 {issue.suggestion}")
+            print()
 
-        print(f"\n{'=' * 80}")
+        if len(warning_results) > 10:
+            print(f"... and {len(warning_results) - 10} more tools with warnings\n")
 
     def fix_missing_ids(self):
         """Add ULIDs to tools missing IDs"""
