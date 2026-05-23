@@ -16,19 +16,21 @@ from .models import DesktopSession, GridSession, GridStatus, WindowSession
 
 logger = getLogger(__name__)
 
-QUADRANT_BOUNDS = {
-    "tl": {"x": 0, "y": 0},
-    "tr": {"x": 0, "y": 0},
-    "bl": {"x": 0, "y": 0},
-    "br": {"x": 0, "y": 0},
-}
 QUADRANTS = ["tl", "tr", "bl", "br"]
+
+APPLE_SCRIPT_TIMEOUT = 30
 
 
 class TerminalGridManager:
     def __init__(self, iterm2_adapter: ITerm2Adapter):
         self._adapter = iterm2_adapter
         self._grids: dict[str, GridSession] = {}
+        self._quadrant_bounds: dict[str, dict[str, int]] = {
+            "tl": {"x": 0, "y": 0},
+            "tr": {"x": 0, "y": 0},
+            "bl": {"x": 0, "y": 0},
+            "br": {"x": 0, "y": 0},
+        }
 
     async def _get_primary_screen_bounds(self) -> tuple[int, int, int, int]:
         """Return (x, y, width, height) for the primary display."""
@@ -37,7 +39,9 @@ class TerminalGridManager:
             get bounds of window 1
         end tell
         '''
-        bounds_str = await self._adapter._run_applescript(script)
+        bounds_str = await asyncio.wait_for(
+            self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT
+        )
         parts = [int(p.strip()) for p in bounds_str.split(",")]
         x, y, w, h = parts[0], parts[1], parts[2], parts[3]
         return x, y, w, h
@@ -55,10 +59,10 @@ class TerminalGridManager:
         end tell
         '''
         try:
-            await self._adapter._run_applescript(script)
+            await asyncio.wait_for(self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT)
             await asyncio.sleep(0.5)
             return True
-        except RuntimeError:
+        except (RuntimeError, asyncio.TimeoutError):
             return False
 
     async def _create_positioned_window(
@@ -71,14 +75,15 @@ class TerminalGridManager:
         screen_h: int,
         task: str,
         profile: str | None,
+        quadrant_bounds: dict[str, dict[str, int]],
     ) -> tuple[WindowSession, str]:
         """Create a named iTerm2 window at the quadrant position.
 
         Returns (WindowSession, tab_id).
         Raises WindowTilingError on failure.
         """
-        x_offset = QUADRANT_BOUNDS[quadrant]["x"]
-        y_offset = QUADRANT_BOUNDS[quadrant]["y"]
+        x_offset = quadrant_bounds[quadrant]["x"]
+        y_offset = quadrant_bounds[quadrant]["y"]
         bounds = {"x": x_offset, "y": y_offset, "w": half_w, "h": half_h}
 
         escaped_task = task.replace("\\", "\\\\").replace('"', '\\"')
@@ -101,11 +106,11 @@ class TerminalGridManager:
         end tell
         '''
         try:
-            tab_id = await self._adapter._run_applescript(script)
-        except RuntimeError as e:
+            tab_id = await asyncio.wait_for(self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT)
+        except asyncio.TimeoutError as e:
             raise WindowTilingError(
                 window_name=f"{desktop_id}_win_{quadrant}",
-                message=f"Failed to create window: {e}",
+                message=f"Failed to create window (timeout): {e}",
                 grid_id=None,
             )
 
@@ -132,13 +137,17 @@ class TerminalGridManager:
 
         Creates desktops → tiles windows → injects commands.
         Returns grid_id.
+
+        Note: columns and rows parameters are accepted for API compatibility
+        but are not applicable to AppleScript-based window management.
         """
         grid_id = f"grid_{str(uuid.uuid4())[:8]}"
-        x, y, screen_w, screen_h = await self._get_primary_screen_bounds()
+        x, y, screen_w, screen_h = await asyncio.wait_for(
+            self._get_primary_screen_bounds(), timeout=APPLE_SCRIPT_TIMEOUT
+        )
         half_w, half_h = screen_w // 2, screen_h // 2
 
-        global QUADRANT_BOUNDS
-        QUADRANT_BOUNDS = {
+        self._quadrant_bounds = {
             "tl": {"x": x, "y": y},
             "tr": {"x": x + half_w, "y": y},
             "bl": {"x": x, "y": y + half_h},
@@ -193,6 +202,7 @@ class TerminalGridManager:
                     screen_h=screen_h,
                     task=task,
                     profile=profile,
+                    quadrant_bounds=self._quadrant_bounds,
                 )
                 desktop.windows[quadrant] = win_session
 
@@ -209,7 +219,7 @@ class TerminalGridManager:
             end tell
         end tell
         '''
-        await self._adapter._run_applescript(script)
+        await asyncio.wait_for(self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT)
         await asyncio.sleep(0.3)
 
     async def send_to_session(self, grid_id: str, session_id: str, command: str) -> None:
@@ -234,7 +244,7 @@ class TerminalGridManager:
             end tell
         end tell
         '''
-        await self._adapter._run_applescript(script)
+        await asyncio.wait_for(self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT)
 
     async def capture_session_output(self, grid_id: str, session_id: str) -> str:
         """Capture output from a session.
@@ -264,11 +274,32 @@ class TerminalGridManager:
         if not grid:
             raise GridNotFoundError(grid_id)
 
-        for window in grid.all_sessions():
-            await self.send_to_session(grid_id, window.session_id, command)
+        windows = grid.all_sessions()
+        results = await asyncio.gather(
+            *(self.send_to_session(grid_id, window.session_id, command) for window in windows),
+            return_exceptions=True,
+        )
+        failures = [(w.session_id, r) for w, r in zip(windows, results) if isinstance(r, Exception)]
+        if failures:
+            raise RuntimeError(f"Broadcast failed for sessions: {failures}")
 
-    async def close_grid(self, grid_id: str) -> None:
-        """Close all windows and tear down all desktops for a grid."""
+    async def delete_grid(self, grid_id: str) -> None:
+        """Delete a grid from the manager's registry.
+
+        This does NOT close the grid's windows; use close_grid for that.
+        After deletion, the grid_id will no longer be retrievable.
+        """
+        if grid_id in self._grids:
+            del self._grids[grid_id]
+
+    async def close_grid(self, grid_id: str, cleanup: bool = True) -> None:
+        """Close all windows and tear down all desktops for a grid.
+
+        Args:
+            grid_id: The grid to close.
+            cleanup: If True, delete the grid from registry after closing.
+                     If False, the grid record remains (status will be CLOSED).
+        """
         grid = self._grids.get(grid_id)
         if not grid:
             raise GridNotFoundError(grid_id)
@@ -283,15 +314,22 @@ class TerminalGridManager:
         end tell
         '''
         try:
-            await self._adapter._run_applescript(script)
+            await asyncio.wait_for(self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT)
+        except asyncio.TimeoutError as e:
+            logger.warning(f"Timeout closing grid {grid_id}: {e}")
+            raise
         except RuntimeError as e:
             logger.warning(f"Error closing grid {grid_id}: {e}")
+            raise
 
         grid.status = GridStatus.CLOSED
         logger.info(f"Closed terminal grid {grid_id}")
 
+        if cleanup:
+            await self.delete_grid(grid_id)
+
     async def list_grid_sessions(self, grid_id: str) -> list[dict]:
-        """Return full 3-level session tree as list of dicts."""
+        """Return flat list of all session dicts in the grid."""
         grid = self._grids.get(grid_id)
         if not grid:
             raise GridNotFoundError(grid_id)

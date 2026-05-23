@@ -44,7 +44,10 @@ class GridSession:
     status: GridStatus = GridStatus.ACTIVE
 
     def find_session(self, session_id: str):
-        """Find (desktop, window) pair for a session_id."""
+        """Find (desktop, window) pair for a session_id.
+
+        Returns (desktop, window) tuple if found, None if not found.
+        """
         for desktop in self.desktops.values():
             for window in desktop.windows.values():
                 if window.session_id == session_id:
