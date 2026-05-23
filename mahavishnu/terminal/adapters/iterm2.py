@@ -18,16 +18,16 @@ IMPORTANT - Implementation Note:
 import asyncio
 from datetime import datetime
 from logging import getLogger
-import shutil
 from typing import Any
 import uuid
 
 from .base import TerminalAdapter
+from mcp_common.apple_script import run as _apple_script_run, OSASCRIPT_AVAILABLE as _OSASCRIPT_AVAILABLE
 
 logger = getLogger(__name__)
 
 # Check if osascript is available (macOS only)
-OSASCRIPT_AVAILABLE = shutil.which("osascript") is not None
+OSASCRIPT_AVAILABLE = _OSASCRIPT_AVAILABLE
 
 # Legacy export for backward compatibility
 ITERM2_AVAILABLE = OSASCRIPT_AVAILABLE
@@ -84,24 +84,7 @@ class ITerm2Adapter(TerminalAdapter):
         Raises:
             RuntimeError: If script fails
         """
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                "osascript",
-                "-e",
-                script,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, stderr = await proc.communicate()
-
-            if proc.returncode != 0:
-                error_msg = stderr.decode().strip() if stderr else "Unknown error"
-                raise RuntimeError(f"AppleScript failed: {error_msg}")
-
-            return stdout.decode().strip()
-
-        except Exception as e:
-            raise RuntimeError(f"Failed to run AppleScript: {e}") from e
+        return await _apple_script_run(script)
 
     async def launch_session(
         self, command: str, columns: int = 80, rows: int = 24, **kwargs: Any
@@ -136,18 +119,21 @@ class ITerm2Adapter(TerminalAdapter):
             # Escape command for AppleScript
             escaped_command = command.replace("\\", "\\\\").replace('"', '\\"')
 
-            # Create AppleScript to launch terminal
+            # Create AppleScript to launch terminal and capture window/tab identity
             if new_window:
+                # Create a new window and capture its unique ID
                 if profile_name:
                     script = f'''
                     tell application "iTerm2"
                         activate
                         set newWindow to (create window with profile "{profile_name}")
+                        set windowID to unique id of newWindow
                         tell newWindow
                             tell current session
                                 write text "{escaped_command}"
                             end tell
                         end tell
+                        return windowID
                     end tell
                     '''
                 else:
@@ -155,26 +141,34 @@ class ITerm2Adapter(TerminalAdapter):
                     tell application "iTerm2"
                         activate
                         set newWindow to (create window with default profile)
+                        set windowID to unique id of newWindow
                         tell newWindow
                             tell current session
                                 write text "{escaped_command}"
                             end tell
                         end tell
+                        return windowID
                     end tell
                     '''
+                result = await self._run_applescript(script)
+                window_id = result.strip()
+                tab_id = None  # Window-level session, no separate tab ID
             else:
-                # Create tab in current window
+                # Create tab in current window and capture tab's unique ID
                 if profile_name:
                     script = f'''
                     tell application "iTerm2"
                         activate
                         tell current window
                             set newTab to (create tab with profile "{profile_name}")
+                            set tabID to unique id of newTab
+                            set windowID to unique id of current window
                             tell newTab
                                 tell current session
                                     write text "{escaped_command}"
                                 end tell
                             end tell
+                            return windowID & "," & tabID
                         end tell
                     end tell
                     '''
@@ -184,22 +178,28 @@ class ITerm2Adapter(TerminalAdapter):
                         activate
                         tell current window
                             set newTab to (create tab with default profile)
+                            set tabID to unique id of newTab
+                            set windowID to unique id of current window
                             tell newTab
                                 tell current session
                                     write text "{escaped_command}"
                                 end tell
                             end tell
+                            return windowID & "," & tabID
                         end tell
                     end tell
                     '''
+                result = await self._run_applescript(script)
+                # Parse window_id,tab_id from result
+                parts = result.strip().split(",")
+                window_id = parts[0] if len(parts) > 0 else None
+                tab_id = parts[1] if len(parts) > 1 else None
 
-            await self._run_applescript(script)
-
-            # Store session metadata
+            # Store session metadata with captured identity
             self._sessions[session_id] = {
                 "session": None,  # Not used with AppleScript approach
-                "tab": None,
-                "window": None,
+                "tab": tab_id,     # iTerm2 unique tab ID (None for window-level)
+                "window": window_id,  # iTerm2 unique window ID
                 "command": command,
                 "created_at": datetime.now(),
                 "profile": profile_name,
@@ -208,7 +208,8 @@ class ITerm2Adapter(TerminalAdapter):
 
             logger.info(
                 f"Launched iTerm2 session {session_id} "
-                f"({'new window' if new_window else 'tab'}) with command: {command}"
+                f"({'new window' if new_window else 'tab'}) with command: {command}, "
+                f"window_id={window_id}, tab_id={tab_id}"
             )
             return session_id
 
@@ -231,14 +232,26 @@ class ITerm2Adapter(TerminalAdapter):
             raise KeyError(f"Session {session_id} not found")
 
         try:
+            session_data = self._sessions[session_id]
+            window_id = session_data.get("window")
+            tab_id = session_data.get("tab")
+
+            if not window_id:
+                raise RuntimeError(f"Session {session_id} has no window_id")
+
             # Escape command for AppleScript
             escaped_command = command.replace("\\", "\\\\").replace('"', '\\"')
 
+            # Target specific window/tab by identity, not current
             script = f'''
             tell application "iTerm2"
-                tell current window
-                    tell current session
-                        write text "{escaped_command}"
+                set targetWindow to window id "{window_id}"
+                tell targetWindow
+                    {"set targetTab to tab id \"" + tab_id + "\"" if tab_id else "set targetTab to current tab"}
+                    tell targetTab
+                        tell current session
+                            write text "{escaped_command}"
+                        end tell
                     end tell
                 end tell
             end tell
@@ -295,35 +308,44 @@ class ITerm2Adapter(TerminalAdapter):
 
         try:
             session_data = self._sessions[session_id]
+            window_id = session_data.get("window")
+            tab_id = session_data.get("tab")
             was_new_window = session_data.get("new_window", False)
 
+            if not window_id:
+                raise RuntimeError(f"Session {session_id} has no window_id")
+
+            # Target specific window/tab by identity, not current
             if was_new_window:
-                # Close the window
-                script = """
+                # Close the specific window by its unique ID
+                script = f'''
                 tell application "iTerm2"
-                    tell current window
+                    set targetWindow to window id "{window_id}"
+                    tell targetWindow
                         close
                     end tell
                 end tell
-                """
+                '''
             else:
-                # Close the current tab
-                script = """
+                # Close the specific tab by its unique ID within the window
+                script = f'''
                 tell application "iTerm2"
-                    tell current window
-                        tell current tab
+                    set targetWindow to window id "{window_id}"
+                    tell targetWindow
+                        set targetTab to tab id "{tab_id}"
+                        tell targetTab
                             close
                         end tell
                     end tell
                 end tell
-                """
+                '''
 
             await self._run_applescript(script)
 
             # Remove from tracking
             del self._sessions[session_id]
 
-            logger.info(f"Closed iTerm2 session {session_id}")
+            logger.info(f"Closed iTerm2 session {session_id} (window_id={window_id}, tab_id={tab_id})")
 
         except Exception as e:
             logger.error(f"Failed to close session {session_id}: {e}")
@@ -353,6 +375,8 @@ class ITerm2Adapter(TerminalAdapter):
                         "adapter": self.adapter_name,
                         "profile": session_data.get("profile"),
                         "new_window": session_data.get("new_window", False),
+                        "window_id": session_data.get("window"),
+                        "tab_id": session_data.get("tab"),
                     }
                 )
 
