@@ -22,7 +22,11 @@ from typing import Any
 import uuid
 
 from .base import TerminalAdapter
-from mcp_common.apple_script import run as _apple_script_run, OSASCRIPT_AVAILABLE as _OSASCRIPT_AVAILABLE
+from mcp_common.apple_script import (
+    run as _apple_script_run,
+    OSASCRIPT_AVAILABLE as _OSASCRIPT_AVAILABLE,
+    build_applescript_string,
+)
 
 logger = getLogger(__name__)
 
@@ -116,8 +120,9 @@ class ITerm2Adapter(TerminalAdapter):
             # Generate session ID
             session_id = str(uuid.uuid4())[:8]
 
-            # Escape command for AppleScript
-            escaped_command = command.replace("\\", "\\\\").replace('"', '\\"')
+            # Build AppleScript string using canonical bridge escaping
+            # Multi-line commands use & return & syntax per iTerm2 AppleScript protocol
+            applescript_command = build_applescript_string(command)
 
             # Create AppleScript to launch terminal and capture window/tab identity
             if new_window:
@@ -130,7 +135,7 @@ class ITerm2Adapter(TerminalAdapter):
                         set windowID to unique id of newWindow
                         tell newWindow
                             tell current session
-                                write text "{escaped_command}"
+                                write text {applescript_command}
                             end tell
                         end tell
                         return windowID
@@ -144,7 +149,7 @@ class ITerm2Adapter(TerminalAdapter):
                         set windowID to unique id of newWindow
                         tell newWindow
                             tell current session
-                                write text "{escaped_command}"
+                                write text {applescript_command}
                             end tell
                         end tell
                         return windowID
@@ -165,7 +170,7 @@ class ITerm2Adapter(TerminalAdapter):
                             set windowID to unique id of current window
                             tell newTab
                                 tell current session
-                                    write text "{escaped_command}"
+                                    write text {applescript_command}
                                 end tell
                             end tell
                             return windowID & "," & tabID
@@ -182,7 +187,7 @@ class ITerm2Adapter(TerminalAdapter):
                             set windowID to unique id of current window
                             tell newTab
                                 tell current session
-                                    write text "{escaped_command}"
+                                    write text {applescript_command}
                                 end tell
                             end tell
                             return windowID & "," & tabID
@@ -239,8 +244,9 @@ class ITerm2Adapter(TerminalAdapter):
             if not window_id:
                 raise RuntimeError(f"Session {session_id} has no window_id")
 
-            # Escape command for AppleScript
-            escaped_command = command.replace("\\", "\\\\").replace('"', '\\"')
+            # Build AppleScript string using canonical bridge escaping
+            # Multi-line commands use & return & syntax per iTerm2 AppleScript protocol
+            applescript_command = build_applescript_string(command)
 
             # Target specific window/tab by identity, not current
             script = f'''
@@ -250,7 +256,7 @@ class ITerm2Adapter(TerminalAdapter):
                     {"set targetTab to tab id \"" + tab_id + "\"" if tab_id else "set targetTab to current tab"}
                     tell targetTab
                         tell current session
-                            write text "{escaped_command}"
+                            write text {applescript_command}
                         end tell
                     end tell
                 end tell
