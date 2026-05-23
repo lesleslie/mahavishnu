@@ -205,7 +205,7 @@ class TestCanonicalSpecCompliance:
 
     def test_single_line_does_not_use_return_concatenation(self):
         """Single-line strings must NOT use & return & per spec Section 3."""
-        result = build_for_applescript_string("simple")
+        result = build_applescript_string("simple")
         assert "return" not in result
         assert result == '"simple"'
 
