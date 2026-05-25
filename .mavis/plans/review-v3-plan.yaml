@@ -1,0 +1,72 @@
+version: 1
+plan:
+  name: 'bodai-routing-feedback-loop-v3-review'
+  max_concurrency: 3
+  max_consecutive_failures: 3
+  max_cycles: 2
+tasks:
+  - id: serverless-review
+    title: 'Serverless & hot store architecture review'
+    prompt: |
+      Read the plan at: /Users/les/Projects/mahavishnu/docs/plans/2026-05-23-bodai-routing-feedback-loop-v3.md
+
+      You are the **serverless architecture reviewer**. Focus specifically on:
+      1. Does the env-var-driven backend detection work as described? Check whether Oneiric's
+         layered config actually resolves AKOSHA_STORAGE_PG_URL and OTEL_STORAGE_PG_URL from env.
+      2. Is the shared pgvector story correct? Can Akosha and Mahavishnu really share the same
+         Postgres instance (different tables) without schema conflicts?
+      3. Is the pgvector_hot_store.py interface correct? Does it need to implement the same
+         methods as HotStore for pluggability?
+      4. Is the Dhara stateless story accurate? Can Dhara run stateless serverless with cloud
+         storage backing today?
+      5. Does the standalone constraint still hold with the new serverless story?
+
+      Write your findings to: /Users/les/Projects/mahavishnu/docs/plans/REVIEW_serverless.md
+      Be specific. Reference file paths and line numbers from the codebase.
+      Identify at least 3 concrete issues or risks.
+    assigned_to: general
+    verified_by: verifier
+    verify_prompt: 'Confirm the file was written and contains at least 3 concrete findings with file path references.'
+    timeout_ms: 900000
+
+  - id: implementation-review-v3
+    title: 'Implementation feasibility review v3'
+    prompt: |
+      Read the plan at: /Users/les/Projects/mahavishnu/docs/plans/2026-05-23-bodai-routing-feedback-loop-v3.md
+
+      You are the **implementation reviewer**. Your job:
+      1. For each new file in "Key Files to Change", verify the file doesn't exist yet and the
+         stated change is correct.
+      2. Check whether PgvectorAdapter from oneiric/adapters/vector/pgvector.py can actually
+         serve as the hot store backend (same insert/search interface as HotStore).
+      3. Verify Mahavishnu's OtelIngester actually honors OTEL_STORAGE_TYPE env var.
+      4. Check whether akosha/config.py actually reads AKOSHA_STORAGE_PG_URL today.
+      5. Verify akosha/storage/__init__.py exports HotStore.
+
+      Write your findings to: /Users/les/Projects/mahavishnu/docs/plans/REVIEW_implementation_v3.md
+      Be specific. List each file examined and what you found.
+    assigned_to: general
+    verified_by: verifier
+    verify_prompt: 'Confirm the file was written and verifies each key file claim against the actual codebase.'
+    timeout_ms: 900000
+
+  - id: plan-coherence-review
+    title: 'Plan coherence & completeness review'
+    prompt: |
+      Read the plan at: /Users/les/Projects/mahavishnu/docs/plans/2026-05-23-bodai-routing-feedback-loop-v3.md
+
+      You are the **plan coherence reviewer**. Your job:
+      1. Is the phased implementation order correct? Does Phase 1 (storage) need to come before
+         Phase 2 (MCP client)? Can Phase 3 and 4 run in parallel?
+      2. Are the "What This Plan Does NOT Cover" items truly out of scope, or are they
+         dependencies that would block the plan?
+      3. Is the "Standalone Operation Matrix" complete and accurate?
+      4. Are the 5 implementation phases realistic? Any missing dependencies?
+      5. Does the plan cohere as a whole — does each phase build on the previous?
+
+      Write your findings to: /Users/les/Projects/mahavishnu/docs/plans/REVIEW_plan_coherence.md
+      Be specific. Identify at least 3 coherence issues.
+    assigned_to: general
+    verified_by: verifier
+    verify_prompt: 'Confirm the file was written and addresses plan coherence, phase ordering, and scope boundaries.'
+    timeout_ms: 900000

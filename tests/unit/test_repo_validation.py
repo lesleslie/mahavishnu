@@ -6,7 +6,7 @@ import tempfile
 
 import pytest
 
-from mahavishnu.core.app import _validate_path
+from mahavishnu.core.bootstrap import _validate_path
 
 
 def test_validate_path_normal():

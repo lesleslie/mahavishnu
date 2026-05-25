@@ -4,7 +4,7 @@
 **Approach:** Pure AppleScript + iTerm2 window bounds (zero external dependencies)
 **Status:** Approved for implementation
 
----
+______________________________________________________________________
 
 ## 1. Overview
 
@@ -12,7 +12,7 @@ Deploy a grid of iTerm2 terminal sessions across multiple macOS Spaces (Desktops
 
 **Primary motivation:** Enable monitored, interactive terminal sessions for pool workers where each worker's terminal is isolated to its own window — with the ability to send input and monitor output without stealing focus.
 
----
+______________________________________________________________________
 
 ## 2. Architecture
 
@@ -84,7 +84,7 @@ async def run(script: str, timeout: float = 30.0) -> str:
         raise AppleScriptError(f"Failed to run AppleScript: {e}") from e
 ```
 
----
+______________________________________________________________________
 
 ## 3. Data Model
 
@@ -115,7 +115,7 @@ class WindowSession:
     quadrant: Literal["tl", "tr", "bl", "br"]
 ```
 
----
+______________________________________________________________________
 
 ## 4. AppleScript Patterns
 
@@ -139,28 +139,28 @@ Screen bounds: full display width/height. Quadrant size: `(width/2, height/2)` e
 ```applescript
 tell application "iTerm2"
     activate
-    
+
     -- Top-left
     set w1 to (create window with default profile)
     set name of w1 to "grid_abc_d1_win_tl"
     set bounds of w1 to {0, 0, halfW, halfH}
-    
+
     delay 0.2  -- let settle
-    
+
     -- Top-right
     set w2 to (create window with default profile)
     set name of w2 to "grid_abc_d1_win_tr"
     set bounds of w2 to {halfW, 0, screenW, halfH}
-    
+
     delay 0.2
-    
+
     -- Bottom-left
     set w3 to (create window with default profile)
     set name of w3 to "grid_abc_d1_win_bl"
     set bounds of w3 to {0, halfH, halfW, screenH}
-    
+
     delay 0.2
-    
+
     -- Bottom-right
     set w4 to (create window with default profile)
     set name of w4 to "grid_abc_d1_win_br"
@@ -206,7 +206,7 @@ tell application "iTerm2"
 end tell
 ```
 
----
+______________________________________________________________________
 
 ## 5. API Surface
 
@@ -267,7 +267,7 @@ QUADRANT_BOUNDS = {
 }
 ```
 
----
+______________________________________________________________________
 
 ## 6. Single-Desktop Fallback
 
@@ -279,13 +279,13 @@ If multi-desktop Space creation fails or is not configured, the grid manager fal
 
 Triggered when `allow_multi_desktop=True` (default) but Space creation AppleScript returns an error.
 
----
+______________________________________________________________________
 
 ## 7. mcpretentious Adapter for Output Capture
 
 AppleScript does not support reading terminal buffer content. For output capture, the `TerminalGridManager` falls back to `mcpretentious` adapter for sessions that need streaming output. The mcpretentious adapter provides a PTY-based terminal with full output capture.
 
----
+______________________________________________________________________
 
 ## 8. Exception Handling
 
@@ -297,7 +297,7 @@ AppleScript does not support reading terminal buffer content. For output capture
 | `SessionNotFoundError` | session_id not in grid | Raise with grid context |
 | `AppleScriptError` | osascript subprocess failure | Propagate from bridge |
 
----
+______________________________________________________________________
 
 ## 9. Dependencies
 
@@ -306,7 +306,7 @@ AppleScript does not support reading terminal buffer content. For output capture
 - **No external deps** beyond standard library + existing mahavishnu adapters
 - mcpretentious adapter used for output capture (already in codebase)
 
----
+______________________________________________________________________
 
 ## 10. Out of Scope
 

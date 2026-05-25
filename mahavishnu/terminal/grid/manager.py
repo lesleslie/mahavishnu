@@ -1,13 +1,13 @@
 """Terminal grid orchestration manager."""
 
 import asyncio
-import uuid
 from datetime import datetime
 from logging import getLogger
-
-from mahavishnu.terminal.adapters.iterm2 import ITerm2Adapter
+import uuid
 
 from mcp_common.apple_script import AppleScriptError
+
+from mahavishnu.terminal.adapters.iterm2 import ITerm2Adapter
 
 from .exceptions import (
     GridNotFoundError,
@@ -36,11 +36,11 @@ class TerminalGridManager:
 
     async def _get_primary_screen_bounds(self) -> tuple[int, int, int, int]:
         """Return (x, y, width, height) for the primary display."""
-        script = '''
+        script = """
         tell application "iTerm2"
             get bounds of window 1
         end tell
-        '''
+        """
         bounds_str = await asyncio.wait_for(
             self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT
         )
@@ -53,18 +53,20 @@ class TerminalGridManager:
 
         Returns True on success, False if the hotkey is not bound.
         """
-        script = '''
+        script = """
         tell application "System Events"
             tell application process "Dock"
                 keystroke " " using {control down, command down}
             end tell
         end tell
-        '''
+        """
         try:
-            await asyncio.wait_for(self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT)
+            await asyncio.wait_for(
+                self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT
+            )
             await asyncio.sleep(0.5)
             return True
-        except (AppleScriptError, asyncio.TimeoutError):
+        except (TimeoutError, AppleScriptError):
             return False
 
     async def _create_positioned_window(
@@ -108,8 +110,10 @@ class TerminalGridManager:
         end tell
         '''
         try:
-            tab_id = await asyncio.wait_for(self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT)
-        except asyncio.TimeoutError as e:
+            tab_id = await asyncio.wait_for(
+                self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT
+            )
+        except TimeoutError as e:
             raise WindowTilingError(
                 window_name=f"{desktop_id}_win_{quadrant}",
                 message=f"Failed to create window (timeout): {e}",
@@ -176,9 +180,7 @@ class TerminalGridManager:
             if not allow_multi_desktop or desktop_position > 1:
                 if desktop_position == 1 or not grid.desktops:
                     desktop_id = f"{grid_id}_d_single"
-                    grid.desktops[desktop_id] = DesktopSession(
-                        desktop_id=desktop_id, position=1
-                    )
+                    grid.desktops[desktop_id] = DesktopSession(desktop_id=desktop_id, position=1)
                 else:
                     break
 
@@ -281,7 +283,11 @@ class TerminalGridManager:
             *(self.send_to_session(grid_id, window.session_id, command) for window in windows),
             return_exceptions=True,
         )
-        failures = [(w.session_id, r) for w, r in zip(windows, results) if isinstance(r, Exception)]
+        failures = [
+            (w.session_id, r)
+            for w, r in zip(windows, results, strict=False)
+            if isinstance(r, Exception)
+        ]
         if failures:
             raise RuntimeError(f"Broadcast failed for sessions: {failures}")
 
@@ -316,8 +322,10 @@ class TerminalGridManager:
         end tell
         '''
         try:
-            await asyncio.wait_for(self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT)
-        except asyncio.TimeoutError as e:
+            await asyncio.wait_for(
+                self._adapter._run_applescript(script), timeout=APPLE_SCRIPT_TIMEOUT
+            )
+        except TimeoutError as e:
             logger.warning(f"Timeout closing grid {grid_id}: {e}")
             raise
         except RuntimeError as e:
@@ -339,17 +347,19 @@ class TerminalGridManager:
         result = []
         for desktop in grid.desktops.values():
             for window in desktop.windows.values():
-                result.append({
-                    "grid_id": grid_id,
-                    "desktop_id": desktop.desktop_id,
-                    "desktop_position": desktop.position,
-                    "window_name": window.window_name,
-                    "tab_id": window.tab_id,
-                    "session_id": window.session_id,
-                    "task": window.task,
-                    "bounds": window.bounds,
-                    "quadrant": window.quadrant,
-                })
+                result.append(
+                    {
+                        "grid_id": grid_id,
+                        "desktop_id": desktop.desktop_id,
+                        "desktop_position": desktop.position,
+                        "window_name": window.window_name,
+                        "tab_id": window.tab_id,
+                        "session_id": window.session_id,
+                        "task": window.task,
+                        "bounds": window.bounds,
+                        "quadrant": window.quadrant,
+                    }
+                )
         return result
 
     def get_grid(self, grid_id: str) -> GridSession | None:

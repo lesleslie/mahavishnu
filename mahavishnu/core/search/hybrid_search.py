@@ -39,7 +39,6 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from uuid import UUID
 import inspect
 import logging
 from typing import TYPE_CHECKING, Any
@@ -50,6 +49,8 @@ from mahavishnu.core.database import Database, get_database
 from mahavishnu.core.embeddings import EmbeddingProvider, EmbeddingService
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from asyncpg import Pool
 
 logger = logging.getLogger(__name__)

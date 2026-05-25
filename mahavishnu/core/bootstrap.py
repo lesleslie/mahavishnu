@@ -8,11 +8,14 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+import logging
 
 import yaml
 
 from .config import MahavishnuSettings
 from .errors import ConfigurationError
+
+logger = logging.getLogger(__name__)
 
 
 def load_config() -> MahavishnuSettings:
@@ -125,9 +128,6 @@ def _parse_repos_config_file(repos_path: Path) -> dict:
 
 def load_repos(app: Any) -> None:
     """Load repository configurations with fallback chain."""
-    import logging
-
-    logger = logging.getLogger(__name__)
     repos_path, using_fallback = _resolve_repos_path(app, logger)
     raw_config = _parse_repos_config_file(repos_path)
 
@@ -136,6 +136,54 @@ def load_repos(app: Any) -> None:
 
     source = "repos.yaml (fallback)" if using_fallback else "ecosystem.yaml"
     logger.info("Loaded %d repositories from %s", len(raw_config.get("repos", [])), source)
+
+
+def _register_component_endpoint(
+    dhara_state: "DharaStateBackend | None", component_name: str, mcp_url: str
+) -> None:
+    """Write this component's MCP endpoint URL to Dhara for Akosha to discover.
+
+    Key: component_endpoint/{component_name}
+    Value: MCP server URL string
+    """
+    import asyncio
+
+    if dhara_state is None:
+        logger.warning(
+            "Phase 0: cannot register %s endpoint — Dhara state not available",
+            component_name,
+        )
+        return
+
+    key = f"component_endpoint/{component_name}"
+    try:
+        asyncio.get_running_loop()
+        asyncio.create_task(dhara_state.put(key, {"url": mcp_url, "registered_by": component_name}))
+        logger.info(
+            "Phase 0: registered %s endpoint to Dhara: %s -> %s",
+            component_name,
+            key,
+            mcp_url,
+        )
+    except RuntimeError:
+        # No running event loop — sync fallback using client directly
+        from .dhara_adapter import DharaClient
+
+        client = DharaClient(base_url=dhara_state._client._base_url)
+        try:
+            asyncio.run(client.put(key, {"url": mcp_url, "registered_by": component_name}))
+            logger.info(
+                "Phase 0: registered %s endpoint to Dhara (sync): %s -> %s",
+                component_name,
+                key,
+                mcp_url,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Phase 0: failed to register %s endpoint to Dhara: %s",
+                component_name,
+                exc,
+            )
 
 
 def _import_adapter_class(name: str) -> type | None:
@@ -321,6 +369,10 @@ def initialize_runtime_services(app: Any) -> None:
                     flush_interval_seconds=app.config.dhara_state.flush_interval_seconds,
                     max_routing_buffer_age_seconds=app.config.dhara_state.max_routing_buffer_age_seconds,
                 ),
+            )
+            # Phase 0: register this component's MCP endpoint to Dhara
+            _register_component_endpoint(
+                app._dhara_state, "mahavishnu", app.config.tools.mcp_server_url
             )
 
     app.approval_manager = ApprovalManager(dhara_state=app._dhara_state)

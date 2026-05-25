@@ -54,6 +54,7 @@ def parse_file(
 
     try:
         import asyncio
+
         from mcp_common.code_graph.analyzer import CodeGraphAnalyzer
 
         analyzer = CodeGraphAnalyzer(Path(repo_path))
@@ -159,11 +160,7 @@ def filter_changed_files(
             text=True,
         )
         all_files = result.stdout.strip().split("\n") if result.stdout.strip() else []
-        py_files = [
-            str(repo / f)
-            for f in all_files
-            if Path(f).suffix == ".py"
-        ]
+        py_files = [str(repo / f) for f in all_files if Path(f).suffix == ".py"]
         return sorted(py_files)
 
     result = subprocess.run(

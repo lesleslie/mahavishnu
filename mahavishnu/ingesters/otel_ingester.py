@@ -984,28 +984,43 @@ class OtelIngester:
             return await self._get_trace_duckdb(trace_id)
 
     async def _get_trace_duckdb(self, trace_id: str) -> dict[str, Any] | None:
-        """Get trace from DuckDB backend."""
+        """Get trace from DuckDB backend.
+
+        Uses direct SQL by conversation_id to avoid zero-vector search issues.
+        """
         if not self._hot_store:
             raise RuntimeError("HotStore not initialized. Call initialize() first.")
 
         try:
-            # Query HotStore by conversation_id (which maps to trace_id)
-            # Note: HotStore doesn't have a direct get_by_id method,
-            # so we use search with the trace_id as query
-            results = await self._hot_store.search_similar(
-                query_embedding=[0.0] * self._embedding_dimension,  # Dummy embedding
-                limit=1000,
-                threshold=0.0,  # Get all results
-            )
+            # Direct SQL query by conversation_id (avoids zero-vector similarity issues)
+            rows = self._hot_store.conn.execute(
+                """
+                SELECT system_id, conversation_id, content, timestamp, metadata
+                FROM conversations
+                WHERE conversation_id = ?
+                LIMIT 1
+                """,
+                [trace_id],
+            ).fetchall()
 
-            # Filter by trace_id
-            for result in results:
-                if result.get("conversation_id") == trace_id:
-                    logger.debug(f"Found trace {trace_id}")
-                    return result  # type: ignore[no-any-return]
+            if not rows:
+                logger.debug(f"Trace {trace_id} not found")
+                return None
 
-            logger.debug(f"Trace {trace_id} not found")
-            return None
+            r = rows[0]
+            metadata = r[4]
+            # Parse JSON string if metadata is stored as string
+            if isinstance(metadata, str):
+                import json
+                metadata = json.loads(metadata)
+
+            return {
+                "system_id": r[0],
+                "conversation_id": r[1],
+                "content": r[2],
+                "timestamp": r[3],
+                "metadata": metadata,
+            }
 
         except Exception as e:
             logger.error(f"Failed to get trace {trace_id}: {e}")
@@ -1025,11 +1040,17 @@ class OtelIngester:
 
             if results:
                 result = results[0]
+                metadata = result["metadata"]
+                # Parse JSON string if metadata is stored as string
+                if isinstance(metadata, str):
+                    import json
+                    metadata = json.loads(metadata)
+
                 return {
                     "conversation_id": result["id"],
-                    "content": result["metadata"].get("content", ""),
-                    "timestamp": result["metadata"].get("timestamp", ""),
-                    "metadata": result["metadata"],
+                    "content": metadata.get("content", ""),
+                    "timestamp": metadata.get("timestamp", ""),
+                    "metadata": metadata,
                 }
 
             logger.debug(f"Trace {trace_id} not found")
@@ -1264,6 +1285,19 @@ async def create_otel_ingester(
         ...     turboquant_bits=4,
         ... )
     """
+    import os
+
+    # Phase 1.1b: Honor env vars for backend selection (Oneiric convention)
+    _env_storage_type = os.getenv("MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE", "")
+    _env_pg_url = os.getenv("MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL", "")
+
+    # Apply env var overrides if factory params are at defaults and env vars are set
+    if _env_storage_type and storage_type == StorageType.DUCKDB:
+        storage_type = StorageType(_env_storage_type)
+
+    if _env_pg_url and pgvector_dsn is None and _env_pg_url:
+        pgvector_dsn = _env_pg_url
+
     # Convert string to enum if needed
     if isinstance(storage_type, str):
         storage_type = StorageType(storage_type)

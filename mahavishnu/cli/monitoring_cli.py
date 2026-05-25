@@ -6,7 +6,7 @@ from pathlib import Path
 
 import typer
 
-from .core.app import MahavishnuApp
+from ..core.app import MahavishnuApp
 
 app = typer.Typer(help="Monitoring and alerting commands for Mahavishnu")
 
@@ -191,7 +191,7 @@ def trigger_test_alert(
 
     # Trigger test alert
     async def _trigger():
-        from .core.monitoring import AlertSeverity, AlertType
+        from ..core.monitoring import AlertSeverity, AlertType
 
         severity_enum = AlertSeverity(severity.lower())
         return await maha_app.monitoring_service.alert_manager.trigger_alert(
@@ -206,6 +206,8 @@ def trigger_test_alert(
         alert = asyncio.run(_trigger())
         typer.echo(f"✅ Test alert created with ID: {alert.id}")
         raise typer.Exit(code=0)
+    except typer.Exit:
+        raise  # Propagate typer exits directly
     except Exception as e:
         typer.echo(f"❌ Failed to create test alert: {e}")
         raise typer.Exit(code=1) from None

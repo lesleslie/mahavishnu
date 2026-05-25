@@ -31,7 +31,7 @@ class WindowSession:
 @dataclass
 class DesktopSession:
     desktop_id: str  # iTerm2 unique window ID acting as desktop proxy
-    position: int     # 1-indexed ordinal
+    position: int  # 1-indexed ordinal
     windows: dict[str, WindowSession] = field(default_factory=dict)
 
 

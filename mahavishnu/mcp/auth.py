@@ -142,7 +142,9 @@ class CredentialManager:
         redacted = {}
         for k, v in data.items():
             if any(s in k.lower() for s in keys):
-                redacted[k] = f"{str(v)[:4]}***" if isinstance(v, str) and len(str(v)) > 4 else "***"
+                redacted[k] = (
+                    f"{str(v)[:4]}***" if isinstance(v, str) and len(str(v)) > 4 else "***"
+                )
             else:
                 redacted[k] = v
         return redacted

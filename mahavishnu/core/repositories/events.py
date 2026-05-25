@@ -13,9 +13,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import logging
 from typing import TYPE_CHECKING, Any
-from uuid import UUID
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     pass
 
 from pydantic import BaseModel, Field

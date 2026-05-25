@@ -8,27 +8,14 @@ from mahavishnu.core.config import MahavishnuSettings
 
 
 def get_registered_repos() -> set[str]:
-    """Load registered repo paths from settings/ecosystem.yaml.
+    """Load registered repo paths from settings/repos.yaml or settings/ecosystem.yaml.
 
     Returns absolute paths as strings.
     """
-    from mahavishnu.core.config import MahavishnuSettings
-
     settings = MahavishnuSettings()
-    # Resolve relative to project directory, not cwd
-    settings_dir = Path(__file__).parent.parent.parent.parent / "settings"
-    ecosystem_path = settings_dir / "ecosystem.yaml"
-    repos_path = settings_dir / "repos.yaml"
+    manifest_path = Path(settings.repos_path).expanduser().resolve()
 
-    repos_path = settings_dir / "repos.yaml"
-    ecosystem_path = settings_dir / "ecosystem.yaml"
-
-    # repos.yaml is the full catalog; ecosystem.yaml is core-only
-    if repos_path.exists():
-        manifest_path = repos_path
-    elif ecosystem_path.exists():
-        manifest_path = ecosystem_path
-    else:
+    if not manifest_path.exists():
         return set()
     import yaml
 

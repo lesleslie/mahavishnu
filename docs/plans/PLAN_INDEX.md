@@ -108,6 +108,13 @@ The master backlog is retained as delivered/historical source material. New conv
 - Current implementation note: the sidecar provider migration is complete. Mahavishnu runtime defaults, Bifrost text routing, operator docs, Session-Buddy default-provider cutover, and Crackerjack provider support have all landed; C4/C5/C6 of the convergence plan should consume its results when catalog drift checks, golden-path tests, and deletion ledgers are updated.
 - Source-verification note: MiniMax M2.7 is the text model family; modality routing uses MiniMax's current modality-specific models (`image-01`, `speech-2.8-*`, and `MiniMax-Hailuo-2.3*`) rather than invented M2.7 modality IDs.
 
+### Bodai Routing Feedback Loop — Deployment Guide
+
+- Plan: [2026-05-24-bodai-deployment-guide.md](./2026-05-24-bodai-deployment-guide.md)
+- Status: `active`, `implementation`
+- Use for: local vs serverless deployment patterns for Akosha, Mahavishnu, Dhara, and Session-Buddy. Covers pgvector setup, Oneiric env var naming, and standalone operation matrix.
+- Current implementation note: Phase 5.3 doc-only. Phase 1.2 (SQL WHERE filtering) and Phase 5.1 (end-to-end test) still pending live infrastructure.
+
 ### Terminal Worker Unification
 
 - Plan: [2026-05-10-terminal-worker-unification-plan.md](./2026-05-10-terminal-worker-unification-plan.md)
@@ -241,6 +248,27 @@ The master backlog is retained as delivered/historical source material. New conv
 - Backlog: [2026-05-07-mahavishnu-master-backlog.md](./2026-05-07-mahavishnu-master-backlog.md) — Priorities 7, 8, 10
 - Status: `complete`, `historical`
 - Use for: historical record. P7 (sliding-window `RateLimiter` in `task_router.py`), P8 (durable approval persistence via `ApprovalManager` + Dhara), and P10 (`HatchetAdapterImpl` in `mahavishnu/engines/hatchet_adapter_impl.py` with `WaitForEvent` approval bridge, `TaskCategory.AGENT_LOOP`) are all delivered as of 2026-05-08.
+
+### Bodai Unified Exception Logging
+
+- Design: [2026-05-23-unified-exception-logging.md](./2026-05-23-unified-exception-logging.md)
+- Status: `complete`, `historical`
+- Use for: structured `exception` dicts (AI-friendly) replacing `format_exc_info` string tracebacks across all Bodai components. Breaking change: `traceback_style="dict"` default for JSON output; Console uses `"string"` to avoid structlog 25.5.0 RichTracebackFormatter crash.
+- Delivered: Oneiric `LoggingConfig` updated (`traceback_style`, `exc_show_locals`, `exc_max_frames`), Crackerjack migrated (3 call sites + dead-code cleanup), Session-Buddy `run_server()` startup call, Akosha CLI/main startup calls, Dhara full stdlib→structlog swap via Oneiric (preserving public API: `get_logger`, `log_operation`, `log_context`), all 26 Crackerjack logging tests passing.
+- Current implementation note: complete as of 2026-05-23. `_configure_structlog_correlation` does NOT call `configure_logging` (prevents double-configure crash). Console output uses string tracebacks. Note: structlog 25.5.0's `log.exception()` outputs string rather than dict even with `traceback_style="dict"` configured — config is correct, behavior is a structlog version artifact.
+
+### Bodai Routing Feedback Loop (OTel-based)
+
+- Plan: [2026-05-23-bodai-routing-feedback-loop-v4.md](./2026-05-23-bodai-routing-feedback-loop-v4.md)
+- Status: `active`, `implementation`
+- Use for: Akosha polls OTel traces from all Bodai components via MCP → computes fitness signals (failure rate, p99 per task_class/selector) → writes to Dhara → Mahavishnu reads before each routing decision. Pull model; all components run standalone without requiring each other.
+- Phase 1: pgvector hot store (Akosha) + env var wiring (Mahavishnu + Akosha) + query_local_traces SQL filtering
+- Phase 2: BodaiComponentMCPClient + query_local_traces MCP tool on all components
+- Phase 3: Akosha fitness analyzer + bounded buffer + DLQ
+- Phase 4: Mahavishnu RoutingFitnessReader + pool integration
+- Phase 5: end-to-end test + degradation verification
+- Serverless: Akosha + Mahavishnu can run serverless (pgvector survives cold-starts); Dhara cannot (fcntl locks, hardcoded FileStorage) — separate future work item
+- Current implementation note: plan is in review; awaiting go-ahead for Phase 1
 
 ### OpenWebUI Integration
 

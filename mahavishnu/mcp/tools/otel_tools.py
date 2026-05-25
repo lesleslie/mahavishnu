@@ -220,6 +220,66 @@ def register_otel_tools(server, app, mcp_client):
             return None
 
     @server.tool()
+    async def query_local_traces(
+        system_id: str,
+        start_time: str | None = None,
+        end_time: str | None = None,
+        task_class: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Query OTel traces by system_id and optional attribute filters (time range, task_class).
+
+        Uses HotStore query_traces() with SQL WHERE clause filtering.
+        HNSW index is NOT used (attribute-based filtering pushed to SQL).
+
+        Args:
+            system_id: Source system identifier (e.g., 'mahavishnu', 'akosha')
+            start_time: ISO8601 start time (optional)
+            end_time: ISO8601 end time (optional)
+            task_class: Task classification tag to filter on (optional)
+            limit: Maximum number of traces to return (default 100)
+
+        Returns:
+            List of trace records matching the filter criteria
+        """
+        try:
+            from akosha.storage import HotStore
+
+            # Initialize HotStore
+            hot_store = HotStore(database_path=app.config.otel_ingester.hot_store_path)
+            await hot_store.initialize()
+
+            # Use SQL-native attribute filtering (Phase 1.2)
+            # HNSW index is NOT used; WHERE clause pushes filters into SQL
+            results = await hot_store.query_traces(
+                system_id=system_id,
+                start_time=start_time,
+                end_time=end_time,
+                task_class=task_class,
+                limit=limit,
+            )
+
+            await hot_store.close()
+
+            # Normalize result format
+            return [
+                {
+                    "conversation_id": r.get("conversation_id"),
+                    "content": r.get("content"),
+                    "timestamp": str(r.get("timestamp", "")),
+                    "metadata": r.get("metadata", {}),
+                }
+                for r in results
+            ]
+
+        except ImportError:
+            logger.error("HotStore not available for query_local_traces")
+            return []
+        except Exception as e:
+            logger.exception(f"Error querying traces: {e}")
+            return []
+
+    @server.tool()
     async def otel_ingester_stats() -> dict[str, Any]:
         """Get statistics about the OTel trace ingester."""
         try:
@@ -265,4 +325,4 @@ def register_otel_tools(server, app, mcp_client):
                 "error": str(e),
             }
 
-    logger.info("Registered 4 OTel trace tools (Akosha HotStore backend)")
+    logger.info("Registered 5 OTel trace tools (Akosha HotStore backend)")

@@ -20,8 +20,8 @@ After=network.target
 Wants=network-online.target
 
 [Service]
-# Type: forking (daemon process)
-Type=forking
+# The MCP CLI runs in the foreground, so systemd should track it as a simple service.
+Type=simple
 
 # User and group to run the service as
 # Change these to appropriate values for your system
@@ -34,7 +34,7 @@ WorkingDirectory=/opt/mahavishnu
 # Virtual environment and command
 Environment="PATH=/opt/mahavishnu/.venv/bin"
 Environment="PYTHONUNBUFFERED=1"
-ExecStart=/opt/mahavishnu/.venv/bin/python -m mahavishnu.cli mcp start --daemon
+ExecStart=/opt/mahavishnu/.venv/bin/python -m mahavishnu.cli mcp start
 ExecStop=/opt/mahavishnu/.venv/bin/python -m mahavishnu.cli mcp stop
 ExecReload=/bin/kill -HUP $MAINPID
 PIDFile=/var/run/mahavishnu/mahavishnu.pid

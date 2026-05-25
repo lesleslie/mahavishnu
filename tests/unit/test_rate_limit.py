@@ -11,15 +11,17 @@ Tests cover:
 
 import asyncio
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from starlette.requests import Request
 
+import mahavishnu.core.rate_limit as rate_limit_module
 from mahavishnu.core.rate_limit import (
     RateLimitConfig,
     RateLimiter,
     RateLimitInfo,
+    RateLimitError,
     rate_limit,
 )
 from mahavishnu.core.rate_limit_tools import (
@@ -157,6 +159,73 @@ class TestRateLimiter:
         # Check stats
         stats = limiter.get_stats(key)
         assert stats["violations"] == 1
+
+    @pytest.mark.asyncio
+    async def test_rate_limiter_disabled_and_exempt_ip(self):
+        """Disabled config and exempt IPs should bypass limiting."""
+        limiter = RateLimiter(per_minute=1, burst_size=1)
+
+        disabled = RateLimitConfig(enabled=False)
+        allowed, info = await limiter.is_allowed("any", disabled)
+        assert allowed is True
+        assert info.limited is False
+
+        exempt = RateLimitConfig(exempt_ips={"10.0.0.1"})
+        allowed, info = await limiter.is_allowed("10.0.0.1", exempt)
+        assert allowed is True
+        assert info.limited is False
+
+    @pytest.mark.asyncio
+    async def test_rate_limiter_recent_violations_trigger_cooldown(self, monkeypatch):
+        """Five recent violations should trigger the extended cooldown."""
+        limiter = RateLimiter(per_minute=100, burst_size=10)
+        key = "cooldown"
+        now = 1_000.0
+
+        monkeypatch.setattr(rate_limit_module.time, "time", lambda: now)
+        limiter._violations[key] = [now - 1, now - 2, now - 3, now - 4, now - 5]
+
+        allowed, info = await limiter.is_allowed(key)
+
+        assert allowed is False
+        assert info.limited is True
+        assert info.retry_after == 300
+
+    @pytest.mark.asyncio
+    async def test_rate_limiter_hour_limit_blocks(self, monkeypatch):
+        """Per-hour limit should block even when minute limit is fine."""
+        limiter = RateLimiter(per_minute=100, per_hour=1, burst_size=10)
+        key = "hour_limit"
+        now = 2_000.0
+
+        monkeypatch.setattr(rate_limit_module.time, "time", lambda: now)
+        limiter._tokens[key] = 10
+        limiter._last_update[key] = now
+        limiter._requests[key] = [(now - 10, 1)]
+
+        allowed, info = await limiter.is_allowed(key)
+
+        assert allowed is False
+        assert info.limited is True
+        assert info.retry_after is not None
+
+    @pytest.mark.asyncio
+    async def test_rate_limiter_day_limit_blocks(self, monkeypatch):
+        """Per-day limit should block when daily quota is exhausted."""
+        limiter = RateLimiter(per_minute=100, per_hour=100, per_day=1, burst_size=10)
+        key = "day_limit"
+        now = 3_000.0
+
+        monkeypatch.setattr(rate_limit_module.time, "time", lambda: now)
+        limiter._tokens[key] = 10
+        limiter._last_update[key] = now
+        limiter._requests[key] = [(now - 10, 1)]
+
+        allowed, info = await limiter.is_allowed(key)
+
+        assert allowed is False
+        assert info.limited is True
+        assert info.retry_after is not None
 
     @pytest.mark.asyncio
     async def test_rate_limiter_cleanup(self):
@@ -325,6 +394,83 @@ class TestRateLimitDecorator:
         # Should use custom key
         result = await test_function(request)
         assert result == "success"
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_decorator_uses_request_ip(self):
+        """Decorator should derive a key from a real Request object."""
+
+        @rate_limit(requests_per_minute=5, requests_per_hour=10, burst_size=5)
+        async def test_function(request: Request):
+            return request.client.host
+
+        request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/",
+                "headers": [],
+                "client": ("203.0.113.10", 12345),
+                "server": ("testserver", 80),
+            }
+        )
+
+        result = await test_function(request)
+        assert result == "203.0.113.10"
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_decorator_uses_custom_key_func_with_real_request(self):
+        """Decorator should use the provided key_func when request is present."""
+
+        def custom_key(request: Request) -> str:
+            return f"user:{request.client.host}"
+
+        @rate_limit(requests_per_minute=5, requests_per_hour=10, burst_size=5, key_func=custom_key)
+        async def test_function(request: Request):
+            return "ok"
+
+        request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/",
+                "headers": [],
+                "client": ("192.0.2.10", 12345),
+                "server": ("testserver", 80),
+            }
+        )
+
+        result = await test_function(request)
+        assert result == "ok"
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_decorator_rate_limit_error(self, monkeypatch):
+        """Decorator should raise RateLimitError when limiter denies access."""
+
+        @rate_limit(requests_per_minute=1, requests_per_hour=1, burst_size=1)
+        async def test_function(request: Request):
+            return "should not run"
+
+        request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/",
+                "headers": [],
+                "client": ("198.51.100.2", 12345),
+                "server": ("testserver", 80),
+            }
+        )
+
+        monkeypatch.setattr(
+            rate_limit_module.RateLimiter,
+            "is_allowed",
+            AsyncMock(return_value=(False, RateLimitInfo(limited=True, retry_after=7))),
+        )
+
+        with pytest.raises(RateLimitError) as exc_info:
+            await test_function(request)
+
+        assert exc_info.value.retry_after == 7
 
 
 # ============================================================================

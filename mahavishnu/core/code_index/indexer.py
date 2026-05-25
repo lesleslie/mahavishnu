@@ -161,8 +161,8 @@ def _upsert_to_session_buddy(
                         "indexed_at": datetime.now(UTC).isoformat(),
                         "nodes_count": len(nodes),
                         "graph_data": {
-                            "nodes": [n.model_dump(mode='json') for n in nodes],
-                            "edges": [e.model_dump(mode='json') for e in edges],
+                            "nodes": [n.model_dump(mode="json") for n in nodes],
+                            "edges": [e.model_dump(mode="json") for e in edges],
                         },
                     },
                 },
@@ -191,8 +191,8 @@ def _queue_locally(
             {
                 "repo_path": repo_path,
                 "commit_hash": commit_hash,
-                "nodes": [n.model_dump(mode='json') for n in nodes],
-                "edges": [e.model_dump(mode='json') for e in edges],
+                "nodes": [n.model_dump(mode="json") for n in nodes],
+                "edges": [e.model_dump(mode="json") for e in edges],
             },
             default=str,
         )

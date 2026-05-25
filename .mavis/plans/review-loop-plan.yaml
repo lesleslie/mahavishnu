@@ -1,0 +1,74 @@
+version: 1
+plan:
+  name: 'bodai-routing-feedback-loop-review'
+  max_concurrency: 3
+  max_consecutive_failures: 3
+  max_cycles: 3
+tasks:
+  - id: architecture-review
+    title: 'Architecture & design review'
+    prompt: |
+      Read the plan at: /Users/les/Projects/mahavishnu/docs/plans/2026-05-23-bodai-routing-feedback-loop.md
+
+      You are the **architecture reviewer**. Your job is to critically review the design for:
+      1. Correctness: does the data flow make sense? Any loops, dead ends, or contradictions?
+      2. Completeness: what's missing that would prevent the feedback loop from working?
+      3. Scalability: does the Dhara schema and Akosha polling approach scale to 100+ repos?
+      4. Failure modes: are all failure scenarios handled gracefully?
+      5. Oneiric usage: is OTelStorageAdapter being used correctly? Any improvements?
+
+      Write your findings to: /Users/les/Projects/mahavishnu/docs/plans/REVIEW_architecture.md
+
+      Be specific. Reference line numbers or sections from the plan. Identify at least 3 issues
+      or risks. If something is well-designed, say why.
+    assigned_to: general
+    verified_by: verifier
+    verify_prompt: 'Confirm the file was written and contains at least 3 substantive findings with specific references to the plan.'
+
+  - id: implementation-review
+    title: 'Implementation feasibility review'
+    prompt: |
+      Read the plan at: /Users/les/Projects/mahavishnu/docs/plans/2026-05-23-bodai-routing-feedback-loop.md
+
+      You are the **implementation reviewer**. Your job is to assess whether the plan can actually
+      be built by checking:
+      1. Key files: for each file listed in "Key Files to Change", verify it exists and assess
+         the stated change is accurate
+      2. Mahavishnu OtelIngester: confirm its current API supports what the plan claims
+      3. Oneiric OTelStorageAdapter: confirm it supports what the plan claims (local pgvector,
+         async batch writes, find_similar_traces)
+      4. Dhara key schema: verify the proposed key pattern fits Dhara's existing patterns
+      5. Akosha MCP client: check if akosha/mcp/client.py exists and how it calls other MCP servers
+      6. Mahavishnu pool manager: examine PoolSelector, route_task(), and whether a
+         RoutingFitnessReader can be injected without breaking the existing API
+
+      Write your findings to: /Users/les/Projects/mahavishnu/docs/plans/REVIEW_implementation.md
+
+      Be specific. List each file you examined, what you found, and what the plan gets right or wrong.
+      Identify at least 3 concrete issues that would block implementation.
+    assigned_to: general
+    verified_by: verifier
+    verify_prompt: 'Confirm the file was written and contains at least 3 concrete blocking issues with file paths and line references.'
+
+  - id: ecosystem-review
+    title: 'Ecosystem & standalone constraint review'
+    prompt: |
+      Read the plan at: /Users/les/Projects/mahavishnu/docs/plans/2026-05-23-bodai-routing-feedback-loop.md
+
+      You are the **ecosystem reviewer**. Your job is to validate the standalone constraint:
+      1. For each Bodai component (Mahavishnu, Akosha, Dhara, Session-Buddy, Crackerjack, Oneiric):
+         - Does the plan require that component to be running for any OTHER component to function?
+         - If yes, is that acceptable per the plan's constraint?
+      2. Examine the "Standalone Operation Matrix" table — is it complete and accurate?
+      3. Check the circuit breaker and fallback patterns: if Dhara is down, does Akosha's
+         in-memory buffer actually work? If Mahavishnu is down, do components still emit OTel?
+      4. Trace the dependency chain: what happens if Akosha crashes mid-analysis? Does Dhara
+         have orphaned signals? Does Mahavishnu have stale selectors?
+      5. Are there any hidden tight couplings the plan missed?
+
+      Write your findings to: /Users/les/Projects/mahavishnu/docs/plans/REVIEW_ecosystem.md
+
+      Be specific. Validate each entry in the matrix. Identify at least 3 hidden coupling risks.
+    assigned_to: general
+    verified_by: verifier
+    verify_prompt: 'Confirm the file was written and validates each entry in the standalone matrix, with at least 3 hidden coupling risks identified.'

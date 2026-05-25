@@ -36,6 +36,8 @@ from textual.command import Hit, Hits, Provider
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
 
+    pass
+
 logger = logging.getLogger(__name__)
 
 

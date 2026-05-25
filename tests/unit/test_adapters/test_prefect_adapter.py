@@ -404,12 +404,18 @@ async def test_adapter_execute_multiple_repos(prefect_config, tmp_path):
         for repo in repos
     ]
 
-    mock_client = AsyncMock()
+    mock_client = MagicMock()
     mock_client.create_run = AsyncMock(return_value=mock_flow_run)
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
     mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
+    with patch(
+        "mahavishnu.engines.prefect_adapter_impl.get_client",
+        return_value=MagicMock(
+            __aenter__=AsyncMock(return_value=mock_client),
+            __aexit__=AsyncMock(return_value=None),
+        ),
+    ):
         result = await adapter.execute(task={"type": "code_sweep", "id": "test_multi"}, repos=repos)
 
         assert result["repos_processed"] == 3
@@ -453,12 +459,18 @@ async def test_adapter_execute_with_failures(prefect_config, tmp_path):
         },
     ]
 
-    mock_client = AsyncMock()
+    mock_client = MagicMock()
     mock_client.create_run = AsyncMock(return_value=mock_flow_run)
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
     mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
+    with patch(
+        "mahavishnu.engines.prefect_adapter_impl.get_client",
+        return_value=MagicMock(
+            __aenter__=AsyncMock(return_value=mock_client),
+            __aexit__=AsyncMock(return_value=None),
+        ),
+    ):
         result = await adapter.execute(
             task={"type": "code_sweep", "id": "test_partial"}, repos=repos
         )
@@ -628,12 +640,18 @@ async def test_flow_run_id_tracking(prefect_config, sample_repo_path):
         }
     ]
 
-    mock_client = AsyncMock()
+    mock_client = MagicMock()
     mock_client.create_run = AsyncMock(return_value=mock_flow_run)
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
     mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
+    with patch(
+        "mahavishnu.engines.prefect_adapter_impl.get_client",
+        return_value=MagicMock(
+            __aenter__=AsyncMock(return_value=mock_client),
+            __aexit__=AsyncMock(return_value=None),
+        ),
+    ):
         result = await adapter.execute(
             task={"type": "code_sweep", "id": "test_tracking"}, repos=[sample_repo_path]
         )
@@ -661,12 +679,18 @@ async def test_flow_run_url_generation(prefect_config, sample_repo_path):
         }
     ]
 
-    mock_client = AsyncMock()
+    mock_client = MagicMock()
     mock_client.create_run = AsyncMock(return_value=mock_flow_run)
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
     mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
+    with patch(
+        "mahavishnu.engines.prefect_adapter_impl.get_client",
+        return_value=MagicMock(
+            __aenter__=AsyncMock(return_value=mock_client),
+            __aexit__=AsyncMock(return_value=None),
+        ),
+    ):
         result = await adapter.execute(
             task={"type": "code_sweep", "id": "test_url"}, repos=[sample_repo_path]
         )
@@ -775,12 +799,18 @@ async def test_full_prefect_workflow(prefect_config, sample_repo_path, mock_code
         }
     ]
 
-    mock_client = AsyncMock()
+    mock_client = MagicMock()
+    mock_client.api_url = "http://localhost:4200"
     mock_client.create_run = AsyncMock(return_value=mock_flow_run)
     mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
-    mock_client.api_url = "http://localhost:4200"
 
-    with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
+    with patch(
+        "mahavishnu.engines.prefect_adapter_impl.get_client",
+        return_value=MagicMock(
+            __aenter__=AsyncMock(return_value=mock_client),
+            __aexit__=AsyncMock(return_value=None),
+        ),
+    ):
         result = await adapter.execute(
             task={
                 "type": "code_sweep",

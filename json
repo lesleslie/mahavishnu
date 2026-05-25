@@ -1,0 +1,19 @@
+Issues found in 5 inputs. Find details below.
+
+[./CLAUDE.md]:
+[ERROR] file:///Users/les/Projects/mahavishnu/POOL_IMPLEMENTATION_PROGRESS.md (at 218:3) | File not found. Check if file exists and path is correct
+
+[./docs/LIBRARY_EVALUATION_2025.md]:
+[ERROR] https://temporal.io/documentation (at 151:16) | Connection failed. Check network connectivity and firewall settings
+[ERROR] https://temporal.io/documentation (at 700:4) | Error (cached)
+
+[./docs/NATIVE_MACOS_GCS_MEMORY.md]:
+[ERROR] https://blog.csdn.net/gitblog_01026/article/details/152007541 (at 317:3) | Network error: Connection reset by peer (os error 54)
+
+[./docs/POOL_ARCHITECTURE.md]:
+[ERROR] file:///Users/les/Projects/mahavishnu/POOL_IMPLEMENTATION_PROGRESS.md (at 622:3) | File not found. Check if file exists and path is correct
+
+[./docs/POOL_MIGRATION.md]:
+[ERROR] file:///Users/les/Projects/mahavishnu/POOL_IMPLEMENTATION_PROGRESS.md (at 730:20) | File not found. Check if file exists and path is correct
+
+🔍 945 Total (in 3s 659ms) 🔗 640 Unique ✅ 822 OK 🚫 6 Errors 👻 117 Excluded 🔀 49 Redirects

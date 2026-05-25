@@ -123,7 +123,9 @@ class UnifiedOrchestrator:
                     )
 
                     # Handle both string and enum adapter types
-                    adapter_value = adapter_type.value if hasattr(adapter_type, "value") else str(adapter_type)
+                    adapter_value = (
+                        adapter_type.value if hasattr(adapter_type, "value") else str(adapter_type)
+                    )
                     results.append(
                         {
                             "task": task,

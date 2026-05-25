@@ -1,0 +1,197 @@
+version: 1
+plan:
+  name: 'bodai-feedback-loop-parallel-tracks'
+  max_concurrency: 10
+  max_consecutive_failures: 2
+  max_cycles: 12
+tasks:
+  - id: session-buddy-otel
+    title: 'Session-Buddy query_local_traces 工具'
+    prompt: |
+      在 Session-Buddy 中添加 `query_local_traces` MCP tool。
+
+      目标文件: /Users/les/Projects/session-buddy/session_buddy/mcp/tools/memory/otel_trace_tools.py (新建)
+
+      参考已完成的 Akosha 版本: /Users/les/Projects/akosha/akosha/mcp/tools/otel_tools.py
+      参考 Session-Buddy 现有 tool 注册模式: /Users/les/Projects/session-buddy/session_buddy/mcp/tools/memory/akosha_tools.py
+
+      Session-Buddy 使用 FastMCP 直接注册（不通过 FastMCPToolRegistry），
+      函数签名: def register_otel_trace_tools(mcp_server: Any) -> None
+      mcp_server.tool()(query_local_traces)
+
+      HotStore 在 Session-Buddy 的位置: from session_buddy.storage.hot_store_akosha import HotStoreAkosha
+      （如果该路径不存在，先 grep 找正确的 HotStore 导入路径）
+
+      query_local_traces 参数:
+        - system_id: str
+        - start_time: str | None
+        - end_time: str | None  
+        - task_class: str | None
+        - limit: int = 100
+
+      实现: 使用 HotStore search_similar(query_embedding=[0.0]*384, system_id=system_id, limit=limit, threshold=0.0) 获取结果，
+      然后在 Python 中按 JSON attributes 过滤（HNSW 索引不用于此查询）。
+
+      注册到 mcp/server.py 的 _TOOL_FUNCTIONS 映射（如果存在），或添加到对应的 __init__.py。
+
+      完成后验证语法: cd /Users/les/Projects/session-buddy && .venv/bin/python3 -c "from session_buddy.mcp.tools.memory.otel_trace_tools import register_otel_trace_tools; print('OK')"
+    assigned_to: general
+    verified_by: verifier
+    verify_prompt: |
+      读取 /Users/les/Projects/session-buddy/session_buddy/mcp/tools/memory/otel_trace_tools.py
+      确认:
+      1. register_otel_trace_tools(mcp_server) 函数存在
+      2. query_local_traces 工具函数存在且参数正确
+      3. 使用 HotStore search_similar 且 threshold=0
+      4. 工具注册到 MCP server
+
+      然后运行验证命令:
+      cd /Users/les/Projects/session-buddy && .venv/bin/python3 -c "from session_buddy.mcp.tools.memory.otel_trace_tools import register_otel_trace_tools; print('OK')"
+      确认输出为 OK
+    timeout_ms: 600000
+
+  - id: crackerjack-otel
+    title: 'Crackerjack query_local_traces 工具'
+    prompt: |
+      在 Crackerjack 中添加 `query_local_traces` MCP tool。
+
+      首先找到:
+      1. Crackerjack 的 MCP tools 目录和注册模式
+      2. Crackerjack 是否有 HotStore 或类似的本地存储
+      3. Crackerjack 的 mcp/server.py 在哪里
+
+      grep -r "register.*tools" /Users/les/Projects/crackerjack --include="*.py" | head -20
+      grep -r "HotStore\|hot_store\|DuckDB" /Users/les/Projects/crackerjack --include="*.py" | head -10
+
+      目标: 参照 Akosha 的 /Users/les/Projects/akosha/akosha/mcp/tools/otel_tools.py 模式，
+      在 Crackerjack 的 MCP tools 中添加 query_local_traces 工具。
+
+      如果 Crackerjack 没有本地 HotStore，则 query_local_traces 应通过 HTTP 调用 Akosha 的 MCP endpoint
+      (从 Dhara 读取 Akosha 的 component_endpoint 获取 URL)。
+      使用 httpx.AsyncClient 调用 Akosha 的 MCP /query_local_traces 端点。
+
+      完成后验证语法。
+    assigned_to: general
+    verified_by: verifier
+    verify_prompt: |
+      读取新创建的 Crackerjack OTel trace tools 文件
+      确认 query_local_traces 工具存在且参数正确
+      确认工具已注册到 Crackerjack MCP server
+
+      如果使用 HTTP 调用 Akosha，确认 URL 从 Dhara 获取
+      运行语法验证命令
+    timeout_ms: 600000
+
+  - id: hotstore-fix
+    title: 'HotStore search_similar zero-embedding 修复'
+    prompt: |
+      修复 Akosha HotStore 的 search_similar 方法，使零向量查询能返回结果。
+
+      问题: 当 query_embedding 全为 0.0 时，array_cosine_similarity 返回 NULL 导致结果被过滤掉。
+
+      文件: /Users/les/Projects/akosha/akosha/storage/hot_store.py
+      相关函数: search_similar (约 line 140-200)
+
+      修复方案（任选其一）:
+      A) 在 search_similar 中检测零向量，如果是零向量则用 L2 distance 排序代替 cosine similarity
+      B) 给 query_embedding 每个元素加一个极小的 epsilon (如 1e-8) 使其不全为零
+      C) 当 query_embedding 全为 0 时，改用 WHERE system_id = ? ORDER BY timestamp DESC 而不计算相似度
+
+      推荐方案 C（最干净）：
+      ```python
+      # Check if query_embedding is all zeros (use timestamp ordering instead)
+      is_zero_vector = all(abs(x) < 1e-10 for x in query_embedding)
+      
+      if is_zero_vector and system_id:
+          query = """
+              SELECT system_id, conversation_id, content, timestamp, metadata, NULL as similarity
+              FROM conversations
+              WHERE system_id = ?
+              ORDER BY timestamp DESC
+              LIMIT ?
+          """
+          results = self.conn.execute(query, [system_id, limit]).fetchall()
+      else:
+          # normal cosine similarity search
+      ```
+
+      另外，DuckDB 的 HNSW 索引在 1.5.3 不支持，需要捕获这个错误（已有 contextlib.suppress 但 SQL 层面的 array_cosine_similarity 仍会失败）。
+
+      完成后运行测试:
+      cd /Users/les/Projects/akosha && .venv/bin/python3 -c "
+      import asyncio
+      from akosha.storage import HotStore
+      from akosha.models import HotRecord
+      from datetime import datetime, timezone
+
+      async def test():
+          hs = HotStore(database_path=':memory:')
+          await hs.initialize()
+          rec = HotRecord(system_id='test', conversation_id='c1', content='hello', embedding=[0.0]*384, timestamp=datetime.now(timezone.utc), metadata={})
+          await hs.insert(rec)
+          results = await hs.search_similar(query_embedding=[0.0]*384, system_id='test', limit=10, threshold=0.0)
+          print(f'Results: {len(results)}')
+          assert len(results) == 1, f'Expected 1 result, got {len(results)}'
+          await hs.close()
+          print('PASS')
+
+      asyncio.run(test())
+      "
+    assigned_to: general
+    verified_by: verifier
+    verify_prompt: |
+      读取 /Users/les/Projects/akosha/akosha/storage/hot_store.py 的 search_similar 函数
+      确认修复已应用（检测零向量并使用 timestamp 排序或其他方案）
+      确认代码语法正确
+
+      运行测试命令（上面 prompt 中的）验证修复有效
+    timeout_ms: 300000
+
+  - id: otel-ingester-fix
+    title: 'OtelIngester DuckDB 返回结构修复'
+    prompt: |
+      修复 Mahavishnu OtelIngester 的 _ingest_trace_duckdb，使其返回结果与 pgvector 后端一致。
+
+      问题: search 返回空，get_trace_by_id 返回 'str' has no attribute 'get'
+      这说明 DuckDB 路径和 pgvector 路径返回的数据结构不一致。
+
+      文件: /Users/les/Projects/mahavishnu/mahavishnu/ingesters/otel_ingester.py
+      关键函数: _ingest_trace_duckdb (line ~714), search_traces, get_trace_by_id
+
+      症状分析:
+      1. ingest 成功（3/3）但 search 返回 0 结果 → HotStore search_similar 的零向量问题
+      2. get_trace_by_id 报错 'str' object has no attribute 'get' → _get_trace_duckdb 返回了字符串而非字典
+
+      先运行 debug 脚本确认问题:
+      cd /Users/les/Projects/mahavishnu && source .venv/bin/activate && python3 -c "
+      import asyncio
+      from mahavishnu.ingesters.otel_ingester import create_otel_ingester
+      async def debug():
+          ingester = await create_otel_ingester(hot_store_path=':memory:', storage_type='duckdb')
+          trace = {'trace_id': 'd1', 'spans': [{'name': 's1', 'start_time': '2024-01-01T00:00:00Z', 'attributes': {'service.name': 'test'}}]}
+          await ingester.ingest_trace(trace)
+          
+          # 检查 HotStore 中实际数据
+          rows = ingester._hot_store.conn.execute('SELECT system_id, conversation_id, content FROM conversations').fetchall()
+          print('HotStore rows:', rows)
+          
+          # 检查 search 返回
+          results = await ingester._hot_store.search_similar(query_embedding=[0.0]*384, system_id='test', limit=10, threshold=0.0)
+          print('search_similar results:', len(results))
+          
+          await ingester.close()
+      asyncio.run(debug())
+      "
+
+      修复完成后运行 examples/otel_pgvector_test.py 确认 DuckDB 和 pgvector 都 PASS。
+    assigned_to: general
+    verified_by: verifier
+    verify_prompt: |
+      读取修复后的 otel_ingester.py 相关函数
+      确认 _ingest_trace_duckdb, search_traces, get_trace_by_id 逻辑一致
+
+      运行:
+      cd /Users/les/Projects/mahavishnu && source .venv/bin/activate && MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE=postgresql MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL="postgresql://les:mahavishnu@localhost:5432/mahavishnu" python examples/otel_pgvector_test.py
+
+      确认输出包含 "ALL TESTS PASSED" 且 search 和 get_by_id 都有结果
+    timeout_ms: 300000

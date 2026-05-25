@@ -8,13 +8,14 @@
 
 **Tech Stack:** Python (asyncio, mcp-common), Swift (NSAppleScript), macOS iTerm2
 
----
+______________________________________________________________________
 
 ## Phase 1: Shared Specification (Single Task)
 
 ### Task 1: Write Canonical ITerm2 AppleScript Protocol Spec
 
 **Files:**
+
 - Create: `mcp-common/docs/iterm2-applescript-protocol.md`
 - Reference: `docs/superpowers/specs/2026-05-23-unified-iterm2-applescript-design.md`
 
@@ -31,10 +32,15 @@ mkdir -p /Users/les/Projects/mcp-common/docs
 - [ ] **Step 2: Write the protocol spec**
 
 Create `mcp-common/docs/iterm2-applescript-protocol.md` containing:
+
 - Canonical `ITerm2Session` schema (all fields, types)
+
 - Escaping rules algorithm (step-by-step)
+
 - AppleScript pattern templates (enumerate, send, create, close, bounds)
+
 - Session ID format: `"session_{iTerm2IntId}"` — string format
+
 - Conformance test requirements
 
 - [ ] **Step 3: Copy spec to mcp-common and commit**
@@ -45,13 +51,14 @@ git add docs/iterm2-applescript-protocol.md
 git commit -m "docs: add iTerm2 AppleScript protocol spec"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 2: Python Side (Mahavishnu + mcp-common)
 
 ### Task 2: Update mcp-common AppleScript Bridge — Multi-Line Escaping
 
 **Files:**
+
 - Modify: `mcp-common/mcp_common/apple_script/bridge.py`
 - Create: `mcp-common/tests/unit/test_apple_script_bridge.py`
 - Reference: `mcp-common/docs/iterm2-applescript-protocol.md` (escaping rules)
@@ -138,11 +145,12 @@ Adopt Swift's & return & approach for multi-line strings as canonical.
 This matches the iTerm2 AppleScript protocol spec."
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Update Mahavishnu ITerm2Adapter — Use Canonical Escaping
 
 **Files:**
+
 - Modify: `mahavishnu/terminal/adapters/iterm2.py`
 - Create: `tests/unit/test_terminal_adapters_iterm2_escaping.py`
 - Reference: `mcp-common/docs/iterm2-applescript-protocol.md`
@@ -254,11 +262,12 @@ Now uses build_applescript_string() from mcp_common.apple_script
 following the iTerm2 AppleScript protocol spec."
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Add Mahavishnu AppleScript Bridge Conformance Tests
 
 **Files:**
+
 - Create: `tests/unit/test_apple_script_bridge_conformance.py`
 - Reference: `mcp-common/docs/iterm2-applescript-protocol.md`
 
@@ -368,7 +377,7 @@ git add tests/unit/test_apple_script_bridge_conformance.py
 git commit -m "test(apple_script): add conformance tests against canonical spec"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 3: Swift Side (mdinject) — Separate Implementation
 
@@ -377,6 +386,7 @@ git commit -m "test(apple_script): add conformance tests against canonical spec"
 ### Task 5: Migrate Swift ITerm2Session — Int → String ID
 
 **Files:**
+
 - Modify: `mdinject/app/MdInjectApp/AppState.swift:126-132`
 - Modify: `mdinject/app/MdInjectApp/State/TerminalState.swift:15-36`
 
@@ -384,18 +394,21 @@ git commit -m "test(apple_script): add conformance tests against canonical spec"
 **Target:** `ITerm2Session.id` is `String` in format `"session_{int}"`
 
 Steps:
+
 1. Add computed property `idString: String = "session_\(id)"`
-2. Update `sendPromptToITerm2` to use `session id Int(idString.replacingOccurrences(...))`
-3. Update `fetchITermSessions` to construct `id: "session_\(sessionId)"`
-4. Update all usages of `.id` in SwiftUI views to use new string format
-5. Run mdinject test suite to verify
+1. Update `sendPromptToITerm2` to use `session id Int(idString.replacingOccurrences(...))`
+1. Update `fetchITermSessions` to construct `id: "session_\(sessionId)"`
+1. Update all usages of `.id` in SwiftUI views to use new string format
+1. Run mdinject test suite to verify
 
 ### Task 6: Verify Swift Escaping Matches Spec
 
 **Files:**
+
 - Reference: `mdinject/app/MdInjectApp/AppState.swift:1601-1619`
 
 Swift's existing `appleScriptStringLiteral(_:)` already implements:
+
 - [x] Backslash → `\\`
 - [x] Double-quote → `\"`
 - [x] Single-quote → `\'`
@@ -408,25 +421,28 @@ Verify no changes needed — this already matches the canonical spec.
 ### Task 7: Add Swift AppleScript Bridge Conformance Tests
 
 **Files:**
+
 - Create: `mdinject/Tests/AppTests/AppleScriptBridgeConformanceTests.swift`
 
 Add Swift XCTest suite that validates:
+
 - Escaping algorithm matches spec
 - Multi-line string building matches spec
 - `runAppleScript` error handling matches spec
 
----
+______________________________________________________________________
 
 ## Phase 4: Integration Verification
 
 ### Task 8: Cross-Repo Session ID Compatibility Test
 
 **Files:**
+
 - Create: `tests/integration/test_iterm2_session_compatibility.py` (Mahavishnu)
 
 Purpose: Validate that when a session ID is formatted in Mahavishnu's `session_{windowId}_{tabIdOrWin}` format, mdinject can parse and use it, and vice versa.
 
----
+______________________________________________________________________
 
 ## File Structure Summary
 
@@ -455,7 +471,7 @@ mdinject/ (separate implementation)
 └── Tests/AppTests/AppleScriptBridgeConformanceTests.swift
 ```
 
----
+______________________________________________________________________
 
 ## Execution Options
 

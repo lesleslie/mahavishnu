@@ -595,7 +595,13 @@ class OTelStorageConfig(BaseModel):
 
 
 class OTelIngesterConfig(BaseModel):
-    """OpenTelemetry trace ingester using Akosha HotStore (DuckDB)."""
+    """OpenTelemetry trace ingester using Akosha HotStore (DuckDB) or pgvector.
+
+    Configuration can be set via:
+    1. settings/mahavishnu.yaml under otel_ingester
+    2. settings/local.yaml
+    3. Environment variables: MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE, etc.
+    """
 
     enabled: bool = Field(
         default=False,
@@ -604,6 +610,21 @@ class OTelIngesterConfig(BaseModel):
     hot_store_path: str = Field(
         default=":memory:",
         description="DuckDB database path for OTel ingester (':memory:' for in-memory)",
+    )
+    storage_type: str = Field(
+        default="duckdb",
+        description=(
+            "Storage backend type: 'duckdb' (default, :memory: or file) or 'postgresql' (pgvector). "
+            "Set via MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE"
+        ),
+    )
+    storage_pg_url: str = Field(
+        default="",
+        description=(
+            "PostgreSQL connection string for pgvector-backed OTel storage. "
+            "Required when storage_type='postgresql'. "
+            "Set via MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL"
+        ),
     )
     embedding_model: str = Field(
         default="all-MiniLM-L6-v2",
@@ -635,6 +656,13 @@ class OTelIngesterConfig(BaseModel):
     def _validate_turboquant_bits(cls, v: int | None) -> int | None:
         if v is not None and v not in (3, 4):
             raise ValueError(f"turboquant_bits must be 3 or 4, got {v}")
+        return v
+
+    @field_validator("storage_type")
+    @classmethod
+    def _validate_storage_type(cls, v: str) -> str:
+        if v not in ("duckdb", "postgresql"):
+            raise ValueError(f"storage_type must be 'duckdb' or 'postgresql', got {v}")
         return v
 
     model_config = {"extra": "forbid"}

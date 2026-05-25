@@ -1,0 +1,247 @@
+version: 1
+plan:
+  name: 'Phase 2.1 + 3.1 + 4.1 — Bodai Feedback Loop Core'
+  max_concurrency: 3
+  max_consecutive_failures: 3
+  max_cycles: 8
+
+tasks:
+  - id: akosha-mcp-client
+    title: 'Akosha MCP Client — BodaiComponentMCPClient'
+    prompt: |
+      在 `/Users/les/Projects/akosha/akosha/mcp/client.py` 创建 `BodaiComponentMCPClient`。
+
+      **背景**：
+      - Akosha 需要通过 MCP 轮询各 Bodai 组件的 traces
+      - 组件端点存在 Dhara 的 `component_endpoint/{name}` key
+      - MCP 使用 JSON-RPC 2.0 over HTTP POST
+      - 参考：`/Users/les/Projects/akosha/akosha/ingestion/code_graph_ingester.py` 的 httpx 使用模式
+
+      **功能需求**：
+      ```python
+      class BodaiComponentMCPClient:
+          def __init__(self, dharma_client, poll_interval_seconds=60):
+              # dharma_client 用来读取 component_endpoint/{name} keys
+              # 维护每个组件的 httpx.AsyncClient
+              pass
+
+          async def poll_all_components(self) -> list[dict]:
+              # 读取所有注册的 component_endpoint keys
+              # 对每个端点调用 query_local_traces(task_class=None, time_range_minutes=60)
+              # 返回聚合的 trace 列表
+              pass
+
+          async def poll_single_component(self, name: str, endpoint: str) -> list[dict]:
+              # 对单个组件调用 query_local_traces
+              pass
+      ```
+
+      **MCP 调用格式**（JSON-RPC 2.0）：
+      ```python
+      POST {endpoint}
+      Content-Type: application/json
+      {
+        "jsonrpc": "2.0",
+        "method": "query_local_traces",
+        "params": {"task_class": null, "time_range_minutes": 60, "limit": 100},
+        "id": 1
+      }
+      ```
+
+      **Dhara key 读取**：
+      - 使用 `dhara_client.list_prefix("component_endpoint/")` 获取所有端点
+      - 返回格式：`[(key, value), ...]` 其中 value 是 URL 字符串
+
+      **错误处理**：
+      - 单个组件失败不影响其他组件
+      - httpx 超时：5秒
+      - 日志记录每个组件的调用结果（成功/失败）
+
+      **代码规范**：
+      - 类型注解完整
+      - 符合 Akosha 代码风格（参考 code_graph_ingester.py）
+      - 不使用 any type aliases
+      - 日志用 logger = logging.getLogger(__name__)
+
+      完成后报告：文件路径、核心类/方法名称、示例用法。
+    assigned_to: developer
+    verified_by: code-reviewer
+    verify_prompt: |
+      审查 `akosha/mcp/client.py` 代码：
+      1. MCP JSON-RPC 2.0 调用格式是否正确（method name, params, id）
+      2. Dhara key 读取是否正确使用 list_prefix
+      3. 错误处理是否隔离（单组件失败不影响其他）
+      4. 类型注解是否完整
+      5. 是否符合 Akosha 代码风格
+      不要修改文件，只报告问题。
+    timeout_ms: 1800000
+
+  - id: akosha-fitness-analyzer
+    title: 'Akosha Fitness Analyzer — bounded buffer + DLQ'
+    prompt: |
+      在 `/Users/les/Projects/akosha/akosha/processing/fitness_analyzer.py` 创建 `FitnessAnalyzer`。
+
+      **背景**：
+      - Fitness Analyzer 是周期性后台任务（默认60秒间隔）
+      - 从各 Bodai 组件轮询 traces，计算 rolling failure_rate 和 p99 latency
+      - 写入 Dhara key：`routing_fitness/{task_class}/{selector}`
+      - 有界内存 buffer + DLQ（3次重试后写DLQ）
+
+      **核心数据结构**：
+      ```python
+      # Dhara value schema
+      {
+        "score": float,           # 1 - failure_rate (higher = better)
+        "samples": int,           # routing decisions in window
+        "failure_rate": float,    # fraction where outcome=error
+        "p99_latency_ms": float, # 99th percentile duration
+        "updated_at": str,        # ISO8601 timestamp
+        "window_start": str,      # start of rolling window
+        "component_count": int    # how many components contributed
+      }
+      ```
+
+      **计算逻辑**：
+      1. 从 BodaiComponentMCPClient 轮询所有组件的 traces
+      2. 按 (task_class, selector) 分组
+      3. 对每组计算：
+         - failure_rate = errors / total
+         - score = 1 - failure_rate
+         - p99 = numpy.percentile(durations, 99) if durations else 0
+      4. 写入 Dhara（使用 circuit breaker 保护）
+      5. 如果 Dhara 不可用，写入有界 buffer（deque, maxlen=1000），3次重试后DLQ
+
+      **bounded buffer + DLQ**：
+      ```python
+      from collections import deque
+      from pathlib import Path
+
+      _buffer: deque[dict] = deque(maxlen=1000)  # in-memory buffer
+      _dlq_path = Path("/tmp/fitness_dlq.jsonl")  # DLQ file
+
+      def _write_with_retry(fitness_data: dict) -> bool:
+          # try: dhara set()
+          # except: buffer.append(), retry 3 times
+          # after 3 fails: write to DLQ file
+          pass
+      ```
+
+      **配置**：
+      - `window_minutes`: rolling window 大小（默认 60）
+      - `poll_interval_seconds`: 轮询间隔（默认 60）
+      - `min_samples`: 最少样本数才写入（默认 5）
+
+      **Dhara circuit breaker**：
+      - 使用 `akosha/resilience/circuit_breaker.py` 的 CircuitBreaker
+      - fallback: buffer + DLQ
+
+      **Periodic job**：
+      ```python
+      class FitnessAnalyzer:
+          async def start(self) -> None:
+              # 启动定期轮询任务
+              pass
+
+          async def run_analysis(self) -> None:
+              # 单次分析运行
+              pass
+      ```
+
+      **新 MCP 工具**：`run_fitness_analysis`（手动触发）
+      - 注册到 Akosha MCP server
+      - 调用 `analyzer.run_analysis()`
+
+      **代码规范**：
+      - 类型注解完整
+      - async/await 正确使用
+      - 符合 Akosha 代码风格
+      - 日志记录分析结果统计
+
+      完成后报告：文件路径、核心类/方法、数据流描述。
+    assigned_to: developer
+    verified_by: code-reviewer
+    verify_prompt: |
+      审查 `akosha/processing/fitness_analyzer.py` 代码：
+      1. Fitness signal 计算是否正确（failure_rate, p99, score）
+      2. Dhara key 格式是否正确（routing_fitness/{task_class}/{selector}）
+      3. Bounded buffer deque(maxlen=1000) 是否正确实现
+      4. DLQ 逻辑是否正确（3次重试后写入文件）
+      5. Circuit breaker 是否正确使用
+      6. Periodic job 是否正确实现
+      7. 类型注解是否完整
+      不要修改文件，只报告问题。
+    timeout_ms: 1800000
+
+  - id: mahavishnu-routing-fitness
+    title: 'Mahavishnu RoutingFitnessReader — 读取 Dhara fitness 信号'
+    prompt: |
+      在 `/Users/les/Projects/mahavishnu/mahavishnu/pools/routing_fitness.py` 创建 `RoutingFitnessReader`。
+
+      **背景**：
+      - Mahavishnu 在每次 `route_task()` 时需要读取 fitness 信号
+      - Fitness 信号来自 Dhara key：`routing_fitness/{task_class}/{selector}`
+      - Fallback：如果 Dhara 不可用或无信号，使用 `least_loaded`
+
+      **核心功能**：
+      ```python
+      from dataclasses import dataclass
+      from datetime import datetime
+
+      @dataclass
+      class FitnessSignal:
+          score: float          # 1 - failure_rate
+          samples: int
+          failure_rate: float
+          p99_latency_ms: float
+          updated_at: datetime
+          window_start: datetime
+
+      class RoutingFitnessReader:
+          def __init__(self, dhhara_client):
+              self.dhara = dhhara_client
+
+          def get_fitness_signals(self, task_class: str) -> dict[str, FitnessSignal]:
+              # 读取 routing_fitness/{task_class}/* 所有 selectors
+              # 返回 {selector: FitnessSignal}
+              # 如果 Dhara 不可用或无数据，返回空 dict
+              pass
+
+          def get_best_selector(self, task_class: str) -> str | None:
+              # 返回 score 最高的 selector
+              # 如果无信号或出错，返回 None
+              pass
+      ```
+
+      **Dhara 读取**：
+      - 使用 `dhara_client.list_prefix(f"routing_fitness/{task_class}/")`
+      - 解析 JSON value 得到 FitnessSignal
+      - 按 score 排序，返回最高者
+
+      **TTL 处理**：
+      - Fitness 信号有 TTL（2小时默认）
+      - 如果 `updated_at` 超过 2×window 认为过期
+      - 过期的信号不参与选择
+
+      **集成点**：
+      - 稍后在 `mahavishnu/pools/manager.py` 的 `route_task()` 中调用
+      - 不是这个 task 的一部分，但需要设计好接口
+
+      **代码规范**：
+      - 类型注解完整
+      - 符合 Mahavishnu 代码风格
+      - 优雅处理 Dhara 不可用（不抛异常，返回空dict）
+      - 日志记录读取结果
+
+      完成后报告：文件路径、核心类/方法、集成点说明。
+    assigned_to: developer
+    verified_by: code-reviewer
+    verify_prompt: |
+      审查 `mahavishnu/pools/routing_fitness.py` 代码：
+      1. FitnessSignal dataclass 字段是否完整
+      2. Dhara list_prefix 读取是否正确
+      3. JSON 解析是否处理了过期/损坏数据
+      4. TTL 处理是否正确
+      5. Fallback 逻辑（无信号时返回 None）是否正确
+      6. 类型注解是否完整
+      不要修改文件，只报告问题。
+    timeout_ms: 1800000

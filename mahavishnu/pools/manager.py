@@ -12,8 +12,10 @@ from monitoring.metrics import pool_workers_active
 
 from ..mcp.protocols.message_bus import MessageBus
 from .base import BasePool, PoolConfig
+from .fitness_analyzer import FitnessAnalyzer
 from .kubernetes_pool import KubernetesPool
 from .mahavishnu_pool import MahavishnuPool
+from .routing_fitness import FitnessSignal, RoutingFitnessReader
 from .runpod_pool import RunPodPool
 from .session_buddy_pool import SessionBuddyPool
 
@@ -99,6 +101,9 @@ class PoolManager:
         # O(log n) heap-based routing optimization
         # Heap stores tuples of (worker_count, pool_id) for efficient min lookup
         self._worker_count_heap: list[tuple[int, str]] = []
+
+        # Phase 4: Routing fitness reader — reads signals from Dhara
+        self._routing_fitness_reader = RoutingFitnessReader(dhara_state=dhara_state)
 
         # Track current worker counts for validation (lazy deletion)
         self._pool_worker_counts: dict[str, int] = {}
@@ -422,6 +427,30 @@ class PoolManager:
             raise RuntimeError("No pools available for routing")
 
         selector = pool_selector or self._pool_selector
+
+        # Phase 4: Consult RoutingFitnessReader for fitness-aware routing.
+        # If fitness signals exist for the task's class, override the selector
+        # to use the highest-score selector; fall back to configured selector
+        # (or least_loaded default) if Dhara is unavailable or no signals exist.
+        task_class = task.get("task_class") or task.get("category", "")
+        if task_class:
+            try:
+                signals = await self._routing_fitness_reader.get_fitness_signals(task_class)
+                if signals:
+                    best = await self._routing_fitness_reader.get_best_selector(task_class)
+                    if best:
+                        try:
+                            selector = PoolSelector(best)
+                            logger.debug(
+                                "Fitness-aware routing for task_class=%r: selector=%s (score=%.3f)",
+                                task_class,
+                                best,
+                                signals[best].score,
+                            )
+                        except ValueError:
+                            pass  # Unknown selector string — keep current selector
+            except Exception:
+                pass  # Dhara unavailable — use selector as-is
 
         # Select pool
         if selector == PoolSelector.AFFINITY:

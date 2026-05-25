@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13+, asyncio, AppleScript/osascript, iTerm2, standard library only.
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -35,16 +35,20 @@ tests/unit/
 └── test_terminal_grid.py             ← new, TerminalGridManager tests
 ```
 
----
+______________________________________________________________________
 
 ## Phase 1: Shared AppleScript Bridge
 
 ### Task 1: Create mcp-common/apple_script/ Package
 
 **Files:**
+
 - Create: `mcp-common/mcp_common/apple_script/__init__.py`
+
 - Create: `mcp-common/mcp_common/apple_script/exceptions.py`
+
 - Create: `mcp-common/mcp_common/apple_script/bridge.py`
+
 - Test: (no direct test — exercised via iterm2 adapter tests)
 
 - [ ] **Step 1: Write exceptions**
@@ -138,16 +142,18 @@ cd /Users/les/Projects/mcp-common && python -c "from mcp_common.apple_script imp
 
 Expected: `OK True` (on macOS) or graceful failure with clear message on non-macOS
 
----
+______________________________________________________________________
 
 ### Task 2: Refactor iterm2.py to Use Shared Bridge
 
 **Files:**
+
 - Modify: `mahavishnu/terminal/adapters/iterm2.py:75-104`
 
 - [ ] **Step 1: Add import at top of iterm2.py**
 
 After `from .base import TerminalAdapter`, add:
+
 ```python
 from mcp_common.apple_script import run as _apple_script_run, OSASCRIPT_AVAILABLE as _OSASCRIPT_AVAILABLE
 ```
@@ -155,15 +161,17 @@ from mcp_common.apple_script import run as _apple_script_run, OSASCRIPT_AVAILABL
 - [ ] **Step 2: Replace OSASCRIPT_AVAILABLE usage**
 
 Update the `OSASCRIPT_AVAILABLE` module-level flag:
+
 ```python
 # Use shared flag from mcp-common
 OSASCRIPT_AVAILABLE = _OSASCRIPT_AVAILABLE
 ITERM2_AVAILABLE = OSASCRIPT_AVAILABLE  # legacy export
 ```
 
-- [ ] **Step 3: Replace _run_applescript body**
+- [ ] **Step 3: Replace \_run_applescript body**
 
 Replace lines 75–104 (`async def _run_applescript`) with:
+
 ```python
     async def _run_applescript(self, script: str) -> str:
         """Run an AppleScript and return output."""
@@ -189,16 +197,20 @@ Refactors ITerm2Adapter to use the new shared async bridge so that
 TerminalGridManager can also use it without duplicating subprocess logic."
 ```
 
----
+______________________________________________________________________
 
 ## Phase 2: Grid Data Model
 
 ### Task 3: Create terminal/grid/ Models and Exceptions
 
 **Files:**
+
 - Create: `mahavishnu/terminal/grid/__init__.py`
+
 - Create: `mahavishnu/terminal/grid/exceptions.py`
+
 - Create: `mahavishnu/terminal/grid/models.py`
+
 - Test: `tests/unit/test_terminal_grid_models.py`
 
 - [ ] **Step 1: Write exceptions**
@@ -418,18 +430,21 @@ Adds GridSession, DesktopSession, WindowSession dataclasses and the full
 GridError exception family (GridNotFoundError, SessionNotFoundError, etc.)."
 ```
 
----
+______________________________________________________________________
 
 ## Phase 3: TerminalGridManager
 
 ### Task 4: Write TerminalGridManager
 
 **Files:**
+
 - Create: `mahavishnu/terminal/grid/manager.py`
+
 - Create: `tests/unit/test_terminal_grid.py`
+
 - Modify: `mahavishnu/terminal/grid/__init__.py`
 
-- [ ] **Step 1: Write the manager (imports, constructor, _get_primary_screen_bounds)**
+- [ ] **Step 1: Write the manager (imports, constructor, \_get_primary_screen_bounds)**
 
 ```python
 # mahavishnu/terminal/grid/manager.py
@@ -948,7 +963,7 @@ quadrant layout per desktop with multi-desktop fallback, session tracking,
 broadcast/send primitives, and mcpretentious output-capture placeholder."
 ```
 
----
+______________________________________________________________________
 
 ## Spec Coverage Check
 
@@ -966,7 +981,7 @@ broadcast/send primitives, and mcpretentious output-capture placeholder."
 | Exception hierarchy | `exceptions.py` with `GridNotFoundError`, `SessionNotFoundError`, etc. |
 | TDD, bite-sized steps, per-phase commits | Each phase commits separately |
 
----
+______________________________________________________________________
 
 ## Out of Scope (from spec, not implemented)
 

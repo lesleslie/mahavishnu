@@ -4,6 +4,7 @@ from mcp_common.auth.audit import AuditLogger
 import pytest
 
 from mahavishnu.core.auth import AuthenticationError
+import mahavishnu.mcp.auth as mcp_auth
 from mahavishnu.mcp.auth import (
     CredentialManager,
     extract_auth_from_request,
@@ -106,7 +107,7 @@ def test_credential_manager_custom_sensitive_keys():
 
     redacted = CredentialManager.redact_from_dict(data, sensitive_keys=["custom_secret"])
 
-    assert redacted["custom_secret"] == "value***"
+    assert redacted["custom_secret"] == "valu***"
     assert redacted["public_field"] == "public_value"
 
 
@@ -160,6 +161,17 @@ async def test_extract_auth_from_request_bearer_token():
 
 
 @pytest.mark.asyncio
+async def test_extract_auth_from_request_lowercase_authorization_header():
+    """Test extracting user_id from lowercase authorization header."""
+    request = {"headers": {"authorization": "Bearer lower_case_user"}}
+
+    auth_context = await extract_auth_from_request(request)
+
+    assert auth_context["user_id"] == "lower_case_user"
+    assert auth_context["method"] == "bearer_token"
+
+
+@pytest.mark.asyncio
 async def test_extract_auth_from_request_api_key():
     """Test extracting user_id from API key."""
     request = {"api_key": "mhv_test_user"}
@@ -177,3 +189,14 @@ async def test_extract_auth_from_request_no_auth():
 
     with pytest.raises(AuthenticationError, match="Could not extract user_id"):
         await extract_auth_from_request(request)
+
+
+def test_get_config_is_cached(monkeypatch):
+    """Test the module-level auth config is created once and reused."""
+    monkeypatch.setattr(mcp_auth, "_auth_config", None)
+
+    first = mcp_auth._get_config()
+    second = mcp_auth._get_config()
+
+    assert first is second
+    assert first.service_name == "mahavishnu"

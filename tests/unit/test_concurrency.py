@@ -1,5 +1,7 @@
 """Unit tests for concurrency control."""
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from mahavishnu.core.app import MahavishnuApp
@@ -32,6 +34,12 @@ async def test_get_active_workflows():
     """Test retrieving active workflows."""
     config = MahavishnuSettings()
     app = MahavishnuApp(config)
+
+    # Mock the workflow_state_manager to return an empty list
+    # This is needed because MahavishnuApp may have persisted state from previous tests
+    mock_state_manager = MagicMock()
+    mock_state_manager.list_workflows = AsyncMock(return_value=[])
+    app.workflow_state_manager = mock_state_manager
 
     # Initially, no active workflows
     active_workflows = await app.get_active_workflows()

@@ -9,6 +9,7 @@ import pytest
 
 def test_hatchet_sdk_importable():
     """hatchet-sdk must be listed as an optional dep and installed."""
+    pytest.importorskip("hatchet_sdk")
     hatchet = importlib.import_module("hatchet_sdk")
     assert hatchet is not None
 

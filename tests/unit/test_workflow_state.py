@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import importlib.util
+import sys
+import types
+from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
@@ -166,3 +170,21 @@ async def test_opensearch_delete_falls_back_to_local_on_error(
 
     await manager.delete("wf-to-delete")
     assert "wf-to-delete" not in manager.local_states
+
+
+def test_import_falls_back_when_opensearch_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    import mahavishnu.core.workflow_state as workflow_state_module
+
+    monkeypatch.setitem(sys.modules, "opensearchpy", types.ModuleType("opensearchpy"))
+
+    spec = importlib.util.spec_from_file_location(
+        "workflow_state_missing_opensearch",
+        Path(workflow_state_module.__file__).resolve(),
+    )
+    assert spec is not None and spec.loader is not None
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    assert module.OPENSEARCH_AVAILABLE is False
+    assert module.AsyncOpenSearch is None

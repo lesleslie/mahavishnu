@@ -87,6 +87,11 @@ def test_get_registered_repos_filters_missing_path(tmp_path, monkeypatch):
     """Ignores repo entries that lack a 'path' key."""
     import mahavishnu.core.code_index.path_validation as pv
 
+    ecosystem_yaml = tmp_path / "ecosystem.yaml"
+    ecosystem_yaml.write_text(
+        f"repos:\n  - name: no-path-repo\n  - path: {tmp_path / 'valid-repo'}\n"
+    )
+
     def mock_get_registered_repos():
         import yaml
         from pathlib import Path

@@ -141,6 +141,38 @@ class TestHealthChecker:
             assert "Timeout" in result.error
 
     @pytest.mark.asyncio
+    async def test_check_generic_exception(self, checker):
+        """Test handling an unexpected exception."""
+        with patch.object(
+            checker._http_action,
+            "execute",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("boom"),
+        ):
+            result = await checker.check("http://localhost:9999/health")
+
+            assert result.status == HealthStatus.UNHEALTHY
+            assert "boom" in result.error
+
+    @pytest.mark.asyncio
+    async def test_check_unknown_status_maps_to_unhealthy(self, checker):
+        """Test that unknown status strings map to unhealthy."""
+        with patch.object(
+            checker._http_action,
+            "execute",
+            new_callable=AsyncMock,
+        ) as mock_execute:
+            mock_execute.return_value = {
+                "ok": True,
+                "status_code": 200,
+                "json": {"status": "mystery"},
+            }
+
+            result = await checker.check("http://localhost:8678/health")
+
+            assert result.status == HealthStatus.UNHEALTHY
+
+    @pytest.mark.asyncio
     async def test_check_records_dependency_metrics(self, checker):
         """Health checks should update shared dependency metrics."""
         with patch.object(
@@ -160,6 +192,11 @@ class TestHealthChecker:
         assert "mahavishnu_dependency_requests_total" in metrics_text
         assert 'dependency="localhost:8678"' in metrics_text
         assert 'status="ok"' in metrics_text
+
+    def test_extract_service_name_falls_back_on_parse_failure(self, checker):
+        """Test URL parsing fallback path when urlparse fails."""
+        with patch("urllib.parse.urlparse", side_effect=RuntimeError("boom")):
+            assert checker._extract_service_name("bad://url") == "bad://url"
 
     def test_check_message_bus_uses_canonical_transport(self, monkeypatch):
         import mahavishnu.health as health_module
@@ -255,6 +292,30 @@ class TestDependencyWaiter:
             assert "akosha" in result.failed_required
 
     @pytest.mark.asyncio
+    async def test_wait_for_all_handles_checker_exception(self, waiter):
+        """Test wait_for_all records exceptions from dependency tasks."""
+        dependencies = {
+            "session_buddy": DependencyConfig(
+                host="localhost",
+                port=8678,
+                required=True,
+                timeout_seconds=1,
+            ),
+        }
+
+        with patch.object(
+            waiter,
+            "_wait_for_single",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("boom"),
+        ):
+            result = await waiter.wait_for_all(dependencies)
+
+            assert not result.success
+            assert "session_buddy" in result.failed_required
+            assert result.dependencies["session_buddy"].status == HealthStatus.UNHEALTHY
+
+    @pytest.mark.asyncio
     async def test_wait_for_optional_skipped(self, waiter):
         """Test that optional dependencies can be skipped."""
         dependencies = {
@@ -284,6 +345,92 @@ class TestDependencyWaiter:
             # Should succeed because dhara is optional
             assert result.success
             assert "dhara" in result.skipped_optional
+
+    @pytest.mark.asyncio
+    async def test_wait_for_optional_healthy(self, waiter):
+        """Test that healthy optional dependencies are tracked without skips."""
+        dependencies = {
+            "dhara": DependencyConfig(
+                host="localhost",
+                port=8683,
+                required=False,
+                timeout_seconds=1,
+            ),
+        }
+
+        mock_result = HealthCheckResult(
+            service_name="dhara",
+            status=HealthStatus.OK,
+            latency_ms=2.0,
+        )
+
+        with patch.object(
+            waiter._checker,
+            "check",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            result = await waiter.wait_for_all(dependencies)
+
+            assert result.success
+            assert result.dependencies["dhara"].status == HealthStatus.OK
+            assert result.skipped_optional == []
+
+    @pytest.mark.asyncio
+    async def test_wait_for_optional_unhealthy_records_skip(self, waiter):
+        """Test optional dependency unhealthy path before skip fallback."""
+        dependencies = {
+            "dhara": DependencyConfig(
+                host="localhost",
+                port=8683,
+                required=False,
+                timeout_seconds=1,
+            ),
+        }
+
+        unhealthy_result = HealthCheckResult(
+            service_name="dhara",
+            status=HealthStatus.UNHEALTHY,
+            error="Connection refused",
+        )
+
+        with patch.object(
+            waiter,
+            "_wait_for_single",
+            new_callable=AsyncMock,
+            return_value=unhealthy_result,
+        ):
+            result = await waiter.wait_for_all(dependencies)
+
+            assert result.success
+            assert result.dependencies["dhara"].status == HealthStatus.UNHEALTHY
+            assert "dhara" in result.skipped_optional
+
+    @pytest.mark.asyncio
+    async def test_wait_for_single_degraded(self, waiter):
+        """Test that degraded dependencies return immediately."""
+        dependency = DependencyConfig(
+            host="localhost",
+            port=8683,
+            required=False,
+            timeout_seconds=1,
+        )
+        mock_result = HealthCheckResult(
+            service_name="dhara",
+            status=HealthStatus.DEGRADED,
+            latency_ms=3.0,
+        )
+
+        with patch.object(
+            waiter._checker,
+            "check",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            result = await waiter._wait_for_single("dhara", dependency)
+
+            assert isinstance(result, HealthCheckResult)
+            assert result.status == HealthStatus.DEGRADED
 
 
 class TestHealthEndpoint:
@@ -384,6 +531,29 @@ class TestHealthEndpoint:
 
             assert not response.ready
             assert response.dependencies["akosha"].status == HealthStatus.UNHEALTHY
+
+    @pytest.mark.asyncio
+    async def test_readiness_handles_checker_exception(self, endpoint):
+        """Test readiness when a dependency check raises."""
+        dependencies = {
+            "session_buddy": DependencyConfig(
+                host="localhost",
+                port=8678,
+                required=True,
+            ),
+        }
+
+        with patch.object(
+            endpoint._checker,
+            "check",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("boom"),
+        ):
+            response = await endpoint.readiness(dependencies)
+
+            assert not response.ready
+            assert response.dependencies["session_buddy"].status == HealthStatus.UNHEALTHY
+            assert "boom" in response.dependencies["session_buddy"].error
 
 
 class TestHealthErrors:

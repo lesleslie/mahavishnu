@@ -4,7 +4,7 @@
 **Status:** Draft for review
 **Goal:** Unify AppleScript/iTerm2 integration across mdinject (Swift) and Mahavishnu (Python) for shared session identity schema, compatible string escaping, and common AppleScript patterns.
 
----
+______________________________________________________________________
 
 ## 1. Problem Statement
 
@@ -16,13 +16,14 @@ Two Bodai ecosystem repos independently implement iTerm2 control via AppleScript
 | **Mahavishnu** | Python | `asyncio subprocess exec("osascript")` | `str` (UUID[:8]) + window_id/tab_id | `\"` `\\` only, single-line |
 
 **Problems:**
+
 - Duplicated AppleScript logic across languages
 - Incompatible session identity schemas (can't cross-reference sessions)
 - Inconsistent string escaping (Swift handles more metacharacters)
 - No shared specification of canonical AppleScript patterns
 - Long-term maintenance burden: changes to iTerm2 API must be made in two places
 
----
+______________________________________________________________________
 
 ## 2. What to Unify
 
@@ -35,7 +36,7 @@ A canonical session identifier both Swift and Python can use:
 ```swift
 // Swift proposed (compatible with string-based approach)
 struct ITerm2Session: Identifiable, Hashable {
-    let id: String          // canonical: string "session_{int}" 
+    let id: String          // canonical: string "session_{int}"
     let windowId: String    // iTerm2 unique id (string)
     let tabId: String?      // nil if window-level (no tab)
     let name: String?
@@ -63,14 +64,16 @@ class ITerm2Session:
 A canonical escaping algorithm both languages implement:
 
 **Rules:**
+
 1. Backslash `\` → `\\` (escape first, always)
-2. Double-quote `"` → `\"`
-3. Single-quote `'` → `\'` (AppleScript standard)
-4. Tab `\t` → `\t`
-5. Carriage return `\r` → removed (not valid in AppleScript strings)
-6. Newline `\n` → expressed as `" & return & "` for multi-line strings
+1. Double-quote `"` → `\"`
+1. Single-quote `'` → `\'` (AppleScript standard)
+1. Tab `\t` → `\t`
+1. Carriage return `\r` → removed (not valid in AppleScript strings)
+1. Newline `\n` → expressed as `" & return & "` for multi-line strings
 
 **Multi-line handling:** When a string contains multiple lines, Swift joins them as:
+
 ```
 "line1" & return & "line2" & return & "line3"
 ```
@@ -82,6 +85,7 @@ Python's current implementation doesn't handle multi-line. We need to decide: do
 ### 2.3 AppleScript Patterns (UNIFY as SPEC only)
 
 Canonical AppleScript scripts for:
+
 - Enumerate sessions (window/tab/session info)
 - Send text to session
 - Create window with profile
@@ -96,7 +100,7 @@ Both languages implement these patterns from a shared spec document, but execute
 - **Session lifecycle**: mdinject manages iTerm2 sessions for interactive use; Mahavishnu's TerminalGridManager orchestrates grid deployments. Different use cases, different lifecycle management.
 - **Grid orchestration**: Mahavishnu's `TerminalGridManager` with quadrant layout and multi-desktop is unique to Mahavishnu.
 
----
+______________________________________________________________________
 
 ## 3. Approaches
 
@@ -119,18 +123,20 @@ Swift calls Python's AppleScript bridge over a local Unix domain socket MCP conn
 **Unified spec file:** `mcp-common/apple_script/spec/iterm2-applescript-spec.md`
 
 **Pros:**
+
 - Single implementation of AppleScript execution (Python)
 - Swift gets AppleScript for free, no native implementation
 - Schema enforcement from one place
 - Can add more clients (if other languages need iTerm2)
 
 **Cons:**
+
 - **Dependency**: Swift now depends on Python running. If Python process dies, iTerm2 control breaks.
 - **Latency**: Every AppleScript call is a socket round-trip. Fine for interactive use; potentially problematic for high-frequency operations.
 - **Deployment complexity**: Two processes must be running. More complex startup.
 - **你不是真正的统一**: Swift is still doing its own session tracking internally, just translating to Python's format. Not true schema alignment.
 
----
+______________________________________________________________________
 
 ### Approach B: Shared Swift Package + Native Implementations
 
@@ -164,17 +170,19 @@ Create a Swift `AppleScriptBridge` package with the same interface contract as P
 **AppleScript patterns:** Both execute from canonical templates in the spec doc.
 
 **Pros:**
+
 - True dual-maintenance: both languages implement the same spec
 - No runtime dependency between Swift and Python
 - Native execution in both (no IPC overhead)
 - Schema alignment through spec document
 
 **Cons:**
+
 - **Duplicated implementation**: AppleScript logic exists in two languages. Changes to patterns require updates in both.
 - **Migration required**: Swift must migrate from `Int` session IDs to `String`. mdinject has production iTerm2 sessions — migration path needed.
 - **No single source of truth**: The spec doc could drift from implementations.
 
----
+______________________________________________________________________
 
 ### Approach C: Specification-First with Native Implementations (Recommended)
 
@@ -196,6 +204,7 @@ Define a canonical `ITerm2Protocol` specification that both languages implement 
 ```
 
 **Key additions over Approach B:**
+
 - **Conformance test suite**: Each language has a test suite that validates its implementation against the spec. Tests are in each repo, runnable against the local implementation.
 - **Shared spec in mcp-common**: The spec lives in `mcp-common/docs/iterm2-applescript-protocol.md`. Both Swift and Python reference it.
 - **Canonical session schema in spec**: All languages implement the same `ITerm2Session` schema with `String` IDs.
@@ -207,6 +216,7 @@ Define a canonical `ITerm2Protocol` specification that both languages implement 
 **AppleScript patterns:** Single canonical template per operation in the spec. Both implement the same pattern.
 
 **Pros:**
+
 - True schema alignment with conformance testing
 - No runtime dependency between languages
 - Native execution (no IPC overhead)
@@ -214,11 +224,12 @@ Define a canonical `ITerm2Protocol` specification that both languages implement 
 - Extensible: future languages can implement to spec
 
 **Cons:**
+
 - **Migration work**: Swift must migrate `Int` → `String` session IDs
 - **Duplicated implementation**: AppleScript logic in two languages, but this is acceptable — they're different execution models
 - **Migration of Python escaping**: Python's single-line-only escaping needs to be updated to handle multi-line via `& return &`
 
----
+______________________________________________________________________
 
 ## 4. Session Identity Migration Plan
 
@@ -229,10 +240,11 @@ Current: `ITerm2Session(id: Int, ...)` where `id` is iTerm2's native session int
 Target: `ITerm2Session(id: String, ...)` where `id` is `"session_{int}"`.
 
 Migration path:
+
 1. Add `idString: String` computed property: `return "session_\(id)"`
-2. Update all internal usages to prefer `idString`
-3. Once all Swift code uses `idString`, rename `idString` → `id` and deprecate old `Int`-based approach
-4. In bridging layer (if needed), translate between `"session_123"` and `123` for iTerm2 calls
+1. Update all internal usages to prefer `idString`
+1. Once all Swift code uses `idString`, rename `idString` → `id` and deprecate old `Int`-based approach
+1. In bridging layer (if needed), translate between `"session_123"` and `123` for iTerm2 calls
 
 ### Python: UUID[:8] → String
 
@@ -242,7 +254,7 @@ Target: For cross-repo compatibility, Python exposes `session_{windowId}_{tabId 
 
 This doesn't require Python to change its internal format — just the translation layer when talking to Swift.
 
----
+______________________________________________________________________
 
 ## 5. Escaping Rules (Canonical)
 
@@ -275,7 +287,7 @@ def build_applescript_string(value: str) -> str:
 
 Swift already implements this correctly. Python needs to adopt the multi-line handling.
 
----
+______________________________________________________________________
 
 ## 6. AppleScript Pattern Templates
 
@@ -334,7 +346,7 @@ tell application "iTerm2"
 end tell
 ```
 
----
+______________________________________________________________________
 
 ## 7. Canonical Session Schema
 
@@ -349,7 +361,7 @@ ITerm2Session:
   tab_index: int       # display/human reference only
 ```
 
----
+______________________________________________________________________
 
 ## 8. Approach Comparison
 
@@ -365,43 +377,47 @@ ITerm2Session:
 | **Migration complexity** | Medium | Medium | Medium |
 | **Long-term maintenance** | Single point of failure | Duplicated | ✅ Both |
 
----
+______________________________________________________________________
 
 ## 9. Recommendation
 
 **Approach C (Spec-First with Native Implementations)** is recommended because:
 
 1. **No runtime dependency**: Swift and Python each run independently
-2. **True schema alignment**: Both implement the same session schema
-3. **Conformance testing**: Each implementation validates against the spec
-4. **Extensible**: Future Bodai ecosystem repos can implement to spec
-5. **Native performance**: No IPC overhead for AppleScript calls
+1. **True schema alignment**: Both implement the same session schema
+1. **Conformance testing**: Each implementation validates against the spec
+1. **Extensible**: Future Bodai ecosystem repos can implement to spec
+1. **Native performance**: No IPC overhead for AppleScript calls
 
 **Migration steps:**
-1. Write canonical spec doc to `mcp-common/docs/iterm2-applescript-protocol.md`
-2. Update Python's escaping to handle multi-line (adopt Swift's `& return &` approach)
-3. Swift migrates `Int` session IDs → `String` format `session_{int}`
-4. Create conformance tests in both repos
-5. Update bridging layer if Swift/Python need to communicate directly
 
----
+1. Write canonical spec doc to `mcp-common/docs/iterm2-applescript-protocol.md`
+1. Update Python's escaping to handle multi-line (adopt Swift's `& return &` approach)
+1. Swift migrates `Int` session IDs → `String` format `session_{int}`
+1. Create conformance tests in both repos
+1. Update bridging layer if Swift/Python need to communicate directly
+
+______________________________________________________________________
 
 ## 10. Open Questions
 
 1. **Should Python adopt Swift's multi-line `& return &` approach, or should Swift adopt Python's single-line approach?** Recommendation: Swift's approach is more AppleScript-idiomatic and has been production-tested.
 
-2. **How do Swift and Python session IDs translate when they need to communicate?** 
+1. **How do Swift and Python session IDs translate when they need to communicate?**
+
    - Option A: Swift converts `Int` → `"session_{int}"` when sending to Python
    - Option B: Each keeps its own format; translation happens at the boundary
    - Recommendation: Use canonical `"session_{int}"` format for cross-repo communication.
 
-3. **Should mdinject's Python layer (terminal_pane_service.py) also use the shared bridge?**
+1. **Should mdinject's Python layer (terminal_pane_service.py) also use the shared bridge?**
+
    - Currently mdinject's Python has no iTerm2 support. If it needed to add some, it should use `mcp_common.apple_script`.
 
-4. **Where does the spec live?**
+1. **Where does the spec live?**
+
    - `mcp-common/docs/iterm2-applescript-protocol.md` — since mcp-common is already the shared infrastructure package.
 
----
+______________________________________________________________________
 
 ## 11. Out of Scope
 

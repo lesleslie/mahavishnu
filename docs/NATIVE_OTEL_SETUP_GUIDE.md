@@ -9,6 +9,7 @@ Get up and running with OpenTelemetry trace storage and semantic search in under
 - Python 3.10+
 - Mahavishnu installed
 - Claude or Qwen session logs (optional, for testing)
+- **PostgreSQL + pgvector** (optional, for serverless/persistent storage — see [pgvector setup](#postgresql--pgvector-setup) below)
 
 ### Step 1: Install Dependencies (30 seconds)
 
@@ -852,6 +853,113 @@ database_path: ":memory:"
 
 # Or use separate files per process
 database_path: "/tmp/otel_${PROCESS_ID}.db"
+```
+
+______________________________________________________________________
+
+## PostgreSQL + pgvector Setup (Serverless / Production)
+
+For serverless deployments or production environments that need trace data to survive cold-starts, use PostgreSQL with the pgvector extension instead of DuckDB.
+
+### Why pgvector?
+
+| Feature | DuckDB (local) | PostgreSQL + pgvector (serverless) |
+|---------|---------------|----------------------------------|
+| Cold-start survival | ❌ Data lost on restart | ✅ Persists across restarts |
+| Shared storage | ❌ In-process only | ✅ Shared across instances |
+| Cloud-native | ❌ Not designed for it | ✅ Works with cloud Postgres (Neon, Supabase, etc.) |
+| Connection pooling | ❌ Not needed | ⚠️ Required (handled by cloud provider) |
+
+### Prerequisites
+
+```sql
+CREATE EXTENSION vector;
+```
+
+This must be run against your PostgreSQL instance before using pgvector-backed storage. The extension enables:
+- `vector` data type
+- `FLOAT[n]` vector columns
+- `array_cosine_similarity()` and other vector functions
+- HNSW index support for fast approximate nearest-neighbor search
+
+### PostgreSQL Setup
+
+```bash
+# Local PostgreSQL with pgvector
+psql -U postgres -h localhost -d mahavishnu -c "CREATE EXTENSION vector;"
+
+# Or via Docker
+docker run -d -p 5432:5432 -e POSTGRES_DB=mahavishnu \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=secret \
+  pgvector/pgvector:pg16
+docker exec -it <container_id> psql -U postgres -d mahavishnu \
+  -c "CREATE EXTENSION vector;"
+```
+
+### Environment Variables
+
+For pgvector-backed OTel storage, set these **before** starting Mahavishnu:
+
+```bash
+# PostgreSQL connection URL
+export MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE=postgresql
+export MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL=postgresql://postgres:secret@localhost:5432/mahavishnu
+```
+
+For Akosha's hot store:
+
+```bash
+export AKOSHA__STORAGE__HOT__BACKEND=pgvector
+export AKOSHA__STORAGE__HOT__PG_URL=postgresql://postgres:secret@localhost:5432/akosha
+```
+
+> **Note**: Akosha and Mahavishnu can share the same PostgreSQL instance. Use different databases or different tables — Akosha uses `conversations`, Mahavishnu uses `otel_traces`. No schema collision.
+
+### Oneiric Naming Convention
+
+Oneiric uses `__` as the nested delimiter (not `_`). The correct env var names are:
+- `MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE` (not `MAHAVISHNU_OTEL_INGESTER_STORAGE_TYPE`)
+- `MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL` (not `MAHAVISHNU_OTEL_INGESTER_STORAGE_PG_URL`)
+
+Flat names without `__` will **not** be resolved by Oneiric's layered config.
+
+### Switching Backends
+
+| Scenario | Backend | How to switch |
+|----------|---------|--------------|
+| Local dev (no setup) | `:memory:` DuckDB | No env vars — code default |
+| Local dev with Postgres | pgvector | Set both `__TYPE` and `__PG_URL` |
+| Serverless deployment | pgvector | Set both `__TYPE` and `__PG_URL` to cloud Postgres |
+| Akosha Lite mode | `:memory:` DuckDB | `AKOSHA_MODE=lite` (explicit override) |
+
+### Verifying pgvector Installation
+
+```bash
+psql -U postgres -h localhost -d mahavishnu -c "SELECT * FROM pg_extension WHERE extname = 'vector';"
+# Should return: vector | 16 | 0.5.0 | f
+```
+
+### Troubleshooting
+
+**Issue: "extension 'vector' does not exist"**
+
+```bash
+# Install pgvector extension
+psql -U postgres -h localhost -d mahavishnu -c "CREATE EXTENSION vector;"
+```
+
+**Issue: "connection refused"**
+
+Check that PostgreSQL is running and the port is correct:
+```bash
+psql -U postgres -h localhost -p 5432 -c "SELECT 1;"
+```
+
+**Issue: "password authentication failed"**
+
+Update `PG_URL` or set `PGPASSWORD` environment variable:
+```bash
+export MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL=postgresql://postgres:yourpassword@localhost:5432/mahavishnu
 ```
 
 ______________________________________________________________________

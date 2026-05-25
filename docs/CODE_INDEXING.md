@@ -65,6 +65,7 @@ The indexer respects `.gitignore` through two mechanisms:
 - **Full re-index**: Uses `git ls-files --cached` — returns all tracked files, gitignore is inherently respected
 
 SKIP_DIRS in `parser.py` provides an additional guard:
+
 ```python
 SKIP_DIRS = {
     ".git", "__pycache__", ".venv", "venv", "node_modules",
@@ -87,6 +88,7 @@ done
 ```
 
 Hook content (installed in `.git/hooks/post-commit`, `.git/hooks/post-merge`, `.git/hooks/post-rewrite`):
+
 ```sh
 #!/bin/sh
 # Managed by mahavishnu index --install-hooks
@@ -99,11 +101,13 @@ The `&` runs indexing in the background so git operations aren't blocked.
 ## Queue and Recovery
 
 When Session-Buddy is unavailable, indexed data is queued locally:
+
 ```bash
 ls ~/.claude/data/mahavishnu-index-queue/
 ```
 
 To flush the queue, ensure Session-Buddy is running then re-index:
+
 ```bash
 python -m session_buddy start --force  # if not running
 mahavishnu index repo /path/to/repo --full
@@ -128,8 +132,8 @@ All repos have hooks installed for auto-indexing on git events.
 
 1. **Pydantic forward reference** (`models.py`): `datetime` was in `TYPE_CHECKING` block, causing `IndexWorkItem` initialization to fail. Fixed by importing `datetime` normally.
 
-2. **Async method handling** (`parser.py`): `_analyze_python_file()` is `async` and returns `None` (populates `analyzer.nodes` instead). The code was treating the return value as having `.nodes`. Fixed with `asyncio.run()` + direct node access.
+1. **Async method handling** (`parser.py`): `_analyze_python_file()` is `async` and returns `None` (populates `analyzer.nodes` instead). The code was treating the return value as having `.nodes`. Fixed with `asyncio.run()` + direct node access.
 
-3. **Path resolution** (`path_validation.py`): `get_registered_repos()` resolved `settings/repos_path` relative to `cwd` instead of the project directory. Fixed to use `Path(__file__)`-based resolution.
+1. **Path resolution** (`path_validation.py`): `get_registered_repos()` resolved `settings/repos_path` relative to `cwd` instead of the project directory. Fixed to use `Path(__file__)`-based resolution.
 
-4. **Git hook command** (`git_hooks.py`): Hook used `mahavishnu index --trigger` but the CLI expects `mahavishnu index repo --trigger`. Fixed the hook template.
+1. **Git hook command** (`git_hooks.py`): Hook used `mahavishnu index --trigger` but the CLI expects `mahavishnu index repo --trigger`. Fixed the hook template.

@@ -15,18 +15,22 @@ IMPORTANT - Implementation Note:
     - Use mock adapter for testing
 """
 
-import asyncio
 from datetime import datetime
 from logging import getLogger
 from typing import Any
 import uuid
 
-from .base import TerminalAdapter
 from mcp_common.apple_script import (
-    run as _apple_script_run,
     OSASCRIPT_AVAILABLE as _OSASCRIPT_AVAILABLE,
+)
+from mcp_common.apple_script import (
     build_applescript_string,
 )
+from mcp_common.apple_script import (
+    run as _apple_script_run,
+)
+
+from .base import TerminalAdapter
 
 logger = getLogger(__name__)
 
@@ -142,7 +146,7 @@ class ITerm2Adapter(TerminalAdapter):
                     end tell
                     '''
                 else:
-                    script = f'''
+                    script = f"""
                     tell application "iTerm2"
                         activate
                         set newWindow to (create window with default profile)
@@ -154,7 +158,7 @@ class ITerm2Adapter(TerminalAdapter):
                         end tell
                         return windowID
                     end tell
-                    '''
+                    """
                 result = await self._run_applescript(script)
                 window_id = result.strip()
                 tab_id = None  # Window-level session, no separate tab ID
@@ -178,7 +182,7 @@ class ITerm2Adapter(TerminalAdapter):
                     end tell
                     '''
                 else:
-                    script = f'''
+                    script = f"""
                     tell application "iTerm2"
                         activate
                         tell current window
@@ -193,7 +197,7 @@ class ITerm2Adapter(TerminalAdapter):
                             return windowID & "," & tabID
                         end tell
                     end tell
-                    '''
+                    """
                 result = await self._run_applescript(script)
                 # Parse window_id,tab_id from result
                 parts = result.strip().split(",")
@@ -203,7 +207,7 @@ class ITerm2Adapter(TerminalAdapter):
             # Store session metadata with captured identity
             self._sessions[session_id] = {
                 "session": None,  # Not used with AppleScript approach
-                "tab": tab_id,     # iTerm2 unique tab ID (None for window-level)
+                "tab": tab_id,  # iTerm2 unique tab ID (None for window-level)
                 "window": window_id,  # iTerm2 unique window ID
                 "command": command,
                 "created_at": datetime.now(),
@@ -253,7 +257,7 @@ class ITerm2Adapter(TerminalAdapter):
             tell application "iTerm2"
                 set targetWindow to window id "{window_id}"
                 tell targetWindow
-                    {"set targetTab to tab id \"" + tab_id + "\"" if tab_id else "set targetTab to current tab"}
+                    {'set targetTab to tab id "' + tab_id + '"' if tab_id else "set targetTab to current tab"}
                     tell targetTab
                         tell current session
                             write text {applescript_command}
@@ -351,7 +355,9 @@ class ITerm2Adapter(TerminalAdapter):
             # Remove from tracking
             del self._sessions[session_id]
 
-            logger.info(f"Closed iTerm2 session {session_id} (window_id={window_id}, tab_id={tab_id})")
+            logger.info(
+                f"Closed iTerm2 session {session_id} (window_id={window_id}, tab_id={tab_id})"
+            )
 
         except Exception as e:
             logger.error(f"Failed to close session {session_id}: {e}")

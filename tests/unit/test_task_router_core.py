@@ -401,6 +401,95 @@ async def test_adapter_coercion_and_unknown_analysis_and_health_branches() -> No
     assert no_check["status"] == "available_but_no_health_check"
 
 
+@pytest.mark.asyncio
+async def test_state_manager_persistence_and_router_default_branches(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state_dir = tmp_path / "state"
+    state_mgr = tr.StateManager(state_dir=state_dir)
+
+    assert state_mgr._workflows == {}
+    assert state_mgr._normalize_status(WorkflowStatus.RUNNING) == WorkflowStatus.RUNNING.value
+
+    record = state_mgr._ensure_record("wf-1")
+    assert record["workflow_id"] == "wf-1"
+
+    await state_mgr.update("missing", status=WorkflowStatus.COMPLETED.value)
+
+    created = await state_mgr.create("wf-1", {"task_type": "workflow"}, ["repo-a"])
+    assert created["repos"] == ["repo-a"]
+
+    await state_mgr.update(
+        "wf-1",
+        task={"name": "demo"},
+        repos=("repo-b",),
+        results=(1, 2),
+        errors=("err",),
+        adapter_states={"prefect": {"status": "running"}},
+    )
+    current = await state_mgr.get("wf-1")
+    assert current is not None
+    assert current["task"] == {"name": "demo"}
+    assert current["repos"] == ["repo-b"]
+    assert current["results"] == [1, 2]
+    assert current["errors"] == ["err"]
+    assert current["adapter_states"]["prefect"] == {"status": "running"}
+
+    await state_mgr.update_progress("wf-1", completed=0, total=0)
+    current = await state_mgr.get("wf-1")
+    assert current is not None
+    assert current["progress"] == 0
+
+    assert await state_mgr.get_completed_count("missing") == 0
+    await state_mgr.add_result("missing", {"ignored": True})
+    await state_mgr.add_error("missing", {"ignored": True})
+
+    listed = await state_mgr.list_workflows(status=WorkflowStatus.PENDING, limit=1)
+    assert len(listed) == 1
+
+    class _UnknownTaskKey:
+        def __hash__(self) -> int:
+            return 1
+
+        def __eq__(self, other: object) -> bool:
+            return False
+
+    unknown = _UnknownTaskKey()
+    router = tr.TaskRouter(adapter_registry=tr.AdapterManager(), state_manager=state_mgr)
+    assert router is not None
+    assert router._default_preference_order(unknown) == list(tr.TaskRouter.DEFAULT_PREFERENCE_ORDER)
+    assert router._normalize_task_type("anything-else") == tr.TaskType.WORKFLOW
+    assert router._coerce_adapter_type("prefect") == AdapterType.PREFECT
+    assert router._coerce_adapter_type(None) is None
+
+    batch = await router.analyze_task({"task_type": "batch_task"})
+    assert batch["recommended_adapter"] == AdapterType.PREFECT
+    assert ", batch" in batch["analysis"]
+
+    interactive = await router.analyze_task({"task_type": "interactive_task"})
+    assert interactive["recommended_adapter"] == AdapterType.AGNO
+    assert "AI agents" in interactive["analysis"]
+
+
+def test_state_manager_load_and_persist_error_branches(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bad_state_dir = tmp_path / "bad"
+    bad_state_dir.mkdir()
+    (bad_state_dir / "workflows.json").write_text("{not-json")
+
+    state_mgr = tr.StateManager(state_dir=bad_state_dir)
+    assert state_mgr._workflows == {}
+
+    monkeypatch.setattr(tr.Path, "mkdir", lambda *args, **kwargs: (_ for _ in ()).throw(OSError("boom")))
+    state_mgr._persist()
+
+    loaded = tr.StateManager(state_dir=tmp_path / "missing")
+    assert loaded._workflows == {}
+
+
 def test_capability_routing_import_success_branch(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = types.ModuleType("mahavishnu.core.task_requirements")
 

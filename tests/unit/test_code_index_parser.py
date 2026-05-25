@@ -39,12 +39,12 @@ def test_parse_file_skips_git(tmp_path):
 
 
 def test_parse_file_raises_on_bad_python(tmp_path):
-    """Actual parse failures are logged but don't raise - caller handles via return value."""
+    """Actual parse failures are handled gracefully - returns empty nodes/edges."""
     test_file = tmp_path / "bad.py"
     test_file.write_text("def (")
     result = parse_file(str(test_file), str(tmp_path), "abc123")
-    # parse_file returns None on failure (caller should check), rather than raising
-    assert result is None
+    # parse_file catches tree-sitter parse errors and returns empty nodes/edges
+    assert result == ([], [])
 
 
 def test_parsable_extensions():
