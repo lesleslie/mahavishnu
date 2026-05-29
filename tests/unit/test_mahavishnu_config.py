@@ -1,12 +1,11 @@
 """Unit tests for mahavishnu/core/config.py - MahavishnuSettings configuration."""
 
 import os
-import tempfile
 from pathlib import Path
-from typing import Any
+import tempfile
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from mahavishnu.core.config import (
     AdapterConfig,
@@ -20,7 +19,6 @@ from mahavishnu.core.config import (
     FallbackStrategy,
     GoalParsingConfig,
     GoalTeamsConfig,
-    GoalTeamsFeatureFlags,
     GoalTeamsLimitsConfig,
     HatchetConfig,
     HealthConfig,
@@ -34,9 +32,9 @@ from mahavishnu.core.config import (
     MonitoringConfig,
     ObservabilityConfig,
     OneiricMCPConfig,
+    OpenSearchConfig,
     OTelIngesterConfig,
     OTelStorageConfig,
-    OpenSearchConfig,
     PoolConfig,
     PrefectConfig,
     QualityControlConfig,
@@ -46,7 +44,6 @@ from mahavishnu.core.config import (
     SubscriptionAuthConfig,
     WorkerConfig,
 )
-
 
 # ============================================================================
 # Test Helpers and Fixtures
@@ -70,9 +67,7 @@ def clean_env():
 @pytest.fixture
 def yaml_config_file():
     """Create a temporary YAML config file."""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", delete=False, dir="settings"
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False, dir="settings") as f:
         f.write("")
         yield f.name
     os.unlink(f.name)

@@ -13,7 +13,6 @@ from mahavishnu.terminal.grid import (
     WindowSession,
 )
 from mahavishnu.terminal.grid.exceptions import (
-    GridNotFoundError,
     SessionNotFoundError,
 )
 

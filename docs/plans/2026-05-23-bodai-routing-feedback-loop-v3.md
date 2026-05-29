@@ -5,11 +5,12 @@
 **v3 — updated with serverless deployment support and hot store storage backend options**
 **Changes since v2**: Added hot store storage backend strategy, serverless deployment defaults, environment detection via Oneiric layered config
 
----
+______________________________________________________________________
 
 ## What Changed After Review
 
 ### v2 findings (incorporated)
+
 | Finding | Severity | Fix |
 |---|---|---|
 | Push model makes Mahavishnu a required dependency | **Critical** | Pull model — Akosha polls each component via MCP directly |
@@ -21,6 +22,7 @@
 | pgvector extension undocumented | **Medium** | Added to infrastructure prerequisites |
 
 ### v3 findings (new in this revision)
+
 | Finding | Severity | Fix |
 |---|---|---|
 | Akosha HotStore defaults to `:memory:` — not serverless-safe | **Critical** | Add pgvector as storage backend option; detect via env var |
@@ -28,20 +30,20 @@
 | No serverless deployment story in the plan | **Critical** | Add deployment section with local vs serverless defaults |
 | Shared hot store potential not documented | **Medium** | Document that Akosha and Mahavishnu can share a pgvector backend |
 
----
+______________________________________________________________________
 
 ## Context & Goal
 
 All Bodai components are OTel-instrumented. This plan builds a feedback loop that:
 
 1. Each Bodai component stores its own traces locally via Oneiric's `OTelStorageAdapter` (PostgreSQL + pgvector)
-2. Akosha discovers component endpoints and polls each one directly via MCP
-3. Akosha computes fitness signals (failure rate, p99 latency per selector) and writes to Dhara
-4. Mahavishnu reads fitness signals from Dhara before each routing decision
+1. Akosha discovers component endpoints and polls each one directly via MCP
+1. Akosha computes fitness signals (failure rate, p99 latency per selector) and writes to Dhara
+1. Mahavishnu reads fitness signals from Dhara before each routing decision
 
 **Constraint**: Every Bodai component must run standalone without requiring any other Bodai component. The feedback loop activates only when the full chain is up; each component is fully functional without it.
 
----
+______________________________________________________________________
 
 ## Architecture
 
@@ -86,7 +88,7 @@ All Bodai components are OTel-instrumented. This plan builds a feedback loop tha
 - Mahavishnu only appears at the end: reads fitness signals from Dhara
 - Shared hot store: when deployed serverless, Akosha and Mahavishnu can share the same PostgreSQL + pgvector instance (different tables/collections) via environment detection
 
----
+______________________________________________________________________
 
 ## Storage Backends & Serverless Strategy
 
@@ -109,10 +111,12 @@ Both components already support the same storage backends. The change is to make
 ### Akosha Hot Store Backend Options
 
 **Lite mode (local dev, no deps)**:
+
 - Backend: DuckDB `:memory:`
 - Frictionless local dev — `python -m akosha.main` just works
 
 **Standard mode with pgvector (serverless-ready)**:
+
 - Backend: PostgreSQL + pgvector (shared)
 - Akosha creates its own table (`conversations`) with HNSW index
 - Same Postgres instance Mahavishnu uses, different table
@@ -123,10 +127,12 @@ Both components already support the same storage backends. The change is to make
 ### Mahavishnu OtelIngester Backend Options
 
 **DuckDB (local dev default)**:
+
 - `hot_store_path=":memory:"` — zero deps locally
 - Or `hot_store_path="/tmp/mahavishnu_traces.db"` for file-backed persistence
 
 **PostgreSQL + pgvector (serverless-ready)**:
+
 - `OTEL_STORAGE_TYPE=postgresql` + `OTEL_STORAGE_PG_URL` env var
 - Uses same `PgvectorAdapter` from Oneiric
 - Same Postgres instance Akosha uses, different table (`otel_traces`)
@@ -158,7 +164,7 @@ No table name collision. No schema interference. Both use the same `PgvectorAdap
 
 Dhara's MCP server (`DharaMCPServer`) wraps the persistent object store backed by `FileStorage` (file-based). With a cloud storage adapter (S3/GCS/Azure Blob), Dhara becomes fully stateless-serverless safe. Its design is already compatible — the keyspace is just key-value, no local state needed.
 
----
+______________________________________________________________________
 
 ## Fitness Signal Schema (Dhara)
 
@@ -177,17 +183,19 @@ Value: {
 
 TTL: signals expire after 2× window (2 hours at default 1-hour window) if not refreshed.
 
----
+______________________________________________________________________
 
 ## Component Changes
 
 ### 1. All Bodai Components — wire OTelStorageAdapter, add `query_local_traces`
 
 **OTelStorageAdapter** (Oneiric):
+
 - Requires: PostgreSQL + `CREATE EXTENSION vector`
 - Buffer: `deque(maxlen=1000)`, flushes on batch size or interval
 
 **New MCP tool: `query_local_traces`**
+
 ```
 query_local_traces(task_class: str, time_range_minutes: int = 60) -> list[TraceSummary]
   TraceSummary: {trace_id, task_class, selector, outcome, duration_ms, timestamp}
@@ -204,20 +212,24 @@ query_local_traces(task_class: str, time_range_minutes: int = 60) -> list[TraceS
 ### 2. Akosha — pgvector hot store + fitness analyzer + MCP client + `run_fitness_analysis`
 
 **New: `akosha/storage/pgvector_hot_store.py`**
+
 - `PgvectorHotStore` — mirrors `HotStore` interface using Oneiric's `PgvectorAdapter`
 - `insert(record)`, `search_similar(...)`, `get_by_id(...)`, `delete(...)`
 - Detects `AKOSHA_STORAGE_PG_URL` env var at startup; falls back to DuckDB `:memory:` if unset
 
 **Modified: `akosha/storage/hot_store.py`**
+
 - `HotStore` already accepts `database_path` — no change needed
 - Add `AKOSHA_STORAGE_BACKEND` env var: `duckdb` (default locally) or `pgvector` (serverless)
 
 **New file: `akosha/mcp/client.py`**
+
 - `BodaiComponentMCPClient` — httpx-based MCP client, follows `DharaClient` pattern
 - Calls `query_local_traces` on each component endpoint
 - Endpoints stored in Dhara: `component_endpoint/{component_name}` → URL
 
 **New file: `akosha/processing/fitness_analyzer.py`**
+
 - Periodic background job (60s interval, configurable)
 - **Bounded buffer**: `deque(maxlen=1000)` + DLQ after 3 failed retries
 - **Circuit breaker**: Oneiric's `CircuitBreaker` for Dhara writes
@@ -229,17 +241,20 @@ query_local_traces(task_class: str, time_range_minutes: int = 60) -> list[TraceS
 ### 3. Mahavishnu — pgvector backend + RoutingFitnessReader
 
 **Modified: `mahavishnu/ingesters/otel_ingester.py`**
+
 - `hot_store_path` parameter: accepts file path or `:memory:`
 - `OTEL_STORAGE_TYPE` env var: `duckdb` (default) or `postgresql`
 - `OTEL_STORAGE_PG_URL` env var: connection string for pgvector backend
 - When `OTEL_STORAGE_TYPE=postgresql` and `OTEL_STORAGE_PG_URL` is set → uses pgvector
 
 **New: `mahavishnu/pools/routing_fitness.py`**
+
 - `RoutingFitnessReader` — reads signals from Dhara via `list_prefix()`
 - Uses `DharaStateBackend` (inherits circuit breaker protection)
 - `get_fitness_signals(task_class: str) -> dict[str, FitnessSignal]`
 
 **Modified: `mahavishnu/pools/manager.py`**
+
 - In `route_task()`: consult `RoutingFitnessReader` before selecting pool
 - Fall back to `least_loaded` if no signals or Dhara unavailable
 
@@ -248,20 +263,21 @@ query_local_traces(task_class: str, time_range_minutes: int = 60) -> list[TraceS
 ### 4. Dhara — no structural changes
 
 Same keyspace. Add component endpoint registry:
+
 ```
 component_endpoint/{component_name} → URL string
 ```
 
----
+______________________________________________________________________
 
 ## Environment Detection & Defaults
 
 ### Configuration Priority (Oneiric standard)
 
 1. Environment variable: `MAHAVISHNU_OTEL_STORAGE_PG_URL`, `AKOSHA_STORAGE_PG_URL`
-2. `settings/local.yaml` (gitignored, local dev overrides)
-3. `settings/{component}.yaml` (committed defaults)
-4. Code default: `:memory:` DuckDB
+1. `settings/local.yaml` (gitignored, local dev overrides)
+1. `settings/{component}.yaml` (committed defaults)
+1. Code default: `:memory:` DuckDB
 
 ### Default Behavior by Environment
 
@@ -281,7 +297,7 @@ CREATE EXTENSION vector;
 
 Document this in each component's setup instructions. Required for `OTelStorageAdapter` and `PgvectorHotStore`.
 
----
+______________________________________________________________________
 
 ## Standalone Operation Matrix
 
@@ -296,7 +312,7 @@ Document this in each component's setup instructions. Required for `OTelStorageA
 | Mahavishnu + Akosha + Dhara | Complete loop. Akosha polls Mahavishnu's traces. | Limited trace set |
 | Full chain (all components) | Complete feedback loop. | None |
 
----
+______________________________________________________________________
 
 ## Implementation Priority
 
@@ -329,7 +345,7 @@ Phase 5 — Integration & Polish
   5.3  Document local vs serverless deployment in guide
 ```
 
----
+______________________________________________________________________
 
 ## Key Files to Change
 
@@ -349,7 +365,7 @@ Phase 5 — Integration & Polish
 | Each Bodai component's MCP tools | Add `query_local_traces` tool |
 | `docs/plans/PLAN_INDEX.md` | Reference this plan |
 
----
+______________________________________________________________________
 
 ## What This Plan Does NOT Cover
 

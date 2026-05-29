@@ -3,16 +3,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
-from unittest.mock import MagicMock
-
 import asyncio
+from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
 from mahavishnu.mcp.tools import learning_pipeline_tools as lpt_module
-
 
 # ---------------------------------------------------------------------------
 # Fake pipeline / evidence / skill-registry components
@@ -23,6 +20,7 @@ from mahavishnu.mcp.tools import learning_pipeline_tools as lpt_module
 @dataclass
 class _FakePipelineResult:
     """Minimal fake for pipeline_service.last_result."""
+
     cycle_id: str = "cycle-42"
     drafts_evaluated: int = 3
     skills_promoted: int = 1
@@ -87,7 +85,9 @@ class _FakeSkillRegistry:
         self._history: dict[str, list[_FakeSkillRecord]] = {
             "skill-a": [
                 _FakeSkillRecord(skill_id="skill-a", version="1.0", state="active"),
-                _FakeSkillRecord(skill_id="skill-a", version="0.9", state="archived", rollback=True),
+                _FakeSkillRecord(
+                    skill_id="skill-a", version="0.9", state="archived", rollback=True
+                ),
             ],
         }
 
@@ -111,6 +111,7 @@ class _FakeMCP:
         def decorator(fn):
             self.tools[fn.__name__] = fn
             return fn
+
         return decorator
 
 
@@ -136,6 +137,7 @@ def _register(pipeline=None, evidence=None, registry=None) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # get_pipeline_status (sync wrapper around _pipeline_status)
 # ---------------------------------------------------------------------------
+
 
 def test_get_pipeline_status_available() -> None:
     """When pipeline_service is provided, status should show available=True."""
@@ -170,12 +172,15 @@ def test_get_pipeline_status_not_running() -> None:
 # list_evidence
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_list_evidence_available() -> None:
-    evidence_store = _FakeEvidenceStore([
-        _FakeEvidence(evidence_id="ev-1"),
-        _FakeEvidence(evidence_id="ev-2"),
-    ])
+    evidence_store = _FakeEvidenceStore(
+        [
+            _FakeEvidence(evidence_id="ev-1"),
+            _FakeEvidence(evidence_id="ev-2"),
+        ]
+    )
     tools = _register(evidence=evidence_store)
     result = await tools["list_evidence"]("test query", limit=10)
     assert result["available"] is True
@@ -193,9 +198,7 @@ async def test_list_evidence_not_available() -> None:
 
 @pytest.mark.asyncio
 async def test_list_evidence_respects_limit() -> None:
-    evidence_store = _FakeEvidenceStore([
-        _FakeEvidence(evidence_id=f"ev-{i}") for i in range(5)
-    ])
+    evidence_store = _FakeEvidenceStore([_FakeEvidence(evidence_id=f"ev-{i}") for i in range(5)])
     tools = _register(evidence=evidence_store)
     result = await tools["list_evidence"]("", limit=2)
     assert result["count"] == 2
@@ -218,6 +221,7 @@ async def test_list_evidence_handles_exception() -> None:
 # ---------------------------------------------------------------------------
 # trigger_synthesis
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_trigger_synthesis_available() -> None:
@@ -250,6 +254,7 @@ async def test_trigger_synthesis_handles_exception() -> None:
 # ---------------------------------------------------------------------------
 # list_pending_drafts
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_list_pending_drafts_available() -> None:
@@ -286,7 +291,9 @@ async def test_list_pending_drafts_body_truncated() -> None:
     """Body should be truncated to 500 chars."""
     long_body = "x" * 1000
     registry = _FakeSkillRegistry(
-        active=[_FakeSkillRecord(skill_id="long-skill", version="1.0", state="draft", body=long_body)]
+        active=[
+            _FakeSkillRecord(skill_id="long-skill", version="1.0", state="draft", body=long_body)
+        ]
     )
     tools = _register(registry=registry)
     result = await tools["list_pending_drafts"]()
@@ -297,6 +304,7 @@ async def test_list_pending_drafts_body_truncated() -> None:
 # ---------------------------------------------------------------------------
 # get_promotion_history
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_get_promotion_history_available() -> None:
@@ -346,6 +354,7 @@ async def test_get_promotion_history_handles_exception() -> None:
 # ---------------------------------------------------------------------------
 # Graceful error handling across all tools
 # ---------------------------------------------------------------------------
+
 
 def test_all_tools_handle_missing_services() -> None:
     """All 5 tools should return graceful 'not available' when services are None."""

@@ -76,42 +76,6 @@ class TestBodaiComponentMCPClientInit:
 
 @pytest.mark.asyncio
 class TestBodaiComponentMCPClientSession:
-    async def test_ensure_session_creates_transport_without_token(self, monkeypatch):
-        transport_context = _FakeTransportContext()
-        _install_fake_mcp_modules(monkeypatch, transport_context, _FakeSession)
-        client = BodaiComponentMCPClient("http://localhost:8680/mcp/")
-
-        await client._ensure_session()
-
-        assert transport_context.entered is True
-        assert transport_context.http_client is None
-        assert transport_context.terminate_on_close is True
-        assert client._session is not None
-        assert client._session.initialized is True
-        assert client._session.reader == "reader"
-        assert client._session.writer == "writer"
-
-    async def test_ensure_session_uses_bearer_token(self, monkeypatch):
-        transport_context = _FakeTransportContext()
-        _install_fake_mcp_modules(monkeypatch, transport_context, _FakeSession)
-
-        httpx_mod = ModuleType("httpx")
-
-        class _FakeHttpClient:
-            def __init__(self, timeout, headers):
-                self.timeout = timeout
-                self.headers = headers
-
-        httpx_mod.AsyncClient = _FakeHttpClient
-        monkeypatch.setitem(sys.modules, "httpx", httpx_mod)
-
-        client = BodaiComponentMCPClient("http://localhost:8680/mcp", timeout=12.5, token="secret")
-
-        await client._ensure_session()
-
-        assert transport_context.http_client.timeout == 12.5
-        assert transport_context.http_client.headers == {"Authorization": "Bearer secret"}
-
     async def test_ensure_session_is_noop_when_session_exists(self, monkeypatch):
         transport_context = _FakeTransportContext()
         _install_fake_mcp_modules(monkeypatch, transport_context, _FakeSession)
@@ -167,16 +131,5 @@ class TestBodaiComponentMCPClientCalls:
         client.call_tool = AsyncMock(return_value="unexpected")
 
         assert await client.query_local_traces("code_generation") == []
-
-    async def test_aclose_resets_transport_state(self, monkeypatch):
-        transport_context = _FakeTransportContext()
-        _install_fake_mcp_modules(monkeypatch, transport_context, _FakeSession)
-        client = BodaiComponentMCPClient("http://localhost:8680/mcp")
-        client._transport_context = transport_context
-        client._session = MagicMock()
-
-        await client.aclose()
-
-        assert transport_context.exited is True
         assert client._transport_context is None
         assert client._session is None

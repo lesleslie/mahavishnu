@@ -5,7 +5,7 @@ from unittest.mock import patch
 import jwt
 import pytest
 
-from mahavishnu.core.auth import JWTAuth, get_auth_from_config
+from mahavishnu.core.auth import JWTAuth, TokenPayload, get_auth_from_config
 from mahavishnu.core.config import MahavishnuSettings
 
 
@@ -29,6 +29,13 @@ def test_jwt_auth_creation_short_secret():
     assert "JWT secret must be at least 32 characters long" in str(exc_info.value)
 
 
+def test_token_payload_missing_attribute_raises():
+    payload = TokenPayload({"user_id": "u1"})
+
+    with pytest.raises(AttributeError, match="missing"):
+        _ = payload.missing
+
+
 def test_create_and_verify_token():
     """Test creating and verifying a JWT token."""
     secret = "x" * 32
@@ -42,6 +49,30 @@ def test_create_and_verify_token():
 
     assert decoded_data["sub"] == "test_user"
     assert "admin" in decoded_data["scopes"]
+
+
+def test_create_access_token_uses_claims_and_extra_claims():
+    secret = "x" * 32
+    auth = JWTAuth(secret=secret, expire_minutes=1)
+
+    token = auth.create_access_token(
+        {"sub": "test_user", "scopes": ["read"], "team": "platform"},
+        role="admin",
+    )
+
+    decoded_data = auth.verify_token(token)
+    assert decoded_data["sub"] == "test_user"
+    assert decoded_data["scopes"] == ["read"]
+    assert decoded_data["team"] == "platform"
+    assert decoded_data["role"] == "admin"
+
+
+def test_create_access_token_requires_user_identifier():
+    secret = "x" * 32
+    auth = JWTAuth(secret=secret, expire_minutes=1)
+
+    with pytest.raises(ValueError, match="sub' or 'user_id"):
+        auth.create_access_token({"scope": "read"})
 
 
 def test_expired_token():
@@ -85,6 +116,20 @@ def test_verify_token_decode_error():
         with pytest.raises(AuthenticationError) as exc_info:
             auth.verify_token("any.token.here")
     assert "decode" in exc_info.value.message.lower()
+
+
+def test_verify_token_generic_exception_wrapped():
+    from mahavishnu.core.errors import AuthenticationError
+
+    secret = "x" * 32
+    auth = JWTAuth(secret=secret)
+
+    with patch("jwt.decode", side_effect=Exception("boom")):
+        with pytest.raises(AuthenticationError) as exc_info:
+            auth.verify_token("any.token.here")
+
+    assert "authentication error" in exc_info.value.message.lower()
+    assert exc_info.value.details["error"] == "boom"
 
 
 def test_get_auth_from_config():

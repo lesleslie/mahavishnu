@@ -104,6 +104,7 @@ dependencies = [
     "runpod-flash~=1.7",
     # Secure XML parsing (prevents XXE/DTD attacks on coverage.xml etc.)
     "defusedxml>=0.7.1",
+    "ty>=0.0.40",
 ]
 
 [project.scripts]

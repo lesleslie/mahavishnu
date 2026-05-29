@@ -4,13 +4,13 @@
 **Plan**: `docs/plans/2026-05-23-bodai-routing-feedback-loop.md`
 **Date**: 2026-05-23
 
----
+______________________________________________________________________
 
 ## Summary
 
 The plan is well-reasoned architecturally but has **3 blocking issues** and several non-blocking discrepancies. The most critical blockers are: (1) Akosha has no MCP client module — `akosha/mcp/client.py` does not exist; (2) `query_component_traces` MCP tool does not exist in Mahavishnu; and (3) Dhara's MCP server `get` tool needs verification before the fitness reader can read signals back.
 
----
+______________________________________________________________________
 
 ## 1. Oneiric OTelStorageAdapter — Verified ✅
 
@@ -19,6 +19,7 @@ The plan is well-reasoned architecturally but has **3 blocking issues** and seve
 **Status**: No code changes needed. Plan's description has one non-blocking documentation inaccuracy.
 
 **Verified capabilities**:
+
 - `store_trace()` — buffers traces, async flush when batch_size reached (lines 115-118)
 - `_flush_buffer()` — async batch writes via SQLAlchemy, embeds traces (lines 130-178)
 - `find_similar_traces()` — pgvector cosine similarity, 384-dim embeddings (lines 260-306)
@@ -26,13 +27,14 @@ The plan is well-reasoned architecturally but has **3 blocking issues** and seve
 
 **Non-blocking discrepancy**: Plan says "local pgvector or DuckDB" but OTelStorageAdapter only supports PostgreSQL + pgvector. The dual-backend (DuckDB/pgvector) is Mahavishnu's OtelIngester, not Oneiric's adapter.
 
----
+______________________________________________________________________
 
 ## 2. Mahavishnu OtelIngester — Core Confirmed, Query Tool Missing ⚠️
 
 **File**: `mahavishnu/ingesters/otel_ingester.py`
 
 **Existing API verified**:
+
 - `ingest_trace(trace_data)` ✅
 - `ingest_batch(traces)` ✅ — returns `{"success_count", "error_count", "errors"}`
 - `search_traces(query, system_id, limit, threshold)` ✅ — semantic only
@@ -41,7 +43,7 @@ The plan is well-reasoned architecturally but has **3 blocking issues** and seve
 
 **Gap**: `query_component_traces(task_class, time_range_minutes)` does not exist. `search_traces()` is embedding-based semantic search, not attribute-filtered SQL. The HotStore's `search_similar(query_embedding, system_id=None, limit=10, threshold=0.7)` does not support `task_class` or time range filtering.
 
----
+______________________________________________________________________
 
 ## 3. Mahavishnu MCP Tools (otel_tools.py) — Tool Missing ⚠️
 
@@ -51,13 +53,14 @@ The plan is well-reasoned architecturally but has **3 blocking issues** and seve
 
 `query_component_traces` is not present. Must be added.
 
----
+______________________________________________________________________
 
 ## 4. Mahavishnu PoolManager — Fitness Reader Feasible ⚠️
 
 **File**: `mahavishnu/pools/manager.py`
 
 **Current `route_task()` signature** (lines 386-470):
+
 ```python
 async def route_task(
     self,
@@ -68,19 +71,21 @@ async def route_task(
 ```
 
 **What plan requires**:
+
 1. Inject `RoutingFitnessReader` into `PoolManager` — current `dhara_state: Any = None` (line 81) can be extended
-2. `route_task()` modified to query fitness reader before selecting pool
-3. `task_class` extraction via `task.get("category") or task.get("type")` — matches existing pattern at line 142
+1. `route_task()` modified to query fitness reader before selecting pool
+1. `task_class` extraction via `task.get("category") or task.get("type")` — matches existing pattern at line 142
 
 **PoolSelector enum** (lines 29-42): Values `"round_robin"`, `"least_loaded"`, `"random"`, `"affinity"` — match plan's selector naming.
 
----
+______________________________________________________________________
 
 ## 5. DharaStateBackend — Key Schema Fits, Read Verified ✅
 
 **File**: `mahavishnu/core/state_backends/dhara.py`
 
 **Existing key patterns**:
+
 ```
 workflow/v1/{execution_id}   (line 56-58)
 pool/v1/{pool_id}            (line 61-63)
@@ -91,6 +96,7 @@ approval/v1/{request_id}     (line 73-75)
 **Plan's proposed `routing_fitness/{task_class}/{selector}`**: Does not conflict with existing patterns. `put()` can write to any key.
 
 **Verified read mechanisms**:
+
 - `get(key)` at line 176 — calls `self._client.call_tool("get", {"key": key})`
 - `list_prefix(prefix)` at line 202 — returns `[(key, value), ...]`
 
@@ -98,13 +104,14 @@ approval/v1/{request_id}     (line 73-75)
 
 **`list_prefix("routing_fitness/CODE_REVIEW/")`** would return all selectors for a task class — robust read path for fitness reader.
 
----
+______________________________________________________________________
 
 ## 6. Akosha — No MCP Client Module ❌ **BLOCKER #1**
 
 `akosha/mcp/client.py` does not exist. Entire Akosha codebase searched — no `MCPClient` class or `get_akosha_mcp_client()` function.
 
 **What exists**:
+
 - `akosha/mcp/server.py` — FastMCP server (server-side only)
 - `akosha/mcp/tools/` — tool definitions (akosha_tools, code_graph_tools, health_tools, profiles, pycharm_tools, session_buddy_tools, tool_registry)
 - `akosha/ingestion/orchestrator.py` — `BootstrapOrchestrator` with duck-typed `mahavishnu_client: Any = None` that calls `call_tool` via `hasattr` checks
@@ -113,7 +120,7 @@ No actual MCP client infrastructure exists. The plan references this in the Open
 
 **Impact**: Fitness analyzer job cannot call `mahavishnu_mcp.query_component_traces()` without first building an MCP client for Akosha.
 
----
+______________________________________________________________________
 
 ## 7. Akosha Processing — No Fitness Analyzer ❌ **BLOCKER #2**
 
@@ -123,7 +130,7 @@ No actual MCP client infrastructure exists. The plan references this in the Open
 
 Entire section 4 of the plan (Akosha fitness analyzer job) requires creating this file from scratch.
 
----
+______________________________________________________________________
 
 ## 8. Akosha MCP Tools — No `run_fitness_analysis` Tool ❌
 
@@ -131,7 +138,7 @@ Entire section 4 of the plan (Akosha fitness analyzer job) requires creating thi
 
 `run_fitness_analysis` must be created as a new file and registered.
 
----
+______________________________________________________________________
 
 ## Blocking Issues Summary
 
@@ -151,21 +158,21 @@ Plan requires a tool querying traces by `task_class` attribute and time window. 
 
 `dhara/mcp/server_core.py` line 423: `kv_store.get(key=key)` — `get` tool IS registered. `DharaStateBackend.get()` works.
 
----
+______________________________________________________________________
 
 ## Non-Blocking Discrepancies
 
 1. **OTelStorageAdapter "local pgvector or DuckDB" claim**: Documentation inaccuracy — adapter only supports PostgreSQL/pgvector.
 
-2. **`RoutingFitnessReader` class**: New class must be created — no existing equivalent in Mahavishnu.
+1. **`RoutingFitnessReader` class**: New class must be created — no existing equivalent in Mahavishnu.
 
-3. **`route_task()` signature change**: Must consult `RoutingFitnessReader` before selecting pool. Existing `task_class` extraction at line 142 can be reused.
+1. **`route_task()` signature change**: Must consult `RoutingFitnessReader` before selecting pool. Existing `task_class` extraction at line 142 can be reused.
 
-4. **`query_component_traces` implementation**: Needs attribute + time filtering on HotStore. `search_similar` doesn't support this — would need raw SQL or new HotStore query method.
+1. **`query_component_traces` implementation**: Needs attribute + time filtering on HotStore. `search_similar` doesn't support this — would need raw SQL or new HotStore query method.
 
-5. **Akosha `run_fitness_analysis` tool registration**: New tool file must be created and registered in `__init__.py` or `tool_registry.py`.
+1. **Akosha `run_fitness_analysis` tool registration**: New tool file must be created and registered in `__init__.py` or `tool_registry.py`.
 
----
+______________________________________________________________________
 
 ## Verdict
 

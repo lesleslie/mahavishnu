@@ -10,17 +10,16 @@ Conformance areas:
 - Multi-line string building with & return &
 - run() function error handling and timeout behavior
 """
-import pytest
 
 from mcp_common.apple_script import (
+    OSASCRIPT_AVAILABLE,
     AppleScriptError,
     ScriptTimeoutError,
-    run,
-    escape_for_applescript,
     build_applescript_string,
-    OSASCRIPT_AVAILABLE,
+    escape_for_applescript,
+    run,
 )
-
+import pytest
 
 pytestmark = pytest.mark.skipif(not OSASCRIPT_AVAILABLE, reason="macOS only")
 
@@ -194,7 +193,9 @@ class TestCanonicalSpecCompliance:
         # 4. Tab
         assert "\\t" in escape_for_applescript("\t")
         # 5. Carriage return removed
-        assert "cr" not in escape_for_applescript("\r").lower() or escape_for_applescript("\r") == ""
+        assert (
+            "cr" not in escape_for_applescript("\r").lower() or escape_for_applescript("\r") == ""
+        )
         # 6. Newline passed through (not escaped here)
         assert "\n" in escape_for_applescript("\n")
 

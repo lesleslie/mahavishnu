@@ -164,8 +164,13 @@ class TestVerifyWebhookSignature:
         secret = "secret"
         payload = b"test"
         sig = _make_sig(payload, secret)
+        timestamp = datetime.now(UTC).isoformat()
         result = await auth.verify_webhook_signature(
-            payload=payload, signature=sig, webhook_id="new-id", secret=secret
+            payload=payload,
+            signature=sig,
+            webhook_id="new-id",
+            timestamp=timestamp,
+            secret=secret,
         )
         assert result is True
         mock_db.execute.assert_called_once()

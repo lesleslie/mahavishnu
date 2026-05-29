@@ -76,7 +76,9 @@ async def test_register_worktree_tools_skips_without_coordinator() -> None:
 
 
 @pytest.mark.asyncio
-async def test_register_worktree_tools_registers_with_coordinator(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_register_worktree_tools_registers_with_coordinator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fake_module = ModuleType("mahavishnu.mcp.tools.worktree_tools")
     fake_register = Mock()
     fake_module.register_worktree_tools = fake_register

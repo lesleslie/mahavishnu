@@ -18,43 +18,44 @@ This test module covers the complete custom exception hierarchy including:
 - ErrorTemplates class
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
 
 from mahavishnu.core.errors import (
-    ErrorCode,
-    ErrorTemplates,
-    MahavishnuError,
-    ConfigurationError,
-    ValidationError,
-    TaskNotFoundError,
-    RepositoryNotFoundError,
-    WebhookAuthError,
-    RateLimitError,
     AdapterError,
     AdapterInitializationError,
-    WorkflowExecutionError,
+    AgnoError,
     AuthenticationError,
     AuthorizationError,
-    TimeoutError as MahavishnuTimeoutError,
+    ConfigurationError,
+    ContextNotInitializedError,
     DatabaseError,
+    ErrorCode,
+    ErrorTemplates,
     ExternalServiceError,
-    WorkflowError,
-    PrefectError,
-    AgnoError,
+    FeatureDisabledError,
+    GoalParsingError,
     GoalTeamError,
     GoalTeamNotFoundError,
-    GoalParsingError,
     LearningSystemError,
-    ContextNotInitializedError,
-    FeatureDisabledError,
-    get_contextual_help,
-    format_error_for_cli,
+    MahavishnuError,
+    PrefectError,
+    RateLimitError,
+    RepositoryNotFoundError,
+    TaskNotFoundError,
+    ValidationError,
+    WebhookAuthError,
+    WorkflowError,
+    WorkflowExecutionError,
     create_error_from_exception,
+    format_error_for_cli,
+    get_contextual_help,
 )
-
+from mahavishnu.core.errors import (
+    TimeoutError as MahavishnuTimeoutError,
+)
 
 # =============================================================================
 # Test Fixtures
@@ -155,9 +156,7 @@ class TestMahavishnuError:
         assert isinstance(error, Exception)
         assert isinstance(error, BaseException)
 
-    def test_exception_args_formatted(
-        self, base_error_message: str
-    ) -> None:
+    def test_exception_args_formatted(self, base_error_message: str) -> None:
         """Test that Exception args are properly formatted with error code."""
         error = MahavishnuError(base_error_message, ErrorCode.INTERNAL_ERROR)
 
@@ -188,9 +187,7 @@ class TestMahavishnuErrorToDict:
         assert "timestamp" in result
         assert "documentation" in result
 
-    def test_to_dict_error_code_value(
-        self, base_error_message: str
-    ) -> None:
+    def test_to_dict_error_code_value(self, base_error_message: str) -> None:
         """Test that error_code in dict is the code value string."""
         error = MahavishnuError(base_error_message, ErrorCode.TASK_NOT_FOUND)
         result = error.to_dict()
@@ -198,9 +195,7 @@ class TestMahavishnuErrorToDict:
         assert result["error_code"] == ErrorCode.TASK_NOT_FOUND.value
         assert result["error_code"] == "MHV-100"
 
-    def test_to_dict_timestamp_isoformat(
-        self, base_error_message: str
-    ) -> None:
+    def test_to_dict_timestamp_isoformat(self, base_error_message: str) -> None:
         """Test that timestamp is in ISO format."""
         error = MahavishnuError(base_error_message, ErrorCode.INTERNAL_ERROR)
         result = error.to_dict()
@@ -209,9 +204,7 @@ class TestMahavishnuErrorToDict:
         parsed = datetime.fromisoformat(result["timestamp"])
         assert isinstance(parsed, datetime)
 
-    def test_to_dict_documentation_url_format(
-        self, base_error_message: str
-    ) -> None:
+    def test_to_dict_documentation_url_format(self, base_error_message: str) -> None:
         """Test that documentation URL follows expected format."""
         error = MahavishnuError(base_error_message, ErrorCode.CONFIGURATION_ERROR)
         result = error.to_dict()
@@ -347,7 +340,7 @@ class TestAdapterError:
         error = AdapterError("operation failed", adapter_name="prefect")
 
         assert "prefect" in error.message
-        assert "Adapter 'prefect' error: operation failed" == error.message
+        assert error.message == "Adapter 'prefect' error: operation failed"
 
     def test_with_adapter_name_in_details(self) -> None:
         """Test adapter_name in details takes precedence in message."""
@@ -1659,7 +1652,9 @@ class TestInheritanceHierarchy:
         ]
 
         for cls in error_classes:
-            assert issubclass(cls, MahavishnuError), f"{cls.__name__} should inherit from MahavishnuError"
+            assert issubclass(cls, MahavishnuError), (
+                f"{cls.__name__} should inherit from MahavishnuError"
+            )
 
     def test_goal_team_not_found_inherits_from_goal_team_error(self) -> None:
         """Test that GoalTeamNotFoundError inherits from GoalTeamError."""

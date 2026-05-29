@@ -4,22 +4,20 @@ Tests BaseAdapter ABC, ITerm2Adapter, McpretentiousAdapter, and MockTerminalAdap
 """
 
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from mahavishnu.terminal.adapters.base import TerminalAdapter
 from mahavishnu.terminal.adapters.iterm2 import (
-    ITerm2Adapter,
     OSASCRIPT_AVAILABLE,
+    ITerm2Adapter,
 )
 from mahavishnu.terminal.adapters.mcpretentious import (
     McpretentiousAdapter,
     SessionNotFoundError,
-    TerminalError,
 )
 from mahavishnu.terminal.adapters.mock import MockTerminalAdapter
-
 
 # ============================================================================
 # BaseAdapter ABC Tests
@@ -67,7 +65,9 @@ class TestBaseAdapterABC:
             def adapter_name(self) -> str:
                 return "incomplete"
 
-            async def launch_session(self, command: str, columns: int = 80, rows: int = 24, **kwargs) -> str:
+            async def launch_session(
+                self, command: str, columns: int = 80, rows: int = 24, **kwargs
+            ) -> str:
                 return "session_id"
 
             async def capture_output(self, session_id: str, lines: int | None = None) -> str:
@@ -91,7 +91,9 @@ class TestBaseAdapterABC:
             def adapter_name(self) -> str:
                 return "incomplete"
 
-            async def launch_session_str(self, command: str, columns: int = 80, rows: int = 24, **kwargs) -> str:
+            async def launch_session_str(
+                self, command: str, columns: int = 80, rows: int = 24, **kwargs
+            ) -> str:
                 return "session_id"
 
             async def send_command(self, session_id: str, command: str) -> None:
@@ -115,7 +117,9 @@ class TestBaseAdapterABC:
             def adapter_name(self) -> str:
                 return "incomplete"
 
-            async def launch_session(self, command: str, columns: int = 80, rows: int = 24, **kwargs) -> str:
+            async def launch_session(
+                self, command: str, columns: int = 80, rows: int = 24, **kwargs
+            ) -> str:
                 return "session_id"
 
             async def send_command(self, session_id: str, command: str) -> None:
@@ -139,7 +143,9 @@ class TestBaseAdapterABC:
             def adapter_name(self) -> str:
                 return "incomplete"
 
-            async def launch_session(self, command: str, columns: int = 80, rows: int = 24, **kwargs) -> str:
+            async def launch_session(
+                self, command: str, columns: int = 80, rows: int = 24, **kwargs
+            ) -> str:
                 return "session_id"
 
             async def send_command(self, session_id: str, command: str) -> None:
@@ -159,7 +165,9 @@ class TestBaseAdapterABC:
         """Test that subclass without adapter_name property raises TypeError."""
 
         class IncompleteAdapter(TerminalAdapter):
-            async def launch_session(self, command: str, columns: int = 80, rows: int = 24, **kwargs) -> str:
+            async def launch_session(
+                self, command: str, columns: int = 80, rows: int = 24, **kwargs
+            ) -> str:
                 return "session_id"
 
             async def send_command(self, session_id: str, command: str) -> None:
@@ -218,9 +226,13 @@ class TestITerm2Adapter:
     @pytest.mark.asyncio
     async def test_launch_session_generates_uuid(self, adapter):
         """Test launch_session returns valid UUID[:8] format."""
-        with patch.object(adapter, "_run_applescript", new_callable=AsyncMock, return_value="win_1,tab_1"):
-            with patch.object(adapter, "_ensure_iterm2_running"):
-                session_id = await adapter.launch_session("echo test")
+        with (
+            patch.object(
+                adapter, "_run_applescript", new_callable=AsyncMock, return_value="win_1,tab_1"
+            ),
+            patch.object(adapter, "_ensure_iterm2_running"),
+        ):
+            session_id = await adapter.launch_session("echo test")
 
         assert session_id is not None
         assert len(session_id) == 8
@@ -228,9 +240,13 @@ class TestITerm2Adapter:
     @pytest.mark.asyncio
     async def test_launch_session_stores_session_metadata(self, adapter):
         """Test launch_session stores correct metadata."""
-        with patch.object(adapter, "_run_applescript", new_callable=AsyncMock, return_value="win_1,tab_1"):
-            with patch.object(adapter, "_ensure_iterm2_running"):
-                session_id = await adapter.launch_session("echo test", 120, 40, profile_name="Work")
+        with (
+            patch.object(
+                adapter, "_run_applescript", new_callable=AsyncMock, return_value="win_1,tab_1"
+            ),
+            patch.object(adapter, "_ensure_iterm2_running"),
+        ):
+            session_id = await adapter.launch_session("echo test", 120, 40, profile_name="Work")
 
         assert session_id in adapter._sessions
         metadata = adapter._sessions[session_id]

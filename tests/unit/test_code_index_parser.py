@@ -1,7 +1,5 @@
 """Tests for file parser."""
 
-import pytest
-
 from mahavishnu.core.code_index.parser import (
     PARSABLE_EXTENSIONS,
     SKIP_DIRS,
@@ -64,7 +62,9 @@ def test_filter_changed_files_full_index(tmp_path):
 
     # Initialize a git repo in tmp_path so git ls-files works
     subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True
+    )
     subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True)
 
     (tmp_path / "a.py").write_text("a")

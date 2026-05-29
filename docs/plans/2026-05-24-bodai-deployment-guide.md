@@ -4,7 +4,7 @@
 **Status**: `active, implementation`
 **Purpose**: Document local vs serverless deployment patterns for the Bodai feedback loop
 
----
+______________________________________________________________________
 
 ## Overview
 
@@ -19,7 +19,7 @@ The Bodai feedback loop spans four components:
 
 **Key constraint**: Dhara **cannot** run serverless — it requires a persistent VM/container. All other components can run serverless with pgvector backends.
 
----
+______________________________________________________________________
 
 ## Deployment Modes
 
@@ -38,7 +38,7 @@ dhara start             # port 8683 (persistent file storage)
 **Pros**: Zero setup, works offline, fastest iteration
 **Cons**: Traces lost on restart, no cross-component shared state
 
----
+______________________________________________________________________
 
 ### Mode 2: Hybrid — Local + Shared pgvector
 
@@ -74,7 +74,7 @@ mahavishnu mcp start
 **Pros**: Traces survive restarts, cold-starts supported for Akosha/Mahavishnu
 **Cons**: Dhara still requires persistent VM, PostgreSQL must be running
 
----
+______________________________________________________________________
 
 ### Mode 3: Full Serverless (Akosha + Mahavishnu only)
 
@@ -103,7 +103,7 @@ ssh user@dhara-vm "cd /opt/dhara && docker compose up -d"
 **Pros**: Akosha/Mahavishnu scale to zero, cold-starts work
 **Cons**: Dhara single point of failure, cloud PG costs money, network latency to PostgreSQL
 
----
+______________________________________________________________________
 
 ## Shared pgvector Architecture
 
@@ -128,7 +128,7 @@ Both Akosha and Mahavishnu can share the same PostgreSQL instance when using pgv
 - **Connection pooling**: Handled by the cloud PostgreSQL provider
 - **Backup independent**: Each component manages its own table data
 
----
+______________________________________________________________________
 
 ## Oneiric Environment Variable Naming
 
@@ -150,22 +150,22 @@ export AKOSHA__STORAGE__HOT__PG_URL=<url>       # required if BACKEND=pgvector
 
 > **Critical**: Flat env var names like `MAHAVISHNU_OTEL_INGESTER_STORAGE_TYPE` (single `_`) will **not** be resolved. Oneiric requires double underscore `__` between section levels.
 
----
+______________________________________________________________________
 
 ## Dhara — NOT Serverless
 
 Dhara **cannot** run serverless due to architectural blockers:
 
 1. **fcntl file locks** — exclusive locks on local files, incompatible with Lambda/Cloud Functions
-2. **Hardcoded `FileStorage`** — MCP server always uses FileStorage; no cloud primary store
-3. **In-memory LRU cache** — assumes object lifetime across invocations
-4. **Cloud adapters are backup-only** — S3/GCS/Azure adapters only work for backup subsystem
+1. **Hardcoded `FileStorage`** — MCP server always uses FileStorage; no cloud primary store
+1. **In-memory LRU cache** — assumes object lifetime across invocations
+1. **Cloud adapters are backup-only** — S3/GCS/Azure adapters only work for backup subsystem
 
 **Impact**: Dhara must be deployed on a persistent VM/container. This is fine — the standalone constraint is met as long as Dhara is available, not specifically serverless.
 
 For a Dhara serverless re-architecture, see [Dhara GitHub Issues](https://github.com/lesleslie/dhara/issues).
 
----
+______________________________________________________________________
 
 ## Standalone Operation Matrix
 
@@ -182,7 +182,7 @@ For a Dhara serverless re-architecture, see [Dhara GitHub Issues](https://github
 | Akosha (serverless) + Mahavishnu (local) | Akosha polls Mahavishnu via MCP. Mahavishnu has `:memory:` — traces lost on restart. | Traces incomplete but loop active |
 | Akosha (local) + Mahavishnu (serverless) | Akosha polls via local network. Mahavishnu pgvector survives cold-starts. | Works if network reachable |
 
----
+______________________________________________________________________
 
 ## Environment Detection & Defaults
 
@@ -194,7 +194,7 @@ For a Dhara serverless re-architecture, see [Dhara GitHub Issues](https://github
 | Akosha Lite mode | `:memory:` DuckDB | `AKOSHA_MODE=lite` env var (explicit override) |
 | Akosha Standard mode | pgvector + Redis L2 | `AKOSHA__STORAGE__HOT__PG_URL` set |
 
----
+______________________________________________________________________
 
 ## Infrastructure Prerequisite
 
@@ -205,6 +205,7 @@ CREATE EXTENSION vector;
 ```
 
 This enables:
+
 - `vector` data type and `FLOAT[n]` vector columns
 - `array_cosine_similarity()` and other vector functions
 - HNSW index support for fast approximate nearest-neighbor search
@@ -216,7 +217,7 @@ psql -U postgres -h localhost -d mahavishnu \
 # Expected: vector | 16 | 0.5.0 | f
 ```
 
----
+______________________________________________________________________
 
 ## Quick Reference
 

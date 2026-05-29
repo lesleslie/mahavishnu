@@ -4,19 +4,20 @@
 **Reviewer**: general | plan-coherence-review
 **Date**: 2026-05-23
 
----
+______________________________________________________________________
 
 ## Summary
 
 The plan is well-structured and the v3 fixes (pgvector backend strategy, env-var-driven detection, serverless story) are solid improvements over v2. However, three coherence issues prevent it from being implementation-ready as written.
 
----
+______________________________________________________________________
 
 ## Issue 1 — Phase Ordering: Phase 2 is a prerequisite for Phase 4, but they're presented as parallelizable
 
 **Severity**: Medium
 
 The plan states:
+
 > "Phase 3 and Phase 4 are largely independent and can proceed in parallel once Phase 2 is done."
 
 But Phase 4 (`mahavishnu/pools/routing_fitness.py`) calls `query_local_traces` on Mahavishnu — which is added in Phase 2.3. Phase 4 also wires Dhara's component endpoint registry (Phase 4.3), which Akosha populates via the MCP client (Phase 2.1). Phase 4 cannot run before Phase 2.
@@ -31,7 +32,7 @@ Phase 4 — Routing Integration (Mahavishnu)  [requires Phase 2 complete]
 Phase 5 — Integration & Polish
 ```
 
----
+______________________________________________________________________
 
 ## Issue 2 — Component Endpoint Self-Registration is Missing
 
@@ -47,7 +48,7 @@ Akosha needs to know Mahavishnu's MCP URL, Mahavishnu's URL, Session-Buddy's URL
 
 **Fix**: Add a Phase 0 (implicit but must be explicit) or a sub-step in Phase 2: "Each Bodai component registers its own MCP endpoint URL to Dhara on startup via a `register_component_endpoint(url)` internal call." This could use the existing Dhara MCP tools.
 
----
+______________________________________________________________________
 
 ## Issue 3 — Standalone Operation Matrix Missing Hybrid Deployment Scenario
 
@@ -58,6 +59,7 @@ The matrix covers "single component alone (local dev)", "single component alone 
 **Scenario**: Akosha deployed with pgvector (serverless), Mahavishnu still local with `:memory:` DuckDB.
 
 In this hybrid state:
+
 - Akosha polls Mahavishnu's `query_local_traces` → works, returns local traces
 - Akosha writes fitness signals to Dhara (pgvector) → works
 - Mahavishnu reads from Dhara → works, gets fitness signals
@@ -68,7 +70,7 @@ In this hybrid state:
 | Akosha (pgvector/deployed) + Mahavishnu (local/DuckDB) | Akosha polls Mahavishnu, gets traces. Mahavishnu writes locally only. | Limited trace set; fitness signals biased toward Akosha's history |
 |---|---|---|
 
----
+______________________________________________________________________
 
 ## Additional Notes
 
@@ -90,7 +92,7 @@ Phase 1 (storage backend) does not need to precede Phase 2 in terms of code — 
 
 The 2× window TTL for signals is an internal mechanism, not a plan requirement. This is implementation detail — correctly in the NOT-cover zone or at least not a phase dependency.
 
----
+______________________________________________________________________
 
 ## Verdict
 

@@ -9,9 +9,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import mahavishnu.core.code_index.parser as parser
 from mahavishnu.core.code_index.models import CodeGraphEdge, CodeGraphNode
-
+import mahavishnu.core.code_index.parser as parser
 
 for _model in (CodeGraphNode, CodeGraphEdge):
     _model.model_rebuild(_types_namespace={"datetime": _datetime.datetime})

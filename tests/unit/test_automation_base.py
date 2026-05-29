@@ -9,11 +9,8 @@ Tests cover:
 from __future__ import annotations
 
 from datetime import datetime
-from enum import StrEnum
 import sys
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from mahavishnu.automation.base import (
     ApplicationInfo,

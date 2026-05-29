@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from mahavishnu.core.skill_governance import SkillDraft
 from mahavishnu.core.skill_security import (
     DANGEROUS_PATTERNS,
@@ -12,7 +10,6 @@ from mahavishnu.core.skill_security import (
     sanitize_skill_body,
     validate_draft_isolation,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -190,7 +187,9 @@ class TestValidateDraftIsolation:
         assert any("filesystem access pattern" in issue and "os.path" in issue for issue in issues)
 
     def test_network_requests_warning(self):
-        draft = make_draft(name="net-skill", body="import requests; requests.get('http://example.com')")
+        draft = make_draft(
+            name="net-skill", body="import requests; requests.get('http://example.com')"
+        )
         issues = validate_draft_isolation(draft)
 
         assert any("network access pattern" in issue and "requests." in issue for issue in issues)

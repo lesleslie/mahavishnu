@@ -5,7 +5,7 @@ import hashlib
 import hmac
 import json
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -580,6 +580,17 @@ class TestWebhookHandler:
         # Unknown event is still "handled" (succeeds) with UNKNOWN type
         assert result.success is True
 
+    @pytest.mark.asyncio
+    async def test_handle_github_webhook_parse_failure(self, mock_task_store: AsyncMock) -> None:
+        handler = WebhookHandler(mock_task_store)
+        payload = json.dumps({"repository": {"full_name": "a/b"}}).encode()
+
+        with patch.object(handler, "parse_github_event", return_value=None):
+            result = await handler.handle_github_webhook(payload, "sha256=x", "push")
+
+        assert result.success is False
+        assert "Failed to parse event" in result.message
+
     # ------------------------------------------------------------------
     # handle_gitlab_webhook — invalid token, JSON error, no event
     # ------------------------------------------------------------------
@@ -607,6 +618,17 @@ class TestWebhookHandler:
             json.dumps({"object_kind": "unknown_gitlab_event"}).encode(), token=None
         )
         assert result.success is True
+
+    @pytest.mark.asyncio
+    async def test_handle_gitlab_webhook_parse_failure(self, mock_task_store: AsyncMock) -> None:
+        handler = WebhookHandler(mock_task_store)
+        payload = json.dumps({"object_kind": "push"}).encode()
+
+        with patch.object(handler, "parse_gitlab_event", return_value=None):
+            result = await handler.handle_gitlab_webhook(payload, token=None)
+
+        assert result.success is False
+        assert "Failed to parse event" in result.message
 
     # ------------------------------------------------------------------
     # extract_repository_info — GitLab source

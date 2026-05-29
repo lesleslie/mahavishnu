@@ -4,14 +4,12 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
 from mahavishnu.mcp import websocket_tools as ws_module
-
 
 # ---------------------------------------------------------------------------
 # Fake WebSocket server
@@ -55,6 +53,7 @@ class _FakeServer:
         def decorator(fn):
             self.tools[fn.__name__] = fn
             return fn
+
         return decorator
 
 
@@ -80,6 +79,7 @@ async def _call_tool(tools: dict[str, Any], name: str, *args, **kwargs) -> Any:
 # ---------------------------------------------------------------------------
 # websocket_health_check
 # ---------------------------------------------------------------------------
+
 
 def test_health_check_not_initialized() -> None:
     """When websocket_server is None, should return 'not_initialized'."""
@@ -114,6 +114,7 @@ def test_health_check_healthy() -> None:
 
 def test_health_check_exception() -> None:
     """Exceptions should be caught and returned as error status."""
+
     class _BrokenServer:
         is_running = True
         host = "127.0.0.1"
@@ -132,6 +133,7 @@ def test_health_check_exception() -> None:
 # ---------------------------------------------------------------------------
 # websocket_get_status
 # ---------------------------------------------------------------------------
+
 
 def test_get_status_not_initialized() -> None:
     """None server should return not_running server status."""
@@ -170,6 +172,7 @@ def test_get_status_running() -> None:
 
 def test_get_status_exception() -> None:
     """Exceptions should be caught and returned as error."""
+
     class _BrokenServer:
         is_running = True
 
@@ -186,6 +189,7 @@ def test_get_status_exception() -> None:
 # ---------------------------------------------------------------------------
 # websocket_list_rooms
 # ---------------------------------------------------------------------------
+
 
 def test_list_rooms_not_initialized() -> None:
     """None server should return empty rooms."""
@@ -218,6 +222,7 @@ def test_list_rooms_running() -> None:
 
 def test_list_rooms_exception() -> None:
     """Exceptions should be caught."""
+
     class _BrokenServer:
         is_running = True
 
@@ -235,11 +240,14 @@ def test_list_rooms_exception() -> None:
 # websocket_broadcast_test_event
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_broadcast_test_event_not_initialized() -> None:
     """None server should return error."""
     tools = _register(ws_server=None)
-    result = await _call_tool(tools, "websocket_broadcast_test_event", "workflow.started", "room-alpha")
+    result = await _call_tool(
+        tools, "websocket_broadcast_test_event", "workflow.started", "room-alpha"
+    )
     assert result["status"] == "error"
     assert "not running" in result["error"]
 
@@ -250,7 +258,9 @@ async def test_broadcast_test_event_not_running() -> None:
     fake_ws = _FakeWebSocketServer()
     fake_ws.is_running = False
     tools = _register(ws_server=fake_ws)
-    result = await _call_tool(tools, "websocket_broadcast_test_event", "workflow.started", "room-alpha")
+    result = await _call_tool(
+        tools, "websocket_broadcast_test_event", "workflow.started", "room-alpha"
+    )
     assert result["status"] == "error"
 
 
@@ -277,7 +287,9 @@ async def test_broadcast_test_event_custom_type() -> None:
     """Unknown event types should still work (passed through)."""
     fake_ws = _FakeWebSocketServer()
     tools = _register(ws_server=fake_ws)
-    result = await _call_tool(tools, "websocket_broadcast_test_event", "arbitrary.event", "room-alpha")
+    result = await _call_tool(
+        tools, "websocket_broadcast_test_event", "arbitrary.event", "room-alpha"
+    )
     assert result["status"] == "broadcasted"
     assert result["event_type"] == "arbitrary.event"
 
@@ -290,7 +302,9 @@ async def test_broadcast_test_event_empty_room() -> None:
     fake_ws.connection_rooms["empty-room"] = set()
     tools = _register(ws_server=fake_ws)
 
-    result = await _call_tool(tools, "websocket_broadcast_test_event", "workflow.started", "empty-room")
+    result = await _call_tool(
+        tools, "websocket_broadcast_test_event", "workflow.started", "empty-room"
+    )
     assert result["status"] == "broadcasted"
     assert result["subscribers"] == 0
 
@@ -298,12 +312,15 @@ async def test_broadcast_test_event_empty_room() -> None:
 @pytest.mark.asyncio
 async def test_broadcast_test_event_exception() -> None:
     """Exceptions should be caught and returned as error."""
+
     class _BrokenServer(_FakeWebSocketServer):
         async def broadcast_to_room(self, room, event):
             raise RuntimeError("broadcast failed")
 
     tools = _register(ws_server=_BrokenServer())
-    result = await _call_tool(tools, "websocket_broadcast_test_event", "workflow.started", "room-alpha")
+    result = await _call_tool(
+        tools, "websocket_broadcast_test_event", "workflow.started", "room-alpha"
+    )
     assert result["status"] == "error"
     assert "broadcast failed" in result["error"]
 
@@ -311,6 +328,7 @@ async def test_broadcast_test_event_exception() -> None:
 # ---------------------------------------------------------------------------
 # websocket_get_metrics
 # ---------------------------------------------------------------------------
+
 
 def test_get_metrics_not_initialized() -> None:
     """None server should return not-running metrics."""
@@ -345,6 +363,7 @@ def test_get_metrics_running() -> None:
 
 def test_get_metrics_exception() -> None:
     """Exceptions should be caught."""
+
     class _BrokenServer:
         is_running = True
 
@@ -360,6 +379,7 @@ def test_get_metrics_exception() -> None:
 # ---------------------------------------------------------------------------
 # All 5 tools registered
 # ---------------------------------------------------------------------------
+
 
 def test_all_five_tools_registered() -> None:
     """All 5 tools should be registered: health_check, get_status, list_rooms, broadcast_test_event, get_metrics."""

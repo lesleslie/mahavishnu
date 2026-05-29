@@ -2,7 +2,7 @@
 
 import asyncio
 import heapq
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -91,16 +91,20 @@ class TestAwaitIfNeeded:
     @pytest.mark.asyncio
     async def test_await_if_needed_awaits_coroutine(self):
         """Test _await_if_needed awaits coroutines."""
+
         async def coroutine():
             return " awaited"
+
         result = await _await_if_needed(coroutine())
         assert result == " awaited"
 
     @pytest.mark.asyncio
     async def test_await_if_needed_awaits_task(self):
         """Test _await_if_needed awaits asyncio.Tasks."""
+
         async def inner():
             return "task result"
+
         task = asyncio.create_task(inner())
         result = await _await_if_needed(task)
         assert result == "task result"
@@ -443,7 +447,9 @@ class TestPoolManager:
         await pool_manager._update_pool_worker_count("test-pool", 5)
 
         # Old entry (2, "test-pool") still in heap - will be skipped by _get_least_loaded_pool
-        heap_entries = [(count, pid) for count, pid in pool_manager._worker_count_heap if pid == "test-pool"]
+        heap_entries = [
+            (count, pid) for count, pid in pool_manager._worker_count_heap if pid == "test-pool"
+        ]
         assert len(heap_entries) == 2
 
     @pytest.mark.asyncio
@@ -523,7 +529,9 @@ class TestSpawnPoolTypes:
         return MessageBus()
 
     @pytest.mark.asyncio
-    async def test_spawn_pool_creates_mahavishnu_pool_type(self, terminal_manager, session_buddy, message_bus):
+    async def test_spawn_pool_creates_mahavishnu_pool_type(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test spawn_pool() correctly instantiates MahavishnuPool."""
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
@@ -559,7 +567,9 @@ class TestSpawnPoolTypes:
             assert pool_id == "test-pool-id"
 
     @pytest.mark.asyncio
-    async def test_spawn_pool_creates_session_buddy_pool_type(self, terminal_manager, session_buddy, message_bus):
+    async def test_spawn_pool_creates_session_buddy_pool_type(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test spawn_pool() correctly instantiates SessionBuddyPool."""
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
@@ -593,7 +603,9 @@ class TestSpawnPoolTypes:
             assert pool_id == "session-buddy-pool-id"
 
     @pytest.mark.asyncio
-    async def test_spawn_pool_creates_kubernetes_pool_type(self, terminal_manager, session_buddy, message_bus):
+    async def test_spawn_pool_creates_kubernetes_pool_type(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test spawn_pool() correctly instantiates KubernetesPool."""
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
@@ -632,7 +644,9 @@ class TestSpawnPoolTypes:
             assert pool_id == "k8s-pool-id"
 
     @pytest.mark.asyncio
-    async def test_spawn_pool_creates_runpod_pool_type(self, terminal_manager, session_buddy, message_bus):
+    async def test_spawn_pool_creates_runpod_pool_type(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test spawn_pool() correctly instantiates RunPodPool."""
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
@@ -667,7 +681,9 @@ class TestSpawnPoolTypes:
             assert pool_id == "runpod-pool-id"
 
     @pytest.mark.asyncio
-    async def test_spawn_pool_unknown_type_raises_value_error(self, terminal_manager, session_buddy, message_bus):
+    async def test_spawn_pool_unknown_type_raises_value_error(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test spawn_pool() raises ValueError for unknown pool type."""
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
@@ -702,7 +718,9 @@ class TestPersistPoolState:
         return MessageBus()
 
     @pytest.mark.asyncio
-    async def test_persist_pool_state_skips_when_dhara_none(self, terminal_manager, session_buddy, message_bus):
+    async def test_persist_pool_state_skips_when_dhara_none(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test _persist_pool_state() returns early when dhara_state is None."""
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
@@ -719,7 +737,9 @@ class TestPersistPoolState:
         await pool_manager._persist_pool_state("test-pool", mock_pool, "running")
 
     @pytest.mark.asyncio
-    async def test_persist_pool_state_calls_dhara_on_success(self, terminal_manager, session_buddy, message_bus):
+    async def test_persist_pool_state_calls_dhara_on_success(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test _persist_pool_state() calls dhara_state.persist_pool when available."""
         mock_dhara = AsyncMock()
         pool_manager = PoolManager(
@@ -740,7 +760,9 @@ class TestPersistPoolState:
         assert call_args[0][0] == "test-pool"
 
     @pytest.mark.asyncio
-    async def test_persist_pool_state_gracefully_handles_exception(self, terminal_manager, session_buddy, message_bus):
+    async def test_persist_pool_state_gracefully_handles_exception(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test _persist_pool_state() handles dhara exceptions gracefully."""
         mock_dhara = AsyncMock()
         mock_dhara.persist_pool.side_effect = Exception("Dhara error")
@@ -775,7 +797,9 @@ class TestPersistRoutingDecision:
         return MessageBus()
 
     @pytest.mark.asyncio
-    async def test_persist_routing_decision_skips_when_dhara_none(self, terminal_manager, session_buddy, message_bus):
+    async def test_persist_routing_decision_skips_when_dhara_none(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test _persist_routing_decision() returns early when dhara_state is None."""
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
@@ -789,7 +813,9 @@ class TestPersistRoutingDecision:
         )
 
     @pytest.mark.asyncio
-    async def test_persist_routing_decision_calls_dhara_on_success(self, terminal_manager, session_buddy, message_bus):
+    async def test_persist_routing_decision_calls_dhara_on_success(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test _persist_routing_decision() calls dhara_state.persist_routing_decision."""
         mock_dhara = AsyncMock()
         pool_manager = PoolManager(
@@ -806,7 +832,9 @@ class TestPersistRoutingDecision:
         mock_dhara.persist_routing_decision.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_persist_routing_decision_gracefully_handles_exception(self, terminal_manager, session_buddy, message_bus):
+    async def test_persist_routing_decision_gracefully_handles_exception(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test _persist_routing_decision() handles dhara exceptions gracefully."""
         mock_dhara = AsyncMock()
         mock_dhara.persist_routing_decision.side_effect = Exception("Dhara error")
@@ -839,7 +867,9 @@ class TestRouteTaskGpuOverride:
         return MessageBus()
 
     @pytest.mark.asyncio
-    async def test_route_task_gpu_override_routes_vision_to_runpod(self, terminal_manager, session_buddy, message_bus):
+    async def test_route_task_gpu_override_routes_vision_to_runpod(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test route_task() with GPU category routes to runpod pool."""
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
@@ -856,7 +886,9 @@ class TestRouteTaskGpuOverride:
         heapq.heappush(pool_manager._worker_count_heap, (1, "mahavishnu-pool"))
 
         # Create a runpod pool
-        runpod_config = PoolConfig(name="runpod-pool", pool_type="runpod", min_workers=0, max_workers=3)
+        runpod_config = PoolConfig(
+            name="runpod-pool", pool_type="runpod", min_workers=0, max_workers=3
+        )
         runpod_pool = MockPool(runpod_config, "runpod-pool")
         await runpod_pool.start()
         pool_manager._pools["runpod-pool"] = runpod_pool
@@ -872,7 +904,9 @@ class TestRouteTaskGpuOverride:
         assert result["pool_id"] == "runpod-pool"
 
     @pytest.mark.asyncio
-    async def test_route_task_gpu_override_skips_when_no_runpod(self, terminal_manager, session_buddy, message_bus):
+    async def test_route_task_gpu_override_skips_when_no_runpod(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test route_task() falls back when no runpod pool available."""
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
@@ -897,7 +931,9 @@ class TestRouteTaskGpuOverride:
         assert result["pool_id"] == "mahavishnu-pool"
 
     @pytest.mark.asyncio
-    async def test_route_task_gpu_override_routes_ml_inference_to_runpod(self, terminal_manager, session_buddy, message_bus):
+    async def test_route_task_gpu_override_routes_ml_inference_to_runpod(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test route_task() with ml_inference category routes to runpod pool."""
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
@@ -912,7 +948,9 @@ class TestRouteTaskGpuOverride:
         pool_manager._pool_worker_counts["mahavishnu-pool"] = 1
         heapq.heappush(pool_manager._worker_count_heap, (1, "mahavishnu-pool"))
 
-        runpod_config = PoolConfig(name="runpod-pool", pool_type="runpod", min_workers=0, max_workers=3)
+        runpod_config = PoolConfig(
+            name="runpod-pool", pool_type="runpod", min_workers=0, max_workers=3
+        )
         runpod_pool = MockPool(runpod_config, "runpod-pool")
         await runpod_pool.start()
         pool_manager._pools["runpod-pool"] = runpod_pool
@@ -927,7 +965,9 @@ class TestRouteTaskGpuOverride:
         assert result["pool_id"] == "runpod-pool"
 
     @pytest.mark.asyncio
-    async def test_route_task_gpu_override_routes_embedding_to_runpod(self, terminal_manager, session_buddy, message_bus):
+    async def test_route_task_gpu_override_routes_embedding_to_runpod(
+        self, terminal_manager, session_buddy, message_bus
+    ):
         """Test route_task() with embedding category routes to runpod pool."""
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
@@ -942,7 +982,9 @@ class TestRouteTaskGpuOverride:
         pool_manager._pool_worker_counts["mahavishnu-pool"] = 1
         heapq.heappush(pool_manager._worker_count_heap, (1, "mahavishnu-pool"))
 
-        runpod_config = PoolConfig(name="runpod-pool", pool_type="runpod", min_workers=0, max_workers=3)
+        runpod_config = PoolConfig(
+            name="runpod-pool", pool_type="runpod", min_workers=0, max_workers=3
+        )
         runpod_pool = MockPool(runpod_config, "runpod-pool")
         await runpod_pool.start()
         pool_manager._pools["runpod-pool"] = runpod_pool
@@ -1009,7 +1051,9 @@ class TestPoolManagerIntegration:
         assert all(r["status"] == "completed" for r in results)
 
     @pytest.mark.asyncio
-    async def test_execute_on_pool_updates_worker_count_on_change(self, terminal_manager, session_buddy):
+    async def test_execute_on_pool_updates_worker_count_on_change(
+        self, terminal_manager, session_buddy
+    ):
         """Test execute_on_pool() updates worker count in heap when workers change."""
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
@@ -1032,7 +1076,9 @@ class TestPoolManagerIntegration:
         assert pool_manager._pool_worker_counts["test-pool"] == 3
 
     @pytest.mark.asyncio
-    async def test_execute_on_pool_publishes_message_on_completion(self, terminal_manager, session_buddy):
+    async def test_execute_on_pool_publishes_message_on_completion(
+        self, terminal_manager, session_buddy
+    ):
         """Test execute_on_pool() publishes task_completed message to message bus."""
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
@@ -1070,6 +1116,7 @@ class TestPoolManagerIntegration:
         # Override collect_memory to raise exception
         async def failing_collect():
             raise Exception("Collection failed")
+
         mock_pool.collect_memory = failing_collect
 
         results = await pool_manager.aggregate_results()

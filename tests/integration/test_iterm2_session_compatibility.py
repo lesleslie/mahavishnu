@@ -13,11 +13,10 @@ Test cases:
 """
 
 import re
-import uuid
 from typing import NamedTuple
+import uuid
 
 import pytest
-
 
 # =============================================================================
 # Session ID Format Patterns (from iTerm2 AppleScript Protocol)
@@ -35,6 +34,7 @@ MAHAVISHNU_SESSION_PATTERN = re.compile(r"^[0-9a-f]{8}$")
 
 class SwiftSessionId(NamedTuple):
     """Parsed Swift canonical session ID."""
+
     int_id: int
 
     @classmethod
@@ -52,8 +52,7 @@ class SwiftSessionId(NamedTuple):
         """
         if not SWIFT_SESSION_PATTERN.match(session_id):
             raise ValueError(
-                f"Invalid Swift session ID format: {session_id!r}. "
-                f"Expected format: session_{{int}}"
+                f"Invalid Swift session ID format: {session_id!r}. Expected format: session_{{int}}"
             )
         int_id = int(session_id.split("_")[1])
         return cls(int_id=int_id)
@@ -65,6 +64,7 @@ class SwiftSessionId(NamedTuple):
 
 class MahavishnuGridId(NamedTuple):
     """Mahavishnu grid ID."""
+
     uuid_prefix: str
 
     @classmethod
@@ -100,6 +100,7 @@ class MahavishnuGridId(NamedTuple):
 
 class MahavishnuSessionId(NamedTuple):
     """Mahavishnu internal session ID (UUID[:8])."""
+
     uuid_prefix: str
 
     @classmethod
@@ -136,6 +137,7 @@ class MahavishnuSessionId(NamedTuple):
 # Test Cases
 # =============================================================================
 
+
 class TestSwiftCanonicalFormat:
     """Test 1: Swift canonical format `session_123` can be parsed by Mahavishnu."""
 
@@ -164,13 +166,13 @@ class TestSwiftCanonicalFormat:
     def test_rejects_invalid_format(self) -> None:
         """Verify invalid Swift session ID formats are rejected."""
         invalid_ids = [
-            "session_abc",      # non-numeric
-            "session_",          # missing number
-            "session",          # missing underscore and number
-            "grid_abc12345",    # Mahavishnu grid format
-            "abc12345",         # raw UUID prefix
-            "session-123",      # wrong separator
-            "SESSION_123",      # wrong case
+            "session_abc",  # non-numeric
+            "session_",  # missing number
+            "session",  # missing underscore and number
+            "grid_abc12345",  # Mahavishnu grid format
+            "abc12345",  # raw UUID prefix
+            "session-123",  # wrong separator
+            "SESSION_123",  # wrong case
         ]
         for invalid in invalid_ids:
             with pytest.raises(ValueError, match="Invalid Swift session ID format"):
@@ -322,7 +324,7 @@ class TestPatternConflictVerification:
         # Test edge cases that might seem like conflicts
         edge_cases = [
             "session_00000000",  # digits only (Swift valid)
-            "grid_12345678",     # hex chars (Mahavishnu valid)
+            "grid_12345678",  # hex chars (Mahavishnu valid)
         ]
 
         # session_00000000 is valid Swift, not valid Mahavishnu grid

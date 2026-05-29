@@ -5,10 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from mahavishnu.terminal.adapters.mock import MockTerminalAdapter
 from mahavishnu.terminal.config import TerminalSettings
 from mahavishnu.terminal.manager import TerminalManager
-
 
 # ============================================================================
 # TerminalManager Tests
@@ -59,7 +57,13 @@ class TestTerminalManager:
         new_adapter = MagicMock()
         new_adapter.adapter_name = "new_adapter"
 
-        with patch.object(manager, "_migrate_sessions", new_adapter._migrate_sessions if hasattr(new_adapter, "_migrate_sessions") else AsyncMock()):
+        with patch.object(
+            manager,
+            "_migrate_sessions",
+            new_adapter._migrate_sessions
+            if hasattr(new_adapter, "_migrate_sessions")
+            else AsyncMock(),
+        ):
             await manager.switch_adapter(new_adapter)
 
         assert manager.current_adapter() == "new_adapter"
@@ -178,9 +182,7 @@ class TestTerminalManager:
     @pytest.mark.asyncio
     async def test_capture_all_outputs_concurrent(self, manager, mock_adapter):
         """Test capture_all_outputs captures from multiple sessions concurrently."""
-        mock_adapter.capture_output = AsyncMock(
-            side_effect=["output_1", "output_2", "output_3"]
-        )
+        mock_adapter.capture_output = AsyncMock(side_effect=["output_1", "output_2", "output_3"])
 
         outputs = await manager.capture_all_outputs(["s1", "s2", "s3"])
 
@@ -240,7 +242,6 @@ class TestTerminalManagerFactory:
     @pytest.mark.asyncio
     async def test_create_with_iterm2_preference_and_available(self):
         """Test create with 'iterm2' preference when osascript available."""
-        from mahavishnu.terminal.adapters.iterm2 import ITERM2_AVAILABLE
 
         config = MagicMock()
         config.terminal = TerminalSettings(adapter_preference="iterm2")
@@ -264,9 +265,7 @@ class TestTerminalManagerFactory:
         with patch("mahavishnu.terminal.adapters.iterm2.ITERM2_AVAILABLE", False):
             from mahavishnu.terminal.adapters.mcpretentious import McpretentiousAdapter
 
-            with patch.object(
-                McpretentiousAdapter, "__init__", lambda self, mcp: None
-            ):
+            with patch.object(McpretentiousAdapter, "__init__", lambda self, mcp: None):
                 manager = await TerminalManager.create(config, mcp_client=mock_client)
 
         assert manager.current_adapter() == "mcpretentious"

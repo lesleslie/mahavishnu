@@ -6,11 +6,10 @@ syntax instead of embedded newlines, and that single quotes are properly escaped
 
 import asyncio
 from datetime import datetime
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from mahavishnu.terminal.adapters.iterm2 import ITerm2Adapter, OSASCRIPT_AVAILABLE
+from mahavishnu.terminal.adapters.iterm2 import OSASCRIPT_AVAILABLE, ITerm2Adapter
 
 
 class TestITerm2AdapterEscaping:

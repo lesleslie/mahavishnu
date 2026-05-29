@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -89,9 +88,7 @@ class _FakeManager:
         return _make_fake_result(activated=bundle_id)
 
     async def list_applications(self) -> MagicMock:
-        return _make_fake_result(
-            data=[{"bundle_id": "com.apple.finder", "name": "Finder"}]
-        )
+        return _make_fake_result(data=[{"bundle_id": "com.apple.finder", "name": "Finder"}])
 
     async def get_active_application(self) -> MagicMock:
         return _make_fake_result(data={"bundle_id": "com.apple.Terminal", "name": "Terminal"})
@@ -120,7 +117,9 @@ class _FakeManager:
 
     # ── input ────────────────────────────────────────────────────────────────
 
-    async def type_text(self, text: str, interval: float = 0.05, dry_run: bool = False) -> MagicMock:
+    async def type_text(
+        self, text: str, interval: float = 0.05, dry_run: bool = False
+    ) -> MagicMock:
         return _make_fake_result(typed=text)
 
     async def press_key(self, key: str, modifiers: list[str] | None = None) -> MagicMock:
@@ -180,15 +179,18 @@ class _FakeMCP:
 
     def tool(self):
         """Decorator that registers a function without doing anything special."""
+
         def decorator(fn):
             self.tools[fn.__name__] = fn
             return fn
+
         return decorator
 
 
 # ---------------------------------------------------------------------------
 # Tests: get_manager() lazy initialisation
 # ---------------------------------------------------------------------------
+
 
 def test_get_manager_creates_instance_once(monkeypatch: pytest.MonkeyPatch) -> None:
     """get_manager() should create exactly one manager (singleton)."""
@@ -226,6 +228,7 @@ def test_get_manager_with_custom_config(monkeypatch: pytest.MonkeyPatch) -> None
 # Tests: tool registration
 # ---------------------------------------------------------------------------
 
+
 def test_tools_registered_with_fake_mcp() -> None:
     """All 22 tools should be registered when register_desktop_automation_tools is called."""
     fake_mcp = _FakeMCP()
@@ -233,7 +236,9 @@ def test_tools_registered_with_fake_mcp() -> None:
         dat_module.register_desktop_automation_tools(fake_mcp)
 
     # Assert all 22 tools are present
-    assert len(fake_mcp.tools) == 23, f"Expected 23 tools, got {len(fake_mcp.tools)}: {list(fake_mcp.tools)}"
+    assert len(fake_mcp.tools) == 23, (
+        f"Expected 23 tools, got {len(fake_mcp.tools)}: {list(fake_mcp.tools)}"
+    )
 
     expected = {
         "automation_check_permissions",
@@ -266,6 +271,7 @@ def test_tools_registered_with_fake_mcp() -> None:
 # ---------------------------------------------------------------------------
 # Tests: TOOLS_METADATA
 # ---------------------------------------------------------------------------
+
 
 def test_tools_metadata_count_matches() -> None:
     """TOOLS_METADATA should list all 22 tools."""
@@ -300,6 +306,7 @@ def test_tools_metadata_count_matches() -> None:
 # ---------------------------------------------------------------------------
 # Tests: individual tool execution (all use the fake manager)
 # ---------------------------------------------------------------------------
+
 
 def _run_tool(name: str, **kwargs) -> dict[str, Any]:
     """Helper: call a registered tool by name with the given kwargs."""
@@ -391,7 +398,9 @@ async def test_automation_close_window() -> None:
 
 @pytest.mark.asyncio
 async def test_automation_click_menu() -> None:
-    result = await _run_tool("automation_click_menu", bundle_id="com.apple.Finder", menu_path=["File", "Save"])
+    result = await _run_tool(
+        "automation_click_menu", bundle_id="com.apple.Finder", menu_path=["File", "Save"]
+    )
     assert result["status"] == "success"
 
 
@@ -501,6 +510,7 @@ async def test_automation_close() -> None:
 # Test: automation_close when not initialized
 # ---------------------------------------------------------------------------
 
+
 def test_automation_close_when_not_initialized() -> None:
     """automation_close should return 'not_initialized' when _manager is None."""
     # Ensure manager is not set
@@ -511,5 +521,6 @@ def test_automation_close_when_not_initialized() -> None:
 
     # Should not raise, should return not_initialized
     import asyncio
+
     result = asyncio.run(run())
     assert result["status"] == "not_initialized"

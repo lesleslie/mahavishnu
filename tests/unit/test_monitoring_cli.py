@@ -3,17 +3,16 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from datetime import datetime
+import json
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from typer.testing import CliRunner
 
 from mahavishnu.cli import monitoring_cli as mon_module
-
 
 # ---------------------------------------------------------------------------
 # Fakes
@@ -52,7 +51,7 @@ class _FakeAlertSeverity:
         return self._value
 
     @classmethod
-    def from_string(cls, s: str) -> "_FakeAlertSeverity":
+    def from_string(cls, s: str) -> _FakeAlertSeverity:
         return cls(s)
 
 
@@ -67,7 +66,7 @@ class _FakeAlertType:
         return self._value
 
     @classmethod
-    def from_string(cls, s: str) -> "_FakeAlertType":
+    def from_string(cls, s: str) -> _FakeAlertType:
         return cls(s)
 
 
@@ -88,9 +87,13 @@ class _FakeAlertManager:
         severity = kwargs.get("severity", _FakeAlertSeverity.MEDIUM)
         alert_type = kwargs.get("alert_type", _FakeAlertType.SYSTEM_HEALTH)
         if isinstance(severity, _FakeAlertSeverity):
-            severity = _FakeAlertSeverity(severity.value if hasattr(severity, 'value') else severity)
+            severity = _FakeAlertSeverity(
+                severity.value if hasattr(severity, "value") else severity
+            )
         if isinstance(alert_type, _FakeAlertType):
-            alert_type = _FakeAlertType(alert_type.value if hasattr(alert_type, 'value') else alert_type)
+            alert_type = _FakeAlertType(
+                alert_type.value if hasattr(alert_type, "value") else alert_type
+            )
         return _FakeAlert(
             id="test-alert-id",
             title=kwargs.get("title", "Test Alert"),
@@ -155,6 +158,7 @@ def _patch_app():
 # get-dashboard
 # ---------------------------------------------------------------------------
 
+
 def test_get_dashboard_json_output(tmp_path: pytest.TempPathFactory) -> None:
     """--output should write JSON to the file."""
     out_file = tmp_path / "dashboard.json"
@@ -187,6 +191,7 @@ def test_get_dashboard_console_output() -> None:
 # ---------------------------------------------------------------------------
 # get-alerts
 # ---------------------------------------------------------------------------
+
 
 def test_get_alerts_no_alerts(tmp_path: pytest.TempPathFactory) -> None:
     """When no alerts exist, should show 'No active alerts'."""
@@ -254,18 +259,21 @@ def test_get_alerts_console_with_data() -> None:
 # acknowledge-alert
 # ---------------------------------------------------------------------------
 
+
 def test_acknowledge_alert_success() -> None:
     """Valid alert ID should be acknowledged and exit with code 0."""
     app_with_alerts = _FakeMahavishnuApp()
     app_with_alerts.monitoring_service.alert_manager = _FakeAlertManager(
-        [_FakeAlert(
-            id="alert-42",
-            title="Test",
-            description="Test alert",
-            timestamp=datetime.now(),
-            severity=_FakeAlertSeverity.MEDIUM,
-            type=_FakeAlertType.SYSTEM_HEALTH,
-        )]
+        [
+            _FakeAlert(
+                id="alert-42",
+                title="Test",
+                description="Test alert",
+                timestamp=datetime.now(),
+                severity=_FakeAlertSeverity.MEDIUM,
+                type=_FakeAlertType.SYSTEM_HEALTH,
+            )
+        ]
     )
 
     with patch.object(mon_module, "MahavishnuApp", return_value=app_with_alerts):
@@ -294,6 +302,7 @@ def test_acknowledge_alert_not_found() -> None:
 # trigger-test-alert
 # ---------------------------------------------------------------------------
 
+
 def test_trigger_test_alert_success() -> None:
     """Triggering a test alert should succeed with default values."""
     with _patch_app():
@@ -310,9 +319,12 @@ def test_trigger_test_alert_custom_values() -> None:
             mon_module.app,
             [
                 "trigger-test-alert",
-                "--severity", "critical",
-                "--title", "My Custom Alert",
-                "--desc", "Custom description",
+                "--severity",
+                "critical",
+                "--title",
+                "My Custom Alert",
+                "--desc",
+                "Custom description",
             ],
         )
 
@@ -336,6 +348,7 @@ def test_trigger_test_alert_invalid_severity() -> None:
 # add_monitoring_commands
 # ---------------------------------------------------------------------------
 
+
 def test_add_monitoring_commands_adds_typer() -> None:
     """add_monitoring_commands should add our app to a parent typer app."""
     parent = MagicMock()
@@ -349,7 +362,9 @@ def test_add_monitoring_commands_adds_typer() -> None:
 # App object sanity
 # ---------------------------------------------------------------------------
 
+
 def test_app_is_typer_instance() -> None:
     """mon_module.app should be a typer.Typer instance."""
     from typer import Typer
+
     assert isinstance(mon_module.app, Typer)

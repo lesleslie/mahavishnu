@@ -79,6 +79,14 @@ class TestTaskCreateRequestTitle:
         with pytest.raises(ValidationError):
             TaskCreateRequest(title="A" * 201, repository="repo")
 
+    def test_validator_rejects_empty_title(self):
+        with pytest.raises(ValueError, match="Title cannot be empty"):
+            TaskCreateRequest.sanitize_title("")
+
+    def test_validator_rejects_title_too_long(self):
+        with pytest.raises(ValueError, match="Title too long"):
+            TaskCreateRequest.sanitize_title("A" * 201)
+
 
 class TestTaskCreateRequestDescription:
     """Description sanitization."""
@@ -98,6 +106,10 @@ class TestTaskCreateRequestDescription:
     def test_too_long(self):
         with pytest.raises(ValidationError):
             TaskCreateRequest(title="T", repository="repo", description="x" * 5001)
+
+    def test_validator_rejects_description_too_long(self):
+        with pytest.raises(ValueError, match="Description too long"):
+            TaskCreateRequest.sanitize_description("x" * 5001)
 
 
 class TestTaskCreateRequestRepository:
@@ -123,6 +135,14 @@ class TestTaskCreateRequestRepository:
     def test_rejects_leading_underscore(self):
         with pytest.raises(ValidationError, match="underscore"):
             TaskCreateRequest(title="T", repository="_repo")
+
+    def test_validator_rejects_empty_repository(self):
+        with pytest.raises(ValueError, match="cannot be empty"):
+            TaskCreateRequest.validate_repository("")
+
+    def test_validator_rejects_repository_too_long(self):
+        with pytest.raises(ValueError, match="too long"):
+            TaskCreateRequest.validate_repository("a" * 101)
 
 
 class TestTaskCreateRequestTags:
@@ -156,6 +176,14 @@ class TestTaskCreateRequestTags:
         req = TaskCreateRequest(title="T", repository="repo", tags=None)
         assert req.tags is None
 
+    def test_validator_rejects_too_many_tags(self):
+        with pytest.raises(ValueError, match="Too many tags"):
+            TaskCreateRequest.validate_tags([f"t{i}" for i in range(11)])
+
+    def test_validator_rejects_too_long_tag(self):
+        with pytest.raises(ValueError, match="Tag too long"):
+            TaskCreateRequest.validate_tags(["a" * 51])
+
 
 class TestTaskCreateRequestDeadline:
     """Deadline validation — ISO 8601, must be future."""
@@ -167,6 +195,14 @@ class TestTaskCreateRequestDeadline:
     def test_none_deadline_ok(self):
         req = TaskCreateRequest(title="T", repository="repo", deadline=None)
         assert req.deadline is None
+
+    def test_valid_future_deadline_naive(self):
+        deadline = "2099-01-01T00:00:00"
+        assert TaskCreateRequest.validate_deadline(deadline) == deadline
+
+    def test_past_deadline_rejected(self):
+        with pytest.raises(ValueError, match="Deadline must be in the future"):
+            TaskCreateRequest.validate_deadline("2000-01-01T00:00:00Z")
 
 
 # ---------------------------------------------------------------------------
@@ -194,6 +230,16 @@ class TestTaskUpdateRequest:
     def test_invalid_status(self):
         with pytest.raises(ValidationError):
             TaskUpdateRequest(status="exploding")
+
+    def test_none_passthrough_helpers(self):
+        assert TaskUpdateRequest.sanitize_title(None) is None
+        assert TaskUpdateRequest.sanitize_description(None) is None
+        assert TaskUpdateRequest.validate_deadline(None) is None
+        assert TaskUpdateRequest.validate_tags(None) is None
+
+    def test_deadline_delegates_to_create_request(self):
+        deadline = "2099-01-01T00:00:00"
+        assert TaskUpdateRequest.validate_deadline(deadline) == deadline
 
 
 # ---------------------------------------------------------------------------
@@ -245,6 +291,14 @@ class TestFTSSearchQuery:
     def test_empty_after_sanitization(self):
         with pytest.raises(ValidationError, match="empty"):
             FTSSearchQuery(query="\x00  ")
+
+    def test_validator_rejects_empty_query(self):
+        with pytest.raises(ValueError, match="cannot be empty"):
+            FTSSearchQuery.sanitize_query("")
+
+    def test_validator_rejects_too_long_query(self):
+        with pytest.raises(ValueError, match="Query too long"):
+            FTSSearchQuery.sanitize_query("x" * 501)
 
     def test_to_tsquery_format(self):
         q = FTSSearchQuery(query="authentication bug fix")
@@ -311,6 +365,10 @@ class TestTaskFilter:
             created_before="2026-03-01T00:00:00Z",
         )
         assert f.created_after == "2026-02-01T00:00:00Z"
+
+    def test_none_passthrough_helpers(self):
+        assert TaskFilter.validate_repository(None) is None
+        assert TaskFilter.validate_date_filter(None) is None
 
 
 # ---------------------------------------------------------------------------

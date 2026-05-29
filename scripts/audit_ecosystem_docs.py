@@ -315,10 +315,19 @@ def summarize_repo(repo: dict[str, Any]) -> RepoDocsSummary:
     docs_path = repo_path / "docs"
     docs_exists = docs_path.exists()
 
-    categories = _categorize_docs_files(docs_path) if docs_exists else {
-        "all_files": [], "markdown": [], "archive": [], "backup_like": [],
-        "generated": [], "root_markdown": [], "stale_root_candidates": [],
-    }
+    categories = (
+        _categorize_docs_files(docs_path)
+        if docs_exists
+        else {
+            "all_files": [],
+            "markdown": [],
+            "archive": [],
+            "backup_like": [],
+            "generated": [],
+            "root_markdown": [],
+            "stale_root_candidates": [],
+        }
+    )
 
     files = categories["all_files"]
     markdown_files = categories["markdown"]
@@ -328,9 +337,7 @@ def summarize_repo(repo: dict[str, Any]) -> RepoDocsSummary:
     stale_root_candidates = categories["stale_root_candidates"]
     root_markdown_files = categories["root_markdown"]
 
-    recommendations = _build_repo_recommendations(
-        docs_path, docs_exists, categories
-    )
+    recommendations = _build_repo_recommendations(docs_path, docs_exists, categories)
 
     return RepoDocsSummary(
         name=str(repo["name"]),
@@ -349,7 +356,8 @@ def summarize_repo(repo: dict[str, Any]) -> RepoDocsSummary:
         has_plan_index=has_plan_index(docs_path),
         top_level_dirs=(
             sorted(path.name for path in docs_path.iterdir() if path.is_dir())
-            if docs_exists else []
+            if docs_exists
+            else []
         ),
         backup_like_paths=sorted(repo_relative(path, repo_path) for path in backup_like_files),
         generated_paths=sorted(repo_relative(path, repo_path) for path in generated_files),
@@ -498,9 +506,7 @@ def _render_markdown_cleanup_candidates(summaries: list[RepoDocsSummary]) -> lis
     for summary in summaries:
         lines.append(f"### {summary.name}")
         lines.append("")
-        if not (
-            summary.backup_like_paths or summary.generated_paths or summary.stale_root_paths
-        ):
+        if not (summary.backup_like_paths or summary.generated_paths or summary.stale_root_paths):
             lines.append("- no detailed candidates")
             lines.append("")
             continue

@@ -5,7 +5,7 @@
 **v2 — revised after 3-agent review (architecture, implementation, ecosystem)**
 **Original**: `docs/plans/2026-05-23-bodai-routing-feedback-loop.md`
 
----
+______________________________________________________________________
 
 ## What Changed After Review
 
@@ -20,20 +20,20 @@
 | Rolling window races with multi-instance Akosha | **Medium** | Added compare-and-swap via Dhara TTL + Akosha leader election or per-task_class sharding. |
 | No schema validation on span attributes | **Informational** | Added validation in `query_local_traces` — reject traces missing required `bodai.task_class`. |
 
----
+______________________________________________________________________
 
 ## Context & Goal
 
 All Bodai components are OTel-instrumented. This plan builds a feedback loop that:
 
 1. Each Bodai component stores its own traces locally via Oneiric's `OTelStorageAdapter` (PostgreSQL + pgvector)
-2. Akosha discovers component endpoints and polls each one directly via MCP
-3. Akosha computes fitness signals (failure rate, p99 latency per selector) and writes to Dhara
-4. Mahavishnu reads fitness signals from Dhara before each routing decision
+1. Akosha discovers component endpoints and polls each one directly via MCP
+1. Akosha computes fitness signals (failure rate, p99 latency per selector) and writes to Dhara
+1. Mahavishnu reads fitness signals from Dhara before each routing decision
 
 **Constraint**: Every Bodai component must run standalone without requiring any other Bodai component. The feedback loop activates only when the full chain is up; each component is fully functional without it.
 
----
+______________________________________________________________________
 
 ## Architecture
 
@@ -82,7 +82,7 @@ The original plan had all components push traces to Mahavishnu, making Mahavishn
 - When Akosha is down or unreachable, components keep running normally
 - When Mahavishnu is down, Akosha keeps computing signals (from whatever components it can reach); Mahavishnu falls back to `least_loaded`
 
----
+______________________________________________________________________
 
 ## Fitness Signal Schema (Dhara)
 
@@ -101,18 +101,20 @@ Value: {
 
 TTL: signals expire after 2× window (2 hours at default 1-hour window) if not refreshed.
 
----
+______________________________________________________________________
 
 ## Component Changes
 
 ### 1. All Bodai Components — wire OTelStorageAdapter, add `query_local_traces`
 
 **OTelStorageAdapter** (Oneiric, no code changes needed):
+
 - Each component already imports it. Wire existing OTel spans to `store_trace()`.
 - Requires: PostgreSQL + `CREATE EXTENSION vector` — document as prerequisite.
 - Buffer: `deque(maxlen=1000)`, flushes on batch size or interval.
 
 **New MCP tool per component: `query_local_traces`**
+
 ```
 query_local_traces(task_class: str, time_range_minutes: int = 60) -> list[TraceSummary]
   TraceSummary: {trace_id, task_class, selector, outcome, duration_ms, timestamp}
@@ -136,18 +138,20 @@ This is the most important new tool — it lets Akosha pull traces from each com
 ### 2. Akosha — fitness analyzer + MCP client + `run_fitness_analysis` tool
 
 **New file: `akosha/mcp/client.py`**
+
 - `MahavishnuMCPClient` (or renamed: `BodaiComponentMCPClient`)
 - httpx-based MCP client calling `query_local_traces` on each known component endpoint
 - Follows `DharaClient.call_tool()` pattern
 - Endpoints stored in Dhara: `component_endpoint/{component_name}` → URL
 
 **New file: `akosha/processing/fitness_analyzer.py`**
+
 - Periodic background job (60s interval, configurable)
 - On each cycle:
   1. Read component endpoints from Dhara (or use config file as fallback)
-  2. For each reachable component, call `query_local_traces(task_class, window)`
-  3. Group by selector, compute failure_rate and p99
-  4. Write signals to Dhara with TTL
+  1. For each reachable component, call `query_local_traces(task_class, window)`
+  1. Group by selector, compute failure_rate and p99
+  1. Write signals to Dhara with TTL
 - **Bounded in-memory buffer**: `deque(maxlen=1000)` of failed writes
 - **DLQ**: after 3 consecutive failed writes to Dhara, move to DLQ (simple JSON file)
 - **Circuit breaker**: uses Oneiric's `CircuitBreaker` for Dhara writes
@@ -159,6 +163,7 @@ This is the most important new tool — it lets Akosha pull traces from each com
 ### 3. Mahavishnu — RoutingFitnessReader + pool manager integration
 
 **New: `mahavishnu/pools/routing_fitness.py`**
+
 - `RoutingFitnessReader` class
 - Reads signals from Dhara via `list_prefix("routing_fitness/{task_class}/")`
 - Returns `dict[selector, float]` sorted by score, or empty dict if none
@@ -166,6 +171,7 @@ This is the most important new tool — it lets Akosha pull traces from each com
 - `get_fitness_signals(task_class: str) -> dict[str, FitnessSignal]`
 
 **Pool manager change** (`pools/manager.py`):
+
 - Inject `RoutingFitnessReader` into `PoolManager`
 - In `route_task()`: before picking a pool, call `fitness_reader.get_fitness_signals(task_class)`
 - If any signals exist, select the highest-score selector for that task_class
@@ -178,6 +184,7 @@ This is the most important new tool — it lets Akosha pull traces from each com
 Same keyspace. Fitness signals use the namespace `routing_fitness/{task_class}/{selector}` — separate from existing `routing/v1/{task_class}/{timestamp_ms}` namespace.
 
 Add component endpoint registry keys:
+
 ```
 component_endpoint/{component_name} → URL string
 ```
@@ -187,13 +194,14 @@ Akosha uses this to discover where to poll. Mahavishnu can optionally register i
 ### 5. Infrastructure Prerequisite
 
 **pgvector**: Every Bodai component running OTelStorageAdapter needs:
+
 ```sql
 CREATE EXTENSION vector;
 ```
 
 This must be documented in each component's setup instructions. No way around it — `OTelStorageAdapter` requires it (checked at startup, `otel.py:56-67`).
 
----
+______________________________________________________________________
 
 ## Standalone Operation Matrix
 
@@ -207,7 +215,7 @@ This must be documented in each component's setup instructions. No way around it
 | Mahavishnu + Akosha + Dhara (no other components) | Akosha polls Mahavishnu's `query_local_traces` only. Fitness from Mahavishnu's own traces. Mahavishnu routes with fitness signals. | Limited trace set but functional |
 | Full chain (all Bodai components) | Complete feedback loop. | None |
 
----
+______________________________________________________________________
 
 ## Implementation Priority
 
@@ -233,7 +241,7 @@ Phase 4 — Integration & Polish
   4.3  Document partial-chain operation in deployment guide
 ```
 
----
+______________________________________________________________________
 
 ## Key Files to Change
 
@@ -248,23 +256,23 @@ Phase 4 — Integration & Polish
 | Each Bodai component's MCP tools | Add `query_local_traces` tool (same interface across all) |
 | `docs/plans/PLAN_INDEX.md` | Reference this plan |
 
----
+______________________________________________________________________
 
 ## Open Questions (resolved in v2)
 
 1. **Push vs pull**: Pull model selected. Each component writes locally; Akosha polls each component's MCP endpoint directly. Mahavishnu is **not** in the trace path.
 
-2. **Selector score formula**: Start with `1 - failure_rate`. Latency weighting deferred to post-MVP.
+1. **Selector score formula**: Start with `1 - failure_rate`. Latency weighting deferred to post-MVP.
 
-3. **Akosha's MCP client**: Explicitly a new file (`akosha/mcp/client.py`), not an existing module. Build following `DharaClient` pattern (httpx `call_tool`).
+1. **Akosha's MCP client**: Explicitly a new file (`akosha/mcp/client.py`), not an existing module. Build following `DharaClient` pattern (httpx `call_tool`).
 
-4. **DuckDB path for OTelStorageAdapter**: Removed. All components use PostgreSQL + pgvector via `OTelStorageAdapter`. Mahavishnu's `OtelIngester` uses DuckDB as its HotStore but that's internal to Mahavishnu.
+1. **DuckDB path for OTelStorageAdapter**: Removed. All components use PostgreSQL + pgvector via `OTelStorageAdapter`. Mahavishnu's `OtelIngester` uses DuckDB as its HotStore but that's internal to Mahavishnu.
 
-5. **Bounding Akosha's buffer**: `deque(maxlen=1000)` + DLQ after 3 failed retries. No unbounded OOM risk.
+1. **Bounding Akosha's buffer**: `deque(maxlen=1000)` + DLQ after 3 failed retries. No unbounded OOM risk.
 
-6. **Rolling window races**: Addressed by per-task_class atomic writes (last-write-wins per selector is acceptable since each selector is independent) + TTL ensures staleness is self-healing.
+1. **Rolling window races**: Addressed by per-task_class atomic writes (last-write-wins per selector is acceptable since each selector is independent) + TTL ensures staleness is self-healing.
 
----
+______________________________________________________________________
 
 ## What This Plan Does NOT Cover
 

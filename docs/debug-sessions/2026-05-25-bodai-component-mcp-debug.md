@@ -27,29 +27,33 @@ curl -X POST http://localhost:8682/mcp \
 ## What Doesn't Work
 
 The official MCP Python client's `streamable_http_client()` and `ClientSession`:
+
 - `session.initialize()` hangs (timeout after 5-10 seconds)
 - Session ID shows as `None` even though server returns it in headers
 
 ## Key Files
 
 ### Mahavishnu Client
+
 - `/Users/les/Projects/mahavishnu/mahavishnu/mcp/bodai_component_client.py` - The client being debugged
 
 ### Akosha Server
+
 - `/Users/les/Projects/akosha/akosha/mcp/server.py` - FastMCP server (uses StreamableHTTPSessionManager)
 - `/Users/les/Projects/akosha/akosha/mcp/tools/__init__.py` - Tool registration
 - `/Users/les/Projects/akosha/akosha/mcp/tools/otel_tools.py` - OTel query tools (had a bug, fixed)
 
 ### MCP Library (venv)
+
 - `/Users/les/Projects/akosha/.venv/lib/python3.13/site-packages/mcp/client/streamable_http.py` - Client transport
 - `/Users/les/Projects/akosha/.venv/lib/python3.13/site-packages/mcp/server/streamable_http_manager.py` - Server session manager
 
 ## Debugging Log (Key Observations)
 
 1. The server responds with `content-type: text/event-stream` and `mcp-session-id` header on initialize
-2. Client's `_maybe_extract_session_id_from_response()` is called (logged "Received session ID: <id>")
-3. But session still shows `SID=None` after `__aenter__()` returns
-4. The post_writer task sends the initialized notification, then subsequent call_tool hangs
+1. Client's `_maybe_extract_session_id_from_response()` is called (logged "Received session ID: <id>")
+1. But session still shows `SID=None` after `__aenter__()` returns
+1. The post_writer task sends the initialized notification, then subsequent call_tool hangs
 
 ## Minimal Test Script
 
@@ -74,13 +78,13 @@ asyncio.run(test())
 
 1. **Akosha otel_tools.py** - Changed function signature from `register_otel_query_tools(registry: Any, hot_store: Any)` to `register_otel_query_tools(app: Any, hot_store: Any)` because it was receiving a FastMCPToolRegistry instead of the app directly.
 
-2. **Akosha __init__.py** - Updated call site to pass `app` instead of `registry`.
+1. **Akosha __init__.py** - Updated call site to pass `app` instead of `registry`.
 
 ## Questions to Investigate
 
 1. Why does `get_session_id()` return None even though `_maybe_extract_session_id_from_response()` is called and logs the session ID?
-2. Is there a timing issue where the session ID is extracted but then lost before `get_session_id()` is called?
-3. Is the initialized notification being sent correctly, and is the GET SSE stream being opened?
+1. Is there a timing issue where the session ID is extracted but then lost before `get_session_id()` is called?
+1. Is the initialized notification being sent correctly, and is the GET SSE stream being opened?
 
 ## Environment
 

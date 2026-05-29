@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from mahavishnu.pools.gpu_handler_pool import GpuHandlerPool, GPU_TASK_CATEGORIES
 from mahavishnu.pools.base import PoolConfig
+from mahavishnu.pools.gpu_handler_pool import GPU_TASK_CATEGORIES, GpuHandlerPool
 
 
 class TestGpuTaskCategories:
@@ -15,7 +15,7 @@ class TestGpuTaskCategories:
 
     def test_gpu_task_categories_contains_correct_values(self) -> None:
         """Verify GPU_TASK_CATEGORIES has exactly vision, ml_inference, embedding."""
-        assert GPU_TASK_CATEGORIES == frozenset({"vision", "ml_inference", "embedding"})
+        assert frozenset({"vision", "ml_inference", "embedding"}) == GPU_TASK_CATEGORIES
 
     def test_gpu_task_categories_is_frozenset(self) -> None:
         """Verify GPU_TASK_CATEGORIES is immutable."""
@@ -83,7 +83,9 @@ class TestBuildEndpoint:
         # Make iteration return empty so [g.name for g in GpuType] returns []
         mock_gpu_type.__iter__ = lambda self: iter([])
         # Make getattr return None for the specific GPU type we're testing
-        type(mock_gpu_type).__getattr__ = lambda cls, name: None if name == "UNKNOWN_GPU" else getattr(super(type(mock_gpu_type), cls), name, None)
+        type(mock_gpu_type).__getattr__ = lambda cls, name: (
+            None if name == "UNKNOWN_GPU" else getattr(super(type(mock_gpu_type), cls), name, None)
+        )
 
         with patch("mahavishnu.pools.gpu_handler_pool.Endpoint", MagicMock):
             with patch("mahavishnu.pools.gpu_handler_pool.GpuType", mock_gpu_type):
@@ -107,6 +109,7 @@ class TestBuildEndpoint:
         def mock_endpoint_decorator(*args, **kwargs):
             def inner(func):
                 return func
+
             return inner
 
         mock_endpoint = MagicMock(side_effect=mock_endpoint_decorator)
@@ -229,9 +232,7 @@ class TestExecuteTask:
         # Missing category should not trigger rejection
         assert result.get("status") != "rejected"
 
-    async def test_rejection_includes_sorted_gpu_categories(
-        self, pool_config: PoolConfig
-    ) -> None:
+    async def test_rejection_includes_sorted_gpu_categories(self, pool_config: PoolConfig) -> None:
         """Rejected error message includes all valid GPU categories."""
         pool = GpuHandlerPool(pool_config)
 
@@ -326,7 +327,9 @@ class TestExecuteTaskIntegration:
         """ml_inference category delegates to parent which calls the endpoint."""
         pool = GpuHandlerPool(pool_config)
 
-        mock_endpoint = AsyncMock(return_value={"category": "ml_inference", "result": "model output"})
+        mock_endpoint = AsyncMock(
+            return_value={"category": "ml_inference", "result": "model output"}
+        )
         pool._endpoint = mock_endpoint
         pool._status = MagicMock()
 

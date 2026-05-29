@@ -2,8 +2,6 @@
 
 from datetime import datetime
 
-import pytest
-
 from mahavishnu.terminal.grid import (
     DesktopSession,
     GridSession,

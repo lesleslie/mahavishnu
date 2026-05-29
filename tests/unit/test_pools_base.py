@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from mahavishnu.core.status import PoolStatus, WorkerStatus
+from mahavishnu.core.status import PoolStatus
 from mahavishnu.pools.base import BasePool, PoolConfig, PoolMetrics
 
 
@@ -145,7 +145,6 @@ class TestBasePool:
 
     def test_base_pool_has_required_abstract_methods(self):
         """Test that BasePool defines required abstract methods."""
-        from abc import abstractmethod
 
         required_methods = [
             "start",

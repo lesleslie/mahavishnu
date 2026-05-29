@@ -25,7 +25,7 @@ tasks:
       query_local_traces 参数:
         - system_id: str
         - start_time: str | None
-        - end_time: str | None  
+        - end_time: str | None
         - task_class: str | None
         - limit: int = 100
 
@@ -101,7 +101,7 @@ tasks:
       ```python
       # Check if query_embedding is all zeros (use timestamp ordering instead)
       is_zero_vector = all(abs(x) < 1e-10 for x in query_embedding)
-      
+
       if is_zero_vector and system_id:
           query = """
               SELECT system_id, conversation_id, content, timestamp, metadata, NULL as similarity
@@ -170,15 +170,15 @@ tasks:
           ingester = await create_otel_ingester(hot_store_path=':memory:', storage_type='duckdb')
           trace = {'trace_id': 'd1', 'spans': [{'name': 's1', 'start_time': '2024-01-01T00:00:00Z', 'attributes': {'service.name': 'test'}}]}
           await ingester.ingest_trace(trace)
-          
+
           # 检查 HotStore 中实际数据
           rows = ingester._hot_store.conn.execute('SELECT system_id, conversation_id, content FROM conversations').fetchall()
           print('HotStore rows:', rows)
-          
+
           # 检查 search 返回
           results = await ingester._hot_store.search_similar(query_embedding=[0.0]*384, system_id='test', limit=10, threshold=0.0)
           print('search_similar results:', len(results))
-          
+
           await ingester.close()
       asyncio.run(debug())
       "

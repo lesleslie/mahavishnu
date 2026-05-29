@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from io import StringIO
 import sys
 
@@ -516,9 +515,7 @@ class TestLoadTestRunner:
         validation = runner._validate_slos()
 
         assert validation["passed"] is False
-        success_check = next(
-            c for c in validation["checks"] if "success_rate" in c["name"]
-        )
+        success_check = next(c for c in validation["checks"] if "success_rate" in c["name"])
         assert success_check["passed"] is False
 
 

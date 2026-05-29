@@ -66,11 +66,11 @@ def register_health_endpoint(server: FastMCPServer, version: str) -> None:
     """Register HTTP health endpoints on the FastMCP server."""
 
     @server.server.custom_route("/health", methods=["GET"])  # type: ignore[arg-type]
-    async def health_check() -> JSONResponse:
+    async def health_check(request=None) -> JSONResponse:
         return JSONResponse({"status": "ok", "service": "mahavishnu", "version": version})
 
     @server.server.custom_route("/healthz", methods=["GET"])  # type: ignore[arg-type]
-    async def healthz_check() -> JSONResponse:
+    async def healthz_check(request=None) -> JSONResponse:
         return JSONResponse({"status": "ok"})
 
     @server.server.custom_route("/metrics", methods=["GET"])  # type: ignore[arg-type]
@@ -134,13 +134,15 @@ async def _register_worker_pool_tools(server: FastMCPServer, methods_set: set[st
                 logger.info("Registered 10 pool management tools with MCP server")
 
     if "_register_otel_tools" in methods_set:
-        if not getattr(server.app.config, "otel_storage_enabled", False):
-            logger.info("OTel storage disabled, skipping tool registration")
-        else:
+        # Note: otel_tools require HotStore from Akosha, which may not be available
+        # in all deployments. Registration is gated by availability.
+        try:
             from ..mcp.tools.otel_tools import register_otel_tools
-
+            from akosha.storage import HotStore
             register_otel_tools(server.server, server.app, server.mcp_client)
             logger.info("Registered 4 OTel trace management tools with MCP server")
+        except ImportError:
+            logger.info("HotStore not available, skipping OTel tool registration")
 
 
 async def _register_optional_tools(server: FastMCPServer, methods_set: set[str]) -> None:

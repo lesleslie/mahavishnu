@@ -15,28 +15,27 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from mahavishnu.core.evidence_store import (
-    EvidenceStore,
-    StoreBatchResult,
-)
 from mahavishnu.core.evidence_collector import (
     EvidenceCollector,
     EvidenceSource,
     _SessionBuddyEvidenceSource,
 )
 from mahavishnu.core.evidence_retriever import (
-    EvidenceRetriever,
     EvidenceCluster,
-    RetrievedEvidence,
+    EvidenceRetriever,
     RetrievalContext,
+    RetrievedEvidence,
     _extract_keywords,
 )
+from mahavishnu.core.evidence_store import (
+    EvidenceStore,
+)
 from mahavishnu.core.skill_governance import LearningEvidence
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def make_evidence(
     evidence_id: str = "le_test123",
@@ -62,6 +61,7 @@ def make_evidence(
 # ---------------------------------------------------------------------------
 # EvidenceStore
 # ---------------------------------------------------------------------------
+
 
 class TestEvidenceStoreInit:
     def test_url_trailing_slash_stripped(self):
@@ -178,33 +178,35 @@ class TestEvidenceStoreQuery:
         async def mock_post(*args, **kwargs):
             resp = MagicMock()
             resp.status_code = 200
-            resp.json = MagicMock(return_value={
-                "result": {
-                    "conversations": [
-                        {
-                            "evidence_id": "le_1",
-                            "session_id": "sess-1",
-                            "goal": "test goal",
-                            "outcome": "success",
-                            "metadata": {"artifact_type": "learning_evidence"},
-                        },
-                        {
-                            "evidence_id": "le_2",
-                            "session_id": "sess-2",
-                            "goal": "test goal 2",
-                            "outcome": "success",
-                            "metadata": {"artifact_type": "other_type"},
-                        },
-                        {
-                            "evidence_id": "le_3",
-                            "session_id": "sess-3",
-                            "goal": "test goal 3",
-                            "outcome": "success",
-                            "metadata": {},
-                        },
-                    ]
+            resp.json = MagicMock(
+                return_value={
+                    "result": {
+                        "conversations": [
+                            {
+                                "evidence_id": "le_1",
+                                "session_id": "sess-1",
+                                "goal": "test goal",
+                                "outcome": "success",
+                                "metadata": {"artifact_type": "learning_evidence"},
+                            },
+                            {
+                                "evidence_id": "le_2",
+                                "session_id": "sess-2",
+                                "goal": "test goal 2",
+                                "outcome": "success",
+                                "metadata": {"artifact_type": "other_type"},
+                            },
+                            {
+                                "evidence_id": "le_3",
+                                "session_id": "sess-3",
+                                "goal": "test goal 3",
+                                "outcome": "success",
+                                "metadata": {},
+                            },
+                        ]
+                    }
                 }
-            })
+            )
             return resp
 
         with patch("mahavishnu.core.evidence_store.httpx.AsyncClient") as mock_client:
@@ -234,6 +236,7 @@ class TestEvidenceStorePrune:
 # ---------------------------------------------------------------------------
 # EvidenceCollector
 # ---------------------------------------------------------------------------
+
 
 class TestEvidenceCollectorInit:
     def test_defaults(self):
@@ -299,10 +302,12 @@ class TestEvidenceCollectorCollectRecentOutcomes:
     async def test_collect_recent_outcomes_enforces_max_per_cycle(self):
         mock_source = MagicMock(spec=EvidenceSource)
         # Return 100 items, but max_per_cycle is 20
-        mock_source.get_recent_outcomes = AsyncMock(return_value=[
-            {"evidence_id": f"le_{i}", "session_id": "s", "goal": "g", "outcome": "o"}
-            for i in range(100)
-        ])
+        mock_source.get_recent_outcomes = AsyncMock(
+            return_value=[
+                {"evidence_id": f"le_{i}", "session_id": "s", "goal": "g", "outcome": "o"}
+                for i in range(100)
+            ]
+        )
 
         collector = EvidenceCollector(source=mock_source, max_per_cycle=20)
 
@@ -312,11 +317,13 @@ class TestEvidenceCollectorCollectRecentOutcomes:
     @pytest.mark.asyncio
     async def test_collect_recent_outcomes_skips_unparseable_items(self):
         mock_source = MagicMock(spec=EvidenceSource)
-        mock_source.get_recent_outcomes = AsyncMock(return_value=[
-            {"evidence_id": "le_1", "session_id": "s", "goal": "good item"},
-            {"evidence_id": "le_2"},  # missing required fields
-            {"evidence_id": "le_3", "session_id": "s", "goal": "another good"},
-        ])
+        mock_source.get_recent_outcomes = AsyncMock(
+            return_value=[
+                {"evidence_id": "le_1", "session_id": "s", "goal": "good item"},
+                {"evidence_id": "le_2"},  # missing required fields
+                {"evidence_id": "le_3", "session_id": "s", "goal": "another good"},
+            ]
+        )
 
         collector = EvidenceCollector(source=mock_source)
 
@@ -328,6 +335,7 @@ class TestEvidenceCollectorCollectRecentOutcomes:
 # ---------------------------------------------------------------------------
 # EvidenceRetriever
 # ---------------------------------------------------------------------------
+
 
 class TestEvidenceRetrieverInit:
     def test_url_trailing_slash_stripped(self):
@@ -408,15 +416,17 @@ class TestEvidenceRetrieverFindSimilar:
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json = MagicMock(return_value={
-            "result": {
-                "results": [
-                    {"id": "r1", "score": 0.3, "text": "low score"},
-                    {"id": "r2", "score": 0.9, "text": "high score"},
-                    {"id": "r3", "score": 0.6, "text": "medium score"},
-                ]
+        mock_response.json = MagicMock(
+            return_value={
+                "result": {
+                    "results": [
+                        {"id": "r1", "score": 0.3, "text": "low score"},
+                        {"id": "r2", "score": 0.9, "text": "high score"},
+                        {"id": "r3", "score": 0.6, "text": "medium score"},
+                    ]
+                }
             }
-        })
+        )
 
         with patch("mahavishnu.core.evidence_retriever.httpx.AsyncClient") as mock_client:
             instance = MagicMock()
@@ -441,14 +451,16 @@ class TestEvidenceRetrieverFindSimilar:
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json = MagicMock(return_value={
-            "result": {
-                "results": [
-                    {"id": f"r{i}", "score": 1.0 - i * 0.1, "text": f"result {i}"}
-                    for i in range(20)
-                ]
+        mock_response.json = MagicMock(
+            return_value={
+                "result": {
+                    "results": [
+                        {"id": f"r{i}", "score": 1.0 - i * 0.1, "text": f"result {i}"}
+                        for i in range(20)
+                    ]
+                }
             }
-        })
+        )
 
         with patch("mahavishnu.core.evidence_retriever.httpx.AsyncClient") as mock_client:
             instance = MagicMock()
@@ -558,29 +570,43 @@ class TestEvidenceRetrieverGetRetrievalContext:
         )
 
         # Mock find_similar and cluster_by_pattern
-        with patch.object(retriever, "find_similar", AsyncMock(return_value=[
-            RetrievedEvidence(
-                evidence_id="re_1",
-                similarity=0.9,
-                goal="implement auth",
-                outcome="success",
-                observations=["jwt"],
+        with (
+            patch.object(
+                retriever,
+                "find_similar",
+                AsyncMock(
+                    return_value=[
+                        RetrievedEvidence(
+                            evidence_id="re_1",
+                            similarity=0.9,
+                            goal="implement auth",
+                            outcome="success",
+                            observations=["jwt"],
+                        )
+                    ]
+                ),
+            ),
+            patch.object(
+                retriever,
+                "cluster_by_pattern",
+                AsyncMock(
+                    return_value=[
+                        EvidenceCluster(
+                            cluster_id="cl_123",
+                            representative_goal="implement auth",
+                            repo_paths=["/repo/a"],
+                            member_count=1,
+                            success_rate=1.0,
+                            evidence_ids=["re_1"],
+                        )
+                    ]
+                ),
+            ),
+        ):
+            context = await retriever.get_retrieval_context(
+                goal="auth implementation",
+                repo_paths=["/repo/a"],
             )
-        ])):
-            with patch.object(retriever, "cluster_by_pattern", AsyncMock(return_value=[
-                EvidenceCluster(
-                    cluster_id="cl_123",
-                    representative_goal="implement auth",
-                    repo_paths=["/repo/a"],
-                    member_count=1,
-                    success_rate=1.0,
-                    evidence_ids=["re_1"],
-                )
-            ])):
-                context = await retriever.get_retrieval_context(
-                    goal="auth implementation",
-                    repo_paths=["/repo/a"],
-                )
 
         assert context.query == "auth implementation"
         assert len(context.similar_evidence) == 1
@@ -624,6 +650,7 @@ class TestRetrievalContextModel:
 # Error handling integration
 # ---------------------------------------------------------------------------
 
+
 class TestEvidenceStoreErrors:
     @pytest.mark.asyncio
     async def test_store_returns_false_on_exception(self):
@@ -656,9 +683,7 @@ class TestEvidenceRetrieverErrors:
 
         sb_success = MagicMock()
         sb_success.status_code = 200
-        sb_success.json = MagicMock(return_value={
-            "result": {"conversations": []}
-        })
+        sb_success.json = MagicMock(return_value={"result": {"conversations": []}})
 
         call_count = 0
 

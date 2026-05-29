@@ -6,10 +6,14 @@ These tests use self-contained mocks and do not rely on external projects.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
+from mahavishnu.core.errors import AdapterError, ValidationError
+from mahavishnu.core.metrics_schema import AdapterType
+import mahavishnu.core.workflow_execution as we
 from mahavishnu.core.workflow_execution import (
     check_dependency_health,
     create_session_checkpoint,
@@ -23,10 +27,10 @@ from mahavishnu.core.workflow_execution import (
     validate_pre_execution_qc,
 )
 
-
 # ============================================================================
 # Fixtures - Mock App Builder
 # ============================================================================
+
 
 def _make_mock_app(overrides=None):
     """Build a self-contained mock app for testing workflow execution functions."""
@@ -40,7 +44,9 @@ def _make_mock_app(overrides=None):
 
     # Workflow state manager mock
     app.workflow_state_manager = AsyncMock()
-    app.workflow_state_manager.create = AsyncMock(return_value={"id": "wf_123", "status": "pending"})
+    app.workflow_state_manager.create = AsyncMock(
+        return_value={"id": "wf_123", "status": "pending"}
+    )
     app.workflow_state_manager.update = AsyncMock(return_value=None)
     app.workflow_state_manager.add_result = AsyncMock(return_value=None)
     app.workflow_state_manager.add_error = AsyncMock(return_value=None)
@@ -115,6 +121,7 @@ def _make_mock_app(overrides=None):
 # initialize_workflow_state Tests
 # ============================================================================
 
+
 class TestInitializeWorkflowState:
     """Test workflow state initialization."""
 
@@ -126,9 +133,7 @@ class TestInitializeWorkflowState:
         adapter_name = "prefect"
         validated_repos = ["/repo/a"]
 
-        workflow_id = await initialize_workflow_state(
-            app, task, adapter_name, validated_repos
-        )
+        workflow_id = await initialize_workflow_state(app, task, adapter_name, validated_repos)
 
         assert workflow_id is not None
         assert workflow_id.startswith("wf_")
@@ -154,9 +159,7 @@ class TestInitializeWorkflowState:
         adapter_name = "prefect"
         validated_repos = ["/repo/a"]
 
-        workflow_id = await initialize_workflow_state(
-            app, task, adapter_name, validated_repos
-        )
+        workflow_id = await initialize_workflow_state(app, task, adapter_name, validated_repos)
 
         assert workflow_id in app.active_workflows
 
@@ -190,6 +193,7 @@ class TestInitializeWorkflowState:
 # ============================================================================
 # validate_pre_execution_qc Tests
 # ============================================================================
+
 
 class TestValidatePreExecutionQC:
     """Test pre-execution QC validation."""
@@ -230,6 +234,7 @@ class TestValidatePreExecutionQC:
 # create_session_checkpoint Tests
 # ============================================================================
 
+
 class TestCreateSessionCheckpoint:
     """Test session checkpoint creation."""
 
@@ -239,9 +244,7 @@ class TestCreateSessionCheckpoint:
         app = _make_mock_app()
         app.config.session.enabled = False
 
-        result = await create_session_checkpoint(
-            app, {"id": "task_1"}, "prefect", ["/repo/a"]
-        )
+        result = await create_session_checkpoint(app, {"id": "task_1"}, "prefect", ["/repo/a"])
 
         assert result is None
 
@@ -279,6 +282,7 @@ class TestCreateSessionCheckpoint:
 # ============================================================================
 # check_dependency_health Tests
 # ============================================================================
+
 
 class TestCheckDependencyHealth:
     """Test dependency health checking."""
@@ -331,6 +335,7 @@ class TestCheckDependencyHealth:
 # prepare_execution Tests
 # ============================================================================
 
+
 class TestPrepareExecution:
     """Test execution preparation."""
 
@@ -364,6 +369,7 @@ class TestPrepareExecution:
 # ============================================================================
 # execute_parallel_workflow Tests
 # ============================================================================
+
 
 class TestExecuteParallelWorkflow:
     """Test parallel workflow execution."""
@@ -412,6 +418,7 @@ class TestExecuteParallelWorkflow:
 # ============================================================================
 # finalize_workflow_execution Tests
 # ============================================================================
+
 
 class TestFinalizeWorkflowExecution:
     """Test workflow execution finalization."""
@@ -526,6 +533,7 @@ class TestFinalizeWorkflowExecution:
 # handle_workflow_execution_error Tests
 # ============================================================================
 
+
 class TestHandleWorkflowExecutionError:
     """Test error handling in workflow execution."""
 
@@ -597,6 +605,7 @@ class TestHandleWorkflowExecutionError:
 # Error Handling Edge Cases
 # ============================================================================
 
+
 class TestWorkflowExecutionErrorHandling:
     """Test error handling edge cases."""
 
@@ -625,3 +634,277 @@ class TestWorkflowExecutionErrorHandling:
         error_message = str(exc_info.value)
         assert "Adapter not found" in error_message
         assert "missing" in error_message
+
+
+class TestWorkflowExecutionCoverageAdditions:
+    @pytest.mark.asyncio
+    async def test_prepare_execution_uses_get_repos_and_checks_permissions(self, monkeypatch):
+        app = _make_mock_app()
+        app.get_repos = MagicMock(return_value=["/repo/a"])
+        app.rbac_manager.check_permission = AsyncMock(return_value=True)
+
+        monkeypatch.setattr(we, "validate_path", lambda path, allowed: Path(path), raising=True)
+        monkeypatch.setattr(
+            we, "check_dependency_health", AsyncMock(return_value=None), raising=True
+        )
+
+        adapter, validated_repos = await prepare_execution(
+            app, "prefect", {"type": "check"}, None, "user-1"
+        )
+
+        assert adapter is app.adapters["prefect"]
+        assert validated_repos == ["/repo/a"]
+
+    @pytest.mark.asyncio
+    async def test_prepare_execution_invalid_repo_path(self, monkeypatch):
+        app = _make_mock_app()
+
+        def boom(*args, **kwargs):  # noqa: ANN001,ANN002
+            raise ValidationError(message="bad path", details={})
+
+        monkeypatch.setattr(we, "validate_path", boom, raising=True)
+
+        with pytest.raises(ValidationError, match="Invalid repository path"):
+            await prepare_execution(app, "prefect", {"type": "check"}, ["/bad"], None)
+
+    @pytest.mark.asyncio
+    async def test_prepare_execution_permission_denied(self, monkeypatch):
+        app = _make_mock_app()
+        app.rbac_manager.check_permission = AsyncMock(return_value=False)
+        monkeypatch.setattr(we, "validate_path", lambda path, allowed: Path(path), raising=True)
+
+        with pytest.raises(ValidationError, match="does not have permission"):
+            await prepare_execution(app, "prefect", {"type": "check"}, ["/repo/a"], "user-1")
+
+    @pytest.mark.asyncio
+    async def test_check_dependency_health_session_warning(self, caplog):
+        app = _make_mock_app()
+        app.session_buddy.is_healthy = AsyncMock(return_value=False)
+        app.qc.is_healthy = AsyncMock(return_value=True)
+
+        await check_dependency_health(app)
+        assert "degraded mode" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_process_single_repo_success_and_error(self):
+        app = _make_mock_app()
+        adapter = MagicMock()
+        workflow_id = "wf_123"
+        semaphore = asyncio.Semaphore(1)
+        progress_calls: list[tuple[int, int, str]] = []
+
+        def progress_callback(done, total, repo):  # noqa: ANN001,ANN002,ANN003
+            progress_calls.append((done, total, repo))
+
+        result = await we.process_single_repo(
+            app=app,
+            adapter=adapter,
+            task={"type": "check"},
+            adapter_name="prefect",
+            workflow_id=workflow_id,
+            repo_path="/repo/a",
+            total_repos=1,
+            semaphore=semaphore,
+            progress_callback=progress_callback,
+        )
+
+        assert result == {"status": "ok"}
+        assert progress_calls == [(1, 1, "/repo/a")]
+
+        app.circuit_breaker.call = AsyncMock(side_effect=RuntimeError("boom"))
+        with pytest.raises(RuntimeError):
+            await we.process_single_repo(
+                app=app,
+                adapter=adapter,
+                task={"type": "check"},
+                adapter_name="prefect",
+                workflow_id=workflow_id,
+                repo_path="/repo/b",
+                total_repos=1,
+                semaphore=semaphore,
+            )
+
+    @pytest.mark.asyncio
+    async def test_execute_parallel_workflow_collects_errors(self, monkeypatch):
+        app = _make_mock_app()
+        app.observability = MagicMock()
+        app.observability.create_workflow_counter = MagicMock(return_value=None)
+        app.observability.create_repo_counter = MagicMock(return_value=None)
+        app.observability.create_error_counter = MagicMock(return_value=MagicMock(add=MagicMock()))
+        app.observability.start_workflow_trace = MagicMock()
+        app.observability.start_workflow_trace.return_value.__enter__ = MagicMock()
+        app.observability.start_workflow_trace.return_value.__exit__ = MagicMock()
+
+        async def fake_process_single_repo(**kwargs):  # noqa: ANN003
+            if kwargs["repo_path"] == "/repo/b":
+                return RuntimeError("boom")
+            return {"repo": kwargs["repo_path"]}
+
+        monkeypatch.setattr(we, "process_single_repo", fake_process_single_repo, raising=True)
+
+        execution_time, results, errors = await execute_parallel_workflow(
+            app,
+            adapter=MagicMock(),
+            task={"type": "check"},
+            adapter_name="prefect",
+            workflow_id="wf_123",
+            validated_repos=["/repo/a", "/repo/b"],
+        )
+
+        assert execution_time >= 0
+        assert len(results) == 1
+        assert len(errors) == 1
+
+    @pytest.mark.asyncio
+    async def test_finalize_workflow_execution_with_checkpoint_and_qc(self):
+        app = _make_mock_app()
+        app.qc.validate_post_execution = AsyncMock(return_value=False)
+        app.session_buddy.update_checkpoint = AsyncMock(return_value=None)
+
+        result = await finalize_workflow_execution(
+            app=app,
+            workflow_id="wf_123",
+            adapter_name="prefect",
+            task={"type": "check"},
+            validated_repos=["/repo/a"],
+            execution_time=1.0,
+            successful_results=[{"status": "ok"}],
+            errors=[],
+            checkpoint_id="cp_123",
+        )
+
+        assert result["status"] == "completed"
+        app.session_buddy.update_checkpoint.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_handle_workflow_execution_error_updates_checkpoint(self):
+        app = _make_mock_app()
+        app.session_buddy.update_checkpoint = AsyncMock(return_value=None)
+
+        with pytest.raises(AdapterError):
+            await handle_workflow_execution_error(
+                app=app,
+                workflow_id="wf_123",
+                adapter_name="prefect",
+                task={"type": "check"},
+                validated_repos=["/repo/a"],
+                error=RuntimeError("boom"),
+                checkpoint_id="cp_123",
+            )
+
+        app.session_buddy.update_checkpoint.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_execute_workflow_with_fallback_success_and_failure(self, monkeypatch):
+        app = _make_mock_app()
+        app._persist_workflow_start = MagicMock()
+        app._persist_workflow_end = MagicMock()
+        fake_router = MagicMock()
+        fake_router.generate_fallback_chain.return_value = [AdapterType.AGNO, AdapterType.PREFECT]
+        monkeypatch.setattr(we, "TaskRouter", lambda: fake_router, raising=True)
+        app.execute_workflow_parallel = AsyncMock(side_effect=[RuntimeError("boom"), {"ok": True}])
+
+        result = await execute_workflow_with_fallback(app, {"type": "ai_task"}, ["/repo/a"])
+        assert result["success"] is True
+        assert result["adapter_used"] == AdapterType.PREFECT.value
+
+        app.execute_workflow_parallel = AsyncMock(
+            side_effect=[RuntimeError("boom"), RuntimeError("oops")]
+        )
+        result = await execute_workflow_with_fallback(app, {"type": "ai_task"}, ["/repo/a"])
+        assert result["success"] is False
+        assert len(result["errors"]) == 2
+
+    @pytest.mark.asyncio
+    async def test_execute_workflow_with_routing_switches_paths(self, monkeypatch):
+        app = _make_mock_app()
+        app.execute_workflow_with_fallback = AsyncMock(return_value={"success": True})
+        app.execute_workflow_parallel = AsyncMock(return_value={"success": True})
+
+        result = await execute_workflow_with_routing(
+            app, {"type": "ai_task"}, ["/repo/a"], routing_strategy="balanced", enable_fallback=True
+        )
+        assert result["success"] is True
+        app.execute_workflow_with_fallback.assert_awaited_once()
+
+        fake_router = MagicMock()
+        fake_router.select_adapter = AsyncMock(return_value=AdapterType.PREFECT)
+        monkeypatch.setattr(we, "TaskRouter", lambda: fake_router, raising=True)
+
+        result = await execute_workflow_with_routing(
+            app,
+            {"type": "ai_task"},
+            ["/repo/a"],
+            routing_strategy="balanced",
+            enable_fallback=False,
+        )
+        assert result["adapter_used"] == AdapterType.PREFECT.value
+
+    @pytest.mark.asyncio
+    async def test_execute_workflow_parallel_success(self, monkeypatch):
+        app = _make_mock_app()
+        app._prepare_execution = AsyncMock(return_value=(MagicMock(), ["/repo/a"]))
+
+        monkeypatch.setattr(
+            we, "initialize_workflow_state", AsyncMock(return_value="wf_123"), raising=True
+        )
+        monkeypatch.setattr(
+            we, "validate_pre_execution_qc", AsyncMock(return_value=None), raising=True
+        )
+        monkeypatch.setattr(
+            we, "create_session_checkpoint", AsyncMock(return_value="cp_123"), raising=True
+        )
+        monkeypatch.setattr(
+            we,
+            "execute_parallel_workflow",
+            AsyncMock(return_value=(1.5, [{"ok": True}], [])),
+            raising=True,
+        )
+        monkeypatch.setattr(
+            we,
+            "finalize_workflow_execution",
+            AsyncMock(return_value={"workflow_id": "wf_123", "status": "completed"}),
+            raising=True,
+        )
+
+        result = await we.execute_workflow_parallel(
+            app=app,
+            task={"type": "check"},
+            adapter_name="prefect",
+            repos=["/repo/a"],
+        )
+
+        assert result["status"] == "completed"
+
+    @pytest.mark.asyncio
+    async def test_execute_workflow_parallel_error_path(self, monkeypatch):
+        app = _make_mock_app()
+        app._prepare_execution = AsyncMock(return_value=(MagicMock(), ["/repo/a"]))
+
+        monkeypatch.setattr(
+            we, "initialize_workflow_state", AsyncMock(return_value="wf_123"), raising=True
+        )
+        monkeypatch.setattr(
+            we, "validate_pre_execution_qc", AsyncMock(return_value=None), raising=True
+        )
+        monkeypatch.setattr(
+            we, "create_session_checkpoint", AsyncMock(return_value="cp_123"), raising=True
+        )
+        monkeypatch.setattr(
+            we,
+            "execute_parallel_workflow",
+            AsyncMock(side_effect=RuntimeError("boom")),
+            raising=True,
+        )
+        handle_error = AsyncMock(return_value=None)
+        monkeypatch.setattr(we, "handle_workflow_execution_error", handle_error, raising=True)
+
+        result = await we.execute_workflow_parallel(
+            app=app,
+            task={"type": "check"},
+            adapter_name="prefect",
+            repos=["/repo/a"],
+        )
+
+        assert result is None
+        handle_error.assert_awaited_once()

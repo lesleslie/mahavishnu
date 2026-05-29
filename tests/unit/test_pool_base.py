@@ -6,12 +6,11 @@ Tests PoolConfig, PoolMetrics, PoolStatus enum, and BasePool abstract class.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from mahavishnu.core.status import PoolStatus
 from mahavishnu.pools.base import BasePool, PoolConfig, PoolMetrics
-
 
 # =============================================================================
 # PoolConfig Tests
@@ -299,6 +298,7 @@ class TestBasePool:
 
         # Access the async status method
         import asyncio
+
         status = asyncio.run(pool.status())
 
         assert status == PoolStatus.PENDING
@@ -353,6 +353,7 @@ class TestBasePool:
         pool = ConcreteTestPool(config)
 
         import asyncio
+
         result = asyncio.run(pool.start())
 
         assert result == pool.pool_id
@@ -363,6 +364,7 @@ class TestBasePool:
         pool = ConcreteTestPool(config)
 
         import asyncio
+
         result = asyncio.run(pool.execute_task({"prompt": "test"}))
 
         assert result["status"] == "completed"
@@ -374,6 +376,7 @@ class TestBasePool:
         pool = ConcreteTestPool(config)
 
         import asyncio
+
         tasks = [{"id": 1}, {"id": 2}, {"id": 3}]
         result = asyncio.run(pool.execute_batch(tasks))
 
@@ -392,6 +395,7 @@ class TestBasePool:
         pool = ConcreteTestPool(config)
 
         import asyncio
+
         # Should not raise
         asyncio.run(pool.scale(5))
 
@@ -406,6 +410,7 @@ class TestBasePool:
         pool = ConcreteTestPool(config)
 
         import asyncio
+
         with pytest.raises(ValueError):
             asyncio.run(pool.scale(1))  # Below min
 
@@ -418,6 +423,7 @@ class TestBasePool:
         pool = ConcreteTestPool(config)
 
         import asyncio
+
         result = asyncio.run(pool.health_check())
 
         assert result["pool_id"] == pool.pool_id
@@ -429,6 +435,7 @@ class TestBasePool:
         pool = ConcreteTestPool(config)
 
         import asyncio
+
         result = asyncio.run(pool.get_metrics())
 
         assert result.pool_id == pool.pool_id
@@ -442,6 +449,7 @@ class TestBasePool:
         pool = ConcreteTestPool(config)
 
         import asyncio
+
         result = asyncio.run(pool.collect_memory())
 
         assert len(result) == 1
@@ -454,6 +462,7 @@ class TestBasePool:
         pool = ConcreteTestPool(config)
 
         import asyncio
+
         # Should not raise
         asyncio.run(pool.stop())
 

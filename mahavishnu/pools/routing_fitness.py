@@ -7,8 +7,8 @@ best-performing selector for a given task class.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
+import re
 from typing import Any
 
 logger = __import__("logging").getLogger(__name__)
@@ -53,7 +53,7 @@ class FitnessSignal:
     component_count: int = 0
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "FitnessSignal":
+    def from_dict(cls, data: dict[str, Any]) -> FitnessSignal:
         """Reconstruct from a Dhara value dict."""
         return cls(
             score=float(data.get("score", 0.0)),
@@ -85,9 +85,7 @@ class RoutingFitnessReader:
         """
         self._dhara_state = dhara_state
 
-    async def get_fitness_signals(
-        self, task_class: str
-    ) -> dict[str, FitnessSignal]:
+    async def get_fitness_signals(self, task_class: str) -> dict[str, FitnessSignal]:
         """Return fitness signals for all selectors for a task class.
 
         Args:

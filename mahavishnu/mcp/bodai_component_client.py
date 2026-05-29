@@ -17,9 +17,8 @@ all session lifecycle correctly.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
-
 import logging
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from mcp.client.session import ClientSession
@@ -44,7 +43,7 @@ class BodaiComponentMCPClient:
         self,
         base_url: str,
         timeout: float = 30.0,
-        token: str | None            = None,
+        token: str | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
@@ -70,8 +69,8 @@ class BodaiComponentMCPClient:
         if self._session is not None:
             return
 
-        from mcp.client.streamable_http import streamable_http_client
         from mcp.client.session import ClientSession
+        from mcp.client.streamable_http import streamable_http_client
 
         http_client: Any = None
         if self._token:
@@ -143,11 +142,24 @@ class BodaiComponentMCPClient:
         return []
 
     async def aclose(self) -> None:
-        """Close the MCP session and transport."""
-        if self._session is not None:
-            await self._session.__aexit__(None, None, None)
-            self._session = None
-        if self._transport_context is not None:
-            await self._transport_context.__aexit__(None, None, None)
-            self._transport_context = None
+        """Close the MCP session and transport.
+
+        Note: Calling _transport_context.__aexit__() directly causes:
+        "RuntimeError: Attempted to exit cancel scope in a different task"
+        because the transport's task group is tied to the task that created it.
+        The MCP library has a known issue where async generator cleanup runs
+        in the wrong task during asyncio.run() shutdown.
+
+        For fire-and-forget use cases (like FitnessAnalyzer), we simply drop
+        references and let garbage collection handle cleanup. The RuntimeError
+        during shutdown is cosmetic and doesn't affect functionality since
+        all work is complete before the event loop exits.
+
+        For long-lived sessions that need explicit cleanup, a different
+        transport implementation would be needed.
+        """
+        # Drop all references to trigger garbage collection cleanup
+        # The RuntimeError during asyncio.shutdown is unavoidable with current MCP library
+        self._session = None
+        self._transport_context = None
         self._get_session_id = None

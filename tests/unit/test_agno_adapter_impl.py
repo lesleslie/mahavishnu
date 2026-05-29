@@ -18,9 +18,7 @@ from __future__ import annotations
 import asyncio
 import os
 import time
-from types import SimpleNamespace
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -31,27 +29,32 @@ from mahavishnu.core.config import (
     AgnoMemoryConfig,
     AgnoToolsConfig,
     LLMProvider,
-    MemoryBackend,
 )
 from mahavishnu.core.errors import (
     AgnoError,
     ConfigurationError,
     ErrorCode,
-    MahavishnuError,
 )
 from mahavishnu.engines.agno_adapter_impl import (
     AgentRunResult,
     AgnoAdapter,
-    AgnoLLMConfig as ImplAgnoLLMConfig,
-    AgnoMemoryConfig as ImplAgnoMemoryConfig,
-    AgnoToolsConfig as ImplAgnoToolsConfig,
     LLMProviderFactory,
     MCPToolsRegistry,
-    MemoryBackend as ImplMemoryBackend,
     NativeToolsRegistry,
     TeamRunResult,
 )
-
+from mahavishnu.engines.agno_adapter_impl import (
+    AgnoLLMConfig as ImplAgnoLLMConfig,
+)
+from mahavishnu.engines.agno_adapter_impl import (
+    AgnoMemoryConfig as ImplAgnoMemoryConfig,
+)
+from mahavishnu.engines.agno_adapter_impl import (
+    AgnoToolsConfig as ImplAgnoToolsConfig,
+)
+from mahavishnu.engines.agno_adapter_impl import (
+    MemoryBackend as ImplMemoryBackend,
+)
 
 # ============================================================================
 # Fixtures
@@ -672,6 +675,7 @@ class TestLLMProviderFactory:
                 call_kwargs = mock_cls.call_args[1]
                 assert call_kwargs["api_key"] == "custom-key"
 
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key-for-import-error"}, clear=True)
     def test_import_error_handling(self) -> None:
         """Test handling of import errors for LLM providers."""
         config = ImplAgnoLLMConfig(provider=LLMProvider.OPENAI)
@@ -1812,7 +1816,9 @@ class TestAgnoAdapterErrorHandling:
         assert exc_info.value.error_code == ErrorCode.AGNO_TOOL_EXECUTION_ERROR
 
     @pytest.mark.asyncio
-    async def test_initialize_with_mcp_failure_still_initializes(self, mock_settings: MagicMock) -> None:
+    async def test_initialize_with_mcp_failure_still_initializes(
+        self, mock_settings: MagicMock
+    ) -> None:
         """Test that initialize continues even if MCP tools fail to load."""
         adapter = AgnoAdapter(mock_settings)
 
@@ -1832,12 +1838,14 @@ class TestAgnoAdapterErrorHandling:
         with patch("agno.tools.mcp.MCPTools"):
             await adapter.initialize()
 
-        with patch(
-            "mahavishnu.engines.agno_adapter_impl.asyncio.gather",
-            side_effect=Exception("Gather failed"),
+        with (
+            patch(
+                "mahavishnu.engines.agno_adapter_impl.asyncio.gather",
+                side_effect=Exception("Gather failed"),
+            ),
+            pytest.raises(AgnoError, match="Agno execution failed"),
         ):
-            with pytest.raises(AgnoError, match="Agno execution failed"):
-                await adapter.execute(task={"type": "test"}, repos=["/repo"])
+            await adapter.execute(task={"type": "test"}, repos=["/repo"])
 
 
 # ============================================================================
@@ -1884,7 +1892,11 @@ class TestAgnoAdapterAPIURL:
         from mahavishnu.core.config import LLMProvider
         from mahavishnu.engines.agno_adapter_impl import (
             AgnoAdapterConfig as ImplAgnoAdapterConfig,
+        )
+        from mahavishnu.engines.agno_adapter_impl import (
             AgnoLLMConfig as ImplAgnoLLMConfig,
+        )
+        from mahavishnu.engines.agno_adapter_impl import (
             AgnoToolsConfig as ImplAgnoToolsConfig,
         )
 
@@ -1902,7 +1914,11 @@ class TestAgnoAdapterAPIURL:
         from mahavishnu.core.config import LLMProvider
         from mahavishnu.engines.agno_adapter_impl import (
             AgnoAdapterConfig as ImplAgnoAdapterConfig,
+        )
+        from mahavishnu.engines.agno_adapter_impl import (
             AgnoLLMConfig as ImplAgnoLLMConfig,
+        )
+        from mahavishnu.engines.agno_adapter_impl import (
             AgnoToolsConfig as ImplAgnoToolsConfig,
         )
 
@@ -2179,9 +2195,7 @@ class TestRetryBehavior:
     """Tests for retry-decorated methods."""
 
     @pytest.mark.asyncio
-    async def test_process_single_repo_retry_on_failure(
-        self, mock_settings: MagicMock
-    ) -> None:
+    async def test_process_single_repo_retry_on_failure(self, mock_settings: MagicMock) -> None:
         """Test that _process_single_repo retries on transient failures."""
         adapter = AgnoAdapter(mock_settings)
 
@@ -2232,9 +2246,7 @@ class TestAgentTeamManagerProperty:
         assert adapter.agent_team_manager is None
 
     @pytest.mark.asyncio
-    async def test_agent_team_manager_after_initialize(
-        self, mock_settings: MagicMock
-    ) -> None:
+    async def test_agent_team_manager_after_initialize(self, mock_settings: MagicMock) -> None:
         """Test agent_team_manager property after initialization."""
         adapter = AgnoAdapter(mock_settings)
 

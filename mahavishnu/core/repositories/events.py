@@ -11,17 +11,16 @@ Schema: audit.task_events
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from uuid import UUID
 import logging
 from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from uuid import UUID
-
-    pass
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
+
+if TYPE_CHECKING:
+    pass
 
 logger = logging.getLogger(__name__)
 

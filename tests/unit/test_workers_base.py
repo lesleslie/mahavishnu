@@ -186,7 +186,6 @@ class TestBaseWorker:
 
     def test_base_worker_has_required_abstract_methods(self):
         """Test that BaseWorker defines required abstract methods."""
-        from abc import abstractmethod
 
         # These are the 5 abstract methods defined in BaseWorker
         required_methods = [
@@ -212,6 +211,7 @@ class TestBaseWorker:
 
     def test_base_worker_init_sets_type(self):
         """Test that BaseWorker.__init__ sets worker_type via direct assignment."""
+
         # Create a minimal concrete subclass for this test
         class ConcreteWorker(BaseWorker):
             async def start(self) -> str:

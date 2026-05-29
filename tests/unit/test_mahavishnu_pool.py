@@ -1,12 +1,12 @@
 """Unit tests for MahavishnuPool class."""
 
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from mahavishnu.core.status import PoolStatus, WorkerStatus
-from mahavishnu.pools.mahavishnu_pool import MahavishnuPool
 from mahavishnu.pools.base import PoolConfig
+from mahavishnu.pools.mahavishnu_pool import MahavishnuPool
 from mahavishnu.workers.base import WorkerResult
 
 
@@ -111,9 +111,7 @@ class TestMahavishnuPool:
             assert "duration" in result
 
     @pytest.mark.asyncio
-    async def test_execute_task_tracks_stats_on_success(
-        self, mock_terminal_manager, pool_config
-    ):
+    async def test_execute_task_tracks_stats_on_success(self, mock_terminal_manager, pool_config):
         """Test execute_task() increments tasks_completed on success."""
         mock_result = WorkerResult(
             worker_id="worker-1",
@@ -144,9 +142,7 @@ class TestMahavishnuPool:
             assert pool._tasks_failed == 0
 
     @pytest.mark.asyncio
-    async def test_execute_task_tracks_stats_on_failure(
-        self, mock_terminal_manager, pool_config
-    ):
+    async def test_execute_task_tracks_stats_on_failure(self, mock_terminal_manager, pool_config):
         """Test execute_task() increments tasks_failed on failure."""
         mock_result = WorkerResult(
             worker_id="worker-1",
@@ -176,9 +172,7 @@ class TestMahavishnuPool:
             assert pool._tasks_completed == 0
 
     @pytest.mark.asyncio
-    async def test_execute_task_raises_when_no_workers(
-        self, mock_terminal_manager, pool_config
-    ):
+    async def test_execute_task_raises_when_no_workers(self, mock_terminal_manager, pool_config):
         """Test execute_task() raises when no workers available."""
         mock_wm = self._create_mock_worker_manager()
 
@@ -196,9 +190,7 @@ class TestMahavishnuPool:
                 await pool.execute_task({"prompt": "test"})
 
     @pytest.mark.asyncio
-    async def test_execute_batch_returns_results(
-        self, mock_terminal_manager, pool_config
-    ):
+    async def test_execute_batch_returns_results(self, mock_terminal_manager, pool_config):
         """Test execute_batch() returns result dictionary."""
         # Mock execute_batch to return task results keyed by worker_id
         mock_results = {
@@ -232,9 +224,7 @@ class TestMahavishnuPool:
             assert mock_wm.execute_batch.called
 
     @pytest.mark.asyncio
-    async def test_execute_batch_tracks_stats(
-        self, mock_terminal_manager, pool_config
-    ):
+    async def test_execute_batch_tracks_stats(self, mock_terminal_manager, pool_config):
         """Test execute_batch() tracks task statistics via result durations."""
         mock_results = {
             "worker-1": WorkerResult(
@@ -268,9 +258,7 @@ class TestMahavishnuPool:
             assert len(pool._task_durations) == 1  # only 1 result for 2 tasks
 
     @pytest.mark.asyncio
-    async def test_scale_raises_when_below_min(
-        self, mock_terminal_manager, pool_config
-    ):
+    async def test_scale_raises_when_below_min(self, mock_terminal_manager, pool_config):
         """Test scale() raises ValueError when target < min_workers."""
         mock_wm = self._create_mock_worker_manager()
 
@@ -288,9 +276,7 @@ class TestMahavishnuPool:
                 await pool.scale(0)  # min is 2
 
     @pytest.mark.asyncio
-    async def test_scale_raises_when_above_max(
-        self, mock_terminal_manager, pool_config
-    ):
+    async def test_scale_raises_when_above_max(self, mock_terminal_manager, pool_config):
         """Test scale() raises ValueError when target > max_workers."""
         mock_wm = self._create_mock_worker_manager()
 
@@ -308,9 +294,7 @@ class TestMahavishnuPool:
                 await pool.scale(10)  # max is 5
 
     @pytest.mark.asyncio
-    async def test_health_check_healthy(
-        self, mock_terminal_manager, pool_config
-    ):
+    async def test_health_check_healthy(self, mock_terminal_manager, pool_config):
         """Test health_check() returns healthy when workers meet min."""
         mock_wm = self._create_mock_worker_manager()
         mock_wm.health_check.return_value = {
@@ -335,9 +319,7 @@ class TestMahavishnuPool:
             assert health["workers_active"] == 2
 
     @pytest.mark.asyncio
-    async def test_health_check_degraded(
-        self, mock_terminal_manager, pool_config
-    ):
+    async def test_health_check_degraded(self, mock_terminal_manager, pool_config):
         """Test health_check() returns degraded when workers below min."""
         mock_wm = self._create_mock_worker_manager()
         mock_wm.health_check.return_value = {"status": "degraded", "workers_active": 0}
@@ -360,9 +342,7 @@ class TestMahavishnuPool:
             assert health["status"] == "degraded"
 
     @pytest.mark.asyncio
-    async def test_health_check_unhealthy(
-        self, mock_terminal_manager, pool_config
-    ):
+    async def test_health_check_unhealthy(self, mock_terminal_manager, pool_config):
         """Test health_check() returns unhealthy when no workers."""
         mock_wm = self._create_mock_worker_manager()
         mock_wm.health_check.return_value = {"status": "degraded", "workers_active": 0}
@@ -384,9 +364,7 @@ class TestMahavishnuPool:
             assert health["status"] == "unhealthy"
 
     @pytest.mark.asyncio
-    async def test_get_metrics_returns_pool_metrics(
-        self, mock_terminal_manager, pool_config
-    ):
+    async def test_get_metrics_returns_pool_metrics(self, mock_terminal_manager, pool_config):
         """Test get_metrics() returns PoolMetrics with stats."""
         mock_wm = self._create_mock_worker_manager()
         mock_wm.health_check.return_value = {
@@ -420,9 +398,7 @@ class TestMahavishnuPool:
             assert metrics.avg_task_duration == 2.0
 
     @pytest.mark.asyncio
-    async def test_get_metrics_empty_duration(
-        self, mock_terminal_manager, pool_config
-    ):
+    async def test_get_metrics_empty_duration(self, mock_terminal_manager, pool_config):
         """Test get_metrics() handles empty task durations."""
         mock_wm = self._create_mock_worker_manager()
         mock_wm.health_check.return_value = {
@@ -445,9 +421,7 @@ class TestMahavishnuPool:
             assert metrics.avg_task_duration == 0.0
 
     @pytest.mark.asyncio
-    async def test_collect_memory_returns_worker_results(
-        self, mock_terminal_manager, pool_config
-    ):
+    async def test_collect_memory_returns_worker_results(self, mock_terminal_manager, pool_config):
         """Test collect_memory() transforms worker results for Session-Buddy."""
         mock_results = {
             "worker-1": WorkerResult(
@@ -503,9 +477,7 @@ class TestMahavishnuPool:
             assert pool._status == PoolStatus.STOPPED
 
     @pytest.mark.asyncio
-    async def test_status_returns_current_status(
-        self, mock_terminal_manager, pool_config
-    ):
+    async def test_status_returns_current_status(self, mock_terminal_manager, pool_config):
         """Test status() returns current pool status."""
         mock_wm = self._create_mock_worker_manager()
 

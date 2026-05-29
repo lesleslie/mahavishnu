@@ -877,6 +877,7 @@ CREATE EXTENSION vector;
 ```
 
 This must be run against your PostgreSQL instance before using pgvector-backed storage. The extension enables:
+
 - `vector` data type
 - `FLOAT[n]` vector columns
 - `array_cosine_similarity()` and other vector functions
@@ -918,6 +919,7 @@ export AKOSHA__STORAGE__HOT__PG_URL=postgresql://postgres:secret@localhost:5432/
 ### Oneiric Naming Convention
 
 Oneiric uses `__` as the nested delimiter (not `_`). The correct env var names are:
+
 - `MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE` (not `MAHAVISHNU_OTEL_INGESTER_STORAGE_TYPE`)
 - `MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL` (not `MAHAVISHNU_OTEL_INGESTER_STORAGE_PG_URL`)
 
@@ -951,6 +953,7 @@ psql -U postgres -h localhost -d mahavishnu -c "CREATE EXTENSION vector;"
 **Issue: "connection refused"**
 
 Check that PostgreSQL is running and the port is correct:
+
 ```bash
 psql -U postgres -h localhost -p 5432 -c "SELECT 1;"
 ```
@@ -958,6 +961,7 @@ psql -U postgres -h localhost -p 5432 -c "SELECT 1;"
 **Issue: "password authentication failed"**
 
 Update `PG_URL` or set `PGPASSWORD` environment variable:
+
 ```bash
 export MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL=postgresql://postgres:yourpassword@localhost:5432/mahavishnu
 ```

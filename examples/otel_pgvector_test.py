@@ -140,7 +140,9 @@ async def test_pgvector() -> bool:
     trace = await ingester.get_trace_by_id("pg-trace-1")
     print(f"  Get by ID: {'found' if trace else 'not found'}")
     if trace:
-        print(f"    system_id={trace.get('metadata', {}).get('attributes', {}).get('service.name')}")
+        print(
+            f"    system_id={trace.get('metadata', {}).get('attributes', {}).get('service.name')}"
+        )
 
     await ingester.close()
     return result["success_count"] == 3

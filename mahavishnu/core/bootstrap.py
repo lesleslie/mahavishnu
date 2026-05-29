@@ -6,14 +6,17 @@ while preserving the existing initialization and recovery behavior.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
 import logging
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
 from .config import MahavishnuSettings
 from .errors import ConfigurationError
+
+if TYPE_CHECKING:
+    from .state_backends.dhara import DharaStateBackend
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +142,7 @@ def load_repos(app: Any) -> None:
 
 
 def _register_component_endpoint(
-    dhara_state: "DharaStateBackend | None", component_name: str, mcp_url: str
+    dhara_state: DharaStateBackend | None, component_name: str, mcp_url: str
 ) -> None:
     """Write this component's MCP endpoint URL to Dhara for Akosha to discover.
 
@@ -257,7 +260,6 @@ def _instantiate_adapters(app: Any, adapter_classes: dict[str, type], logger: An
 
 def initialize_adapters(app: Any) -> None:
     """Initialize enabled adapters based on configuration."""
-    import logging
 
     logger = logging.getLogger(__name__)
     adapter_classes = _collect_adapter_classes(app, logger)
@@ -297,7 +299,6 @@ def initialize_runtime_services(app: Any) -> None:
     """Initialize the remaining runtime services on the application."""
     from collections import deque
     from contextlib import suppress
-    import logging
 
     from ..qc.checker import QualityControl
     from ..session.checkpoint import SessionBuddy
@@ -469,8 +470,6 @@ def set_app_context(app: Any) -> None:
 
     set_context(llm_factory=llm_factory, agno_adapter=agno_adapter, app=app)  # type: ignore[arg-type]
 
-    import logging
-
     logger = logging.getLogger(__name__)
     if llm_factory or agno_adapter:
         logger.info(
@@ -482,7 +481,6 @@ def set_app_context(app: Any) -> None:
 
 def init_terminal_manager(app: Any) -> Any:
     """Initialize terminal manager with the current MCP client wiring."""
-    import logging
 
     logger = logging.getLogger(__name__)
     try:
@@ -506,7 +504,6 @@ def resolve_dhara_url(config: Any) -> str:
 
 def init_pool_manager(app: Any) -> Any:
     """Initialize pool manager with the configured routing and persistence."""
-    import logging
 
     logger = logging.getLogger(__name__)
     try:
@@ -535,7 +532,6 @@ def init_pool_manager(app: Any) -> Any:
 
 def init_memory_aggregator(app: Any) -> Any:
     """Initialize memory aggregator for cross-pool memory sync."""
-    import logging
 
     logger = logging.getLogger(__name__)
     try:
@@ -558,7 +554,6 @@ def init_memory_aggregator(app: Any) -> Any:
 
 def init_learning_pipeline(app: Any) -> Any:
     """Initialize the review-gated learning pipeline service."""
-    import logging
 
     logger = logging.getLogger(__name__)
     try:
@@ -585,8 +580,6 @@ async def recover_workflow_state_from_dhara(app: Any) -> None:
     if app._dhara_state is None:
         return
 
-    import logging
-
     logger = logging.getLogger(__name__)
     try:
         entries = await app._dhara_state.recover_workflows()
@@ -606,8 +599,6 @@ async def recover_approvals_from_dhara(app: Any) -> None:
     """Restore pending approvals from Dhara on startup."""
     if app._dhara_state is None:
         return
-
-    import logging
 
     logger = logging.getLogger(__name__)
     try:

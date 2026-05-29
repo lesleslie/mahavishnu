@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from pathlib import Path
 import sys
 import types
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-import yaml
 
 import mahavishnu.core.bootstrap as bootstrap
 from mahavishnu.core.bootstrap import (
@@ -21,7 +20,6 @@ from mahavishnu.core.bootstrap import (
     load_config,
 )
 from mahavishnu.core.errors import ConfigurationError
-
 
 # =============================================================================
 # Tests for _validate_path
@@ -146,9 +144,7 @@ class TestLoadRawYaml:
     def test_loads_valid_yaml_with_repos_structure(self, tmp_path):
         """Returns dict with 'repos' key as expected by config."""
         yaml_file = tmp_path / "ecosystem.yaml"
-        yaml_file.write_text(
-            "repos:\n  - path: /some/path\n    tags: [python]\nroles: []\n"
-        )
+        yaml_file.write_text("repos:\n  - path: /some/path\n    tags: [python]\nroles: []\n")
         result = _load_raw_yaml(yaml_file)
         assert "repos" in result
         assert len(result["repos"]) == 1
@@ -331,7 +327,9 @@ class TestComponentEndpointRegistration:
 
     def test_register_component_endpoint_sync_fallback(self, monkeypatch):
         """No running loop should use the sync fallback client."""
-        monkeypatch.setattr(asyncio, "get_running_loop", lambda: (_ for _ in ()).throw(RuntimeError("no loop")))
+        monkeypatch.setattr(
+            asyncio, "get_running_loop", lambda: (_ for _ in ()).throw(RuntimeError("no loop"))
+        )
 
         class FakeClient:
             def __init__(self, base_url):
@@ -343,7 +341,9 @@ class TestComponentEndpointRegistration:
                 return None
 
         fake_client = FakeClient("http://dhara")
-        monkeypatch.setattr("mahavishnu.core.dhara_adapter.DharaClient", lambda base_url: fake_client)
+        monkeypatch.setattr(
+            "mahavishnu.core.dhara_adapter.DharaClient", lambda base_url: fake_client
+        )
 
         def fake_run(coro):
             loop = asyncio.new_event_loop()
@@ -363,7 +363,10 @@ class TestComponentEndpointRegistration:
         bootstrap._register_component_endpoint(dhara_state, "mahavishnu", "http://localhost")
 
         assert fake_client.put_calls == [
-            ("component_endpoint/mahavishnu", {"url": "http://localhost", "registered_by": "mahavishnu"})
+            (
+                "component_endpoint/mahavishnu",
+                {"url": "http://localhost", "registered_by": "mahavishnu"},
+            )
         ]
 
 
@@ -372,7 +375,11 @@ class TestHealthEndpointBootstrap:
 
     def test_init_health_endpoint_disabled(self):
         """Disabled health config should return None."""
-        app = type("App", (), {"config": type("Config", (), {"health": type("Health", (), {"enabled": False})()})()})()
+        app = type(
+            "App",
+            (),
+            {"config": type("Config", (), {"health": type("Health", (), {"enabled": False})()})()},
+        )()
 
         assert bootstrap.init_health_endpoint(app) is None
 
@@ -406,13 +413,17 @@ class TestBootstrapDeepHelpers:
         yaml_file = tmp_path / "ecosystem.yaml"
         yaml_file.write_text("repos: []\n")
 
-        monkeypatch.setattr(bootstrap, "_load_raw_yaml", lambda path: (_ for _ in ()).throw(ValueError("boom")))
+        monkeypatch.setattr(
+            bootstrap, "_load_raw_yaml", lambda path: (_ for _ in ()).throw(ValueError("boom"))
+        )
 
         with pytest.raises(ConfigurationError, match="Failed to load ecosystem.yaml"):
             bootstrap._parse_repos_config_file(yaml_file)
 
     def test_register_component_endpoint_sync_failure_logs_warning(self, monkeypatch, caplog):
-        monkeypatch.setattr(asyncio, "get_running_loop", lambda: (_ for _ in ()).throw(RuntimeError("no loop")))
+        monkeypatch.setattr(
+            asyncio, "get_running_loop", lambda: (_ for _ in ()).throw(RuntimeError("no loop"))
+        )
 
         fake_module = types.ModuleType("mahavishnu.core.dhara_adapter")
 
@@ -544,9 +555,15 @@ class TestBootstrapDeepHelpers:
         worker_adapter = SimpleNamespace(worker_manager=worker_manager)
 
         monkeypatch.setattr(bootstrap, "_collect_adapter_classes", lambda app, logger: {})
-        monkeypatch.setattr(bootstrap, "_instantiate_adapters", lambda app, adapter_classes, logger: app.adapters.update({"worker": worker_adapter}))
+        monkeypatch.setattr(
+            bootstrap,
+            "_instantiate_adapters",
+            lambda app, adapter_classes, logger: app.adapters.update({"worker": worker_adapter}),
+        )
 
-        app = SimpleNamespace(config=SimpleNamespace(workers=SimpleNamespace(enabled=True)), adapters={})
+        app = SimpleNamespace(
+            config=SimpleNamespace(workers=SimpleNamespace(enabled=True)), adapters={}
+        )
         bootstrap.initialize_adapters(app)
 
         assert app._worker_manager is worker_manager
@@ -611,7 +628,12 @@ class TestBootstrapDeepHelpers:
 
         class FakePoolManager:
             def __init__(self, terminal_manager, session_buddy_client, message_bus, dhara_state):
-                captured["init"] = (terminal_manager, session_buddy_client, message_bus, dhara_state)
+                captured["init"] = (
+                    terminal_manager,
+                    session_buddy_client,
+                    message_bus,
+                    dhara_state,
+                )
                 self.selector = None
 
             def set_pool_selector(self, selector):
@@ -621,14 +643,18 @@ class TestBootstrapDeepHelpers:
         fake_message_bus_module.MessageBus = FakeMessageBus
         fake_pools_module.PoolManager = FakePoolManager
         fake_pools_module.PoolSelector = FakePoolSelector
-        monkeypatch.setitem(sys.modules, "mahavishnu.mcp.protocols.message_bus", fake_message_bus_module)
+        monkeypatch.setitem(
+            sys.modules, "mahavishnu.mcp.protocols.message_bus", fake_message_bus_module
+        )
         monkeypatch.setitem(sys.modules, "mahavishnu.pools.manager", fake_pools_module)
 
         app = SimpleNamespace(
             terminal_manager="term",
             session_buddy="buddy",
             _dhara_state="dhara",
-            config=SimpleNamespace(pools=SimpleNamespace(routing_strategy="least_loaded", default_type="mahavishnu")),
+            config=SimpleNamespace(
+                pools=SimpleNamespace(routing_strategy="least_loaded", default_type="mahavishnu")
+            ),
         )
 
         pool_manager = bootstrap.init_pool_manager(app)
@@ -714,7 +740,9 @@ class TestBootstrapDeepHelpers:
                 list_prefix=AsyncMock(return_value=[{"id": "a"}]),
             ),
             active_workflows=set(),
-            approval_manager=SimpleNamespace(restore_from_dhara_entries=lambda entries: len(entries)),
+            approval_manager=SimpleNamespace(
+                restore_from_dhara_entries=lambda entries: len(entries)
+            ),
         )
 
         with caplog.at_level(logging.INFO):
@@ -809,7 +837,9 @@ class TestBootstrapDeepHelpers:
         install("mahavishnu.session.checkpoint", SessionBuddy=_NoOp)
         install("mahavishnu.messaging.repository_messenger", RepositoryMessenger=_NoOp)
         install("mahavishnu.core.approval_manager", ApprovalManager=_NoOp)
-        install("mahavishnu.core.backup_recovery", BackupManager=_NoOp, DisasterRecoveryManager=_NoOp)
+        install(
+            "mahavishnu.core.backup_recovery", BackupManager=_NoOp, DisasterRecoveryManager=_NoOp
+        )
         install("mahavishnu.core.coordination.manager", CoordinationManager=_NoOp)
         install(
             "mahavishnu.core.coordination.memory",
@@ -819,6 +849,7 @@ class TestBootstrapDeepHelpers:
         install("mahavishnu.core.monitoring", MonitoringService=_NoOp)
         install("mahavishnu.core.opensearch_integration", OpenSearchIntegration=_NoOp)
         install("mahavishnu.core.repo_manager", RepositoryManager=_NoOp)
+
         class RetryExhaustedError(Exception):
             pass
 
@@ -838,9 +869,12 @@ class TestBootstrapDeepHelpers:
         )
         install("mahavishnu.core.skill_registry", SkillRegistry=_NoOp)
         install("mahavishnu.core.learning_pipeline", LearningPipelineService=_NoOp)
-        install("mahavishnu.core.state_backends.dhara", DharaStateBackend=_NoOp, DharaStateConfig=_NoOp)
+        install(
+            "mahavishnu.core.state_backends.dhara", DharaStateBackend=_NoOp, DharaStateConfig=_NoOp
+        )
 
         routing_metrics_module = types.ModuleType("mahavishnu.core.routing_metrics")
+
         class RoutingMetrics:
             pass
 
@@ -850,7 +884,9 @@ class TestBootstrapDeepHelpers:
 
         session_poller_module = types.ModuleType("mahavishnu.integrations.session_buddy_poller")
         session_poller_module.SessionBuddyPoller = _NoOp
-        monkeypatch.setitem(sys.modules, "mahavishnu.integrations.session_buddy_poller", session_poller_module)
+        monkeypatch.setitem(
+            sys.modules, "mahavishnu.integrations.session_buddy_poller", session_poller_module
+        )
 
         app = SimpleNamespace(
             config=SimpleNamespace(
@@ -921,7 +957,9 @@ class TestBootstrapDeepHelpers:
         install("mahavishnu.session.checkpoint", SessionBuddy=_NoOp)
         install("mahavishnu.messaging.repository_messenger", RepositoryMessenger=_Boom)
         install("mahavishnu.core.approval_manager", ApprovalManager=_NoOp)
-        install("mahavishnu.core.backup_recovery", BackupManager=_NoOp, DisasterRecoveryManager=_NoOp)
+        install(
+            "mahavishnu.core.backup_recovery", BackupManager=_NoOp, DisasterRecoveryManager=_NoOp
+        )
         install("mahavishnu.core.coordination.manager", CoordinationManager=_NoOp)
         install(
             "mahavishnu.core.coordination.memory",
@@ -934,7 +972,9 @@ class TestBootstrapDeepHelpers:
         install("mahavishnu.core.resilience", ErrorRecoveryManager=_NoOp, ResiliencePatterns=_NoOp)
         install("mahavishnu.core.skill_registry", SkillRegistry=_NoOp)
         install("mahavishnu.core.learning_pipeline", LearningPipelineService=_NoOp)
-        install("mahavishnu.core.state_backends.dhara", DharaStateBackend=_NoOp, DharaStateConfig=_NoOp)
+        install(
+            "mahavishnu.core.state_backends.dhara", DharaStateBackend=_NoOp, DharaStateConfig=_NoOp
+        )
         install("mahavishnu.integrations.session_buddy_poller", SessionBuddyPoller=_Boom)
 
         monkeypatch.setitem(sys.modules, "mahavishnu.core.routing_metrics", None)
@@ -972,7 +1012,9 @@ class TestBootstrapDeepHelpers:
             adapters={},
             dhara_url="http://dhara",
             active_workflows=set(),
-            approval_manager=SimpleNamespace(restore_from_dhara_entries=lambda entries: len(entries)),
+            approval_manager=SimpleNamespace(
+                restore_from_dhara_entries=lambda entries: len(entries)
+            ),
         )
         (tmp_path / "ecosystem.yaml").write_text("repos: []\n")
 
@@ -1002,7 +1044,9 @@ class TestBootstrapDeepHelpers:
         install("mahavishnu.session.checkpoint", SessionBuddy=_NoOp)
         install("mahavishnu.messaging.repository_messenger", RepositoryMessenger=_NoOp)
         install("mahavishnu.core.approval_manager", ApprovalManager=_NoOp)
-        install("mahavishnu.core.backup_recovery", BackupManager=_NoOp, DisasterRecoveryManager=_NoOp)
+        install(
+            "mahavishnu.core.backup_recovery", BackupManager=_NoOp, DisasterRecoveryManager=_NoOp
+        )
         install("mahavishnu.core.coordination.manager", CoordinationManager=_NoOp)
         install(
             "mahavishnu.core.coordination.memory",
@@ -1022,10 +1066,14 @@ class TestBootstrapDeepHelpers:
         )
         install("mahavishnu.core.skill_registry", SkillRegistry=_NoOp)
         install("mahavishnu.core.learning_pipeline", LearningPipelineService=_NoOp)
-        install("mahavishnu.core.state_backends.dhara", DharaStateBackend=_NoOp, DharaStateConfig=_NoOp)
+        install(
+            "mahavishnu.core.state_backends.dhara", DharaStateBackend=_NoOp, DharaStateConfig=_NoOp
+        )
         install("mahavishnu.integrations.session_buddy_poller", SessionBuddyPoller=_NoOp)
 
-        routing_metrics_module = install("mahavishnu.core.routing_metrics", RoutingMetrics=type("RoutingMetrics", (), {}))
+        routing_metrics_module = install(
+            "mahavishnu.core.routing_metrics", RoutingMetrics=type("RoutingMetrics", (), {})
+        )
         routing_metrics_module.get_routing_metrics = lambda name: {"name": name}
         monkeypatch.setattr(bootstrap, "_register_component_endpoint", lambda *args, **kwargs: None)
         monkeypatch.setattr(bootstrap, "_validate_path", lambda path: Path(tmp_path))
@@ -1061,7 +1109,9 @@ class TestBootstrapDeepHelpers:
             adapters={},
             dhara_url=None,
             active_workflows=set(),
-            approval_manager=SimpleNamespace(restore_from_dhara_entries=lambda entries: len(entries)),
+            approval_manager=SimpleNamespace(
+                restore_from_dhara_entries=lambda entries: len(entries)
+            ),
         )
         (tmp_path / "ecosystem.yaml").write_text("repos: []\n")
 

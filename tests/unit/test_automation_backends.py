@@ -10,17 +10,16 @@ Tests cover:
 from __future__ import annotations
 
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mahavishnu.automation.backends.atomac import ATOMacBackend
 from mahavishnu.automation.backends.base import DesktopAutomationBackend
 from mahavishnu.automation.backends.pyautogui import PyAutoGUIBackend
 from mahavishnu.automation.backends.pyxa import PyXABackend
-from mahavishnu.automation.backends.atomac import ATOMacBackend
 from mahavishnu.automation.errors import (
     AutomationError,
-    ScreenshotError,
 )
 
 

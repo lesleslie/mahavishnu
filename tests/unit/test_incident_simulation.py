@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-from datetime import UTC, datetime
 from io import StringIO
 import sys
 
@@ -12,7 +10,6 @@ import pytest
 from mahavishnu.testing.incident_simulation import (
     INCIDENT_SCENARIOS,
     IncidentPhase,
-    IncidentScenario,
     IncidentSeverity,
     IncidentSimulator,
     SimulationReport,
@@ -117,9 +114,13 @@ class TestIncidentScenario:
             assert scenario.description, f"Scenario {scenario_id} missing description"
             assert scenario.severity, f"Scenario {scenario_id} missing severity"
             assert scenario.symptoms, f"Scenario {scenario_id} missing symptoms"
-            assert scenario.affected_components, f"Scenario {scenario_id} missing affected_components"
+            assert scenario.affected_components, (
+                f"Scenario {scenario_id} missing affected_components"
+            )
             assert scenario.runbook_reference, f"Scenario {scenario_id} missing runbook_reference"
-            assert scenario.expected_mitigation_time_minutes > 0, f"Scenario {scenario_id} missing mitigation time"
+            assert scenario.expected_mitigation_time_minutes > 0, (
+                f"Scenario {scenario_id} missing mitigation time"
+            )
 
 
 class TestSimulationResult:
@@ -436,8 +437,8 @@ class TestMain:
     @pytest.mark.asyncio
     async def test_main_list_scenarios(self):
         """Test main() with --list flag returns 0."""
+
         from mahavishnu.testing.incident_simulation import main
-        import argparse
 
         # Capture stdout
         captured = StringIO()

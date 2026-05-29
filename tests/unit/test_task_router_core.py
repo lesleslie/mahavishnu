@@ -483,7 +483,9 @@ def test_state_manager_load_and_persist_error_branches(
     state_mgr = tr.StateManager(state_dir=bad_state_dir)
     assert state_mgr._workflows == {}
 
-    monkeypatch.setattr(tr.Path, "mkdir", lambda *args, **kwargs: (_ for _ in ()).throw(OSError("boom")))
+    monkeypatch.setattr(
+        tr.Path, "mkdir", lambda *args, **kwargs: (_ for _ in ()).throw(OSError("boom"))
+    )
     state_mgr._persist()
 
     loaded = tr.StateManager(state_dir=tmp_path / "missing")

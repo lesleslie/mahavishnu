@@ -2,7 +2,7 @@
 
 Copy and paste this prompt into a new Claude Code session to continue debugging:
 
----
+______________________________________________________________________
 
 ## Context
 
@@ -35,36 +35,43 @@ Debug why the official MCP client transport doesn't work while direct httpx does
 ### Key files to examine
 
 1. **Client transport** (in Mahavishnu's venv):
+
    ```
    /Users/les/Projects/mahavishnu/.venv/lib/python3.13/site-packages/mcp/client/streamable_http.py
    ```
+
    Specifically the `_maybe_extract_session_id_from_response()` method at line 173 and how the session_id is propagated.
 
-2. **Server session manager** (in Akosha's venv):
+1. **Server session manager** (in Akosha's venv):
+
    ```
    /Users/les/Projects/akosha/.venv/lib/python3.13/site-packages/mcp/server/streamable_http_manager.py
    ```
+
    How it handles the initialize request and returns the session ID header.
 
-3. **Mahavishnu client**:
+1. **Mahavishnu client**:
+
    ```
    /Users/les/Projects/mahavishnu/mahavishnu/mcp/bodai_component_client.py
    ```
+
    The client code (this works with direct httpx, so focus on the MCP client library integration).
 
 ### Debugging Steps to Try
 
 1. **Add debug logging** to `streamable_http.py` around session ID extraction to trace what's happening
 
-2. **Check the timing** - is the session ID being extracted but then overwritten/lost before `get_session_id()` is called?
+1. **Check the timing** - is the session ID being extracted but then overwritten/lost before `get_session_id()` is called?
 
-3. **Compare the two approaches**:
+1. **Compare the two approaches**:
+
    - Working: direct httpx POST → extract header → use session ID
    - Not working: streamable_http_client → __aenter__() → get_session_id() returns None
 
-4. **Check for anyio task group issues** - the `post_writer` task runs in a different task than the main code. Could there be a race condition?
+1. **Check for anyio task group issues** - the `post_writer` task runs in a different task than the main code. Could there be a race condition?
 
-5. **Verify the initialized notification** is being sent correctly after initialize()
+1. **Verify the initialized notification** is being sent correctly after initialize()
 
 ### Test Script
 
@@ -97,7 +104,7 @@ The `streamable_http_client()` yields `(read_stream, write_stream, get_session_i
 ### Known Fixes Applied Earlier
 
 1. Fixed `register_otel_query_tools` in Akosha to accept `app` instead of `registry`
-2. Updated the call site in `__init__.py`
+1. Updated the call site in `__init__.py`
 
 ### Environment
 
@@ -122,7 +129,7 @@ curl -X POST http://localhost:8682/mcp \
   -i
 ```
 
----
+______________________________________________________________________
 
 ## Notes
 

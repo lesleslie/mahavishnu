@@ -630,3 +630,172 @@ class TestSecurityEdgeCases:
         result = validator.validate_path(deep_dir)
 
         assert result == deep_dir.resolve()
+
+
+class TestValidatorsAdditionalBranches:
+    def test_validate_path_resolves_relative_parent_fallback(self, monkeypatch):
+        validator = PathValidator()
+        path = Path("/tmp/missing-parent/file.txt")
+        parent = path.parent
+        calls = {"count": 0}
+
+        def fake_resolve(self, strict=False):  # noqa: ANN001,ANN003
+            if self == path:
+                calls["count"] += 1
+                if calls["count"] == 1:
+                    raise FileNotFoundError("missing path")
+                return path
+            if self == parent and strict:
+                return Path("/tmp/missing-parent")
+            return self
+
+        monkeypatch.setattr(Path, "resolve", fake_resolve, raising=True)
+
+        result = validator._resolve_path_safely(path, must_exist=False)
+        assert result == path
+
+    def test_validate_path_resolves_parent_missing_fallback(self, monkeypatch):
+        validator = PathValidator()
+        path = Path("/tmp/missing-parent/file.txt")
+        parent = path.parent
+        calls = {"count": 0}
+
+        def fake_resolve(self, strict=False):  # noqa: ANN001,ANN003
+            if self == path:
+                calls["count"] += 1
+                if calls["count"] == 1:
+                    raise FileNotFoundError("missing path")
+                return path
+            if self == parent and strict:
+                raise FileNotFoundError("missing parent")
+            return self
+
+        monkeypatch.setattr(Path, "resolve", fake_resolve, raising=True)
+
+        result = validator._resolve_path_safely(path, must_exist=False)
+        assert result == path
+
+    def test_is_path_within_base_handles_resolution_errors(self, monkeypatch):
+        validator = PathValidator()
+
+        def fake_resolve(self, strict=False):  # noqa: ANN001,ANN003
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(Path, "resolve", fake_resolve, raising=True)
+
+        assert validator._is_path_within_base(Path("/tmp/a"), Path("/tmp")) is False
+
+    def test_validate_path_rejects_normalized_parent_reference(self, monkeypatch):
+        validator = PathValidator()
+        monkeypatch.setattr(
+            validator,
+            "_resolve_path_safely",
+            lambda path_obj, must_exist: Path("../escape"),  # noqa: ARG005
+            raising=True,
+        )
+
+        with pytest.raises(PathValidationError, match="parent directory references"):
+            validator.validate_path("/tmp/test.txt")
+
+    def test_check_path_format_rejects_double_slash(self):
+        validator = PathValidator()
+        with pytest.raises(PathValidationError, match="Invalid path format"):
+            validator._check_path_format("/tmp//test.txt")
+
+    def test_validate_path_wraps_unexpected_exception(self, monkeypatch):
+        validator = PathValidator()
+        monkeypatch.setattr(validator, "_check_path_format", lambda path_str: None, raising=True)
+
+        def boom(*args, **kwargs):  # noqa: ANN001,ANN002
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(validator, "_resolve_path_safely", boom, raising=True)
+
+        with pytest.raises(PathValidationError, match="Unexpected validation error"):
+            validator.validate_path("/tmp/test.txt")
+
+    def test_validate_repository_path_unreadable(self, tmp_path, monkeypatch):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (repo / ".git").mkdir()
+        validator = PathValidator()
+        monkeypatch.setattr(os, "access", lambda path, mode: False, raising=True)
+
+        with pytest.raises(PathValidationError, match="not readable"):
+            validator.validate_repository_path(repo)
+
+    def test_validate_repository_path_wraps_unexpected_exception(self, tmp_path, monkeypatch):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        validator = PathValidator()
+        monkeypatch.setattr(
+            validator,
+            "validate_path",
+            lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
+            raising=True,
+        )
+
+        with pytest.raises(PathValidationError, match="Repository validation failed"):
+            validator.validate_repository_path(repo)
+
+    def test_sanitize_filename_empty_and_long_without_extension(self):
+        assert PathValidator.sanitize_filename("   .   ") == "unnamed"
+        assert len(PathValidator.sanitize_filename("b" * 300)) == 255
+
+    def test_validate_write_operation_missing_parent(self, tmp_path):
+        validator = PathValidator()
+        target = tmp_path / "missing" / "file.txt"
+
+        with pytest.raises(PathValidationError, match="Parent directory does not exist"):
+            validator.validate_file_operation(target, "write")
+
+    def test_validate_write_operation_parent_not_writable(self, tmp_path, monkeypatch):
+        parent = tmp_path / "readonly"
+        parent.mkdir()
+        target = parent / "file.txt"
+        validator = PathValidator()
+
+        def fake_access(path, mode):  # noqa: ANN001,ANN002
+            return path != parent
+
+        monkeypatch.setattr(os, "access", fake_access, raising=True)
+
+        with pytest.raises(PathValidationError, match="Write permission denied"):
+            validator.validate_file_operation(target, "write")
+
+    def test_validate_delete_operation_permission_denied(self, tmp_path, monkeypatch):
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("test")
+        validator = PathValidator()
+        monkeypatch.setattr(os, "access", lambda path, mode: False, raising=True)
+
+        with pytest.raises(PathValidationError, match="Delete permission denied"):
+            validator.validate_file_operation(test_file, "delete")
+
+    def test_validate_execute_operation_missing_bits(self, tmp_path, monkeypatch):
+        test_file = tmp_path / "script.sh"
+        test_file.write_text("#!/bin/sh\necho test")
+        test_file.chmod(0o755)
+        validator = PathValidator()
+
+        class _Stat:
+            st_mode = 0
+
+        orig_is_file = Path.is_file
+        orig_stat = Path.stat
+
+        def fake_is_file(self, *args, **kwargs):  # noqa: ANN001,ANN003
+            if self == test_file:
+                return True
+            return orig_is_file(self, *args, **kwargs)
+
+        def fake_stat(self, *args, **kwargs):  # noqa: ANN001,ANN003
+            if self == test_file:
+                return _Stat()
+            return orig_stat(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "is_file", fake_is_file, raising=True)
+        monkeypatch.setattr(Path, "stat", fake_stat, raising=True)
+
+        with pytest.raises(PathValidationError, match="not marked as executable"):
+            validator.validate_file_operation(test_file, "execute")

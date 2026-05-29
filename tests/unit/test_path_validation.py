@@ -5,7 +5,6 @@ from pathlib import Path
 import pytest
 
 from mahavishnu.core.code_index.path_validation import (
-    get_registered_repos,
     validate_repo_path,
 )
 
@@ -57,8 +56,9 @@ def test_get_registered_repos_empty_file(tmp_path, monkeypatch):
     original_get_registered_repos = pv.get_registered_repos
 
     def mock_get_registered_repos():
-        import yaml
         from pathlib import Path
+
+        import yaml
 
         manifest_path = tmp_path / "ecosystem.yaml"
         data = yaml.safe_load(manifest_path.read_text())
@@ -93,8 +93,9 @@ def test_get_registered_repos_filters_missing_path(tmp_path, monkeypatch):
     )
 
     def mock_get_registered_repos():
-        import yaml
         from pathlib import Path
+
+        import yaml
 
         manifest_path = tmp_path / "ecosystem.yaml"
         data = yaml.safe_load(manifest_path.read_text())

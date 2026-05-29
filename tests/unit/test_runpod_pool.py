@@ -106,11 +106,13 @@ class TestBuildEndpoint:
 
         def mock_endpoint_decorator(*args, **kwargs):
             endpoint_calls.append({"args": args, "kwargs": kwargs})
+
             # Return a callable that, when invoked with a function, returns that function
             def decorator(fn):
                 nonlocal captured_fn
                 captured_fn = fn
                 return fn
+
             return decorator
 
         mock_gpu = MagicMock()
@@ -147,10 +149,12 @@ class TestStart:
 
         def mock_endpoint_decorator(*args, **kwargs):
             endpoint_calls.append({"args": args, "kwargs": kwargs})
+
             def decorator(fn):
                 nonlocal captured_fn
                 captured_fn = fn
                 return fn
+
             return decorator
 
         mock_gpu = MagicMock()
@@ -172,14 +176,16 @@ class TestStart:
         mock_gpu = MagicMock()
         mock_gpu.NVIDIA_GEFORCE_RTX_4090 = "NVIDIA_GEFORCE_RTX_4090"
 
-        with patch(
-            "mahavishnu.pools.runpod_pool.Endpoint",
-            MagicMock(side_effect=RuntimeError("registration failed")),
+        with (
+            patch(
+                "mahavishnu.pools.runpod_pool.Endpoint",
+                MagicMock(side_effect=RuntimeError("registration failed")),
+            ),
+            patch("mahavishnu.pools.runpod_pool.GpuType", mock_gpu),
         ):
-            with patch("mahavishnu.pools.runpod_pool.GpuType", mock_gpu):
-                with pytest.raises(RuntimeError, match="registration failed"):
-                    await pool.start()
-                assert pool._status == PoolStatus.FAILED
+            with pytest.raises(RuntimeError, match="registration failed"):
+                await pool.start()
+            assert pool._status == PoolStatus.FAILED
 
 
 # ---------------------------------------------------------------------------
@@ -271,11 +277,13 @@ class TestExecuteBatch:
         pool = RunPodPool(config=cfg)
         pool._status = PoolStatus.RUNNING
 
-        pool._endpoint = AsyncMock(side_effect=[
-            {"result": "r1"},
-            {"result": "r2"},
-            {"result": "r3"},
-        ])
+        pool._endpoint = AsyncMock(
+            side_effect=[
+                {"result": "r1"},
+                {"result": "r2"},
+                {"result": "r3"},
+            ]
+        )
 
         results = await pool.execute_batch([{"prompt": "a"}, {"prompt": "b"}, {"prompt": "c"}])
         assert len(results) == 3
@@ -289,11 +297,13 @@ class TestExecuteBatch:
         pool = RunPodPool(config=cfg)
         pool._status = PoolStatus.RUNNING
 
-        pool._endpoint = AsyncMock(side_effect=[
-            {"result": "ok"},
-            TimeoutError("timeout"),
-            {"result": "done"},
-        ])
+        pool._endpoint = AsyncMock(
+            side_effect=[
+                {"result": "ok"},
+                TimeoutError("timeout"),
+                {"result": "done"},
+            ]
+        )
 
         results = await pool.execute_batch([{}, {}, {}])
         assert results["0"]["status"] == "completed"

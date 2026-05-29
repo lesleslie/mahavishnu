@@ -9,7 +9,6 @@ Tests cover:
 
 from __future__ import annotations
 
-from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -83,13 +82,11 @@ class TestAutomationManager:
         """initialize raises when no backend available."""
         manager = AutomationManager()
 
-        with patch(
-            "mahavishnu.automation.manager.PyXABackend"
-        ) as mock_pyxa, patch(
-            "mahavishnu.automation.manager.ATOMacBackend"
-        ) as mock_atomac, patch(
-            "mahavishnu.automation.manager.PyAutoGUIBackend"
-        ) as mock_pyautogui:
+        with (
+            patch("mahavishnu.automation.manager.PyXABackend") as mock_pyxa,
+            patch("mahavishnu.automation.manager.ATOMacBackend") as mock_atomac,
+            patch("mahavishnu.automation.manager.PyAutoGUIBackend") as mock_pyautogui,
+        ):
             mock_pyxa.is_available.return_value = False
             mock_atomac.is_available.return_value = False
             mock_pyautogui.is_available.return_value = False
@@ -102,11 +99,10 @@ class TestAutomationManager:
         """initialize raises when permissions not granted."""
         manager = AutomationManager()
 
-        with patch(
-            "mahavishnu.automation.manager.PermissionChecker"
-        ) as mock_perm_cls, patch(
-            "mahavishnu.automation.manager.PyXABackend"
-        ) as mock_pyxa:
+        with (
+            patch("mahavishnu.automation.manager.PermissionChecker") as mock_perm_cls,
+            patch("mahavishnu.automation.manager.PyXABackend") as mock_pyxa,
+        ):
             mock_perm = MagicMock()
             mock_perm.check_accessibility.return_value = False
             mock_perm.request_accessibility.return_value = False
@@ -134,11 +130,10 @@ class TestAutomationManager:
         manager = AutomationManager()
         manager.preferred_backend = "auto"
 
-        with patch(
-            "mahavishnu.automation.manager.PyXABackend"
-        ) as mock_pyxa, patch(
-            "mahavishnu.automation.manager.ATOMacBackend"
-        ) as mock_atomac:
+        with (
+            patch("mahavishnu.automation.manager.PyXABackend") as mock_pyxa,
+            patch("mahavishnu.automation.manager.ATOMacBackend") as mock_atomac,
+        ):
             mock_pyxa.is_available.return_value = False
             mock_atomac.is_available.return_value = True
             mock_atomac_instance = MagicMock()
@@ -154,9 +149,7 @@ class TestAutomationManager:
         manager = AutomationManager()
         manager.preferred_backend = "pyautogui"
 
-        with patch(
-            "mahavishnu.automation.manager.PyAutoGUIBackend"
-        ) as mock_pyautogui:
+        with patch("mahavishnu.automation.manager.PyAutoGUIBackend") as mock_pyautogui:
             mock_pyautogui.is_available.return_value = True
             mock_pyautogui_instance = MagicMock()
             mock_pyautogui_instance.backend_name = "pyautogui"
@@ -172,9 +165,7 @@ class TestAutomationManager:
         manager = AutomationManager()
         manager.preferred_backend = "unknown_backend"
 
-        with patch(
-            "mahavishnu.automation.manager.PyXABackend"
-        ) as mock_pyxa:
+        with patch("mahavishnu.automation.manager.PyXABackend") as mock_pyxa:
             mock_pyxa.is_available.return_value = False
 
             manager._select_backend()
@@ -300,9 +291,7 @@ class TestAutomationManagerSecurity:
         mock_backend.backend_name = "test"
         manager._backend = mock_backend
         manager._security = MagicMock()
-        manager._security.validate_app.side_effect = BlockedAppError(
-            "com.apple.loginwindow"
-        )
+        manager._security.validate_app.side_effect = BlockedAppError("com.apple.loginwindow")
 
         with pytest.raises(BlockedAppError):
             await manager.launch_application("com.apple.loginwindow")
@@ -358,9 +347,7 @@ class TestAutomationManagerOperations:
 
         await manager.quit_application("com.apple.finder", force=True)
 
-        mock_backend.quit_application.assert_called_once_with(
-            "com.apple.finder", force=True
-        )
+        mock_backend.quit_application.assert_called_once_with("com.apple.finder", force=True)
 
     @pytest.mark.asyncio
     async def test_type_text(self):
@@ -471,9 +458,7 @@ class TestAutomationManagerContextManager:
         """__aenter__ initializes, __aexit__ cleans up."""
         manager = AutomationManager()
 
-        with patch(
-            "mahavishnu.automation.manager.PyXABackend"
-        ) as mock_pyxa:
+        with patch("mahavishnu.automation.manager.PyXABackend") as mock_pyxa:
             mock_pyxa.is_available.return_value = True
             mock_pyxa_instance = MagicMock()
             mock_pyxa_instance.backend_name = "pyxa"

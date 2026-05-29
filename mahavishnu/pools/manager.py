@@ -12,10 +12,9 @@ from monitoring.metrics import pool_workers_active
 
 from ..mcp.protocols.message_bus import MessageBus
 from .base import BasePool, PoolConfig
-from .fitness_analyzer import FitnessAnalyzer
 from .kubernetes_pool import KubernetesPool
 from .mahavishnu_pool import MahavishnuPool
-from .routing_fitness import FitnessSignal, RoutingFitnessReader
+from .routing_fitness import RoutingFitnessReader
 from .runpod_pool import RunPodPool
 from .session_buddy_pool import SessionBuddyPool
 

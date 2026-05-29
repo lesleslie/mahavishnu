@@ -69,8 +69,8 @@ otel_storage:
 
 # OpenTelemetry trace ingester with Akosha HotStore (DuckDB)
 otel_ingester:
-  enabled: false  # Set to true to enable OTel ingester
-  hot_store_path: ":memory:"  # DuckDB database path (':memory:' for in-memory)
+  enabled: true  # Set to true to enable OTel ingester
+  hot_store_path: "mahavishnu_otel.duckdb"  # DuckDB database path (':memory:' for in-memory)
   embedding_model: "all-MiniLM-L6-v2"  # Sentence transformer model
   cache_size: 1000  # Max embeddings in memory cache
   similarity_threshold: 0.7  # Min similarity for search (0.0-1.0)

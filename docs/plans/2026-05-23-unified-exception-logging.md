@@ -1,6 +1,7 @@
 # Unified Exception Logging Across Bodai — Design Doc
 
 ## Status
+
 **COMPLETED** (2026-05-23) — All tasks done: Oneiric LoggingConfig updated, Crackerjack migrated (3 call sites + dead-code cleanup), Session-Buddy + Akosha startup calls added, Dhara fully swapped to structlog via Oneiric (preserving public API: `get_logger`, `log_operation`, `log_context`), all 26 Crackerjack logging tests passing.
 
 **Location:** `mahavishnu/docs/plans/2026-05-23-unified-exception-logging.md`
@@ -15,13 +16,13 @@ The Bodai ecosystem has three separate structlog configurations that don't handl
 
 The result: AI agents consuming logs can't parse exception data structurally. `format_exc_info` dumps the traceback as a raw string blob; `dict_tracebacks` (structlog built-in since v22.1.0) emits it as a machine-readable list of frame dicts.
 
----
+______________________________________________________________________
 
 ## Goal
 
 All Bodai components emit structured exception logs as JSON, using the same processor chain. Libraries that depend on Oneiric get this automatically. Crackerjack consolidates on Oneiric's config.
 
----
+______________________________________________________________________
 
 ## Recommended Changes
 
@@ -80,7 +81,7 @@ Recommendation: **Option A**. The custom `log_operation` context manager and dec
 
 No structlog usage.
 
----
+______________________________________________________________________
 
 ## Key Decisions
 
@@ -92,7 +93,7 @@ No structlog usage.
 | **`LoggingContext` class** | Stay in Crackerjack | CLI convenience (`__enter__`/`__exit__` pattern) not generally applicable to library use. |
 | **Dhara logging migration** | **Option A — Full swap**: Replace `durus.logging.logger` internals with structlog via Oneiric, preserving public API (`get_logger`, `log_operation`, etc.) | Dhara already depends on Oneiric. Full swap unifies all Bodai logging. Incremental would defer the problem. |
 
----
+______________________________________________________________________
 
 ## Files to Change
 
@@ -109,7 +110,7 @@ No structlog usage.
 | `dhara/dhara/logger.py` | Remove stdlib side-effect setup (or consolidate into logging module) |
 | Tests updated for all repos | Verify JSON output contains structured `exception` list |
 
----
+______________________________________________________________________
 
 ## Verification
 
@@ -129,13 +130,14 @@ except:
 #     "frames": [{ "filename": "...", "lineno": N, "name": "...", "locals": null }], ... }] }
 ```
 
----
+______________________________________________________________________
 
 ## Next Step
 
 After design approval:
+
 1. Update Oneiric `LoggingConfig` and `configure_logging` (one file)
-2. Migrate Crackerjack's 3 call sites and delete parallel setup
-3. Add startup logging to Session-Buddy and Akosha
-4. Update tests
-5. Smoke test with `dict_tracebacks` output
+1. Migrate Crackerjack's 3 call sites and delete parallel setup
+1. Add startup logging to Session-Buddy and Akosha
+1. Update tests
+1. Smoke test with `dict_tracebacks` output

@@ -429,6 +429,7 @@ class OtelIngester:
         pgvector_collection: str = "otel_traces",
         akosha_url: str = "http://localhost:8682/mcp",
         turboquant_bits: int | None = None,
+        duckdb_path: str = ":memory:",
     ) -> None:
         """Initialize OTel ingester.
 
@@ -456,6 +457,7 @@ class OtelIngester:
         self._pgvector_dsn = pgvector_dsn
         self._pgvector_collection = pgvector_collection
         self._akosha_url = akosha_url  # Akosha MCP URL for centralized embeddings
+        self._duckdb_path = duckdb_path  # Path for DuckDB storage (":memory:" or file path)
         self._hot_store = hot_store  # Only used for DuckDB
         self._pgvector_adapter: Any = None  # PgvectorAdapter, lazy loaded
 
@@ -621,9 +623,9 @@ class OtelIngester:
         if self._hot_store is None:
             from akosha.storage import HotStore
 
-            self._hot_store = HotStore(database_path=":memory:")
+            self._hot_store = HotStore(database_path=self._duckdb_path)
             await self._hot_store.initialize()
-        logger.info("DuckDB (HotStore) storage initialized")
+        logger.info(f"DuckDB (HotStore) storage initialized (path={self._duckdb_path})")
 
     async def _initialize_pgvector(self) -> None:
         """Initialize PostgreSQL + pgvector storage backend."""
@@ -1012,6 +1014,7 @@ class OtelIngester:
             # Parse JSON string if metadata is stored as string
             if isinstance(metadata, str):
                 import json
+
                 metadata = json.loads(metadata)
 
             return {
@@ -1044,6 +1047,7 @@ class OtelIngester:
                 # Parse JSON string if metadata is stored as string
                 if isinstance(metadata, str):
                     import json
+
                     metadata = json.loads(metadata)
 
                 return {

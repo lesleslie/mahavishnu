@@ -136,6 +136,13 @@ class TestRoutingMetrics:
         summary = metrics.get_metrics_summary()
         assert summary["ab_test_tracking"]
 
+    def test_record_rate_limit_rejected(self, reset_metrics):
+        """Should record rate-limited model rejects."""
+        metrics = get_routing_metrics()
+        metrics.record_rate_limit_rejected("gpt-4")
+        summary = metrics.get_metrics_summary()
+        assert summary["routing_tracking"] or summary["enabled"]
+
     def test_fallback_chain_and_runtime_error_path(
         self, reset_metrics, monkeypatch: pytest.MonkeyPatch
     ):

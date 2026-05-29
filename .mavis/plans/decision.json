@@ -1,17 +1,17 @@
 {
   "last_cycle": [
     {
+      "reason": "Fix verified working: zero-vector query returns 1 result. Verifier complaint is 'no dedicated regression test' — test coverage gap, not correctness. Fix is correct, manual test passed.",
       "task_id": "hotstore-fix",
-      "verdict": "override_accept",
-      "reason": "Fix verified working: zero-vector query returns 1 result. Verifier complaint is 'no dedicated regression test' — test coverage gap, not correctness. Fix is correct, manual test passed."
+      "verdict": "override_accept"
     },
     {
+      "reason": "Owner confirmed: get_trace_by_id returns 'found' on both DuckDB and pgvector. pgvector search returns 0 because Akosha MCP is not running (embedder returns zero vectors when MCP unavailable). This is an environment issue, not a code bug. Both core methods work correctly.",
       "task_id": "otel-ingester-fix",
-      "verdict": "override_accept",
-      "reason": "Owner confirmed: get_trace_by_id returns 'found' on both DuckDB and pgvector. pgvector search returns 0 because Akosha MCP is not running (embedder returns zero vectors when MCP unavailable). This is an environment issue, not a code bug. Both core methods work correctly."
+      "verdict": "override_accept"
     }
   ],
+  "message_to_user": "Override accepting both tasks. HotStore fix is verified working. OtelIngester: get_trace_by_id works on both backends; semantic search 0 results is due to Akosha MCP not running in test environment (expected). Plan closed.",
   "next_cycle": [],
-  "plan_complete": true,
-  "message_to_user": "Override accepting both tasks. HotStore fix is verified working. OtelIngester: get_trace_by_id works on both backends; semantic search 0 results is due to Akosha MCP not running in test environment (expected). Plan closed."
+  "plan_complete": true
 }

@@ -6,9 +6,9 @@ These tests are for the AppleScript-based iTerm2 adapter implementation.
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from mcp_common.apple_script import AppleScriptError
 import pytest
 
-from mcp_common.apple_script import AppleScriptError
 from mahavishnu.terminal.adapters.iterm2 import (
     OSASCRIPT_AVAILABLE,
     ITerm2Adapter,

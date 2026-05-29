@@ -362,6 +362,22 @@ class TestResolutionCache:
         time.sleep(1.5)
         assert cache.get("key1") is None
 
+    def test_get_expired_entry_removes_stale_value(self, monkeypatch):
+        cache = ResolutionCache(ttl_seconds=5)
+        decision = RoutingDecision(
+            adapter_name="t",
+            adapter=None,
+            matched_capabilities=[],
+            resolution_time_ms=1.0,
+        )
+
+        times = iter([100.0, 104.0, 106.0])
+        monkeypatch.setattr("mahavishnu.core.task_requirements.time.time", lambda: next(times))
+
+        cache.set("key1", decision)
+        assert cache.get("key1") is None
+        assert cache.size == 0
+
     def test_overwrite_existing_key(self):
         cache = ResolutionCache()
         d1 = RoutingDecision(

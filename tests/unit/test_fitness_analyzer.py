@@ -138,7 +138,9 @@ class TestFitnessAnalyzer:
     async def test_fetch_traces_from_component_closes_client_on_success(self, monkeypatch):
         fake_client = FakeClient("http://component")
         fake_client.traces = [{"selector": "least_loaded"}]
-        monkeypatch.setattr(fitness_analyzer_module, "BodaiComponentMCPClient", lambda **kwargs: fake_client)
+        monkeypatch.setattr(
+            fitness_analyzer_module, "BodaiComponentMCPClient", lambda **kwargs: fake_client
+        )
         analyzer = FitnessAnalyzer()
 
         traces = await analyzer._fetch_traces_from_component(
@@ -154,7 +156,9 @@ class TestFitnessAnalyzer:
     async def test_fetch_traces_from_component_returns_empty_on_failure(self, monkeypatch):
         fake_client = FakeClient("http://component")
         fake_client.raise_error = RuntimeError("unavailable")
-        monkeypatch.setattr(fitness_analyzer_module, "BodaiComponentMCPClient", lambda **kwargs: fake_client)
+        monkeypatch.setattr(
+            fitness_analyzer_module, "BodaiComponentMCPClient", lambda **kwargs: fake_client
+        )
         analyzer = FitnessAnalyzer()
 
         traces = await analyzer._fetch_traces_from_component(
@@ -218,19 +222,21 @@ class TestFitnessAnalyzer:
     async def test_run_fitness_analysis_returns_buffered_signals_when_flush_is_skipped(
         self, monkeypatch
     ):
-        analyzer = FitnessAnalyzer(
-            component_endpoints=[("component-a", "http://one")]
-        )
+        analyzer = FitnessAnalyzer(component_endpoints=[("component-a", "http://one")])
 
         async def fake_collect(task_class):
-            return [
-                {
-                    "selector": "least_loaded",
-                    "outcome": "ok",
-                    "duration_ms": 15,
-                    "component_name": "alpha",
-                }
-            ] if task_class == "code_generation" else []
+            return (
+                [
+                    {
+                        "selector": "least_loaded",
+                        "outcome": "ok",
+                        "duration_ms": 15,
+                        "component_name": "alpha",
+                    }
+                ]
+                if task_class == "code_generation"
+                else []
+            )
 
         async def fake_flush():
             return None

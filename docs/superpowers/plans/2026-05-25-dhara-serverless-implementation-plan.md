@@ -8,7 +8,7 @@
 
 **Tech Stack:** asyncpg (Postgres), coredis (Redis), Oneiric config conventions (`__` delimiter)
 
----
+______________________________________________________________________
 
 ## File Map
 
@@ -24,13 +24,16 @@ tests/unit/test_postgres_storage.py   NEW
 tests/unit/test_redis_cache.py       NEW
 ```
 
----
+______________________________________________________________________
 
 ## Task 1: PostgresStorageAdapter
 
 **Files:**
+
 - Create: `dhara/storage/postgres.py`
+
 - Create: `dhara/storage/pg_schema.sql`
+
 - Create: `tests/unit/test_postgres_storage.py`
 
 - [ ] **Step 1: Write the failing test — init and health**
@@ -447,12 +450,14 @@ Implements dhara/storage/postgres.py with:
 Adds pg_schema.sql for dhara_objects + dhara_oid_seq + dhara_dirty_oids tables."
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: RedisCacheAdapter
 
 **Files:**
+
 - Create: `dhara/storage/redis_cache.py`
+
 - Create: `tests/unit/test_redis_cache.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -701,11 +706,12 @@ Cold-start stampede mitigation via stampede_jitter_ms config.
 Graceful degradation: returns None when Redis unavailable."
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: DharaSettings — Storage and Cache Backend Config
 
 **Files:**
+
 - Modify: `dhara/core/config.py` — add storage_backend, pg_url, cache_backend, redis_url, redis_token, cache_ttl, stampede_jitter_ms to DharaSettings
 
 - [ ] **Step 1: Write failing tests for new config fields**
@@ -798,12 +804,13 @@ cache_stampede_jitter_ms. All default to current behavior (file + memory)
 when env vars are unset. Follows Oneiric __ delimiter convention."
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: DharaMCPServer — Backend Selection
 
 **Files:**
-- Modify: `dhara/mcp/server_core.py` — read DHARA__STORAGE__BACKEND, instantiate appropriate adapter
+
+- Modify: `dhara/mcp/server_core.py` — read DHARA\_\_STORAGE\_\_BACKEND, instantiate appropriate adapter
 
 - [ ] **Step 1: Write failing test for backend selection**
 
@@ -935,11 +942,12 @@ instantiated with config when backends are selected. Storage adapter
 init() called on startup. Cache passed to Connection constructor."
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: Connection Integration — Cache Injection
 
 **Files:**
+
 - Modify: `dhara/core/connection.py` — allow cache to be injected from outside
 
 - [ ] **Step 1: Write failing test for cache injection**
@@ -1018,11 +1026,12 @@ When None, creates default LRUCache. Enables Redis cache backend
 for serverless deployment."
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: Connection Abort — cache.clear() Integration
 
 **Files:**
+
 - Modify: `dhara/core/connection.py` — call `cache.clear()` on abort
 
 - [ ] **Step 1: Write failing test for abort cache invalidation**
@@ -1095,11 +1104,12 @@ Uses fire-and-forget async task for cache.clear() since abort
 is synchronous. Prevents stale entries for uncommitted oids."
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review Checklist
 
 - [ ] **Spec coverage**: Each section of the design doc has a corresponding task:
+
   - ✅ `PostgresStorageAdapter` → Task 1
   - ✅ `RedisCacheAdapter` → Task 2
   - ✅ `dhara_objects` + `dhara_oid_seq` + `dhara_dirty_oids` schema → Task 1.5 (Step 5)
@@ -1114,6 +1124,7 @@ is synchronous. Prevents stale entries for uncommitted oids."
 - [ ] **Placeholder scan**: No TBD, TODO, "implement later", or vague steps. Every step has concrete code or command.
 
 - [ ] **Type consistency**:
+
   - `load(oid: str)` → `oid` is `str` (Dhara's OID type)
   - `store(oid: str, record: bytes)` → consistent
   - `sync() -> list[str]` → consistent
@@ -1123,7 +1134,7 @@ is synchronous. Prevents stale entries for uncommitted oids."
 
 - [ ] **No Placeholders**: Verified — all code blocks are complete, all commands have expected output
 
----
+______________________________________________________________________
 
 **Plan complete.** Two execution options:
 

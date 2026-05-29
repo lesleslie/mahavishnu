@@ -4,7 +4,7 @@
 **Status**: `draft`
 **Scope**: Make Dhara runnable in serverless environments by replacing fcntl file locks and in-memory LRU cache with Postgres + Redis equivalents
 
----
+______________________________________________________________________
 
 ## Context
 
@@ -19,17 +19,17 @@ Dhara has four serverless blockers:
 
 This design addresses all four by introducing two swappable backends.
 
----
+______________________________________________________________________
 
 ## Goals
 
 1. Dhara runs serverless (Neon cloud Postgres) without file locks or in-memory state loss
-2. Local dev works against existing Homebrew PostgreSQL + pgvector (no Docker)
-3. Same connection string pattern locally vs deployed (just swap host/creds)
-4. Cache survives cold-starts via Redis with TTL-based LRU eviction
-5. `Storage` and `Cache` interfaces are swappable via env vars — no code changes between modes
+1. Local dev works against existing Homebrew PostgreSQL + pgvector (no Docker)
+1. Same connection string pattern locally vs deployed (just swap host/creds)
+1. Cache survives cold-starts via Redis with TTL-based LRU eviction
+1. `Storage` and `Cache` interfaces are swappable via env vars — no code changes between modes
 
----
+______________________________________________________________________
 
 ## Non-Goals
 
@@ -37,7 +37,7 @@ This design addresses all four by introducing two swappable backends.
 - Horizontal scaling via multi-region Neon (future work)
 - Replacing the pack file format — Dhara's object graph serialization stays as-is
 
----
+______________________________________________________________________
 
 ## Architecture
 
@@ -65,6 +65,7 @@ close() → None
 ```
 
 **Semantic notes**:
+
 - `load()` raises `KeyError` when oid not found — adapter must implement this, not return `None`
 - OIDs stored as `int` in Postgres; Dhara's `int8_to_str()` conversion happens at the `Connection` layer, not the adapter
 - `end(commit=False)` rolls back the transaction — triggers cache invalidation for uncommitted oids
@@ -82,6 +83,7 @@ close() → None
 **Transaction recovery**: If `end()` raises after in-memory objects have been marked `_p_set_status_saved()`, the Postgres transaction rolls back but the in-memory state is already correct — Dhara's `Connection.abort()` clears the transaction context without marking objects saved. The adapter propagates the commit error; caller invokes `abort()` to unwind correctly.
 
 **Error handling**:
+
 - `store()` without `begin()`: raises `RuntimeError("store() called outside transaction")`
 - Connection failure mid-transaction: asyncpg rolls back automatically; adapter re-raises as `StorageError`
 - `load()` on uncommitted oid: returns in-transaction state (read-your-own-uncommitted semantics)
@@ -110,7 +112,7 @@ Dhara calls `cache.shrink(limit)` to enforce a memory cap (LRU eviction when siz
 
 1. **TTL-only (Phase 1)**: `cache.shrink()` becomes a no-op. Capacity is controlled by TTL — objects expire after `DHARA__CACHE__TTL` seconds. Callers that depend on `shrink(limit)` for memory management see different behavior (time-based vs count-based). Document as a behavioral change.
 
-2. **Hybrid (Phase 2)**: Track approximate cache size in a Redis hash (`dhara:cache:size` as `HINCRBY`) and call `LRANGE` + `DEL` to enforce a count limit on `shrink()`. More complex but preserves exact LRU semantics.
+1. **Hybrid (Phase 2)**: Track approximate cache size in a Redis hash (`dhara:cache:size` as `HINCRBY`) and call `LRANGE` + `DEL` to enforce a count limit on `shrink()`. More complex but preserves exact LRU semantics.
 
 **Decision**: Phase 1 uses TTL-only. `shrink()` becomes a no-op. Callers using `shrink()` for memory management must adapt.
 
@@ -142,10 +144,11 @@ CREATE INDEX ON dhara_dirty_oids (marked_at);
 **OID generation**: `new_oid()` calls `nextval('dhara_oid_seq')` — fully atomic, no singleton row contention.
 
 **Dirty OID lifecycle** (explicit):
+
 1. `store(oid, data)` → inserts into `dhara_objects` + inserts into `dhara_dirty_oids` in same transaction
-2. `end()` → commits transaction (dirty markers persist)
-3. `sync()` → `SELECT oid FROM dhara_dirty_oids ORDER BY marked_at` → returns dirty set → `DELETE FROM dhara_dirty_oids WHERE oid = ANY($1)` (single statement, reaping done in same query pass to avoid race condition)
-4. If process crashes after `end()` but before `sync()`, dirty entries remain — next `sync()` call picks them up. This is acceptable for Dhara's idempotent semantics.
+1. `end()` → commits transaction (dirty markers persist)
+1. `sync()` → `SELECT oid FROM dhara_dirty_oids ORDER BY marked_at` → returns dirty set → `DELETE FROM dhara_dirty_oids WHERE oid = ANY($1)` (single statement, reaping done in same query pass to avoid race condition)
+1. If process crashes after `end()` but before `sync()`, dirty entries remain — next `sync()` call picks them up. This is acceptable for Dhara's idempotent semantics.
 
 **Note**: `updated_at` column removed — it is not read by any `Storage` interface method and adds write overhead.
 
@@ -184,7 +187,7 @@ DHARA__CACHE__STAMPEDE_JITTER_MS=0
 
 **Security note**: The Redis token must **never** appear in the URL. The `DHARA__CACHE__REDIS_TOKEN` env var is read by the client directly and used as password authentication. This prevents tokens from appearing in logs, error messages, or connection strings. Similarly, Postgres credentials in `DHARA__STORAGE__PG_URL` are read-only — error messages must never echo the full URL. The adapter must sanitize exception messages: wrap connection errors in `StorageError("connection failed")` without including the URL, hostname, or credentials in the message text. The underlying error can be logged to a private audit log but must not propagate to callers.
 
----
+______________________________________________________________________
 
 ## Local vs Deployment Behavior
 
@@ -196,7 +199,7 @@ DHARA__CACHE__STAMPEDE_JITTER_MS=0
 
 Both local and deployed use Postgres wire protocol — the only difference is the connection string.
 
----
+______________________________________________________________________
 
 ## Key Files to Create/Modify
 
@@ -216,27 +219,27 @@ Both local and deployed use Postgres wire protocol — the only difference is th
 | `dhara/core/connection.py` | `Connection.__init__` — read `DHARA__CACHE__BACKEND`, instantiate `LRUCache` or `RedisCache` |
 | `dhara/config.py` | Add `DHARA__STORAGE__BACKEND`, `DHARA__STORAGE__PG_URL`, `DHARA__CACHE__BACKEND`, `DHARA__CACHE__REDIS_URL`, `DHARA__CACHE__TTL` fields |
 
----
+______________________________________________________________________
 
 ## Open Questions
 
 1. **Pack file migration**: Existing Dhara installations have pack files on disk. Is zero-downtime migration needed, or is a fresh `dhara_objects` init acceptable for the serverless path?
 
-2. **Postgres schema ownership**: The `dhara_objects` table should be created automatically on first startup if it doesn't exist. Should this be a migration ("upgrade from file to Postgres") or a fresh init ("start with Postgres")?
+1. **Postgres schema ownership**: The `dhara_objects` table should be created automatically on first startup if it doesn't exist. Should this be a migration ("upgrade from file to Postgres") or a fresh init ("start with Postgres")?
 
-3. **Connection pool sizing**: Neon has connection limits (e.g., 600 connections on paid tier). Dhara opens one Postgres connection per `Connection` instance. How many concurrent connections does Dhara need in the serverless scenario?
+1. **Connection pool sizing**: Neon has connection limits (e.g., 600 connections on paid tier). Dhara opens one Postgres connection per `Connection` instance. How many concurrent connections does Dhara need in the serverless scenario?
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
 1. **Local Postgres test**: Start Dhara against local Homebrew PostgreSQL — verify all CRUD operations on objects work
-2. **Redis cache test**: Set `DHARA__CACHE__BACKEND=redis` and verify cache survives process restart
-3. **Cold-start test**: Kill and restart Dhara process, verify Redis cache is still populated
-4. **Neon smoke test**: Point at Neon connection string (staging), run basic put/get tests
-5. **Degradation test**: With `DHARA__CACHE__BACKEND=redis` but Redis unavailable, verify graceful fallback to no cache (not crashing)
+1. **Redis cache test**: Set `DHARA__CACHE__BACKEND=redis` and verify cache survives process restart
+1. **Cold-start test**: Kill and restart Dhara process, verify Redis cache is still populated
+1. **Neon smoke test**: Point at Neon connection string (staging), run basic put/get tests
+1. **Degradation test**: With `DHARA__CACHE__BACKEND=redis` but Redis unavailable, verify graceful fallback to no cache (not crashing)
 
----
+______________________________________________________________________
 
 ## Risks
 
@@ -250,7 +253,7 @@ Both local and deployed use Postgres wire protocol — the only difference is th
 | `dhara_dirty_oids` grows if `sync()` is never called | Low | `sync()` deletes consumed entries; unconsumed entries are harmless for read-mostly workloads |
 | TTL-based eviction ≠ LRU capacity eviction (behavioral change) | Medium | Document as Phase 1 limitation; `shrink()` becomes no-op |
 
----
+______________________________________________________________________
 
 ## Probability of Success
 

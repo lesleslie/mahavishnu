@@ -1,5 +1,6 @@
 """Tests for core/routing_alerts.py — Alert dataclass, handlers, RoutingAlertManager."""
 
+import asyncio
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -167,6 +168,109 @@ class TestRoutingAlertManagerCost:
         alerts = await mgr.evaluate_cost_anomalies(300.0)
         assert alerts[0].metadata["previous_cost"] == 100.0
         assert "change_percent" in alerts[0].metadata
+
+
+class TestRoutingAlertManagerHealth:
+    async def test_evaluate_adapter_health_mixed_stats(self, monkeypatch: pytest.MonkeyPatch):
+        mgr = RoutingAlertManager(handlers=[])
+
+        stats_map = {
+            AdapterType.PREFECT: None,
+            AdapterType.AGNO: {"success_rate": 0.92, "total_executions": 5, "failed_executions": 0},
+            AdapterType.LLAMAINDEX: {
+                "success_rate": 0.75,
+                "total_executions": 20,
+                "failed_executions": 5,
+            },
+        }
+
+        tracker = AsyncMock()
+
+        async def _get_adapter_stats(adapter):
+            return stats_map.get(
+                adapter, {"success_rate": 0.85, "total_executions": 20, "failed_executions": 3}
+            )
+
+        tracker.get_adapter_stats.side_effect = _get_adapter_stats
+        monkeypatch.setattr(
+            "mahavishnu.core.routing_alerts.get_execution_tracker",
+            lambda: tracker,
+            raising=True,
+        )
+
+        alerts = await mgr.evaluate_adapter_health()
+        assert len(alerts) == 1
+        assert alerts[0].adapter == AdapterType.LLAMAINDEX
+        assert alerts[0].severity == AlertSeverity.CRITICAL
+        assert alerts[0].metadata["failed_executions"] == 5
+
+
+class TestRoutingAlertManagerLoop:
+    async def test_evaluation_loop_processes_alerts_and_handler_errors(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        mgr = RoutingAlertManager(handlers=[], evaluation_interval_seconds=0)
+        handler_ok = MagicMock(send_alert=AsyncMock())
+        handler_fail = MagicMock(send_alert=AsyncMock(side_effect=RuntimeError("boom")))
+        mgr.handlers = [handler_ok, handler_fail]
+
+        alert = Alert(
+            alert_type=AlertType.COST_SPIKE,
+            severity=AlertSeverity.WARNING,
+            message="cost spike",
+        )
+        monkeypatch.setattr(
+            mgr, "evaluate_adapter_health", AsyncMock(return_value=[alert]), raising=True
+        )
+
+        async def _sleep_once(_seconds):
+            mgr._shutdown_event.set()
+
+        monkeypatch.setattr(asyncio, "sleep", _sleep_once, raising=True)
+
+        await mgr._evaluation_loop()
+
+        handler_ok.send_alert.assert_awaited_once_with(alert)
+        handler_fail.send_alert.assert_awaited_once_with(alert)
+        assert mgr._last_evaluation is not None
+
+    async def test_evaluation_loop_handles_exception(self, monkeypatch: pytest.MonkeyPatch):
+        mgr = RoutingAlertManager(handlers=[], evaluation_interval_seconds=0)
+
+        async def _sleep_once(_seconds):
+            mgr._shutdown_event.set()
+
+        async def _boom():
+            raise RuntimeError("tracker blew up")
+
+        monkeypatch.setattr(asyncio, "sleep", _sleep_once, raising=True)
+        monkeypatch.setattr(mgr, "evaluate_adapter_health", _boom, raising=True)
+
+        await mgr._evaluation_loop()
+
+    async def test_evaluation_loop_no_alerts(self, monkeypatch: pytest.MonkeyPatch):
+        mgr = RoutingAlertManager(handlers=[], evaluation_interval_seconds=0)
+
+        async def _sleep_once(_seconds):
+            mgr._shutdown_event.set()
+
+        monkeypatch.setattr(asyncio, "sleep", _sleep_once, raising=True)
+        monkeypatch.setattr(
+            mgr, "evaluate_adapter_health", AsyncMock(return_value=[]), raising=True
+        )
+
+        await mgr._evaluation_loop()
+        assert mgr._last_evaluation is not None
+
+    async def test_evaluation_loop_cancelled(self, monkeypatch: pytest.MonkeyPatch):
+        mgr = RoutingAlertManager(handlers=[], evaluation_interval_seconds=0)
+
+        async def _cancel(_seconds):
+            raise asyncio.CancelledError
+
+        monkeypatch.setattr(asyncio, "sleep", _cancel, raising=True)
+
+        await mgr._evaluation_loop()
 
 
 # =========================================================================

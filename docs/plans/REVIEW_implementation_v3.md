@@ -4,7 +4,7 @@
 **Date**: 2026-05-23
 **Plan**: `docs/plans/2026-05-23-bodai-routing-feedback-loop-v3.md`
 
----
+______________________________________________________________________
 
 ## 1. New Files: All Correctly Flagged as New
 
@@ -18,7 +18,7 @@
 
 All new files are correctly identified as non-existent. No false positives.
 
----
+______________________________________________________________________
 
 ## 2. PgvectorAdapter as Hot Store Backend — VERIFIED
 
@@ -49,13 +49,14 @@ However, the plan's claim is that `PgvectorHotStore` (the new file) will **mirro
 
 **Verdict**: The plan correctly calls for `PgvectorHotStore` as a **wrapper** around `PgvectorAdapter` that adapts its interface to match `HotStore`. Feasible.
 
----
+______________________________________________________________________
 
 ## 3. OtelIngester Honors OTEL_STORAGE_TYPE — PARTIALLY VERIFIED, INCOMPLETE
 
 **File examined**: `/Users/les/Projects/mahavishnu/mahavishnu/ingesters/otel_ingester.py`
 
 **Current behavior**:
+
 - `OtelIngester.__init__` accepts `storage_type: StorageType | str = StorageType.DUCKDB` (line 427) and `pgvector_dsn: str | None = None` (line 428) as constructor arguments.
 - `StorageType` enum has `DUCKDB = "duckdb"` and `POSTGRESQL = "postgresql"` (lines 56–60).
 - `_initialize_pgvector()` at line 628 reads `self._pgvector_dsn` (the constructor arg), **not** an env var.
@@ -66,7 +67,7 @@ However, the plan's claim is that `PgvectorHotStore` (the new file) will **mirro
 
 **Verdict**: `OtelIngester` does **not** currently honor `OTEL_STORAGE_TYPE` / `OTEL_STORAGE_PG_URL` env vars. This is correctly listed as a planned change in Phase 1.2. The plan's description is accurate.
 
----
+______________________________________________________________________
 
 ## 4. akosha/config.py Reads AKOSHA_STORAGE_PG_URL — NOT VERIFIED
 
@@ -80,7 +81,7 @@ The plan's claim that "Akosha HotStore... detects `AKOSHA_STORAGE_PG_URL` env va
 
 **Verdict**: `akosha/config.py` does **not** currently read `AKOSHA_STORAGE_PG_URL`. This is a planned change.
 
----
+______________________________________________________________________
 
 ## 5. akosha/storage/__init__.py Exports HotStore — VERIFIED
 
@@ -91,13 +92,14 @@ Line 23–40 `__all__` includes `"HotStore"` at line 30.
 
 **Verdict**: Confirmed. `HotStore` is exported from `akosha.storage`.
 
----
+______________________________________________________________________
 
 ## 6. Additional Findings
 
 ### A. `OTelStorageConfig` vs `OTelIngesterConfig` — Two Separate Configs
 
 There are two distinct OTel-related configs in Mahavishnu's `core/config.py`:
+
 - `OTelStorageConfig` (line 457): PostgreSQL + pgvector backend, controlled via `MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING` env var. Uses `MahavishnuPgvectorAdapter` pattern.
 - `OTelIngesterConfig` (line 597): DuckDB/Akosha HotStore backend, controlled via `hot_store_path`. Uses Akosha HotStore.
 
@@ -107,7 +109,7 @@ The plan uses `OTelIngester` for trace ingestion. The `OTelStorageConfig` appear
 
 The plan calls for adding `query_local_traces` to Mahavishnu's MCP tools. Currently `otel_tools.py` (line 13) registers 4 tools: `ingest_otel_traces`, `search_otel_traces`, `get_otel_trace`, `otel_ingester_stats`. The `query_local_traces` tool is **not yet implemented**, which is correct per the plan.
 
-**Note**: The plan mentions this tool needs to do **attribute-based time-range SQL filtering** (`WHERE attributes->>'bodai.task_class' = :task_class AND start_time > NOW() - INTERVAL '60 minutes'`), not semantic similarity search. The current `OtelIngester` storage backends (DuckDB HotStore's `search_similar` and pgvector's `search`) only support semantic search — they are not designed for attribute-based time-range filtering. This is a **non-trivial addition** that requires a new query method in `OtelIngester` or a raw SQL path. Implementors should be aware this is more complex than a simple wrapper.
+**Note**: The plan mentions this tool needs to do **attribute-based time-range SQL filtering** (`WHERE attributes->>'bodai.task_class' = :task_class AND start_time > NOW() - INTERVAL '60 minutes'`), not semantic similarity search. The current `OtelIngester` storage backends (DuckDB HotStore's `search_similar` and pgvector's `search`) only support semantic search — they are not designed for attribute-based time-range filtering. This is a **non-trivial addition** that requires a new query method in `OtelIngester` or a raw SQL path. Implementers should be aware this is more complex than a simple wrapper.
 
 ### C. Mahavishnu's Own `PgvectorAdapter`
 
@@ -117,7 +119,7 @@ The plan calls for adding `query_local_traces` to Mahavishnu's MCP tools. Curren
 
 The plan references `AKOSHA_STORAGE_BACKEND` env var (`duckdb` vs `pgvector`). Looking at `akosha/config.py` line 158, `AKOSHA_MODE` env var already exists (values `"lite"` or `"standard"`). The plan correctly proposes a separate `AKOSHA_STORAGE_BACKEND` env var rather than coupling storage backend to mode, which is the right design.
 
----
+______________________________________________________________________
 
 ## Summary of Verification
 

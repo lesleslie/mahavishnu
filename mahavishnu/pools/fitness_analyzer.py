@@ -12,17 +12,18 @@ Circuit breaker protects Dhara write operations.
 from __future__ import annotations
 
 import asyncio
-import logging
-import re
 from collections import deque
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
-
-from oneiric.core.resiliency import CircuitBreaker
+import logging
+import re
+from typing import TYPE_CHECKING, Any
 
 from mahavishnu.mcp.bodai_component_client import BodaiComponentMCPClient
 from mahavishnu.pools.routing_fitness import FitnessSignal
+
+if TYPE_CHECKING:
+    from oneiric.core.resiliency import CircuitBreaker
 
 logger = logging.getLogger(__name__)
 
@@ -163,7 +164,6 @@ class FitnessAnalyzer:
 
         now_iso = datetime.now(UTC).isoformat()
         # window_start is 60 minutes before now (rolling window)
-        from datetime import timedelta
 
         window_start_iso = (datetime.now(UTC) - timedelta(minutes=60)).isoformat()
 
@@ -174,7 +174,7 @@ class FitnessAnalyzer:
             p99_latency_ms=p99_latency,
             updated_at=now_iso,
             window_start=window_start_iso,
-            component_count=len(set(t.get("component_name", "") for t in traces)),
+            component_count=len({t.get("component_name", "") for t in traces}),
         )
 
     async def _flush_buffer(self) -> None:
@@ -199,9 +199,7 @@ class FitnessAnalyzer:
 
             try:
                 if self._circuit_breaker is not None:
-                    await self._circuit_breaker.call(
-                        self._dhara_state.put(key, value, ttl=7200)
-                    )
+                    await self._circuit_breaker.call(self._dhara_state.put(key, value, ttl=7200))
                 else:
                     await self._dhara_state.put(key, value, ttl=7200)
                 # Success: clear DLQ counter

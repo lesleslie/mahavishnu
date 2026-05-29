@@ -45,12 +45,13 @@ def register_otel_tools(server, app, mcp_client):
                     "storage_backend": "duckdb_hotstore",
                 }
 
-            # Initialize ingester with app config
+            # Initialize ingester — OtelIngester creates HotStore internally
+            # using storage_type from config (duckdb or postgresql)
             ingester = OtelIngester(  # type: ignore[call-arg]
-                hot_store_path=app.config.otel_ingester.hot_store_path,
                 embedding_model=app.config.otel_ingester.embedding_model,
                 cache_size=app.config.otel_ingester.cache_size,
                 turboquant_bits=app.config.otel_ingester.turboquant_bits,
+                duckdb_path=app.config.otel_ingester.hot_store_path,
             )
             await ingester.initialize()
 
@@ -159,7 +160,6 @@ def register_otel_tools(server, app, mcp_client):
 
             # Initialize ingester
             ingester = OtelIngester(  # type: ignore[call-arg]
-                hot_store_path=app.config.otel_ingester.hot_store_path,
                 embedding_model=app.config.otel_ingester.embedding_model,
                 similarity_threshold=threshold or app.config.otel_ingester.similarity_threshold,
                 turboquant_bits=app.config.otel_ingester.turboquant_bits,
@@ -195,7 +195,6 @@ def register_otel_tools(server, app, mcp_client):
 
             # Initialize ingester
             ingester = OtelIngester(  # type: ignore[call-arg]
-                hot_store_path=app.config.otel_ingester.hot_store_path,
                 turboquant_bits=app.config.otel_ingester.turboquant_bits,
             )
             await ingester.initialize()
@@ -221,53 +220,58 @@ def register_otel_tools(server, app, mcp_client):
 
     @server.tool()
     async def query_local_traces(
-        system_id: str,
-        start_time: str | None = None,
-        end_time: str | None = None,
-        task_class: str | None = None,
+        task_class: str,
+        time_range_minutes: int = 60,
+        system_id: str | None = None,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
-        """Query OTel traces by system_id and optional attribute filters (time range, task_class).
+        """Query OTel traces by task_class and time range.
 
-        Uses HotStore query_traces() with SQL WHERE clause filtering.
-        HNSW index is NOT used (attribute-based filtering pushed to SQL).
+        This is the Bodai component endpoint that Akosha's fitness analyzer
+        polls to collect traces for fitness signal computation.
 
         Args:
-            system_id: Source system identifier (e.g., 'mahavishnu', 'akosha')
-            start_time: ISO8601 start time (optional)
-            end_time: ISO8601 end time (optional)
-            task_class: Task classification tag to filter on (optional)
+            task_class: Task classification tag to filter on (e.g. "code_generation")
+            time_range_minutes: How far back to query (default 60 minutes)
+            system_id: Optional source system identifier (auto-detected if not provided)
             limit: Maximum number of traces to return (default 100)
 
         Returns:
-            List of trace records matching the filter criteria
+            List of trace records with outcome, duration_ms, selector, component_name
         """
         try:
+            from datetime import datetime, timedelta, UTC
             from akosha.storage import HotStore
+
+            # Calculate start_time from time_range_minutes
+            end_time = datetime.now(UTC)
+            start_time = end_time - timedelta(minutes=time_range_minutes)
 
             # Initialize HotStore
             hot_store = HotStore(database_path=app.config.otel_ingester.hot_store_path)
             await hot_store.initialize()
 
-            # Use SQL-native attribute filtering (Phase 1.2)
-            # HNSW index is NOT used; WHERE clause pushes filters into SQL
+            # Query with time range and task_class filters
             results = await hot_store.query_traces(
                 system_id=system_id,
-                start_time=start_time,
-                end_time=end_time,
+                start_time=start_time.isoformat(),
+                end_time=end_time.isoformat(),
                 task_class=task_class,
                 limit=limit,
             )
 
             await hot_store.close()
 
-            # Normalize result format
+            # Normalize result format for fitness analyzer consumption
+            # FitnessAnalyzer expects: outcome, duration_ms, selector, component_name
             return [
                 {
-                    "conversation_id": r.get("conversation_id"),
-                    "content": r.get("content"),
+                    "outcome": r.get("outcome", "unknown"),
+                    "duration_ms": r.get("duration_ms", r.get("metadata", {}).get("duration_ms", 0)),
+                    "selector": r.get("selector", r.get("metadata", {}).get("selector", "unknown")),
+                    "component_name": system_id or r.get("system_id", "unknown"),
+                    "task_class": task_class,
                     "timestamp": str(r.get("timestamp", "")),
-                    "metadata": r.get("metadata", {}),
                 }
                 for r in results
             ]
