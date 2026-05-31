@@ -1,8 +1,6 @@
 """Repository messenger for inter-repository communication."""
 
 from __future__ import annotations
-
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -66,7 +64,9 @@ class RepositoryMessenger:
         self.app = app
         self.logger = __import__("logging").getLogger(__name__)
         self.messages: list[RepositoryMessage] = []
-        self.subscribers: dict[str, list[Callable]] = {}
+        self.subscribers: dict[
+            str, list[callable]
+        ] = {}  # repo -> list of callbacks  # type: ignore[valid-type]
         self.authenticator: CrossProjectAuth | None = None
         self._event_publisher = event_publisher
 
@@ -75,14 +75,14 @@ class RepositoryMessenger:
         if auth_secret:
             self.authenticator = CrossProjectAuth(auth_secret)
 
-    def subscribe(self, repo_name: str, callback: Callable) -> None:
+    def subscribe(self, repo_name: str, callback: callable):  # type: ignore[valid-type] -> None:
         """Subscribe to messages for a specific repository."""
         if repo_name not in self.subscribers:
             self.subscribers[repo_name] = []
         self.subscribers[repo_name].append(callback)
         self.logger.info(f"Subscribed to messages for repository: {repo_name}")
 
-    def unsubscribe(self, repo_name: str, callback: Callable) -> None:
+    def unsubscribe(self, repo_name: str, callback: callable):  # type: ignore[valid-type] -> None:
         """Unsubscribe from messages for a specific repository."""
         if repo_name in self.subscribers and callback in self.subscribers[repo_name]:
             self.subscribers[repo_name].remove(callback)

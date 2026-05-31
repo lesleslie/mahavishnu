@@ -137,6 +137,8 @@ def register_otel_tools(server, app, mcp_client):
             }
         except Exception as e:
             logger.exception("Unexpected error during trace ingestion")
+            if "ingester" in dir() and ingester is not None:
+                await ingester.close()
             return {
                 "status": "error",
                 "error": f"Unexpected error: {str(e)}",
@@ -183,6 +185,8 @@ def register_otel_tools(server, app, mcp_client):
             return []
         except Exception as e:
             logger.exception(f"Error during trace search: {e}")
+            if "ingester" in dir() and ingester is not None:
+                await ingester.close()
             return []
 
     @server.tool()
@@ -216,6 +220,8 @@ def register_otel_tools(server, app, mcp_client):
             return None
         except Exception as e:
             logger.exception(f"Error retrieving trace {trace_id}: {e}")
+            if "ingester" in dir() and ingester is not None:
+                await ingester.close()
             return None
 
     @server.tool()
@@ -239,8 +245,24 @@ def register_otel_tools(server, app, mcp_client):
         Returns:
             List of trace records with outcome, duration_ms, selector, component_name
         """
+        # Input validation (C3)
+        if not task_class or not isinstance(task_class, str):
+            logger.error("query_local_traces: task_class must be a non-empty string")
+            return []
+        if (
+            not isinstance(time_range_minutes, int)
+            or time_range_minutes <= 0
+            or time_range_minutes > 10080
+        ):
+            logger.error("query_local_traces: time_range_minutes must be 1-10080 (1 week max)")
+            return []
+        if not isinstance(limit, int) or limit <= 0 or limit > 1000:
+            logger.error("query_local_traces: limit must be 1-1000")
+            return []
+
         try:
-            from datetime import datetime, timedelta, UTC
+            from datetime import UTC, datetime, timedelta
+
             from akosha.storage import HotStore
 
             # Calculate start_time from time_range_minutes
@@ -251,30 +273,54 @@ def register_otel_tools(server, app, mcp_client):
             hot_store = HotStore(database_path=app.config.otel_ingester.hot_store_path)
             await hot_store.initialize()
 
-            # Query with time range and task_class filters
-            results = await hot_store.query_traces(
-                system_id=system_id,
-                start_time=start_time.isoformat(),
-                end_time=end_time.isoformat(),
-                task_class=task_class,
-                limit=limit,
-            )
-
-            await hot_store.close()
+            try:
+                # Use SQL WHERE filtering (query_traces) instead of zero-vector
+                # semantic search — pushes task_class, time_range, and system_id
+                # into the SQL WHERE clause for efficient attribute filtering (C2/H7)
+                results = await hot_store.query_traces(
+                    system_id=system_id,
+                    start_time=start_time.isoformat(),
+                    end_time=end_time.isoformat(),
+                    task_class=task_class,
+                    limit=limit,
+                )
+            finally:
+                # Always close hot_store, whether query succeeded or not (C1)
+                await hot_store.close()
 
             # Normalize result format for fitness analyzer consumption
             # FitnessAnalyzer expects: outcome, duration_ms, selector, component_name
-            return [
-                {
-                    "outcome": r.get("outcome", "unknown"),
-                    "duration_ms": r.get("duration_ms", r.get("metadata", {}).get("duration_ms", 0)),
-                    "selector": r.get("selector", r.get("metadata", {}).get("selector", "unknown")),
-                    "component_name": system_id or r.get("system_id", "unknown"),
-                    "task_class": task_class,
-                    "timestamp": str(r.get("timestamp", "")),
-                }
-                for r in results
-            ]
+            normalized = []
+            for r in results:
+                # Parse metadata JSON (may be str or dict per HotStore schema)
+                import json
+
+                metadata_raw = r.get("metadata", "{}")
+                if isinstance(metadata_raw, str):
+                    try:
+                        attrs = json.loads(metadata_raw).get("attributes", {})
+                    except json.JSONDecodeError:
+                        attrs = {}
+                else:
+                    attrs = (
+                        metadata_raw.get("attributes", {}) if isinstance(metadata_raw, dict) else {}
+                    )
+
+                normalized.append(
+                    {
+                        "outcome": attrs.get("outcome", "unknown"),
+                        "duration_ms": attrs.get("duration_ms", 0),
+                        "selector": attrs.get("selector", "unknown"),
+                        "component_name": system_id or r.get("system_id", "unknown"),
+                        "task_class": task_class,
+                        "timestamp": str(r.get("timestamp", "")),
+                    }
+                )
+
+            logger.info(
+                f"query_local_traces returned {len(normalized)} records for task_class={task_class}"
+            )
+            return normalized
 
         except ImportError:
             logger.error("HotStore not available for query_local_traces")

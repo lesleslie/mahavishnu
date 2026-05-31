@@ -215,7 +215,7 @@ results = await aggregator.cross_pool_search("API implementation", pool_mgr)
 - [Pool Architecture](docs/POOL_ARCHITECTURE.md) - Complete architecture guide
 - [Migration Guide](docs/POOL_MIGRATION.md) - From WorkerManager to pools
 - [MCP Tools Spec](docs/MCP_TOOLS_SPECIFICATION.md) - Pool MCP tool reference
-- Implementation Progress - Implementation status
+- [Implementation Progress](POOL_IMPLEMENTATION_PROGRESS.md) - Implementation status
 
 ## Configuration Files
 

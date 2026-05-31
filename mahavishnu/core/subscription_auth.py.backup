@@ -70,14 +70,17 @@ class SubscriptionAuth:
         if scopes is None:
             scopes = ["read", "execute"]
 
-        expire = datetime.now(tz=UTC) + timedelta(minutes=self.expire_minutes)
-        to_encode: dict[str, str | int | list[str]] = {
+        to_encode = {
             "sub": user_id,  # Using 'sub' to match JWT standard
             "user_id": user_id,
             "subscription_type": subscription_type,
             "scopes": scopes,
-            "exp": int(expire.timestamp()),
         }
+
+        expire = datetime.now(tz=UTC) + timedelta(minutes=self.expire_minutes)
+        to_encode.update(
+            {"exp": int(expire.timestamp())}
+        )  # Convert datetime to integer timestamp  # type: ignore[dict-item]
 
         encoded_jwt = jwt.encode(to_encode, self.secret, algorithm=self.algorithm)
         return encoded_jwt

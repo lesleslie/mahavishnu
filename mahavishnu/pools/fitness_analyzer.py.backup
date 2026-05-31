@@ -199,8 +199,8 @@ class FitnessAnalyzer:
 
             try:
                 if self._circuit_breaker is not None:
-                    await self._circuit_breaker.call(self._dhara_state.put(key, value, ttl=7200))  # type: ignore[union-attr]
-                elif self._dhara_state is not None:
+                    await self._circuit_breaker.call(self._dhara_state.put(key, value, ttl=7200)) # type: ignore
+                else:
                     await self._dhara_state.put(key, value, ttl=7200)
                 # Success: clear DLQ counter
                 self._dlq_failures.pop(key, None)
@@ -241,16 +241,14 @@ class FitnessAnalyzer:
             if not traces:
                 continue
 
-            by_selector: dict[str, list[dict[str, Any]]] = {}  # type: ignore[syntax]
+            by_selector: dict[str, list[dict[str, Any]]] = {}
             for trace in traces:
                 selector = trace.get("selector", "unknown")
                 by_selector.setdefault(selector, []).append(trace)
 
             for selector, selector_traces in by_selector.items():
                 signal = self._compute_signal(task_class, selector, selector_traces)
-                if task_class not in all_signals:
-                    all_signals[task_class] = {}
-                all_signals[task_class][selector] = signal  # type: ignore[index]
+                all_signals.setdefault(task_class, {})[selector] = signal
 
         if not all_signals:
             logger.debug("FitnessAnalyzer: no traces collected in this cycle")

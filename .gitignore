@@ -209,8 +209,14 @@ ingested/
 # Git worktrees
 .worktrees/
 
+# Claude Code worktrees (runtime isolated sessions)
+.claude/worktrees/
+
 # Tool caches (ephemeral, always regenerated)
 .lycheecache
+
+# DuckDB databases (runtime data, regenerated on ingest)
+*.duckdb
 
 # Cron runtime state (mutable timestamps/history, not config)
 cron/jobs.json

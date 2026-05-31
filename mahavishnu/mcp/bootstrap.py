@@ -136,12 +136,15 @@ async def _register_worker_pool_tools(server: FastMCPServer, methods_set: set[st
     if "_register_otel_tools" in methods_set:
         # Note: otel_tools require HotStore from Akosha, which may not be available
         # in all deployments. Registration is gated by availability.
-        try:
+        # Use find_spec to check availability without triggering F401 (unused import).
+        import importlib.util
+
+        if importlib.util.find_spec("akosha.storage") is not None:
             from ..mcp.tools.otel_tools import register_otel_tools
-            from akosha.storage import HotStore
+
             register_otel_tools(server.server, server.app, server.mcp_client)
             logger.info("Registered 4 OTel trace management tools with MCP server")
-        except ImportError:
+        else:
             logger.info("HotStore not available, skipping OTel tool registration")
 
 

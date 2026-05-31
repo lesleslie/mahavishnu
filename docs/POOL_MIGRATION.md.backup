@@ -727,7 +727,7 @@ For migration assistance:
 - Review [POOL_ARCHITECTURE.md](POOL_ARCHITECTURE.md)
 - Check [MCP_TOOLS_SPECIFICATION.md](MCP_TOOLS_SPECIFICATION.md)
 - Run tests: `pytest tests/unit/test_pools.py`
-- View examples in POOL_IMPLEMENTATION_PROGRESS.md
+- View examples in [POOL_IMPLEMENTATION_PROGRESS.md](../POOL_IMPLEMENTATION_PROGRESS.md)
 
 ## Checklist
 

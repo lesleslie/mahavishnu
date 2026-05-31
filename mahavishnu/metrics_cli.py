@@ -136,7 +136,7 @@ def _load_engine_metrics_from_prometheus(
 ) -> dict[str, dict[str, int]]:
     """Load engine metrics by parsing Prometheus exposition text."""
     try:
-        with urllib_request.urlopen( # nosec
+        with urllib_request.urlopen(  # nosec
             metrics_url, timeout=2.0
         ) as response:  # nosemgrep: dynamic-urllib-use-detected
             body = response.read().decode("utf-8", errors="replace")

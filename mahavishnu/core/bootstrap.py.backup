@@ -4,21 +4,19 @@ These helpers keep the application class focused on wiring and delegation
 while preserving the existing initialization and recovery behavior.
 """
 
-
-
-
 from __future__ import annotations
-from pathlib import Path
-from typing import Any
+
 import logging
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
 from .config import MahavishnuSettings
 from .errors import ConfigurationError
 
-
-
+if TYPE_CHECKING:
+    from .state_backends.dhara import DharaStateBackend
 
 logger = logging.getLogger(__name__)
 
@@ -472,7 +470,6 @@ def set_app_context(app: Any) -> None:
 
     set_context(llm_factory=llm_factory, agno_adapter=agno_adapter, app=app)  # type: ignore[arg-type]
 
-
     logger = logging.getLogger(__name__)
     if llm_factory or agno_adapter:
         logger.info(
@@ -583,7 +580,6 @@ async def recover_workflow_state_from_dhara(app: Any) -> None:
     if app._dhara_state is None:
         return
 
-
     logger = logging.getLogger(__name__)
     try:
         entries = await app._dhara_state.recover_workflows()
@@ -603,7 +599,6 @@ async def recover_approvals_from_dhara(app: Any) -> None:
     """Restore pending approvals from Dhara on startup."""
     if app._dhara_state is None:
         return
-
 
     logger = logging.getLogger(__name__)
     try:

@@ -92,7 +92,7 @@ def parse_file(
         graph_node = CodeGraphNode(
             symbol_id=symbol_id,
             symbol_name=node.name,
-            symbol_type=node.node_type, # type: ignore
+            symbol_type=node.node_type,
             file_path=str(path.relative_to(repo_path)),
             repo_path=repo_path,
             start_line=start_line,
