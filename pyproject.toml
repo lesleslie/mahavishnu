@@ -10,11 +10,11 @@ name = "mahavishnu"
 version = "0.7.1"
 description = "Global orchestrator package for development workflows"
 authors = [
-    {name = "Your Name", email = "your.email@example.com"},
+    {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
 ]
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.13"
+requires-python = ">=3.13, <3.15"
 classifiers = [
     "Development Status :: 4 - Beta",
 ]
@@ -24,16 +24,15 @@ dependencies = [
     # Oneiric ecosystem
     "oneiric>=0.3.12",
     # Shared infrastructure (mcp-common)
-    # Condition 1: Add mcp-common dependency for code graph and messaging types
-    "mcp-common[treesitter,llm]>=0.14.1",  # Tree-sitter + FallbackChain LLM routing
+    "mcp-common[treesitter,llm]>=0.14.1",
     # MCP server
-    "fastmcp>=3.0.0b1",  # Compatible with crackerjack (pre-release for httpx compatibility)
-    "uvicorn[standard]>=0.38.0",  # Websocket support for MCP
+    "fastmcp>=3.0.0b1",
+    "uvicorn[standard]>=0.38.0",
     # Configuration
     "pydantic>=2.12.5",
     "pyyaml>=6.0.3",
     "tomli>=2.2.1",
-    "aiofiles>=25.1.0",  # Async file I/O for config loading (compatible with crackerjack)
+    "aiofiles>=25.1.0",
     # XDG Base Directory compliance
     "platformdirs>=4.0.0",
     # Observability
@@ -44,222 +43,149 @@ dependencies = [
     # Prometheus metrics
     "prometheus-client>=0.21.0",
     "structlog>=25.5.0",
-    # Rate limiting for webhooks and API endpoints
+    # Rate limiting
     "slowapi>=0.1.9",
-    # OpenTelemetry trace storage with semantic search
-    "asyncpg>=0.29.0",  # Async PostgreSQL driver for OTel trace storage
-    "pgvector>=0.2.5",  # Vector similarity search for semantic trace search
-    # Embeddings (cross-platform alternatives to sentence-transformers)
-    # Note: fastembed uses ONNX Runtime. On macOS Intel + Python 3.13+, onnxruntime
-    # has no compatible wheels (dropped x86_64 support in 1.20+, no cp313 wheels before).
-    # On those platforms, embedding service falls back to Ollama or OpenAI.
-    "fastembed>=0.2.0; sys_platform != 'darwin' or platform_machine != 'x86_64' or python_version < '3.13'",
+    # OpenTelemetry trace storage
+    "asyncpg>=0.29.0",
+    "pgvector>=0.2.5",
+    # Embeddings: Use Ollama (local) or OpenAI API instead.
+    # See: mahavishnu/core/embeddings.py for the OllamaProvider and OpenAIProvider.
     # Resilience
     "tenacity>=9.1.2",
-    # Rate limiting & DDoS protection
-    "starlette-context>=0.4.0",  # Request context for rate limiting
-    # Quality control (optional)
-    "crackerjack>=0.50.1",
-    # Session management
-    # Session-Buddy MCP: Development session tracking & quality metrics
-    # Local-first privacy (ONNX embeddings, no external APIs)
-    # See: docs/LIBRARY_EVALUATION_2025.md for memory system comparison
-    "session-buddy>=0.13.0",
-    # Git operations
-    "gitpython>=3.1.46",
-    # Async SQLite (for EventBus persistence)
-    "aiosqlite>=0.20.0",
-    # Encrypted SQLite (AES-256 encryption for sensitive data)
-    # Uses cryptography.fernet (Python 3.13+ compatible, no C extensions)
-    "cryptography>=44.0.0",
-    # Terminal management
-    "iterm2>=2.13",  # iTerm2 Python API (optional, for iTerm2 adapter)
-    # Admin shell
-    "ipython>=8.0.0",  # IPython admin shell for debugging and monitoring
-    # =============================================================================
-    # ADAPTER DEPENDENCIES (moved from optional-dependencies)
-    # All compatible adapters with no version conflicts
-    # =============================================================================
-    # Prefect: High-level orchestration with dynamic flows
+    "starlette-context>=0.4.0",
+    # Prefect: High-level orchestration
     "prefect>=3.6.13",
-    # Cron schedule validation for Prefect deployment schedules
     "croniter>=3.0.4",
     # Agno: Fast, scalable single/multi-agents
     "agno>=0.1.7",
-    # LlamaIndex: RAG pipelines for ingesting repos/docs
+    # LlamaIndex: RAG pipelines
     "llama-index-core>=0.14.0,<0.15.0",
     "llama-index-embeddings-ollama>=0.8.0,<0.9.0",
     "llama-index-llms-ollama>=0.8.0,<0.9.0",
     "llama-index-vector-stores-opensearch>=0.6.0,<0.7.0",
-    # Content ingestion: PDF, EPUB, web content
-    "pypdf>=5.0.0",  # Fast, pure Python PDF library
-    "beautifulsoup4>=4.12.0",  # HTML parsing for web scraping
-    "httpx[http2]>=0.28.0",  # HTTP client with HTTP/2 support (compatible with fastmcp)
-    "ebooklib>=0.18",  # EPUB processing
-    # Use the slim package with only the providers Mahavishnu integrates.
-    # This avoids the umbrella package's transitive huggingface extra path.
+    # Content ingestion
+    "pypdf>=5.0.0",
+    "beautifulsoup4>=4.12.0",
+    "httpx[http2]>=0.28.0",
+    "ebooklib>=0.18",
+    # AI integrations
     "pydantic-ai-slim[mcp,openai,anthropic,google,groq]>=1.77.0",
     "llama-cpp-python>=0.3.20",
-    # RunPod Flash: serverless GPU pool execution
+    # Serverless GPU
     "runpod-flash~=1.7",
-    # Secure XML parsing (prevents XXE/DTD attacks on coverage.xml etc.)
+    # Security
     "defusedxml>=0.7.1",
     "ty>=0.0.40",
+    # Git operations
+    "gitpython>=3.1.46",
+    # Async SQLite
+    "aiosqlite>=0.20.0",
+    # Encryption
+    "cryptography>=44.0.0",
+    # Admin shell
+    "ipython>=8.0.0",
 ]
 
 [project.scripts]
 mahavishnu = "mahavishnu._main_cli:app"
-
-# =============================================================================
-# ADAPTER ENTRY POINTS - Plugin Discovery
-# =============================================================================
-# These entry points enable dynamic adapter discovery via the HybridAdapterRegistry.
-# Adapters are discovered at runtime using Python's entry point mechanism.
-# Security: Only adapters matching patterns in adapter_allowlist_patterns are loaded.
-# =============================================================================
 
 [project.entry-points."mahavishnu.adapters"]
 prefect = "mahavishnu.engines.prefect_adapter:prefect_adapter_entries"
 agno = "mahavishnu.engines.agno_adapter:agno_adapter_entries"
 worker = "mahavishnu.core.adapters.worker:worker_adapter_entries"
 
-# =============================================================================
-# ORCHESTRATION ADAPTERS - Core Components
-# =============================================================================
-# Simplified Architecture (2025-2026):
-#   - Prefect: High-level orchestration with dynamic flows
-#   - LlamaIndex: RAG pipelines for ingesting repos/docs, embedding with Ollama
-#   - Agno: Fast, scalable single/multi-agents with memory and tools
-#   - Oneiric: Foundational package for config, logging, and pluggable adapters
-#
-# Removed (2025-01-23):
-#   - Airflow: Legacy data pipelines (use Prefect instead)
-#   - CrewAI: Multi-agent framework (use Agno instead)
-#   - LangGraph: Stateful AI agent workflows (use Agno instead)
-# =============================================================================
-
-# CORE COMPONENTS (All enabled by default)
-# =============================================================================
-
-[project.optional-dependencies]
-tui = [
-    "textual>=0.40",
-]
-compression = [
-    "turboquant-pro>=0.1.0",  # TurboQuant (Zandieh et al., ICLR 2026) embedding compression
-]
+[dependency-groups]
+# Core development and testing
 dev = [
-    # Testing
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=7.0.0",
-    "pytest-xdist>=3.8.0",  # Parallel test execution
+    "pytest-xdist>=3.8.0",
     "pytest-mock>=3.15.1",
-    "hypothesis>=6.148.13",  # Property-based testing
-    "pytest-timeout>=2.4.0",  # Test timeout protection
-    "respx>=0.22.0",  # httpx request mocking for unit tests
-
-    # Code quality
-    "ruff>=0.14.14",  # Fast Python linter (replaces black/flake8/isort)
-    "pyright>=1.1.408",  # Type checking fallback
-    "pylint>=3.0.4",  # Additional linting perspectives
-    # Note: We use Crackerjack for QC, not pre-commit
-
-    # Security & dependency management
-    "bandit>=1.9.3",  # Security linting
-    "safety>=2.3.4",  # Dependency vulnerability scanning
-    "creosote>=4.1.0",  # Detect unused dependencies
-    "detect-secrets>=1.4.0",  # Secret scanning in code
-
-    # Code modernization & complexity
-    "refurb>=2.2.0",  # Modern Python suggestions
-    "codespell>=2.4.1",  # Typo detection
-    "complexipy>=5.1.0",  # Complexity checking
-
-    # Documentation
+    "hypothesis>=6.148.13",
+    "pytest-timeout>=2.4.0",
+    "respx>=0.22.0",
+    "ruff>=0.14.14",
+    "pyright>=1.1.408",
+    "pylint>=3.0.4",
+    "bandit>=1.9.3",
+    "safety>=2.3.4",
+    "creosote>=4.1.0",
+    "detect-secrets>=1.4.0",
+    "refurb>=2.2.0",
+    "codespell>=2.4.1",
+    "complexipy>=5.1.0",
     "zensical>=0.0.19",
+]
 
-    # Crackerjack integration
+# Bodai ecosystem integrations
+ecosystem = [
+    "akosha>=0.2.0",
     "crackerjack>=0.50.1",
+    "dhara>=0.7.0",
+    "session-buddy>=0.13.0",
 ]
 
-# All core components (simplified stack - adapters now in main dependencies)
-all = [
-    "mahavishnu[dev]",
+# Optional: iTerm2 terminal integration (macOS only)
+iterm2 = [
+    "iterm2>=2.13",
 ]
 
-# Core components (recommended - adapters now in main dependencies)
-core = [
-    "mahavishnu[dev]",
+# Optional: TUI interface
+tui = [
+    "textual>=0.40",
 ]
 
-# RAG and knowledge base focus
-rag = [
-    "mahavishnu[dev]",
+# Optional: Embedding compression
+compression = [
+    "turboquant-pro>=0.1.0",
 ]
 
-# Worker CLI profiles (meta-extras; install corresponding CLIs on host PATH)
-worker-openclaw = []
-worker-deepagents = []
-worker-clai = []
-worker-alt-cli = [
-    "mahavishnu[worker-openclaw,worker-deepagents,worker-clai]",
+# Optional: Hatchet workflow orchestration
+hatchet = [
+    "hatchet-sdk>=1.0,<2",
 ]
 
-# Desktop automation: macOS and cross-platform desktop automation
+# Desktop automation (macOS)
 automation = [
-    # macOS-only dependencies (platform marker required)
-    "pyxa>=0.0.2; sys_platform == 'darwin'",           # macOS application automation (primary)
-    "pyatomac>=2.0.7; sys_platform == 'darwin'",       # macOS accessibility API (deprioritized)
-    # Cross-platform
-    "pyautogui>=0.9.54",                               # Cross-platform automation fallback
-    "Pillow>=10.0.0,<12.0",                            # Screenshot processing (fastembed 0.3-0.7.4 pins pillow<12.0; CVEs filed against pip-audit)
-    "mss>=9.0.0",                                      # Fast cross-platform screenshots
+    "pyxa>=0.0.2; sys_platform == 'darwin'",
+    "pyatomac>=2.0.7; sys_platform == 'darwin'",
+    "pyautogui>=0.9.54",
+    "Pillow>=12.2.0",
+    "mss>=9.0.0",
 ]
 
 # Desktop automation with vision (OCR, image recognition)
 automation-vision = [
-    "mahavishnu[automation]",
-    "pytesseract>=0.3.10",      # OCR via Tesseract
-    "easyocr>=1.7.0",           # Alternative OCR (GPU optional)
-    "opencv-python>=4.8.0",     # Computer vision
-]
-
-# Full automation suite (all optional features)
-automation-full = [
-    "mahavishnu[automation,automation-vision]",
-]
-
-# Hatchet workflow orchestration adapter
-hatchet = [
-    "hatchet-sdk>=1.0,<2",
+    "pytesseract>=0.3.10",
+    "easyocr>=1.7.0",
+    "opencv-python>=4.8.0",
 ]
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
-# Crackerjack Ruff Configuration (fast linter replacing black/isort/flake8)
 [tool.ruff]
 line-length = 100
 target-version = "py313"
 
 [tool.ruff.lint]
 extend-select = [
-    "I",   # Import sorting
-    "N",   # PEP8 naming
-    "UP",  # Pyupgrade
-    "B",   # Bugbear
-    "C4",  # Comprehensions
-    "SIM", # Simplify
-    "TCH", # Type checking
+    "I",
+    "N",
+    "UP",
+    "B",
+    "C4",
+    "SIM",
+    "TCH",
 ]
 ignore = [
-    "B904",   # raise-without-from-inside-except — each instance requires per-call judgment
-    "N806",   # variable-in-function-should-be-lowercase — class-as-var pattern used intentionally
-    "E402",   # module-level-import-not-at-top — intentional post-init imports in this codebase
-    "SIM102", # collapsible-if — readability judgment; not a correctness issue
-    "SIM105", # suppressible-exception — contextlib.suppress not always clearer
-    "SIM108", # if-else-block-instead-of-ternary — readability judgment
+    "B904",
+    "N806",
+    "E402",
+    "SIM102",
+    "SIM105",
+    "SIM108",
 ]
 exclude = [
     ".git",
@@ -281,7 +207,6 @@ line-ending = "auto"
 known-first-party = ["mahavishnu"]
 force-sort-within-sections = true
 
-# Ignore B008 (function calls in defaults) for CLI files using Typer pattern
 [tool.ruff.lint.per-file-ignores]
 "mahavishnu/**/*cli*.py" = ["B008"]
 "mahavishnu/cli/**/*.py" = ["B008"]
@@ -295,7 +220,6 @@ max-branches = 15
 max-returns = 6
 max-statements = 55
 
-# mypy configuration
 [tool.mypy]
 python_version = "3.13"
 warn_return_any = true
@@ -314,15 +238,11 @@ strict_optional = true
 module = "tests.*"
 disallow_untyped_defs = false
 
-# Crackerjack pytest configuration with extended markers
 [tool.pytest]
 minversion = "7.0"
 asyncio_mode = "auto"
 testpaths = ["tests"]
-pythonpath = [".", "scripts"]
-python_files = ["test_*.py"]
-python_functions = ["test_*"]
-python_classes = ["Test*"]
+pythonpath = ["."]
 addopts = [
     "--strict-markers",
     "--strict-config",
@@ -332,7 +252,7 @@ addopts = [
     "--cov-report=html",
     "--cov-report=xml",
     "--cov-fail-under=80",
-    "-n", "auto",  # Auto-detect parallel workers
+    "-n", "auto",
 ]
 markers = [
     "unit: Unit tests (fast, isolated)",
@@ -352,10 +272,9 @@ markers = [
     "requires_network: Tests requiring network access",
     "requires_auth: Tests requiring authentication credentials",
 ]
-timeout = "300"  # 5 minutes default
+timeout = "300"
 timeout_method = "thread"
 
-# Coverage configuration
 [tool.coverage.run]
 source = ["mahavishnu"]
 omit = [
@@ -377,12 +296,10 @@ exclude_lines = [
     "@abstractmethod",
 ]
 
-# Bandit configuration
 [tool.bandit]
 exclude_dirs = [".venv", "tests", "test_*.py"]
-skips = ["B101"]  # Skip assert_used warnings
+skips = ["B101"]
 
-# Pyright configuration (type checking fallback)
 [tool.pyright]
 include = ["mahavishnu"]
 exclude = ["**/test*", "**/__pycache__"]
@@ -391,46 +308,35 @@ reportMissingTypeStubs = "warning"
 pythonVersion = "3.13"
 typeCheckingMode = "strict"
 
-# Pylint configuration
 [tool.pylint.messages_control]
 disable = [
-    "C0111",  # missing-docstring
-    "C0103",  # invalid-name
-    "R0903",  # too-few-public-methods
+    "C0111",
+    "C0103",
+    "R0903",
 ]
 
 [tool.pylint.format]
 max-line-length = 100
 
-# Creosote configuration (detect unused dependencies) — v3.x API
 [tool.creosote]
 paths = ["mahavishnu"]
-sections = ["project.dependencies", "project.optional-dependencies"]
-# Exclude packages used outside mahavishnu/ (monitoring/, tests/), CLI tools,
-# optional-feature packages, and packages with non-matching import names.
+sections = ["project.dependencies", "dependency-groups"]
 exclude_deps = [
-    # Packages imported in monitoring/ (outside mahavishnu/ scan path)
     "prometheus-client",
     "opentelemetry-api",
     "opentelemetry-sdk",
     "opentelemetry-instrumentation",
     "opentelemetry-exporter-otlp-proto-grpc",
-    # Packages used as CLI servers/runners (not directly imported)
     "uvicorn",
-    # Packages with conditional/optional import patterns
     "slowapi",
     "starlette-context",
-    "fastembed",
     "pgvector",
     "tomli",
     "defusedxml",
     "croniter",
-    # Packages imported via different names (package name ≠ import name)
-    "beautifulsoup4",    # → bs4
-    "gitpython",         # → git
-    "opencv-python",     # → cv2
-    "pydantic-ai-slim",  # → pydantic_ai
-    # Optional automation features (platform-conditional imports)
+    "beautifulsoup4",
+    "gitpython",
+    "opencv-python",
     "Pillow",
     "mss",
     "pyatomac",
@@ -438,17 +344,13 @@ exclude_deps = [
     "pyautogui",
     "pytesseract",
     "easyocr",
-    # Optional content ingestion features
     "pypdf",
     "ebooklib",
-    "turboquant-pro",  # optional compression extra
-    # Optional AI adapter features
+    "turboquant-pro",
     "llama-cpp-python",
     "hatchet-sdk",
     "runpod-flash",
-    # Optional dependencies (pydantic-ai, agno)
     "agno",
-    # Dev/QC tools (not imported in source, used as CLI tools)
     "bandit",
     "complexipy",
     "codespell",
@@ -462,7 +364,6 @@ exclude_deps = [
     "ruff",
     "safety",
     "zensical",
-    # Test packages
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
@@ -472,67 +373,56 @@ exclude_deps = [
     "respx",
 ]
 
-# Refurb configuration (modern Python suggestions)
 [tool.refurb]
 enable_all = false
 ignore = [
-    "FURB101",  # Pathlib usage
-    "FURB102",  # startswith tuple — style preference
-    "FURB103",  # Print usage
-    "FURB105",  # print("") → print() — style preference
-    "FURB107",  # use suppress() — same as SIM105 suppressed in ruff
-    "FURB108",  # x == a or x == b → x in (a, b) — readability judgment
-    "FURB109",  # in [x, y] → in (x, y) — style preference
-    "FURB110",  # x if x else None → x or None — suppressed for clarity
-    "FURB111",  # lambda: x → x — style preference
-    "FURB113",  # consecutive appends → extend — readability judgment
-    "FURB115",  # len(x) > 0 → x — style preference
-    "FURB117",  # open(path) → path.open() — style preference
-    "FURB118",  # lambda a, b: a > b → operator.gt — style preference
-    "FURB119",  # {str(e)} → {e} — style preference
-    "FURB123",  # dict(x) → x.copy() — style preference
-    "FURB124",  # x is y and y is z — style preference
-    "FURB126",  # remove unnecessary else: return — readability judgment
-    "FURB135",  # unused dict key in for-loop — readability judgment
-    "FURB138",  # list comprehension — readability judgment
-    "FURB140",  # list(starmap(f, x)) — style preference
-    "FURB141",  # os.path.exists → Path.exists() — style preference
-    "FURB142",  # for loop set add → update — style preference
-    "FURB143",  # x or default — style preference
-    "FURB145",  # list copy — style preference
-    "FURB148",  # unused enumerate index — style preference
-    "FURB154",  # global x; global y → global x, y — style preference
-    "FURB157",  # Decimal("0") → Decimal(0) — style preference
-    "FURB160",  # redundant self-assignment — suppressed for explicit intent
-    "FURB165",  # Path().home() → Path.home() — style preference
-    "FURB173",  # dict merge with | — py3.9+ only, compatibility
-    "FURB183",  # f"{x}" → str(x) — style preference
-    "FURB184",  # chain assignment — readability judgment
+    "FURB101",
+    "FURB102",
+    "FURB103",
+    "FURB105",
+    "FURB107",
+    "FURB108",
+    "FURB109",
+    "FURB110",
+    "FURB111",
+    "FURB113",
+    "FURB115",
+    "FURB117",
+    "FURB118",
+    "FURB119",
+    "FURB123",
+    "FURB124",
+    "FURB126",
+    "FURB135",
+    "FURB138",
+    "FURB140",
+    "FURB141",
+    "FURB142",
+    "FURB143",
+    "FURB145",
+    "FURB148",
+    "FURB154",
+    "FURB157",
+    "FURB160",
+    "FURB165",
+    "FURB173",
+    "FURB183",
+    "FURB184",
 ]
 
-# pip-audit configuration (vulnerability scanning)
 [tool.pip-audit]
 ignore-vuln = [
-    # diskcache (transitive): race condition — no fix version available as of 2026-05
     "CVE-2025-69872",
-    # joblib (via nltk/llama-index-core): no fix version available upstream
     "PYSEC-2024-277",
-    # markdown (via apprise): no fix version available upstream
     "PYSEC-2026-89",
-    # nltk (via llama-index-core): filestring() path traversal — no fix version available
     "PYSEC-2026-97",
-    # ollama Python client (via llama-index-llms/embeddings-ollama): these CVEs describe
-    # server-side vulnerabilities in the Ollama binary (GGUF parsing, DoS via /api/pull),
-    # not the Python client library — no fix version available for the client package
     "PYSEC-2025-144",
     "PYSEC-2025-145",
     "PYSEC-2025-146",
     "PYSEC-2025-147",
     "PYSEC-2026-101",
     "PYSEC-2026-102",
-    # pyjwt (via akosha/mcp/mcp-common): no fix version available upstream
     "PYSEC-2025-183",
-    # transformers (via crackerjack/session-buddy): no fix versions available upstream
     "PYSEC-2025-211",
     "PYSEC-2025-212",
     "PYSEC-2025-213",
@@ -543,15 +433,14 @@ ignore-vuln = [
     "PYSEC-2025-218",
 ]
 
-# Codespell configuration (typo detection)
 [tool.codespell]
 ignore-words-list = ["assertIn", "import", "ttest", "ned"]
 skip = '.git,*.egg-info,*cache,.venv,build,dist,htmlcov'
 
-# Complexipy configuration (complexity checking)
 [tool.complexipy]
 max_complexity = 15
-ignore = ["tests"]# Zensical configuration (documentation generator)
+ignore = ["tests"]
+
 [tool.zensical]
 site_name = "Mahavishnu Documentation"
 source_dir = "docs/src"
@@ -579,15 +468,6 @@ nav = [
     "production.md",
     "api-reference.md",
     "troubleshooting.md",
-]
-
-[dependency-groups]
-dev = [
-    "akosha>=0.2.0",
-    "crackerjack>=0.50.1",
-    "dhara>=0.7.0",
-    "iterm2>=2.13",
-    "session-buddy>=0.13.0",
 ]
 
 [tool.uv.sources]
