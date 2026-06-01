@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -400,7 +401,38 @@ class _ErrorPayloadClient:
     async def call_tool(self, name: str, arguments: dict):  # noqa: ANN001
         if name == "list_adapters":
             return {"success": False, "error": "registry error"}
+        if name == "get_adapter":
+            return {"success": False, "error": "adapter lookup failed"}
         return {"success": True, "health": {"healthy": False}}
+
+
+class _FallbackLookupClient:
+    base_url = "http://localhost:8683/mcp"
+
+    async def call_tool(self, name: str, arguments: dict):  # noqa: ANN001
+        if name == "list_adapters":
+            return {
+                "success": True,
+                "adapters": [
+                    {
+                        "adapter_id": "invalid-id",
+                        "domain": "adapter",
+                        "key": "storage",
+                        "provider": "local",
+                        "factory_path": "x.y:factory",
+                        "capabilities": ["read"],
+                        "metadata": {"category": "storage"},
+                        "health_status": "healthy",
+                    }
+                ],
+            }
+        if name == "get_adapter":
+            return {"success": True, "adapter": None}
+        if name == "get_adapter_health":
+            return {"success": True, "health": {"healthy": True}}
+        if name == "get_contract_info":
+            return {"ok": True}
+        raise AssertionError(name)
 
 
 class TestClientDisabledPaths:
@@ -497,17 +529,39 @@ class TestClientErrorPaths:
         result = await client.get_adapter("adapter:storage:local")
         assert result is None
 
+    async def test_get_adapter_payload_failure_records_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_ErrorPayloadClient))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
+
+        result = await client.get_adapter("adapter:storage:local")
+        assert result is None
+        assert client._circuit_breaker.failures["adapter:storage:local"] == 1
+
     async def test_get_adapter_invalid_id_falls_back_to_list(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         import mahavishnu.core.oneiric_client as mod
 
-        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_Client))
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_FallbackLookupClient))
         client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
 
         result = await client.get_adapter("invalid-id")
-        # Falls back to listing all adapters and searching by ID
-        assert result is not None or result is None  # Depends on whether mock list has matching ID
+        assert result is not None
+        assert result.adapter_id == "invalid-id"
+
+    async def test_get_adapter_invalid_id_not_found_returns_none(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_EmptyClient))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
+
+        assert await client.get_adapter("invalid-id") is None
 
     async def test_check_health_unhealthy(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import mahavishnu.core.oneiric_client as mod
@@ -526,6 +580,32 @@ class TestClientErrorPaths:
 
         result = await client.check_adapter_health("adapter:storage:local")
         assert result is False
+
+    async def test_get_adapter_blocked_by_circuit_breaker(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_Client))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
+        client._circuit_breaker.blocked_until["adapter:storage:local"] = datetime.now(
+            UTC
+        ) + timedelta(minutes=5)
+
+        assert await client.get_adapter("adapter:storage:local") is None
+
+    async def test_check_health_blocked_by_circuit_breaker(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_Client))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
+        client._circuit_breaker.blocked_until["adapter:storage:local"] = datetime.now(
+            UTC
+        ) + timedelta(minutes=5)
+
+        assert await client.check_adapter_health("adapter:storage:local") is False
 
     async def test_send_heartbeat_delegates_to_get_adapter(
         self, monkeypatch: pytest.MonkeyPatch
@@ -589,6 +669,25 @@ class TestClientErrorPaths:
         r2 = await client.list_adapters(use_cache=True)
         assert len(r1) == len(r2) == 1
         # Second call should come from cache (only 1 actual call_tool invocation)
+
+    async def test_list_adapters_cache_expired_refreshes(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import mahavishnu.core.oneiric_client as mod
+
+        monkeypatch.setattr(mod, "get_dhara_client", _mock_get_dhara(_Client))
+        client = mod.DharaAdapterRegistryClient(mod.DharaAdapterRegistryConfig(enabled=True))
+
+        first = await client.list_adapters(use_cache=True)
+        cache_key = client._make_cache_key(None, None, None, False)
+        cached_adapters, _ = client._cache[cache_key]
+        client._cache[cache_key] = (
+            cached_adapters,
+            datetime.now(UTC) - timedelta(seconds=client.config.cache_ttl_sec + 1),
+        )
+
+        second = await client.list_adapters(use_cache=True)
+        assert len(first) == len(second) == 1
 
     async def test_list_adapters_project_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import mahavishnu.core.oneiric_client as mod

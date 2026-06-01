@@ -1,6 +1,7 @@
 """Tests for canonical status normalization."""
 
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 
@@ -352,6 +353,212 @@ async def test_collect_alerts_with_no_provider():
     svc = EcosystemStatusService()
     result = await svc._collect_alerts()
     assert result == AlertSummary()
+
+
+class TestEcosystemStatusServiceCollectionBranches:
+    @pytest.mark.asyncio
+    async def test_collect_services_success(self, monkeypatch):
+        import httpx
+
+        from mahavishnu.core.ecosystem_status import CanonicalStatus, EcosystemStatusService
+
+        class FakeResponse:
+            def json(self):
+                return {"status": "healthy", "latency_ms": 42}
+
+        class FakeClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def get(self, url):
+                return FakeResponse()
+
+        monkeypatch.setattr(httpx, "AsyncClient", FakeClient)
+
+        svc = EcosystemStatusService(
+            service_configs={"session_buddy": {"url": "http://example.test", "required": True}}
+        )
+        result = await svc._collect_services()
+
+        assert result["session_buddy"].status == CanonicalStatus.OK
+        assert result["session_buddy"].latency_ms == 42
+
+    @pytest.mark.asyncio
+    async def test_collect_adapters_success_and_failure(self):
+        from mahavishnu.core.ecosystem_status import CanonicalStatus, EcosystemStatusService
+
+        class GoodAdapter:
+            async def get_health(self):
+                return {"status": "degraded", "preference_score": 0.4}
+
+        class BadAdapter:
+            async def get_health(self):
+                raise RuntimeError("adapter down")
+
+        svc = EcosystemStatusService(adapters={"good": GoodAdapter(), "bad": BadAdapter()})
+        result = await svc._collect_adapters()
+
+        assert result["good"].status == CanonicalStatus.DEGRADED
+        assert result["good"].preference_score == 0.4
+        assert result["bad"].status == CanonicalStatus.UNKNOWN
+
+    @pytest.mark.asyncio
+    async def test_collect_workflows_recovery_and_alerts(self):
+        from mahavishnu.core.ecosystem_status import EcosystemStatusService
+
+        class WorkflowProvider:
+            async def list_workflows(self, limit):
+                return [
+                    {"status": "running"},
+                    {"status": "failed"},
+                    {"status": "completed"},
+                ]
+
+        class RecoveryProvider:
+            async def get_recovery_summary(self):
+                return {
+                    "recovered_workflows": 3,
+                    "recovered_approvals": 4,
+                    "recovered_pools": 5,
+                    "recovered_routing_decisions": 6,
+                    "dhara_available": True,
+                }
+
+        class Alert:
+            def __init__(self, severity, type_, description):
+                self.severity = severity
+                self.type = type_
+                self.description = description
+                self.timestamp = datetime.now()
+
+        class AlertProvider:
+            def get_active_alerts_sync(self):
+                return [
+                    Alert(SimpleNamespace(value="warning"), "monitoring", "One alert"),
+                    Alert("critical", "routing", "Two alert"),
+                ]
+
+        svc = EcosystemStatusService(
+            workflow_provider=WorkflowProvider(),
+            recovery_provider=RecoveryProvider(),
+            alert_provider=AlertProvider(),
+        )
+
+        workflows = await svc._collect_workflows()
+        recovery = await svc._collect_recovery()
+        alerts = await svc._collect_alerts()
+
+        assert workflows.active_count == 1
+        assert workflows.failed_count == 1
+        assert recovery.recovered_workflows == 3
+        assert recovery.dhara_available is True
+        assert alerts.total_active == 2
+        assert alerts.by_severity["warning"] == 1
+        assert alerts.by_severity["critical"] == 1
+
+    @pytest.mark.asyncio
+    async def test_collect_recovery_returns_summary_object(self):
+        from mahavishnu.core.ecosystem_status import EcosystemStatusService, RecoverySummary
+
+        class RecoveryProvider:
+            async def get_recovery_summary(self):
+                return RecoverySummary(
+                    recovered_workflows=7,
+                    recovered_approvals=8,
+                    recovered_pools=9,
+                    recovered_routing_decisions=10,
+                    dhara_available=False,
+                )
+
+        svc = EcosystemStatusService(recovery_provider=RecoveryProvider())
+        result = await svc._collect_recovery()
+
+        assert result.recovered_workflows == 7
+        assert result.dhara_available is False
+
+    @pytest.mark.asyncio
+    async def test_collect_workflows_recovery_and_alerts_fail_closed(self):
+        from mahavishnu.core.ecosystem_status import (
+            AlertSummary,
+            EcosystemStatusService,
+            RecoverySummary,
+            WorkflowSummary,
+        )
+
+        class FailingWorkflowProvider:
+            async def list_workflows(self, limit):
+                raise RuntimeError("workflow store unavailable")
+
+        class FailingRecoveryProvider:
+            async def get_recovery_summary(self):
+                raise RuntimeError("recovery store unavailable")
+
+        class FailingAlertProvider:
+            def get_active_alerts_sync(self):
+                raise RuntimeError("alerts unavailable")
+
+        svc = EcosystemStatusService(
+            workflow_provider=FailingWorkflowProvider(),
+            recovery_provider=FailingRecoveryProvider(),
+            alert_provider=FailingAlertProvider(),
+        )
+
+        workflows = await svc._collect_workflows()
+        recovery = await svc._collect_recovery()
+        alerts = await svc._collect_alerts()
+
+        assert workflows == WorkflowSummary()
+        assert recovery == RecoverySummary()
+        assert alerts == AlertSummary()
+
+    @pytest.mark.asyncio
+    async def test_collect_capabilities_health_fallback_and_failure(self):
+        from mahavishnu.core.ecosystem_status import CanonicalStatus, EcosystemStatusService
+
+        class HealthCapabilitiesAdapter:
+            async def get_health(self):
+                return {"status": "healthy", "capabilities": ["vector_search", "message_bus"]}
+
+        class FailingAdapter:
+            async def get_health(self):
+                raise RuntimeError("boom")
+
+        svc = EcosystemStatusService(
+            adapters={"fallback": HealthCapabilitiesAdapter(), "broken": FailingAdapter()}
+        )
+        result = await svc._collect_capabilities()
+
+        assert result["vector_search"].status == CanonicalStatus.OK
+        assert result["vector_search"].provided_by == ["fallback"]
+        assert result["vector_search"].category == "retrieval"
+        assert result["message_bus"].category == "messaging"
+        assert result["message_bus"].provided_by == ["fallback"]
+
+    @pytest.mark.asyncio
+    async def test_collect_capabilities_updates_to_worst_status(self):
+        from mahavishnu.core.ecosystem_status import CanonicalStatus, EcosystemStatusService
+
+        class HealthyAdapter:
+            async def get_health(self):
+                return {"status": "healthy", "capabilities": ["metrics"]}
+
+        class UnhealthyAdapter:
+            async def get_health(self):
+                return {"status": "unhealthy", "capabilities": ["metrics"]}
+
+        svc = EcosystemStatusService(
+            adapters={"healthy": HealthyAdapter(), "unhealthy": UnhealthyAdapter()}
+        )
+        result = await svc._collect_capabilities()
+
+        assert result["metrics"].status == CanonicalStatus.UNHEALTHY
+        assert result["metrics"].provided_by == ["healthy", "unhealthy"]
 
 
 # ── Phase 5: Routing decision models and ring buffer ───────────────────────

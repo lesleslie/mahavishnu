@@ -1,5 +1,7 @@
 """Tests for metrics schema and data structures."""
 
+import builtins
+import importlib
 import json
 
 import pytest
@@ -242,6 +244,28 @@ class TestCalculatePercentilesEdgeCases:
         # Custom formula: max(0, (5-1)//2 - 1) = max(0, 1) = 1, so value is 2
         assert result["p50"] == 2
 
+    def test_clamps_index_when_length_changes(self, monkeypatch):
+        from mahavishnu.core import metrics_schema as ms
+
+        class ShrinkingSortedList(list):
+            def __init__(self, values: list[int]) -> None:
+                super().__init__(values)
+                self._len_calls = 0
+
+            def __len__(self) -> int:
+                self._len_calls += 1
+                return 3 if self._len_calls == 1 else 0
+
+        monkeypatch.setattr(
+            builtins,
+            "sorted",
+            lambda values: ShrinkingSortedList([10, 20, 30]),
+        )
+
+        result = ms.calculate_percentiles([30, 10, 20], [50.0])
+
+        assert result["p50"] == 30
+
 
 class TestCalculateConfidenceIntervalEdgeCases:
     """Test uncovered branches in calculate_confidence_interval."""
@@ -275,17 +299,27 @@ class TestCalculateConfidenceIntervalEdgeCases:
 class TestGenerateConfigIdFallback:
     """Test the fallback generate_config_id when oneiric is not available."""
 
-    def test_fallback_returns_string(self):
+    def test_fallback_returns_string(self, monkeypatch):
         from mahavishnu.core import metrics_schema as ms
 
-        original = ms.generate_config_id
+        original_import = builtins.__import__
+
+        def blocked_import(name, globals=None, locals=None, fromlist=(), level=0):
+            if name == "oneiric.core.ulid" or name.startswith("oneiric."):
+                raise ImportError("blocked for fallback test")
+            return original_import(name, globals, locals, fromlist, level)
+
         try:
-            ms.generate_config_id = lambda: "test-fallback-id"
-            result = ms.generate_config_id()
-            assert result == "test-fallback-id"
+            monkeypatch.setattr(builtins, "__import__", blocked_import)
+            reloaded = importlib.reload(ms)
+
+            result = reloaded.generate_config_id()
+
             assert isinstance(result, str)
+            assert len(result) == 32
         finally:
-            ms.generate_config_id = original
+            monkeypatch.setattr(builtins, "__import__", original_import)
+            importlib.reload(ms)
 
 
 if __name__ == "__main__":

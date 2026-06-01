@@ -49,12 +49,12 @@
       "url": "http://localhost:3045/mcp"
     },
     "penpot": {
-      "args": [
-        "-y",
-        "@penpot/mcp"
-      ],
-      "command": "npx",
-      "type": "stdio"
+      "type": "http",
+      "url": "http://localhost:4401/sse"
+    },
+    "penpot-api": {
+      "type": "http",
+      "url": "http://localhost:3051/mcp"
     },
     "pycharm": {
       "type": "http",

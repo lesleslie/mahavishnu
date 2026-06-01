@@ -596,6 +596,24 @@ class TestTaskOrderer:
         result = orderer._calculate_critical_path(tasks, dep_graph, {})
         assert isinstance(result, list)
 
+    def test_calculate_critical_path_cycle_with_missing_task(self, orderer: TaskOrderer) -> None:
+        """Test critical path handling for cycles and missing dependency nodes."""
+        tasks = [
+            {"id": "a", "estimated_hours": 1.0},
+            {"id": "b", "estimated_hours": 2.0},
+        ]
+        dependencies = {
+            "a": ["b"],
+            "b": ["c"],
+            "c": ["a"],
+        }
+
+        dep_graph = orderer._build_dependency_graph(tasks, dependencies)
+
+        result = orderer._calculate_critical_path(tasks, dep_graph, {})
+
+        assert result == ["c", "b", "a"]
+
 
 class TestConvenienceFunction:
     """Test convenience function."""

@@ -29,6 +29,19 @@ Mahavishnu is repo-centric orchestration infrastructure optimized for the Bodai 
 
 **Product posture**: Internal-first. MCP-first. Control-plane scope.
 
+## Memory Routing
+
+Claude Code memory is split by layer — **do not write `project` or `reference` types to CC memory files**:
+
+| Type | Where | Why |
+|------|-------|-----|
+| `user` | CC memory file (`~/.claude/projects/.../memory/`) | Needed at session start before MCP is up |
+| `feedback` | CC memory file | Same — shapes Claude's behavior immediately |
+| `project` | Session-Buddy `store_reflection` MCP tool | Searchable by all Bodai components |
+| `reference` | Session-Buddy `store_reflection` MCP tool | Same |
+
+When saving `project`/`reference` memory, call `store_reflection(content, tags=["project"|"reference", <topic-tags>])` via the Session-Buddy MCP. When recalling, use `quick_search` or `search_by_concept`.
+
 ## Key Architecture
 
 **Oneiric layered config**: Defaults → `settings/mahavishnu.yaml` → `settings/local.yaml` → env vars (`MAHAVISHNU_*`).

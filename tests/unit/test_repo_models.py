@@ -158,6 +158,10 @@ class TestRepositoryNameValidation:
                 description="test",
             )
 
+    def test_validator_rejects_spaces_directly(self):
+        with pytest.raises(ValueError, match="must not contain spaces"):
+            Repository.name_must_match_package_convention("my repo")
+
     def test_rejects_too_long(self):
         with pytest.raises(Exception):
             Repository(

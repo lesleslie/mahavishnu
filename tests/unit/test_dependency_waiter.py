@@ -120,3 +120,83 @@ async def test_wait_for_dependencies_returns_false_on_strict_validation_error(
     result_value = await wait_for_dependencies(app)
 
     assert result_value is False
+
+
+@pytest.mark.asyncio
+async def test_wait_for_dependencies_returns_false_on_failed_health_check(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    result = SimpleNamespace(
+        success=False,
+        dependencies={},
+        total_wait_seconds=2.0,
+        failed_required=["session_buddy"],
+        skipped_optional=["optional_service"],
+    )
+
+    class FakeWaiter:
+        def __init__(self, config: object) -> None:
+            self.wait_for_all = AsyncMock(return_value=result)
+
+    class FakeUnifiedConfig:
+        validate = staticmethod(lambda: SimpleNamespace(valid=True, get_errors=lambda: []))
+
+        validate_strict = staticmethod(lambda: None)
+
+    monkeypatch.setattr("mahavishnu.core.health.DependencyWaiter", FakeWaiter)
+    monkeypatch.setattr("mahavishnu.core.unified_config.UnifiedConfig", FakeUnifiedConfig)
+
+    app = SimpleNamespace(
+        config=SimpleNamespace(
+            health=SimpleNamespace(enabled=True, dependencies={"session_buddy": object()}),
+            unified_validation_enabled=True,
+        ),
+        _dhara_state=None,
+        _recover_workflow_state_from_dhara=AsyncMock(),
+        _recover_approvals_from_dhara=AsyncMock(),
+    )
+
+    result_value = await wait_for_dependencies(app)
+
+    assert result_value is False
+
+
+@pytest.mark.asyncio
+async def test_wait_for_dependencies_swallows_validation_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    result = SimpleNamespace(
+        success=True,
+        dependencies={},
+        total_wait_seconds=0.0,
+        failed_required=[],
+        skipped_optional=[],
+    )
+
+    class FakeWaiter:
+        def __init__(self, config: object) -> None:
+            self.wait_for_all = AsyncMock(return_value=result)
+
+    class FakeUnifiedConfig:
+        @staticmethod
+        def validate() -> SimpleNamespace:
+            raise RuntimeError("validation exploded")
+
+        validate_strict = staticmethod(lambda: None)
+
+    monkeypatch.setattr("mahavishnu.core.health.DependencyWaiter", FakeWaiter)
+    monkeypatch.setattr("mahavishnu.core.unified_config.UnifiedConfig", FakeUnifiedConfig)
+
+    app = SimpleNamespace(
+        config=SimpleNamespace(
+            health=SimpleNamespace(enabled=True, dependencies={"session_buddy": object()}),
+            unified_validation_enabled=False,
+        ),
+        _dhara_state=None,
+        _recover_workflow_state_from_dhara=AsyncMock(),
+        _recover_approvals_from_dhara=AsyncMock(),
+    )
+
+    result_value = await wait_for_dependencies(app)
+
+    assert result_value is True

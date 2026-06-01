@@ -30,12 +30,13 @@ from mahavishnu.core.coordination.models import (
     Dependency,
     DependencyStatus,
     DependencyType,
+    DependencyValidation,
     Milestone,
     Priority,
     TodoStatus,
 )
 from mahavishnu.core.errors import ConfigurationError
-from mahavishnu.core.status import IssueStatus
+from mahavishnu.core.status import IssueStatus, PlanStatus
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -201,6 +202,8 @@ class TestCoordinationModels:
             metadata={},
         )
         assert issue.id == "ISSUE-001"
+        assert issue.status == IssueStatus.PENDING
+        assert issue.priority == Priority.HIGH
 
         # Invalid: no repos
         with pytest.raises(ValueError):
@@ -214,6 +217,25 @@ class TestCoordinationModels:
                 repos=[],
                 created="2026-01-31T00:00:00",
                 updated="2026-01-31T00:00:00",
+                dependencies=[],
+                blocking=[],
+                labels=[],
+                metadata={},
+            )
+
+    def test_cross_repo_issue_invalid_target_date(self):
+        with pytest.raises(ValueError, match="Invalid target date format"):
+            CrossRepoIssue(
+                id="ISSUE-003",
+                title="Test",
+                description="Test issue",
+                status=IssueStatus.PENDING,
+                priority=Priority.MEDIUM,
+                severity="feature",
+                repos=["mahavishnu"],
+                created="2026-01-31T00:00:00",
+                updated="2026-01-31T00:00:00",
+                target="not-a-date",
                 dependencies=[],
                 blocking=[],
                 labels=[],
@@ -256,6 +278,60 @@ class TestCoordinationModels:
                 labels=[],
                 acceptance_criteria=[],
             )
+        todo = CrossRepoTodo(
+            id="TODO-003",
+            task="Test task",
+            description="A test todo",
+            repo="mahavishnu",
+            status=TodoStatus.IN_PROGRESS,
+            priority=Priority.HIGH,
+            created="2026-01-31T00:00:00",
+            updated="2026-01-31T00:00:00",
+            estimated_hours=2.0,
+            blocked_by=[],
+            blocking=[],
+            labels=[],
+            acceptance_criteria=[],
+        )
+        assert todo.status == TodoStatus.IN_PROGRESS
+
+    def test_cross_repo_plan_validation(self):
+        plan = CrossRepoPlan(
+            id="PLAN-001",
+            title="Test plan",
+            description="A test plan",
+            status=PlanStatus.DRAFT,
+            repos=["mahavishnu"],
+            created="2026-01-31T00:00:00",
+            updated="2026-01-31T00:00:00",
+            target="2026-02-15T00:00:00",
+        )
+        assert plan.id == "PLAN-001"
+        assert plan.status == PlanStatus.DRAFT
+
+        with pytest.raises(ValueError, match="At least one repository must be specified"):
+            CrossRepoPlan(
+                id="PLAN-002",
+                title="Test plan",
+                description="A test plan",
+                status=PlanStatus.DRAFT,
+                repos=[],
+                created="2026-01-31T00:00:00",
+                updated="2026-01-31T00:00:00",
+                target="2026-02-15T00:00:00",
+            )
+
+        plan = CrossRepoPlan(
+            id="PLAN-003",
+            title="Test plan",
+            description="A test plan",
+            status=PlanStatus.ACTIVE,
+            repos=["mahavishnu"],
+            created="2026-01-31T00:00:00",
+            updated="2026-01-31T00:00:00",
+            target="2026-02-15T00:00:00",
+        )
+        assert plan.status == PlanStatus.ACTIVE
 
     def test_dependency_model(self):
         dep = Dependency(
@@ -271,6 +347,43 @@ class TestCoordinationModels:
         )
         assert dep.consumer == "fastblocks"
         assert dep.type == DependencyType.RUNTIME
+
+        with pytest.raises(ValueError, match="Repository nickname cannot be empty"):
+            Dependency(
+                id="DEP-002",
+                consumer=" ",
+                provider="oneiric",
+                type=DependencyType.RUNTIME,
+                version_constraint=">=0.2.0",
+                created="2026-01-15T00:00:00",
+                updated="2026-01-30T00:00:00",
+                notes="Test dependency",
+            )
+
+        with pytest.raises(ValueError, match="Repository nickname cannot be empty"):
+            Dependency(
+                id="DEP-003",
+                consumer="fastblocks",
+                provider="",
+                type=DependencyType.RUNTIME,
+                version_constraint=">=0.2.0",
+                created="2026-01-15T00:00:00",
+                updated="2026-01-30T00:00:00",
+                notes="Test dependency",
+            )
+
+        dep = Dependency(
+            id="DEP-004",
+            consumer="fastblocks",
+            provider="oneiric",
+            type=DependencyType.RUNTIME,
+            version_constraint=">=0.2.0",
+            created="2026-01-15T00:00:00",
+            updated="2026-01-30T00:00:00",
+            notes="Test dependency",
+            validation=DependencyValidation(command="echo ok"),
+        )
+        assert dep.validation is not None
 
 
 # ===========================================================================
@@ -669,6 +782,298 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
+    def test_normalize_infer_issue_repos_default_repo(self, ecosystem_path):
+        issue = _sample_issue_dict()
+        del issue["repos"]
+        issue.pop("affected_files", None)
+        issue.pop("pool", None)
+        data = _make_ecosystem_yaml(issues=[issue])
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+            issues = cm.list_issues()
+            assert issues[0].repos == ["mahavishnu"]
+        finally:
+            os.unlink(path)
+
+    def test_normalize_todo_repo_from_issue_id_and_default(self, ecosystem_path):
+        todo_with_issue = _sample_todo_dict()
+        del todo_with_issue["repo"]
+        todo_with_issue["issue_id"] = "ISSUE-001"
+
+        todo_default = _sample_todo_dict(id="TODO-002", task="Fallback")
+        del todo_default["repo"]
+        todo_default.pop("issue_id", None)
+        todo_default.pop("pool", None)
+
+        data = _make_ecosystem_yaml(todos=[todo_with_issue, todo_default])
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+            todos = cm.list_todos()
+            assert todos[0].repo == "mahavishnu"
+            assert todos[1].repo == "mahavishnu"
+        finally:
+            os.unlink(path)
+
+    def test_normalize_todo_description_and_estimate_alias(self, ecosystem_path):
+        todo = _sample_todo_dict()
+        del todo["task"]
+        del todo["description"]
+        todo["title"] = "Title fallback"
+        todo["estimate_hours"] = 12.5
+        del todo["estimated_hours"]
+        data = _make_ecosystem_yaml(todos=[todo])
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+            todos = cm.list_todos()
+            assert todos[0].task == "Title fallback"
+            assert todos[0].description == "Title fallback"
+            assert todos[0].estimated_hours == 12.5
+        finally:
+            os.unlink(path)
+
+    def test_normalize_todo_unknown_status_and_tags(self, ecosystem_path):
+        todo = _sample_todo_dict(status="mystery", tags=["t1", "t2"])
+        del todo["labels"]
+        data = _make_ecosystem_yaml(todos=[todo])
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+            todos = cm.list_todos()
+            assert todos[0].status == TodoStatus.PENDING
+            assert todos[0].labels == ["t1", "t2"]
+        finally:
+            os.unlink(path)
+
+    def test_normalize_issue_created_and_updated_from_legacy_fields(self, ecosystem_path):
+        issue = _sample_issue_dict()
+        issue.pop("created")
+        issue.pop("updated")
+        issue["created_at"] = datetime(2026, 1, 1)
+        issue["updated_at"] = datetime(2026, 1, 2)
+        data = _make_ecosystem_yaml(issues=[issue])
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+            issues = cm.list_issues()
+            assert issues[0].created.startswith("2026-01-01")
+            assert issues[0].updated.startswith("2026-01-02")
+        finally:
+            os.unlink(path)
+
+    def test_normalize_todo_created_updated_and_pool_fallback(self, ecosystem_path):
+        todo = _sample_todo_dict()
+        todo.pop("created")
+        todo.pop("updated")
+        todo["created_at"] = datetime(2026, 1, 3)
+        todo["completed_at"] = datetime(2026, 1, 4)
+        todo.pop("repo")
+        todo["pool"] = "akosha"
+        data = _make_ecosystem_yaml(todos=[todo])
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+            todos = cm.list_todos()
+            assert todos[0].created.startswith("2026-01-03")
+            assert todos[0].updated.startswith("2026-01-04")
+            assert todos[0].repo == "akosha"
+        finally:
+            os.unlink(path)
+
+    def test_infer_todo_repo_issue_id_pool_and_default(self, ecosystem_path, monkeypatch):
+        from types import SimpleNamespace
+
+        cm = CoordinationManager(ecosystem_path)
+        monkeypatch.setattr(
+            cm,
+            "get_issue",
+            lambda _issue_id: SimpleNamespace(repos=["session-buddy"]),
+        )
+        assert cm._infer_todo_repo({"issue_id": "ISSUE-001"}) == "session-buddy"
+        assert cm._infer_todo_repo({"pool": "akosha"}) == "akosha"
+        assert cm._infer_todo_repo({}) == "mahavishnu"
+
+    def test_normalize_status_enum_passthrough(self, ecosystem_path):
+        cm = CoordinationManager(ecosystem_path)
+        assert cm._normalize_issue_status(IssueStatus.BLOCKED) == IssueStatus.BLOCKED
+        assert cm._normalize_todo_status(TodoStatus.BLOCKED) == TodoStatus.BLOCKED
+
+    def test_run_command_safe_success_and_failure(self):
+        from mahavishnu.core.coordination.manager import _run_command_safe
+
+        class _EmptyCommand(str):
+            def split(self, sep=None, maxsplit=-1):  # type: ignore[override]
+                if sep == "|":
+                    return []
+                return super().split(sep, maxsplit)
+
+        assert _run_command_safe(_EmptyCommand("")) == ""
+        output = _run_command_safe("echo hello | tr a-z A-Z")
+        assert output.strip() == "HELLO"
+
+        with pytest.raises(Exception):
+            _run_command_safe("definitely-not-a-real-command")
+
+    def test_list_plans_and_todos_validation_errors(self):
+        bad_plan_data = _make_ecosystem_yaml(
+            plans=[
+                {
+                    "id": "PLAN-BAD",
+                    "title": "Bad",
+                    "description": "Bad",
+                    "status": "draft",
+                    "repos": [],
+                    "created": "2026-01-15T00:00:00",
+                    "updated": "2026-01-15T00:00:00",
+                    "target": "2026-03-01T00:00:00",
+                    "milestones": [],
+                }
+            ]
+        )
+        bad_todo_data = _make_ecosystem_yaml(
+            todos=[
+                {
+                    "id": "TODO-BAD",
+                    "task": "Bad",
+                    "description": "Bad",
+                    "repo": "mahavishnu",
+                    "status": "pending",
+                    "priority": "medium",
+                    "created": "2026-01-15T00:00:00",
+                    "updated": "2026-01-15T00:00:00",
+                    "estimated_hours": 0,
+                    "blocked_by": [],
+                    "blocking": [],
+                    "labels": [],
+                    "acceptance_criteria": [],
+                }
+            ]
+        )
+        plan_path = _write_ecosystem(bad_plan_data)
+        todo_path = _write_ecosystem(bad_todo_data)
+        try:
+            with pytest.raises(ConfigurationError, match="Invalid plan data"):
+                CoordinationManager(plan_path).list_plans()
+            with pytest.raises(ConfigurationError, match="Invalid todo data"):
+                CoordinationManager(todo_path).list_todos()
+        finally:
+            os.unlink(plan_path)
+            os.unlink(todo_path)
+
+    def test_list_dependencies_and_check_dependencies_validation_error(self):
+        bad_dep_data = _make_ecosystem_yaml(
+            dependencies=[
+                {
+                    "id": "DEP-BAD",
+                    "consumer": "",
+                    "provider": "oneiric",
+                    "type": "runtime",
+                    "version_constraint": ">=0.2.0",
+                    "status": "satisfied",
+                    "created": "2026-01-15T00:00:00",
+                    "updated": "2026-01-15T00:00:00",
+                    "notes": "Bad dep",
+                }
+            ]
+        )
+        path = _write_ecosystem(bad_dep_data)
+        try:
+            cm = CoordinationManager(path)
+            with pytest.raises(ConfigurationError, match="Invalid dependency data"):
+                cm.list_dependencies()
+            with pytest.raises(ConfigurationError, match="Invalid dependency data"):
+                cm.check_dependencies()
+        finally:
+            os.unlink(path)
+
+    def test_list_issues_validation_error(self):
+        bad_issue_data = _make_ecosystem_yaml(
+            issues=[
+                {
+                    "id": "ISSUE-BAD",
+                    "title": "Bad",
+                    "description": "Bad",
+                    "status": "pending",
+                    "priority": "medium",
+                    "severity": "bug",
+                    "repos": "bad",
+                    "created": "2026-01-15T00:00:00",
+                    "updated": "2026-01-15T00:00:00",
+                    "dependencies": [],
+                    "blocking": [],
+                    "labels": [],
+                    "metadata": {},
+                }
+            ]
+        )
+        path = _write_ecosystem(bad_issue_data)
+        try:
+            cm = CoordinationManager(path)
+            with pytest.raises(ConfigurationError, match="Invalid issue data"):
+                cm.list_issues()
+        finally:
+            os.unlink(path)
+
+    def test_save_oserror_branch(self, monkeypatch):
+        data = _make_ecosystem_yaml()
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+
+            def _boom(*args, **kwargs):  # noqa: ANN001
+                raise OSError("disk full")
+
+            monkeypatch.setattr("builtins.open", _boom)
+            with pytest.raises(ConfigurationError, match="Failed to write ecosystem.yaml"):
+                cm.save()
+        finally:
+            os.unlink(path)
+
+    def test_get_ecosystem_status_healthy_and_degraded(self):
+        healthy_data = _make_ecosystem_yaml(
+            issues=[_sample_issue_dict(id="ISSUE-HEALTHY", status="resolved", priority="low")],
+            todos=[_sample_todo_dict(id="TODO-HEALTHY", status="completed")],
+            plans=[_sample_plan_dict(status="draft")],
+            dependencies=[_sample_dependency_dict(status="satisfied")],
+        )
+        degraded_data = _make_ecosystem_yaml(
+            issues=[_sample_issue_dict(id="ISSUE-DEGRADED", status="pending", priority="high")],
+            todos=[_sample_todo_dict(id="TODO-DEGRADED", status="pending")],
+            plans=[_sample_plan_dict(status="active")],
+            dependencies=[_sample_dependency_dict(status="unsatisfied")],
+        )
+        healthy_path = _write_ecosystem(healthy_data)
+        degraded_path = _write_ecosystem(degraded_data)
+        try:
+            healthy = CoordinationManager(healthy_path).get_ecosystem_status()
+            degraded = CoordinationManager(degraded_path).get_ecosystem_status()
+            assert healthy["health"] == "healthy"
+            assert degraded["health"] == "degraded"
+            assert degraded["critical_blockers"] >= 1
+            assert degraded["degraded_dependencies"] >= 1
+        finally:
+            os.unlink(healthy_path)
+            os.unlink(degraded_path)
+
+    def test_get_ecosystem_status_no_active_blockers(self):
+        data = _make_ecosystem_yaml(
+            issues=[_sample_issue_dict(id="ISSUE-LOW", status="pending", priority="low")],
+            todos=[_sample_todo_dict(id="TODO-COMPLETE", status="completed")],
+            plans=[_sample_plan_dict(status="draft")],
+            dependencies=[_sample_dependency_dict(status="satisfied")],
+        )
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+            status = cm.get_ecosystem_status()
+            assert status["health"] == "healthy"
+            assert status["critical_blockers"] == 0
+            assert status["degraded_dependencies"] == 0
+        finally:
+            os.unlink(path)
+
     def test_stringify_datetime(self, ecosystem_path):
         issue = _sample_issue_dict(
             created=datetime(2026, 1, 15),
@@ -703,6 +1108,22 @@ class TestCoordinationManagerReporting:
             blocking = cm.get_blocking_issues("mahavishnu")
             assert len(blocking) == 1
             assert blocking[0].id == "ISSUE-OPEN"
+        finally:
+            os.unlink(path)
+
+    def test_get_blocking_issues_empty_and_blocked_status(self):
+        data = _make_ecosystem_yaml(
+            issues=[
+                _sample_issue_dict(id="ISSUE-BLOCKED", status="blocked"),
+                _sample_issue_dict(id="ISSUE-CLOSED", status="closed"),
+            ]
+        )
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+            blocking = cm.get_blocking_issues("mahavishnu")
+            assert len(blocking) == 1
+            assert blocking[0].id == "ISSUE-BLOCKED"
         finally:
             os.unlink(path)
 
@@ -742,6 +1163,22 @@ class TestCoordinationManagerReporting:
         finally:
             os.unlink(path)
 
+    def test_get_blocking_todos_completed_is_excluded(self):
+        data = _make_ecosystem_yaml(
+            todos=[
+                _sample_todo_dict(id="T1", blocking=["T2"], status="completed"),
+                _sample_todo_dict(id="T2", blocking=["T3"], status="pending"),
+            ]
+        )
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+            blocking = cm._get_blocking_todos("mahavishnu")
+            assert len(blocking) == 1
+            assert blocking[0].id == "T2"
+        finally:
+            os.unlink(path)
+
     def test_get_blocking_dependencies(self, ecosystem_path):
         deps = [
             _sample_dependency_dict(id="D1", status="unsatisfied", consumer="mahavishnu"),
@@ -754,6 +1191,22 @@ class TestCoordinationManagerReporting:
             blocking = cm._get_blocking_dependencies("mahavishnu")
             assert len(blocking) == 1
             assert blocking[0].id == "D1"
+        finally:
+            os.unlink(path)
+
+    def test_get_blocking_dependencies_filters_satisfied_only(self):
+        data = _make_ecosystem_yaml(
+            dependencies=[
+                _sample_dependency_dict(id="D1", status="deprecated", consumer="mahavishnu"),
+                _sample_dependency_dict(id="D2", status="unknown", consumer="mahavishnu"),
+                _sample_dependency_dict(id="D3", status="satisfied", consumer="mahavishnu"),
+            ]
+        )
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+            blocking = cm._get_blocking_dependencies("mahavishnu")
+            assert {dep.id for dep in blocking} == {"D1", "D2"}
         finally:
             os.unlink(path)
 
@@ -815,6 +1268,32 @@ class TestValidateDependency:
         finally:
             os.unlink(path)
 
+    def test_validate_command_without_pattern(self):
+        deps_data = [
+            {
+                "id": "DEP-NO-PATTERN",
+                "consumer": "a",
+                "provider": "b",
+                "type": "runtime",
+                "version_constraint": ">=1.0",
+                "status": "satisfied",
+                "created": "2026-01-15T00:00:00",
+                "updated": "2026-01-15T00:00:00",
+                "notes": "test",
+                "validation": {"command": "echo hello"},
+            }
+        ]
+        data = _make_ecosystem_yaml(dependencies=deps_data)
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+            result = cm.check_dependencies()
+            dep_info = result["dependencies"][0]
+            assert dep_info["validation"]["passed"] is True
+            assert dep_info["validation"]["details"] == "hello"
+        finally:
+            os.unlink(path)
+
     def test_validate_command_failure(self):
         deps_data = [
             {
@@ -840,6 +1319,87 @@ class TestValidateDependency:
             result = cm.check_dependencies()
             dep_info = result["dependencies"][0]
             assert dep_info["validation"]["passed"] is False
+        finally:
+            os.unlink(path)
+
+    def test_validate_command_pattern_miss(self):
+        deps_data = [
+            {
+                "id": "DEP-PATTERN",
+                "consumer": "a",
+                "provider": "b",
+                "type": "runtime",
+                "version_constraint": ">=1.0",
+                "status": "satisfied",
+                "created": "2026-01-15T00:00:00",
+                "updated": "2026-01-15T00:00:00",
+                "notes": "test",
+                "validation": {"command": "echo hello", "expected_pattern": "world"},
+            }
+        ]
+        data = _make_ecosystem_yaml(dependencies=deps_data)
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+            result = cm.check_dependencies()
+            dep_info = result["dependencies"][0]
+            assert dep_info["validation"]["passed"] is False
+        finally:
+            os.unlink(path)
+
+    def test_validate_command_exception_branch(self, monkeypatch):
+        deps_data = [
+            {
+                "id": "DEP-EXC",
+                "consumer": "a",
+                "provider": "b",
+                "type": "runtime",
+                "version_constraint": ">=1.0",
+                "status": "satisfied",
+                "created": "2026-01-15T00:00:00",
+                "updated": "2026-01-15T00:00:00",
+                "notes": "test",
+                "validation": {"command": "echo hello"},
+            }
+        ]
+        data = _make_ecosystem_yaml(dependencies=deps_data)
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+            dep = cm.list_dependencies()[0]
+            monkeypatch.setattr(
+                "mahavishnu.core.coordination.manager._run_command_safe",
+                lambda _command: (_ for _ in ()).throw(RuntimeError("boom")),
+            )
+            result = cm._validate_dependency(dep)
+            assert result["passed"] is False
+            assert result["details"] == "boom"
+        finally:
+            os.unlink(path)
+
+    def test_validate_command_called_process_error_branch(self):
+        deps_data = [
+            {
+                "id": "DEP-CALLED",
+                "consumer": "a",
+                "provider": "b",
+                "type": "runtime",
+                "version_constraint": ">=1.0",
+                "status": "satisfied",
+                "created": "2026-01-15T00:00:00",
+                "updated": "2026-01-15T00:00:00",
+                "notes": "test",
+                "validation": {"command": "false"},
+            }
+        ]
+        data = _make_ecosystem_yaml(dependencies=deps_data)
+        path = _write_ecosystem(data)
+        try:
+            cm = CoordinationManager(path)
+            dep = cm.list_dependencies()[0]
+            result = cm._validate_dependency(dep)
+            assert result["passed"] is False
+            assert result["details"] == ""
         finally:
             os.unlink(path)
 

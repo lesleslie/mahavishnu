@@ -9,6 +9,7 @@ Tests DLQ functionality including:
 """
 
 import asyncio
+import builtins
 from datetime import UTC, datetime
 import importlib
 import sys
@@ -98,6 +99,26 @@ def test_opensearch_import_success_branch(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setitem(sys.modules, "opensearchpy", fake)
     reloaded = importlib.reload(dlq_module)
     assert reloaded.OPENSEARCH_AVAILABLE is True
+
+
+def test_opensearch_import_failure_branch(monkeypatch: pytest.MonkeyPatch) -> None:
+    original_available = dlq_module.OPENSEARCH_AVAILABLE
+    original_async_opensearch = getattr(dlq_module, "_AsyncOpenSearch", None)
+    original_import = builtins.__import__
+
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):  # type: ignore[no-untyped-def]
+        if name == "opensearchpy":
+            raise ImportError("opensearch unavailable")
+        return original_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.delitem(sys.modules, "opensearchpy", raising=False)
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    reloaded = importlib.reload(dlq_module)
+
+    assert reloaded.OPENSEARCH_AVAILABLE is False
+    monkeypatch.setattr(dlq_module, "OPENSEARCH_AVAILABLE", original_available, raising=False)
+    monkeypatch.setattr(dlq_module, "_AsyncOpenSearch", original_async_opensearch, raising=False)
 
 
 class TestRetryPolicyCalculations:
@@ -578,7 +599,7 @@ class TestPersistence:
         mock_client = AsyncMock()
         monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setattr(dlq_module, "OPENSEARCH_AVAILABLE", True)
-        mock_obs = AsyncMock()
+        mock_obs = SimpleNamespace(log_info=Mock())
 
         dlq = DeadLetterQueue(
             max_size=100, opensearch_client=mock_client, observability_manager=mock_obs

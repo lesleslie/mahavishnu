@@ -1,32 +1,38 @@
-from __future__ import annotations
+"""Tests for repository nickname normalization helpers."""
 
-import pytest
+from __future__ import annotations
 
 from mahavishnu.core.repo_nicknames import get_repo_nicknames, normalize_nicknames
 
 
-@pytest.mark.parametrize(
-    ("nickname", "nicknames", "expected"),
-    [
-        ("  alpha  ", None, ["alpha"]),
-        ("alpha", "beta", ["alpha", "beta"]),
-        ("alpha", ["beta", "alpha", "gamma", "beta"], ["alpha", "beta", "gamma"]),
-        (None, ("  beta  ", "", "gamma"), ["beta", "gamma"]),
-        (None, None, []),
-    ],
-)
-def test_normalize_nicknames_preserves_order_and_deduplicates(
-    nickname: str | None,
-    nicknames: str | list[str] | tuple[str, ...] | None,
-    expected: list[str],
-) -> None:
-    assert normalize_nicknames(nickname=nickname, nicknames=nicknames) == expected
+class TestNormalizeNicknames:
+    def test_normalizes_strings_and_preserves_order(self) -> None:
+        result = normalize_nicknames(
+            nickname="  main  ",
+            nicknames=["feature", "main", "  ops  ", ""],
+        )
+
+        assert result == ["main", "feature", "ops"]
+
+    def test_accepts_single_string_alias(self) -> None:
+        result = normalize_nicknames(nicknames="  shared  ")
+
+        assert result == ["shared"]
+
+    def test_ignores_blank_values(self) -> None:
+        result = normalize_nicknames(nickname="   ", nicknames=["", "  "])
+
+        assert result == []
 
 
-def test_get_repo_nicknames_reads_mapping_fields() -> None:
-    repo = {
-        "nickname": "delta",
-        "nicknames": ["delta", "epsilon", "  zeta  "],
-    }
+class TestGetRepoNicknames:
+    def test_extracts_and_normalizes_values(self) -> None:
+        repo = {
+            "nickname": "  primary ",
+            "nicknames": ["primary", "alt", "  backup  "],
+        }
 
-    assert get_repo_nicknames(repo) == ["delta", "epsilon", "zeta"]
+        assert get_repo_nicknames(repo) == ["primary", "alt", "backup"]
+
+    def test_handles_missing_keys(self) -> None:
+        assert get_repo_nicknames({}) == []

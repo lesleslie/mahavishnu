@@ -103,6 +103,36 @@ def test_recovery_summary_with_dhara_state() -> None:
     assert summary["last_recovered_at"] is not None
 
 
+def test_recovery_summary_swallows_dhara_errors() -> None:
+    async def recover_workflows() -> list[dict[str, str]]:
+        raise RuntimeError("dhara unavailable")
+
+    dhara_state = SimpleNamespace(
+        available=False,
+        recover_workflows=recover_workflows,
+        recover_approvals=lambda: [],
+        recover_pools=lambda: [],
+        recover_routing_decisions=lambda: [],
+    )
+    app = SimpleNamespace(
+        active_workflows=["existing"],
+        approval_manager=SimpleNamespace(pending_requests=["pending"]),
+        pool_manager=None,
+        _dhara_state=dhara_state,
+    )
+
+    import asyncio
+
+    summary = asyncio.run(get_recovery_summary(app))
+
+    assert summary["recovered_workflows"] == 1
+    assert summary["recovered_approvals"] == 1
+    assert summary["recovered_pools"] == 0
+    assert summary["recovered_routing_decisions"] == 0
+    assert summary["dhara_available"] is False
+    assert summary["last_recovered_at"] is None
+
+
 def test_get_recovered_routing_decisions_filters_and_handles_missing_state() -> None:
     import asyncio
 
@@ -118,9 +148,27 @@ def test_get_recovered_routing_decisions_filters_and_handles_missing_state() -> 
 
     dhara_state = SimpleNamespace(recover_routing_decisions=recover_routing_decisions)
     app = SimpleNamespace(_dhara_state=dhara_state)
+    assert asyncio.run(get_recovered_routing_decisions(app)) == [
+        {"task_class": "build", "decision": "keep"},
+        {"task_class": "deploy", "decision": "drop"},
+        {"decision": "ignore"},
+    ]
     assert asyncio.run(get_recovered_routing_decisions(app, task_class="build")) == [
         {"task_class": "build", "decision": "keep"}
     ]
+
+
+def test_get_recovered_routing_decisions_swallows_dhara_errors() -> None:
+    async def recover_routing_decisions() -> list[dict[str, str]]:
+        raise RuntimeError("dhara unavailable")
+
+    app = SimpleNamespace(
+        _dhara_state=SimpleNamespace(recover_routing_decisions=recover_routing_decisions)
+    )
+
+    import asyncio
+
+    assert asyncio.run(get_recovered_routing_decisions(app, task_class="build")) == []
 
 
 def test_event_activity_and_fix_traces() -> None:
