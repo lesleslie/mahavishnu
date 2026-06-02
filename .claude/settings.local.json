@@ -480,7 +480,9 @@
       "Bash(cat semgrep.yaml)",
       "Bash(launchctl error *)",
       "Bash(echo \"Started PID: $!\")",
-      "Bash(echo \"PID: $!\")"
+      "Bash(echo \"PID: $!\")",
+      "Bash(/Users/les/Projects/crackerjack/.venv/bin/zuban -v)",
+      "Bash(/Users/les/Projects/crackerjack/.venv/bin/zuban *)"
     ]
   },
   "enableAllProjectMcpServers": false,

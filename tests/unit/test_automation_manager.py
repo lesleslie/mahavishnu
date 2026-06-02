@@ -42,14 +42,14 @@ class TestManagerStats:
             operations_success=8,
             operations_failed=1,
             operations_dry_run=1,
-            backend_name="pyxa",
+            backend_name="native_macos",
         )
         d = stats.to_dict()
         assert d["operations_total"] == 10
         assert d["operations_success"] == 8
         assert d["operations_failed"] == 1
         assert d["operations_dry_run"] == 1
-        assert d["backend_name"] == "pyxa"
+        assert d["backend_name"] == "native_macos"
         assert d["last_operation"] is None
 
 
@@ -83,12 +83,10 @@ class TestAutomationManager:
         manager = AutomationManager()
 
         with (
-            patch("mahavishnu.automation.manager.PyXABackend") as mock_pyxa,
-            patch("mahavishnu.automation.manager.ATOMacBackend") as mock_atomac,
+            patch("mahavishnu.automation.manager.NativeMacOSBackend") as mock_native,
             patch("mahavishnu.automation.manager.PyAutoGUIBackend") as mock_pyautogui,
         ):
-            mock_pyxa.is_available.return_value = False
-            mock_atomac.is_available.return_value = False
+            mock_native.is_available.return_value = False
             mock_pyautogui.is_available.return_value = False
 
             with pytest.raises(NoBackendAvailableError):
@@ -101,16 +99,16 @@ class TestAutomationManager:
 
         with (
             patch("mahavishnu.automation.manager.PermissionChecker") as mock_perm_cls,
-            patch("mahavishnu.automation.manager.PyXABackend") as mock_pyxa,
+            patch("mahavishnu.automation.manager.NativeMacOSBackend") as mock_native,
         ):
             mock_perm = MagicMock()
             mock_perm.check_accessibility.return_value = False
             mock_perm.request_accessibility.return_value = False
             mock_perm_cls.return_value = mock_perm
-            mock_pyxa.is_available.return_value = True
-            mock_pyxa_instance = MagicMock()
-            mock_pyxa_instance.backend_name = "pyxa"
-            mock_pyxa.return_value = mock_pyxa_instance
+            mock_native.is_available.return_value = True
+            mock_native_instance = MagicMock()
+            mock_native_instance.backend_name = "native_macos"
+            mock_native.return_value = mock_native_instance
 
             with pytest.raises(PermissionDeniedError):
                 await manager.initialize()
@@ -131,18 +129,15 @@ class TestAutomationManager:
         manager.preferred_backend = "auto"
 
         with (
-            patch("mahavishnu.automation.manager.PyXABackend") as mock_pyxa,
-            patch("mahavishnu.automation.manager.ATOMacBackend") as mock_atomac,
+            patch("mahavishnu.automation.manager.NativeMacOSBackend") as mock_native,
+            patch("mahavishnu.automation.manager.PyAutoGUIBackend") as mock_pyautogui,
         ):
-            mock_pyxa.is_available.return_value = False
-            mock_atomac.is_available.return_value = True
-            mock_atomac_instance = MagicMock()
-            mock_atomac_instance.backend_name = "atomac"
-            mock_atomac.return_value = mock_atomac_instance
-
+            mock_native.is_available.return_value = False
+            mock_pyautogui.is_available.return_value = False
             manager._select_backend()
 
-            assert manager._backend is not None
+            # Both backends unavailable
+            assert manager._backend is None
 
     def test_select_backend_specific(self):
         """_select_backend uses specific backend when requested."""
@@ -165,8 +160,8 @@ class TestAutomationManager:
         manager = AutomationManager()
         manager.preferred_backend = "unknown_backend"
 
-        with patch("mahavishnu.automation.manager.PyXABackend") as mock_pyxa:
-            mock_pyxa.is_available.return_value = False
+        with patch("mahavishnu.automation.manager.NativeMacOSBackend") as mock_native:
+            mock_native.is_available.return_value = False
 
             manager._select_backend()
             # Should not raise, just log warning
@@ -206,8 +201,10 @@ class TestAutomationManager:
         manager._initialized = True
         manager._backend = None
 
+        from mahavishnu.automation.models import OperationType
+
         result = await manager._execute(
-            "launch_app",
+            OperationType.LAUNCH_APP,
             lambda: None,
         )
 
@@ -238,6 +235,8 @@ class TestAutomationManager:
     @pytest.mark.asyncio
     async def test_execute_success(self):
         """_execute returns success when operation succeeds."""
+        from mahavishnu.automation.models import OperationType
+
         manager = AutomationManager()
         manager._initialized = True
 
@@ -249,7 +248,7 @@ class TestAutomationManager:
             return {"bundle_id": "com.apple.finder"}
 
         result = await manager._execute(
-            "launch_app",
+            OperationType.LAUNCH_APP,
             mock_operation,
         )
 
@@ -259,6 +258,8 @@ class TestAutomationManager:
     @pytest.mark.asyncio
     async def test_execute_failure(self):
         """_execute returns failure when operation raises."""
+        from mahavishnu.automation.models import OperationType
+
         manager = AutomationManager()
         manager._initialized = True
 
@@ -270,7 +271,7 @@ class TestAutomationManager:
             raise ValueError("Test error")
 
         result = await manager._execute(
-            "launch_app",
+            OperationType.LAUNCH_APP,
             mock_operation,
         )
 
@@ -404,20 +405,20 @@ class TestAutomationManagerUtilities:
         """get_stats returns manager statistics."""
         manager = AutomationManager()
         manager._stats.operations_total = 5
-        manager._stats.backend_name = "pyxa"
+        manager._stats.backend_name = "native_macos"
 
         stats = manager.get_stats()
         assert stats["operations_total"] == 5
-        assert stats["backend_name"] == "pyxa"
+        assert stats["backend_name"] == "native_macos"
 
     def test_get_backend_name(self):
         """get_backend_name returns backend name."""
         manager = AutomationManager()
         mock_backend = MagicMock()
-        mock_backend.backend_name = "pyxa"
+        mock_backend.backend_name = "native_macos"
         manager._backend = mock_backend
 
-        assert manager.get_backend_name() == "pyxa"
+        assert manager.get_backend_name() == "native_macos"
 
     def test_get_backend_name_no_backend(self):
         """get_backend_name returns None when no backend."""
@@ -435,7 +436,7 @@ class TestAutomationManagerUtilities:
         mock_status.capabilities = mock_caps
 
         manager._backend = MagicMock()
-        manager._backend.backend_name = "pyxa"
+        manager._backend.backend_name = "native_macos"
         manager._capability_detector.get_backend_status.return_value = mock_status
 
         caps = manager.get_capabilities()
@@ -458,12 +459,12 @@ class TestAutomationManagerContextManager:
         """__aenter__ initializes, __aexit__ cleans up."""
         manager = AutomationManager()
 
-        with patch("mahavishnu.automation.manager.PyXABackend") as mock_pyxa:
-            mock_pyxa.is_available.return_value = True
-            mock_pyxa_instance = MagicMock()
-            mock_pyxa_instance.backend_name = "pyxa"
-            mock_pyxa_instance.close = AsyncMock()
-            mock_pyxa.return_value = mock_pyxa_instance
+        with patch("mahavishnu.automation.manager.NativeMacOSBackend") as mock_native:
+            mock_native.is_available.return_value = True
+            mock_native_instance = MagicMock()
+            mock_native_instance.backend_name = "native_macos"
+            mock_native_instance.close = AsyncMock()
+            mock_native.return_value = mock_native_instance
 
             async with manager as mgr:
                 assert mgr._initialized is True

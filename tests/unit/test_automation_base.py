@@ -24,9 +24,8 @@ from mahavishnu.automation.base import (
     WindowState,
 )
 from mahavishnu.automation.capabilities import (
-    ATOMAC_CAPABILITIES,
+    NATIVE_MACOS_CAPABILITIES,
     PYAUTOGUI_CAPABILITIES,
-    PYXA_CAPABILITIES,
     BackendCapabilities,
     BackendStatus,
     Capability,
@@ -519,40 +518,33 @@ class TestCapabilityDetector:
         detector = CapabilityDetector()
         backends = detector.get_available_backends()
         names = {b.name for b in backends}
-        assert "pyxa" in names
-        assert "atomac" in names
+        assert "native_macos" in names
         assert "pyautogui" in names
 
     def test_find_best_backend_preferred_available(self):
         """find_best_backend uses preferred backend when available."""
         detector = CapabilityDetector()
-        detector._cache["pyxa"] = BackendStatus(
-            name="pyxa",
+        detector._cache["native_macos"] = BackendStatus(
+            name="native_macos",
             available=True,
-            capabilities=PYXA_CAPABILITIES,
+            capabilities=NATIVE_MACOS_CAPABILITIES,
         )
 
         result = detector.find_best_backend(
             required_capabilities={Capability.LAUNCH_APP},
-            preferred="pyxa",
+            preferred="native_macos",
         )
         assert result is not None
-        assert result.name == "pyxa"
+        assert result.name == "native_macos"
 
     def test_find_best_backend_preferred_insufficient(self):
         """find_best_backend falls back when preferred lacks capabilities."""
-        detector = CapabilityDetector()
-        detector._cache["pyautogui"] = BackendStatus(
-            name="pyautogui",
-            available=True,
-            capabilities=PYAUTOGUI_CAPABILITIES,
-        )
-
-        # pyautogui doesn't support LAUNCH_APP
-        result = detector.find_best_backend(
-            required_capabilities={Capability.LAUNCH_APP},
+        # When preferred backend lacks required capabilities and no other backend qualifies
+        result = CapabilityDetector().find_best_backend(
+            required_capabilities={Capability.CLICK_UI_ELEMENT},
             preferred="pyautogui",
         )
+        # pyautogui doesn't have UI element capabilities, no other backend available
         assert result is None
 
     def test_find_best_backend_no_match(self):
@@ -563,29 +555,21 @@ class TestCapabilityDetector:
         result = detector.find_best_backend(
             required_capabilities={Capability.CLICK_UI_ELEMENT},
         )
-        # ATOMac has CLICK_UI_ELEMENT
-        assert result is None or result.name == "atomac"
+        # NativeMacOS does not have UI element access (no AX API)
+        assert result is None or result.name != "native_macos"
 
 
 class TestBackendCapabilityConstants:
     """Test predefined backend capability constants."""
 
-    def test_pyxa_capabilities(self):
-        """PyXA has all major capabilities."""
-        assert PYXA_CAPABILITIES.name == "pyxa"
-        assert PYXA_CAPABILITIES.platform == Platform.MACOS
-        assert PYXA_CAPABILITIES.priority == 100
-        assert Capability.LAUNCH_APP in PYXA_CAPABILITIES.capabilities
-        assert Capability.TYPE_TEXT in PYXA_CAPABILITIES.capabilities
-        assert Capability.SCREENSHOT in PYXA_CAPABILITIES.capabilities
-
-    def test_atomac_capabilities(self):
-        """ATOMac has UI element capabilities."""
-        assert ATOMAC_CAPABILITIES.name == "atomac"
-        assert ATOMAC_CAPABILITIES.platform == Platform.MACOS
-        assert ATOMAC_CAPABILITIES.priority == 80
-        assert Capability.LAUNCH_APP in ATOMAC_CAPABILITIES.capabilities
-        assert Capability.GET_UI_ELEMENTS in ATOMAC_CAPABILITIES.capabilities
+    def test_native_macos_capabilities(self):
+        """NativeMacOSBackend has app/window/menu capabilities via osascript."""
+        assert NATIVE_MACOS_CAPABILITIES.name == "native_macos"
+        assert NATIVE_MACOS_CAPABILITIES.platform == Platform.MACOS
+        assert NATIVE_MACOS_CAPABILITIES.priority == 90
+        assert Capability.LAUNCH_APP in NATIVE_MACOS_CAPABILITIES.capabilities
+        assert Capability.TYPE_TEXT in NATIVE_MACOS_CAPABILITIES.capabilities
+        assert Capability.SCREENSHOT in NATIVE_MACOS_CAPABILITIES.capabilities
 
     def test_pyautogui_capabilities(self):
         """PyAutoGUI has cross-platform input capabilities."""
@@ -600,6 +584,5 @@ class TestBackendCapabilityConstants:
 
     def test_backend_capabilities_presets(self):
         """Each backend has correct capability preset."""
-        assert PYXA_CAPABILITIES.name == "pyxa"
-        assert ATOMAC_CAPABILITIES.name == "atomac"
+        assert NATIVE_MACOS_CAPABILITIES.name == "native_macos"
         assert PYAUTOGUI_CAPABILITIES.name == "pyautogui"
