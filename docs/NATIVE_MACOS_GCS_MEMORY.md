@@ -87,7 +87,7 @@ USING ivfflat (embedding vector_cosine_ops);
 
 **Sources**:
 
-- [macOS pgvector installation guide](https://blog.csdn.net/chenji_big/article/details/152044409)
+- macOS pgvector installation guide
 - [pgvector on StackOverflow](https://stackoverflow.com/questions/75664004/install-pgv-ext-on-mac)
 
 ______________________________________________________________________
@@ -598,7 +598,7 @@ ______________________________________________________________________
 
 ### LanceDB
 
-- [LanceDB Official Site](https://lancedb.com/)
+- LanceDB Official Site
 - [Install Vector with Homebrew](https://vector.dev/docs/setup/installation/package-managers/homebrew/)
 
 ### GCS Tools

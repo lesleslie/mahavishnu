@@ -5,11 +5,10 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 from logging import getLogger
+from typing import TYPE_CHECKING
 import uuid
 
 from mcp_common.apple_script import AppleScriptError
-
-from mahavishnu.terminal.adapters.iterm2 import ITerm2Adapter
 
 from .exceptions import (
     GridNotFoundError,
@@ -17,6 +16,9 @@ from .exceptions import (
     WindowTilingError,
 )
 from .models import DesktopSession, GridSession, GridStatus, WindowSession
+
+if TYPE_CHECKING:
+    from mahavishnu.terminal.adapters.iterm2 import ITerm2Adapter
 
 logger = getLogger(__name__)
 
@@ -129,7 +131,7 @@ class TerminalGridManager:
             session_id=session_id,
             task=task,
             bounds=bounds,
-            quadrant=quadrant,
+            quadrant=quadrant, # type: ignore
         )
         return win_session, tab_id
 

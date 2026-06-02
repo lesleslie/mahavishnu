@@ -241,24 +241,22 @@ class FitnessAnalyzer:
             if not traces:
                 continue
 
-            by_selector: dict[str, list[dict[str, Any]]] = {}  # type: ignore[syntax]
+            traces_by_selector: dict[str, list[dict[str, Any]]] = {}
             for trace in traces:
                 selector = trace.get("selector", "unknown")
-                by_selector.setdefault(selector, []).append(trace)
+                traces_by_selector.setdefault(selector, []).append(trace)
 
-            for selector, selector_traces in by_selector.items():
+            for selector, selector_traces in traces_by_selector.items():
                 signal = self._compute_signal(task_class, selector, selector_traces)
-                if task_class not in all_signals:
-                    all_signals[task_class] = {}
-                all_signals[task_class][selector] = signal  # type: ignore[index]
+                all_signals.setdefault(task_class, {})[selector] = signal
 
         if not all_signals:
             logger.debug("FitnessAnalyzer: no traces collected in this cycle")
             return
 
         # Buffer signals for Dhara write
-        for task_class, by_selector in all_signals.items():
-            for selector, signal in by_selector.items():
+        for task_class, selector_map in all_signals.items():
+            for selector, signal in selector_map.items():
                 self._buffer.append(_BufferEntry(task_class, selector, signal))
 
         if self._buffer:

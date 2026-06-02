@@ -169,7 +169,7 @@ class TurboQuantCompressor:
         tq = self._get_tq()
         loop = asyncio.get_running_loop()
         try:
-            return await loop.run_in_executor( # type: ignore
+            return await loop.run_in_executor(  # type: ignore
                 None,
                 lambda: tq.search_compressed(conn, table, query_embedding, top_k=top_k),
             )

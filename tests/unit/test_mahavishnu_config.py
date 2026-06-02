@@ -600,7 +600,7 @@ class TestOTelIngesterConfig:
         """Test OTelIngesterConfig defaults."""
         config = OTelIngesterConfig()
         assert config.enabled is False
-        assert config.hot_store_path == ":memory:"
+        assert config.hot_store_path is None  # Uses XDG-compliant default path
         assert config.embedding_model == "all-MiniLM-L6-v2"
         assert config.cache_size == 1000
         assert config.similarity_threshold == 0.7

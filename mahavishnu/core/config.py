@@ -14,6 +14,8 @@ Architecture:
 from enum import StrEnum
 from pathlib import Path
 
+import platformdirs
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
@@ -607,9 +609,13 @@ class OTelIngesterConfig(BaseModel):
         default=False,
         description="Enable OTel trace ingester with Akosha HotStore (DuckDB)",
     )
-    hot_store_path: str = Field(
-        default=":memory:",
-        description="DuckDB database path for OTel ingester (':memory:' for in-memory)",
+    hot_store_path: str | None = Field(
+        default=None,
+        description=(
+            "DuckDB database path for OTel ingester. "
+            "Uses XDG-compliant path under user data dir by default (~/.local/share/mahavishnu/). "
+            "Set ':memory:' for in-memory storage, or an explicit path for a specific location."
+        ),
     )
     storage_type: str = Field(
         default="duckdb",

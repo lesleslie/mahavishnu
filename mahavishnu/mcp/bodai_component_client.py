@@ -18,10 +18,11 @@ all session lifecycle correctly.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from mcp.client.session import ClientSession
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,9 @@ class BodaiComponentMCPClient:
         self._token = token
         self._session: ClientSession | None = None
         self._transport_context: Any = None
-        self._get_session_id: Callable[[], str | None] | None = None  # Stores the session ID callback
+        self._get_session_id: Callable[[], str | None] | None = (
+            None  # Stores the session ID callback
+        )
 
     @property
     def tools_url(self) -> str:
@@ -109,7 +112,7 @@ class BodaiComponentMCPClient:
         """
         await self._ensure_session()
 
-        result = await self._session.call_tool(name, arguments) # type: ignore
+        result = await self._session.call_tool(name, arguments)  # type: ignore
         return result
 
     async def query_local_traces(
@@ -145,22 +148,33 @@ class BodaiComponentMCPClient:
     async def aclose(self) -> None:
         """Close the MCP session and transport.
 
-        Note: Calling _transport_context.__aexit__() directly causes:
-        "RuntimeError: Attempted to exit cancel scope in a different task"
-        because the transport's task group is tied to the task that created it.
-        The MCP library has a known issue where async generator cleanup runs
-        in the wrong task during asyncio.run() shutdown.
-
-        For fire-and-forget use cases (like FitnessAnalyzer), we simply drop
-        references and let garbage collection handle cleanup. The RuntimeError
-        during shutdown is cosmetic and doesn't affect functionality since
-        all work is complete before the event loop exits.
-
-        For long-lived sessions that need explicit cleanup, a different
-        transport implementation would be needed.
+        Explicitly exits the session and transport contexts, handling the known
+        RuntimeError from MCP's async generator cleanup. The error occurs when
+        async generator cleanup fires in a different task context than the one
+        that created the transport (during asyncio.gather in _collect_traces).
+        This is cosmetic — all work is complete before this is called.
         """
-        # Drop all references to trigger garbage collection cleanup
-        # The RuntimeError during asyncio.shutdown is unavoidable with current MCP library
-        self._session = None
-        self._transport_context = None
+        if self._session is not None:
+            try:
+                await self._session.__aexit__(None, None, None)
+            except RuntimeError as exc:
+                # MCP async generator cleanup runs in wrong task at shutdown.
+                # All work is complete — this is cosmetic and safe to ignore.
+                # Log at debug so we notice if the error message ever changes.
+                if "cancel scope" in str(exc):
+                    logger.debug("BodaiComponentMCPClient: suppressed cosmetic RuntimeError in session cleanup: %s", exc)
+                else:
+                    raise
+            self._session = None
+
+        if self._transport_context is not None:
+            try:
+                await self._transport_context.__aexit__(None, None, None)
+            except RuntimeError as exc:
+                if "cancel scope" in str(exc):
+                    logger.debug("BodaiComponentMCPClient: suppressed cosmetic RuntimeError in transport cleanup: %s", exc)
+                else:
+                    raise
+            self._transport_context = None
+
         self._get_session_id = None

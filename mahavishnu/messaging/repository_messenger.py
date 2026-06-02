@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import uuid
 
 from ..core.events.contract import EventPublisherProtocol, create_event_envelope
 from ..session_buddy.auth import CrossProjectAuth
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class MessageType(Enum):

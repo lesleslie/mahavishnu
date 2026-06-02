@@ -172,7 +172,7 @@ def _register_component_endpoint(
         # No running event loop — sync fallback using client directly
         from .dhara_adapter import DharaClient
 
-        client = DharaClient(base_url=dhara_state._client._base_url) # type: ignore[attr-defined]
+        client = DharaClient(base_url=dhara_state._client._base_url)  # type: ignore[attr-defined]
         try:
             asyncio.run(client.put(key, {"url": mcp_url, "registered_by": component_name}))
             logger.info(

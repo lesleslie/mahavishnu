@@ -1,9 +1,9 @@
 """Advanced monitoring and alerting system for Mahavishnu."""
 
 from __future__ import annotations
+
 import asyncio
 from collections import defaultdict
-from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
@@ -13,12 +13,15 @@ import json
 import logging
 import smtplib
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import requests
 
 from ..core.status import HealthStatus as ComponentHealthStatus
 from ..core.workflow_state import WorkflowStatus
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Coroutine
 
 # ---------------------------------------------------------------------------
 # Dashboard configuration (merged from dashboard_config.py)
@@ -250,7 +253,7 @@ class AlertManager:
             self.alert_handlers[alert_type] = []
         self.alert_handlers[alert_type].append(handler)
 
-    def register_notification_channel(self, channel: "NotificationChannel") -> None:
+    def register_notification_channel(self, channel: NotificationChannel) -> None:
         """Register a notification channel."""
         self.notification_channels.append(channel)
 

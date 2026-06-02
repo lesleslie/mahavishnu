@@ -32,7 +32,7 @@ try:
     from runpod_flash import Endpoint, GpuType
 except ImportError:
     Endpoint = None  # type: ignore[assignment]
-    GpuType = None  # type: ignore[assignment]
+    GpuType = None  # type: ignore
 
 # Task categories that should be routed to GPU pools
 GPU_TASK_CATEGORIES: frozenset[str] = frozenset({"vision", "ml_inference", "embedding"})

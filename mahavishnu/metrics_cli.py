@@ -136,9 +136,9 @@ def _load_engine_metrics_from_prometheus(
 ) -> dict[str, dict[str, int]]:
     """Load engine metrics by parsing Prometheus exposition text."""
     try:
-        with urllib_request.urlopen(  # nosec
+        with urllib_request.urlopen(  # nosec  # nosemgrep: dynamic-urllib-use-detected
             metrics_url, timeout=2.0
-        ) as response:  # nosemgrep: dynamic-urllib-use-detected
+        ) as response:
             body = response.read().decode("utf-8", errors="replace")
     except urllib_error.URLError as exc:
         raise RuntimeError(f"failed to fetch Prometheus metrics from {metrics_url}: {exc}") from exc

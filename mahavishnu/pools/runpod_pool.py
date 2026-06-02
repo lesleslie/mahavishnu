@@ -1,5 +1,6 @@
 """RunPod Flash worker pool.
 
+from __future__ import annotations
 Executes GPU tasks on RunPod serverless infrastructure via the runpod-flash SDK.
 Workers scale automatically from 0 to N — no persistent worker management needed.
 
@@ -21,7 +22,7 @@ try:
     from runpod_flash import Endpoint, GpuType
 except ImportError:
     Endpoint = None  # type: ignore[assignment]
-    GpuType = None  # type: ignore[assignment]
+    GpuType = None  # type: ignore
 
 
 class RunPodPool(BasePool):

@@ -1306,6 +1306,17 @@ async def create_otel_ingester(
     if isinstance(storage_type, str):
         storage_type = StorageType(storage_type)
 
+    # Resolve hot_store_path: None means use XDG user data dir
+    _resolved_path: str
+    if hot_store_path is None:
+        import platformdirs
+
+        _resolved_path = str(platformdirs.user_data_path("mahavishnu") / "mahavishnu_otel.duckdb")
+    elif hot_store_path == ":memory:":
+        _resolved_path = ":memory:"
+    else:
+        _resolved_path = str(Path(hot_store_path).expanduser())
+
     ingester = OtelIngester(
         embedding_model=embedding_model,
         cache_size=cache_size,
@@ -1315,10 +1326,16 @@ async def create_otel_ingester(
         pgvector_collection=pgvector_collection,
         akosha_url=akosha_url,
         turboquant_bits=turboquant_bits,
+        duckdb_path=_resolved_path,
     )
 
     # For DuckDB, create HotStore if path provided
-    if storage_type == StorageType.DUCKDB and hot_store_path:
+    if storage_type == StorageType.DUCKDB and hot_store_path != ":memory:":
+        from akosha.storage import HotStore
+
+        hot_store = HotStore(database_path=_resolved_path)
+        await hot_store.initialize()
+        ingester._hot_store = hot_store  # noqa: SLF001
         from akosha.storage import HotStore
 
         hot_store = HotStore(database_path=hot_store_path)

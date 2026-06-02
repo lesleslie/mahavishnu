@@ -433,5 +433,5 @@ class ApplicationWorker(BaseWorker):
 - [mcp-common Patterns](https://github.com/lesleslie/mcp-common)
 - [Oneiric Configuration](https://github.com/lesleslie/oneiric)
 - [GIMP Python API](https://www.gimp.org/docs/python/)
-- [Inkscape Command Line](https://inkscape.org/doc/inkscape-man.html)
+- Inkscape Command Line
 - [Blender Python API](https://docs.blender.org/api/current/)
