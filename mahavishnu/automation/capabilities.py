@@ -1,8 +1,7 @@
 """Backend capability detection for desktop automation.
 
 Provides capability detection for different automation backends:
-- PyXA: macOS application automation
-- ATOMac: macOS accessibility API
+- NativeMacOSBackend: macOS native tools (osascript, cliclick, screencapture)
 - PyAutoGUI: Cross-platform input automation
 
 This module enables automatic backend selection based on available capabilities.
@@ -10,6 +9,7 @@ This module enables automatic backend selection based on available capabilities.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum, auto
 import sys
@@ -96,7 +96,7 @@ class BackendCapabilities:
         """Check if backend supports any of the specified capabilities."""
         return bool(capabilities & self.capabilities)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, object]:
         """Convert to dictionary."""
         return {
             "name": self.name,
@@ -109,9 +109,9 @@ class BackendCapabilities:
         }
 
 
-# PyXA capabilities (macOS primary)
-PYXA_CAPABILITIES = BackendCapabilities(
-    name="pyxa",
+# NativeMacOSBackend capabilities (macOS native tools)
+NATIVE_MACOS_CAPABILITIES = BackendCapabilities(
+    name="native_macos",
     platform=Platform.MACOS,
     capabilities={
         # Application management
@@ -122,12 +122,10 @@ PYXA_CAPABILITIES = BackendCapabilities(
         # Window management
         Capability.LIST_WINDOWS,
         Capability.ACTIVATE_WINDOW,
-        Capability.RESIZE_WINDOW,
-        Capability.MOVE_WINDOW,
+        # Note: RESIZE_WINDOW and MOVE_WINDOW not supported via osascript
         Capability.CLOSE_WINDOW,
         # Menu interaction
         Capability.CLICK_MENU,
-        Capability.LIST_MENUS,
         # Input
         Capability.TYPE_TEXT,
         Capability.PRESS_KEY,
@@ -137,39 +135,15 @@ PYXA_CAPABILITIES = BackendCapabilities(
         # Screenshots
         Capability.SCREENSHOT,
         Capability.SCREENSHOT_REGION,
-        # UI Elements
-        Capability.GET_UI_ELEMENTS,
-        Capability.CLICK_UI_ELEMENT,
         # Multi-display
         Capability.LIST_SCREENS,
         # Clipboard
         Capability.GET_CLIPBOARD,
         Capability.SET_CLIPBOARD,
+        # Note: UI element access (GET_UI_ELEMENTS, CLICK_UI_ELEMENT) not supported
     },
-    priority=100,  # Highest priority on macOS
-    notes="Primary macOS backend with full accessibility support",
-)
-
-# ATOMac capabilities (macOS accessibility)
-ATOMAC_CAPABILITIES = BackendCapabilities(
-    name="atomac",
-    platform=Platform.MACOS,
-    capabilities={
-        # Application management
-        Capability.LAUNCH_APP,
-        Capability.ACTIVATE_APP,
-        Capability.LIST_APPS,
-        # Window management
-        Capability.LIST_WINDOWS,
-        Capability.ACTIVATE_WINDOW,
-        # Menu interaction
-        Capability.CLICK_MENU,
-        # UI Elements (strong point)
-        Capability.GET_UI_ELEMENTS,
-        Capability.CLICK_UI_ELEMENT,
-    },
-    priority=80,  # Secondary on macOS (deprioritized due to maintenance concerns)
-    notes="Advanced accessibility API access, deprioritized due to maintenance concerns",
+    priority=90,  # Highest priority on macOS (after PyXA/ATOMac which are removed)
+    notes="Native macOS backend using osascript, cliclick, and screencapture",
 )
 
 # PyAutoGUI capabilities (cross-platform)
@@ -206,7 +180,7 @@ class BackendStatus:
     reason: str | None = None
     capabilities: BackendCapabilities | None = None
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, object]:
         """Convert to dictionary."""
         return {
             "name": self.name,
@@ -226,8 +200,8 @@ class CapabilityDetector:
         detector = CapabilityDetector()
 
         # Check if a specific backend is available
-        if detector.is_backend_available("pyxa"):
-            print("PyXA is available")
+        if detector.is_backend_available("native_macos"):
+            print("NativeMacOSBackend is available")
 
         # Get all available backends
         for status in detector.get_available_backends():
@@ -254,56 +228,38 @@ class CapabilityDetector:
         else:
             return Platform.LINUX
 
-    def _check_pyxa(self) -> BackendStatus:
-        """Check if PyXA backend is available."""
+    def _check_native_macos(self) -> BackendStatus:
+        """Check if NativeMacOSBackend is available."""
         if self._platform != Platform.MACOS:
             return BackendStatus(
-                name="pyxa",
+                name="native_macos",
                 available=False,
-                reason="PyXA is only available on macOS",
-                capabilities=PYXA_CAPABILITIES,
+                reason="NativeMacOSBackend is only available on macOS",
+                capabilities=NATIVE_MACOS_CAPABILITIES,
             )
 
         try:
-            import PyXA  # noqa: F401
+            from mahavishnu.automation.backends.native_macos import NativeMacOSBackend
 
-            return BackendStatus(
-                name="pyxa",
-                available=True,
-                capabilities=PYXA_CAPABILITIES,
-            )
+            if NativeMacOSBackend.is_available():
+                return BackendStatus(
+                    name="native_macos",
+                    available=True,
+                    capabilities=NATIVE_MACOS_CAPABILITIES,
+                )
+            else:
+                return BackendStatus(
+                    name="native_macos",
+                    available=False,
+                    reason="cliclick not installed. Install with: brew install cliclick",
+                    capabilities=NATIVE_MACOS_CAPABILITIES,
+                )
         except ImportError:
             return BackendStatus(
-                name="pyxa",
+                name="native_macos",
                 available=False,
-                reason="PyXA not installed. Install with: pip install pyxa",
-                capabilities=PYXA_CAPABILITIES,
-            )
-
-    def _check_atomac(self) -> BackendStatus:
-        """Check if ATOMac backend is available."""
-        if self._platform != Platform.MACOS:
-            return BackendStatus(
-                name="atomac",
-                available=False,
-                reason="ATOMac is only available on macOS",
-                capabilities=ATOMAC_CAPABILITIES,
-            )
-
-        try:
-            import atomac  # noqa: F401
-
-            return BackendStatus(
-                name="atomac",
-                available=True,
-                capabilities=ATOMAC_CAPABILITIES,
-            )
-        except ImportError:
-            return BackendStatus(
-                name="atomac",
-                available=False,
-                reason="ATOMac not installed. Install with: pip install pyatomac",
-                capabilities=ATOMAC_CAPABILITIES,
+                reason="NativeMacOSBackend not installed",
+                capabilities=NATIVE_MACOS_CAPABILITIES,
             )
 
     def _check_pyautogui(self) -> BackendStatus:
@@ -328,7 +284,7 @@ class CapabilityDetector:
         """Check if a specific backend is available.
 
         Args:
-            name: Backend name (pyxa, atomac, pyautogui).
+            name: Backend name (native_macos, pyautogui).
 
         Returns:
             True if the backend is available.
@@ -350,14 +306,13 @@ class CapabilityDetector:
         if name_lower in self._cache:
             return self._cache[name_lower]
 
-        checkers = {
-            "pyxa": self._check_pyxa,
-            "atomac": self._check_atomac,
+        checkers: dict[str, Callable[[], BackendStatus]] = {
+            "native_macos": self._check_native_macos,
             "pyautogui": self._check_pyautogui,
         }
 
         checker = checkers.get(name_lower)
-        if checker:
+        if checker is not None:
             status = checker()
         else:
             status = BackendStatus(
@@ -376,8 +331,7 @@ class CapabilityDetector:
             List of BackendStatus for each backend.
         """
         return [
-            self._check_pyxa(),
-            self._check_atomac(),
+            self._check_native_macos(),
             self._check_pyautogui(),
         ]
 
@@ -429,7 +383,7 @@ class CapabilityDetector:
         """Get the current platform."""
         return self._platform
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, object]:
         """Get detector status as dictionary."""
         return {
             "platform": self._platform.value,

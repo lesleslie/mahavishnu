@@ -146,10 +146,10 @@ hatchet = [
     "hatchet-sdk>=1.0,<2",
 ]
 
-# Desktop automation (macOS)
+# Desktop automation
+# Note: pyatomac removed — fails to build on newer macOS SDKs (missing conversion.h).
+# pyautogui provides cross-platform mouse/keyboard/screenshot automation.
 automation = [
-    "pyxa>=0.0.2; sys_platform == 'darwin'",
-    "pyatomac>=2.0.7; sys_platform == 'darwin'",
     "pyautogui>=0.9.54",
     "Pillow>=12.2.0",
     "mss>=9.0.0",

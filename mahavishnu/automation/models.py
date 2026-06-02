@@ -419,7 +419,7 @@ class AutomationConfig(BaseModel):
     """Configuration for automation manager."""
 
     enabled: bool = True
-    default_backend: str = "auto"  # auto, pyxa, atomac, pyautogui
+    default_backend: str = "auto"  # auto, native_macos, pyautogui
     dry_run_default: bool = False
     default_timeout: float = Field(default=30.0, ge=1.0, le=300.0)
 

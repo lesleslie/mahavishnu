@@ -1,7 +1,7 @@
 """Desktop automation module for Mahavishnu.
 
 This module provides desktop automation capabilities with:
-- Multiple backend support (PyXA, ATOMac, PyAutoGUI)
+- Multiple backend support (NativeMacOS, PyAutoGUI)
 - Security-first design with blocklist and input validation
 - Permission checks for accessibility and screen recording
 - Multi-worker coordination for distributed automation
@@ -23,10 +23,9 @@ Usage:
     screenshot = await manager.screenshot()
 """
 
-from mahavishnu.automation.backends.atomac import ATOMacBackend
 from mahavishnu.automation.backends.base import DesktopAutomationBackend
+from mahavishnu.automation.backends.native_macos import NativeMacOSBackend
 from mahavishnu.automation.backends.pyautogui import PyAutoGUIBackend
-from mahavishnu.automation.backends.pyxa import PyXABackend
 from mahavishnu.automation.base import ApplicationInfo, WindowInfo
 from mahavishnu.automation.errors import (
     AutomationError,
@@ -53,8 +52,7 @@ __all__ = [
     "AutomationManager",
     # Backends
     "DesktopAutomationBackend",
-    "PyXABackend",
-    "ATOMacBackend",
+    "NativeMacOSBackend",
     "PyAutoGUIBackend",
     # Data classes
     "ApplicationInfo",

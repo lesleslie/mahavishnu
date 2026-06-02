@@ -26,9 +26,8 @@ from logging import getLogger
 import time
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from mahavishnu.automation.backends.atomac import ATOMacBackend
+from mahavishnu.automation.backends.native_macos import NativeMacOSBackend
 from mahavishnu.automation.backends.pyautogui import PyAutoGUIBackend
-from mahavishnu.automation.backends.pyxa import PyXABackend
 from mahavishnu.automation.capabilities import Capability, CapabilityDetector
 from mahavishnu.automation.errors import (
     NoBackendAvailableError,
@@ -61,7 +60,7 @@ class ManagerStats:
     last_operation: datetime | None = None
     backend_name: str | None = None
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, object]:
         """Convert to dictionary."""
         return {
             "operations_total": self.operations_total,
@@ -178,20 +177,18 @@ class AutomationManager:
 
     def _select_backend(self) -> None:
         """Select the best available backend."""
-        backends_to_try = []
+        backends_to_try: list[tuple[str, type[DesktopAutomationBackend]]] = []
 
         if self.preferred_backend == "auto":
             # Try in order of preference
             backends_to_try = [
-                ("pyxa", PyXABackend),
-                ("atomac", ATOMacBackend),
+                ("native_macos", NativeMacOSBackend),
                 ("pyautogui", PyAutoGUIBackend),
             ]
         else:
             # Use specified backend
-            backend_map = {
-                "pyxa": PyXABackend,
-                "atomac": ATOMacBackend,
+            backend_map: dict[str, type[DesktopAutomationBackend]] = {
+                "native_macos": NativeMacOSBackend,
                 "pyautogui": PyAutoGUIBackend,
             }
             if self.preferred_backend in backend_map:
@@ -199,8 +196,7 @@ class AutomationManager:
             else:
                 logger.warning(f"Unknown backend '{self.preferred_backend}', using auto")
                 backends_to_try = [
-                    ("pyxa", PyXABackend),
-                    ("atomac", ATOMacBackend),
+                    ("native_macos", NativeMacOSBackend),
                     ("pyautogui", PyAutoGUIBackend),
                 ]
 
