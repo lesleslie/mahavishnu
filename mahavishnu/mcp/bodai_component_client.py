@@ -47,6 +47,13 @@ class BodaiComponentMCPClient:
         timeout: float = 30.0,
         token: str | None = None,
     ) -> None:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(base_url)
+        if not parsed.scheme or not parsed.netloc:
+            raise ValueError(
+                f"Invalid URL: {base_url!r} — must include scheme and host"
+            )
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self._token = token
@@ -124,11 +131,13 @@ class BodaiComponentMCPClient:
 
         Args:
             task_class: Task classification to filter traces (e.g. "code_generation")
-            time_range_minutes: How far back to query (default 60 minutes)
+            time_range_minutes: How far back to query (default 60 minutes, max 1 week)
 
         Returns:
             List of trace summary dicts from the component's local store.
         """
+        # Bounds check: 1 minute minimum, 10080 minutes (1 week) maximum
+        time_range_minutes = max(1, min(time_range_minutes, 10080))
         result = await self.call_tool(
             "query_local_traces",
             {

@@ -30,9 +30,29 @@ logger = logging.getLogger(__name__)
 _DEFAULT_POLL_INTERVAL_SECONDS = 60
 _MAX_BUFFER_SIZE = 1000
 _DLQ_FAILURE_THRESHOLD = 3
+_SESSION_LOSS_ALERT_THRESHOLD = 3  # consecutive failures before alert
 # Allowed characters in Dhara key path components (alphanumeric + underscore only)
 _KEY_COMPONENT_RE = re.compile(r"^[a-zA-Z0-9_]{1,50}$")
 _INVALID_KEY_PLACEHOLDER = "unknown"
+# Connection-related error patterns indicating session loss
+_SESSION_LOSS_PATTERNS = (
+    "connection",
+    "timeout",
+    "network",
+    "refused",
+    "reset",
+    "peer",
+    "ssl",
+    "http2",
+    "stream",
+    "cancel scope",
+)
+
+
+def _is_session_loss_error(exc: Exception) -> bool:
+    """Return True if exception indicates MCP session loss mid-poll."""
+    exc_text = f"{type(exc).__name__}: {exc}".lower()
+    return any(p in exc_text for p in _SESSION_LOSS_PATTERNS)
 
 
 def _sanitize_key_component(value: str) -> str:
@@ -89,6 +109,8 @@ class FitnessAnalyzer:
 
         self._running = False
         self._task: asyncio.Task[None] | None = None
+        # Track consecutive session-loss failures per component endpoint
+        self._component_failures: dict[str, int] = {}
 
     def add_component(self, component_name: str, mcp_url: str) -> None:
         """Register a component endpoint to be polled.
@@ -109,10 +131,31 @@ class FitnessAnalyzer:
         time_range_minutes: int = 60,
     ) -> list[dict[str, Any]]:
         """Fetch traces from a single component via its MCP endpoint."""
+        endpoint_key = f"{component_name}@{mcp_url}"
         client = BodaiComponentMCPClient(base_url=mcp_url, timeout=15.0)
         try:
-            return await client.query_local_traces(task_class, time_range_minutes)
+            result = await client.query_local_traces(task_class, time_range_minutes)
+            # Success — reset failure counter so intermittent errors don't stack
+            self._component_failures.pop(endpoint_key, None)
+            return result
         except Exception as exc:
+            # Track consecutive failures per component
+            if _is_session_loss_error(exc):
+                consecutive = self._component_failures.get(endpoint_key, 0) + 1
+                self._component_failures[endpoint_key] = consecutive
+                if consecutive >= _SESSION_LOSS_ALERT_THRESHOLD:
+                    logger.warning(
+                        "ALERT: Component %s (%s) has lost %d consecutive MCP sessions — "
+                        "session-loss detected. Last error: %s: %s",
+                        component_name,
+                        mcp_url,
+                        consecutive,
+                        type(exc).__name__,
+                        exc,
+                    )
+            else:
+                # Non-connection errors also reset the counter
+                self._component_failures.pop(endpoint_key, None)
             logger.debug(
                 "Failed to fetch traces from %s (%s): %s",
                 component_name,

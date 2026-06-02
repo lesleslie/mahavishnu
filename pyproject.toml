@@ -156,9 +156,10 @@ automation = [
 ]
 
 # Desktop automation with vision (OCR, image recognition)
+# Note: easyocr removed — it forces torch (2GB) which lacks macOS ARM64 wheels.
+# Use pytesseract + opencv-python instead. Install tesseract: brew install tesseract
 automation-vision = [
     "pytesseract>=0.3.10",
-    "easyocr>=1.7.0",
     "opencv-python>=4.8.0",
 ]
 
