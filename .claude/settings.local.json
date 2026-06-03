@@ -482,10 +482,36 @@
       "Bash(echo \"Started PID: $!\")",
       "Bash(echo \"PID: $!\")",
       "Bash(/Users/les/Projects/crackerjack/.venv/bin/zuban -v)",
-      "Bash(/Users/les/Projects/crackerjack/.venv/bin/zuban *)"
+      "Bash(/Users/les/Projects/crackerjack/.venv/bin/zuban *)",
+      "Bash(/Users/les/Projects/crackerjack/.venv/bin/refurb *)",
+      "WebFetch(domain:minimax-algeng-chat-tts-us.oss-us-east-1.aliyuncs.com)",
+      "Bash(/Users/les/Projects/session-buddy/.venv/bin/uv pip *)",
+      "WebFetch(domain:www.minimax.io)",
+      "WebFetch(domain:api.minimax.io)",
+      "WebFetch(domain:www.minimaxi.com)",
+      "WebFetch(domain:platform.minimaxi.com)",
+      "WebFetch(domain:api.minimaxi.com)"
     ]
   },
   "enableAllProjectMcpServers": false,
+  "enabledMcpjsonServers": [
+    "akosha",
+    "chart-antv",
+    "crackerjack",
+    "css",
+    "dhara",
+    "excalidraw",
+    "grafana",
+    "graphics",
+    "langsmith",
+    "mahavishnu",
+    "mermaid",
+    "neo4j",
+    "penpot",
+    "penpot-api",
+    "pycharm",
+    "session-buddy"
+  ],
   "outputStyle": "Explanatory",
   "additionalDirectories": []
 }

@@ -25,7 +25,7 @@
         "scope": "global",
         "targets": [
           {
-            "model": "MiniMax-M2.7",
+            "model": "MiniMax-M3",
             "provider": "minimax-openai",
             "weight": 1
           }
@@ -36,7 +36,7 @@
         "description": "Prefer the strongest MiniMax text model for explicitly labeled long-context work.",
         "enabled": true,
         "fallbacks": [
-          "minimax-openai/MiniMax-M2.7-highspeed"
+          "minimax-openai/MiniMax-M3-highspeed"
         ],
         "id": "route-long-context",
         "name": "Long Context Tasks",
@@ -44,7 +44,7 @@
         "scope": "global",
         "targets": [
           {
-            "model": "MiniMax-M2.7-highspeed",
+            "model": "MiniMax-M3-highspeed",
             "provider": "minimax-openai",
             "weight": 1
           }
@@ -55,7 +55,7 @@
         "description": "Prefer MiniMax's stronger text model when the caller marks a browsing or search-heavy request.",
         "enabled": true,
         "fallbacks": [
-          "minimax-openai/MiniMax-M2.7-highspeed"
+          "minimax-openai/MiniMax-M3-highspeed"
         ],
         "id": "route-web-search",
         "name": "Web Search Tasks",
@@ -63,7 +63,7 @@
         "scope": "global",
         "targets": [
           {
-            "model": "MiniMax-M2.7-highspeed",
+            "model": "MiniMax-M3-highspeed",
             "provider": "minimax-openai",
             "weight": 1
           }
@@ -74,7 +74,7 @@
         "description": "Deferred until a supported MiniMax multimodal adapter exists.",
         "enabled": false,
         "fallbacks": [
-          "minimax-openai/MiniMax-M2.7"
+          "minimax-openai/MiniMax-M3"
         ],
         "id": "route-image",
         "name": "Vision Tasks",
@@ -82,7 +82,7 @@
         "scope": "global",
         "targets": [
           {
-            "model": "MiniMax-M2.7",
+            "model": "MiniMax-M3",
             "provider": "minimax-openai",
             "weight": 1
           }
@@ -93,7 +93,7 @@
         "description": "Keep low-priority background work on MiniMax's faster text model.",
         "enabled": true,
         "fallbacks": [
-          "minimax-openai/MiniMax-M2.7-highspeed"
+          "minimax-openai/MiniMax-M3-highspeed"
         ],
         "id": "route-background",
         "name": "Background Tasks",
@@ -101,7 +101,7 @@
         "scope": "global",
         "targets": [
           {
-            "model": "MiniMax-M2.7-highspeed",
+            "model": "MiniMax-M3-highspeed",
             "provider": "minimax-openai",
             "weight": 1
           }
@@ -138,6 +138,8 @@
       "keys": [
         {
           "models": [
+            "MiniMax-M3",
+            "MiniMax-M3-highspeed",
             "MiniMax-M2.7",
             "MiniMax-M2.7-highspeed"
           ],

@@ -2,7 +2,7 @@
 # Updated: 2026-05-16 (three-tier provider chain: minimax → llama_server → ollama)
 #
 # Provider chain:
-#   1. minimax  - MiniMax M2.7 (primary cloud, API key required)
+#   1. minimax  - MiniMax M3 (primary cloud, API key required)
 #   2. llama_server - llama.cpp server with qwen3.5 (local, no auth)
 #   3. ollama   - Ollama with qwen2.5-coder (local fallback, no auth)
 #
@@ -16,6 +16,7 @@
 # =============================================================================
 
 # MiniMax - Primary cloud provider (API key required)
+# Updated: 2026-06-02 - M3 is now primary (M2.7 retained as fallback)
 minimax:
   enabled: true
   require_auth: true
@@ -26,20 +27,22 @@ minimax:
   timeout: 30
   max_retries: 2
   task_routing:
-    CODE_GENERATION: "MiniMax-M2.7"
-    CODE_REVIEW: "MiniMax-M2.7"
-    DEBUGGING: "MiniMax-M2.7"
-    REFACTORING: "MiniMax-M2.7"
-    TESTING: "MiniMax-M2.7"
-    REASONING: "MiniMax-M2.7"
-    GENERAL: "MiniMax-M2.7"
-    ANALYSIS: "MiniMax-M2.7"
-    DOCUMENTATION: "MiniMax-M2.7"
-    SWARM: "MiniMax-M2.7-highspeed"
-    QUICK: "MiniMax-M2.7-highspeed"
-    VISION: "MiniMax-M2.7"
-    ML_INFERENCE: "MiniMax-M2.7"
-    AGENT_LOOP: "MiniMax-M2.7"
+    CODE_GENERATION: "MiniMax-M3"
+    CODE_REVIEW: "MiniMax-M3"
+    DEBUGGING: "MiniMax-M3"
+    REFACTORING: "MiniMax-M3"
+    TESTING: "MiniMax-M3"
+    REASONING: "MiniMax-M3"
+    ANALYSIS: "MiniMax-M3"
+    DOCUMENTATION: "MiniMax-M3"
+    SWARM: "MiniMax-M3-highspeed"
+    QUICK: "MiniMax-M3-highspeed"
+    VISION: "MiniMax-M3"
+    ML_INFERENCE: "MiniMax-M3"
+    AGENT_LOOP: "MiniMax-M3"
+    # M2.7 fallback mappings for backward compatibility
+    FALLBACK: "MiniMax-M2.7"
+    FALLBACK_HIGHSPEED: "MiniMax-M2.7-highspeed"
 
 # =============================================================================
 # LOCAL PROVIDERS (no auth required, always available when running)
