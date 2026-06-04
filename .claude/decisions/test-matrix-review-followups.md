@@ -267,10 +267,14 @@ in scope for the original Group 1 PR.
 
 ## Group 2 — Decision-doc wording follow-ups
 
-Docs-level changes in `.claude/decisions/removed-scripts.md` and
-`.claude/CLAUDE.md`. These are content-quality issues, not code
-correctness — none of them break a build, but each one is the kind of
-imprecision that will mislead a future contributor.
+**Status: RESOLVED (committed; 2 files rewritten + 1 new index file)**
+
+Docs-level changes in `.claude/decisions/removed-scripts.md`,
+`.claude/CLAUDE.md`, and the new `.claude/decisions/README.md`. These
+are content-quality issues, not code correctness — none of them break
+a build, but each one is the kind of imprecision that will mislead a
+future contributor. Resolutions are noted per-item at the end of the
+group.
 
 ### M7 — `privacy_matrix.py` removal reason is awkwardly phrased
 
@@ -374,6 +378,23 @@ imprecision that will mislead a future contributor.
   acceptable and means 'no required scripts'; only non-empty lists
   pointing at uncommitted scripts are forbidden by this policy."
 
+### Group 2 resolution notes
+
+| Item | Resolution | Where |
+|------|------------|-------|
+| M7 | Rewrote the row to explain the criterion (legal/policy sign-off) rather than legal-hedging phrasing. | `removed-scripts.md` table |
+| M8 | Rewrote the row to state the criterion (LLM generates from `git log` + `pyproject.toml` on demand; a pre-built script would freeze shape and rot). | `removed-scripts.md` table |
+| M9 | Replaced the "Six scripts were previously referenced... Five are staying removed" tally with a policy-focused description. | `removed-scripts.md` opening |
+| M10 (docs) | Added a "Revisit when" column to the table. Each defer-row now has a concrete trigger. | `removed-scripts.md` table |
+| LOW #7 (docs) | Expanded the `## Decisions` section in `CLAUDE.md` to cover: when to add a file, when to use `docs/adr/` instead, expected file shape, index pointer. | `.claude/CLAUDE.md` |
+| LOW #8 (docs) | Created `.claude/decisions/README.md` as a 2-row index. Sorted newest-first. | new file: `.claude/decisions/README.md` |
+| LOW #9 (docs) | Added a clarifying sentence to the Decision rule: empty list is acceptable; only non-empty lists pointing at uncommitted scripts are forbidden. | `removed-scripts.md` Decision rule |
+
+The pre-existing `tool_frontmatter_validator.py` ZeroDivisionError on
+"Total Tools: 0" was observed during verification but is unrelated
+to Group 2 (it's a validator-script bug, not a content issue in
+the consumer tool commands).
+
 ## Group 3 — Architecture follow-ups
 
 Cross-cutting items in `.claude/agents/` and the `quality-validation.md`
@@ -461,7 +482,10 @@ but did not address.
 - **Group 1**: RESOLVED (10/10 items). Smoke test added. See the
   "Group 1 resolution notes" table inserted at the end of the
   Group 1 section.
-- **Group 2**: open (7 items).
+- **Group 2**: RESOLVED (7/7 items). Doc-only changes: rewrote
+  `removed-scripts.md`, expanded `CLAUDE.md` Decisions section, new
+  `.claude/decisions/README.md` index. See the "Group 2 resolution
+  notes" table.
 - **Group 3**: open (4 items).
 - **Group 4**: open (1 new item: M-NEW-1 `_IMPORT_RE` captures
   `import` keyword as head — discovered during Group 1 smoke-test
