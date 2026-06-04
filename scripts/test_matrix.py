@@ -56,9 +56,13 @@ _NON_COMPONENT_DIRS: frozenset[str] = frozenset(
 )
 
 
-@dataclass(frozen=True)
+@dataclass
 class ComponentCoverage:
-    """Per-cell record describing whether a component is covered by a test type."""
+    """Per-cell record describing whether a component is covered by a test type.
+
+    Value-like but not deeply immutable — ``files`` and ``gaps`` lists are
+    mutable. If you need an immutable view, copy with ``dataclasses.replace()``.
+    """
 
     covered: bool
     files: list[str] = field(default_factory=list)
@@ -183,13 +187,20 @@ def infer_component_from_filename(test_file: Path, tests_root: Path) -> str | No
 
 
 def map_test_files_to_components(
-    test_files: Iterable[Path], tests_root: Path
+    test_files: Iterable[Path],
+    tests_root: Path,
+    valid_components: set[str] | None = None,
 ) -> dict[str, list[str]]:
     """Group test files by the component they exercise.
 
     Strategy: scan imports first (most accurate), fall back to filename
     heuristic, fall back to "mahavishnu" (catch-all bucket) so uncovered
     test files are still visible.
+
+    If ``valid_components`` is provided, any inferred component that isn't
+    in the set is treated as a phantom (the stem didn't match a real
+    subpackage) and the test file is bucketed into the catch-all
+    ``mahavishnu`` component instead. Pass ``None`` to disable the check.
     """
     grouped: dict[str, list[str]] = defaultdict(list)
     for tf in test_files:
@@ -198,7 +209,12 @@ def map_test_files_to_components(
             tf, tests_root
         )
         if component is None:
-            component = "mahavishnu"  # catch-all
+            component = "mahavishnu"  # catch-all for no-signal files
+        elif valid_components is not None and component not in valid_components:
+            # Filename or import heuristic produced a phantom — fall back
+            # to the catch-all rather than marking a non-existent
+            # component as "covered".
+            component = "mahavishnu"
         grouped[component].append(rel)
     return dict(grouped)
 
@@ -240,21 +256,33 @@ def discover_python_tests(project: Path, test_type: str) -> list[Path]:
 
 # Markers we look for on individual tests. Read from pyproject.toml's
 # ``[tool.pytest] markers`` table at module import time.
-_MARKER_FILE_CACHE: dict[str, set[str]] = {}
+#
+# Module-level cache keyed by file path. Each entry stores
+# ``(mtime_ns, markers)`` so we re-read the file when the on-disk mtime
+# changes (i.e. the file was edited between script invocations when this
+# module is imported as a library).
+_MARKER_FILE_CACHE: dict[str, tuple[int, set[str]]] = {}
 
 
 def _has_marker(test_file: Path, marker: str) -> bool:
     """Cheap textual check for ``@pytest.mark.<marker>`` in a test file."""
     key = str(test_file)
-    if key not in _MARKER_FILE_CACHE:
+    try:
+        mtime_ns = test_file.stat().st_mtime_ns
+    except OSError:
+        # File disappeared — treat as empty and clear any stale cache.
+        _MARKER_FILE_CACHE.pop(key, None)
+        return False
+    cached = _MARKER_FILE_CACHE.get(key)
+    if cached is None or cached[0] != mtime_ns:
         try:
             text = test_file.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             text = ""
-        _MARKER_FILE_CACHE[key] = {
-            token for token in re.findall(r"@pytest\.mark\.(\w+)", text)
-        }
-    return marker in _MARKER_FILE_CACHE[key]
+        markers = set(re.findall(r"@pytest\.mark\.(\w+)", text))
+        _MARKER_FILE_CACHE[key] = (mtime_ns, markers)
+        return marker in markers
+    return marker in cached[1]
 
 
 def discover_node_tests(project: Path, test_type: str) -> list[Path]:
@@ -293,10 +321,15 @@ def discover_go_tests(project: Path, test_type: str) -> list[Path]:
 def parse_coverage_xml(project: Path) -> dict[str, float] | None:
     """Parse ``coverage.xml`` (Cobertura format produced by coverage.py).
 
-    Returns ``{relative_path: line_rate}`` or ``None`` if not found. We only
-    use this to set a confidence flag on the matrix; cell-level line
-    coverage per test type isn't feasible without mapping tests back to
-    files.
+    Returns ``{relative_path_from_project: line_rate}`` — paths are verbatim
+    Cobertura paths (relative to the project root, NOT stripped of
+    extension) — or ``None`` if ``coverage.xml`` is absent or unparseable.
+
+    Callers that need to cross-reference these paths with matrix component
+    keys (``mahavishnu/core``) must derive the directory themselves, e.g.
+    ``Path(p).parent.as_posix()``. We only use the dict to set a
+    confidence flag on the matrix; cell-level line coverage per test type
+    isn't feasible without mapping tests back to files.
     """
     cov = project / "coverage.xml"
     if not cov.is_file():
@@ -326,18 +359,29 @@ def assemble_python_matrix(
     project: Path,
     components: list[str],
     test_types: list[str],
-) -> tuple[dict[str, dict[str, ComponentCoverage]], dict[str, list[str]]]:
-    """Build the component x test_type matrix for the Python stack."""
-    tests_root = project / "tests"
-    cells: dict[str, dict[str, ComponentCoverage]] = {}
-    uncovered_components: dict[str, list[str]] = defaultdict(list)
+) -> dict[str, dict[str, ComponentCoverage]]:
+    """Build the component x test_type matrix for the Python stack.
 
+    Discovery is hoisted out of the (component x test_type) loop: a project
+    with 20 components and 5 test types runs filesystem discovery 5 times
+    (once per test type) instead of 100 times.
+    """
+    tests_root = project / "tests"
+    valid_components: set[str] = set(components)
+
+    # Cache: per test_type, the {component -> [rel_test_files]} mapping.
+    per_type_mappings: dict[str, dict[str, list[str]]] = {}
+    for test_type in test_types:
+        test_files = discover_python_tests(project, test_type)
+        per_type_mappings[test_type] = map_test_files_to_components(
+            test_files, tests_root, valid_components
+        )
+
+    cells: dict[str, dict[str, ComponentCoverage]] = {}
     for component in components:
         cells[component] = {}
         for test_type in test_types:
-            test_files = discover_python_tests(project, test_type)
-            mapping = map_test_files_to_components(test_files, tests_root)
-            matched = mapping.get(component, [])
+            matched = per_type_mappings[test_type].get(component, [])
             gaps: list[str] = []
             if not matched:
                 gaps.append(f"no {test_type} tests for module {component}")
@@ -346,24 +390,17 @@ def assemble_python_matrix(
                 files=sorted(matched),
                 gaps=gaps,
             )
-        # Track the components that lack any test for any requested type.
-        if not any(cells[component][t].covered for t in test_types):
-            uncovered_components[component] = [
-                t for t in test_types if not cells[component][t].covered
-            ]
-
-    return cells, dict(uncovered_components)
+    return cells
 
 
 def assemble_node_matrix(
     project: Path,
     components: list[str],
     test_types: list[str],
-) -> tuple[dict[str, dict[str, ComponentCoverage]], dict[str, list[str]]]:
+) -> dict[str, dict[str, ComponentCoverage]]:
     """Node matrix: per-component coverage is approximated by directory."""
     test_files = discover_node_tests(project, test_types[0] if test_types else "unit")
     cells: dict[str, dict[str, ComponentCoverage]] = {}
-    uncovered: dict[str, list[str]] = defaultdict(list)
     for component in components:
         comp_name = component.split("/", 1)[-1]
         matched = [
@@ -372,26 +409,26 @@ def assemble_node_matrix(
             if comp_name in p.parts
         ]
         cells[component] = {}
+        # Replicate the same `files` list across all test types so
+        # downstream consumers don't see empty lists for non-first types.
+        files = list(matched)
         for t in test_types:
             cells[component][t] = ComponentCoverage(
                 covered=bool(matched),
-                files=matched if t == test_types[0] else [],
+                files=files,
                 gaps=[] if matched else [f"no {t} tests in {component} tree"],
             )
-        if not matched:
-            uncovered[component] = list(test_types)
-    return cells, dict(uncovered)
+    return cells
 
 
 def assemble_go_matrix(
     project: Path,
     components: list[str],
     test_types: list[str],
-) -> tuple[dict[str, dict[str, ComponentCoverage]], dict[str, list[str]]]:
+) -> dict[str, dict[str, ComponentCoverage]]:
     """Go matrix: group tests by package directory."""
     test_files = discover_go_tests(project, test_types[0] if test_types else "unit")
     cells: dict[str, dict[str, ComponentCoverage]] = {}
-    uncovered: dict[str, list[str]] = defaultdict(list)
     for component in components:
         comp_name = component.split("/", 1)[-1]
         matched = [
@@ -400,15 +437,16 @@ def assemble_go_matrix(
             if comp_name in p.parts
         ]
         cells[component] = {}
+        # Replicate the same `files` list across all test types so
+        # downstream consumers don't see empty lists for non-first types.
+        files = list(matched)
         for t in test_types:
             cells[component][t] = ComponentCoverage(
                 covered=bool(matched),
-                files=matched if t == test_types[0] else [],
+                files=files,
                 gaps=[] if matched else [f"no {t} tests in {component}"],
             )
-        if not matched:
-            uncovered[component] = list(test_types)
-    return cells, dict(uncovered)
+    return cells
 
 
 # ---------------------------------------------------------------------------
@@ -435,12 +473,27 @@ def build_summary(
         for comp in components
         if not all(cells[comp][t].covered for t in test_types)
     ]
+    # Components with NO tests of ANY requested type. This is a subset of
+    # ``below_target``; the two should not be conflated. Computed here
+    # from the cells dict (same source of truth as ``below_target``) so
+    # we don't have to thread a second value through every assembler.
+    components_with_no_tests = [
+        {
+            "component": comp,
+            "missing_test_types": [
+                t for t in test_types if not cells[comp][t].covered
+            ],
+        }
+        for comp in components
+        if not any(cells[comp][t].covered for t in test_types)
+    ]
     summary: dict[str, Any] = {
         "total_components": total_components,
         "total_cells": total_cells,
         "covered_cells": covered_cells,
         "coverage_pct": coverage_pct,
         "below_target": below_target,
+        "components_with_no_tests": components_with_no_tests,
     }
     if coverage_data:
         # Aggregate line coverage to a project-wide average.
@@ -617,19 +670,41 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
+    # Validate that --out and --out-md resolve to a path inside the
+    # project root. Prevents a user from accidentally writing the
+    # matrix to ``/etc/...`` or ``/tmp/../../etc/passwd``.
+    project_root = project  # already resolved above
+    for label, candidate in (("--out", args.out), ("--out-md", args.out_md)):
+        if candidate is None:
+            continue
+        try:
+            resolved = candidate.resolve()
+        except OSError as exc:
+            print(f"error: {label} {candidate} could not be resolved: {exc}", file=sys.stderr)
+            return 1
+        if not resolved.is_relative_to(project_root):
+            print(
+                f"error: {label} {resolved} is outside the project root {project_root}",
+                file=sys.stderr,
+            )
+            return 1
+
     # Components: only the Python stack uses the package-based detection.
     # Node/Go callers get a basic "top-level dirs of <stack_root>" union.
+    # We gate each non-Python detection on its project-root marker
+    # (``package.json`` / ``go.mod``) so a Python-only project doesn't
+    # get every top-level dir reported as a phantom Node or Go component.
     components: list[str] = []
     if args.stack in ("python", "mixed"):
         components.extend(detect_components(project))
-    if args.stack in ("node", "mixed"):
+    if args.stack in ("node", "mixed") and (project / "package.json").is_file():
         for entry in sorted((project / "src").iterdir()) if (project / "src").is_dir() else []:
             if entry.is_dir():
                 components.append(f"src/{entry.name}")
         for entry in sorted(project.iterdir()):
             if entry.is_dir() and entry.name.startswith("packages"):
                 components.append(entry.name)
-    if args.stack in ("go", "mixed"):
+    if args.stack in ("go", "mixed") and (project / "go.mod").is_file():
         for entry in sorted(project.iterdir()):
             if entry.is_dir() and not entry.name.startswith("."):
                 # Cheap: top-level dirs that aren't obviously meta
@@ -646,13 +721,13 @@ def main(argv: list[str] | None = None) -> int:
     # Build per-stack matrices, then union them.
     cells: dict[str, dict[str, ComponentCoverage]] = {}
     if args.stack == "python":
-        cells, _ = assemble_python_matrix(project, components, requested)
+        cells = assemble_python_matrix(project, components, requested)
     elif args.stack == "node":
-        cells, _ = assemble_node_matrix(project, components, requested)
+        cells = assemble_node_matrix(project, components, requested)
     elif args.stack == "go":
-        cells, _ = assemble_go_matrix(project, components, requested)
+        cells = assemble_go_matrix(project, components, requested)
     else:  # mixed
-        py_cells, _ = assemble_python_matrix(
+        py_cells = assemble_python_matrix(
             project,
             [c for c in components if c.startswith("mahavishnu/")],
             requested,
@@ -660,7 +735,7 @@ def main(argv: list[str] | None = None) -> int:
         cells.update(py_cells)
         non_py = [c for c in components if not c.startswith("mahavishnu/")]
         if non_py:
-            other_cells, _ = assemble_node_matrix(project, non_py, requested)
+            other_cells = assemble_node_matrix(project, non_py, requested)
             cells.update(other_cells)
 
     # Optional coverage.xml cross-check (only meaningful for Python).

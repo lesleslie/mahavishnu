@@ -44,9 +44,13 @@ doc for the next review.
 
 ## Group 1 — `scripts/test_matrix.py` code follow-ups
 
-Code-level changes in the matrix generator. All items have been
-characterized but not fixed. Line numbers refer to the current state of
-`scripts/test_matrix.py` (post Wave 1+2).
+**Status: RESOLVED (commit landed; 13-test smoke suite in
+`tests/unit/test_test_matrix.py`)**
+
+Code-level changes in the matrix generator. Line numbers below refer
+to the pre-resolution state of `scripts/test_matrix.py` (post
+Wave 1+2). Each item was fixed and a smoke test was added; resolutions
+are noted in the per-item "Status" line.
 
 ### H4 — N×M discovery in `assemble_python_matrix`
 
@@ -201,6 +205,65 @@ characterized but not fixed. Line numbers refer to the current state of
   inferred component isn't in the valid set, fall back to the catch-all
   `mahavishnu` bucket (the same fallback that already exists for the
   `None` case).
+
+### Group 1 resolution notes
+
+All 10 Group 1 items were fixed in a single commit, with a 13-test
+smoke suite in `tests/unit/test_test_matrix.py`. The smoke test pins
+each fix so future regressions are caught at the unit level.
+
+| Item | Resolution | New line range in `scripts/test_matrix.py` |
+|------|------------|--------------------------------------------|
+| H4 | Discovery hoisted: `discover_python_tests` and `map_test_files_to_components` are now called once per test type; `per_type_mappings` caches the result. Loop count dropped from `N×M` to `M`. | `assemble_python_matrix` ~358-393 |
+| M2 | Node detection gated on `package.json`; Go detection gated on `go.mod`. Python-only projects no longer list `htmlcov/`, `dist/`, `backups/`, `docs/`, `scripts/`, `tests/` as Go components. | `main()` ~700, 707 |
+| M3 | Cache now stores `(mtime_ns, markers)` tuples. On lookup, `Path.stat().st_mtime_ns` is compared; if changed, file is re-read. `OSError` on `stat` is handled. | `_MARKER_FILE_CACHE` ~252, `_has_marker` ~265-285 |
+| M4 | `summary.components_with_no_tests: list[{"component", "missing_test_types"}]` added to JSON output. Computed in `build_summary` from the cells (the simpler alternative, not threaded through assemblers). Assemblers now return just the cells dict (the uncovered tuple element was dropped). | `build_summary` ~477-498 |
+| M10 | New validation loop after `project.resolve()`: both `args.out` and `args.out_md` must be `is_relative_to(project_root)`. Error message: `f"error: {label} {resolved} is outside the project root {project_root}"`. Returns 1 on failure. | `main()` ~673-686 |
+| M11 | Docstring updated to state: "Returns `{relative_path_from_project: line_rate}` — paths are verbatim Cobertura paths (relative to the project root, NOT stripped of extension)." No code change. | `parse_coverage_xml` ~321-333 |
+| LOW #7 | No code change needed. Verified empirically: the regex's `(?:\s*\.\s*\|\s+)` already matches multi-line imports (`\s` matches newlines in Python regex). A regression test now pins this. | unchanged (test added) |
+| LOW #10 | `frozen=True` dropped. Docstring note added: "Value-like but not deeply immutable — `files` and `gaps` lists are mutable. If you need an immutable view, copy with `dataclasses.replace()`." | `ComponentCoverage` ~59-72 |
+| LOW #11 | `files=matched if t == test_types[0] else []` replaced with `files = list(matched)` hoisted out of the type loop. All `t` values now get the same file list. | `assemble_node_matrix` ~396-417; `assemble_go_matrix` ~424-444 |
+| LOW #15 | New `valid_components: set[str] \| None` parameter on `map_test_files_to_components`. When the inferred component isn't in the set, the test file is bucketed into the catch-all `"mahavishnu"` bucket. Passed from `assemble_python_matrix` as `set(components)`. | `map_test_files_to_components` ~189-216 |
+
+**Smoke test added**: `tests/unit/test_test_matrix.py` (445 lines, 13
+test functions). Covers: detect_components filtering, multi-line
+import regex, docstring-ignore, phantom-component fallback, full
+pipeline run, unsafe-path rejection, unknown-test-type rejection,
+coverage.xml parsing, `ComponentCoverage` mutability, summary field
+presence, and markdown rendering.
+
+**Lint**: 4 pre-existing warnings in `scripts/test_matrix.py` remain
+out of scope for this PR (I001 import sort, UP035 `Iterable` from
+`collections.abc`, N817 `ET` acronym, F841 unused `mark` variable in
+`render_markdown`). The new test file is clean.
+
+## Group 4 — Post-Group-1 findings
+
+Items discovered during the Group 1 review or smoke-test writing. Not
+in scope for the original Group 1 PR.
+
+### M-NEW-1 — `_IMPORT_RE` captures the `import` keyword as the head
+
+- **Severity**: LOW
+- **Location**: `scripts/test_matrix.py:130-133`
+- **Effort**: XS
+- **Why it matters**: A test file written as
+  `from mahavishnu import X` (no submodule — the rare-but-legal case
+  where a test imports the package itself) is mapped to the component
+  `"mahavishnu/import"` instead of the catch-all `"mahavishnu"` or a
+  real component. The regex's first alternative greedily captures the
+  word "import" as the head, because the second alternative requires
+  a dot, and the `\s+` path between `mahavishnu` and the head doesn't
+  kick in when the head is the literal token "import" the way a
+  future reader might expect. The smoke test pins this behavior with
+  a comment so a future contributor can either accept it (rare case)
+  or fix it.
+- **Suggested fix**: When the captured head is `"import"`, treat the
+  result as the catch-all `"mahavishnu"` bucket. Or rewrite the
+  regex to require at least one dot before the head for the `from`
+  alternative, so `from mahavishnu import X` doesn't match (and
+  falls through to filename-based discovery). Either is fine; the
+  first is the smaller change.
 
 ## Group 2 — Decision-doc wording follow-ups
 
