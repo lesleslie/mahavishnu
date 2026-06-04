@@ -427,7 +427,7 @@ async def test_index_documentation_error_returns_error_dict(
 
 
 @pytest.mark.asyncio
-async def test_search_documentation_success_returns_empty_results(
+async def test_search_documentation_returns_empty_results(
     integration: SessionBuddyIntegration,
 ) -> None:
     result = await integration.search_documentation("anything")
@@ -457,32 +457,24 @@ async def test_search_documentation_error_returns_error_dict(
 
 
 @pytest.mark.asyncio
-async def test_send_project_message_success_default_priority(
-    integration: SessionBuddyIntegration,
+@pytest.mark.parametrize(
+    "priority",
+    [Priority.NORMAL, Priority.URGENT],
+    ids=["default-normal", "explicit-urgent"],
+)
+async def test_send_project_message_success(
+    integration: SessionBuddyIntegration, priority: Priority
 ) -> None:
     result = await integration.send_project_message(
         from_project="src",
         to_project="dst",
         subject="hi",
         message="hello there",
+        priority=priority,
     )
     assert result["status"] == "success"
     assert result["sent"] is True
     assert result["message_id"].startswith("msg_")
-
-
-@pytest.mark.asyncio
-async def test_send_project_message_success_explicit_priority(
-    integration: SessionBuddyIntegration,
-) -> None:
-    result = await integration.send_project_message(
-        from_project="src",
-        to_project="dst",
-        subject="urgent",
-        message="wake up",
-        priority=Priority.URGENT,
-    )
-    assert result["status"] == "success"
 
 
 @pytest.mark.asyncio
