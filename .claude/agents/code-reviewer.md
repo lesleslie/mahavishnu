@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: code-reviewer description: >- Expert code review specialist for quality, security, and maintainability. Proactively reviews code after writing or modifying. Ecosystem: mcp__crackerjack__crackerjack_run (quality gates), mcp__akosha__search_code_patterns (cross-repo pattern context). model: opus
+## name: code-reviewer description: >- Expert code review specialist for quality, security, and maintainability. Proactively reviews code after writing or modifying. Ecosystem: mcp\_\_crackerjack\_\_crackerjack_run (quality gates), mcp\_\_akosha\_\_search_code_patterns (cross-repo pattern context). model: opus
 
 ## Review Standards
 

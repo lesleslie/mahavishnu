@@ -112,7 +112,7 @@ def test_top_level_help_runs(runner: CliRunner, app: typer.Typer) -> None:
 
 
 def test_every_subcommand_help_runs(runner: CliRunner, app: typer.Typer) -> None:
-    """Each registered subcommand must be invokable with --help and exit 0."""
+    """Each registered subcommand must be invocable with --help and exit 0."""
     for sub in EXPECTED_SUBCOMMANDS:
         result = runner.invoke(app, ["backup", sub, "--help"])
         assert result.exit_code == 0, f"backup {sub} --help exited {result.exit_code}"

@@ -12,12 +12,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import logging
-from typing import Any
-from uuid import UUID
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.repositories.base import BaseRepository, RepositoryError
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 logger = logging.getLogger(__name__)
 

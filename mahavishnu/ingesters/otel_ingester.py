@@ -1334,11 +1334,6 @@ async def create_otel_ingester(
     if storage_type == StorageType.DUCKDB and hot_store_path != ":memory:":
         from akosha.storage import HotStore
 
-        hot_store = HotStore(database_path=_resolved_path)
-        await hot_store.initialize()
-        ingester._hot_store = hot_store  # noqa: SLF001
-        from akosha.storage import HotStore
-
         hot_store = HotStore(database_path=hot_store_path)
         await hot_store.initialize()
         ingester._hot_store = hot_store  # noqa: SLF001

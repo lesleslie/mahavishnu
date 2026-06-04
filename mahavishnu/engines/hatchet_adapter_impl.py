@@ -60,15 +60,20 @@ class HatchetAdapterImpl(OrchestratorAdapter):
             )
         try:
             from hatchet_sdk import Hatchet
+            from hatchet_sdk.config import ClientConfig
         except ImportError:
             raise RuntimeError(
                 "hatchet-sdk not installed. Install with: uv pip install 'mahavishnu[hatchet]'"
             ) from None
 
+        # hatchet-sdk exposes a Pydantic ClientConfig; the Hatchet() constructor
+        # does not accept token/host_port/namespace as kwargs directly.
         self._client = Hatchet(
-            token=token,
-            host_port=self._config.server_url,
-            namespace=self._config.namespace,
+            config=ClientConfig(
+                token=token,
+                host_port=self._config.server_url,
+                namespace=self._config.namespace,
+            ),
         )
         logger.info(
             "HatchetAdapter initialized: server=%s namespace=%s",

@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 try:
     from runpod_flash import Endpoint, GpuType
 except ImportError:
-    Endpoint = None  # type: ignore[assignment]
-    GpuType = None  # type: ignore
+    Endpoint = None  # type: ignore[misc,assignment]
+    GpuType = None  # type: ignore[misc,assignment]
 
 
 class RunPodPool(BasePool):

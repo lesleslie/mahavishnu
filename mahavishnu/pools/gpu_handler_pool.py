@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 try:
     from runpod_flash import Endpoint, GpuType
 except ImportError:
-    Endpoint = None  # type: ignore[assignment]
-    GpuType = None  # type: ignore
+    Endpoint = None  # type: ignore[misc,assignment]
+    GpuType = None  # type: ignore[misc,assignment]
 
 # Task categories that should be routed to GPU pools
 GPU_TASK_CATEGORIES: frozenset[str] = frozenset({"vision", "ml_inference", "embedding"})

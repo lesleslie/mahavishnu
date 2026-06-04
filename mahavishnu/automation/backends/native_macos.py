@@ -562,8 +562,8 @@ class NativeMacOSBackend(DesktopAutomationBackend):
         import tempfile
 
         try:
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-                path = f.name
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                path = tmp.name
 
             if region:
                 x, y, w, h = region
@@ -573,8 +573,8 @@ class NativeMacOSBackend(DesktopAutomationBackend):
 
             subprocess.run(cmd, capture_output=True, timeout=10, check=True)
 
-            with open(path, "rb") as f:
-                data = f.read()
+            with open(path, "rb") as img:
+                data = img.read()
 
             subprocess.run(["rm", "-f", path], capture_output=True)
             return data
