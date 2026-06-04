@@ -16,14 +16,14 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     # Optional dependency — import only for static analysis, never at runtime.
     from turboquant_pro import TurboQuantPGVector as _TurboQuantPGVector
+
+    TURBOQUANT_AVAILABLE = True
 else:
     try:
         from turboquant_pro import TurboQuantPGVector as _TurboQuantPGVector
-
-        TURBOQUANT_AVAILABLE = True
     except ImportError:
         _TurboQuantPGVector = None  # type: ignore[assignment,misc]
-        TURBOQUANT_AVAILABLE = False
+    TURBOQUANT_AVAILABLE = _TurboQuantPGVector is not None
 
 logger = logging.getLogger(__name__)
 
