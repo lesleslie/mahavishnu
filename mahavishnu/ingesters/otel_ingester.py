@@ -14,6 +14,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from enum import StrEnum
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 # Feature detection for embedding backends

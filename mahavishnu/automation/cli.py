@@ -13,9 +13,8 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import sys
 from pathlib import Path
-
+import sys
 from typing import TYPE_CHECKING, Annotated, Any
 
 from rich.console import Console

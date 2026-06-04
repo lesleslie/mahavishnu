@@ -7,11 +7,12 @@
 
 After completing the MCP connection stability plan (per `mcp-connection-stability-plan.md`), we deferred Dhara's `TypeError: Expected AsyncStorage` initialization bug and four outstanding review items. This plan addresses all of them.
 
----
+______________________________________________________________________
 
 ## Part 1: Dhara Initialization Bug — Root Cause
 
 ### Error
+
 ```
 TypeError: Expected AsyncStorage, got <class 'dhara.storage.file.FileStorage'> - missing init
 ```
@@ -55,7 +56,7 @@ Dhara already has a fully-implemented async storage: `AsyncSqliteStorage` (stora
 
 **The fix**: `_init_async_stores()` should create an `AsyncSqliteStorage` instance, call its `init()`, then pass it to `AsyncConnection.new()`. This correctly follows the async initialization pattern.
 
----
+______________________________________________________________________
 
 ## Part 2: Fix for `_init_async_stores()`
 
@@ -112,13 +113,14 @@ async def _init_async_stores(self) -> None:
 ```
 
 **Key changes:**
+
 1. Import `AsyncSqliteStorage` instead of using sync `self.storage`
-2. Call `async_storage.init()` before passing to `AsyncConnection.new()` — this is required because `AsyncConnection.new()` calls `storage.init()` as part of initialization
-3. Pass the initialized `AsyncSqliteStorage` to `AsyncConnection.new()`
+1. Call `async_storage.init()` before passing to `AsyncConnection.new()` — this is required because `AsyncConnection.new()` calls `storage.init()` as part of initialization
+1. Pass the initialized `AsyncSqliteStorage` to `AsyncConnection.new()`
 
 **Why this works**: `AsyncSqliteStorage` implements the full `AsyncStorage` protocol including `async def init()`. `AsyncConnection.new()` first checks for the method's presence (`hasattr(storage, 'init')` → True), then calls `await storage.init()` during connection setup.
 
----
+______________________________________________________________________
 
 ## Part 3: Outstanding Items from MCP Connection Stability Review
 
@@ -144,7 +146,7 @@ async def query_local_traces(
 
 **Effort:** Low — single method, minimal change.
 
----
+______________________________________________________________________
 
 ### Item 3B: Session-loss alerting for FitnessAnalyzer (MEDIUM)
 
@@ -156,13 +158,13 @@ When `BodaiComponentMCPClient` loses its MCP session mid-poll (server-side timeo
 **Fix:** Add session-loss detection and alerting to `FitnessAnalyzer._collect_traces()`:
 
 1. After a failed `client.query_local_traces()` call, check if the error is connection-related (session lost)
-2. Log at WARNING level with component endpoint identification
-3. Track consecutive failures per component
-4. Alert after N consecutive failures (e.g., 3)
+1. Log at WARNING level with component endpoint identification
+1. Track consecutive failures per component
+1. Alert after N consecutive failures (e.g., 3)
 
 **Effort:** Medium — requires failure tracking state in `FitnessAnalyzer`.
 
----
+______________________________________________________________________
 
 ### Item 3C: URL validation on `base_url` (MEDIUM)
 
@@ -185,7 +187,7 @@ def __init__(self, base_url: str, timeout: float = 30.0, token: str | None = Non
 
 **Effort:** Low — single validation in `__init__`.
 
----
+______________________________________________________________________
 
 ### Item 3D: Issue 3 (PosixPath) severity for `wait_for_dependency` (MEDIUM)
 
@@ -198,7 +200,7 @@ The health probe path (`/healthz`) returns only `{"status": "ok"}` which avoids 
 
 **Fix:** Already applied — `str(storage_path)` fix is in `dhara/mcp/server_core.py:825,833`. This is verified and complete.
 
----
+______________________________________________________________________
 
 ## Summary
 
@@ -212,10 +214,10 @@ The health probe path (`/healthz`) returns only `{"status": "ok"}` which avoids 
 
 **Total: 4 items implemented, 1 already fixed**
 
----
+______________________________________________________________________
 
 ## Files to Modify
 
 1. **`dhara/mcp/server_core.py`** — `_init_async_stores()` to use `AsyncSqliteStorage`
-2. **`mahavishnu/mcp/bodai_component_client.py`** — bounds check + URL validation
-3. **`mahavishnu/pools/fitness_analyzer.py`** — session-loss alerting
+1. **`mahavishnu/mcp/bodai_component_client.py`** — bounds check + URL validation
+1. **`mahavishnu/pools/fitness_analyzer.py`** — session-loss alerting

@@ -14,8 +14,6 @@ Architecture:
 from enum import StrEnum
 from pathlib import Path
 
-import platformdirs
-
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 

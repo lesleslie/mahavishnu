@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13+, aiosqlite, asyncio.Lock, pytest
 
----
+______________________________________________________________________
 
 ## Bug Inventory
 
@@ -20,14 +20,16 @@
 | 4 | `close()` doesn't nullify `_async_connection` | CRITICAL | `crackerjack/integration/dhara_integration.py` | Stale reference remains after close |
 | 5 | Multiple `asyncio.run()` per method | HIGH | `crackerjack/integration/dhara_integration.py` | 6 separate event loops in `record_adapter_attempt` |
 
----
+______________________________________________________________________
 
 ## Part 1: Dhara Fixes
 
 ### Task 1: Make `AsyncSqliteStorage.new_oid()` atomic
 
 **Files:**
+
 - Modify: `dhara/storage/sqlite.py:446-450`
+
 - Test: `tests/storage/test_sqlite.py`
 
 - [ ] **Step 1: Write the failing test for atomic OID generation**
@@ -117,12 +119,14 @@ multiple coroutines called new_oid() simultaneously.
 "
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Fix `AsyncConnection.new()` initialization race condition
 
 **Files:**
+
 - Modify: `dhara/core/connection.py:372-426`
+
 - Test: `tests/core/test_connection.py`
 
 - [ ] **Step 1: Write the failing test for initialization race**
@@ -222,12 +226,14 @@ root OID creation and assertion failures.
 "
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Fix `get_stored_pickle()` wrong exception handling
 
 **Files:**
+
 - Modify: `dhara/core/connection.py:471-485`
+
 - Test: `tests/core/test_connection.py`
 
 - [ ] **Step 1: Write the failing test for exception handling**
@@ -323,14 +329,16 @@ ReadConflictError path was dead code — error handling never triggered.
 "
 ```
 
----
+______________________________________________________________________
 
 ## Part 2: Crackerjack Fixes
 
 ### Task 4: Fix `close()` to nullify `_async_connection`
 
 **Files:**
+
 - Modify: `crackerjack/integration/dhara_integration.py:560-563`
+
 - Test: `tests/integration/test_dhara_integration.py`
 
 - [ ] **Step 1: Write the failing test for close behavior**
@@ -403,12 +411,14 @@ would see a non-None but invalid reference after close().
 "
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Replace multiple `asyncio.run()` calls in `record_adapter_attempt`
 
 **Files:**
+
 - Modify: `crackerjack/integration/dhara_integration.py:571-643`
+
 - Test: `tests/integration/test_dhara_integration.py`
 
 - [ ] **Step 1: Write the failing test for single event loop**
@@ -585,7 +595,7 @@ concurrent calls.
 "
 ```
 
----
+______________________________________________________________________
 
 ## Verification
 
@@ -603,11 +613,12 @@ pytest tests/integration/test_dhara_integration.py -v
 
 All tests should pass with no warnings.
 
----
+______________________________________________________________________
 
 ## Self-Review Checklist
 
 **1. Spec coverage:** All 5 bugs have tasks with:
+
 - Bug #1 (atomic new_oid): Task 1 ✅
 - Bug #2 (init race): Task 2 ✅
 - Bug #3 (wrong exception): Task 3 ✅
@@ -617,6 +628,7 @@ All tests should pass with no warnings.
 **2. Placeholder scan:** No TBD/TODO/placeholder patterns. All steps have actual code.
 
 **3. Type consistency:**
+
 - `AsyncSqliteStorage._oid_lock` field added correctly
 - `DharaAdapterLearner._async_connection` set to `None` in close
 - `_record_attempt_async` method signature matches the protocol expectation

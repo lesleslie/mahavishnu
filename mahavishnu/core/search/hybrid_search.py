@@ -41,9 +41,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 import inspect
 import logging
-from uuid import UUID
-
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 

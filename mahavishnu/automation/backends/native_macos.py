@@ -11,15 +11,17 @@ This replaces the deprecated PyXA and ATOMac backends.
 from __future__ import annotations
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import shutil
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from mahavishnu.automation.backends.base import DesktopAutomationBackend
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from mahavishnu.automation.base import (
         ApplicationInfo,
         MenuInfo,
@@ -35,7 +37,7 @@ T = TypeVar("T")
 _executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=2)
 
 
-async def _async_run_sync(func: Callable[..., T], *args: Any) -> T:
+async def _async_run_sync[T](func: Callable[..., T], *args: Any) -> T:
     """Run blocking function in thread pool, await the result async."""
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, func, *args)
@@ -102,7 +104,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
     # Application Operations
     # =====================================================================
 
-    async def launch_application(self, bundle_id: str) -> "ApplicationInfo":
+    async def launch_application(self, bundle_id: str) -> ApplicationInfo:
         """Launch an application by bundle identifier."""
         from mahavishnu.automation.base import ApplicationInfo
 
@@ -130,7 +132,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
             windows=[],
         )
 
-    async def get_application(self, bundle_id: str) -> "ApplicationInfo | None":
+    async def get_application(self, bundle_id: str) -> ApplicationInfo | None:
         """Get information about a running application."""
         from mahavishnu.automation.base import ApplicationInfo
 
@@ -155,11 +157,11 @@ class NativeMacOSBackend(DesktopAutomationBackend):
         except RuntimeError:
             return None
 
-    async def list_applications(self) -> list["ApplicationInfo"]:
+    async def list_applications(self) -> list[ApplicationInfo]:
         """List all running applications."""
         from mahavishnu.automation.base import ApplicationInfo
 
-        script = '''
+        script = """
         tell application "System Events"
             set appList to {}
             repeat with appProc in (every application process)
@@ -171,7 +173,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
             end repeat
         end tell
         return appList
-        '''
+        """
         try:
             result = await _async_run_sync(_run_osascript, script)
             if not result or result == "{}":
@@ -233,11 +235,11 @@ class NativeMacOSBackend(DesktopAutomationBackend):
             logger.warning("Failed to activate %s: %s", bundle_id, e)
             return False
 
-    async def get_active_application(self) -> "ApplicationInfo | None":
+    async def get_active_application(self) -> ApplicationInfo | None:
         """Get the currently active (frontmost) application."""
         from mahavishnu.automation.base import ApplicationInfo
 
-        script = '''
+        script = """
         tell application "System Events"
             set frontApp to first application process whose frontmost is true
             set appName to name of frontApp
@@ -245,7 +247,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
             set bundleId to bundle identifier of frontApp
         end tell
         return "name:" & appName & "|pid:" & appPID & "|bundle:" & bundleId
-        '''
+        """
         try:
             result = await _async_run_sync(_run_osascript, script)
             parts = dict(p.split(":", 1) for p in result.split("|"))
@@ -262,9 +264,9 @@ class NativeMacOSBackend(DesktopAutomationBackend):
     # Window Operations
     # =====================================================================
 
-    async def get_windows(self, bundle_id: str) -> list["WindowInfo"]:
+    async def get_windows(self, bundle_id: str) -> list[WindowInfo]:
         """Get all windows for an application."""
-        from mahavishnu.automation.base import ApplicationInfo, WindowInfo
+        from mahavishnu.automation.base import WindowInfo
 
         script = f'''
         tell application "System Events"
@@ -325,12 +327,12 @@ class NativeMacOSBackend(DesktopAutomationBackend):
 
         Note: window_id is treated as a 1-based window index (osascript convention).
         """
-        script = f'''
+        script = f"""
         tell application "System Events"
             set win to window {window_id}
             set frontmost of win to true
         end tell
-        '''
+        """
         try:
             await _async_run_sync(_run_osascript, script)
             return True
@@ -365,11 +367,11 @@ class NativeMacOSBackend(DesktopAutomationBackend):
 
         Note: window_id is treated as a 1-based window index (osascript convention).
         """
-        script = f'''
+        script = f"""
         tell application "System Events"
             close window {window_id}
         end tell
-        '''
+        """
         try:
             await _async_run_sync(_run_osascript, script)
             return True
@@ -411,13 +413,12 @@ class NativeMacOSBackend(DesktopAutomationBackend):
             logger.warning("Failed to click menu %s/%s: %s", menu_name, item_name, e)
             return False
 
-    async def list_menus(self, bundle_id: str) -> list["MenuInfo"]:
+    async def list_menus(self, bundle_id: str) -> list[MenuInfo]:
         """List all menus for an application.
 
         Note: AppleScript cannot reliably enumerate all menu items across apps.
         This returns limited info — only standard app-level menus.
         """
-        from mahavishnu.automation.base import MenuInfo
 
         # AppleScript menu listing is limited. Return empty with note.
         logger.debug("list_menus: AppleScript cannot reliably enumerate menus for %s", bundle_id)
@@ -429,10 +430,10 @@ class NativeMacOSBackend(DesktopAutomationBackend):
 
     async def get_clipboard(self) -> str:
         """Get clipboard content."""
-        script = '''
+        script = """
         set clipboardText to the clipboard as string
         return clipboardText
-        '''
+        """
         try:
             return await _async_run_sync(_run_osascript, script)
         except RuntimeError as e:
@@ -465,7 +466,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
                 if char == " ":
                     await _async_run_sync(_run_cliclick, "t:' '")
                 else:
-                    await _async_run_sync(_run_cliclick, f't:{char}')
+                    await _async_run_sync(_run_cliclick, f"t:{char}")
                 if interval > 0:
                     await asyncio.sleep(interval)
             return True
@@ -530,7 +531,9 @@ class NativeMacOSBackend(DesktopAutomationBackend):
             await _async_run_sync(_run_cliclick, f"{end_x},{end_y}")
             return True
         except Exception as e:
-            logger.warning("Failed to drag from %d,%d to %d,%d: %s", start_x, start_y, end_x, end_y, e)
+            logger.warning(
+                "Failed to drag from %d,%d to %d,%d: %s", start_x, start_y, end_x, end_y, e
+            )
             return False
 
     async def scroll(self, x: int, y: int, dx: int, dy: int) -> bool:
@@ -585,11 +588,11 @@ class NativeMacOSBackend(DesktopAutomationBackend):
     # Screen Operations
     # =====================================================================
 
-    async def list_screens(self) -> list["ScreenInfo"]:
+    async def list_screens(self) -> list[ScreenInfo]:
         """List all connected displays."""
         from mahavishnu.automation.base import ScreenInfo
 
-        script = '''
+        script = """
         tell application "System Events"
             set screenCount to count of screens
             set resultText to ""
@@ -607,7 +610,7 @@ class NativeMacOSBackend(DesktopAutomationBackend):
             end repeat
         end tell
         return resultText
-        '''
+        """
         try:
             result = await _async_run_sync(_run_osascript, script)
             if not result.strip():

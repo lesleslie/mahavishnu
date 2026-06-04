@@ -36,7 +36,7 @@ The `required_scripts:` reference has been added back to those two tool commands
 Do not add speculative `required_scripts:` entries to tool command frontmatter. Either:
 
 1. Implement the script (committed to `scripts/`, runnable today), or
-2. Leave the reference out.
+1. Leave the reference out.
 
 An empty list `required_scripts: []` is acceptable and means
 "no required scripts"; only non-empty lists pointing at uncommitted

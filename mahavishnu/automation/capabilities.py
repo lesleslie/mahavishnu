@@ -9,10 +9,13 @@ This module enables automatic backend selection based on available capabilities.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum, auto
 import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class Capability(StrEnum):

@@ -51,9 +51,7 @@ class BodaiComponentMCPClient:
 
         parsed = urlparse(base_url)
         if not parsed.scheme or not parsed.netloc:
-            raise ValueError(
-                f"Invalid URL: {base_url!r} — must include scheme and host"
-            )
+            raise ValueError(f"Invalid URL: {base_url!r} — must include scheme and host")
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self._token = token
@@ -171,7 +169,10 @@ class BodaiComponentMCPClient:
                 # All work is complete — this is cosmetic and safe to ignore.
                 # Log at debug so we notice if the error message ever changes.
                 if "cancel scope" in str(exc):
-                    logger.debug("BodaiComponentMCPClient: suppressed cosmetic RuntimeError in session cleanup: %s", exc)
+                    logger.debug(
+                        "BodaiComponentMCPClient: suppressed cosmetic RuntimeError in session cleanup: %s",
+                        exc,
+                    )
                 else:
                     raise
             self._session = None
@@ -181,7 +182,10 @@ class BodaiComponentMCPClient:
                 await self._transport_context.__aexit__(None, None, None)
             except RuntimeError as exc:
                 if "cancel scope" in str(exc):
-                    logger.debug("BodaiComponentMCPClient: suppressed cosmetic RuntimeError in transport cleanup: %s", exc)
+                    logger.debug(
+                        "BodaiComponentMCPClient: suppressed cosmetic RuntimeError in transport cleanup: %s",
+                        exc,
+                    )
                 else:
                     raise
             self._transport_context = None

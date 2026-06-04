@@ -131,7 +131,7 @@ class TerminalGridManager:
             session_id=session_id,
             task=task,
             bounds=bounds,
-            quadrant=quadrant, # type: ignore
+            quadrant=quadrant,  # type: ignore
         )
         return win_session, tab_id
 

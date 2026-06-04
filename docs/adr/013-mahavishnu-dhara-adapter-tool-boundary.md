@@ -72,11 +72,15 @@ Mahavishnu's `adapter_list` and `adapter_metadata` become thin pass-throughs tha
 Keep both tools but write the boundary into `docs/MCP_TOOLS_SPECIFICATION.md` and the tool docstrings:
 
 - **Mahavishnu's `adapter_list` / `adapter_metadata`** = orchestration-time queries against the live in-process registry. Use when you need the orchestrator's current view (which adapters are hydrated, which are healthy *right now*, capability-based filtering for routing decisions).
+
 - **Dhara's `list_adapters` / `get_adapter`** = state queries against the durable registry. Use when you need the canonical record, version history, or any adapter that may not be hydrated in the current Mahavishnu process.
 
 - **Pros:** Each tool keeps the shape it was designed for. No performance regression. No new failure modes. Honest about the fact that the two answer different questions.
+
 - **Cons:** Contributors must learn the boundary. Future drift is still possible — nothing structurally prevents the two surfaces from growing incompatible fields. The agent files would also need a small note that `mcp__dhara__list_adapters` is for state, not for orchestration introspection.
+
 - **Effort:** Low — docs + docstrings only.
+
 - **Risk:** Low.
 
 ### Option C — Remove Mahavishnu's entirely, update internal callers
@@ -95,8 +99,8 @@ The most aggressive cleanup. Delete `adapter_list` and `adapter_metadata` from `
 Rationale:
 
 1. The two tools genuinely answer different questions today. Mahavishnu's surface is shaped around orchestration concerns (`capabilities`, `healthy_only`, `has_instance`, in-memory speed). Dhara's surface is shaped around registry concerns (`domain/key/provider/version`, `category`, version history). Forcing a merge means either losing fields or paying a network hop on the orchestration hot path.
-2. The cost of Option B is one paragraph of docs and two tool docstrings.
-3. Option C remains available if/when the maintainers decide the Mahavishnu surface has no remaining external consumers — at which point we can run a deprecation cycle through `DEPRECATED_TOOLS` in `tool_versions.py` (which already supports this pattern for `health_check_service`, `get_liveness`, etc.).
+1. The cost of Option B is one paragraph of docs and two tool docstrings.
+1. Option C remains available if/when the maintainers decide the Mahavishnu surface has no remaining external consumers — at which point we can run a deprecation cycle through `DEPRECATED_TOOLS` in `tool_versions.py` (which already supports this pattern for `health_check_service`, `get_liveness`, etc.).
 
 **This is a proposal.** The maintainers should ratify, modify, or reject it before any code changes land.
 
@@ -126,6 +130,6 @@ If Option C is later adopted (remove):
 ## Open Questions
 
 1. **External consumers.** Are there any non-agent callers of `mcp__mahavishnu__adapter_metadata` or `mcp__mahavishnu__adapter_list` that we have not yet found? The search above covered `mahavishnu/`, `tests/`, `docs/`, and `.claude/agents/`. External MCP clients (other Bodai components, ad-hoc scripts, downstream tooling) are not visible from this repo.
-2. **Deprecation timeline for Option A or C.** If the maintainers want to converge on a single tool eventually, what's the deprecation window? The existing `DEPRECATED_TOOLS` mechanism in `tool_versions.py` is the natural lever, but no policy is documented for how long a tool stays in that dict before being removed.
-3. **Field reconciliation.** Even under Option B, should Dhara's `list_adapters` response grow a `healthy` field, or Mahavishnu's grow a `version` field, to make them easier to compose? Or do we deliberately keep them disjoint to discourage substitution?
-4. **`get_adapter_health` parallel.** Dhara also has its own `get_adapter_health` (server_core.py:677), which overlaps with Mahavishnu's `adapter_health` tool. The same boundary question applies; whatever this ADR decides should probably apply there too. Out of scope for this ADR but worth flagging.
+1. **Deprecation timeline for Option A or C.** If the maintainers want to converge on a single tool eventually, what's the deprecation window? The existing `DEPRECATED_TOOLS` mechanism in `tool_versions.py` is the natural lever, but no policy is documented for how long a tool stays in that dict before being removed.
+1. **Field reconciliation.** Even under Option B, should Dhara's `list_adapters` response grow a `healthy` field, or Mahavishnu's grow a `version` field, to make them easier to compose? Or do we deliberately keep them disjoint to discourage substitution?
+1. **`get_adapter_health` parallel.** Dhara also has its own `get_adapter_health` (server_core.py:677), which overlaps with Mahavishnu's `adapter_health` tool. The same boundary question applies; whatever this ADR decides should probably apply there too. Out of scope for this ADR but worth flagging.
