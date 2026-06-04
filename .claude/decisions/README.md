@@ -11,5 +11,6 @@ the topic, the third is the most recent state.
 
 | File | Topic | Status |
 |------|-------|--------|
-| `test-matrix-review-followups.md` | Deferred MEDIUM/LOW items from the `scripts/test_matrix.py` review. | Group 1 RESOLVED; Groups 2/3/4 open. |
+| `technical-debt-roadmap.md` | Side discoveries from the recent `.claude/agents/` and `scripts/test_matrix.py` cleanup work. 5 items, 3 size classes. | All open. |
+| `test-matrix-review-followups.md` | Deferred MEDIUM/LOW items from the `scripts/test_matrix.py` review. | All 4 groups RESOLVED. |
 | `removed-scripts.md` | Policy for `required_scripts:` references in tool command frontmatter. | Active. |
