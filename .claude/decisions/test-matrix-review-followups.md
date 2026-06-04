@@ -458,6 +458,14 @@ but did not address.
 
 ## Status
 
-All items above are **open** as of the original review. No PR has
-been opened for any of them. When a group is picked up, update this
-file to record the resolving PR link or mark the item as no-longer-applicable.
+- **Group 1**: RESOLVED (10/10 items). Smoke test added. See the
+  "Group 1 resolution notes" table inserted at the end of the
+  Group 1 section.
+- **Group 2**: open (7 items).
+- **Group 3**: open (4 items).
+- **Group 4**: open (1 new item: M-NEW-1 `_IMPORT_RE` captures
+  `import` keyword as head — discovered during Group 1 smoke-test
+  writing).
+
+When a group is picked up, update this file to record the resolving
+PR link or mark the item as no-longer-applicable.
