@@ -13,6 +13,9 @@ ______________________________________________________________________
 | Server | Port | Context Mode | Relevant Tools | Default Timeout |
 |--------|------|-------------|---------------|----------------|
 | mahavishnu | 8680 | summary | mcp\_\_mahavishnu\_\_pool_route_execute, mcp\_\_mahavishnu\_\_get_health, mcp\_\_mahavishnu\_\_get_workflow_status | 60s |
+| akosha | 8682 | summary | mcp\_\_akosha\_\_search_all_systems, mcp\_\_akosha\_\_query_knowledge_graph, mcp\_\_akosha\_\_run_fitness_analysis | 60s |
+| dhara | 8683 | summary | mcp\_\_dhara\_\_state_read, mcp\_\_dhara\_\_state_write, mcp\_\_dhara\_\_state_list | 60s |
+| session-buddy | 8678 | summary | mcp\_\_session-buddy\_\_search_conversations, mcp\_\_session-buddy\_\_store_reflection, mcp\_\_session-buddy\_\_quick_search | 60s |
 | crackerjack | 8676 | summary | mcp\_\_crackerjack\_\_crackerjack_run, mcp\_\_crackerjack\_\_get_comprehensive_status, mcp\_\_crackerjack\_\_smart_error_analysis | 120s |
 
 ## When to Use
@@ -120,18 +123,36 @@ ______________________________________________________________________
 
 ## Mahavishnu Pool Commands
 
-```bash
+```python
 # Dispatch security review pool (2 agents in parallel)
-mahavishnu pool spawn --type mahavishnu --name security-review --min 2 --max 2
+mcp__mahavishnu__pool_spawn(
+    pool_type="mahavishnu",
+    name="security-review",
+    min_workers=2,
+    max_workers=2,
+)
 
-mahavishnu pool execute security-review --agent security-auditor \
-  --prompt "Review [FILE] for security vulnerabilities..."
+# Send task to security auditor
+mcp__mahavishnu__pool_execute(
+    pool_id="security-review",
+    prompt="Review [FILE] for security vulnerabilities...",
+    timeout=1800,
+)
 
-mahavishnu pool execute security-review --agent python-pro \
-  --prompt "Review [FILE] for Python code quality..."
+# Send task to python pro
+mcp__mahavishnu__pool_execute(
+    pool_id="security-review",
+    prompt="Review [FILE] for Python code quality...",
+    timeout=1800,
+)
 
-# Aggregate results
-mahavishnu pool aggregate security-review --output review-report.md
+# Collect results: monitor pool status and search memory for findings
+mcp__mahavishnu__pool_monitor(pool_ids=["security-review"])
+mcp__mahavishnu__pool_search_memory(query="security review findings")
+
+# After execution, the orchestrator agent collects results via
+# mcp__mahavishnu__pool_monitor and mcp__mahavishnu__pool_search_memory,
+# then writes a synthesis report.
 ```
 
 ______________________________________________________________________
@@ -166,4 +187,4 @@ ______________________________________________________________________
 
 - Parallel Execution Plan
 - Master Plan V3
-- [Phase 0 Action Plan](../PHASE_0_ACTION_PLAN.md)
+- [Phase 0 Action Plan](../../../docs/archive/implementation-plans/PHASE_0_ACTION_PLAN.md)

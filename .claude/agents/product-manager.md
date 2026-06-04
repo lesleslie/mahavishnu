@@ -1,3 +1,3 @@
 ______________________________________________________________________
 
-## name: product-manager description: Leads product discovery, prioritization, and alignment of outcomes with customer value. model: sonnet
+## name: product-manager description: Use when running product discovery, prioritizing roadmaps, writing PRDs, or aligning teams around customer outcomes. Translates user signals into shipped value and measurable success metrics. model: sonnet

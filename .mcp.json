@@ -48,10 +48,6 @@
       "type": "http",
       "url": "http://localhost:3045/mcp"
     },
-    "penpot": {
-      "type": "http",
-      "url": "http://localhost:4401/sse"
-    },
     "penpot-api": {
       "type": "http",
       "url": "http://localhost:3051/mcp"

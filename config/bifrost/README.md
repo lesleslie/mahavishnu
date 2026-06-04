@@ -53,7 +53,7 @@ The current bootstrap config uses:
 Example:
 
 - `openai/gpt-5.4`
-- `minimax-openai/MiniMax-M2.7`
+- `minimax-openai/MiniMax-M3`
 
 ## Client Opt-In
 
@@ -100,16 +100,17 @@ Supported route headers:
 
 Current task mappings:
 
-- `think` -> `minimax-openai/MiniMax-M2.7`
-- `long_context` or `longContext` -> `minimax-openai/MiniMax-M2.7`
-- `web_search` or `webSearch` -> `minimax-openai/MiniMax-M2.7`
+- `think` -> `minimax-openai/MiniMax-M3`
+- `long_context` or `longContext` -> `minimax-openai/MiniMax-M3-highspeed`
+- `web_search` or `webSearch` -> `minimax-openai/MiniMax-M3-highspeed`
 - `image` -> deferred until a supported MiniMax multimodal route exists
-- `background`, `cheap`, or `high_throughput` -> `minimax-openai/MiniMax-M2.7-highspeed`
+- `background`, `cheap`, or `high_throughput` -> `minimax-openai/MiniMax-M3-highspeed`
 
 Notes:
 
 - these rules are intentionally header-driven for now
 - they are meant to reproduce the useful routing buckets from CCR without introducing a second router
+- all M3 fallbacks are M3-highspeed (same generation); M2.7 variants are reserved as the documented offline fallback chain
 - the `image` route is currently disabled in the template until the gateway has a supported multimodal adapter
 
 ## Verified Bootstrap State
@@ -121,7 +122,7 @@ As of 2026-04-08:
 - OpenAI-compatible requests reach the MiniMax provider through `http://127.0.0.1:8471/v1/chat/completions`
 - `/v1/models` now advertises `openai/gpt-5.3-codex`, `openai/gpt-5.4`, and `openai/gpt-5.4-mini`
 - `/v1/responses` is reachable through Bifrost and fails with upstream `429 insufficient_quota` when the OpenAI account has no quota
-- `/v1/chat/completions` reaches `minimax-openai/MiniMax-M2.7` through Bifrost when the MiniMax provider is healthy
+- `/v1/chat/completions` reaches `minimax-openai/MiniMax-M3` through Bifrost when the MiniMax provider is healthy
 - Codex reaches Bifrost on the OpenAI Responses path and is therefore protocol-compatible with the gateway
 - `minimax-openai/*` does not currently support the OpenAI Responses API, so Codex cannot be switched to MiniMax through `/v1/responses` as a quota workaround
 - after rebootstrap, Bifrost now stores `config.db` under `~/.config/bifrost` instead of the repo root and the launchd job writes the expected ready file

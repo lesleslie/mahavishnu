@@ -204,14 +204,14 @@ class TestGetModelForTask:
         assert category == TaskCategory.CODE_GENERATION
         assert model == "qwen2.5-coder:7b"
 
-    def test_zai_routing(self):
+    def test_minimax_reasoning(self):
         model, category = get_model_for_task(
             "Compare REST vs GraphQL",
             DEFAULT_MINIMAX_ROUTING,
-            "MiniMax-M2.7",
+            "MiniMax-M3",
         )
         assert category == TaskCategory.REASONING
-        assert model == "MiniMax-M2.7"
+        assert model == "MiniMax-M3"
 
     def test_default_model_fallback(self):
         custom_routing: dict[TaskCategory, str] = {}
@@ -222,15 +222,15 @@ class TestGetModelForTask:
         )
         assert model == "fallback-model"
 
-    def test_zai_vision(self):
+    def test_minimax_vision(self):
         model, category = get_model_for_task(
             "describe image",
             DEFAULT_MINIMAX_ROUTING,
-            "MiniMax-M2.7",
+            "MiniMax-M3",
             context={"has_image": True},
         )
         assert category == TaskCategory.VISION
-        assert model == "MiniMax-M2.7"
+        assert model == "MiniMax-M3"
 
     def test_returns_tuple(self):
         result = get_model_for_task("test this", DEFAULT_OLLAMA_ROUTING, "default")

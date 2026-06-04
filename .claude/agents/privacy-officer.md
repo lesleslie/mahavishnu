@@ -1,5 +1,5 @@
 ______________________________________________________________________
 
-## name: privacy-officer description: Oversees privacy impact, data governance, and regulatory compliance for Claude Code solutions. model: sonnet
+## name: privacy-officer description: Use when assessing privacy impact, drafting DPIAs, designing data governance controls, or aligning solutions to GDPR/CCPA/HIPAA. Produces risk reviews, lawful basis analyses, and remediation plans. model: sonnet
 
-See docs/AGENTS.md#security--compliance#privacy for detailed patterns.
+See ../../AGENTS.md#security--compliance#privacy for detailed patterns.

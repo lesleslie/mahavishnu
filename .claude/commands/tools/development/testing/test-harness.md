@@ -14,8 +14,6 @@ supported_platforms:
 - javascript-pro
 - golang-pro
 - observability-incident-lead
-  required_scripts:
-- scripts/test_matrix.py
   risk: medium
   status: active
   id: 01K6EEQRQ3BDHZ1H0CJT2XC8S7

@@ -1,3 +1,3 @@
 ______________________________________________________________________
 
-## name: legal-advisor description: Draft privacy policies, terms of service, disclaimers, legal notices. Creates GDPR-compliant texts, cookie policies, data processing agreement... model: haiku
+## name: legal-advisor description: Use when drafting privacy policies, terms of service, disclaimers, cookie banners, or data processing agreements. Produces GDPR/CCPA-aligned legal texts with jurisdiction-specific accuracy. model: haiku

@@ -1,3 +1,3 @@
 ______________________________________________________________________
 
-## name: delivery-lead description: Orchestrates planning, execution, and risk management to land commitments predictably. model: opus
+## name: delivery-lead description: Use when planning multi-team initiatives, tracking commitments, surfacing delivery risk, or coordinating cross-team dependencies. Produces execution plans, risk registers, and stakeholder status communications. model: opus

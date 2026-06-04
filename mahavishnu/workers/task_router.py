@@ -238,23 +238,30 @@ DEFAULT_OLLAMA_ROUTING: dict[TaskCategory, str] = {
 DEFAULT_LLAMA_SERVER_ROUTING: dict[TaskCategory, str] = dict.fromkeys(TaskCategory, "qwen3.5")
 
 # Default model routing for MiniMax cloud provider
+# Kept in sync with settings/models.yaml `minimax.task_routing`.
+# Speed/quality split:
+#   - MiniMax-M3           for categories where reasoning quality matters most
+#   - MiniMax-M3-highspeed for low-stakes / latency-sensitive categories
+#                          (SWARM, QUICK, AGENT_LOOP, CREATIVE, GENERAL)
+# M2.7 variants are no longer used as defaults; they remain available as the
+# final fallback in CloudWorkerConfig.model.
 DEFAULT_MINIMAX_ROUTING: dict[TaskCategory, str] = {
-    TaskCategory.CODE_GENERATION: "MiniMax-M2.7",
-    TaskCategory.CODE_REVIEW: "MiniMax-M2.7",
-    TaskCategory.DEBUGGING: "MiniMax-M2.7",
-    TaskCategory.REFACTORING: "MiniMax-M2.7",
-    TaskCategory.DOCUMENTATION: "MiniMax-M2.7",
-    TaskCategory.TESTING: "MiniMax-M2.7",
-    TaskCategory.REASONING: "MiniMax-M2.7",
-    TaskCategory.CREATIVE: "MiniMax-M2.7",
-    TaskCategory.ANALYSIS: "MiniMax-M2.7",
-    TaskCategory.VISION: "MiniMax-M2.7",
-    TaskCategory.EMBEDDING: "MiniMax-M2.7",
-    TaskCategory.GENERAL: "MiniMax-M2.7",
-    TaskCategory.SWARM: "MiniMax-M2.7-highspeed",
-    TaskCategory.QUICK: "MiniMax-M2.7-highspeed",
-    TaskCategory.ML_INFERENCE: "MiniMax-M2.7-highspeed",
-    TaskCategory.AGENT_LOOP: "MiniMax-M2.7",
+    TaskCategory.CODE_GENERATION: "MiniMax-M3",
+    TaskCategory.CODE_REVIEW: "MiniMax-M3",
+    TaskCategory.DEBUGGING: "MiniMax-M3",
+    TaskCategory.REFACTORING: "MiniMax-M3",
+    TaskCategory.DOCUMENTATION: "MiniMax-M3",
+    TaskCategory.TESTING: "MiniMax-M3",
+    TaskCategory.REASONING: "MiniMax-M3",
+    TaskCategory.ANALYSIS: "MiniMax-M3",
+    TaskCategory.VISION: "MiniMax-M3",
+    TaskCategory.EMBEDDING: "MiniMax-M3",
+    TaskCategory.ML_INFERENCE: "MiniMax-M3",
+    TaskCategory.SWARM: "MiniMax-M3-highspeed",
+    TaskCategory.QUICK: "MiniMax-M3-highspeed",
+    TaskCategory.AGENT_LOOP: "MiniMax-M3-highspeed",
+    TaskCategory.CREATIVE: "MiniMax-M3-highspeed",
+    TaskCategory.GENERAL: "MiniMax-M3-highspeed",
 }
 
 

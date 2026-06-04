@@ -277,33 +277,38 @@ ingestion:
 
 ## Critical Architecture Decisions
 
-### LLM Provider Configuration (MiniMax Primary)
+### LLM Provider Configuration (MiniMax M3 Primary)
 
-Mahavishnu uses MiniMax M2.7 models as the primary cloud LLM provider:
+Mahavishnu uses MiniMax M3 models as the primary cloud LLM provider. M2.7 is retained as the documented fallback when M3 is unavailable.
 
 - **Primary provider**: `minimax` (OpenAI-compatible API at `https://api.minimax.io/v1`)
-- **Local fallback**: `ollama` at `http://localhost:11434`
-- **Default models**: `MiniMax-M2.7` (general), `MiniMax-M2.7-highspeed` (quick/background)
+- **Local fallbacks**: `ollama` at `http://localhost:11434` and `llama_server` (llama.cpp) at `http://localhost:8081` with `qwen3.5`
+- **Default models**:
+  - `MiniMax-M3` — primary for quality-sensitive tasks
+  - `MiniMax-M3-highspeed` — used for SWARM, QUICK, AGENT_LOOP, CREATIVE, GENERAL
+  - `MiniMax-M2.7` and `MiniMax-M2.7-highspeed` — final fallback when M3 is unavailable
 - **Optional compatibility provider**: `zai` (OpenAI-compatible API at `https://api.z.ai/api/coding/paas/v4`) when explicitly configured
-- **Task-based routing**: `TaskRouter` in `mahavishnu/workers/task_router.py` maps task categories to optimal models
+- **Task-based routing**: `TaskRouter` in `mahavishnu/workers/task_router.py` maps task categories to optimal models; the in-code `DEFAULT_MINIMAX_ROUTING` and the YAML in `settings/models.yaml` are pinned in sync by a CI guard test (`tests/unit/test_task_router.py::TestYAMLRoutingSync`)
 
-**Task-to-Model Mapping**:
-| Category | Cloud Model | Local Model |
-|-----------|-------------|-------------|
-| CODE_GENERATION, CODE_REVIEW, DEBUGGING | MiniMax-M2.7 | qwen2.5-coder:7b |
-| REASONING, ARCHITECTURE | MiniMax-M2.7 | llama3:8b |
-| SWARM, QUICK, DOCUMENTATION | MiniMax-M2.7-highspeed | qwen2.5-coder:7b |
-| VISION | MiniMax modality-specific routes where supported | N/A |
+**Task-to-Model Mapping (MiniMax cloud)**:
+
+| Categories | Cloud Model |
+|------------|-------------|
+| CODE_GENERATION, CODE_REVIEW, DEBUGGING, REFACTORING, TESTING, REASONING, ANALYSIS, DOCUMENTATION, VISION, EMBEDDING, ML_INFERENCE | `MiniMax-M3` |
+| SWARM, QUICK, AGENT_LOOP, CREATIVE, GENERAL | `MiniMax-M3-highspeed` |
+
+For local fallbacks (`llama_server`, `ollama`), see `settings/models.yaml`.
 
 **Key files**:
 
-- `mahavishnu/workers/cloud_worker.py` - OpenAI-compatible worker for MiniMax
-- `mahavishnu/workers/task_router.py` - TaskCategory enum, model routing
-- `settings/models.yaml` - YAML-driven provider and model configuration
+- `mahavishnu/workers/cloud_worker.py` — OpenAI-compatible worker for MiniMax
+- `mahavishnu/workers/task_router.py` — `TaskCategory` enum, model routing
+- `settings/models.yaml` — YAML-driven provider and model configuration
+- `tests/unit/test_task_router.py::TestYAMLRoutingSync` — guard test pinning YAML ↔ in-code routing
 
 If MiniMax becomes unavailable, operators can temporarily restore `zai` as an optional non-default provider by reintroducing the compatibility settings in `settings/models.yaml` and setting `default_provider` back to `zai` only for the affected environment.
 
-See `docs/plans/2026-05-10-minimax27-provider-migration.md` for the current migration plan.
+See `docs/plans/2026-05-10-minimax27-provider-migration.md` for the M2.7 → M3 migration history and `docs/adr/` for the full Architecture Decision Records.
 
 See `docs/adr/` for full Architecture Decision Records:
 

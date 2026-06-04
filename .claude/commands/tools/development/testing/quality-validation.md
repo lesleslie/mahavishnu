@@ -7,8 +7,6 @@ supported_platforms:
 
 - macOS
 - Linux
-  required_scripts:
-- scripts/test_matrix.py
   risk: medium
   id: 01K6EEQ3JBXJN4P7QMKN6SR58W
   status: active

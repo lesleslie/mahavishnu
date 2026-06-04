@@ -20,7 +20,7 @@ I have 5+ LLM clients that all hit the MiniMax primary cloud provider independen
 
 The provider exposes multiple API formats:
 
-- **OpenAI-compatible**: `https://api.minimax.io/v1/chat/completions` (MiniMax-M2.7, MiniMax-M2.7-highspeed)
+- **OpenAI-compatible**: `https://api.minimax.io/v1/chat/completions` (MiniMax-M3, MiniMax-M3-highspeed; M2.7 variants retained as final fallback)
 - **Anthropic-compatible optional path**: `https://api.z.ai/api/anthropic/v1/messages` (GLM-4.7, GLM-4.5-Air, GLM-4.5V, GLM-4.6V)
 - **Coding plan / optional path**: `https://api.z.ai/api/coding/paas/v4/chat/completions`
 

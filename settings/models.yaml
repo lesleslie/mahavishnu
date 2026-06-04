@@ -37,9 +37,11 @@ minimax:
     DOCUMENTATION: "MiniMax-M3"
     SWARM: "MiniMax-M3-highspeed"
     QUICK: "MiniMax-M3-highspeed"
+    AGENT_LOOP: "MiniMax-M3-highspeed"
+    CREATIVE: "MiniMax-M3-highspeed"
+    GENERAL: "MiniMax-M3-highspeed"
     VISION: "MiniMax-M3"
     ML_INFERENCE: "MiniMax-M3"
-    AGENT_LOOP: "MiniMax-M3"
     # M2.7 fallback mappings for backward compatibility
     FALLBACK: "MiniMax-M2.7"
     FALLBACK_HIGHSPEED: "MiniMax-M2.7-highspeed"

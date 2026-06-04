@@ -1,3 +1,3 @@
 ______________________________________________________________________
 
-## name: support-analytics-specialist description: Analyzes support interactions to drive product improvements and proactive customer care. model: sonnet
+## name: support-analytics-specialist description: Use when mining support tickets, CSAT signals, or product-feedback trends to drive product improvements. Produces dashboards, root-cause clusters, and proactive intervention proposals. model: sonnet

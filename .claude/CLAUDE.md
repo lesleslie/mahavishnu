@@ -20,7 +20,6 @@ For repo-local editing rules, layout, and validation entry points, see AGENTS.md
 
 - `python scripts/agent_metadata_audit.py`
 - `python scripts/tool_frontmatter_validator.py`
-- `python docs/workflow_validator.py`
 
 ## Principles
 
@@ -59,12 +58,12 @@ For repo-local editing rules, layout, and validation entry points, see AGENTS.md
 
 This repository represents a comprehensive AI-assisted development environment with:
 
-- **83 total agents** (100% active, zero deprecated)
+- **101 total agents** (100% active, zero deprecated; 3 retired agents live in `.claude/agents/.archive/`)
 - **49 active development tools** (100% active, zero deprecated)
-- **15 production-ready workflows** (100% active, zero deprecated)
-- **19 MCP servers** providing enhanced capabilities
+- **18 production-ready workflows** (100% active, zero deprecated)
+- **15 MCP servers** providing enhanced capabilities
 - **92/100 quality score** (industry-leading)
 
 The ecosystem covers every aspect of modern software development from simple scripts to enterprise-scale systems, with zero critical gaps and world-class specialist coverage.
 
-**Key Advantage**: Your entire agent ecosystem (83 specialists + 64 tools/workflows) is just **3.2MB** of plain text files that work perfectly without any marketplace or plugin dependencies!
+**Key Advantage**: Your entire agent ecosystem (101 specialists + 67 tools/workflows) is just **3.2MB** of plain text files that work perfectly without any marketplace or plugin dependencies!

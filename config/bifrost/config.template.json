@@ -17,7 +17,7 @@
         "description": "Route high-reasoning tasks to MiniMax's strongest text model.",
         "enabled": true,
         "fallbacks": [
-          "minimax-openai/MiniMax-M2.7-highspeed"
+          "minimax-openai/MiniMax-M3-highspeed"
         ],
         "id": "route-think",
         "name": "Think Tasks",

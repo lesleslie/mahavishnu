@@ -9,7 +9,6 @@ supported_platforms:
 - Linux
   required_scripts:
 - scripts/agent_metadata_audit.py
-- scripts/dependency_report.py
   risk: medium
   status: active
   id: 01K6EEP8QJFB1XTCXAWQ09YSAB

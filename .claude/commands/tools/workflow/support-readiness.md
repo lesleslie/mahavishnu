@@ -7,8 +7,6 @@ supported_platforms:
 
 - macOS
 - Linux
-  required_scripts:
-- scripts/support_health.py
   risk: medium
   status: active
   id: 01K6EETMG3BH9AFPB7HTE2JDNV

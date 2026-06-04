@@ -1,3 +1,3 @@
 ______________________________________________________________________
 
-## name: orchestration-specialist.md description: Expert in multi-agent coordination, plan-then-execute patterns, and discrete phase separation for complex development tasks model: opus
+## name: orchestration-specialist description: Use when coordinating multi-agent workflows, designing plan-then-execute patterns, or separating discrete phases in complex development tasks. Specializes in agent handoffs, phase isolation, and orchestration strategy. model: opus

@@ -7,8 +7,6 @@ supported_platforms:
 
 - macOS
 - Linux
-  required_scripts:
-- scripts/release_checklist.py
   risk: medium
   status: active
   id: 01K6EESJ4FMWZHNZZJZD54QFXE

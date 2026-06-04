@@ -19,7 +19,7 @@ agno:
     - provider: "anthropic"
       model: "claude-3-5-sonnet-20241022"
     - provider: "minimax"
-      model: "MiniMax-M2.7"
+      model: "MiniMax-M3"
 ```
 
 ## Usage

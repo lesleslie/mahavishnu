@@ -206,8 +206,20 @@ class TestGetModelForTask:
         assert model == "fallback-model"
 
     def test_minimax_highspeed_for_swarm_quick(self):
-        """MiniMax routing uses highspeed variant for SWARM and QUICK."""
-        for cat in (TaskCategory.SWARM, TaskCategory.QUICK):
+        """MiniMax routing uses highspeed variant for latency-sensitive categories.
+
+        Covers SWARM, QUICK, AGENT_LOOP, CREATIVE, and GENERAL — the categories
+        that trade quality headroom for throughput. If any of these regress to
+        the non-highspeed M3, this test fires.
+        """
+        highspeed_cats = (
+            TaskCategory.SWARM,
+            TaskCategory.QUICK,
+            TaskCategory.AGENT_LOOP,
+            TaskCategory.CREATIVE,
+            TaskCategory.GENERAL,
+        )
+        for cat in highspeed_cats:
             model, _ = get_model_for_task("do it fast", DEFAULT_MINIMAX_ROUTING, "default")
             assert "highspeed" in model, f"{cat} should use highspeed model, got {model}"
 
@@ -231,6 +243,86 @@ class TestRoutingToTaskMap:
         assert "code_generation" in result
         assert "reasoning" in result
         assert result["code_generation"] == "qwen2.5-coder:7b"
+
+
+# =========================================================================
+# YAML ↔ DEFAULT_MINIMAX_ROUTING sync guard
+# =========================================================================
+
+
+class TestYAMLRoutingSync:
+    """Guard against drift between settings/models.yaml and DEFAULT_MINIMAX_ROUTING.
+
+    These two sources of truth must agree on what model each task category
+    routes to. If they drift, the in-process tests pass (they use the Python
+    constant) but production traffic silently uses the YAML value (or vice
+    versa) — exactly the kind of bug that escaped detection in the
+    2026-06-02 M3 → M2.7 sync gap.
+    """
+
+    @staticmethod
+    def _load_yaml_routing() -> dict[str, str]:
+        """Load and normalize the MiniMax task_routing from settings/models.yaml.
+
+        FALLBACK / FALLBACK_HIGHSPEED are operator-facing meta-keys that the
+        in-code constant doesn't carry, so they are stripped for comparison.
+        """
+        from pathlib import Path
+        import yaml
+
+        yaml_path = (
+            Path(__file__).resolve().parents[2] / "settings" / "models.yaml"
+        )
+        raw = yaml.safe_load(yaml_path.read_text())["minimax"]["task_routing"]
+        return {
+            k: v for k, v in raw.items() if not k.startswith("FALLBACK")
+        }
+
+    def test_yaml_entries_match_code_constant(self):
+        """Every category defined in the YAML must match DEFAULT_MINIMAX_ROUTING."""
+        yaml_routing = self._load_yaml_routing()
+        code_routing = {
+            cat.value: model for cat, model in DEFAULT_MINIMAX_ROUTING.items()
+        }
+
+        for cat, yaml_model in yaml_routing.items():
+            cat_key = cat.lower()
+            assert cat_key in code_routing, (
+                f"YAML defines {cat} but DEFAULT_MINIMAX_ROUTING is missing it"
+            )
+            assert code_routing[cat_key] == yaml_model, (
+                f"Model drift for {cat}: YAML={yaml_model!r} "
+                f"vs CODE={code_routing[cat_key]!r}"
+            )
+
+    def test_yaml_covers_high_traffic_categories(self):
+        """YAML must cover the categories every prompt hits.
+
+        If a category is missing from the YAML, requests fall through to the
+        in-code default — fine for niche categories (EMBEDDING) but a quality
+        hazard for high-traffic ones. The CI guard enforces the floor.
+        """
+        yaml_routing = self._load_yaml_routing()
+
+        required = {
+            "CODE_GENERATION",
+            "CODE_REVIEW",
+            "DEBUGGING",
+            "REFACTORING",
+            "TESTING",
+            "REASONING",
+            "ANALYSIS",
+            "DOCUMENTATION",
+            "SWARM",
+            "QUICK",
+            "AGENT_LOOP",
+            "CREATIVE",
+            "GENERAL",
+        }
+        missing = required - set(yaml_routing.keys())
+        assert not missing, (
+            f"YAML must cover high-traffic categories: {sorted(missing)}"
+        )
 
 
 class TestRateLimiter:

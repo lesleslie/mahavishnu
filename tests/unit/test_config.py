@@ -82,9 +82,9 @@ def test_models_yaml_defaults_to_minimax() -> None:
     assert data["fallback_chain"] == ["minimax", "llama_server", "ollama"]
     assert data["minimax"]["api_key"] == "${MINIMAX_API_KEY}"
     assert data["minimax"]["base_url"] == "https://api.minimax.io/v1"
-    assert data["minimax"]["task_routing"]["CODE_GENERATION"] == "MiniMax-M2.7"
-    assert data["minimax"]["task_routing"]["SWARM"] == "MiniMax-M2.7-highspeed"
-    assert data["minimax"]["task_routing"]["QUICK"] == "MiniMax-M2.7-highspeed"
+    assert data["minimax"]["task_routing"]["CODE_GENERATION"] == "MiniMax-M3"
+    assert data["minimax"]["task_routing"]["SWARM"] == "MiniMax-M3-highspeed"
+    assert data["minimax"]["task_routing"]["QUICK"] == "MiniMax-M3-highspeed"
 
 
 def test_config_validation_bounds():

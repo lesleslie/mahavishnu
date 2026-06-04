@@ -7,8 +7,6 @@ supported_platforms:
 
 - macOS
 - Linux
-  required_scripts:
-- scripts/privacy_matrix.py
   risk: high
   status: active
   id: 01K6EEV9W6MHJV7SHE66QPFTKD

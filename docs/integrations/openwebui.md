@@ -153,7 +153,7 @@ OpenWebUI's Arena mode enables blind ELO comparisons between models. Use this to
 1. In OpenWebUI **Admin → Settings → Connections**:
    - Add MiniMax endpoint: `https://api.minimax.io/v1` with your `MINIMAX_API_KEY`
    - Add Ollama endpoint: `http://localhost:11434` (or your Ollama host)
-1. Enable models: `MiniMax-M2.7`, `MiniMax-M2.7-highspeed`, `llama3:8b`, `qwen2.5-coder:7b`
+1. Enable models: `MiniMax-M3`, `MiniMax-M3-highspeed`, `llama3:8b`, `qwen2.5-coder:7b`
 
 ### Benchmark Prompt Set
 

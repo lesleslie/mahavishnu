@@ -411,11 +411,11 @@ class LLMProviderFactory:
     def _create_minimax_model(self, model_id: str) -> Any:
         """Create MiniMax model instance using the OpenAI-compatible endpoint.
 
-        Uses MiniMax M2.7 models through the public OpenAI-compatible API.
+        Uses MiniMax M3 models through the public OpenAI-compatible API.
         Base URL: https://api.minimax.io/v1
 
         Args:
-            model_id: MiniMax model identifier (e.g., 'MiniMax-M2.7', 'MiniMax-M2.7-highspeed')
+            model_id: MiniMax model identifier (e.g., 'MiniMax-M3', 'MiniMax-M3-highspeed')
 
         Returns:
             OpenAIChat model instance configured for MiniMax

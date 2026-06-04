@@ -7,8 +7,6 @@ supported_platforms:
 
 - macOS
 - Linux
-  required_scripts:
-- scripts/dependency_report.py
   risk: medium
   id: 01K6EET6S9Y66WT3NVKJ6QTEWB
   status: active

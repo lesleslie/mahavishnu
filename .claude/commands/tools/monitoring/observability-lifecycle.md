@@ -7,8 +7,6 @@ supported_platforms:
 
 - macOS
 - Linux
-  required_scripts:
-- scripts/telemetry_audit.py
   risk: medium
   status: active
   id: 01K6EERCEZDKFSGPW13C1CZNAQ
