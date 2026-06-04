@@ -12,17 +12,22 @@ import asyncio
 import collections
 import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 
 logger = logging.getLogger(__name__)
 
-try:
+if TYPE_CHECKING:
+    # Optional dependency — imported only for static analysis. The runtime
+    # `else` branch below handles the install / no-install cases.
     from runpod_flash import Endpoint, GpuType
-except ImportError:
-    Endpoint = None  # type: ignore[misc,assignment]
-    GpuType = None  # type: ignore[misc,assignment]
+else:
+    try:
+        from runpod_flash import Endpoint, GpuType
+    except ImportError:
+        Endpoint = None  # type: ignore[misc,assignment]
+        GpuType = None  # type: ignore[misc,assignment]
 
 
 class RunPodPool(BasePool):

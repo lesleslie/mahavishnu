@@ -22,17 +22,22 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .runpod_pool import RunPodPool
 
 logger = logging.getLogger(__name__)
 
-try:
+if TYPE_CHECKING:
+    # Optional dependency — imported only for static analysis. The runtime
+    # `else` branch below handles the install / no-install cases.
     from runpod_flash import Endpoint, GpuType
-except ImportError:
-    Endpoint = None  # type: ignore[misc,assignment]
-    GpuType = None  # type: ignore[misc,assignment]
+else:
+    try:
+        from runpod_flash import Endpoint, GpuType
+    except ImportError:
+        Endpoint = None  # type: ignore[misc,assignment]
+        GpuType = None  # type: ignore[misc,assignment]
 
 # Task categories that should be routed to GPU pools
 GPU_TASK_CATEGORIES: frozenset[str] = frozenset({"vision", "ml_inference", "embedding"})

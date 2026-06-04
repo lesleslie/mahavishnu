@@ -15,22 +15,20 @@ behavior locked in.
 
 from __future__ import annotations
 
-import json
+from pathlib import Path
 import sys
 import textwrap
-from pathlib import Path
 from types import ModuleType
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
-from messaging.types import Priority, ProjectMessage
 from mahavishnu.session_buddy.integration import (
     SessionBuddyIntegration,
     SessionBuddyManager,
 )
-
+from messaging.types import Priority
 
 # ---------------------------------------------------------------------------
 # Module-level safety net
@@ -80,7 +78,7 @@ def _make_node(node_type: str, name: str, file_id: str, **attrs: Any) -> Mock:
         node.inherits_from = attrs.get("inherits_from", ["Base"])
     elif node_type == "import":
         node.imported_from = attrs.get("imported_from", "some.module")
-        node.alias = attrs.get("alias", None)
+        node.alias = attrs.get("alias")
     return node
 
 
@@ -208,25 +206,8 @@ async def test_integrate_code_graph_success_extracts_nodes(
     assert result["classes_extracted"] == 1
     assert result["imports_extracted"] == 1
     assert result["code_context_sent"] is True
-    # The first extracted function should match our fake node.
     analysis = result["analysis_result"]
     assert analysis["files_indexed"] == 2
-
-
-@pytest.mark.asyncio
-async def test_integrate_code_graph_returns_error_dict_on_exception(
-    integration: SessionBuddyIntegration,
-    patched_code_graph_analyzer,
-) -> None:
-    """Analyzer raising must not propagate — the integration returns an error dict."""
-    analyzer = MagicMock()
-    analyzer.analyze_repository = AsyncMock(side_effect=RuntimeError("boom"))
-    patched_code_graph_analyzer.return_value = analyzer
-
-    result = await integration.integrate_code_graph("/repo")
-
-    assert result["status"] == "error"
-    assert "boom" in result["error"]
 
 
 @pytest.mark.asyncio
@@ -251,6 +232,22 @@ async def test_integrate_code_graph_skips_nodes_without_required_attrs(
     assert result["functions_extracted"] == 0
     assert result["classes_extracted"] == 0
     assert result["imports_extracted"] == 0
+
+
+@pytest.mark.asyncio
+async def test_integrate_code_graph_returns_error_dict_on_exception(
+    integration: SessionBuddyIntegration,
+    patched_code_graph_analyzer,
+) -> None:
+    """Analyzer raising must not propagate — the integration returns an error dict."""
+    analyzer = MagicMock()
+    analyzer.analyze_repository = AsyncMock(side_effect=RuntimeError("boom"))
+    patched_code_graph_analyzer.return_value = analyzer
+
+    result = await integration.integrate_code_graph("/repo")
+
+    assert result["status"] == "error"
+    assert "boom" in result["error"]
 
 
 # ---------------------------------------------------------------------------
@@ -279,18 +276,34 @@ async def test_get_related_code_success_returns_file_list(
 
 
 @pytest.mark.asyncio
-async def test_get_related_code_error_returns_error_dict(
+@pytest.mark.parametrize(
+    "method_name,kwargs,error_substring",
+    [
+        ("get_related_code", {"file_path": "src/main.py"}, "disk gone"),
+        ("get_function_context", {"function_name": "foo"}, "Function not found"),
+        ("index_documentation", {}, "boom"),
+    ],
+    ids=["related-code", "function-context", "documentation"],
+)
+async def test_analyzer_methods_return_error_dict_on_failure(
     integration: SessionBuddyIntegration,
     patched_code_graph_analyzer,
+    method_name: str,
+    kwargs: dict,
+    error_substring: str,
 ) -> None:
+    """All three analyzer-driven methods must swallow exceptions into an error dict."""
     analyzer = MagicMock()
-    analyzer.analyze_repository = AsyncMock(side_effect=OSError("disk gone"))
+    analyzer.analyze_repository = AsyncMock(
+        side_effect=RuntimeError(error_substring)
+    )
     patched_code_graph_analyzer.return_value = analyzer
 
-    result = await integration.get_related_code("/repo", "src/main.py")
+    method = getattr(integration, method_name)
+    result = await method("/repo", **kwargs)
 
     assert result["status"] == "error"
-    assert "disk gone" in result["error"]
+    assert error_substring in result["error"]
 
 
 # ---------------------------------------------------------------------------
@@ -316,21 +329,6 @@ async def test_get_function_context_success(
     assert result["status"] == "success"
     assert result["function_name"] == "do_work"
     assert result["context"] == ctx
-
-
-@pytest.mark.asyncio
-async def test_get_function_context_error_returns_error_dict(
-    integration: SessionBuddyIntegration,
-    patched_code_graph_analyzer,
-) -> None:
-    analyzer = MagicMock()
-    analyzer.analyze_repository = AsyncMock(side_effect=ValueError("Function not found: foo"))
-    patched_code_graph_analyzer.return_value = analyzer
-
-    result = await integration.get_function_context("/repo", "foo")
-
-    assert result["status"] == "error"
-    assert "Function not found" in result["error"]
 
 
 # ---------------------------------------------------------------------------
@@ -406,49 +404,71 @@ async def test_index_documentation_success(
     assert result["indexed"] is True
 
 
-@pytest.mark.asyncio
-async def test_index_documentation_error_returns_error_dict(
-    integration: SessionBuddyIntegration,
-    patched_code_graph_analyzer,
-) -> None:
-    analyzer = MagicMock()
-    analyzer.analyze_repository = AsyncMock(side_effect=OSError("nope"))
-    patched_code_graph_analyzer.return_value = analyzer
-
-    result = await integration.index_documentation("/repo")
-
-    assert result["status"] == "error"
-    assert "nope" in result["error"]
-
-
+# Error path is covered by the parametrized test_analyzer_methods_return_error_dict_on_failure.
 # ---------------------------------------------------------------------------
-# search_documentation
+# search_documentation / list_project_messages (read-only stubs)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_search_documentation_returns_empty_results(
+@pytest.mark.parametrize(
+    "method,args,expected",
+    [
+        (
+            "search_documentation",
+            ("anything",),
+            {
+                "status": "success",
+                "query": "anything",
+                "results": [],
+                "count": 0,
+            },
+        ),
+        (
+            "list_project_messages",
+            ("some-project",),
+            {
+                "status": "success",
+                "project": "some-project",
+                "messages": [],
+                "count": 0,
+            },
+        ),
+    ],
+    ids=["search-documentation", "list-project-messages"],
+)
+async def test_read_only_stub_methods_return_empty_success(
     integration: SessionBuddyIntegration,
+    method: str,
+    args: tuple,
+    expected: dict,
 ) -> None:
-    result = await integration.search_documentation("anything")
-    assert result == {
-        "status": "success",
-        "query": "anything",
-        "results": [],
-        "count": 0,
-    }
+    result = await getattr(integration, method)(*args)
+    assert result == expected
 
 
 @pytest.mark.asyncio
-async def test_search_documentation_error_returns_error_dict(
+@pytest.mark.parametrize(
+    "method,args",
+    [
+        ("search_documentation", ("q",)),
+        ("list_project_messages", ("p",)),
+    ],
+    ids=["search-documentation", "list-project-messages"],
+)
+async def test_read_only_stub_methods_error_path(
     integration: SessionBuddyIntegration,
+    method: str,
+    args: tuple,
 ) -> None:
     # Force the logger to raise so the ``except`` branch is exercised.
     integration.logger = Mock()
-    integration.logger.info = Mock(side_effect=RuntimeError("log fail"))
-    result = await integration.search_documentation("q")
+    integration.logger.info = Mock(side_effect=RuntimeError("simulated"))
+
+    result = await getattr(integration, method)(*args)
+
     assert result["status"] == "error"
-    assert "log fail" in result["error"]
+    assert "simulated" in result["error"]
 
 
 # ---------------------------------------------------------------------------
@@ -492,35 +512,6 @@ async def test_send_project_message_error_returns_error_dict(
     )
     assert result["status"] == "error"
     assert "logging down" in result["error"]
-
-
-# ---------------------------------------------------------------------------
-# list_project_messages
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_list_project_messages_success_returns_empty(
-    integration: SessionBuddyIntegration,
-) -> None:
-    result = await integration.list_project_messages("some-project")
-    assert result == {
-        "status": "success",
-        "project": "some-project",
-        "messages": [],
-        "count": 0,
-    }
-
-
-@pytest.mark.asyncio
-async def test_list_project_messages_error_returns_error_dict(
-    integration: SessionBuddyIntegration,
-) -> None:
-    integration.logger = Mock()
-    integration.logger.info = Mock(side_effect=RuntimeError("nope"))
-    result = await integration.list_project_messages("p")
-    assert result["status"] == "error"
-    assert "nope" in result["error"]
 
 
 # ---------------------------------------------------------------------------

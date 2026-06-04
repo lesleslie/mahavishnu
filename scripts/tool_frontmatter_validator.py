@@ -103,22 +103,31 @@ class ToolFrontmatterValidator:
     def __init__(self, tools_dir: Path):
         self.tools_dir = tools_dir
 
+    # Frontmatter delimiter: a line of 3+ underscores. Matches the
+    # YAML spec (``---``) and the repo's house style of 70 underscores
+    # used in ``.claude/commands/tools/**/*.md``. The backreference in
+    # the parser regex ensures the opener and closer use the same
+    # length.
+    FRONTMATTER_DELIMITER = re.compile(
+        r"^(_{3,})\n(.*?)\n\1\n(.*)$",
+        re.DOTALL,
+    )
+
     def parse_frontmatter(self, file_path: Path) -> tuple[dict | None, str]:
-        """Parse YAML frontmatter from a markdown file"""
+        """Parse YAML frontmatter from a markdown file.
+
+        Accepts both the standard ``---`` delimiter and the longer
+        underscore-line delimiter used in this repo's tool files. A
+        markdown file with no frontmatter returns ``(None, content)``.
+        """
         content = file_path.read_text()
 
-        # Check for frontmatter delimiter
-        if not content.startswith("---\n"):
+        match = self.FRONTMATTER_DELIMITER.match(content)
+        if not match:
             return None, content
 
-        # Find the closing delimiter
-        end_match = re.search(r"\n---\n", content[4:])
-        if not end_match:
-            return None, content
-
-        # Extract and parse frontmatter
-        frontmatter_text = content[4 : end_match.start() + 4]
-        body = content[end_match.end() + 4 :]
+        frontmatter_text = match.group(2)
+        body = match.group(3)
 
         try:
             frontmatter = yaml.safe_load(frontmatter_text)
@@ -463,6 +472,28 @@ class ToolFrontmatterValidator:
 
         print(f"\n{'=' * 80}")
 
+    def _display_path(self, file_path: Path) -> str:
+        """Return a human-friendly display path for ``file_path``.
+
+        Prefers the path relative to ``self.tools_dir.parent`` (the
+        ``commands/`` directory) so the bulk ``validate-all`` output
+        stays compact. Falls back to the path relative to the current
+        working directory for ad-hoc ``validate <file>`` invocations
+        where the file is outside the configured tree, and finally to
+        the absolute path as a last resort.
+
+        Without this fallback, ``report_results`` raises ``ValueError``
+        on any file that isn't under ``self.tools_dir.parent``.
+        """
+        try:
+            return str(file_path.relative_to(self.tools_dir.parent))
+        except ValueError:
+            pass
+        try:
+            return str(file_path.relative_to(Path.cwd()))
+        except ValueError:
+            return str(file_path)
+
     def _print_summary(self, results: list[ValidationResult]) -> None:
         """Print summary statistics"""
         total = len(results)
@@ -493,7 +524,7 @@ class ToolFrontmatterValidator:
         print(f"{'-' * 80}\n")
 
         for result in invalid_results:
-            rel_path = result.file_path.relative_to(self.tools_dir.parent)
+            rel_path = self._display_path(result.file_path)
             print(f"📄 {rel_path}")
             critical_issues = [i for i in result.issues if i.severity == "critical"]
             for issue in critical_issues:
@@ -515,7 +546,7 @@ class ToolFrontmatterValidator:
         print(f"{'-' * 80}\n")
 
         for result in warning_results[:10]:  # Limit to first 10
-            rel_path = result.file_path.relative_to(self.tools_dir.parent)
+            rel_path = self._display_path(result.file_path)
             print(f"📄 {rel_path}")
             warnings = [i for i in result.issues if i.severity == "warning"]
             for issue in warnings:

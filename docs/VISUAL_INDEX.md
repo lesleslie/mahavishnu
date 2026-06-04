@@ -251,7 +251,6 @@ ______________________________________________________________________
 **Online Viewers**:
 
 - [Mermaid Live Editor](https://mermaid.live/) - Edit and render Mermaid
-- [Mermaid Chart](https://www.mermaidchart.com/) - Professional rendering
 - GitHub/GitLab - Native Mermaid support in markdown
 
 **VS Code**:
