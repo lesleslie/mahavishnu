@@ -165,16 +165,12 @@ def test_import_regex_handles_multiline_parenthesized_import(
 
     no_dot = tmp_path / "test_nodot.py"
     no_dot.write_text("from mahavishnu import X\n")
-    # Bare ``from mahavishnu import X`` is ambiguous for the current
-    # regex: it matches `import` as the captured head (the keyword
-    # eats the slot). The result is therefore ``mahavishnu/import``.
-    # This is a known limitation — the regex has no negative
-    # lookbehind to skip the ``import`` keyword, so a real ``from
-    # mahavishnu import X`` line never reaches the ``X`` capture group.
-    # We document the actual behaviour so a future refactor that
-    # fixes this (e.g. with a negative match) can update the test
-    # accordingly.
-    assert infer_component_from_imports(no_dot) == "mahavishnu/import"
+    # Bare ``from mahavishnu import X`` (no submodule) is detected
+    # as a parse error by the parser: the regex would otherwise
+    # greedily capture the literal keyword ``import`` as the head.
+    # The parser returns ``None`` so the caller's filename-based
+    # heuristic and catch-all bucket can take over.
+    assert infer_component_from_imports(no_dot) is None
 
 
 def test_import_regex_ignores_docstring_mentions(tmp_path: Path) -> None:

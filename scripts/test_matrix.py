@@ -153,6 +153,12 @@ def infer_component_from_imports(test_file: Path) -> str | None:
         if not target:
             continue
         head = target.split(".", 1)[0]
+        # ``from mahavishnu import X`` (no submodule) makes the regex
+        # greedily capture the literal token ``import`` as the head.
+        # That isn't a real component — fall through to the caller's
+        # filename-based heuristic and catch-all bucket.
+        if head == "import":
+            return None
         candidate = f"mahavishnu/{head}"
         return candidate
     return None

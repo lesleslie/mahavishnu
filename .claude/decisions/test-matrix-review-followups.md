@@ -265,6 +265,15 @@ in scope for the original Group 1 PR.
   falls through to filename-based discovery). Either is fine; the
   first is the smaller change.
 
+**Status: RESOLVED.** Chose the first option: in
+`infer_component_from_imports`, when the captured head is the
+literal token `"import"`, return `None` so the caller's existing
+fallback chain (`map_test_files_to_components`) routes the file
+through the filename heuristic and then the catch-all bucket.
+The smoke test was updated to assert `None` (the correct behavior)
+instead of `"mahavishnu/import"` (the previously documented bug).
+All 13 smoke tests pass after the fix.
+
 ## Group 2 — Decision-doc wording follow-ups
 
 **Status: RESOLVED (committed; 2 files rewritten + 1 new index file)**
@@ -511,9 +520,9 @@ The pre-existing `tool_frontmatter_validator.py` ZeroDivisionError on
   rewrote audit script to parse the collapsed frontmatter format
   (98/98 agents now parse, real model distribution surfaces). See the
   "Group 3 resolution notes" table.
-- **Group 4**: open (1 new item: M-NEW-1 `_IMPORT_RE` captures
-  `import` keyword as head — discovered during Group 1 smoke-test
-  writing).
+- **Group 4**: RESOLVED (1/1 item: M-NEW-1 regex `import`-keyword
+  bug fixed by returning `None` from the parser and letting the
+  caller's fallback chain route to the catch-all bucket).
 
 When a group is picked up, update this file to record the resolving
 PR link or mark the item as no-longer-applicable.
