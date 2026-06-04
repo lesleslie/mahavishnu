@@ -318,6 +318,89 @@ class ToolFrontmatterValidator:
                 )
             )
 
+    def validate_required_scripts(
+        self,
+        frontmatter: dict,
+        file_path: Path,
+        issues: list[ValidationIssue],
+    ) -> None:
+        """Enforce the ``required_scripts:`` policy.
+
+        Per ``.claude/decisions/removed-scripts.md``:
+        "A ``required_scripts:`` entry pointing at a non-existent file
+        is a bug, not a TODO." This method materialises the policy by
+        resolving each entry relative to the project root and asserting
+        the file actually exists. ``required_scripts: []`` (or the key
+        being absent) is acceptable and means "no required scripts";
+        only non-empty lists pointing at uncommitted scripts are
+        forbidden.
+        """
+        required = frontmatter.get("required_scripts")
+        if not required:
+            return
+        if not isinstance(required, list):
+            issues.append(
+                ValidationIssue(
+                    severity="critical",
+                    field="required_scripts",
+                    message=(
+                        f"required_scripts must be a list, got "
+                        f"{type(required).__name__}"
+                    ),
+                    suggestion="Use YAML list format: - scripts/foo.py",
+                )
+            )
+            return
+
+        # Resolve entries relative to the project root. The tool command
+        # lives at ``.claude/commands/<category>/<tool>.md``; the
+        # convention is for ``required_scripts:`` to be a project-relative
+        # path (e.g. ``scripts/test_matrix.py``) so it works the same
+        # regardless of the caller's cwd.
+        project_root = file_path
+        # Walk up to ``.claude/commands/...`` -> project root is
+        # ``.claude``'s parent. If the structure is unexpected, fall
+        # back to the file's parent (best-effort).
+        for ancestor in file_path.parents:
+            if ancestor.name == ".claude":
+                project_root = ancestor.parent
+                break
+        else:
+            project_root = file_path.parent
+
+        for entry in required:
+            if not isinstance(entry, str):
+                issues.append(
+                    ValidationIssue(
+                        severity="critical",
+                        field="required_scripts",
+                        message=(
+                            f"required_scripts entries must be strings, "
+                            f"got {type(entry).__name__}"
+                        ),
+                        suggestion="Quote each entry, e.g. - 'scripts/foo.py'",
+                    )
+                )
+                continue
+            # Strip surrounding whitespace from the entry but keep the
+            # inner value verbatim — don't normalise ``~`` or env vars.
+            target = (project_root / entry.strip()).resolve()
+            if not target.is_file():
+                issues.append(
+                    ValidationIssue(
+                        severity="critical",
+                        field="required_scripts",
+                        message=(
+                            f"required_scripts entry points at non-existent "
+                            f"file: {entry}"
+                        ),
+                        suggestion=(
+                            "Either commit the script at this path or remove "
+                            "the entry (per .claude/decisions/removed-scripts.md)"
+                        ),
+                    )
+                )
+
     def validate_tool(self, file_path: Path) -> ValidationResult:
         """Validate a single tool file"""
         frontmatter, body = self.parse_frontmatter(file_path)
@@ -344,6 +427,7 @@ class ToolFrontmatterValidator:
         self.validate_category(frontmatter, issues)
         self.validate_platforms(frontmatter, issues)
         self.validate_deprecated(frontmatter, body, issues)
+        self.validate_required_scripts(frontmatter, file_path, issues)
 
         # Check for critical issues
         has_critical = any(issue.severity == "critical" for issue in issues)
