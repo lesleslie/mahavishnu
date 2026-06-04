@@ -8,6 +8,8 @@ supported_platforms:
 - macOS
 - Linux
 - Windows
+  required_scripts:
+- scripts/test_matrix.py
   agents:
 - qa-strategist
 - python-pro
@@ -42,6 +44,8 @@ Use this tool to design a test stack that matches the repo’s language, risk, a
 
 ## Workflow
 
+1. Generate the on-disk coverage matrix (required by `required_scripts: scripts/test_matrix.py`):
+   `python scripts/test_matrix.py --project "$PROJECT_PATH" --stack "$STACK" --types "$TEST_TYPES" --coverage-target "$COVERAGE_TARGET" --out test-matrix.json --out-md test-matrix.md`
 1. Identify the stack and main test risks.
 1. Choose the smallest useful mix of test layers.
 1. Add shared fixtures and helpers before expanding suites.
@@ -53,6 +57,7 @@ Use this tool to design a test stack that matches the repo’s language, risk, a
 - Test architecture recommendation
 - Example fixture patterns
 - CI and coverage checklist
+- **Coverage matrix** (`test-matrix.json` + `test-matrix.md`): the artifacts produced by `scripts/test_matrix.py`. Read `summary.below_target` for components missing at least one requested test type, and `cells[component][type].gaps` for human-readable gap descriptions. The Markdown companion gives a tabular view of the same data.
 
 ## Requirements
 

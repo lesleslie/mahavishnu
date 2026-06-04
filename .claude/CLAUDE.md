@@ -21,6 +21,10 @@ For repo-local editing rules, layout, and validation entry points, see AGENTS.md
 - `python scripts/agent_metadata_audit.py`
 - `python scripts/tool_frontmatter_validator.py`
 
+## Decisions
+
+- See `.claude/decisions/` for repo-local decisions (e.g. `removed-scripts.md` for the `required_scripts:` policy in tool command frontmatter).
+
 ## Principles
 
 1. Keep instructions short and specific.
