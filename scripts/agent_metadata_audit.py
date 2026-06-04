@@ -9,7 +9,16 @@ import re
 
 
 def extract_frontmatter(content):
-    """Extract YAML frontmatter from markdown content."""
+    """Extract frontmatter (YAML or collapsed ``## name: ...``) from markdown content.
+
+    Returns ``(metadata, body)`` where ``metadata`` is a dict. Prefers YAML
+    frontmatter (``---`` delimited) and falls back to the collapsed
+    single-line format used by this repo's agent files:
+
+        ## name: <slug> description: >- <free text> model: <model>
+
+    where the body is everything after the frontmatter paragraph.
+    """
     match = re.match(r"^---\n(.*?)\n---\n(.*)$", content, re.DOTALL)
     if match:
         yaml_str, body = match.groups()
@@ -19,7 +28,52 @@ def extract_frontmatter(content):
                 key, value = line.split(":", 1)
                 metadata[key.strip()] = value.strip()
         return metadata, body
+    # Fallback: collapsed `## name: ... description: >- ... model: ...` format.
+    meta = _extract_collapsed_frontmatter(content)
+    if meta:
+        # Body starts at the second paragraph (first blank line after the line).
+        parts = content.split("\n\n", 1)
+        body = parts[1] if len(parts) > 1 else ""
+        return meta, body
     return {}, content
+
+
+def _extract_collapsed_frontmatter(content):
+    """Parse the collapsed ``## name: ... description: ... model: ...`` format.
+
+    Returns an empty dict if no collapsed frontmatter line is present.
+    The ``description:`` value may be either a plain string
+    (``description: <text>``) or a YAML folded-block indicator
+    (``description: >- <text>``); both forms are handled.
+    """
+    for line in content.split("\n"):
+        stripped = line.strip()
+        if not stripped.startswith("## name:"):
+            continue
+        # Strip the `## name:` prefix.
+        rest = stripped[len("## name:") :].strip()
+        # Model is the rightmost ` model: <slug>` field, anchored at end-of-line.
+        m = re.search(r"\s+model:\s*(\S+)\s*$", rest)
+        if not m:
+            return {}
+        model = m.group(1)
+        rest = rest[: m.start()].rstrip()
+        # Description: rightmost ` description:` field (use the last occurrence
+        # so description text containing the word "description:" is preserved).
+        desc_matches = list(re.finditer(r"\s+description:\s*", rest))
+        if not desc_matches:
+            return {}
+        m_desc = desc_matches[-1]
+        name = rest[: m_desc.start()].strip()
+        after = rest[m_desc.end() :].strip()
+        # Optional YAML folded-block indicator: `>- ` or `>-`.
+        if after.startswith(">- "):
+            after = after[3:]
+        elif after.startswith(">-"):
+            after = after[2:]
+        description = after.strip()
+        return {"name": name, "description": description, "model": model}
+    return {}
 
 
 def load_agents(agents_dir):

@@ -397,10 +397,13 @@ the consumer tool commands).
 
 ## Group 3 — Architecture follow-ups
 
+**Status: RESOLVED (committed; 4 files touched)**
+
 Cross-cutting items in `.claude/agents/` and the `quality-validation.md`
 tool command. The first two are labeling bugs from the recent review;
 the last two are pre-existing structural issues the review surfaced
-but did not address.
+but did not address. Resolutions are noted per-item at the end of the
+group.
 
 ### M5 — `mcp__dhara__put` is mislabeled for a SQL-focused agent
 
@@ -477,6 +480,23 @@ but did not address.
   smaller change and matches the project's apparent preference for
   compact frontmatter.
 
+### Group 3 resolution notes
+
+| Item | Resolution | Where |
+|------|------------|-------|
+| M5 | Relabeled `mcp__dhara__put` parenthetical to make clear it is non-relational persistence state, not a SQL tool. Cleaned up the same pre-existing backslash-underscore file-format bug. | `.claude/agents/database-operations-specialist.md` |
+| M6 | Dropped the `mcp__dhara__aggregate_patterns` reference entirely. Council's primary job is architecture review, not telemetry pattern aggregation. | `.claude/agents/architecture-council.md` |
+| LOW #8 (pre-existing) | Deleted stray troubleshooting content (lines 64-116): "Verify user is in required groups", "Issue 3: Resource Not Found", "Issue 4: Timeout or Performance Issues", "Getting Help" — all leftovers from an untrimmed template. | `.claude/commands/tools/development/testing/quality-validation.md` |
+| LOW #9 (pre-existing) | Rewrote `extract_frontmatter` in `scripts/agent_metadata_audit.py` to parse the collapsed `## name: ... description: ... model: ...` format. Handles both `description: <text>` and `description: >- <text>` variants. | `scripts/agent_metadata_audit.py` |
+
+Verification: ran the parser against all 98 agents in `.claude/agents/`.
+Result: 98/98 parsed, 0 unknown. Real model distribution surfaces:
+sonnet 63, opus 17, haiku 15, haiku-4.5 3. "No critical metadata
+issues found" is the new output for METADATA ISSUES section.
+
+The pre-existing `tool_frontmatter_validator.py` ZeroDivisionError on
+"Total Tools: 0" is unrelated to Group 3.
+
 ## Status
 
 - **Group 1**: RESOLVED (10/10 items). Smoke test added. See the
@@ -486,7 +506,11 @@ but did not address.
   `removed-scripts.md`, expanded `CLAUDE.md` Decisions section, new
   `.claude/decisions/README.md` index. See the "Group 2 resolution
   notes" table.
-- **Group 3**: open (4 items).
+- **Group 3**: RESOLVED (4/4 items). Fixed M5/M6 agent labels,
+  deleted stray troubleshooting content from `quality-validation.md`,
+  rewrote audit script to parse the collapsed frontmatter format
+  (98/98 agents now parse, real model distribution surfaces). See the
+  "Group 3 resolution notes" table.
 - **Group 4**: open (1 new item: M-NEW-1 `_IMPORT_RE` captures
   `import` keyword as head — discovered during Group 1 smoke-test
   writing).
