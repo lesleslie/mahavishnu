@@ -89,7 +89,7 @@ is not required. See `removed-scripts.md` for an example.
 
 This repository represents a comprehensive AI-assisted development environment with:
 
-- **101 total agents** (100% active, zero deprecated; 3 retired agents live in `.claude/agents/.archive/`)
+- **98 total agents** (100% active, zero deprecated; 3 retired agents live in `.claude/agents/.archive/`)
 - **49 active development tools** (100% active, zero deprecated)
 - **18 production-ready workflows** (100% active, zero deprecated)
 - **15 MCP servers** providing enhanced capabilities
@@ -97,4 +97,4 @@ This repository represents a comprehensive AI-assisted development environment w
 
 The ecosystem covers every aspect of modern software development from simple scripts to enterprise-scale systems, with zero critical gaps and world-class specialist coverage.
 
-**Key Advantage**: Your entire agent ecosystem (101 specialists + 67 tools/workflows) is just **3.2MB** of plain text files that work perfectly without any marketplace or plugin dependencies!
+**Key Advantage**: Your entire agent ecosystem (98 specialists + 67 tools/workflows) is just **3.2MB** of plain text files that work perfectly without any marketplace or plugin dependencies!

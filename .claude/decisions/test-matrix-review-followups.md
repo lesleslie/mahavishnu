@@ -32,8 +32,7 @@ different sub-area of the repo and reviewers will be different.
 1. For each code-level fix, add a unit test (the script has no test
    suite today; the *minimum* is a smoke test in `tests/unit/`
    asserting the script runs end-to-end against a fixture project).
-1. Run `python scripts/test_matrix.py --project . --stack python
-   --types unit,integration --out /tmp/test-matrix.json` to confirm no
+1. Run `python scripts/test_matrix.py --project . --stack python --types unit,integration --out /tmp/test-matrix.json` to confirm no
    regression.
 1. Update this file: mark the item as resolved with the PR link, or
    delete it if no longer applicable.
@@ -111,8 +110,7 @@ are noted in the per-item "Status" line.
   JSON output, or the code that builds it is dead. The current state
   is the worst of both: computation cost paid, value never seen.
 - **Suggested fix**: Surface it in the JSON output as
-  `summary.components_with_no_tests` (a list of `{"component": "...",
-  "missing_test_types": [...]}` objects), or change the return type to
+  `summary.components_with_no_tests` (a list of `{"component": "...", "missing_test_types": [...]}` objects), or change the return type to
   drop the second tuple element and inline the uncovered-tracking
   logic where it's used (currently nowhere).
 
@@ -214,18 +212,18 @@ each fix so future regressions are caught at the unit level.
 
 | Item | Resolution | New line range in `scripts/test_matrix.py` |
 |------|------------|--------------------------------------------|
-| H4 | Discovery hoisted: `discover_python_tests` and `map_test_files_to_components` are now called once per test type; `per_type_mappings` caches the result. Loop count dropped from `N×M` to `M`. | `assemble_python_matrix` ~358-393 |
-| M2 | Node detection gated on `package.json`; Go detection gated on `go.mod`. Python-only projects no longer list `htmlcov/`, `dist/`, `backups/`, `docs/`, `scripts/`, `tests/` as Go components. | `main()` ~700, 707 |
-| M3 | Cache now stores `(mtime_ns, markers)` tuples. On lookup, `Path.stat().st_mtime_ns` is compared; if changed, file is re-read. `OSError` on `stat` is handled. | `_MARKER_FILE_CACHE` ~252, `_has_marker` ~265-285 |
-| M4 | `summary.components_with_no_tests: list[{"component", "missing_test_types"}]` added to JSON output. Computed in `build_summary` from the cells (the simpler alternative, not threaded through assemblers). Assemblers now return just the cells dict (the uncovered tuple element was dropped). | `build_summary` ~477-498 |
-| M10 | New validation loop after `project.resolve()`: both `args.out` and `args.out_md` must be `is_relative_to(project_root)`. Error message: `f"error: {label} {resolved} is outside the project root {project_root}"`. Returns 1 on failure. | `main()` ~673-686 |
-| M11 | Docstring updated to state: "Returns `{relative_path_from_project: line_rate}` — paths are verbatim Cobertura paths (relative to the project root, NOT stripped of extension)." No code change. | `parse_coverage_xml` ~321-333 |
+| H4 | Discovery hoisted: `discover_python_tests` and `map_test_files_to_components` are now called once per test type; `per_type_mappings` caches the result. Loop count dropped from `N×M` to `M`. | `assemble_python_matrix` 364-401 |
+| M2 | Node detection gated on `package.json`; Go detection gated on `go.mod`. Python-only projects no longer list `htmlcov/`, `dist/`, `backups/`, `docs/`, `scripts/`, `tests/` as Go components. | `main()` 705 (Node), 712 (Go) |
+| M3 | Cache now stores `(mtime_ns, markers)` tuples. On lookup, `Path.stat().st_mtime_ns` is compared; if changed, file is re-read. `OSError` on `stat` is handled. | `_MARKER_FILE_CACHE` 270; `_has_marker` 273-293 |
+| M4 | `summary.components_with_no_tests: list[{"component", "missing_test_types"}]` added to JSON output. Computed in `build_summary` from the cells (the simpler alternative, not threaded through assemblers). Assemblers now return just the cells dict (the uncovered tuple element was dropped). | `build_summary` 463-522 |
+| M10 | New validation loop after `project.resolve()`: both `args.out` and `args.out_md` must be `is_relative_to(project_root)`. Error message: `f"error: {label} {resolved} is outside the project root {project_root}"`. Returns 1 on failure. | `main()` 678-695 |
+| M11 | Docstring updated to state: "Returns `{relative_path_from_project: line_rate}` — paths are verbatim Cobertura paths (relative to the project root, NOT stripped of extension)." No code change. | `parse_coverage_xml` 327-363 |
 | LOW #7 | No code change needed. Verified empirically: the regex's `(?:\s*\.\s*\|\s+)` already matches multi-line imports (`\s` matches newlines in Python regex). A regression test now pins this. | unchanged (test added) |
-| LOW #10 | `frozen=True` dropped. Docstring note added: "Value-like but not deeply immutable — `files` and `gaps` lists are mutable. If you need an immutable view, copy with `dataclasses.replace()`." | `ComponentCoverage` ~59-72 |
-| LOW #11 | `files=matched if t == test_types[0] else []` replaced with `files = list(matched)` hoisted out of the type loop. All `t` values now get the same file list. | `assemble_node_matrix` ~396-417; `assemble_go_matrix` ~424-444 |
-| LOW #15 | New `valid_components: set[str] \| None` parameter on `map_test_files_to_components`. When the inferred component isn't in the set, the test file is bucketed into the catch-all `"mahavishnu"` bucket. Passed from `assemble_python_matrix` as `set(components)`. | `map_test_files_to_components` ~189-216 |
+| LOW #10 | `frozen=True` dropped. Docstring note added: "Value-like but not deeply immutable — `files` and `gaps` lists are mutable. If you need an immutable view, copy with `dataclasses.replace()`." | `ComponentCoverage` 60-79 |
+| LOW #11 | `files=matched if t == test_types[0] else []` replaced with `files = list(matched)` hoisted out of the type loop. All `t` values now get the same file list. | `assemble_node_matrix` 402-429; `assemble_go_matrix` 430-462 |
+| LOW #15 | New `valid_components: set[str] \| None` parameter on `map_test_files_to_components`. When the inferred component isn't in the set, the test file is bucketed into the catch-all `"mahavishnu"` bucket. Passed from `assemble_python_matrix` as `set(components)`. | `map_test_files_to_components` 195-232 |
 
-**Smoke test added**: `tests/unit/test_test_matrix.py` (445 lines, 13
+**Smoke test added**: `tests/unit/test_test_matrix.py` (438 lines, 13
 test functions). Covers: detect_components filtering, multi-line
 import regex, docstring-ignore, phantom-component fallback, full
 pipeline run, unsafe-path rejection, unknown-test-type rejection,
@@ -470,18 +468,23 @@ group.
 ### LOW #9 (pre-existing) — Agent files have no YAML frontmatter
 
 - **Severity**: LOW (pre-existing, codebase-wide)
+
 - **Location**: All files in `.claude/agents/`
+
 - **Effort**: L
+
 - **Why it matters**: Every agent file uses a collapsed single-line
   frontmatter (`## name: ... description: ... model: ...`) rather
   than the YAML delimiter style used by tool commands. The validation
   script `scripts/agent_metadata_audit.py` reports
   "unknown: 101" because it expects YAML. This is a pre-existing
   codebase-wide issue that the recent review didn't introduce.
+
 - **Suggested fix**: Two options, in order of preference:
+
   1. Retrofit YAML frontmatter across all 101 agent files. Mechanical
      transformation; safe but tedious.
-  2. Rewrite `agent_metadata_audit.py` to parse the current
+  1. Rewrite `agent_metadata_audit.py` to parse the current
      single-line `name: ... description: ... model: ...` format.
      Smaller blast radius; preserves the existing convention.
 

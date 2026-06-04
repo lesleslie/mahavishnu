@@ -11,6 +11,7 @@ the topic, the third is the most recent state.
 
 | File | Topic | Status |
 |------|-------|--------|
-| `technical-debt-roadmap.md` | Side discoveries from the recent `.claude/agents/` and `scripts/test_matrix.py` cleanup work. 5 items, 3 size classes. | All open. |
+| `README.md` | This file — index of repo-local decisions and follow-up trackers. | Active. |
+| `technical-debt-roadmap.md` | Side discoveries from the recent `.claude/agents/` and `scripts/test_matrix.py` cleanup work. 5 items, 3 size classes. | 4/5 RESOLVED (TD-1..TD-4 done; TD-5 open). |
 | `test-matrix-review-followups.md` | Deferred MEDIUM/LOW items from the `scripts/test_matrix.py` review. | All 4 groups RESOLVED. |
 | `removed-scripts.md` | Policy for `required_scripts:` references in tool command frontmatter. | Active. |
