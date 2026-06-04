@@ -14,6 +14,7 @@ CLI:
     test_matrix.py --project PATH --stack {python,node,go,mixed}
                    [--types unit,integration,e2e,property,chaos]
                    [--coverage-target PCT]
+                   [--force-stack python,node,go]
                    [--out PATH] [--out-md PATH]
 
 Defaults: --types=unit,integration, --coverage-target=80, --out=./test-matrix.json.
@@ -261,32 +262,40 @@ def discover_python_tests(project: Path, test_type: str) -> list[Path]:
 # Markers we look for on individual tests. Read from pyproject.toml's
 # ``[tool.pytest] markers`` table at module import time.
 #
-# Module-level cache keyed by file path. Each entry stores
-# ``(mtime_ns, markers)`` so we re-read the file when the on-disk mtime
-# changes (i.e. the file was edited between script invocations when this
-# module is imported as a library).
-_MARKER_FILE_CACHE: dict[str, tuple[int, set[str]]] = {}
+# Module-level cache keyed by the *resolved* file path. Each entry stores
+# ``(mtime_ns, file_size, markers)`` so we re-read the file when either
+# the on-disk mtime or the size changes (i.e. the file was edited
+# between script invocations when this module is imported as a library).
+#
+# Resolving the path before keying means the same logical file reached
+# via different path strings (relative vs. absolute, symlink vs. real
+# path) shares a single cache entry. Including ``file_size`` guards
+# against second-precision filesystems (HFS+, FAT) where a same-second
+# rewrite would otherwise hit the cache and miss the new markers.
+_MARKER_FILE_CACHE: dict[str, tuple[int, int, set[str]]] = {}
 
 
 def _has_marker(test_file: Path, marker: str) -> bool:
     """Cheap textual check for ``@pytest.mark.<marker>`` in a test file."""
-    key = str(test_file)
+    key = str(test_file.resolve())
     try:
-        mtime_ns = test_file.stat().st_mtime_ns
+        st = test_file.stat()
     except OSError:
         # File disappeared — treat as empty and clear any stale cache.
         _MARKER_FILE_CACHE.pop(key, None)
         return False
+    mtime_ns = st.st_mtime_ns
+    file_size = st.st_size
     cached = _MARKER_FILE_CACHE.get(key)
-    if cached is None or cached[0] != mtime_ns:
+    if cached is None or cached[0] != mtime_ns or cached[1] != file_size:
         try:
             text = test_file.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             text = ""
         markers = set(re.findall(r"@pytest\.mark\.(\w+)", text))
-        _MARKER_FILE_CACHE[key] = (mtime_ns, markers)
+        _MARKER_FILE_CACHE[key] = (mtime_ns, file_size, markers)
         return marker in markers
-    return marker in cached[1]
+    return marker in cached[2]
 
 
 def discover_node_tests(project: Path, test_type: str) -> list[Path]:
@@ -592,6 +601,45 @@ _VALID_STACKS = ("python", "node", "go", "mixed")
 _VALID_TYPES = ("unit", "integration", "e2e", "property", "chaos")
 
 
+def _validate_output_path(label: str, candidate: Path, project_root: Path) -> Path | None:
+    """Resolve ``candidate`` and confirm it lives strictly inside ``project_root``.
+
+    Two guards enforced:
+      1. The resolved path must be :py:meth:`Path.is_relative_to` the
+         project root (rejects ``/tmp/../../etc/passwd`` style escapes).
+      2. The resolved path must NOT equal the project root itself — a
+         confused-deputy case where someone passes ``--out project_root``
+         instead of ``--out project_root/matrix.json`` and we'd otherwise
+         be willing to ``mkdir``/overwrite the project directory.
+
+    Returns the resolved :class:`Path` on success, or ``None`` on failure
+    (with a clear error already printed to stderr).
+    """
+    try:
+        resolved = candidate.resolve()
+    except OSError as exc:
+        print(
+            f"error: {label} {candidate} could not be resolved: {exc}",
+            file=sys.stderr,
+        )
+        return None
+    if not resolved.is_relative_to(project_root):
+        print(
+            f"error: {label} {resolved} is outside the project root {project_root}",
+            file=sys.stderr,
+        )
+        return None
+    if resolved == project_root:
+        print(
+            f"error: {label} {resolved} resolves to the project root itself; "
+            f"refusing to overwrite the project directory "
+            f"(pass an explicit filename, e.g. {project_root}/test-matrix.json)",
+            file=sys.stderr,
+        )
+        return None
+    return resolved
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="test_matrix.py",
@@ -638,6 +686,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Optional path for a human-readable Markdown summary.",
     )
+    parser.add_argument(
+        "--force-stack",
+        default="",
+        help=(
+            "Comma-separated list of stacks to include even when the "
+            "project-root marker file is missing. Useful for polyglot "
+            "monorepos that have Go files in ``cmd/*.go`` but no top-level "
+            "``go.mod``, or Node workspaces without a top-level "
+            "``package.json``. Skips the marker check for the named "
+            f"stacks. Choices: {', '.join(s for s in _VALID_STACKS if s != 'mixed')}."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -675,39 +735,57 @@ def main(argv: list[str] | None = None) -> int:
 
     # Validate that --out and --out-md resolve to a path inside the
     # project root. Prevents a user from accidentally writing the
-    # matrix to ``/etc/...`` or ``/tmp/../../etc/passwd``.
+    # matrix to ``/etc/...`` or ``/tmp/../../etc/passwd``. The same
+    # check is re-applied after ``mkdir`` (see below) to close the
+    # TOCTOU window where a parent directory could be symlink-swapped
+    # between resolution and write.
     project_root = project  # already resolved above
     for label, candidate in (("--out", args.out), ("--out-md", args.out_md)):
         if candidate is None:
             continue
-        try:
-            resolved = candidate.resolve()
-        except OSError as exc:
-            print(f"error: {label} {candidate} could not be resolved: {exc}", file=sys.stderr)
+        if _validate_output_path(label, candidate, project_root) is None:
             return 1
-        if not resolved.is_relative_to(project_root):
+
+    # Normalize --force-stack: drop empties, dedupe, reject unknowns.
+    # This is the escape hatch for polyglot monorepos that have, e.g.,
+    # Go files in ``cmd/*.go`` but no top-level ``go.mod`` (so the
+    # M2 marker check would silently skip Go detection).
+    forced_stacks: set[str] = set()
+    for token in args.force_stack.split(","):
+        token = token.strip()
+        if not token or token in forced_stacks:
+            continue
+        if token not in _VALID_STACKS or token == "mixed":
             print(
-                f"error: {label} {resolved} is outside the project root {project_root}",
+                f"error: --force-stack got unknown stack '{token}' "
+                f"(allowed: {', '.join(s for s in _VALID_STACKS if s != 'mixed')})",
                 file=sys.stderr,
             )
             return 1
+        forced_stacks.add(token)
 
     # Components: only the Python stack uses the package-based detection.
     # Node/Go callers get a basic "top-level dirs of <stack_root>" union.
     # We gate each non-Python detection on its project-root marker
     # (``package.json`` / ``go.mod``) so a Python-only project doesn't
     # get every top-level dir reported as a phantom Node or Go component.
+    # ``--force-stack <stack>`` skips the marker check for the named
+    # stack — see the polyglot-monorepo rationale above.
     components: list[str] = []
     if args.stack in ("python", "mixed"):
         components.extend(detect_components(project))
-    if args.stack in ("node", "mixed") and (project / "package.json").is_file():
+    if args.stack in ("node", "mixed") and (
+        "node" in forced_stacks or (project / "package.json").is_file()
+    ):
         for entry in sorted((project / "src").iterdir()) if (project / "src").is_dir() else []:
             if entry.is_dir():
                 components.append(f"src/{entry.name}")
         for entry in sorted(project.iterdir()):
             if entry.is_dir() and entry.name.startswith("packages"):
                 components.append(entry.name)
-    if args.stack in ("go", "mixed") and (project / "go.mod").is_file():
+    if args.stack in ("go", "mixed") and (
+        "go" in forced_stacks or (project / "go.mod").is_file()
+    ):
         for entry in sorted(project.iterdir()):
             if entry.is_dir() and not entry.name.startswith("."):
                 # Cheap: top-level dirs that aren't obviously meta
@@ -754,13 +832,18 @@ def main(argv: list[str] | None = None) -> int:
         "types": requested,
         "coverage_target": args.coverage_target,
         "components": components,
-        "test_types": requested,
         "cells": {comp: {t: cells[comp][t].to_dict() for t in requested} for comp in components},
         "summary": summary,
     }
 
     out_path: Path = args.out
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    # Second-pass TOCTOU check: re-resolve and re-validate after mkdir
+    # in case the parent directory was symlink-swapped during the gap
+    # (or the caller pointed at a not-yet-existing path that resolves
+    # differently now that an ancestor exists).
+    if _validate_output_path("--out", out_path, project_root) is None:
+        return 1
     out_path.write_text(json.dumps(output, indent=2, sort_keys=False) + "\n", encoding="utf-8")
 
     if args.out_md is not None:
@@ -774,6 +857,9 @@ def main(argv: list[str] | None = None) -> int:
             coverage_target=args.coverage_target,
         )
         args.out_md.parent.mkdir(parents=True, exist_ok=True)
+        # Same second-pass TOCTOU check for --out-md.
+        if _validate_output_path("--out-md", args.out_md, project_root) is None:
+            return 1
         args.out_md.write_text(md, encoding="utf-8")
 
     # Friendly one-line summary on stdout so callers can grep for it.

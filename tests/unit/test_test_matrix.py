@@ -11,15 +11,15 @@ real filesystem work.
 from __future__ import annotations
 
 import json
-from pathlib import Path
-import sys
+from typing import TYPE_CHECKING
 
 import pytest
 
-# Make ``scripts/`` importable so we can ``import test_matrix`` directly
-# without installing the script as a package.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+if TYPE_CHECKING:
+    from pathlib import Path
 
+# ``scripts/`` is added to ``sys.path`` by the root ``conftest.py`` so we
+# can ``import test_matrix`` directly without installing it as a package.
 from test_matrix import (  # noqa: E402
     ComponentCoverage,
     assemble_go_matrix,
@@ -362,6 +362,40 @@ def test_main_rejects_unsafe_output_path(
     ), f"expected a safety-check error message; got stderr={captured.err!r}"
 
 
+def test_main_rejects_out_equal_to_project_root(
+    make_fixture_project: Path, capsys
+) -> None:
+    """T3.1: --out pointing at the project root itself (a
+    confused-deputy case) must be rejected. The directory exists, the
+    path is technically "under" the project, but writing the JSON
+    matrix INTO the project directory would clobber unrelated state.
+    """
+    rc = main(
+        [
+            "--project",
+            str(make_fixture_project),
+            "--stack",
+            "python",
+            "--types",
+            "unit",
+            "--out",
+            str(make_fixture_project),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert rc == 1, (
+        f"--out == project root should fail; got rc={rc}, "
+        f"stderr={captured.err!r}, stdout={captured.out!r}"
+    )
+    assert any(
+        needle in captured.err.lower()
+        for needle in (
+            "project root itself",
+            "refusing to overwrite the project directory",
+        )
+    ), f"expected a project-root-equals error; got stderr={captured.err!r}"
+
+
 def test_main_rejects_unknown_test_type(
     make_fixture_project: Path, capsys
 ) -> None:
@@ -638,6 +672,77 @@ def test_m2_stack_go_without_gomod_returns_error(
         f"stderr={captured.err!r}, stdout={captured.out!r}"
     )
     assert "no components detected" in captured.err
+
+
+def test_t32_force_stack_go_in_polyglot_monorepo(
+    tmp_path: Path, capsys
+) -> None:
+    """T3.2: A polyglot monorepo that has Go files in ``cmd/*.go`` but
+    no top-level ``go.mod`` (or has a Node workspace without a
+    ``package.json``) should still get its Go components when the
+    caller passes ``--force-stack go`` — that's the whole point of
+    the escape hatch introduced for the M2 marker gating.
+    """
+    # Build a fixture: no go.mod, no package.json, but Go files in cmd/.
+    (tmp_path / "cmd" / "foo").mkdir(parents=True)
+    (tmp_path / "cmd" / "foo" / "foo.go").write_text("package foo\n")
+    (tmp_path / "cmd" / "foo" / "foo_test.go").write_text(
+        "package foo\nfunc TestFoo(t *testing.T) {}\n"
+    )
+
+    out = tmp_path / "out.json"
+    rc = main(
+        [
+            "--project",
+            str(tmp_path),
+            "--stack",
+            "go",
+            "--types",
+            "unit",
+            "--force-stack",
+            "go",
+            "--out",
+            str(out),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert rc == 0, (
+        f"force-stack go with Go files present should succeed; "
+        f"got rc={rc}, stderr={captured.err!r}, stdout={captured.out!r}"
+    )
+    payload = json.loads(out.read_text())
+    # The non-meta top-level dirs (cmd) should appear as Go components.
+    assert "cmd" in payload["components"], (
+        f"force-stack should surface cmd/ as a Go component; "
+        f"got components={payload['components']}"
+    )
+
+
+def test_t32_force_stack_rejects_unknown_stack(
+    tmp_path: Path, capsys
+) -> None:
+    """T3.2: --force-stack with an unknown stack name must fail with
+    a clear error, not silently accept the bad input.
+    """
+    out = tmp_path / "out.json"
+    rc = main(
+        [
+            "--project",
+            str(tmp_path),
+            "--stack",
+            "python",
+            "--types",
+            "unit",
+            "--force-stack",
+            "rust",
+            "--out",
+            str(out),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "unknown stack" in captured.err.lower()
+    assert "rust" in captured.err
 
 
 def test_main_rejects_out_of_range_coverage_target(

@@ -320,7 +320,7 @@ utility.backup_collection(
 - **Backup API**: Built-in backup/restore functionality
 - **Cloud storage**: Direct integration with S3, Azure, GCS
 
-**Documentation**: [Milvus Backup Guide](https://milvus.io/docs/backup_restore/)
+**Documentation**: [Milvus Backup tool](https://github.com/zilliztech/milvus-backup)
 
 **Pricing**:
 

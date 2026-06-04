@@ -133,3 +133,12 @@ If Option C is later adopted (remove):
 1. **Deprecation timeline for Option A or C.** If the maintainers want to converge on a single tool eventually, what's the deprecation window? The existing `DEPRECATED_TOOLS` mechanism in `tool_versions.py` is the natural lever, but no policy is documented for how long a tool stays in that dict before being removed.
 1. **Field reconciliation.** Even under Option B, should Dhara's `list_adapters` response grow a `healthy` field, or Mahavishnu's grow a `version` field, to make them easier to compose? Or do we deliberately keep them disjoint to discourage substitution?
 1. **`get_adapter_health` parallel.** Dhara also has its own `get_adapter_health` (server_core.py:677), which overlaps with Mahavishnu's `adapter_health` tool. The same boundary question applies; whatever this ADR decides should probably apply there too. Out of scope for this ADR but worth flagging.
+
+## Decision Review
+
+**Status: Proposed, awaiting maintainer review.**
+
+- **Reviewer:** the project maintainer(s) of Mahavishnu.
+- **SLA:** maintainer follow-up within 14 days of the proposal date. If there is no objection, the ADR moves to **Accepted**; if objections are raised, the proposal is revised or moved to **Rejected** with rationale recorded in the *Open Questions* section above.
+- **Action requested:** maintainer to address the four *Open Questions* (external consumers, deprecation timeline, field reconciliation, `get_adapter_health` parallel) before ratifying this ADR.
+- **This section is a process artifact, not a re-litigation of the decision.** Do not re-debate the options here — use the *Open Questions* list above for that.

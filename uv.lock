@@ -185,7 +185,7 @@ wheels = [
 
 [[package]]
 name = "akosha"
-version = "0.8.1"
+version = "0.8.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "circuitbreaker" },
@@ -213,9 +213,9 @@ dependencies = [
     { name = "typer" },
     { name = "uvicorn", extra = ["standard"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7c/3d/1f66e1f7f7f20ec86619d7d54e69a0b19987d343acbc7aff95819e9f88bc/akosha-0.8.1.tar.gz", hash = "sha256:f5f43abc78c37f1e39619fc6fc396cd972ae46a6299f2fe133ee5d5ab04f452b", size = 170290, upload-time = "2026-06-04T07:26:03.912Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/a8/5e9073b2ce4e5a119e1fb2b91eb1db3133c67dac6b921d030e55fcb396e1/akosha-0.8.2.tar.gz", hash = "sha256:908d0ced01cacd4a038a32df74eefd66dc355cef6e231033bb69e59a16d84400", size = 170300, upload-time = "2026-06-04T08:46:50.855Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/38/75/a06f0a8231e8fff362a998d21a79c4819d39bd910dda5088cada6e7746f2/akosha-0.8.1-py3-none-any.whl", hash = "sha256:8647f6327d08e5f88f5a315d699b5338ab813993e840e70559e56a920e086a00", size = 164113, upload-time = "2026-06-04T07:26:04.954Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/77/da2d5c6a7ccae17916ff7bdf3c2f389488dd221b48b48bb9219bd3cbceb6/akosha-0.8.2-py3-none-any.whl", hash = "sha256:199303469ef5253e78796d6f6469634e15f6e729f5193f392c76d71d27ab0ffd", size = 164114, upload-time = "2026-06-04T08:46:49.607Z" },
 ]
 
 [[package]]
@@ -1298,7 +1298,7 @@ wheels = [
 
 [[package]]
 name = "dhara"
-version = "0.11.0"
+version = "0.11.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiosqlite" },
@@ -1313,9 +1313,9 @@ dependencies = [
     { name = "uvicorn" },
     { name = "zstandard" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/73/c9/be8cddcf270cfee9ebb01c9fe3c0de43b8051b1b003b0c87683a284e54e8/dhara-0.11.0.tar.gz", hash = "sha256:3b34f7429f3126f129799bff8b0f575d61299d272445b4034a982cd28af29217", size = 616860, upload-time = "2026-06-04T04:45:45.684Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/11/b2/e1a589a13536af1cbeba848f72e70220c2f58a7b69bb6854b7da36906dc2/dhara-0.11.1.tar.gz", hash = "sha256:e2799f61a8f2611c2e747cef5399f628ac674584d35158e6aa64c09eda27d12e", size = 617199, upload-time = "2026-06-04T08:58:16.087Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b5/c7/b684401aaf6f346513abb476906c89000656646ee3b35f2b2b31dd93bced/dhara-0.11.0-py3-none-any.whl", hash = "sha256:df484f61f6fc6188092586304c2d7d99d29c0d66aa87a26718c52dc84729f93c", size = 212756, upload-time = "2026-06-04T04:45:43.943Z" },
+    { url = "https://files.pythonhosted.org/packages/40/2c/9d514fe4042587d3c39392dfd7e552866636a8bd301baae15998b23fd0f2/dhara-0.11.1-py3-none-any.whl", hash = "sha256:aaa378212f7a2e9413cbbc5e6c1ef884772401e9f87dc65820d073defb4540d6", size = 213056, upload-time = "2026-06-04T08:58:17.449Z" },
 ]
 
 [[package]]
