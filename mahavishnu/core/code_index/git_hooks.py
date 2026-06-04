@@ -6,12 +6,12 @@ from pathlib import Path
 import stat
 
 HOOK_CONTENT = """#!/bin/sh
-# Managed by mahavishnu index --install-hooks
-# Remove with: mahavishnu index --uninstall-hooks --repo <path>
-mahavishnu index repo --trigger git-event --repo "$(pwd)" &
+# Managed by mahavishnu index install-hooks
+# Remove with: mahavishnu index uninstall-hooks <path>
+mahavishnu index repo --trigger git-event "$(pwd)" &
 """
 
-MAHAVISHNU_HEADER = "# Managed by mahavishnu index --install-hooks"
+MAHAVISHNU_HEADER = "# Managed by mahavishnu index install-hooks"
 
 _HOOK_NAMES = ("post-commit", "post-merge", "post-rewrite")
 
