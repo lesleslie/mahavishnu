@@ -233,9 +233,13 @@ def map_test_files_to_components(
 def discover_python_tests(project: Path, test_type: str) -> list[Path]:
     """Collect all test files for ``test_type`` in a Python project.
 
-    Looks in ``tests/<test_type>/`` first, then any direct children of
-    ``tests/`` whose name starts with ``test_``. Falls back to scanning the
-    whole ``tests/`` tree for files with the appropriate pytest marker.
+    Looks in the canonical ``tests/<test_type>/`` directory for files
+    matching ``test_*.py``. Top-level ``tests/test_*.py`` files are NOT
+    auto-bucketed into the requested test type — that would misclassify
+    them (e.g. ``tests/test_*.py`` would falsely appear as e2e tests).
+    Callers that want top-level tests should use a custom test type via
+    ``--types``. There is no marker-based fallback: this function
+    performs a deterministic, directory-based scan only.
     """
     tests_root = project / "tests"
     if not tests_root.is_dir():
@@ -246,12 +250,6 @@ def discover_python_tests(project: Path, test_type: str) -> list[Path]:
         candidate = tests_root / canonical_dir
         if candidate.is_dir():
             found.update(candidate.rglob("test_*.py"))
-    if not found:
-        # Note: top-level tests/test_*.py files are NOT auto-bucketed into the
-        # requested test type — they would be misclassified (e.g. tests/test_*.py
-        # would falsely appear as e2e tests). Callers that want top-level tests
-        # can invoke --types explicitly for a custom test type.
-        pass
     # Filter out the buckets we never want to count
     return sorted(
         tf
@@ -329,7 +327,7 @@ def parse_coverage_xml(project: Path) -> dict[str, float] | None:
 
     Returns ``{relative_path_from_project: line_rate}`` — paths are verbatim
     Cobertura paths (relative to the project root, NOT stripped of
-    extension) — or ``None`` if ``coverage.xml`` is absent or unparseable.
+    extension) — or ``None`` if ``coverage.xml`` is absent or unparsable.
 
     Callers that need to cross-reference these paths with matrix component
     keys (``mahavishnu/core``) must derive the directory themselves, e.g.

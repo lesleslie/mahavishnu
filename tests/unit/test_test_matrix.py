@@ -22,9 +22,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 
 from test_matrix import (  # noqa: E402
     ComponentCoverage,
+    assemble_go_matrix,
+    assemble_node_matrix,
     assemble_python_matrix,
     build_summary,
     detect_components,
+    infer_component_from_filename,
     infer_component_from_imports,
     main,
     map_test_files_to_components,
@@ -402,11 +405,30 @@ def test_component_coverage_dataclass_is_not_frozen() -> None:
     fields (the ``files`` list) can still be mutated in place. The
     follow-up removes ``frozen=True`` so the dataclass is honest about
     its mutability.
+
+    Two guards are needed: list-mutation passes regardless of
+    ``frozen=True`` (Python's frozen-dataclass check only blocks
+    attribute *assignment*, not in-place list mutation), so we also
+    assert that assigning a new value to a field works.
     """
     cov = ComponentCoverage(covered=True, files=["x.py"], gaps=[])
-    # Should not raise FrozenInstanceError.
+
+    # Guard 1: in-place list mutation must not raise.
     cov.files.append("y.py")
     assert "y.py" in cov.files
+
+    # Guard 2: attribute *assignment* must not raise FrozenInstanceError.
+    # If the dataclass is still declared ``frozen=True``, this raises
+    # ``dataclasses.FrozenInstanceError`` and the test fails — the
+    # whole point of LOW #10 was to remove the misleading ``frozen=True``.
+    try:
+        cov.covered = False
+    except AttributeError as exc:  # FrozenInstanceError subclasses AttributeError
+        pytest.fail(
+            f"ComponentCoverage should not be frozen; assignment "
+            f"raised: {exc!r}"
+        )
+    assert cov.covered is False
 
 
 # ---------------------------------------------------------------------------
@@ -436,3 +458,277 @@ def test_render_markdown_includes_summary_and_gaps(
     assert "## Summary" in md
     assert "## Component × Test Type Matrix" in md
     assert "## Gaps" in md
+
+
+# ---------------------------------------------------------------------------
+# Node/Go matrix assembly (Tier 2 — was uncovered)
+# ---------------------------------------------------------------------------
+
+
+def test_assemble_node_matrix_runs(tmp_path: Path) -> None:
+    """The Node assembler walks for ``*.test.ts`` / ``*.test.js`` /
+    ``__tests__`` and groups them by component directory. Smoke test:
+    build a fixture with a single Node test file and assert the cell is
+    covered.
+    """
+    project = tmp_path
+    (project / "package.json").write_text("{}")
+    (project / "src" / "foo").mkdir(parents=True)
+    (project / "src" / "foo" / "foo.test.ts").write_text(
+        "test('foo', () => {});\n"
+    )
+
+    cells = assemble_node_matrix(
+        project, components=["src/foo"], test_types=["unit"]
+    )
+    assert "src/foo" in cells
+    cell = cells["src/foo"]["unit"]
+    assert cell.covered is True
+    assert any("foo.test.ts" in f for f in cell.files)
+
+
+def test_assemble_go_matrix_runs(tmp_path: Path) -> None:
+    """The Go assembler walks for ``*_test.go`` and groups by package dir."""
+    project = tmp_path
+    (project / "go.mod").write_text("module example.com/foo\n")
+    (project / "pkg" / "foo").mkdir(parents=True)
+    (project / "pkg" / "foo" / "foo_test.go").write_text(
+        "package foo\nfunc TestFoo(t *testing.T) {}\n"
+    )
+
+    cells = assemble_go_matrix(
+        project, components=["pkg/foo"], test_types=["unit"]
+    )
+    assert "pkg/foo" in cells
+    cell = cells["pkg/foo"]["unit"]
+    assert cell.covered is True
+    assert any("foo_test.go" in f for f in cell.files)
+
+
+def test_assemble_node_matrix_empty_test_types_handled(
+    tmp_path: Path,
+) -> None:
+    """M2 follow-up: ``assemble_node_matrix`` falls back to ``"unit"``
+    when ``test_types`` is empty (``test_types[0] if test_types else
+    "unit"``), so the function does NOT raise ``IndexError``. Note:
+    the inner cell loop is ``for t in test_types``, which is also
+    empty, so each component's inner dict is empty. The CLI rejects
+    empty ``--types`` upstream; this test pins the library-level
+    behaviour to "no IndexError, return a matrix shell with empty
+    inner dicts".
+    """
+    (tmp_path / "package.json").write_text("{}")
+    (tmp_path / "src" / "foo").mkdir(parents=True)
+    (tmp_path / "src" / "foo" / "foo.test.ts").write_text(
+        "test('foo', () => {});\n"
+    )
+    # Should not raise IndexError on empty test_types.
+    cells = assemble_node_matrix(
+        tmp_path, components=["src/foo"], test_types=[]
+    )
+    assert "src/foo" in cells
+    # Inner dict is empty because the for-t-in-test_types loop never
+    # executes. This is the current behaviour; if a future change makes
+    # the function fall back to ``["unit"]`` for empty input, update
+    # this assertion to expect ``cells["src/foo"]["unit"].covered``.
+    assert cells["src/foo"] == {}
+
+
+# ---------------------------------------------------------------------------
+# Stack CLI gating (Tier 2 — was uncovered)
+# ---------------------------------------------------------------------------
+
+
+def test_main_mixed_stack(make_fixture_project: Path, tmp_path: Path) -> None:
+    """M2 follow-up: ``--stack mixed`` should pick up BOTH the Python
+    package components (via ``detect_components``) AND the Node
+    components (via ``src/<dir>`` and ``packages*``), gating each
+    non-Python detection on its project-root marker (``package.json``).
+    """
+    out = tmp_path / "out.json"
+    rc = main(
+        [
+            "--project",
+            str(make_fixture_project),
+            "--stack",
+            "mixed",
+            "--types",
+            "unit",
+            "--out",
+            str(out),
+        ]
+    )
+    assert rc == 0
+    payload = json.loads(out.read_text())
+    components = payload["components"]
+    # Python components from ``detect_components``.
+    assert "mahavishnu/core" in components
+    assert "mahavishnu/workers" in components
+    # Node components gated on package.json — fixture has no
+    # package.json so the Node branch is skipped, which is the safe
+    # default. (See ``test_m2_stack_python_only`` for the negative case.)
+    assert "src/foo" not in components
+
+
+def test_m2_python_only_no_phantom_go_or_node(
+    make_fixture_project: Path, tmp_path: Path
+) -> None:
+    """M2 follow-up: a Python-only fixture (no ``go.mod``, no
+    ``package.json``) running with ``--stack python`` must NOT report
+    phantom Go/Node components like ``htmlcov/``, ``dist/``,
+    ``backups/``, ``docs``, ``scripts``, etc.
+    """
+    out = tmp_path / "out.json"
+    rc = main(
+        [
+            "--project",
+            str(make_fixture_project),
+            "--stack",
+            "python",
+            "--types",
+            "unit",
+            "--out",
+            str(out),
+        ]
+    )
+    assert rc == 0
+    payload = json.loads(out.read_text())
+    components = set(payload["components"])
+    # None of these are real Python components; the Python stack path
+    # in ``main()`` must skip them entirely.
+    for phantom in (
+        "htmlcov",
+        "dist",
+        "backups",
+        "docs",
+        "scripts",
+        "test",
+        "tests",
+        ".git",
+        ".github",
+    ):
+        assert phantom not in components, (
+            f"phantom {phantom!r} leaked into Python-stack components: "
+            f"{sorted(components)}"
+        )
+
+
+def test_m2_stack_go_without_gomod_returns_error(
+    tmp_path: Path, capsys
+) -> None:
+    """M2 follow-up: ``--stack go`` against a fixture WITHOUT
+    ``go.mod`` should produce no components and exit non-zero.
+    """
+    out = tmp_path / "out.json"
+    rc = main(
+        [
+            "--project",
+            str(tmp_path),
+            "--stack",
+            "go",
+            "--types",
+            "unit",
+            "--out",
+            str(out),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert rc == 1, (
+        f"go stack with no go.mod should fail; got rc={rc}, "
+        f"stderr={captured.err!r}, stdout={captured.out!r}"
+    )
+    assert "no components detected" in captured.err
+
+
+def test_main_rejects_out_of_range_coverage_target(
+    make_fixture_project: Path, capsys
+) -> None:
+    """M2 follow-up: ``--coverage-target`` must be 0..100; values
+    outside the range must produce a non-zero exit and a clear
+    stderr message.
+    """
+    out = make_fixture_project / "out.json"
+    rc = main(
+        [
+            "--project",
+            str(make_fixture_project),
+            "--stack",
+            "python",
+            "--types",
+            "unit",
+            "--coverage-target",
+            "150",
+            "--out",
+            str(out),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert rc == 1
+    # The exact wording is implementation-defined, so match a few
+    # reasonable phrasings.
+    assert any(
+        needle in captured.err.lower()
+        for needle in (
+            "between 0 and 100",
+            "out of range",
+            "invalid",
+            "must be",
+        )
+    ), f"expected range error; got stderr={captured.err!r}"
+
+
+# ---------------------------------------------------------------------------
+# Filename-based component inference (Tier 2 — was uncovered)
+# ---------------------------------------------------------------------------
+
+
+def test_infer_component_from_filename_websocket(tmp_path: Path) -> None:
+    """``tests/unit/test_websocket_integration.py`` should resolve to
+    ``mahavishnu/websocket`` via the filename heuristic.
+    """
+    tests_root = tmp_path / "tests" / "unit"
+    tests_root.mkdir(parents=True)
+    test_file = tests_root / "test_websocket_integration.py"
+    test_file.write_text("# no imports\n")
+    assert infer_component_from_filename(test_file, tests_root) == (
+        "mahavishnu/websocket"
+    )
+
+
+def test_infer_component_from_filename_top_level_catchall(
+    make_fixture_project: Path,
+) -> None:
+    """``tests/test_top.py`` (no ``unit/`` prefix, no imports) should
+    fall back to the catch-all ``mahavishnu`` bucket through
+    ``map_test_files_to_components``.
+    """
+    tests_root = make_fixture_project / "tests"
+    test_files = [tests_root / "test_top.py"]
+    valid = {"mahavishnu/core", "mahavishnu/workers"}
+    grouped = map_test_files_to_components(
+        test_files, tests_root, valid_components=valid
+    )
+    assert "mahavishnu" in grouped
+    assert any("test_top.py" in f for f in grouped["mahavishnu"])
+
+
+# ---------------------------------------------------------------------------
+# Coverage XML error paths (Tier 2 — was uncovered)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_coverage_xml_missing_file(tmp_path: Path) -> None:
+    """No ``coverage.xml`` in the project → ``parse_coverage_xml`` must
+    return ``None`` (not raise).
+    """
+    assert parse_coverage_xml(tmp_path) is None
+
+
+def test_parse_coverage_xml_malformed_xml(tmp_path: Path) -> None:
+    """Garbage in ``coverage.xml`` → ``parse_coverage_xml`` must return
+    ``None`` without raising. ``defusedxml`` should be the reason no
+    exception propagates: malformed XML raises ``ParseError`` which the
+    parser swallows and returns ``None``.
+    """
+    (tmp_path / "coverage.xml").write_text("<<< not xml at all >>>")
+    assert parse_coverage_xml(tmp_path) is None

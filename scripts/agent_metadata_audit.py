@@ -17,7 +17,7 @@ def extract_frontmatter(content):
 
         ## name: <slug> description: >- <free text> model: <model>
 
-    where the body is everything after the frontmatter paragraph.
+    where the body is everything after the frontmatter line.
     """
     match = re.match(r"^---\n(.*?)\n---\n(.*)$", content, re.DOTALL)
     if match:
@@ -31,9 +31,11 @@ def extract_frontmatter(content):
     # Fallback: collapsed `## name: ... description: >- ... model: ...` format.
     meta = _extract_collapsed_frontmatter(content)
     if meta:
-        # Body starts at the second paragraph (first blank line after the line).
-        parts = content.split("\n\n", 1)
-        body = parts[1] if len(parts) > 1 else ""
+        # Body is everything after the matched frontmatter line. The line
+        # may be followed by a blank line OR directly by body text — do
+        # not assume a ``\n\n`` separator (the previous implementation
+        # silently dropped the entire body when the blank line was missing).
+        body = _body_after_collapsed_line(content)
         return meta, body
     return {}, content
 
@@ -45,8 +47,17 @@ def _extract_collapsed_frontmatter(content):
     The ``description:`` value may be either a plain string
     (``description: <text>``) or a YAML folded-block indicator
     (``description: >- <text>``); both forms are handled.
+
+    The search is restricted to the first 5 non-blank lines of the
+    content so a body heading like ``## name: old-name`` deep in the
+    body cannot be mis-attribute the frontmatter name.
     """
-    for line in content.split("\n"):
+    # Frontmatter lives on the first non-blank line of an agent file;
+    # look at most 5 lines deep so a stray body heading that happens to
+    # start with ``## name:`` can never be mistaken for the frontmatter.
+    _FRONTMATTER_SCAN_WINDOW = 5
+    lines = content.split("\n")
+    for line in lines[:_FRONTMATTER_SCAN_WINDOW]:
         stripped = line.strip()
         if not stripped.startswith("## name:"):
             continue
@@ -74,6 +85,33 @@ def _extract_collapsed_frontmatter(content):
         description = after.strip()
         return {"name": name, "description": description, "model": model}
     return {}
+
+
+def _body_after_collapsed_line(content):
+    """Return everything after the collapsed frontmatter line.
+
+    The frontmatter line may be followed by:
+      * a blank line, then body text (typical);
+      * body text directly on the next line (no separator).
+
+    The previous implementation used ``content.split("\\n\\n", 1)`` which
+    silently dropped the entire body when the blank line was missing —
+    for example a one-line collapsed frontmatter followed immediately by
+    the body produced an empty body. This helper slices the original
+    content from after the matched frontmatter line so both layouts
+    produce the same correct result.
+    """
+    lines = content.split("\n")
+    for idx, line in enumerate(lines[:5]):
+        stripped = line.strip()
+        if not stripped.startswith("## name:"):
+            continue
+        # Found the frontmatter line. Body is everything after it,
+        # including the trailing newline (caller can .strip() if needed).
+        return "\n".join(lines[idx + 1 :])
+    # No frontmatter line matched — fall back to the original behaviour
+    # (return the full content) so callers don't get surprising blanks.
+    return content
 
 
 def load_agents(agents_dir):
