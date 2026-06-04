@@ -382,6 +382,12 @@ class ToolFrontmatterValidator:
     def _print_summary(self, results: list[ValidationResult]) -> None:
         """Print summary statistics"""
         total = len(results)
+        if total == 0:
+            # Avoid ZeroDivisionError when no tools are found (e.g. in
+            # repos that have not adopted the tool-command convention).
+            print("Total Tools: 0")
+            print("No tools found in the configured tools directory.\n")
+            return
         valid = sum(1 for r in results if r.valid)
         critical_count = sum(1 for r in results for i in r.issues if i.severity == "critical")
         warning_count = sum(1 for r in results for i in r.issues if i.severity == "warning")

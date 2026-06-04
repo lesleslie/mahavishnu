@@ -27,16 +27,16 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+from collections import defaultdict
+from collections.abc import Iterable  # noqa: TC003
+from dataclasses import dataclass, field
 import json
+from pathlib import Path
 import re
 import sys
-from collections import defaultdict
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
-import defusedxml.ElementTree as ET
-
+import defusedxml.ElementTree as ET  # noqa: N817 (ET is the conventional name)
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -563,7 +563,6 @@ def render_markdown(
         row: list[str] = [f"`{comp}`"]
         for t in test_types:
             cell = cells[comp][t]
-            mark = "covered" if cell.covered else "missing"
             if cell.covered and cell.files:
                 # Show file count to keep the table compact.
                 row.append(f"covered ({len(cell.files)} files)")

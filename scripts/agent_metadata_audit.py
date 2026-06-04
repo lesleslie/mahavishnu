@@ -201,7 +201,10 @@ def check_instruction_quality(agents):
 
 def main():
     """Main entry point for the audit script."""
-    agents_dir = "/Users/les/.claude/agents"
+    # Derive the project agents directory from this script's location so
+    # the audit runs against the repo's own agents (not the user's global
+    # agents dir). Works from any clone of the project without config.
+    agents_dir = str(Path(__file__).resolve().parent.parent / ".claude" / "agents")
     agents = load_agents(agents_dir)
 
     total = len(agents)
