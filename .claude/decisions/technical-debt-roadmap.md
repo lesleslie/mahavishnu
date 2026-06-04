@@ -42,8 +42,8 @@ For each item:
 
 - **Severity**: MEDIUM (cosmetic but visible; breaks visual grep)
 - **Location**: `.claude/agents/*.md` (the 2 I edited in Group 3 are
-  clean; the remaining ~99 still have the bug)
-- **Effort**: S (mechanical text replacement across ~99 files)
+  clean; the remaining ones still have the bug)
+- **Effort**: S (mechanical text replacement)
 - **Risk**: LOW (no semantic change, just character substitution)
 - **Why it matters**: Every `mcp__X` reference in every agent file
   was written with literal `\_` (backslash + underscore) instead of
@@ -51,7 +51,7 @@ For each item:
   correctly in some renderers and as a phantom backslash in others,
   and it breaks `grep` for tool names (`grep "mcp__dhara__put"`
   misses the files with the bug). The 2 files I edited in Group 3
-  (M5 and M6) are clean; the other ~99 are not.
+  (M5 and M6) are clean; the others are not.
 - **Suggested approach**:
   1. Write a one-shot Python script that walks `.claude/agents/`,
      finds lines containing `mcp\_\_X\_\_Y` (backslash-underscore
@@ -66,8 +66,20 @@ For each item:
      patterns that match either).
   5. Verify the smoke test for `test_matrix.py` still passes (it
      doesn't touch agent files, but a sanity check is cheap).
-- **Estimated diff size**: 99 files × ~2 occurrences per file = ~200
-  line changes, all in agent frontmatter lines.
+- **Estimated diff size**: 13 files × ~5 occurrences per file = ~67
+  line changes, all in agent frontmatter lines (line 3 of each
+  file). Earlier roadmap drafts estimated ~99 files; the actual
+  count is 13. **Always measure before sweeping** — the dry-run
+  caught this in seconds.
+
+**Status: RESOLVED.** Replaced `\_` (backslash + underscore, 2 bytes)
+with `_` (1 byte) on line 3 of each affected file (the frontmatter
+line). 13 files changed, 67 occurrences fixed. The replacement was
+restricted to line 3 to avoid touching any legitimate `\_` sequences
+in body content (e.g. docstrings describing regex patterns). The
+audit script still parses all 98 agents, and the 13-test smoke
+suite still passes. The roadmap's earlier "99 files" estimate was
+wrong; the actual scope was 13 files.
 
 ### TD-2 — Pre-existing ruff warnings in `scripts/test_matrix.py`
 
@@ -240,7 +252,8 @@ This sequence:
 
 ## Status
 
-- **TD-1**: open
+- **TD-1**: RESOLVED (13 files, 67 occurrences; line-3-only fix to
+  preserve any `\_` in body content)
 - **TD-2**: RESOLVED (4/4 ruff warnings cleared; 0 lint output)
 - **TD-3**: RESOLVED (ZeroDivisionError guard added)
 - **TD-4**: RESOLVED (agents_dir now derived from `__file__`)
