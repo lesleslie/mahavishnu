@@ -229,6 +229,7 @@ def discover_python_tests(project: Path, test_type: str) -> list[Path]:
         # requested test type — they would be misclassified (e.g. tests/test_*.py
         # would falsely appear as e2e tests). Callers that want top-level tests
         # can invoke --types explicitly for a custom test type.
+        pass
     # Filter out the buckets we never want to count
     return sorted(
         tf
