@@ -103,13 +103,21 @@ class ToolFrontmatterValidator:
     def __init__(self, tools_dir: Path):
         self.tools_dir = tools_dir
 
-    # Frontmatter delimiter: a line of 3+ underscores. Matches the
-    # YAML spec (``---``) and the repo's house style of 70 underscores
-    # used in ``.claude/commands/tools/**/*.md``. The backreference in
-    # the parser regex ensures the opener and closer use the same
-    # length.
+    # Frontmatter delimiter: a line of 3+ dashes OR underscores.
+    # Matches both the YAML spec (``---``) and the repo's house style
+    # of 70 underscores used in ``.claude/commands/tools/**/*.md``.
+    #
+    # The backreference ``\1`` ensures the closer is the same length
+    # as the opener — a 70-underscore opener cannot be closed with
+    # ``---`` or vice versa.
+    #
+    # Anchored with ``\A`` and ``\Z`` (not ``^`` / ``$``) because ``$``
+    # in Python's ``re`` matches *before* a final newline, which would
+    # let a file with a trailing newline slip through the body capture
+    # with an extra ``\n`` in the wrong place. ``\Z`` matches strictly
+    # at the end of the string.
     FRONTMATTER_DELIMITER = re.compile(
-        r"^(_{3,})\n(.*?)\n\1\n(.*)$",
+        r"\A([-_]{3,})\n(.*?)\n\1\n(.*)\Z",
         re.DOTALL,
     )
 

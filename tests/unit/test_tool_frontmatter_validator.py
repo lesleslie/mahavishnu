@@ -35,7 +35,7 @@ REAL_TOOL_FRONTMATTER_LINES = [
     "owner: Delivery Operations",
     "last_reviewed: 2025-02-06",
     "status: active",
-    "id: 01HQZ4K9M3R7T8B5N2W1V0A3F4P",  # 26-char ULID
+    "id: 01HQZ4K9M3R7T8B5N2W1V0A3F4",  # 26-char ULID
     "category: deployment",
     "_" * 70,
     "",
@@ -59,7 +59,7 @@ def _write_classic_tool(tmp_path: Path) -> Path:
         "owner: Delivery Operations\n"
         "last_reviewed: 2025-02-06\n"
         "status: active\n"
-        "id: 01HQZ4K9M3R7T8B5N2W1V0A3F4P\n"
+        "id: 01HQZ4K9M3R7T8B5N2W1V0A3F4\n"
         "category: deployment\n"
         "---\n"
         "\n"
