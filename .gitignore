@@ -224,3 +224,7 @@ ingested/
 
 # Cron runtime state (mutable timestamps/history, not config)
 cron/jobs.json
+
+# Backup Files (added by gitignore audit)
+# ============================================================================
+*.backup
