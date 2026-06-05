@@ -43,6 +43,8 @@ tox/
 .coverage
 coverage
 coverage.*
+# pytest-cov parallel-mode data files (.coverage.<host>.pid<n>.<hash>)
+*.pid*
 nosetests.xml
 coverage.xml
 coverage.json
