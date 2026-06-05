@@ -50,9 +50,9 @@ _NON_COMPONENT_DIRS: frozenset[str] = frozenset(
     {
         "__pycache__",
         "prototypes",  # throwaway experiments
-        "shell",       # interactive REPL
-        "tui",         # text UI, exercised manually
-        "models",      # Pydantic schemas only; transitively covered
+        "shell",  # interactive REPL
+        "tui",  # text UI, exercised manually
+        "models",  # Pydantic schemas only; transitively covered
     }
 )
 
@@ -253,9 +253,7 @@ def discover_python_tests(project: Path, test_type: str) -> list[Path]:
             found.update(candidate.rglob("test_*.py"))
     # Filter out the buckets we never want to count
     return sorted(
-        tf
-        for tf in found
-        if not any(part in _UNCATEGORIZED_TEST_SUBDIRS for part in tf.parts)
+        tf for tf in found if not any(part in _UNCATEGORIZED_TEST_SUBDIRS for part in tf.parts)
     )
 
 
@@ -416,11 +414,7 @@ def assemble_node_matrix(
     cells: dict[str, dict[str, ComponentCoverage]] = {}
     for component in components:
         comp_name = component.split("/", 1)[-1]
-        matched = [
-            p.relative_to(project).as_posix()
-            for p in test_files
-            if comp_name in p.parts
-        ]
+        matched = [p.relative_to(project).as_posix() for p in test_files if comp_name in p.parts]
         cells[component] = {}
         # Replicate the same `files` list across all test types so
         # downstream consumers don't see empty lists for non-first types.
@@ -444,11 +438,7 @@ def assemble_go_matrix(
     cells: dict[str, dict[str, ComponentCoverage]] = {}
     for component in components:
         comp_name = component.split("/", 1)[-1]
-        matched = [
-            p.relative_to(project).as_posix()
-            for p in test_files
-            if comp_name in p.parts
-        ]
+        matched = [p.relative_to(project).as_posix() for p in test_files if comp_name in p.parts]
         cells[component] = {}
         # Replicate the same `files` list across all test types so
         # downstream consumers don't see empty lists for non-first types.
@@ -477,14 +467,10 @@ def build_summary(
     """Compute the summary block of the JSON output."""
     total_components = len(components)
     total_cells = total_components * len(test_types)
-    covered_cells = sum(
-        1 for comp in components for t in test_types if cells[comp][t].covered
-    )
+    covered_cells = sum(1 for comp in components for t in test_types if cells[comp][t].covered)
     coverage_pct = round((covered_cells / total_cells) * 100, 1) if total_cells else 0.0
     below_target = [
-        comp
-        for comp in components
-        if not all(cells[comp][t].covered for t in test_types)
+        comp for comp in components if not all(cells[comp][t].covered for t in test_types)
     ]
     # Components with NO tests of ANY requested type. This is a subset of
     # ``below_target``; the two should not be conflated. Computed here
@@ -493,9 +479,7 @@ def build_summary(
     components_with_no_tests = [
         {
             "component": comp,
-            "missing_test_types": [
-                t for t in test_types if not cells[comp][t].covered
-            ],
+            "missing_test_types": [t for t in test_types if not cells[comp][t].covered],
         }
         for comp in components
         if not any(cells[comp][t].covered for t in test_types)
@@ -727,8 +711,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not (0 <= args.coverage_target <= 100):
         print(
-            f"error: --coverage-target must be between 0 and 100 "
-            f"(got {args.coverage_target})",
+            f"error: --coverage-target must be between 0 and 100 (got {args.coverage_target})",
             file=sys.stderr,
         )
         return 1
@@ -783,9 +766,7 @@ def main(argv: list[str] | None = None) -> int:
         for entry in sorted(project.iterdir()):
             if entry.is_dir() and entry.name.startswith("packages"):
                 components.append(entry.name)
-    if args.stack in ("go", "mixed") and (
-        "go" in forced_stacks or (project / "go.mod").is_file()
-    ):
+    if args.stack in ("go", "mixed") and ("go" in forced_stacks or (project / "go.mod").is_file()):
         for entry in sorted(project.iterdir()):
             if entry.is_dir() and not entry.name.startswith("."):
                 # Cheap: top-level dirs that aren't obviously meta

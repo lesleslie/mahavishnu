@@ -27,7 +27,6 @@ from pathlib import Path
 from check_ecosystem_gitignores import (  # noqa: E402
     ClaudeDirState,
     ClaudeIgnoreState,
-    _BLANKET_CLAUDE_PATTERNS,
     classify_claude_dir,
     evaluate_repo,
     parse_claude_ignore,
@@ -36,7 +35,6 @@ from check_ecosystem_gitignores import (  # noqa: E402
     render_text_report,
     resolve_repos,
 )
-
 
 # ---------------------------------------------------------------------------
 # classify_claude_dir
@@ -98,14 +96,7 @@ def test_parse_sections_no_headers() -> None:
 
 def test_parse_sections_plain_header_style(tmp_path: Path) -> None:
     """oneiric-style: single comment line, no decorative dividers."""
-    text = (
-        "# Python-generated files\n"
-        "__pycache__/\n"
-        "*.pyc\n"
-        "\n"
-        "# Virtual environments\n"
-        ".venv/\n"
-    )
+    text = "# Python-generated files\n__pycache__/\n*.pyc\n\n# Virtual environments\n.venv/\n"
     sections = parse_gitignore_sections(text)
     assert [n for n, _ in sections] == [
         "Python-generated files",

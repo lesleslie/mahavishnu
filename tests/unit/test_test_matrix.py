@@ -8,6 +8,7 @@ project built in ``tmp_path``.
 No mocking: the fixture writes real files so the helper functions can do
 real filesystem work.
 """
+
 from __future__ import annotations
 
 import json
@@ -82,9 +83,7 @@ def make_fixture_project(tmp_path: Path) -> Path:
 
     (project / "mahavishnu" / "workers").mkdir(parents=True)
     (project / "mahavishnu" / "workers" / "__init__.py").write_text("")
-    (project / "mahavishnu" / "workers" / "pool.py").write_text(
-        "def pool(): pass\n"
-    )
+    (project / "mahavishnu" / "workers" / "pool.py").write_text("def pool(): pass\n")
 
     # Single-file utility — no enclosing __init__.py directory, so it
     # must NOT be detected as a component.
@@ -104,9 +103,7 @@ def make_fixture_project(tmp_path: Path) -> Path:
     unit.mkdir(parents=True)
     (unit / "test_core.py").write_text("from mahavishnu.core import foo\n")
     (unit / "test_workers.py").write_text("from mahavishnu.workers import bar\n")
-    (unit / "test_phantom.py").write_text(
-        "from mahavishnu.nonexistent import baz\n"
-    )
+    (unit / "test_phantom.py").write_text("from mahavishnu.nonexistent import baz\n")
 
     # Top-level test (no subdir) — no imports
     (project / "tests").mkdir(parents=True, exist_ok=True)
@@ -181,10 +178,7 @@ def test_import_regex_ignores_docstring_mentions(tmp_path: Path) -> None:
     ``mahavishnu`` must not be matched.
     """
     no_imports = tmp_path / "test_docstring.py"
-    no_imports.write_text(
-        '"""The mahavishnu module is great."""\n\n'
-        "def test_thing(): pass\n"
-    )
+    no_imports.write_text('"""The mahavishnu module is great."""\n\ndef test_thing(): pass\n')
     assert infer_component_from_imports(no_imports) is None
 
 
@@ -205,9 +199,7 @@ def test_map_test_files_to_components_filters_phantom(
     test_files = sorted(p for p in unit.glob("test_*.py"))
 
     valid = {"mahavishnu/core", "mahavishnu/workers"}
-    grouped = map_test_files_to_components(
-        test_files, tests_root, valid_components=valid
-    )
+    grouped = map_test_files_to_components(test_files, tests_root, valid_components=valid)
 
     # The catch-all bucket must be present and contain the phantom test.
     assert "mahavishnu" in grouped, (
@@ -218,10 +210,7 @@ def test_map_test_files_to_components_filters_phantom(
     # No phantom buckets should exist (i.e. no key starts with
     # ``mahavishnu/`` unless it's a real, valid component).
     phantom_keys = [
-        k for k in grouped
-        if k.startswith("mahavishnu/")
-        and k not in valid
-        and k != "mahavishnu"
+        k for k in grouped if k.startswith("mahavishnu/") and k not in valid and k != "mahavishnu"
     ]
     assert not phantom_keys, f"phantom components leaked: {phantom_keys}"
 
@@ -276,9 +265,7 @@ def test_build_summary_includes_components_with_no_tests(
 # ---------------------------------------------------------------------------
 
 
-def test_main_end_to_end_writes_json(
-    make_fixture_project: Path, tmp_path: Path
-) -> None:
+def test_main_end_to_end_writes_json(make_fixture_project: Path, tmp_path: Path) -> None:
     out = tmp_path / "out.json"
     rc = main(
         [
@@ -318,9 +305,7 @@ def test_main_end_to_end_writes_json(
     }
 
 
-def test_main_rejects_unsafe_output_path(
-    make_fixture_project: Path, capsys
-) -> None:
+def test_main_rejects_unsafe_output_path(make_fixture_project: Path, capsys) -> None:
     """M10: --out must not be allowed to escape the project root (or cwd).
 
     A path-traversal attack via ``/tmp/../../../etc/passwd`` should be
@@ -341,8 +326,7 @@ def test_main_rejects_unsafe_output_path(
     )
     captured = capsys.readouterr()
     assert rc == 1, (
-        f"unsafe --out should fail; got rc={rc}, "
-        f"stderr={captured.err!r}, stdout={captured.out!r}"
+        f"unsafe --out should fail; got rc={rc}, stderr={captured.err!r}, stdout={captured.out!r}"
     )
     # Implementation's actual wording may vary. Match a flexible pattern
     # that covers the most likely phrasings, including the actual
@@ -362,9 +346,7 @@ def test_main_rejects_unsafe_output_path(
     ), f"expected a safety-check error message; got stderr={captured.err!r}"
 
 
-def test_main_rejects_out_equal_to_project_root(
-    make_fixture_project: Path, capsys
-) -> None:
+def test_main_rejects_out_equal_to_project_root(make_fixture_project: Path, capsys) -> None:
     """T3.1: --out pointing at the project root itself (a
     confused-deputy case) must be rejected. The directory exists, the
     path is technically "under" the project, but writing the JSON
@@ -396,9 +378,7 @@ def test_main_rejects_out_equal_to_project_root(
     ), f"expected a project-root-equals error; got stderr={captured.err!r}"
 
 
-def test_main_rejects_unknown_test_type(
-    make_fixture_project: Path, capsys
-) -> None:
+def test_main_rejects_unknown_test_type(make_fixture_project: Path, capsys) -> None:
     rc = main(
         [
             "--project",
@@ -458,10 +438,7 @@ def test_component_coverage_dataclass_is_not_frozen() -> None:
     try:
         cov.covered = False
     except AttributeError as exc:  # FrozenInstanceError subclasses AttributeError
-        pytest.fail(
-            f"ComponentCoverage should not be frozen; assignment "
-            f"raised: {exc!r}"
-        )
+        pytest.fail(f"ComponentCoverage should not be frozen; assignment raised: {exc!r}")
     assert cov.covered is False
 
 
@@ -474,9 +451,7 @@ def test_render_markdown_includes_summary_and_gaps(
     make_fixture_project: Path,
 ) -> None:
     components = detect_components(make_fixture_project)
-    cells = assemble_python_matrix(
-        make_fixture_project, components, ["unit"]
-    )
+    cells = assemble_python_matrix(make_fixture_project, components, ["unit"])
     summary = build_summary(
         cells, components, ["unit"], 80, parse_coverage_xml(make_fixture_project)
     )
@@ -508,13 +483,9 @@ def test_assemble_node_matrix_runs(tmp_path: Path) -> None:
     project = tmp_path
     (project / "package.json").write_text("{}")
     (project / "src" / "foo").mkdir(parents=True)
-    (project / "src" / "foo" / "foo.test.ts").write_text(
-        "test('foo', () => {});\n"
-    )
+    (project / "src" / "foo" / "foo.test.ts").write_text("test('foo', () => {});\n")
 
-    cells = assemble_node_matrix(
-        project, components=["src/foo"], test_types=["unit"]
-    )
+    cells = assemble_node_matrix(project, components=["src/foo"], test_types=["unit"])
     assert "src/foo" in cells
     cell = cells["src/foo"]["unit"]
     assert cell.covered is True
@@ -530,9 +501,7 @@ def test_assemble_go_matrix_runs(tmp_path: Path) -> None:
         "package foo\nfunc TestFoo(t *testing.T) {}\n"
     )
 
-    cells = assemble_go_matrix(
-        project, components=["pkg/foo"], test_types=["unit"]
-    )
+    cells = assemble_go_matrix(project, components=["pkg/foo"], test_types=["unit"])
     assert "pkg/foo" in cells
     cell = cells["pkg/foo"]["unit"]
     assert cell.covered is True
@@ -553,13 +522,9 @@ def test_assemble_node_matrix_empty_test_types_handled(
     """
     (tmp_path / "package.json").write_text("{}")
     (tmp_path / "src" / "foo").mkdir(parents=True)
-    (tmp_path / "src" / "foo" / "foo.test.ts").write_text(
-        "test('foo', () => {});\n"
-    )
+    (tmp_path / "src" / "foo" / "foo.test.ts").write_text("test('foo', () => {});\n")
     # Should not raise IndexError on empty test_types.
-    cells = assemble_node_matrix(
-        tmp_path, components=["src/foo"], test_types=[]
-    )
+    cells = assemble_node_matrix(tmp_path, components=["src/foo"], test_types=[])
     assert "src/foo" in cells
     # Inner dict is empty because the for-t-in-test_types loop never
     # executes. This is the current behaviour; if a future change makes
@@ -604,9 +569,7 @@ def test_main_mixed_stack(make_fixture_project: Path, tmp_path: Path) -> None:
     assert "src/foo" not in components
 
 
-def test_m2_python_only_no_phantom_go_or_node(
-    make_fixture_project: Path, tmp_path: Path
-) -> None:
+def test_m2_python_only_no_phantom_go_or_node(make_fixture_project: Path, tmp_path: Path) -> None:
     """M2 follow-up: a Python-only fixture (no ``go.mod``, no
     ``package.json``) running with ``--stack python`` must NOT report
     phantom Go/Node components like ``htmlcov/``, ``dist/``,
@@ -642,14 +605,11 @@ def test_m2_python_only_no_phantom_go_or_node(
         ".github",
     ):
         assert phantom not in components, (
-            f"phantom {phantom!r} leaked into Python-stack components: "
-            f"{sorted(components)}"
+            f"phantom {phantom!r} leaked into Python-stack components: {sorted(components)}"
         )
 
 
-def test_m2_stack_go_without_gomod_returns_error(
-    tmp_path: Path, capsys
-) -> None:
+def test_m2_stack_go_without_gomod_returns_error(tmp_path: Path, capsys) -> None:
     """M2 follow-up: ``--stack go`` against a fixture WITHOUT
     ``go.mod`` should produce no components and exit non-zero.
     """
@@ -674,9 +634,7 @@ def test_m2_stack_go_without_gomod_returns_error(
     assert "no components detected" in captured.err
 
 
-def test_t32_force_stack_go_in_polyglot_monorepo(
-    tmp_path: Path, capsys
-) -> None:
+def test_t32_force_stack_go_in_polyglot_monorepo(tmp_path: Path, capsys) -> None:
     """T3.2: A polyglot monorepo that has Go files in ``cmd/*.go`` but
     no top-level ``go.mod`` (or has a Node workspace without a
     ``package.json``) should still get its Go components when the
@@ -713,14 +671,11 @@ def test_t32_force_stack_go_in_polyglot_monorepo(
     payload = json.loads(out.read_text())
     # The non-meta top-level dirs (cmd) should appear as Go components.
     assert "cmd" in payload["components"], (
-        f"force-stack should surface cmd/ as a Go component; "
-        f"got components={payload['components']}"
+        f"force-stack should surface cmd/ as a Go component; got components={payload['components']}"
     )
 
 
-def test_t32_force_stack_rejects_unknown_stack(
-    tmp_path: Path, capsys
-) -> None:
+def test_t32_force_stack_rejects_unknown_stack(tmp_path: Path, capsys) -> None:
     """T3.2: --force-stack with an unknown stack name must fail with
     a clear error, not silently accept the bad input.
     """
@@ -745,9 +700,7 @@ def test_t32_force_stack_rejects_unknown_stack(
     assert "rust" in captured.err
 
 
-def test_main_rejects_out_of_range_coverage_target(
-    make_fixture_project: Path, capsys
-) -> None:
+def test_main_rejects_out_of_range_coverage_target(make_fixture_project: Path, capsys) -> None:
     """M2 follow-up: ``--coverage-target`` must be 0..100; values
     outside the range must produce a non-zero exit and a clear
     stderr message.
@@ -795,9 +748,7 @@ def test_infer_component_from_filename_websocket(tmp_path: Path) -> None:
     tests_root.mkdir(parents=True)
     test_file = tests_root / "test_websocket_integration.py"
     test_file.write_text("# no imports\n")
-    assert infer_component_from_filename(test_file, tests_root) == (
-        "mahavishnu/websocket"
-    )
+    assert infer_component_from_filename(test_file, tests_root) == ("mahavishnu/websocket")
 
 
 def test_infer_component_from_filename_top_level_catchall(
@@ -810,9 +761,7 @@ def test_infer_component_from_filename_top_level_catchall(
     tests_root = make_fixture_project / "tests"
     test_files = [tests_root / "test_top.py"]
     valid = {"mahavishnu/core", "mahavishnu/workers"}
-    grouped = map_test_files_to_components(
-        test_files, tests_root, valid_components=valid
-    )
+    grouped = map_test_files_to_components(test_files, tests_root, valid_components=valid)
     assert "mahavishnu" in grouped
     assert any("test_top.py" in f for f in grouped["mahavishnu"])
 

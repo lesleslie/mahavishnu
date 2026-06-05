@@ -13,15 +13,13 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from mahavishnu.agents.mahavishnu_agent import (
     MahavishnuAgent,
     PoolStatusResult,
     RouteTaskRequest,
-    RouteTaskResult,
-    RoutingInfoResult,
     SweepReposRequest,
     SweepReposResult,
     get_mahavishnu_agent,
@@ -29,7 +27,6 @@ from mahavishnu.agents.mahavishnu_agent import (
 )
 from mahavishnu.core.metrics_schema import AdapterType, TaskType
 from mahavishnu.core.routing import RoutingStrategy
-
 
 # ---------------------------------------------------------------------------
 # Pydantic request / response model tests
@@ -139,9 +136,7 @@ def mock_router() -> MagicMock:
     router = MagicMock(name="TaskRouter")
     router.classify_intent = MagicMock(return_value=TaskType.AI_TASK)
     router.select_adapter = AsyncMock(return_value=AdapterType.AGNO)
-    router.generate_fallback_chain = MagicMock(
-        return_value=[AdapterType.AGNO, AdapterType.PREFECT]
-    )
+    router.generate_fallback_chain = MagicMock(return_value=[AdapterType.AGNO, AdapterType.PREFECT])
     router.get_adapter_scores = AsyncMock(
         return_value={AdapterType.AGNO: 0.9, AdapterType.PREFECT: 0.7}
     )
@@ -157,9 +152,7 @@ def mock_router() -> MagicMock:
 @pytest.fixture
 def agent(mock_app: MagicMock, mock_router: MagicMock) -> MahavishnuAgent:
     """Construct a MahavishnuAgent with both dependencies replaced."""
-    with patch(
-        "mahavishnu.agents.mahavishnu_agent.TaskRouter", return_value=mock_router
-    ):
+    with patch("mahavishnu.agents.mahavishnu_agent.TaskRouter", return_value=mock_router):
         return MahavishnuAgent(app=mock_app)
 
 
@@ -264,18 +257,14 @@ class TestGetPoolStatus:
                 "pool_b": {"active_workers": 2, "status": "degraded"},
             }
         )
-        with patch(
-            "mahavishnu.factories.get_pool_manager", return_value=pool_mgr
-        ):
+        with patch("mahavishnu.factories.get_pool_manager", return_value=pool_mgr):
             result = await agent.get_pool_status()
         assert result.total_pools == 2
         assert result.active_workers == 5
         assert result.error is None
         assert {p["pool_id"] for p in result.pools} == {"pool_a", "pool_b"}
 
-    async def test_pool_manager_error_returns_graceful_result(
-        self, agent: MahavishnuAgent
-    ):
+    async def test_pool_manager_error_returns_graceful_result(self, agent: MahavishnuAgent):
         with patch(
             "mahavishnu.factories.get_pool_manager",
             side_effect=RuntimeError("manager offline"),
@@ -293,12 +282,8 @@ class TestGetPoolStatus:
 
 @pytest.mark.asyncio
 class TestGetRoutingInfo:
-    async def test_happy_path(
-        self, agent: MahavishnuAgent, mock_router: MagicMock
-    ):
-        result = await agent.get_routing_info(
-            task_type="ai_task", strategy="balanced"
-        )
+    async def test_happy_path(self, agent: MahavishnuAgent, mock_router: MagicMock):
+        result = await agent.get_routing_info(task_type="ai_task", strategy="balanced")
         assert result.task_type == "ai_task"
         assert result.strategy == "balanced"
         assert result.primary_adapter == AdapterType.AGNO.value
@@ -306,9 +291,7 @@ class TestGetRoutingInfo:
             TaskType.AI_TASK, RoutingStrategy.BALANCED
         )
 
-    async def test_invalid_strategy_falls_through_to_error(
-        self, agent: MahavishnuAgent
-    ):
+    async def test_invalid_strategy_falls_through_to_error(self, agent: MahavishnuAgent):
         # RoutingStrategy is an enum, so an unknown value raises ValueError.
         # The agent catches it and attempts to return a RoutingInfoResult
         # with an `error` field, which Pydantic rejects (the field is not
@@ -325,21 +308,15 @@ class TestGetRoutingInfo:
 class TestSingleton:
     def test_get_returns_same_instance(self, mock_app: MagicMock, mock_router: MagicMock):
         reset_agent()
-        with patch(
-            "mahavishnu.agents.mahavishnu_agent.TaskRouter", return_value=mock_router
-        ):
+        with patch("mahavishnu.agents.mahavishnu_agent.TaskRouter", return_value=mock_router):
             first = get_mahavishnu_agent(app=mock_app)
             second = get_mahavishnu_agent()
         assert first is second
         reset_agent()
 
-    def test_reset_creates_new_instance(
-        self, mock_app: MagicMock, mock_router: MagicMock
-    ):
+    def test_reset_creates_new_instance(self, mock_app: MagicMock, mock_router: MagicMock):
         reset_agent()
-        with patch(
-            "mahavishnu.agents.mahavishnu_agent.TaskRouter", return_value=mock_router
-        ):
+        with patch("mahavishnu.agents.mahavishnu_agent.TaskRouter", return_value=mock_router):
             first = get_mahavishnu_agent(app=mock_app)
             reset_agent()
             second = get_mahavishnu_agent(app=mock_app)

@@ -40,20 +40,22 @@ EXCLUDED_SOURCE_DIR_PARTS = {".archive", "__pycache__"}
 
 # IO-heavy imports that signal higher test difficulty (need mocks or
 # containers). Used for risk bucketing only.
-IO_HEAVY_IMPORTS = frozenset({
-    "asyncpg",
-    "redis",
-    "httpx",
-    "aiohttp",
-    "requests",
-    "uvicorn",
-    "fastapi",
-    "sqlalchemy",
-    "aiosqlite",
-    "boto3",
-    "kubernetes",
-    "docker",
-})
+IO_HEAVY_IMPORTS = frozenset(
+    {
+        "asyncpg",
+        "redis",
+        "httpx",
+        "aiohttp",
+        "requests",
+        "uvicorn",
+        "fastapi",
+        "sqlalchemy",
+        "aiosqlite",
+        "boto3",
+        "kubernetes",
+        "docker",
+    }
+)
 
 
 class SourceModule(NamedTuple):

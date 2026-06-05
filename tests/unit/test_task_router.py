@@ -268,22 +268,17 @@ class TestYAMLRoutingSync:
         in-code constant doesn't carry, so they are stripped for comparison.
         """
         from pathlib import Path
+
         import yaml
 
-        yaml_path = (
-            Path(__file__).resolve().parents[2] / "settings" / "models.yaml"
-        )
+        yaml_path = Path(__file__).resolve().parents[2] / "settings" / "models.yaml"
         raw = yaml.safe_load(yaml_path.read_text())["minimax"]["task_routing"]
-        return {
-            k: v for k, v in raw.items() if not k.startswith("FALLBACK")
-        }
+        return {k: v for k, v in raw.items() if not k.startswith("FALLBACK")}
 
     def test_yaml_entries_match_code_constant(self):
         """Every category defined in the YAML must match DEFAULT_MINIMAX_ROUTING."""
         yaml_routing = self._load_yaml_routing()
-        code_routing = {
-            cat.value: model for cat, model in DEFAULT_MINIMAX_ROUTING.items()
-        }
+        code_routing = {cat.value: model for cat, model in DEFAULT_MINIMAX_ROUTING.items()}
 
         for cat, yaml_model in yaml_routing.items():
             cat_key = cat.lower()
@@ -291,8 +286,7 @@ class TestYAMLRoutingSync:
                 f"YAML defines {cat} but DEFAULT_MINIMAX_ROUTING is missing it"
             )
             assert code_routing[cat_key] == yaml_model, (
-                f"Model drift for {cat}: YAML={yaml_model!r} "
-                f"vs CODE={code_routing[cat_key]!r}"
+                f"Model drift for {cat}: YAML={yaml_model!r} vs CODE={code_routing[cat_key]!r}"
             )
 
     def test_yaml_covers_high_traffic_categories(self):
@@ -320,9 +314,7 @@ class TestYAMLRoutingSync:
             "GENERAL",
         }
         missing = required - set(yaml_routing.keys())
-        assert not missing, (
-            f"YAML must cover high-traffic categories: {sorted(missing)}"
-        )
+        assert not missing, f"YAML must cover high-traffic categories: {sorted(missing)}"
 
 
 class TestRateLimiter:

@@ -61,67 +61,67 @@ __all__ = [
 
 # Each value is a zero-arg callable that performs a hardcoded local import.
 # No dynamic string ever reaches importlib — satisfies CWE-706 / semgrep N802.
-def _lazy_base_pool() -> "type[BasePool]":
+def _lazy_base_pool() -> type[BasePool]:
     from .base import BasePool
 
     return BasePool
 
 
-def _lazy_pool_config() -> "type[PoolConfig]":
+def _lazy_pool_config() -> type[PoolConfig]:
     from .base import PoolConfig
 
     return PoolConfig
 
 
-def _lazy_pool_metrics() -> "type[PoolMetrics]":
+def _lazy_pool_metrics() -> type[PoolMetrics]:
     from .base import PoolMetrics
 
     return PoolMetrics
 
 
-def _lazy_pool_status() -> "type[PoolStatus]":
+def _lazy_pool_status() -> type[PoolStatus]:
     from .base import PoolStatus
 
     return PoolStatus
 
 
-def _lazy_pool_manager() -> "type[PoolManager]":
+def _lazy_pool_manager() -> type[PoolManager]:
     from .manager import PoolManager
 
     return PoolManager
 
 
-def _lazy_pool_selector() -> "type[PoolSelector]":
+def _lazy_pool_selector() -> type[PoolSelector]:
     from .manager import PoolSelector
 
     return PoolSelector
 
 
-def _lazy_memory_aggregator() -> "type[MemoryAggregator]":
+def _lazy_memory_aggregator() -> type[MemoryAggregator]:
     from .memory_aggregator import MemoryAggregator
 
     return MemoryAggregator
 
 
-def _lazy_gpu_handler_pool() -> "type[GpuHandlerPool]":
+def _lazy_gpu_handler_pool() -> type[GpuHandlerPool]:
     from .gpu_handler_pool import GpuHandlerPool
 
     return GpuHandlerPool
 
 
-def _lazy_runpod_pool() -> "type[RunPodPool]":
+def _lazy_runpod_pool() -> type[RunPodPool]:
     from .runpod_pool import RunPodPool
 
     return RunPodPool
 
 
-def _lazy_websocket_broadcaster() -> "type[WebSocketBroadcaster]":
+def _lazy_websocket_broadcaster() -> type[WebSocketBroadcaster]:
     from .websocket import WebSocketBroadcaster
 
     return WebSocketBroadcaster
 
 
-def _lazy_create_broadcaster() -> "create_broadcaster":  # type: ignore[valid-type]
+def _lazy_create_broadcaster() -> create_broadcaster:  # type: ignore[valid-type]
     from .websocket import create_broadcaster
 
     return create_broadcaster

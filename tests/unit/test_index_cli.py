@@ -24,7 +24,6 @@ from typer.testing import CliRunner
 from mahavishnu.cli.index_cli import add_index_commands
 from mahavishnu.core.code_index.models import IndexWorkItem
 
-
 EXPECTED_SUBCOMMANDS: list[str] = [
     "repo",
     "status",
@@ -90,9 +89,7 @@ def test_index_top_level_help_runs(runner: CliRunner, app: typer.Typer) -> None:
 
 
 @pytest.mark.parametrize("sub", EXPECTED_SUBCOMMANDS)
-def test_every_subcommand_help_runs(
-    runner: CliRunner, app: typer.Typer, sub: str
-) -> None:
+def test_every_subcommand_help_runs(runner: CliRunner, app: typer.Typer, sub: str) -> None:
     result = runner.invoke(app, ["index", sub, "--help"])
     assert result.exit_code == 0, f"index {sub} --help exited {result.exit_code}"
 
@@ -102,9 +99,7 @@ def test_every_subcommand_help_runs(
 # ---------------------------------------------------------------------------
 
 
-def test_index_repo_rejects_unregistered_path(
-    runner: CliRunner, app: typer.Typer
-) -> None:
+def test_index_repo_rejects_unregistered_path(runner: CliRunner, app: typer.Typer) -> None:
     """Unknown repo paths cause validate_repo_path to raise ValueError,
     which Typer surfaces as a non-zero exit code."""
     with patch(
@@ -139,9 +134,7 @@ def test_index_repo_success_prints_summary(
     assert "Failures: 0" in result.output
 
 
-def test_index_repo_failed_status_exits_nonzero(
-    runner: CliRunner, app: typer.Typer
-) -> None:
+def test_index_repo_failed_status_exits_nonzero(runner: CliRunner, app: typer.Typer) -> None:
     failed = IndexWorkItem(
         repo_path="/tmp/registered",
         trigger="manual",
@@ -182,9 +175,7 @@ def test_index_repo_passes_full_and_trigger_flags(
             ["index", "repo", "/tmp/registered", "--full", "--trigger", "schedule"],
         )
     assert result.exit_code == 0
-    mock_index.assert_called_once_with(
-        "/tmp/registered", trigger="schedule", full=True
-    )
+    mock_index.assert_called_once_with("/tmp/registered", trigger="schedule", full=True)
 
 
 # ---------------------------------------------------------------------------
@@ -202,9 +193,7 @@ def test_index_status_empty_registry(runner: CliRunner, app: typer.Typer) -> Non
     assert "No repositories registered" in result.output
 
 
-def test_index_status_lists_repos_and_indexed_state(
-    runner: CliRunner, app: typer.Typer
-) -> None:
+def test_index_status_lists_repos_and_indexed_state(runner: CliRunner, app: typer.Typer) -> None:
     with (
         patch(
             "mahavishnu.core.code_index.path_validation.get_registered_repos",
@@ -227,9 +216,7 @@ def test_index_status_lists_repos_and_indexed_state(
 # ---------------------------------------------------------------------------
 
 
-def test_index_install_hooks_prints_installed_names(
-    runner: CliRunner, app: typer.Typer
-) -> None:
+def test_index_install_hooks_prints_installed_names(runner: CliRunner, app: typer.Typer) -> None:
     with (
         patch(
             "mahavishnu.cli.index_cli.validate_repo_path",
@@ -240,16 +227,12 @@ def test_index_install_hooks_prints_installed_names(
             return_value=["post-commit", "post-merge", "post-rewrite"],
         ),
     ):
-        result = runner.invoke(
-            app, ["index", "install-hooks", "/tmp/registered"]
-        )
+        result = runner.invoke(app, ["index", "install-hooks", "/tmp/registered"])
     assert result.exit_code == 0
     assert "Installed hooks: post-commit, post-merge, post-rewrite" in result.output
 
 
-def test_index_install_hooks_passes_force_flag(
-    runner: CliRunner, app: typer.Typer
-) -> None:
+def test_index_install_hooks_passes_force_flag(runner: CliRunner, app: typer.Typer) -> None:
     with (
         patch(
             "mahavishnu.cli.index_cli.validate_repo_path",
@@ -260,16 +243,12 @@ def test_index_install_hooks_passes_force_flag(
             return_value=["post-commit"],
         ) as mock_install,
     ):
-        result = runner.invoke(
-            app, ["index", "install-hooks", "/tmp/registered", "--force"]
-        )
+        result = runner.invoke(app, ["index", "install-hooks", "/tmp/registered", "--force"])
     assert result.exit_code == 0
     mock_install.assert_called_once_with("/tmp/registered", force=True)
 
 
-def test_index_uninstall_hooks_prints_removed_names(
-    runner: CliRunner, app: typer.Typer
-) -> None:
+def test_index_uninstall_hooks_prints_removed_names(runner: CliRunner, app: typer.Typer) -> None:
     with (
         patch(
             "mahavishnu.cli.index_cli.validate_repo_path",
@@ -280,16 +259,12 @@ def test_index_uninstall_hooks_prints_removed_names(
             return_value=["post-commit", "post-merge"],
         ),
     ):
-        result = runner.invoke(
-            app, ["index", "uninstall-hooks", "/tmp/registered"]
-        )
+        result = runner.invoke(app, ["index", "uninstall-hooks", "/tmp/registered"])
     assert result.exit_code == 0
     assert "Removed hooks: post-commit, post-merge" in result.output
 
 
-def test_index_uninstall_hooks_none_removed_message(
-    runner: CliRunner, app: typer.Typer
-) -> None:
+def test_index_uninstall_hooks_none_removed_message(runner: CliRunner, app: typer.Typer) -> None:
     with (
         patch(
             "mahavishnu.cli.index_cli.validate_repo_path",
@@ -300,8 +275,6 @@ def test_index_uninstall_hooks_none_removed_message(
             return_value=[],
         ),
     ):
-        result = runner.invoke(
-            app, ["index", "uninstall-hooks", "/tmp/registered"]
-        )
+        result = runner.invoke(app, ["index", "uninstall-hooks", "/tmp/registered"])
     assert result.exit_code == 0
     assert "Removed hooks: none" in result.output

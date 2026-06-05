@@ -15,19 +15,17 @@ Run with pytest:
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import json
+from pathlib import Path
 import sys
 import types
-from dataclasses import dataclass, field
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 import typer
 from typer.testing import CliRunner
 
 from mahavishnu.cli.docs_cli import add_docs_commands
-
 
 # ---------------------------------------------------------------------------
 # Stubs for audit_ecosystem_docs dataclasses
@@ -133,9 +131,7 @@ def fake_module(fake_report):
     def _render_text(summaries, *, catalog=None, catalog_issues=None):
         return f"TEXT-RENDER: {len(summaries)} summaries"
 
-    def _render_markdown(
-        summaries, *, include_files=False, catalog=None, catalog_issues=None
-    ):
+    def _render_markdown(summaries, *, include_files=False, catalog=None, catalog_issues=None):
         return f"MARKDOWN-RENDER: {len(summaries)} summaries"
 
     mod.build_audit_report = _build_audit_report
@@ -193,9 +189,7 @@ def test_audit_missing_ecosystem_file_exits_1(
     runner: CliRunner, app: typer.Typer, tmp_path: Path, fake_module
 ) -> None:
     missing = tmp_path / "no-such-ecosystem.yaml"
-    result = runner.invoke(
-        app, ["docs", "audit", "--ecosystem", str(missing)]
-    )
+    result = runner.invoke(app, ["docs", "audit", "--ecosystem", str(missing)])
     assert result.exit_code == 1
     assert "Ecosystem file not found" in (result.output + result.stderr)
 
@@ -213,9 +207,7 @@ def test_audit_invalid_output_format_exits_1(
     assert "Invalid output format" in (result.output + result.stderr)
 
 
-def test_audit_missing_module_exits_1(
-    runner: CliRunner, app: typer.Typer, tmp_path: Path
-) -> None:
+def test_audit_missing_module_exits_1(runner: CliRunner, app: typer.Typer, tmp_path: Path) -> None:
     """When audit_ecosystem_docs is not importable, the command should
     still produce a clean error instead of a traceback."""
     eco = tmp_path / "ecosystem.yaml"
@@ -230,9 +222,7 @@ def test_audit_missing_module_exits_1(
     blocker.build_audit_report = _raise  # type: ignore[attr-defined]
     sys.modules["audit_ecosystem_docs"] = blocker
     try:
-        result = runner.invoke(
-            app, ["docs", "audit", "--ecosystem", str(eco)]
-        )
+        result = runner.invoke(app, ["docs", "audit", "--ecosystem", str(eco)])
     finally:
         sys.modules.pop("audit_ecosystem_docs", None)
         if saved is not None:
@@ -250,9 +240,7 @@ def test_audit_text_output_to_stdout(
 ) -> None:
     eco = tmp_path / "ecosystem.yaml"
     eco.write_text("version: '1.0'\n")
-    result = runner.invoke(
-        app, ["docs", "audit", "--ecosystem", str(eco)]
-    )
+    result = runner.invoke(app, ["docs", "audit", "--ecosystem", str(eco)])
     assert result.exit_code == 0
     assert "TEXT-RENDER: 1 summaries" in result.output
 

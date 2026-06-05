@@ -102,8 +102,7 @@ def test_plugin_command_targets_audit_script() -> None:
         f"Hook command should end with the audit script path, got {script_ref!r}"
     )
     assert AUDIT_SCRIPT.is_file(), (
-        f"Audit script not found at {AUDIT_SCRIPT}; the hook's command "
-        f"will fail at runtime."
+        f"Audit script not found at {AUDIT_SCRIPT}; the hook's command will fail at runtime."
     )
 
 

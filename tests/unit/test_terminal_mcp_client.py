@@ -21,7 +21,6 @@ import pytest
 
 from mahavishnu.terminal.mcp_client import McpretentiousClient, StdioMCPClient
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -41,7 +40,9 @@ def _make_fake_process(stdout_lines: list[bytes] | None = None) -> MagicMock:
     if stdout_lines is None:
         stdout_lines = []
 
-    process = MagicMock(spec=["stdin", "stdout", "stderr", "terminate", "kill", "wait", "returncode"])
+    process = MagicMock(
+        spec=["stdin", "stdout", "stderr", "terminate", "kill", "wait", "returncode"]
+    )
     process.returncode = None
     process.stdin = MagicMock()
     process.stdin.write = MagicMock()
@@ -310,9 +311,14 @@ class TestStdioMCPClientCallToolErrors:
         client.process = fake_process
         reader = asyncio.create_task(client._read_stdout())
 
-        with patch("mahavishnu.terminal.mcp_client.asyncio.wait_for", AsyncMock(side_effect=TimeoutError)):
-            with pytest.raises(RuntimeError, match="Timeout calling MCP tool"):
-                await client.call_tool("slow", {})
+        with (
+            patch(
+                "mahavishnu.terminal.mcp_client.asyncio.wait_for",
+                AsyncMock(side_effect=TimeoutError),
+            ),
+            pytest.raises(RuntimeError, match="Timeout calling MCP tool"),
+        ):
+            await client.call_tool("slow", {})
 
         assert client._pending_requests == {}
         reader.cancel()
@@ -329,12 +335,14 @@ class TestStdioMCPClientCallToolErrors:
         client.process = fake_process
         reader = asyncio.create_task(client._read_stdout())
 
-        with patch(
-            "mahavishnu.terminal.mcp_client.asyncio.wait_for",
-            AsyncMock(side_effect=OSError("connection reset")),
+        with (
+            patch(
+                "mahavishnu.terminal.mcp_client.asyncio.wait_for",
+                AsyncMock(side_effect=OSError("connection reset")),
+            ),
+            pytest.raises(RuntimeError, match="Failed to call MCP tool"),
         ):
-            with pytest.raises(RuntimeError, match="Failed to call MCP tool"):
-                await client.call_tool("flaky", {})
+            await client.call_tool("flaky", {})
 
         assert client._pending_requests == {}
         reader.cancel()

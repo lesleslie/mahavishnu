@@ -22,13 +22,9 @@ What we exercise here:
 from __future__ import annotations
 
 import os
-import subprocess
-import sys
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 # ``scripts/`` is added to ``sys.path`` by the project pytest config
 # (``pythonpath = ["."]`` in pyproject.toml). Import the script module
@@ -46,7 +42,7 @@ from cleanup_reflection_db import (
     validate_health_url,
     verify_health,
 )
-
+import pytest
 
 # ============================================================================
 # is_process_alive
@@ -82,8 +78,7 @@ class TestIsProcessAlive:
 
 class TestValidateHealthUrl:
     def test_accepts_http(self) -> None:
-        assert validate_health_url("http://127.0.0.1:8678/health") == \
-            "http://127.0.0.1:8678/health"
+        assert validate_health_url("http://127.0.0.1:8678/health") == "http://127.0.0.1:8678/health"
 
     def test_rejects_https(self) -> None:
         """HTTPS is intentionally disallowed — see ALLOWED_HEALTH_SCHEMES docstring.
@@ -116,14 +111,13 @@ class TestValidateHealthUrl:
         ``urllib``, etc.) and avoids surprising the operator who types
         a capitalised URL.
         """
-        assert validate_health_url("HTTP://127.0.0.1/health") == \
-            "HTTP://127.0.0.1/health"
+        assert validate_health_url("HTTP://127.0.0.1/health") == "HTTP://127.0.0.1/health"
 
     def test_allowed_schemes_constant_is_exactly_http(self) -> None:
         """Pin the policy: only http is allowed. If a future change adds
         https or file, this test will fail and force a deliberate update.
         """
-        assert ALLOWED_HEALTH_SCHEMES == frozenset({"http"})
+        assert frozenset({"http"}) == ALLOWED_HEALTH_SCHEMES
 
 
 # ============================================================================
@@ -197,12 +191,12 @@ class TestShutdownSessionBuddy:
 
     def test_returns_true_after_successful_sigterm(self) -> None:
         """The process dies immediately after SIGTERM."""
-        with patch("cleanup_reflection_db.is_process_alive") as alive, \
-             patch("cleanup_reflection_db.os.kill") as kill:
+        with (
+            patch("cleanup_reflection_db.is_process_alive") as alive,
+            patch("cleanup_reflection_db.os.kill") as kill,
+        ):
             alive.side_effect = [True, False]  # alive before, dead after
-            assert shutdown_session_buddy(
-                12345, timeout=5.0, log=lambda m: None
-            ) is True
+            assert shutdown_session_buddy(12345, timeout=5.0, log=lambda m: None) is True
         kill.assert_called_once_with(12345, __import__("signal").SIGTERM)
 
     def test_escalates_to_sigkill_on_timeout(self) -> None:
@@ -221,14 +215,14 @@ class TestShutdownSessionBuddy:
         def fake_kill(pid, sig):
             sent_signals.append(sig)
 
-        with patch("cleanup_reflection_db.is_process_alive", return_value=True), \
-             patch("cleanup_reflection_db.os.kill", side_effect=fake_kill), \
-             patch("cleanup_reflection_db.time.sleep"):
+        with (
+            patch("cleanup_reflection_db.is_process_alive", return_value=True),
+            patch("cleanup_reflection_db.os.kill", side_effect=fake_kill),
+            patch("cleanup_reflection_db.time.sleep"),
+        ):
             # Tiny timeout so the test is fast. Return value is
             # intentionally not asserted — see docstring.
-            shutdown_session_buddy(
-                12345, timeout=0.01, log=lambda m: None
-            )
+            shutdown_session_buddy(12345, timeout=0.01, log=lambda m: None)
 
         # SIGTERM (15) sent first; if process doesn't die, SIGKILL (9) follows.
         assert sent_signals[0] == 15
@@ -236,20 +230,20 @@ class TestShutdownSessionBuddy:
 
     def test_returns_false_when_process_lingers(self) -> None:
         """Worst case: both signals sent and the process is still alive."""
-        with patch("cleanup_reflection_db.is_process_alive", return_value=True), \
-             patch("cleanup_reflection_db.os.kill"), \
-             patch("cleanup_reflection_db.time.sleep"):
-            assert shutdown_session_buddy(
-                12345, timeout=0.01, log=lambda m: None
-            ) is False
+        with (
+            patch("cleanup_reflection_db.is_process_alive", return_value=True),
+            patch("cleanup_reflection_db.os.kill"),
+            patch("cleanup_reflection_db.time.sleep"),
+        ):
+            assert shutdown_session_buddy(12345, timeout=0.01, log=lambda m: None) is False
 
     def test_tolerates_processlookuperror_on_signal(self) -> None:
         """If the process dies between our probe and our kill, don't error."""
-        with patch("cleanup_reflection_db.is_process_alive", return_value=True), \
-             patch("cleanup_reflection_db.os.kill", side_effect=ProcessLookupError):
-            assert shutdown_session_buddy(
-                12345, timeout=5.0, log=lambda m: None
-            ) is True
+        with (
+            patch("cleanup_reflection_db.is_process_alive", return_value=True),
+            patch("cleanup_reflection_db.os.kill", side_effect=ProcessLookupError),
+        ):
+            assert shutdown_session_buddy(12345, timeout=5.0, log=lambda m: None) is True
 
 
 # ============================================================================
@@ -329,28 +323,39 @@ class TestVerifyHealth:
         fake_conn = MagicMock()
         fake_conn.getresponse.return_value = _payload_response(200, '{"status": "ok"}')
         with patch("cleanup_reflection_db._http_get_json", return_value={"status": "ok"}):
-            assert verify_health(
-                "http://127.0.0.1:8678/health",
-                timeout_seconds=0.5,
-                log=lambda m: None,
-            ) is True
+            assert (
+                verify_health(
+                    "http://127.0.0.1:8678/health",
+                    timeout_seconds=0.5,
+                    log=lambda m: None,
+                )
+                is True
+            )
 
     def test_returns_false_on_timeout(self) -> None:
-        with patch("cleanup_reflection_db._http_get_json", return_value=None), \
-             patch("cleanup_reflection_db.time.sleep"):
-            assert verify_health(
-                "http://127.0.0.1:8678/health",
-                timeout_seconds=0.1,
-                log=lambda m: None,
-            ) is False
+        with (
+            patch("cleanup_reflection_db._http_get_json", return_value=None),
+            patch("cleanup_reflection_db.time.sleep"),
+        ):
+            assert (
+                verify_health(
+                    "http://127.0.0.1:8678/health",
+                    timeout_seconds=0.1,
+                    log=lambda m: None,
+                )
+                is False
+            )
 
     def test_returns_false_on_non_ok_status(self) -> None:
         with patch("cleanup_reflection_db._http_get_json", return_value={"status": "degraded"}):
-            assert verify_health(
-                "http://127.0.0.1:8678/health",
-                timeout_seconds=0.1,
-                log=lambda m: None,
-            ) is False
+            assert (
+                verify_health(
+                    "http://127.0.0.1:8678/health",
+                    timeout_seconds=0.1,
+                    log=lambda m: None,
+                )
+                is False
+            )
 
     def test_raises_on_https_url(self) -> None:
         with pytest.raises(ValueError, match="scheme='https'"):
@@ -369,8 +374,7 @@ class TestVerifyHealth:
 class TestForceReleaseLock:
     def test_is_noop_when_lock_is_free(self, tmp_path: Path) -> None:
         """Idempotency: if there's no lock, we do nothing and return cleanly."""
-        with patch.object(crd, "probe_lock",
-                          return_value=LockProbe(False, None, False)):
+        with patch.object(crd, "probe_lock", return_value=LockProbe(False, None, False)):
             result = force_release_lock(
                 db_path=tmp_path / "x.duckdb",
                 log=lambda m: None,
@@ -382,13 +386,14 @@ class TestForceReleaseLock:
 
     def test_stops_live_holder_and_checkpoints(self, tmp_path: Path) -> None:
         """Live holder: we shut it down, then run CHECKPOINT."""
-        with patch.object(crd, "probe_lock",
-                          return_value=LockProbe(True, 99935, False)), \
-             patch.object(crd, "shutdown_session_buddy", return_value=True), \
-             patch.object(crd, "run_checkpoint", return_value=True), \
-             patch.object(crd, "restart_session_buddy", return_value=44411), \
-             patch.object(crd, "verify_health", return_value=True), \
-             patch.object(crd.time, "sleep"):
+        with (
+            patch.object(crd, "probe_lock", return_value=LockProbe(True, 99935, False)),
+            patch.object(crd, "shutdown_session_buddy", return_value=True),
+            patch.object(crd, "run_checkpoint", return_value=True),
+            patch.object(crd, "restart_session_buddy", return_value=44411),
+            patch.object(crd, "verify_health", return_value=True),
+            patch.object(crd.time, "sleep"),
+        ):
             result = force_release_lock(
                 db_path=tmp_path / "x.duckdb",
                 log=lambda m: None,
@@ -404,13 +409,14 @@ class TestForceReleaseLock:
 
     def test_skips_shutdown_when_holder_is_stale(self, tmp_path: Path) -> None:
         """Stale PID: don't even try to kill, just CHECKPOINT and restart."""
-        with patch.object(crd, "probe_lock",
-                          return_value=LockProbe(True, 12345, True)), \
-             patch.object(crd, "shutdown_session_buddy") as mock_shutdown, \
-             patch.object(crd, "run_checkpoint", return_value=True), \
-             patch.object(crd, "restart_session_buddy", return_value=44411), \
-             patch.object(crd, "verify_health", return_value=True), \
-             patch.object(crd.time, "sleep"):
+        with (
+            patch.object(crd, "probe_lock", return_value=LockProbe(True, 12345, True)),
+            patch.object(crd, "shutdown_session_buddy") as mock_shutdown,
+            patch.object(crd, "run_checkpoint", return_value=True),
+            patch.object(crd, "restart_session_buddy", return_value=44411),
+            patch.object(crd, "verify_health", return_value=True),
+            patch.object(crd.time, "sleep"),
+        ):
             result = force_release_lock(
                 db_path=tmp_path / "x.duckdb",
                 log=lambda m: None,
@@ -421,10 +427,11 @@ class TestForceReleaseLock:
 
     def test_aborts_when_shutdown_fails(self, tmp_path: Path) -> None:
         """If we can't kill the live process, we don't try to checkpoint."""
-        with patch.object(crd, "probe_lock",
-                          return_value=LockProbe(True, 99935, False)), \
-             patch.object(crd, "shutdown_session_buddy", return_value=False), \
-             patch.object(crd, "run_checkpoint") as mock_ckpt:
+        with (
+            patch.object(crd, "probe_lock", return_value=LockProbe(True, 99935, False)),
+            patch.object(crd, "shutdown_session_buddy", return_value=False),
+            patch.object(crd, "run_checkpoint") as mock_ckpt,
+        ):
             result = force_release_lock(
                 db_path=tmp_path / "x.duckdb",
                 log=lambda m: None,
@@ -433,11 +440,12 @@ class TestForceReleaseLock:
         mock_ckpt.assert_not_called()
 
     def test_no_restart_skips_restart_and_health_check(self, tmp_path: Path) -> None:
-        with patch.object(crd, "probe_lock",
-                          return_value=LockProbe(True, 12345, True)), \
-             patch.object(crd, "run_checkpoint", return_value=True), \
-             patch.object(crd, "restart_session_buddy") as mock_restart, \
-             patch.object(crd, "verify_health") as mock_health:
+        with (
+            patch.object(crd, "probe_lock", return_value=LockProbe(True, 12345, True)),
+            patch.object(crd, "run_checkpoint", return_value=True),
+            patch.object(crd, "restart_session_buddy") as mock_restart,
+            patch.object(crd, "verify_health") as mock_health,
+        ):
             result = force_release_lock(
                 db_path=tmp_path / "x.duckdb",
                 restart=False,
@@ -460,15 +468,19 @@ class TestCLI:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """--dry-run must not invoke any destructive subprocess."""
-        with patch.object(crd, "probe_lock",
-                          return_value=LockProbe(True, 99935, True)), \
-             patch.object(crd, "shutdown_session_buddy") as mock_shutdown, \
-             patch.object(crd, "run_checkpoint") as mock_ckpt, \
-             patch.object(crd, "restart_session_buddy") as mock_restart:
-            rc = crd.main([
-                "--db-path", str(tmp_path / "x.duckdb"),
-                "--dry-run",
-            ])
+        with (
+            patch.object(crd, "probe_lock", return_value=LockProbe(True, 99935, True)),
+            patch.object(crd, "shutdown_session_buddy") as mock_shutdown,
+            patch.object(crd, "run_checkpoint") as mock_ckpt,
+            patch.object(crd, "restart_session_buddy") as mock_restart,
+        ):
+            rc = crd.main(
+                [
+                    "--db-path",
+                    str(tmp_path / "x.duckdb"),
+                    "--dry-run",
+                ]
+            )
         assert rc == 0
         out = capsys.readouterr().err
         assert "DRY RUN" in out
@@ -479,24 +491,30 @@ class TestCLI:
     def test_dry_run_with_no_lock_exits_zero(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        with patch.object(crd, "probe_lock",
-                          return_value=LockProbe(False, None, False)):
-            rc = crd.main([
-                "--db-path", str(tmp_path / "x.duckdb"),
-                "--dry-run",
-            ])
+        with patch.object(crd, "probe_lock", return_value=LockProbe(False, None, False)):
+            rc = crd.main(
+                [
+                    "--db-path",
+                    str(tmp_path / "x.duckdb"),
+                    "--dry-run",
+                ]
+            )
         assert rc == 0
 
     def test_no_restart_skips_restart_step(self, tmp_path: Path) -> None:
-        with patch.object(crd, "probe_lock",
-                          return_value=LockProbe(True, 12345, True)), \
-             patch.object(crd, "run_checkpoint", return_value=True), \
-             patch.object(crd, "restart_session_buddy") as mock_restart, \
-             patch.object(crd, "verify_health") as mock_health:
-            rc = crd.main([
-                "--db-path", str(tmp_path / "x.duckdb"),
-                "--no-restart",
-            ])
+        with (
+            patch.object(crd, "probe_lock", return_value=LockProbe(True, 12345, True)),
+            patch.object(crd, "run_checkpoint", return_value=True),
+            patch.object(crd, "restart_session_buddy") as mock_restart,
+            patch.object(crd, "verify_health") as mock_health,
+        ):
+            rc = crd.main(
+                [
+                    "--db-path",
+                    str(tmp_path / "x.duckdb"),
+                    "--no-restart",
+                ]
+            )
         assert rc == 0
         mock_restart.assert_not_called()
         mock_health.assert_not_called()
@@ -508,12 +526,14 @@ class TestCLI:
         final summary alike. Operators who want a one-line exit-code
         answer for scripting should use ``--quiet``.
         """
-        with patch.object(crd, "probe_lock",
-                          return_value=LockProbe(False, None, False)):
-            rc = crd.main([
-                "--db-path", str(tmp_path / "x.duckdb"),
-                "--quiet",
-            ])
+        with patch.object(crd, "probe_lock", return_value=LockProbe(False, None, False)):
+            rc = crd.main(
+                [
+                    "--db-path",
+                    str(tmp_path / "x.duckdb"),
+                    "--quiet",
+                ]
+            )
         assert rc == 0
         out = capsys.readouterr().err
         assert "Probing" not in out
@@ -521,23 +541,31 @@ class TestCLI:
         assert out == ""
 
     def test_nonzero_exit_on_checkpoint_failure(self, tmp_path: Path) -> None:
-        with patch.object(crd, "probe_lock",
-                          return_value=LockProbe(True, 12345, True)), \
-             patch.object(crd, "run_checkpoint", return_value=False):
-            rc = crd.main([
-                "--db-path", str(tmp_path / "x.duckdb"),
-                "--no-restart",
-            ])
+        with (
+            patch.object(crd, "probe_lock", return_value=LockProbe(True, 12345, True)),
+            patch.object(crd, "run_checkpoint", return_value=False),
+        ):
+            rc = crd.main(
+                [
+                    "--db-path",
+                    str(tmp_path / "x.duckdb"),
+                    "--no-restart",
+                ]
+            )
         assert rc == 1
 
     def test_https_health_url_rejected_by_parser(self) -> None:
         """The CLI parser must reject https:// before we ever open a socket."""
         with pytest.raises(SystemExit):
-            crd.main([
-                "--db-path", "/tmp/x.duckdb",
-                "--health-url", "https://example.com/health",
-                "--dry-run",
-            ])
+            crd.main(
+                [
+                    "--db-path",
+                    "/tmp/x.duckdb",
+                    "--health-url",
+                    "https://example.com/health",
+                    "--dry-run",
+                ]
+            )
 
 
 # ============================================================================

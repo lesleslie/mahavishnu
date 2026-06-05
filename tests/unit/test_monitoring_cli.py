@@ -18,7 +18,6 @@ from typer.testing import CliRunner
 
 from mahavishnu.monitoring_cli import add_monitoring_commands
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
@@ -242,8 +241,7 @@ class TestSubcommandOptions:
                 ["monitor", "acknowledge", "alert-1", opt, val, "--help"],
             )
             assert result.exit_code in (0, 2), (
-                f"acknowledge {opt} {val} --help exited "
-                f"{result.exit_code}: {result.output}"
+                f"acknowledge {opt} {val} --help exited {result.exit_code}: {result.output}"
             )
 
 

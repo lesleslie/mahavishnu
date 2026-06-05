@@ -41,16 +41,17 @@ Usage::
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
+from dataclasses import dataclass
 import os
+from pathlib import Path
 import re
 import shutil
 import signal
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Callable, NamedTuple
+from typing import NamedTuple
 from urllib.parse import urlparse
 
 # Default location of the Session-Buddy reflection store. Override with
@@ -169,9 +170,7 @@ class CleanupResult:
     def ok(self) -> bool:
         """True if every stage that ran completed without error."""
         return (
-            self.checkpoint_ok
-            and (self.restart_ok is not False)
-            and (self.health_ok is not False)
+            self.checkpoint_ok and (self.restart_ok is not False) and (self.health_ok is not False)
         )
 
 
@@ -184,11 +183,11 @@ def _import_duckdb() -> object:
     """Import duckdb with a clear error message if it's not installed."""
     try:
         import duckdb  # type: ignore[import-untyped]
+
         return duckdb
     except ImportError as e:
         raise RuntimeError(
-            "duckdb is required for cleanup_reflection_db.py. "
-            "Install with: uv pip install duckdb"
+            "duckdb is required for cleanup_reflection_db.py. Install with: uv pip install duckdb"
         ) from e
 
 
@@ -300,7 +299,9 @@ def shutdown_session_buddy(
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if not is_process_alive(pid):
-            log(f"  Session-Buddy exited gracefully after {timeout - (deadline - time.monotonic()):.1f}s")
+            log(
+                f"  Session-Buddy exited gracefully after {timeout - (deadline - time.monotonic()):.1f}s"
+            )
             return True
         time.sleep(0.2)
 
@@ -365,7 +366,6 @@ def _http_get_json(parsed_url, timeout: float) -> dict | None:
     """
     import http.client
     import json
-    import socket
 
     host = parsed_url.hostname
     if host is None:
@@ -384,7 +384,7 @@ def _http_get_json(parsed_url, timeout: float) -> dict | None:
             return None
         body = resp.read().decode("utf-8", errors="replace")
         return json.loads(body)
-    except (OSError, socket.timeout, ValueError):
+    except (TimeoutError, OSError, ValueError):
         return None
     finally:
         try:
@@ -536,10 +536,7 @@ def force_release_lock(
             duration_seconds=time.monotonic() - start,
         )
 
-    log(
-        f"  Lock held by PID {initial.holder_pid} "
-        f"({'STALE' if initial.stale else 'live'})"
-    )
+    log(f"  Lock held by PID {initial.holder_pid} ({'STALE' if initial.stale else 'live'})")
 
     # Step 1: shutdown the holder (live or stale — even a stale PID
     # whose process has been reaped needs no extra work, but we still
@@ -654,7 +651,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help=f"Session-Buddy health endpoint (default: {DEFAULT_HEALTH_URL})",
     )
     parser.add_argument(
-        "-q", "--quiet",
+        "-q",
+        "--quiet",
         action="store_true",
         help="Suppress progress output; only show errors and final status.",
     )
@@ -665,6 +663,7 @@ def _make_logger(quiet: bool) -> Callable[[str], None]:
     def log(msg: str) -> None:
         if not quiet:
             print(msg, file=sys.stderr)
+
     return log
 
 
@@ -717,7 +716,9 @@ def main(argv: list[str] | None = None) -> int:
     log("=" * 60)
     log(f"Cleanup complete in {result.duration_seconds:.1f}s")
     if result.lock_was_held:
-        log(f"  Previous holder: PID {result.holder_pid} ({'stale' if not result.holder_was_alive else 'live'})")
+        log(
+            f"  Previous holder: PID {result.holder_pid} ({'stale' if not result.holder_was_alive else 'live'})"
+        )
         log(f"  CHECKPOINT: {'OK' if result.checkpoint_ok else 'FAILED'}")
         if result.new_holder_pid is not None:
             log(f"  New lock holder: PID {result.new_holder_pid}")

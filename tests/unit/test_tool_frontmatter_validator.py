@@ -24,7 +24,6 @@ from pathlib import Path
 # it as a package.
 from tool_frontmatter_validator import ToolFrontmatterValidator  # noqa: E402
 
-
 # A representative sample of the real frontmatter used in the repo.
 # Captured verbatim from
 # .claude/commands/tools/deployment/release-management.md
@@ -136,9 +135,7 @@ def test_parse_frontmatter_returns_none_for_file_without_frontmatter(
 # --- Bug #2: validate <file> crash on out-of-tree files ------------------
 
 
-def test_report_results_does_not_crash_on_out_of_tree_file(
-    tmp_path: Path, capsys
-) -> None:
+def test_report_results_does_not_crash_on_out_of_tree_file(tmp_path: Path, capsys) -> None:
     """The ``validate <file>`` subcommand reports on a single file.
 
     ``report_results`` must not raise when the file is outside the
@@ -151,9 +148,7 @@ def test_report_results_does_not_crash_on_out_of_tree_file(
     tool = _write_classic_tool(tmp_path)
     # Deliberately point ``tools_dir`` somewhere unrelated to ``tmp_path``
     # so the file is "out of tree" from the validator's perspective.
-    validator = ToolFrontmatterValidator(
-        tools_dir=Path("/nonexistent/commands/tools")
-    )
+    validator = ToolFrontmatterValidator(tools_dir=Path("/nonexistent/commands/tools"))
 
     result = validator.validate_tool(tool)
     # The bug surfaces here — this call raises ValueError today.

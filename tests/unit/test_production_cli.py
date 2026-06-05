@@ -19,7 +19,6 @@ from typer.testing import CliRunner
 
 from mahavishnu.production_cli import add_production_commands
 
-
 runner = CliRunner()
 
 
@@ -41,9 +40,7 @@ def _make_mock_readiness_components() -> dict[str, MagicMock]:
     tests.run_all_tests = AsyncMock(return_value={"status": "ok", "tests": []})
 
     benchmarks = MagicMock()
-    benchmarks.run_benchmarks = AsyncMock(
-        return_value={"status": "ok", "latency_ms": 1.0}
-    )
+    benchmarks.run_benchmarks = AsyncMock(return_value={"status": "ok", "latency_ms": 1.0})
 
     suite = AsyncMock(return_value={"status": "ok", "summary": "all green"})
 
@@ -127,9 +124,7 @@ class TestAddProductionCommands:
         app = typer.Typer()
         try:
             add_production_commands(app)
-            production_groups = [
-                g for g in app.registered_groups if g.name == "production"
-            ]
+            production_groups = [g for g in app.registered_groups if g.name == "production"]
             assert len(production_groups) == 1
             assert isinstance(production_groups[0].typer_instance, typer.Typer)
         finally:
@@ -206,9 +201,7 @@ class TestSubcommandRegistration:
 class TestDetailedFlag:
     """Tests for the --detailed / -d flag on every subcommand."""
 
-    @pytest.mark.parametrize(
-        "sub_name", ["check", "test", "benchmark", "suite"]
-    )
+    @pytest.mark.parametrize("sub_name", ["check", "test", "benchmark", "suite"])
     def test_subcommand_help_documents_detailed_flag(self, sub_name: str) -> None:
         """Each subcommand's --help lists the --detailed / -d flag."""
         app = typer.Typer()
@@ -221,30 +214,22 @@ class TestDetailedFlag:
         finally:
             _release_app(app)
 
-    @pytest.mark.parametrize(
-        "sub_name", ["check", "test", "benchmark", "suite"]
-    )
+    @pytest.mark.parametrize("sub_name", ["check", "test", "benchmark", "suite"])
     def test_subcommand_runs_with_detailed_flag(self, sub_name: str) -> None:
         """Each subcommand runs successfully with --detailed (mocked I/O)."""
         app = _build_app_with_mocks()
         try:
-            result = runner.invoke(
-                app, ["production", sub_name, "--detailed"]
-            )
+            result = runner.invoke(app, ["production", sub_name, "--detailed"])
             assert result.exit_code == 0, result.stdout
         finally:
             _release_app(app)
 
-    @pytest.mark.parametrize(
-        "sub_name", ["check", "test", "benchmark", "suite"]
-    )
+    @pytest.mark.parametrize("sub_name", ["check", "test", "benchmark", "suite"])
     def test_subcommand_runs_with_short_detailed_flag(self, sub_name: str) -> None:
         """Each subcommand accepts the short -d flag."""
         app = _build_app_with_mocks()
         try:
-            result = runner.invoke(
-                app, ["production", sub_name, "-d"]
-            )
+            result = runner.invoke(app, ["production", sub_name, "-d"])
             assert result.exit_code == 0, result.stdout
         finally:
             _release_app(app)
@@ -297,9 +282,7 @@ class TestHelpOutput:
         app = typer.Typer()
         try:
             add_production_commands(app)
-            result = runner.invoke(
-                app, ["production", "test", "--help"]
-            )
+            result = runner.invoke(app, ["production", "test", "--help"])
             assert result.exit_code == 0
             assert "integration tests" in result.stdout.lower()
         finally:
@@ -310,9 +293,7 @@ class TestHelpOutput:
         app = typer.Typer()
         try:
             add_production_commands(app)
-            result = runner.invoke(
-                app, ["production", "benchmark", "--help"]
-            )
+            result = runner.invoke(app, ["production", "benchmark", "--help"])
             assert result.exit_code == 0
             assert "performance benchmarks" in result.stdout.lower()
         finally:
@@ -323,9 +304,7 @@ class TestHelpOutput:
         app = typer.Typer()
         try:
             add_production_commands(app)
-            result = runner.invoke(
-                app, ["production", "suite", "--help"]
-            )
+            result = runner.invoke(app, ["production", "suite", "--help"])
             assert result.exit_code == 0
             assert "production readiness suite" in result.stdout.lower()
         finally:
@@ -353,9 +332,7 @@ class TestSubcommandInvocation:
         """The 'check' subcommand with --detailed prints JSON to stdout."""
         app = _build_app_with_mocks()
         try:
-            result = runner.invoke(
-                app, ["production", "check", "--detailed"]
-            )
+            result = runner.invoke(app, ["production", "check", "--detailed"])
             assert result.exit_code == 0, result.stdout
             assert '"status"' in result.stdout
             assert '"ok"' in result.stdout
@@ -375,9 +352,7 @@ class TestSubcommandInvocation:
         """The 'test' subcommand with --detailed prints JSON to stdout."""
         app = _build_app_with_mocks()
         try:
-            result = runner.invoke(
-                app, ["production", "test", "--detailed"]
-            )
+            result = runner.invoke(app, ["production", "test", "--detailed"])
             assert result.exit_code == 0, result.stdout
             assert '"status"' in result.stdout
         finally:
@@ -396,9 +371,7 @@ class TestSubcommandInvocation:
         """The 'benchmark' subcommand with --detailed prints JSON to stdout."""
         app = _build_app_with_mocks()
         try:
-            result = runner.invoke(
-                app, ["production", "benchmark", "--detailed"]
-            )
+            result = runner.invoke(app, ["production", "benchmark", "--detailed"])
             assert result.exit_code == 0, result.stdout
             assert '"status"' in result.stdout
         finally:
@@ -417,9 +390,7 @@ class TestSubcommandInvocation:
         """The 'suite' subcommand with --detailed prints JSON to stdout."""
         app = _build_app_with_mocks()
         try:
-            result = runner.invoke(
-                app, ["production", "suite", "--detailed"]
-            )
+            result = runner.invoke(app, ["production", "suite", "--detailed"])
             assert result.exit_code == 0, result.stdout
             assert '"status"' in result.stdout
         finally:

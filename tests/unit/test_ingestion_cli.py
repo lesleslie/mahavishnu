@@ -22,7 +22,6 @@ The conventions mirror ``tests/unit/test_backup_cli.py``:
 from __future__ import annotations
 
 import asyncio
-import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -78,13 +77,13 @@ def _mock_ingester(result_dict: dict | None = None) -> MagicMock:
     ingester = MagicMock()
     ingester.__aenter__ = AsyncMock(return_value=ingester)
     ingester.__aexit__ = AsyncMock(return_value=False)
-    ingester.ingest_url = AsyncMock(return_value=MagicMock(to_dict=lambda: result_dict or _ingest_result()))
+    ingester.ingest_url = AsyncMock(
+        return_value=MagicMock(to_dict=lambda: result_dict or _ingest_result())
+    )
     ingester.ingest_file = AsyncMock(
         return_value=MagicMock(to_dict=lambda: result_dict or _ingest_result())
     )
-    ingester.batch_ingest_urls = AsyncMock(
-        return_value=[result_dict or _ingest_result()]
-    )
+    ingester.batch_ingest_urls = AsyncMock(return_value=[result_dict or _ingest_result()])
     ingester.initialize = AsyncMock()
     # Stats attributes used by the ``stats`` command body.
     ingester._output_dir = Path("/tmp/ingested")
@@ -110,9 +109,7 @@ class TestAddIngestionCommands:
     def test_ingest_typer_has_help_text(self):
         """The registered ``ingest`` sub-typer should be exposed with its help."""
         app = _make_app()
-        ingest_group = next(
-            group for group in app.registered_groups if group.name == "ingest"
-        )
+        ingest_group = next(group for group in app.registered_groups if group.name == "ingest")
         # Typer attaches the underlying typer as ``typer_instance`` on the group.
         typer_instance = getattr(ingest_group, "typer_instance", None) or ingest_group.typer
         assert typer_instance.help == "Content ingestion commands"
@@ -290,9 +287,7 @@ class TestIngestBatch:
     def test_batch_missing_input_file_exits_nonzero(self, tmp_path):
         """A missing input file should fail up front."""
         app = _make_app()
-        result = runner.invoke(
-            app, ["ingest", "batch", str(tmp_path / "missing.txt")]
-        )
+        result = runner.invoke(app, ["ingest", "batch", str(tmp_path / "missing.txt")])
         assert result.exit_code == 1
         assert "File not found" in result.output
 
@@ -313,9 +308,7 @@ class TestIngestBatch:
         mock_factory.return_value = _mock_ingester()
         with patch("mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run):
             app = _make_app()
-            result = runner.invoke(
-                app, ["ingest", "batch", str(urls_file), "--parallel", "2"]
-            )
+            result = runner.invoke(app, ["ingest", "batch", str(urls_file), "--parallel", "2"])
         assert result.exit_code == 0
         assert "Batch ingestion complete" in result.output
         assert "Success: 2" in result.output
@@ -396,13 +389,9 @@ class TestTurboquantGate:
     @patch("mahavishnu.ingestion_cli.create_content_ingester")
     def test_disabled_gate_uses_none(self, mock_factory):
         """When the flag is None, the factory should receive ``turboquant_bits=None``."""
-        with patch(
-            "mahavishnu.ingestion_cli._DEFAULT_TURBOQUANT_BITS", None
-        ):
+        with patch("mahavishnu.ingestion_cli._DEFAULT_TURBOQUANT_BITS", None):
             mock_factory.return_value = _mock_ingester()
-            with patch(
-                "mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run
-            ):
+            with patch("mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run):
                 app = _make_app()
                 runner.invoke(app, ["ingest", "url", "https://example.com/x"])
         assert mock_factory.call_args.kwargs["turboquant_bits"] is None
@@ -410,21 +399,17 @@ class TestTurboquantGate:
     @patch("mahavishnu.ingestion_cli.create_content_ingester")
     def test_enabled_gate_forwards_bit_count(self, mock_factory):
         """When the flag is an int, the factory should receive the same int."""
-        with patch(
-            "mahavishnu.ingestion_cli._DEFAULT_TURBOQUANT_BITS", 4
-        ):
+        with patch("mahavishnu.ingestion_cli._DEFAULT_TURBOQUANT_BITS", 4):
             mock_factory.return_value = _mock_ingester()
-            with patch(
-                "mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run
-            ):
+            with patch("mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run):
                 app = _make_app()
                 runner.invoke(app, ["ingest", "url", "https://example.com/x"])
         assert mock_factory.call_args.kwargs["turboquant_bits"] == 4
 
     def test_turboquant_module_flag_state(self):
         """The import-time flag should track the underlying module constant."""
-        from mahavishnu.ingestion_cli import _DEFAULT_TURBOQUANT_BITS
         from mahavishnu.ingesters.turboquant_compressor import TURBOQUANT_AVAILABLE
+        from mahavishnu.ingestion_cli import _DEFAULT_TURBOQUANT_BITS
 
         if TURBOQUANT_AVAILABLE:
             assert _DEFAULT_TURBOQUANT_BITS is not None

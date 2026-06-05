@@ -10,16 +10,13 @@ Tests cover:
 from __future__ import annotations
 
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from mahavishnu.automation.backends.base import DesktopAutomationBackend
 from mahavishnu.automation.backends.native_macos import NativeMacOSBackend
 from mahavishnu.automation.backends.pyautogui import PyAutoGUIBackend
-from mahavishnu.automation.errors import (
-    AutomationError,
-)
 
 
 class TestDesktopAutomationBackend:
@@ -45,7 +42,9 @@ class TestDesktopAutomationBackend:
     def test_supports_operation_abstract(self):
         """Abstract methods return True for operation check."""
         backend = NativeMacOSBackend()
-        assert backend.supports_operation("resize_window") is True  # Returns False but is implemented
+        assert (
+            backend.supports_operation("resize_window") is True
+        )  # Returns False but is implemented
 
 
 class TestNativeMacOSBackend:
@@ -76,7 +75,9 @@ class TestNativeMacOSBackend:
             return "name:FakeApp|pid:12345"
 
         backend = NativeMacOSBackend()
-        monkeypatch.setattr("mahavishnu.automation.backends.native_macos._async_run_sync", fake_osascript_runner)
+        monkeypatch.setattr(
+            "mahavishnu.automation.backends.native_macos._async_run_sync", fake_osascript_runner
+        )
         result = await backend.launch_application("com.apple.fake")
         assert isinstance(result, ApplicationInfo)
         assert result.name == "FakeApp"

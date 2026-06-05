@@ -122,9 +122,7 @@ def patched_code_graph_analyzer():
     Yields the patched class. Tests can configure ``return_value`` to
     control what the constructor returns, or ``side_effect`` to raise.
     """
-    with patch(
-        "mahavishnu.session_buddy.integration.CodeGraphAnalyzer"
-    ) as analyzer_cls:
+    with patch("mahavishnu.session_buddy.integration.CodeGraphAnalyzer") as analyzer_cls:
         analyzer_cls.return_value = _make_analyzer()
         yield analyzer_cls
 
@@ -294,9 +292,7 @@ async def test_analyzer_methods_return_error_dict_on_failure(
 ) -> None:
     """All three analyzer-driven methods must swallow exceptions into an error dict."""
     analyzer = MagicMock()
-    analyzer.analyze_repository = AsyncMock(
-        side_effect=RuntimeError(error_substring)
-    )
+    analyzer.analyze_repository = AsyncMock(side_effect=RuntimeError(error_substring))
     patched_code_graph_analyzer.return_value = analyzer
 
     method = getattr(integration, method_name)
@@ -552,9 +548,7 @@ async def test_manager_process_repository_for_session_buddy_partial(
     # First call (integrate_code_graph) raises; second call (index_documentation)
     # would succeed. Both calls go through the same analyzer mock, so configure
     # side_effect with two values to mimic that.
-    analyzer.analyze_repository = AsyncMock(
-        side_effect=[RuntimeError("graph fail"), None]
-    )
+    analyzer.analyze_repository = AsyncMock(side_effect=[RuntimeError("graph fail"), None])
     analyzer.nodes = {}
     patched_code_graph_analyzer.return_value = analyzer
 

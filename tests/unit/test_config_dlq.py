@@ -14,7 +14,6 @@ import pytest
 
 from mahavishnu.core import config_dlq
 
-
 # ---------------------------------------------------------------------------
 # DLQ_CONFIG_FIELDS (Pydantic field declarations to paste into config.py)
 # ---------------------------------------------------------------------------
@@ -162,8 +161,7 @@ def test_field_yaml_and_env_names_are_in_sync() -> None:
     # Map dlq_x -> MAHAVISHNU_DLQ_X
     expected_env_from_yaml = {f"MAHAVISHNU_{name.upper()}" for name in yaml_fields}
     assert expected_env_from_yaml <= env_names, (
-        f"YAML fields missing env-var equivalents: "
-        f"{expected_env_from_yaml - env_names}"
+        f"YAML fields missing env-var equivalents: {expected_env_from_yaml - env_names}"
     )
 
 

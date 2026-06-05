@@ -27,11 +27,10 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 import re
 import sys
-from pathlib import Path
 from typing import NamedTuple
-
 
 # ---------------------------------------------------------------------------
 # Ecosystem configuration
@@ -56,19 +55,21 @@ DEFAULT_REPOS: list[tuple[str, str]] = [
 # these exist under ``.claude/``, the repo uses ``.claude/`` as a
 # catalog and must use SELECTIVE ``.gitignore`` rules so the catalog
 # is still tracked. A blanket ``.claude/*`` would hide the catalog.
-SHARED_CLAUDE_SUBDIRS: frozenset[str] = frozenset({
-    "agents",
-    "commands",
-    "decisions",
-    "skills",
-    "workflows",
-    "templates",
-    "schemas",
-    "specs",
-    "hooks",  # hook definitions are project content; only ``hooks/scripts/`` is runtime
-    "tools",
-    "prompts",
-})
+SHARED_CLAUDE_SUBDIRS: frozenset[str] = frozenset(
+    {
+        "agents",
+        "commands",
+        "decisions",
+        "skills",
+        "workflows",
+        "templates",
+        "schemas",
+        "specs",
+        "hooks",  # hook definitions are project content; only ``hooks/scripts/`` is runtime
+        "tools",
+        "prompts",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -418,7 +419,8 @@ def evaluate_repo(name: str, repo: Path) -> Verdict:
     # RUNTIME-ONLY content — blanket rule is the canonical answer.
     if ignore_state.has_blanket:
         rule = next(
-            p for p in _BLANKET_CLAUDE_PATTERNS
+            p
+            for p in _BLANKET_CLAUDE_PATTERNS
             if p in (pat for _name, pats in ignore_state.sections for pat in pats)
         )
         return Verdict(
@@ -511,24 +513,26 @@ def render_json_report(verdicts: list[Verdict]) -> str:
     items: list[dict] = []
     for v in verdicts:
         counts[v.status] += 1
-        items.append({
-            "name": v.name,
-            "path": str(v.repo),
-            "status": v.status,
-            "claude_dir": {
-                "present": v.claude_state.present,
-                "shared_subdirs": v.claude_state.shared_subdirs,
-                "runtime_entries": v.claude_state.runtime_entries,
-            },
-            "gitignore": {
-                "has_blanket": v.ignore_state.has_blanket,
-                "has_exception": v.ignore_state.has_exception,
-                "selective_paths": v.ignore_state.selective_paths,
-            },
-            "matched_rule": v.matched_rule,
-            "section": v.section,
-            "issue": v.issue,
-        })
+        items.append(
+            {
+                "name": v.name,
+                "path": str(v.repo),
+                "status": v.status,
+                "claude_dir": {
+                    "present": v.claude_state.present,
+                    "shared_subdirs": v.claude_state.shared_subdirs,
+                    "runtime_entries": v.claude_state.runtime_entries,
+                },
+                "gitignore": {
+                    "has_blanket": v.ignore_state.has_blanket,
+                    "has_exception": v.ignore_state.has_exception,
+                    "selective_paths": v.ignore_state.selective_paths,
+                },
+                "matched_rule": v.matched_rule,
+                "section": v.section,
+                "issue": v.issue,
+            }
+        )
     payload = {
         "ecosystem": "Bodai",
         "summary": {

@@ -14,18 +14,15 @@ The readiness sub-checks depend on heavy modules (``EncryptedSQLite``,
 
 from __future__ import annotations
 
-import sys
 from datetime import UTC, datetime, timedelta
+import sys
 from types import ModuleType
-from typing import Any
-from unittest.mock import MagicMock
 
-import pytest
 from fastapi import FastAPI, Response
 from fastapi.testclient import TestClient
+import pytest
 
 from mahavishnu.health import create_health_app
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -163,9 +160,7 @@ def test_ready_endpoint_returns_200_when_all_checks_ok(
     assert all(value == "ok" for value in body["checks"].values())
 
 
-def test_ready_endpoint_response_schema(
-    client: TestClient, all_healthy: None
-) -> None:
+def test_ready_endpoint_response_schema(client: TestClient, all_healthy: None) -> None:
     """Readiness response contains ``ready``, ``service``, ``dependencies``, ``checks``."""
     body = client.get("/ready").json()
     assert set(body.keys()) == {"ready", "service", "dependencies", "checks"}
@@ -206,9 +201,7 @@ def test_ready_endpoint_adapters_unhealthy(
     assert body["checks"]["adapters"] == "unhealthy"
 
 
-def test_ready_endpoint_server_check_always_ok(
-    client: TestClient, all_healthy: None
-) -> None:
+def test_ready_endpoint_server_check_always_ok(client: TestClient, all_healthy: None) -> None:
     """The ``server`` sub-check is hard-coded to ``ok`` in the source."""
     body = client.get("/ready").json()
     assert body["checks"]["server"] == "ok"
@@ -219,9 +212,7 @@ def test_ready_endpoint_server_check_always_ok(
 # ---------------------------------------------------------------------------
 
 
-def test_metrics_endpoint_returns_200(
-    client: TestClient, fake_metrics_module: ModuleType
-) -> None:
+def test_metrics_endpoint_returns_200(client: TestClient, fake_metrics_module: ModuleType) -> None:
     """The metrics endpoint returns 200 and the delegated payload."""
     response = client.get("/metrics")
     assert response.status_code == 200

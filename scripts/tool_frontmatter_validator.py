@@ -360,10 +360,7 @@ class ToolFrontmatterValidator:
                 ValidationIssue(
                     severity="critical",
                     field="required_scripts",
-                    message=(
-                        f"required_scripts must be a list, got "
-                        f"{type(required).__name__}"
-                    ),
+                    message=(f"required_scripts must be a list, got {type(required).__name__}"),
                     suggestion="Use YAML list format: - scripts/foo.py",
                 )
             )
@@ -392,8 +389,7 @@ class ToolFrontmatterValidator:
                         severity="critical",
                         field="required_scripts",
                         message=(
-                            f"required_scripts entries must be strings, "
-                            f"got {type(entry).__name__}"
+                            f"required_scripts entries must be strings, got {type(entry).__name__}"
                         ),
                         suggestion="Quote each entry, e.g. - 'scripts/foo.py'",
                     )
@@ -407,10 +403,7 @@ class ToolFrontmatterValidator:
                     ValidationIssue(
                         severity="critical",
                         field="required_scripts",
-                        message=(
-                            f"required_scripts entry points at non-existent "
-                            f"file: {entry}"
-                        ),
+                        message=(f"required_scripts entry points at non-existent file: {entry}"),
                         suggestion=(
                             "Either commit the script at this path or remove "
                             "the entry (per .claude/decisions/removed-scripts.md)"

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -13,7 +13,6 @@ from mahavishnu.terminal.grid.models import (
     Quadrant,
     WindowSession,
 )
-
 
 # ---------------------------------------------------------------------------
 # Enum value pinning
@@ -130,7 +129,7 @@ def _make_grid() -> GridSession:
 
     return GridSession(
         grid_id="grid-xyz",
-        created_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+        created_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
         desktops={"d1": d1, "d2": d2},
     )
 

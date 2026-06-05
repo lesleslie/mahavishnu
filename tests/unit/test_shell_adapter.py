@@ -30,7 +30,6 @@ from mahavishnu.shell.adapter import MahavishnuShell
 from mahavishnu.shell.formatters import LogFormatter, RepoFormatter, WorkflowFormatter
 from mahavishnu.shell.magics import MahavishnuMagics
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -228,12 +227,8 @@ def test_register_magics_calls_super_and_registers_magics(
     shell.shell = fake_shell
 
     with (
-        patch.object(
-            MahavishnuShell.__mro__[1], "_register_magics"
-        ) as mock_super,
-        patch(
-            "mahavishnu.shell.adapter.MahavishnuMagics"
-        ) as mock_cls,
+        patch.object(MahavishnuShell.__mro__[1], "_register_magics") as mock_super,
+        patch("mahavishnu.shell.adapter.MahavishnuMagics") as mock_cls,
     ):
         mock_instance = MagicMock(spec=MahavishnuMagics)
         mock_cls.return_value = mock_instance

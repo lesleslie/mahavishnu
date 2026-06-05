@@ -20,7 +20,6 @@ import pytest
 
 from mahavishnu.core.worktree_providers.base import WorktreeProvider
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -118,30 +117,35 @@ def test_subclass_missing_one_abstract_method_still_abstract(
     namespace: dict[str, Any] = {}
 
     if missing_method != "create_worktree":
+
         async def create_worktree(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
             return {}
 
         namespace["create_worktree"] = create_worktree
 
     if missing_method != "remove_worktree":
+
         async def remove_worktree(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
             return {}
 
         namespace["remove_worktree"] = remove_worktree
 
     if missing_method != "list_worktrees":
+
         async def list_worktrees(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
             return {}
 
         namespace["list_worktrees"] = list_worktrees
 
     if missing_method != "health_check":
+
         def health_check(self) -> bool:
             return True
 
         namespace["health_check"] = health_check
 
     if missing_method != "provider_name":
+
         def provider_name(self) -> str:
             return "partial"
 
