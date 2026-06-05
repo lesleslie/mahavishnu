@@ -10,15 +10,25 @@ Circuit breaker states:
 - Recovery: After timeout, one probe request is allowed
 """
 
+from __future__ import annotations
+
 import asyncio
 from collections import deque
 import contextlib
 from datetime import datetime, timedelta
 import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
+
+if TYPE_CHECKING:
+    # Type-check-only imports — BasePool/PoolManager are duck-typed parameters
+    # on several public methods. Using TYPE_CHECKING avoids a runtime cycle
+    # (manager.py imports many pool subclasses, none of which need
+    # memory_aggregator at module load time).
+    from .base import BasePool
+    from .manager import PoolManager
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +162,7 @@ class MemoryAggregator:
         self.CACHE_TTL = timedelta(minutes=5)
         self._search_cache: dict[str, Any] = {}  # Using dict to allow cache stats
 
-    async def _collect_from_pool(self, pool, pool_id: str) -> list[dict[str, Any]]:
+    async def _collect_from_pool(self, pool: "BasePool", pool_id: str) -> list[dict[str, Any]]:
         """Collect memory from a single pool (used in concurrent gather).
 
         Args:
@@ -328,7 +338,7 @@ class MemoryAggregator:
 
     async def start_periodic_sync(
         self,
-        pool_manager,
+        pool_manager: "PoolManager",
     ) -> None:
         """Start periodic memory sync task.
 
@@ -341,7 +351,7 @@ class MemoryAggregator:
             ```
         """
 
-        async def sync_loop():
+        async def sync_loop() -> None:
             while not self._shutdown_event.is_set():
                 try:
                     await self.collect_and_sync(pool_manager)
@@ -384,7 +394,7 @@ class MemoryAggregator:
 
     async def collect_and_sync(
         self,
-        pool_manager,
+        pool_manager: "PoolManager",
     ) -> dict[str, Any]:
         """Collect memory from all pools and sync to Session-Buddy.
 
@@ -496,7 +506,7 @@ class MemoryAggregator:
     async def cross_pool_search(
         self,
         query: str,
-        pool_manager,
+        pool_manager: "PoolManager",
         limit: int = 100,
     ) -> list[dict[str, Any]]:
         """Search across all pools via Session-Buddy with caching (60%+ cache hit rate).
@@ -623,7 +633,7 @@ class MemoryAggregator:
 
     async def get_pool_memory_stats(
         self,
-        pool_manager,
+        pool_manager: "PoolManager",
     ) -> dict[str, dict[str, Any]]:
         """Get memory statistics for all pools.
 
