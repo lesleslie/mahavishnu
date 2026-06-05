@@ -155,6 +155,8 @@ tests/archived/
 .claude/hooks/scripts/
 .claude/skills/*/.archive/
 .claude/backups/
+# Session handoff reports (runtime, machine-local)
+.claude/handoff/
 
 
 # ============================================================================
